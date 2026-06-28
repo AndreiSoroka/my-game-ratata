@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "lib": ["ESNext"],
+        "target": "ESNext",
+        "module": "Preserve",
+        "moduleDetection": "force",
+        "baseUrl": ".",
+        "ignoreDeprecations": "6.0",
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "verbatimModuleSyntax": true,
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "exactOptionalPropertyTypes": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "noUncheckedIndexedAccess": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "useUnknownInCatchVariables": true,
+        "paths": {
+            "@my-game-ratata/contracts": ["contracts/src/index.ts"]
+        }
+    }
+}

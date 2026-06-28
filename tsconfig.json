@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.base.json",
+    "include": [
+        "apps/backend/src/**/*.ts",
+        "apps/backend/tests/**/*.ts",
+        "contracts/src/**/*.ts"
+    ],
+    "exclude": ["dist", "node_modules", "apps/frontend"]
+}
