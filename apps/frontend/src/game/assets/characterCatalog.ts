@@ -1,4 +1,10 @@
-export const characterIds = ['player', 'skeleton', 'skeleton_swordless', 'slime'] as const
+export const characterIds = [
+    'player',
+    'female_player',
+    'skeleton',
+    'skeleton_swordless',
+    'slime',
+] as const
 
 export const characterActions = ['idle', 'walk', 'attack', 'damaged', 'death'] as const
 
@@ -107,6 +113,16 @@ export const characterCatalog: Record<CharacterId, CharacterDefinition> = {
         spriteHeight: 48,
         spriteWidth: 48,
         src: '/game/assets/characters/player.png',
+    },
+    female_player: {
+        animations: playerAnimations,
+        columns: 7,
+        id: 'female_player',
+        label: 'Human Female',
+        rows: 10,
+        spriteHeight: 48,
+        spriteWidth: 48,
+        src: '/game/assets/characters/female_player.png',
     },
     skeleton: {
         animations: enemyAnimations,
