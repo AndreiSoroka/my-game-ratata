@@ -8,9 +8,10 @@ import {
     type CharacterId,
     characterIds,
 } from '../assets/characterCatalog'
+import { renderAllCharacterFrames } from './renderCharacterFramesStory'
 import {
     type CharacterPreviewOptions,
-    renderAllCharacters,
+    renderAllCharacterOverview,
     renderCharacterFrame,
 } from './renderExcaliburStory'
 
@@ -25,7 +26,7 @@ interface CharacterSpriteArgs {
 }
 
 const meta = {
-    title: 'Characters/Sprites',
+    title: 'Characters/Characters',
     argTypes: {
         action: {
             control: 'select',
@@ -93,7 +94,55 @@ export const AnimationPreview: Story = {
 
 export const All: Story = {
     args: {
+        action: 'idle',
+        animate: false,
+        direction: 'down',
+        frame: 0,
+        showFrameGrid: true,
         zoom: 2,
     },
-    render: (args) => renderAllCharacters(Number(args.zoom ?? 4)),
+    argTypes: {
+        character: {
+            control: false,
+            table: {
+                disable: true,
+            },
+        },
+    },
+    render: (args) =>
+        renderAllCharacterOverview({
+            action: args.action,
+            animate: args.animate,
+            direction: args.direction,
+            frame: args.frame,
+            showFrameGrid: args.showFrameGrid,
+            zoom: args.zoom,
+        }),
+}
+
+export const AllFrames: Story = {
+    args: {
+        action: 'walk',
+        animate: false,
+        character: 'skeleton',
+        direction: 'right',
+        frame: 0,
+        showFrameGrid: true,
+        zoom: 2,
+    },
+    argTypes: {
+        animate: {
+            control: false,
+            table: {
+                disable: true,
+            },
+        },
+        frame: {
+            control: false,
+            table: {
+                disable: true,
+            },
+        },
+    },
+    render: (args) => renderAllCharacterFrames(args as CharacterPreviewOptions),
 }

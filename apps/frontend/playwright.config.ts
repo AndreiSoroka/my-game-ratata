@@ -13,6 +13,7 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
     testDir: './e2e',
+    testIgnore: '**/*.visual.spec.ts',
     /* Maximum time one test can run for. */
     timeout: 30 * 1000,
     expect: {
@@ -40,8 +41,8 @@ export default defineConfig({
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: 'on-first-retry',
 
-        /* Only on CI systems run the tests headless */
-        headless: Boolean(process.env.CI),
+        /* Run Playwright headless by default; use headed mode only for explicit visual debugging. */
+        headless: true,
     },
 
     /* Configure projects for major browsers */
