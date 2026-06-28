@@ -1,4 +1,4 @@
-Player, female player, and skeleton sprites are on a 48x48 grid.
+Player, human variants, zombies, and skeleton sprites are on a 48x48 grid.
 Slime is on a 32x32 grid.
 
 Flip right facing sprites to get the left facing sprites.
@@ -16,9 +16,13 @@ Female player:
 [6 - 8] attack
 [9] death
 
+Other playable human variants use the same rows as Player.
+
 Enemies:
 [0 - 2] idle
 [3 - 5] move
 [6 - 8] attack
 [9 - 11] damaged
 [12] death
+
+Zombies and skeleton variants use the enemy row layout.

@@ -14,7 +14,18 @@
 - не запекать debug-рамки, тени сетки, подписи или номера кадров в PNG;
 - левое направление не рисуется отдельно: игра зеркалит right-facing кадры.
 
-## Ряды анимаций
+## Формат спрайта врага
+
+Враги human-like размера, например зомби и скелеты, используют PNG sprite sheet:
+
+- размер всего изображения: `288x624`;
+- формат: RGBA PNG, non-interlaced;
+- сетка: `6` колонок и `13` рядов;
+- размер кадра: `48x48`;
+- фон каждого кадра прозрачный;
+- левое направление также получается зеркалированием right-facing кадров.
+
+## Ряды анимаций игрока
 
 Ряды считаются с нуля:
 
@@ -28,6 +39,24 @@
 - `7`: attack right;
 - `8`: attack up;
 - `9`: death.
+
+## Ряды анимаций врага
+
+Ряды считаются с нуля:
+
+- `0`: idle down;
+- `1`: idle right;
+- `2`: idle up;
+- `3`: walk down;
+- `4`: walk right;
+- `5`: walk up;
+- `6`: attack down;
+- `7`: attack right;
+- `8`: attack up;
+- `9`: damaged down;
+- `10`: damaged right;
+- `11`: damaged up;
+- `12`: death.
 
 ## Количество кадров
 
@@ -55,8 +84,9 @@
 2. Добавь id в `characterIds`.
 3. Добавь запись в `characterCatalog`.
 4. Для playable human-like персонажа переиспользуй `playerAnimations`.
-5. Проверь, что персонаж появляется в `Frame Inspector`, `All` и `All Frames`.
-6. Обнови Storybook visual snapshots, если изменился overview.
+5. Для врага human-like размера переиспользуй `enemyAnimations`.
+6. Проверь, что персонаж появляется в `Frame Inspector`, `All` и `All Frames`.
+7. Обнови Storybook visual snapshots, если изменился overview.
 
 ## Проверки
 

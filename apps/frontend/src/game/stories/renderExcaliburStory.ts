@@ -307,14 +307,18 @@ export function renderAllCharacters(zoom: number): HTMLElement {
 }
 
 export function renderAllCharacterOverview(options: CharacterOverviewOptions): HTMLElement {
-    const width = 420
-    const height = 300
+    const columnCount = 5
+    const columnWidth = 132
+    const rowHeight = 192
+    const definitions = characterIds.map((characterId) => characterCatalog[characterId])
+    const rowCount = Math.ceil(definitions.length / columnCount)
+    const width = Math.max(420, 40 + columnWidth * columnCount)
+    const height = Math.max(300, 80 + rowHeight * rowCount)
     const container = createContainer()
     const canvas = createCanvas(width, height)
     container.appendChild(canvas)
 
     const engine = createEngine(canvas, width, height)
-    const definitions = characterIds.map((characterId) => characterCatalog[characterId])
     const { images, loader } = loadCharacterImages(definitions)
 
     void engine.start(loader).then(() => {
@@ -325,9 +329,12 @@ export function renderAllCharacterOverview(options: CharacterOverviewOptions): H
             }
 
             const sheet = createSheet(definition, image)
-            const x = 60 + index * 100
-            addSpriteActor(engine, definition, sheet, options, vec(x, 135))
-            engine.add(createFrameLabel(definition.label, x - 44, 225))
+            const column = index % columnCount
+            const row = Math.floor(index / columnCount)
+            const x = 64 + column * columnWidth
+            const y = 120 + row * rowHeight
+            addSpriteActor(engine, definition, sheet, options, vec(x, y))
+            engine.add(createFrameLabel(definition.label, x - 54, y + 88))
         })
         markCanvasReady(canvas)
     })
