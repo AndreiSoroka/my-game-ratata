@@ -11,6 +11,8 @@
     "scripts": {
         "dev:backend": "bun run --cwd apps/backend dev",
         "dev:frontend": "bun run --cwd apps/frontend dev",
+        "storybook:frontend": "bun run --cwd apps/frontend storybook",
+        "build-storybook:frontend": "bun run --cwd apps/frontend build-storybook",
         "build": "run-s build:*",
         "build:backend": "bun run --cwd apps/backend build",
         "build:frontend": "bun run --cwd apps/frontend build",

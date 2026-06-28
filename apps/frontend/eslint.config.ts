@@ -116,6 +116,7 @@ export default defineConfigWithVueTs(
         '**/dist-ssr/**',
         '**/node_modules/**',
         '**/playwright-report/**',
+        '**/storybook-static/**',
         '**/test-results/**',
     ]),
 

@@ -5,6 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite --host 127.0.0.1 --port 5173",
+        "storybook": "storybook dev --host 127.0.0.1 --port 6006",
+        "build-storybook": "storybook build",
         "build": "run-p type-check \"build-only {@}\" --",
         "preview": "vite preview --host 127.0.0.1 --port 4173",
         "test:unit": "vitest run",
@@ -23,11 +25,15 @@
     },
     "dependencies": {
         "@my-game-ratata/contracts": "workspace:*",
+        "excalibur": "0.32.0",
         "pinia": "^3.0.4",
         "vue": "^3.5.38"
     },
     "devDependencies": {
         "@playwright/test": "^1.61.0",
+        "@storybook/addon-a11y": "10.4.6",
+        "@storybook/addon-docs": "10.4.6",
+        "@storybook/web-components-vite": "10.4.6",
         "@tsconfig/node24": "^24.0.4",
         "@types/jsdom": "^28.0.3",
         "@types/node": "^24.13.2",
@@ -47,6 +53,7 @@
         "npm-run-all2": "^9.0.2",
         "oxlint": "~1.69.0",
         "prettier": "3.8.4",
+        "storybook": "10.4.6",
         "typescript": "~6.0.0",
         "vite": "^8.0.16",
         "vite-plugin-vue-devtools": "^8.1.5",

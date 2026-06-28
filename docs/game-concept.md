@@ -87,3 +87,21 @@ This repository does not yet contain the old prototype's map, sprites, combat
 systems, AI, WebSocket server, or renderer code. The current skeleton is only
 the foundation: monorepo layout, strict tooling, Bun backend, Vue frontend, and
 shared TypeScript contracts.
+
+## Storybook Game Gallery
+
+The frontend includes a Storybook gallery for inspecting early game visuals in
+isolation. The first gallery layer focuses on character sprite sheets rendered
+through Excalibur:
+
+- all current character sheets are visible together;
+- each character can be inspected by action, direction, and frame;
+- frame selection is exposed as a Storybook slider;
+- animations can be played in place through Excalibur;
+- left-facing variants are rendered by flipping the right-facing frames, matching
+  the source sprite-sheet convention.
+
+Only visual reference assets were copied from the old prototype. The old game
+runtime, combat UI, HUD implementation, maps, and gameplay code were not ported.
+Those interfaces should be rebuilt here from the new contracts and domain model,
+then added to Storybook as separate stories once their own components exist.
