@@ -1,6 +1,7 @@
 import type { AttackZone, GameEventPayload } from '@my-game-ratata/contracts'
 
 import { type GameCharacter } from './character'
+import { resolveCharacterStats } from './characterStats'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 
@@ -194,13 +195,13 @@ function isInZones(target: GameCharacter, zones: AttackZone[]): boolean {
 }
 
 function rollDamage(actor: GameCharacter, multiplier = 1): number {
-    const { combat } = actor.config
-    const low = Math.min(combat.minDamage, combat.maxDamage)
-    const high = Math.max(combat.minDamage, combat.maxDamage)
+    const stats = resolveCharacterStats(actor.config, actor.equipment)
+    const low = Math.min(stats.minDamage, stats.maxDamage)
+    const high = Math.max(stats.minDamage, stats.maxDamage)
     let damage = Math.floor(low + Math.random() * (high - low + 1))
 
-    if (Math.random() < combat.critChance) {
-        damage = Math.round(damage * combat.critMultiplier)
+    if (Math.random() < stats.critChance) {
+        damage = Math.round(damage * actor.config.combat.critMultiplier)
     }
 
     return Math.max(1, Math.round(damage * multiplier))

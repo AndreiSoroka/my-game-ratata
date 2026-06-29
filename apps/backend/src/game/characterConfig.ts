@@ -6,6 +6,7 @@ export interface CharacterCombatStats {
     attackWindupMs: number
     critChance: number
     critMultiplier: number
+    dodgeChance: number
     maxDamage: number
     maxHp: number
     minDamage: number
@@ -44,6 +45,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
             attackWindupMs: 50,
             critChance: 0.15,
             critMultiplier: 1.6,
+            dodgeChance: 0.05,
             maxDamage: 9,
             maxHp: 30,
             minDamage: 5,
@@ -74,6 +76,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
             attackWindupMs: 220,
             critChance: 0.12,
             critMultiplier: 1.5,
+            dodgeChance: 0.02,
             maxDamage: 8,
             maxHp: 20,
             minDamage: 4,
@@ -99,11 +102,12 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
     slime: {
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 1.2 }],
         combat: {
-            attackCooldownMs: 500,
+            attackCooldownMs: 2000,
             attackLockMs: 400,
             attackWindupMs: 220,
             critChance: 0.12,
             critMultiplier: 1.5,
+            dodgeChance: 0,
             maxDamage: 8,
             maxHp: 26,
             minDamage: 4,

@@ -40,6 +40,68 @@ export type CharacterReputation = Partial<Record<CharacterFactionId, number>>
 export type CharacterAnimationAction =
     'idle' | 'walk' | 'attack' | 'damaged' | 'death'
 
+export const itemIds = ['boots', 'food', 'old_sword', 'simple_sword'] as const
+
+export type ItemId = (typeof itemIds)[number]
+
+export type EquipmentSlotId = 'boots' | 'weapon'
+
+export type InventoryActionKind = 'drop' | 'eat' | 'equip' | 'stash'
+
+export type EquipmentActionKind = 'unequip'
+
+export interface ItemWeaponStats {
+    maxDamage: number
+    minDamage: number
+}
+
+export interface ItemStatBonuses {
+    dodgeChance?: number
+}
+
+export interface ItemDefinition {
+    equipmentSlots?: readonly EquipmentSlotId[]
+    healHp?: number
+    id: ItemId
+    name: string
+    statBonuses?: ItemStatBonuses
+    weapon?: ItemWeaponStats
+}
+
+export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
+    boots: {
+        equipmentSlots: ['boots'],
+        id: 'boots',
+        name: 'Old Boots',
+        statBonuses: {
+            dodgeChance: 0.08,
+        },
+    },
+    food: {
+        healHp: 10,
+        id: 'food',
+        name: 'Apple',
+    },
+    old_sword: {
+        equipmentSlots: ['weapon'],
+        id: 'old_sword',
+        name: 'Old Sword',
+        weapon: {
+            maxDamage: 6,
+            minDamage: 3,
+        },
+    },
+    simple_sword: {
+        equipmentSlots: ['weapon'],
+        id: 'simple_sword',
+        name: 'Simple Sword',
+        weapon: {
+            maxDamage: 11,
+            minDamage: 7,
+        },
+    },
+}
+
 export interface AttackZone {
     maxX: number
     maxY: number
@@ -66,6 +128,24 @@ export interface CharacterAnimationSnapshot {
     startedAt: number
 }
 
+export interface ItemInstanceSnapshot {
+    instanceId: string
+    itemId: ItemId
+}
+
+export type EquipmentSnapshot = Partial<
+    Record<EquipmentSlotId, ItemInstanceSnapshot>
+>
+
+export interface CharacterStatsSnapshot {
+    attackCooldownMs: number
+    critChance: number
+    dodgeChance: number
+    maxDamage: number
+    minDamage: number
+    moveSpeed: number
+}
+
 export interface CharacterSnapshot {
     alive: boolean
     animation: CharacterAnimationSnapshot
@@ -73,18 +153,36 @@ export interface CharacterSnapshot {
     attackZones: AttackZone[]
     controllerKind: CharacterControllerKind
     cooldowns: CharacterCooldownsSnapshot
+    equipment: EquipmentSnapshot
     facing: CharacterFacing
     faction: CharacterFactionId
     hp: number
     id: string
+    inventory: ItemInstanceSnapshot[]
     maxHp: number
     nickname: string
     path: Vector2[]
     position: Vector2
     reputation: CharacterReputation
     resources: CharacterResourcesSnapshot
+    stats: CharacterStatsSnapshot
     tags: string[]
     velocity: Vector2
+}
+
+export interface WorldItemSnapshot {
+    id: string
+    itemId: ItemId
+    position: Vector2
+}
+
+export type WorldChestState = 'closed' | 'open'
+
+export interface WorldChestSnapshot {
+    id: string
+    itemCount: number
+    position: Vector2
+    state: WorldChestState
 }
 
 export interface MapSummary {
@@ -118,6 +216,22 @@ export interface AttackClientMessage {
     type: 'attack'
 }
 
+export interface PickupItemClientMessage {
+    type: 'pickup_item'
+}
+
+export interface InventoryActionClientMessage {
+    action: InventoryActionKind
+    itemInstanceId: string
+    type: 'inventory_action'
+}
+
+export interface EquipmentActionClientMessage {
+    action: EquipmentActionKind
+    slot: EquipmentSlotId
+    type: 'equipment_action'
+}
+
 export interface ChatClientMessage {
     text: string
     type: 'chat'
@@ -126,12 +240,17 @@ export interface ChatClientMessage {
 export type ClientMessage =
     | AttackClientMessage
     | ChatClientMessage
+    | EquipmentActionClientMessage
+    | InventoryActionClientMessage
     | JoinClientMessage
     | MoveInputClientMessage
     | MoveToClientMessage
+    | PickupItemClientMessage
 
 export interface WorldSnapshot {
+    chests: WorldChestSnapshot[]
     characters: CharacterSnapshot[]
+    items: WorldItemSnapshot[]
     serverTime: number
     tick: number
 }
@@ -146,11 +265,25 @@ export interface WorldInitServerMessage {
 }
 
 export type GameEventKind =
-    'attack' | 'chat' | 'damage' | 'death' | 'join' | 'leave' | 'respawn'
+    | 'attack'
+    | 'chat'
+    | 'chest_open'
+    | 'damage'
+    | 'death'
+    | 'item_drop'
+    | 'item_eat'
+    | 'item_equip'
+    | 'item_pickup'
+    | 'item_stash'
+    | 'join'
+    | 'leave'
+    | 'respawn'
 
 export interface GameEventPayload {
     amount?: number
     actorId?: string
+    chestId?: string
+    itemId?: ItemId
     kind: GameEventKind
     targetId?: string
     text?: string

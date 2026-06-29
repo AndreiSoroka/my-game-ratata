@@ -18,6 +18,7 @@ import {
     regen,
     spendResource,
 } from './characterState'
+import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { normalize, resolveFacing, zeroVector } from './math'
 
 interface GameCharacterOptions {
@@ -47,9 +48,11 @@ export class GameCharacter {
     public actionLockUntil = 0
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
+    public equipment: EquipmentState = {}
     public energy: number
     public facing: CharacterFacing = 'down'
     public hp: number
+    public inventory: InventoryItemInstance[] = []
     public lastAttackAt = -Infinity
     public mana: number
     public path: Vector2[] = []

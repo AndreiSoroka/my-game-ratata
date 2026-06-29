@@ -3,6 +3,7 @@ import type {
     CharacterArchetype,
     CharacterFacing,
     CharacterSnapshot,
+    ItemId,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import {
@@ -11,6 +12,7 @@ import {
     Color,
     Engine,
     Font,
+    type ImageSource,
     Label,
     Rectangle,
     type SpriteSheet,
@@ -21,6 +23,7 @@ import type { CharacterId } from '../assets/characterCatalog'
 import { characterCatalog, resolveAnimationRow } from '../assets/characterCatalog'
 import { animationFrame } from './animationFrame'
 import type { RenderedTiledMap } from './tiledMap'
+import { WorldSceneActors } from './worldSceneActors'
 
 interface CharacterBundle {
     body: Actor
@@ -47,13 +50,20 @@ export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
     private readonly engine: Engine
     private readonly sheets: Map<CharacterId, SpriteSheet>
+    private readonly worldActors: WorldSceneActors
     private attackZoneActors: Actor[] = []
     private followedId: string | undefined
     private serverClockOffset = 0
 
-    public constructor(engine: Engine, sheets: Map<CharacterId, SpriteSheet>) {
+    public constructor(
+        engine: Engine,
+        sheets: Map<CharacterId, SpriteSheet>,
+        itemImages: Map<ItemId, ImageSource>,
+        chestImage: ImageSource
+    ) {
         this.engine = engine
         this.sheets = sheets
+        this.worldActors = new WorldSceneActors(engine, itemImages, chestImage)
     }
 
     public addMap(map: RenderedTiledMap): void {
@@ -86,6 +96,7 @@ export class SceneActors {
             this.updateCharacter(character, character.id === localPlayerId)
         }
 
+        this.worldActors.update(snapshot.items, snapshot.chests)
         this.updateAttackZones(snapshot.characters.flatMap((character) => character.attackZones))
         this.followLocalPlayer(localPlayerId)
     }

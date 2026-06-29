@@ -28,6 +28,28 @@ const resources = computed(() => [
         max: props.character.resources.maxEnergy,
     },
 ])
+const stats = computed(() => [
+    {
+        label: 'DMG',
+        value: `${String(props.character.stats.minDamage)}-${String(props.character.stats.maxDamage)}`,
+    },
+    {
+        label: 'Dodge',
+        value: formatPercent(props.character.stats.dodgeChance),
+    },
+    {
+        label: 'Crit',
+        value: formatPercent(props.character.stats.critChance),
+    },
+    {
+        label: 'Speed',
+        value: String(Math.round(props.character.stats.moveSpeed)),
+    },
+    {
+        label: 'CD',
+        value: `${String(Math.round(props.character.stats.attackCooldownMs / 100) / 10)}s`,
+    },
+])
 
 function resourcePercent(resource: { current: number; max: number }): string {
     const max = Math.max(resource.max, 1)
@@ -53,6 +75,10 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
         resource.kind === 'energy' ? 'Energy' : resource.kind === 'mana' ? 'Mana' : 'Health'
 
     return `${label}: ${String(resource.current)} of ${String(resource.max)}`
+}
+
+function formatPercent(value: number): string {
+    return `${String(Math.round(value * 100))}%`
 }
 </script>
 
@@ -87,6 +113,12 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
                 </span>
             </div>
         </div>
+        <dl class="ratata-ui-status__stats">
+            <div v-for="stat in stats" :key="stat.label" class="ratata-ui-stat">
+                <dt>{{ stat.label }}</dt>
+                <dd>{{ stat.value }}</dd>
+            </div>
+        </dl>
     </section>
 </template>
 
@@ -131,5 +163,40 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
 .player-status .ratata-ui-resource__track {
     height: 28px;
     min-width: 0;
+}
+
+.player-status .ratata-ui-status__stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    margin: 8px 0 0;
+}
+
+.player-status .ratata-ui-stat {
+    min-width: 0;
+    padding: 5px 4px;
+    background: #0b1018;
+    border: 1px solid #323d4d;
+}
+
+.player-status .ratata-ui-stat dt,
+.player-status .ratata-ui-stat dd {
+    margin: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-status .ratata-ui-stat dt {
+    color: #96a8bc;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.player-status .ratata-ui-stat dd {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
 }
 </style>

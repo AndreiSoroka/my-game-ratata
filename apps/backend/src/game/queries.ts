@@ -1,4 +1,8 @@
-import type { WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    WorldChestSnapshot,
+    WorldItemSnapshot,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { canTargetByFaction } from './factions'
@@ -7,11 +11,15 @@ import type { NavigationService } from './navigation'
 
 export function createSnapshot(
     characters: Iterable<GameCharacter>,
+    items: Iterable<WorldItemSnapshot>,
+    chests: Iterable<WorldChestSnapshot>,
     tick: number,
     now: number
 ): WorldSnapshot {
     return {
+        chests: [...chests],
         characters: [...characters].map((character) => character.snapshot(now)),
+        items: [...items],
         serverTime: now,
         tick,
     }

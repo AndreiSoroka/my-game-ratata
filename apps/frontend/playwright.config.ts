@@ -2,6 +2,11 @@ import process from 'node:process'
 
 import { defineConfig, devices } from '@playwright/test'
 
+const backendPort = readPortEnv('E2E_BACKEND_PORT', 3000)
+const frontendPort = readPortEnv('E2E_FRONTEND_PORT', 5173)
+const backendWsUrl = `ws://127.0.0.1:${String(backendPort)}/ws`
+const frontendBaseUrl = `http://127.0.0.1:${String(frontendPort)}`
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -36,7 +41,7 @@ export default defineConfig({
         /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
         actionTimeout: 0,
         /* Base URL to use in actions like `await page.goto('/')`. */
-        baseURL: 'http://127.0.0.1:5173',
+        baseURL: frontendBaseUrl,
 
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: 'on-first-retry',
@@ -101,8 +106,8 @@ export default defineConfig({
     /* Run your local dev server before starting the tests */
     webServer: [
         {
-            command: 'PORT=3000 bun run --cwd ../backend dev',
-            port: 3000,
+            command: `PORT=${String(backendPort)} bun run --cwd ../backend dev`,
+            port: backendPort,
             reuseExistingServer: !process.env.CI,
         },
         {
@@ -110,9 +115,25 @@ export default defineConfig({
              * Use the dev server so VITE_BACKEND_WS_URL points at the paired backend.
              * Playwright will re-use local servers if they are already running.
              */
-            command: 'VITE_BACKEND_WS_URL=ws://127.0.0.1:3000/ws bun run dev',
-            port: 5173,
+            command: `VITE_BACKEND_WS_URL=${backendWsUrl} bun run dev -- --port ${String(frontendPort)}`,
+            port: frontendPort,
             reuseExistingServer: !process.env.CI,
         },
     ],
 })
+
+function readPortEnv(name: string, fallback: number): number {
+    const raw = process.env[name]
+
+    if (raw === undefined || raw.length === 0) {
+        return fallback
+    }
+
+    const port = Number(raw)
+
+    if (!Number.isInteger(port) || port <= 0) {
+        throw new Error(`Invalid ${name} value: ${raw}`)
+    }
+
+    return port
+}

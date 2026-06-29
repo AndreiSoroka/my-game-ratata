@@ -1,7 +1,9 @@
 import type {
     ClientMessage,
+    EquipmentActionKind,
+    EquipmentSlotId,
     GameEventPayload,
-    ServerMessage,
+    InventoryActionKind,
     Vector2,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -9,8 +11,11 @@ import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 import { Color, DisplayMode, Engine, PointerButton, PointerScope, vec } from 'excalibur'
 
 import { createCharacterResources } from './characterResources'
-import { chatDuration, type ChatInputState, chatMaxLength } from './chatInput'
+import { chatDuration, type ChatInputState } from './chatInput'
+import { GameAudio } from './gameAudio'
 import { axisFromKeys, movementKeys, preventContextMenu } from './input'
+import { RuntimeChatInput } from './runtimeChatInput'
+import { RuntimeSocket } from './runtimeSocket'
 import { SceneActors } from './sceneActors'
 import { loadRenderedTiledMap } from './tiledMap'
 
@@ -19,26 +24,44 @@ interface RatataGameOptions {
     nickname: string
     onChatState: (state: ChatInputState) => void
     onError: (message: string) => void
+    onInventoryToggle: () => void
     onSnapshot: (snapshot: WorldSnapshot, localPlayerId: string | undefined) => void
     onStatus: (message: string) => void
 }
 
 export class RatataGame {
     private readonly options: RatataGameOptions
+    private audio: GameAudio | undefined
     private canvas: HTMLCanvasElement | undefined
     private engine: Engine | undefined
     private localPlayerId: string | undefined
     private sceneActors: SceneActors | undefined
     private snapshot: WorldSnapshot | undefined
-    private socket: WebSocket | undefined
-    private chatActive = false
-    private chatDraft = ''
     private stopped = false
     private readonly pressedKeys = new Set<string>()
+    private readonly chat: RuntimeChatInput
+    private readonly socket: RuntimeSocket
     private lastAxis: Vector2 = { x: 0, y: 0 }
 
     public constructor(options: RatataGameOptions) {
         this.options = options
+        this.chat = new RuntimeChatInput(options.onChatState)
+        this.socket = new RuntimeSocket({
+            isStopped: () => this.stopped,
+            onError: options.onError,
+            onEvent: (event) => {
+                this.handleServerEvent(event)
+            },
+            onSnapshot: (snapshot) => {
+                this.applySnapshot(snapshot)
+            },
+            onStatus: options.onStatus,
+            onWorldInit: (playerId, snapshot) => {
+                this.localPlayerId = playerId
+                this.applySnapshot(snapshot)
+                this.options.onStatus('Connected')
+            },
+        })
     }
 
     public async start(): Promise<void> {
@@ -58,11 +81,18 @@ export class RatataGame {
 
         this.canvas = canvas
         this.engine = engine
-        this.sceneActors = new SceneActors(engine, resources.sheets)
+        this.audio = new GameAudio(resources.sounds, resources.music.adventureBegins)
+        this.sceneActors = new SceneActors(
+            engine,
+            resources.sheets,
+            resources.itemImages,
+            resources.chestImage
+        )
         this.sceneActors.addMap(map)
         this.installInputs(engine, canvas)
         await engine.start(resources.loader)
-        this.connect()
+        this.audio.playMusic()
+        this.socket.connect(this.options.nickname)
     }
 
     public stop(): void {
@@ -70,13 +100,30 @@ export class RatataGame {
         window.removeEventListener('keydown', this.handleKeyDown)
         window.removeEventListener('keyup', this.handleKeyUp)
         this.canvas?.removeEventListener('contextmenu', preventContextMenu)
-        this.socket?.close()
+        this.socket.close()
+        this.audio?.stop()
         this.engine?.stop()
         this.canvas?.remove()
 
         if (import.meta.env.DEV) {
             delete window.__ratataGameDebug
         }
+    }
+
+    public sendInventoryAction(action: InventoryActionKind, itemInstanceId: string): void {
+        this.send({
+            action,
+            itemInstanceId,
+            type: 'inventory_action',
+        })
+    }
+
+    public sendEquipmentAction(action: EquipmentActionKind, slot: EquipmentSlotId): void {
+        this.send({
+            action,
+            slot,
+            type: 'equipment_action',
+        })
     }
 
     private createCanvas(): HTMLCanvasElement {
@@ -98,72 +145,46 @@ export class RatataGame {
         })
     }
 
-    private connect(): void {
-        this.options.onStatus('Connecting')
-        const socket = new WebSocket(resolveWebSocketUrl())
-        this.socket = socket
-        socket.addEventListener('open', () => {
-            this.send({ nickname: this.options.nickname, type: 'join' })
-        })
-        socket.addEventListener('message', (event) => {
-            this.handleSocketMessage(event)
-        })
-        socket.addEventListener('close', () => {
-            if (this.stopped) {
-                return
-            }
-
-            this.options.onStatus('Disconnected')
-        })
-        socket.addEventListener('error', () => {
-            if (this.stopped) {
-                return
-            }
-
-            this.options.onError('Connection failed')
-        })
-    }
-
-    private handleSocketMessage(event: MessageEvent<string>): void {
-        const message = JSON.parse(event.data) as ServerMessage
-
-        if (message.type === 'world_init') {
-            this.localPlayerId = message.playerId
-            this.applySnapshot(message.snapshot)
-            this.options.onStatus('Connected')
-            return
-        }
-
-        if (message.type === 'snapshot') {
-            this.applySnapshot(message.snapshot)
-            return
-        }
-
-        if (message.type === 'event') {
-            this.handleServerEvent(message.event)
-            return
-        }
-
-        if (message.type === 'error') {
-            this.options.onError(message.message)
-        }
-    }
-
     private applySnapshot(snapshot: WorldSnapshot): void {
         this.snapshot = snapshot
         this.sceneActors?.update(snapshot, this.localPlayerId)
         this.options.onSnapshot(snapshot, this.localPlayerId)
+        this.audio?.playMovementSound(snapshot, this.localPlayerId)
         this.updateDebug()
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
-        if (this.handleChatKey(event)) {
+        const wasChatActive = this.chat.isActive
+
+        if (
+            this.chat.handleKey(event, (text) => {
+                this.send({ text, type: 'chat' })
+            })
+        ) {
+            if (!wasChatActive && this.chat.isActive) {
+                this.pressedKeys.clear()
+                this.flushMoveInput()
+            }
+
             return
         }
 
         if (event.code === 'Space') {
             event.preventDefault()
             this.send({ type: 'attack' })
+            return
+        }
+
+        if (event.code === 'KeyE') {
+            event.preventDefault()
+            this.send({ type: 'pickup_item' })
+            return
+        }
+
+        if (event.code === 'KeyI') {
+            event.preventDefault()
+            this.options.onInventoryToggle()
+            this.audio?.playSound('ui')
             return
         }
 
@@ -181,7 +202,7 @@ export class RatataGame {
     }
 
     private handlePointerDown(event: ExcaliburPointerEvent): void {
-        if (this.chatActive) {
+        if (this.chat.isActive) {
             return
         }
 
@@ -196,82 +217,6 @@ export class RatataGame {
         }
 
         this.send({ target, type: 'move_to' })
-    }
-
-    private handleChatKey(event: KeyboardEvent): boolean {
-        if (event.key === 'Enter') {
-            event.preventDefault()
-
-            if (this.chatActive) {
-                this.submitChat()
-            } else {
-                this.beginChat()
-            }
-
-            return true
-        }
-
-        if (!this.chatActive) {
-            return false
-        }
-
-        event.preventDefault()
-
-        if (event.key === 'Escape') {
-            this.endChat()
-            return true
-        }
-
-        if (event.key === 'Backspace') {
-            this.chatDraft = this.chatDraft.slice(0, -1)
-            this.emitChatState()
-            return true
-        }
-
-        if (
-            event.key.length === 1 &&
-            !event.ctrlKey &&
-            !event.metaKey &&
-            !event.altKey &&
-            this.chatDraft.length < chatMaxLength
-        ) {
-            this.chatDraft += event.key
-            this.emitChatState()
-        }
-
-        return true
-    }
-
-    private beginChat(): void {
-        this.chatActive = true
-        this.chatDraft = ''
-        this.pressedKeys.clear()
-        this.flushMoveInput()
-        this.emitChatState()
-    }
-
-    private submitChat(): void {
-        const text = this.chatDraft.trim()
-
-        if (text.length > 0) {
-            this.send({ text: text.slice(0, chatMaxLength), type: 'chat' })
-        }
-
-        this.endChat()
-    }
-
-    private endChat(): void {
-        this.chatActive = false
-        this.chatDraft = ''
-        this.emitChatState()
-    }
-
-    private emitChatState(): void {
-        this.options.onChatState({
-            active: this.chatActive,
-            draft: this.chatDraft,
-            maxLength: chatMaxLength,
-        })
     }
 
     private shouldAttackAt(point: Vector2): boolean {
@@ -301,12 +246,12 @@ export class RatataGame {
     }
 
     private send(message: ClientMessage): void {
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(message))
-        }
+        this.socket.send(message)
     }
 
     private handleServerEvent(event: GameEventPayload): void {
+        this.audio?.playEventSound(event)
+
         if (event.kind !== 'chat' || event.actorId === undefined || event.text === undefined) {
             return
         }
@@ -333,16 +278,4 @@ export class RatataGame {
             },
         }
     }
-}
-
-function resolveWebSocketUrl(): string {
-    const envUrl = import.meta.env.VITE_BACKEND_WS_URL
-
-    if (envUrl !== undefined && envUrl.length > 0) {
-        return envUrl
-    }
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-
-    return `${protocol}//${window.location.hostname}:3000/ws`
 }

@@ -3,6 +3,7 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 import { type GameCharacter } from './character'
 import { GameCharacter as Character } from './character'
 import { type CharacterController, Mob1Controller } from './controllers'
+import { createItemInstance, equipDirect } from './inventory'
 import type { NavigationService, TileCoordinate } from './navigation'
 
 export interface SpawnedCharacter {
@@ -21,6 +22,8 @@ export function createSkeleton(
         nickname: 'Skeleton',
         spawnPosition: navigation.tileToWorld({ x: 10, y: 5 }),
     })
+
+    equipDirect(skeleton.equipment, createItemInstance('old_sword'))
 
     return {
         character: skeleton,

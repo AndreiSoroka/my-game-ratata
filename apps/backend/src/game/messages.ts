@@ -1,6 +1,9 @@
 import type {
     CharacterArchetype,
     ClientMessage,
+    EquipmentActionKind,
+    EquipmentSlotId,
+    InventoryActionKind,
     Vector2,
 } from '@my-game-ratata/contracts'
 
@@ -55,6 +58,12 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
             return parseMoveTo(record)
         case 'attack':
             return { message: { type: 'attack' } }
+        case 'pickup_item':
+            return { message: { type: 'pickup_item' } }
+        case 'inventory_action':
+            return parseInventoryAction(record)
+        case 'equipment_action':
+            return parseEquipmentAction(record)
         case 'chat':
             return parseChat(record)
         default:
@@ -118,6 +127,48 @@ function parseChat(record: Record<string, unknown>): ParseResult {
     return { message: { text: trimmed, type: 'chat' } }
 }
 
+function parseInventoryAction(record: Record<string, unknown>): ParseResult {
+    const action = parseInventoryActionKind(record['action'])
+    const itemInstanceId = record['itemInstanceId']
+
+    if (action === undefined) {
+        return { error: 'inventory_action.action is invalid' }
+    }
+
+    if (typeof itemInstanceId !== 'string' || itemInstanceId.length === 0) {
+        return { error: 'inventory_action.itemInstanceId is required' }
+    }
+
+    return {
+        message: {
+            action,
+            itemInstanceId,
+            type: 'inventory_action',
+        },
+    }
+}
+
+function parseEquipmentAction(record: Record<string, unknown>): ParseResult {
+    const action = parseEquipmentActionKind(record['action'])
+    const slot = parseEquipmentSlot(record['slot'])
+
+    if (action === undefined) {
+        return { error: 'equipment_action.action is invalid' }
+    }
+
+    if (slot === undefined) {
+        return { error: 'equipment_action.slot is invalid' }
+    }
+
+    return {
+        message: {
+            action,
+            slot,
+            type: 'equipment_action',
+        },
+    }
+}
+
 function parseVector(input: unknown): Vector2 | undefined {
     const record = asRecord(input)
 
@@ -141,6 +192,35 @@ function parseVector(input: unknown): Vector2 | undefined {
 
 function parseArchetype(input: unknown): CharacterArchetype | undefined {
     if (input === 'human' || input === 'skeleton' || input === 'slime') {
+        return input
+    }
+
+    return undefined
+}
+
+function parseInventoryActionKind(
+    input: unknown
+): InventoryActionKind | undefined {
+    if (
+        input === 'drop' ||
+        input === 'eat' ||
+        input === 'equip' ||
+        input === 'stash'
+    ) {
+        return input
+    }
+
+    return undefined
+}
+
+function parseEquipmentActionKind(
+    input: unknown
+): EquipmentActionKind | undefined {
+    return input === 'unequip' ? input : undefined
+}
+
+function parseEquipmentSlot(input: unknown): EquipmentSlotId | undefined {
+    if (input === 'boots' || input === 'weapon') {
         return input
     }
 

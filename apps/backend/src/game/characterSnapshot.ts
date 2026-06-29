@@ -1,6 +1,8 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { resolveCharacterStats } from './characterStats'
+import { snapshotEquipment, snapshotItem } from './inventory'
 
 export function createCharacterSnapshot(
     character: GameCharacter,
@@ -26,10 +28,12 @@ export function createCharacterSnapshot(
                 : Math.max(0, character.respawnAt - now),
             stunMsLeft: Math.max(0, character.stunUntil - now),
         },
+        equipment: snapshotEquipment(character.equipment),
         facing: character.facing,
         faction: character.faction,
         hp: Math.round(character.hp),
         id: character.id,
+        inventory: character.inventory.map(snapshotItem),
         maxHp: character.maxHp,
         nickname: character.nickname,
         path: character.remainingPath(),
@@ -41,6 +45,7 @@ export function createCharacterSnapshot(
             maxEnergy: character.config.resources.maxEnergy,
             maxMana: character.config.resources.maxMana,
         },
+        stats: resolveCharacterStats(character.config, character.equipment),
         tags: snapshotTags(character, now),
         velocity: character.velocity,
     }

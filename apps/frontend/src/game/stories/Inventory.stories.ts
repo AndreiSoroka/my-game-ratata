@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { renderEquipmentStory } from '../ui/renderEquipmentStory'
 import { type ChestState, renderChestStory, renderInventoryStory } from '../ui/renderInventoryStory'
+import { renderItemCatalogStory } from '../ui/renderItemCatalogStory'
 
 const meta = {
     argTypes: {
@@ -21,6 +22,10 @@ type Story = StoryObj<ChestArgs>
 
 export const UserInventory: Story = {
     render: () => renderInventoryStory(),
+}
+
+export const ItemCatalog: Story = {
+    render: () => renderItemCatalogStory(),
 }
 
 export const Equipment: Story = {

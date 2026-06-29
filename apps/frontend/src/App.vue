@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import type { WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    EquipmentActionKind,
+    EquipmentSlotId,
+    InventoryActionKind,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 
 import type { ChatInputState } from './game/runtime/chatInput'
 import { RatataGame } from './game/runtime/ratataGame'
 import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
+import InventoryOverlay from './game/ui/InventoryOverlay.vue'
 import PlayerStatusPanel from './game/ui/PlayerStatusPanel.vue'
 
 const nickname = ref('')
@@ -16,6 +22,7 @@ const chatInput = ref<ChatInputState>({
     draft: '',
     maxLength: 100,
 })
+const inventoryOpen = ref(false)
 const isJoining = ref(false)
 const isStarted = ref(false)
 const localPlayerId = ref<string>()
@@ -72,6 +79,9 @@ async function joinGame(): Promise<void> {
             errorMessage.value = message
             cleanupFailedJoin()
         },
+        onInventoryToggle: () => {
+            toggleInventory()
+        },
         onSnapshot: (nextSnapshot, nextLocalPlayerId) => {
             snapshot.value = nextSnapshot
             localPlayerId.value = nextLocalPlayerId
@@ -99,6 +109,7 @@ function cleanupFailedJoin(): void {
     game.value = undefined
     localPlayerId.value = undefined
     snapshot.value = undefined
+    inventoryOpen.value = false
     chatInput.value = {
         active: false,
         draft: '',
@@ -111,6 +122,28 @@ function cleanupFailedJoin(): void {
 
 function formatArchetype(archetype: string): string {
     return archetype.charAt(0).toUpperCase() + archetype.slice(1)
+}
+
+function toggleInventory(): void {
+    inventoryOpen.value = !inventoryOpen.value
+}
+
+function closeInventory(): void {
+    inventoryOpen.value = false
+}
+
+function sendInventoryAction(payload: {
+    action: InventoryActionKind
+    itemInstanceId: string
+}): void {
+    game.value?.sendInventoryAction(payload.action, payload.itemInstanceId)
+}
+
+function sendEquipmentAction(payload: {
+    action: EquipmentActionKind
+    slot: EquipmentSlotId
+}): void {
+    game.value?.sendEquipmentAction(payload.action, payload.slot)
 }
 
 onBeforeUnmount(() => {
@@ -154,156 +187,26 @@ onBeforeUnmount(() => {
             </div>
             <div ref="gameHost" class="game-host" data-testid="game-host"></div>
             <PlayerStatusPanel v-if="localCharacter" :character="localCharacter" :status="status" />
+            <InventoryOverlay
+                v-if="inventoryOpen && localCharacter"
+                :character="localCharacter"
+                :chests="snapshot?.chests ?? []"
+                @close="closeInventory"
+                @equipment-action="sendEquipmentAction"
+                @inventory-action="sendInventoryAction"
+            />
+            <div class="bottom-actions" aria-label="Actions">
+                <button
+                    class="bottom-actions__button"
+                    :class="{ 'bottom-actions__button--active': inventoryOpen }"
+                    type="button"
+                    @click="toggleInventory"
+                >
+                    Inventory
+                </button>
+            </div>
             <ChatInputOverlay v-if="chatInput.active" :state="chatInput" />
             <p v-if="errorMessage" class="game-error">{{ errorMessage }}</p>
         </section>
     </main>
 </template>
-
-<style scoped>
-.app-shell {
-    min-height: 100vh;
-    background: linear-gradient(180deg, rgba(18, 24, 22, 0.9), rgba(10, 12, 11, 0.96)), #121816;
-    color: #eef7ee;
-}
-
-.join-screen,
-.game-screen {
-    min-height: 100vh;
-}
-
-.join-screen {
-    display: grid;
-    place-items: center;
-    padding: 24px;
-}
-
-.join-panel {
-    width: min(420px, 100%);
-    border: 1px solid rgba(238, 247, 238, 0.18);
-    border-radius: 8px;
-    background: rgba(15, 18, 17, 0.92);
-    padding: 24px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
-}
-
-.join-panel h1 {
-    margin-bottom: 18px;
-    color: #f8f1d5;
-    font-size: 42px;
-    font-weight: 800;
-}
-
-.join-panel label {
-    display: block;
-    margin-bottom: 8px;
-    color: #b7cbb9;
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.join-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-}
-
-.join-row input,
-.join-row button {
-    min-height: 42px;
-    border-radius: 6px;
-    font: inherit;
-}
-
-.join-row input {
-    min-width: 0;
-    border: 1px solid rgba(238, 247, 238, 0.24);
-    background: #202621;
-    color: #ffffff;
-    padding: 0 12px;
-}
-
-.join-row button {
-    border: 0;
-    background: #d8b85f;
-    color: #17130a;
-    cursor: pointer;
-    font-weight: 800;
-    padding: 0 18px;
-}
-
-.join-row button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-.join-error,
-.game-error {
-    color: #ff8c7a;
-    font-weight: 700;
-}
-
-.join-error {
-    margin-top: 14px;
-}
-
-.game-screen {
-    position: relative;
-    height: 100vh;
-    display: grid;
-    grid-template-rows: auto 1fr;
-    overflow: hidden;
-}
-
-.hud {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    border-bottom: 1px solid rgba(238, 247, 238, 0.14);
-    background: rgba(11, 13, 12, 0.9);
-    padding: 10px 14px;
-}
-
-.hud div {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.hud strong {
-    color: #f8f1d5;
-    font-weight: 800;
-}
-
-.hud span {
-    color: #c5d7c8;
-    font-size: 13px;
-}
-
-.game-host {
-    min-height: 0;
-    background: #0b0d0c;
-    overflow: hidden;
-}
-
-:deep(.game-canvas) {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-    image-rendering: pixelated;
-}
-
-.game-error {
-    position: fixed;
-    right: 14px;
-    bottom: 14px;
-    z-index: 3;
-    max-width: min(420px, calc(100vw - 28px));
-    border-radius: 6px;
-    background: rgba(40, 10, 8, 0.92);
-    padding: 10px 12px;
-}
-</style>

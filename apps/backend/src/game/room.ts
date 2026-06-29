@@ -14,20 +14,20 @@ import { normalizeNickname } from './identity'
 import { parseClientMessage, readSocketMessage } from './messages'
 import { advanceCharacter } from './movement'
 import { loadNavigationService, type NavigationService } from './navigation'
+import { applyPlayerMessage } from './playerMessages'
 import {
     createSnapshot,
-    faceNearestTarget,
     findVisibleTarget as findVisibleTargetInRoom,
 } from './queries'
 import {
     broadcast,
-    broadcastChat,
     broadcastEvent,
     type RoomSocket,
     send,
     sendError,
 } from './roomMessaging'
 import { createSkeleton, createSlime, playerSpawn } from './spawns'
+import { WorldInventory } from './worldInventory'
 
 const tickMs = 50
 const playerRespawnMs = 5000
@@ -39,6 +39,7 @@ export class GameRoom {
     private readonly connections = new Map<RoomSocket, string | undefined>()
     private readonly controllers = new Map<string, CharacterController>()
     private readonly playerIdsByNickname = new Map<string, string>()
+    private readonly worldInventory: WorldInventory
     private lastTickAt = Date.now()
     private nextPlayerIndex = 1
     private timer: ReturnType<typeof setInterval> | undefined
@@ -46,6 +47,7 @@ export class GameRoom {
 
     public constructor(navigation = loadNavigationService()) {
         this.navigation = navigation
+        this.worldInventory = new WorldInventory(navigation)
         this.spawnNpcs()
     }
 
@@ -130,12 +132,22 @@ export class GameRoom {
             targets,
             tileSize: this.navigation.grid.tileWidth,
         })
+        const chestEvents =
+            events.length === 0
+                ? []
+                : this.worldInventory.openChestsHitBy(actor)
 
-        this.broadcastEvents(events)
+        this.broadcastEvents([...events, ...chestEvents])
     }
 
     public snapshot(now = Date.now()): WorldSnapshot {
-        return createSnapshot(this.characters.values(), this.tickIndex, now)
+        return createSnapshot(
+            this.characters.values(),
+            this.worldInventory.snapshotItems(),
+            this.worldInventory.snapshotChests(),
+            this.tickIndex,
+            now
+        )
     }
 
     private handleClientMessage(ws: RoomSocket, message: ClientMessage): void {
@@ -151,7 +163,20 @@ export class GameRoom {
             return
         }
 
-        this.applyPlayerMessage(player, message)
+        applyPlayerMessage({
+            characters: this.characters,
+            connections: this.connections,
+            message,
+            navigation: this.navigation,
+            player,
+            requestAttack: (actor) => {
+                this.requestAttack(actor)
+            },
+            sendEvents: (events) => {
+                this.broadcastEvents(events)
+            },
+            worldInventory: this.worldInventory,
+        })
     }
 
     private join(
@@ -204,38 +229,6 @@ export class GameRoom {
         })
     }
 
-    private applyPlayerMessage(
-        player: GameCharacter,
-        message: ClientMessage
-    ): void {
-        if (message.type === 'move_input') {
-            player.setMoveInput(message.axis)
-            return
-        }
-
-        if (message.type === 'move_to') {
-            player.setPath(
-                this.navigation.findPathWorld(player.position, message.target)
-            )
-            return
-        }
-
-        if (message.type === 'attack') {
-            faceNearestTarget(player, this.characters.values(), 48)
-            this.requestAttack(player)
-            return
-        }
-
-        if (message.type === 'chat') {
-            broadcastChat(
-                this.connections,
-                this.characters,
-                player,
-                message.text
-            )
-        }
-    }
-
     private tick(now = Date.now()): void {
         const deltaMs = Math.max(1, Math.min(250, now - this.lastTickAt))
         this.lastTickAt = now
@@ -263,15 +256,19 @@ export class GameRoom {
         }
 
         for (const character of this.characters.values()) {
-            this.broadcastEvents(
-                resolvePendingAttackHit({
-                    actor: character,
-                    now,
-                    respawnDelayMsFor: resolveRespawnDelayMs,
-                    targets: [...this.characters.values()],
-                    tileSize: this.navigation.grid.tileWidth,
-                })
+            const hitEvents = resolvePendingAttackHit({
+                actor: character,
+                now,
+                respawnDelayMsFor: resolveRespawnDelayMs,
+                targets: [...this.characters.values()],
+                tileSize: this.navigation.grid.tileWidth,
+            })
+            const lootEvents = this.worldInventory.dropLootForDeaths(
+                hitEvents,
+                (id) => this.characters.get(id)
             )
+
+            this.broadcastEvents([...hitEvents, ...lootEvents])
         }
 
         broadcast(this.connections.keys(), {
