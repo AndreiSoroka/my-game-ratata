@@ -1,31 +1,25 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import {
-    type ChatMessage,
-    renderChatPanel,
+    type LogMessage,
     renderFullHud,
+    renderLogPanel,
+    renderSpeechBubble,
     renderStatusGroup,
 } from '../ui/renderInterfaceStory'
 
 interface InterfaceArgs {
-    chatActive: boolean
-    chatDraft: string
     energy: number
     hp: number
     mana: number
     serverLabel: string
     showAbilities: boolean
+    speechText: string
 }
 
 const meta = {
     title: 'Interface/HUD',
     argTypes: {
-        chatActive: {
-            control: 'boolean',
-        },
-        chatDraft: {
-            control: 'text',
-        },
         energy: {
             control: {
                 max: 60,
@@ -56,22 +50,24 @@ const meta = {
         showAbilities: {
             control: 'boolean',
         },
+        speechText: {
+            control: 'text',
+        },
     },
     args: {
-        chatActive: true,
-        chatDraft: '/party Need mana before the bridge.',
         energy: 36,
         hp: 84,
         mana: 58,
         serverLabel: '127.0.0.1:2567',
         showAbilities: true,
+        speechText: 'Need mana before the bridge.',
     },
 } satisfies Meta<InterfaceArgs>
 
 export default meta
 type Story = StoryObj<InterfaceArgs>
 
-const messages: ChatMessage[] = [
+const messages: LogMessage[] = [
     {
         author: 'System',
         text: 'Campfire warmth restored 12 energy.',
@@ -101,23 +97,24 @@ export const StatusGroup: Story = {
     render: (args) => renderStatusGroup(resourcesFromArgs(args), args.serverLabel),
 }
 
-export const Chat: Story = {
-    render: (args) =>
-        renderChatPanel({
-            active: args.chatActive,
-            draft: args.chatDraft,
+export const Logs: Story = {
+    render: () =>
+        renderLogPanel({
             messages,
         }),
+}
+
+export const SpeechBubble: Story = {
+    render: (args) => renderSpeechBubble(args.speechText),
 }
 
 export const FullHUD: Story = {
     render: (args) =>
         renderFullHud({
-            chatActive: args.chatActive,
-            chatDraft: args.chatDraft,
             messages,
             resources: resourcesFromArgs(args),
             serverLabel: args.serverLabel,
             showAbilities: args.showAbilities,
+            speechText: args.speechText,
         }),
 }

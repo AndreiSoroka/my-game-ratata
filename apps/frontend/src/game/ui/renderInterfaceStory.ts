@@ -8,19 +8,18 @@ export interface ResourceValue {
     max: number
 }
 
-export interface ChatMessage {
+export interface LogMessage {
     author: string
     tone: 'local' | 'system' | 'whisper'
     text: string
 }
 
 export interface InterfaceStoryOptions {
-    chatActive: boolean
-    chatDraft: string
-    messages: ChatMessage[]
+    messages: LogMessage[]
     resources: ResourceValue[]
     serverLabel: string
     showAbilities: boolean
+    speechText: string
 }
 
 const RESOURCE_META: Record<
@@ -48,7 +47,7 @@ const RESOURCE_META: Record<
     },
 }
 
-const DEFAULT_MESSAGES: ChatMessage[] = [
+const DEFAULT_MESSAGES: LogMessage[] = [
     {
         author: 'System',
         text: 'Campfire warmth restored 12 energy.',
@@ -107,48 +106,48 @@ export function renderStatusGroup(
     return panel
 }
 
-export function renderChatPanel({
-    active = true,
-    draft = '/say Ready when you are.',
+export function renderLogPanel({
     messages = DEFAULT_MESSAGES,
 }: {
-    active?: boolean
-    draft?: string
-    messages?: ChatMessage[]
+    messages?: LogMessage[]
 } = {}): HTMLElement {
     const panel = document.createElement('section')
-    panel.className = 'ratata-ui-panel ratata-ui-chat'
+    panel.className = 'ratata-ui-panel ratata-ui-logs'
     panel.dataset.interfaceReady = 'true'
-    panel.setAttribute('aria-label', 'Chat')
+    panel.setAttribute('aria-label', 'Logs')
 
     const log = document.createElement('div')
-    log.className = 'ratata-ui-chat__log'
+    log.className = 'ratata-ui-logs__list'
 
     for (const message of messages) {
         const row = document.createElement('p')
-        row.className = `ratata-ui-chat__message ratata-ui-chat__message--${message.tone}`
+        row.className = `ratata-ui-logs__message ratata-ui-logs__message--${message.tone}`
 
         const author = document.createElement('span')
-        author.className = 'ratata-ui-chat__author'
+        author.className = 'ratata-ui-logs__author'
         author.textContent = message.author
 
         const text = document.createElement('span')
-        text.className = 'ratata-ui-chat__text'
+        text.className = 'ratata-ui-logs__text'
         text.textContent = message.text
 
         row.append(author, text)
         log.append(row)
     }
 
-    const input = document.createElement('div')
-    input.className = active
-        ? 'ratata-ui-chat__input ratata-ui-chat__input--active'
-        : 'ratata-ui-chat__input'
-    input.textContent = active ? draft : ''
-
-    panel.append(log, input)
+    panel.append(log)
 
     return panel
+}
+
+export function renderSpeechBubble(text = 'Need mana before the bridge.'): HTMLElement {
+    const bubble = document.createElement('div')
+    bubble.className = 'ratata-ui-speech'
+    bubble.dataset.interfaceReady = 'true'
+    bubble.setAttribute('role', 'status')
+    bubble.textContent = text
+
+    return bubble
 }
 
 export function renderFullHud(options: Partial<InterfaceStoryOptions> = {}): HTMLElement {
@@ -162,14 +161,13 @@ export function renderFullHud(options: Partial<InterfaceStoryOptions> = {}): HTM
     )
     status.classList.add('ratata-ui-viewport__status')
 
-    const chat = renderChatPanel({
-        active: options.chatActive ?? true,
-        draft: options.chatDraft ?? '/party Need mana before the bridge.',
-        messages: options.messages ?? DEFAULT_MESSAGES,
-    })
-    chat.classList.add('ratata-ui-viewport__chat')
+    const logs = renderLogPanel({ messages: options.messages ?? DEFAULT_MESSAGES })
+    logs.classList.add('ratata-ui-viewport__logs')
 
-    root.append(renderGameSurface(), status, chat)
+    const speech = renderSpeechBubble(options.speechText ?? 'Need mana before the bridge.')
+    speech.classList.add('ratata-ui-viewport__speech')
+
+    root.append(renderGameSurface(), status, logs, speech)
 
     if (options.showAbilities ?? true) {
         root.append(renderAbilityDock())

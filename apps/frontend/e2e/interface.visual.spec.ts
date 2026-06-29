@@ -10,7 +10,7 @@ test.describe('Storybook interface visuals', () => {
         await openInterfaceStory(
             page,
             'interface-hud--full-hud',
-            'hp:73;mana:42;energy:51;chatActive:true;showAbilities:true'
+            'hp:73;mana:42;energy:51;showAbilities:true;speechText:Need%20mana%20before%20the%20bridge.'
         )
 
         await expect(page.locator('[data-interface-ready="true"]').first()).toHaveScreenshot(
@@ -18,15 +18,23 @@ test.describe('Storybook interface visuals', () => {
         )
     })
 
-    test('chat panel', async ({ page }) => {
+    test('logs panel', async ({ page }) => {
+        await openInterfaceStory(page, 'interface-hud--logs')
+
+        await expect(page.locator('[data-interface-ready="true"]').first()).toHaveScreenshot(
+            'interface-logs.png'
+        )
+    })
+
+    test('speech bubble', async ({ page }) => {
         await openInterfaceStory(
             page,
-            'interface-hud--chat',
-            'chatActive:true;chatDraft:/say%20Bridge%20is%20clear.'
+            'interface-hud--speech-bubble',
+            'speechText:Need%20mana%20before%20the%20bridge.'
         )
 
         await expect(page.locator('[data-interface-ready="true"]').first()).toHaveScreenshot(
-            'interface-chat.png'
+            'interface-speech-bubble.png'
         )
     })
 })
