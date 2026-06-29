@@ -1,5 +1,6 @@
 import type {
     ClientMessage,
+    GameEventPayload,
     ServerMessage,
     Vector2,
     WorldSnapshot,
@@ -7,12 +8,16 @@ import type {
 import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 import { Color, DisplayMode, Engine, Flags, PointerButton, PointerScope, vec } from 'excalibur'
 
-import { createCharacterResources, SceneActors } from './sceneActors'
+import { createCharacterResources } from './characterResources'
+import { chatDuration, type ChatInputState, chatMaxLength } from './chatInput'
+import { axisFromKeys, movementKeys, preventContextMenu } from './input'
+import { SceneActors } from './sceneActors'
 import { loadRenderedTiledMap } from './tiledMap'
 
 interface RatataGameOptions {
     container: HTMLElement
     nickname: string
+    onChatState: (state: ChatInputState) => void
     onError: (message: string) => void
     onSnapshot: (snapshot: WorldSnapshot, localPlayerId: string | undefined) => void
     onStatus: (message: string) => void
@@ -26,6 +31,8 @@ export class RatataGame {
     private sceneActors: SceneActors | undefined
     private snapshot: WorldSnapshot | undefined
     private socket: WebSocket | undefined
+    private chatActive = false
+    private chatDraft = ''
     private readonly pressedKeys = new Set<string>()
     private lastAxis: Vector2 = { x: 0, y: 0 }
 
@@ -122,6 +129,11 @@ export class RatataGame {
             return
         }
 
+        if (message.type === 'event') {
+            this.handleServerEvent(message.event)
+            return
+        }
+
         if (message.type === 'error') {
             this.options.onError(message.message)
         }
@@ -135,6 +147,10 @@ export class RatataGame {
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
+        if (this.handleChatKey(event)) {
+            return
+        }
+
         if (event.code === 'Space') {
             event.preventDefault()
             this.send({ type: 'attack' })
@@ -155,6 +171,10 @@ export class RatataGame {
     }
 
     private handlePointerDown(event: ExcaliburPointerEvent): void {
+        if (this.chatActive) {
+            return
+        }
+
         const target = {
             x: event.worldPos.x,
             y: event.worldPos.y,
@@ -166,6 +186,82 @@ export class RatataGame {
         }
 
         this.send({ target, type: 'move_to' })
+    }
+
+    private handleChatKey(event: KeyboardEvent): boolean {
+        if (event.key === 'Enter') {
+            event.preventDefault()
+
+            if (this.chatActive) {
+                this.submitChat()
+            } else {
+                this.beginChat()
+            }
+
+            return true
+        }
+
+        if (!this.chatActive) {
+            return false
+        }
+
+        event.preventDefault()
+
+        if (event.key === 'Escape') {
+            this.endChat()
+            return true
+        }
+
+        if (event.key === 'Backspace') {
+            this.chatDraft = this.chatDraft.slice(0, -1)
+            this.emitChatState()
+            return true
+        }
+
+        if (
+            event.key.length === 1 &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.altKey &&
+            this.chatDraft.length < chatMaxLength
+        ) {
+            this.chatDraft += event.key
+            this.emitChatState()
+        }
+
+        return true
+    }
+
+    private beginChat(): void {
+        this.chatActive = true
+        this.chatDraft = ''
+        this.pressedKeys.clear()
+        this.flushMoveInput()
+        this.emitChatState()
+    }
+
+    private submitChat(): void {
+        const text = this.chatDraft.trim()
+
+        if (text.length > 0) {
+            this.send({ text: text.slice(0, chatMaxLength), type: 'chat' })
+        }
+
+        this.endChat()
+    }
+
+    private endChat(): void {
+        this.chatActive = false
+        this.chatDraft = ''
+        this.emitChatState()
+    }
+
+    private emitChatState(): void {
+        this.options.onChatState({
+            active: this.chatActive,
+            draft: this.chatDraft,
+            maxLength: chatMaxLength,
+        })
     }
 
     private shouldAttackAt(point: Vector2): boolean {
@@ -200,6 +296,14 @@ export class RatataGame {
         }
     }
 
+    private handleServerEvent(event: GameEventPayload): void {
+        if (event.kind !== 'chat' || event.actorId === undefined || event.text === undefined) {
+            return
+        }
+
+        this.sceneActors?.showChat(event.actorId, event.text, chatDuration(event.text))
+    }
+
     private updateDebug(): void {
         if (!import.meta.env.DEV) {
             return
@@ -219,32 +323,6 @@ export class RatataGame {
             },
         }
     }
-}
-
-const movementKeys = new Set([
-    'KeyW',
-    'KeyA',
-    'KeyS',
-    'KeyD',
-    'ArrowUp',
-    'ArrowLeft',
-    'ArrowDown',
-    'ArrowRight',
-])
-
-function axisFromKeys(keys: Set<string>): Vector2 {
-    return {
-        x: keyAxis(keys, 'KeyD', 'ArrowRight') - keyAxis(keys, 'KeyA', 'ArrowLeft'),
-        y: keyAxis(keys, 'KeyS', 'ArrowDown') - keyAxis(keys, 'KeyW', 'ArrowUp'),
-    }
-}
-
-function keyAxis(keys: Set<string>, primary: string, secondary: string): number {
-    return keys.has(primary) || keys.has(secondary) ? 1 : 0
-}
-
-function preventContextMenu(event: Event): void {
-    event.preventDefault()
 }
 
 function resolveWebSocketUrl(): string {

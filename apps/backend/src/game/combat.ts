@@ -6,7 +6,7 @@ import { distance } from './math'
 interface AttackContext {
     actor: GameCharacter
     now: number
-    respawnDelayMs: number
+    respawnDelayMsFor: (target: GameCharacter) => number
     targets: GameCharacter[]
     tileSize: number
 }
@@ -25,6 +25,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
 
     actor.lastAttackAt = now
     actor.spendAttackResources()
+    actor.setAnimation('attack', now, actor.config.combat.attackLockMs)
     actor.attackZones = buildAttackZones(actor, context.tileSize)
     actor.attackZoneUntil = now + actor.config.combat.attackLockMs
 
@@ -36,7 +37,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     }
 
     const damage = rollDamage(actor)
-    target.applyDamage(damage)
+    target.applyDamage(damage, now)
     maybeApplyStun(actor, target, now)
     events.push({
         actorId: actor.id,
@@ -46,7 +47,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     })
 
     if (!target.alive) {
-        target.queueRespawn(now, context.respawnDelayMs)
+        target.queueRespawn(now, context.respawnDelayMsFor(target))
         events.push({ actorId: actor.id, kind: 'death', targetId: target.id })
     }
 

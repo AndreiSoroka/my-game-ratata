@@ -33,6 +33,9 @@ export type CharacterArchetype = 'human' | 'skeleton'
 
 export type CharacterControllerKind = 'network_player' | 'mob1'
 
+export type CharacterAnimationAction =
+    'idle' | 'walk' | 'attack' | 'damaged' | 'death'
+
 export interface AttackZone {
     maxX: number
     maxY: number
@@ -54,8 +57,14 @@ export interface CharacterCooldownsSnapshot {
     stunMsLeft: number
 }
 
+export interface CharacterAnimationSnapshot {
+    action: CharacterAnimationAction
+    startedAt: number
+}
+
 export interface CharacterSnapshot {
     alive: boolean
+    animation: CharacterAnimationSnapshot
     archetype: CharacterArchetype
     attackZones: AttackZone[]
     controllerKind: CharacterControllerKind
@@ -103,8 +112,14 @@ export interface AttackClientMessage {
     type: 'attack'
 }
 
+export interface ChatClientMessage {
+    text: string
+    type: 'chat'
+}
+
 export type ClientMessage =
     | AttackClientMessage
+    | ChatClientMessage
     | JoinClientMessage
     | MoveInputClientMessage
     | MoveToClientMessage
@@ -125,13 +140,14 @@ export interface WorldInitServerMessage {
 }
 
 export type GameEventKind =
-    'attack' | 'damage' | 'death' | 'join' | 'leave' | 'respawn'
+    'attack' | 'chat' | 'damage' | 'death' | 'join' | 'leave' | 'respawn'
 
 export interface GameEventPayload {
     amount?: number
     actorId?: string
     kind: GameEventKind
     targetId?: string
+    text?: string
 }
 
 export interface GameEventServerMessage {

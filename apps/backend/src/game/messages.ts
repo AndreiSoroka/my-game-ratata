@@ -55,6 +55,8 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
             return parseMoveTo(record)
         case 'attack':
             return { message: { type: 'attack' } }
+        case 'chat':
+            return parseChat(record)
         default:
             return { error: 'Unknown message type' }
     }
@@ -98,6 +100,22 @@ function parseMoveTo(record: Record<string, unknown>): ParseResult {
     }
 
     return { message: { target, type: 'move_to' } }
+}
+
+function parseChat(record: Record<string, unknown>): ParseResult {
+    const text = record['text']
+
+    if (typeof text !== 'string') {
+        return { error: 'chat.text must be a string' }
+    }
+
+    const trimmed = text.trim().slice(0, 100)
+
+    if (trimmed.length === 0) {
+        return { error: 'chat.text is required' }
+    }
+
+    return { message: { text: trimmed, type: 'chat' } }
 }
 
 function parseVector(input: unknown): Vector2 | undefined {

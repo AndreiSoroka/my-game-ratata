@@ -2,12 +2,20 @@
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 
+import type { ChatInputState } from './game/runtime/chatInput'
 import { RatataGame } from './game/runtime/ratataGame'
+import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
+import PlayerStatusPanel from './game/ui/PlayerStatusPanel.vue'
 
 const nickname = ref('')
 const errorMessage = ref('')
 const gameHost = ref<HTMLElement>()
 const game = ref<RatataGame>()
+const chatInput = ref<ChatInputState>({
+    active: false,
+    draft: '',
+    maxLength: 100,
+})
 const isJoining = ref(false)
 const isStarted = ref(false)
 const localPlayerId = ref<string>()
@@ -32,7 +40,15 @@ const skeletonHp = computed(() => {
 
     return `${String(skeleton.hp)}/${String(skeleton.maxHp)}`
 })
+const localCharacter = computed(() => {
+    const id = localPlayerId.value
 
+    if (id === undefined) {
+        return undefined
+    }
+
+    return snapshot.value?.characters.find((character) => character.id === id)
+})
 async function joinGame(): Promise<void> {
     if (!canJoin.value) {
         return
@@ -52,6 +68,9 @@ async function joinGame(): Promise<void> {
     const runtime = new RatataGame({
         container: gameHost.value,
         nickname: nickname.value.trim(),
+        onChatState: (state) => {
+            chatInput.value = state
+        },
         onError: (message) => {
             errorMessage.value = message
         },
@@ -112,6 +131,8 @@ onBeforeUnmount(() => {
                 </div>
             </div>
             <div ref="gameHost" class="game-host" data-testid="game-host"></div>
+            <PlayerStatusPanel v-if="localCharacter" :character="localCharacter" :status="status" />
+            <ChatInputOverlay v-if="chatInput.active" :state="chatInput" />
             <p v-if="errorMessage" class="game-error">{{ errorMessage }}</p>
         </section>
     </main>
@@ -206,6 +227,7 @@ onBeforeUnmount(() => {
 }
 
 .game-screen {
+    position: relative;
     height: 100vh;
     display: grid;
     grid-template-rows: auto 1fr;

@@ -1,11 +1,8 @@
 import {
     type ClientMessage,
     CONTRACT_PROTOCOL_VERSION,
-    type GameEventPayload,
-    type ServerMessage,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import type { ServerWebSocket } from 'bun'
 
 import { GameCharacter as Character, type GameCharacter } from './character'
 import { attemptAttack } from './combat'
@@ -13,6 +10,7 @@ import {
     type CharacterController,
     NetworkPlayerController,
 } from './controllers'
+import { normalizeNickname } from './identity'
 import { parseClientMessage, readSocketMessage } from './messages'
 import { advanceCharacter } from './movement'
 import { loadNavigationService, type NavigationService } from './navigation'
@@ -21,13 +19,15 @@ import {
     faceNearestTarget,
     findVisiblePlayer as findVisiblePlayerInRoom,
 } from './queries'
+import {
+    broadcast,
+    broadcastChat,
+    broadcastEvent,
+    type RoomSocket,
+    send,
+    sendError,
+} from './roomMessaging'
 import { createSkeleton, playerSpawn } from './spawns'
-
-export interface RoomSocketData {
-    socketId: string
-}
-
-type RoomSocket = ServerWebSocket<RoomSocketData>
 
 const tickMs = 50
 const playerRespawnMs = 5000
@@ -38,6 +38,7 @@ export class GameRoom {
     private readonly characters = new Map<string, GameCharacter>()
     private readonly connections = new Map<RoomSocket, string | undefined>()
     private readonly controllers = new Map<string, CharacterController>()
+    private readonly playerIdsByNickname = new Map<string, string>()
     private lastTickAt = Date.now()
     private nextPlayerIndex = 1
     private timer: ReturnType<typeof setInterval> | undefined
@@ -73,7 +74,7 @@ export class GameRoom {
         const text = readSocketMessage(raw)
 
         if (text === undefined) {
-            this.sendError(
+            sendError(
                 ws,
                 'invalid_message',
                 'Message must be text or binary JSON'
@@ -84,11 +85,7 @@ export class GameRoom {
         const result = parseClientMessage(text)
 
         if (result.message === undefined) {
-            this.sendError(
-                ws,
-                'invalid_message',
-                result.error ?? 'Invalid message'
-            )
+            sendError(ws, 'invalid_message', result.error ?? 'Invalid message')
             return
         }
 
@@ -103,9 +100,13 @@ export class GameRoom {
             return
         }
 
-        this.characters.delete(playerId)
-        this.controllers.delete(playerId)
-        this.broadcastEvent({ actorId: playerId, kind: 'leave' })
+        const player = this.characters.get(playerId)
+        player?.setMoveInput({ x: 0, y: 0 })
+        player?.clearPath()
+        broadcastEvent(this.connections.keys(), {
+            actorId: playerId,
+            kind: 'leave',
+        })
     }
 
     public findVisiblePlayer(
@@ -125,16 +126,13 @@ export class GameRoom {
         const events = attemptAttack({
             actor,
             now: Date.now(),
-            respawnDelayMs:
-                actor.controllerKind === 'mob1'
-                    ? playerRespawnMs
-                    : mobRespawnMs,
+            respawnDelayMsFor: resolveRespawnDelayMs,
             targets,
             tileSize: this.navigation.grid.tileWidth,
         })
 
         for (const event of events) {
-            this.broadcastEvent(event)
+            broadcastEvent(this.connections.keys(), event)
         }
     }
 
@@ -151,11 +149,7 @@ export class GameRoom {
         const player = this.getSocketPlayer(ws)
 
         if (player === undefined) {
-            this.sendError(
-                ws,
-                'not_joined',
-                'Join the room before sending input'
-            )
+            sendError(ws, 'not_joined', 'Join the room before sending input')
             return
         }
 
@@ -170,33 +164,37 @@ export class GameRoom {
         const existingId = this.connections.get(ws)
 
         if (existingId !== undefined) {
-            this.characters.delete(existingId)
-            this.controllers.delete(existingId)
+            const existingCharacter = this.characters.get(existingId)
+            existingCharacter?.setMoveInput({ x: 0, y: 0 })
+            existingCharacter?.clearPath()
         }
 
-        const id = `player_${String(this.nextPlayerIndex)}`
-        const spawnPosition = playerSpawn(this.navigation, this.nextPlayerIndex)
-        this.nextPlayerIndex += 1
-        const character = new Character({
-            archetype,
-            controllerKind: 'network_player',
-            id,
-            nickname,
-            spawnPosition,
-        })
+        const nicknameKey = normalizeNickname(nickname)
+        const existingPlayerId = this.playerIdsByNickname.get(nicknameKey)
+        const existingCharacter =
+            existingPlayerId === undefined
+                ? undefined
+                : this.characters.get(existingPlayerId)
+        const character =
+            existingCharacter ??
+            this.createPlayerCharacter(nickname, nicknameKey, archetype)
 
-        this.characters.set(id, character)
-        this.controllers.set(id, new NetworkPlayerController())
-        this.connections.set(ws, id)
-        this.send(ws, {
+        character.setMoveInput({ x: 0, y: 0 })
+        character.clearPath()
+        this.controllers.set(character.id, new NetworkPlayerController())
+        this.connections.set(ws, character.id)
+        send(ws, {
             map: this.navigation.summary,
-            playerId: id,
+            playerId: character.id,
             protocolVersion: CONTRACT_PROTOCOL_VERSION,
             snapshot: this.snapshot(),
             tickMs,
             type: 'world_init',
         })
-        this.broadcastEvent({ actorId: id, kind: 'join' })
+        broadcastEvent(this.connections.keys(), {
+            actorId: character.id,
+            kind: 'join',
+        })
     }
 
     private applyPlayerMessage(
@@ -218,6 +216,16 @@ export class GameRoom {
         if (message.type === 'attack') {
             faceNearestTarget(player, this.characters.values(), 48)
             this.requestAttack(player)
+            return
+        }
+
+        if (message.type === 'chat') {
+            broadcastChat(
+                this.connections,
+                this.characters,
+                player,
+                message.text
+            )
         }
     }
 
@@ -243,11 +251,14 @@ export class GameRoom {
             })
 
             if (event !== undefined) {
-                this.broadcastEvent(event)
+                broadcastEvent(this.connections.keys(), event)
             }
         }
 
-        this.broadcast({ snapshot: this.snapshot(now), type: 'snapshot' })
+        broadcast(this.connections.keys(), {
+            snapshot: this.snapshot(now),
+            type: 'snapshot',
+        })
     }
 
     private spawnSkeleton(): void {
@@ -255,6 +266,28 @@ export class GameRoom {
 
         this.characters.set(character.id, character)
         this.controllers.set(character.id, controller)
+    }
+
+    private createPlayerCharacter(
+        nickname: string,
+        nicknameKey: string,
+        archetype: GameCharacter['archetype']
+    ): GameCharacter {
+        const id = `player_${String(this.nextPlayerIndex)}`
+        const spawnPosition = playerSpawn(this.navigation, this.nextPlayerIndex)
+        this.nextPlayerIndex += 1
+        const character = new Character({
+            archetype,
+            controllerKind: 'network_player',
+            id,
+            nickname,
+            spawnPosition,
+        })
+
+        this.characters.set(id, character)
+        this.playerIdsByNickname.set(nicknameKey, id)
+
+        return character
     }
 
     private getSocketPlayer(ws: RoomSocket): GameCharacter | undefined {
@@ -266,32 +299,8 @@ export class GameRoom {
 
         return this.characters.get(playerId)
     }
+}
 
-    private broadcast(message: ServerMessage): void {
-        const payload = JSON.stringify(message)
-
-        for (const ws of this.connections.keys()) {
-            ws.send(payload)
-        }
-    }
-
-    private broadcastEvent(event: GameEventPayload): void {
-        this.broadcast({
-            event,
-            serverTime: Date.now(),
-            type: 'event',
-        })
-    }
-
-    private send(ws: RoomSocket, message: ServerMessage): void {
-        ws.send(JSON.stringify(message))
-    }
-
-    private sendError(ws: RoomSocket, code: string, message: string): void {
-        this.send(ws, {
-            code,
-            message,
-            type: 'error',
-        })
-    }
+function resolveRespawnDelayMs(target: GameCharacter): number {
+    return target.controllerKind === 'mob1' ? mobRespawnMs : playerRespawnMs
 }

@@ -156,7 +156,8 @@ export class Mob1Controller implements CharacterController {
 
 function shouldFlee(character: GameCharacter, target: GameCharacter): boolean {
     return (
-        character.hp / character.maxHp <= 0.35 &&
+        (character.hp / character.maxHp <= 0.35 ||
+            !character.canSpendAttackResources()) &&
         distance(character.position, target.position) < 80
     )
 }

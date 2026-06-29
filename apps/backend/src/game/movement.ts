@@ -34,10 +34,9 @@ export function advanceCharacter(
         y: character.position.y - before.y,
     }
     character.updateFacing(character.velocity)
-    character.applyRegen(
-        deltaMs,
-        character.velocity.x !== 0 || character.velocity.y !== 0
-    )
+    const isMoving = character.velocity.x !== 0 || character.velocity.y !== 0
+    character.updateMovementAnimation(isMoving, now)
+    character.applyRegen(deltaMs, isMoving)
 
     return undefined
 }

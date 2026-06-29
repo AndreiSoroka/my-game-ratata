@@ -28,20 +28,10 @@ export interface CharacterResourceStats {
 export interface CharacterConfig {
     attackZones: Array<Omit<AttackZone, 'ownerId'>>
     combat: CharacterCombatStats
-    hpRegenPerSec: number
+    hpRegenIdlePerSec: number
+    hpRegenMovePerSec: number
     moveSpeed: number
     resources: CharacterResourceStats
-}
-
-const emptyResources: CharacterResourceStats = {
-    attackEnergyCost: 0,
-    attackManaCost: 0,
-    energyRegenIdle: 0,
-    energyRegenMove: 0,
-    manaRegenIdle: 0,
-    manaRegenMove: 0,
-    maxEnergy: 0,
-    maxMana: 0,
 }
 
 export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
@@ -60,7 +50,8 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
             stunMaxDurationMs: 700,
             stunMinDurationMs: 300,
         },
-        hpRegenPerSec: 0.6,
+        hpRegenIdlePerSec: 0.8,
+        hpRegenMovePerSec: 0.35,
         moveSpeed: 90,
         resources: {
             attackEnergyCost: 15,
@@ -88,9 +79,19 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
             stunMaxDurationMs: 900,
             stunMinDurationMs: 400,
         },
-        hpRegenPerSec: 0.25,
+        hpRegenIdlePerSec: 0.45,
+        hpRegenMovePerSec: 0.18,
         moveSpeed: 82,
-        resources: emptyResources,
+        resources: {
+            attackEnergyCost: 12,
+            attackManaCost: 0,
+            energyRegenIdle: 5,
+            energyRegenMove: 2,
+            manaRegenIdle: 0,
+            manaRegenMove: 0,
+            maxEnergy: 60,
+            maxMana: 0,
+        },
     },
 }
 

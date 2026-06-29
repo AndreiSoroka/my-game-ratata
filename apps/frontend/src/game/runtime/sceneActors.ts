@@ -11,21 +11,15 @@ import {
     Color,
     Engine,
     Font,
-    ImageSource,
     Label,
-    Loader,
     Rectangle,
-    SpriteSheet,
+    type SpriteSheet,
     vec,
 } from 'excalibur'
 
-import {
-    characterCatalog,
-    type CharacterDefinition,
-    type CharacterId,
-    clampFrame,
-    resolveAnimationRow,
-} from '../assets/characterCatalog'
+import type { CharacterId } from '../assets/characterCatalog'
+import { characterCatalog, resolveAnimationRow } from '../assets/characterCatalog'
+import { animationFrame } from './animationFrame'
 import type { RenderedTiledMap } from './tiledMap'
 
 interface CharacterBundle {
@@ -33,11 +27,8 @@ interface CharacterBundle {
     hpBack: Actor
     hpFill: Actor
     label: Label
-}
-
-export interface CharacterResources {
-    loader: Loader
-    sheets: Map<CharacterId, SpriteSheet>
+    message: Label
+    messageUntil: number
 }
 
 const labelFont = new Font({
@@ -45,23 +36,12 @@ const labelFont = new Font({
     family: 'Inter, system-ui, sans-serif',
     size: 8,
 })
+const messageFont = new Font({
+    color: Color.White,
+    family: 'Inter, system-ui, sans-serif',
+    size: 7,
+})
 const cameraZoom = 3
-
-export function createCharacterResources(): CharacterResources {
-    const images = new Map<CharacterId, ImageSource>()
-    const sheets = new Map<CharacterId, SpriteSheet>()
-
-    for (const definition of Object.values(characterCatalog)) {
-        const image = new ImageSource(definition.src)
-        images.set(definition.id, image)
-        sheets.set(definition.id, createSheet(definition, image))
-    }
-
-    return {
-        loader: new Loader([...images.values()]),
-        sheets,
-    }
-}
 
 export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
@@ -69,6 +49,7 @@ export class SceneActors {
     private readonly sheets: Map<CharacterId, SpriteSheet>
     private attackZoneActors: Actor[] = []
     private followedId: string | undefined
+    private serverClockOffset = 0
 
     public constructor(engine: Engine, sheets: Map<CharacterId, SpriteSheet>) {
         this.engine = engine
@@ -98,6 +79,7 @@ export class SceneActors {
     }
 
     public update(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
+        this.serverClockOffset = snapshot.serverTime - performance.now()
         this.removeMissing(snapshot.characters)
 
         for (const character of snapshot.characters) {
@@ -108,17 +90,35 @@ export class SceneActors {
         this.followLocalPlayer(localPlayerId)
     }
 
+    public showChat(actorId: string, text: string, durationMs: number): void {
+        const bundle = this.bundles.get(actorId)
+
+        if (bundle === undefined) {
+            return
+        }
+
+        bundle.message.text = text
+        bundle.message.graphics.opacity = 1
+        bundle.messageUntil = performance.now() + durationMs
+    }
+
     private updateCharacter(snapshot: CharacterSnapshot): void {
         const bundle = this.getBundle(snapshot)
         const position = vec(snapshot.position.x, snapshot.position.y)
         bundle.body.pos = position
         bundle.body.z = snapshot.position.y
+        bundle.message.pos = vec(snapshot.position.x - 38, snapshot.position.y - 58)
+        bundle.message.z = bundle.body.z + 4
         bundle.label.pos = vec(snapshot.position.x - 28, snapshot.position.y - 44)
+        bundle.label.z = bundle.body.z + 3
         bundle.hpBack.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
+        bundle.hpBack.z = bundle.body.z + 2
         bundle.hpFill.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
+        bundle.hpFill.z = bundle.body.z + 2
         bundle.label.text = snapshot.nickname
         this.updateGraphic(bundle.body, snapshot)
         this.updateHealth(bundle, snapshot)
+        this.updateMessage(bundle)
     }
 
     private getBundle(snapshot: CharacterSnapshot): CharacterBundle {
@@ -131,6 +131,7 @@ export class SceneActors {
         const bundle = createBundle()
         this.bundles.set(snapshot.id, bundle)
         this.engine.add(bundle.body)
+        this.engine.add(bundle.message)
         this.engine.add(bundle.label)
         this.engine.add(bundle.hpBack)
         this.engine.add(bundle.hpFill)
@@ -142,7 +143,7 @@ export class SceneActors {
         const characterId = visualId(snapshot.archetype)
         const definition = characterCatalog[characterId]
         const sheet = this.sheets.get(characterId)
-        const action = snapshotAction(snapshot)
+        const action = snapshot.animation.action
         const animation = definition.animations[action]
         const row = resolveAnimationRow(animation, toCatalogDirection(snapshot.facing))
 
@@ -150,7 +151,12 @@ export class SceneActors {
             return
         }
 
-        const frame = clampFrame(animation, Math.floor(performance.now() / animation.frameMs))
+        const frame = animationFrame(
+            animation,
+            action,
+            performance.now() + this.serverClockOffset,
+            snapshot
+        )
         actor.graphics.use(sheet.getSprite(frame, row))
         actor.graphics.flipHorizontal = snapshot.facing === 'left'
         actor.graphics.opacity = snapshot.alive ? 1 : 0.55
@@ -167,6 +173,17 @@ export class SceneActors {
             })
         )
         bundle.hpFill.graphics.opacity = snapshot.alive ? 1 : 0.35
+    }
+
+    private updateMessage(bundle: CharacterBundle): void {
+        if (bundle.messageUntil > performance.now()) {
+            return
+        }
+
+        if (bundle.message.text.length > 0) {
+            bundle.message.text = ''
+            bundle.message.graphics.opacity = 0
+        }
     }
 
     private updateAttackZones(zones: AttackZone[]): void {
@@ -231,24 +248,14 @@ export class SceneActors {
     }
 }
 
-function createSheet(definition: CharacterDefinition, image: ImageSource): SpriteSheet {
-    return SpriteSheet.fromImageSource({
-        grid: {
-            columns: definition.columns,
-            rows: definition.rows,
-            spriteHeight: definition.spriteHeight,
-            spriteWidth: definition.spriteWidth,
-        },
-        image,
-    })
-}
-
 function createBundle(): CharacterBundle {
     return {
         body: new Actor({ anchor: vec(0.5, 0.75), height: 48, width: 48 }),
         hpBack: createBar(Color.fromHex('#171717'), 32),
         hpFill: createBar(Color.Green, 32),
         label: new Label({ font: labelFont, text: '' }),
+        message: new Label({ font: messageFont, text: '' }),
+        messageUntil: 0,
     }
 }
 
@@ -265,27 +272,10 @@ function createBar(color: Color, width: number): Actor {
 
 function removeBundle(engine: Engine, bundle: CharacterBundle): void {
     engine.remove(bundle.body)
+    engine.remove(bundle.message)
     engine.remove(bundle.label)
     engine.remove(bundle.hpBack)
     engine.remove(bundle.hpFill)
-}
-
-function snapshotAction(
-    snapshot: CharacterSnapshot
-): 'idle' | 'walk' | 'attack' | 'damaged' | 'death' {
-    if (!snapshot.alive) {
-        return 'death'
-    }
-
-    if (snapshot.attackZones.length > 0) {
-        return 'attack'
-    }
-
-    if (snapshot.cooldowns.stunMsLeft > 0) {
-        return 'damaged'
-    }
-
-    return snapshot.velocity.x !== 0 || snapshot.velocity.y !== 0 ? 'walk' : 'idle'
 }
 
 function visualId(archetype: CharacterArchetype): CharacterId {

@@ -2,6 +2,29 @@
 
 Эта инструкция описывает, как добавлять управляемых персонажей в галерею игры.
 
+## Единая логика персонажа
+
+Любой персонаж в игре должен быть `GameCharacter`: игрок, scripted NPC, AI NPC или
+комбинация контроллеров используют одну и ту же модель состояния, movement,
+collision, combat, cooldowns, resources, regen, death/respawn и snapshot.
+
+Различается только внешний контроллер:
+
+- игрок передает намерения через `NetworkPlayerController` и сетевые сообщения
+  вроде WASD/click/attack/chat;
+- NPC передает намерения через `Mob1Controller`, будущий script controller или AI
+  controller;
+- контроллеры не должны обходить `GameCharacter`, `advanceCharacter` и
+  `attemptAttack`;
+- нельзя добавлять отдельные правила атаки, расхода энергии, регена, смерти,
+  path movement или collision только для игрока или только для NPC;
+- различия допустимы как данные archetype/config: hp, speed, attack zones,
+  sprite, resource caps/costs, perception radius, controller strategy.
+
+Если нужна новая возможность персонажа, сначала добавь ее в общий `GameCharacter`
+или общий сервис gameplay-логики, а контроллер пусть только выбирает намерение:
+двигаться, идти к точке, атаковать, убегать, говорить.
+
 ## Формат спрайта игрока
 
 Управляемый human-like персонаж должен быть PNG sprite sheet с прозрачным фоном:

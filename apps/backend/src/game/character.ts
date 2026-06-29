@@ -1,5 +1,6 @@
 import type {
     AttackZone,
+    CharacterAnimationAction,
     CharacterArchetype,
     CharacterControllerKind,
     CharacterFacing,
@@ -26,6 +27,9 @@ export class GameCharacter {
     public readonly maxHp: number
     public readonly nickname: string
     public readonly spawnPosition: Vector2
+    public animationAction: CharacterAnimationAction = 'idle'
+    public animationStartedAt = Date.now()
+    public animationUntil = 0
     public alive = true
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
@@ -106,6 +110,27 @@ export class GameCharacter {
         this.facing = resolveFacing(vector, this.facing)
     }
 
+    public setAnimation(
+        action: CharacterAnimationAction,
+        now: number,
+        lockMs = 0
+    ): void {
+        if (this.animationAction !== action || lockMs > 0) {
+            this.animationAction = action
+            this.animationStartedAt = now
+        }
+
+        this.animationUntil = Math.max(this.animationUntil, now + lockMs)
+    }
+
+    public updateMovementAnimation(isMoving: boolean, now: number): void {
+        if (!this.alive || now < this.animationUntil) {
+            return
+        }
+
+        this.setAnimation(isMoving ? 'walk' : 'idle', now)
+    }
+
     public tickTimedState(now: number): void {
         if (this.attackZoneUntil > 0 && now >= this.attackZoneUntil) {
             this.attackZones = []
@@ -113,7 +138,7 @@ export class GameCharacter {
         }
 
         if (!this.alive && this.respawnAt > 0 && now >= this.respawnAt) {
-            this.respawn()
+            this.respawn(now)
         }
     }
 
@@ -137,7 +162,14 @@ export class GameCharacter {
             deltaMs
         )
         this.mana = regen(this.mana, resources.maxMana, manaRegen, deltaMs)
-        this.hp = regen(this.hp, this.maxHp, this.config.hpRegenPerSec, deltaMs)
+        this.hp = regen(
+            this.hp,
+            this.maxHp,
+            isMoving
+                ? this.config.hpRegenMovePerSec
+                : this.config.hpRegenIdlePerSec,
+            deltaMs
+        )
     }
 
     public canSpendAttackResources(): boolean {
@@ -155,7 +187,7 @@ export class GameCharacter {
         this.mana = Math.max(0, this.mana - resources.attackManaCost)
     }
 
-    public applyDamage(amount: number): void {
+    public applyDamage(amount: number, now: number): void {
         if (!this.alive) {
             return
         }
@@ -164,10 +196,14 @@ export class GameCharacter {
 
         if (this.hp <= 0) {
             this.alive = false
+            this.setAnimation('death', now)
             this.clearPath()
             this.setMoveInput(zeroVector())
             this.velocity = zeroVector()
+            return
         }
+
+        this.setAnimation('damaged', now, 300)
     }
 
     public queueRespawn(now: number, delayMs: number): void {
@@ -179,6 +215,10 @@ export class GameCharacter {
     public snapshot(now: number): CharacterSnapshot {
         return {
             alive: this.alive,
+            animation: {
+                action: this.animationAction,
+                startedAt: this.animationStartedAt,
+            },
             archetype: this.archetype,
             attackZones: this.attackZones,
             controllerKind: this.controllerKind,
@@ -211,10 +251,11 @@ export class GameCharacter {
         }
     }
 
-    private respawn(): void {
+    private respawn(now: number): void {
         this.alive = true
         this.attackZones = []
         this.attackZoneUntil = 0
+        this.animationUntil = 0
         this.energy = this.config.resources.maxEnergy
         this.hp = this.maxHp
         this.mana = this.config.resources.maxMana
@@ -222,6 +263,7 @@ export class GameCharacter {
         this.respawnAt = 0
         this.stunUntil = 0
         this.velocity = zeroVector()
+        this.setAnimation('idle', now)
     }
 
     private snapshotTags(now: number): string[] {

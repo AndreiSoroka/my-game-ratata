@@ -4,7 +4,8 @@ import {
 } from '@my-game-ratata/contracts'
 import type { ServerWebSocket } from 'bun'
 
-import type { GameRoom, RoomSocketData } from './game/room'
+import type { GameRoom } from './game/room'
+import type { RoomSocketData } from './game/roomMessaging'
 
 const jsonHeaders = {
     'content-type': 'application/json; charset=utf-8',
