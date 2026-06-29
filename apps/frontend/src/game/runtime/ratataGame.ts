@@ -6,7 +6,7 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
-import { Color, DisplayMode, Engine, Flags, PointerButton, PointerScope, vec } from 'excalibur'
+import { Color, DisplayMode, Engine, PointerButton, PointerScope, vec } from 'excalibur'
 
 import { createCharacterResources } from './characterResources'
 import { chatDuration, type ChatInputState, chatMaxLength } from './chatInput'
@@ -33,6 +33,7 @@ export class RatataGame {
     private socket: WebSocket | undefined
     private chatActive = false
     private chatDraft = ''
+    private stopped = false
     private readonly pressedKeys = new Set<string>()
     private lastAxis: Vector2 = { x: 0, y: 0 }
 
@@ -41,8 +42,8 @@ export class RatataGame {
     }
 
     public async start(): Promise<void> {
+        this.stopped = false
         this.options.onStatus('Loading')
-        Flags.useCanvasGraphicsContext()
         const canvas = this.createCanvas()
         const resources = createCharacterResources()
         const map = await loadRenderedTiledMap()
@@ -65,6 +66,7 @@ export class RatataGame {
     }
 
     public stop(): void {
+        this.stopped = true
         window.removeEventListener('keydown', this.handleKeyDown)
         window.removeEventListener('keyup', this.handleKeyUp)
         this.canvas?.removeEventListener('contextmenu', preventContextMenu)
@@ -107,9 +109,17 @@ export class RatataGame {
             this.handleSocketMessage(event)
         })
         socket.addEventListener('close', () => {
+            if (this.stopped) {
+                return
+            }
+
             this.options.onStatus('Disconnected')
         })
         socket.addEventListener('error', () => {
+            if (this.stopped) {
+                return
+            }
+
             this.options.onError('Connection failed')
         })
     }

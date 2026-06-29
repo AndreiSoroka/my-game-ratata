@@ -36,7 +36,7 @@ export default defineConfig({
         /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
         actionTimeout: 0,
         /* Base URL to use in actions like `await page.goto('/')`. */
-        baseURL: process.env.CI ? 'http://127.0.0.1:4173' : 'http://127.0.0.1:5173',
+        baseURL: 'http://127.0.0.1:5173',
 
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: 'on-first-retry',
@@ -99,14 +99,20 @@ export default defineConfig({
     // outputDir: 'test-results/',
 
     /* Run your local dev server before starting the tests */
-    webServer: {
-        /**
-         * Use the dev server by default for faster feedback loop.
-         * Use the preview server on CI for more realistic testing.
-         * Playwright will re-use the local server if there is already a dev-server running.
-         */
-        command: process.env.CI ? 'bun run preview' : 'bun run dev',
-        port: process.env.CI ? 4173 : 5173,
-        reuseExistingServer: !process.env.CI,
-    },
+    webServer: [
+        {
+            command: 'PORT=3000 bun run --cwd ../backend dev',
+            port: 3000,
+            reuseExistingServer: !process.env.CI,
+        },
+        {
+            /**
+             * Use the dev server so VITE_BACKEND_WS_URL points at the paired backend.
+             * Playwright will re-use local servers if they are already running.
+             */
+            command: 'VITE_BACKEND_WS_URL=ws://127.0.0.1:3000/ws bun run dev',
+            port: 5173,
+            reuseExistingServer: !process.env.CI,
+        },
+    ],
 })

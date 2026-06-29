@@ -57,9 +57,14 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
 </script>
 
 <template>
-    <section class="ratata-ui-panel ratata-ui-status player-status" aria-label="Player status">
+    <section
+        class="ratata-ui-panel ratata-ui-status ratata-kenney-window player-status"
+        aria-label="Player status"
+    >
         <div class="ratata-ui-status__header">
-            <span class="ratata-ui-status__name">{{ character.nickname }}</span>
+            <span class="ratata-ui-status__name ratata-kenney-title">
+                {{ character.nickname }}
+            </span>
             <span class="ratata-ui-status__server">{{ status }}</span>
         </div>
         <div class="ratata-ui-status__bars">
@@ -67,13 +72,16 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
                 <span class="ratata-ui-resource__label">
                     {{ resourceLabel(resource.kind) }}
                 </span>
-                <span class="ratata-ui-resource__track">
+                <span class="ratata-ui-resource__track ratata-kenney-bar">
                     <span
-                        class="ratata-ui-resource__value"
+                        class="ratata-ui-resource__value ratata-kenney-bar__fill"
                         :class="resourceClass(resource.kind)"
                         :style="{ width: resourcePercent(resource) }"
                     ></span>
-                    <span class="ratata-ui-resource__text" :aria-label="resourceAria(resource)">
+                    <span
+                        class="ratata-ui-resource__text ratata-kenney-bar__text"
+                        :aria-label="resourceAria(resource)"
+                    >
                         {{ resourceText(resource) }}
                     </span>
                 </span>
@@ -89,19 +97,9 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
     right: 14px;
     z-index: 3;
     width: min(330px, calc(100vw - 28px));
-    padding: 12px 14px;
-    border-width: 2px;
-    box-shadow:
-        0 0 0 1px #05080d,
-        0 8px 0 rgba(0, 0, 0, 0.22);
-}
-
-.player-status::before {
-    inset: 4px;
-}
-
-.player-status::after {
-    inset: -2px;
+    min-width: 280px;
+    padding: 8px 12px 10px;
+    border-width: 10px;
 }
 
 .player-status .ratata-ui-status__header {
@@ -131,6 +129,7 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
 }
 
 .player-status .ratata-ui-resource__track {
-    height: 15px;
+    height: 28px;
+    min-width: 0;
 }
 </style>

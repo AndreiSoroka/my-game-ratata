@@ -29,9 +29,13 @@ export interface Vector2 {
 
 export type CharacterFacing = 'up' | 'down' | 'left' | 'right'
 
-export type CharacterArchetype = 'human' | 'skeleton'
+export type CharacterArchetype = 'human' | 'skeleton' | 'slime'
 
 export type CharacterControllerKind = 'network_player' | 'mob1'
+
+export type CharacterFactionId = 'monsters' | 'peaceful'
+
+export type CharacterReputation = Partial<Record<CharacterFactionId, number>>
 
 export type CharacterAnimationAction =
     'idle' | 'walk' | 'attack' | 'damaged' | 'death'
@@ -70,12 +74,14 @@ export interface CharacterSnapshot {
     controllerKind: CharacterControllerKind
     cooldowns: CharacterCooldownsSnapshot
     facing: CharacterFacing
+    faction: CharacterFactionId
     hp: number
     id: string
     maxHp: number
     nickname: string
     path: Vector2[]
     position: Vector2
+    reputation: CharacterReputation
     resources: CharacterResourcesSnapshot
     tags: string[]
     velocity: Vector2

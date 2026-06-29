@@ -5,7 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { GameCharacter as Character, type GameCharacter } from './character'
-import { attemptAttack } from './combat'
+import { attemptAttack, resolvePendingAttackHit } from './combat'
 import {
     type CharacterController,
     NetworkPlayerController,
@@ -17,7 +17,7 @@ import { loadNavigationService, type NavigationService } from './navigation'
 import {
     createSnapshot,
     faceNearestTarget,
-    findVisiblePlayer as findVisiblePlayerInRoom,
+    findVisibleTarget as findVisibleTargetInRoom,
 } from './queries'
 import {
     broadcast,
@@ -27,7 +27,7 @@ import {
     send,
     sendError,
 } from './roomMessaging'
-import { createSkeleton, playerSpawn } from './spawns'
+import { createSkeleton, createSlime, playerSpawn } from './spawns'
 
 const tickMs = 50
 const playerRespawnMs = 5000
@@ -46,7 +46,7 @@ export class GameRoom {
 
     public constructor(navigation = loadNavigationService()) {
         this.navigation = navigation
-        this.spawnSkeleton()
+        this.spawnNpcs()
     }
 
     public start(): void {
@@ -109,11 +109,11 @@ export class GameRoom {
         })
     }
 
-    public findVisiblePlayer(
+    public findVisibleTarget(
         observer: GameCharacter,
         radius: number
     ): GameCharacter | undefined {
-        return findVisiblePlayerInRoom(
+        return findVisibleTargetInRoom(
             this.characters.values(),
             this.navigation,
             observer,
@@ -121,19 +121,17 @@ export class GameRoom {
         )
     }
 
-    public requestAttack(actor: GameCharacter): void {
+    public requestAttack(actor: GameCharacter, now = Date.now()): void {
         const targets = [...this.characters.values()]
         const events = attemptAttack({
             actor,
-            now: Date.now(),
+            now,
             respawnDelayMsFor: resolveRespawnDelayMs,
             targets,
             tileSize: this.navigation.grid.tileWidth,
         })
 
-        for (const event of events) {
-            broadcastEvent(this.connections.keys(), event)
-        }
+        this.broadcastEvents(events)
     }
 
     public snapshot(now = Date.now()): WorldSnapshot {
@@ -161,6 +159,17 @@ export class GameRoom {
         nickname: string,
         archetype: GameCharacter['archetype']
     ): void {
+        const nicknameKey = normalizeNickname(nickname)
+        const existingPlayerId = this.playerIdsByNickname.get(nicknameKey)
+
+        if (
+            existingPlayerId !== undefined &&
+            this.isPlayerConnected(existingPlayerId, ws)
+        ) {
+            sendError(ws, 'name_taken', 'Nickname is already in use')
+            return
+        }
+
         const existingId = this.connections.get(ws)
 
         if (existingId !== undefined) {
@@ -169,8 +178,6 @@ export class GameRoom {
             existingCharacter?.clearPath()
         }
 
-        const nicknameKey = normalizeNickname(nickname)
-        const existingPlayerId = this.playerIdsByNickname.get(nicknameKey)
         const existingCharacter =
             existingPlayerId === undefined
                 ? undefined
@@ -255,17 +262,38 @@ export class GameRoom {
             }
         }
 
+        for (const character of this.characters.values()) {
+            this.broadcastEvents(
+                resolvePendingAttackHit({
+                    actor: character,
+                    now,
+                    respawnDelayMsFor: resolveRespawnDelayMs,
+                    targets: [...this.characters.values()],
+                    tileSize: this.navigation.grid.tileWidth,
+                })
+            )
+        }
+
         broadcast(this.connections.keys(), {
             snapshot: this.snapshot(now),
             type: 'snapshot',
         })
     }
 
-    private spawnSkeleton(): void {
-        const { character, controller } = createSkeleton(this.navigation)
+    private broadcastEvents(events: ReturnType<typeof attemptAttack>): void {
+        for (const event of events) {
+            broadcastEvent(this.connections.keys(), event)
+        }
+    }
 
-        this.characters.set(character.id, character)
-        this.controllers.set(character.id, controller)
+    private spawnNpcs(): void {
+        for (const { character, controller } of [
+            createSkeleton(this.navigation),
+            createSlime(this.navigation),
+        ]) {
+            this.characters.set(character.id, character)
+            this.controllers.set(character.id, controller)
+        }
     }
 
     private createPlayerCharacter(
@@ -298,6 +326,16 @@ export class GameRoom {
         }
 
         return this.characters.get(playerId)
+    }
+
+    private isPlayerConnected(playerId: string, exceptWs: RoomSocket): boolean {
+        for (const [connection, connectedPlayerId] of this.connections) {
+            if (connection !== exceptWs && connectedPlayerId === playerId) {
+                return true
+            }
+        }
+
+        return false
     }
 }
 

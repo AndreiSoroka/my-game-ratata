@@ -25,7 +25,7 @@ function garbleText(text: string): string {
     for (let index = 0; index < text.length; index += 1) {
         const character = text.charAt(index)
 
-        if (character.trim().length === 0 || !/[a-zA-Z0-9]/.test(character)) {
+        if (character.trim().length === 0 || !/[\p{L}\p{N}]/u.test(character)) {
             result += character
             continue
         }

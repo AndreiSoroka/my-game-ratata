@@ -140,7 +140,7 @@ function parseVector(input: unknown): Vector2 | undefined {
 }
 
 function parseArchetype(input: unknown): CharacterArchetype | undefined {
-    if (input === 'human' || input === 'skeleton') {
+    if (input === 'human' || input === 'skeleton' || input === 'slime') {
         return input
     }
 

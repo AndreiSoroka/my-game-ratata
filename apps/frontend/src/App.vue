@@ -29,17 +29,14 @@ const playerCount = computed(
             (character) => character.controllerKind === 'network_player'
         ).length ?? 0
 )
-const skeletonHp = computed(() => {
-    const skeleton = snapshot.value?.characters.find(
-        (character) => character.controllerKind === 'mob1'
-    )
-
-    if (skeleton === undefined) {
-        return '...'
-    }
-
-    return `${String(skeleton.hp)}/${String(skeleton.maxHp)}`
-})
+const monsterStatuses = computed(() =>
+    (snapshot.value?.characters ?? [])
+        .filter((character) => character.controllerKind === 'mob1')
+        .map(
+            (character) =>
+                `${formatArchetype(character.archetype)} ${String(character.hp)}/${String(character.maxHp)}`
+        )
+)
 const localCharacter = computed(() => {
     const id = localPlayerId.value
 
@@ -61,7 +58,7 @@ async function joinGame(): Promise<void> {
 
     if (gameHost.value === undefined) {
         errorMessage.value = 'Game surface is not ready'
-        isJoining.value = false
+        cleanupFailedJoin()
         return
     }
 
@@ -73,6 +70,7 @@ async function joinGame(): Promise<void> {
         },
         onError: (message) => {
             errorMessage.value = message
+            cleanupFailedJoin()
         },
         onSnapshot: (nextSnapshot, nextLocalPlayerId) => {
             snapshot.value = nextSnapshot
@@ -87,8 +85,32 @@ async function joinGame(): Promise<void> {
     game.value = runtime
     await runtime.start().catch((error: unknown) => {
         errorMessage.value = error instanceof Error ? error.message : 'Game failed to start'
-        isJoining.value = false
+        cleanupFailedJoin()
     })
+}
+
+function cleanupFailedJoin(): void {
+    if (localPlayerId.value !== undefined) {
+        isJoining.value = false
+        return
+    }
+
+    game.value?.stop()
+    game.value = undefined
+    localPlayerId.value = undefined
+    snapshot.value = undefined
+    chatInput.value = {
+        active: false,
+        draft: '',
+        maxLength: 100,
+    }
+    isJoining.value = false
+    isStarted.value = false
+    status.value = 'Ready'
+}
+
+function formatArchetype(archetype: string): string {
+    return archetype.charAt(0).toUpperCase() + archetype.slice(1)
 }
 
 onBeforeUnmount(() => {
@@ -126,7 +148,7 @@ onBeforeUnmount(() => {
                 </div>
                 <div>
                     <span>{{ playerCount }} players</span>
-                    <span>Skeleton {{ skeletonHp }}</span>
+                    <span v-for="monster in monsterStatuses" :key="monster">{{ monster }}</span>
                     <span v-if="localPlayerId">{{ localPlayerId }}</span>
                 </div>
             </div>

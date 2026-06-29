@@ -3,6 +3,7 @@ import type { AttackZone, CharacterArchetype } from '@my-game-ratata/contracts'
 export interface CharacterCombatStats {
     attackCooldownMs: number
     attackLockMs: number
+    attackWindupMs: number
     critChance: number
     critMultiplier: number
     maxDamage: number
@@ -40,6 +41,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
         combat: {
             attackCooldownMs: 400,
             attackLockMs: 450,
+            attackWindupMs: 50,
             critChance: 0.15,
             critMultiplier: 1.6,
             maxDamage: 9,
@@ -69,6 +71,37 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
         combat: {
             attackCooldownMs: 500,
             attackLockMs: 400,
+            attackWindupMs: 220,
+            critChance: 0.12,
+            critMultiplier: 1.5,
+            maxDamage: 8,
+            maxHp: 20,
+            minDamage: 4,
+            rangeScale: 1.2,
+            stunChance: 0.15,
+            stunMaxDurationMs: 900,
+            stunMinDurationMs: 400,
+        },
+        hpRegenIdlePerSec: 0.45,
+        hpRegenMovePerSec: 0.18,
+        moveSpeed: 82,
+        resources: {
+            attackEnergyCost: 12,
+            attackManaCost: 0,
+            energyRegenIdle: 5,
+            energyRegenMove: 2,
+            manaRegenIdle: 0,
+            manaRegenMove: 0,
+            maxEnergy: 225,
+            maxMana: 0,
+        },
+    },
+    slime: {
+        attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 1.2 }],
+        combat: {
+            attackCooldownMs: 500,
+            attackLockMs: 400,
+            attackWindupMs: 220,
             critChance: 0.12,
             critMultiplier: 1.5,
             maxDamage: 8,

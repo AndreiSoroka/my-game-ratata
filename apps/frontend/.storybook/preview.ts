@@ -1,3 +1,7 @@
+/// <reference types="vite/client" />
+
+import '../src/assets/base.css'
+
 import type { Preview } from '@storybook/web-components-vite'
 
 const preview: Preview = {

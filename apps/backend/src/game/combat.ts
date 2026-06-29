@@ -1,6 +1,7 @@
 import type { AttackZone, GameEventPayload } from '@my-game-ratata/contracts'
 
 import { type GameCharacter } from './character'
+import { canTargetByFaction } from './factions'
 import { distance } from './math'
 
 interface AttackContext {
@@ -16,6 +17,9 @@ interface HitCandidate {
     target: GameCharacter
 }
 
+const exhaustedAttackDamageMultiplier = 1 / 3
+const exhaustedAttackDurationMultiplier = 2
+
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
     const { actor, now } = context
 
@@ -23,22 +27,57 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
         return []
     }
 
-    actor.lastAttackAt = now
-    actor.spendAttackResources()
-    actor.setAnimation('attack', now, actor.config.combat.attackLockMs)
-    actor.attackZones = buildAttackZones(actor, context.tileSize)
-    actor.attackZoneUntil = now + actor.config.combat.attackLockMs
+    const resourceSpend = actor.spendAttackResources()
+    const durationMultiplier = resourceSpend.fullyPowered
+        ? 1
+        : exhaustedAttackDurationMultiplier
+    const damageMultiplier = resourceSpend.fullyPowered
+        ? 1
+        : exhaustedAttackDamageMultiplier
+    const lockMs = actor.config.combat.attackLockMs * durationMultiplier
+    const windupMs = actor.config.combat.attackWindupMs * durationMultiplier
 
-    const events: GameEventPayload[] = [{ actorId: actor.id, kind: 'attack' }]
+    actor.lastAttackAt = now
+    actor.lockAction(now, lockMs)
+    actor.queueAttackHit(now, {
+        canStun: resourceSpend.canStun,
+        damageMultiplier,
+        targetEnergyDrain: targetEnergyDrainFor(actor),
+        windupMs,
+    })
+    actor.setAnimation('attack', now, lockMs)
+    actor.attackZones = buildAttackZones(actor, context.tileSize)
+    actor.attackZoneUntil = now + lockMs
+
+    return [{ actorId: actor.id, kind: 'attack' }]
+}
+
+export function resolvePendingAttackHit(
+    context: AttackContext
+): GameEventPayload[] {
+    const { actor, now } = context
+
+    const attack = actor.consumePendingAttackHit(now)
+
+    if (attack === undefined) {
+        return []
+    }
+
+    if (!actor.alive || actor.stunUntil > now) {
+        return []
+    }
+
+    const events: GameEventPayload[] = []
     const target = findNearestHit(actor, context.targets)
 
     if (target === undefined) {
         return events
     }
 
-    const damage = rollDamage(actor)
+    const damage = rollDamage(actor, attack.damageMultiplier)
     target.applyDamage(damage, now)
-    maybeApplyStun(actor, target, now)
+    target.drainEnergy(attack.targetEnergyDrain)
+    maybeApplyStun(actor, target, now, attack.canStun)
     events.push({
         actorId: actor.id,
         amount: damage,
@@ -59,11 +98,15 @@ function canAttack(actor: GameCharacter, now: number): boolean {
         return false
     }
 
+    if (actor.isActionLocked(now)) {
+        return false
+    }
+
     if (now - actor.lastAttackAt < actor.config.combat.attackCooldownMs) {
         return false
     }
 
-    return actor.canSpendAttackResources()
+    return true
 }
 
 function buildAttackZones(
@@ -129,6 +172,7 @@ function findNearestHit(
 ): GameCharacter | undefined {
     const candidates = targets
         .filter((target) => target.id !== actor.id && target.alive)
+        .filter((target) => canTargetByFaction(actor, target))
         .filter((target) => isInZones(target, actor.attackZones))
         .map<HitCandidate>((target) => ({
             distance: distance(actor.position, target.position),
@@ -149,24 +193,29 @@ function isInZones(target: GameCharacter, zones: AttackZone[]): boolean {
     )
 }
 
-function rollDamage(actor: GameCharacter): number {
+function rollDamage(actor: GameCharacter, multiplier = 1): number {
     const { combat } = actor.config
     const low = Math.min(combat.minDamage, combat.maxDamage)
     const high = Math.max(combat.minDamage, combat.maxDamage)
-    const base = Math.floor(low + Math.random() * (high - low + 1))
+    let damage = Math.floor(low + Math.random() * (high - low + 1))
 
     if (Math.random() < combat.critChance) {
-        return Math.max(1, Math.round(base * combat.critMultiplier))
+        damage = Math.round(damage * combat.critMultiplier)
     }
 
-    return base
+    return Math.max(1, Math.round(damage * multiplier))
 }
 
 function maybeApplyStun(
     actor: GameCharacter,
     target: GameCharacter,
-    now: number
+    now: number,
+    canStun: boolean
 ): void {
+    if (!canStun) {
+        return
+    }
+
     const { combat } = actor.config
 
     if (Math.random() >= combat.stunChance) {
@@ -178,4 +227,8 @@ function maybeApplyStun(
     const duration = Math.floor(low + Math.random() * (high - low + 1))
 
     target.stunUntil = Math.max(target.stunUntil, now + duration)
+}
+
+function targetEnergyDrainFor(actor: GameCharacter): number {
+    return Math.ceil(actor.config.resources.attackEnergyCost / 2)
 }

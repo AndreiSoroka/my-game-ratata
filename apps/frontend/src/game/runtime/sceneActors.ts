@@ -33,12 +33,12 @@ interface CharacterBundle {
 
 const labelFont = new Font({
     color: Color.White,
-    family: 'Inter, system-ui, sans-serif',
+    family: 'Pixelify Sans, system-ui, sans-serif',
     size: 8,
 })
 const messageFont = new Font({
     color: Color.White,
-    family: 'Inter, system-ui, sans-serif',
+    family: 'Pixelify Sans, system-ui, sans-serif',
     size: 7,
 })
 const cameraZoom = 3
@@ -83,7 +83,7 @@ export class SceneActors {
         this.removeMissing(snapshot.characters)
 
         for (const character of snapshot.characters) {
-            this.updateCharacter(character)
+            this.updateCharacter(character, character.id === localPlayerId)
         }
 
         this.updateAttackZones(snapshot.characters.flatMap((character) => character.attackZones))
@@ -102,22 +102,23 @@ export class SceneActors {
         bundle.messageUntil = performance.now() + durationMs
     }
 
-    private updateCharacter(snapshot: CharacterSnapshot): void {
+    private updateCharacter(snapshot: CharacterSnapshot, isLocalPlayer: boolean): void {
         const bundle = this.getBundle(snapshot)
         const position = vec(snapshot.position.x, snapshot.position.y)
         bundle.body.pos = position
         bundle.body.z = snapshot.position.y
         bundle.message.pos = vec(snapshot.position.x - 38, snapshot.position.y - 58)
         bundle.message.z = bundle.body.z + 4
-        bundle.label.pos = vec(snapshot.position.x - 28, snapshot.position.y - 44)
+        bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - 44)
         bundle.label.z = bundle.body.z + 3
         bundle.hpBack.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
         bundle.hpBack.z = bundle.body.z + 2
         bundle.hpFill.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
         bundle.hpFill.z = bundle.body.z + 2
         bundle.label.text = snapshot.nickname
+        bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
         this.updateGraphic(bundle.body, snapshot)
-        this.updateHealth(bundle, snapshot)
+        this.updateHealth(bundle, snapshot, isLocalPlayer)
         this.updateMessage(bundle)
     }
 
@@ -162,9 +163,15 @@ export class SceneActors {
         actor.graphics.opacity = snapshot.alive ? 1 : 0.55
     }
 
-    private updateHealth(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {
+    private updateHealth(
+        bundle: CharacterBundle,
+        snapshot: CharacterSnapshot,
+        isLocalPlayer: boolean
+    ): void {
         const width = 32
         const ratio = Math.max(0, Math.min(1, snapshot.hp / snapshot.maxHp))
+        const opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.35
+
         bundle.hpFill.graphics.use(
             new Rectangle({
                 color: ratio > 0.35 ? Color.Green : Color.Red,
@@ -172,7 +179,8 @@ export class SceneActors {
                 width: Math.max(1, width * ratio),
             })
         )
-        bundle.hpFill.graphics.opacity = snapshot.alive ? 1 : 0.35
+        bundle.hpBack.graphics.opacity = opacity
+        bundle.hpFill.graphics.opacity = opacity
     }
 
     private updateMessage(bundle: CharacterBundle): void {
@@ -253,7 +261,7 @@ function createBundle(): CharacterBundle {
         body: new Actor({ anchor: vec(0.5, 0.75), height: 48, width: 48 }),
         hpBack: createBar(Color.fromHex('#171717'), 32),
         hpFill: createBar(Color.Green, 32),
-        label: new Label({ font: labelFont, text: '' }),
+        label: new Label({ anchor: vec(0.5, 0.5), font: labelFont, text: '' }),
         message: new Label({ font: messageFont, text: '' }),
         messageUntil: 0,
     }
@@ -279,7 +287,11 @@ function removeBundle(engine: Engine, bundle: CharacterBundle): void {
 }
 
 function visualId(archetype: CharacterArchetype): CharacterId {
-    return archetype === 'skeleton' ? 'skeleton' : 'player'
+    if (archetype === 'skeleton' || archetype === 'slime') {
+        return archetype
+    }
+
+    return 'player'
 }
 
 function toCatalogDirection(facing: CharacterFacing): 'up' | 'down' | 'left' | 'right' {

@@ -16,6 +16,7 @@ export function createSkeleton(
     const skeleton = new Character({
         archetype: 'skeleton',
         controllerKind: 'mob1',
+        faction: 'monsters',
         id: 'mob_skeleton_1',
         nickname: 'Skeleton',
         spawnPosition: navigation.tileToWorld({ x: 10, y: 5 }),
@@ -23,7 +24,23 @@ export function createSkeleton(
 
     return {
         character: skeleton,
-        controller: new Mob1Controller(13_371),
+        controller: new Mob1Controller(13_371, { fleeWhenThreatened: false }),
+    }
+}
+
+export function createSlime(navigation: NavigationService): SpawnedCharacter {
+    const slime = new Character({
+        archetype: 'slime',
+        controllerKind: 'mob1',
+        faction: 'monsters',
+        id: 'mob_slime_1',
+        nickname: 'Slime',
+        spawnPosition: navigation.tileToWorld({ x: 11, y: 5 }),
+    })
+
+    return {
+        character: slime,
+        controller: new Mob1Controller(41_337, { fleeWhenThreatened: true }),
     }
 }
 

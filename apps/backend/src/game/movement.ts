@@ -27,6 +27,12 @@ export function advanceCharacter(
         return undefined
     }
 
+    if (character.isActionLocked(now)) {
+        character.velocity = zeroVector()
+        character.applyRegen(deltaMs, false)
+        return undefined
+    }
+
     const before = { ...character.position }
     character.position = nextPosition(context)
     character.velocity = {

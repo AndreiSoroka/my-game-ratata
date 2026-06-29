@@ -4,18 +4,29 @@ import type {
     CharacterArchetype,
     CharacterControllerKind,
     CharacterFacing,
+    CharacterFactionId,
+    CharacterReputation,
     CharacterSnapshot,
     Vector2,
 } from '@my-game-ratata/contracts'
 
 import { type CharacterConfig, getCharacterConfig } from './characterConfig'
+import { createCharacterSnapshot } from './characterSnapshot'
+import {
+    type AttackResourceSpend,
+    type PendingAttackHit,
+    regen,
+    spendResource,
+} from './characterState'
 import { normalize, resolveFacing, zeroVector } from './math'
 
 interface GameCharacterOptions {
     archetype: CharacterArchetype
     controllerKind: CharacterControllerKind
+    faction?: CharacterFactionId
     id: string
     nickname: string
+    reputation?: CharacterReputation
     spawnPosition: Vector2
 }
 
@@ -23,14 +34,17 @@ export class GameCharacter {
     public readonly archetype: CharacterArchetype
     public readonly config: CharacterConfig
     public readonly controllerKind: CharacterControllerKind
+    public readonly faction: CharacterFactionId
     public readonly id: string
     public readonly maxHp: number
     public readonly nickname: string
+    public readonly reputation: CharacterReputation
     public readonly spawnPosition: Vector2
     public animationAction: CharacterAnimationAction = 'idle'
     public animationStartedAt = Date.now()
     public animationUntil = 0
     public alive = true
+    public actionLockUntil = 0
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
     public energy: number
@@ -39,6 +53,7 @@ export class GameCharacter {
     public lastAttackAt = -Infinity
     public mana: number
     public path: Vector2[] = []
+    public pendingAttack: PendingAttackHit | undefined
     public position: Vector2
     public respawnAt = 0
     public stunUntil = 0
@@ -51,6 +66,8 @@ export class GameCharacter {
         this.archetype = options.archetype
         this.config = getCharacterConfig(options.archetype)
         this.controllerKind = options.controllerKind
+        this.faction =
+            options.faction ?? defaultFactionFor(options.controllerKind)
         this.energy = this.config.resources.maxEnergy
         this.hp = this.config.combat.maxHp
         this.id = options.id
@@ -58,6 +75,10 @@ export class GameCharacter {
         this.maxHp = this.config.combat.maxHp
         this.nickname = options.nickname
         this.position = { ...options.spawnPosition }
+        this.reputation = {
+            monsters: -100,
+            ...options.reputation,
+        }
         this.spawnPosition = { ...options.spawnPosition }
     }
 
@@ -82,6 +103,10 @@ export class GameCharacter {
     public clearPath(): void {
         this.path = []
         this.pathIndex = 0
+    }
+
+    public remainingPath(): Vector2[] {
+        return this.path.slice(this.pathIndex)
     }
 
     public hasPath(): boolean {
@@ -129,6 +154,47 @@ export class GameCharacter {
         }
 
         this.setAnimation(isMoving ? 'walk' : 'idle', now)
+    }
+
+    public lockAction(now: number, durationMs: number): void {
+        this.actionLockUntil = Math.max(this.actionLockUntil, now + durationMs)
+    }
+
+    public isActionLocked(now: number): boolean {
+        return this.actionLockUntil > now
+    }
+
+    public queueAttackHit(
+        now: number,
+        attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number }
+    ): void {
+        this.pendingAttack = {
+            canStun: attack.canStun,
+            damageMultiplier: attack.damageMultiplier,
+            hitAt: now + attack.windupMs,
+            targetEnergyDrain: attack.targetEnergyDrain,
+        }
+    }
+
+    public isAttackHitDue(now: number): boolean {
+        return (
+            this.pendingAttack !== undefined && now >= this.pendingAttack.hitAt
+        )
+    }
+
+    public consumePendingAttackHit(now: number): PendingAttackHit | undefined {
+        if (!this.isAttackHitDue(now)) {
+            return undefined
+        }
+
+        const attack = this.pendingAttack
+        this.pendingAttack = undefined
+
+        return attack
+    }
+
+    public clearPendingAttackHit(): void {
+        this.pendingAttack = undefined
     }
 
     public tickTimedState(now: number): void {
@@ -181,10 +247,33 @@ export class GameCharacter {
         )
     }
 
-    public spendAttackResources(): void {
+    public reputationWith(faction: CharacterFactionId): number {
+        return this.reputation[faction] ?? 0
+    }
+
+    public spendAttackResources(): AttackResourceSpend {
         const resources = this.config.resources
-        this.energy = Math.max(0, this.energy - resources.attackEnergyCost)
-        this.mana = Math.max(0, this.mana - resources.attackManaCost)
+        const canStun =
+            resources.maxEnergy > 0 &&
+            this.energy >= resources.maxEnergy &&
+            this.canSpendAttackResources()
+        const fullyPowered = this.canSpendAttackResources()
+
+        this.energy = spendResource(this.energy, resources.attackEnergyCost)
+        this.mana = spendResource(this.mana, resources.attackManaCost)
+
+        return { canStun, fullyPowered }
+    }
+
+    public drainEnergy(amount: number): number {
+        if (amount <= 0) {
+            return 0
+        }
+
+        const before = this.energy
+        this.energy = Math.max(0, this.energy - amount)
+
+        return before - this.energy
     }
 
     public applyDamage(amount: number, now: number): void {
@@ -196,8 +285,10 @@ export class GameCharacter {
 
         if (this.hp <= 0) {
             this.alive = false
+            this.actionLockUntil = 0
             this.setAnimation('death', now)
             this.clearPath()
+            this.clearPendingAttackHit()
             this.setMoveInput(zeroVector())
             this.velocity = zeroVector()
             return
@@ -213,49 +304,16 @@ export class GameCharacter {
     }
 
     public snapshot(now: number): CharacterSnapshot {
-        return {
-            alive: this.alive,
-            animation: {
-                action: this.animationAction,
-                startedAt: this.animationStartedAt,
-            },
-            archetype: this.archetype,
-            attackZones: this.attackZones,
-            controllerKind: this.controllerKind,
-            cooldowns: {
-                attackMsLeft: Math.max(
-                    0,
-                    this.config.combat.attackCooldownMs -
-                        (now - this.lastAttackAt)
-                ),
-                respawnMsLeft: this.alive
-                    ? 0
-                    : Math.max(0, this.respawnAt - now),
-                stunMsLeft: Math.max(0, this.stunUntil - now),
-            },
-            facing: this.facing,
-            hp: Math.round(this.hp),
-            id: this.id,
-            maxHp: this.maxHp,
-            nickname: this.nickname,
-            path: this.path.slice(this.pathIndex),
-            position: this.position,
-            resources: {
-                energy: Math.round(this.energy),
-                mana: Math.round(this.mana),
-                maxEnergy: this.config.resources.maxEnergy,
-                maxMana: this.config.resources.maxMana,
-            },
-            tags: this.snapshotTags(now),
-            velocity: this.velocity,
-        }
+        return createCharacterSnapshot(this, now)
     }
 
     private respawn(now: number): void {
         this.alive = true
+        this.actionLockUntil = 0
         this.attackZones = []
         this.attackZoneUntil = 0
         this.animationUntil = 0
+        this.clearPendingAttackHit()
         this.energy = this.config.resources.maxEnergy
         this.hp = this.maxHp
         this.mana = this.config.resources.maxMana
@@ -265,31 +323,10 @@ export class GameCharacter {
         this.velocity = zeroVector()
         this.setAnimation('idle', now)
     }
-
-    private snapshotTags(now: number): string[] {
-        const tags = [...this.tags]
-
-        if (!this.alive) {
-            tags.push('state.dead')
-        }
-
-        if (this.stunUntil > now) {
-            tags.push('state.cc.stunned')
-        }
-
-        return tags
-    }
 }
 
-function regen(
-    current: number,
-    max: number,
-    perSecond: number,
-    deltaMs: number
-): number {
-    if (max <= 0 || perSecond <= 0) {
-        return Math.max(0, Math.min(current, max))
-    }
-
-    return Math.max(0, Math.min(max, current + perSecond * (deltaMs / 1000)))
+function defaultFactionFor(
+    controllerKind: CharacterControllerKind
+): CharacterFactionId {
+    return controllerKind === 'network_player' ? 'peaceful' : 'monsters'
 }

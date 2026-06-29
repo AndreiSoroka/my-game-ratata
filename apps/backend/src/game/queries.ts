@@ -1,6 +1,7 @@
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 
@@ -16,20 +17,20 @@ export function createSnapshot(
     }
 }
 
-export function findVisiblePlayer(
+export function findVisibleTarget(
     characters: Iterable<GameCharacter>,
     navigation: NavigationService,
     observer: GameCharacter,
     radius: number
 ): GameCharacter | undefined {
     return [...characters]
-        .filter((character) => character.controllerKind === 'network_player')
-        .filter((player) => player.alive && player.id !== observer.id)
+        .filter((character) => character.alive)
+        .filter((character) => canTargetByFaction(observer, character))
         .filter(
-            (player) => distance(observer.position, player.position) <= radius
+            (target) => distance(observer.position, target.position) <= radius
         )
-        .filter((player) =>
-            navigation.hasLineOfSight(observer.position, player.position)
+        .filter((target) =>
+            navigation.hasLineOfSight(observer.position, target.position)
         )
         .sort(
             (a, b) =>
@@ -45,6 +46,7 @@ export function faceNearestTarget(
 ): void {
     const target = [...characters]
         .filter((character) => character.id !== actor.id && character.alive)
+        .filter((character) => canTargetByFaction(actor, character))
         .map((character) => ({
             character,
             distance: distance(actor.position, character.position),

@@ -1,5 +1,7 @@
 import './interfaceStory.css'
 
+import { kenneyBar, kenneyTitle, kenneyWindow } from './kenneyUi'
+
 export type ResourceKind = 'energy' | 'hp' | 'mana'
 
 export interface ResourceValue {
@@ -75,25 +77,35 @@ export function renderStatusGroup(
     resources: ResourceValue[] = DEFAULT_RESOURCES,
     serverLabel = 'local realm'
 ): HTMLElement {
-    const panel = document.createElement('section')
-    panel.className = 'ratata-ui-panel ratata-ui-status'
+    const panel = kenneyWindow({
+        content: [renderStatusHeader(serverLabel), renderStatusBars(resources)],
+        fixed: true,
+        variant: 'parchment',
+    })
+    panel.classList.add('ratata-ui-panel', 'ratata-ui-status')
     panel.dataset.interfaceReady = 'true'
     panel.setAttribute('aria-label', 'Player status')
 
+    return panel
+}
+
+function renderStatusHeader(serverLabel: string): HTMLElement {
     const header = document.createElement('div')
     header.className = 'ratata-ui-status__header'
 
-    const name = document.createElement('span')
-    name.className = 'ratata-ui-status__name'
-    name.textContent = 'Adventurer'
+    const name = kenneyTitle('Adventurer')
+    name.classList.add('ratata-ui-status__name')
 
     const server = document.createElement('span')
     server.className = 'ratata-ui-status__server'
     server.textContent = serverLabel
 
     header.append(name, server)
-    panel.append(header)
 
+    return header
+}
+
+function renderStatusBars(resources: ResourceValue[]): HTMLElement {
     const list = document.createElement('div')
     list.className = 'ratata-ui-status__bars'
 
@@ -101,9 +113,7 @@ export function renderStatusGroup(
         list.append(renderResourceBar(resource))
     }
 
-    panel.append(list)
-
-    return panel
+    return list
 }
 
 export function renderLogPanel({
@@ -189,19 +199,22 @@ function renderResourceBar(resource: ResourceValue): HTMLElement {
     label.className = 'ratata-ui-resource__label'
     label.textContent = meta.shortLabel
 
-    const track = document.createElement('span')
-    track.className = 'ratata-ui-resource__track'
+    const track = kenneyBar({
+        current: percent,
+        kind: resource.kind,
+        label: meta.label,
+        max: 100,
+    })
+    track.classList.add('ratata-ui-resource__track')
+    track.querySelector('.ratata-kenney-bar__fill')?.classList.add('ratata-ui-resource__value')
+    track.querySelector('.ratata-kenney-bar__fill')?.classList.add(meta.valueClass)
+    track.querySelector('.ratata-kenney-bar__text')?.classList.add('ratata-ui-resource__text')
+    const text = track.querySelector('.ratata-kenney-bar__text')
+    if (text !== null) {
+        text.textContent = `${safeCurrent}/${safeMax}`
+        text.setAttribute('aria-label', `${meta.label}: ${safeCurrent} of ${safeMax}`)
+    }
 
-    const value = document.createElement('span')
-    value.className = `ratata-ui-resource__value ${meta.valueClass}`
-    value.style.width = `${percent}%`
-
-    const text = document.createElement('span')
-    text.className = 'ratata-ui-resource__text'
-    text.textContent = `${safeCurrent}/${safeMax}`
-    text.setAttribute('aria-label', `${meta.label}: ${safeCurrent} of ${safeMax}`)
-
-    track.append(value, text)
     bar.append(label, track)
 
     return bar

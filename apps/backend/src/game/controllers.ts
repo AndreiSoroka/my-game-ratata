@@ -5,6 +5,10 @@ import { distance, normalize } from './math'
 import type { NavigationService, TileCoordinate } from './navigation'
 import type { GameRoom } from './room'
 
+export interface Mob1ControllerOptions {
+    fleeWhenThreatened: boolean
+}
+
 export interface CharacterController {
     update(character: GameCharacter, room: GameRoom, now: number): void
 }
@@ -16,11 +20,16 @@ export class NetworkPlayerController implements CharacterController {
 }
 
 export class Mob1Controller implements CharacterController {
+    private readonly options: Mob1ControllerOptions
     private lastPlanAt = 0
     private nextWanderAt = 0
     private seed: number
 
-    public constructor(seed: number) {
+    public constructor(
+        seed: number,
+        options: Mob1ControllerOptions = { fleeWhenThreatened: true }
+    ) {
+        this.options = options
         this.seed = seed
     }
 
@@ -29,23 +38,31 @@ export class Mob1Controller implements CharacterController {
             return
         }
 
-        const target = room.findVisiblePlayer(character, 112)
-
-        if (target !== undefined && shouldFlee(character, target)) {
-            this.flee(character, target, room.navigation, now)
-            return
-        }
-
-        if (
+        const target = room.findVisibleTarget(character, 112)
+        const shouldFleeTarget =
             target !== undefined &&
-            distance(character.position, target.position) <= 24
-        ) {
-            character.clearPath()
+            this.options.fleeWhenThreatened &&
+            shouldFlee(character, target)
+
+        if (target !== undefined && isInMeleeRange(character, target)) {
+            if (!shouldFleeTarget) {
+                character.clearPath()
+            }
             character.updateFacing({
                 x: target.position.x - character.position.x,
                 y: target.position.y - character.position.y,
             })
-            room.requestAttack(character)
+            room.requestAttack(character, now)
+
+            if (shouldFleeTarget) {
+                this.flee(character, target, room.navigation, now)
+            }
+
+            return
+        }
+
+        if (target !== undefined && shouldFleeTarget) {
+            this.flee(character, target, room.navigation, now)
             return
         }
 
@@ -160,6 +177,13 @@ function shouldFlee(character: GameCharacter, target: GameCharacter): boolean {
             !character.canSpendAttackResources()) &&
         distance(character.position, target.position) < 80
     )
+}
+
+function isInMeleeRange(
+    character: GameCharacter,
+    target: GameCharacter
+): boolean {
+    return distance(character.position, target.position) <= 24
 }
 
 function rotate(vector: Vector2, degrees: number): Vector2 {
