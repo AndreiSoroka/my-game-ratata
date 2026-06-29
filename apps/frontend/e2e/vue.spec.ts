@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-// See here how to get started:
-// https://playwright.dev/docs/intro
-test('visits the app root url', async ({ page }) => {
+test('requires a nickname before entering the game', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1')).toHaveText('You did it!')
+
+    await expect(page.locator('h1')).toHaveText('Ratata')
+    await expect(page.getByLabel('Nickname')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Enter' })).toBeDisabled()
 })

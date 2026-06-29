@@ -21,3 +21,138 @@ export interface WorldPosition {
     y: number
     z?: number
 }
+
+export interface Vector2 {
+    x: number
+    y: number
+}
+
+export type CharacterFacing = 'up' | 'down' | 'left' | 'right'
+
+export type CharacterArchetype = 'human' | 'skeleton'
+
+export type CharacterControllerKind = 'network_player' | 'mob1'
+
+export interface AttackZone {
+    maxX: number
+    maxY: number
+    minX: number
+    minY: number
+    ownerId: string
+}
+
+export interface CharacterResourcesSnapshot {
+    energy: number
+    mana: number
+    maxEnergy: number
+    maxMana: number
+}
+
+export interface CharacterCooldownsSnapshot {
+    attackMsLeft: number
+    respawnMsLeft: number
+    stunMsLeft: number
+}
+
+export interface CharacterSnapshot {
+    alive: boolean
+    archetype: CharacterArchetype
+    attackZones: AttackZone[]
+    controllerKind: CharacterControllerKind
+    cooldowns: CharacterCooldownsSnapshot
+    facing: CharacterFacing
+    hp: number
+    id: string
+    maxHp: number
+    nickname: string
+    path: Vector2[]
+    position: Vector2
+    resources: CharacterResourcesSnapshot
+    tags: string[]
+    velocity: Vector2
+}
+
+export interface MapSummary {
+    height: number
+    id: string
+    solidLayerNames: string[]
+    tileHeight: number
+    tileWidth: number
+    width: number
+    worldHeight: number
+    worldWidth: number
+}
+
+export interface JoinClientMessage {
+    archetype?: CharacterArchetype
+    nickname: string
+    type: 'join'
+}
+
+export interface MoveInputClientMessage {
+    axis: Vector2
+    type: 'move_input'
+}
+
+export interface MoveToClientMessage {
+    target: Vector2
+    type: 'move_to'
+}
+
+export interface AttackClientMessage {
+    type: 'attack'
+}
+
+export type ClientMessage =
+    | AttackClientMessage
+    | JoinClientMessage
+    | MoveInputClientMessage
+    | MoveToClientMessage
+
+export interface WorldSnapshot {
+    characters: CharacterSnapshot[]
+    serverTime: number
+    tick: number
+}
+
+export interface WorldInitServerMessage {
+    map: MapSummary
+    playerId: string
+    protocolVersion: ContractProtocolVersion
+    snapshot: WorldSnapshot
+    tickMs: number
+    type: 'world_init'
+}
+
+export type GameEventKind =
+    'attack' | 'damage' | 'death' | 'join' | 'leave' | 'respawn'
+
+export interface GameEventPayload {
+    amount?: number
+    actorId?: string
+    kind: GameEventKind
+    targetId?: string
+}
+
+export interface GameEventServerMessage {
+    event: GameEventPayload
+    serverTime: number
+    type: 'event'
+}
+
+export interface SnapshotServerMessage {
+    snapshot: WorldSnapshot
+    type: 'snapshot'
+}
+
+export interface ErrorServerMessage {
+    code: string
+    message: string
+    type: 'error'
+}
+
+export type ServerMessage =
+    | ErrorServerMessage
+    | GameEventServerMessage
+    | SnapshotServerMessage
+    | WorldInitServerMessage

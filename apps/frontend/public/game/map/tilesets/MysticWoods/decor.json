@@ -1,0 +1,97 @@
+{
+    "columns": 4,
+    "image": "..\/..\/assets\/MysticWoods\/tilesets\/decor_16x16.png",
+    "imageheight": 80,
+    "imagewidth": 64,
+    "margin": 0,
+    "name": "decor_16x16",
+    "spacing": 0,
+    "tilecount": 20,
+    "tiledversion": "1.11.2",
+    "tileheight": 16,
+    "tiles": [
+        {
+            "id": 0,
+            "probability": 0.2
+        },
+        {
+            "id": 1,
+            "probability": 0.2
+        },
+        {
+            "id": 2,
+            "probability": 0.2
+        },
+        {
+            "id": 3,
+            "probability": 0.2
+        },
+        {
+            "id": 4,
+            "probability": 0.02
+        },
+        {
+            "id": 5,
+            "probability": 0.02
+        },
+        {
+            "id": 6,
+            "probability": 0.02
+        },
+        {
+            "id": 7,
+            "probability": 0.02
+        },
+        {
+            "id": 8,
+            "probability": 0.1
+        },
+        {
+            "id": 9,
+            "probability": 0.1
+        },
+        {
+            "id": 10,
+            "probability": 0.1
+        },
+        {
+            "id": 11,
+            "probability": 0.1
+        },
+        {
+            "id": 12,
+            "probability": 0.01
+        },
+        {
+            "id": 13,
+            "probability": 0.01
+        },
+        {
+            "id": 14,
+            "probability": 0.01
+        },
+        {
+            "id": 15,
+            "probability": 0.01
+        },
+        {
+            "id": 16,
+            "probability": 0.005
+        },
+        {
+            "id": 17,
+            "probability": 0.005
+        },
+        {
+            "id": 18,
+            "probability": 0.005
+        },
+        {
+            "id": 19,
+            "probability": 0.005
+        }
+    ],
+    "tilewidth": 16,
+    "type": "tileset",
+    "version": "1.10"
+}

@@ -8,6 +8,7 @@ describe('backend health endpoint', () => {
         const response = createFetchHandler()(
             new Request('http://localhost/health')
         )
+        expectResponse(response)
 
         expect(response.status).toBe(200)
         await expect(response.text()).resolves.toContain(
@@ -19,7 +20,14 @@ describe('backend health endpoint', () => {
         const response = createFetchHandler()(
             new Request('http://localhost/missing')
         )
+        expectResponse(response)
 
         expect(response.status).toBe(404)
     })
 })
+
+function expectResponse(
+    response: Response | undefined
+): asserts response is Response {
+    expect(response).toBeDefined()
+}
