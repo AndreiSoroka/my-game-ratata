@@ -1,5 +1,6 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 
+import { stopAgentMovement } from './agentMovementStop'
 import {
     type AgentDestination,
     goalDistance,
@@ -250,8 +251,9 @@ class AgentNavigator {
         this.active = undefined
         clearTimeout(this.timer)
         this.timer = undefined
-        if (this.port.getState().connected)
-            this.port.send({ type: 'move_input', axis: { x: 0, y: 0 } })
+        const state = this.port.getState()
+        if (state.player?.id === journey.identity)
+            stopAgentMovement(state, this.port.send, !journey.travel?.crossing)
         journey.resolve(this.result(status, reason, journey.startedAt))
     }
 

@@ -116,7 +116,7 @@ describe('agent navigation', () => {
             send.mockClear()
             await tick()
             expect(await result).toMatchObject({ status: 'unavailable' })
-            expect(send).toHaveBeenCalledTimes(kind === 'disconnect' ? 0 : 1)
+            expect(send).toHaveBeenCalledTimes(kind === 'death' ? 2 : 0)
         }
     )
 

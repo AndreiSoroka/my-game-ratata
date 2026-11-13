@@ -6,6 +6,7 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { stopAgentMovement } from './agentMovementStop'
 import { createAgentNavigator } from './agentNavigation'
 import { type AgentObservation, type ObservationOptions, observeGame } from './agentObservation'
 import {
@@ -158,7 +159,7 @@ class TestDriver {
         clearTimeout(this.movementTimer)
         this.movementTimer = undefined
         if (this.finishMovement && !this.disposed && this.options.getState().connected) {
-            this.options.send({ type: 'move_input', axis: { x: 0, y: 0 } })
+            stopAgentMovement(this.options.getState(), this.options.send)
         }
         this.finishMovement?.()
         this.finishMovement = undefined
@@ -212,8 +213,7 @@ class TestDriver {
         this.cancelMovementTimer()
         this.navigator.cancel()
         if (!this.disposed && this.options.getState().connected) {
-            this.options.send({ type: 'cancel_control' })
-            this.options.send({ axis: { x: 0, y: 0 }, type: 'move_input' })
+            stopAgentMovement(this.options.getState(), this.options.send)
         }
     }
 
