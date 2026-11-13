@@ -1,6 +1,7 @@
 import type { ClientMessage, GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
 import { isChestCommand } from './chestCommands'
 import type { NavigationService } from './navigation'
 import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
@@ -26,12 +27,14 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
         context.sendEvents(
             cancelPrayerForMovement(player, message.axis, Date.now())
         )
+        cancelCharacterControl(player)
         player.setMoveInput(message.axis)
         return
     }
 
     if (message.type === 'move_to') {
         context.sendEvents(cancelPrayerCast(player, Date.now()))
+        cancelCharacterControl(player)
         player.setPath(
             context.navigation.findPathWorld(player.position, message.target)
         )
@@ -39,6 +42,7 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     }
 
     if (message.type === 'attack') {
+        cancelCharacterControl(player)
         if (message.targetId === undefined) {
             faceNearestTarget(player, context.characters.values(), 48)
         }

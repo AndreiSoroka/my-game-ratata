@@ -6,6 +6,7 @@ import type {
 import { handleAbilityCommand } from './abilityCommands'
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
 import { attemptAbilityAttack } from './combat'
 import { attackRoomCharacter } from './roomCombat'
 import { resolveRespawnDelayMs } from './roomSimulation'
@@ -60,6 +61,7 @@ export function createRoomCombatActions(
             message: AbilityClientMessage,
             now: number
         ): GameEventPayload[] => {
+            cancelCharacterControl(actor)
             return handleAbilityCommand(actor, message, contextFor(actor, now))
         },
     }

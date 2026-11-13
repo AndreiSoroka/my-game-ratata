@@ -6,7 +6,13 @@ import type {
 export * from './abilities'
 export * from './prayer'
 export * from './prayerPreview'
+import type {
+    CharacterControlCommand,
+    CharacterControlSnapshot,
+    CharacterRelationship,
+} from './control'
 import type { CreatureType } from './creatures'
+export * from './control'
 export * from './creatures'
 import type { ChestClientMessage, ChestContainerSnapshot } from './chests'
 export * from './chests'
@@ -128,6 +134,8 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    relationship?: CharacterRelationship
+    control?: CharacterControlSnapshot
     basicAttackKind?: BasicAttackKind
     abilities?: CharacterAbilitiesSnapshot
     creatureType: CreatureType
@@ -236,6 +244,7 @@ export interface ChatClientMessage {
 }
 
 export type ClientMessage =
+    | CharacterControlCommand
     | AbilityClientMessage
     | ChestClientMessage
     | TheftClientMessage

@@ -3,9 +3,15 @@ import type {
     Vector2,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
+import { getWorldLocationDefinition } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import {
+    advanceCharacterControl,
+    rememberObservedCrossing,
+} from './characterControl'
 import { resolvePendingAttackHit } from './combat'
+import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { recordMovementNoise } from './hearing'
 import { advanceCharacter } from './movement'
@@ -18,6 +24,7 @@ import type { TheftService } from './theft'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
 interface SimulationContext {
+    companions: CompanionService
     characters: Map<string, GameCharacter>
     connections: Map<RoomSocket, string | undefined>
     controllers: Map<string, CharacterController>
@@ -38,10 +45,16 @@ interface SimulationContext {
 
 export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, controllers, room, now } = context
+    for (const character of characters.values()) {
+        context.companions.hasActiveLease(character, now, room)
+    }
     const reacting = context.theft.update(room, characters.values(), now)
     for (const [id, controller] of controllers) {
         const character = characters.get(id)
         if (character !== undefined && !reacting.has(id)) {
+            if (advanceCharacterControl(character, room, now)) {
+                continue
+            }
             controller.update(character, room, now)
         }
     }
@@ -107,7 +120,27 @@ function advanceWorldCharacter(
     ) {
         return
     }
+    const from = character.locationId
+    const edge = { ...character.position }
     const notice = world.travel(character, intent)
+    if (from !== character.locationId) {
+        const previous = getWorldLocationDefinition(from)
+        const next = getWorldLocationDefinition(character.locationId)
+        if (previous !== undefined && next !== undefined) {
+            rememberObservedCrossing(
+                character,
+                from,
+                edge,
+                {
+                    x: next.column - previous.column,
+                    y: next.row - previous.row,
+                },
+                context.characters.values(),
+                navigation,
+                now
+            )
+        }
+    }
     if (notice !== undefined) {
         sendTravelNotice(character, notice, context)
     }

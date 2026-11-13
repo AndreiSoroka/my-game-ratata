@@ -8,6 +8,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { heroClasses } from '@my-game-ratata/contracts'
 
+import { parseControlCommand } from './characterControl'
 import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseExtraCommand } from './extraCommands'
 import { parsePickupCommand } from './worldPickup'
@@ -55,6 +56,16 @@ export function parseClientMessage(raw: string): ParseResult {
         return message === undefined
             ? { error: 'Invalid chest command' }
             : { message }
+    }
+    if (
+        ['auto_attack', 'follow', 'cancel_control'].includes(
+            String(record['type'])
+        )
+    ) {
+        const message = parseControlCommand(record)
+        return message !== undefined
+            ? { message }
+            : { error: 'Invalid automatic control command' }
     }
     return parseRecord(record)
 }

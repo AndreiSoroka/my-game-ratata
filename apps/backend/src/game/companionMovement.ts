@@ -73,7 +73,7 @@ function engage(
     ) {
         character.setMoveInput({ x: 0, y: 0 })
         character.clearPath()
-        world.requestAttack(character, now)
+        world.requestAttack(character, now, target.id)
         return true
     }
     if (state.profile.stationary || state.order === 'guard') {

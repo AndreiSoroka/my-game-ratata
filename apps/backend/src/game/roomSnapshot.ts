@@ -1,10 +1,12 @@
 import type {
+    CharacterRelationship,
     ProgressionSnapshot,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { canTargetByFaction } from './factions'
 import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
 import { charactersInLocation } from './roomQueries'
@@ -27,6 +29,8 @@ export function roomSnapshot(
     playerId?: string
 ): WorldSnapshot {
     const location = context.world.get(locationId)
+    const observer =
+        playerId === undefined ? undefined : context.characters.get(playerId)
     const snapshot = createSnapshot(
         charactersInLocation(context.characters, locationId).values(),
         location.inventory.snapshotItems(),
@@ -38,6 +42,19 @@ export function roomSnapshot(
         ...snapshot,
         characters: snapshot.characters.map((character) => ({
             ...character,
+            relationship: relationshipFor(
+                observer,
+                context.characters.get(character.id),
+                playerId,
+                now
+            ),
+            control:
+                character.id === playerId
+                    ? (character.control ?? {
+                          mode: 'none' as const,
+                          targetId: null,
+                      })
+                    : { mode: 'none' as const, targetId: null },
             inventory: character.id === playerId ? character.inventory : [],
             ...(character.id !== playerId && character.progression !== undefined
                 ? { progression: publicProgression(character.progression) }
@@ -60,6 +77,23 @@ export function roomSnapshot(
                   party: context.parties.snapshot(playerId),
               }),
     }
+}
+
+function relationshipFor(
+    observer: GameCharacter | undefined,
+    target: GameCharacter | undefined,
+    playerId: string | undefined,
+    now: number
+): CharacterRelationship {
+    if (target === undefined) {
+        return 'friendly'
+    }
+    if (target.id === playerId) {
+        return 'self'
+    }
+    return observer !== undefined && canTargetByFaction(observer, target, now)
+        ? 'hostile'
+        : 'friendly'
 }
 
 function publicProgression(

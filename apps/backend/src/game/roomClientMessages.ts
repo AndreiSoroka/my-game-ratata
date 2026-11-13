@@ -7,6 +7,7 @@ import type { PartyService } from './parties'
 import { applyPlayerMessage } from './playerMessages'
 import type { GameRoom } from './room'
 import { handleRoomAction } from './roomActions'
+import { handleRoomControl } from './roomControl'
 import type { RoomSocket } from './roomMessaging'
 import { charactersInLocation, connectionsInLocation } from './roomQueries'
 import type { TheftService } from './theft'
@@ -36,6 +37,9 @@ export function handleCharacterMessage(
         world,
         connections,
     } = context
+    if (handleRoomControl(player, message, room, Date.now())) {
+        return
+    }
     const events = handleRoomAction({
         requestAbilityAttack: room.abilityContextFor(player, Date.now())
             .requestAbilityAttack,

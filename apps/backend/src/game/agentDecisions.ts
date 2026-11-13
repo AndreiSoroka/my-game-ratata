@@ -28,6 +28,7 @@ import {
     movementActionAllowed,
 } from './movementActions'
 import type { NavigationService } from './navigation'
+import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
 import { isTheftCommand } from './theftCommands'
 import type { PickupRequest } from './worldPickup'
 
@@ -106,7 +107,9 @@ export function applyAgentDecision(
         case 'move':
             cancelAgentControl(character, world, now)
             character.setMoveInput(decision.axis)
-            return accepted()
+            return accepted(
+                cancelPrayerForMovement(character, decision.axis, now)
+            )
         case 'move_to':
             return agentMoveTo(character, decision.target, world, now)
         case 'attack':
@@ -118,7 +121,7 @@ export function applyAgentDecision(
             cancelMovementMode(character)
             character.setMoveInput({ x: 0, y: 0 })
             character.clearPath()
-            return accepted()
+            return accepted(cancelPrayerCast(character, now))
         default:
             return rejected('Unsupported agent decision')
     }
@@ -196,7 +199,7 @@ function agentMoveTo(
     }
     cancelAgentControl(character, world, now)
     character.setPath(navigation.findPathWorld(character.position, target))
-    return accepted()
+    return accepted(cancelPrayerCast(character, now))
 }
 
 function accepted(events: GameEventPayload[] = []): AgentDecisionResult {

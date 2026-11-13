@@ -2,6 +2,7 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
 import { snapshotAbilities } from './abilityState'
 import type { GameCharacter } from './character'
+import { snapshotControl } from './characterControl'
 import { shouldRetireCharacter } from './characterLife'
 import { resolveCharacterStats } from './characterStats'
 import { snapshotEquipment, snapshotItem } from './inventory'
@@ -13,6 +14,7 @@ export function createCharacterSnapshot(
     now: number
 ): CharacterSnapshot {
     return {
+        control: snapshotControl(character),
         creatureType: character.creatureType,
         alive: character.alive,
         basicAttackKind: character.config.basicAttackKind,

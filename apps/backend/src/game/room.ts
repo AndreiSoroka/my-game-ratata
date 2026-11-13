@@ -1,4 +1,5 @@
 import {
+    type CharacterControlCommand,
     type ClientMessage,
     type HeroClass,
     type TheftClientMessage,
@@ -19,6 +20,7 @@ import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
 import { handleCharacterMessage } from './roomClientMessages'
+import { controlIntent } from './roomControl'
 import { publishRoomEvents } from './roomEvents'
 import { joinRoom, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
@@ -167,6 +169,13 @@ export class GameRoom {
     public readonly requestAbility = this.combat.requestAbility
     public readonly charactersFor = this.combat.charactersFor
     public readonly abilityContextFor = this.combat.contextFor
+    public requestControl(
+        actor: GameCharacter,
+        message: CharacterControlCommand,
+        now: number
+    ): boolean {
+        return controlIntent(actor, message, this, now)
+    }
 
     public snapshot(
         now = Date.now(),
@@ -259,6 +268,7 @@ export class GameRoom {
         this.tickIndex += 1
 
         advanceRoomSimulation({
+            companions: this.companions,
             characters: this.characters,
             connections: this.connections,
             controllers: this.controllers,

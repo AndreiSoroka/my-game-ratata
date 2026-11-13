@@ -73,6 +73,19 @@ export class WorldLocations {
         }
     }
 
+    private adjacentLocation(
+        current: LocationState,
+        direction: Vector2
+    ): LocationState | undefined {
+        const next = WORLD_LOCATION_DEFINITIONS.find(
+            (definition) =>
+                definition.column ===
+                    current.description.column + direction.x &&
+                definition.row === current.description.row + direction.y
+        )
+        return next === undefined ? undefined : this.locations.get(next.id)
+    }
+
     public travel(
         character: GameCharacter,
         intent: Vector2
@@ -87,9 +100,7 @@ export class WorldLocations {
             this.blockedEdges.delete(character.id)
             return undefined
         }
-        const column = current.description.column + direction.x
-        const row = current.description.row + direction.y
-        const next = this.locations.get(`map-${String(column)}-${String(row)}`)
+        const next = this.adjacentLocation(current, direction)
         if (
             next === undefined ||
             (next.description.biome === 'city' &&

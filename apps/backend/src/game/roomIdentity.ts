@@ -7,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
 import {
     type CharacterController,
     NetworkPlayerController,
@@ -105,6 +106,7 @@ export function stopCharacterMovement(
     if (character === undefined) {
         return []
     }
+    cancelCharacterControl(character)
     cancelMovementMode(character)
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()

@@ -5,6 +5,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
 import {
     chestOpenRefusal,
     chestRefusalNotice,
@@ -42,6 +43,7 @@ export class ChestContainers {
             return chestRefusalNotice(actor.id, refusal ?? 'Сундук недоступен.')
         }
         if (message.type === 'open_chest') {
+            cancelCharacterControl(actor)
             actor.clearPath()
             actor.setMoveInput({ x: 0, y: 0 })
             cancelMovementMode(actor)
