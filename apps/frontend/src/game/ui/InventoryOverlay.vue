@@ -68,8 +68,8 @@ watch(selectedItemId, () => {
     assignedSlot.value = undefined
 })
 
-function assignHotbar(slot: number): void {
-    if (selectedItem.value?.itemId !== 'food') return
+function assignHotbar(slot: number, item: ItemInstanceSnapshot | undefined): void {
+    if (item?.itemId !== 'food') return
     emit('assignHotbar', { slot, itemId: 'food' })
     assignedSlot.value = slot
 }
@@ -78,7 +78,17 @@ function onKey(event: KeyboardEvent): void {
     const digit = /^Digit([1-4])$/.exec(event.code)
     if (digit && event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
         event.preventDefault()
-        if (!event.repeat) assignHotbar(Number(digit[1]) - 1)
+        if (event.repeat) return
+        const focusedSlot =
+            event.target instanceof HTMLElement
+                ? event.target.closest<HTMLElement>('.inventory-slot')
+                : null
+        const item = focusedSlot
+            ? props.character.inventory.find(
+                  (item) => item.instanceId === focusedSlot.dataset.itemInstanceId
+              )
+            : selectedItem.value
+        assignHotbar(Number(digit[1]) - 1, item)
         return
     }
     inventoryKey(event, panel.value, () => emit('close'))
@@ -211,6 +221,7 @@ function slotLabel(slot: EquipmentSlotId): string {
                     :key="item?.instanceId ?? index"
                     class="inventory-slot"
                     :data-filled="Boolean(item)"
+                    :data-item-instance-id="item?.instanceId"
                     :class="{
                         'inventory-slot--selected':
                             Boolean(item) && item?.instanceId === selectedItemId,
@@ -276,21 +287,17 @@ function slotLabel(slot: EquipmentSlotId): string {
                             :key="slot"
                             type="button"
                             :aria-label="`Назначить яблоко в слот ${slot}`"
-                            @click="assignHotbar(slot - 1)"
+                            @click="assignHotbar(slot - 1, selectedItem)"
                         >
                             {{ slot }}
                         </button>
                     </div>
-                    <p
-                        v-if="assignedSlot !== undefined"
-                        class="inventory-hotbar-help"
-                        role="status"
-                    >
-                        Яблоко назначено в слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите
-                        {{ assignedSlot + 1 }}, чтобы съесть.
-                    </p>
                 </template>
             </div>
+            <p v-if="assignedSlot !== undefined" class="inventory-hotbar-help" role="status">
+                Яблоко назначено в слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите
+                {{ assignedSlot + 1 }}, чтобы съесть.
+            </p>
         </section>
     </aside>
 </template>

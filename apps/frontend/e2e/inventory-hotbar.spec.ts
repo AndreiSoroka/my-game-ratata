@@ -4,7 +4,7 @@ test.describe('inventory food quick slots', () => {
     test.setTimeout(60_000)
 
     for (const mobile of [false, true]) {
-        test(`assigns the selected apple without using it (${mobile ? 'mobile' : 'desktop'})`, async ({
+        test(`assigns the focused or selected apple without using it (${mobile ? 'mobile' : 'desktop'})`, async ({
             page,
         }, info) => {
             await page.setViewportSize(
@@ -107,7 +107,17 @@ async function checkAssignment(page: Page) {
     await page.keyboard.press('KeyI')
     const inventory = page.getByRole('dialog', { name: 'Inventory and equipment' })
     await expect(inventory).toBeVisible()
-    await expect(inventory.locator('.inventory-slot[data-filled=true]')).toBeFocused()
+    const focusedApple = inventory.locator('.inventory-slot[data-filled=true]')
+    await expect(focusedApple).toBeFocused()
+    await expect(inventory.locator('.inventory-actions')).toHaveCount(0)
+    await page.keyboard.press('Shift+Digit4')
+    await expect(inventory.getByRole('status')).toContainText('Яблоко назначено в слот 4')
+    await expect(
+        page.getByLabel('Быстрые действия').getByRole('button').nth(3)
+    ).toHaveAccessibleName(/4: Яблоко/)
+    await expect(focusedApple).toBeFocused()
+    await expect(inventory.locator('.inventory-actions')).toHaveCount(0)
+    expect(await inventoryAndPosition(page)).toEqual(before)
     await page.keyboard.press('Enter')
     const eat = inventory.getByRole('button', { name: 'Eat', exact: true })
     await expect(eat).toBeFocused()
