@@ -124,3 +124,14 @@ Only visual reference assets were copied from the old prototype. The old game
 runtime, combat UI, HUD implementation, maps, and gameplay code were not ported.
 Those interfaces should be rebuilt here from the new contracts and domain model,
 then added to Storybook as separate stories once their own components exist.
+
+### Тип существа
+
+`GameCharacter.creatureType` — общий серверный тип, независимый от внешности,
+класса, фракции, души и контроллера. Полный перечень: `aberration`, `beast`,
+`celestial`, `construct`, `dragon`, `elemental`, `fey`, `fiend`, `giant`,
+`humanoid`, `monstrosity`, `ooze`, `plant`, `undead`. Это классификация из
+[D&D 5e Basic Rules, Type](https://www.dndbeyond.com/sources/dnd/basic-rules-2014/monsters#Type),
+а игровые иммунитеты и эффекты задаются отдельно. Люди — гуманоиды, скелеты —
+нежить, слизни — слизь; профиль зомби должен явно задавать нежить, независимо
+от выбранного спрайта. Неизвестные типы отклоняются, клиент их не назначает.

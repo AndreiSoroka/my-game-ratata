@@ -19,6 +19,7 @@ export function createCharacterSnapshot(
             startedAt: character.animationStartedAt,
         },
         archetype: character.archetype,
+        creatureType: character.creatureType,
         attackZones: character.attackZones,
         controllerKind: character.controllerKind,
         cooldowns: {

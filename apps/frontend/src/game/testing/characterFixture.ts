@@ -9,6 +9,7 @@ export function characterFixture(
         nickname: id,
         alive: true,
         archetype: 'human',
+        creatureType: 'humanoid',
         visualId: 'player',
         controllerKind: 'network_player',
         faction: 'peaceful',

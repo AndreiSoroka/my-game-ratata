@@ -26,6 +26,7 @@ export function createSkeleton(
 ): SpawnedCharacter {
     const skeleton = new Character({
         archetype: 'skeleton',
+        creatureType: 'undead',
         controllerKind: 'mob1',
         locationId: spawnLocationId(navigation),
         faction: 'monsters',
@@ -53,6 +54,7 @@ export function createSlime(
 ): SpawnedCharacter {
     const slime = new Character({
         archetype: 'slime',
+        creatureType: 'ooze',
         controllerKind: 'mob1',
         locationId: spawnLocationId(navigation),
         faction: 'monsters',
@@ -77,6 +79,7 @@ export function createFriendlyGirl(
 ): SpawnedCharacter {
     const girl = new Character({
         archetype: 'human',
+        creatureType: 'humanoid',
         controllerKind: 'scripted',
         locationId: spawnLocationId(navigation),
         faction: 'peaceful',

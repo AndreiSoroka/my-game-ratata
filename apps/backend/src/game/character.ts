@@ -1,4 +1,5 @@
 import {
+    archetypeCreatureTypes,
     type AttackZone,
     CENTER_LOCATION_ID,
     type CharacterAnimationAction,
@@ -8,14 +9,20 @@ import {
     type CharacterFactionId,
     type CharacterReputation,
     type CharacterVisualId,
+    type CreatureType,
     HERO_REVIVAL_WINDOW_MS,
     type HeroClass,
-    type SoulProfile,
+    isCreatureType,
     type SoulSnapshot,
     type Vector2,
 } from '@my-game-ratata/contracts'
 
 import type { CharacterConfig } from './characterConfig'
+import {
+    defaultFactionFor,
+    defaultVisualIdFor,
+    type GameCharacterOptions,
+} from './characterIdentity'
 import { regenerateCharacter, restoreCharacter } from './characterRecovery'
 import { createCharacterSnapshot } from './characterSnapshot'
 import { createCharacterSoul } from './characterSoul'
@@ -33,22 +40,8 @@ import {
     createProgression,
 } from './skillProgression'
 
-interface GameCharacterOptions {
-    archetype: CharacterArchetype
-    heroClass?: HeroClass
-    soul?: Partial<SoulProfile>
-    mortal?: boolean
-    controllerKind: CharacterControllerKind
-    faction?: CharacterFactionId
-    id: string
-    nickname: string
-    reputation?: CharacterReputation
-    spawnPosition: Vector2
-    visualId?: CharacterVisualId
-    locationId?: string
-}
-
 export class GameCharacter {
+    public readonly creatureType: CreatureType
     public readonly archetype: CharacterArchetype
     public readonly config: CharacterConfig
     public readonly controllerKind: CharacterControllerKind
@@ -95,6 +88,12 @@ export class GameCharacter {
     private pathIndex = 0
 
     public constructor(options: GameCharacterOptions) {
+        const creatureType =
+            options.creatureType ?? archetypeCreatureTypes[options.archetype]
+        if (!isCreatureType(creatureType)) {
+            throw new Error('Unknown creature type')
+        }
+        this.creatureType = creatureType
         this.soul = createCharacterSoul(options)
         this.locationId = options.locationId ?? CENTER_LOCATION_ID
         this.spawnLocationId = this.locationId
@@ -333,18 +332,4 @@ export class GameCharacter {
     public snapshot(now: number) {
         return createCharacterSnapshot(this, now)
     }
-}
-
-function defaultFactionFor(
-    controllerKind: CharacterControllerKind
-): CharacterFactionId {
-    return controllerKind === 'network_player' ? 'peaceful' : 'monsters'
-}
-
-function defaultVisualIdFor(archetype: CharacterArchetype): CharacterVisualId {
-    if (archetype === 'skeleton' || archetype === 'slime') {
-        return archetype
-    }
-
-    return 'player'
 }

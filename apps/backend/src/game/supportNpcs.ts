@@ -1,6 +1,7 @@
 import type {
     CharacterArchetype,
     CharacterVisualId,
+    CreatureType,
     HeroClass,
 } from '@my-game-ratata/contracts'
 
@@ -20,18 +21,21 @@ interface SupportDefinition {
     id: string
     nickname: string
     tile: TileCoordinate
+    creatureType: CreatureType
     visualId: CharacterVisualId
 }
 
 const definitions: SupportDefinition[] = [
     ...cityResidents,
     {
+        creatureType: 'humanoid',
         id: 'npc_merchant_1',
         nickname: 'Торговец Савва',
         visualId: 'male_mage',
         tile: { x: 40, y: 60 },
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_cleric_1',
         nickname: 'Сестра Вера',
         heroClass: 'cleric',
@@ -39,24 +43,28 @@ const definitions: SupportDefinition[] = [
         tile: { x: 55, y: 27 },
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_scholar_1',
         nickname: 'Учёный Арен',
         visualId: 'male_mage',
         tile: { x: 66, y: 33 },
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_princess_1',
         nickname: 'Принцесса Лея',
         visualId: 'female_player',
         tile: { x: 27, y: 50 },
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_veteran_1',
         nickname: 'Ветеран Бран',
         visualId: 'male_player_2',
         tile: { x: 30, y: 50 },
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_guard_1',
         nickname: 'Стражница Рада',
         heroClass: 'ranger',
@@ -64,6 +72,7 @@ const definitions: SupportDefinition[] = [
         tile: { x: 45, y: 43 },
     },
     {
+        creatureType: 'ooze',
         id: 'npc_magic_slime_1',
         nickname: 'Капля',
         archetype: 'slime',
@@ -80,6 +89,7 @@ export function createSupportNpcs(
         const profile = companionProfiles[definition.id]
         const character = new GameCharacter({
             archetype: definition.archetype ?? 'human',
+            creatureType: definition.creatureType,
             controllerKind: 'scripted',
             faction: 'peaceful',
             ...(definition.heroClass === undefined

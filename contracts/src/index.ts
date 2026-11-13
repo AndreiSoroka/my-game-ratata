@@ -1,3 +1,5 @@
+import type { CreatureType } from './creatures'
+export * from './creatures'
 import type { ChestClientMessage, ChestContainerSnapshot } from './chests'
 export * from './chests'
 export * from './inventory'
@@ -118,6 +120,7 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    creatureType: CreatureType
     theft?: CharacterTheftSnapshot
     movement?: CharacterMovementSnapshot
     soul?: SoulSnapshot

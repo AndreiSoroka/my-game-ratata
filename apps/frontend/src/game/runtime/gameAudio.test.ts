@@ -27,6 +27,7 @@ function snapshot(x: number, alive = true, present = true): WorldSnapshot {
     const character = {
         id: 'hero',
         archetype: 'human',
+        creatureType: 'humanoid',
         alive,
         position: { x, y: 8 },
         velocity: { x: 90, y: 0 },

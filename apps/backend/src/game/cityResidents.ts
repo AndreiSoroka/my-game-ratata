@@ -1,4 +1,4 @@
-import type { CharacterVisualId } from '@my-game-ratata/contracts'
+import type { CharacterVisualId, CreatureType } from '@my-game-ratata/contracts'
 
 import type { TileCoordinate } from './navigation'
 
@@ -6,6 +6,7 @@ interface CityResident {
     id: string
     nickname: string
     tile: TileCoordinate
+    creatureType: CreatureType
     visualId: CharacterVisualId
     greeting: string
     personality: string
@@ -13,6 +14,7 @@ interface CityResident {
 
 export const cityResidents: CityResident[] = [
     {
+        creatureType: 'humanoid',
         id: 'npc_weaver_1',
         nickname: 'Мастерица Мила',
         tile: { x: 21, y: 31 },
@@ -23,6 +25,7 @@ export const cityResidents: CityResident[] = [
             'Практичная мастерица любит порядок и остаётся у своего станка.',
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_smith_1',
         nickname: 'Кузнец Игнат',
         tile: { x: 77, y: 50 },
@@ -33,6 +36,7 @@ export const cityResidents: CityResident[] = [
             'Немногословный кузнец ценит подготовку и не бросает горн ради приключений.',
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_herbalist_1',
         nickname: 'Травница Злата',
         tile: { x: 56, y: 60 },
@@ -43,6 +47,7 @@ export const cityResidents: CityResident[] = [
             'Заботливая травница бережёт жителей и предпочитает свой тихий дом.',
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_baker_1',
         nickname: 'Пекарь Елисей',
         tile: { x: 26, y: 18 },
@@ -53,6 +58,7 @@ export const cityResidents: CityResident[] = [
             'Приветливый пекарь любит домашний покой и слушает истории путешественников.',
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_cartographer_1',
         nickname: 'Картограф Нестор',
         tile: { x: 77, y: 29 },
@@ -63,6 +69,7 @@ export const cityResidents: CityResident[] = [
             'Осторожный картограф изучает рассказы вернувшихся и не выдаёт догадки за открытия.',
     },
     {
+        creatureType: 'humanoid',
         id: 'npc_tailor_1',
         nickname: 'Ткач Тихон',
         tile: { x: 66, y: 18 },

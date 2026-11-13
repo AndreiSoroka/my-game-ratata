@@ -87,6 +87,9 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
 }
 
 function parseJoin(record: Record<string, unknown>): ParseResult {
+    if (Object.hasOwn(record, 'creatureType')) {
+        return { error: 'Creature type is assigned by the server' }
+    }
     const nickname = record['nickname']
 
     if (typeof nickname !== 'string' || nickname.trim().length === 0) {
