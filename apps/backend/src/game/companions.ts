@@ -22,6 +22,7 @@ import {
 } from './companionProfiles'
 import { distance } from './math'
 import { cancelMovementMode } from './movementActions'
+import { createSpeechEvent } from './speechReceipts'
 
 export class CompanionService {
     private readonly states = new Map<string, CompanionRuntime>()
@@ -229,12 +230,13 @@ export class CompanionService {
         sync(npc, state)
         return npc.soul.canSpeak
             ? [
-                  {
-                      actorId: npc.id,
-                      kind: 'chat',
-                      ...(actor === undefined ? {} : { targetId: actor.id }),
+                  createSpeechEvent(
+                      npc,
                       text,
-                  },
+                      actor === undefined
+                          ? {}
+                          : { targetId: actor.id, audienceIds: [actor.id] }
+                  ),
               ]
             : []
     }

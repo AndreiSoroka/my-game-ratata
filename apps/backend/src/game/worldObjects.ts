@@ -10,6 +10,7 @@ import { addInventoryItems, createItemInstance } from './inventory'
 import { clamp, distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
+import { nextSpeechId } from './speechReceipts'
 import { loadWorldObjects, type WorldObjectDefinition } from './worldObjectData'
 
 export class WorldObjects {
@@ -59,6 +60,7 @@ export class WorldObjects {
             setNotice(state, null)
             state.dialogue = {
                 kind: 'sign',
+                speechId: nextSpeechId(actor),
                 npcId: `object:${object.id}`,
                 npcName: object.name,
                 title: object.name,

@@ -4,6 +4,7 @@ import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import type { PartyService } from './parties'
 import { broadcastEvent, type RoomSocket } from './roomMessaging'
+import { stampSpeechEvent } from './speechReceipts'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
 export function publishRoomEvents(
@@ -36,6 +37,7 @@ export function publishRoomEvents(
     adventure.observe(events, (id) => characters.get(id))
     const partyEvents = parties.observe(events, (id) => characters.get(id))
     for (const event of [...events, ...partyEvents]) {
+        stampSpeechEvent(event, characters.get(event.actorId ?? ''))
         const { audienceIds, ...visibleEvent } = event
         if (audienceIds !== undefined) {
             const recipients = [...connections]

@@ -27,6 +27,7 @@ import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
 import { materialSnapshot } from './materialInventory'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
+import { createSpeechEvent } from './speechReceipts'
 import { trophyDialogue, trophyProgress } from './trophyQuest'
 import type { WorldObjectDefinition } from './worldObjectData'
 import { WorldObjects } from './worldObjects'
@@ -309,7 +310,15 @@ export class AdventureService {
         npc: GameCharacter,
         text: string
     ): GameEventPayload[] {
-        return [{ actorId: npc.id, kind: 'chat', targetId: actor.id, text }]
+        const event = createSpeechEvent(npc, text, {
+            targetId: actor.id,
+            audienceIds: [actor.id],
+        })
+        const dialogue = this.stateFor(actor.id).dialogue
+        if (dialogue !== null) {
+            dialogue.speechId = event.speechId
+        }
+        return [event]
     }
 
     private stateFor(playerId: string): PlayerAdventure {

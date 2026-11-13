@@ -32,6 +32,8 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    /** New utterance receipt; repeated text receives a new value. */
+    speechId?: number
     abilityId?: AbilityId
     damageKind?: DamageKind
     critical?: boolean

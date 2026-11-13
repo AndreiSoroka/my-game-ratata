@@ -41,6 +41,8 @@ export interface AdventureDialogueChoice {
 }
 
 export interface AdventureDialogue {
+    /** Stable across snapshot reads; changes when this dialogue is spoken again. */
+    speechId?: number
     kind?: 'conversation' | 'sign'
     canTrade: boolean
     tradeBlockedReason?: string
