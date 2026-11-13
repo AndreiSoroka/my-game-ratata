@@ -28,12 +28,13 @@
         "lint:fix:frontend": "bun run --cwd apps/frontend lint:fix",
         "format": "prettier . --check",
         "format:fix": "prettier . --write",
-        "test": "run-s test:backend test:frontend",
+        "test": "run-s test:backend test:frontend test:agent",
         "test:backend": "bun run --cwd apps/backend test",
         "test:frontend": "bun run --cwd apps/frontend test:unit",
         "test:e2e": "bun run --cwd apps/frontend test:e2e",
         "check": "run-s format type-check lint test build test:e2e",
-        "prepare": "husky"
+        "prepare": "husky",
+        "test:agent": "node --test scripts/agent-mcp.test.mjs"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
