@@ -130,8 +130,7 @@ function attackCue(
     return {
         ...base,
         kind,
-        fromId: travel || kind === 'bone' ? actor.id : base.targetId,
-        targetId: kind === 'bone' ? actor.id : base.targetId,
+        fromId: actor.id,
         travel,
         color: colors[kind] ?? base.color,
         duration: attackDuration(event, kind),

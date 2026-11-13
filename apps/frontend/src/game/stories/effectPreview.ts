@@ -12,7 +12,7 @@ const surfaces: Record<EffectSurface, { ground: string; detail: string }> = {
 /** The same draw functions as the cached in-world graphics, enlarged without smoothing. */
 export function effectPreview(
     deity: DeityId,
-    states: { kind: EffectShape; label: string }[],
+    states: { kind: EffectShape; label: string; rotation?: number; origin?: boolean }[],
     surface: EffectSurface = 'grass'
 ): HTMLElement {
     const panel = document.createElement('section')
@@ -40,6 +40,11 @@ export function effectPreview(
         if (ctx) {
             drawSurface(ctx, surface)
             ctx.translate(56, 56)
+            if (state.origin) {
+                ctx.fillStyle = '#18221d'
+                ctx.fillRect(-3, -3, 6, 6)
+            }
+            ctx.rotate(state.rotation ?? 0)
             drawEffectGraphic(ctx, state.kind, deity, 0.7)
         }
         const label = document.createElement('figcaption')

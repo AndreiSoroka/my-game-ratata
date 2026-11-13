@@ -101,12 +101,12 @@ function slash(ctx: Context, bone = false): void {
     ctx.strokeStyle = bone ? '#e8dec7' : '#dfe5e8'
     ctx.lineWidth = bone ? 4 : 2
     ctx.beginPath()
-    ctx.arc(-4, 3, 18, -1.4, 0.4)
+    ctx.arc(0, 0, 18, -0.9, 0.9)
     ctx.stroke()
     if (bone) {
         ctx.fillStyle = '#e8dec7'
-        ctx.fillRect(3, -16, 4, 4)
-        ctx.fillRect(13, 8, 4, 4)
+        ctx.fillRect(9, -16, 4, 4)
+        ctx.fillRect(9, 12, 4, 4)
     }
 }
 /** Shared by runtime cached Canvas and focused Storybook previews. */

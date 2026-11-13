@@ -2,6 +2,7 @@ import type { CharacterSnapshot, GameEventPayload } from '@my-game-ratata/contra
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
+import { combatEffectPose, isMeleeEffect } from './combatEffectPose'
 import { CombatParticles } from './combatParticles'
 import { EFFECT_BUDGET } from './effectBudget'
 import { BARRIER_COLOR, EffectGraphics } from './effectGraphics'
@@ -118,19 +119,14 @@ export class CombatEffects {
             target = this.character(cue.targetId)
         if (!from || !target) return
         if (!this.admitWave(cue)) return
-        const origin = visualOrigin(cue, this.reduced) ? target : from
-        const offset = cue.wave ? 0 : -15
+        const pose = combatEffectPose(cue, from, target, this.reduced)
         const actor = new Actor({
             anchor: vec(0.5, 0.5),
-            pos: vec(origin.position.x, origin.position.y + offset),
-            z: Math.max(from.position.y, target.position.y) + 10,
+            pos: vec(pose.x, pose.y),
+            z: pose.z,
+            rotation: pose.rotation,
         })
         actor.graphics.use(this.graphics.get(cue.kind, cue.deity, cue.channel ? 0 : 1))
-        if (cue.travel)
-            actor.rotation = Math.atan2(
-                target.position.y - from.position.y,
-                target.position.x - from.position.x
-            )
         const duration = this.reduced && !cue.channel ? 220 : cue.duration
         const effect = {
             actor,
@@ -204,7 +200,7 @@ export class CombatEffects {
             effect.actor.pos = vec(target.position.x, target.position.y - 15)
             return
         }
-        if (this.reduced) return
+        if (this.reduced || isMeleeEffect(cue.kind)) return
         if (cue.travel) {
             effect.actor.pos = vec(
                 effect.from.x + (target.position.x - effect.from.x) * progress,
@@ -233,8 +229,4 @@ function channelEnded(
     character: (id: string) => CharacterSnapshot | undefined
 ): boolean {
     return Boolean(cue?.channel && !character(cue.fromId)?.abilities?.casting)
-}
-
-function visualOrigin(cue: EffectCue, reduced: boolean): boolean {
-    return Boolean(cue.channel || (cue.travel && reduced))
 }
