@@ -226,3 +226,5 @@ NPC выбирают эти же способности, сохраняя сог
 ## Keyboard HUD and visual feedback
 
 Four initially empty action slots bind known abilities or real food items with Shift+1–4. Target focus is shared by keyboard and pointer interaction: T hostile, Shift+T friendly/revivable, F self, E target actions and Q automatic attack. Friendly characters can be followed through the same authoritative control rules. The party roster shows names, HP percentages, leader crown and absence/life state. Prayers disclose target, mana cost and collateral victims before use, with an exact 48px world preview for harmful waves. Distinct procedural deity/projectile/barrier effects consume server outcomes, remain bounded and support reduced motion.
+
+NPC dialogue has one source of spoken text: a full, viewport-clamped speech bubble above the visible speaker. The dialogue window retains choices and trade controls. Stable authoritative speech receipts identify each new reply, while an active conversation persists and ambient speech expires. PageUp/PageDown and a shared Tab cycle connect the choices to scrollable speech; private replies stay scoped to their recipient.

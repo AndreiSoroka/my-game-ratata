@@ -5,9 +5,11 @@ import type {
     CharacterSnapshot,
     ClientMessage,
 } from '@my-game-ratata/contracts'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { dialogueSpeechKeys } from './dialogueSpeechKeys'
 import SoulBadge from './SoulBadge.vue'
+import { speechBubbleId } from './speechReceipts'
 import { activateFocusedButton } from './uiKeyboard'
 const props = defineProps<{ adventure: AdventureSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
@@ -39,6 +41,20 @@ watch(
         view.value = 'conversation'
     }
 )
+function escapeOutside(event: KeyboardEvent): void {
+    if (
+        event.code !== 'Escape' ||
+        !props.adventure.dialogue ||
+        (event.target instanceof Node && panel.value?.contains(event.target))
+    )
+        return
+    const target = event.target instanceof HTMLElement ? event.target : document.activeElement
+    if (target instanceof HTMLElement && target.closest('[role="dialog"], [role="menu"]')) return
+    event.stopImmediatePropagation()
+    handleKeys(event)
+}
+onMounted(() => window.addEventListener('keydown', escapeOutside, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', escapeOutside, true))
 let previousFocus: HTMLElement | undefined
 function handleKeys(event: KeyboardEvent): void {
     if (event.code === 'Escape') {
@@ -47,6 +63,7 @@ function handleKeys(event: KeyboardEvent): void {
         else emit('command', { choiceId: 'close', type: 'dialogue_choice' })
         return
     }
+    if (dialogueSpeechKeys(event, panel.value, props.adventure.dialogue)) return
     if (activateFocusedButton(event, panel.value)) return
     const direction = ['ArrowDown', 'KeyS'].includes(event.code)
         ? 1
@@ -65,7 +82,7 @@ function handleKeys(event: KeyboardEvent): void {
 watch(
     () =>
         props.adventure.dialogue
-            ? `${props.adventure.dialogue.npcId}:${props.adventure.dialogue.text}`
+            ? `${props.adventure.dialogue.npcId}:${props.adventure.dialogue.speechId ?? props.adventure.dialogue.text}`
             : '',
     async (key, oldKey) => {
         if (!key) {
@@ -94,6 +111,11 @@ watch(
         :class="{ 'adventure-dialogue--sign': isSign }"
         role="dialog"
         aria-modal="false"
+        :aria-describedby="
+            !isSign
+                ? speechBubbleId(adventure.dialogue.npcId, adventure.dialogue.speechId)
+                : undefined
+        "
         :aria-label="`${isSign ? 'Табличка' : 'Разговор'}: ${adventure.dialogue.npcName}`"
     >
         <header class="adventure-window__header">
@@ -112,9 +134,12 @@ watch(
             :soul="characters.find((character) => character.id === adventure.dialogue?.npcId)?.soul"
         />
         <h2 v-if="!isSign">{{ view === 'shop' ? 'Товары' : adventure.dialogue.title }}</h2>
-        <p v-if="view === 'conversation'" class="adventure-dialogue__text">
+        <p v-if="view === 'conversation' && isSign" class="adventure-dialogue__text">
             {{ adventure.dialogue.text }}
         </p>
+        <small v-if="!isSign" class="dialogue-speech-help"
+            >PageUp / PageDown — читать реплику · Tab — ответы</small
+        >
         <div v-if="view === 'conversation'" class="adventure-choices">
             <button
                 v-for="choice in adventure.dialogue.choices"

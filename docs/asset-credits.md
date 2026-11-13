@@ -46,3 +46,5 @@ The flat paving, transparent soil-bed strips and dark doorway threshold are smal
 ## Project-authored combat and interface visuals
 
 The 2026-11-13 party panel and action slots use original CSS and SVG/text symbols. Food uses the existing item catalog artwork. Arrow, blue-violet spark, flame, wind, constellation, broken-ring, casting-arc and faceted-barrier effects are original cached Canvas drawings in `apps/frontend/src/game/runtime/effectGraphics.ts` and `prayerGraphics.ts`. Bounded Excalibur ParticleEmitter bursts provide embers, motes and barrier shards. No third-party spell bitmap or generated sprite sheet was added. Existing character and item licenses are unchanged. Storybook previews show the same draw functions against grass, light stone and dark-room surfaces.
+
+Ivory speech bubbles, their pixel borders and tails are project-authored CSS. They reuse the existing Pixelify Sans headings and system text; no dialogue bitmap or external asset was added.

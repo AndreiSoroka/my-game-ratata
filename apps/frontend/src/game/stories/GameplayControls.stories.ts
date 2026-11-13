@@ -3,9 +3,10 @@ import '../ui/rpgControls.css'
 import type { PartySnapshot } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
-import { characterFixture } from '../testing/characterFixture'
+import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
 import ActionHotbar from '../ui/ActionHotbar.vue'
 import PartyPanel from '../ui/PartyPanel.vue'
+import SpeechBubbles from '../ui/SpeechBubbles.vue'
 import { renderVueStory } from './renderVueStory'
 
 const meta = { title: 'Interface/Gameplay controls' } satisfies Meta
@@ -54,4 +55,32 @@ export const Party: Story = {
 }
 export const EmptyHotbar: Story = {
     render: () => renderVueStory(ActionHotbar, { player, characters: [player], blocked: false }),
+}
+export const LongSpeech: Story = {
+    render: () =>
+        renderVueStory(SpeechBubbles, {
+            player,
+            game: {
+                projectCharacter: () => ({
+                    x: 210,
+                    y: 180,
+                    width: Math.min(480, window.innerWidth),
+                    height: 520,
+                }),
+            },
+            snapshot: {
+                ...worldFixture([player]),
+                adventure: {
+                    ...adventureFixture(),
+                    dialogue: {
+                        npcId: player.id,
+                        npcName: player.nickname,
+                        title: 'Разговор',
+                        canTrade: false,
+                        choices: [],
+                        text: 'Я стражница Рада. Если ты заметил вора, подойди и подай жалобу через E в течение пяти минут. Имя попадёт в городскую книгу: стража начнёт охоту, торговцы откажут в торговле. Снять запись может сестра Вера в часовне.',
+                    },
+                },
+            },
+        }),
 }

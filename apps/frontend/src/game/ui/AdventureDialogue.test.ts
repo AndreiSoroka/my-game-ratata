@@ -2,7 +2,9 @@ import type { AdventureSnapshot } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { characterFixture, worldFixture } from '../testing/characterFixture'
 import AdventureDialogue from './AdventureDialogue.vue'
+import SpeechBubbles from './SpeechBubbles.vue'
 
 const adventure: AdventureSnapshot = {
     dialogue: {
@@ -144,6 +146,45 @@ describe('conversation and shop navigation', () => {
             ])
         } finally {
             wrapper.unmount()
+        }
+    })
+})
+
+describe('speech bubble keyboard ownership', () => {
+    it('keeps the only speech text in its bubble and closes the owning dialogue when Escape starts inside it', async () => {
+        const player = characterFixture('player'),
+            merchant = characterFixture('merchant')
+        const wrapper = mount(AdventureDialogue, {
+            props: { adventure, characters: [player, merchant] },
+            attachTo: document.body,
+        })
+        const speech = mount(SpeechBubbles, {
+            props: {
+                player,
+                snapshot: { ...worldFixture([player, merchant]), adventure },
+                game: {
+                    projectCharacter: () => ({ x: 100, y: 200, width: 390, height: 700 }),
+                } as never,
+            },
+            attachTo: document.body,
+        })
+        try {
+            await flushPromises()
+            expect(wrapper.text()).not.toContain(adventure.dialogue!.text)
+            expect(speech.get('.speech-text').text()).toBe(adventure.dialogue!.text)
+            await wrapper.get('.adventure-choices button').trigger('keydown', { code: 'PageDown' })
+            expect(document.activeElement).toBe(speech.get('.speech-text').element)
+            await speech.get('.speech-text').trigger('keydown', { code: 'Tab' })
+            expect(document.activeElement).toBe(wrapper.get('.adventure-choices button').element)
+            await wrapper.get('.adventure-choices button').trigger('keydown', { code: 'PageUp' })
+            expect(document.activeElement).toBe(speech.get('.speech-text').element)
+            await speech.get('.speech-text').trigger('keydown', { code: 'Escape' })
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'dialogue_choice', choiceId: 'close' }],
+            ])
+        } finally {
+            wrapper.unmount()
+            speech.unmount()
         }
     })
 })

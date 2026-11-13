@@ -122,6 +122,7 @@ async function joinGame(): Promise<void> {
         onNotice: notices.show,
         onContextAction: () => openNearbyMenu(gameplay.value?.selectedId),
         onCharacterClick: (id) => gameplay.value?.select(id, true),
+        onEvent: (event) => gameplay.value?.receive(event),
         onInventoryToggle: toggleInventory,
         onSnapshot: (nextSnapshot, nextLocalPlayerId) => {
             if (localPlayerId.value !== nextLocalPlayerId) notices.reset()

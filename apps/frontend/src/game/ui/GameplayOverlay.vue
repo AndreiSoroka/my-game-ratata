@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import './rpgControls.css'
 
-import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    CharacterSnapshot,
+    ClientMessage,
+    GameEventPayload,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
 import ActionHotbar from './ActionHotbar.vue'
 import { combatKeyBlocked, nextTarget, relation } from './combatTargeting'
 import PartyPanel from './PartyPanel.vue'
+import SpeechBubbles from './SpeechBubbles.vue'
 
 const props = defineProps<{
     game?: RatataGame
@@ -19,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{ interact: [id: string] }>()
 const selectedId = ref<string>()
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
+const speech = ref<InstanceType<typeof SpeechBubbles>>()
 const unavailable = computed(() => !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
 const target = computed(() => props.characters.find((actor) => actor.id === selectedId.value))
 function send(command: ClientMessage): void {
@@ -81,10 +88,31 @@ function attack(): void {
 function blur(): void {
     cancel()
 }
+function receive(event: GameEventPayload): void {
+    speech.value?.receive(event)
+}
+let closingDialogue: string | undefined
+watch([() => props.snapshot.adventure?.dialogue, () => props.characters], () => {
+    const dialogue = props.snapshot.adventure?.dialogue
+    if (!dialogue || dialogue.kind === 'sign') {
+        closingDialogue = undefined
+        return
+    }
+    const speaker = props.characters.find((actor) => actor.id === dialogue.npcId)
+    const valid =
+        speaker?.alive &&
+        props.player.alive &&
+        props.game?.isInteractionVisible(speaker.position, undefined, 48)
+    if (!valid && closingDialogue !== dialogue.npcId) {
+        closingDialogue = dialogue.npcId
+        send({ type: 'dialogue_choice', choiceId: 'close' })
+    }
+})
 watch(
     () => props.player.id,
     () => {
         selectedId.value = undefined
+        speech.value?.clear()
     }
 )
 watch(
@@ -92,6 +120,7 @@ watch(
     () => {
         selectedId.value = undefined
         if (props.player.control?.mode !== 'follow') cancel()
+        speech.value?.clear()
     }
 )
 watch(
@@ -142,7 +171,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('blur', blur)
     props.game?.setCombatTarget(undefined)
 })
-defineExpose({ selectedId, select, cancel })
+defineExpose({ selectedId, select, receive, cancel })
 </script>
 <template>
     <PartyPanel
@@ -186,6 +215,7 @@ defineExpose({ selectedId, select, cancel })
         @cancel="cancel()"
         @preview-change="game?.setPrayerPreview?.($event)"
     />
+    <SpeechBubbles ref="speech" :game="game" :snapshot="snapshot" :player="player" />
     <span class="target-help">T враги · Shift+T союзники · F себя · Q автоатака</span>
 </template>
 <style scoped>

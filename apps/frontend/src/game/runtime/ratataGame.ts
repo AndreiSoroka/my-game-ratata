@@ -13,7 +13,6 @@ import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 import { type Engine, PointerButton } from 'excalibur'
 
 import { createCharacterResources } from './characterResources'
-import { chatDuration } from './chatInput'
 import { GameAudio } from './gameAudio'
 import { axisFromKeys, movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
@@ -31,7 +30,7 @@ import { runtimeEventFeedback } from './runtimeEventFeedback'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
-import { isChatEvent, isEditableTarget } from './runtimeQueries'
+import { isEditableTarget } from './runtimeQueries'
 import { handleRuntimeShortcut } from './runtimeShortcuts'
 import { RuntimeSocket } from './runtimeSocket'
 import { SceneActors } from './sceneActors'
@@ -324,7 +323,5 @@ export class RatataGame {
         this.audio?.playEventSound(event)
         if (this.loadingMapId === undefined) this.sceneActors?.showDamage(event)
         runtimeEventFeedback(event, this.localPlayerId, this.options, this.releaseInputs)
-        if (isChatEvent(event))
-            this.sceneActors?.showChat(event.actorId, event.text, chatDuration(event.text))
     }
 }

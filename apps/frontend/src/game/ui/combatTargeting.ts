@@ -46,7 +46,8 @@ export function combatInputBlocked(): boolean {
     return (
         document.querySelector('[role="dialog"], [role="menu"]') !== null ||
         (focus instanceof HTMLElement &&
-            focus.closest('input,textarea,select,button,[contenteditable="true"]') !== null)
+            focus.closest('input,textarea,select,button,[contenteditable="true"],.speech-text') !==
+                null)
     )
 }
 

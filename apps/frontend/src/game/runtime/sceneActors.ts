@@ -196,26 +196,12 @@ export class SceneActors {
         return this.bundles.get(id)?.body.graphics.isVisible ?? true
     }
 
-    public showChat(actorId: string, text: string, durationMs: number): void {
-        const bundle = this.bundles.get(actorId)
-
-        if (bundle === undefined) {
-            return
-        }
-
-        bundle.message.text = text.length > 96 ? `${text.slice(0, 93).trimEnd()}…` : text
-        bundle.message.graphics.opacity = 1
-        bundle.messageUntil = performance.now() + durationMs
-    }
-
     private updateCharacter(snapshot: CharacterSnapshot, isLocalPlayer: boolean): void {
         const bundle = this.getBundle(snapshot)
         bundle.snapshot = snapshot
         const position = vec(snapshot.position.x, snapshot.position.y)
         bundle.body.pos = position
         bundle.body.z = snapshot.position.y
-        bundle.message.pos = vec(snapshot.position.x, snapshot.position.y - 52)
-        bundle.message.z = bundle.body.z + 4
         bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - 44)
         bundle.label.z = bundle.body.z + 3
         bundle.hpBack.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
@@ -226,15 +212,8 @@ export class SceneActors {
         bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
         this.updateGraphic(bundle.body, snapshot)
         updateBundleHealth(bundle, snapshot, isLocalPlayer)
-        this.updateMessage(bundle)
         const visible = isLocalPlayer || !this.buildingViews.hidesCharacter(snapshot.position)
-        for (const actor of [
-            bundle.body,
-            bundle.label,
-            bundle.message,
-            bundle.hpBack,
-            bundle.hpFill,
-        ])
+        for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill])
             actor.graphics.isVisible = visible
     }
 
@@ -249,7 +228,6 @@ export class SceneActors {
         this.bundles.set(snapshot.id, bundle)
         this.engine.add(bundle.body)
         this.engine.add(bundle.label)
-        this.engine.add(bundle.message)
         this.engine.add(bundle.hpBack)
         this.engine.add(bundle.hpFill)
 
@@ -270,17 +248,6 @@ export class SceneActors {
         actor.graphics.use(sheet.getSprite(graphic.frame, graphic.row))
         actor.graphics.flipHorizontal = graphic.flipHorizontal
         actor.graphics.opacity = snapshot.alive ? 1 : 0.55
-    }
-
-    private updateMessage(bundle: CharacterBundle): void {
-        if (bundle.messageUntil > performance.now()) {
-            return
-        }
-
-        if (bundle.message.text.length > 0) {
-            bundle.message.text = ''
-            bundle.message.graphics.opacity = 0
-        }
     }
 
     private followLocalPlayer(localPlayerId: string | undefined): void {

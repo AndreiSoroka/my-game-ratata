@@ -7,8 +7,6 @@ export interface CharacterBundle {
     hpBack: Actor
     hpFill: Actor
     label: Label
-    message: Label
-    messageUntil: number
 }
 
 const labelFont = new Font({
@@ -16,15 +14,7 @@ const labelFont = new Font({
     family: 'Pixelify Sans, system-ui, sans-serif',
     size: 8,
 })
-const messageFont = new Font({
-    color: Color.White,
-    family: 'Pixelify Sans, system-ui, sans-serif',
-    size: 7,
-})
 export function createBundle(): CharacterBundle {
-    const message = new Label({ font: messageFont, maxWidth: 110, text: '' })
-    // Label resets GraphicsComponent.anchor in its constructor in Excalibur 0.32.
-    message.graphics.anchor = vec(0.5, 1)
     const label = new Label({ font: labelFont, text: '' })
     label.graphics.anchor = vec(0.5, 0.5)
     return {
@@ -32,8 +22,6 @@ export function createBundle(): CharacterBundle {
         hpBack: createBar(Color.fromHex('#171717'), 32),
         hpFill: createBar(Color.Green, 32),
         label,
-        message,
-        messageUntil: 0,
     }
 }
 
@@ -50,7 +38,6 @@ function createBar(color: Color, width: number): Actor {
 
 export function removeBundle(engine: Engine, bundle: CharacterBundle): void {
     engine.remove(bundle.body)
-    engine.remove(bundle.message)
     engine.remove(bundle.label)
     engine.remove(bundle.hpBack)
     engine.remove(bundle.hpFill)
