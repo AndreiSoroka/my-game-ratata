@@ -1,5 +1,6 @@
 import {
     CONTRACT_PROTOCOL_VERSION,
+    type GameEventPayload,
     type HeroClass,
     type MapSummary,
     type WorldSnapshot,
@@ -12,6 +13,7 @@ import {
 } from './controllers'
 import { normalizeNickname } from './identity'
 import { cancelMovementMode } from './movementActions'
+import { cancelPrayerCast } from './prayerCancellation'
 import {
     broadcastEvent,
     type RoomSocket,
@@ -56,7 +58,7 @@ export function joinRoom(
     if (existingId !== undefined) {
         context.closeChestViews?.(existingId)
         const existingCharacter = context.characters.get(existingId)
-        stopCharacterMovement(existingCharacter)
+        stopAndPublish(existingCharacter, context.connections.keys())
     }
     const existingCharacter =
         existingPlayerId === undefined
@@ -66,7 +68,7 @@ export function joinRoom(
         existingCharacter ??
         context.createPlayer(nickname, nicknameKey, archetype, heroClass)
     character.tags.delete('offline')
-    stopCharacterMovement(character)
+    stopAndPublish(character, context.connections.keys())
     context.controllers.set(character.id, new NetworkPlayerController())
     context.connections.set(ws, character.id)
     send(ws, {
@@ -97,14 +99,16 @@ function isPlayerConnected(
 }
 
 export function stopCharacterMovement(
-    character: GameCharacter | undefined
-): void {
+    character: GameCharacter | undefined,
+    now = Date.now()
+): GameEventPayload[] {
     if (character === undefined) {
-        return
+        return []
     }
     cancelMovementMode(character)
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()
+    return cancelPrayerCast(character, now)
 }
 
 export function leaveRoom(
@@ -120,7 +124,16 @@ export function leaveRoom(
     }
     closeChestViews(playerId)
     const player = characters.get(playerId)
-    stopCharacterMovement(player)
+    stopAndPublish(player, connections.keys())
     player?.tags.add('offline')
     broadcastEvent(connections.keys(), { actorId: playerId, kind: 'leave' })
+}
+
+function stopAndPublish(
+    character: GameCharacter | undefined,
+    sockets: Iterable<RoomSocket>
+): void {
+    for (const event of stopCharacterMovement(character)) {
+        broadcastEvent(sockets, event)
+    }
 }

@@ -57,16 +57,19 @@ describe('shared deities and meaningful faith', () => {
 
     it('charges a failed prayer, trains faith, and never trains miracles from failure or cooldown spam', () => {
         const actor = hero()
+        actor.abilities.known.add('pray')
         actor.hp -= 10
         const before = actor.hp
         expect(
             command(actor, { type: 'pray' }, [], 1_000, () => 1)
-        ).toMatchObject([{ kind: 'notice' }])
+        ).toMatchObject([{ kind: 'cast' }, { kind: 'notice' }])
         expect(actor.hp).toBe(before)
         expect(actor.mana).toBe(35)
         expect(actor.progression.skills.faith.practice).toBe(1)
         expect(actor.progression.skills.miracles.practice).toBe(0)
-        expect(command(actor, { type: 'pray' }, [], 1_500, () => 0)).toEqual([])
+        expect(
+            command(actor, { type: 'pray' }, [], 1_500, () => 0)
+        ).toMatchObject([{ kind: 'notice' }])
         expect(actor.mana).toBe(35)
         expect(actor.progression.skills.faith.practice).toBe(1)
         command(actor, { type: 'pray' }, [], 4_000, () => 0)
@@ -79,12 +82,15 @@ describe('shared deities and meaningful faith', () => {
         '%s grants only its own useful resource miracle',
         (deityId) => {
             const actor = hero()
+            actor.abilities.known.add('pray')
             actor.progression.patron = deityId
             actor.hp = 10
             actor.energy = 20
             actor.mana = 20
             const events = command(actor, { type: 'pray' }, [], 1_000, () => 0)
-            expect(events[0]?.amount).toBeGreaterThan(0)
+            expect(
+                events.find((event) => event.kind === 'heal')?.amount
+            ).toBeGreaterThan(0)
             expect(actor.hp > 10).toBe(deityId === 'hearth')
             expect(actor.energy > 20).toBe(deityId === 'road')
             expect(actor.mana > 20).toBe(deityId === 'lantern')
@@ -187,6 +193,7 @@ describe('finite studies and shared teaching', () => {
     it('validates teacher knowledge and distance, teaches atomically to another controller and prevents repeat practice', () => {
         const teacher = hero()
         const student = hero('vanguard', 'scripted')
+        student.progression.skills.arcana.level = 3
         const message = { type: 'teach_magic', targetId: student.id } as const
         expect(command(teacher, message, [student])).toEqual([])
         teacher.progression.skills.fireball.unlocked = true
@@ -196,10 +203,9 @@ describe('finite studies and shared teaching', () => {
         expect(command(teacher, message, [student])).toMatchObject([
             { kind: 'notice' },
             { kind: 'skill_up' },
-            { kind: 'skill_up' },
         ])
         expect(student.progression.skills.fireball.unlocked).toBe(true)
-        expect(student.progression.skills.arcana.level).toBe(2)
+        expect(student.progression.skills.arcana.level).toBe(3)
         expect(teacher.progression.skills.arcana.level).toBe(2)
         const before = structuredClone(teacher.progression)
         expect(command(teacher, message, [student])).toEqual([])

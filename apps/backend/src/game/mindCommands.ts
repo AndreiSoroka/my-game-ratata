@@ -1,5 +1,6 @@
 import type { CompanionRequest } from '@my-game-ratata/contracts'
 
+import { parseAbilityCommand } from './abilityCommands'
 import type { ParseResult } from './messages'
 import { parseSocialCommand } from './socialCommands'
 
@@ -13,6 +14,12 @@ const requests: CompanionRequest[] = [
 
 export function parseMindCommand(record: Record<string, unknown>): ParseResult {
     const type = record['type']
+    if (type === 'use_ability' || type === 'learn_ability') {
+        const message = parseAbilityCommand(record)
+        return message === undefined
+            ? { error: 'Invalid ability command.' }
+            : { message }
+    }
     const targetId = record['targetId']
     const skillId = record['skillId']
     if (type === 'pray') {
@@ -44,7 +51,10 @@ function parseKnowledgeCommand(record: Record<string, unknown>): ParseResult {
     if (
         type === 'choose_deity' &&
         validId(targetId) &&
-        (deityId === 'hearth' || deityId === 'road' || deityId === 'lantern')
+        (deityId === 'hearth' ||
+            deityId === 'road' ||
+            deityId === 'lantern' ||
+            deityId === 'grave')
     ) {
         return { message: { type, targetId, deityId } }
     }

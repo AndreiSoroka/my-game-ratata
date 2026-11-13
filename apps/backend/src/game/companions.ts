@@ -142,7 +142,7 @@ export class CompanionService {
         world: CompanionWorld,
         now: number
     ): GameEventPayload[] {
-        if (this.hasActiveLease(character, now)) {
+        if (this.hasActiveLease(character, now, world)) {
             return []
         }
         const state = this.stateFor(character)
@@ -198,7 +198,11 @@ export class CompanionService {
         return result
     }
 
-    public hasActiveLease(character: GameCharacter, now: number): boolean {
+    public hasActiveLease(
+        character: GameCharacter,
+        now: number,
+        world?: CompanionWorld
+    ): boolean {
         const until = this.leases.get(character.id)
         if (until === undefined) {
             return false
@@ -207,6 +211,7 @@ export class CompanionService {
             return true
         }
         this.leases.delete(character.id)
+        world?.requestControl?.(character, { type: 'cancel_control' }, now)
         cancelMovementMode(character)
         character.soul.controlSource = 'script'
         character.setMoveInput({ x: 0, y: 0 })

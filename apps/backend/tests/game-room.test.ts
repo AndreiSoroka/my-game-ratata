@@ -78,7 +78,7 @@ describe('shared combat windup', () => {
         const startEvents = startAttack(attacker, [attacker, target], now)
 
         expect(startEvents).toEqual([{ actorId: 'attacker', kind: 'attack' }])
-        expect(attacker.energy).toBe(85)
+        expect(attacker.energy).toBe(135)
         expect(attacker.animationAction).toBe('attack')
         expect(attacker.attackZones).toHaveLength(1)
         expect(target.hp).toBe(target.maxHp)
@@ -122,6 +122,7 @@ describe('shared combat resources', () => {
             y: 40,
         })
         vi.spyOn(Math, 'random')
+            .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -135,9 +136,18 @@ describe('shared combat resources', () => {
         expect(hitEvents).toEqual([
             {
                 actorId: 'attacker',
-                amount: 5,
+                amount: 6,
                 kind: 'damage',
+                damageKind: 'physical',
+                critical: false,
                 targetId: 'target',
+            },
+            {
+                kind: 'status',
+                actorId: 'attacker',
+                targetId: 'target',
+                statusId: 'stun',
+                expiresAt: now + 50 + 300,
             },
         ])
         expect(target.energy).toBe(217)
@@ -156,6 +166,7 @@ describe('shared combat resources', () => {
         })
         attacker.energy = 50
         vi.spyOn(Math, 'random')
+            .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -168,8 +179,10 @@ describe('shared combat resources', () => {
         expect(hitEvents).toEqual([
             {
                 actorId: 'attacker',
-                amount: 5,
+                amount: 6,
                 kind: 'damage',
+                damageKind: 'physical',
+                critical: false,
                 targetId: 'target',
             },
         ])
@@ -189,6 +202,7 @@ describe('shared combat resources', () => {
         })
         attacker.energy = 5
         vi.spyOn(Math, 'random')
+            .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -215,6 +229,8 @@ describe('shared combat resources', () => {
                 actorId: 'attacker',
                 amount: 2,
                 kind: 'damage',
+                damageKind: 'physical',
+                critical: false,
                 targetId: 'target',
             },
         ])

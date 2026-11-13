@@ -7,6 +7,7 @@ import type {
 
 import { GameCharacter } from './character'
 import { cityResidents } from './cityResidents'
+import { ClericController } from './clericController'
 import { CompanionController } from './companionControllers'
 import { companionProfiles, companionSoul } from './companionProfiles'
 import type { CompanionService } from './companions'
@@ -125,9 +126,11 @@ export function createSupportNpcs(
         return {
             character,
             controller:
-                profile === undefined
-                    ? new NetworkPlayerController()
-                    : new CompanionController(companions),
+                definition.heroClass === 'cleric'
+                    ? new ClericController()
+                    : profile === undefined
+                      ? new NetworkPlayerController()
+                      : new CompanionController(companions),
         }
     })
 }

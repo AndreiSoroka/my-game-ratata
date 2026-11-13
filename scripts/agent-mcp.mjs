@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Minimal stdio MCP adapter. Uses ordinary validated game intentions, no state editor.
 import { createInterface } from 'node:readline'
+import { abilityDecisionSchemas } from './agent-ability-schemas.mjs'
 
 const token = process.env.GAME_AGENT_TOKEN
 const base = new URL(process.env.GAME_AGENT_URL ?? 'http://127.0.0.1:3000')
@@ -24,7 +25,7 @@ const tools = [
     {
         name: 'ratata_act',
         description:
-            'Control a non-player character for 5 seconds through shared movement (walking, sneaking, energy-limited dash), combat, theft and speech rules. Theft requires sneaking, proximity, energy and cooldowns; guards can only be called after a witnessed attempt. Report a witnessed theft near a city guard to request blacklisting; absolution near the city cleric costs 30 gold and clears city sanctions. Chest commands open a private shared container, take one observed itemInstanceId or all that fits, put one held unequipped itemInstanceId into the actively viewed chest, and close it; open does not spill loot. The action result contains only this NPC’s validated chest view. pickup_item accepts an optional observed worldItemId to pick only that loose item in this location and range; a missing or unavailable explicit target never falls back to another item. Cannot override player control, grant resources, teleport, resurrect or bypass speech capability. Renew intentions before the lease expires; wait releases control. Respect the observed character personality and consent.',
+            'Control a non-player character for 5 seconds through shared movement (walking, sneaking, energy-limited dash), combat, theft and speech rules. Theft requires sneaking, proximity, energy and cooldowns; guards can only be called after a witnessed attempt. Report a witnessed theft near a city guard to request blacklisting; absolution near the city cleric costs 30 gold and clears city sanctions. Chest commands open a private shared container, take one observed itemInstanceId or all that fits, put one held unequipped itemInstanceId into the actively viewed chest, and close it; open does not spill loot. The action result contains only this NPC’s validated chest view. pickup_item accepts an optional observed worldItemId to pick only that loose item in this location and range; a missing or unavailable explicit target never falls back to another item. Cannot override player control, grant resources, teleport or bypass speech capability. Known abilities use use_ability with ordinary mana, cooldown, reach and line-of-sight checks. Prayer requires a pinned intent: restore/revive with targetId or harm with an optional pinned targetId; revival costs 20 mana and channels for 3 seconds, other prayers cost 5. Deity waves may harm allies and the caster. Personalities that refuse combat cannot be forced to cast harmful abilities. follow and auto_attack take targetId (null cancels); cancel_control stops either mode. Renew intentions before the lease expires; wait releases control. Respect the observed character personality and consent.',
         inputSchema: {
             type: 'object',
             required: ['actorId', 'decision'],
@@ -33,6 +34,7 @@ const tools = [
                 actorId: { type: 'string' },
                 decision: {
                     oneOf: [
+                        ...abilityDecisionSchemas,
                         {
                             type: 'object',
                             required: ['type'],

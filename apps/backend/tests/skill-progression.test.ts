@@ -85,23 +85,30 @@ describe('shared prayers and learning', () => {
     it.each(['network_player', 'scripted'] as const)(
         'heals and practices only useful prayers through the same service for %s',
         (controllerKind) => {
-            const actor = hero('vanguard', controllerKind)
+            const actor = hero('cleric', controllerKind)
             const startMana = actor.mana
-            expect(command(actor, { type: 'pray' }, [], 1_000)).toEqual([])
+            expect(command(actor, { type: 'pray' }, [], 1_000)).toMatchObject([
+                { kind: 'notice' },
+            ])
             expect(actor.mana).toBe(startMana)
             actor.hp -= 15
             const events = command(actor, { type: 'pray' }, [], 1_000)
-            const restored = events[0]?.amount ?? 0
+            const restored =
+                events.find((event) => event.kind === 'heal')?.amount ?? 0
             expect(restored).toBeGreaterThan(0)
             expect(actor.progression.skills.miracles.practice).toBe(1)
             expect(actor.hp).toBe(actor.maxHp - 15 + restored)
             expect(actor.mana).toBe(startMana - 5)
-            expect(command(actor, { type: 'pray' }, [], 2_000)).toEqual([])
+            expect(command(actor, { type: 'pray' }, [], 2_000)).toMatchObject([
+                { kind: 'notice' },
+            ])
             expect(actor.progression.skills.miracles.practice).toBe(1)
             command(actor, { type: 'pray' }, [], 4_000)
             expect(actor.progression.skills.miracles.practice).toBe(2)
             actor.mana = 4
-            expect(command(actor, { type: 'pray' }, [], 7_000)).toEqual([])
+            expect(command(actor, { type: 'pray' }, [], 7_000)).toMatchObject([
+                { kind: 'notice' },
+            ])
         }
     )
 
@@ -109,6 +116,7 @@ describe('shared prayers and learning', () => {
         'teaches fireball to %s only near a living friendly scholar',
         (heroClass) => {
             const actor = hero(heroClass)
+            actor.progression.skills.arcana.level = 3
             const scholar = hero()
             scholar.tags.add('scholar')
             scholar.position.x += 65

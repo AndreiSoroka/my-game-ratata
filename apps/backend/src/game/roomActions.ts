@@ -5,9 +5,10 @@ import type {
     ProgressionClientMessage,
 } from '@my-game-ratata/contracts'
 
+import { handleAbilityCommand } from './abilityCommands'
+import type { AbilityContext } from './abilityContext'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import { beginRevive } from './characterLife'
 import type { CompanionService } from './companions'
 import { isAdventureCommand } from './extraCommands'
 import { handleMovementCommand } from './movementActions'
@@ -20,6 +21,7 @@ import { isTheftCommand } from './theftCommands'
 import type { WorldInventory } from './worldInventory'
 
 interface ActionContext {
+    requestAbilityAttack?: AbilityContext['requestAbilityAttack']
     theft: TheftService
     adventure: AdventureService
     allCharacters: Iterable<GameCharacter>
@@ -38,6 +40,10 @@ export function handleRoomAction(
     context: ActionContext
 ): GameEventPayload[] | undefined {
     const { player, message, characters, now } = context
+    const abilityEvents = abilityAction(context)
+    if (abilityEvents !== undefined) {
+        return abilityEvents
+    }
     if (message.type === 'dash') {
         return handleDashWithFeedback(player, now)
     }
@@ -86,21 +92,7 @@ export function handleRoomAction(
             ),
         ]
     }
-    if (message.type === 'revive') {
-        const target = characters.find(
-            (character) => character.id === message.targetId
-        )
-        if (target !== undefined && beginRevive(player, target, now)) {
-            return []
-        }
-        return [
-            {
-                actorId: player.id,
-                kind: 'notice',
-                text: 'Воскрешение сейчас невозможно: нужны знания, мана и союзник рядом.',
-            },
-        ]
-    }
+
     return undefined
 }
 
@@ -147,4 +139,37 @@ function rememberConversation(
             characters.find((character) => character.id === message.targetId)
         )
     }
+}
+
+function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
+    const { message, player, characters, now } = context
+    if (message.type === 'revive') {
+        return handleAbilityCommand(
+            player,
+            {
+                type: 'use_ability',
+                abilityId: 'pray',
+                intent: { mode: 'revive', targetId: message.targetId },
+            },
+            { characters, navigation: context.navigation, now }
+        )
+    }
+    if (message.type === 'use_ability' || message.type === 'learn_ability') {
+        const events = handleAbilityCommand(player, message, {
+            characters,
+            navigation: context.navigation,
+            now,
+            ...(context.requestAbilityAttack === undefined
+                ? {}
+                : { requestAbilityAttack: context.requestAbilityAttack }),
+        })
+        return [
+            ...events,
+            ...context.inventory.dropLootForDeaths(events, (id) =>
+                characters.find((character) => character.id === id)
+            ),
+        ]
+    }
+
+    return undefined
 }

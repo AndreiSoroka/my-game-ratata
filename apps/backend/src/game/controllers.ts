@@ -11,6 +11,7 @@ import {
 } from './mobAggro'
 import { tryPursuitDash } from './mobPursuit'
 import type { NavigationService, TileCoordinate } from './navigation'
+import { requestNpcAttack } from './npcAbilities'
 import type { GameRoom } from './room'
 
 export interface Mob1ControllerOptions {
@@ -67,7 +68,7 @@ export class Mob1Controller implements CharacterController {
             if (!shouldFleeTarget) {
                 character.clearPath()
             }
-            room.requestAttack(character, now)
+            requestNpcAttack(character, target, room, now)
 
             if (shouldFleeTarget) {
                 this.flee(character, target, navigation, now)

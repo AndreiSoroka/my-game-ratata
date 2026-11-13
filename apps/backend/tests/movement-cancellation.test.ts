@@ -62,7 +62,9 @@ describe('movement intent cancellation', () => {
                 expect(
                     handleMovementCommand(character, { type: 'dash' }, 1_100)
                 ).toEqual([])
-                expect(character.energy).toBe(100)
+                expect(character.energy).toBe(
+                    character.config.resources.maxEnergy
+                )
             }
         }
     )
@@ -84,7 +86,9 @@ describe('movement intent cancellation', () => {
         expect(character.movement.dashUntil).toBe(0)
         expect(character.movement.dashAvailableAt).toBe(3_500)
         expect(character.energy).toBeCloseTo(
-            100 - MOVEMENT_RULES.dashEnergy + 0.3
+            character.config.resources.maxEnergy -
+                MOVEMENT_RULES.dashEnergy +
+                0.3
         )
         expect(
             handleMovementCommand(character, { type: 'dash' }, 1_100)
@@ -180,7 +184,10 @@ describe('standing dash at ordinary location borders', () => {
                 vi.advanceTimersByTime(50)
                 expect(character.locationId).toBe(destination)
                 expect(character.movement.dashAvailableAt).toBe(3_500)
-                expect(character.energy).toBe(100 - MOVEMENT_RULES.dashEnergy)
+                expect(character.energy).toBe(
+                    character.config.resources.maxEnergy -
+                        MOVEMENT_RULES.dashEnergy
+                )
                 expect(
                     room
                         .navigationFor(character)

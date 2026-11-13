@@ -1,27 +1,26 @@
 import {
+    DEITY_PRAYER_PROFILES,
     type GameEventPayload,
     REVIVE_CAST_MS,
     REVIVE_MANA_COST,
     REVIVE_RANGE,
 } from '@my-game-ratata/contracts'
 
+import type { AbilityContext } from './abilityContext'
+import { clearAbilityEffects, createAbilityState } from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
 import { resolveMiracle } from './deities'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
+import { cancelPrayerCast } from './prayerCancellation'
+import { revivalTargetEligible } from './prayerContext'
+import { completePrayer } from './prayerEffects'
 import {
     canUseResurrection,
     createProgression,
     trainSkill,
 } from './skillProgression'
-
-interface RevivalCast {
-    completesAt: number
-    targetId: string
-}
-
-const revivalCasts = new WeakMap<GameCharacter, RevivalCast>()
 
 export function shouldRetireCharacter(
     character: GameCharacter,
@@ -49,26 +48,34 @@ export function retireCharacter(character: GameCharacter): GameEventPayload {
     character.tags.add('state.retired')
     character.clearPath()
     character.clearPendingAttackHit()
-    revivalCasts.delete(character)
+    clearAbilityEffects(character)
+    character.abilities.known = createAbilityState(
+        character.heroClass,
+        character.archetype
+    ).known
+    character.abilities.availableAt = {}
     return { actorId: character.id, kind: 'permadeath' }
 }
 
 export function beginRevive(
     caster: GameCharacter,
     target: GameCharacter,
-    now: number
+    now: number,
+    context?: AbilityContext
 ): boolean {
     if (
-        revivalCasts.has(caster) ||
+        caster.abilities.casting !== null ||
         caster.isActionLocked(now) ||
-        !canRevive(caster, target, now)
+        !canRevive(caster, target, now, context)
     ) {
         return false
     }
-    revivalCasts.set(caster, {
+    caster.abilities.casting = {
         completesAt: now + REVIVE_CAST_MS,
+        startedAt: now,
         targetId: target.id,
-    })
+        patron: caster.progression.patron,
+    }
     caster.lockAction(now, REVIVE_CAST_MS)
     caster.setAnimation('attack', now, REVIVE_CAST_MS)
     return true
@@ -78,25 +85,47 @@ export function advanceRevive(
     caster: GameCharacter,
     findTarget: (id: string) => GameCharacter | undefined,
     now: number,
-    random?: () => number
+    random?: () => number,
+    context?: AbilityContext
 ): GameEventPayload[] {
-    const cast = revivalCasts.get(caster)
-    if (cast === undefined) {
+    const cast = caster.abilities.casting
+    if (cast === null) {
         return []
     }
     const target = findTarget(cast.targetId)
-    if (target === undefined || !canRevive(caster, target, now)) {
-        revivalCasts.delete(caster)
-        caster.actionLockUntil = now
-        caster.animationUntil = now
-        return []
+    if (
+        target === undefined ||
+        cast.patron !== caster.progression.patron ||
+        !canRevive(caster, target, now, context)
+    ) {
+        return cancelPrayerCast(caster, now)
     }
     if (now < cast.completesAt) {
         return []
     }
-    revivalCasts.delete(caster)
+    caster.abilities.casting = null
     caster.mana -= REVIVE_MANA_COST
-    const outcome = resolveMiracle(caster, now, random)
+    const roll = (random ?? context?.random ?? Math.random)()
+    const outcome = resolveMiracle(caster, now, () => roll)
+    caster.progression.prayerAvailableAt = now
+    if (context !== undefined) {
+        return [
+            {
+                kind: 'cast',
+                actorId: caster.id,
+                targetId: target.id,
+                abilityId: 'pray',
+                phase: 'completed',
+            },
+            ...completePrayer(
+                caster,
+                { mode: 'revive', targetId: target.id },
+                { ...context, now },
+                roll,
+                outcome.quality
+            ),
+        ]
+    }
     const faithEvents = trainSkill(caster, 'faith')
     if (!outcome.success) {
         return [
@@ -120,18 +149,32 @@ export function advanceRevive(
 function canRevive(
     caster: GameCharacter,
     target: GameCharacter,
-    now: number
+    now: number,
+    context?: AbilityContext
 ): boolean {
     return (
-        canUseResurrection(caster) &&
-        caster.alive &&
-        caster.stunUntil <= now &&
-        caster.mana >= REVIVE_MANA_COST &&
+        (context === undefined ||
+            revivalTargetEligible(caster, target, context)) &&
+        revivalCasterReady(caster, now) &&
+        !target.tags.has('offline') &&
+        DEITY_PRAYER_PROFILES[caster.progression.patron].reviveTypes.includes(
+            target.creatureType
+        ) &&
         !target.alive &&
         !target.tags.has('state.retired') &&
         target.reviveUntil > now &&
         target.faction === caster.faction &&
         target.locationId === caster.locationId &&
         distance(caster.position, target.position) <= REVIVE_RANGE
+    )
+}
+
+function revivalCasterReady(caster: GameCharacter, now: number): boolean {
+    return (
+        canUseResurrection(caster) &&
+        caster.alive &&
+        !caster.tags.has('offline') &&
+        caster.stunUntil <= now &&
+        caster.mana >= REVIVE_MANA_COST
     )
 }

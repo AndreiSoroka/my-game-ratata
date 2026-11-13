@@ -109,3 +109,35 @@ test('MCP exposes an optional exact ground-item pickup target', () => {
     assert.equal(pickup.additionalProperties, false)
     assert.match(act.description, /explicit target never falls back/)
 })
+
+test('MCP exposes pinned abilities and cancelable ordinary character control', () => {
+    const [message] = messages([
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    ])
+    const act = message.result.tools.find((tool) => tool.name === 'ratata_act')
+    const choices = act.inputSchema.properties.decision.oneOf
+    const prayer = choices.find(
+        (entry) => entry.properties.abilityId?.const === 'pray'
+    )
+    assert.ok(prayer.required.includes('intent'))
+    assert.equal(prayer.additionalProperties, false)
+    assert.ok(
+        prayer.properties.intent.oneOf.some(
+            (entry) => entry.properties.mode.const === 'harm'
+        )
+    )
+    const control = choices.find((entry) =>
+        entry.properties.type.enum?.includes('auto_attack')
+    )
+    assert.ok(control.required.includes('targetId'))
+    assert.ok(
+        control.properties.targetId.oneOf.some((entry) => entry.type === 'null')
+    )
+    assert.ok(
+        choices.some(
+            (entry) => entry.properties.type.const === 'cancel_control'
+        )
+    )
+    assert.match(act.description, /waves may harm allies/)
+    assert.doesNotMatch(act.description, /Cannot[^.]*resurrect/)
+})

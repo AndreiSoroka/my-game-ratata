@@ -88,6 +88,7 @@ function simulateApproach(
     const context = (now: number) => ({
         actor,
         now,
+        random: () => 0.5,
         respawnDelayMsFor: () => 1_000,
         targets: [actor, target],
         tileSize: navigation.grid.tileWidth,

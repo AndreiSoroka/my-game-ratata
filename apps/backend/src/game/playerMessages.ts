@@ -3,6 +3,7 @@ import type { ClientMessage, GameEventPayload } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import { isChestCommand } from './chestCommands'
 import type { NavigationService } from './navigation'
+import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
 import { faceNearestTarget } from './queries'
 import { broadcastChat, type RoomSocket } from './roomMessaging'
 import type { WorldInventory } from './worldInventory'
@@ -13,7 +14,7 @@ interface PlayerMessageContext {
     message: ClientMessage
     navigation: NavigationService
     player: GameCharacter
-    requestAttack: (actor: GameCharacter) => void
+    requestAttack: (actor: GameCharacter, targetId?: string) => void
     sendEvents: (events: GameEventPayload[]) => void
     worldInventory: WorldInventory
 }
@@ -22,11 +23,15 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     const { message, player } = context
 
     if (message.type === 'move_input') {
+        context.sendEvents(
+            cancelPrayerForMovement(player, message.axis, Date.now())
+        )
         player.setMoveInput(message.axis)
         return
     }
 
     if (message.type === 'move_to') {
+        context.sendEvents(cancelPrayerCast(player, Date.now()))
         player.setPath(
             context.navigation.findPathWorld(player.position, message.target)
         )
@@ -34,8 +39,10 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     }
 
     if (message.type === 'attack') {
-        faceNearestTarget(player, context.characters.values(), 48)
-        context.requestAttack(player)
+        if (message.targetId === undefined) {
+            faceNearestTarget(player, context.characters.values(), 48)
+        }
+        context.requestAttack(player, message.targetId)
         return
     }
 

@@ -142,6 +142,7 @@ describe('shared cleric revival ability', () => {
         const target = hero('ranger')
         kill(target, 2_000)
         expect(beginRevive(caster, target, 3_000)).toBe(false)
+        caster.abilities.known.add('pray')
         trainSkill(caster, 'miracles', 200)
         expect(caster.progression.skills.miracles.level).toBeGreaterThanOrEqual(
             5
@@ -165,7 +166,7 @@ describe('shared cleric revival ability', () => {
                 6_000,
                 () => 0
             )
-        ).toEqual([])
+        ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
         expect(target.alive).toBe(false)
         expect(caster.mana).toBe(120)
     })

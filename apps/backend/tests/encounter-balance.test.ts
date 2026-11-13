@@ -49,7 +49,7 @@ describe('group-oriented wilderness challenge', () => {
         for (const player of [...armedSolo.players, ...party.players]) {
             expect(player.maxHp).toBe(30)
             expect(player.config.moveSpeed).toBe(90)
-            expect(player.config.resources.maxEnergy).toBe(100)
+            expect(player.config.resources.maxEnergy).toBe(150)
         }
     })
 })

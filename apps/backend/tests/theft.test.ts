@@ -18,7 +18,7 @@ describe('atomic real-item theft', () => {
         expect(actor.inventory).toEqual([item])
         expect(victim.inventory).toEqual([equipped])
         expect(victim.equipment.weapon).toBe(equipped)
-        expect(actor.energy).toBe(90)
+        expect(actor.energy).toBe(actor.config.resources.maxEnergy - 10)
         expect(actor.progression.skills.theft.practice).toBe(1)
         expect(actor.progression.skills.stealth.practice).toBe(1)
         expect(service.snapshot(actor.id, actor.id, 1_000)).toMatchObject({
@@ -48,11 +48,11 @@ describe('atomic real-item theft', () => {
         attempt([0.99, 0], 9_000)
         attempt([0.99, 0], 60_999)
         expect(actor.inventory).toHaveLength(1)
-        expect(actor.energy).toBe(90)
+        expect(actor.energy).toBe(actor.config.resources.maxEnergy - 10)
         expect(actor.progression.skills.theft.practice).toBe(1)
         attempt([0.99, 0], 61_000)
         expect(actor.inventory).toHaveLength(2)
-        expect(actor.energy).toBe(80)
+        expect(actor.energy).toBe(actor.config.resources.maxEnergy - 20)
         expect(
             service.snapshot(actor.id, actor.id, 61_000).lastResult?.itemId
         ).toBe('boots')
@@ -73,7 +73,7 @@ describe('atomic real-item theft', () => {
         expect(actor.inventory).toEqual([original])
         expect(second.inventory).toEqual([])
         expect(victim.inventory).toEqual([])
-        expect(second.energy).toBe(100)
+        expect(second.energy).toBe(second.config.resources.maxEnergy)
         expect(second.progression.skills.theft.practice).toBe(0)
         expect(
             service.snapshot(second.id, second.id, 1_000).cooldownMsLeft
@@ -84,7 +84,7 @@ describe('atomic real-item theft', () => {
         const events = attempt([0.99, 0.99])
         expect(actor.inventory).toEqual([])
         expect(victim.inventory).toHaveLength(1)
-        expect(actor.energy).toBe(90)
+        expect(actor.energy).toBe(actor.config.resources.maxEnergy - 10)
         expect(actor.progression.skills.theft.practice).toBe(1)
         expect(actor.progression.skills.stealth.practice).toBe(0)
         expect(

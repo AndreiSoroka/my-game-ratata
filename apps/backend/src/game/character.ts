@@ -17,6 +17,7 @@ import {
     type Vector2,
 } from '@my-game-ratata/contracts'
 
+import { createAbilityState } from './abilityState'
 import type { CharacterConfig } from './characterConfig'
 import {
     defaultFactionFor,
@@ -41,6 +42,7 @@ import {
 } from './skillProgression'
 
 export class GameCharacter {
+    public readonly abilities: ReturnType<typeof createAbilityState>
     public readonly creatureType: CreatureType
     public readonly archetype: CharacterArchetype
     public readonly config: CharacterConfig
@@ -103,6 +105,7 @@ export class GameCharacter {
             (options.archetype === 'human' ? 'vanguard' : undefined)
         this.mortal =
             options.mortal ?? options.controllerKind === 'network_player'
+        this.abilities = createAbilityState(this.heroClass, options.archetype)
         this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
         this.faction =
@@ -210,6 +213,8 @@ export class GameCharacter {
         attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number }
     ): void {
         this.pendingAttack = {
+            targetId: attack.targetId,
+            abilityId: attack.abilityId,
             canStun: attack.canStun,
             damageMultiplier: attack.damageMultiplier,
             hitAt: now + attack.windupMs,

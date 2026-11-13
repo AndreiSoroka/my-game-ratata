@@ -1,5 +1,7 @@
 import type {
+    AbilityClientMessage,
     AgentDecision,
+    CharacterControlCommand,
     ChestClientMessage,
     ChestContainerSnapshot,
     GameEventPayload,
@@ -8,14 +10,17 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import {
-    applyAgentInventory,
-    isInventoryDecision,
-    isInventoryDecisionType,
-    parseInventoryDecision,
-} from './agentInventory'
+    actorRefusesCombat,
+    applyAgentAbility,
+    applyAgentControl,
+    isAgentAbility,
+    isAgentControl,
+} from './agentCapabilities'
+import { parseAgentDecision } from './agentDecisionParsing'
+import { applyAgentInventory, isInventoryDecision } from './agentInventory'
+export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
-import { companionProfiles } from './companionProfiles'
 import { canTargetByFaction } from './factions'
 import {
     cancelMovementMode,
@@ -23,10 +28,22 @@ import {
     movementActionAllowed,
 } from './movementActions'
 import type { NavigationService } from './navigation'
-import { isTheftCommand, isTheftCommandType } from './theftCommands'
+import { isTheftCommand } from './theftCommands'
 import type { PickupRequest } from './worldPickup'
 
 export interface CompanionWorld {
+    charactersFor?(actor: GameCharacter): readonly GameCharacter[]
+    requestAbility?(
+        actor: GameCharacter,
+        message: AbilityClientMessage,
+        now: number
+    ): GameEventPayload[]
+    requestControl?(
+        actor: GameCharacter,
+        message: CharacterControlCommand,
+        now: number
+    ): boolean
+
     requestPickup?: PickupRequest
     chestActions?: {
         handle(
@@ -50,7 +67,11 @@ export interface CompanionWorld {
     ): GameCharacter | undefined
     getCharacter(id: string): GameCharacter | undefined
     navigationFor(character: GameCharacter): NavigationService
-    requestAttack(character: GameCharacter, now?: number): void
+    requestAttack(
+        character: GameCharacter,
+        now?: number,
+        targetId?: string
+    ): void
 }
 
 export interface AgentDecisionResult {
@@ -74,30 +95,32 @@ export function applyAgentDecision(
     if (unavailable !== undefined) {
         return rejected(unavailable)
     }
-    if (isInventoryDecision(decision)) {
-        return applyAgentInventory(character, decision, world, now)
-    }
-    if (isTheftCommand(decision)) {
-        return agentTheft(character, decision, world, now)
+    const shared = applySharedDecision(character, decision, world, now)
+    if (shared !== undefined) {
+        return shared
     }
     switch (decision.type) {
         case 'movement_mode':
         case 'dash':
             return agentMovement(character, decision, now)
         case 'move':
+            cancelAgentControl(character, world, now)
             character.setMoveInput(decision.axis)
             return accepted()
         case 'move_to':
-            return agentMoveTo(character, decision.target, world)
+            return agentMoveTo(character, decision.target, world, now)
         case 'attack':
             return agentAttack(character, decision.targetId, world, now)
         case 'speak':
             return agentSpeech(character, decision.text)
         case 'wait':
+            cancelAgentControl(character, world, now)
             cancelMovementMode(character)
             character.setMoveInput({ x: 0, y: 0 })
             character.clearPath()
             return accepted()
+        default:
+            return rejected('Unsupported agent decision')
     }
 }
 
@@ -108,7 +131,7 @@ function agentAttack(
     now: number
 ): AgentDecisionResult {
     const target = world.getCharacter(targetId)
-    if (companionProfiles[actor.id]?.canFight === false) {
+    if (actorRefusesCombat(actor)) {
         return rejected('This personality refuses combat')
     }
     if (
@@ -135,81 +158,8 @@ function agentAttack(
         actor.facing = facing
         return rejected('Target is outside attack reach')
     }
-    world.requestAttack(actor, now)
+    world.requestAttack(actor, now, target.id)
     return accepted()
-}
-
-export function parseAgentDecision(input: unknown): AgentDecision | undefined {
-    if (input === null || typeof input !== 'object') {
-        return undefined
-    }
-    const record = input as Record<string, unknown>
-    if (isTheftCommandType(record['type'])) {
-        return parseTheft(record['type'], record['targetId'])
-    }
-    if (isInventoryDecisionType(record['type'])) {
-        return parseInventoryDecision(record)
-    }
-    switch (record['type']) {
-        case 'wait':
-            return { type: 'wait' }
-        case 'dash':
-            return { type: 'dash' }
-        case 'movement_mode':
-            return parseMovementMode(record['mode'])
-        case 'attack':
-            return parseAttack(record['targetId'])
-        case 'speak':
-            return parseSpeech(record['text'])
-        case 'move':
-            return parseVector('move', record['axis'])
-        case 'move_to':
-            return parseVector('move_to', record['target'])
-        default:
-            return undefined
-    }
-}
-
-function parseAttack(targetId: unknown): AgentDecision | undefined {
-    return typeof targetId === 'string' &&
-        targetId.length > 0 &&
-        targetId.length <= 100
-        ? { targetId, type: 'attack' }
-        : undefined
-}
-
-function parseSpeech(text: unknown): AgentDecision | undefined {
-    return typeof text === 'string' &&
-        text.trim().length > 0 &&
-        text.length <= 160
-        ? { text: text.trim(), type: 'speak' }
-        : undefined
-}
-
-function parseVector(
-    type: 'move' | 'move_to',
-    point: unknown
-): AgentDecision | undefined {
-    if (point === null || typeof point !== 'object') {
-        return undefined
-    }
-    const vector = point as Record<string, unknown>
-    const x = vector['x']
-    const y = vector['y']
-    if (
-        typeof x !== 'number' ||
-        typeof y !== 'number' ||
-        !Number.isFinite(x) ||
-        !Number.isFinite(y)
-    ) {
-        return undefined
-    }
-    if (type === 'move' && (Math.abs(x) > 1 || Math.abs(y) > 1)) {
-        return undefined
-    }
-    return type === 'move'
-        ? { axis: { x, y }, type }
-        : { target: { x, y }, type }
 }
 
 function unavailableReason(character: GameCharacter): string | undefined {
@@ -232,7 +182,8 @@ function unavailableReason(character: GameCharacter): string | undefined {
 function agentMoveTo(
     character: GameCharacter,
     target: { x: number; y: number },
-    world: CompanionWorld
+    world: CompanionWorld,
+    now: number
 ): AgentDecisionResult {
     const navigation = world.navigationFor(character)
     if (
@@ -243,6 +194,7 @@ function agentMoveTo(
     ) {
         return rejected('Destination is outside this location')
     }
+    cancelAgentControl(character, world, now)
     character.setPath(navigation.findPathWorld(character.position, target))
     return accepted()
 }
@@ -255,12 +207,6 @@ function rejected(error: string): AgentDecisionResult {
     return { accepted: false, error, events: [] }
 }
 
-function parseMovementMode(mode: unknown): MovementClientMessage | undefined {
-    return mode === 'sneaking' || mode === 'walking'
-        ? { type: 'movement_mode', mode }
-        : undefined
-}
-
 function agentMovement(
     character: GameCharacter,
     decision: MovementClientMessage,
@@ -271,17 +217,6 @@ function agentMovement(
         : rejected(
               'Movement action is unavailable: check energy, cooldown and control effects'
           )
-}
-
-function parseTheft(
-    type: TheftClientMessage['type'],
-    targetId: unknown
-): TheftClientMessage | undefined {
-    return typeof targetId === 'string' &&
-        targetId.length > 0 &&
-        targetId.length <= 100
-        ? { type, targetId }
-        : undefined
 }
 
 function agentTheft(
@@ -301,4 +236,33 @@ function agentSpeech(
     return character.soul.canSpeak
         ? accepted([{ actorId: character.id, kind: 'chat', text }])
         : rejected('This creature cannot speak')
+}
+
+function applySharedDecision(
+    actor: GameCharacter,
+    decision: AgentDecision,
+    world: CompanionWorld,
+    now: number
+): AgentDecisionResult | undefined {
+    if (isInventoryDecision(decision)) {
+        return applyAgentInventory(actor, decision, world, now)
+    }
+    if (isTheftCommand(decision)) {
+        return agentTheft(actor, decision, world, now)
+    }
+    if (isAgentAbility(decision)) {
+        return applyAgentAbility(actor, decision, world, now)
+    }
+    if (isAgentControl(decision)) {
+        return applyAgentControl(actor, decision, world, now)
+    }
+    return undefined
+}
+
+function cancelAgentControl(
+    actor: GameCharacter,
+    world: CompanionWorld,
+    now: number
+): void {
+    world.requestControl?.(actor, { type: 'cancel_control' }, now)
 }

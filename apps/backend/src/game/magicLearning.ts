@@ -1,5 +1,11 @@
-import type { DeityId, GameEventPayload } from '@my-game-ratata/contracts'
+import type {
+    DeityId,
+    GameEventPayload,
+    LearnAbilityId,
+} from '@my-game-ratata/contracts'
 
+import { type AbilityContext, abilityNotice } from './abilityContext'
+import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
 import { deityDefinitions } from './deities'
 import { distance } from './math'
@@ -30,7 +36,8 @@ export function learnFireball(
     if (
         !canInteractWith(actor, scholar, now) ||
         !scholar.tags.has('scholar') ||
-        actor.progression.skills.fireball.unlocked
+        actor.progression.skills.fireball.unlocked ||
+        actor.progression.skills.arcana.level < 3
     ) {
         return []
     }
@@ -78,7 +85,8 @@ export function teachMagic(
         !canInteractWith(actor, student, now) ||
         actor.id === student.id ||
         !actor.progression.skills.fireball.unlocked ||
-        student.progression.skills.fireball.unlocked
+        student.progression.skills.fireball.unlocked ||
+        student.progression.skills.arcana.level < 3
     ) {
         return []
     }
@@ -123,4 +131,43 @@ export function chooseDeity(
             text: `Ваш покровитель — ${deityDefinitions[deityId].name}. ${deityDefinitions[deityId].domain}.`,
         },
     ]
+}
+
+export function learnAbility(
+    actor: GameCharacter,
+    teacher: GameCharacter | undefined,
+    id: LearnAbilityId,
+    context: AbilityContext
+): GameEventPayload[] {
+    if (
+        !canInteractWith(actor, teacher, context.now) ||
+        !context.navigation.hasLineOfSight(actor.position, teacher.position)
+    ) {
+        return abilityNotice(
+            actor,
+            'Подойдите к живому дружественному учителю.'
+        )
+    }
+    if (knowsAbility(actor, id)) {
+        return abilityNotice(actor, 'Эта способность уже изучена.')
+    }
+    const suitable =
+        id === 'pray'
+            ? teacher.heroClass === 'cleric' ||
+              teacher.tags.has('cleric') ||
+              teacher.tags.has('shrine')
+            : id === 'shot'
+              ? teacher.tags.has('veteran') || teacher.id === 'npc_veteran_1'
+              : teacher.tags.has('scholar')
+    if (!suitable) {
+        return abilityNotice(
+            actor,
+            'Этот персонаж не обучает выбранной способности.'
+        )
+    }
+    actor.abilities.known.add(id)
+    return abilityNotice(
+        actor,
+        'Способность изучена. Её можно назначить в свободную ячейку 1–4.'
+    )
 }

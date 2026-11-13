@@ -4,6 +4,7 @@ import type {
     SpellSkillId,
 } from '@my-game-ratata/contracts'
 
+import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
@@ -61,30 +62,28 @@ export function castSpell(
         y: target.position.y - actor.position.y,
     })
     actor.setAnimation('attack', context.now, 400)
-    const damage = Math.min(
-        target.hp,
-        spell.damage + (skill.level - 1) * spell.growth
-    )
-    target.applyDamage(damage, context.now)
+    const result = resolveCharacterDamage({
+        actor,
+        target,
+        amount: spell.damage + (skill.level - 1) * spell.growth,
+        now: context.now,
+        damageKind: 'arcane',
+        respawnDelayMs: context.respawnDelayMsFor?.(target) ?? 15000,
+    })
     const events: GameEventPayload[] = [
         {
             actorId: actor.id,
             targetId: target.id,
             kind: 'attack',
             text: message.skillId,
+            abilityId: message.skillId,
+            damageKind: 'arcane',
         },
-        {
-            actorId: actor.id,
-            targetId: target.id,
-            kind: 'damage',
-            amount: damage,
-        },
-        ...trainSkill(actor, message.skillId),
+        ...result.events,
+        ...(result.trainableDamage > 0
+            ? trainSkill(actor, message.skillId)
+            : []),
     ]
-    if (!target.alive) {
-        target.queueRespawn(context.now, 15_000)
-        events.push({ actorId: actor.id, targetId: target.id, kind: 'death' })
-    }
     return events
 }
 

@@ -1,6 +1,12 @@
+import type { AbilityId, DamageKind } from './abilities'
 import type { ItemId } from './index'
 
 export type GameEventKind =
+    | 'heal'
+    | 'absorb'
+    | 'cast'
+    | 'status'
+    | 'miss'
     | 'attack'
     | 'dash'
     | 'chat'
@@ -26,6 +32,13 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    abilityId?: AbilityId
+    damageKind?: DamageKind
+    critical?: boolean
+    statusId?: 'stun' | 'barrier' | 'reviving'
+    expiresAt?: number
+    phase?: 'started' | 'completed' | 'interrupted'
+
     /** Authoritative recipient filter; stripped before sending over a socket. */
     audienceIds?: string[]
     amount?: number

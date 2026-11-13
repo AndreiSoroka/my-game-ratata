@@ -9,11 +9,14 @@ export function attackRoomCharacter(
     actor: GameCharacter,
     targets: GameCharacter[],
     location: LocationState,
-    now: number
+    now: number,
+    targetId?: string
 ): GameEventPayload[] {
     const events = attemptAttack({
         actor,
         now,
+        targetId,
+        navigation: location.navigation,
         respawnDelayMsFor: resolveRespawnDelayMs,
         targets,
         tileSize: location.navigation.grid.tileWidth,

@@ -68,7 +68,7 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
         case 'move_to':
             return parseMoveTo(record)
         case 'attack':
-            return { message: { type: 'attack' } }
+            return parseAttack(record)
         case 'pickup_item': {
             const message = parsePickupCommand(record)
             return message === undefined
@@ -265,4 +265,16 @@ export function parseSocketMessage(raw: unknown): ParseResult {
     return text === undefined
         ? { error: 'Message must be text or binary JSON' }
         : parseClientMessage(text)
+}
+
+function parseAttack(record: Record<string, unknown>): ParseResult {
+    const targetId = record['targetId']
+    if (targetId === undefined) {
+        return { message: { type: 'attack' } }
+    }
+    return typeof targetId === 'string' &&
+        targetId.length > 0 &&
+        targetId.length <= 100
+        ? { message: { type: 'attack', targetId } }
+        : { error: 'Invalid attack target' }
 }

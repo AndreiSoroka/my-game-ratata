@@ -1,3 +1,4 @@
+import { clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
 import { regen } from './characterState'
 import { zeroVector } from './math'
@@ -8,6 +9,7 @@ export function restoreCharacter(
     now: number,
     atSpawn: boolean
 ): void {
+    clearAbilityEffects(character)
     character.alive = true
     character.movement = createMovementState()
     character.actionLockUntil = 0

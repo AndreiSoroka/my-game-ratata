@@ -1,3 +1,11 @@
+import type {
+    AbilityClientMessage,
+    BasicAttackKind,
+    CharacterAbilitiesSnapshot,
+} from './abilities'
+export * from './abilities'
+export * from './prayer'
+export * from './prayerPreview'
 import type { CreatureType } from './creatures'
 export * from './creatures'
 import type { ChestClientMessage, ChestContainerSnapshot } from './chests'
@@ -120,6 +128,8 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    basicAttackKind?: BasicAttackKind
+    abilities?: CharacterAbilitiesSnapshot
     creatureType: CreatureType
     theft?: CharacterTheftSnapshot
     movement?: CharacterMovementSnapshot
@@ -200,6 +210,7 @@ export interface MoveToClientMessage {
 
 export interface AttackClientMessage {
     type: 'attack'
+    targetId?: string
 }
 
 export interface PickupItemClientMessage {
@@ -225,6 +236,7 @@ export interface ChatClientMessage {
 }
 
 export type ClientMessage =
+    | AbilityClientMessage
     | ChestClientMessage
     | TheftClientMessage
     | MovementClientMessage

@@ -51,7 +51,10 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     for (const character of characters.values()) {
         resolveWorldAttack(character, context)
     }
-    advanceRoomLives(context)
+    advanceRoomLives({
+        ...context,
+        abilityContextFor: (actor, at) => room.abilityContextFor(actor, at),
+    })
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))
     for (const [ws, id] of context.connections) {
@@ -163,6 +166,7 @@ function resolveWorldAttack(
         now,
         respawnDelayMsFor: resolveRespawnDelayMs,
         targets,
+        navigation: location.navigation,
         tileSize: location.navigation.grid.tileWidth,
     })
     const lootEvents = location.inventory.dropLootForDeaths(hitEvents, (id) =>

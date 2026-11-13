@@ -130,7 +130,7 @@ describe('authoritative movement modes', () => {
             expect(advance(character, navigation())).toEqual([])
             expect(character.position).toEqual({ x: 200, y: 200 })
             expect(character.movement.mode).toBe('walking')
-            expect(character.energy).toBe(100)
+            expect(character.energy).toBe(character.config.resources.maxEnergy)
         }
     )
 })
@@ -170,7 +170,9 @@ describe('paid collision-safe dash', () => {
                     character.position.y - 200
                 )
             ).toBeCloseTo(character.config.moveSpeed * 1.6 * 0.6)
-            expect(character.energy).toBe(100 - MOVEMENT_RULES.dashEnergy)
+            expect(character.energy).toBe(
+                character.config.resources.maxEnergy - MOVEMENT_RULES.dashEnergy
+            )
             expect(character.snapshot(1_600).movement?.dashing).toBe(false)
             expect(
                 handleMovementCommand(character, { type: 'dash' }, 3_499)
@@ -178,7 +180,10 @@ describe('paid collision-safe dash', () => {
             expect(
                 handleMovementCommand(character, { type: 'dash' }, 3_500)
             ).toHaveLength(1)
-            expect(character.energy).toBe(100 - MOVEMENT_RULES.dashEnergy * 2)
+            expect(character.energy).toBe(
+                character.config.resources.maxEnergy -
+                    MOVEMENT_RULES.dashEnergy * 2
+            )
         }
     )
     it('cannot tunnel through a one-tile wall even in a 250ms simulation step or a diagonal corner', () => {
@@ -271,7 +276,9 @@ describe('movement command boundaries for people and agents', () => {
         const dash = service.decide(character, { type: 'dash' }, world, 1_100)
         expect(dash.accepted).toBe(true)
         expect(dash.events).toEqual([{ kind: 'dash', actorId: character.id }])
-        expect(character.energy).toBe(100 - MOVEMENT_RULES.dashEnergy)
+        expect(character.energy).toBe(
+            character.config.resources.maxEnergy - MOVEMENT_RULES.dashEnergy
+        )
         expect(
             service.decide(character, { type: 'dash' }, world, 1_200).accepted
         ).toBe(false)

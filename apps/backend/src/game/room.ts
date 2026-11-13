@@ -14,12 +14,11 @@ import { parseSocketMessage } from './messages'
 import { loadNavigationService, type NavigationService } from './navigation'
 import { seedNpcPockets } from './npcPockets'
 import { PartyService } from './parties'
-import { applyPlayerMessage } from './playerMessages'
 import { findVisibleTarget as findVisibleTargetInRoom } from './queries'
-import { handleRoomAction } from './roomActions'
+import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
-import { attackRoomCharacter } from './roomCombat'
+import { handleCharacterMessage } from './roomClientMessages'
 import { publishRoomEvents } from './roomEvents'
 import { joinRoom, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
@@ -159,16 +158,15 @@ export class GameRoom {
         )
     }
 
-    public requestAttack(actor: GameCharacter, now = Date.now()): void {
-        this.publishEvents(
-            attackRoomCharacter(
-                actor,
-                [...this.charactersIn(actor.locationId).values()],
-                this.world.get(actor.locationId),
-                now
-            )
-        )
-    }
+    private readonly combat = createRoomCombatActions(
+        () => this.world,
+        () => this.characters,
+        (events) => this.publishEvents(events)
+    )
+    public readonly requestAttack = this.combat.requestAttack
+    public readonly requestAbility = this.combat.requestAbility
+    public readonly charactersFor = this.combat.charactersFor
+    public readonly abilityContextFor = this.combat.contextFor
 
     public snapshot(
         now = Date.now(),
@@ -208,40 +206,20 @@ export class GameRoom {
             return
         }
 
-        const events = handleRoomAction({
-            adventure: this.adventure,
-            theft: this.theft,
-            allCharacters: this.characters.values(),
-            parties: this.parties,
-            characters: [...this.charactersIn(player.locationId).values()],
-            companions: this.companions,
-            inventory: this.world.get(player.locationId).inventory,
-            message,
-            navigation: this.navigationFor(player),
-            now: Date.now(),
-            player,
-        })
-        if (events !== undefined) {
-            this.publishEvents(events)
-            return
-        }
-        if (!player.alive) {
-            return
-        }
-        applyPlayerMessage({
-            characters: this.charactersIn(player.locationId),
-            connections: this.connectionsIn(player.locationId),
-            message,
-            navigation: this.navigationFor(player),
-            player,
-            requestAttack: (actor) => {
-                this.requestAttack(actor)
+        handleCharacterMessage(
+            {
+                room: this,
+                adventure: this.adventure,
+                theft: this.theft,
+                characters: this.characters,
+                parties: this.parties,
+                companions: this.companions,
+                world: this.world,
+                connections: this.connections,
             },
-            sendEvents: (events) => {
-                this.publishEvents(events)
-            },
-            worldInventory: this.world.get(player.locationId).inventory,
-        })
+            player,
+            message
+        )
     }
 
     private join(
@@ -304,7 +282,8 @@ export class GameRoom {
             this.adventure,
             this.parties,
             (locationId) => this.connectionsIn(locationId).keys(),
-            this.connections
+            this.connections,
+            this.world
         )
     }
 

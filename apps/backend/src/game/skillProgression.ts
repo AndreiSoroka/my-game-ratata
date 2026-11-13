@@ -7,6 +7,7 @@ import {
     skillIds,
 } from '@my-game-ratata/contracts'
 
+import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
 import { snapshotDeity } from './deities'
 
@@ -83,7 +84,9 @@ export function practiceThreshold(
 
 export function canUseResurrection(character: GameCharacter): boolean {
     return (
-        character.progression.patron === 'hearth' &&
+        knowsAbility(character, 'pray') &&
+        (character.progression.patron === 'hearth' ||
+            character.progression.patron === 'grave') &&
         (character.heroClass === 'cleric' ||
             character.progression.skills.miracles.level >= 5)
     )
@@ -186,6 +189,7 @@ export function canPerformSkillAction(
     return (
         character.alive &&
         !character.tags.has('offline') &&
+        !character.tags.has('state.retired') &&
         character.stunUntil <= now &&
         !character.isActionLocked(now)
     )

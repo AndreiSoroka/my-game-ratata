@@ -1,0 +1,112 @@
+import type {
+    AgentDecision,
+    MovementClientMessage,
+    TheftClientMessage,
+} from '@my-game-ratata/contracts'
+
+import { parseAgentCapability } from './agentCapabilities'
+import {
+    isInventoryDecisionType,
+    parseInventoryDecision,
+} from './agentInventory'
+import { isTheftCommandType } from './theftCommands'
+
+export function parseAgentDecision(input: unknown): AgentDecision | undefined {
+    if (input === null || typeof input !== 'object') {
+        return undefined
+    }
+    const record = input as Record<string, unknown>
+    const shared = parseSharedDecision(record)
+    if (shared !== undefined) {
+        return shared
+    }
+    switch (record['type']) {
+        case 'wait':
+            return { type: 'wait' }
+        case 'dash':
+            return { type: 'dash' }
+        case 'movement_mode':
+            return parseMovementMode(record['mode'])
+        case 'attack':
+            return parseAttack(record['targetId'])
+        case 'speak':
+            return parseSpeech(record['text'])
+        case 'move':
+            return parseVector('move', record['axis'])
+        case 'move_to':
+            return parseVector('move_to', record['target'])
+        default:
+            return undefined
+    }
+}
+
+function parseAttack(targetId: unknown): AgentDecision | undefined {
+    return typeof targetId === 'string' &&
+        targetId.length > 0 &&
+        targetId.length <= 100
+        ? { targetId, type: 'attack' }
+        : undefined
+}
+
+function parseSpeech(text: unknown): AgentDecision | undefined {
+    return typeof text === 'string' &&
+        text.trim().length > 0 &&
+        text.length <= 160
+        ? { text: text.trim(), type: 'speak' }
+        : undefined
+}
+
+function parseVector(
+    type: 'move' | 'move_to',
+    point: unknown
+): AgentDecision | undefined {
+    if (point === null || typeof point !== 'object') {
+        return undefined
+    }
+    const vector = point as Record<string, unknown>
+    const x = vector['x']
+    const y = vector['y']
+    if (
+        typeof x !== 'number' ||
+        typeof y !== 'number' ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(y)
+    ) {
+        return undefined
+    }
+    if (type === 'move' && (Math.abs(x) > 1 || Math.abs(y) > 1)) {
+        return undefined
+    }
+    return type === 'move'
+        ? { axis: { x, y }, type }
+        : { target: { x, y }, type }
+}
+
+function parseMovementMode(mode: unknown): MovementClientMessage | undefined {
+    return mode === 'sneaking' || mode === 'walking'
+        ? { type: 'movement_mode', mode }
+        : undefined
+}
+
+function parseTheft(
+    type: TheftClientMessage['type'],
+    targetId: unknown
+): TheftClientMessage | undefined {
+    return typeof targetId === 'string' &&
+        targetId.length > 0 &&
+        targetId.length <= 100
+        ? { type, targetId }
+        : undefined
+}
+
+function parseSharedDecision(
+    record: Record<string, unknown>
+): AgentDecision | undefined {
+    if (isTheftCommandType(record['type'])) {
+        return parseTheft(record['type'], record['targetId'])
+    }
+    if (isInventoryDecisionType(record['type'])) {
+        return parseInventoryDecision(record)
+    }
+    return parseAgentCapability(record)
+}

@@ -18,7 +18,7 @@ export class PolicyController implements CharacterController {
     ) {}
 
     public update(character: GameCharacter, room: GameRoom, now: number): void {
-        if (!this.service.hasActiveLease(character, now)) {
+        if (!this.service.hasActiveLease(character, now, room)) {
             this.fallback.update(character, room, now)
         }
     }

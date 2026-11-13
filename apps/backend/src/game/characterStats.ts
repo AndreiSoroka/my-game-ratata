@@ -9,7 +9,7 @@ export function resolveCharacterStats(
     equipment: EquipmentState,
     swordLevel = 1
 ): CharacterStatsSnapshot {
-    const weapon = equipment.weapon
+    const weapon = physicalWeapon(config, equipment)
     const weaponStats =
         weapon === undefined
             ? undefined
@@ -45,4 +45,8 @@ export function resolveCharacterStats(
             ) + swordBonus,
         moveSpeed: config.moveSpeed,
     }
+}
+
+function physicalWeapon(config: CharacterConfig, equipment: EquipmentState) {
+    return config.basicAttackKind === 'melee' ? equipment.weapon : undefined
 }

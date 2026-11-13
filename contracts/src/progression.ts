@@ -20,7 +20,7 @@ export interface SkillSnapshot {
     unlocked: boolean
 }
 
-export type DeityId = 'hearth' | 'road' | 'lantern'
+export type DeityId = 'hearth' | 'road' | 'lantern' | 'grave'
 export type DeityMood = 'benevolent' | 'neutral' | 'wrathful'
 export type SkillBranch = 'warfare' | 'faith' | 'arcana' | 'cunning'
 

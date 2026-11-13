@@ -11,6 +11,11 @@ export const deityDefinitions: Record<
     DeityId,
     { name: string; domain: string; seed: number }
 > = {
+    grave: {
+        name: 'Хранитель Праха',
+        domain: 'Покой нежити и холод живым',
+        seed: 67,
+    },
     hearth: {
         name: 'Угольная Мать',
         domain: 'Исцеление и возвращение к жизни',

@@ -3,6 +3,7 @@ import type {
     ProgressionClientMessage,
 } from '@my-game-ratata/contracts'
 
+import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import {
     chooseDeity,
@@ -15,7 +16,7 @@ import { pray } from './prayer'
 import { canPerformSkillAction } from './skillProgression'
 import { castSpell } from './spellCasting'
 
-export interface ProgressionContext {
+export interface ProgressionContext extends AbilityContext {
     characters: readonly GameCharacter[]
     navigation: NavigationService
     now: number
@@ -30,9 +31,20 @@ export function handleProgressionCommand(
     if (!canPerformSkillAction(actor, context.now)) {
         return []
     }
+    if (message.type !== 'pray' && message.type !== 'cast_spell') {
+        const target = context.characters.find(
+            (candidate) => candidate.id === message.targetId
+        )
+        if (
+            target === undefined ||
+            !context.navigation.hasLineOfSight(actor.position, target.position)
+        ) {
+            return []
+        }
+    }
     switch (message.type) {
         case 'pray':
-            return pray(actor, context.now, context.random)
+            return pray(actor, context.now, context.random, context)
         case 'learn_skill':
             return learnFireball(
                 actor,

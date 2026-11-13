@@ -1,4 +1,8 @@
-import type { AttackZone, CharacterArchetype } from '@my-game-ratata/contracts'
+import type {
+    AttackZone,
+    BasicAttackKind,
+    CharacterArchetype,
+} from '@my-game-ratata/contracts'
 
 export interface CharacterCombatStats {
     damageMultiplier?: number
@@ -29,6 +33,7 @@ export interface CharacterResourceStats {
 }
 
 export interface CharacterConfig {
+    basicAttackKind: BasicAttackKind
     attackZones: Array<Omit<AttackZone, 'ownerId'>>
     combat: CharacterCombatStats
     hpRegenIdlePerSec: number
@@ -39,6 +44,7 @@ export interface CharacterConfig {
 
 export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
     human: {
+        basicAttackKind: 'melee',
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 0.9 }],
         combat: {
             attackCooldownMs: 400,
@@ -70,6 +76,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
         },
     },
     skeleton: {
+        basicAttackKind: 'melee',
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 1.2 }],
         combat: {
             attackCooldownMs: 500,
@@ -101,6 +108,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
         },
     },
     slime: {
+        basicAttackKind: 'melee',
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 1.2 }],
         combat: {
             attackCooldownMs: 2000,

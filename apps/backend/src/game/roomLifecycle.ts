@@ -1,9 +1,9 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
+import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import {
     advanceRevive,
-    beginRevive,
     retireCharacter,
     shouldRetireCharacter,
 } from './characterLife'
@@ -18,32 +18,24 @@ interface LifeContext {
     nicknames: Map<string, string>
     now: number
     onEvents: (events: GameEventPayload[]) => void
+    abilityContextFor?: (actor: GameCharacter, now: number) => AbilityContext
 }
 
 export function advanceRoomLives(context: LifeContext): void {
     const { characters, now, onEvents } = context
     for (const character of characters.values()) {
-        if (
-            character.controllerKind === 'scripted' &&
-            character.heroClass === 'cleric'
-        ) {
-            const target = [...characters.values()].find(
-                (candidate) =>
-                    !candidate.alive &&
-                    candidate.mortal &&
-                    candidate.reviveUntil > now &&
-                    candidate.faction === character.faction &&
-                    candidate.locationId === character.locationId &&
-                    Math.hypot(
-                        candidate.position.x - character.position.x,
-                        candidate.position.y - character.position.y
-                    ) <= 48
-            )
-            if (target !== undefined) {
-                beginRevive(character, target, now)
-            }
+        if (character.abilities.casting === null) {
+            continue
         }
-        onEvents(advanceRevive(character, (id) => characters.get(id), now))
+        onEvents(
+            advanceRevive(
+                character,
+                (id) => characters.get(id),
+                now,
+                undefined,
+                context.abilityContextFor?.(character, now)
+            )
+        )
     }
     for (const character of characters.values()) {
         if (!shouldRetireCharacter(character, now)) {

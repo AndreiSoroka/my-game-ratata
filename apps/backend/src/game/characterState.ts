@@ -1,4 +1,7 @@
+import type { AttackAbilityId } from '@my-game-ratata/contracts'
 export interface PendingAttackHit {
+    abilityId?: AttackAbilityId | undefined
+    targetId?: string | undefined
     canStun: boolean
     damageMultiplier: number
     hitAt: number

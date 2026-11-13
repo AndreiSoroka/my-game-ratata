@@ -1,5 +1,6 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
+import { snapshotAbilities } from './abilityState'
 import type { GameCharacter } from './character'
 import { shouldRetireCharacter } from './characterLife'
 import { resolveCharacterStats } from './characterStats'
@@ -12,14 +13,16 @@ export function createCharacterSnapshot(
     now: number
 ): CharacterSnapshot {
     return {
+        creatureType: character.creatureType,
         alive: character.alive,
+        basicAttackKind: character.config.basicAttackKind,
+        abilities: snapshotAbilities(character, now),
         movement: snapshotMovement(character, now),
         animation: {
             action: character.animationAction,
             startedAt: character.animationStartedAt,
         },
         archetype: character.archetype,
-        creatureType: character.creatureType,
         attackZones: character.attackZones,
         controllerKind: character.controllerKind,
         cooldowns: {
