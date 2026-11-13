@@ -35,7 +35,10 @@ const candidates = computed(() =>
                 character.position.x - props.player.position.x,
                 character.position.y - props.player.position.y
             ) <= 240 &&
-            !props.party.members.some((member) => member.id === character.id)
+            !props.party.members.some((member) => member.id === character.id) &&
+            !props.party.invitations.some(
+                (invite) => invite.fromId === character.id || invite.toId === character.id
+            )
     )
 )
 const clerk = computed(() =>

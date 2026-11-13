@@ -14,11 +14,17 @@ import {
 
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import { chestActions } from './chestActions'
+import { relation } from './combatTargeting'
 import { facingInteractionTarget, interactionDistance } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
 import { justiceActions } from './justiceActions'
 import type { NearbyAction } from './nearbyActions'
-import { characterActions, partyActions, reviveActions } from './nearbyCharacterActions'
+import {
+    characterActions,
+    followActions,
+    partyActions,
+    reviveActions,
+} from './nearbyCharacterActions'
 import { farmAction, pickupActions, resourceActions } from './nearbyMaterialActions'
 import { theftActions } from './theftActions'
 import { worldInteractionActions } from './worldInteractionActions'
@@ -53,7 +59,8 @@ export function nearbyInteractionTarget(
     player: CharacterSnapshot,
     characters: CharacterSnapshot[],
     isPositionVisible: InteractionVisibility = () => true,
-    targetKey?: string
+    targetKey?: string,
+    ignoreFacing = false
 ): InteractionTarget | undefined {
     if (!player.alive || player.tags.includes('offline')) return undefined
     const candidates = [
@@ -71,7 +78,8 @@ export function nearbyInteractionTarget(
                 isPositionVisible(candidate.position, candidate.bounds, candidate.range)
         ),
         player,
-        targetKey
+        targetKey,
+        ignoreFacing
     )
 }
 function characterTargets(
@@ -86,6 +94,7 @@ function characterTargets(
             return {
                 key: `character:${character.id}`,
                 kind: 'character' as const,
+                relationship: relation(character, player),
                 name: character.nickname,
                 position: character.position,
                 range: Math.max(48, THEFT_RULES.reportRange, THEFT_RULES.absolutionRange),
@@ -94,7 +103,8 @@ function characterTargets(
                     ...characterActions(one, player),
                     ...theftActions(snapshot, player, one),
                     ...reviveActions(one, player),
-                    ...partyActions(one, player),
+                    ...partyActions(one, player, snapshot.party),
+                    ...followActions(one, player),
                 ],
             }
         })

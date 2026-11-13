@@ -25,7 +25,7 @@ const cooldown = computed(() =>
         >
             {{ cooldown > 0 ? `Рывок: ${cooldown} с` : `Рывок: ${MOVEMENT_RULES.dashEnergy} EN` }}
         </span>
-        <small>C — красться · Пробел — рывок · Q — удар</small>
+        <small>C — красться · Пробел — рывок · Q — автоатака</small>
     </div>
 </template>
 <style scoped>

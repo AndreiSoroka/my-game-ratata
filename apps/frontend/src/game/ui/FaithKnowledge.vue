@@ -18,17 +18,11 @@ const shrine = computed(() =>
             ) <= 64
     )
 )
-const needsGift = computed(() => {
-    if (patron.value?.id === 'road')
-        return props.player.resources.energy < props.player.resources.maxEnergy
-    if (patron.value?.id === 'lantern')
-        return props.player.resources.mana < props.player.resources.maxMana
-    return props.player.hp < props.player.maxHp
-})
 const deities: { id: DeityId; label: string }[] = [
     { id: 'hearth', label: 'Очаг · исцеление' },
     { id: 'road', label: 'Дорога · энергия' },
     { id: 'lantern', label: 'Фонарь · мана' },
+    { id: 'grave', label: 'Хранитель Праха · нежить' },
 ]
 const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен', wrathful: 'Разгневан' }
 function choose(deityId: DeityId): void {
@@ -50,20 +44,10 @@ function choose(deityId: DeityId): void {
                 >Перемена через {{ Math.ceil(patron.changesInMs / 1000) }} сек.</span
             >
         </div>
-        <div class="knowledge-action">
-            <button
-                type="button"
-                :disabled="!player.alive || player.resources.mana < 5 || !needsGift"
-                @click="emit('command', { type: 'pray' })"
-            >
-                Молиться · 5 MP
-            </button>
-            <small>{{
-                needsGift
-                    ? 'Раз в 3 сек. Ответ зависит от божества, веры и его настроения.'
-                    : 'Силы полны. Дар нужен, когда не хватает здоровья, энергии или маны вашего покровителя.'
-            }}</small>
-        </div>
+        <p>
+            Выберите цель: Shift+T — союзник, F — себя. Назначьте молитву через Shift+1–4. Слот
+            показывает дар, цель, цену и возможную карающую волну до применения.
+        </p>
         <details class="faith-patrons">
             <summary>Сменить покровителя</summary>
             <div>
@@ -82,7 +66,8 @@ function choose(deityId: DeityId): void {
                 >{{
                     shrine ? `У обряда: ${shrine.nickname}` : 'Подойдите к клирику или святилищу.'
                 }}
-                Воскрешение доступно только последователям Очага.</small
+                Очаг воскрешает живые виды, Хранитель Праха — нежить. Выберите цель и назначьте
+                молитву на 1–4.</small
             >
         </details>
     </div>

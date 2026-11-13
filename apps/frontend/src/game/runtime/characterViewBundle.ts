@@ -55,3 +55,23 @@ export function removeBundle(engine: Engine, bundle: CharacterBundle): void {
     engine.remove(bundle.hpBack)
     engine.remove(bundle.hpFill)
 }
+
+export function updateBundleHealth(
+    bundle: CharacterBundle,
+    snapshot: CharacterSnapshot,
+    isLocalPlayer: boolean
+): void {
+    const width = 32
+    const ratio = Math.max(0, Math.min(1, snapshot.hp / snapshot.maxHp))
+    const opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.35
+
+    bundle.hpFill.graphics.use(
+        new Rectangle({
+            color: ratio > 0.35 ? Color.Green : Color.Red,
+            height: 3,
+            width: Math.max(1, width * ratio),
+        })
+    )
+    bundle.hpBack.graphics.opacity = opacity
+    bundle.hpFill.graphics.opacity = opacity
+}

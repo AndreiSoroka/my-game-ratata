@@ -1,8 +1,10 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, PartySnapshot } from '@my-game-ratata/contracts'
 
 import { isDialogueCharacter } from '../runtime/runtimeQueries'
+import { relation } from './combatTargeting'
 import { interactionDistance } from './interactionTargets'
 import type { InteractionAction } from './nearbyInteractionActions'
+import { invitationActions } from './partyActions'
 
 export function characterActions(
     characters: CharacterSnapshot[],
@@ -107,24 +109,28 @@ export function reviveActions(
 }
 export function partyActions(
     characters: CharacterSnapshot[],
+    player: CharacterSnapshot,
+    party?: PartySnapshot
+): InteractionAction[] {
+    return characters
+        .filter((target) => interactionDistance(player, target) <= 48)
+        .flatMap((target) => invitationActions(player, target, party))
+}
+export function followActions(
+    characters: CharacterSnapshot[],
     player: CharacterSnapshot
 ): InteractionAction[] {
-    const target = [...characters]
-        .sort((a, b) => interactionDistance(player, a) - interactionDistance(player, b))
-        .find(
-            (character) =>
-                character.id !== player.id &&
-                character.alive &&
-                character.controllerKind === 'network_player' &&
-                interactionDistance(player, character) <= 48
+    return characters
+        .filter(
+            (target) =>
+                target.id !== player.id &&
+                target.alive &&
+                relation(target, player) !== 'hostile' &&
+                interactionDistance(player, target) <= 48
         )
-    return target
-        ? [
-              {
-                  id: `party:${target.id}`,
-                  label: `Пригласить в отряд: ${target.nickname}`,
-                  command: { type: 'party_invite', targetId: target.id },
-              },
-          ]
-        : []
+        .map((target) => ({
+            id: `self-follow:${target.id}`,
+            label: `Следовать за ${target.nickname}`,
+            command: { type: 'follow', targetId: target.id },
+        }))
 }

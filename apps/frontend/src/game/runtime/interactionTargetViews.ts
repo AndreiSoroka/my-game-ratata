@@ -1,4 +1,4 @@
-import type { Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
+import type { CharacterRelationship, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
 export interface TargetHighlight {
@@ -6,6 +6,7 @@ export interface TargetHighlight {
     position: Vector2
     bounds?: WorldObjectBounds
     kind?: 'character' | 'object'
+    relationship?: CharacterRelationship
 }
 
 /** Presentation of the exact UI-selected target. This class never picks a target or alters its sprite. */
@@ -37,10 +38,11 @@ export class InteractionTargetViews {
                   })
         const width = Math.ceil(bounds.width),
             height = Math.ceil(bounds.height)
-        const shape = `${target.kind ?? 'object'}:${String(width)}:${String(height)}`
+        const relationship = target.kind === 'character' ? target.relationship : undefined
+        const shape = `${target.kind ?? 'object'}:${relationship ?? 'neutral'}:${String(width)}:${String(height)}`
         if (shape !== this.shape) {
-            this.frame.graphics.use(cornerGraphic(width, height))
-            this.ground.graphics.use(groundGraphic(Math.min(32, width + 4)))
+            this.frame.graphics.use(cornerGraphic(width, height, relationship))
+            this.ground.graphics.use(groundGraphic(Math.min(32, width + 4), relationship))
             this.shape = shape
         }
         this.frame.pos = vec(bounds.x - 3, bounds.y - 3)
@@ -66,7 +68,12 @@ export class InteractionTargetViews {
     }
 }
 
-function cornerGraphic(width: number, height: number): Canvas {
+function cornerGraphic(
+    width: number,
+    height: number,
+    relationship?: CharacterRelationship
+): Canvas {
+    const color = highlightColor(relationship)
     return new Canvas({
         width: width + 6,
         height: height + 6,
@@ -78,7 +85,7 @@ function cornerGraphic(width: number, height: number): Canvas {
                 right = width + 3.5,
                 bottom = height + 3.5
             const arm = Math.min(5, width / 3, height / 3)
-            context.strokeStyle = '#ffd97955'
+            context.strokeStyle = `${color}55`
             context.lineWidth = 1
             context.strokeRect(left, top, right - left, bottom - top)
             context.beginPath()
@@ -96,13 +103,15 @@ function cornerGraphic(width: number, height: number): Canvas {
             context.strokeStyle = '#26301ddd'
             context.stroke()
             context.lineWidth = 1
-            context.strokeStyle = '#ffe295'
+            context.strokeStyle = color
             context.stroke()
+            if (relationship) drawRelationship(context, width / 2 + 3, 6, relationship, color)
         },
     })
 }
 
-function groundGraphic(width: number): Canvas {
+function groundGraphic(width: number, relationship?: CharacterRelationship): Canvas {
+    const color = highlightColor(relationship)
     return new Canvas({
         width: width + 4,
         height: 12,
@@ -110,12 +119,59 @@ function groundGraphic(width: number): Canvas {
         smoothing: false,
         draw: (context) => {
             context.beginPath()
-            context.ellipse((width + 4) / 2, 6, width / 2, 4, 0, 0, Math.PI * 2)
-            context.fillStyle = '#ffd97922'
+            if (relationship === 'hostile') {
+                context.moveTo(2, 6)
+                context.lineTo((width + 4) / 2, 1)
+                context.lineTo(width + 2, 6)
+                context.lineTo((width + 4) / 2, 11)
+                context.closePath()
+            } else {
+                context.ellipse((width + 4) / 2, 6, width / 2, 4, 0, 0, Math.PI * 2)
+            }
+            context.fillStyle = relationship === undefined ? '#ffd97922' : `${color}22`
             context.fill()
-            context.strokeStyle = '#ffe295cc'
+            context.strokeStyle = `${color}cc`
             context.lineWidth = 1
             context.stroke()
         },
     })
+}
+
+function highlightColor(relationship?: CharacterRelationship): string {
+    return relationship === 'hostile' ? '#ff978b' : relationship ? '#9be6c0' : '#ffe295'
+}
+
+function drawRelationship(
+    context: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    relationship: CharacterRelationship,
+    color: string
+): void {
+    context.beginPath()
+    context.arc(x, y, 5, 0, Math.PI * 2)
+    context.fillStyle = '#18231fee'
+    context.fill()
+    context.beginPath()
+    if (relationship === 'hostile') {
+        // Two crossed blades retain their meaning without relying on red alone.
+        context.moveTo(x - 3, y - 3)
+        context.lineTo(x + 3, y + 3)
+        context.moveTo(x + 3, y - 3)
+        context.lineTo(x - 3, y + 3)
+        context.moveTo(x - 4, y + 1)
+        context.lineTo(x - 1, y + 4)
+        context.moveTo(x + 1, y + 4)
+        context.lineTo(x + 4, y + 1)
+    } else {
+        context.moveTo(x - 3, y - 3)
+        context.lineTo(x + 3, y - 3)
+        context.lineTo(x + 3, y + 1)
+        context.lineTo(x, y + 4)
+        context.lineTo(x - 3, y + 1)
+        context.closePath()
+    }
+    context.strokeStyle = color
+    context.lineWidth = 1
+    context.stroke()
 }

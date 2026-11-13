@@ -130,3 +130,47 @@ describe('exact selected interaction target presentation', () => {
         expect(context.fillStyle).toBe('#ffd97922')
     })
 })
+
+it('distinguishes allied circles and shields from hostile diamonds and crossed blades', () => {
+    const { view, frame, ground } = setup()
+    const context = {
+        beginPath: vi.fn<CanvasRenderingContext2D['beginPath']>(),
+        moveTo: vi.fn<CanvasRenderingContext2D['moveTo']>(),
+        lineTo: vi.fn<CanvasRenderingContext2D['lineTo']>(),
+        closePath: vi.fn<CanvasRenderingContext2D['closePath']>(),
+        arc: vi.fn<CanvasRenderingContext2D['arc']>(),
+        ellipse: vi.fn<CanvasRenderingContext2D['ellipse']>(),
+        strokeRect: vi.fn<CanvasRenderingContext2D['strokeRect']>(),
+        fill: vi.fn<CanvasRenderingContext2D['fill']>(),
+        stroke: vi.fn<CanvasRenderingContext2D['stroke']>(),
+    }
+    view.set({ ...character, relationship: 'friendly' })
+    ground.graphics.use.mock.lastCall![0].options.draw(
+        context as unknown as CanvasRenderingContext2D
+    )
+    expect(context.ellipse).toHaveBeenCalledOnce()
+    frame.graphics.use.mock.lastCall![0].options.draw(
+        context as unknown as CanvasRenderingContext2D
+    )
+    expect(context.closePath).toHaveBeenCalledOnce() // closed shield outline
+    expect(context.lineTo).toHaveBeenCalledWith(15, 10)
+
+    vi.clearAllMocks()
+    view.set({ ...character, relationship: 'hostile' })
+    const enemyFrame = frame.graphics.use.mock.lastCall![0]
+    const enemyGround = ground.graphics.use.mock.lastCall![0]
+    enemyGround.options.draw(context as unknown as CanvasRenderingContext2D)
+    expect(context.ellipse).not.toHaveBeenCalled()
+    expect(context.lineTo.mock.calls).toEqual([
+        [16, 1],
+        [30, 6],
+        [16, 11],
+    ])
+    context.closePath.mockClear()
+    enemyFrame.options.draw(context as unknown as CanvasRenderingContext2D)
+    expect(context.closePath).not.toHaveBeenCalled() // open crossing blades
+    expect(context.lineTo).toHaveBeenCalledWith(18, 9)
+    view.set({ ...character, position: { x: 110, y: 200 }, relationship: 'hostile' })
+    expect(frame.graphics.use).toHaveBeenCalledOnce()
+    expect(ground.graphics.use).toHaveBeenCalledOnce()
+})

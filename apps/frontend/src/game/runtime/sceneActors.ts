@@ -6,30 +6,30 @@ import type {
     WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import {
-    Actor,
-    BoundingBox,
-    Canvas,
-    Color,
-    Engine,
-    type ImageSource,
-    Rectangle,
-    type SpriteSheet,
-    vec,
-} from 'excalibur'
+import { Actor, BoundingBox, Engine, type ImageSource, type SpriteSheet, vec } from 'excalibur'
 
 import type { CharacterId } from '../assets/characterCatalog'
 import { characterCatalog } from '../assets/characterCatalog'
 import { AttackZoneViews } from './attackZoneViews'
 import { BuildingViews } from './buildingViews'
 import { characterFrame } from './characterFrame'
-import { type CharacterBundle, createBundle, removeBundle } from './characterViewBundle'
+import {
+    type CharacterBundle,
+    createBundle,
+    removeBundle,
+    updateBundleHealth,
+} from './characterViewBundle'
+import { CombatEffects } from './combatEffects'
 import { CorpseViews } from './corpseViews'
 import { DamageFeedback } from './damageFeedback'
 import { DepthPropViews } from './depthPropViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
 import { interactionHasLineOfSight, type MapVisibility } from './mapVisibility'
+import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
+import { PrayerPreviewViews } from './prayerPreviewViews'
+import { createSceneMapActor } from './sceneMapActor'
 import { SignReadingViews } from './signReadingViews'
+import { StatusViews } from './statusViews'
 import type { RenderedTiledMap } from './tiledMap'
 import { WorldSceneActors } from './worldSceneActors'
 
@@ -39,9 +39,11 @@ export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
     private readonly buildingViews: BuildingViews
     private readonly depthProps: DepthPropViews
-    private readonly worldActors: WorldSceneActors
     private readonly corpseViews: CorpseViews
+    private readonly worldActors: WorldSceneActors
     private readonly attackZones: AttackZoneViews
+    private readonly prayerPreview: PrayerPreviewViews
+    private readonly combatTarget: InteractionTargetViews
     private readonly interactionTarget: InteractionTargetViews
     private mapVisibility: MapVisibility | undefined
     private playerPosition: Vector2 | undefined
@@ -50,6 +52,8 @@ export class SceneActors {
     private followedId: string | undefined
     private serverClockOffset = 0
     private localPlayerId: string | undefined
+    private readonly statusViews: StatusViews
+    private readonly combatEffects: CombatEffects
     private readonly damageFeedback: DamageFeedback
     private readonly signReading: SignReadingViews
 
@@ -60,6 +64,8 @@ export class SceneActors {
         chestImage: ImageSource,
         farmImage: ImageSource
     ) {
+        this.prayerPreview = new PrayerPreviewViews(engine)
+        this.combatTarget = new InteractionTargetViews(engine)
         this.interactionTarget = new InteractionTargetViews(engine)
         this.attackZones = new AttackZoneViews(engine)
         this.signReading = new SignReadingViews(engine)
@@ -67,6 +73,10 @@ export class SceneActors {
         this.depthProps = new DepthPropViews(engine)
         this.corpseViews = new CorpseViews(engine, sheets)
         this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
+        this.statusViews = new StatusViews(engine)
+        this.combatEffects = new CombatEffects(engine, (id) =>
+            this.isCharacterVisible(id) ? this.bundles.get(id)?.snapshot : undefined
+        )
         this.damageFeedback = new DamageFeedback(
             engine,
             (id) => this.bundles.get(id)?.body,
@@ -78,17 +88,25 @@ export class SceneActors {
     }
 
     public clearDamage(): void {
+        this.prayerPreview.clear()
         this.damageFeedback.clear()
+        this.combatEffects.clear()
+        this.statusViews.clear()
     }
     public dispose(): void {
+        this.prayerPreview.dispose()
         this.corpseViews.dispose()
         this.damageFeedback.dispose()
+        this.combatEffects.dispose()
+        this.statusViews.dispose()
         this.signReading.dispose()
         this.interactionTarget.dispose()
+        this.combatTarget.dispose()
         this.attackZones.update([])
         this.mapVisibility = this.playerPosition = undefined
     }
     public showDamage(event: GameEventPayload): void {
+        this.combatEffects.receive(event)
         this.damageFeedback.show(event, event.targetId === this.localPlayerId)
     }
 
@@ -96,6 +114,7 @@ export class SceneActors {
         this.clearDamage()
         this.corpseViews.dispose()
         this.interactionTarget.clear()
+        this.combatTarget.clear()
         this.signReading.setMap(map.visibility)
         this.mapVisibility = map.visibility
         this.playerPosition = undefined
@@ -104,24 +123,7 @@ export class SceneActors {
         this.followedId = undefined
         this.depthProps.setProps(map.depthProps)
         this.buildingViews.setBuildings(map.buildings)
-        const actor = new Actor({
-            anchor: vec(0, 0),
-            height: map.worldHeight,
-            pos: vec(0, 0),
-            width: map.worldWidth,
-            z: -100,
-        })
-        actor.graphics.use(
-            new Canvas({
-                cache: true,
-                draw: (context) => {
-                    context.drawImage(map.bitmap, 0, 0)
-                },
-                height: map.worldHeight,
-                smoothing: false,
-                width: map.worldWidth,
-            })
-        )
+        const actor = createSceneMapActor(map)
         this.engine.add(actor)
         this.mapActor = actor
     }
@@ -144,6 +146,12 @@ export class SceneActors {
             this.updateCharacter(character, character.id === localPlayerId)
         }
 
+        this.statusViews.sync(
+            snapshot.characters.filter((character) => this.isCharacterVisible(character.id))
+        )
+        this.combatEffects.sync(
+            snapshot.characters.filter((character) => this.isCharacterVisible(character.id))
+        )
         this.corpseViews.update(snapshot.chests, snapshot.characters)
         this.worldActors.update(
             snapshot.items,
@@ -154,6 +162,14 @@ export class SceneActors {
         )
         this.attackZones.update(snapshot.characters.flatMap((character) => character.attackZones))
         this.followLocalPlayer(localPlayerId)
+    }
+
+    public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {
+        this.prayerPreview.set(preview)
+    }
+
+    public setCombatTarget(target: TargetHighlight | undefined): void {
+        this.combatTarget.set(target)
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {
@@ -209,7 +225,7 @@ export class SceneActors {
         bundle.label.text = snapshot.nickname
         bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
         this.updateGraphic(bundle.body, snapshot)
-        this.updateHealth(bundle, snapshot, isLocalPlayer)
+        updateBundleHealth(bundle, snapshot, isLocalPlayer)
         this.updateMessage(bundle)
         const visible = isLocalPlayer || !this.buildingViews.hidesCharacter(snapshot.position)
         for (const actor of [
@@ -232,8 +248,8 @@ export class SceneActors {
         const bundle = createBundle()
         this.bundles.set(snapshot.id, bundle)
         this.engine.add(bundle.body)
-        this.engine.add(bundle.message)
         this.engine.add(bundle.label)
+        this.engine.add(bundle.message)
         this.engine.add(bundle.hpBack)
         this.engine.add(bundle.hpFill)
 
@@ -254,26 +270,6 @@ export class SceneActors {
         actor.graphics.use(sheet.getSprite(graphic.frame, graphic.row))
         actor.graphics.flipHorizontal = graphic.flipHorizontal
         actor.graphics.opacity = snapshot.alive ? 1 : 0.55
-    }
-
-    private updateHealth(
-        bundle: CharacterBundle,
-        snapshot: CharacterSnapshot,
-        isLocalPlayer: boolean
-    ): void {
-        const width = 32
-        const ratio = Math.max(0, Math.min(1, snapshot.hp / snapshot.maxHp))
-        const opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.35
-
-        bundle.hpFill.graphics.use(
-            new Rectangle({
-                color: ratio > 0.35 ? Color.Green : Color.Red,
-                height: 3,
-                width: Math.max(1, width * ratio),
-            })
-        )
-        bundle.hpBack.graphics.opacity = opacity
-        bundle.hpFill.graphics.opacity = opacity
     }
 
     private updateMessage(bundle: CharacterBundle): void {

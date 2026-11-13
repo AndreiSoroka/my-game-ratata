@@ -36,6 +36,8 @@ export class DamageFeedback {
     private readonly numbers = new Map<number, HitView>()
     private readonly flashes = new Map<string, FlashView>()
     private now = 0
+    private readonly reduced =
+        typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
     public constructor(
         private readonly engine: Engine,
@@ -149,7 +151,7 @@ export class DamageFeedback {
                 number.label.kill()
                 this.numbers.delete(id)
             } else {
-                number.label.pos = vec(number.x, number.y - progress * 18)
+                number.label.pos = vec(number.x, number.y - (this.reduced ? 0 : progress * 18))
                 number.label.graphics.opacity = 1 - progress * progress
             }
         }
@@ -157,7 +159,7 @@ export class DamageFeedback {
             if (!view.reacting) continue
             const elapsed = this.elapsed(id)
             view.body.graphics.offset =
-                elapsed !== undefined && elapsed < hitFlashMs
+                !this.reduced && elapsed !== undefined && elapsed < hitFlashMs
                     ? vec(Math.floor(elapsed / 30) % 2 ? -1 : 1, 0)
                     : vec(0, 0)
             view.reacting = elapsed !== undefined

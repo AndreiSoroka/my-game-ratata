@@ -7,18 +7,21 @@ import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import type { ChatInputState } from './game/runtime/chatInput'
 import { RatataGame } from './game/runtime/ratataGame'
 import TestControlPanel from './game/testing/TestControlPanel.vue'
-import { installTestInterface, type RatataTestState } from './game/testing/testInterface'
+import { useGameTestControls } from './game/testing/useGameTestControls'
 import AdventurePanel from './game/ui/AdventurePanel.vue'
 import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
 import DeathOverlay from './game/ui/DeathOverlay.vue'
 import GameHud from './game/ui/GameHud.vue'
+import GameplayOverlay from './game/ui/GameplayOverlay.vue'
 import InventoryOverlay from './game/ui/InventoryOverlay.vue'
 import JoinGamePanel from './game/ui/JoinGamePanel.vue'
 import NearbyInteraction from './game/ui/NearbyInteraction.vue'
 import { createTransientNotices } from './game/ui/transientNotices'
+import { useCharacterViews } from './game/ui/useCharacterViews'
 import { useChestSession } from './game/ui/useChestSession'
 
+const gameplay = ref<InstanceType<typeof GameplayOverlay>>()
 const interaction = ref<InstanceType<typeof NearbyInteraction>>()
 const adventurePanel = ref<InstanceType<typeof AdventurePanel>>()
 const nickname = ref('')
@@ -44,15 +47,7 @@ const notices = createTransientNotices((text) => {
 })
 
 const canJoin = computed(() => nickname.value.trim().length > 0 && !isJoining.value)
-const visibleCharacters = computed(
-    () =>
-        snapshot.value?.characters.filter(
-            (character) => game.value?.isCharacterVisible(character.id) ?? true
-        ) ?? []
-)
-const localCharacter = computed(() =>
-    snapshot.value?.characters.find((character) => character.id === localPlayerId.value)
-)
+const { localCharacter, visibleCharacters } = useCharacterViews(snapshot, game, localPlayerId)
 const {
     chest,
     close: closeChest,
@@ -69,40 +64,25 @@ const {
             game.value?.sendCommand({ type: 'dialogue_choice', choiceId: 'close' })
     },
 })
-const testState = computed<RatataTestState>(() => ({
-    connected: status.value === 'Connected',
-    defeated: defeated.value,
-    error: errorMessage.value,
-    inventoryOpen: inventoryOpen.value,
-    localPlayerId: localPlayerId.value,
-    location: snapshot.value?.location,
-    notice: notice.value,
-    player: localCharacter.value,
-    snapshot: snapshot.value,
-    status: status.value,
-}))
-const testInterface =
-    new URLSearchParams(window.location.search).get('test') === '1'
-        ? installTestInterface({
-              getState: () => testState.value,
-              inventory: (open) => {
-                  setInventory(open ?? !inventoryOpen.value)
-              },
-              join: async (name, selectedClass) => {
-                  if (isStarted.value) throw new Error('A game is already running')
-                  if (name.trim().length === 0 || name.trim().length > 24)
-                      throw new Error('Nickname must contain 1–24 characters')
-                  heroClass.value = selectedClass ?? heroClass.value
-                  nickname.value = name.trim()
-                  await joinGame()
-              },
-              send: (command) => {
-                  game.value?.sendCommand(command)
-              },
-          })
-        : undefined
+const { testState, testInterface } = useGameTestControls({
+    status,
+    defeated,
+    errorMessage,
+    inventoryOpen,
+    localPlayerId,
+    snapshot,
+    notice,
+    localCharacter,
+    isStarted,
+    heroClass,
+    nickname,
+    game,
+    joinGame,
+    setInventory,
+})
 
-function openNearbyMenu(): void {
+function openNearbyMenu(id?: string): void {
+    if (id) gameplay.value?.select(id)
     if (chestPending.value) return
     closeInventory()
     adventurePanel.value?.closeWindows()
@@ -140,7 +120,8 @@ async function joinGame(): Promise<void> {
             cleanupFailedJoin()
         },
         onNotice: notices.show,
-        onContextAction: openNearbyMenu,
+        onContextAction: () => openNearbyMenu(gameplay.value?.selectedId),
+        onCharacterClick: (id) => gameplay.value?.select(id, true),
         onInventoryToggle: toggleInventory,
         onSnapshot: (nextSnapshot, nextLocalPlayerId) => {
             if (localPlayerId.value !== nextLocalPlayerId) notices.reset()
@@ -262,8 +243,27 @@ onBeforeUnmount(() => {
                     "
                 />
             </GameHud>
+            <GameplayOverlay
+                v-if="snapshot && localCharacter"
+                ref="gameplay"
+                :game="game"
+                :snapshot="snapshot"
+                :player="localCharacter"
+                :characters="visibleCharacters"
+                :blocked="
+                    inventoryOpen ||
+                    chestPending ||
+                    chatInput.active ||
+                    status !== 'Connected' ||
+                    defeated ||
+                    Boolean(adventurePanel?.hasOpenWindow) ||
+                    Boolean(snapshot.adventure?.dialogue)
+                "
+                @interact="openNearbyMenu"
+            />
             <NearbyInteraction
                 ref="interaction"
+                :selected-id="gameplay?.selectedId"
                 :snapshot="snapshot"
                 :player="localCharacter"
                 :characters="visibleCharacters"

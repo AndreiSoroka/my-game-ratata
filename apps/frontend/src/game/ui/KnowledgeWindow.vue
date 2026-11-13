@@ -10,6 +10,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
+import AbilityKnowledge from './AbilityKnowledge.vue'
 import ArcanaStudy from './ArcanaStudy.vue'
 import FaithKnowledge from './FaithKnowledge.vue'
 
@@ -17,6 +18,7 @@ const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnap
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
 const targetId = ref('')
 const skills = computed(() => props.player.progression?.skills ?? [])
+const arcanaLevel = computed(() => skills.value.find((skill) => skill.id === 'arcana')?.level ?? 0)
 const teacher = computed(() =>
     props.characters.find(
         (character) =>
@@ -55,7 +57,7 @@ const descriptions: Record<SkillId, string> = {
     arcana: 'Понимание магии растёт от чтения конечного числа глав и передачи изученного заклинания ученикам.',
     swordsmanship: 'Практика за успешные удары мечом. Возьмите оружие и вступите в бой.',
     miracles:
-        'Практика за принятый дар божества. На 5-м уровне можно воскрешать союзников, если вашим покровителем остаётся Очаг.',
+        'Практика за принятый дар божества. На 5-м уровне можно воскрешать союзников: Очаг возвращает органические виды, Хранитель Праха — нежить.',
     fireball:
         'Изучите у учёного в Новогороде. Практика за попадания; 10-й уровень открывает следующую ветвь.',
     greater_fireball:
@@ -115,6 +117,11 @@ function learnFireball(): void {
                 </option>
             </select>
         </div>
+        <AbilityKnowledge
+            :player="player"
+            :characters="characters"
+            @command="emit('command', $event)"
+        />
         <article
             v-for="skill in skills"
             :key="skill.id"
@@ -158,11 +165,19 @@ function learnFireball(): void {
                 @command="emit('command', $event)"
             />
             <div v-else-if="skill.id === 'fireball' && !skill.unlocked" class="knowledge-action">
-                <button type="button" :disabled="!player.alive || !teacher" @click="learnFireball">
+                <button
+                    type="button"
+                    :disabled="!player.alive || !teacher || arcanaLevel < 3"
+                    @click="learnFireball"
+                >
                     Изучить огненный шар
                 </button>
                 <small>{{
-                    teacher ? `Учитель: ${teacher.nickname}` : 'Подойдите к учёному в Новогороде.'
+                    arcanaLevel < 3
+                        ? 'Нужна магия 3-го уровня. Изучайте главы у учёного.'
+                        : teacher
+                          ? `Учитель: ${teacher.nickname}`
+                          : 'Подойдите к учёному в Новогороде.'
                 }}</small>
             </div>
             <div

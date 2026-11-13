@@ -42,3 +42,7 @@ Grass, concrete and wood footsteps use nine unchanged clips (three per material)
 The flat paving, transparent soil-bed strips and dark doorway threshold are small vector tiles authored in `scripts/generate-ground.mjs`. Their SVG sources are saved under `apps/frontend/public/game/map/assets/Novogorod/`. They replace the raised-rock paving and opaque light-grass rectangles; they are not modified Kenney atlas images. The original Kenney and Mystic Woods source images remain unchanged.
 
 - `game/assets/items/{slime-heart,herbs,fiber,scrap,wood,grain}.svg`: original 16×16 pixel-style SVG icons authored for this project (quest heart and material inventory items).
+
+## Project-authored combat and interface visuals
+
+The 2026-11-13 party panel and action slots use original CSS and SVG/text symbols. Food uses the existing item catalog artwork. Arrow, blue-violet spark, flame, wind, constellation, broken-ring, casting-arc and faceted-barrier effects are original cached Canvas drawings in `apps/frontend/src/game/runtime/effectGraphics.ts` and `prayerGraphics.ts`. Bounded Excalibur ParticleEmitter bursts provide embers, motes and barrier shards. No third-party spell bitmap or generated sprite sheet was added. Existing character and item licenses are unchanged. Storybook previews show the same draw functions against grass, light stone and dark-room surfaces.

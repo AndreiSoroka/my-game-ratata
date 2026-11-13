@@ -11,6 +11,8 @@ const runtime = vi.hoisted(() => ({
 }))
 vi.mock('../runtime/ratataGame', () => ({
     RatataGame: class {
+        public setCombatTarget(): void {}
+        public sendCommand(): void {}
         public setInteractionTarget(): void {
             /* No canvas renderer in the App unit test. */
         }

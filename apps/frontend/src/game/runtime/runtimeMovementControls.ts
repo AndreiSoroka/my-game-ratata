@@ -6,6 +6,7 @@ import type {
 
 export class RuntimeMovementControls {
     private sneaking = false
+    private disrupted = false
 
     public constructor(private readonly send: (command: ClientMessage) => void) {}
 
@@ -22,8 +23,11 @@ export class RuntimeMovementControls {
         return true
     }
 
-    public observe(movement: CharacterMovementSnapshot | undefined, disrupted = false): void {
+    public observe(movement: CharacterMovementSnapshot | undefined, disrupted = false): boolean {
+        const started = disrupted && !this.disrupted
+        this.disrupted = disrupted
         if (movement?.dashing || disrupted) this.sneaking = false
+        return started
     }
 
     public acceptMode(mode: MovementMode): void {

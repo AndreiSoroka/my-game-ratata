@@ -31,7 +31,8 @@ export interface FacingInteractionTarget {
 export function facingInteractionTarget<T extends FacingInteractionTarget>(
     targets: readonly T[],
     player: Pick<CharacterSnapshot, 'position' | 'facing'>,
-    targetKey?: string
+    targetKey?: string,
+    ignoreFacing = false
 ): T | undefined {
     const direction = {
         up: { x: 0, y: -1 },
@@ -75,7 +76,7 @@ export function facingInteractionTarget<T extends FacingInteractionTarget>(
                 target,
                 reach,
                 sideways,
-                visible: reach <= 4 || (forward > 0 && sideways <= forward + 1),
+                visible: ignoreFacing || reach <= 4 || (forward > 0 && sideways <= forward + 1),
             }
         })
         .filter((candidate) => candidate.visible)

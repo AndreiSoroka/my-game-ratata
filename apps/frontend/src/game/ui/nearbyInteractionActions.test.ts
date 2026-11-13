@@ -96,6 +96,7 @@ describe('one facing interaction target', () => {
             'companion_request',
             'companion_request',
             'steal',
+            'follow',
         ])
         expect(
             target.actions.every((a) => 'targetId' in a.command && a.command.targetId === 'ahead')

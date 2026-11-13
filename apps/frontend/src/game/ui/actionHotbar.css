@@ -1,0 +1,97 @@
+.hotbar {
+    position: absolute;
+    bottom: 17px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 7;
+    padding: 6px;
+    display: flex;
+    gap: 6px;
+}
+.hotbar-slot {
+    width: 48px;
+    height: 48px;
+    position: relative;
+    border: 1px solid var(--rpg-brass);
+    background: #26372a;
+    color: var(--rpg-text);
+    cursor: pointer;
+}
+.hotbar-item {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+.hotbar-slot > span {
+    font-size: 26px;
+}
+kbd {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font:
+        13px 'Pixelify Sans',
+        system-ui;
+}
+small {
+    position: absolute;
+    right: 4px;
+    bottom: 2px;
+    font-size: 11px;
+}
+.hotbar-cooldown {
+    position: absolute;
+    inset: 0;
+    background: var(--rpg-panel);
+    display: grid;
+    place-items: center;
+}
+.hotbar p {
+    position: absolute;
+    bottom: -19px;
+    left: 0;
+    right: 0;
+    margin: 0;
+    text-align: center;
+    font-size: 9px;
+    white-space: nowrap;
+}
+.prayer-preview {
+    position: absolute;
+    z-index: 7;
+    bottom: 112px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(360px, calc(100% - 32px));
+    padding: 7px 10px;
+    margin: 0;
+    box-sizing: border-box;
+    font-size: 14px;
+    text-align: center;
+}
+.hotbar-picker {
+    position: absolute;
+    z-index: 12;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(320px, calc(100% - 32px));
+    padding: 14px;
+    box-sizing: border-box;
+    max-height: 60vh;
+    overflow: auto;
+}
+.hotbar-picker button {
+    width: 100%;
+    text-align: left;
+    position: relative;
+    background: #26372a;
+    color: var(--rpg-text);
+    border: 1px solid var(--rpg-brass);
+    padding: 10px;
+    margin: 4px 0;
+}
+.hotbar-picker small {
+    position: static;
+    display: block;
+}

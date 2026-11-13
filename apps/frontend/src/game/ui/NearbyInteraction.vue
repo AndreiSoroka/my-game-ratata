@@ -16,6 +16,7 @@ const props = defineProps<{
     snapshot: WorldSnapshot | undefined
     player: CharacterSnapshot | undefined
     characters: CharacterSnapshot[]
+    selectedId?: string
     blocked: boolean
     isPositionVisible?: (position: Vector2, bounds?: WorldObjectBounds, range?: number) => boolean
 }>()
@@ -34,7 +35,12 @@ const target = computed(() =>
               props.player,
               props.characters,
               props.isPositionVisible,
-              open.value ? openedKey.value : undefined
+              open.value
+                  ? openedKey.value
+                  : props.selectedId
+                    ? `character:${props.selectedId}`
+                    : undefined,
+              Boolean(props.selectedId)
           )
         : undefined
 )
@@ -118,6 +124,7 @@ watch(
                 ? {
                       key: selected.key,
                       kind: selected.kind,
+                      relationship: selected.relationship,
                       position: selected.position,
                       bounds: selected.bounds,
                   }

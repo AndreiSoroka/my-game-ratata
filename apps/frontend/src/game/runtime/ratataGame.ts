@@ -10,18 +10,28 @@ import type {
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
-import { Color, DisplayMode, Engine, PointerButton, PointerScope } from 'excalibur'
+import { type Engine, PointerButton } from 'excalibur'
 
 import { createCharacterResources } from './characterResources'
 import { chatDuration } from './chatInput'
 import { GameAudio } from './gameAudio'
-import { axisFromKeys, movementKeys, preventContextMenu } from './input'
+import { axisFromKeys, movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
+import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
+import {
+    characterAt,
+    characterDisrupted,
+    createGameCanvas,
+    createGameEngine,
+    projectCharacter,
+} from './runtimeCharacterTargets'
 import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
+import { runtimeEventFeedback } from './runtimeEventFeedback'
+import { installRuntimeInputs } from './runtimeInputLifecycle'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
-import { isChatEvent, isEditableTarget, isNoticeForPlayer, shouldAttackAt } from './runtimeQueries'
+import { isChatEvent, isEditableTarget } from './runtimeQueries'
 import { handleRuntimeShortcut } from './runtimeShortcuts'
 import { RuntimeSocket } from './runtimeSocket'
 import { SceneActors } from './sceneActors'
@@ -29,6 +39,7 @@ import type { RenderedTiledMap } from './tiledMap'
 import { loadRenderedTiledMap } from './tiledMap'
 
 export class RatataGame {
+    private removeInputs: (() => void) | undefined
     private audio: GameAudio | undefined
     private canvas: HTMLCanvasElement | undefined
     private engine: Engine | undefined
@@ -69,17 +80,10 @@ export class RatataGame {
     public async start(): Promise<void> {
         this.stopped = false
         this.options.onStatus('Loading')
-        const canvas = this.createCanvas()
+        const canvas = createGameCanvas(this.options.container)
         const resources = createCharacterResources()
         const map = await loadRenderedTiledMap()
-        const engine = new Engine({
-            backgroundColor: Color.fromHex('#0b0d0c'),
-            canvasElement: canvas,
-            displayMode: DisplayMode.FillContainer,
-            pixelArt: true,
-            pointerScope: PointerScope.Canvas,
-            suppressPlayButton: true,
-        })
+        const engine = createGameEngine(canvas)
 
         this.canvas = canvas
         this.engine = engine
@@ -93,7 +97,12 @@ export class RatataGame {
             resources.farmImage
         )
         this.sceneActors.addMap(map)
-        this.installInputs(engine, canvas)
+        this.removeInputs = installRuntimeInputs(engine, canvas, {
+            keyDown: this.handleKeyDown,
+            keyUp: this.handleKeyUp,
+            release: this.releaseInputs,
+            pointer: (event) => this.handlePointerDown(event),
+        })
         await engine.start(resources.loader)
         this.audio.playMusic()
         this.socket.connect(this.options.nickname, this.options.heroClass)
@@ -101,11 +110,8 @@ export class RatataGame {
 
     public stop(): void {
         this.stopped = true
-        window.removeEventListener('keydown', this.handleKeyDown)
-        window.removeEventListener('keyup', this.handleKeyUp)
-        window.removeEventListener('blur', this.releaseInputs)
+        this.removeInputs?.()
         this.releaseInputs()
-        this.canvas?.removeEventListener('contextmenu', preventContextMenu)
         this.socket.close()
         this.audio?.stop()
         this.sceneActors?.dispose()
@@ -123,6 +129,19 @@ export class RatataGame {
         )
     }
 
+    public setCombatTarget(target: TargetHighlight | undefined): void {
+        this.sceneActors?.setCombatTarget(target)
+    }
+    public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {
+        this.sceneActors?.setPrayerPreview(
+            !this.connected || this.stopped || this.loadingMapId ? undefined : preview
+        )
+    }
+    public projectCharacter(id: string) {
+        return this.isCharacterVisible(id)
+            ? projectCharacter(this.engine, this.canvas, this.snapshot, id)
+            : undefined
+    }
     public isPositionVisible(position: Vector2): boolean {
         return this.sceneActors?.isPositionVisible(position) ?? true
     }
@@ -160,33 +179,11 @@ export class RatataGame {
         this.send({ action, slot, type: 'equipment_action' })
     }
 
-    private createCanvas(): HTMLCanvasElement {
-        const canvas = document.createElement('canvas')
-        canvas.className = 'game-canvas'
-        canvas.dataset.gameCanvas = 'true'
-        canvas.tabIndex = 0
-        this.options.container.append(canvas)
-
-        return canvas
-    }
-
-    private installInputs(engine: Engine, canvas: HTMLCanvasElement): void {
-        window.addEventListener('keydown', this.handleKeyDown)
-        window.addEventListener('keyup', this.handleKeyUp)
-        window.addEventListener('blur', this.releaseInputs)
-        canvas.addEventListener('contextmenu', preventContextMenu)
-        engine.input.pointers.primary.on('down', (event) => {
-            this.handlePointerDown(event)
-        })
-    }
-
     private applySnapshot(snapshot: WorldSnapshot): void {
         this.snapshot = snapshot
         const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
-        this.movementControls.observe(
-            player?.movement,
-            player !== undefined && (!player.alive || player.cooldowns.stunMsLeft > 0)
-        )
+        if (this.movementControls.observe(player?.movement, characterDisrupted(player)))
+            this.releaseInputs()
         const mapId = snapshot.location?.id ?? CENTER_LOCATION_ID
         if (mapId !== this.mapId) {
             void this.changeLocation(mapId)
@@ -223,7 +220,11 @@ export class RatataGame {
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
-        if (isEditableTarget(event.target)) {
+        if (
+            event.defaultPrevented ||
+            isEditableTarget(event.target) ||
+            document.querySelector('[role="dialog"], [role="menu"]')
+        ) {
             return
         }
         const wasChatActive = this.chat.isActive
@@ -261,6 +262,7 @@ export class RatataGame {
             return
 
         if (movementKeys.has(event.code)) {
+            this.send({ type: 'cancel_control' })
             this.pressedKeys.add(event.code)
             this.flushMoveInput()
         }
@@ -274,6 +276,7 @@ export class RatataGame {
     }
 
     private readonly releaseInputs = (): void => {
+        this.send({ type: 'cancel_control' })
         this.pressedKeys.clear()
         this.flushMoveInput()
         this.movementControls.release()
@@ -289,14 +292,15 @@ export class RatataGame {
             y: event.worldPos.y,
         }
 
-        if (
-            event.button === PointerButton.Right ||
-            shouldAttackAt(this.snapshot, this.localPlayerId, target)
-        ) {
-            this.send({ type: 'attack' })
+        const id = characterAt(this.snapshot, this.localPlayerId, target, (actorId) =>
+            this.isCharacterVisible(actorId)
+        )
+        if (id) {
+            this.options.onCharacterClick?.(id)
             return
         }
-
+        if (event.button === PointerButton.Right) return
+        this.send({ type: 'cancel_control' })
         this.send({ target, type: 'move_to' })
     }
 
@@ -316,23 +320,11 @@ export class RatataGame {
     }
 
     private handleServerEvent(event: GameEventPayload): void {
+        this.options.onEvent?.(event)
         this.audio?.playEventSound(event)
         if (this.loadingMapId === undefined) this.sceneActors?.showDamage(event)
-        if (isNoticeForPlayer(event, this.localPlayerId)) {
-            this.options.onNotice?.(event.text)
-            return
-        }
-        if (event.kind === 'permadeath' && event.actorId === this.localPlayerId) {
-            this.pressedKeys.clear()
-            this.flushMoveInput()
-            this.options.onDefeat?.()
-            return
-        }
-
-        if (!isChatEvent(event)) {
-            return
-        }
-
-        this.sceneActors?.showChat(event.actorId, event.text, chatDuration(event.text))
+        runtimeEventFeedback(event, this.localPlayerId, this.options, this.releaseInputs)
+        if (isChatEvent(event))
+            this.sceneActors?.showChat(event.actorId, event.text, chatDuration(event.text))
     }
 }

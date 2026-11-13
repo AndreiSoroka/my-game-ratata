@@ -222,3 +222,7 @@ NPC выбирают эти же способности, сохраняя сог
 надетый меч, без дополнительной случайной копии. Сердце враждебного слизня
 возобновляется по одному на каждую настоящую смерть, независимо от квеста.
 Всё это — состояние мира в памяти процесса, без долговременного сохранения.
+
+## Keyboard HUD and visual feedback
+
+Four initially empty action slots bind known abilities or real food items with Shift+1–4. Target focus is shared by keyboard and pointer interaction: T hostile, Shift+T friendly/revivable, F self, E target actions and Q automatic attack. Friendly characters can be followed through the same authoritative control rules. The party roster shows names, HP percentages, leader crown and absence/life state. Prayers disclose target, mana cost and collateral victims before use, with an exact 48px world preview for harmful waves. Distinct procedural deity/projectile/barrier effects consume server outcomes, remain bounded and support reduced motion.

@@ -1,9 +1,11 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
+import { EFFECT_BUDGET } from './effectBudget'
+
 export const hurtPoseMs = 240
 export const hitFlashMs = 120
 export const damageNumberMs = 850
-export const maxDamageEffects = 24
+export const maxDamageEffects = EFFECT_BUDGET.damage
 export interface DamageHit {
     id: number
     targetId: string
