@@ -21,9 +21,10 @@ describe('physical quest deliveries', () => {
             expect(wrapper.get('progress').attributes('max')).toBe('3')
             expect(wrapper.get('.journal-hearts').text()).toContain('1 / 3')
             expect(wrapper.get('.journal-statistic').text()).toContain('7')
-            expect(wrapper.text()).toContain('сердцу на земле')
+            expect(wrapper.text()).toContain('подойдите к телу слизня')
+            expect(wrapper.text()).toContain('заберите сердце из окна добычи в рюкзак')
             expect(wrapper.text()).toContain('здание гильдии Новогорода')
-            expect(wrapper.text()).toContain('Сердца на земле или в сундуке не входят')
+            expect(wrapper.text()).toContain('В счётчик входят только сердца в вашем рюкзаке')
             expect(wrapper.get('img').attributes('alt')).toBe('Слизневое сердце')
         } finally {
             wrapper.unmount()
