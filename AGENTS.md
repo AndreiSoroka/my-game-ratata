@@ -22,7 +22,7 @@
 
 ## Agent playtesting
 
-- Use the connected Playwright/browser MCP with `http://localhost:4173/?test=1` when the local preview is running. The opt-in `window.__ratataTest` interface supports `join(name, heroClass)`, `getState()`, `moveFor(axis, milliseconds)`, `send(ClientMessage)`, `inventory(open)` and `stop()`.
+- Use the connected Playwright/browser MCP with `http://localhost:4173/?test=1` when the local preview is running. The opt-in `window.__ratataTest` interface supports `join`, `observe`, `navigate`, `travel`, `act`, `waitFor`, `getState`, `moveFor`, `send`, `inventory` and `stop`. See `docs/agent-playtesting.md` for the AI workflow and result semantics; receiving a newer snapshot does not by itself prove an action succeeded.
 - All test actions go through ordinary validated player commands. Avoid teleporting or editing live character state to claim a gameplay check passed.
 - See `docs/playable-world.md` for startup commands, controls, generated-world content and runtime limitations. Keep playtesting headless unless the user asks to see the browser.
 

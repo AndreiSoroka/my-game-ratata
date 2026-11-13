@@ -12,6 +12,7 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 import { type Engine, PointerButton } from 'excalibur'
 
+import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
 import { createCharacterResources } from './characterResources'
 import { GameAudio } from './gameAudio'
 import { axisFromKeys, movementKeys } from './input'
@@ -34,8 +35,7 @@ import { isEditableTarget } from './runtimeQueries'
 import { handleRuntimeShortcut } from './runtimeShortcuts'
 import { RuntimeSocket } from './runtimeSocket'
 import { SceneActors } from './sceneActors'
-import type { RenderedTiledMap } from './tiledMap'
-import { loadRenderedTiledMap } from './tiledMap'
+import { loadRenderedTiledMap, type RenderedTiledMap } from './tiledMap'
 
 export class RatataGame {
     private removeInputs: (() => void) | undefined
@@ -49,6 +49,7 @@ export class RatataGame {
     private stopped = false
     private mapId: string = CENTER_LOCATION_ID
     private loadingMapId: string | undefined
+    private readonly buildingEntrances = new BuildingEntrances()
     private readonly movementControls = new RuntimeMovementControls((command) => this.send(command))
     private readonly pressedKeys = new Set<string>()
     private readonly chat: RuntimeChatInput
@@ -96,6 +97,7 @@ export class RatataGame {
             resources.farmImage
         )
         this.sceneActors.addMap(map)
+        this.buildingEntrances.replace(this.mapId, map.buildings)
         this.removeInputs = installRuntimeInputs(engine, canvas, {
             keyDown: this.handleKeyDown,
             keyUp: this.handleKeyUp,
@@ -114,12 +116,11 @@ export class RatataGame {
         this.socket.close()
         this.audio?.stop()
         this.sceneActors?.dispose()
+        this.buildingEntrances.clear()
         this.engine?.stop()
         this.canvas?.remove()
 
-        if (import.meta.env.DEV) {
-            delete window.__ratataGameDebug
-        }
+        if (import.meta.env.DEV) delete window.__ratataGameDebug
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {
@@ -142,7 +143,7 @@ export class RatataGame {
             : undefined
     }
     public isPositionVisible(position: Vector2): boolean {
-        return this.sceneActors?.isPositionVisible(position) ?? true
+        return this.isMapReady && (this.sceneActors?.isPositionVisible(position) ?? false)
     }
 
     public isInteractionVisible(
@@ -150,13 +151,20 @@ export class RatataGame {
         bounds?: WorldObjectBounds,
         range = 48
     ): boolean {
-        if (this.stopped || (this.snapshot?.location?.id ?? CENTER_LOCATION_ID) !== this.mapId)
-            return false
+        if (!this.isMapReady) return false
         return this.sceneActors?.isInteractionVisible(position, bounds, range) ?? false
     }
 
     public isCharacterVisible(id: string): boolean {
-        return this.sceneActors?.isCharacterVisible(id) ?? true
+        return this.isMapReady && (this.sceneActors?.isCharacterVisible(id) ?? false)
+    }
+
+    private get isMapReady(): boolean {
+        return !this.stopped && this.snapshot?.location?.id === this.mapId
+    }
+
+    public getBuildings(): BuildingEntrance[] {
+        return this.stopped ? [] : this.buildingEntrances.read(this.snapshot?.location?.id)
     }
 
     public sendCommand(message: ClientMessage): void {
@@ -214,6 +222,7 @@ export class RatataGame {
     private applyMap(mapId: string, map: RenderedTiledMap): void {
         this.audio?.setMap(map)
         this.sceneActors?.addMap(map)
+        this.buildingEntrances.replace(mapId, map.buildings)
         this.mapId = mapId
         if (this.snapshot) this.sceneActors?.update(this.snapshot, this.localPlayerId)
     }
@@ -282,9 +291,7 @@ export class RatataGame {
     }
 
     private handlePointerDown(event: ExcaliburPointerEvent): void {
-        if (this.chat.isActive) {
-            return
-        }
+        if (this.chat.isActive) return
 
         const target = {
             x: event.worldPos.x,

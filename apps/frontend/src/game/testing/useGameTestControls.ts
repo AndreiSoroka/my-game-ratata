@@ -37,6 +37,14 @@ export function useGameTestControls(state: TestControls) {
         new URLSearchParams(window.location.search).get('test') === '1'
             ? installTestInterface({
                   getState: () => testState.value,
+                  observation: {
+                      getBuildings: () => state.game.value?.getBuildings() ?? [],
+                      isCharacterVisible: (id) => state.game.value?.isCharacterVisible(id) ?? false,
+                      isPositionVisible: (point) =>
+                          state.game.value?.isPositionVisible(point) ?? false,
+                      isInteractionVisible: (point, bounds, range) =>
+                          state.game.value?.isInteractionVisible(point, bounds, range) ?? false,
+                  },
                   inventory: (open) => state.setInventory(open ?? !state.inventoryOpen.value),
                   join: async (name, selectedClass) => {
                       if (state.isStarted.value) throw new Error('A game is already running')

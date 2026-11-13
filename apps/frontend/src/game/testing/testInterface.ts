@@ -6,6 +6,17 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { createAgentNavigator } from './agentNavigation'
+import { type AgentObservation, type ObservationOptions, observeGame } from './agentObservation'
+import {
+    type AgentActionOptions,
+    type AgentCondition,
+    type AgentWaitOptions,
+    type AgentWaitResult,
+    createAgentWaiter,
+    validateAgentWait,
+} from './agentWait'
+
 export type TestCommand = Exclude<ClientMessage, { type: 'join' }>
 
 export interface RatataTestState {
@@ -22,6 +33,11 @@ export interface RatataTestState {
 }
 
 export interface RatataTestApi {
+    observe: () => AgentObservation
+    navigate: ReturnType<typeof createAgentNavigator>['navigate']
+    travel: ReturnType<typeof createAgentNavigator>['travel']
+    act: (command: TestCommand, options?: AgentActionOptions) => Promise<AgentWaitResult>
+    waitFor: (condition: AgentCondition, options?: AgentWaitOptions) => Promise<AgentWaitResult>
     getState: () => RatataTestState
     inventory: (open?: boolean) => void
     join: (nickname: string, heroClass?: HeroClass) => Promise<void>
@@ -31,6 +47,7 @@ export interface RatataTestApi {
 }
 
 interface TestInterfaceOptions {
+    observation?: ObservationOptions
     getState: () => RatataTestState
     inventory: (open?: boolean) => void
     join: (nickname: string, heroClass?: HeroClass) => Promise<void>
@@ -47,47 +64,9 @@ export function installTestInterface(options: TestInterfaceOptions): {
     api: RatataTestApi
     dispose: () => void
 } {
-    let movementTimer: ReturnType<typeof setTimeout> | undefined
-    let finishMovement: (() => void) | undefined
-    const cancelMovementTimer = () => {
-        clearTimeout(movementTimer)
-        movementTimer = undefined
-        finishMovement?.()
-        finishMovement = undefined
-    }
-    const stop = () => {
-        cancelMovementTimer()
-        options.send({ axis: { x: 0, y: 0 }, type: 'move_input' })
-    }
-    const send = (command: TestCommand) => {
-        if (!options.getState().connected) {
-            throw new Error('Join the game before sending commands')
-        }
-        if (command.type === 'move_input' || command.type === 'move_to') {
-            cancelMovementTimer()
-        }
-        options.send(command)
-    }
-    const api: RatataTestApi = {
-        getState: () => JSON.parse(JSON.stringify(options.getState())) as RatataTestState,
-        inventory: options.inventory,
-        join: async (nickname, heroClass) => {
-            await options.join(nickname, heroClass)
-            await waitForConnection(options.getState)
-        },
-        moveFor: (axis, milliseconds) => {
-            if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > 60_000) {
-                return Promise.reject(new Error('Movement duration must be between 0 and 60000 ms'))
-            }
-            send({ axis, type: 'move_input' })
-            return new Promise<void>((resolve) => {
-                finishMovement = resolve
-                movementTimer = setTimeout(stop, milliseconds)
-            })
-        },
-        send,
-        stop,
-    }
+    const driver = new TestDriver(options)
+    const api = driver.api
+    const stop = () => driver.stop()
     const onHidden = () => {
         if (document.hidden) {
             stop()
@@ -99,7 +78,7 @@ export function installTestInterface(options: TestInterfaceOptions): {
     return {
         api,
         dispose: () => {
-            stop()
+            driver.dispose()
             window.removeEventListener('blur', stop)
             document.removeEventListener('visibilitychange', onHidden)
             if (window.__ratataTest === api) {
@@ -109,9 +88,149 @@ export function installTestInterface(options: TestInterfaceOptions): {
     }
 }
 
-async function waitForConnection(getState: () => RatataTestState): Promise<void> {
+class TestDriver {
+    private movementTimer: ReturnType<typeof setTimeout> | undefined
+    private finishMovement: (() => void) | undefined
+    private disposed = false
+    private readonly navigator: ReturnType<typeof createAgentNavigator>
+    private readonly waiter: ReturnType<typeof createAgentWaiter>
+    public readonly api: RatataTestApi
+
+    public constructor(private readonly options: TestInterfaceOptions) {
+        const observe = () => observeGame(options.getState(), options.observation)
+        this.navigator = createAgentNavigator({
+            getState: options.getState,
+            observe,
+            send: (command) => {
+                if (!this.disposed) options.send(command)
+            },
+        })
+        this.waiter = createAgentWaiter({ getState: options.getState, observe })
+        this.api = {
+            getState: () => JSON.parse(JSON.stringify(options.getState())) as RatataTestState,
+            observe,
+            inventory: (open) => {
+                this.ensureActive()
+                options.inventory(open)
+            },
+            join: async (name, heroClass) => {
+                this.ensureActive()
+                await options.join(name, heroClass)
+                await waitForConnection(options.getState, () => this.disposed)
+            },
+            navigate: (destination, config) => {
+                this.ensureActive()
+                this.cancelMovementTimer()
+                return this.navigator.navigate(destination, config)
+            },
+            travel: (direction, config) => {
+                this.ensureActive()
+                this.cancelMovementTimer()
+                return this.navigator.travel(direction, config)
+            },
+            act: (command, config = {}) => {
+                const afterTick = options.getState().snapshot?.tick ?? -1
+                const condition = config.until ?? {
+                    type: 'tick',
+                    after: afterTick,
+                }
+                validateAgentWait(condition, config)
+                this.send(command)
+                return this.waiter.waitFor(
+                    condition,
+                    config,
+                    config.until ? 'condition_met' : 'updated',
+                    afterTick
+                )
+            },
+            waitFor: (condition, config) => this.waiter.waitFor(condition, config),
+            moveFor: (axis, milliseconds) => this.moveFor(axis, milliseconds),
+            send: (command) => this.send(command),
+            stop: () => this.stop(),
+        }
+    }
+
+    private ensureActive(): void {
+        if (this.disposed) throw new Error('Test interface has been disposed')
+    }
+
+    private cancelMovementTimer(): void {
+        clearTimeout(this.movementTimer)
+        this.movementTimer = undefined
+        if (this.finishMovement && !this.disposed && this.options.getState().connected) {
+            this.options.send({ type: 'move_input', axis: { x: 0, y: 0 } })
+        }
+        this.finishMovement?.()
+        this.finishMovement = undefined
+    }
+
+    private send(command: TestCommand): void {
+        this.ensureActive()
+        if (!this.options.getState().connected)
+            throw new Error('Join the game before sending commands')
+        if ((command as ClientMessage).type === 'join')
+            throw new Error('Use join() to create a player')
+        if (
+            ['move_input', 'move_to', 'follow', 'auto_attack', 'cancel_control'].includes(
+                command.type
+            )
+        ) {
+            this.cancelMovementTimer()
+            this.navigator.cancel()
+        }
+        this.options.send(command)
+    }
+
+    private moveFor(axis: Vector2, milliseconds: number): Promise<void> {
+        if (!Number.isFinite(milliseconds) || milliseconds < 0 || milliseconds > 60_000) {
+            return Promise.reject(new Error('Movement duration must be between 0 and 60000 ms'))
+        }
+        if (
+            !axis ||
+            !Number.isFinite(axis.x) ||
+            !Number.isFinite(axis.y) ||
+            Math.abs(axis.x) > 1 ||
+            Math.abs(axis.y) > 1
+        ) {
+            return Promise.reject(
+                new Error('Movement axis must have finite components between -1 and 1')
+            )
+        }
+        this.send({ axis, type: 'move_input' })
+        return new Promise<void>((resolve) => {
+            this.finishMovement = resolve
+            this.movementTimer = setTimeout(() => this.releaseMovement(), milliseconds)
+        })
+    }
+
+    public stop(): void {
+        this.releaseMovement()
+        this.waiter.cancel()
+    }
+
+    private releaseMovement(): void {
+        this.cancelMovementTimer()
+        this.navigator.cancel()
+        if (!this.disposed && this.options.getState().connected) {
+            this.options.send({ type: 'cancel_control' })
+            this.options.send({ axis: { x: 0, y: 0 }, type: 'move_input' })
+        }
+    }
+
+    public dispose(): void {
+        this.stop()
+        this.disposed = true
+        this.waiter.dispose()
+    }
+}
+
+async function waitForConnection(
+    getState: () => RatataTestState,
+    disposed: () => boolean
+): Promise<void> {
     const deadline = Date.now() + 20_000
     while (Date.now() < deadline) {
+        if (disposed()) throw new Error('Test interface has been disposed')
         const state = getState()
         if (state.connected) {
             return

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { characterFixture, worldFixture } from './characterFixture'
 import { installTestInterface, type RatataTestApi, type RatataTestState } from './testInterface'
 
 const installed: ReturnType<typeof installTestInterface>[] = []
@@ -10,16 +11,17 @@ afterEach(() => {
 })
 
 function setup(connected = true) {
+    const player = characterFixture('self')
     const state: RatataTestState = {
         connected,
         defeated: false,
         error: '',
         inventoryOpen: false,
-        localPlayerId: undefined,
+        localPlayerId: player.id,
         location: undefined,
         notice: '',
-        player: undefined,
-        snapshot: undefined,
+        player,
+        snapshot: worldFixture([player]),
         status: connected ? 'Connected' : 'Ready',
     }
     const send = vi.fn<RatataTestApi['send']>()
@@ -89,5 +91,67 @@ describe('test controls', () => {
         expect(window.__ratataTest).toBe(api)
         dispose()
         expect(window.__ratataTest).toBeUndefined()
+    })
+
+    it('releases timed movement even when a replacement navigation request is invalid', async () => {
+        vi.useFakeTimers()
+        const { api, send } = setup()
+        const moving = api.moveFor({ x: 1, y: 0 }, 1000)
+        expect(() => api.navigate({ x: Infinity, y: 0 })).toThrow('finite point')
+        await moving
+        expect(send).toHaveBeenLastCalledWith({ type: 'move_input', axis: { x: 0, y: 0 } })
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('validates waiting before sending an action and stops pending waits on blur', async () => {
+        vi.useFakeTimers()
+        const { api, send } = setup()
+        expect(() => api.act({ type: 'attack' }, { timeoutMs: Infinity })).toThrow('Timeout')
+        expect(send).not.toHaveBeenCalled()
+        const waiting = api.waitFor({ type: 'quest', status: 'completed' })
+        window.dispatchEvent(new Event('blur'))
+        expect((await waiting).status).toBe('cancelled')
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('checks action outcomes only after a fresh snapshot even when the condition already matches', async () => {
+        vi.useFakeTimers()
+        const { api, state } = setup()
+        const result = api.act(
+            { type: 'move_to', target: { x: 100, y: 100 } },
+            {
+                until: { type: 'idle' },
+                timeoutMs: 100,
+            }
+        )
+        await vi.advanceTimersByTimeAsync(100)
+        expect((await result).status).toBe('timeout')
+        const next = api.act({ type: 'attack' }, { until: { type: 'idle' } })
+        state.snapshot!.tick += 1
+        await vi.advanceTimersByTimeAsync(50)
+        expect((await next).status).toBe('condition_met')
+    })
+
+    it('keeps an observation wait active when a timed movement ends normally', async () => {
+        vi.useFakeTimers()
+        const { api, state } = setup()
+        const movement = api.moveFor({ x: 1, y: 0 }, 100)
+        const observed = api.waitFor({ type: 'tick', after: state.snapshot!.tick })
+        await vi.advanceTimersByTimeAsync(100)
+        await movement
+        state.snapshot!.tick += 1
+        await vi.advanceTimersByTimeAsync(50)
+        expect((await observed).status).toBe('condition_met')
+    })
+
+    it('revokes stale handles after disposal and rejects invalid movement before sending', async () => {
+        const { api, dispose, send } = setup()
+        await expect(api.moveFor({ x: NaN, y: 0 }, 100)).rejects.toThrow('axis')
+        expect(send).not.toHaveBeenCalled()
+        dispose()
+        send.mockClear()
+        expect(() => api.send({ type: 'attack' })).toThrow('disposed')
+        expect(() => api.navigate({ x: 1, y: 1 })).toThrow('disposed')
+        expect(send).not.toHaveBeenCalled()
     })
 })
