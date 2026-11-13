@@ -80,13 +80,13 @@ describe.each([false, true])('melee presentation with reduced motion %s', (reduc
                     abilityId,
                 })
                 const view = state.views[0]!
-                expect(view.pos).toEqual({ x: 50, y: 35 })
+                expect(view.pos).toEqual({ x: 50, y: 50 })
                 expect(view.rotation).toBe(Math.PI)
                 from.position = { x: 80, y: 80 }
                 from.facing = 'right'
                 target.position = { x: 100, y: 50 }
                 frame(100)
-                expect(view.pos).toEqual({ x: 50, y: 35 })
+                expect(view.pos).toEqual({ x: 50, y: 50 })
                 expect(view.rotation).toBe(Math.PI)
                 expect(view.killed).toBe(false)
                 frame(600)

@@ -32,7 +32,7 @@ export function combatEffectPose(
     const origin = cue.channel || (cue.travel && reduced) ? target : from
     return {
         x: origin.position.x,
-        y: origin.position.y + (cue.wave ? 0 : -15),
+        y: origin.position.y + (cue.wave || isMeleeEffect(cue.kind) ? 0 : -15),
         z: Math.max(from.position.y, target.position.y) + 10,
         rotation: cue.travel || isMeleeEffect(cue.kind) ? effectHeading(from, target) : 0,
     }

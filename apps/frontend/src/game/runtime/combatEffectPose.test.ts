@@ -36,7 +36,7 @@ describe.each([undefined, 'skeleton_strike'] as const)('directed melee cue %s', 
         for (const reduced of [false, true]) {
             expect(combatEffectPose(cue!, from, target, reduced)).toMatchObject({
                 x: 80,
-                y: 65,
+                y: 80,
                 rotation: direction.rotation,
             })
         }
@@ -53,6 +53,21 @@ describe.each([undefined, 'skeleton_strike'] as const)('directed melee cue %s', 
 })
 
 describe('melee neutral geometry', () => {
+    it('keeps the torso offset for projectiles and restorative effects', () => {
+        const from = characterFixture('attacker', { position: { x: 50, y: 50 } })
+        const target = characterFixture('target', { position: { x: 80, y: 100 } })
+        const [shot] = combatEffectCues(
+            { kind: 'attack', actorId: from.id, targetId: target.id, abilityId: 'shot' },
+            from
+        )
+        expect(combatEffectPose(shot!, from, target, false)).toMatchObject({ x: 50, y: 35 })
+        expect(combatEffectPose(shot!, from, target, true)).toMatchObject({ x: 80, y: 85 })
+        const [heal] = combatEffectCues(
+            { kind: 'heal', actorId: from.id, targetId: target.id, amount: 6 },
+            from
+        )
+        expect(combatEffectPose(heal!, target, target, false)).toMatchObject({ x: 80, y: 85 })
+    })
     it.each(['slash', 'bone'] as const)(
         'centers %s around the right-facing axis before rotation',
         (kind) => {
