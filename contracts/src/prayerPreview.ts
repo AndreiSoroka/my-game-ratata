@@ -4,8 +4,12 @@ import {
     type PrayerPreview,
 } from './abilities'
 import type { CharacterSnapshot } from './index'
-import { REVIVE_MANA_COST, REVIVE_RANGE } from './life'
-import { DEITY_PRAYER_PROFILES, type DeityPrayerProfile } from './prayer'
+import { REVIVE_RANGE } from './life'
+import {
+    DEITY_PRAYER_PROFILES,
+    type DeityPrayerProfile,
+    prayerManaCost,
+} from './prayer'
 export interface PrayerPreviewOptions {
     canReach?: (target: CharacterSnapshot) => boolean
     canAid?: (target: CharacterSnapshot) => boolean
@@ -34,11 +38,16 @@ export function previewPrayerFromSnapshots(
             ).values(),
         ],
     }
-    const harmed = harmTargets(context)
-    const intent = chooseIntent(context, harmed, selectedTargetId)
-    const manaCost = intent?.mode === 'revive' ? REVIVE_MANA_COST : 5
+    const possibleHarm = harmTargets(context)
+    const intent: PrayerIntent = chooseIntent(
+        context,
+        possibleHarm,
+        selectedTargetId
+    ) ?? { mode: 'devotion' }
+    const harmed = intent.mode === 'devotion' ? [] : possibleHarm
+    const manaCost = prayerManaCost(intent.mode)
     return {
-        intent: intent ?? null,
+        intent,
         manaCost,
         harmfulTargets: harmed.length,
         includesSelf: harmed.some((target) => target.id === player.id),
@@ -46,7 +55,7 @@ export function previewPrayerFromSnapshots(
             (target) =>
                 target.id !== player.id && target.faction === player.faction
         ),
-        unavailableReason: unavailableReason(player, intent, manaCost),
+        unavailableReason: unavailableReason(player, manaCost),
     }
 }
 function creatureType(target: CharacterSnapshot) {
@@ -162,7 +171,6 @@ function selectedIntent(
 }
 function unavailableReason(
     player: CharacterSnapshot,
-    intent: PrayerIntent | undefined,
     manaCost: number
 ): string | null {
     if (player.abilities?.known.includes('pray') !== true) {
@@ -177,9 +185,6 @@ function unavailableReason(
     }
     if ((player.abilities.cooldowns.pray ?? 0) > 0) {
         return 'Молитва восстанавливается.'
-    }
-    if (intent === undefined) {
-        return 'Нет подходящей цели для молитвы.'
     }
     return player.resources.mana < manaCost ? 'Недостаточно маны.' : null
 }

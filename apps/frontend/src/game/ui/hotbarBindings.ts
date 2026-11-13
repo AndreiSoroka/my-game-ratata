@@ -18,6 +18,7 @@ export function prayerDescription(
 ): string {
     if (preview.unavailableReason) return preview.unavailableReason
     const intent = preview.intent
+    if (intent?.mode === 'devotion') return `Помолиться · ${preview.manaCost} MP · Без эффекта`
     const name =
         characters.find((actor) => actor.id === intent?.targetId)?.nickname ?? player.nickname
     const verb =

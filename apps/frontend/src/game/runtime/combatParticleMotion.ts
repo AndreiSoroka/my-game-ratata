@@ -23,7 +23,7 @@ export function combatParticleMotion(cue: EffectCue): ParticleMotion {
         maxSpeed: cue.kind === 'shards' ? 45 : 24,
         acceleration: { x: 0, y: cue.kind === 'shards' ? 35 : -8 },
     }
-    if (!['restore', 'revive', 'casting'].includes(cue.kind)) return base
+    if (!['devotion', 'restore', 'revive', 'casting'].includes(cue.kind)) return base
     switch (cue.deity) {
         case 'hearth':
             return { ...base, minAngle: -2.1, maxAngle: -0.9 }

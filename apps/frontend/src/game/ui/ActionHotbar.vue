@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
     ABILITY_DEFINITIONS,
+    type AbilityId,
     type CharacterSnapshot,
     type ClientMessage,
     previewPrayerFromSnapshots,
@@ -116,6 +117,9 @@ function canActivate(binding: Binding | null | undefined): binding is Binding {
         cooldown(binding ?? null) <= 0
     )
 }
+function manaCost(id: AbilityId): number {
+    return id === 'pray' ? prayerPreview.value.manaCost : ABILITY_DEFINITIONS[id].mana
+}
 function activate(index: number): void {
     const binding = bindings.value[index]
     if (!canActivate(binding) || unavailable(binding)) return
@@ -132,7 +136,7 @@ function activate(index: number): void {
     if (!known.value.includes(binding.id)) return
     const ability = ABILITY_DEFINITIONS[binding.id]
     if (
-        props.player.resources.mana < ability.mana ||
+        props.player.resources.mana < manaCost(binding.id) ||
         props.player.resources.energy < ability.energy
     )
         return

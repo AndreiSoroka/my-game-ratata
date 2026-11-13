@@ -97,3 +97,36 @@ describe.each([false, true])('melee presentation with reduced motion %s', (reduc
         }
     )
 })
+
+describe.each([false, true])('prayer presentation with reduced motion %s', (reduced) => {
+    it.each([undefined, 'ally'])(
+        'keeps a prayer to %s on the caster without a channel',
+        (targetId) => {
+            const caster = characterFixture('priest', { position: { x: 50, y: 50 } })
+            const ally = characterFixture('ally', { position: { x: 90, y: 70 } })
+            const { effects, frame } = setup([caster, ally], reduced)
+            try {
+                effects.receive({
+                    kind: 'cast',
+                    actorId: caster.id,
+                    abilityId: 'pray',
+                    phase: 'completed',
+                    targetId,
+                })
+                expect(state.views).toHaveLength(2)
+                const [emblem, caption] = state.views
+                expect(emblem!.pos).toEqual({ x: 50, y: 35 })
+                expect(caption!.pos).toEqual({ x: 50, y: 8 })
+                effects.sync([caster, ally])
+                expect(emblem!.killed).toBe(false)
+                frame(610)
+                expect(emblem!.killed).toBe(true)
+                expect(caption!.killed).toBe(false)
+                frame(500)
+                expect(caption!.killed).toBe(true)
+            } finally {
+                effects.dispose()
+            }
+        }
+    )
+})

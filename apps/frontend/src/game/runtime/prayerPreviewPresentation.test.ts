@@ -33,6 +33,27 @@ function priest(patron: DeityId = 'hearth', level = 3) {
     })
 }
 
+it('hides harm warnings for a plain prayer even with nearby undead and an ineligible selection', () => {
+    const player = priest()
+    player.hp = player.maxHp
+    const undead = characterFixture('undead', {
+        creatureType: 'undead',
+        position: { x: 110, y: 100 },
+    })
+    const preview = previewPrayerFromSnapshots(player, [undead], player.id)
+    expect(preview.intent).toEqual({ mode: 'devotion' })
+    expect(preview.harmfulTargets).toBe(0)
+    expect(preview.includesAllies).toBe(false)
+    expect(preview.includesSelf).toBe(false)
+    expect(
+        createPrayerPreviewHighlight(player, [undead], preview, {
+            active: true,
+            canReach: () => true,
+        })
+    ).toBeUndefined()
+    expect(previewPrayerFromSnapshots(player, [undead]).intent).toEqual({ mode: 'harm' })
+})
+
 it('uses the shared 48px harm radius and only marks known living reachable allies', () => {
     const player = priest()
     const ally = (id: string, x = 148) =>

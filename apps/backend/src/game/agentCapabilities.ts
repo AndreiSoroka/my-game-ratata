@@ -135,6 +135,9 @@ function abilityCanHarm(
     if (message.abilityId !== 'pray') {
         return true
     }
+    if (message.intent.mode === 'devotion') {
+        return false
+    }
     const harmUnlocked =
         actor.progression.skills.miracles.level >= PRAYER_RULES.harmLevel &&
         DEITY_PRAYER_PROFILES[actor.progression.patron].harmTypes.length > 0

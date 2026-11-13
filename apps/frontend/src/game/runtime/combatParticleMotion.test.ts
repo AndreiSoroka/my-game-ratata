@@ -12,7 +12,7 @@ const cue: EffectCue = {
     duration: 650,
 }
 
-it.each(['restore', 'revive', 'casting'] as const)(
+it.each(['devotion', 'restore', 'revive', 'casting'] as const)(
     '%s rises for Hearth and descends for Grave',
     (kind) => {
         const hearth = combatParticleMotion({ ...cue, kind })

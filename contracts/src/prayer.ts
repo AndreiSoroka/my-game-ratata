@@ -1,6 +1,18 @@
-import type { DamageKind } from './abilities'
+import {
+    ABILITY_DEFINITIONS,
+    type DamageKind,
+    type PrayerMode,
+} from './abilities'
 import { type CreatureType, creatureTypes } from './creatures'
+import { REVIVE_MANA_COST } from './life'
 import type { DeityId } from './progression'
+
+export function prayerManaCost(mode: PrayerMode): number {
+    if (mode === 'devotion') {
+        return 0
+    }
+    return mode === 'revive' ? REVIVE_MANA_COST : ABILITY_DEFINITIONS.pray.mana
+}
 export interface DeityPrayerProfile {
     resource: 'hp' | 'energy' | 'mana'
     restoreTypes: readonly CreatureType[]

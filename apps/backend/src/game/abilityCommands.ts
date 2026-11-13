@@ -174,12 +174,15 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
     ]
 }
 function parsePrayerIntent(input: unknown): PrayerIntent | undefined {
-    if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    if (!isRecord(input)) {
         return undefined
     }
-    const record = input as Record<string, unknown>
+    const record = input
     const mode = record['mode']
     const targetId = record['targetId']
+    if (mode === 'devotion' && targetId === undefined) {
+        return { mode }
+    }
     if (mode === 'harm' && (targetId === undefined || validId(targetId))) {
         return targetId === undefined ? { mode } : { mode, targetId }
     }
@@ -194,4 +197,7 @@ function validId(value: unknown): value is string {
         value.trim().length > 0 &&
         value.length <= 100
     )
+}
+function isRecord(input: unknown): input is Record<string, unknown> {
+    return input !== null && typeof input === 'object' && !Array.isArray(input)
 }

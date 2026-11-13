@@ -22,7 +22,7 @@ export function createPrayerPreviewHighlight(
     options: { active: boolean; canReach: (target: CharacterSnapshot) => boolean }
 ): PrayerPreviewHighlight | undefined {
     const profile = activeHarmProfile(player, preview, options.active)
-    if (!profile || !preview.intent) return undefined
+    if (!profile || !preview.intent || preview.intent.mode === 'devotion') return undefined
     const known = [
         ...new Map([...knownVisibleCharacters, player].map((actor) => [actor.id, actor])).values(),
     ]

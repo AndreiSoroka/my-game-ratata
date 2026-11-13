@@ -38,10 +38,30 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
     const targetId = event.targetId ?? actor.id
     const base = { fromId: targetId, targetId, deity, color: deityColors[deity], duration: 650 }
     if (event.kind === 'attack') return [attackCue(event, actor, base)]
+    if (event.kind === 'cast' && event.abilityId === 'pray')
+        return prayerCastCues(event, actor, base)
     if (event.kind === 'heal' && (event.amount ?? 0) > 0)
         return [{ ...base, kind: 'restore', count: 10 }]
     if (event.kind === 'revive') return [{ ...base, kind: 'revive', duration: 1000, count: 12 }]
-    if (event.kind === 'cast' && event.phase === 'started' && event.abilityId === 'pray')
+    return impactCues(event, actor, base)
+}
+function prayerCastCues(
+    event: GameEventPayload,
+    actor: CharacterSnapshot,
+    base: Omit<EffectCue, 'kind'>
+): EffectCue[] {
+    if (event.phase === 'completed')
+        return [
+            {
+                ...base,
+                kind: 'devotion',
+                fromId: actor.id,
+                targetId: actor.id,
+                duration: 600,
+                count: 4,
+            },
+        ]
+    if (event.phase === 'started')
         return [
             {
                 ...base,
@@ -52,7 +72,7 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
                 count: 12,
             },
         ]
-    return impactCues(event, actor, base)
+    return []
 }
 function impactCues(
     event: GameEventPayload,
@@ -151,6 +171,7 @@ function healingCaption(event: GameEventPayload): string | undefined {
 }
 function castCaption(event: GameEventPayload): string | undefined {
     if (event.phase === 'interrupted') return 'Прервано'
+    if (event.phase === 'completed' && event.abilityId === 'pray') return 'Молитва'
     if (event.phase === 'started' && event.abilityId === 'skeleton_strike') return 'Костяной удар…'
     return undefined
 }

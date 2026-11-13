@@ -60,8 +60,10 @@ export class CombatEffects {
         this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
     }
     private eventTarget(event: GameEventPayload): CharacterSnapshot | undefined {
+        const casterCaption =
+            event.kind === 'cast' && event.abilityId === 'pray' && event.phase === 'completed'
         return this.character(
-            event.kind === 'attack'
+            event.kind === 'attack' || casterCaption
                 ? (event.actorId ?? '')
                 : (event.targetId ?? event.actorId ?? '')
         )

@@ -22,12 +22,11 @@ export function completePrayer(
     roll: number,
     quality: number
 ): GameEventPayload[] {
-    const target =
-        intent.targetId === actor.id
-            ? actor
-            : context.characters.find(
-                  (candidate) => candidate.id === intent.targetId
-              )
+    // A pinned devotional prayer stays cosmetic even if targets appear later.
+    if (intent.mode === 'devotion') {
+        return []
+    }
+    const target = prayerRecipient(actor, intent, context)
     const chance = miracleChance(actor, context.now)
     const events: GameEventPayload[] = []
     let meaningful = false
@@ -65,6 +64,17 @@ export function completePrayer(
         events.push(...trainSkill(actor, 'miracles'))
     }
     return events
+}
+function prayerRecipient(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    context: AbilityContext
+): GameCharacter | undefined {
+    return intent.targetId === actor.id
+        ? actor
+        : context.characters.find(
+              (candidate) => candidate.id === intent.targetId
+          )
 }
 function meaningfulGiftAttempt(
     actor: GameCharacter,

@@ -18,7 +18,11 @@ export function supportPrayerDecision(
     ) => GameEventPayload[]
 ): GameEventPayload[] {
     const preview = previewPrayer(actor, context)
-    if (preview.unavailableReason !== null || preview.intent === null) {
+    if (
+        preview.unavailableReason !== null ||
+        preview.intent === null ||
+        preview.intent.mode === 'devotion'
+    ) {
         return []
     }
     // Benevolent support never deliberately burns bystanders or the healer.

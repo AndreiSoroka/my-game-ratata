@@ -125,6 +125,36 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
         ).accepted
     ).toBe(true)
 })
+it('allows a noncombat personality to devote a harmless prayer beside potential wave victims', () => {
+    const actor = abilityHero('cleric', 'humanoid', 'scripted')
+    Object.assign(actor, { id: 'npc_princess_1' })
+    actor.progression.skills.miracles.level = 3
+    const undead = abilityHero('vanguard', 'undead', 'mob1')
+    const { world, requestAbility } = port([actor, undead])
+    const result = applyAgentDecision(
+        actor,
+        {
+            type: 'use_ability',
+            abilityId: 'pray',
+            intent: { mode: 'devotion' },
+        },
+        world,
+        1000
+    )
+    expect(result.accepted).toBe(true)
+    expect(requestAbility).toHaveBeenCalledTimes(1)
+    expect(result.events).toEqual([
+        {
+            kind: 'cast',
+            actorId: actor.id,
+            abilityId: 'pray',
+            phase: 'completed',
+        },
+    ])
+    expect(undead.hp).toBe(undead.maxHp)
+    expect(actor.mana).toBe(120)
+    expect(actor.progression.skills.faith.practice).toBe(0)
+})
 it('shared control rejection propagates and wait, manual move and lease expiry cancel ongoing control', () => {
     const actor = abilityHero('vanguard', 'humanoid', 'scripted')
     const { world, requestControl } = port([actor])

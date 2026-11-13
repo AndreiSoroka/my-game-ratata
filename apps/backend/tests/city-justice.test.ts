@@ -219,6 +219,8 @@ describe('guards enforce the city list through sight and common combat', () => {
             now: 1_450,
             tileSize: 16,
             respawnDelayMsFor: () => 15_000,
+            // This scenario checks pursuit and reach, not a random dodge outcome.
+            random: () => 0.5,
         })
         expect(actor.hp).toBeLessThan(hp)
         expect(guard.faction).toBe('peaceful')

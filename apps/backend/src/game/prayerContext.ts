@@ -2,8 +2,8 @@ import {
     DEITY_PRAYER_PROFILES,
     PRAYER_RULES,
     type PrayerIntent,
+    prayerManaCost,
     type PrayerPreview,
-    REVIVE_MANA_COST,
     REVIVE_RANGE,
 } from '@my-game-ratata/contracts'
 
@@ -87,6 +87,9 @@ export function validPrayerIntent(
     if (!knowsAbility(actor, 'pray')) {
         return false
     }
+    if (intent.mode === 'devotion') {
+        return intent.targetId === undefined
+    }
     if (intent.mode === 'harm') {
         const targets = prayerHarmTargets(actor, context)
         return intent.targetId === undefined
@@ -116,9 +119,13 @@ export function resolvePrayerIntent(
     actor: GameCharacter,
     context: AbilityContext,
     selectedTargetId?: string
-): PrayerIntent | undefined {
+): PrayerIntent {
     if (selectedTargetId !== undefined) {
-        return selectedPrayerIntent(actor, context, selectedTargetId)
+        return (
+            selectedPrayerIntent(actor, context, selectedTargetId) ?? {
+                mode: 'devotion',
+            }
+        )
     }
     const ordered = [...context.characters].sort((a, b) => {
         const delta =
@@ -143,7 +150,7 @@ export function resolvePrayerIntent(
     }
     return prayerHarmTargets(actor, context).length > 0
         ? { mode: 'harm' }
-        : undefined
+        : { mode: 'devotion' }
 }
 export function previewPrayer(
     actor: GameCharacter,
@@ -151,21 +158,20 @@ export function previewPrayer(
     selectedTargetId?: string
 ): PrayerPreview {
     const intent = resolvePrayerIntent(actor, context, selectedTargetId)
-    const targets = prayerHarmTargets(actor, context)
-    const manaCost = intent?.mode === 'revive' ? REVIVE_MANA_COST : 5
+    const targets =
+        intent.mode === 'devotion' ? [] : prayerHarmTargets(actor, context)
+    const manaCost = prayerManaCost(intent.mode)
     const unavailableReason = !knowsAbility(actor, 'pray')
         ? 'Молитва не изучена.'
         : !canPerformSkillAction(actor, context.now)
           ? 'Персонаж не может молиться сейчас.'
           : context.now < actor.progression.prayerAvailableAt
             ? 'Молитва восстанавливается.'
-            : intent === undefined
-              ? 'Нет подходящей цели для молитвы.'
-              : actor.mana < manaCost
-                ? 'Недостаточно маны.'
-                : null
+            : actor.mana < manaCost
+              ? 'Недостаточно маны.'
+              : null
     return {
-        intent: intent ?? null,
+        intent,
         manaCost,
         harmfulTargets: targets.length,
         includesSelf: targets.some((target) => target.id === actor.id),

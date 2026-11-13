@@ -1,4 +1,8 @@
-import type { GameEventPayload, PrayerIntent } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    type PrayerIntent,
+    prayerManaCost,
+} from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
 import type { GameCharacter } from './character'
@@ -21,7 +25,6 @@ export function pray(
     const intent = pinnedIntent ?? resolvePrayerIntent(actor, context)
     if (
         !canPerformSkillAction(actor, now) ||
-        intent === undefined ||
         !validPrayerIntent(actor, intent, context)
     ) {
         return abilityNotice(
@@ -32,7 +35,7 @@ export function pray(
     if (now < actor.progression.prayerAvailableAt) {
         return abilityNotice(actor, 'Молитва ещё восстанавливается.')
     }
-    const cost = intent.mode === 'revive' ? 20 : 5
+    const cost = prayerManaCost(intent.mode)
     if (actor.mana < cost) {
         return abilityNotice(actor, 'Недостаточно маны для молитвы.')
     }
@@ -48,23 +51,25 @@ function regularPrayer(
     random?: () => number
 ): GameEventPayload[] {
     const now = context.now
-    actor.mana -= 5
+    actor.mana -= prayerManaCost(intent.mode)
     actor.progression.prayerAvailableAt = now + 3000
     actor.abilities.availableAt.pray = now + 3000
     actor.lockAction(now, 400)
-    actor.setAnimation('attack', now, 400)
+    actor.setAnimation(intent.mode === 'devotion' ? 'idle' : 'attack', now, 400)
+    const cast: GameEventPayload = {
+        kind: 'cast',
+        actorId: actor.id,
+        abilityId: 'pray',
+        phase: 'completed',
+        ...(intent.targetId === undefined ? {} : { targetId: intent.targetId }),
+    }
+    if (intent.mode === 'devotion') {
+        return [cast]
+    }
     const roll = (random ?? context.random ?? Math.random)()
     const outcome = resolveMiracle(actor, now, () => roll)
     return [
-        {
-            kind: 'cast',
-            actorId: actor.id,
-            abilityId: 'pray',
-            phase: 'completed',
-            ...(intent.targetId === undefined
-                ? {}
-                : { targetId: intent.targetId }),
-        },
+        cast,
         ...completePrayer(actor, intent, context, roll, outcome.quality),
     ]
 }

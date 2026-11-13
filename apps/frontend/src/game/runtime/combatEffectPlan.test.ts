@@ -33,8 +33,10 @@ describe('authoritative combat presentation', () => {
     it('creates a prayer wave and individual impact only after a positive authoritative hit or absorption', () => {
         const actor = characterFixture('priest')
         expect(
-            combatEffectCues({ kind: 'cast', abilityId: 'pray', phase: 'completed' }, actor)
-        ).toEqual([])
+            combatEffectCues({ kind: 'cast', abilityId: 'pray', phase: 'completed' }, actor).map(
+                (cue) => cue.kind
+            )
+        ).toEqual(['devotion'])
         expect(
             combatEffectCues(
                 { kind: 'damage', abilityId: 'pray', targetId: 'victim', amount: 0 },
@@ -55,6 +57,25 @@ describe('authoritative combat presentation', () => {
         )
         expect(absorbed.map((cue) => cue.targetId)).toEqual(['protected', actor.id, 'protected'])
     })
+    it.each([undefined, 'ally'])(
+        'keeps a completed prayer to %s cosmetic and on the caster',
+        (targetId) => {
+            const actor = characterFixture('priest')
+            const event = { kind: 'cast', abilityId: 'pray', phase: 'completed', targetId } as const
+            expect(combatEffectCues(event, actor)).toEqual([
+                {
+                    kind: 'devotion',
+                    fromId: actor.id,
+                    targetId: actor.id,
+                    deity: 'hearth',
+                    color: '#f9d37b',
+                    duration: 600,
+                    count: 4,
+                },
+            ])
+            expect(eventCaption(event)).toBe('Молитва')
+        }
+    )
     it('keeps channel actor distinct from the body and labels resource and preparation states', () => {
         const actor = characterFixture('priest')
         const [channel] = combatEffectCues(

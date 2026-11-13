@@ -12,7 +12,7 @@ export type LearnAbilityId = 'pray' | 'spark' | 'barrier' | 'shot'
 export type AttackAbilityId = 'spark' | 'shot' | 'skeleton_strike'
 export type BasicAttackKind = 'melee' | 'arrow' | 'spark'
 export type DamageKind = 'physical' | 'arcane' | 'holy' | 'unholy'
-export type PrayerMode = 'restore' | 'revive' | 'harm'
+export type PrayerMode = 'restore' | 'revive' | 'harm' | 'devotion'
 export interface PrayerIntent {
     mode: PrayerMode
     targetId?: string

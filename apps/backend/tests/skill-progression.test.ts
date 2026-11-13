@@ -88,25 +88,27 @@ describe('shared prayers and learning', () => {
             const actor = hero('cleric', controllerKind)
             const startMana = actor.mana
             expect(command(actor, { type: 'pray' }, [], 1_000)).toMatchObject([
-                { kind: 'notice' },
+                { kind: 'cast', abilityId: 'pray', phase: 'completed' },
             ])
             expect(actor.mana).toBe(startMana)
+            expect(actor.progression.skills.faith.practice).toBe(0)
+            expect(actor.progression.skills.miracles.practice).toBe(0)
             actor.hp -= 15
-            const events = command(actor, { type: 'pray' }, [], 1_000)
+            const events = command(actor, { type: 'pray' }, [], 4_000)
             const restored =
                 events.find((event) => event.kind === 'heal')?.amount ?? 0
             expect(restored).toBeGreaterThan(0)
             expect(actor.progression.skills.miracles.practice).toBe(1)
             expect(actor.hp).toBe(actor.maxHp - 15 + restored)
             expect(actor.mana).toBe(startMana - 5)
-            expect(command(actor, { type: 'pray' }, [], 2_000)).toMatchObject([
+            expect(command(actor, { type: 'pray' }, [], 5_000)).toMatchObject([
                 { kind: 'notice' },
             ])
             expect(actor.progression.skills.miracles.practice).toBe(1)
-            command(actor, { type: 'pray' }, [], 4_000)
+            command(actor, { type: 'pray' }, [], 7_000)
             expect(actor.progression.skills.miracles.practice).toBe(2)
             actor.mana = 4
-            expect(command(actor, { type: 'pray' }, [], 7_000)).toMatchObject([
+            expect(command(actor, { type: 'pray' }, [], 10_000)).toMatchObject([
                 { kind: 'notice' },
             ])
         }

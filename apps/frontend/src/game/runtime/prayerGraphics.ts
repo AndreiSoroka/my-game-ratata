@@ -6,7 +6,8 @@ export const deityColors: Record<DeityId, string> = {
     lantern: '#8fb9fa',
     grave: '#be96df',
 }
-export type PrayerShape = 'restore' | 'wave' | 'prayer_hit' | 'revive' | 'casting' | 'refused'
+export type PrayerShape =
+    'devotion' | 'restore' | 'wave' | 'prayer_hit' | 'revive' | 'casting' | 'refused'
 type Context = CanvasRenderingContext2D
 
 function star(ctx: Context, x: number, y: number, radius = 3): void {

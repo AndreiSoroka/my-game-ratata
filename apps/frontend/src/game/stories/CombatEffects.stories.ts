@@ -49,6 +49,13 @@ export const Grave: Story = {
     name: 'Хранитель Праха · разорванное кольцо',
     render: ({ surface }) => prayer('grave', 'HP нежити', true, surface),
 }
+export const Devotion: Story = {
+    name: 'Молитва без цели',
+    args: { deity: 'hearth' },
+    argTypes: { deity: { control: 'select', options: ['hearth', 'road', 'lantern', 'grave'] } },
+    render: ({ deity, surface }) =>
+        effectPreview(deity, [{ kind: 'devotion', label: 'Молитва · без чуда' }], surface),
+}
 export const Barrier: Story = {
     render: () =>
         effectPreview('lantern', [
