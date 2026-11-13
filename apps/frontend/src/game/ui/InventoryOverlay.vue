@@ -29,6 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     close: []
+    assignHotbar: [payload: { slot: number; itemId: 'food' }]
     equipmentAction: [
         payload: {
             action: EquipmentActionKind
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 const panel = ref<HTMLElement>()
 const focusSurface = useInventoryFocus(panel, () => emit('close'))
 const selectedItemId = ref<string>()
+const assignedSlot = ref<number>()
 const equipmentSlots: EquipmentSlotId[] = ['weapon', 'boots']
 const inventorySlots = computed(() =>
     Array.from({ length: INVENTORY_CAPACITY }, (_, index) => props.character.inventory[index])
@@ -61,6 +63,26 @@ const hasNearbyChest = computed(() =>
                 CHEST_INTERACTION_RANGE
     )
 )
+
+watch(selectedItemId, () => {
+    assignedSlot.value = undefined
+})
+
+function assignHotbar(slot: number): void {
+    if (selectedItem.value?.itemId !== 'food') return
+    emit('assignHotbar', { slot, itemId: 'food' })
+    assignedSlot.value = slot
+}
+
+function onKey(event: KeyboardEvent): void {
+    const digit = /^Digit([1-4])$/.exec(event.code)
+    if (digit && event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault()
+        if (!event.repeat) assignHotbar(Number(digit[1]) - 1)
+        return
+    }
+    inventoryKey(event, panel.value, () => emit('close'))
+}
 
 watch(
     () => props.character.inventory.map((item) => item.instanceId).join('|'),
@@ -138,7 +160,7 @@ function slotLabel(slot: EquipmentSlotId): string {
         aria-label="Inventory and equipment"
         @pointerdown.stop="focusSurface"
         @click.stop
-        @keydown.stop="inventoryKey($event, panel, () => emit('close'))"
+        @keydown.stop="onKey"
         @keyup.stop
     >
         <section class="inventory-overlay__equipment" aria-label="Equipment">
@@ -242,6 +264,32 @@ function slotLabel(slot: EquipmentSlotId): string {
                 <button v-if="hasNearbyChest" type="button" @click="sendInventoryAction('stash')">
                     Put in chest
                 </button>
+                <template v-if="selectedItem.itemId === 'food'">
+                    <p class="inventory-hotbar-help">Быстрый доступ · Shift+1–4</p>
+                    <div
+                        class="inventory-hotbar-slots"
+                        role="group"
+                        aria-label="Назначить яблоко в быстрый слот"
+                    >
+                        <button
+                            v-for="slot in 4"
+                            :key="slot"
+                            type="button"
+                            :aria-label="`Назначить яблоко в слот ${slot}`"
+                            @click="assignHotbar(slot - 1)"
+                        >
+                            {{ slot }}
+                        </button>
+                    </div>
+                    <p
+                        v-if="assignedSlot !== undefined"
+                        class="inventory-hotbar-help"
+                        role="status"
+                    >
+                        Яблоко назначено в слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите
+                        {{ assignedSlot + 1 }}, чтобы съесть.
+                    </p>
+                </template>
             </div>
         </section>
     </aside>

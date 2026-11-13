@@ -91,6 +91,9 @@ function blur(): void {
 function receive(event: GameEventPayload): void {
     speech.value?.receive(event)
 }
+function assignItem(slot: number, itemId: 'food'): void {
+    hotbar.value?.assignItem(slot, itemId)
+}
 let closingDialogue: string | undefined
 watch([() => props.snapshot.adventure?.dialogue, () => props.characters], () => {
     const dialogue = props.snapshot.adventure?.dialogue
@@ -171,7 +174,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('blur', blur)
     props.game?.setCombatTarget(undefined)
 })
-defineExpose({ selectedId, select, receive, cancel })
+defineExpose({ selectedId, select, receive, cancel, assignItem })
 </script>
 <template>
     <PartyPanel

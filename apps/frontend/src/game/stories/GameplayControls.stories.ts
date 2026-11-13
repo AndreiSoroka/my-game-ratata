@@ -5,6 +5,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
 import ActionHotbar from '../ui/ActionHotbar.vue'
+import InventoryOverlay from '../ui/InventoryOverlay.vue'
 import PartyPanel from '../ui/PartyPanel.vue'
 import SpeechBubbles from '../ui/SpeechBubbles.vue'
 import { renderVueStory } from './renderVueStory'
@@ -55,6 +56,16 @@ export const Party: Story = {
 }
 export const EmptyHotbar: Story = {
     render: () => renderVueStory(ActionHotbar, { player, characters: [player], blocked: false }),
+}
+export const InventoryFoodQuickSlots: Story = {
+    render: () =>
+        renderVueStory(InventoryOverlay, {
+            character: characterFixture('mira', {
+                nickname: 'Мира',
+                inventory: [{ instanceId: 'apple', itemId: 'food' }],
+            }),
+            chests: [],
+        }),
 }
 export const LongSpeech: Story = {
     render: () =>

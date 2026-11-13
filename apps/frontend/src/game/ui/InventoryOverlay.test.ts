@@ -70,6 +70,68 @@ describe('inventory items and material stacks', () => {
     })
 })
 
+describe('inventory quick-slot assignment', () => {
+    it('assigns the selected apple with physical Shift+4 without eating, closing or leaking input', async () => {
+        const worldKey = vi.fn<(event: KeyboardEvent) => void>()
+        window.addEventListener('keydown', worldKey)
+        const wrapper = mount(InventoryOverlay, {
+            props: { character: player(), chests: [] },
+            attachTo: document.body,
+        })
+        try {
+            await flushPromises()
+            await wrapper.get('.inventory-slot[data-filled="true"]').trigger('click')
+            await flushPromises()
+            const eat = wrapper.get('.inventory-actions button')
+            const focused = document.activeElement
+            await eat.trigger('keydown', { code: 'Digit4', key: '$', shiftKey: true })
+            expect(wrapper.emitted('assignHotbar')).toEqual([[{ slot: 3, itemId: 'food' }]])
+            expect(wrapper.get('[role="status"]').text()).toContain('Яблоко назначено в слот 4')
+            expect(document.activeElement).toBe(focused)
+            for (const modifiers of [
+                { repeat: true },
+                { ctrlKey: true },
+                { metaKey: true },
+                { altKey: true },
+            ]) {
+                await eat.trigger('keydown', { code: 'Digit4', shiftKey: true, ...modifiers })
+            }
+            await eat.trigger('keydown', { code: 'Digit4' })
+            expect(wrapper.emitted('assignHotbar')).toHaveLength(1)
+            expect(wrapper.emitted('inventoryAction')).toBeUndefined()
+            expect(wrapper.emitted('close')).toBeUndefined()
+            expect(worldKey).not.toHaveBeenCalled()
+            await wrapper.get('[aria-label="Назначить яблоко в слот 2"]').trigger('click')
+            expect(wrapper.emitted('assignHotbar')?.[1]).toEqual([{ slot: 1, itemId: 'food' }])
+            await wrapper.setProps({ character: characterFixture('self') })
+            await wrapper.trigger('keydown', { code: 'Digit4', shiftKey: true })
+            expect(wrapper.emitted('assignHotbar')).toHaveLength(2)
+        } finally {
+            wrapper.unmount()
+            window.removeEventListener('keydown', worldKey)
+        }
+    })
+    it('does not assign an empty or non-food selection', async () => {
+        const wrapper = mount(InventoryOverlay, {
+            props: {
+                character: characterFixture('self', {
+                    inventory: [{ instanceId: 'wood', itemId: 'wood' }],
+                }),
+                chests: [],
+            },
+        })
+        try {
+            await wrapper.trigger('keydown', { code: 'Digit4', shiftKey: true })
+            await wrapper.get('.inventory-slot[data-filled="true"]').trigger('click')
+            await wrapper.trigger('keydown', { code: 'Digit4', shiftKey: true })
+            expect(wrapper.find('.inventory-hotbar-slots').exists()).toBe(false)
+            expect(wrapper.emitted('assignHotbar')).toBeUndefined()
+        } finally {
+            wrapper.unmount()
+        }
+    })
+})
+
 describe('standalone inventory keyboard ownership', () => {
     it('keeps a plain header focused and closes with Escape even if focus was lost to the page', async () => {
         const wrapper = mount(InventoryOverlay, {

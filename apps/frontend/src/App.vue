@@ -236,8 +236,8 @@ onBeforeUnmount(() => {
                     v-if="inventoryOpen && localCharacter"
                     :character="localCharacter"
                     :chests="snapshot?.chests ?? []"
-                    :materials="snapshot?.adventure?.materials"
                     @close="closeInventory"
+                    @assign-hotbar="gameplay?.assignItem($event.slot, $event.itemId)"
                     @equipment-action="game?.sendEquipmentAction($event.action, $event.slot)"
                     @inventory-action="
                         game?.sendInventoryAction($event.action, $event.itemInstanceId)

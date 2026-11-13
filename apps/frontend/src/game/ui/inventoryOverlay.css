@@ -137,6 +137,31 @@
     border: 1px solid #68778c;
 }
 
+.inventory-hotbar-help {
+    margin: 4px 0 0;
+    color: #f6ebd4;
+    font:
+        14px/1.4 system-ui,
+        sans-serif;
+}
+
+.inventory-hotbar-slots {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.inventory-hotbar-slots button {
+    min-height: 36px;
+    border-color: #b09664;
+    background: #1a211c;
+}
+
+.inventory-hotbar-slots button:focus-visible {
+    outline: 2px solid #ffe1a0;
+    outline-offset: 2px;
+}
+
 @media (max-width: 720px) {
     .inventory-overlay {
         grid-template-columns: 1fr;

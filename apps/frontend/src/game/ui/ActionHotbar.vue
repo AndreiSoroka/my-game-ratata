@@ -157,12 +157,17 @@ function assign(binding: Binding | null): void {
     if (editing.value !== undefined) bindings.value[editing.value] = binding
     close()
 }
+function assignItem(index: number, itemId: 'food'): void {
+    if (!Number.isInteger(index) || index < 0 || index >= bindings.value.length) return
+    if (itemId !== 'food' || !food.value.length) return
+    bindings.value[index] = { kind: 'item', id: itemId }
+}
 function close(): void {
     editing.value = undefined
     document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
 }
 useDialogEscape(picker, close)
-defineExpose({ activate, edit })
+defineExpose({ activate, edit, assignItem })
 </script>
 <template>
     <div class="hotbar rpg-panel" aria-label="Быстрые действия">
