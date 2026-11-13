@@ -95,14 +95,29 @@ function onKey(event: KeyboardEvent): void {
 }
 
 watch(
-    () => props.character.inventory.map((item) => item.instanceId).join('|'),
-    () => {
-        if (
-            selectedItemId.value !== undefined &&
-            !props.character.inventory.some((item) => item.instanceId === selectedItemId.value)
-        ) {
-            selectedItemId.value = undefined
-        }
+    () => props.character.inventory.map((item) => item.instanceId),
+    (ids, previousIds) => {
+        const selected = selectedItemId.value
+        if (selected === undefined || ids.includes(selected)) return
+
+        const slotIndex = previousIds.indexOf(selected)
+        const focused = document.activeElement
+        const restoreSlot = panel.value?.querySelector('.inventory-actions')?.contains(focused)
+        selectedItemId.value = undefined
+        if (!restoreSlot || slotIndex < 0) return
+
+        // The server removed the item and Vue is about to remove its focused action button.
+        // Keep the keyboard cursor at the same cell, even when the bag compacts or is empty.
+        void nextTick(() => {
+            if (
+                panel.value?.isConnected &&
+                (document.activeElement === focused || document.activeElement === document.body)
+            ) {
+                panel.value
+                    .querySelectorAll<HTMLButtonElement>('.inventory-slot')
+                    [slotIndex]?.focus()
+            }
+        })
     }
 )
 
@@ -218,7 +233,7 @@ function slotLabel(slot: EquipmentSlotId): string {
             <div class="inventory-grid" aria-label="Inventory slots">
                 <button
                     v-for="(item, index) in inventorySlots"
-                    :key="item?.instanceId ?? index"
+                    :key="index"
                     class="inventory-slot"
                     :data-filled="Boolean(item)"
                     :data-item-instance-id="item?.instanceId"

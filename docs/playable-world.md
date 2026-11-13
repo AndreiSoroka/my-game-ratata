@@ -136,6 +136,8 @@ Each assigned slot also has an **×** button labeled **Очистить слот
 
 In the inventory, focus an apple's slot and press Shift+1–4 to bind it directly; Enter is not required. After selecting the apple with Enter or a click, the same shortcuts and numbered assignment buttons also work. The inventory stays open and keeps keyboard focus; assigning a slot does not eat the apple. Close the inventory with Esc, then press the slot's number to eat it.
 
+Use arrows to move between inventory cells and Enter or E to open and confirm item actions. When equipping, consuming or transferring removes the selected item from the bag, keyboard focus returns to the same cell, even if it becomes empty. Continue with the arrows without reopening the inventory. A rejected action keeps its current menu and focus.
+
 T cycles visible hostile targets; Shift+T cycles allies and recoverable bodies; F selects yourself. Q toggles automatic attacks on the selected living enemy, or makes one ordinary attack without an enemy selected. E opens the selected reachable target's actions, or uses the facing interaction when there is no selected target. Any friendly reachable character offers **Следовать**. Friendly targets use a circle and shield, hostile targets a diamond and crossed swords; objects retain gold corners. Manual movement, stun, death, window focus loss and Esc cancel automatic control. Follow can continue across adjacent locations using ordinary movement. Menus consume gameplay keys and release held movement.
 
 The party panel puts the crowned leader first, shows names and HP percentages with a thin bar, and marks distant, offline or fallen members. Incoming invitations offer acceptance/refusal; pending invitations cannot be sent back to their sender.
