@@ -1,72 +1,104 @@
 import type {
-    AttackZone,
-    CharacterArchetype,
-    CharacterFacing,
     CharacterSnapshot,
+    GameEventPayload,
     ItemId,
+    Vector2,
+    WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import {
     Actor,
+    BoundingBox,
     Canvas,
     Color,
     Engine,
-    Font,
     type ImageSource,
-    Label,
     Rectangle,
     type SpriteSheet,
     vec,
 } from 'excalibur'
 
 import type { CharacterId } from '../assets/characterCatalog'
-import { characterCatalog, resolveAnimationRow } from '../assets/characterCatalog'
-import { animationFrame } from './animationFrame'
+import { characterCatalog } from '../assets/characterCatalog'
+import { AttackZoneViews } from './attackZoneViews'
+import { BuildingViews } from './buildingViews'
+import { characterFrame } from './characterFrame'
+import { type CharacterBundle, createBundle, removeBundle } from './characterViewBundle'
+import { DamageFeedback } from './damageFeedback'
+import { DepthPropViews } from './depthPropViews'
+import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
+import { interactionHasLineOfSight, type MapVisibility } from './mapVisibility'
+import { SignReadingViews } from './signReadingViews'
 import type { RenderedTiledMap } from './tiledMap'
 import { WorldSceneActors } from './worldSceneActors'
 
-interface CharacterBundle {
-    body: Actor
-    hpBack: Actor
-    hpFill: Actor
-    label: Label
-    message: Label
-    messageUntil: number
-}
-
-const labelFont = new Font({
-    color: Color.White,
-    family: 'Pixelify Sans, system-ui, sans-serif',
-    size: 8,
-})
-const messageFont = new Font({
-    color: Color.White,
-    family: 'Pixelify Sans, system-ui, sans-serif',
-    size: 7,
-})
 const cameraZoom = 3
 
 export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
-    private readonly engine: Engine
-    private readonly sheets: Map<CharacterId, SpriteSheet>
+    private readonly buildingViews: BuildingViews
+    private readonly depthProps: DepthPropViews
     private readonly worldActors: WorldSceneActors
-    private attackZoneActors: Actor[] = []
+    private readonly attackZones: AttackZoneViews
+    private readonly interactionTarget: InteractionTargetViews
+    private mapVisibility: MapVisibility | undefined
+    private playerPosition: Vector2 | undefined
+    private mapActor: Actor | undefined
+    private mapBounds = new BoundingBox()
     private followedId: string | undefined
     private serverClockOffset = 0
+    private localPlayerId: string | undefined
+    private readonly damageFeedback: DamageFeedback
+    private readonly signReading: SignReadingViews
 
     public constructor(
-        engine: Engine,
-        sheets: Map<CharacterId, SpriteSheet>,
+        private readonly engine: Engine,
+        private readonly sheets: Map<CharacterId, SpriteSheet>,
         itemImages: Map<ItemId, ImageSource>,
-        chestImage: ImageSource
+        chestImage: ImageSource,
+        farmImage: ImageSource
     ) {
-        this.engine = engine
-        this.sheets = sheets
-        this.worldActors = new WorldSceneActors(engine, itemImages, chestImage)
+        this.interactionTarget = new InteractionTargetViews(engine)
+        this.attackZones = new AttackZoneViews(engine)
+        this.signReading = new SignReadingViews(engine)
+        this.buildingViews = new BuildingViews(engine)
+        this.depthProps = new DepthPropViews(engine)
+        this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
+        this.damageFeedback = new DamageFeedback(
+            engine,
+            (id) => this.bundles.get(id)?.body,
+            (id) => {
+                const bundle = this.bundles.get(id)
+                if (bundle?.snapshot) this.updateGraphic(bundle.body, bundle.snapshot)
+            }
+        )
+    }
+
+    public clearDamage(): void {
+        this.damageFeedback.clear()
+    }
+    public dispose(): void {
+        this.damageFeedback.dispose()
+        this.signReading.dispose()
+        this.interactionTarget.dispose()
+        this.attackZones.update([])
+        this.mapVisibility = this.playerPosition = undefined
+    }
+    public showDamage(event: GameEventPayload): void {
+        this.damageFeedback.show(event, event.targetId === this.localPlayerId)
     }
 
     public addMap(map: RenderedTiledMap): void {
+        this.clearDamage()
+        this.interactionTarget.clear()
+        this.signReading.setMap(map.visibility)
+        this.mapVisibility = map.visibility
+        this.playerPosition = undefined
+        this.mapActor?.kill()
+        this.mapBounds = new BoundingBox(0, 0, map.worldWidth, map.worldHeight)
+        this.followedId = undefined
+        this.depthProps.setProps(map.depthProps)
+        this.buildingViews.setBuildings(map.buildings)
         const actor = new Actor({
             anchor: vec(0, 0),
             height: map.worldHeight,
@@ -86,19 +118,60 @@ export class SceneActors {
             })
         )
         this.engine.add(actor)
+        this.mapActor = actor
     }
 
     public update(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
+        if (this.localPlayerId !== localPlayerId) this.interactionTarget.clear()
+        this.localPlayerId = localPlayerId
         this.serverClockOffset = snapshot.serverTime - performance.now()
         this.removeMissing(snapshot.characters)
+        const player = snapshot.characters.find((character) => character.id === localPlayerId)
+        this.playerPosition =
+            player?.alive && !player.tags.includes('offline') ? player.position : undefined
+        if (!this.playerPosition) this.interactionTarget.clear()
+        this.buildingViews.update(player?.position)
+        this.signReading.update(snapshot.adventure?.worldObjects ?? [], player, (position) =>
+            this.isPositionVisible(position)
+        )
 
         for (const character of snapshot.characters) {
             this.updateCharacter(character, character.id === localPlayerId)
         }
 
-        this.worldActors.update(snapshot.items, snapshot.chests)
-        this.updateAttackZones(snapshot.characters.flatMap((character) => character.attackZones))
+        this.worldActors.update(
+            snapshot.items,
+            snapshot.chests,
+            snapshot.adventure?.resourceNodes,
+            snapshot.adventure?.farmPlots,
+            snapshot.serverTime
+        )
+        this.attackZones.update(snapshot.characters.flatMap((character) => character.attackZones))
         this.followLocalPlayer(localPlayerId)
+    }
+
+    public setInteractionTarget(target: TargetHighlight | undefined): void {
+        const onMap = target && this.mapBounds.contains(vec(target.position.x, target.position.y))
+        this.interactionTarget.set(this.playerPosition && onMap ? target : undefined)
+    }
+
+    public isPositionVisible(position: Vector2): boolean {
+        return !this.buildingViews.hidesCharacter(position)
+    }
+
+    public isInteractionVisible(
+        position: Vector2,
+        bounds?: WorldObjectBounds,
+        range = 48
+    ): boolean {
+        const map = this.mapVisibility
+        const from = this.playerPosition
+        if (!map || !from || !this.isPositionVisible(position)) return false
+        return interactionHasLineOfSight(map, from, position, bounds, range)
+    }
+
+    public isCharacterVisible(id: string): boolean {
+        return this.bundles.get(id)?.body.graphics.isVisible ?? true
     }
 
     public showChat(actorId: string, text: string, durationMs: number): void {
@@ -108,17 +181,18 @@ export class SceneActors {
             return
         }
 
-        bundle.message.text = text
+        bundle.message.text = text.length > 96 ? `${text.slice(0, 93).trimEnd()}…` : text
         bundle.message.graphics.opacity = 1
         bundle.messageUntil = performance.now() + durationMs
     }
 
     private updateCharacter(snapshot: CharacterSnapshot, isLocalPlayer: boolean): void {
         const bundle = this.getBundle(snapshot)
+        bundle.snapshot = snapshot
         const position = vec(snapshot.position.x, snapshot.position.y)
         bundle.body.pos = position
         bundle.body.z = snapshot.position.y
-        bundle.message.pos = vec(snapshot.position.x - 38, snapshot.position.y - 58)
+        bundle.message.pos = vec(snapshot.position.x, snapshot.position.y - 52)
         bundle.message.z = bundle.body.z + 4
         bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - 44)
         bundle.label.z = bundle.body.z + 3
@@ -131,6 +205,15 @@ export class SceneActors {
         this.updateGraphic(bundle.body, snapshot)
         this.updateHealth(bundle, snapshot, isLocalPlayer)
         this.updateMessage(bundle)
+        const visible = isLocalPlayer || !this.buildingViews.hidesCharacter(snapshot.position)
+        for (const actor of [
+            bundle.body,
+            bundle.label,
+            bundle.message,
+            bundle.hpBack,
+            bundle.hpFill,
+        ])
+            actor.graphics.isVisible = visible
     }
 
     private getBundle(snapshot: CharacterSnapshot): CharacterBundle {
@@ -152,25 +235,18 @@ export class SceneActors {
     }
 
     private updateGraphic(actor: Actor, snapshot: CharacterSnapshot): void {
-        const characterId = visualId(snapshot.archetype)
+        const characterId = snapshot.visualId
         const definition = characterCatalog[characterId]
         const sheet = this.sheets.get(characterId)
-        const action = snapshot.animation.action
-        const animation = definition.animations[action]
-        const row = resolveAnimationRow(animation, toCatalogDirection(snapshot.facing))
-
-        if (sheet === undefined || animation === undefined || row === undefined) {
-            return
-        }
-
-        const frame = animationFrame(
-            animation,
-            action,
+        const graphic = characterFrame(
+            definition,
+            snapshot,
             performance.now() + this.serverClockOffset,
-            snapshot
+            this.damageFeedback.elapsed(snapshot.id)
         )
-        actor.graphics.use(sheet.getSprite(frame, row))
-        actor.graphics.flipHorizontal = snapshot.facing === 'left'
+        if (sheet === undefined || graphic === undefined) return
+        actor.graphics.use(sheet.getSprite(graphic.frame, graphic.row))
+        actor.graphics.flipHorizontal = graphic.flipHorizontal
         actor.graphics.opacity = snapshot.alive ? 1 : 0.55
     }
 
@@ -205,40 +281,6 @@ export class SceneActors {
         }
     }
 
-    private updateAttackZones(zones: AttackZone[]): void {
-        for (const actor of this.attackZoneActors) {
-            this.engine.remove(actor)
-        }
-
-        this.attackZoneActors = zones.map((zone) => this.createAttackZoneActor(zone))
-
-        for (const actor of this.attackZoneActors) {
-            this.engine.add(actor)
-        }
-    }
-
-    private createAttackZoneActor(zone: AttackZone): Actor {
-        const width = zone.maxX - zone.minX
-        const height = zone.maxY - zone.minY
-        const actor = new Actor({
-            anchor: vec(0.5, 0.5),
-            height,
-            pos: vec(zone.minX + width / 2, zone.minY + height / 2),
-            width,
-            z: 500,
-        })
-        actor.graphics.use(
-            new Rectangle({
-                color: Color.fromHex('#ffcf5a'),
-                height,
-                width,
-            })
-        )
-        actor.graphics.opacity = 0.35
-
-        return actor
-    }
-
     private followLocalPlayer(localPlayerId: string | undefined): void {
         if (localPlayerId === undefined || localPlayerId === this.followedId) {
             return
@@ -250,8 +292,10 @@ export class SceneActors {
             return
         }
 
+        this.engine.currentScene.camera.clearAllStrategies()
         this.engine.currentScene.camera.zoom = cameraZoom
         this.engine.currentScene.camera.strategy.lockToActor(bundle.body)
+        this.engine.currentScene.camera.strategy.limitCameraBounds(this.mapBounds)
         this.followedId = localPlayerId
     }
 
@@ -260,51 +304,10 @@ export class SceneActors {
 
         for (const [id, bundle] of this.bundles) {
             if (!liveIds.has(id)) {
+                this.damageFeedback.forget(id)
                 removeBundle(this.engine, bundle)
                 this.bundles.delete(id)
             }
         }
     }
-}
-
-function createBundle(): CharacterBundle {
-    return {
-        body: new Actor({ anchor: vec(0.5, 0.75), height: 48, width: 48 }),
-        hpBack: createBar(Color.fromHex('#171717'), 32),
-        hpFill: createBar(Color.Green, 32),
-        label: new Label({ anchor: vec(0.5, 0.5), font: labelFont, text: '' }),
-        message: new Label({ font: messageFont, text: '' }),
-        messageUntil: 0,
-    }
-}
-
-function createBar(color: Color, width: number): Actor {
-    const actor = new Actor({
-        anchor: vec(0, 0.5),
-        height: 3,
-        width,
-    })
-    actor.graphics.use(new Rectangle({ color, height: 3, width }))
-
-    return actor
-}
-
-function removeBundle(engine: Engine, bundle: CharacterBundle): void {
-    engine.remove(bundle.body)
-    engine.remove(bundle.message)
-    engine.remove(bundle.label)
-    engine.remove(bundle.hpBack)
-    engine.remove(bundle.hpFill)
-}
-
-function visualId(archetype: CharacterArchetype): CharacterId {
-    if (archetype === 'skeleton' || archetype === 'slime') {
-        return archetype
-    }
-
-    return 'player'
-}
-
-function toCatalogDirection(facing: CharacterFacing): 'up' | 'down' | 'left' | 'right' {
-    return facing
 }

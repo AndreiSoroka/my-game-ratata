@@ -1,0 +1,32 @@
+export type MovementMode = 'sneaking' | 'walking'
+export type GroundSurface = 'grass' | 'stone' | 'dirt' | 'wood'
+export type MovementClientMessage =
+    { type: 'movement_mode'; mode: MovementMode } | { type: 'dash' }
+
+export interface CharacterMovementSnapshot {
+    mode: MovementMode
+    dashCooldownMsLeft: number
+    dashing: boolean
+}
+
+export const MOVEMENT_RULES = {
+    sneakSpeedMultiplier: 0.45,
+    dashSpeedMultiplier: 1.6,
+    dashDurationMs: 600,
+    dashEnergy: 30,
+    dashCooldownMs: 2_500,
+    stepDistance: 16,
+    stepIntervalMs: 180,
+    walkingNoiseRadius: 64,
+    sneakNoiseMultiplier: 0.18,
+    dashNoiseMultiplier: 4,
+    investigationMs: 4_000,
+    occludedNoiseMultiplier: 0.5,
+} as const
+
+export const SURFACE_NOISE_MULTIPLIERS: Record<GroundSurface, number> = {
+    grass: 1,
+    dirt: 0.8,
+    wood: 1.3,
+    stone: 1.55,
+}

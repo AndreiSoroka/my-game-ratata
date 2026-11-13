@@ -1,0 +1,17 @@
+import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
+
+import type { ChatInputState } from './chatInput'
+
+export interface RatataGameOptions {
+    container: HTMLElement
+    nickname: string
+    heroClass?: HeroClass
+    onChatState: (state: ChatInputState) => void
+    onError: (message: string) => void
+    onInventoryToggle: () => void
+    onContextAction?: () => void
+    onNotice?: (message: string) => void
+    onDefeat?: () => void
+    onSnapshot: (snapshot: WorldSnapshot, localPlayerId: string | undefined) => void
+    onStatus: (message: string) => void
+}

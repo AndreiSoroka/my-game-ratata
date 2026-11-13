@@ -1,3 +1,5 @@
+import type { CharacterVisualId } from '@my-game-ratata/contracts'
+
 export const characterIds = [
     'player',
     'male_player_2',
@@ -10,13 +12,13 @@ export const characterIds = [
     'skeleton_mace',
     'skeleton_swordless',
     'slime',
-] as const
+] as const satisfies readonly CharacterVisualId[]
 
 export const characterActions = ['idle', 'walk', 'attack', 'damaged', 'death'] as const
 
 export const characterDirections = ['down', 'right', 'left', 'up'] as const
 
-export type CharacterId = (typeof characterIds)[number]
+export type CharacterId = CharacterVisualId
 export type CharacterAction = (typeof characterActions)[number]
 export type CharacterDirection = (typeof characterDirections)[number]
 
@@ -109,7 +111,7 @@ const enemyAnimations: CharacterDefinition['animations'] = {
     },
 }
 
-export const characterCatalog: Record<CharacterId, CharacterDefinition> = {
+export const characterCatalog: Record<CharacterVisualId, CharacterDefinition> = {
     player: {
         animations: playerAnimations,
         columns: 7,

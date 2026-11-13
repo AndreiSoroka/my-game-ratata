@@ -2,9 +2,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { MapSummary, Vector2 } from '@my-game-ratata/contracts'
+import type {
+    GroundSurface,
+    MapSummary,
+    Vector2,
+} from '@my-game-ratata/contracts'
+import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import { clamp } from './math'
+import { readNavigationSurfaces } from './navigationSurfaces'
 import { findPath } from './pathfinding'
 
 export interface TileCoordinate {
@@ -13,6 +19,7 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    surfaces?: GroundSurface[]
     height: number
     id: string
     solid: boolean[]
@@ -83,11 +90,12 @@ export class NavigationService {
 
     public findPathWorld(from: Vector2, to: Vector2): Vector2[] {
         const start = this.worldToTile(from)
-        const end = this.worldToTile(to)
+        const destination = this.clampWorld(to)
+        const end = this.worldToTile(destination)
         const tiles = findPath(this.grid, start, end)
 
         if (tiles.length <= 1) {
-            return this.isSolidTile(end) ? [] : [this.clampWorld(to)]
+            return this.isSolidTile(end) ? [] : [destination]
         }
 
         return tiles.slice(1).map((tile) => this.tileToWorld(tile))
@@ -103,13 +111,37 @@ export class NavigationService {
         }
     }
 
+    public surfaceAt(point: Vector2): GroundSurface {
+        const tile = this.worldToTile(point)
+        return (
+            this.grid.surfaces?.[tile.y * this.grid.width + tile.x] ?? 'grass'
+        )
+    }
+
     public moveWithCollision(position: Vector2, delta: Vector2): Vector2 {
+        const stepSize = Math.min(this.grid.tileWidth, this.grid.tileHeight) / 4
+        const steps = Math.max(
+            1,
+            Math.ceil(Math.hypot(delta.x, delta.y) / stepSize)
+        )
+        const step = { x: delta.x / steps, y: delta.y / steps }
+        let result = { ...position }
+        for (let index = 0; index < steps; index += 1) {
+            result = this.moveStep(result, step)
+        }
+        return result
+    }
+
+    private moveStep(position: Vector2, delta: Vector2): Vector2 {
         const target = this.clampWorld({
             x: position.x + delta.x,
             y: position.y + delta.y,
         })
 
-        if (!this.isSolidTile(this.worldToTile(target))) {
+        if (
+            !this.isSolidTile(this.worldToTile(target)) &&
+            !this.cutsCorner(position, target)
+        ) {
             return target
         }
 
@@ -144,6 +176,13 @@ export class NavigationService {
             { x: tile.x, y: tile.y + 1 },
             { x: tile.x, y: tile.y - 1 },
         ].filter((candidate) => !this.isSolidTile(candidate))
+    }
+
+    private cutsCorner(from: Vector2, to: Vector2): boolean {
+        return (
+            this.isSolidTile(this.worldToTile({ x: from.x, y: to.y })) &&
+            this.isSolidTile(this.worldToTile({ x: to.x, y: from.y }))
+        )
     }
 
     private slideMove(position: Vector2, delta: Vector2): Vector2 {
@@ -181,7 +220,9 @@ export function isSolidTile(grid: MapGrid, tile: TileCoordinate): boolean {
     return grid.solid[tile.y * grid.width + tile.x] === true
 }
 
-export function loadNavigationService(mapId = 'map1'): NavigationService {
+export function loadNavigationService(
+    mapId: string = CENTER_LOCATION_ID
+): NavigationService {
     const mapRoot = resolveMapRoot()
     const raw = fs.readFileSync(path.join(mapRoot, `${mapId}.json`), 'utf-8')
     const map = JSON.parse(raw) as TiledMap
@@ -220,6 +261,7 @@ function buildGrid(mapId: string, map: TiledMap): MapGrid {
     }
 
     return {
+        surfaces: readNavigationSurfaces(map),
         height: map.height,
         id: mapId,
         solid,

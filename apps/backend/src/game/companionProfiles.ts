@@ -1,0 +1,112 @@
+import type {
+    CompanionOrder,
+    CompanionRequest,
+    SoulProfile,
+} from '@my-game-ratata/contracts'
+
+import { cityResidents } from './cityResidents'
+
+export interface CompanionProfile {
+    canFight: boolean
+    canFollow: boolean
+    greeting: string
+    needsIntroduction: boolean
+    personality: string
+    stationary: boolean
+}
+
+export const residentProfile: CompanionProfile = {
+    canFight: false,
+    canFollow: false,
+    needsIntroduction: false,
+    stationary: true,
+    personality:
+        'Житель бережёт свой дом и самостоятельно решает, кому доверять.',
+    greeting:
+        'Я останусь в Новогороде: здесь меня ждут дела. Поговорить могу, а идти в поход не обещаю.',
+}
+
+export const companionProfiles: Record<string, CompanionProfile> = {
+    ...Object.fromEntries(
+        cityResidents.map(({ id, greeting, personality }) => [
+            id,
+            { ...residentProfile, greeting, personality },
+        ])
+    ),
+    npc_princess_1: {
+        canFight: false,
+        canFollow: true,
+        needsIntroduction: true,
+        stationary: false,
+        personality:
+            'Любопытная принцесса Лея выбирает друзей сама. Хочет увидеть мир, но отказывается сражаться.',
+        greeting:
+            'Я Лея. Корона не обязывает меня сидеть взаперти. Сначала познакомимся: я выбираю спутников сама.',
+    },
+    npc_veteran_1: {
+        canFight: true,
+        canFollow: true,
+        needsIntroduction: false,
+        stationary: false,
+        personality:
+            'Ветеран Бран прямолинеен, бережёт товарищей и отвечает за согласие собственным словом.',
+        greeting:
+            'Бран. Если идём вместе — прикрою. Но я товарищ, а не чья-то собственность.',
+    },
+    npc_guard_1: {
+        canFight: true,
+        canFollow: false,
+        needsIntroduction: false,
+        stationary: true,
+        personality:
+            'Стражница Рада хранит пост. Поможет с противником у ворот, но не бросит поселение.',
+        greeting:
+            'Рада, стражница Новогорода. Приведи врага к моему посту — помогу. За тобой по лесам не побегу.',
+    },
+    npc_magic_slime_1: {
+        canFight: false,
+        canFollow: true,
+        needsIntroduction: false,
+        stationary: false,
+        personality:
+            'Заколдованный слизень Капля обладает Искрой и речью. Дружелюбен, но не любит насилие.',
+        greeting:
+            'Буль! Я Капля. Обычные слизни не говорят, а меня разбудила искра колокола. Пойдём смотреть лужи?',
+    },
+}
+
+export function companionSoul(id: string): Partial<SoulProfile> {
+    const profile = companionProfiles[id] ?? residentProfile
+    return {
+        kind: 'spark',
+        controlSource: 'script',
+        canSpeak: true,
+        personality: profile.personality,
+    }
+}
+
+export function refusalFor(
+    profile: CompanionProfile,
+    request: CompanionRequest
+): string | undefined {
+    if (request === 'follow' && !profile.canFollow) {
+        return 'Нет. Я остаюсь на своём посту. Если нужна помощь, приведи противника сюда.'
+    }
+    if (request === 'help' && !profile.canFight) {
+        return 'Я не стану сражаться. Могу составить компанию, но оружие — не мой путь.'
+    }
+    return undefined
+}
+
+export function consentReply(
+    profile: CompanionProfile,
+    order: CompanionOrder
+): string {
+    if (order === 'guard') {
+        return 'Согласна остаться здесь. Приводи противника к посту — помогу, если смогу.'
+    }
+    if (profile.canFight) {
+        return 'Согласен. Пойду рядом, прикрою и вступлю в бой с врагами. Но это мой выбор.'
+    }
+    return 'Пойду с тобой по собственной воле. Только сражаться я не буду.'
+}

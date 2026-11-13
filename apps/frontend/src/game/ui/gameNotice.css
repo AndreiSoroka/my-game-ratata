@@ -1,0 +1,26 @@
+.game-notice {
+    position: fixed;
+    width: max-content;
+    box-sizing: border-box;
+    z-index: 70;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 12px 18px;
+    color: #fff0c2;
+    background: #211d15ee;
+    border: 1px solid #bf9e54;
+    border-radius: 6px;
+    text-align: center;
+    font:
+        13px/1.5 system-ui,
+        sans-serif;
+    pointer-events: none;
+}
+
+@media (max-width: 740px) {
+    .game-notice {
+        bottom: 116px;
+    }
+}

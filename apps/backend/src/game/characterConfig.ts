@@ -1,6 +1,7 @@
 import type { AttackZone, CharacterArchetype } from '@my-game-ratata/contracts'
 
 export interface CharacterCombatStats {
+    damageMultiplier?: number
     attackCooldownMs: number
     attackLockMs: number
     attackWindupMs: number

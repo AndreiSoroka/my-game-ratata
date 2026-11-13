@@ -98,12 +98,13 @@ function fakeControllerRoom(
 ): GameRoom {
     return {
         findVisibleTarget: () => target,
-        navigation: fakeControllerNavigation,
+        navigationFor: () => fakeControllerNavigation,
         requestAttack,
     } as unknown as GameRoom
 }
 
 const fakeControllerNavigation = {
+    grid: { tileWidth: 16 },
     findPathWorld(
         _from: { x: number; y: number },
         to: { x: number; y: number }

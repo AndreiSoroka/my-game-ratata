@@ -1,26 +1,42 @@
-export const CONTRACT_PROTOCOL_VERSION = '0.1.0'
+import type { ChestClientMessage, ChestContainerSnapshot } from './chests'
+export * from './chests'
+export * from './inventory'
+import type {
+    EquipmentActionKind,
+    EquipmentSlotId,
+    InventoryActionKind,
+    ItemId,
+} from './inventory'
+import type { CharacterTheftSnapshot, TheftClientMessage } from './theft'
+export * from './theft'
+import type {
+    CharacterMovementSnapshot,
+    MovementClientMessage,
+} from './movement'
+export * from './movement'
+import type { GameEventPayload } from './events'
+export type * from './events'
+import type { PartyClientMessage, PartySnapshot } from './party'
+export type * from './party'
+import type { CompanionClientMessage, SoulSnapshot } from './soul'
+export type * from './soul'
+import type {
+    ProgressionClientMessage,
+    ProgressionSnapshot,
+} from './progression'
+export * from './progression'
+import type { WorldLocation } from './world'
+export * from './world'
+import type { CharacterLifeSnapshot, HeroClass } from './life'
+export * from './life'
+import type { AdventureClientMessage, AdventureSnapshot } from './adventure'
+export type * from './adventure'
+export * from './farming'
+export * from './farms'
 
-export type ContractProtocolVersion = typeof CONTRACT_PROTOCOL_VERSION
-
-export type ServiceName = 'backend' | 'frontend'
-
-export interface ServiceHealth {
-    checkedAt: string
-    protocolVersion: ContractProtocolVersion
-    service: ServiceName
-    status: 'ok'
-}
-
-export interface PlayerIdentity {
-    displayName: string
-    id: string
-}
-
-export interface WorldPosition {
-    x: number
-    y: number
-    z?: number
-}
+import type { ContractProtocolVersion } from './service'
+export type { PlayerIdentity, WorldPosition } from './identity'
+export * from './service'
 
 export interface Vector2 {
     x: number
@@ -31,76 +47,30 @@ export type CharacterFacing = 'up' | 'down' | 'left' | 'right'
 
 export type CharacterArchetype = 'human' | 'skeleton' | 'slime'
 
-export type CharacterControllerKind = 'network_player' | 'mob1'
+export type CharacterControllerKind = 'network_player' | 'mob1' | 'scripted'
 
 export type CharacterFactionId = 'monsters' | 'peaceful'
+
+export const characterVisualIds = [
+    'female_mage',
+    'female_player',
+    'male_mage',
+    'male_player_2',
+    'player',
+    'skeleton',
+    'skeleton_mace',
+    'skeleton_swordless',
+    'slime',
+    'zombie',
+    'zombie_mage',
+] as const
+
+export type CharacterVisualId = (typeof characterVisualIds)[number]
 
 export type CharacterReputation = Partial<Record<CharacterFactionId, number>>
 
 export type CharacterAnimationAction =
     'idle' | 'walk' | 'attack' | 'damaged' | 'death'
-
-export const itemIds = ['boots', 'food', 'old_sword', 'simple_sword'] as const
-
-export type ItemId = (typeof itemIds)[number]
-
-export type EquipmentSlotId = 'boots' | 'weapon'
-
-export type InventoryActionKind = 'drop' | 'eat' | 'equip' | 'stash'
-
-export type EquipmentActionKind = 'unequip'
-
-export interface ItemWeaponStats {
-    maxDamage: number
-    minDamage: number
-}
-
-export interface ItemStatBonuses {
-    dodgeChance?: number
-}
-
-export interface ItemDefinition {
-    equipmentSlots?: readonly EquipmentSlotId[]
-    healHp?: number
-    id: ItemId
-    name: string
-    statBonuses?: ItemStatBonuses
-    weapon?: ItemWeaponStats
-}
-
-export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
-    boots: {
-        equipmentSlots: ['boots'],
-        id: 'boots',
-        name: 'Old Boots',
-        statBonuses: {
-            dodgeChance: 0.08,
-        },
-    },
-    food: {
-        healHp: 10,
-        id: 'food',
-        name: 'Apple',
-    },
-    old_sword: {
-        equipmentSlots: ['weapon'],
-        id: 'old_sword',
-        name: 'Old Sword',
-        weapon: {
-            maxDamage: 6,
-            minDamage: 3,
-        },
-    },
-    simple_sword: {
-        equipmentSlots: ['weapon'],
-        id: 'simple_sword',
-        name: 'Simple Sword',
-        weapon: {
-            maxDamage: 11,
-            minDamage: 7,
-        },
-    },
-}
 
 export interface AttackZone {
     maxX: number
@@ -129,6 +99,7 @@ export interface CharacterAnimationSnapshot {
 }
 
 export interface ItemInstanceSnapshot {
+    quantity?: number
     instanceId: string
     itemId: ItemId
 }
@@ -147,6 +118,15 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    theft?: CharacterTheftSnapshot
+    movement?: CharacterMovementSnapshot
+    soul?: SoulSnapshot
+    progression?: ProgressionSnapshot
+    heroClass?: HeroClass | null
+    level?: number
+    xp?: number
+    xpToNext?: number
+    life?: CharacterLifeSnapshot
     alive: boolean
     animation: CharacterAnimationSnapshot
     archetype: CharacterArchetype
@@ -168,9 +148,11 @@ export interface CharacterSnapshot {
     stats: CharacterStatsSnapshot
     tags: string[]
     velocity: Vector2
+    visualId: CharacterVisualId
 }
 
 export interface WorldItemSnapshot {
+    quantity?: number
     id: string
     itemId: ItemId
     position: Vector2
@@ -197,6 +179,7 @@ export interface MapSummary {
 }
 
 export interface JoinClientMessage {
+    heroClass?: HeroClass
     archetype?: CharacterArchetype
     nickname: string
     type: 'join'
@@ -218,6 +201,7 @@ export interface AttackClientMessage {
 
 export interface PickupItemClientMessage {
     type: 'pickup_item'
+    worldItemId?: string
 }
 
 export interface InventoryActionClientMessage {
@@ -238,6 +222,14 @@ export interface ChatClientMessage {
 }
 
 export type ClientMessage =
+    | ChestClientMessage
+    | TheftClientMessage
+    | MovementClientMessage
+    | PartyClientMessage
+    | CompanionClientMessage
+    | ProgressionClientMessage
+    | { type: 'revive'; targetId: string }
+    | AdventureClientMessage
     | AttackClientMessage
     | ChatClientMessage
     | EquipmentActionClientMessage
@@ -248,6 +240,10 @@ export type ClientMessage =
     | PickupItemClientMessage
 
 export interface WorldSnapshot {
+    chest?: ChestContainerSnapshot | null
+    party?: PartySnapshot
+    location?: WorldLocation
+    adventure?: AdventureSnapshot
     chests: WorldChestSnapshot[]
     characters: CharacterSnapshot[]
     items: WorldItemSnapshot[]
@@ -262,31 +258,6 @@ export interface WorldInitServerMessage {
     snapshot: WorldSnapshot
     tickMs: number
     type: 'world_init'
-}
-
-export type GameEventKind =
-    | 'attack'
-    | 'chat'
-    | 'chest_open'
-    | 'damage'
-    | 'death'
-    | 'item_drop'
-    | 'item_eat'
-    | 'item_equip'
-    | 'item_pickup'
-    | 'item_stash'
-    | 'join'
-    | 'leave'
-    | 'respawn'
-
-export interface GameEventPayload {
-    amount?: number
-    actorId?: string
-    chestId?: string
-    itemId?: ItemId
-    kind: GameEventKind
-    targetId?: string
-    text?: string
 }
 
 export interface GameEventServerMessage {

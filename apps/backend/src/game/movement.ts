@@ -1,14 +1,21 @@
-import type { GameEventPayload, Vector2 } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    MOVEMENT_RULES,
+    type Vector2,
+} from '@my-game-ratata/contracts'
 
-import { type GameCharacter } from './character'
+import type { GameCharacter } from './character'
 import { distance, moveToward, zeroVector } from './math'
-import { type NavigationService } from './navigation'
+import { cancelMovementMode } from './movementActions'
+import { type MovementNoise, movementNoise } from './movementNoise'
+import type { NavigationService } from './navigation'
 
 interface MovementContext {
     character: GameCharacter
     deltaMs: number
     navigation: NavigationService
     now: number
+    onNoise?: (noise: MovementNoise) => void
 }
 
 export function advanceCharacter(
@@ -17,49 +24,100 @@ export function advanceCharacter(
     const { character, deltaMs, now } = context
     const wasAlive = character.alive
     character.tickTimedState(now)
-
     if (!wasAlive && character.alive) {
         return { actorId: character.id, kind: 'respawn' }
     }
-
-    if (!character.alive || character.stunUntil > now) {
+    if (
+        !character.alive ||
+        character.tags.has('offline') ||
+        character.stunUntil > now
+    ) {
         character.velocity = zeroVector()
+        cancelMovementMode(character)
         return undefined
     }
-
     if (character.isActionLocked(now)) {
         character.velocity = zeroVector()
+        character.movement.dashUntil = 0
         character.applyRegen(deltaMs, false)
         return undefined
     }
+    moveCharacter(context)
+    return undefined
+}
 
+function moveCharacter(context: MovementContext): void {
+    const { character, deltaMs, now, navigation } = context
     const before = { ...character.position }
-    character.position = nextPosition(context)
+    const dashMs = dashTime(character, now, deltaMs)
+    character.position = nextPosition(context, dashMs)
+    const traveled = distance(before, character.position)
     character.velocity = {
         x: character.position.x - before.x,
         y: character.position.y - before.y,
     }
     character.updateFacing(character.velocity)
-    const isMoving = character.velocity.x !== 0 || character.velocity.y !== 0
-    character.updateMovementAnimation(isMoving, now)
-    character.applyRegen(deltaMs, isMoving)
-
-    return undefined
+    const moving = traveled > 0
+    const noise = movementNoise(
+        character,
+        navigation,
+        traveled,
+        dashMs > 0,
+        now
+    )
+    if (noise !== undefined) {
+        context.onNoise?.(noise)
+    }
+    character.updateMovementAnimation(moving, now)
+    character.applyRegen(deltaMs, moving, !moving || dashMs === 0)
+    if (now >= character.movement.dashUntil) {
+        character.movement.dashUntil = 0
+    }
 }
 
-function nextPosition(context: MovementContext): Vector2 {
-    const { character, deltaMs, navigation } = context
-    const input = character.getMoveInput()
-    const step = (character.config.moveSpeed * deltaMs) / 1000
+function dashTime(
+    character: GameCharacter,
+    now: number,
+    deltaMs: number
+): number {
+    const state = character.movement
+    return Math.max(
+        0,
+        Math.min(now, state.dashUntil) -
+            Math.max(now - deltaMs, state.dashStartedAt)
+    )
+}
 
+function nextPosition(context: MovementContext, dashMs: number): Vector2 {
+    const { character, deltaMs, navigation } = context
+    if (dashMs > 0) {
+        const step =
+            (character.config.moveSpeed *
+                MOVEMENT_RULES.dashSpeedMultiplier *
+                dashMs) /
+            1000
+        return navigation.moveWithCollision(character.position, {
+            x: character.movement.dashDirection.x * step,
+            y: character.movement.dashDirection.y * step,
+        })
+    }
+    const step = (movementSpeed(character) * deltaMs) / 1000
+    const input = character.getMoveInput()
     if (input.x !== 0 || input.y !== 0) {
         return navigation.moveWithCollision(character.position, {
             x: input.x * step,
             y: input.y * step,
         })
     }
-
     return advancePath(character, navigation, step)
+}
+
+function movementSpeed(character: GameCharacter): number {
+    const multiplier =
+        character.movement.mode === 'sneaking'
+            ? MOVEMENT_RULES.sneakSpeedMultiplier
+            : 1
+    return character.config.moveSpeed * multiplier
 }
 
 function advancePath(
@@ -68,21 +126,17 @@ function advancePath(
     step: number
 ): Vector2 {
     const target = character.nextPathPoint()
-
     if (target === undefined) {
         return { ...character.position }
     }
-
     const next = moveToward(character.position, target, step)
     const moved = navigation.moveWithCollision(character.position, {
         x: next.x - character.position.x,
         y: next.y - character.position.y,
     })
-
     if (distance(moved, target) <= 1) {
         character.completePathPoint()
         return target
     }
-
     return moved
 }

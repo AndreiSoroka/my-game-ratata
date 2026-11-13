@@ -6,6 +6,11 @@ import type {
     InventoryActionKind,
     Vector2,
 } from '@my-game-ratata/contracts'
+import { heroClasses } from '@my-game-ratata/contracts'
+
+import { isChestCommandType, parseChestCommand } from './chestCommands'
+import { parseExtraCommand } from './extraCommands'
+import { parsePickupCommand } from './worldPickup'
 
 export interface ParseResult {
     error?: string
@@ -45,6 +50,12 @@ export function parseClientMessage(raw: string): ParseResult {
         return { error: 'Message must be an object' }
     }
 
+    if (isChestCommandType(record['type'])) {
+        const message = parseChestCommand(record)
+        return message === undefined
+            ? { error: 'Invalid chest command' }
+            : { message }
+    }
     return parseRecord(record)
 }
 
@@ -58,8 +69,12 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
             return parseMoveTo(record)
         case 'attack':
             return { message: { type: 'attack' } }
-        case 'pickup_item':
-            return { message: { type: 'pickup_item' } }
+        case 'pickup_item': {
+            const message = parsePickupCommand(record)
+            return message === undefined
+                ? { error: 'Invalid pickup target' }
+                : { message }
+        }
         case 'inventory_action':
             return parseInventoryAction(record)
         case 'equipment_action':
@@ -67,7 +82,7 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
         case 'chat':
             return parseChat(record)
         default:
-            return { error: 'Unknown message type' }
+            return parseExtraCommand(record)
     }
 }
 
@@ -78,10 +93,17 @@ function parseJoin(record: Record<string, unknown>): ParseResult {
         return { error: 'Nickname is required' }
     }
 
+    const heroClass = heroClasses.find(
+        (candidate) => candidate === record['heroClass']
+    )
+    if (record['heroClass'] !== undefined && heroClass === undefined) {
+        return { error: 'Unknown hero class' }
+    }
     const archetype = parseArchetype(record['archetype'])
     const message = {
         nickname: nickname.trim().slice(0, 24),
         type: 'join',
+        ...(heroClass === undefined ? {} : { heroClass }),
     } satisfies ClientMessage
 
     if (archetype === undefined) {
@@ -233,4 +255,11 @@ function asRecord(input: unknown): Record<string, unknown> | undefined {
     }
 
     return input as Record<string, unknown>
+}
+
+export function parseSocketMessage(raw: unknown): ParseResult {
+    const text = readSocketMessage(raw)
+    return text === undefined
+        ? { error: 'Message must be text or binary JSON' }
+        : parseClientMessage(text)
 }

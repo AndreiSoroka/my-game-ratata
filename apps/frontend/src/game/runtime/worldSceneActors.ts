@@ -1,5 +1,23 @@
-import type { ItemId, WorldChestSnapshot, WorldItemSnapshot } from '@my-game-ratata/contracts'
-import { Actor, type Engine, type ImageSource, Sprite, vec } from 'excalibur'
+import type {
+    AdventureResourceNode,
+    FarmPlotSnapshot,
+    ItemId,
+    WorldChestSnapshot,
+    WorldItemSnapshot,
+} from '@my-game-ratata/contracts'
+import {
+    Actor,
+    Color,
+    type Engine,
+    Font,
+    type ImageSource,
+    Label,
+    Rectangle,
+    Sprite,
+    vec,
+} from 'excalibur'
+
+import { FarmViews } from './farmViews'
 
 interface ItemBundle {
     actor: Actor
@@ -12,6 +30,8 @@ interface ChestBundle {
 }
 
 export class WorldSceneActors {
+    private readonly farmViews: FarmViews
+    private readonly resources = new Map<string, Actor>()
     private readonly chestActors = new Map<string, ChestBundle>()
     private readonly chestImage: ImageSource
     private readonly engine: Engine
@@ -21,16 +41,69 @@ export class WorldSceneActors {
     public constructor(
         engine: Engine,
         itemImages: Map<ItemId, ImageSource>,
-        chestImage: ImageSource
+        chestImage: ImageSource,
+        farmImage: ImageSource
     ) {
         this.engine = engine
+        this.farmViews = new FarmViews(engine, farmImage)
         this.itemImages = itemImages
         this.chestImage = chestImage
     }
 
-    public update(items: WorldItemSnapshot[], chests: WorldChestSnapshot[]): void {
+    public update(
+        items: WorldItemSnapshot[],
+        chests: WorldChestSnapshot[],
+        nodes: AdventureResourceNode[] = [],
+        farmPlots: FarmPlotSnapshot[] = [],
+        serverTime = 0
+    ): void {
+        this.farmViews.update(farmPlots, serverTime)
+        this.updateResources(nodes)
         this.updateItems(items)
         this.updateChests(chests)
+    }
+
+    private updateResources(nodes: AdventureResourceNode[]): void {
+        const active = nodes.filter((node) => node.remaining > 0)
+        const ids = new Set(active.map((node) => node.id))
+        for (const [id, actor] of this.resources) {
+            if (!ids.has(id)) {
+                actor.kill()
+                this.resources.delete(id)
+            }
+        }
+        const labels = {
+            herbs: 'Травы',
+            fiber: 'Волокно',
+            wood: 'Древесина',
+            grain: 'Зерно',
+            scrap: 'Металл',
+        }
+        const colors = {
+            herbs: '#77b34d',
+            fiber: '#ceb378',
+            wood: '#825138',
+            grain: '#e8c26c',
+            scrap: '#9aadb9',
+        }
+        for (const node of active) {
+            if (this.resources.has(node.id)) continue
+            const actor = new Actor({
+                pos: vec(node.position.x, node.position.y),
+                z: node.position.y,
+            })
+            actor.graphics.use(
+                new Rectangle({ width: 9, height: 7, color: Color.fromHex(colors[node.kind]) })
+            )
+            const label = new Label({
+                text: labels[node.kind],
+                pos: vec(-12, -12),
+                font: new Font({ size: 7, color: Color.White }),
+            })
+            actor.addChild(label)
+            this.engine.add(actor)
+            this.resources.set(node.id, actor)
+        }
     }
 
     private updateItems(items: WorldItemSnapshot[]): void {

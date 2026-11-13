@@ -81,12 +81,31 @@ The first implementation should stay small, but the structure should leave room
 for richer RPG systems: abilities, effects, tags, factions, reputation, memory,
 and story-driven AI.
 
-## Non-Goals For This Skeleton
+## Current playable scope
 
-This repository does not yet contain the old prototype's map, sprites, combat
-systems, AI, WebSocket server, or renderer code. The current skeleton is only
-the foundation: monorepo layout, strict tooling, Bun backend, Vue frontend, and
-shared TypeScript contracts.
+The prototype now contains the 25-location Lands of Novogorod, with a central city and increasingly dangerous outskirts, shared combat, inventory,
+gathering and crafting, a persistent-in-session quest, trading, resurrection and
+permanent player death. The current story is the Ash Border: a silent memory bell
+has weakened the roads between inhabited places. Residents need supplies and
+protection while the player recovers three slime hearts to restore the bell.
+
+Искра is the world's name for individual will: a resident may make promises,
+reconsider a relationship and choose a new direction. Эхо is a recurring purpose
+or memory attached to the world. These are character properties, independent of
+human, model or scripted control. Speech is also an independent capability.
+Personalities can accept or refuse companionship; a princess can travel without
+fighting, a veteran can fight alongside a companion, and a guard can defend a post
+without abandoning it. The implementation currently uses authored local policies
+and exposes an optional agent bridge. It does not claim to run a language model
+when no external model is connected.
+
+Starting backgrounds give initial strengths, not permanent skill restrictions.
+Every character uses the same knowledge tree: practice grows swordsmanship,
+miracles and fire magic through successful application. Skills have ten levels;
+mastering Fireball unlocks Greater Fireball. Learning and practice are distinct:
+the scholar teaches the first spell, then meaningful use improves it. The UI
+shows prerequisites, practice thresholds and the rising cost of mastering more
+skills. See `playable-world.md` for exact controls and current costs.
 
 ## Storybook Game Gallery
 

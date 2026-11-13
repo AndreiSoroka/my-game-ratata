@@ -3,7 +3,12 @@ import type { ItemId, Vector2 } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import { createItemInstance, type InventoryItemInstance } from './inventory'
 
-export function generateChestContents(): InventoryItemInstance[] {
+export function generateChestContents(
+    starter = false
+): InventoryItemInstance[] {
+    if (starter) {
+        return [createItemInstance('food')]
+    }
     const contents: InventoryItemInstance[] = []
 
     maybeAddChestItem(contents, 'simple_sword', 0.9)

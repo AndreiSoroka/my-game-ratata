@@ -173,3 +173,37 @@
     color: #17130a;
     background: #d8b85f;
 }
+
+@media (max-width: 740px) {
+    .hud {
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .hud div {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .hud div:first-child {
+        flex: 1;
+    }
+
+    .hud strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+    }
+
+    .hud span {
+        flex-shrink: 0;
+        font-size: 10px;
+    }
+
+    .hud .hud-detail {
+        display: none;
+    }
+}

@@ -1,34 +1,51 @@
-import type {
-    AttackZone,
-    CharacterAnimationAction,
-    CharacterArchetype,
-    CharacterControllerKind,
-    CharacterFacing,
-    CharacterFactionId,
-    CharacterReputation,
-    CharacterSnapshot,
-    Vector2,
+import {
+    type AttackZone,
+    CENTER_LOCATION_ID,
+    type CharacterAnimationAction,
+    type CharacterArchetype,
+    type CharacterControllerKind,
+    type CharacterFacing,
+    type CharacterFactionId,
+    type CharacterReputation,
+    type CharacterVisualId,
+    HERO_REVIVAL_WINDOW_MS,
+    type HeroClass,
+    type SoulProfile,
+    type SoulSnapshot,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
-import { type CharacterConfig, getCharacterConfig } from './characterConfig'
+import type { CharacterConfig } from './characterConfig'
+import { regenerateCharacter, restoreCharacter } from './characterRecovery'
 import { createCharacterSnapshot } from './characterSnapshot'
+import { createCharacterSoul } from './characterSoul'
 import {
     type AttackResourceSpend,
     type PendingAttackHit,
-    regen,
     spendResource,
 } from './characterState'
+import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { normalize, resolveFacing, zeroVector } from './math'
+import { createMovementState } from './movementActions'
+import {
+    type CharacterProgression,
+    createProgression,
+} from './skillProgression'
 
 interface GameCharacterOptions {
     archetype: CharacterArchetype
+    heroClass?: HeroClass
+    soul?: Partial<SoulProfile>
+    mortal?: boolean
     controllerKind: CharacterControllerKind
     faction?: CharacterFactionId
     id: string
     nickname: string
     reputation?: CharacterReputation
     spawnPosition: Vector2
+    visualId?: CharacterVisualId
+    locationId?: string
 }
 
 export class GameCharacter {
@@ -37,14 +54,26 @@ export class GameCharacter {
     public readonly controllerKind: CharacterControllerKind
     public readonly faction: CharacterFactionId
     public readonly id: string
-    public readonly maxHp: number
+    public maxHp: number
+    public readonly heroClass: HeroClass | undefined
+    public readonly mortal: boolean
+    public readonly soul: SoulSnapshot
+    public progression: CharacterProgression = createProgression()
+    public movement = createMovementState()
+    public level = 1
+    public xp = 0
+    public reviveUntil = 0
+    public readonly spawnLocationId: string
+    public locationId: string
     public readonly nickname: string
     public readonly reputation: CharacterReputation
     public readonly spawnPosition: Vector2
+    public readonly visualId: CharacterVisualId
     public animationAction: CharacterAnimationAction = 'idle'
     public animationStartedAt = Date.now()
     public animationUntil = 0
     public alive = true
+    public deathSequence = 0
     public actionLockUntil = 0
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
@@ -66,8 +95,16 @@ export class GameCharacter {
     private pathIndex = 0
 
     public constructor(options: GameCharacterOptions) {
+        this.soul = createCharacterSoul(options)
+        this.locationId = options.locationId ?? CENTER_LOCATION_ID
+        this.spawnLocationId = this.locationId
         this.archetype = options.archetype
-        this.config = getCharacterConfig(options.archetype)
+        this.heroClass =
+            options.heroClass ??
+            (options.archetype === 'human' ? 'vanguard' : undefined)
+        this.mortal =
+            options.mortal ?? options.controllerKind === 'network_player'
+        this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
         this.faction =
             options.faction ?? defaultFactionFor(options.controllerKind)
@@ -83,6 +120,8 @@ export class GameCharacter {
             ...options.reputation,
         }
         this.spawnPosition = { ...options.spawnPosition }
+        this.visualId =
+            options.visualId ?? defaultVisualIdFor(options.archetype)
     }
 
     public setMoveInput(axis: Vector2): void {
@@ -206,39 +245,22 @@ export class GameCharacter {
             this.attackZoneUntil = 0
         }
 
-        if (!this.alive && this.respawnAt > 0 && now >= this.respawnAt) {
-            this.respawn(now)
+        if (
+            !this.mortal &&
+            !this.alive &&
+            this.respawnAt > 0 &&
+            now >= this.respawnAt
+        ) {
+            restoreCharacter(this, now, true)
         }
     }
 
-    public applyRegen(deltaMs: number, isMoving: boolean): void {
-        if (!this.alive) {
-            return
-        }
-
-        const resources = this.config.resources
-        const energyRegen = isMoving
-            ? resources.energyRegenMove
-            : resources.energyRegenIdle
-        const manaRegen = isMoving
-            ? resources.manaRegenMove
-            : resources.manaRegenIdle
-
-        this.energy = regen(
-            this.energy,
-            resources.maxEnergy,
-            energyRegen,
-            deltaMs
-        )
-        this.mana = regen(this.mana, resources.maxMana, manaRegen, deltaMs)
-        this.hp = regen(
-            this.hp,
-            this.maxHp,
-            isMoving
-                ? this.config.hpRegenMovePerSec
-                : this.config.hpRegenIdlePerSec,
-            deltaMs
-        )
+    public applyRegen(
+        deltaMs: number,
+        isMoving: boolean,
+        energyAllowed = true
+    ): void {
+        regenerateCharacter(this, deltaMs, isMoving, energyAllowed)
     }
 
     public canSpendAttackResources(): boolean {
@@ -287,7 +309,9 @@ export class GameCharacter {
         this.hp = Math.max(0, this.hp - amount)
 
         if (this.hp <= 0) {
+            this.deathSequence += 1
             this.alive = false
+            this.reviveUntil = now + HERO_REVIVAL_WINDOW_MS
             this.actionLockUntil = 0
             this.setAnimation('death', now)
             this.clearPath()
@@ -302,29 +326,12 @@ export class GameCharacter {
 
     public queueRespawn(now: number, delayMs: number): void {
         if (this.respawnAt === 0) {
-            this.respawnAt = now + delayMs
+            this.respawnAt = this.mortal ? this.reviveUntil : now + delayMs
         }
     }
 
-    public snapshot(now: number): CharacterSnapshot {
+    public snapshot(now: number) {
         return createCharacterSnapshot(this, now)
-    }
-
-    private respawn(now: number): void {
-        this.alive = true
-        this.actionLockUntil = 0
-        this.attackZones = []
-        this.attackZoneUntil = 0
-        this.animationUntil = 0
-        this.clearPendingAttackHit()
-        this.energy = this.config.resources.maxEnergy
-        this.hp = this.maxHp
-        this.mana = this.config.resources.maxMana
-        this.position = { ...this.spawnPosition }
-        this.respawnAt = 0
-        this.stunUntil = 0
-        this.velocity = zeroVector()
-        this.setAnimation('idle', now)
     }
 }
 
@@ -332,4 +339,12 @@ function defaultFactionFor(
     controllerKind: CharacterControllerKind
 ): CharacterFactionId {
     return controllerKind === 'network_player' ? 'peaceful' : 'monsters'
+}
+
+function defaultVisualIdFor(archetype: CharacterArchetype): CharacterVisualId {
+    if (archetype === 'skeleton' || archetype === 'slime') {
+        return archetype
+    }
+
+    return 'player'
 }

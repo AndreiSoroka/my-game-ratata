@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <title>Слизневое сердце</title>
+  <path fill="#183d31" d="M2 2h4v1h4V2h4v2h1v5h-2v2h-2v2H9v2H7v-2H5v-2H3V9H1V4h1z"/>
+  <path fill="#70ce78" d="M3 3h2v1h2v1h2V4h2V3h2v2h1v3h-2v2h-2v2H8v1H7v-2H5V9H3V7H2V5h1z"/>
+  <path fill="#3c985c" d="M12 5h2v3h-2v2h-2v2H8v1H7v-2h2V9h2V7h1z"/>
+  <path fill="#d5f6ad" d="M3 4h2v1H4v2H3zM11 4h1v1h-1z"/>
+</svg>

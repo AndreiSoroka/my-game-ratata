@@ -1,0 +1,6 @@
+Kenney Tiny Farm 1.0
+Author: Kenney (https://kenney.nl/)
+Official source: https://kenney.nl/assets/tiny-farm
+License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
+Retrieved: 2026-11-06
+Original packed atlas copied unchanged: 192x176, 12 columns, 11 rows, 16x16 tiles, no spacing.

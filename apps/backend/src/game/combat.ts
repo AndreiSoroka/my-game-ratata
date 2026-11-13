@@ -4,6 +4,7 @@ import { type GameCharacter } from './character'
 import { resolveCharacterStats } from './characterStats'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
+import { hasEquippedSword, trainSkill } from './skillProgression'
 
 interface AttackContext {
     actor: GameCharacter
@@ -69,13 +70,16 @@ export function resolvePendingAttackHit(
     }
 
     const events: GameEventPayload[] = []
-    const target = findNearestHit(actor, context.targets)
+    const target = findNearestHit(actor, context.targets, now)
 
     if (target === undefined) {
         return events
     }
 
-    const damage = rollDamage(actor, attack.damageMultiplier)
+    const damage = Math.min(
+        target.hp,
+        rollDamage(actor, attack.damageMultiplier)
+    )
     target.applyDamage(damage, now)
     target.drainEnergy(attack.targetEnergyDrain)
     maybeApplyStun(actor, target, now, attack.canStun)
@@ -86,12 +90,24 @@ export function resolvePendingAttackHit(
         targetId: target.id,
     })
 
+    if (damage > 0 && hasEquippedSword(actor)) {
+        events.push(...trainSkill(actor, 'swordsmanship'))
+    }
+
     if (!target.alive) {
         target.queueRespawn(now, context.respawnDelayMsFor(target))
         events.push({ actorId: actor.id, kind: 'death', targetId: target.id })
     }
 
     return events
+}
+
+export function isTargetInAttackRange(
+    actor: GameCharacter,
+    target: GameCharacter,
+    tileSize: number
+): boolean {
+    return isInZones(target, buildAttackZones(actor, tileSize))
 }
 
 function canAttack(actor: GameCharacter, now: number): boolean {
@@ -169,11 +185,12 @@ function rotatePoint(
 
 function findNearestHit(
     actor: GameCharacter,
-    targets: GameCharacter[]
+    targets: GameCharacter[],
+    now: number
 ): GameCharacter | undefined {
     const candidates = targets
         .filter((target) => target.id !== actor.id && target.alive)
-        .filter((target) => canTargetByFaction(actor, target))
+        .filter((target) => canTargetByFaction(actor, target, now))
         .filter((target) => isInZones(target, actor.attackZones))
         .map<HitCandidate>((target) => ({
             distance: distance(actor.position, target.position),
@@ -195,7 +212,11 @@ function isInZones(target: GameCharacter, zones: AttackZone[]): boolean {
 }
 
 function rollDamage(actor: GameCharacter, multiplier = 1): number {
-    const stats = resolveCharacterStats(actor.config, actor.equipment)
+    const stats = resolveCharacterStats(
+        actor.config,
+        actor.equipment,
+        actor.progression.skills.swordsmanship.level
+    )
     const low = Math.min(stats.minDamage, stats.maxDamage)
     const high = Math.max(stats.minDamage, stats.maxDamage)
     let damage = Math.floor(low + Math.random() * (high - low + 1))

@@ -8,46 +8,46 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { ChestContainers } from './chestContainers'
 import {
-    addInventoryItem,
-    createItemInstance,
+    chestHasLineOfSight,
+    createWorldChests,
+    findNearestChest,
+    revealChestContents,
+    type WorldChest,
+} from './chestInteraction'
+import {
     equipInventoryItem,
     type InventoryItemInstance,
+    itemQuantity,
     removeInventoryItem,
     unequipItem,
 } from './inventory'
-import { distance } from './math'
 import type { NavigationService } from './navigation'
-import {
-    dropPosition,
-    generateChestContents,
-    heal,
-    isPointInZones,
-} from './worldInventoryHelpers'
-
-const pickupRadius = 24
-const chestInteractionRadius = 28
-
-interface LooseWorldItem {
-    id: string
-    item: InventoryItemInstance
-    position: Vector2
-}
-
-interface WorldChest {
-    contents: InventoryItemInstance[]
-    id: string
-    opened: boolean
-    position: Vector2
-}
+import { WorldDeathLoot } from './worldDeathLoot'
+import { dropPosition, heal, isPointInZones } from './worldInventoryHelpers'
+import { type LooseWorldItem, pickupWorldItem } from './worldPickup'
 
 export class WorldInventory {
-    private readonly chests = new Map<string, WorldChest>()
+    public readonly containers: ChestContainers
+    private readonly deathLoot: WorldDeathLoot
+    private readonly chests: Map<string, WorldChest>
     private readonly looseItems = new Map<string, LooseWorldItem>()
     private nextLooseItemIndex = 1
 
-    public constructor(navigation: NavigationService) {
-        this.spawnChests(navigation)
+    public constructor(
+        private readonly navigation: NavigationService,
+        private readonly locationId = navigation.grid.id
+    ) {
+        this.deathLoot = new WorldDeathLoot(locationId, (item, position) =>
+            this.dropItemNear(item, position)
+        )
+        this.chests = createWorldChests(navigation)
+        this.containers = new ChestContainers(
+            this.chests,
+            navigation,
+            locationId
+        )
     }
 
     public applyInventoryAction(
@@ -68,24 +68,21 @@ export class WorldInventory {
     }
 
     public pickupNearestItem(player: GameCharacter): GameEventPayload[] {
-        const item = this.findNearestLooseItem(player)
+        return this.pickupItem(player)
+    }
 
-        if (
-            item === undefined ||
-            !addInventoryItem(player.inventory, item.item)
-        ) {
-            return []
-        }
-
-        this.looseItems.delete(item.id)
-
-        return [
-            {
-                actorId: player.id,
-                itemId: item.item.itemId,
-                kind: 'item_pickup',
-            },
-        ]
+    public pickupItem(
+        player: GameCharacter,
+        worldItemId?: string,
+        now = Date.now()
+    ): GameEventPayload[] {
+        return pickupWorldItem(
+            player,
+            this.looseItems,
+            this.locationId,
+            worldItemId,
+            now
+        )
     }
 
     public unequip(
@@ -111,44 +108,31 @@ export class WorldInventory {
         events: GameEventPayload[],
         findCharacter: (id: string) => GameCharacter | undefined
     ): GameEventPayload[] {
-        const lootEvents: GameEventPayload[] = []
+        return this.deathLoot.resolve(events, findCharacter)
+    }
 
-        for (const event of events) {
-            const target =
-                event.targetId === undefined
-                    ? undefined
-                    : findCharacter(event.targetId)
-
-            if (
-                event.kind !== 'death' ||
-                target?.archetype !== 'skeleton' ||
-                Math.random() >= 0.5
-            ) {
-                continue
-            }
-
-            const item = createItemInstance('old_sword')
-            const lootEvent: GameEventPayload = {
-                itemId: item.itemId,
-                kind: 'item_drop',
-                targetId: target.id,
-            }
-
-            if (event.actorId !== undefined) {
-                lootEvent.actorId = event.actorId
-            }
-
-            this.dropItemNear(item, target.position)
-            lootEvents.push(lootEvent)
-        }
-
-        return lootEvents
+    public openChestById(
+        actor: GameCharacter,
+        chestId: string,
+        now = Date.now()
+    ): GameEventPayload[] {
+        return this.containers.handle(
+            actor,
+            { type: 'open_chest', chestId },
+            now
+        )
     }
 
     public openChestsHitBy(actor: GameCharacter): GameEventPayload[] {
         return [...this.chests.values()]
-            .filter((chest) =>
-                isPointInZones(chest.position, actor.attackZones)
+            .filter(
+                (chest) =>
+                    isPointInZones(chest.position, actor.attackZones) &&
+                    chestHasLineOfSight(
+                        actor.position,
+                        chest.position,
+                        this.navigation
+                    )
             )
             .flatMap((chest) => this.openChest(actor, chest))
     }
@@ -157,6 +141,9 @@ export class WorldInventory {
         return [...this.looseItems.values()].map((item) => ({
             id: item.id,
             itemId: item.item.itemId,
+            ...(itemQuantity(item.item) === 1
+                ? {}
+                : { quantity: itemQuantity(item.item) }),
             position: item.position,
         }))
     }
@@ -166,8 +153,7 @@ export class WorldInventory {
             id: chest.id,
             itemCount: chest.contents.length,
             position: chest.position,
-            state:
-                chest.opened && chest.contents.length === 0 ? 'open' : 'closed',
+            state: chest.opened ? 'open' : 'closed',
         }))
     }
 
@@ -239,53 +225,27 @@ export class WorldInventory {
         player: GameCharacter,
         itemInstanceId: string
     ): GameEventPayload[] {
-        const chest = this.findNearestChest(player.position)
-        const item = removeInventoryItem(player.inventory, itemInstanceId)
-
-        if (chest === undefined || item === undefined) {
-            if (item !== undefined) {
-                addInventoryItem(player.inventory, item)
-            }
-
-            return []
-        }
-
-        chest.contents.push(item)
-        chest.opened = false
-
-        return [
-            {
-                actorId: player.id,
-                chestId: chest.id,
-                itemId: item.itemId,
-                kind: 'item_stash',
-            },
-        ]
+        const chest = findNearestChest(this.chests.values(), player.position)
+        return this.containers.stash(player, chest?.id, itemInstanceId)
     }
 
     private openChest(
         actor: GameCharacter,
         chest: WorldChest
     ): GameEventPayload[] {
-        if (chest.opened && chest.contents.length === 0) {
-            return []
-        }
-
-        const contents = chest.contents.splice(0)
-        chest.opened = true
-
-        for (const [index, item] of contents.entries()) {
-            this.createLooseItem(item, dropPosition(chest.position, index))
-        }
-
-        return [{ actorId: actor.id, chestId: chest.id, kind: 'chest_open' }]
+        this.containers.invalidate(chest.id)
+        return revealChestContents(actor, chest, (item, position) =>
+            this.createLooseItem(item, position)
+        )
     }
 
     private dropItemNear(item: InventoryItemInstance, origin: Vector2): void {
-        this.createLooseItem(
-            item,
-            dropPosition(origin, this.nextLooseItemIndex)
-        )
+        const position = dropPosition(origin, this.nextLooseItemIndex)
+        const reachable =
+            !this.navigation.isSolidTile(
+                this.navigation.worldToTile(position)
+            ) && this.navigation.hasLineOfSight(origin, position)
+        this.createLooseItem(item, reachable ? position : origin)
     }
 
     private createLooseItem(
@@ -293,42 +253,11 @@ export class WorldInventory {
         position: Vector2
     ): void {
         const looseItem = {
-            id: `world_item_${String(this.nextLooseItemIndex)}`,
+            id: `${this.locationId}:world_item_${String(this.nextLooseItemIndex)}`,
             item,
             position,
         }
         this.nextLooseItemIndex += 1
         this.looseItems.set(looseItem.id, looseItem)
-    }
-
-    private findNearestLooseItem(
-        player: GameCharacter
-    ): LooseWorldItem | undefined {
-        return [...this.looseItems.values()]
-            .map((item) => ({
-                distance: distance(player.position, item.position),
-                item,
-            }))
-            .filter((candidate) => candidate.distance <= pickupRadius)
-            .sort((a, b) => a.distance - b.distance)[0]?.item
-    }
-
-    private findNearestChest(position: Vector2): WorldChest | undefined {
-        return [...this.chests.values()]
-            .map((chest) => ({
-                chest,
-                distance: distance(position, chest.position),
-            }))
-            .filter((candidate) => candidate.distance <= chestInteractionRadius)
-            .sort((a, b) => a.distance - b.distance)[0]?.chest
-    }
-
-    private spawnChests(navigation: NavigationService): void {
-        this.chests.set('chest_forest_1', {
-            contents: generateChestContents(),
-            id: 'chest_forest_1',
-            opened: false,
-            position: navigation.tileToWorld({ x: 6, y: 4 }),
-        })
     }
 }

@@ -1,6 +1,7 @@
 import type {
     ClientMessage,
     GameEventPayload,
+    HeroClass,
     ServerMessage,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -22,13 +23,13 @@ export class RuntimeSocket {
         this.handlers = handlers
     }
 
-    public connect(nickname: string): void {
+    public connect(nickname: string, heroClass?: HeroClass): void {
         this.handlers.onStatus('Connecting')
         const socket = new WebSocket(resolveWebSocketUrl())
         this.socket = socket
 
         socket.addEventListener('open', () => {
-            this.send({ nickname, type: 'join' })
+            this.send({ nickname, type: 'join', ...(heroClass === undefined ? {} : { heroClass }) })
         })
         socket.addEventListener('message', (event) => {
             this.handleSocketMessage(event)

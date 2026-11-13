@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GameCharacter } from '../src/game/character'
 import { createCharacterSnapshot } from '../src/game/characterSnapshot'
 import { createItemInstance } from '../src/game/inventory'
-import type { NavigationService } from '../src/game/navigation'
+import { NavigationService } from '../src/game/navigation'
 import { WorldInventory } from '../src/game/worldInventory'
 
-const chestPosition = { x: 96, y: 64 }
+const chestPosition = { x: 104, y: 72 }
 
 afterEach(() => {
     vi.restoreAllMocks()
@@ -109,7 +109,7 @@ describe('world inventory chests', () => {
 })
 
 describe('world inventory stashing', () => {
-    it('closes a chest again after stashing an item inside', () => {
+    it('stores a real item in a closed chest until the chest is hit', () => {
         vi.spyOn(Math, 'random').mockReturnValue(0.99)
         const world = new WorldInventory(fakeNavigation)
         const player = createPlayerAt(chestPosition)
@@ -124,6 +124,7 @@ describe('world inventory stashing', () => {
                 chestId: 'chest_forest_1',
                 itemId: 'food',
                 kind: 'item_stash',
+                audienceIds: [player.id],
             },
         ])
         expect(world.snapshotChests()).toEqual([
@@ -170,11 +171,12 @@ function attackZoneAround(position: { x: number; y: number }, ownerId: string) {
     }
 }
 
-const fakeNavigation = {
-    tileToWorld(tile: { x: number; y: number }) {
-        return {
-            x: tile.x * 16,
-            y: tile.y * 16,
-        }
-    },
-} as NavigationService
+const fakeNavigation = new NavigationService({
+    width: 15,
+    height: 10,
+    id: 'map-2-2',
+    solid: Array<boolean>(150).fill(false),
+    solidLayerNames: [],
+    tileWidth: 16,
+    tileHeight: 16,
+})

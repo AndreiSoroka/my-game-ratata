@@ -1,0 +1,130 @@
+import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+
+import { isDialogueCharacter } from '../runtime/runtimeQueries'
+import { interactionDistance } from './interactionTargets'
+import type { InteractionAction } from './nearbyInteractionActions'
+
+export function characterActions(
+    characters: CharacterSnapshot[],
+    player: CharacterSnapshot
+): InteractionAction[] {
+    const target = characters
+        .filter(
+            (character) =>
+                character.id !== player.id &&
+                isDialogueCharacter(character) &&
+                interactionDistance(player, character) <= 48
+        )
+        .sort(
+            (first, second) =>
+                interactionDistance(player, first) - interactionDistance(player, second)
+        )[0]
+    if (!target) return []
+    return [
+        {
+            id: `talk:${target.id}`,
+            label: `Поговорить: ${target.nickname}`,
+            command: { type: 'interact', targetId: target.id },
+        },
+        ...companionActions(target, player),
+        ...teacherActions(target, player),
+    ]
+}
+function companionActions(
+    target: CharacterSnapshot,
+    player: CharacterSnapshot
+): InteractionAction[] {
+    const companion = target.soul?.companion
+    if (!companion) return []
+    const occupied = companion.leaderId !== null && companion.leaderId !== player.id
+    const actions: InteractionAction[] = [
+        {
+            id: `follow:${target.id}`,
+            label: `Попросить идти вместе: ${target.nickname}`,
+            disabled: occupied,
+            command: { type: 'companion_request', targetId: target.id, request: 'follow' },
+        },
+        {
+            id: `help:${target.id}`,
+            label: `Попросить помочь в бою: ${target.nickname}`,
+            disabled: occupied,
+            command: { type: 'companion_request', targetId: target.id, request: 'help' },
+        },
+    ]
+    if (companion.leaderId === player.id)
+        actions.push(
+            {
+                id: `guard:${target.id}`,
+                label: 'Попросить остаться здесь',
+                command: { type: 'companion_request', targetId: target.id, request: 'guard' },
+            },
+            {
+                id: `dismiss:${target.id}`,
+                label: 'Отпустить спутника',
+                command: { type: 'companion_request', targetId: target.id, request: 'dismiss' },
+            }
+        )
+    return actions
+}
+function teacherActions(target: CharacterSnapshot, player: CharacterSnapshot): InteractionAction[] {
+    if (!target.tags.includes('scholar')) return []
+    const actions: InteractionAction[] = []
+    if (!player.progression?.skills.some((skill) => skill.id === 'fireball' && skill.unlocked))
+        actions.push({
+            id: `learn:${target.id}`,
+            label: 'Изучить огненный шар',
+            command: { type: 'learn_skill', skillId: 'fireball', targetId: target.id },
+        })
+    if ((player.progression?.magicChaptersRead ?? 0) < 3)
+        actions.push({
+            id: `study:${target.id}`,
+            label: 'Читать главу о магии',
+            command: { type: 'study_magic', targetId: target.id },
+        })
+    return actions
+}
+export function reviveActions(
+    characters: CharacterSnapshot[],
+    player: CharacterSnapshot
+): InteractionAction[] {
+    if (!player.progression?.resurrectionUnlocked) return []
+    return characters
+        .filter(
+            (character) =>
+                !character.alive &&
+                (character.life?.reviveMsLeft ?? 0) > 0 &&
+                character.faction === player.faction &&
+                interactionDistance(player, character) <= 48
+        )
+        .sort((a, b) => interactionDistance(player, a) - interactionDistance(player, b))
+        .slice(0, 1)
+        .map<InteractionAction>((character) => ({
+            id: `revive:${character.id}`,
+            label: `Воскресить: ${character.nickname}`,
+            disabled: player.resources.mana < 20,
+            command: { type: 'revive', targetId: character.id },
+        }))
+}
+export function partyActions(
+    characters: CharacterSnapshot[],
+    player: CharacterSnapshot
+): InteractionAction[] {
+    const target = [...characters]
+        .sort((a, b) => interactionDistance(player, a) - interactionDistance(player, b))
+        .find(
+            (character) =>
+                character.id !== player.id &&
+                character.alive &&
+                character.controllerKind === 'network_player' &&
+                interactionDistance(player, character) <= 48
+        )
+    return target
+        ? [
+              {
+                  id: `party:${target.id}`,
+                  label: `Пригласить в отряд: ${target.nickname}`,
+                  command: { type: 'party_invite', targetId: target.id },
+              },
+          ]
+        : []
+}

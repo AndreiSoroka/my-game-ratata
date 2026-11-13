@@ -1,8 +1,11 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { shouldRetireCharacter } from './characterLife'
 import { resolveCharacterStats } from './characterStats'
 import { snapshotEquipment, snapshotItem } from './inventory'
+import { snapshotMovement } from './movementActions'
+import { snapshotProgression } from './skillProgression'
 
 export function createCharacterSnapshot(
     character: GameCharacter,
@@ -10,6 +13,7 @@ export function createCharacterSnapshot(
 ): CharacterSnapshot {
     return {
         alive: character.alive,
+        movement: snapshotMovement(character, now),
         animation: {
             action: character.animationAction,
             startedAt: character.animationStartedAt,
@@ -32,6 +36,21 @@ export function createCharacterSnapshot(
         facing: character.facing,
         faction: character.faction,
         hp: Math.round(character.hp),
+        heroClass: character.heroClass ?? null,
+        level: character.level,
+        xp: character.xp,
+        xpToNext: 0,
+        progression: snapshotProgression(character, now),
+        soul: character.soul,
+        life: {
+            retired:
+                character.tags.has('state.retired') ||
+                shouldRetireCharacter(character, now),
+            reviveMsLeft: character.alive
+                ? 0
+                : Math.max(0, character.reviveUntil - now),
+            reviveUntil: character.reviveUntil,
+        },
         id: character.id,
         inventory: character.inventory.map(snapshotItem),
         maxHp: character.maxHp,
@@ -45,9 +64,14 @@ export function createCharacterSnapshot(
             maxEnergy: character.config.resources.maxEnergy,
             maxMana: character.config.resources.maxMana,
         },
-        stats: resolveCharacterStats(character.config, character.equipment),
+        stats: resolveCharacterStats(
+            character.config,
+            character.equipment,
+            character.progression.skills.swordsmanship.level
+        ),
         tags: snapshotTags(character, now),
         velocity: character.velocity,
+        visualId: character.visualId,
     }
 }
 

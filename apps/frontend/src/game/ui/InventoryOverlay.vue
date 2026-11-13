@@ -2,21 +2,29 @@
 import './inventoryOverlay.css'
 
 import {
+    type AdventureMaterials,
     type CharacterSnapshot,
+    CHEST_INTERACTION_RANGE,
+    chestInteractionDistance,
     type EquipmentActionKind,
     type EquipmentSlotId,
+    INVENTORY_CAPACITY,
     type InventoryActionKind,
     ITEM_DEFINITIONS,
     type ItemInstanceSnapshot,
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import { inventoryKey } from './inventoryKeyboard'
+import { itemStackLabel } from './itemLabels'
+import { useInventoryFocus } from './useInventoryFocus'
 
 const props = defineProps<{
     character: CharacterSnapshot
     chests: WorldChestSnapshot[]
+    materials?: AdventureMaterials
 }>()
 
 const emit = defineEmits<{
@@ -35,10 +43,12 @@ const emit = defineEmits<{
     ]
 }>()
 
+const panel = ref<HTMLElement>()
+const focusSurface = useInventoryFocus(panel, () => emit('close'))
 const selectedItemId = ref<string>()
 const equipmentSlots: EquipmentSlotId[] = ['weapon', 'boots']
 const inventorySlots = computed(() =>
-    Array.from({ length: 50 }, (_, index) => props.character.inventory[index])
+    Array.from({ length: INVENTORY_CAPACITY }, (_, index) => props.character.inventory[index])
 )
 const selectedItem = computed(() =>
     props.character.inventory.find((item) => item.instanceId === selectedItemId.value)
@@ -46,10 +56,8 @@ const selectedItem = computed(() =>
 const hasNearbyChest = computed(() =>
     props.chests.some(
         (chest) =>
-            Math.hypot(
-                chest.position.x - props.character.position.x,
-                chest.position.y - props.character.position.y
-            ) <= 28
+            chestInteractionDistance(props.character.position, chest.position) <=
+            CHEST_INTERACTION_RANGE
     )
 )
 
@@ -72,10 +80,14 @@ function selectItem(item: ItemInstanceSnapshot | undefined): void {
     }
 
     selectedItemId.value = selectedItemId.value === item.instanceId ? undefined : item.instanceId
+    if (selectedItemId.value)
+        void nextTick(() =>
+            panel.value?.querySelector<HTMLButtonElement>('.inventory-actions button')?.focus()
+        )
 }
 
 function itemName(item: ItemInstanceSnapshot): string {
-    return ITEM_DEFINITIONS[item.itemId].name
+    return itemStackLabel(item)
 }
 
 function canEat(item: ItemInstanceSnapshot): boolean {
@@ -116,7 +128,18 @@ function slotLabel(slot: EquipmentSlotId): string {
 </script>
 
 <template>
-    <aside class="inventory-overlay" aria-label="Inventory and equipment">
+    <aside
+        ref="panel"
+        class="inventory-overlay"
+        role="dialog"
+        aria-modal="false"
+        tabindex="-1"
+        aria-label="Inventory and equipment"
+        @pointerdown.stop="focusSurface"
+        @click.stop
+        @keydown.stop="inventoryKey($event, panel, () => emit('close'))"
+        @keyup.stop
+    >
         <section class="inventory-overlay__equipment" aria-label="Equipment">
             <header class="inventory-overlay__header">
                 <h2>Equipped</h2>
@@ -146,6 +169,9 @@ function slotLabel(slot: EquipmentSlotId): string {
         <section class="inventory-overlay__inventory" aria-label="Inventory">
             <header class="inventory-overlay__header">
                 <h2>Inventory</h2>
+                <span class="inventory-capacity" aria-label="Занято слотов"
+                    >{{ character.inventory.length }} / {{ INVENTORY_CAPACITY }}</span
+                >
                 <button
                     class="inventory-overlay__close"
                     type="button"
@@ -161,11 +187,14 @@ function slotLabel(slot: EquipmentSlotId): string {
                     v-for="(item, index) in inventorySlots"
                     :key="item?.instanceId ?? index"
                     class="inventory-slot"
+                    :data-filled="Boolean(item)"
                     :class="{
-                        'inventory-slot--selected': item?.instanceId === selectedItemId,
+                        'inventory-slot--selected':
+                            Boolean(item) && item?.instanceId === selectedItemId,
                     }"
                     type="button"
                     :aria-label="item === undefined ? `Empty slot ${index + 1}` : itemName(item)"
+                    :title="item ? itemName(item) : undefined"
                     @click="selectItem(item)"
                 >
                     <img
@@ -174,11 +203,26 @@ function slotLabel(slot: EquipmentSlotId): string {
                         :src="itemAssetCatalog[item.itemId].src"
                         :alt="itemName(item)"
                     />
+                    <span
+                        v-if="item && (item.quantity ?? 1) > 1"
+                        class="item-quantity"
+                        aria-hidden="true"
+                        >{{ item.quantity }}</span
+                    >
                 </button>
             </div>
 
             <div v-if="selectedItem" class="inventory-actions">
                 <strong>{{ itemName(selectedItem) }}</strong>
+                <small v-if="(ITEM_DEFINITIONS[selectedItem.itemId].maxStack ?? 1) > 1"
+                    >До {{ ITEM_DEFINITIONS[selectedItem.itemId].maxStack }} в одном слоте</small
+                >
+                <p
+                    v-if="ITEM_DEFINITIONS[selectedItem.itemId].description"
+                    class="inventory-item-description"
+                >
+                    {{ ITEM_DEFINITIONS[selectedItem.itemId].description }}
+                </p>
                 <button
                     v-if="canEat(selectedItem)"
                     type="button"

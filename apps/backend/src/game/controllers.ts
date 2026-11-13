@@ -1,7 +1,15 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 
 import { type GameCharacter } from './character'
+import { isTargetInAttackRange } from './combat'
+import { lastHeardPoint } from './hearing'
 import { distance, normalize } from './math'
+import {
+    coordinatedTarget,
+    isActiveObserver,
+    reportedThreatPosition,
+} from './mobAggro'
+import { tryPursuitDash } from './mobPursuit'
 import type { NavigationService, TileCoordinate } from './navigation'
 import type { GameRoom } from './room'
 
@@ -34,44 +42,115 @@ export class Mob1Controller implements CharacterController {
     }
 
     public update(character: GameCharacter, room: GameRoom, now: number): void {
-        if (!character.alive) {
+        if (!canDecide(character)) {
             return
         }
 
-        const target = room.findVisibleTarget(character, 112)
+        const navigation = room.navigationFor(character)
+        const target = coordinatedTarget(character, room, now)
         const shouldFleeTarget =
             target !== undefined &&
             this.options.fleeWhenThreatened &&
             shouldFlee(character, target)
 
-        if (target !== undefined && isInMeleeRange(character, target)) {
-            if (!shouldFleeTarget) {
-                character.clearPath()
-            }
+        if (target !== undefined) {
             character.updateFacing({
                 x: target.position.x - character.position.x,
                 y: target.position.y - character.position.y,
             })
+        }
+
+        if (
+            target !== undefined &&
+            isTargetInAttackRange(character, target, navigation.grid.tileWidth)
+        ) {
+            if (!shouldFleeTarget) {
+                character.clearPath()
+            }
             room.requestAttack(character, now)
 
             if (shouldFleeTarget) {
-                this.flee(character, target, room.navigation, now)
+                this.flee(character, target, navigation, now)
             }
 
             return
         }
 
         if (target !== undefined && shouldFleeTarget) {
-            this.flee(character, target, room.navigation, now)
+            this.flee(character, target, navigation, now)
             return
         }
 
         if (target !== undefined) {
-            this.chase(character, target, room.navigation, now)
+            this.pursue(character, target, room, navigation, now)
             return
         }
 
-        this.wander(character, room.navigation, now)
+        this.investigateOrWander(character, room, navigation, now)
+    }
+
+    private investigateOrWander(
+        character: GameCharacter,
+        room: GameRoom,
+        navigation: NavigationService,
+        now: number
+    ): void {
+        const point =
+            lastHeardPoint(character, room, now) ??
+            reportedThreatPosition(character, room, now)
+        if (point !== undefined) {
+            this.investigate(character, point, navigation, now)
+        } else {
+            this.wander(character, navigation, now)
+        }
+    }
+
+    private investigate(
+        character: GameCharacter,
+        point: Vector2,
+        navigation: NavigationService,
+        now: number
+    ): void {
+        if (distance(character.position, point) <= 8) {
+            character.clearPath()
+            return
+        }
+        if (!character.hasPath() || now - this.lastPlanAt >= 500) {
+            character.setPath(
+                navigation.findPathWorld(character.position, point)
+            )
+            this.lastPlanAt = now
+        }
+    }
+
+    private pursue(
+        character: GameCharacter,
+        target: GameCharacter,
+        room: GameRoom,
+        navigation: NavigationService,
+        now: number
+    ): void {
+        const dash = this.pursuitDash(character, target, navigation, now)
+        if (dash.length > 0) {
+            room.publishEvents(dash)
+        } else {
+            this.chase(character, target, navigation, now)
+        }
+    }
+
+    private pursuitDash(
+        character: GameCharacter,
+        target: GameCharacter,
+        navigation: NavigationService,
+        now: number
+    ) {
+        if (
+            this.options.fleeWhenThreatened &&
+            character.hp / character.maxHp <= 0.35
+        ) {
+            return []
+        }
+        return tryPursuitDash(character, target, navigation, now)
     }
 
     private chase(
@@ -179,13 +258,6 @@ function shouldFlee(character: GameCharacter, target: GameCharacter): boolean {
     )
 }
 
-function isInMeleeRange(
-    character: GameCharacter,
-    target: GameCharacter
-): boolean {
-    return distance(character.position, target.position) <= 24
-}
-
 function rotate(vector: Vector2, degrees: number): Vector2 {
     const radians = (degrees * Math.PI) / 180
     const cos = Math.cos(radians)
@@ -195,4 +267,10 @@ function rotate(vector: Vector2, degrees: number): Vector2 {
         x: vector.x * cos - vector.y * sin,
         y: vector.x * sin + vector.y * cos,
     }
+}
+
+function canDecide(character: GameCharacter): boolean {
+    // Simulation clears this marker after the final (possibly partial) dash step.
+    // Planning before that step would leave already-passed waypoints behind the actor.
+    return isActiveObserver(character) && character.movement.dashUntil === 0
 }
