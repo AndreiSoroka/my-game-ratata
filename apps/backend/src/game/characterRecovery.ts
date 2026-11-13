@@ -9,6 +9,11 @@ export function restoreCharacter(
     now: number,
     atSpawn: boolean
 ): void {
+    const previousHp = character.hp
+    const untrainableDamage = Math.min(
+        character.abilities.untrainableHpDamage,
+        character.maxHp - previousHp
+    )
     clearAbilityEffects(character)
     character.alive = true
     character.movement = createMovementState()
@@ -22,6 +27,13 @@ export function restoreCharacter(
     const fraction = atSpawn ? 1 : 0.5
     character.energy = character.config.resources.maxEnergy * fraction
     character.hp = Math.max(1, Math.ceil(character.maxHp * fraction))
+    if (!atSpawn) {
+        const healed = Math.max(0, character.hp - previousHp)
+        character.abilities.untrainableHpDamage = Math.max(
+            0,
+            untrainableDamage - healed
+        )
+    }
     character.mana = character.config.resources.maxMana * fraction
     if (atSpawn) {
         character.locationId = character.spawnLocationId
