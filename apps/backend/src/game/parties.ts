@@ -10,10 +10,12 @@ import { type GoldAwarder, GuildService } from './guild'
 import { NoticeStore } from './notices'
 import {
     available,
+    cancelPartyInvitations,
     createPartySnapshot,
     guildContact,
     nearbyPlayers,
     type PartyRecord,
+    pendingPartyInvitation,
     shouldRemoveMember,
     staleInvitation,
 } from './partyRules'
@@ -143,6 +145,19 @@ export class PartyService {
                 'Пригласи другого живого игрока в своей локации, не дальше 240 шагов.'
             )
         }
+        const pending = pendingPartyInvitation(
+            this.invitations.values(),
+            actor.id,
+            target.id
+        )
+        if (pending !== undefined) {
+            return this.tell(
+                actor.id,
+                pending.toId === actor.id
+                    ? 'Сначала ответь на полученное приглашение.'
+                    : 'Приглашение уже отправлено.'
+            )
+        }
         if (this.membership.has(target.id)) {
             return this.tell(actor.id, 'Этот искатель уже состоит в группе.')
         }
@@ -162,15 +177,6 @@ export class PartyService {
                 actor.id,
                 'Приглашает только лидер; в группе не больше четырёх участников.'
             )
-        }
-        if (
-            [...this.invitations.values()].some(
-                (invitation) =>
-                    invitation.fromId === actor.id &&
-                    invitation.toId === target.id
-            )
-        ) {
-            return this.tell(actor.id, 'Приглашение уже отправлено.')
         }
         const invitation: PartyInvitationSnapshot = {
             id: `invitation_${String(this.nextInvitation++)}`,
@@ -226,6 +232,7 @@ export class PartyService {
         party.members.add(actor.id)
         this.guild.addLateMember(party.id, actor)
         this.membership.set(actor.id, party.id)
+        cancelPartyInvitations(this.invitations, actor.id)
         this.notices.set(leader.id, `${actor.nickname} присоединился к группе.`)
         return this.tell(actor.id, 'Ты вступил в группу по собственной воле.')
     }
@@ -295,14 +302,7 @@ export class PartyService {
             }
         }
         this.membership.delete(playerId)
-        for (const [id, invitation] of this.invitations) {
-            if (
-                invitation.fromId === playerId ||
-                invitation.toId === playerId
-            ) {
-                this.invitations.delete(id)
-            }
-        }
+        cancelPartyInvitations(this.invitations, playerId)
     }
 
     private tell(playerId: string, text: string): GameEventPayload[] {

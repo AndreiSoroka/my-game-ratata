@@ -104,6 +104,16 @@ export function createPartySnapshot(
                           id,
                           nickname: character.nickname,
                           alive: character.alive,
+                          hpPercent: Math.round(
+                              Math.max(
+                                  0,
+                                  Math.min(
+                                      1,
+                                      character.hp /
+                                          Math.max(1, character.maxHp)
+                                  )
+                              ) * 100
+                          ),
                           online: !character.tags.has('offline'),
                           locationId: character.locationId,
                       },
@@ -113,4 +123,26 @@ export function createPartySnapshot(
         noticeId: view.notices.idFor(playerId),
         partyId: party?.id ?? null,
     })
+}
+
+export function pendingPartyInvitation(
+    invitations: Iterable<PartyInvitationSnapshot>,
+    actorId: string,
+    targetId: string
+): PartyInvitationSnapshot | undefined {
+    return [...invitations].find(
+        (invitation) =>
+            (invitation.fromId === actorId && invitation.toId === targetId) ||
+            (invitation.fromId === targetId && invitation.toId === actorId)
+    )
+}
+export function cancelPartyInvitations(
+    invitations: Map<string, PartyInvitationSnapshot>,
+    playerId: string
+): void {
+    for (const [id, invitation] of invitations) {
+        if (invitation.fromId === playerId || invitation.toId === playerId) {
+            invitations.delete(id)
+        }
+    }
 }

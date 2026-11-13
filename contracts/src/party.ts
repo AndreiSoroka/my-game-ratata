@@ -9,6 +9,7 @@ export type PartyClientMessage =
 
 export interface PartyMemberSnapshot {
     alive: boolean
+    hpPercent: number
     id: string
     locationId: string
     nickname: string

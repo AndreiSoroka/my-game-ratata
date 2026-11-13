@@ -1,0 +1,31 @@
+:root {
+    --rpg-panel: #1a211c;
+    --rpg-brass: #b09664;
+    --rpg-text: #f6ebd4;
+    --rpg-focus: #ffe1a0;
+    --rpg-speech: #f5efe3;
+}
+.rpg-panel {
+    background: var(--rpg-panel);
+    border: 1px solid var(--rpg-brass);
+    box-shadow: 2px 3px 0 #0c1512;
+    color: var(--rpg-text);
+    border-radius: 0;
+    font:
+        14px/1.45 system-ui,
+        sans-serif;
+}
+.rpg-panel button:focus-visible,
+.rpg-panel [tabindex]:focus-visible {
+    outline: 2px solid var(--rpg-focus);
+    outline-offset: 2px;
+}
+.rpg-panel button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.rpg-panel h2,
+.rpg-panel h3 {
+    color: var(--rpg-text);
+    font-family: 'Pixelify Sans', system-ui, sans-serif;
+}
