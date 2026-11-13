@@ -3,6 +3,7 @@ import type { DamageKind, GameEventPayload } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import { grantRetaliation } from './crimeRelations'
 import { canTargetByFaction } from './factions'
+import { cancelPrayerCast } from './prayerCancellation'
 import { trainSkill } from './skillProgression'
 export interface DamageResolution {
     hpDamage: number
@@ -48,6 +49,7 @@ export function resolveCharacterDamage(
         target.maxHp - target.hp
     )
     target.applyDamage(result.hpDamage, now)
+    result.events.push(...cancelPrayerCast(target, now))
     target.abilities.untrainableHpDamage = Math.min(
         target.maxHp - target.hp,
         tainted + (hostile ? 0 : result.hpDamage)
