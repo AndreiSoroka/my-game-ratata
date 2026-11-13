@@ -57,6 +57,7 @@ const tools = [
                                         'open_chest',
                                         'close_chest',
                                         'take_all_chest_items',
+                                        'take_chest_gold',
                                     ],
                                 },
                                 chestId: {

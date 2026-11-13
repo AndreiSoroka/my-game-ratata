@@ -19,6 +19,7 @@ interface LifeContext {
     now: number
     onEvents: (events: GameEventPayload[]) => void
     abilityContextFor?: (actor: GameCharacter, now: number) => AbilityContext
+    beforeRetire?: (character: GameCharacter, now: number) => void
 }
 
 export function advanceRoomLives(context: LifeContext): void {
@@ -41,6 +42,7 @@ export function advanceRoomLives(context: LifeContext): void {
         if (!shouldRetireCharacter(character, now)) {
             continue
         }
+        context.beforeRetire?.(character, now)
         const event = retireCharacter(character)
         onEvents([event])
         for (const [ws, id] of context.connections) {

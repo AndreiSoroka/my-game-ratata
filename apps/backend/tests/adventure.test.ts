@@ -382,7 +382,17 @@ function recordKill(
             })
         )
         inventory.dropLootForDeaths(events, finder(player, target))
-        inventory.pickupNearestItem(player)
+        const corpse = inventory
+            .snapshotChests()
+            .find((entry) => entry.kind === 'corpse')
+        if (corpse === undefined) {
+            throw new Error('Expected trophy corpse')
+        }
+        inventory.openChestById(player, corpse.id)
+        inventory.containers.handle(player, {
+            type: 'take_all_chest_items',
+            chestId: corpse.id,
+        })
     }
 }
 

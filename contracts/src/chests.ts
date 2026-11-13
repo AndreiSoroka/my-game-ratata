@@ -1,4 +1,9 @@
-import type { ItemInstanceSnapshot, Vector2 } from './index'
+import type {
+    CharacterFacing,
+    CharacterVisualId,
+    ItemInstanceSnapshot,
+    Vector2,
+} from './index'
 
 export const CHEST_INTERACTION_RANGE = 28
 export const CHEST_FOOTPRINT_SIZE = 16
@@ -14,8 +19,18 @@ export type ChestClientMessage =
     | { type: 'put_chest_item'; chestId: string; itemInstanceId: string }
     | { type: 'take_all_chest_items'; chestId: string }
     | { type: 'close_chest'; chestId: string }
+    | { type: 'take_chest_gold'; chestId: string }
+
+export interface CorpseAppearance {
+    characterId: string
+    visualId: CharacterVisualId
+    facing: CharacterFacing
+}
 
 export interface ChestContainerSnapshot {
+    kind?: 'chest' | 'corpse'
+    title?: string
+    gold?: number
     chestId: string
     items: ItemInstanceSnapshot[]
 }

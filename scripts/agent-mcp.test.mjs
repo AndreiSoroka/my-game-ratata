@@ -69,6 +69,7 @@ test('MCP exposes validated shared container commands and private actor results'
         'open_chest',
         'close_chest',
         'take_all_chest_items',
+        'take_chest_gold',
         'take_chest_item',
         'put_chest_item',
     ]) {

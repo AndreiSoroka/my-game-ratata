@@ -12,6 +12,7 @@ import { type attemptAttack } from './combat'
 import { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { parseSocketMessage } from './messages'
+import { createRoomScavenger } from './mobScavenging'
 import { loadNavigationService, type NavigationService } from './navigation'
 import { seedNpcPockets } from './npcPockets'
 import { PartyService } from './parties'
@@ -55,7 +56,7 @@ export class GameRoom {
 
     public constructor(navigation = loadNavigationService()) {
         this.navigation = navigation
-        this.world = new WorldLocations(navigation)
+        this.world = new WorldLocations(navigation, this.adventure)
         spawnRoomCharacters(
             this.world,
             this.navigation,
@@ -129,6 +130,10 @@ export class GameRoom {
 
     public readonly chestActions = createRoomChestActions(() => this.world)
     public readonly requestPickup = createRoomItemPicker(() => this.world)
+    public readonly requestScavenge = createRoomScavenger(
+        () => this.world,
+        (events) => this.publishEvents(events)
+    )
 
     public navigationFor(character: GameCharacter): NavigationService {
         return this.world.get(character.locationId).navigation

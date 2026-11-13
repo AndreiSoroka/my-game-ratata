@@ -26,7 +26,10 @@ export function chestActions(
         ? [
               {
                   id: `chest:${chest.id}`,
-                  label: 'Открыть сундук',
+                  label:
+                      chest.kind === 'corpse'
+                          ? `Обыскать: ${chest.title?.replace(/^Тело: /, '') ?? 'тело'}`
+                          : 'Открыть сундук',
                   command: { type: 'open_chest', chestId: chest.id },
               },
           ]

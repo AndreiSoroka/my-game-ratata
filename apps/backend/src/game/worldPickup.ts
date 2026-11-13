@@ -7,6 +7,7 @@ import type {
 import type { GameCharacter } from './character'
 import { addInventoryItem, type InventoryItemInstance } from './inventory'
 import { distance } from './math'
+import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
 
 const pickupRadius = 24
@@ -40,7 +41,8 @@ export function pickupWorldItem(
     items: Map<string, LooseWorldItem>,
     locationId: string,
     worldItemId: string | undefined,
-    now: number
+    now: number,
+    navigation?: NavigationService
 ): GameEventPayload[] {
     if (
         actor.locationId !== locationId ||
@@ -51,11 +53,13 @@ export function pickupWorldItem(
     }
     const item =
         worldItemId === undefined
-            ? nearestItem(actor.position, items.values())
+            ? nearestItem(actor.position, items.values(), navigation)
             : items.get(worldItemId)
     if (
         item === undefined ||
         distance(actor.position, item.position) > pickupRadius ||
+        (navigation !== undefined &&
+            !navigation.hasLineOfSight(actor.position, item.position)) ||
         !addInventoryItem(actor.inventory, item.item)
     ) {
         return []
@@ -68,10 +72,19 @@ export function pickupWorldItem(
 
 function nearestItem(
     position: Vector2,
-    items: Iterable<LooseWorldItem>
+    items: Iterable<LooseWorldItem>,
+    navigation?: NavigationService
 ): LooseWorldItem | undefined {
     return [...items]
         .map((item) => ({ distance: distance(position, item.position), item }))
-        .filter((candidate) => candidate.distance <= pickupRadius)
+        .filter(
+            (candidate) =>
+                candidate.distance <= pickupRadius &&
+                (navigation === undefined ||
+                    navigation.hasLineOfSight(
+                        position,
+                        candidate.item.position
+                    ))
+        )
         .sort((a, b) => a.distance - b.distance)[0]?.item
 }

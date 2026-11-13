@@ -4,6 +4,7 @@ import {
     chestInteractionDistance,
     type GameEventPayload,
     type Vector2,
+    type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -79,6 +80,10 @@ export function chestRefusalNotice(
 }
 
 export interface WorldChest {
+    kind?: 'chest' | 'corpse'
+    title?: string
+    gold?: number
+    corpse?: NonNullable<WorldChestSnapshot['corpse']>
     contents: InventoryItemInstance[]
     id: string
     opened: boolean

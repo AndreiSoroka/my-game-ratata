@@ -24,6 +24,7 @@ import { AttackZoneViews } from './attackZoneViews'
 import { BuildingViews } from './buildingViews'
 import { characterFrame } from './characterFrame'
 import { type CharacterBundle, createBundle, removeBundle } from './characterViewBundle'
+import { CorpseViews } from './corpseViews'
 import { DamageFeedback } from './damageFeedback'
 import { DepthPropViews } from './depthPropViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
@@ -39,6 +40,7 @@ export class SceneActors {
     private readonly buildingViews: BuildingViews
     private readonly depthProps: DepthPropViews
     private readonly worldActors: WorldSceneActors
+    private readonly corpseViews: CorpseViews
     private readonly attackZones: AttackZoneViews
     private readonly interactionTarget: InteractionTargetViews
     private mapVisibility: MapVisibility | undefined
@@ -63,6 +65,7 @@ export class SceneActors {
         this.signReading = new SignReadingViews(engine)
         this.buildingViews = new BuildingViews(engine)
         this.depthProps = new DepthPropViews(engine)
+        this.corpseViews = new CorpseViews(engine, sheets)
         this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
         this.damageFeedback = new DamageFeedback(
             engine,
@@ -78,6 +81,7 @@ export class SceneActors {
         this.damageFeedback.clear()
     }
     public dispose(): void {
+        this.corpseViews.dispose()
         this.damageFeedback.dispose()
         this.signReading.dispose()
         this.interactionTarget.dispose()
@@ -90,6 +94,7 @@ export class SceneActors {
 
     public addMap(map: RenderedTiledMap): void {
         this.clearDamage()
+        this.corpseViews.dispose()
         this.interactionTarget.clear()
         this.signReading.setMap(map.visibility)
         this.mapVisibility = map.visibility
@@ -139,9 +144,10 @@ export class SceneActors {
             this.updateCharacter(character, character.id === localPlayerId)
         }
 
+        this.corpseViews.update(snapshot.chests, snapshot.characters)
         this.worldActors.update(
             snapshot.items,
-            snapshot.chests,
+            snapshot.chests.filter((container) => container.kind !== 'corpse'),
             snapshot.adventure?.resourceNodes,
             snapshot.adventure?.farmPlots,
             snapshot.serverTime

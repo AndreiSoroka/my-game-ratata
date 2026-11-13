@@ -44,9 +44,16 @@ export function heartFixture(
         return { target, events, loot }
     }
     const collect = () => {
-        for (const item of inventory.snapshotItems()) {
-            actor.position = { ...item.position }
-            inventory.pickupItem(actor, item.id, clock.now)
+        for (const corpse of inventory
+            .snapshotChests()
+            .filter((item) => item.kind === 'corpse')) {
+            actor.position = { ...corpse.position }
+            inventory.openChestById(actor, corpse.id, clock.now)
+            inventory.containers.handle(
+                actor,
+                { type: 'take_all_chest_items', chestId: corpse.id },
+                clock.now
+            )
         }
     }
     return {

@@ -67,6 +67,13 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     advanceRoomLives({
         ...context,
         abilityContextFor: (actor, at) => room.abilityContextFor(actor, at),
+        beforeRetire: (actor, at) => {
+            context.onEvents(
+                context.world
+                    .get(actor.locationId)
+                    .inventory.finalizeDeath(actor, at)
+            )
+        },
     })
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))

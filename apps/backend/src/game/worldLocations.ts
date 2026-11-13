@@ -8,6 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { CorpseWallet } from './corpseWallet'
 import { loadNavigationService, NavigationService } from './navigation'
 import { WorldInventory } from './worldInventory'
 
@@ -26,7 +27,7 @@ export class WorldLocations {
     public readonly locations = new Map<string, LocationState>()
     private readonly blockedEdges = new Map<string, string>()
 
-    public constructor(center: NavigationService) {
+    public constructor(center: NavigationService, wallet?: CorpseWallet) {
         for (const definition of WORLD_LOCATION_DEFINITIONS) {
             const { id } = definition
             const navigation =
@@ -44,7 +45,7 @@ export class WorldLocations {
                     regionName: REGION_NAME,
                     map: { ...navigation.summary, id },
                 },
-                inventory: new WorldInventory(navigation, id),
+                inventory: new WorldInventory(navigation, id, wallet),
                 navigation,
             })
         }

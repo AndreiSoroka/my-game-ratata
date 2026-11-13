@@ -23,6 +23,7 @@ import {
 } from './adventureState'
 import { purchaseAdventureItem, refreshTradeDialogue } from './adventureTrading'
 import type { GameCharacter } from './character'
+import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
 import { materialSnapshot } from './materialInventory'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
@@ -227,16 +228,15 @@ export class AdventureService {
     }
 
     public trySpendGold(playerId: string, amount: number): boolean {
-        const state = this.stateFor(playerId)
-        if (
-            !Number.isSafeInteger(amount) ||
-            amount <= 0 ||
-            state.gold < amount
-        ) {
-            return false
-        }
-        state.gold -= amount
-        return true
+        return spendWallet(this.stateFor(playerId), amount)
+    }
+
+    public drainGold(actorId: string): number {
+        return drainWallet(this.stateFor(actorId))
+    }
+
+    public creditLootGold(actorId: string, amount: number): boolean {
+        return creditWallet(this.stateFor(actorId), amount)
     }
 
     public refreshTradeAccess(actor: GameCharacter): void {
@@ -295,7 +295,7 @@ export class AdventureService {
         state.kills += 1
         setNotice(
             state,
-            'Враждебный слизень повержен. Подбери выпавшее сердце с земли.'
+            'Враждебный слизень повержен. Обыщи его тело и забери сердце.'
         )
     }
 

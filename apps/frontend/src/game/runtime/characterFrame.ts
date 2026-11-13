@@ -13,7 +13,7 @@ const nativeHumanIds = new Set([
 
 export function characterFrame(
     definition: CharacterDefinition,
-    snapshot: CharacterSnapshot,
+    snapshot: Pick<CharacterSnapshot, 'alive' | 'facing' | 'animation'>,
     now: number,
     hurtElapsed?: number
 ) {

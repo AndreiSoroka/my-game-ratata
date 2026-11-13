@@ -16,6 +16,7 @@ import {
     revealChestContents,
     type WorldChest,
 } from './chestInteraction'
+import type { CorpseWallet } from './corpseWallet'
 import {
     equipInventoryItem,
     type InventoryItemInstance,
@@ -24,6 +25,7 @@ import {
     unequipItem,
 } from './inventory'
 import type { NavigationService } from './navigation'
+import { canPerformSkillAction } from './skillProgression'
 import { WorldDeathLoot } from './worldDeathLoot'
 import { dropPosition, heal, isPointInZones } from './worldInventoryHelpers'
 import { type LooseWorldItem, pickupWorldItem } from './worldPickup'
@@ -37,24 +39,28 @@ export class WorldInventory {
 
     public constructor(
         private readonly navigation: NavigationService,
-        private readonly locationId = navigation.grid.id
+        private readonly locationId = navigation.grid.id,
+        wallet?: CorpseWallet
     ) {
-        this.deathLoot = new WorldDeathLoot(locationId, (item, position) =>
-            this.dropItemNear(item, position)
-        )
         this.chests = createWorldChests(navigation)
+        this.deathLoot = new WorldDeathLoot(locationId, this.chests, wallet)
         this.containers = new ChestContainers(
             this.chests,
             navigation,
-            locationId
+            locationId,
+            wallet
         )
     }
 
     public applyInventoryAction(
         player: GameCharacter,
         action: InventoryActionKind,
-        itemInstanceId: string
+        itemInstanceId: string,
+        now = Date.now()
     ): GameEventPayload[] {
+        if (!canPerformSkillAction(player, now)) {
+            return []
+        }
         switch (action) {
             case 'eat':
                 return this.eatInventoryItem(player, itemInstanceId)
@@ -81,7 +87,8 @@ export class WorldInventory {
             this.looseItems,
             this.locationId,
             worldItemId,
-            now
+            now,
+            this.navigation
         )
     }
 
@@ -111,6 +118,13 @@ export class WorldInventory {
         return this.deathLoot.resolve(events, findCharacter)
     }
 
+    public finalizeDeath(
+        actor: GameCharacter,
+        now: number
+    ): GameEventPayload[] {
+        return this.deathLoot.finalize(actor, now)
+    }
+
     public openChestById(
         actor: GameCharacter,
         chestId: string,
@@ -127,6 +141,7 @@ export class WorldInventory {
         return [...this.chests.values()]
             .filter(
                 (chest) =>
+                    chest.kind !== 'corpse' &&
                     isPointInZones(chest.position, actor.attackZones) &&
                     chestHasLineOfSight(
                         actor.position,
@@ -150,6 +165,9 @@ export class WorldInventory {
 
     public snapshotChests(): WorldChestSnapshot[] {
         return [...this.chests.values()].map((chest) => ({
+            ...(chest.kind === 'corpse'
+                ? { kind: chest.kind, title: chest.title, corpse: chest.corpse }
+                : {}),
             id: chest.id,
             itemCount: chest.contents.length,
             position: chest.position,
@@ -169,7 +187,11 @@ export class WorldInventory {
                 ? undefined
                 : ITEM_DEFINITIONS[item.itemId].healHp
 
-        if (item === undefined || healHp === undefined) {
+        if (
+            item === undefined ||
+            healHp === undefined ||
+            player.hp >= player.maxHp
+        ) {
             return []
         }
 
@@ -225,7 +247,10 @@ export class WorldInventory {
         player: GameCharacter,
         itemInstanceId: string
     ): GameEventPayload[] {
-        const chest = findNearestChest(this.chests.values(), player.position)
+        const chest = findNearestChest(
+            [...this.chests.values()].filter((item) => item.kind !== 'corpse'),
+            player.position
+        )
         return this.containers.stash(player, chest?.id, itemInstanceId)
     }
 

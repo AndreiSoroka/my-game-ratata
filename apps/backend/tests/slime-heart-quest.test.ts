@@ -29,7 +29,11 @@ describe('inventory-backed heart delivery quest', () => {
         setup.service.interact(setup.actor, setup.mira.id, [setup.mira])
         setup.service.choose(setup.actor, 'turn_in_trophies', [setup.mira])
         expect(setup.snapshot().gold).toBe(0)
-        expect(setup.inventory.snapshotItems()).toHaveLength(3)
+        expect(
+            setup.inventory
+                .snapshotChests()
+                .filter((chest) => chest.kind === 'corpse')
+        ).toHaveLength(3)
     })
 
     it('consumes exactly three owned hearts once while preserving the fourth heart and other items', () => {

@@ -5,6 +5,7 @@ export function isChestCommandType(type: unknown): boolean {
         type === 'open_chest' ||
         type === 'close_chest' ||
         type === 'take_chest_item' ||
+        type === 'take_chest_gold' ||
         type === 'put_chest_item' ||
         type === 'take_all_chest_items'
     )
@@ -27,6 +28,7 @@ export function parseChestCommand(
         case 'open_chest':
         case 'close_chest':
         case 'take_all_chest_items':
+        case 'take_chest_gold':
             return { type: record['type'], chestId }
         case 'take_chest_item':
         case 'put_chest_item': {

@@ -14,7 +14,11 @@ import type {
 import type { CreatureType } from './creatures'
 export * from './control'
 export * from './creatures'
-import type { ChestClientMessage, ChestContainerSnapshot } from './chests'
+import type {
+    ChestClientMessage,
+    ChestContainerSnapshot,
+    CorpseAppearance,
+} from './chests'
 export * from './chests'
 export * from './inventory'
 import type {
@@ -182,6 +186,9 @@ export interface WorldItemSnapshot {
 export type WorldChestState = 'closed' | 'open'
 
 export interface WorldChestSnapshot {
+    kind?: 'chest' | 'corpse'
+    title?: string
+    corpse?: CorpseAppearance
     id: string
     itemCount: number
     position: Vector2

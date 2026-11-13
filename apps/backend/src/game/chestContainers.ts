@@ -11,6 +11,7 @@ import {
     chestRefusalNotice,
     type WorldChest,
 } from './chestInteraction'
+import type { CorpseWallet } from './corpseWallet'
 import { snapshotItem, transferInventoryItem } from './inventory'
 import { cancelMovementMode } from './movementActions'
 import type { NavigationService } from './navigation'
@@ -20,9 +21,10 @@ export class ChestContainers {
     private readonly viewers = new Map<string, string>()
 
     public constructor(
-        private readonly chests: ReadonlyMap<string, WorldChest>,
+        private readonly chests: Map<string, WorldChest>,
         private readonly navigation: NavigationService,
-        private readonly locationId: string
+        private readonly locationId: string,
+        private readonly wallet?: CorpseWallet
     ) {}
 
     public handle(
@@ -60,9 +62,9 @@ export class ChestContainers {
         if (message.type === 'put_chest_item') {
             return this.stash(actor, chest.id, message.itemInstanceId, now)
         }
-        return message.type === 'take_chest_item'
-            ? this.takeOne(actor, chest, message.itemInstanceId)
-            : this.takeAll(actor, chest)
+        const events = this.take(actor, chest, message)
+        this.removeEmptyCorpse(chest)
+        return events
     }
 
     public stash(
@@ -76,6 +78,12 @@ export class ChestContainers {
         const refusal = this.refusal(actor, chest, now)
         if (refusal !== undefined || chest === undefined) {
             return chestRefusalNotice(actor.id, refusal ?? 'Сундук недоступен.')
+        }
+        if (chest.kind === 'corpse') {
+            return chestRefusalNotice(
+                actor.id,
+                'В тело нельзя складывать вещи.'
+            )
         }
         const item = transferInventoryItem(
             actor.inventory,
@@ -116,7 +124,17 @@ export class ChestContainers {
             this.close(actor.id)
             return null
         }
-        return { chestId: chest.id, items: chest.contents.map(snapshotItem) }
+        return {
+            chestId: chest.id,
+            items: chest.contents.map(snapshotItem),
+            ...(chest.kind === 'corpse'
+                ? {
+                      kind: chest.kind,
+                      title: chest.title,
+                      gold: chest.gold ?? 0,
+                  }
+                : {}),
+        }
     }
 
     public close(actorId: string): void {
@@ -189,6 +207,50 @@ export class ChestContainers {
                 kind: 'item_pickup',
             },
         ]
+    }
+
+    private take(
+        actor: GameCharacter,
+        chest: WorldChest,
+        message: ChestClientMessage
+    ): GameEventPayload[] {
+        if (message.type === 'take_chest_gold') {
+            return this.takeGold(actor, chest)
+        }
+        if (message.type === 'take_chest_item') {
+            return this.takeOne(actor, chest, message.itemInstanceId)
+        }
+        return [...this.takeAll(actor, chest), ...this.takeGold(actor, chest)]
+    }
+
+    private removeEmptyCorpse(chest: WorldChest): void {
+        if (
+            chest.kind !== 'corpse' ||
+            chest.contents.length > 0 ||
+            (chest.gold ?? 0) > 0
+        ) {
+            return
+        }
+        this.invalidate(chest.id)
+        this.chests.delete(chest.id)
+    }
+
+    private takeGold(
+        actor: GameCharacter,
+        chest: WorldChest
+    ): GameEventPayload[] {
+        const amount = chest.gold ?? 0
+        if (
+            amount === 0 ||
+            this.wallet?.creditLootGold(actor.id, amount) !== true
+        ) {
+            return []
+        }
+        chest.gold = 0
+        return chestRefusalNotice(
+            actor.id,
+            `Подобрано ${String(amount)} золотых.`
+        )
     }
 
     private takeAll(

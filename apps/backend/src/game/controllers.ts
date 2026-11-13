@@ -101,7 +101,7 @@ export class Mob1Controller implements CharacterController {
             reportedThreatPosition(character, room, now)
         if (point !== undefined) {
             this.investigate(character, point, navigation, now)
-        } else {
+        } else if (!room.requestScavenge(character, now)) {
             this.wander(character, navigation, now)
         }
     }

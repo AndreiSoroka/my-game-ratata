@@ -19,6 +19,9 @@ const emit = defineEmits<{ command: [message: ClientMessage]; close: [] }>()
 const panel = ref<HTMLElement>()
 const titleId = useId()
 const focusedId = ref('')
+const isCorpse = computed(() => props.chest.kind === 'corpse')
+const containerTitle = computed(() => props.chest.title ?? 'Сундук')
+const hasGold = computed(() => (props.chest.gold ?? 0) > 0)
 const freeSlots = computed(() => Math.max(0, INVENTORY_CAPACITY - props.player.inventory.length))
 const takeableItems = computed(() =>
     props.chest.items.filter((item) => canAcceptInventoryItem(props.player.inventory, item))
@@ -34,6 +37,7 @@ const bagItems = computed(() =>
 const actionIds = computed(() => [
     ...bagItems.value.map((item) => `bag:${item.instanceId}`),
     ...props.chest.items.map((item) => `chest:${item.instanceId}`),
+    ...(hasGold.value ? ['chest:gold'] : []),
 ])
 function buttons(): HTMLButtonElement[] {
     return Array.from(
@@ -60,12 +64,15 @@ function take(itemInstanceId: string): void {
         emit('command', { type: 'take_chest_item', chestId: props.chest.chestId, itemInstanceId })
 }
 function put(itemInstanceId: string): void {
-    if (bagItems.value.some((item) => item.instanceId === itemInstanceId))
+    if (!isCorpse.value && bagItems.value.some((item) => item.instanceId === itemInstanceId))
         emit('command', { type: 'put_chest_item', chestId: props.chest.chestId, itemInstanceId })
 }
 function takeAll(): void {
-    if (takeableItems.value.length)
+    if (takeableItems.value.length || hasGold.value)
         emit('command', { type: 'take_all_chest_items', chestId: props.chest.chestId })
+}
+function takeGold(): void {
+    if (hasGold.value) emit('command', { type: 'take_chest_gold', chestId: props.chest.chestId })
 }
 watch(
     [
@@ -103,7 +110,9 @@ onMounted(async () => {
     focusAction(
         props.chest.items[0]
             ? `chest:${props.chest.items[0].instanceId}`
-            : (actionIds.value[0] ?? 'chest:')
+            : hasGold.value
+              ? 'chest:gold'
+              : (actionIds.value[0] ?? 'chest:')
     )
 })
 onBeforeUnmount(() => {
@@ -130,13 +139,19 @@ onBeforeUnmount(() => {
         >
             <header class="chest-header">
                 <div>
-                    <h2 :id="titleId">Рюкзак и сундук</h2>
-                    <p>Слева ваши вещи, справа — содержимое сундука.</p>
+                    <h2 :id="titleId">{{ isCorpse ? containerTitle : 'Рюкзак и сундук' }}</h2>
+                    <p>
+                        {{
+                            isCorpse
+                                ? 'Можно забрать оставшиеся вещи и золото.'
+                                : 'Слева ваши вещи, справа — содержимое сундука.'
+                        }}
+                    </p>
                 </div>
                 <button
                     type="button"
                     data-dialog-action="close"
-                    aria-label="Закрыть сундук"
+                    :aria-label="isCorpse ? 'Закрыть обыск' : 'Закрыть сундук'"
                     @click="emit('close')"
                 >
                     ×
@@ -152,7 +167,9 @@ onBeforeUnmount(() => {
                 <span v-if="freeSlots === 0">{{
                     takeableItems.length
                         ? 'Все слоты заняты. Подходящие материалы можно добавить в неполные стопки.'
-                        : 'Рюкзак заполнен. Положите вещь в сундук, чтобы освободить место.'
+                        : isCorpse
+                          ? 'Рюкзак заполнен. Непоместившиеся вещи останутся в теле.'
+                          : 'Рюкзак заполнен. Положите вещь в сундук, чтобы освободить место.'
                 }}</span>
             </p>
             <div class="chest-columns">
@@ -160,6 +177,7 @@ onBeforeUnmount(() => {
                     side="bag"
                     title="Мой рюкзак"
                     :items="bagItems"
+                    :is-item-disabled="() => isCorpse"
                     action-label="Положить →"
                     empty-text="В рюкзаке нет вещей."
                     @select="put"
@@ -168,18 +186,26 @@ onBeforeUnmount(() => {
                 </ChestPane>
                 <ChestPane
                     side="chest"
-                    title="Сундук"
+                    :title="containerTitle"
                     :items="chest.items"
                     :is-item-disabled="(item) => !canAcceptInventoryItem(player.inventory, item)"
                     action-label="← Взять"
-                    empty-text="Сундук пуст."
+                    :empty-text="isCorpse ? 'Вещей не осталось.' : 'Сундук пуст.'"
                     @select="take"
                 >
+                    <button
+                        v-if="hasGold"
+                        type="button"
+                        data-dialog-action="chest:gold"
+                        @click="takeGold"
+                    >
+                        Взять золото: {{ chest.gold }}
+                    </button>
                     <button
                         class="chest-take-all"
                         type="button"
                         data-dialog-action="all"
-                        :disabled="!takeableItems.length"
+                        :disabled="!takeableItems.length && !hasGold"
                         @click="takeAll"
                     >
                         Забрать всё
@@ -188,7 +214,8 @@ onBeforeUnmount(() => {
             </div>
             <p class="chest-hint">
                 ←→ — сторона · ↑↓ / W S — выбор · E / Enter — переложить · Esc — закрыть. Стопки
-                переносятся целиком. Непоместившиеся останутся в сундуке.
+                переносятся целиком. Непоместившиеся останутся
+                {{ isCorpse ? 'в теле' : 'в сундуке' }}.
             </p>
         </section>
     </div>

@@ -141,7 +141,7 @@ function farmTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Target
 function chestTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
     return snapshot.chests.map((chest) => ({
         key: `chest:${chest.id}`,
-        name: 'Сундук',
+        name: chest.title ?? 'Сундук',
         position: chest.position,
         range: CHEST_INTERACTION_RANGE,
         bounds: {

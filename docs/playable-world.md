@@ -4,13 +4,45 @@ The first scenario is authored AI-generated content: 25 deterministic maps in th
 
 ## Play
 
-Choose a name and one of four starting backgrounds. A background provides initial advantages; it does not lock future skills. Start without gold or equipment. Gather nearby herbs, fiber, wood and scrap; craft food, boots or a sword. Enter the guild building and talk to Mira in Novogorod to accept the bell quest. Hostile scripted slimes leave a real slime-heart item on the ground when defeated, even before the quest is accepted. Pick up three hearts into your backpack and bring them to Mira; delivery consumes those three item instances and pays the reward once. Hearts stored in a chest or dropped on the ground do not count until carried again. Kill statistics are separate from the delivery objective. Restore the bell after the delivery. Savva sells supplies in his shop south of the square. Resource deposits are shared and exhaustible.
+Choose a name and one of four starting backgrounds. A background provides initial advantages; it does not lock future skills. Start without gold or equipment. Gather nearby herbs, fiber, wood and scrap; craft food, boots or a sword. Enter the guild building and talk to Mira in Novogorod to accept the bell quest. Hostile scripted slimes leave one real slime-heart item inside a shared corpse when defeated, even before the quest is accepted. Search corpses and take three hearts into your backpack and bring them to Mira; delivery consumes those three item instances and pays the reward once. Hearts stored in a chest or dropped on the ground do not count until carried again. Kill statistics are separate from the delivery objective. Restore the bell after the delivery. Savva sells supplies in his shop south of the square. Resource deposits are shared and exhaustible.
 
 Vanguard is durable melee; Ranger moves faster and has longer reach; Arcanist has a larger mana reserve; Cleric starts with resurrection. Everyone can learn swordsmanship, miracles and fire magic. All use `GameCharacter`, common combat, movement, resources, cooldowns and progression. Their configuration and controller are the differences.
 
 WASD/arrows move, click walks to a point, Q/right click attacks, C toggles sneaking, Space dashes, and E selects the nearest visible target in the direction the hero faces; a sole action runs immediately, and multiple actions open a menu for that target only, I opens inventory, Enter opens chat. Targets directly underfoot remain available in any direction. An open menu stays pinned to its target and closes if it becomes unavailable; nearby neighbors never replace it. The exact E target is marked in the world with gold corners and a ground ring; the marker follows the same pinned selection and clears when interaction is blocked, the target is lost, or the scene changes. In the action menu use arrows or W/S to select, E (or Enter/Space) to activate and Esc to return to the world. Menus receive keyboard focus and stop movement/attacks; ordinary dialog and shop buttons are keyboard accessible as well. The adventure toolbar exposes gathering, crafting, dialogue, trade, resurrection, knowledge and companion requests. Its windows are mutually exclusive; entering text does not move the character. Touch a location edge while moving outward to enter the neighboring location. The world's outer edges show the Witcher joke requested by the author.
 
-A fallen hero has 60 seconds to be resurrected. A living cleric or a character with miracles level 5 within 48 world units channels for 3 seconds and spends 20 mana. Death, distance, location, stun and deadline are checked again at completion. Sister Vera lives in the chapel; a rescuer must still reach the fallen character before the deadline. Resurrection retains identity and belongings. At expiry the hero is removed, belongings/skill knowledge/personal quest state are erased, and starting again creates a new server identity even with the same nickname. Ordinary NPCs retain their shared-model respawn policy.
+A fallen hero has 60 seconds to be resurrected. A living cleric or a character with miracles level 5 within 48 world units channels for 3 seconds and spends 20 mana. Death, distance, location, stun and deadline are checked again at completion. Sister Vera lives in the chapel; a rescuer must still reach the fallen character before the deadline. Resurrection retains identity and belongings. At expiry all carried items, equipment and gold transfer into a shared corpse before the hero is removed. Skill knowledge and personal quest state end with that identity; starting again creates a new server identity even with the same nickname. Ordinary NPCs leave a corpse immediately and retain their shared-model respawn policy, without restoring the possessions they dropped.
+
+## Corpses and carried loot
+
+A mortal hero's backpack, equipped items and gold remain protected throughout the
+60-second resurrection window. Successful revival keeps them on the same character.
+Only final death moves them into the corpse, before retirement clears the old identity.
+Nonmortal NPCs transfer possessions immediately on death; respawning restores their
+health and resources but never recreates the bag, equipment or gold they lost.
+
+Approach a body, face it and press **E** to choose **Обыскать**. The shared container
+window shows the body's name, its remaining items and a separate gold action.
+Use arrows or W/S to select and **E/Enter** to take an item or **Взять золото**;
+**Забрать всё** transfers all items that fit and all available gold. Gold does not
+occupy backpack slots, so it can still be taken with a full bag. Overflow remains in
+the body. **Esc** closes the inspection. Depositing into a corpse is unavailable.
+
+Transfers move existing item instances atomically: two viewers cannot claim the
+same item or gold twice. Contents are sent only to validated nearby viewers; each
+transfer rechecks reach, line of sight, location, life and readiness. Lost reach,
+travel, death or disconnect closes the viewing session. Bodies remain independently
+of the character's disappearance or respawn until empty or the world session ends.
+They have stable identities derived from the character and genuine death sequence.
+
+Idle hostile creatures can walk to visible loose items or corpses and use the same
+pickup/container rules. Combat and investigating threats take priority. Carried loot
+is finite and transfers again when that creature dies; NPC equipment is never restored
+by respawn. A skeleton drops its actual equipped sword, without an extra random sword.
+Hostile nonhuman-controlled slimes supply one biological heart per genuine death,
+inside their corpse; this renewable trophy is independent of quest acceptance.
+
+All inventory, gold, corpse receipts and containers currently live in server memory.
+Restarting the server begins a new world session; durable persistence is not implemented.
 
 ## Knowledge through use
 
@@ -94,7 +126,7 @@ The optional native stdio MCP server controls eligible NPCs through the same aut
 GAME_AGENT_URL=http://127.0.0.1:3000 GAME_AGENT_TOKEN=your-local-token-at-least-24-characters bun scripts/agent-mcp.mjs
 ```
 
-The tools are `ratata_observe` (optional `locationId`) and `ratata_act` (`actorId` and a `decision`: `move`, `move_to`, `movement_mode`, `dash`, `attack`, `open_chest`, `take_chest_item`, `take_all_chest_items`, `put_chest_item`, `close_chest`, `steal`, `call_guards`, `report_theft`, `absolve`, `speak` or `wait`). The URL must be local and the matching token must contain at least 24 characters. Without a backend token the HTTP agent routes are disabled. Chest commands use the same shared rules; their agent action result includes only that controlled NPC’s validated `chest` view, while the global observation response does not expose container contents. The model control lease lasts 5 seconds, then the scripted controller resumes; `wait` releases it immediately. This bridge does not require or modify global Codex configuration. Browser `window.__ratataTest` remains the independent player-testing interface.
+The tools are `ratata_observe` (optional `locationId`) and `ratata_act` (`actorId` and a `decision`: `move`, `move_to`, `movement_mode`, `dash`, `attack`, `open_chest`, `take_chest_item`, `take_all_chest_items`, `take_chest_gold`, `put_chest_item`, `close_chest`, `steal`, `call_guards`, `report_theft`, `absolve`, `speak` or `wait`). The URL must be local and the matching token must contain at least 24 characters. Without a backend token the HTTP agent routes are disabled. Chest commands use the same shared rules; their agent action result includes only that controlled NPC’s validated `chest` view, while the global observation response does not expose container contents. The model control lease lasts 5 seconds, then the scripted controller resumes; `wait` releases it immediately. This bridge does not require or modify global Codex configuration. Browser `window.__ratataTest` remains the independent player-testing interface.
 
 ## Run locally
 
