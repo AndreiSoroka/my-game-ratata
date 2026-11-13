@@ -10,7 +10,9 @@ test.describe('shared gameplay controls', () => {
                 mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
             )
             await join(page, `keys-${info.workerIndex}-${mobile}`, 'arcanist')
-            const slots = page.getByLabel('Быстрые действия').getByRole('button')
+            const slots = page
+                .getByLabel('Быстрые действия')
+                .getByRole('button', { name: /^[1-4]:/ })
             await expect(slots).toHaveCount(4)
             await expect(slots.nth(0)).toHaveAccessibleName(/1: Пусто/)
             await page.keyboard.press('Shift+Digit1')

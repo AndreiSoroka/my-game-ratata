@@ -12,7 +12,10 @@ test.describe('inventory food quick slots', () => {
             )
             await join(page, `apple-${info.project.name}-${mobile}`)
             await expect(
-                page.getByLabel('Быстрые действия').getByRole('button').nth(3)
+                page
+                    .getByLabel('Быстрые действия')
+                    .getByRole('button', { name: /^[1-4]:/ })
+                    .nth(3)
             ).toHaveAccessibleName(/4: Пусто/)
             await acquireApple(page)
             try {
@@ -113,7 +116,10 @@ async function checkAssignment(page: Page) {
     await page.keyboard.press('Shift+Digit4')
     await expect(inventory.getByRole('status')).toContainText('Яблоко назначено в слот 4')
     await expect(
-        page.getByLabel('Быстрые действия').getByRole('button').nth(3)
+        page
+            .getByLabel('Быстрые действия')
+            .getByRole('button', { name: /^[1-4]:/ })
+            .nth(3)
     ).toHaveAccessibleName(/4: Яблоко/)
     await expect(focusedApple).toBeFocused()
     await expect(inventory.locator('.inventory-actions')).toHaveCount(0)
@@ -153,12 +159,28 @@ async function checkAssignment(page: Page) {
     await page.keyboard.press('Escape')
     await expect(inventory).toHaveCount(0)
     await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
-    const slots = page.getByLabel('Быстрые действия').getByRole('button')
+    const hotbar = page.getByLabel('Быстрые действия')
+    const slots = hotbar.getByRole('button', { name: /^[1-4]:/ })
     for (const index of [1, 3]) {
         await expect(slots.nth(index)).toHaveAccessibleName(new RegExp(`${index + 1}: Яблоко`))
         await expect(slots.nth(index).locator('.hotbar-item')).toBeVisible()
         await expect(slots.nth(index).locator('small')).toHaveText('1')
     }
+    expect(await inventoryAndPosition(page)).toEqual(before)
+
+    await hotbar.getByRole('button', { name: 'Очистить слот 4', exact: true }).click()
+    await expect(slots.nth(3)).toHaveAccessibleName(/4: Пусто/)
+    await expect(slots.nth(3)).toBeFocused()
+    await expect(slots.nth(1)).toHaveAccessibleName(/2: Яблоко/)
+    await expect(slots.nth(1).locator('small')).toHaveText('1')
+    expect(await inventoryAndPosition(page)).toEqual(before)
+
+    await hotbar.getByRole('button', { name: 'Очистить слот 2', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(slots.nth(1)).toHaveAccessibleName(/2: Пусто/)
+    await expect(slots.nth(1)).toBeFocused()
+    await expect(slots.nth(3)).toHaveAccessibleName(/4: Пусто/)
+    await expect(hotbar.getByRole('button', { name: /^Очистить слот/ })).toHaveCount(0)
     expect(await inventoryAndPosition(page)).toEqual(before)
 }
 

@@ -19,6 +19,7 @@ import {
     hotbarGlyphs as glyphs,
     prayerDescription,
 } from './hotbarBindings'
+import { activateFocusedButton } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
 
 const props = defineProps<{
@@ -38,6 +39,7 @@ const prayerAssigned = computed(() =>
     bindings.value.some((binding) => binding?.kind === 'ability' && binding.id === 'pray')
 )
 const editing = ref<number>()
+const bar = ref<HTMLElement>()
 const picker = ref<HTMLElement>()
 const food = computed(() => props.player.inventory.filter((item) => item.itemId === 'food'))
 const count = computed(() => food.value.reduce((sum, item) => sum + (item.quantity ?? 1), 0))
@@ -162,6 +164,11 @@ function assignItem(index: number, itemId: 'food'): void {
     if (itemId !== 'food' || !food.value.length) return
     bindings.value[index] = { kind: 'item', id: itemId }
 }
+async function clearSlot(index: number): Promise<void> {
+    bindings.value[index] = null
+    await nextTick()
+    bar.value?.querySelectorAll<HTMLButtonElement>('.hotbar-slot')[index]?.focus()
+}
 function close(): void {
     editing.value = undefined
     document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
@@ -170,32 +177,48 @@ useDialogEscape(picker, close)
 defineExpose({ activate, edit, assignItem })
 </script>
 <template>
-    <div class="hotbar rpg-panel" aria-label="Быстрые действия">
-        <button
-            v-for="(binding, index) in bindings"
-            :key="index"
-            type="button"
-            class="hotbar-slot"
-            :aria-disabled="Boolean(unavailable(binding))"
-            :aria-label="`${index + 1}: ${label(binding)}. Shift+${index + 1} — назначить`"
-            :title="`${unavailable(binding) ?? tooltip(binding)} · Shift+${index + 1}: назначить`"
-            :aria-description="unavailable(binding) ?? tooltip(binding)"
-            @click="binding ? activate(index) : edit(index)"
-            @contextmenu.prevent="edit(index)"
-        >
-            <kbd>{{ index + 1 }}</kbd>
-            <img
-                v-if="binding?.kind === 'item'"
-                class="hotbar-item"
-                :src="itemAssetCatalog.food.src"
-                alt=""
-            />
-            <span v-else-if="binding">{{ glyphs[binding.id] }}</span>
-            <small v-if="binding?.kind === 'item'">{{ count }}</small>
-            <b v-if="cooldown(binding) > 0" class="hotbar-cooldown">{{
-                (cooldown(binding) / 1000).toFixed(1)
-            }}</b>
-        </button>
+    <div
+        ref="bar"
+        class="hotbar rpg-panel"
+        aria-label="Быстрые действия"
+        @keydown.stop="activateFocusedButton($event, bar)"
+        @keyup.stop
+    >
+        <div v-for="(binding, index) in bindings" :key="index" class="hotbar-cell">
+            <button
+                type="button"
+                class="hotbar-slot"
+                :aria-disabled="Boolean(unavailable(binding))"
+                :aria-label="`${index + 1}: ${label(binding)}. Shift+${index + 1} — назначить`"
+                :title="`${unavailable(binding) ?? tooltip(binding)} · Shift+${index + 1}: назначить`"
+                :aria-description="unavailable(binding) ?? tooltip(binding)"
+                @click="binding ? activate(index) : edit(index)"
+                @contextmenu.prevent="edit(index)"
+            >
+                <kbd>{{ index + 1 }}</kbd>
+                <img
+                    v-if="binding?.kind === 'item'"
+                    class="hotbar-item"
+                    :src="itemAssetCatalog.food.src"
+                    alt=""
+                />
+                <span v-else-if="binding">{{ glyphs[binding.id] }}</span>
+                <small v-if="binding?.kind === 'item'">{{ count }}</small>
+                <b v-if="cooldown(binding) > 0" class="hotbar-cooldown">{{
+                    (cooldown(binding) / 1000).toFixed(1)
+                }}</b>
+            </button>
+            <button
+                v-if="binding"
+                type="button"
+                class="hotbar-clear"
+                :aria-label="`Очистить слот ${index + 1}`"
+                :title="`Очистить слот ${index + 1}`"
+                @click.stop="clearSlot(index)"
+            >
+                ×
+            </button>
+        </div>
         <p>1–4 · Shift+1–4 назначить</p>
     </div>
     <p v-if="prayerAssigned" class="prayer-preview rpg-panel" role="status">
