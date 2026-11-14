@@ -18,6 +18,7 @@ export * from './creatures'
 import type {
     ChestClientMessage,
     ChestContainerSnapshot,
+    ContainerKind,
     CorpseAppearance,
 } from './chests'
 export * from './chests'
@@ -55,10 +56,13 @@ export * from './life'
 import type { AdventureClientMessage, AdventureSnapshot } from './adventure'
 export type * from './adventure'
 export * from './environmentGeometry'
+import type { WorldObjectBounds } from './environment'
 export * from './farming'
 export * from './farms'
 export * from './graves'
 export * from './materials'
+export * from './pursuit'
+export * from './trees'
 
 import type { ContractProtocolVersion } from './service'
 export type { PlayerIdentity, WorldPosition } from './identity'
@@ -193,8 +197,10 @@ export interface WorldItemSnapshot {
 export type WorldChestState = 'closed' | 'open'
 
 export interface WorldChestSnapshot {
-    kind?: 'chest' | 'corpse'
+    kind?: ContainerKind
     title?: string
+    propId?: string
+    bounds?: WorldObjectBounds
     corpse?: CorpseAppearance
     id: string
     itemCount: number

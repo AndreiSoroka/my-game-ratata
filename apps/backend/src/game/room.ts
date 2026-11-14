@@ -7,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { AdventureService } from './adventure'
+import { adventureWorldOptions } from './adventureWorld'
 import type { GameCharacter } from './character'
 import { type attemptAttack } from './combat'
 import { CompanionService } from './companions'
@@ -48,7 +49,9 @@ export class GameRoom {
     private readonly controllers = new Map<string, CharacterController>()
     private readonly playerIdsByNickname = new Map<string, string>()
     private readonly world: WorldLocations
-    private readonly adventure = new AdventureService()
+    private readonly adventure = new AdventureService(
+        adventureWorldOptions(() => this.world)
+    )
     private readonly companions = new CompanionService()
     private readonly life = new RoomLife(
         this.characters,
@@ -164,10 +167,6 @@ export class GameRoom {
         return this.world.get(character.locationId).navigation
     }
 
-    private charactersIn(locationId: string): Map<string, GameCharacter> {
-        return charactersInLocation(this.characters, locationId)
-    }
-
     private connectionsIn(
         locationId: string
     ): Map<RoomSocket, string | undefined> {
@@ -183,7 +182,7 @@ export class GameRoom {
         radius: number
     ): GameCharacter | undefined {
         return findVisibleTargetInRoom(
-            this.charactersIn(observer.locationId).values(),
+            charactersInLocation(this.characters, observer.locationId).values(),
             this.navigationFor(observer),
             observer,
             radius

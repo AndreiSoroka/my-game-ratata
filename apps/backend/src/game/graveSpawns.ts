@@ -11,6 +11,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { GraveGuardians } from './graveGuardians'
 import type { GraveDamageResult } from './graveRules'
 import type { NavigationService } from './navigation'
 import { createSkeleton, type SpawnedCharacter } from './spawns'
@@ -37,6 +38,7 @@ interface SpawnContext {
 /** Sources own birth cadence; their ordinary shared characters own combat and death. */
 export class GraveSpawns {
     private readonly sources = new Map<string, GraveSource>()
+    private readonly guardians = new GraveGuardians()
 
     public snapshot(locationId: string): WorldGraveSnapshot[] {
         return [...this.sources.values()]
@@ -90,6 +92,7 @@ export class GraveSpawns {
         source.phase = 'purified'
         source.hpUnits = 0
         source.restoresAt = null
+        this.guardians.release(id)
         // Keep the receipt and descendants: existing actors keep their ordinary life cycle.
         return true
     }
@@ -140,6 +143,13 @@ export class GraveSpawns {
         for (const source of this.sources.values()) {
             const living = this.livingChildren(source, context, now)
             restoreSource(source, now)
+            if (source.phase !== 'purified') {
+                this.guardians.sync(
+                    source.definition,
+                    source.children,
+                    context.characters
+                )
+            }
             if (source.phase !== 'active') {
                 continue
             }
@@ -168,6 +178,25 @@ export class GraveSpawns {
             source.children.add(spawn.character.id)
             source.nextSpawnAt = now + GRAVE_SPAWN_INTERVAL_MS
             context.add(spawn)
+            this.guardians.sync(
+                source.definition,
+                source.children,
+                context.characters
+            )
+        }
+    }
+
+    public assignGuardians(
+        characters: ReadonlyMap<string, GameCharacter>
+    ): void {
+        for (const source of this.sources.values()) {
+            if (source.phase !== 'purified') {
+                this.guardians.sync(
+                    source.definition,
+                    source.children,
+                    characters
+                )
+            }
         }
     }
 

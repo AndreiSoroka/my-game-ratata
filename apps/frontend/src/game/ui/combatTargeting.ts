@@ -1,5 +1,7 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
+import { gameKeyBlocked, worldKeyboardOwned } from './keyboardOwnership'
+
 export function relation(
     character: CharacterSnapshot,
     player: CharacterSnapshot
@@ -42,15 +44,9 @@ export function nextTarget(
     return candidates[(index + 1) % candidates.length]?.id
 }
 export function combatInputBlocked(): boolean {
-    const focus = document.activeElement
-    return (
-        document.querySelector('[role="dialog"], [role="menu"]') !== null ||
-        (focus instanceof HTMLElement &&
-            focus.closest('input,textarea,select,button,[contenteditable="true"],.speech-text') !==
-                null)
-    )
+    return worldKeyboardOwned()
 }
 
 export function combatKeyBlocked(event: KeyboardEvent, blocked: boolean): boolean {
-    return blocked || combatInputBlocked() || event.ctrlKey || event.metaKey || event.altKey
+    return blocked || gameKeyBlocked(event)
 }

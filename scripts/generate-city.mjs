@@ -360,7 +360,7 @@ export function addNovogorod(ctx) {
         paint(objects, x, y + 1, 16)
         block(x, y, 0)
         block(x, y + 1)
-        recordProp(ctx, x, y, 1, 2, [town + 4, town + 16], 'tree')
+        recordProp(ctx, x, y, 1, 2, [town + 4, town + 16], 'tree', 'pine')
     }
 
     landmark('Лавка Саввы', 'shop', 40, 66)

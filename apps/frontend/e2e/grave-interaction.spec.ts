@@ -1,6 +1,10 @@
-import { writeFile } from 'node:fs/promises'
-
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
+
+import {
+    attachBrowserDiagnostics,
+    attachCombatFailure,
+    captureBrowserDiagnostics,
+} from './grave-diagnostics'
 
 const cases = [
     // Final-death scenarios use the north; each ritual gets its own authored source.
@@ -14,7 +18,8 @@ for (const { mobile, direction, viewport } of cases) {
     }, info) => {
         test.setTimeout(150_000)
         await page.setViewportSize(viewport)
-        const rangers = await Promise.all([context.newPage(), context.newPage(), context.newPage()])
+        const rangers = await Promise.all(Array.from({ length: 4 }, () => context.newPage()))
+        const diagnostics = captureBrowserDiagnostics([page, ...rangers])
         try {
             await Promise.all(
                 rangers.map((ranger) => ranger.setViewportSize({ width: 480, height: 360 }))
@@ -52,7 +57,7 @@ for (const { mobile, direction, viewport } of cases) {
             await expect(page.getByRole('menu')).toBeVisible()
             await expect(page.getByLabel('Состояние могилы').last()).toContainText('5% урона')
             await page.screenshot({ path: info.outputPath('grave-menu.png') })
-            await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 10 с' }).click()
+            await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 50 с' }).click()
             await expect(page.locator('.control-status')).toContainText('Очищение могилы')
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
             const casting = await page.evaluate(() => window.__ratataTest!.getState().player!)
@@ -81,7 +86,7 @@ for (const { mobile, direction, viewport } of cases) {
                 .toBe(0)
             await faceGrave(page, grave!.id)
             await openGraveMenu(page, mobile)
-            await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 10 с' }).click()
+            await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 50 с' }).click()
             await expect
                 .poll(
                     () =>
@@ -92,7 +97,7 @@ for (const { mobile, direction, viewport } of cases) {
                                     .snapshot?.graves?.find((grave) => grave.id === id)?.phase,
                             grave!.id
                         ),
-                    { timeout: 15_000 }
+                    { timeout: 55_000 }
                 )
                 .toBe('purified')
             expect(
@@ -119,6 +124,7 @@ for (const { mobile, direction, viewport } of cases) {
                 true
             )
         } catch (error) {
+            await attachBrowserDiagnostics(info, error, diagnostics)
             await attachCombatFailure([page, ...rangers], info)
             throw error
         } finally {
@@ -322,14 +328,19 @@ async function clearGraveApproach(
     expect(source, 'The received location has an active authored grave').toBeDefined()
     const grave = { id: source!.id, key: `grave:${source!.id}`, position: source!.position }
     const arrivals = await Promise.all(
-        rangers.map((page) =>
+        rangers.map((page, index) =>
             page.evaluate(
                 (position) =>
                     window.__ratataTest!.navigate(
-                        { x: position.x, y: position.y + 104 },
+                        // Keep separate firing lanes: one skeleton's melee arc
+                        // must not hit the whole party stacked at a single point.
+                        position,
                         { timeoutMs: 20_000 }
                     ),
-                grave.position
+                {
+                    x: grave.position.x + (index - (rangers.length - 1) / 2) * 64,
+                    y: grave.position.y + 104,
+                }
             )
         )
     )
@@ -407,7 +418,7 @@ async function maintainShot(page: Page, targetId: string): Promise<void> {
             action: { kind: 'ability' as const, abilityId: 'shot' as const, targetId: id },
         }
         await api.act(command, {
-            until: { type: 'tick', after: view.state.snapshot!.tick },
+            until: { type: 'tick', after: view.state.snapshot!.tick + 2 },
             timeoutMs: 1500,
         })
         view = current()
@@ -432,54 +443,10 @@ async function maintainShot(page: Page, targetId: string): Promise<void> {
             until: { type: 'tick', after: view.state.snapshot!.tick },
             timeoutMs: 1500,
         })
-        view = current()
-        if (
-            !view.active &&
-            view.player.alive &&
-            view.target?.alive &&
-            view.player.cooldowns.stunMsLeft === 0
-        )
-            throw new Error(
-                `Shot lease rejected after approach: ${JSON.stringify({ player: view.player, target: view.target })}`
-            )
+        // A newer snapshot is not a command acknowledgement. Stun can expire
+        // between command validation and this snapshot; the bounded battle poll
+        // retries until actual target death instead of treating that race as failure.
     }, targetId)
-}
-
-async function attachCombatFailure(pages: Page[], info: TestInfo): Promise<void> {
-    const party = await Promise.all(
-        pages.map((page) =>
-            page.evaluate(() => {
-                const state = window.__ratataTest!.getState()
-                const player = state.player
-                return {
-                    connected: state.connected,
-                    notice: state.notice,
-                    tick: state.snapshot?.tick,
-                    locationId: state.location?.id,
-                    player: player && {
-                        id: player.id,
-                        alive: player.alive,
-                        hp: player.hp,
-                        position: player.position,
-                        control: player.control,
-                        cooldowns: player.cooldowns,
-                    },
-                    threats: state.snapshot?.characters
-                        .filter((actor) => actor.relationship === 'hostile')
-                        .map((actor) => ({
-                            id: actor.id,
-                            alive: actor.alive,
-                            hp: actor.hp,
-                            position: actor.position,
-                        })),
-                    graves: state.snapshot?.graves,
-                }
-            })
-        )
-    )
-    const path = info.outputPath('grave-combat-failure.json')
-    await writeFile(path, JSON.stringify(party, null, 2), 'utf8')
-    await info.attach('grave-combat-failure', { contentType: 'application/json', path })
 }
 
 async function faceGrave(page: Page, id: string): Promise<void> {

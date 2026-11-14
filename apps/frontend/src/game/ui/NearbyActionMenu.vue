@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 
 import type { NearbyAction } from './nearbyActions'
+import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = defineProps<{
     open: boolean
@@ -10,6 +11,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [id: string]; close: [] }>()
 const menu = ref<HTMLElement>()
+const panel = ref<HTMLElement>()
+useEscapeOwner({ active: () => props.open, escape: () => emit('close'), element: panel })
 const activeId = ref<string>()
 const labelId = useId()
 const enabled = computed(() => props.actions.filter((action) => !action.disabled))
@@ -102,6 +105,7 @@ onBeforeUnmount(returnFocus)
 <template>
     <section
         v-if="open"
+        ref="panel"
         class="nearby-action-panel adventure-window"
         :aria-labelledby="labelId"
         @keydown.stop="handleKey"

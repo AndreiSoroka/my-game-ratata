@@ -63,6 +63,8 @@ export interface RenderedTiledMap {
 
 export interface HarvestGraphics {
     forest: HTMLCanvasElement
+    apple?: HTMLCanvasElement
+    pine?: HTMLCanvasElement
     stump: HTMLCanvasElement
     sapling: HTMLCanvasElement
     grave: HTMLCanvasElement
@@ -122,10 +124,22 @@ function readHarvestGraphics(map: TiledMap, tilesets: LoadedTileset[]): HarvestG
     }
     return {
         forest: bitmap(0, 5, 3, 4),
+        apple: bitmap(3, 5, 3, 4),
+        pine: pineBitmap(map, tilesets),
         stump: bitmap(10, 5, 2, 2),
         sapling: bitmap(6, 7, 2, 2),
         grave: bitmap(6, 0, 1, 1),
     }
+}
+
+function pineBitmap(map: TiledMap, tilesets: LoadedTileset[]): HTMLCanvasElement {
+    const town =
+        map.tilesets.find((tileset) => tileset.source.includes('TinyTown'))?.firstgid ?? 512
+    const canvas = document.createElement('canvas')
+    canvas.width = 16
+    canvas.height = 32
+    renderDepthProp(canvas, [town + 4, town + 16], 1, map, tilesets)
+    return canvas
 }
 
 async function loadTileset(baseUrl: string, reference: TiledTilesetRef): Promise<LoadedTileset> {

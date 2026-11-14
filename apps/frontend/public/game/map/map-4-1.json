@@ -2449,6 +2449,11 @@
                             "value": "map-4-1:prop:8:28"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2476,6 +2481,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:6:48"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2507,6 +2517,11 @@
                             "value": "map-4-1:prop:37:29"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2534,6 +2549,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:13:26"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2565,6 +2585,11 @@
                             "value": "map-4-1:prop:79:53"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2592,6 +2617,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:54:65"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2623,6 +2653,11 @@
                             "value": "map-4-1:prop:80:5"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2650,6 +2685,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:24:12"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
                         },
                         {
                             "name": "visual",
@@ -2681,6 +2721,11 @@
                             "value": "map-4-1:prop:22:8"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2708,6 +2753,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:82:60"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
                         },
                         {
                             "name": "visual",
@@ -2739,6 +2789,11 @@
                             "value": "map-4-1:prop:11:31"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2766,6 +2821,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:19:71"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2797,6 +2857,11 @@
                             "value": "map-4-1:prop:88:53"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2824,6 +2889,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:35:17"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2855,6 +2925,11 @@
                             "value": "map-4-1:prop:58:59"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2882,6 +2957,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:10:18"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2913,6 +2993,11 @@
                             "value": "map-4-1:prop:70:71"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2940,6 +3025,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:29:14"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2971,6 +3061,11 @@
                             "value": "map-4-1:prop:42:56"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2998,6 +3093,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:27:10"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3029,6 +3129,11 @@
                             "value": "map-4-1:prop:14:43"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3056,6 +3161,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:85:68"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3087,6 +3197,11 @@
                             "value": "map-4-1:prop:60:64"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3114,6 +3229,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:7:21"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3145,6 +3265,11 @@
                             "value": "map-4-1:prop:77:49"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3172,6 +3297,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:37:34"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3203,6 +3333,11 @@
                             "value": "map-4-1:prop:51:62"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3230,6 +3365,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:63:66"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3261,6 +3401,11 @@
                             "value": "map-4-1:prop:42:19"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3288,6 +3433,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:65:59"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3319,6 +3469,11 @@
                             "value": "map-4-1:prop:35:59"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3346,6 +3501,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:16:31"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3377,6 +3537,11 @@
                             "value": "map-4-1:prop:32:7"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3404,6 +3569,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:22:69"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3435,6 +3605,11 @@
                             "value": "map-4-1:prop:85:56"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3462,6 +3637,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:73:31"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3493,6 +3673,11 @@
                             "value": "map-4-1:prop:53:23"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3520,6 +3705,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:9:43"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -3551,6 +3741,11 @@
                             "value": "map-4-1:prop:39:57"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -3578,6 +3773,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:76:44"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -7563,6 +7763,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:8:28"
@@ -7587,6 +7792,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7613,6 +7823,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:37:29"
@@ -7637,6 +7852,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7663,6 +7883,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:79:53"
@@ -7687,6 +7912,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7713,6 +7943,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:80:5"
@@ -7737,6 +7972,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7763,6 +8003,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:22:8"
@@ -7787,6 +8032,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7813,6 +8063,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:11:31"
@@ -7837,6 +8092,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7863,6 +8123,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:88:53"
@@ -7887,6 +8152,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7913,6 +8183,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:58:59"
@@ -7937,6 +8212,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7963,6 +8243,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:70:71"
@@ -7987,6 +8272,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8013,6 +8303,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:42:56"
@@ -8037,6 +8332,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8063,6 +8363,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:14:43"
@@ -8087,6 +8392,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8113,6 +8423,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:60:64"
@@ -8137,6 +8452,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8163,6 +8483,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:77:49"
@@ -8187,6 +8512,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8213,6 +8543,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:51:62"
@@ -8237,6 +8572,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8263,6 +8603,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:42:19"
@@ -8287,6 +8632,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8313,6 +8663,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:35:59"
@@ -8337,6 +8692,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8363,6 +8723,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:32:7"
@@ -8387,6 +8752,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8413,6 +8783,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:85:56"
@@ -8437,6 +8812,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8463,6 +8843,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:53:23"
@@ -8487,6 +8872,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -8513,6 +8903,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-4-1:prop:39:57"
@@ -8537,6 +8932,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -11011,15 +11411,21 @@
                             "type": "string",
                             "value": "map-4-1:barrel:44:36"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-4-1:prop:44:36"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -11039,15 +11445,21 @@
                             "type": "string",
                             "value": "map-4-1:barrel:40:46"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-4-1:prop:40:46"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },

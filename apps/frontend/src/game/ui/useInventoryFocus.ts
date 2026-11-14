@@ -1,27 +1,16 @@
 import { nextTick, onBeforeUnmount, onMounted, type Ref } from 'vue'
 
+import { useEscapeOwner } from './uiEscapeOwners'
 import { focusPanelSurface } from './uiKeyboard'
 
 /** Escape remains owned by the visible inventory even if a plain surface lost DOM focus. */
 export function useInventoryFocus(panel: Ref<HTMLElement | undefined>, close: () => void) {
-    const onEscape = (event: KeyboardEvent): void => {
-        if (event.code !== 'Escape' && event.key !== 'Escape') return
-        const target = event.target
-        if (target instanceof HTMLElement && !panel.value?.contains(target)) {
-            if (
-                target.closest(
-                    '[role="dialog"], [role="menu"], input, textarea, select, [contenteditable="true"]'
-                ) ||
-                document.querySelector('.chat-input')
-            )
-                return
-        }
-        event.preventDefault()
-        event.stopImmediatePropagation()
-        close()
-    }
+    useEscapeOwner({
+        active: () => true,
+        escape: close,
+        element: panel,
+    })
     onMounted(async () => {
-        window.addEventListener('keydown', onEscape, true)
         await nextTick()
         panel.value
             ?.querySelector<HTMLButtonElement>(
@@ -30,7 +19,6 @@ export function useInventoryFocus(panel: Ref<HTMLElement | undefined>, close: ()
             ?.focus()
     })
     onBeforeUnmount(() => {
-        window.removeEventListener('keydown', onEscape, true)
         void nextTick(() => {
             if (!document.querySelector('[role="dialog"], .inventory-overlay'))
                 document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()

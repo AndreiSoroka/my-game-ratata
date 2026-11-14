@@ -9,9 +9,12 @@ import type {
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
-import { observeAdventureDeath } from './adventureDeaths'
+import { observeAdventureEvents } from './adventureDeaths'
 import { chooseAdventureReply, interactAdventureNpc } from './adventureDialogue'
-import { AdventureResources, isResourceCommand } from './adventureResources'
+import {
+    type AdventureResources,
+    isResourceCommand,
+} from './adventureResources'
 import { type PlayerAdventure } from './adventureState'
 import {
     type AdventureActionResult,
@@ -20,19 +23,16 @@ import {
 } from './adventureTrading'
 import { adventureSnapshot, resolvedAdventureAction } from './adventureViews'
 import { getAdventureState, grantAdventureGoldOnce } from './adventureWallet'
+import {
+    type AdventureServiceOptions,
+    createAdventureEnvironment,
+} from './adventureWorld'
 import type { GameCharacter } from './character'
 import { CityEconomyService } from './cityEconomy'
 import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
-import type { WorldObjectDefinition } from './worldObjectData'
-import { WorldObjects } from './worldObjects'
-
-interface AdventureServiceOptions {
-    now?: () => number
-    resourceNodes?: AdventureResourceNode[]
-    worldObjects?: WorldObjectDefinition[]
-}
+import type { WorldObjects } from './worldObjects'
 
 export class AdventureService {
     private readonly players = new Map<string, PlayerAdventure>()
@@ -45,12 +45,10 @@ export class AdventureService {
     private readonly orderCommands: CraftOrderCommands
 
     public constructor(options: AdventureServiceOptions = {}) {
-        this.resources = new AdventureResources(
-            options.resourceNodes,
-            (actor, recipeId, instanceId) =>
-                this.economy.recordCraftOutput(actor, recipeId, instanceId)
+        ;[this.resources, this.worldObjects] = createAdventureEnvironment(
+            options,
+            () => this.economy
         )
-        this.worldObjects = new WorldObjects(options.worldObjects)
         this.now = options.now ?? Date.now
         this.economy = new CityEconomyService(this.now())
         this.trading = new AdventureTrading(this.economy)
@@ -125,7 +123,7 @@ export class AdventureService {
                     this.stateFor(actor.id),
                     message.objectId,
                     navigation,
-                    this.now()
+                    now
                 )
             case 'interact':
                 return this.interact(
@@ -183,6 +181,12 @@ export class AdventureService {
         navigation: NavigationService | undefined,
         now: number
     ): AdventureActionResult {
+        if (message.type === 'world_interact') {
+            const result = this.worldObjects.open(actor, message.objectId, now)
+            if (result !== undefined) {
+                return result
+            }
+        }
         if (
             message.type === 'craft_order_place' ||
             message.type === 'craft_order_claim' ||
@@ -293,26 +297,19 @@ export class AdventureService {
         events: GameEventPayload[],
         findCharacter: (id: string) => GameCharacter | undefined
     ): GameEventPayload[] {
-        for (const event of events) {
-            if (event.kind === 'permadeath' && event.actorId !== undefined) {
-                this.economy.customerOrders.retire(event.actorId, this.now())
-                this.players.delete(event.actorId)
-                this.trading.forget(event.actorId)
-                this.economy.forgetActor(event.actorId)
-                this.worldObjects.forgetActor(event.actorId)
+        return observeAdventureEvents(
+            events,
+            findCharacter,
+            this.observedDeaths,
+            (id) => this.stateFor(id),
+            (id) => {
+                this.economy.customerOrders.retire(id, this.now())
+                this.players.delete(id)
+                this.trading.forget(id)
+                this.economy.forgetActor(id)
+                this.worldObjects.forgetActor(id)
             }
-
-            if (event.kind === 'death') {
-                observeAdventureDeath(
-                    event,
-                    findCharacter,
-                    this.observedDeaths,
-                    (id) => this.stateFor(id)
-                )
-            }
-        }
-
-        return []
+        )
     }
 
     private stateFor(playerId: string): PlayerAdventure {

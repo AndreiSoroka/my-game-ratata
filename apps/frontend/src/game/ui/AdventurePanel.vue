@@ -7,7 +7,7 @@ import type {
     ClientMessage,
     PartySnapshot,
 } from '@my-game-ratata/contracts'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import AdventureDialogue from './AdventureDialogue.vue'
 import AdventureJournal from './AdventureJournal.vue'
@@ -16,6 +16,7 @@ import CraftingWindow from './CraftingWindow.vue'
 import GuildWindow from './GuildWindow.vue'
 import KnowledgeWindow from './KnowledgeWindow.vue'
 import TheftAlert from './TheftAlert.vue'
+import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
 
 const props = defineProps<{
@@ -43,33 +44,18 @@ function toggleWindow(window: AdventureWindow): void {
     if (props.adventure.dialogue) emit('command', { choiceId: 'close', type: 'dialogue_choice' })
 }
 
-function isForeignFocus(target: EventTarget | null): boolean {
-    return (
-        target instanceof HTMLElement &&
-        !windowRoot.value?.contains(target) &&
-        target.closest(
-            '[role="dialog"], [role="menu"], input, textarea, select, [contenteditable="true"]'
-        ) !== null
-    )
-}
-function closeWindowOnEscape(event: KeyboardEvent): void {
-    if (
-        (event.code !== 'Escape' && event.key !== 'Escape') ||
-        !activeWindow.value ||
-        !showWindow.value ||
-        isForeignFocus(event.target)
-    )
-        return
-    event.preventDefault()
-    event.stopImmediatePropagation()
+function closeWindow(): void {
     activeWindow.value = null
     void nextTick(() => {
         if (!props.inventoryOpen && !props.adventure.dialogue && !activeWindow.value)
             document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
     })
 }
-onMounted(() => window.addEventListener('keydown', closeWindowOnEscape, true))
-onBeforeUnmount(() => window.removeEventListener('keydown', closeWindowOnEscape, true))
+useEscapeOwner({
+    active: () => Boolean(activeWindow.value && showWindow.value),
+    escape: closeWindow,
+    element: windowRoot,
+})
 
 defineExpose({
     hasOpenWindow: computed(() => Boolean(activeWindow.value && showWindow.value)),

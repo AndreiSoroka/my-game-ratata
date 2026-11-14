@@ -11,7 +11,7 @@
         "preview": "vite preview --host 127.0.0.1 --port 4173",
         "test:unit": "vitest run",
         "test:unit:watch": "vitest",
-        "test:e2e": "run-s test:e2e:app test:e2e:storybook",
+        "test:e2e": "run-s test:e2e:app test:e2e:graves test:e2e:storybook",
         "test:e2e:app": "playwright test",
         "test:e2e:storybook": "playwright test --config playwright.storybook.config.ts",
         "build-only": "vite build",
@@ -23,7 +23,8 @@
         "lint:fix:oxlint": "oxlint . --fix",
         "lint:fix:eslint": "eslint . --fix --cache --cache-location ./node_modules/.tmp/eslint/.eslintcache",
         "format": "prettier . --check",
-        "format:fix": "prettier . --write"
+        "format:fix": "prettier . --write",
+        "test:e2e:graves": "playwright test --config playwright.graves.config.ts"
     },
     "dependencies": {
         "@my-game-ratata/contracts": "workspace:*",

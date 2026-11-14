@@ -112,7 +112,7 @@ function executeAbility(
     if (id === 'barrier') {
         return castBarrier(actor, context.now)
     }
-    if (id === 'shot') {
+    if (id === 'shot' || id === 'spark') {
         return executeAttackAbility(
             actor,
             message.targetId,

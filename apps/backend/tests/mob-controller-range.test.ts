@@ -98,6 +98,8 @@ function simulateApproach(
     }
     const room = {
         charactersFor: () => [actor, target],
+        getCharacter: (id: string) =>
+            [actor, target].find((character) => character.id === id),
         findVisibleTarget: () => target,
         navigationFor: () => navigation,
         requestAttack: (_character: GameCharacter, now: number) => {

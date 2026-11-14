@@ -2,6 +2,7 @@ import type {
     CharacterAutoAction,
     GameEventPayload,
 } from '@my-game-ratata/contracts'
+import { GRAVE_PURIFY_CAST_MS } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
 import { autoActionStatus } from '../src/game/autoActionRules'
@@ -83,7 +84,7 @@ it.each([49, 80])(
                 f.actor.position.y - source.position.y
             )
         ).toBeLessThanOrEqual(48)
-        expect(cast.completesAt - cast.startedAt).toBe(10_000)
+        expect(cast.completesAt - cast.startedAt).toBe(GRAVE_PURIFY_CAST_MS)
         expect(
             events.filter((event) => event.phase === 'started')
         ).toHaveLength(1)

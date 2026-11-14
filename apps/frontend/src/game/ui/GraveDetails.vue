@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
-    GRAVE_PURIFY_CAST_MS,
     GRAVE_PURIFY_MANA_COST,
+    gravePurifyCastMs,
     MATERIAL_DAMAGE_MULTIPLIERS,
     type MaterialImpact,
     type WorldGraveSnapshot,
@@ -50,8 +50,8 @@ function duration(ms: number): string {
                 <dd>{{ percent('projectile') }}</dd>
             </dl>
             <p class="grave-details__hint">
-                Очищение: {{ GRAVE_PURIFY_MANA_COST }} MP · {{ GRAVE_PURIFY_CAST_MS / 1000 }} с без
-                движения. Esc — прервать.
+                Очищение: {{ GRAVE_PURIFY_MANA_COST }} MP ·
+                {{ gravePurifyCastMs(grave.phase) / 1000 }} с без движения. Esc — прервать.
             </p>
         </template>
     </section>

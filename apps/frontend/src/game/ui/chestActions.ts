@@ -18,7 +18,7 @@ export function chestActions(
         .filter((item) => isVisible(item.position))
         .map((item) => ({
             item,
-            distance: chestInteractionDistance(player.position, item.position),
+            distance: chestInteractionDistance(player.position, item.position, item.bounds),
         }))
         .filter((candidate) => candidate.distance <= CHEST_INTERACTION_RANGE)
         .sort((a, b) => a.distance - b.distance)[0]?.item
@@ -29,7 +29,9 @@ export function chestActions(
                   label:
                       chest.kind === 'corpse'
                           ? `Обыскать: ${chest.title?.replace(/^Тело: /, '') ?? 'тело'}`
-                          : 'Открыть сундук',
+                          : chest.kind === 'barrel'
+                            ? 'Открыть бочку'
+                            : 'Открыть сундук',
                   command: { type: 'open_chest', chestId: chest.id },
               },
           ]

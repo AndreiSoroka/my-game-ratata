@@ -1,5 +1,22 @@
-export function recordProp(ctx, x, y, columns, rows, tiles, kind = 'prop') {
-    ctx.propPlacements.push({ x, y, columns, rows, tiles: [...tiles], kind })
+export function recordProp(
+    ctx,
+    x,
+    y,
+    columns,
+    rows,
+    tiles,
+    kind = 'prop',
+    treeProfile
+) {
+    ctx.propPlacements.push({
+        x,
+        y,
+        columns,
+        rows,
+        tiles: [...tiles],
+        kind,
+        treeProfile,
+    })
 }
 
 // Settlements replace ground after forest generation. Remove an intersected sprite
@@ -42,6 +59,15 @@ export function createDepthProps(ctx, locationId) {
             rotation: 0,
             visible: true,
             properties: [
+                ...(prop.treeProfile
+                    ? [
+                          {
+                              name: 'treeProfile',
+                              type: 'string',
+                              value: prop.treeProfile,
+                          },
+                      ]
+                    : []),
                 {
                     name: 'propId',
                     type: 'string',

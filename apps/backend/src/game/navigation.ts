@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type {
+    AuthoredContainerDefinition,
     GroundSurface,
     MapSummary,
     Vector2,
@@ -18,6 +19,7 @@ import {
 import { clamp } from './math'
 import { readNavigationSurfaces } from './navigationSurfaces'
 import { findPath } from './pathfinding'
+import { readWorldContainers } from './worldObjectData'
 
 export interface TileCoordinate {
     x: number
@@ -25,6 +27,7 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    containers?: AuthoredContainerDefinition[]
     encounters?: AuthoredEncounters
     /** Immutable terrain/walls, excluding authored harvestable obstacles. */
     baseSolid?: boolean[]
@@ -314,6 +317,7 @@ function buildGrid(mapId: string, map: TiledMap): MapGrid {
     )?.data
     const encounters = readEncounterData(map, mapId)
     return {
+        containers: readWorldContainers(map, mapId),
         ...(encounters === undefined ? {} : { encounters }),
         baseSolid: solid.map(
             (blocked, index) => blocked && (resourceCells[index] ?? 0) === 0

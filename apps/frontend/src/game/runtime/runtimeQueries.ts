@@ -52,7 +52,6 @@ export function isEditableTarget(target: EventTarget | null): boolean {
         (target instanceof HTMLInputElement ||
             target instanceof HTMLTextAreaElement ||
             target instanceof HTMLSelectElement ||
-            target instanceof HTMLButtonElement ||
             target.closest('[role="menu"], [role="dialog"], .adventure-window, .speech-text') !==
                 null ||
             target.isContentEditable)

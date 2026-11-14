@@ -39,7 +39,7 @@ export function findVisibleTarget(
                 !character.tags.has('offline') &&
                 character.locationId === observer.locationId
         )
-        .filter((character) => canTargetByFaction(observer, character))
+        .filter((character) => canTargetByFaction(observer, character, now))
         .filter(
             (target) =>
                 distance(observer.position, target.position) <=

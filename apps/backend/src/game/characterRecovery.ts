@@ -3,6 +3,7 @@ import type { GameCharacter } from './character'
 import { regen } from './characterState'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import { clearPursuit } from './pursuitState'
 
 export function tickCharacterTimedState(
     character: GameCharacter,
@@ -39,6 +40,7 @@ export function restoreCharacter(
         character.maxHp - previousHp
     )
     clearAbilityEffects(character)
+    clearPursuit(character)
     character.alive = true
     character.movement = createMovementState()
     character.actionLockUntil = 0

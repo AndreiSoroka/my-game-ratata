@@ -98,6 +98,7 @@ function fakeControllerRoom(
 ): GameRoom {
     return {
         charactersFor: () => [target],
+        getCharacter: (id: string) => (id === target.id ? target : undefined),
         findVisibleTarget: () => target,
         navigationFor: () => fakeControllerNavigation,
         requestAttack,
@@ -106,10 +107,11 @@ function fakeControllerRoom(
 
 const fakeControllerNavigation = {
     grid: { tileWidth: 16 },
+    hasLineOfSight: () => true,
     findPathWorld(
         _from: { x: number; y: number },
         to: { x: number; y: number }
     ) {
         return [to]
     },
-} as NavigationService
+} as unknown as NavigationService

@@ -59,6 +59,11 @@ export interface CompanionWorld {
 
     requestPickup?: PickupRequest
     chestActions?: {
+        handleResult?(
+            actor: GameCharacter,
+            message: ChestClientMessage,
+            now: number
+        ): AgentDecisionResult
         handle(
             actor: GameCharacter,
             message: ChestClientMessage,

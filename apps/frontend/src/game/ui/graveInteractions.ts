@@ -2,6 +2,7 @@ import {
     type CharacterSnapshot,
     GRAVE_INTERACTION_RANGE,
     GRAVE_PURIFY_MANA_COST,
+    gravePurifyCastMs,
     type PrayerPreview,
     type WorldChestSnapshot,
     type WorldGraveSnapshot,
@@ -76,7 +77,9 @@ export function graveActions(
         },
         {
             id: `grave:purify:${grave.id}`,
-            label: preview.unavailableReason ?? 'Упокоить могилу · 20 MP · 10 с',
+            label:
+                preview.unavailableReason ??
+                `Упокоить могилу · ${GRAVE_PURIFY_MANA_COST} MP · ${gravePurifyCastMs(grave.phase) / 1000} с`,
             disabled: preview.unavailableReason !== null,
             command: {
                 type: 'use_ability',

@@ -6,8 +6,8 @@ import type {
 import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
 import type { PlayerAdventure } from './adventureState'
+import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
-import { addInventoryItems, createItemInstance } from './inventory'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
@@ -15,36 +15,65 @@ import { nextSpeechId } from './speechReceipts'
 import { loadWorldObjects, type WorldObjectDefinition } from './worldObjectData'
 
 export class WorldObjects {
-    private readonly searched = new Set<string>()
     private readonly drinkAllowedAt = new Map<string, number>()
 
     public constructor(
-        private readonly definitions?: WorldObjectDefinition[]
+        private readonly definitions?: WorldObjectDefinition[],
+        private readonly openContainer?: (
+            actor: GameCharacter,
+            id: string,
+            now: number
+        ) => AdventureActionResult
     ) {}
 
     public forgetActor(actorId: string): void {
         this.drinkAllowedAt.delete(actorId)
     }
 
+    public open(
+        actor: GameCharacter,
+        id: string,
+        now: number
+    ): AdventureActionResult | undefined {
+        if (
+            !this.inLocation(actor.locationId).some(
+                (object) => object.id === id && object.kind === 'barrel'
+            )
+        ) {
+            return undefined
+        }
+        return (
+            this.openContainer?.(actor, id, now) ?? {
+                accepted: false,
+                error: 'Контейнер недоступен.',
+                events: [],
+            }
+        )
+    }
+
     public snapshot(locationId: string): WorldObjectSnapshot[] {
-        return this.inLocation(locationId).map((object) => ({
-            id: object.id,
-            kind: object.kind,
-            name: object.name,
-            bounds: { ...object.bounds },
-            ...(object.interactionAreas === undefined
-                ? {}
-                : {
-                      interactionAreas: object.interactionAreas.map((area) => ({
-                          ...area,
-                      })),
-                  }),
-            position: {
-                x: object.bounds.x + object.bounds.width / 2,
-                y: object.bounds.y + object.bounds.height / 2,
-            },
-            depleted: this.searched.has(object.id),
-        }))
+        return this.inLocation(locationId)
+            .filter((object) => object.kind !== 'barrel')
+            .map((object) => ({
+                id: object.id,
+                kind: object.kind,
+                name: object.name,
+                bounds: { ...object.bounds },
+                ...(object.interactionAreas === undefined
+                    ? {}
+                    : {
+                          interactionAreas: object.interactionAreas.map(
+                              (area) => ({
+                                  ...area,
+                              })
+                          ),
+                      }),
+                position: {
+                    x: object.bounds.x + object.bounds.width / 2,
+                    y: object.bounds.y + object.bounds.height / 2,
+                },
+                depleted: false,
+            }))
     }
 
     public interact(
@@ -57,6 +86,9 @@ export class WorldObjects {
         const object = this.inLocation(actor.locationId).find(
             (candidate) => candidate.id === objectId
         )
+        if (object?.kind === 'barrel') {
+            return this.open(actor, object.id, now)?.events ?? []
+        }
         if (!canInteract(actor, object, navigation, now)) {
             setNotice(
                 state,
@@ -78,31 +110,7 @@ export class WorldObjects {
             }
             return []
         }
-        if (object.kind === 'water') {
-            return this.drink(actor, state, now)
-        }
-        if (this.searched.has(object.id)) {
-            setNotice(state, 'Бочка пуста. Общие припасы уже забрали.')
-            return []
-        }
-        if (
-            !addInventoryItems(actor.inventory, [
-                createItemInstance('wood'),
-                createItemInstance('fiber'),
-            ])
-        ) {
-            setNotice(
-                state,
-                'В рюкзаке нет места для всех припасов. Они остались в бочке.'
-            )
-            return []
-        }
-        this.searched.add(object.id)
-        const text = setNotice(
-            state,
-            'В бочке общих припасов: дерево +1, волокно +1. Добавлено в рюкзак.'
-        )
-        return [{ kind: 'barrel_search', actorId: actor.id, text }]
+        return this.drink(actor, state, now)
     }
 
     private drink(

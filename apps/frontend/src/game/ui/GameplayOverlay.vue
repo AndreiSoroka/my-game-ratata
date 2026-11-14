@@ -16,6 +16,7 @@ import { combatKeyBlocked, nextTarget, relation } from './combatTargeting'
 import PartyPanel from './PartyPanel.vue'
 import SelectedTargetPanel from './SelectedTargetPanel.vue'
 import SpeechBubbles from './SpeechBubbles.vue'
+import { useEscapeOwner } from './uiEscapeOwners'
 import { useGraveSelection } from './useGraveSelection'
 
 const props = defineProps<{
@@ -54,7 +55,6 @@ function select(id: string, open = false): void {
     if (open && relation(character, props.player) !== 'hostile') emit('interact', id)
 }
 function key(event: KeyboardEvent): void {
-    if (cancelRitualKey(event)) return
     if (
         [
             'KeyW',
@@ -71,17 +71,16 @@ function key(event: KeyboardEvent): void {
         hotbar.value?.resetGesture()
     if (combatKeyBlocked(event, props.blocked)) return
     const digit = /^Digit([1-4])$/.exec(event.code)
-    if (!['KeyT', 'KeyF', 'Escape'].includes(event.code) && !digit) return
+    if (!['KeyT', 'KeyF'].includes(event.code) && !digit) return
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.repeat) return
-    if (event.code !== 'Escape' && unavailable.value) return
+    if (unavailable.value) return
     if (digit) {
         activateSlot(Number(digit[1]) - 1, event.shiftKey)
         return
     }
     const actions: Record<string, () => void> = {
-        Escape: () => cancel(true),
         KeyF: () => {
             selectedId.value = props.player.id
         },
@@ -96,21 +95,22 @@ function key(event: KeyboardEvent): void {
     }
     actions[event.code]?.()
 }
-function cancelRitualKey(event: KeyboardEvent): boolean {
-    if (
-        event.code !== 'Escape' ||
-        props.player.abilities?.casting?.mode !== 'purify_grave' ||
-        combatKeyBlocked(event, props.blocked)
-    )
-        return false
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    if (!event.repeat) {
-        send({ type: 'cancel_prayer' })
+useEscapeOwner({
+    priority: 0,
+    active: () =>
+        !props.blocked &&
+        Boolean(
+            props.player.abilities?.casting?.mode === 'purify_grave' ||
+            selectedId.value ||
+            selectedGraveId.value ||
+            (props.player.control && props.player.control.mode !== 'none')
+        ),
+    escape: () => {
+        if (props.player.abilities?.casting?.mode === 'purify_grave')
+            send({ type: 'cancel_prayer' })
         cancel(true)
-    }
-    return true
-}
+    },
+})
 function activateSlot(slot: number, edit: boolean): void {
     if (edit) void hotbar.value?.edit(slot)
     else hotbar.value?.activate(slot)

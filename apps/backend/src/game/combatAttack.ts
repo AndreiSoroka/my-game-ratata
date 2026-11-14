@@ -1,6 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     type AttackAbilityId,
+    forwardAbilityAttack,
     forwardShot,
     type GameEventPayload,
     isItemBroken,
@@ -176,10 +177,19 @@ function startAttack(
         {
             actorId: actor.id,
             kind: 'attack',
-            ...(abilityId === 'shot' &&
+            ...((abilityId === 'shot' || abilityId === 'spark') &&
             context.targetId === undefined &&
             context.target === undefined
-                ? { projectile: forwardShot(actor.position, actor.facing) }
+                ? {
+                      projectile:
+                          abilityId === 'shot'
+                              ? forwardShot(actor.position, actor.facing)
+                              : forwardAbilityAttack(
+                                    actor.position,
+                                    actor.facing,
+                                    abilityId
+                                ),
+                  }
                 : {}),
             ...(context.target === undefined
                 ? {}

@@ -71,7 +71,10 @@ export function untargetedAction(
         if (action.abilityId === 'barrier') {
             return action.targetId === undefined
         }
-        if (action.abilityId === 'shot' && action.targetId === undefined) {
+        if (
+            (action.abilityId === 'shot' || action.abilityId === 'spark') &&
+            action.targetId === undefined
+        ) {
             return true
         }
     }

@@ -4,13 +4,19 @@ export class RuntimeChatInput {
     private active = false
     private draft = ''
     private readonly onState: (state: ChatInputState) => void
+    private readonly onBegin?: () => void
 
-    public constructor(onState: (state: ChatInputState) => void) {
+    public constructor(onState: (state: ChatInputState) => void, onBegin?: () => void) {
         this.onState = onState
+        this.onBegin = onBegin
     }
 
     public get isActive(): boolean {
         return this.active
+    }
+
+    public cancel(): void {
+        this.end()
     }
 
     public handleKey(event: KeyboardEvent, sendChat: (text: string) => void): boolean {
@@ -54,6 +60,7 @@ export class RuntimeChatInput {
     private begin(): void {
         this.active = true
         this.draft = ''
+        this.onBegin?.()
         this.emitState()
     }
 

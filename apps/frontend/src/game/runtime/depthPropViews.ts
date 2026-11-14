@@ -72,7 +72,11 @@ export class DepthPropViews {
     }
 
     private graphicFor(node: AdventureResourceNode): HTMLCanvasElement | undefined {
-        if (node.phase === 'ready') return this.graphics?.forest
+        if (node.phase === 'ready')
+            return (
+                this.graphics?.[node.treeProfile ?? node.visual ?? 'forest'] ??
+                this.graphics?.forest
+            )
         return node.phase === 'growing' ? this.graphics?.sapling : this.graphics?.stump
     }
 

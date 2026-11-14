@@ -1,10 +1,10 @@
 import {
     ABILITY_DEFINITIONS,
     type GameEventPayload,
-    GRAVE_PURIFY_CAST_MS,
     GRAVE_PURIFY_MANA_COST,
     GRAVE_PURIFY_RANGE,
     graveBounds,
+    gravePurifyCastMs,
     interactionApproachPoints,
 } from '@my-game-ratata/contracts'
 
@@ -69,7 +69,9 @@ export function beginGravePurification(
     context: AbilityContext
 ): GameEventPayload[] {
     const now = context.now
+    const grave = context.graves?.get(graveId)
     if (
+        grave === undefined ||
         actor.abilities.casting !== null ||
         !canPerformSkillAction(actor, now) ||
         !canPurifyGrave(actor, graveId, context) ||
@@ -79,20 +81,21 @@ export function beginGravePurification(
     ) {
         return abilityNotice(actor, 'Могилу сейчас нельзя освятить.')
     }
+    const duration = gravePurifyCastMs(grave.phase)
     actor.clearPath()
     actor.setMoveInput({ x: 0, y: 0 })
     actor.abilities.casting = {
         mode: 'purify_grave',
         targetId: graveId,
         startedAt: now,
-        completesAt: now + GRAVE_PURIFY_CAST_MS,
+        completesAt: now + duration,
         patron: actor.progression.patron,
         origin: { ...actor.position },
         locationId: actor.locationId,
         hpAtStart: actor.hp,
     }
-    actor.lockAction(now, GRAVE_PURIFY_CAST_MS)
-    actor.setAnimation('attack', now, GRAVE_PURIFY_CAST_MS)
+    actor.lockAction(now, duration)
+    actor.setAnimation('attack', now, duration)
     return [
         {
             kind: 'cast',
@@ -100,7 +103,8 @@ export function beginGravePurification(
             abilityId: 'pray',
             phase: 'started',
             target: { kind: 'grave', id: graveId },
-            expiresAt: now + GRAVE_PURIFY_CAST_MS,
+            expiresAt: now + duration,
+            durationMs: duration,
         },
     ]
 }

@@ -228,7 +228,7 @@ describe('physical world interactions', () => {
                     object.type === 'sign'
                         ? 'read'
                         : object.type === 'barrel'
-                          ? 'search'
+                          ? 'open'
                           : 'drink'
                 )
                 expect(property(object, 'text')).toBeTypeOf('string')

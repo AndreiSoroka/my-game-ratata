@@ -16,7 +16,7 @@ export function worldInteractionActions(
     const distance = (target: WorldObjectSnapshot) =>
         targetInteractionDistance(player.position, target)
     const objects = (snapshot.adventure?.worldObjects ?? []).filter(
-        (target) => distance(target) <= 48 && isVisible(target.position)
+        (target) => target.kind !== 'barrel' && distance(target) <= 48 && isVisible(target.position)
     )
     const labels = { sign: 'Прочитать', barrel: 'Осмотреть', water: 'Попить' }
     return nearestByKind(objects, (target) => target.kind, distance).map((target) => ({

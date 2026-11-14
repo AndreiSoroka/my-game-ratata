@@ -151,7 +151,9 @@ export class WorldInventory {
                     chestHasLineOfSight(
                         actor.position,
                         chest.position,
-                        this.navigation
+                        this.navigation,
+                        undefined,
+                        chest.bounds
                     )
             )
             .flatMap((chest) => this.openChest(actor, chest))
@@ -170,9 +172,13 @@ export class WorldInventory {
 
     public snapshotChests(): WorldChestSnapshot[] {
         return [...this.chests.values()].map((chest) => ({
-            ...(chest.kind === 'corpse'
+            ...(chest.kind !== undefined
                 ? { kind: chest.kind, title: chest.title, corpse: chest.corpse }
                 : {}),
+            ...(chest.propId === undefined ? {} : { propId: chest.propId }),
+            ...(chest.bounds === undefined
+                ? {}
+                : { bounds: { ...chest.bounds } }),
             id: chest.id,
             itemCount: chest.contents.length,
             position: chest.position,
@@ -265,12 +271,20 @@ export class WorldInventory {
     ): GameEventPayload[] {
         this.containers.invalidate(chest.id)
         return revealChestContents(actor, chest, (item, position) =>
-            this.createLooseItem(item, position)
+            this.dropAtReachablePosition(item, position, actor.position)
         )
     }
 
-    private dropItemNear(item: InventoryItemInstance, origin: Vector2): void {
+    public dropItemNear(item: InventoryItemInstance, origin: Vector2): void {
         const position = dropPosition(origin, this.nextLooseItemIndex)
+        this.dropAtReachablePosition(item, position, origin)
+    }
+
+    private dropAtReachablePosition(
+        item: InventoryItemInstance,
+        position: Vector2,
+        origin: Vector2
+    ): void {
         const reachable =
             !this.navigation.isSolidTile(
                 this.navigation.worldToTile(position)

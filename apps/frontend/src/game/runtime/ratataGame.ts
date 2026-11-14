@@ -1,42 +1,34 @@
 import type {
     ClientMessage,
-    EquipmentActionKind,
-    EquipmentSlotId,
     GameEventPayload,
-    InventoryActionKind,
     ProjectilePath,
     Vector2,
     WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
-import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
-import { type Engine } from 'excalibur'
+import type { Engine, PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
-import { createCharacterResources } from './characterResources'
-import { GameAudio } from './gameAudio'
+import type { GameAudio } from './gameAudio'
 import { axisFromKeys, movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
 import { PlantingPreview } from './plantingPreview'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
-import {
-    characterDisrupted,
-    createGameCanvas,
-    createGameEngine,
-    projectCharacter,
-} from './runtimeCharacterTargets'
+import { characterDisrupted, projectCharacter } from './runtimeCharacterTargets'
 import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
 import { runtimeEventFeedback } from './runtimeEventFeedback'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
 import { isGameKeyboardBlocked } from './runtimeKeyboardFocus'
+import { loadRuntimeMap } from './runtimeMapLoading'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
 import { handleRuntimePointer } from './runtimePointer'
+import { createRuntimePresentation } from './runtimePresentation'
 import { handleRuntimeShortcut } from './runtimeShortcuts'
 import { RuntimeSocket } from './runtimeSocket'
-import { SceneActors } from './sceneActors'
+import type { SceneActors } from './sceneActors'
 import { loadRenderedTiledMap, type RenderedTiledMap } from './tiledMap'
 
 export class RatataGame {
@@ -60,7 +52,10 @@ export class RatataGame {
     private readonly plantingPreview = new PlantingPreview()
 
     public constructor(private readonly options: RatataGameOptions) {
-        this.chat = new RuntimeChatInput(options.onChatState)
+        this.chat = new RuntimeChatInput(options.onChatState, () => {
+            this.pressedKeys.clear()
+            this.flushMoveInput()
+        })
         this.socket = new RuntimeSocket({
             isStopped: () => this.stopped,
             onError: options.onError,
@@ -83,24 +78,27 @@ export class RatataGame {
     public async start(): Promise<void> {
         this.stopped = false
         this.options.onStatus('Loading')
-        const canvas = createGameCanvas(this.options.container)
-        const resources = createCharacterResources()
-        const map = await loadRenderedTiledMap()
-        const engine = createGameEngine(canvas)
+        try {
+            await this.startPresentation()
+        } catch (error) {
+            const cancelled = this.stopped
+            this.stop()
+            if (!cancelled) throw error
+        }
+    }
 
+    private async startPresentation(): Promise<void> {
+        const map = await loadRenderedTiledMap()
+        if (this.stopped) return
+        const { canvas, engine, audio, sceneActors, loader } = createRuntimePresentation(
+            this.options.container,
+            map
+        )
         this.canvas = canvas
         this.engine = engine
+        this.audio = audio
+        this.sceneActors = sceneActors
         this.plantingPreview.initialize(engine)
-        this.audio = new GameAudio(resources.sounds, resources.music.adventureBegins)
-        this.audio.setMap(map)
-        this.sceneActors = new SceneActors(
-            engine,
-            resources.sheets,
-            resources.itemImages,
-            resources.chestImage,
-            resources.farmImage
-        )
-        this.sceneActors.addMap(map)
         this.buildingEntrances.replace(this.mapId, map.buildings)
         this.removeInputs = installRuntimeInputs(engine, canvas, {
             keyDown: this.handleKeyDown,
@@ -108,7 +106,11 @@ export class RatataGame {
             release: this.releaseInputs,
             pointer: (event) => this.handlePointerDown(event),
         })
-        await engine.start(resources.loader)
+        await engine.start(loader)
+        if (this.stopped) {
+            this.stop()
+            return
+        }
         this.audio.playMusic()
         this.socket.connect(this.options.nickname, this.options.heroClass)
     }
@@ -126,6 +128,14 @@ export class RatataGame {
         this.canvas?.remove()
 
         if (import.meta.env.DEV) delete window.__ratataGameDebug
+    }
+
+    public readonly cancelChat = (): void => this.chat.cancel()
+
+    public releaseUiControls(): void {
+        this.releaseInputs()
+        const player = this.snapshot?.characters.find((actor) => actor.id === this.localPlayerId)
+        if (player?.path.length) this.send({ type: 'move_to', target: { ...player.position } })
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {
@@ -190,14 +200,6 @@ export class RatataGame {
         this.send(message)
     }
 
-    public sendInventoryAction(action: InventoryActionKind, itemInstanceId: string): void {
-        this.send({ action, itemInstanceId, type: 'inventory_action' })
-    }
-
-    public sendEquipmentAction(action: EquipmentActionKind, slot: EquipmentSlotId): void {
-        this.send({ action, slot, type: 'equipment_action' })
-    }
-
     private applySnapshot(snapshot: WorldSnapshot): void {
         this.snapshot = snapshot
         const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
@@ -220,15 +222,13 @@ export class RatataGame {
         this.sceneActors?.setInteractionTarget(undefined)
         this.audio?.pauseMovement()
         this.sceneActors?.clearDamage()
-        try {
-            const map = await loadRenderedTiledMap('/game/map', `${mapId}.json`)
-            if (this.stopped || this.snapshot?.location?.id !== mapId) return
-            this.applyMap(mapId, map)
-        } catch (error) {
-            this.options.onError(error instanceof Error ? error.message : 'Map loading failed')
-        } finally {
-            if (this.loadingMapId === mapId) this.loadingMapId = undefined
-        }
+        await loadRuntimeMap(
+            mapId,
+            () => !this.stopped && this.snapshot?.location?.id === mapId,
+            (map) => this.applyMap(mapId, map),
+            this.options.onError
+        )
+        if (this.loadingMapId === mapId) this.loadingMapId = undefined
     }
 
     private applyMap(mapId: string, map: RenderedTiledMap): void {
@@ -241,18 +241,11 @@ export class RatataGame {
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
         if (isGameKeyboardBlocked(event)) return
-        const wasChatActive = this.chat.isActive
-
         if (
             this.chat.handleKey(event, (text) => {
                 this.send({ text, type: 'chat' })
             })
         ) {
-            if (!wasChatActive && this.chat.isActive) {
-                this.pressedKeys.clear()
-                this.flushMoveInput()
-            }
-
             return
         }
 

@@ -320,7 +320,8 @@ function makeMap(column, row) {
                 (_, i) =>
                     gid.objects + (sy + Math.floor(i / w)) * 16 + sx + (i % w)
             ),
-            kind ?? (w === 3 && h === 4 ? 'tree' : 'plant')
+            kind ?? (w === 3 && h === 4 ? 'tree' : 'plant'),
+            w === 3 && h === 4 ? (sx === 3 ? 'apple' : 'forest') : undefined
         )
         return true
     }

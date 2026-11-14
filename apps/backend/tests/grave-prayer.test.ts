@@ -22,7 +22,7 @@ import {
 
 describe('guaranteed grave prayer', () => {
     it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
-        'channels for 10 seconds with %s, pays 20 MP only at completion and practices once',
+        'channels for 50 seconds with %s, pays 20 MP only at completion and practices once',
         (patron) => {
             const f = gravePrayerFixture()
             f.actor.progression.patron = patron
@@ -168,12 +168,14 @@ describe('purification interrupts', () => {
     ]
     it.each(interruptions)(
         'cancels %s without payment or practice',
-        (_label, interrupt) => {
+        (label, interrupt) => {
             const f = gravePrayerFixture()
             f.begin()
             interrupt(f)
             const mana = f.actor.mana
-            expect(f.advance(now + 10_000)).toMatchObject([
+            const checkedAt =
+                label === 'lost mana' ? now + GRAVE_PURIFY_CAST_MS : now + 1
+            expect(f.advance(checkedAt)).toMatchObject([
                 { kind: 'cast', phase: 'interrupted' },
             ])
             expect(f.actor.abilities.casting).toBeNull()
@@ -221,7 +223,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         expect(f.advance(now + 5_000)).toEqual([])
         expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
         f.actor.mana = 20
-        expect(f.advance(now + 10_000)).toContainEqual({
+        expect(f.advance(now + GRAVE_PURIFY_CAST_MS)).toContainEqual({
             kind: 'grave_purified',
             actorId: f.actor.id,
             target: { kind: 'grave', id: source.id },
@@ -247,14 +249,14 @@ describe('ordinary NPC prayer and atomic completion', () => {
         expect(f.begin(now + 5_000)[0]?.kind).toBe('notice')
         expect(f.actor.abilities.casting).toBe(original)
         beginGravePurification(other, source.id, f.context(now))
-        f.advance(now + 10_000)
+        f.advance(now + GRAVE_PURIFY_CAST_MS)
         expect(
             advanceRevive(
                 other,
                 () => undefined,
-                now + 10_000,
+                now + GRAVE_PURIFY_CAST_MS,
                 undefined,
-                f.context(now + 10_000)
+                f.context(now + GRAVE_PURIFY_CAST_MS)
             )
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
         expect(f.actor.mana).toBe(100)

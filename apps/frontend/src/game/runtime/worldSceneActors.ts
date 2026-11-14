@@ -60,7 +60,7 @@ export class WorldSceneActors {
         this.farmViews.update(farmPlots, serverTime)
         this.updateResources(nodes)
         this.updateItems(items)
-        this.updateChests(chests)
+        this.updateChests(chests.filter((chest) => chest.kind !== 'barrel'))
     }
 
     private updateResources(nodes: AdventureResourceNode[]): void {

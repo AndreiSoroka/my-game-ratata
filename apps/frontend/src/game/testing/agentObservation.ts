@@ -210,7 +210,7 @@ function inventoryTargets(snapshot: WorldSnapshot): TargetDescription[] {
             kind: 'chest',
             name: chest.title ?? 'Сундук',
             position: chest.position,
-            bounds: {
+            bounds: chest.bounds ?? {
                 x: chest.position.x - CHEST_FOOTPRINT_SIZE / 2,
                 y: chest.position.y - CHEST_FOOTPRINT_SIZE / 2,
                 width: CHEST_FOOTPRINT_SIZE,
@@ -219,6 +219,7 @@ function inventoryTargets(snapshot: WorldSnapshot): TargetDescription[] {
             interactionRange: CHEST_INTERACTION_RANGE,
             details: {
                 kind: chest.kind ?? 'chest',
+                propId: chest.propId,
                 state: chest.state,
                 itemCount: chest.itemCount,
             },

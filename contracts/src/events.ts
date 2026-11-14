@@ -48,6 +48,8 @@ export interface GameEventPayload {
     critical?: boolean
     statusId?: 'stun' | 'barrier' | 'reviving'
     expiresAt?: number
+    /** Fixed authoritative action duration, including phase-dependent rituals. */
+    durationMs?: number
     phase?: 'started' | 'completed' | 'interrupted'
 
     /** Authoritative recipient filter; stripped before sending over a socket. */

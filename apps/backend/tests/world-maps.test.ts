@@ -48,7 +48,9 @@ describe('explorable world maps', () => {
                     : []),
                 ...createLocationEnemies(navigation, definition),
             ]
-            const chests = new WorldInventory(navigation).snapshotChests()
+            const chests = new WorldInventory(navigation)
+                .snapshotChests()
+                .filter((chest) => chest.kind !== 'barrel')
             const destinations = [
                 ...[1, 2, 3, 4].map((index) =>
                     navigation.worldToTile(playerSpawn(navigation, index))

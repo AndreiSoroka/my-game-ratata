@@ -4,7 +4,6 @@ import { handleAbilityCommand } from '../src/game/abilityCommands'
 import { resolveCharacterStats } from '../src/game/characterStats'
 import {
     attemptAbilityAttack,
-    attemptAttack,
     resolvePendingAttackHit,
 } from '../src/game/combat'
 import { canTargetByFaction } from '../src/game/factions'
@@ -36,14 +35,14 @@ function encounter() {
 }
 
 describe('resolved shared attack abilities', () => {
-    it('uses spark costs and cooldown for the basic attack and ignores a sword', () => {
+    it('uses explicit Spark costs and cooldown while ignoring melee weapon bonuses', () => {
         const { actor, target, attack } = encounter()
         actor.equipment.weapon = createItemInstance('old_sword')
         expect(
             resolveCharacterStats(actor.config, actor.equipment, 20).maxDamage
-        ).toBe(6)
+        ).toBeGreaterThan(6)
         const mana = actor.mana
-        expect(attemptAttack(attack)[0]).toMatchObject({
+        expect(attemptAbilityAttack(attack, 'spark')[0]).toMatchObject({
             kind: 'attack',
             abilityId: 'spark',
             targetId: target.id,
@@ -70,11 +69,11 @@ describe('resolved shared attack abilities', () => {
         const { actor, target, attack } = encounter()
         target.position.y = 200
         const mana = actor.mana
-        expect(attemptAttack(attack)).toEqual([])
+        expect(attemptAbilityAttack(attack, 'spark')).toEqual([])
         expect(actor.mana).toBe(mana)
         target.position.y = 132
         actor.mana = 0
-        expect(attemptAttack(attack)).toEqual([])
+        expect(attemptAbilityAttack(attack, 'spark')).toEqual([])
         expect(actor.pendingAttack).toBeUndefined()
     })
     it('absorbs actual damage and emits one death after a barrier is exhausted', () => {
@@ -85,12 +84,12 @@ describe('resolved shared attack abilities', () => {
             practiced: false,
         }
         target.hp = 2
-        attemptAttack(attack)
+        attemptAbilityAttack(attack, 'spark')
         expect(
             resolvePendingAttackHit({ ...attack, now: 1200 })
         ).toContainEqual(expect.objectContaining({ kind: 'absorb', amount: 5 }))
         expect(target.hp).toBe(2)
-        attemptAttack({ ...attack, now: 1800 })
+        attemptAbilityAttack({ ...attack, now: 1800 }, 'spark')
         const events = resolvePendingAttackHit({ ...attack, now: 2000 })
         expect(events.filter((event) => event.kind === 'death')).toHaveLength(1)
         expect(target.alive).toBe(false)

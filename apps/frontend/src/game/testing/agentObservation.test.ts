@@ -140,6 +140,44 @@ describe('AI observation', () => {
     })
 })
 
+it('observes one barrel container target without revealing its unopened inventory', () => {
+    const { state, snapshot } = fixture()
+    snapshot.chests = [
+        {
+            id: 'barrel',
+            kind: 'barrel',
+            title: 'Припасы',
+            propId: 'barrel-prop',
+            position: { x: 130, y: 100 },
+            bounds: { x: 122, y: 92, width: 16, height: 16 },
+            state: 'closed',
+            itemCount: 2,
+        },
+    ]
+    snapshot.adventure.worldObjects = [
+        {
+            id: 'barrel',
+            kind: 'barrel',
+            name: 'Припасы',
+            position: { x: 130, y: 100 },
+            bounds: { x: 122, y: 92, width: 16, height: 16 },
+            depleted: false,
+        },
+    ]
+    const observed = observeGame(state)
+    expect(observed.targets.filter((target) => target.id === 'barrel')).toEqual([
+        expect.objectContaining({
+            key: 'chest:barrel',
+            distance: 22,
+            interactionRange: 28,
+            details: { kind: 'barrel', propId: 'barrel-prop', state: 'closed', itemCount: 2 },
+            actions: [
+                expect.objectContaining({ command: { type: 'open_chest', chestId: 'barrel' } }),
+            ],
+        }),
+    ])
+    expect(observed.chest).toBeUndefined()
+})
 describe('AI interaction and travel observations', () => {
     it('uses footprint distance for water and chests, without disclosing unopened contents', () => {
         const { state, snapshot } = fixture()

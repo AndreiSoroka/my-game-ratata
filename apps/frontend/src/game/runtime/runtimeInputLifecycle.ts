@@ -18,7 +18,8 @@ export function installRuntimeInputs(
         if (document.hidden) handlers.release()
     }
     const focus = (event: FocusEvent) => {
-        if (isEditableTarget(event.target)) handlers.release()
+        if (isEditableTarget(event.target) || event.target instanceof HTMLButtonElement)
+            handlers.release()
     }
     window.addEventListener('keydown', handlers.keyDown)
     window.addEventListener('keyup', handlers.keyUp)

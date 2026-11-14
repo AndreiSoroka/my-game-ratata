@@ -146,6 +146,8 @@ describe('mob scavenging respects combat priorities', () => {
         const loot = vi.fn()
         const room = {
             charactersFor: () => [f.actor, enemy],
+            getCharacter: (id: string) =>
+                [f.actor, enemy].find((character) => character.id === id),
             findVisibleTarget: () => enemy,
             navigationFor: () => f.navigation,
             requestAttack: attack,

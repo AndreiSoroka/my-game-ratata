@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAgentNavigator } from './agentNavigation'
 import { observeGame } from './agentObservation'
-import { adventureFixture, characterFixture, worldFixture } from './characterFixture'
+import { characterFixture, worldFixture } from './characterFixture'
 import type { RatataTestState, TestCommand } from './testInterface'
 
 const controllers: ReturnType<typeof createAgentNavigator>[] = []
@@ -165,20 +165,18 @@ describe('observed target navigation and travel', () => {
 
     it('approaches a solid footprint from its perimeter and retries another side if blocked', async () => {
         const { navigator, snapshot, send, tick } = setup()
-        snapshot.adventure = {
-            ...adventureFixture(),
-            worldObjects: [
-                {
-                    id: 'barrel',
-                    name: 'Barrel',
-                    kind: 'barrel',
-                    position: { x: 400, y: 80 },
-                    bounds: { x: 384, y: 64, width: 32, height: 32 },
-                    depleted: false,
-                },
-            ],
-        }
-        const result = navigator.navigate({ targetKey: 'world:barrel' })
+        snapshot.chests = [
+            {
+                id: 'barrel',
+                title: 'Barrel',
+                kind: 'barrel',
+                position: { x: 400, y: 80 },
+                bounds: { x: 384, y: 64, width: 32, height: 32 },
+                state: 'closed',
+                itemCount: 2,
+            },
+        ]
+        const result = navigator.navigate({ targetKey: 'chest:barrel' })
         expect(send).toHaveBeenLastCalledWith({ type: 'move_to', target: { x: 368, y: 80 } })
         await tick(2_000)
         await tick()

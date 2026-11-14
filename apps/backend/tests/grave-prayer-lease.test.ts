@@ -1,3 +1,4 @@
+import { GRAVE_PURIFY_CAST_MS } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
 import { handleAbilityCommand } from '../src/game/abilityCommands'
@@ -12,7 +13,7 @@ import {
     prayerSource as source,
 } from './gravePrayerTestHelpers'
 
-it('expires a model lease normally while its shared 10 second prayer completes before scripted movement resumes', () => {
+it('expires a model lease normally while its shared 50 second prayer completes before scripted movement resumes', () => {
     const f = gravePrayerFixture(true)
     const service = new CompanionService()
     const world: CompanionWorld = {
@@ -53,16 +54,16 @@ it('expires a model lease normally while its shared 10 second prayer completes b
     expect(service.decide(f.actor, decision, world, now + 5_001).accepted).toBe(
         false
     )
-    policy.update(f.actor, room, now + 9_999)
+    policy.update(f.actor, room, now + GRAVE_PURIFY_CAST_MS - 1)
     expect(fallbackCalls).toBe(0)
     expect(f.actor.getMoveInput()).toEqual({ x: 0, y: 0 })
-    expect(f.advance(now + 10_000)).toContainEqual({
+    expect(f.advance(now + GRAVE_PURIFY_CAST_MS)).toContainEqual({
         kind: 'grave_purified',
         actorId: f.actor.id,
         target: { kind: 'grave', id: source.id },
     })
     expect(f.actor.mana).toBe(100)
-    policy.update(f.actor, room, now + 10_001)
+    policy.update(f.actor, room, now + GRAVE_PURIFY_CAST_MS + 1)
     expect(fallbackCalls).toBe(1)
     expect(f.actor.getMoveInput()).toEqual({ x: 1, y: 0 })
 })

@@ -10,6 +10,7 @@ import { distance, moveToward, zeroVector } from './math'
 import { cancelMovementMode } from './movementActions'
 import { type MovementNoise, movementNoise } from './movementNoise'
 import type { NavigationService } from './navigation'
+import { boundedPursuitStep } from './pursuitMovement'
 
 interface MovementContext {
     character: GameCharacter
@@ -51,7 +52,12 @@ function moveCharacter(context: MovementContext): void {
     const { character, deltaMs, now, navigation } = context
     const before = { ...character.position }
     const dashMs = dashTime(character, now, deltaMs)
-    character.position = nextPosition(context, dashMs)
+    character.position = boundedPursuitStep(
+        character,
+        before,
+        nextPosition(context, dashMs),
+        now
+    )
     const traveled = distance(before, character.position)
     wearWalkingEquipment(character, traveled)
     character.velocity = {

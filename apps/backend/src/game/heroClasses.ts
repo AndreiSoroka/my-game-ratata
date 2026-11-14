@@ -31,15 +31,15 @@ function applyHeroClass(config: CharacterConfig, heroClass: HeroClass): void {
             config.resources.attackEnergyCost = 10
             return
         case 'arcanist':
-            config.basicAttackKind = 'spark'
+            config.basicAttackKind = 'melee'
             config.combat.maxHp = 20
             config.combat.minDamage = 3
             config.combat.maxDamage = 6
             config.combat.attackCooldownMs = 800
-            config.combat.attackWindupMs = 200
-            config.attackZones = [{ minX: -1, maxX: 1, minY: 0, maxY: 5 }]
+            config.combat.attackWindupMs = 50
+            config.attackZones = [{ minX: -1, maxX: 1, minY: 0, maxY: 0.9 }]
             config.resources.maxMana = 100
-            config.resources.attackManaCost = 6
+            config.resources.attackManaCost = 0
             config.resources.attackEnergyCost = 5
             return
         case 'cleric':

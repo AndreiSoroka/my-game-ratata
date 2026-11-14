@@ -11,6 +11,7 @@ import { AdventureService } from '../src/game/adventure'
 import { createAdventureState } from '../src/game/adventureState'
 import { GameCharacter } from '../src/game/character'
 import { retireCharacter } from '../src/game/characterLife'
+import { executeContainerCommand } from '../src/game/containerCommands'
 import {
     addInventoryItems,
     countInventoryItem,
@@ -114,7 +115,7 @@ describe('whole harvests and barrel rewards', () => {
         expect(setup.snapshot().materials.grain).toBe(11)
     })
 
-    it('does not empty a shared barrel or grant half its contents when only one slot is free', () => {
+    it('opens a full shared barrel without granting anything and takes only what fits', () => {
         const setup = fixture()
         fillFood(setup.actor, INVENTORY_CAPACITY - 1)
         const command = {
@@ -122,11 +123,27 @@ describe('whole harvests and barrel rewards', () => {
             objectId: 'supplies',
         } as const
         setup.service.handle(setup.actor, command, [], setup.navigation)
-        expect(setup.snapshot().worldObjects?.[0]?.depleted).toBe(false)
+        expect(
+            setup.inventory.containers.snapshot(setup.actor, setup.clock.now)
+                ?.items
+        ).toHaveLength(2)
         expect(setup.snapshot().materials).toMatchObject({ wood: 0, fiber: 0 })
-        setup.actor.inventory.pop()
-        setup.service.handle(setup.actor, command, [], setup.navigation)
-        expect(setup.snapshot().worldObjects?.[0]?.depleted).toBe(true)
+        setup.inventory.containers.handle(
+            setup.actor,
+            { type: 'take_all_chest_items', chestId: 'supplies' },
+            setup.clock.now
+        )
+        expect(setup.snapshot().materials).toMatchObject({ wood: 1, fiber: 0 })
+        expect(
+            setup.inventory.containers.snapshot(setup.actor, setup.clock.now)
+                ?.items
+        ).toHaveLength(1)
+        setup.actor.inventory.shift()
+        setup.inventory.containers.handle(
+            setup.actor,
+            { type: 'take_all_chest_items', chestId: 'supplies' },
+            setup.clock.now
+        )
         expect(setup.snapshot().materials).toMatchObject({ wood: 1, fiber: 1 })
         setup.service.handle(setup.actor, command, [], setup.navigation)
         expect(setup.actor.inventory).toHaveLength(INVENTORY_CAPACITY)
@@ -276,9 +293,35 @@ function fixture(
         solid: Array<boolean>(96 * 80).fill(false),
         solidLayerNames: [],
     })
+    navigation.grid.containers = [
+        {
+            id: 'supplies',
+            kind: 'barrel',
+            title: 'Supplies',
+            propId: 'supplies-prop',
+            bounds: {
+                x: actor.position.x + 16,
+                y: actor.position.y - 8,
+                width: 16,
+                height: 16,
+            },
+            contents: [
+                { itemId: 'wood', quantity: 1 },
+                { itemId: 'fiber', quantity: 1 },
+            ],
+        },
+    ]
+    const inventory = new WorldInventory(navigation, plot.locationId)
     const service = new AdventureService({
         now: () => clock.now,
         resourceNodes: [node],
+        openContainer: (who, id, now) =>
+            executeContainerCommand(
+                inventory.containers,
+                who,
+                { type: 'open_chest', chestId: id },
+                now
+            ),
         worldObjects: [
             {
                 id: 'supplies',
@@ -301,6 +344,7 @@ function fixture(
         plot,
         service,
         navigation,
+        inventory,
         gather: () =>
             service.handle(actor, { type: 'gather', nodeId: node.id }, []),
         snapshot: () => service.snapshot(actor.id, actor.locationId, actor),

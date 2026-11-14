@@ -4,6 +4,7 @@ import { GameCharacter } from '../src/game/character'
 import { attemptAttack } from '../src/game/combat'
 import { createItemInstance } from '../src/game/inventory'
 import { NavigationService } from '../src/game/navigation'
+import { findVisibleTarget } from '../src/game/queries'
 import type { GameRoom } from '../src/game/room'
 import { TheftService } from '../src/game/theft'
 
@@ -42,6 +43,8 @@ export function theftFixture() {
         getCharacter: (id: string) =>
             characters.find((character) => character.id === id),
         navigationFor: () => navigation,
+        findVisibleTarget: (observer: GameCharacter, radius: number) =>
+            findVisibleTarget(characters, navigation, observer, radius, 1_000),
         requestAttack: (attacker: GameCharacter, now: number) =>
             events.push(
                 ...attemptAttack({

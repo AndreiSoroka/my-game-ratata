@@ -27,6 +27,15 @@ export function hasRetaliationRight(
     )
 }
 
+/** A lawful response must not manufacture a second offense owned by the defender. */
+export function hasDirectRetaliationRight(
+    defender: GameCharacter,
+    offender: GameCharacter,
+    now = Date.now()
+): boolean {
+    return (retaliation.get(offender)?.get(defender) ?? 0) > now
+}
+
 export function revokeRetaliation(
     offender: GameCharacter,
     defender: GameCharacter

@@ -9,6 +9,8 @@ import type { CraftOrderClientMessage } from './craftOrders'
 import type { MarketClientMessage } from './economy'
 import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
 import type { ItemId } from './index'
+import type { TreeProfile } from './trees'
+export type { TreeProfile } from './trees'
 
 export type AdventureTradeItemId =
     'food' | 'simple_sword' | 'boots' | 'axe' | 'pickaxe' | 'stone_axe'
@@ -91,6 +93,7 @@ export interface AdventureSnapshot {
 }
 
 export interface AdventureResourceNode {
+    treeProfile?: TreeProfile
     source?: 'tree' | 'stone'
     phase?: 'ready' | 'stump' | 'growing' | 'depleted'
     readyAt?: number

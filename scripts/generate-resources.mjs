@@ -17,6 +17,11 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
             for (let x = bounds.x / 16; x < (bounds.x + bounds.width) / 16; x++)
                 if (solid[at(x, y)]) owned[at(x, y)] = 1
         const propId = prop.properties.find((p) => p.name === 'propId').value
+        const treeProfile = prop.properties.find(
+            (p) => p.name === 'treeProfile'
+        )?.value
+        if (tree && !['forest', 'apple', 'pine'].includes(treeProfile))
+            throw new Error(`Missing tree profile: ${propId}`)
         sources.push({
             id: 20000 + sources.length,
             name: tree ? 'Дерево' : 'Камень',
@@ -31,6 +36,15 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
                     value: `${locationId}:harvest:${propId}`,
                 },
                 { name: 'propId', type: 'string', value: propId },
+                ...(tree
+                    ? [
+                          {
+                              name: 'treeProfile',
+                              type: 'string',
+                              value: treeProfile,
+                          },
+                      ]
+                    : []),
                 {
                     name: 'visual',
                     type: 'string',

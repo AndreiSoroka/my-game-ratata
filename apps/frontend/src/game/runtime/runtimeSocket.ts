@@ -24,11 +24,13 @@ export class RuntimeSocket {
     }
 
     public connect(nickname: string, heroClass?: HeroClass): void {
+        if (this.handlers.isStopped()) return
         this.handlers.onStatus('Connecting')
         const socket = new WebSocket(resolveWebSocketUrl())
         this.socket = socket
 
         socket.addEventListener('open', () => {
+            if (this.handlers.isStopped() || this.socket !== socket) return
             this.send({ nickname, type: 'join', ...(heroClass === undefined ? {} : { heroClass }) })
         })
         socket.addEventListener('message', (event) => {
@@ -47,11 +49,13 @@ export class RuntimeSocket {
     }
 
     public close(): void {
-        this.socket?.close()
+        const socket = this.socket
+        this.socket = undefined
+        socket?.close()
     }
 
     public send(message: ClientMessage): void {
-        if (this.socket?.readyState === WebSocket.OPEN) {
+        if (!this.handlers.isStopped() && this.socket?.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify(message))
         }
     }

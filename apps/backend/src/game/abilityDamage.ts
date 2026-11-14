@@ -1,7 +1,7 @@
 import type { DamageKind, GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { grantRetaliation } from './crimeRelations'
+import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelPrayerCast } from './prayerCancellation'
@@ -38,7 +38,11 @@ export function resolveCharacterDamage(
         actor.faction !== target.faction &&
         canTargetByFaction(actor, target, now)
     absorbDamage(input, result, hostile)
-    if (actor.id !== target.id && !hostile) {
+    if (
+        actor.id !== target.id &&
+        !hostile &&
+        !hasDirectRetaliationRight(actor, target, now)
+    ) {
         grantRetaliation(target, actor, now + 30_000)
     }
     result.hpDamage = Math.min(target.hp, input.amount - result.absorbed)

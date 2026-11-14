@@ -42,3 +42,42 @@ it('ignores late messages from a retired client runtime after starting another l
     expect(onWorldInit).not.toHaveBeenCalled()
     expect(onError).not.toHaveBeenCalled()
 })
+
+it('does not create a stopped connection or send a join when an old socket opens late', () => {
+    const sockets: EventTarget[] = []
+    const send = vi.fn<(data: string) => void>()
+    class TestSocket extends EventTarget {
+        public static readonly OPEN = 1
+        public readonly readyState = 1
+        public send = send
+        public close(): void {
+            /* Deliberately delay close delivery to exercise the race. */
+        }
+        public constructor() {
+            super()
+            sockets.push(this)
+        }
+    }
+    vi.stubGlobal('WebSocket', TestSocket)
+    let stopped = true
+    const onStatus = vi.fn<(status: string) => void>()
+    const runtime = new RuntimeSocket({
+        isStopped: () => stopped,
+        onStatus,
+        onError: vi.fn<(message: string) => void>(),
+        onEvent: vi.fn<(event: GameEventPayload) => void>(),
+        onSnapshot: vi.fn<() => void>(),
+        onWorldInit: vi.fn<() => void>(),
+    })
+    runtime.connect('Old hero')
+    expect(sockets).toHaveLength(0)
+    expect(onStatus).not.toHaveBeenCalled()
+    stopped = false
+    runtime.connect('Old hero')
+    expect(sockets).toHaveLength(1)
+    stopped = true
+    runtime.close()
+    sockets[0]!.dispatchEvent(new Event('open'))
+    runtime.send({ type: 'chat', text: 'late' })
+    expect(send).not.toHaveBeenCalled()
+})

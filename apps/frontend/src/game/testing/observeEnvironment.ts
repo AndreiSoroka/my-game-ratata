@@ -27,16 +27,18 @@ export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[]
                     restoresAt: grave.restoresAt,
                 },
             })),
-        ...(snapshot.adventure?.worldObjects ?? []).map((object): TargetDescription => ({
-            id: object.id,
-            kind: 'world',
-            name: object.name,
-            position: object.position,
-            bounds: object.bounds,
-            interactionAreas: object.interactionAreas,
-            interactionRange: 48,
-            details: { kind: object.kind, depleted: object.depleted },
-        })),
+        ...(snapshot.adventure?.worldObjects ?? [])
+            .filter((object) => object.kind !== 'barrel')
+            .map((object): TargetDescription => ({
+                id: object.id,
+                kind: 'world',
+                name: object.name,
+                position: object.position,
+                bounds: object.bounds,
+                interactionAreas: object.interactionAreas,
+                interactionRange: 48,
+                details: { kind: object.kind, depleted: object.depleted },
+            })),
         ...(snapshot.adventure?.resourceNodes ?? []).map((node): TargetDescription => ({
             id: node.id,
             kind: 'resource',
@@ -44,7 +46,11 @@ export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[]
             position: node.position,
             ...(node.bounds === undefined ? {} : { bounds: node.bounds }),
             interactionRange: 48,
-            details: { material: node.kind, remaining: node.remaining },
+            details: {
+                material: node.kind,
+                remaining: node.remaining,
+                treeProfile: node.treeProfile,
+            },
         })),
         ...(snapshot.adventure?.farmPlots ?? []).map((plot): TargetDescription => ({
             id: plot.id,

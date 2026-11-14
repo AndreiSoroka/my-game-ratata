@@ -15,6 +15,7 @@ import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { loadHarvestSources } from './harvestData'
 import { HarvestResources } from './harvestResources'
+import type { HarvestDrops } from './harvestWork'
 import {
     addInventoryItems,
     countInventoryItem,
@@ -92,7 +93,8 @@ export class AdventureResources {
             actor: GameCharacter,
             recipeId: AdventureRecipeId,
             instanceId: string
-        ) => void
+        ) => void,
+        drops?: HarvestDrops
     ) {
         this.nodes = structuredClone(
             nodes ?? [
@@ -100,7 +102,7 @@ export class AdventureResources {
                 ...loadHarvestSources(),
             ]
         )
-        this.harvesting = new HarvestResources(this.nodes)
+        this.harvesting = new HarvestResources(this.nodes, drops)
     }
 
     public update(

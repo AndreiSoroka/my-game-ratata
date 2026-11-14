@@ -176,7 +176,7 @@ function chestTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Targe
             name: chest.title ?? 'Сундук',
             position: chest.position,
             range: CHEST_INTERACTION_RANGE,
-            bounds: {
+            bounds: chest.bounds ?? {
                 x: chest.position.x - CHEST_FOOTPRINT_SIZE / 2,
                 y: chest.position.y - CHEST_FOOTPRINT_SIZE / 2,
                 width: CHEST_FOOTPRINT_SIZE,

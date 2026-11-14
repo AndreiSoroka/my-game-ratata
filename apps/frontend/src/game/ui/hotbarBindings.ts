@@ -1,17 +1,24 @@
-import type {
-    AbilityId,
-    CharacterAutoAction,
-    CharacterSnapshot,
-    PrayerPreview,
+import {
+    type AbilityId,
+    type CharacterAutoAction,
+    type CharacterSnapshot,
+    gravePurifyCastMs,
+    type PrayerPreview,
+    type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 
 export type HotbarBinding =
     { kind: 'attack' } | { kind: 'ability'; id: AbilityId } | { kind: 'item'; id: 'food' }
-export function defaultHotbarBinding(player: CharacterSnapshot): HotbarBinding {
+export function defaultHotbarBindings(player: CharacterSnapshot): (HotbarBinding | null)[] {
     const ability = { vanguard: undefined, ranger: 'shot', arcanist: 'spark', cleric: 'pray' }[
         player.heroClass ?? 'vanguard'
     ]
-    return ability ? { kind: 'ability', id: ability as AbilityId } : { kind: 'attack' }
+    return [
+        { kind: 'attack' },
+        ability ? { kind: 'ability', id: ability as AbilityId } : null,
+        null,
+        null,
+    ]
 }
 export function bindingMatchesAction(
     binding: HotbarBinding | null,
@@ -37,13 +44,14 @@ export const hotbarGlyphs: Record<AbilityId, string> = {
 export function prayerDescription(
     preview: PrayerPreview,
     characters: CharacterSnapshot[],
-    player: CharacterSnapshot
+    player: CharacterSnapshot,
+    grave?: WorldGraveSnapshot
 ): string {
     if (preview.unavailableReason) return preview.unavailableReason
     const intent = preview.intent
     if (intent?.mode === 'devotion') return `Помолиться · ${preview.manaCost} MP · Без эффекта`
     if (intent?.mode === 'purify_grave')
-        return `Очистить могилу · ${preview.manaCost} MP · 10 с · Esc — прервать`
+        return `Упокоить могилу · ${preview.manaCost} MP · ${gravePurifyCastMs(grave?.phase ?? 'active') / 1000} с · Esc — прервать`
     const gift = prayerGift(intent, characters, player)
     return [`${gift} · ${preview.manaCost} MP`, collateralDescription(preview)]
         .filter(Boolean)

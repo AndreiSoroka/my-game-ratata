@@ -16,6 +16,7 @@ import type { CharacterController } from './controllers'
 import { recordMovementNoise } from './hearing'
 import { advanceCharacter } from './movement'
 import type { PartyService } from './parties'
+import { rememberPursuitExit } from './pursuitTravel'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
@@ -127,11 +128,23 @@ function advanceWorldCharacter(
     }
     const from = character.locationId
     const edge = { ...character.position }
-    const notice = world.travel(character, intent)
+    const notice = world.travel(character, intent, now)
     if (from !== character.locationId) {
         const previous = getWorldLocationDefinition(from)
         const next = getWorldLocationDefinition(character.locationId)
         if (previous !== undefined && next !== undefined) {
+            rememberPursuitExit(
+                character,
+                from,
+                edge,
+                {
+                    x: next.column - previous.column,
+                    y: next.row - previous.row,
+                },
+                context.characters.values(),
+                navigation,
+                now
+            )
             rememberObservedCrossing(
                 character,
                 from,

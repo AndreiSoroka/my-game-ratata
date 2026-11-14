@@ -125,13 +125,41 @@ it('shows exact hundredths at the grave, ignores misses and unknown world target
     expect(rendered.views[0]?.dead).toBe(true)
     expect(eventCaption({ kind: 'world_damage', amount: 1.25, critical: true })).toBe('−1,25 КРИТ!')
 })
-it('keeps purification channel anchored to the grave for its authoritative ten-second duration', () => {
-    const actor = characterFixture('priest')
-    const target = { kind: 'grave' as const, id: 'stone' }
-    expect(
-        combatEffectCues(
-            { kind: 'cast', abilityId: 'pray', actorId: actor.id, target, phase: 'started' },
-            actor
-        )[0]
-    ).toMatchObject({ kind: 'casting', target, duration: 10000, channel: true })
+it.each([10_000, 50_000])(
+    'keeps purification channel anchored for its authoritative %s ms duration',
+    (duration) => {
+        const actor = characterFixture('priest')
+        const target = { kind: 'grave' as const, id: 'stone' }
+        expect(
+            combatEffectCues(
+                {
+                    kind: 'cast',
+                    abilityId: 'pray',
+                    actorId: actor.id,
+                    target,
+                    phase: 'started',
+                    durationMs: duration,
+                },
+                actor
+            )[0]
+        ).toMatchObject({ kind: 'casting', target, duration, channel: true })
+    }
+)
+
+it('animates an untargeted Spark along its pinned forward path after the caster turns', () => {
+    const { actor, effects, frame } = setup()
+    effects.receive({
+        kind: 'attack',
+        actorId: actor.id,
+        abilityId: 'spark',
+        projectile: { origin: { x: 100, y: 100 }, endpoint: { x: 180, y: 100 }, halfWidth: 16 },
+    })
+    expect(rendered.views[0]).toMatchObject({ pos: { x: 100, y: 85 }, rotation: 0 })
+    actor.facing = 'up'
+    actor.position = { x: 300, y: 300 }
+    frame(100)
+    expect(rendered.views[0]?.pos).toEqual({ x: 140, y: 85 })
+    frame(100)
+    expect(rendered.views[0]?.dead).toBe(true)
+    effects.dispose()
 })

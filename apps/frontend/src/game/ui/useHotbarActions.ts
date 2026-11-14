@@ -1,5 +1,5 @@
 import { previewPrayerFromSnapshots } from '@my-game-ratata/contracts'
-import { computed, type ComputedRef, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, type ComputedRef, onBeforeUnmount, watch } from 'vue'
 
 import { createPrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { relation } from './combatTargeting'
@@ -13,16 +13,12 @@ import {
     type HotbarEmit,
     type HotbarProps,
 } from './hotbarActions'
-import { defaultHotbarBinding, type HotbarBinding, prayerDescription } from './hotbarBindings'
+import { type HotbarBinding, prayerDescription } from './hotbarBindings'
 import { createGestures } from './hotbarGestures'
+import { useSavedHotbarBindings } from './hotbarSession'
 
 export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
-    const bindings = ref<(HotbarBinding | null)[]>([
-        defaultHotbarBinding(props.player),
-        null,
-        null,
-        null,
-    ])
+    const bindings = useSavedHotbarBindings(() => props.player)
     const food = computed(() => props.player.inventory.filter((item) => item.itemId === 'food'))
     const count = computed(() => food.value.reduce((sum, item) => sum + (item.quantity ?? 1), 0))
     const known = computed(() => props.player.abilities?.known ?? [])
@@ -35,7 +31,6 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     watch(
         () => props.player.id,
         () => {
-            bindings.value = [defaultHotbarBinding(props.player), null, null, null]
             gestures.reset()
         }
     )
@@ -58,7 +53,8 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
             : binding?.kind === 'attack'
               ? props.player.cooldowns.attackMsLeft
               : 0
-    const prayerTooltip = () => prayerDescription(preview.value, props.characters, props.player)
+    const prayerTooltip = () =>
+        prayerDescription(preview.value, props.characters, props.player, props.grave)
     const unavailable = (binding: HotbarBinding | null) =>
         bindingUnavailable(
             binding,

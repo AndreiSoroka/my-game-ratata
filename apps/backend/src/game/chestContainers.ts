@@ -127,7 +127,7 @@ export class ChestContainers {
         return {
             chestId: chest.id,
             items: chest.contents.map(snapshotItem),
-            ...(chest.kind === 'corpse'
+            ...(chest.kind !== undefined
                 ? {
                       kind: chest.kind,
                       title: chest.title,
@@ -175,7 +175,8 @@ export class ChestContainers {
                   chest.position,
                   this.navigation,
                   this.locationId,
-                  now
+                  now,
+                  chest.bounds
               )
     }
 

@@ -35,7 +35,7 @@ test.describe('Storybook production grave states', () => {
             '10% урона',
             '5% урона',
         ])
-        await expect(details).toContainText('20 MP · 10 с без движения. Esc — прервать.')
+        await expect(details).toContainText('20 MP · 50 с без движения. Esc — прервать.')
     })
 
     test('ruined source displays the server-based restoration countdown', async ({ page }) => {
@@ -44,6 +44,7 @@ test.describe('Storybook production grave states', () => {
         await expect(details).toContainText('Разрушенная могила')
         await expect(details).toContainText('0 / 100 HP')
         await expect(details).toContainText('Восстановится через 20:00')
+        await expect(details).toContainText('20 MP · 10 с без движения. Esc — прервать.')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
             'value',
             '0'

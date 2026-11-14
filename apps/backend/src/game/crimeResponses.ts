@@ -2,7 +2,10 @@ import { THEFT_RULES, type Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
+import { available, humanControlled } from './crimeRules'
 import { distance, normalize } from './math'
+import { advancePursuit } from './pursuit'
+import { pursuits } from './pursuitState'
 import { visibilityRadius } from './queries'
 import type { GameRoom } from './room'
 
@@ -21,38 +24,66 @@ export function advanceCrimeResponse(
     response: CrimeResponse,
     room: GameRoom,
     now: number
-): void {
+): boolean {
     const navigation = room.navigationFor(actor)
-    const visible =
-        distance(actor.position, thief.position) <=
-            visibilityRadius(actor, thief, THEFT_RULES.pursuitRadius, now) &&
-        navigation.hasLineOfSight(actor.position, thief.position)
+    const visible = visibleThief(actor, thief, room, now)
     if (visible) {
         response.lastKnown = { ...thief.position }
     }
     if (response.mode === 'fight') {
-        actor.updateFacing({
-            x: response.lastKnown.x - actor.position.x,
-            y: response.lastKnown.y - actor.position.y,
-        })
-        if (
-            visible &&
-            isTargetInAttackRange(actor, thief, navigation.grid.tileWidth)
-        ) {
-            actor.clearPath()
-            room.requestAttack(actor, now)
-            return
+        const decision = advancePursuit(
+            actor,
+            visible ? thief : undefined,
+            room,
+            now,
+            THEFT_RULES.pursuitRadius
+        )
+        if (!decision.handled && actor.locationId === response.locationId) {
+            actor.setPath(
+                navigation.findPathWorld(actor.position, response.lastKnown)
+            )
         }
+        const target = decision.target
+        if (target !== undefined) {
+            actor.updateFacing({
+                x: target.position.x - actor.position.x,
+                y: target.position.y - actor.position.y,
+            })
+            if (
+                !isTargetInAttackRange(actor, target, navigation.grid.tileWidth)
+            ) {
+                actor.setPath(
+                    navigation.findPathWorld(actor.position, target.position)
+                )
+                return true
+            }
+            actor.clearPath()
+            actor.setMoveInput({ x: 0, y: 0 })
+            room.requestAttack(actor, now, target.id)
+        }
+        return !decision.handled || pursuits.has(actor)
     }
     if (actor.hasPath() && now - response.lastPlanAt < 500) {
-        return
+        return true
     }
-    const target =
-        response.mode === 'fight'
-            ? response.lastKnown
-            : escapePoint(actor, response.lastKnown, room)
+    const target = escapePoint(actor, response.lastKnown, room)
     actor.setPath(navigation.findPathWorld(actor.position, target))
     response.lastPlanAt = now
+    return true
+}
+
+function visibleThief(
+    actor: GameCharacter,
+    thief: GameCharacter,
+    room: GameRoom,
+    now: number
+): boolean {
+    return (
+        actor.locationId === thief.locationId &&
+        distance(actor.position, thief.position) <=
+            visibilityRadius(actor, thief, THEFT_RULES.pursuitRadius, now) &&
+        room.navigationFor(actor).hasLineOfSight(actor.position, thief.position)
+    )
 }
 
 function escapePoint(
@@ -85,4 +116,33 @@ function escapePoint(
         }
     }
     return actor.position
+}
+
+export function advanceReturningResponses(
+    returning: Set<string>,
+    room: GameRoom,
+    all: Map<string, GameCharacter>,
+    now: number,
+    controlled: Set<string>
+): void {
+    for (const id of returning) {
+        const actor = all.get(id)
+        if (
+            !available(actor) ||
+            humanControlled(actor) ||
+            !pursuits.has(actor)
+        ) {
+            returning.delete(id)
+            continue
+        }
+        const target = advancePursuit(actor, undefined, room, now).target
+        if (pursuits.has(actor)) {
+            controlled.add(id)
+        }
+        if (target !== undefined) {
+            actor.clearPath()
+            actor.setMoveInput({ x: 0, y: 0 })
+            room.requestAttack(actor, now, target.id)
+        }
+    }
 }

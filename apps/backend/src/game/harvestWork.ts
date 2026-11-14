@@ -3,6 +3,7 @@ import {
     type GameEventPayload,
     isItemBroken,
     ITEM_DEFINITIONS,
+    TREE_PROFILES,
     type Vector2,
     type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
@@ -30,6 +31,15 @@ interface WorkTool {
     wear: number
 }
 
+export interface HarvestDrops {
+    random: () => number
+    drop: (
+        actor: GameCharacter,
+        item: InventoryItemInstance,
+        node: AdventureResourceNode
+    ) => void
+}
+
 export function workReady(
     actor: GameCharacter,
     state: PlayerAdventure,
@@ -43,7 +53,8 @@ export function resolveGather(
     state: PlayerAdventure,
     node: AdventureResourceNode,
     now: number,
-    navigation?: NavigationService
+    navigation?: NavigationService,
+    drops?: HarvestDrops
 ): GameEventPayload[] {
     const problem = gatherProblem(actor, state, node, now, navigation)
     if (problem !== undefined) {
@@ -80,6 +91,7 @@ export function resolveGather(
         deplete(node, now)
     }
     const text = setNotice(state, resultText(node, finalTree, broken))
+    dropTreeLoot(actor, node, drops)
     return [
         {
             kind: 'resource_gather',
@@ -89,6 +101,29 @@ export function resolveGather(
             text,
         },
     ]
+}
+
+function dropTreeLoot(
+    actor: GameCharacter,
+    node: AdventureResourceNode,
+    drops?: HarvestDrops
+): void {
+    if (
+        node.source !== 'tree' ||
+        node.treeProfile === undefined ||
+        drops === undefined
+    ) {
+        return
+    }
+    for (const loot of TREE_PROFILES[node.treeProfile].sideDrops) {
+        if (drops.random() < loot.chance) {
+            drops.drop(
+                actor,
+                createItemInstance(loot.itemId, loot.quantity),
+                node
+            )
+        }
+    }
 }
 
 function gatherProblem(

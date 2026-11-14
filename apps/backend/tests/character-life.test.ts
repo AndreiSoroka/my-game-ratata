@@ -24,7 +24,8 @@ describe('shared hero classes and progression', () => {
         )
         expect(ranger.config.basicAttackKind).toBe('melee')
         expect(ranger.config.attackZones[0]?.maxY).toBeLessThan(1)
-        expect(arcanist.config.resources.attackManaCost).toBeGreaterThan(0)
+        expect(arcanist.config.resources.attackManaCost).toBe(0)
+        expect(arcanist.config.basicAttackKind).toBe('melee')
         expect(cleric.config.resources.maxMana).toBe(120)
         expect(CHARACTER_CONFIG.human.resources.maxMana).toBe(40)
         ranger.config.combat.maxHp = 500

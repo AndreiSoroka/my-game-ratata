@@ -59,7 +59,8 @@ function abilityUnavailable(
     if (cooldown > 0) return 'Умение восстанавливается'
     if (props.player.resources.mana < ability.mana) return 'Недостаточно маны'
     if (props.player.resources.energy < ability.energy) return 'Недостаточно энергии'
-    if (!['barrier', 'shot'].includes(id) && !hostileTarget(props)) return 'Выберите врага: T'
+    if (!['barrier', 'shot', 'spark'].includes(id) && !hostileTarget(props))
+        return 'Выберите врага: T'
     return undefined
 }
 function actionFor(
@@ -166,9 +167,10 @@ function activateFood(
 }
 
 export function actionTooltip(binding: HotbarBinding | null, props: HotbarProps): string {
-    if (binding?.kind === 'attack' && props.player.basicAttackKind !== 'spark')
-        return 'Ближняя базовая атака'
+    if (binding?.kind === 'attack') return 'Ближняя базовая атака'
     if (binding?.kind === 'ability' && binding.id === 'shot' && !hostileTarget(props))
         return `Выстрел вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${ABILITY_DEFINITIONS.shot.energy} EN`
+    if (binding?.kind === 'ability' && binding.id === 'spark' && !hostileTarget(props))
+        return `Искра вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${ABILITY_DEFINITIONS.spark.mana} MP · ${ABILITY_DEFINITIONS.spark.energy} EN`
     return bindingLabel(binding)
 }

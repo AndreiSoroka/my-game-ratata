@@ -2,6 +2,7 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, onMounted, ref, useId } from 'vue'
 
+import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
 
 const props = withDefaults(
@@ -13,8 +14,14 @@ const props = withDefaults(
     }>(),
     { pending: false, connected: true }
 )
-defineEmits<{ newLife: []; abandonLife: [] }>()
+const emit = defineEmits<{ newLife: []; abandonLife: []; openMenu: [] }>()
 const panel = ref<HTMLElement>()
+useEscapeOwner({
+    active: () => true,
+    element: panel,
+    priority: 175,
+    escape: () => emit('openMenu'),
+})
 const headingId = useId()
 const detailId = useId()
 const seconds = computed(() =>

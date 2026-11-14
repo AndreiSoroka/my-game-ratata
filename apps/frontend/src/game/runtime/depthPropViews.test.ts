@@ -53,6 +53,34 @@ const grave: WorldGraveSnapshot = {
     material: 'stone',
 }
 
+it.each(['apple', 'pine'] as const)(
+    'renders a %s tree fallback with its own profile art',
+    (profile) => {
+        const { view, graphics, actors } = fixture()
+        const bitmap = document.createElement('canvas')
+        bitmap.width = profile === 'pine' ? 16 : 48
+        bitmap.height = profile === 'pine' ? 32 : 64
+        graphics[profile] = bitmap
+        view.updateResources([
+            {
+                id: 'profile-tree',
+                source: 'tree',
+                kind: 'wood',
+                treeProfile: profile,
+                phase: 'ready',
+                remaining: 8,
+                locationId: 'map-2-2',
+                position: { x: 100, y: 100 },
+            },
+        ])
+        const drawImage = vi.fn<(image: HTMLCanvasElement, x: number, y: number) => void>()
+        actors[0]?.graphics.use.mock.calls[0]?.[0].options.draw({
+            drawImage,
+        } as unknown as CanvasRenderingContext2D)
+        expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0)
+    }
+)
+
 describe('dynamic grave presentation', () => {
     it('uses the existing grave atlas bitmap, sorts at ground contact and retains identity after loot disappears', () => {
         const { actors, view, bitmap } = fixture()

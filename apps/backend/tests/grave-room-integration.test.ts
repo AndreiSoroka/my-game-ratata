@@ -1,6 +1,7 @@
 import {
     CENTER_LOCATION_ID,
     type ClientMessage,
+    GRAVE_PURIFY_CAST_MS,
     type ServerMessage,
 } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -118,6 +119,7 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
             ).toBe(false)
         }
     )
+    // Fake time still runs every real room tick; allow CPU contention in the full suite.
     it('channels, cancels and completes purification through the same player socket', () => {
         const f = fixture()
         const command = {
@@ -133,14 +135,14 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
         expect(f.grave()?.phase).toBe('active')
         expect(f.actor.mana).toBe(f.actor.config.resources.maxMana)
         f.send(command)
-        vi.advanceTimersByTime(9950)
+        vi.advanceTimersByTime(GRAVE_PURIFY_CAST_MS - 50)
         expect(f.grave()?.phase).toBe('active')
         const mana = f.actor.mana
         vi.advanceTimersByTime(50)
         f.room.stop()
         expect(f.grave()?.phase).toBe('purified')
         expect(f.actor.mana).toBe(mana - 20)
-    })
+    }, 30_000)
 })
 
 it('preserves a due spell until the combat tick when another socket attack arrives between ticks', () => {

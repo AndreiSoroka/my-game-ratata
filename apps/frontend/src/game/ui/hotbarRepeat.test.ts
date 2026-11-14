@@ -14,15 +14,16 @@ function mage() {
     })
 }
 it.each<[HeroClass, string]>([
-    ['vanguard', 'Базовая атака'],
+    ['vanguard', 'Пусто'],
     ['ranger', 'Выстрел'],
     ['arcanist', 'Искра'],
     ['cleric', 'Молитва'],
-])('starts %s with a usable class action in slot one', (heroClass, label) => {
+])('starts %s with a basic attack and its class ability', (heroClass, label) => {
     const player = characterFixture('self', { heroClass })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
-        expect(wrapper.get('.hotbar-slot').attributes('aria-label')).toContain(label)
+        expect(wrapper.get('.hotbar-slot').attributes('aria-label')).toContain('Базовая атака')
+        expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('aria-label')).toContain(label)
     } finally {
         wrapper.unmount()
     }
@@ -34,13 +35,13 @@ it('casts once immediately, enables repetition during cooldown, and stops withou
         props: { player, characters: [player, enemy], target: enemy, blocked: false },
     })
     try {
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         await wrapper.setProps({
             player: { ...player, abilities: { ...player.abilities!, cooldowns: { spark: 500 } } },
         })
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         await wrapper.setProps({ player: { ...player, control: { mode: 'none', targetId: null } } })
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')).toEqual([
             [{ type: 'use_ability', abilityId: 'spark', targetId: enemy.id }],
             [
@@ -63,14 +64,14 @@ it('pins the first prayer intent when its single cast has already filled the tar
     })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         const healed = {
             ...player,
             hp: player.maxHp,
             abilities: { ...player.abilities!, cooldowns: { pray: 2800 } },
         }
         await wrapper.setProps({ player: healed, characters: [healed] })
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')?.[1]).toEqual([
             {
                 type: 'auto_action',
@@ -90,9 +91,9 @@ it('can arm a meaningful prayer while waiting for mana and displays authoritativ
     })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')).toBeUndefined()
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         const action = { kind: 'prayer', intent: { mode: 'restore', targetId: player.id } } as const
         expect(wrapper.emitted('command')).toEqual([[{ type: 'auto_action', action }]])
         await wrapper.setProps({
@@ -101,9 +102,9 @@ it('can arm a meaningful prayer while waiting for mana and displays authoritativ
                 control: { mode: 'action', targetId: player.id, action, waiting: 'resources' },
             },
         })
-        expect(wrapper.get('.hotbar-slot').classes()).toContain('active')
+        expect(wrapper.findAll('.hotbar-slot')[1]!.classes()).toContain('active')
         expect(wrapper.get('.hotbar-waiting').text()).toContain('ждём силы')
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')?.at(-1)).toEqual([{ type: 'auto_action', action: null }])
     } finally {
         wrapper.unmount()
@@ -118,11 +119,11 @@ it('expires a double-press gesture at 301 ms and resets it when the target chang
         props: { player, characters: [player, enemy, other], target: enemy, blocked: false },
     })
     try {
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         now += 301
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         await wrapper.setProps({ target: other })
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')).toEqual([
             [{ type: 'use_ability', abilityId: 'spark', targetId: enemy.id }],
             [{ type: 'use_ability', abilityId: 'spark', targetId: enemy.id }],
@@ -175,10 +176,10 @@ it('keeps automatic repetition on one slot when the same ability is bound twice'
         props: { player, characters: [player, enemy], target: enemy, blocked: false },
     })
     try {
-        await wrapper.vm.edit(1)
+        await wrapper.vm.edit(2)
         await wrapper.get('.hotbar-picker button').trigger('click')
-        wrapper.vm.activate(0)
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
+        wrapper.vm.activate(1)
         const action = { kind: 'ability', abilityId: 'spark', targetId: enemy.id } as const
         await wrapper.setProps({
             player: {
@@ -187,18 +188,18 @@ it('keeps automatic repetition on one slot when the same ability is bound twice'
             },
         })
         expect(wrapper.findAll('.hotbar-slot.active')).toHaveLength(1)
-        expect(wrapper.findAll('.hotbar-slot')[0]!.classes()).toContain('active')
-        wrapper.vm.activate(1)
+        expect(wrapper.findAll('.hotbar-slot')[1]!.classes()).toContain('active')
+        wrapper.vm.activate(2)
         expect(wrapper.emitted('command')?.slice(-2)).toEqual([
             [{ type: 'auto_action', action: null }],
             [{ type: 'use_ability', abilityId: 'spark', targetId: enemy.id }],
         ])
-        wrapper.vm.activate(1)
+        wrapper.vm.activate(2)
         await wrapper.vm.$nextTick()
         expect(wrapper.emitted('command')?.at(-1)).toEqual([{ type: 'auto_action', action }])
         expect(wrapper.findAll('.hotbar-slot.active')).toHaveLength(1)
-        expect(wrapper.findAll('.hotbar-slot')[1]!.classes()).toContain('active')
-        wrapper.vm.activate(1)
+        expect(wrapper.findAll('.hotbar-slot')[2]!.classes()).toContain('active')
+        wrapper.vm.activate(2)
         expect(wrapper.emitted('command')?.at(-1)).toEqual([{ type: 'auto_action', action: null }])
     } finally {
         wrapper.unmount()
@@ -215,12 +216,14 @@ it('fires Shot forward without selecting a target and previews the shared facing
     })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
-        expect(wrapper.get('.hotbar-slot').attributes('title')).toContain('Выстрел вперёд ←')
+        expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('title')).toContain(
+            'Выстрел вперёд ←'
+        )
         expect(wrapper.emitted('shotPreviewChange')?.at(-1)).toEqual([
             { origin: { x: 100, y: 100 }, endpoint: { x: 36, y: 100 } },
         ])
-        wrapper.vm.activate(0)
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')).toEqual([
             [{ type: 'use_ability', abilityId: 'shot' }],
             [{ type: 'auto_action', action: { kind: 'ability', abilityId: 'shot' } }],
@@ -228,7 +231,7 @@ it('fires Shot forward without selecting a target and previews the shared facing
         await wrapper.setProps({ target: enemy, characters: [player, enemy] })
         expect(wrapper.emitted('shotPreviewChange')?.at(-1)).toEqual([undefined])
         wrapper.vm.resetGesture()
-        wrapper.vm.activate(0)
+        wrapper.vm.activate(1)
         expect(wrapper.emitted('command')?.at(-1)).toEqual([
             { type: 'use_ability', abilityId: 'shot', targetId: enemy.id },
         ])

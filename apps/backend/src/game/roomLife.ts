@@ -44,6 +44,7 @@ export class RoomLife {
         for (const { source, initialChildren } of graves) {
             this.deathSpawns.register(source, initialChildren, now)
         }
+        this.deathSpawns.assignGuardians(this.characters)
     }
 
     public abandon(actor: GameCharacter, now: number): boolean {

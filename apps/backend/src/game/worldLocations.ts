@@ -10,6 +10,8 @@ import {
 import type { GameCharacter } from './character'
 import type { CorpseWallet } from './corpseWallet'
 import { loadNavigationService, NavigationService } from './navigation'
+import { returnFromPursuit } from './pursuitState'
+import { canPursuitTravel, recordPursuitEntry } from './pursuitTravel'
 import { WorldInventory } from './worldInventory'
 
 export const centerLocationId = CENTER_LOCATION_ID
@@ -89,7 +91,8 @@ export class WorldLocations {
 
     public travel(
         character: GameCharacter,
-        intent: Vector2
+        intent: Vector2,
+        now = Date.now()
     ): string | undefined {
         const current = this.get(character.locationId)
         const direction = exitDirection(
@@ -102,11 +105,8 @@ export class WorldLocations {
             return undefined
         }
         const next = this.adjacentLocation(current, direction)
-        if (
-            next === undefined ||
-            (next.description.biome === 'city' &&
-                character.faction === 'monsters')
-        ) {
+        if (next === undefined || forbiddenCityEntry(character, next)) {
+            returnFromPursuit(character)
             const edge = `${character.locationId}:${String(direction.x)}:${String(direction.y)}`
             if (this.blockedEdges.get(character.id) === edge) {
                 return undefined
@@ -115,6 +115,9 @@ export class WorldLocations {
             return next === undefined ? dragonBoundaryMessage : cityEntryMessage
         }
         const summary = next.navigation.summary
+        if (!canPursuitTravel(character, next.description.id, now)) {
+            return undefined
+        }
         const margin = summary.tileWidth * 2.5
         character.position = {
             x:
@@ -132,6 +135,7 @@ export class WorldLocations {
         }
         this.closeChestViews(character.id)
         character.locationId = next.description.id
+        recordPursuitEntry(character, now)
         character.clearPath()
         character.clearPendingAttackHit()
         character.attackZones = []
@@ -140,6 +144,13 @@ export class WorldLocations {
         this.blockedEdges.delete(character.id)
         return `Локация: ${next.description.name}`
     }
+}
+
+function forbiddenCityEntry(
+    character: GameCharacter,
+    next: LocationState
+): boolean {
+    return next.description.biome === 'city' && character.faction === 'monsters'
 }
 
 function exitDirection(

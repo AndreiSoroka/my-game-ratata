@@ -1,5 +1,6 @@
 import {
     CENTER_LOCATION_ID,
+    PURSUIT_RULES,
     type TheftClientMessage,
 } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -265,9 +266,20 @@ describe('guard attacks after a paid pardon', () => {
         ).toBe(false)
         expect(actor.hp).toBe(before)
         expect(service.update(room, characters, hitAt + 1).has(guard.id)).toBe(
-            false
+            true
         )
-        expect(guard.hasPath()).toBe(false)
+        const destination = guard.remainingPath().at(-1)
+        if (destination === undefined) {
+            throw new Error('The pardoned guard has no ordinary homeward path')
+        }
+        expect(
+            Math.hypot(
+                destination.x - guard.spawnPosition.x,
+                destination.y - guard.spawnPosition.y
+            )
+        ).toBeLessThanOrEqual(PURSUIT_RULES.homeArrivalRadius)
+        expect(guard.pendingAttack).toBeUndefined()
+        expect(canTargetByFaction(guard, actor, hitAt + 1)).toBe(false)
     })
 })
 

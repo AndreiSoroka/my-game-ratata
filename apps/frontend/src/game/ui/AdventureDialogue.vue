@@ -5,7 +5,7 @@ import type {
     CharacterSnapshot,
     ClientMessage,
 } from '@my-game-ratata/contracts'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import CityDemandReport from './CityDemandReport.vue'
 import CityMarket from './CityMarket.vue'
@@ -13,6 +13,7 @@ import { dialogueSpeechKeys } from './dialogueSpeechKeys'
 import RepairWorkshop from './RepairWorkshop.vue'
 import SoulBadge from './SoulBadge.vue'
 import { speechBubbleId } from './speechReceipts'
+import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
 import WorkshopOrders from './WorkshopOrders.vue'
 const props = defineProps<{ adventure: AdventureSnapshot; characters: CharacterSnapshot[] }>()
@@ -56,26 +57,20 @@ watch(
     },
     { immediate: true }
 )
-function escapeOutside(event: KeyboardEvent): void {
-    if (
-        event.code !== 'Escape' ||
-        !props.adventure.dialogue ||
-        (event.target instanceof Node && panel.value?.contains(event.target))
-    )
-        return
-    const target = event.target instanceof HTMLElement ? event.target : document.activeElement
-    if (target instanceof HTMLElement && target.closest('[role="dialog"], [role="menu"]')) return
-    event.stopImmediatePropagation()
-    handleKeys(event)
+function escapeDialogue(): void {
+    if (view.value !== 'conversation') backToConversation()
+    else emit('command', { choiceId: 'close', type: 'dialogue_choice' })
 }
-onMounted(() => window.addEventListener('keydown', escapeOutside, true))
-onBeforeUnmount(() => window.removeEventListener('keydown', escapeOutside, true))
+useEscapeOwner({
+    active: () => Boolean(props.adventure.dialogue),
+    escape: escapeDialogue,
+    element: panel,
+})
 let previousFocus: HTMLElement | undefined
 function handleKeys(event: KeyboardEvent): void {
     if (event.code === 'Escape') {
         event.preventDefault()
-        if (view.value !== 'conversation') backToConversation()
-        else emit('command', { choiceId: 'close', type: 'dialogue_choice' })
+        escapeDialogue()
         return
     }
     if (dialogueSpeechKeys(event, panel.value, props.adventure.dialogue)) return

@@ -60,6 +60,7 @@ export function readHarvestSources(
         const propId = get('propId')
         const capacity = get('capacity')
         const visual = get('visual')
+        const profile = treeProfileData(object.type, get('treeProfile'))
         if (
             (object.type !== 'tree' && object.type !== 'stone') ||
             typeof id !== 'string' ||
@@ -89,6 +90,7 @@ export function readHarvestSources(
             remaining: capacity,
             readyAt: 0,
             visual,
+            ...profile,
             position: {
                 x: bounds.x + bounds.width / 2,
                 y: bounds.y + bounds.height - 8,
@@ -98,6 +100,19 @@ export function readHarvestSources(
             collisionBounds: { ...bounds },
         }
     })
+}
+
+function treeProfileData(
+    source: string,
+    profile: unknown
+): Pick<AdventureResourceNode, 'treeProfile'> {
+    if (source !== 'tree') {
+        return {}
+    }
+    if (profile !== 'forest' && profile !== 'apple' && profile !== 'pine') {
+        throw new Error('Invalid tree profile')
+    }
+    return { treeProfile: profile }
 }
 
 function validBounds(bounds: WorldObjectBounds): boolean {

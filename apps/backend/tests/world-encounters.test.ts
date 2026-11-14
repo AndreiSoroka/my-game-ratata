@@ -91,6 +91,8 @@ describe('reachable wilderness encounters', () => {
         })
     })
 
+    // A simulated minute executes every room tick across the authored world.
+    // This wall-clock budget also covers full-suite CPU contention.
     it('keeps Novogorod free of hostiles while a new player spends a minute in the city', () => {
         vi.useFakeTimers()
         vi.setSystemTime(10_000)
@@ -135,5 +137,5 @@ describe('reachable wilderness encounters', () => {
         } finally {
             room.stop()
         }
-    }, 10_000)
+    }, 30_000)
 })

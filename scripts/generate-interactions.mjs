@@ -10,7 +10,7 @@ export function createWorldInteractions(ctx, location, landmarks) {
     const inside = (x, y) => x >= 0 && y >= 0 && x < width && y < height
     function add(type, x, y, w, h, name, text, geometry = {}) {
         const action =
-            type === 'sign' ? 'read' : type === 'barrel' ? 'search' : 'drink'
+            type === 'sign' ? 'read' : type === 'barrel' ? 'open' : 'drink'
         result.push({
             id: 2000 + result.length,
             name,
@@ -29,6 +29,23 @@ export function createWorldInteractions(ctx, location, landmarks) {
                 },
                 { name: 'action', type: 'string', value: action },
                 { name: 'text', type: 'string', value: text },
+                ...(type === 'barrel'
+                    ? [
+                          {
+                              name: 'propId',
+                              type: 'string',
+                              value: `${location.id}:prop:${x}:${y}`,
+                          },
+                          {
+                              name: 'contents',
+                              type: 'string',
+                              value: JSON.stringify([
+                                  { itemId: 'wood', quantity: 1 },
+                                  { itemId: 'fiber', quantity: 1 },
+                              ]),
+                          },
+                      ]
+                    : []),
                 ...(geometry.interactionAreas
                     ? [
                           {
@@ -129,7 +146,7 @@ export function createWorldInteractions(ctx, location, landmarks) {
                     1,
                     1,
                     'Бочка общих припасов',
-                    'Общие припасы путников. Содержимое можно забрать только один раз.'
+                    'Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи.'
                 )
             }
             if (waterGids.has(tile)) {

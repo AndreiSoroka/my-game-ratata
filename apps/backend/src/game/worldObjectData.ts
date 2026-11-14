@@ -3,10 +3,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type {
+    AuthoredContainerDefinition,
     WorldObjectBounds,
     WorldObjectKind,
 } from '@my-game-ratata/contracts'
 
+import { readAuthoredContainer } from './containerData'
 import { readInteractionAreas } from './worldObjectGeometry'
 
 export interface WorldObjectDefinition {
@@ -20,12 +22,12 @@ export interface WorldObjectDefinition {
 }
 
 interface MapObject extends WorldObjectBounds {
-    name: string
+    name?: string
     type: string
     properties?: Array<{ name: string; value: unknown }>
 }
 interface ObjectMap {
-    layers: Array<{ name: string; type: string; objects?: MapObject[] }>
+    layers: Array<{ name: string; type?: string; objects?: MapObject[] }>
 }
 
 const cache = new Map<string, WorldObjectDefinition[]>()
@@ -87,7 +89,7 @@ export function readWorldObjects(
                 text,
                 locationId,
                 kind: object.type,
-                name: object.name,
+                name: object.name ?? '',
                 ...(interactionAreas === undefined ? {} : { interactionAreas }),
                 bounds: {
                     x: object.x,
@@ -98,6 +100,26 @@ export function readWorldObjects(
             },
         ]
     })
+}
+
+export function readWorldContainers(
+    map: ObjectMap,
+    locationId: string
+): AuthoredContainerDefinition[] {
+    return readWorldObjects(map, locationId)
+        .filter((object) => object.kind === 'barrel')
+        .map((object) => {
+            const source = map.layers
+                .find((layer) => layer.name === 'World interactions')
+                ?.objects?.find(
+                    (entry) =>
+                        propertyValue(entry, 'interactionId') === object.id
+                )
+            if (source === undefined) {
+                throw new Error(`Missing container ${object.id}`)
+            }
+            return readAuthoredContainer(source, object, map)
+        })
 }
 
 function propertyValue(object: MapObject, name: string): unknown {

@@ -79,7 +79,7 @@ function prayerCastCues(
                 ...base,
                 fromId: actor.id,
                 kind: 'casting',
-                duration: event.target ? GRAVE_PURIFY_CAST_MS : 3000,
+                duration: event.durationMs ?? (event.target ? GRAVE_PURIFY_CAST_MS : 3000),
                 channel: true,
                 count: 12,
             },

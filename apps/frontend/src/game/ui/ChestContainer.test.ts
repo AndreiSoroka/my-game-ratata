@@ -147,7 +147,7 @@ describe('two-sided chest keyboard interaction', () => {
             ])
             await wrapper.setProps({ chest: { chestId: 'chest', items: [] } })
             await flushPromises()
-            expect(wrapper.text()).toContain('Сундук пуст')
+            expect(wrapper.text()).toContain('Контейнер пуст')
             expect(document.activeElement).toBe(wrapper.get('[data-chest-pane="chest"]').element)
             await wrapper.get('[data-chest-pane="chest"]').trigger('keydown', { code: 'Tab' })
             expect(document.activeElement).toBe(wrapper.get('[data-dialog-action="close"]').element)

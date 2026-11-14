@@ -6,6 +6,7 @@ import { chatDuration } from '../runtime/chatInput'
 import type { RatataGame } from '../runtime/ratataGame'
 import { returnFromSpeech } from './dialogueSpeechKeys'
 import { speechBubbleId } from './speechReceipts'
+import { useEscapeOwner } from './uiEscapeOwners'
 const props = defineProps<{
     game?: RatataGame
     snapshot?: WorldSnapshot
@@ -15,6 +16,13 @@ const ambient = ref<{ id: string; receipt: string | number; text: string; until:
 const frame = ref(0)
 const heights = ref(new Map<string, number>())
 const elements = new Map<string, HTMLElement>()
+useEscapeOwner({
+    priority: 90,
+    active: () =>
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.closest('.speech-text') !== null,
+    escape: () => document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus(),
+})
 const resize =
     typeof ResizeObserver === 'undefined'
         ? undefined

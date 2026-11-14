@@ -49,6 +49,9 @@ export function applyAgentInventory(
             events: [],
         }
     }
+    if (world.chestActions.handleResult !== undefined) {
+        return world.chestActions.handleResult(actor, message, now)
+    }
     return {
         accepted: true,
         error: null,

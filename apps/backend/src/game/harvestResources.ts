@@ -8,6 +8,7 @@ import {
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import {
+    type HarvestDrops,
     rejectWork as reject,
     resolveGather,
     stumpBounds,
@@ -32,7 +33,10 @@ export class HarvestResources {
     private occupants: (locationId: string) => readonly WorldObjectBounds[] =
         () => []
 
-    public constructor(private readonly nodes: AdventureResourceNode[]) {
+    public constructor(
+        private readonly nodes: AdventureResourceNode[],
+        private readonly drops?: HarvestDrops
+    ) {
         for (const node of nodes) {
             if (node.source !== undefined) {
                 this.dirty.add(node.locationId)
@@ -72,7 +76,14 @@ export class HarvestResources {
         now: number,
         navigation?: NavigationService
     ): GameEventPayload[] {
-        const events = resolveGather(actor, state, node, now, navigation)
+        const events = resolveGather(
+            actor,
+            state,
+            node,
+            now,
+            navigation,
+            this.drops
+        )
         if (
             events.length > 0 &&
             node.remaining === 0 &&
@@ -139,6 +150,7 @@ export class HarvestResources {
             source: 'tree',
             remaining: 0,
             visual: 'forest',
+            treeProfile: 'forest',
             bounds: { ...bounds },
             matureBounds: { ...bounds },
         }

@@ -4,11 +4,19 @@ export const GRAVE_SPAWN_INTERVAL_MS = 10 * 60_000
 export const GRAVE_MAX_LIVING = 3
 export const GRAVE_MAX_HP = 100
 export const GRAVE_RESTORE_MS = 30 * 60_000
-export const GRAVE_PURIFY_CAST_MS = 10_000
+export const GRAVE_PURIFY_CAST_MS = 50_000
+export const GRAVE_RUINED_PURIFY_CAST_MS = 10_000
 export const GRAVE_PURIFY_MANA_COST = 20
 export const GRAVE_PURIFY_RANGE = 48
 export const GRAVE_INTERACTION_RANGE = 48
 export const GRAVE_FOOTPRINT_SIZE = 16
+
+/** The phase is sampled when the ritual starts, not on each subsequent tick. */
+export function gravePurifyCastMs(phase: WorldGraveSnapshot['phase']): number {
+    return phase === 'ruined'
+        ? GRAVE_RUINED_PURIFY_CAST_MS
+        : GRAVE_PURIFY_CAST_MS
+}
 
 export function graveBounds(position: Vector2): WorldObjectBounds {
     return {

@@ -41,12 +41,12 @@ describe('typed grave projectiles', () => {
             props: { player, grave, characters: [player], blocked: false },
         })
         try {
-            wrapper.vm.activate(0)
+            wrapper.vm.activate(1)
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'use_ability', abilityId: 'shot', target: { kind: 'grave', id: grave.id } },
             ])
             expect(wrapper.emitted('shotPreviewChange')?.at(-1)).toEqual([undefined])
-            wrapper.vm.activate(0)
+            wrapper.vm.activate(1)
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 {
                     type: 'auto_action',
@@ -92,7 +92,7 @@ describe('grave selection and hotbar', () => {
     it('ordinary prayer ignores nearby graves until the player explicitly selects one', async () => {
         const { wrapper, grave, sendCommand } = fixture(true)
         try {
-            press('Digit1')
+            press('Digit2')
             expect(sendCommand).toHaveBeenLastCalledWith({
                 type: 'use_ability',
                 abilityId: 'pray',
@@ -100,7 +100,7 @@ describe('grave selection and hotbar', () => {
             })
             wrapper.vm.selectGrave(grave.id)
             await flushPromises()
-            press('Digit1')
+            press('Digit2')
             expect(sendCommand).toHaveBeenLastCalledWith({
                 type: 'use_ability',
                 abilityId: 'pray',

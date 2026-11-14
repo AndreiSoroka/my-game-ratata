@@ -12,11 +12,17 @@ import {
     reportTheft,
     visibleCityCriminal,
 } from './cityJustice'
-import { CrimeEvidence, type CrimeProof } from './crimeEvidence'
+import { CrimeEvidence } from './crimeEvidence'
 import { grantRetaliation, revokeRetaliation } from './crimeRelations'
-import { advanceCrimeResponse, type CrimeResponse } from './crimeResponses'
+import { activeResponse, validAccusation } from './crimeResponseRules'
+import {
+    advanceCrimeResponse,
+    advanceReturningResponses,
+    type CrimeResponse,
+} from './crimeResponses'
 import { available, cityGuard, humanControlled } from './crimeRules'
 import { distance } from './math'
+import { pursuits, returnFromPursuit } from './pursuitState'
 import type { GameRoom } from './room'
 import { privateTheftNotice } from './theftEvents'
 
@@ -25,6 +31,7 @@ export class CrimeService {
     private readonly blacklisted = new Map<string, GameCharacter>()
     private readonly responses = new Map<string, CrimeResponse>()
     private readonly wanted = new Map<string, number>()
+    private readonly returning = new Set<string>()
 
     public record(
         thief: GameCharacter,
@@ -198,13 +205,18 @@ export class CrimeService {
             ) {
                 if (actor !== undefined && !humanControlled(actor)) {
                     actor.clearPath()
+                    this.sendHome(actor)
                 }
                 this.responses.delete(id)
                 continue
             }
-            controlled.add(id)
-            advanceCrimeResponse(actor, thief, response, room, now)
+            if (advanceCrimeResponse(actor, thief, response, room, now)) {
+                controlled.add(id)
+            } else {
+                this.responses.delete(id)
+            }
         }
+        advanceReturningResponses(this.returning, room, all, now, controlled)
         return controlled
     }
 
@@ -214,6 +226,9 @@ export class CrimeService {
         now: number
     ): void {
         for (const guard of characters.values()) {
+            if (pursuits.get(guard)?.phase === 'return') {
+                continue
+            }
             const thief = visibleCityCriminal(
                 guard,
                 characters.values(),
@@ -249,7 +264,15 @@ export class CrimeService {
             this.responses.delete(other.id)
             if (!humanControlled(other)) {
                 other.clearPath()
+                this.sendHome(other)
             }
+        }
+    }
+
+    private sendHome(actor: GameCharacter): void {
+        if (pursuits.has(actor)) {
+            returnFromPursuit(actor)
+            this.returning.add(actor.id)
         }
     }
 
@@ -274,37 +297,4 @@ export class CrimeService {
             lastPlanAt: 0,
         })
     }
-}
-
-function validAccusation(
-    actor: GameCharacter,
-    thief: GameCharacter | undefined,
-    proof: CrimeProof | undefined,
-    now: number
-): thief is GameCharacter {
-    return (
-        available(actor) &&
-        actor.soul.canSpeak &&
-        available(thief) &&
-        proof !== undefined &&
-        proof.callUntil > now &&
-        !proof.reported &&
-        actor.locationId === proof.locationId &&
-        thief.locationId === actor.locationId
-    )
-}
-function activeResponse(
-    actor: GameCharacter | undefined,
-    thief: GameCharacter | undefined,
-    response: CrimeResponse,
-    now: number
-): actor is GameCharacter {
-    return (
-        available(actor) &&
-        !humanControlled(actor) &&
-        available(thief) &&
-        now < response.until &&
-        actor.locationId === response.locationId &&
-        thief.locationId === response.locationId
-    )
 }

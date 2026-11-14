@@ -4,7 +4,6 @@ import './interfaceStory.css'
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
-import MovementStatus from './MovementStatus.vue'
 import SoulBadge from './SoulBadge.vue'
 import TheftStatus from './TheftStatus.vue'
 
@@ -12,7 +11,6 @@ type ResourceKind = 'energy' | 'hp' | 'mana'
 
 const props = defineProps<{
     character: CharacterSnapshot
-    status: string
 }>()
 
 const resources = computed(() => [
@@ -30,28 +28,6 @@ const resources = computed(() => [
         current: props.character.resources.energy,
         kind: 'energy' as const,
         max: props.character.resources.maxEnergy,
-    },
-])
-const stats = computed(() => [
-    {
-        label: 'DMG',
-        value: `${String(props.character.stats.minDamage)}-${String(props.character.stats.maxDamage)}`,
-    },
-    {
-        label: 'Dodge',
-        value: formatPercent(props.character.stats.dodgeChance),
-    },
-    {
-        label: 'Crit',
-        value: formatPercent(props.character.stats.critChance),
-    },
-    {
-        label: 'Speed',
-        value: String(Math.round(props.character.stats.moveSpeed)),
-    },
-    {
-        label: 'CD',
-        value: `${String(Math.round(props.character.stats.attackCooldownMs / 100) / 10)}s`,
     },
 ])
 
@@ -80,10 +56,6 @@ function resourceAria(resource: { current: number; kind: ResourceKind; max: numb
 
     return `${label}: ${String(resource.current)} of ${String(resource.max)}`
 }
-
-function formatPercent(value: number): string {
-    return `${String(Math.round(value * 100))}%`
-}
 </script>
 
 <template>
@@ -92,12 +64,11 @@ function formatPercent(value: number): string {
         aria-label="Player status"
     >
         <div class="ratata-ui-status__header">
-            <span class="ratata-ui-status__name ratata-kenney-title" :title="character.nickname">
+            <h2 class="ratata-ui-status__name" :title="character.nickname">
                 {{ character.nickname }}
-            </span>
-            <span class="ratata-ui-status__server">{{ status }}</span>
+            </h2>
         </div>
-        <SoulBadge :soul="character.soul" />
+        <SoulBadge :soul="character.soul" compact />
         <div class="ratata-ui-status__bars">
             <div v-for="resource in resources" :key="resource.kind" class="ratata-ui-resource">
                 <span class="ratata-ui-resource__label">
@@ -118,14 +89,7 @@ function formatPercent(value: number): string {
                 </span>
             </div>
         </div>
-        <MovementStatus :character="character" />
         <TheftStatus :theft="character.theft" />
-        <dl class="ratata-ui-status__stats">
-            <div v-for="stat in stats" :key="stat.label" class="ratata-ui-stat">
-                <dt>{{ stat.label }}</dt>
-                <dd>{{ stat.value }}</dd>
-            </div>
-        </dl>
     </section>
 </template>
 
@@ -150,15 +114,14 @@ function formatPercent(value: number): string {
     display: block;
     min-width: 0;
     flex: 1 1 0;
-    padding-inline: 12px;
+    margin: 0;
+    padding: 0;
+    color: #65472b;
+    line-height: 1.5;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 15px;
-}
-
-.player-status .ratata-ui-status__server {
-    flex: 0 0 auto;
-    font-size: 12px;
 }
 
 .player-status .ratata-ui-status__bars {
@@ -180,40 +143,6 @@ function formatPercent(value: number): string {
     min-width: 0;
 }
 
-.player-status .ratata-ui-status__stats {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 5px;
-    margin: 8px 0 0;
-}
-
-.player-status .ratata-ui-stat {
-    min-width: 0;
-    padding: 5px 4px;
-    background: #0b1018;
-    border: 1px solid #323d4d;
-}
-
-.player-status .ratata-ui-stat dt,
-.player-status .ratata-ui-stat dd {
-    margin: 0;
-    overflow: hidden;
-    text-align: center;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.player-status .ratata-ui-stat dt {
-    color: #96a8bc;
-    font-size: 9px;
-    font-weight: 800;
-}
-
-.player-status .ratata-ui-stat dd {
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 800;
-}
 .player-status :deep(.soul-badge) {
     color: #786340;
 }
@@ -241,13 +170,6 @@ function formatPercent(value: number): string {
         background: none;
         text-shadow: none;
         text-align: left;
-    }
-    .player-status .ratata-ui-status__name::before,
-    .player-status .ratata-ui-status__name::after,
-    .player-status .ratata-ui-status__server,
-    .player-status .ratata-ui-status__stats,
-    .player-status :deep(.soul-badge) {
-        display: none;
     }
     .player-status .ratata-ui-resource {
         grid-template-columns: 16px minmax(0, 1fr);

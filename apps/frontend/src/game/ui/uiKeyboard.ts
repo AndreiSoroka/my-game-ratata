@@ -1,10 +1,11 @@
+import { isConfirmationKey } from './keyboardOwnership'
+
 /** Confirm only the focused button; letters use physical codes for every keyboard layout. */
 export function activateFocusedButton(
     event: KeyboardEvent,
     panel: HTMLElement | undefined
 ): boolean {
-    if (!['Enter', 'Space', 'KeyE'].includes(event.code) && !['Enter', ' '].includes(event.key))
-        return false
+    if (!isConfirmationKey(event)) return false
     const focused = document.activeElement
     if (!(focused instanceof HTMLButtonElement) || !panel?.contains(focused)) return false
     if (
@@ -16,6 +17,12 @@ export function activateFocusedButton(
     event.stopPropagation()
     if (!event.repeat && !focused.disabled) focused.click()
     return true
+}
+
+export function stopButtonConfirmation(event: KeyboardEvent, panel: HTMLElement | undefined): void {
+    if (!isConfirmationKey(event) || !panel?.contains(document.activeElement)) return
+    event.preventDefault()
+    event.stopPropagation()
 }
 
 export function focusPanelSurface(event: PointerEvent, panel: HTMLElement | undefined): void {

@@ -2562,6 +2562,11 @@
                             "value": "map-2-2:prop:87:56"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2589,6 +2594,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:7:63"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
                         },
                         {
                             "name": "visual",
@@ -2620,6 +2630,11 @@
                             "value": "map-2-2:prop:78:5"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2647,6 +2662,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:87:67"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
                         },
                         {
                             "name": "visual",
@@ -2678,6 +2698,11 @@
                             "value": "map-2-2:prop:63:5"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2705,6 +2730,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:87:28"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
                         },
                         {
                             "name": "visual",
@@ -2736,6 +2766,11 @@
                             "value": "map-2-2:prop:6:31"
                         },
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
@@ -2764,6 +2799,11 @@
                             "type": "string",
                             "value": "map-2-2:prop:17:17"
                         },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2788,6 +2828,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:18:21"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
@@ -2814,6 +2859,11 @@
                             "type": "string",
                             "value": "map-2-2:prop:80:17"
                         },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2838,6 +2888,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:78:60"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
@@ -2864,6 +2919,11 @@
                             "type": "string",
                             "value": "map-2-2:prop:79:64"
                         },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2889,6 +2949,11 @@
                             "type": "string",
                             "value": "map-2-2:prop:18:48"
                         },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2913,6 +2978,11 @@
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:18:52"
+                        },
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
                         { "name": "capacity", "type": "int", "value": 8 }
@@ -3716,6 +3786,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:87:56"
@@ -3740,6 +3815,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -3766,6 +3846,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:78:5"
@@ -3790,6 +3875,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -3816,6 +3906,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:63:5"
@@ -3841,6 +3936,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:87:28"
@@ -3865,6 +3965,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "apple"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -5457,6 +5562,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:17:17"
@@ -5481,6 +5591,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -5507,6 +5622,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:80:17"
@@ -5531,6 +5651,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -5557,6 +5682,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:79:64"
@@ -5582,6 +5712,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:18:48"
@@ -5606,6 +5741,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "treeProfile",
+                            "type": "string",
+                            "value": "pine"
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -7551,15 +7691,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:57:24"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:57:24"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7579,15 +7725,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:44:25"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:44:25"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7607,15 +7759,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:23:29"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:23:29"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7663,15 +7821,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:33:37"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:33:37"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7691,15 +7855,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:37:46"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:37:46"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7719,15 +7889,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:54:46"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:54:46"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7747,15 +7923,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:80:48"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:80:48"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 },
@@ -7775,15 +7957,21 @@
                             "type": "string",
                             "value": "map-2-2:barrel:43:59"
                         },
-                        {
-                            "name": "action",
-                            "type": "string",
-                            "value": "search"
-                        },
+                        { "name": "action", "type": "string", "value": "open" },
                         {
                             "name": "text",
                             "type": "string",
-                            "value": "Общие припасы путников. Содержимое можно забрать только один раз."
+                            "value": "Общие припасы путников. Открой бочку, чтобы осмотреть или переложить вещи."
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:43:59"
+                        },
+                        {
+                            "name": "contents",
+                            "type": "string",
+                            "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
                         }
                     ]
                 }

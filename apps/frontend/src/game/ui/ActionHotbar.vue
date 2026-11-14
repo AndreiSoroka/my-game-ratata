@@ -12,7 +12,7 @@ import { itemAssetCatalog } from '../assets/itemCatalog'
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { dialogActionKeys } from './dialogActionKeys'
 import { type HotbarBinding as Binding, hotbarGlyphs as glyphs } from './hotbarBindings'
-import { activateFocusedButton } from './uiKeyboard'
+import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
 import { useHotbarActions } from './useHotbarActions'
 import { useShotPreview } from './useShotPreview'
@@ -100,8 +100,8 @@ defineExpose({ activate, edit, assignItem, resetGesture })
         ref="bar"
         class="hotbar rpg-panel"
         aria-label="Быстрые действия"
-        @keydown.stop="activateFocusedButton($event, bar)"
-        @keyup.stop
+        @keydown="activateFocusedButton($event, bar)"
+        @keyup="stopButtonConfirmation($event, bar)"
     >
         <div v-for="(binding, index) in bindings" :key="index" class="hotbar-cell">
             <button

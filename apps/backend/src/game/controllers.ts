@@ -1,4 +1,4 @@
-import type { Vector2 } from '@my-game-ratata/contracts'
+import { PURSUIT_RULES, type Vector2 } from '@my-game-ratata/contracts'
 
 import { type GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
@@ -13,6 +13,8 @@ import { tryPursuitDash } from './mobPursuit'
 import { MobSpacing } from './mobSpacing'
 import type { NavigationService, TileCoordinate } from './navigation'
 import { requestNpcAttack } from './npcAbilities'
+import { advancePursuit, refreshPursuitObservation } from './pursuit'
+import { clearPursuit, insideTerritory } from './pursuitState'
 import type { GameRoom } from './room'
 
 export interface Mob1ControllerOptions {
@@ -46,11 +48,30 @@ export class Mob1Controller implements CharacterController {
 
     public update(character: GameCharacter, room: GameRoom, now: number): void {
         if (!canDecide(character)) {
+            if (!isActiveObserver(character)) {
+                clearPursuit(character)
+            } else {
+                refreshPursuitObservation(character, room, now)
+            }
             return
         }
 
         const navigation = room.navigationFor(character)
-        const target = coordinatedTarget(character, room, now)
+        const decision = advancePursuit(
+            character,
+            coordinatedTarget(character, room, now),
+            room,
+            now
+        )
+        const target = decision.target
+        if (decision.returning) {
+            if (target !== undefined) {
+                character.clearPath()
+                character.setMoveInput({ x: 0, y: 0 })
+                requestNpcAttack(character, target, room, now)
+            }
+            return
+        }
         if (
             this.spacing.update(
                 character,
@@ -63,6 +84,9 @@ export class Mob1Controller implements CharacterController {
             return
         }
         if (target === undefined) {
+            if (decision.handled) {
+                return
+            }
             this.investigateOrWander(character, room, navigation, now)
             return
         }
@@ -116,7 +140,14 @@ export class Mob1Controller implements CharacterController {
         const point =
             lastHeardPoint(character, room, now) ??
             reportedThreatPosition(character, room, now)
-        if (point !== undefined) {
+        if (
+            point !== undefined &&
+            insideTerritory(
+                character,
+                point,
+                PURSUIT_RULES.guardianPatrolRadius
+            )
+        ) {
             this.investigate(character, point, navigation, now)
         } else if (!room.requestScavenge(character, now)) {
             this.wander(character, navigation, now)
@@ -211,7 +242,7 @@ export class Mob1Controller implements CharacterController {
         }
 
         const currentTile = navigation.worldToTile(character.position)
-        const target = this.pickWanderTile(currentTile, navigation)
+        const target = this.pickWanderTile(character, currentTile, navigation)
 
         if (target !== undefined) {
             character.setPath([navigation.tileToWorld(target)])
@@ -247,10 +278,19 @@ export class Mob1Controller implements CharacterController {
     }
 
     private pickWanderTile(
+        character: GameCharacter,
         currentTile: TileCoordinate,
         navigation: NavigationService
     ): TileCoordinate | undefined {
-        const neighbors = navigation.walkableNeighbors(currentTile)
+        const neighbors = navigation
+            .walkableNeighbors(currentTile)
+            .filter((tile) =>
+                insideTerritory(
+                    character,
+                    navigation.tileToWorld(tile),
+                    PURSUIT_RULES.guardianPatrolRadius
+                )
+            )
 
         if (neighbors.length === 0) {
             return undefined

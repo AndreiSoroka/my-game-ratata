@@ -12,15 +12,19 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } fro
 
 import ChestPane from './ChestPane.vue'
 import { dialogActionKeys } from './dialogActionKeys'
+import { useEscapeOwner } from './uiEscapeOwners'
 import { focusPanelSurface } from './uiKeyboard'
 
 const props = defineProps<{ chest: ChestContainerSnapshot; player: CharacterSnapshot }>()
 const emit = defineEmits<{ command: [message: ClientMessage]; close: [] }>()
 const panel = ref<HTMLElement>()
+useEscapeOwner({ active: () => true, escape: () => emit('close'), element: panel })
 const titleId = useId()
 const focusedId = ref('')
 const isCorpse = computed(() => props.chest.kind === 'corpse')
 const containerTitle = computed(() => props.chest.title ?? 'Сундук')
+const containerName = computed(() => (props.chest.kind === 'barrel' ? 'бочка' : 'сундук'))
+const containerPlace = computed(() => (props.chest.kind === 'barrel' ? 'бочке' : 'сундуке'))
 const hasGold = computed(() => (props.chest.gold ?? 0) > 0)
 const freeSlots = computed(() => Math.max(0, INVENTORY_CAPACITY - props.player.inventory.length))
 const takeableItems = computed(() =>
@@ -139,19 +143,21 @@ onBeforeUnmount(() => {
         >
             <header class="chest-header">
                 <div>
-                    <h2 :id="titleId">{{ isCorpse ? containerTitle : 'Рюкзак и сундук' }}</h2>
+                    <h2 :id="titleId">
+                        {{ isCorpse ? containerTitle : `Рюкзак и ${containerName}` }}
+                    </h2>
                     <p>
                         {{
                             isCorpse
                                 ? 'Можно забрать оставшиеся вещи и золото.'
-                                : 'Слева ваши вещи, справа — содержимое сундука.'
+                                : 'Слева ваши вещи, справа — содержимое контейнера.'
                         }}
                     </p>
                 </div>
                 <button
                     type="button"
                     data-dialog-action="close"
-                    :aria-label="isCorpse ? 'Закрыть обыск' : 'Закрыть сундук'"
+                    :aria-label="isCorpse ? 'Закрыть обыск' : 'Закрыть контейнер'"
                     @click="emit('close')"
                 >
                     ×
@@ -169,7 +175,7 @@ onBeforeUnmount(() => {
                         ? 'Все слоты заняты. Подходящие материалы можно добавить в неполные стопки.'
                         : isCorpse
                           ? 'Рюкзак заполнен. Непоместившиеся вещи останутся в теле.'
-                          : 'Рюкзак заполнен. Положите вещь в сундук, чтобы освободить место.'
+                          : 'Рюкзак заполнен. Переложите вещь в контейнер, чтобы освободить место.'
                 }}</span>
             </p>
             <div class="chest-columns">
@@ -190,7 +196,7 @@ onBeforeUnmount(() => {
                     :items="chest.items"
                     :is-item-disabled="(item) => !canAcceptInventoryItem(player.inventory, item)"
                     action-label="← Взять"
-                    :empty-text="isCorpse ? 'Вещей не осталось.' : 'Сундук пуст.'"
+                    :empty-text="isCorpse ? 'Вещей не осталось.' : 'Контейнер пуст.'"
                     @select="take"
                 >
                     <button
@@ -215,7 +221,7 @@ onBeforeUnmount(() => {
             <p class="chest-hint">
                 ←→ — сторона · ↑↓ / W S — выбор · E / Enter — переложить · Esc — закрыть. Стопки
                 переносятся целиком. Непоместившиеся останутся
-                {{ isCorpse ? 'в теле' : 'в сундуке' }}.
+                {{ isCorpse ? 'в теле' : `в ${containerPlace}` }}.
             </p>
         </section>
     </div>

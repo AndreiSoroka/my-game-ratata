@@ -42,7 +42,7 @@ test('rejects duplicate active nickname without black screen on retry', async ({
     await second.getByLabel('Nickname').fill(`${nickname}-2`)
     await second.getByRole('button', { name: 'Enter' }).click()
     await expect(second.locator('canvas[data-game-canvas=true]')).toBeVisible()
-    await expect(second.locator('.hud').getByText('Connected')).toBeVisible()
+    await expect(second.getByRole('region', { name: 'Player status' })).toBeVisible()
     expect(consoleErrors.join('\n')).not.toContain(
         'Feature flags can only be enabled before Engine constructor time'
     )
@@ -55,5 +55,5 @@ async function joinAs(page: Page, nickname: string): Promise<void> {
     await page.goto('/')
     await page.getByLabel('Nickname').fill(nickname)
     await page.getByRole('button', { name: 'Enter' }).click()
-    await expect(page.locator('.hud').getByText('Connected')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Player status' })).toBeVisible()
 }

@@ -10,7 +10,8 @@ export default defineConfig({
         timeout: 10 * 1000,
     },
     forbidOnly: Boolean(process.env.CI),
-    reporter: 'html',
+    outputDir: 'test-results/storybook',
+    reporter: [['html', { outputFolder: 'playwright-report/storybook' }]],
     use: {
         baseURL: 'http://127.0.0.1:6006',
         deviceScaleFactor: 1,

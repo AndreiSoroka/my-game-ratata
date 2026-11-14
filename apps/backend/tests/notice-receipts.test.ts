@@ -17,7 +17,7 @@ function actor(id: string) {
 }
 
 describe('action notice receipts', () => {
-    it('identifies repeated equal barrel messages without replaying them on every snapshot', () => {
+    it('identifies repeated equal drinking messages without replaying them on every snapshot', () => {
         const player = actor('reader')
         const navigation = new NavigationService({
             id: 'test',
@@ -28,12 +28,15 @@ describe('action notice receipts', () => {
             solidLayerNames: [],
             solid: Array<boolean>(144).fill(false),
         })
+        let now = 1000
         const service = new AdventureService({
+            now: () => now,
+            resourceNodes: [],
             worldObjects: ['first', 'second'].map((id, index) => ({
                 id,
                 name: 'Припасы',
                 text: '',
-                kind: 'barrel',
+                kind: 'water',
                 locationId: CENTER_LOCATION_ID,
                 bounds: { x: 64 + index * 32, y: 64, width: 16, height: 16 },
             })),
@@ -45,12 +48,13 @@ describe('action notice receipts', () => {
             navigation
         )
         const first = service.snapshot(player.id, player.locationId, player)
-        expect(first.notice).toContain('В бочке')
+        expect(first.notice).toContain('жажду')
         for (let index = 0; index < 20; index += 1) {
             expect(
                 service.snapshot(player.id, player.locationId, player).noticeId
             ).toBe(first.noticeId)
         }
+        now += 5000
         service.handle(
             player,
             { type: 'world_interact', objectId: 'second' },
@@ -60,7 +64,7 @@ describe('action notice receipts', () => {
         const second = service.snapshot(player.id, player.locationId, player)
         expect(second.notice).toBe(first.notice)
         expect(second.noticeId).toBeGreaterThan(first.noticeId ?? -1)
-        expect(second.materials.wood).toBe(2)
+        expect(second.materials.wood).toBe(0)
         expect(service.snapshot('observer').noticeId).toBe(0)
         service.observe(
             [{ kind: 'permadeath', actorId: player.id }],

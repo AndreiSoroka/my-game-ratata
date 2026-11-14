@@ -1,9 +1,25 @@
+import type { WorldObjectBounds } from './environment'
 import type {
     CharacterFacing,
     CharacterVisualId,
+    ItemId,
     ItemInstanceSnapshot,
     Vector2,
 } from './index'
+
+export type ContainerKind = 'chest' | 'barrel' | 'corpse'
+export interface ContainerContentsDefinition {
+    itemId: ItemId
+    quantity: number
+}
+export interface AuthoredContainerDefinition {
+    id: string
+    kind: 'barrel'
+    title: string
+    propId: string
+    bounds: WorldObjectBounds
+    contents: ContainerContentsDefinition[]
+}
 
 export const CHEST_INTERACTION_RANGE = 28
 export const CHEST_FOOTPRINT_SIZE = 16
@@ -28,7 +44,7 @@ export interface CorpseAppearance {
 }
 
 export interface ChestContainerSnapshot {
-    kind?: 'chest' | 'corpse'
+    kind?: ContainerKind
     title?: string
     gold?: number
     chestId: string
@@ -38,11 +54,21 @@ export interface ChestContainerSnapshot {
 /** Distance to the physical chest footprint, not its tall visual sprite. */
 export function chestInteractionDistance(
     actor: Vector2,
-    chest: Vector2
+    chest: Vector2,
+    bounds = containerBounds(chest)
 ): number {
-    const half = CHEST_FOOTPRINT_SIZE / 2
     return Math.hypot(
-        Math.max(0, Math.abs(actor.x - chest.x) - half),
-        Math.max(0, Math.abs(actor.y - chest.y) - half)
+        Math.max(0, bounds.x - actor.x, actor.x - bounds.x - bounds.width),
+        Math.max(0, bounds.y - actor.y, actor.y - bounds.y - bounds.height)
     )
+}
+
+export function containerBounds(position: Vector2): WorldObjectBounds {
+    const half = CHEST_FOOTPRINT_SIZE / 2
+    return {
+        x: position.x - half,
+        y: position.y - half,
+        width: CHEST_FOOTPRINT_SIZE,
+        height: CHEST_FOOTPRINT_SIZE,
+    }
 }

@@ -68,7 +68,7 @@ const hasNearbyChest = computed(() =>
     props.chests.some(
         (chest) =>
             chest.kind !== 'corpse' &&
-            chestInteractionDistance(props.character.position, chest.position) <=
+            chestInteractionDistance(props.character.position, chest.position, chest.bounds) <=
                 CHEST_INTERACTION_RANGE
     )
 )

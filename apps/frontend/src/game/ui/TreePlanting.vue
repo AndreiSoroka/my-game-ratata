@@ -3,8 +3,11 @@ import type { CharacterSnapshot, ClientMessage, Vector2 } from '@my-game-ratata/
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
+import { useEscapeOwner } from './uiEscapeOwners'
 const props = defineProps<{ game: RatataGame; player: CharacterSnapshot }>()
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
+const panel = ref<HTMLElement>()
+useEscapeOwner({ active: () => true, escape: () => emit('close'), element: panel })
 const directions = {
     up: { x: 0, y: -1 },
     down: { x: 0, y: 1 },
@@ -25,23 +28,15 @@ function confirm(): void {
 }
 function key(event: KeyboardEvent): void {
     if (
-        ![
-            'ArrowUp',
-            'ArrowDown',
-            'ArrowLeft',
-            'ArrowRight',
-            'KeyE',
-            'Enter',
-            'Escape',
-            'Space',
-        ].includes(event.code)
+        !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'Enter', 'Space'].includes(
+            event.code
+        )
     )
         return
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.repeat) return
-    if (event.code === 'Escape') emit('close')
-    else if (['KeyE', 'Enter', 'Space'].includes(event.code)) confirm()
+    if (['KeyE', 'Enter', 'Space'].includes(event.code)) confirm()
     else {
         const next = { ...position.value }
         if (event.code === 'ArrowUp') next.y -= 16
@@ -70,6 +65,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
     <section
+        ref="panel"
         class="tree-planting rpg-panel"
         role="dialog"
         aria-label="Посадка дерева"

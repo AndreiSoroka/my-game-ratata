@@ -6,7 +6,7 @@ The first scenario is authored AI-generated content: 25 deterministic maps in th
 
 Choose a name and one of four starting backgrounds. A background provides initial advantages; it does not lock future skills. Start without gold or equipment. Gather nearby herbs, fiber and scrap or harvest ripe grain; sell supplies in town to afford a tool, or craft food and boots. Barrels also contain finite communal wood. Buy an axe or pickaxe from Ignat in the smithy before gathering trees or stone. Enter the guild building and talk to Mira in Novogorod to accept the bell quest. Hostile scripted slimes leave one real slime-heart item inside a shared corpse when defeated, even before the quest is accepted. Search corpses and take three hearts into your backpack and bring them to Mira; delivery consumes those three item instances and pays the reward once. Hearts stored in a chest or dropped on the ground do not count until carried again. Kill statistics are separate from the delivery objective. Restore the bell after the delivery. Savva sells supplies in his shop south of the square. Resource deposits are shared and exhaustible.
 
-Vanguard fights in melee with 150 energy and a 20% damage advantage; Ranger starts with the ranged Shot; Arcanist starts with Spark and Barrier; Cleric starts with Prayer and resurrection knowledge. Cleric basic attacks are short melee strikes, not invisible ranged magic. Skeletons share the same model and use a paid Bone Strike that can stun for 0.8 seconds. Everyone can learn swordsmanship, miracles and fire magic. All use `GameCharacter`, common combat, movement, resources, cooldowns and progression. Their configuration and controller are the differences.
+Vanguard fights in melee with 150 energy and a 20% damage advantage; Ranger starts with the ranged Shot; Arcanist starts with Spark and Barrier; Cleric starts with Prayer and resurrection knowledge. Every background's basic attack is a short melee strike using equipped weapon condition, without a mana cost. Skeletons share the same model and use a paid Bone Strike that can stun for 0.8 seconds. Everyone can learn swordsmanship, miracles and fire magic. All use `GameCharacter`, common combat, movement, resources, cooldowns and progression. Their configuration and controller are the differences.
 
 Ranger's ordinary attack is a melee weapon strike or punch, separate from **Выстрел**.
 Shot remains the default first slot. Without a selected target it fires straight
@@ -20,7 +20,11 @@ crowd avoidance never pushes a player or relocates an actor. Slime spawn positio
 prefer authored, walkable natural shorelines, including large lakes, with a valid
 fallback on maps without suitable water.
 
-WASD/arrows move, click empty ground walks to a point, C toggles sneaking, Space dashes, I opens inventory and Enter opens chat. T cycles visible enemies; Shift+T cycles allies, including fallen allies still eligible for rescue; F selects yourself. Clicking a hostile character selects that exact target, while clicking a friendly character opens its reachable actions. Slot 1 starts with your background’s basic action. Press 1–4 once to act; press the same key twice within 300 ms to repeat on the server; press it again to stop. Escape clears focus and cancels automated control. Manual movement, text/menu focus, blur, hidden pages, death and stun release held control. A lost target never silently substitutes its neighbor.
+WASD/arrows move, click empty ground walks to a point, C toggles sneaking, Space dashes, I opens inventory and Enter opens chat. T cycles visible enemies; Shift+T cycles allies, including fallen allies still eligible for rescue; F selects yourself. Clicking a hostile character selects that exact target, while clicking a friendly character opens its reachable actions. Slot 1 starts with basic melee attack; slot 2 contains Shot, Spark or Prayer for the corresponding background and is empty for Vanguard. Press 1–4 once to act; press the same key twice within 300 ms to repeat on the server; press it again to stop. Manual movement, text/menu focus, blur, hidden pages, death and stun release held control. A lost target never silently substitutes its neighbor.
+
+Ordinary HUD button focus still permits gameplay shortcuts, including I; Enter, Space and E confirm the focused button. Actual windows and text fields own their input. Escape performs one operation per press: close the game menu, handle the current chat/window, cancel a ritual or automated action/target, then open the game menu if nothing remains to cancel. Holding Escape does not advance through these steps. The visible menu button also works on touch screens. **Вернуться в игру** resumes input; **Выйти из игры** disconnects and returns to sign-in without abandoning the character, including during the resurrection window. Signing in with the same name resumes the existing living identity. The server world continues while the menu is open.
+
+The compact character panel shows a plain, ellipsized nickname, HP/MP/EN and accessible icons for Spark/Echo, actual controller and speech. Full names remain available in the heading's accessible name and tooltip. Crime notices remain contextual; connection errors appear separately. Gold and item condition stay inside the inventory.
 
 A fallen hero has 60 seconds to be resurrected. A living cleric or a character with miracles level 5 within 48 world units channels for 3 seconds and spends 20 mana. Death, distance, location, stun and deadline are checked again at completion. Sister Vera lives in the chapel; a rescuer must still reach the fallen character before the deadline. Resurrection retains identity and belongings. At expiry all carried items, equipment and gold transfer into a shared corpse before the hero is removed. Skill knowledge and personal quest state end with that identity; starting again creates a new server identity even with the same nickname. Ordinary NPCs leave a corpse immediately and retain their shared-model respawn policy, without restoring the possessions they dropped.
 
@@ -40,6 +44,10 @@ Blocked or occupied spawn ground delays the birth. Grave markers survive emptyin
 the corpse, and death graves can exist in the city although its initial encounters
 remain empty.
 
+Each source assigns one stable guardian from its existing living descendants. It patrols within 64 pixels, stops a distant home-map chase beyond 160 pixels and returns to the grave. Destruction keeps that duty; purification releases it. A dead guardian is replaced by an existing descendant, never by an extra birth.
+
+Autonomous pursuers can follow an already hunted target through an actually observed exit for five seconds. They may visit one adjacent map, for at most ten seconds after their own crossing or 160 pixels from entry, then physically return within 24 pixels of home. A lost target, denied crossing or expired attack right also starts the return. Fresh sightings and damage do not extend this episode; a second foreign crossing is forbidden, including during a dash. Returning characters retain normal contact defense. Guards can briefly leave town to pursue a valid offender; absolution ends the right immediately. Monsters cannot enter the city, and city-born grave descendants remain there so they can always return home.
+
 ## Breaking and purifying graves
 
 Every skeleton-producing grave, authored or created by final death, has 100 HP and
@@ -56,8 +64,10 @@ there is no instant catch-up spawn. A partially damaged grave continues producin
 
 Select a grave through **E** to inspect its condition/material, attack it or choose
 **Упокоить могилу**. Purification requires learned Prayer and either a Cleric
-background or Miracles level 5, for every controller and patron. The ten-second
-channel must stay within 48 world units with clear sight; it spends 20 mana only
+background or Miracles level 5, for every controller and patron. An intact or partly
+damaged grave takes fifty seconds; rubble takes ten. This duration is fixed when
+the ritual starts, even if the grave changes condition. The channel must stay
+within 48 world units with clear sight; it spends 20 mana only
 after success and grants Faith/Miracles practice once. Movement, HP damage, stun,
 death, disconnect, lost reach/sight or Esc cancels without payment. Ordinary prayer
 never automatically chooses a grave for purification.
@@ -166,6 +176,14 @@ wood. An axe harvest costs 5 energy with a two-second action interval; a sword c
 10 energy and takes four seconds. Each tree supplies eight wood. The final harvest
 also grants two saplings and replaces the tree with a stump for every observer.
 The entire result must fit in the bag before the tree, energy or tool changes.
+
+Apple trees are identified by their authored fruit-bearing art and explicit tree
+profile. Each successful wood harvest, including the final cut, has a 20% chance
+to drop one real food item onto nearby ground. It must be picked up normally;
+opening a view or a rejected harvest cannot roll for food. Players and workers
+use the same rule. Ordinary forest trees and pines do not drop food. Replanting
+an apple-tree stump preserves its profile; planting on fresh soil grows an
+ordinary forest tree.
 
 A sapling can be planted on a suitable stump or free soil using the inventory's
 **Посадить дерево** action. Planting costs one sapling and 5 energy; growth takes
@@ -282,11 +300,11 @@ Face a nearby chest and press E to inspect the selected container. Its window sh
 
 Permanent map banners are hidden; a nearby sign shows its name while the living character faces it, or in any direction while standing on its footprint (with a 4px foot margin), without opening a modal, and E reads its authored details. Turning away outside that footprint or walking away hides the reading hint; no permanent discovery label is added. Sign descriptions contain only a short, specific instruction for their place or destination.
 
-Wells, troughs and marked water edges let a character drink, restoring up to 15 energy with a shared five-second drinking cooldown; drinking does not heal HP. Barrels have solid footprints and shared, finite communal supplies (one wood and one fiber per barrel). A searched barrel remains empty for everyone in the current world session. Range, life, action locks and line of sight are validated by the server.
+Wells, troughs and marked water edges let a character drink, restoring up to 15 energy with a shared five-second drinking cooldown; drinking does not heal HP. Barrels use the same inventory window and transfer rules as chests. Approach within 28 world units of their solid footprint and press E to inspect, take individual items or **Забрать всё**, or put carried items back. Their authored initial supplies are one wood and one fiber, created once per world session; opening, returning to the location and changing character identities never replenish them. A hit spills only the remaining contents. Barrel art and collision remain in place when empty. Bodies use the shared window too, but accept no deposits. Range, life, action locks and line of sight are validated by the server.
 
 Action-result notifications disappear after five seconds. Each new adventure or party result has a server receipt, so repeated snapshots never extend the toast and a new action with the same wording can still show it again. Quest, inventory and party state remain available in their windows.
 
-Materials are ordinary backpack item instances: herbs and grain stack to nine per slot; wood, stone, fiber, scrap and saplings occupy one slot per unit. The backpack holds 50 occupied slots, including equipment carried in the bag, food, hearts and material stacks. Gathering, harvesting and barrel supplies check the entire result fits before spending energy or depleting the source. Crafting consumes real carried material quantities and checks the finished item fits after ingredient consumption. Crafting summaries are derived from backpack contents, not a separate wallet. Chest, ground, theft and backpack transfers preserve whole-stack quantities and item condition. E performs a selected target’s sole action directly; its multiple actions use a vertical menu. Dialogue choices are vertical; **Покажи товары** opens a separate shop view, with a button or Escape returning to the conversation.
+Materials are ordinary backpack item instances: herbs and grain stack to nine per slot; wood, stone, fiber, scrap and saplings occupy one slot per unit. The backpack holds 50 occupied slots, including equipment carried in the bag, food, hearts and material stacks. Gathering and harvesting check the entire carried result fits before spending energy or depleting the source. A full bag still permits container inspection; bulk transfers take only the items that fit and leave the rest inside. Crafting consumes real carried material quantities and checks the finished item fits after ingredient consumption. Crafting summaries are derived from backpack contents, not a separate wallet. Chest, barrel, ground, theft and backpack transfers preserve whole-stack quantities and item condition. E performs a selected target’s sole action directly; its multiple actions use a vertical menu. Dialogue choices are vertical; **Покажи товары** opens a separate shop view, with a button or Escape returning to the conversation.
 
 Trees and tall props are complete cached sprites sorted by their ground contact Y; grass and paving remain below them. Generated clearing boundaries remove complete obstructing props rather than cutting individual tiles. Furniture footprints, visible composites and collision data are authored together.
 
@@ -326,7 +344,9 @@ The tools are `ratata_observe` (optional `locationId`) and `ratata_act` (`actorI
 
 ## Hotbar, target focus and combat feedback
 
-The four 48px action slots reset for each new character identity. Slot 1 starts with basic attack for warriors, shot for rangers, spark for mages, or prayer for clerics; slots 2–4 start empty. Use Shift+1–4 to choose basic attack, a known ability, an apple, or clear a slot. One press acts immediately. A second press within 300 ms enables server repetition without an extra immediate cast; another press stops it. Held keys do not repeat. Only one slot repeats at a time, even if the same ability is bound twice. A food double press consumes one apple and never enables repetition. The active slot has an outline and ↻ marker, plus written status showing whether the server is approaching, casting, or waiting for cooldowns or resources. Switching repetition off prevents future applications; an already-started cast follows the normal interruption rules. Prayer repeats its original target and intent, stops after healing or resurrection is complete, and never switches to an unrelated ally or farms practice through plain devotion. Apples bind by item type, consume a real inventory instance and retain their icon at zero quantity. Cooldowns and resource requirements are checked again by the server. A bound prayer shows its exact target, cost and possible allied/self victims before pressing its key; its harmful 48px wave is outlined in the world, with warning markers on visible affected allies and yourself.
+The four 48px action slots reset for each new character identity. Slot 1 starts with basic melee attack for every background. Slot 2 starts with Shot for Ranger, Spark for Arcanist or Prayer for Cleric; Vanguard leaves it empty. Slots 3–4 start empty. Use Shift+1–4 to choose basic attack, a known ability, an apple, or clear a slot. One press acts immediately. A second press within 300 ms enables server repetition without an extra immediate cast; another press stops it. Held keys do not repeat. Only one slot repeats at a time, even if the same ability is bound twice. A food double press consumes one apple and never enables repetition. The active slot has an outline and ↻ marker, plus written status showing whether the server is approaching, casting, or waiting for cooldowns or resources. Switching repetition off prevents future applications; an already-started cast follows the normal interruption rules. Prayer repeats its original target and intent, stops after healing or resurrection is complete, and never switches to an unrelated ally or farms practice through plain devotion. Apples bind by item type, consume a real inventory instance and retain their icon at zero quantity. Cooldowns and resource requirements are checked again by the server. A bound prayer shows its exact target, cost and possible allied/self victims before pressing its key; its harmful 48px wave is outlined in the world, with warning markers on visible affected allies and yourself.
+
+Without a selected target, Shot and Spark fire in the facing direction. Spark uses its own 80×32 pixel corridor, normal windup/cooldown and 6 mana plus 5 energy. The server picks the nearest permitted character or grave in that corridor and checks obstacles. An empty cast still costs resources and shows the effect but grants no practice. The world guide and cast effect use that same geometry; basic melee attack remains independent of Spark.
 
 Each assigned slot also has an **×** button labeled **Очистить слот N**, reachable with Tab and activated with Enter or Space. Clearing removes only that slot's binding, keeps every item in the inventory and returns keyboard focus to the now-empty slot.
 
@@ -398,6 +418,8 @@ window.__ratataTest.stop()
 ## Verification
 
 Backend tests cover combat reach, map connectivity, crossings, isolated locations, quest credit, reward duplication, gathering/crafting, progression, resurrection/permadeath, atomic theft, private outcomes and bounded crime reactions. Frontend tests cover controls, theft interactions, hit presentation and movement cleanup. Use `bun run type-check`, `bun run lint`, `bun run test` and headless browser checks after changes.
+
+`bun run test:e2e` starts a fresh app-test world on backend/frontend ports 3500/5500, then a separate grave-scenario world on 3501/5501, followed by Storybook checks. Existing servers are not reused. `E2E_BACKEND_PORT` and `E2E_FRONTEND_PORT` change the app pair; grave scenarios use the next ports. Each phase keeps its own reports and artifacts. All gameplay actions use ordinary validated commands; long ritual scenarios wait for the real server deadline.
 
 ## References
 

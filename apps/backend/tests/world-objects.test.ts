@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
 import { retireCharacter } from '../src/game/characterLife'
+import { executeContainerCommand } from '../src/game/containerCommands'
 import { parseClientMessage } from '../src/game/messages'
 import { NavigationService } from '../src/game/navigation'
+import { WorldInventory } from '../src/game/worldInventory'
 import { type WorldObjectDefinition } from '../src/game/worldObjectData'
 
 function fixture(kind: WorldObjectDefinition['kind'] = 'barrel') {
@@ -28,6 +30,23 @@ function fixture(kind: WorldObjectDefinition['kind'] = 'barrel') {
         solid: Array<boolean>(144).fill(false),
     })
     navigation.grid.solid[4 * 12 + 4] = kind !== 'sign'
+    navigation.grid.containers =
+        kind === 'barrel'
+            ? [
+                  {
+                      id: object.id,
+                      kind: 'barrel',
+                      title: object.name,
+                      propId: 'test-prop',
+                      bounds: object.bounds,
+                      contents: [
+                          { itemId: 'wood', quantity: 1 },
+                          { itemId: 'fiber', quantity: 1 },
+                      ],
+                  },
+              ]
+            : []
+    const inventory = new WorldInventory(navigation, CENTER_LOCATION_ID)
     const actor = new GameCharacter({
         id: 'first',
         nickname: 'Первый',
@@ -38,6 +57,14 @@ function fixture(kind: WorldObjectDefinition['kind'] = 'barrel') {
     const service = new AdventureService({
         now: () => clock.now,
         worldObjects: [object],
+        resourceNodes: [],
+        openContainer: (who, id, now) =>
+            executeContainerCommand(
+                inventory.containers,
+                who,
+                { type: 'open_chest', chestId: id },
+                now
+            ),
     })
     const act = (who = actor, id = object.id) =>
         service.handle(
@@ -46,7 +73,7 @@ function fixture(kind: WorldObjectDefinition['kind'] = 'barrel') {
             [],
             navigation
         )
-    return { clock, actor, object, service, navigation, act }
+    return { clock, actor, object, service, navigation, act, inventory }
 }
 
 describe('authored world objects', () => {
@@ -73,7 +100,7 @@ describe('authored world objects', () => {
     })
 
     it('shares barrel contents exactly once across controllers, retries and fresh identities', () => {
-        const { actor, act, service } = fixture()
+        const { actor, act, service, inventory, object } = fixture()
         const other = new GameCharacter({
             id: 'scripted',
             nickname: 'Страж',
@@ -82,6 +109,11 @@ describe('authored world objects', () => {
             spawnPosition: actor.position,
         })
         act()
+        inventory.containers.handle(
+            actor,
+            { type: 'take_all_chest_items', chestId: object.id },
+            1000
+        )
         act()
         act(other)
         expect(
@@ -96,10 +128,10 @@ describe('authored world objects', () => {
             wood: 0,
             fiber: 0,
         })
+        expect(inventory.containers.snapshot(actor, 1000)?.items).toEqual([])
         expect(
-            service.snapshot(actor.id, actor.locationId, actor)
-                .worldObjects?.[0]?.depleted
-        ).toBe(true)
+            service.snapshot(actor.id, actor.locationId, actor).worldObjects
+        ).toEqual([])
         service.observe([retireCharacter(actor)], () => actor)
         act()
         expect(
@@ -138,7 +170,7 @@ describe('world object validation', () => {
         'wall',
         'unknown',
     ])('rejects %s interaction without granting contents', (reason) => {
-        const { actor, navigation, act, service } = fixture()
+        const { actor, navigation, act, service, inventory } = fixture()
         if (reason === 'dead') {
             actor.alive = false
         }
@@ -168,13 +200,14 @@ describe('world object validation', () => {
             service.snapshot(actor.id, actor.locationId, actor).materials.wood
         ).toBe(0)
         expect(
-            service.snapshot(actor.id, CENTER_LOCATION_ID, actor)
-                .worldObjects?.[0]?.depleted
-        ).toBe(false)
+            inventory
+                .snapshotChests()
+                .find((chest) => chest.id === 'test-object')?.itemCount
+        ).toBe(2)
     })
 
     it('provides detached snapshots and validates input without trusting rewards/owner', () => {
-        const { actor, service } = fixture()
+        const { actor, service } = fixture('sign')
         const snapshot = service.snapshot(actor.id, actor.locationId, actor)
         const object = snapshot.worldObjects?.[0]
         if (object === undefined) {
