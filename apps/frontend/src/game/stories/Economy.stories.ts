@@ -1,6 +1,6 @@
 import '../ui/adventurePanel.css'
 
-import type { MarketSnapshot } from '@my-game-ratata/contracts'
+import { type MarketRow, type MarketSnapshot, quoteMarketTrade } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import CityDemandReport from '../ui/CityDemandReport.vue'
@@ -48,6 +48,31 @@ export const Market: Story = {
     render: () => renderVueStory(CityMarket, { market, npcId: 'npc_merchant_1', gold: 40 }),
 }
 export const Demand: Story = { render: () => renderVueStory(CityDemandReport, { market }) }
+function heatingMarket(stock: number): MarketSnapshot {
+    const row: MarketRow = {
+        itemId: 'brushwood',
+        label: 'Хворост',
+        stock,
+        target: 12,
+        capacity: 24,
+        basePrice: 1,
+        consumptionPer10Minutes: 1,
+        deliveredLast10Minutes: 3,
+        consumedLast10Minutes: 1,
+        buyPrice: null,
+        sellPrice: null,
+    }
+    row.buyPrice = quoteMarketTrade(row, 'buy', 1)
+    row.sellPrice = quoteMarketTrade(row, 'sell', 1)
+    return { ...market, rows: [row] }
+}
+export const HeatingSupply: Story = {
+    render: () => renderVueStory(CityDemandReport, { market: heatingMarket(6) }),
+}
+export const HeatingShortage: Story = {
+    render: () =>
+        renderVueStory(CityMarket, { market: heatingMarket(0), npcId: 'npc_merchant_1', gold: 40 }),
+}
 export const Repair: Story = {
     render: () =>
         renderVueStory(RepairWorkshop, {

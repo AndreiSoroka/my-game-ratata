@@ -81,4 +81,29 @@ describe('city economy panels', () => {
         expect(wrapper.text()).toContain('6 / 9')
         wrapper.unmount()
     })
+    it('reports brushwood heating stock, demand and actual deliveries and consumption', () => {
+        const heating: MarketSnapshot = {
+            ...market,
+            rows: [
+                {
+                    itemId: 'brushwood',
+                    label: 'Хворост',
+                    stock: 6,
+                    target: 12,
+                    capacity: 24,
+                    basePrice: 1,
+                    consumptionPer10Minutes: 1,
+                    buyPrice: 2,
+                    sellPrice: 1,
+                    deliveredLast10Minutes: 3,
+                    consumedLast10Minutes: 1,
+                },
+            ],
+        }
+        const wrapper = mount(CityDemandReport, { props: { market: heating } })
+        const cells = wrapper.findAll('tbody tr td').map((cell) => cell.text())
+        expect(wrapper.text()).toContain('Хворост')
+        expect(cells).toEqual(['6 / 12 / 24', '1', '1 / 2 ◈', '3 / 1'])
+        wrapper.unmount()
+    })
 })

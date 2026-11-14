@@ -13,6 +13,7 @@ import type { CharacterController } from './controllers'
 import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
+import { WorkerBrushwood } from './workerBrushwood'
 import { WorkerFarm } from './workerFarm'
 import {
     approach,
@@ -29,6 +30,7 @@ export class EconomyWorkerController implements CharacterController {
     private readonly nextWorkAt = new Map<string, number>()
     private selected: AdventureResourceNode | undefined
     private readonly farming = new WorkerFarm()
+    private readonly brushwood = new WorkerBrushwood()
     private requestIndex = 0
     private plantSearchIndex = 0
 
@@ -89,35 +91,36 @@ export class EconomyWorkerController implements CharacterController {
         room: GameRoom,
         now: number
     ): boolean {
-        const kinds: MarketItemId[] =
-            this.job === 'lumberjack'
-                ? ['wood']
-                : this.job === 'miner'
-                  ? ['stone', 'scrap']
-                  : ['grain']
-        const itemId = kinds.find(
-            (id) => countInventoryItem(actor.inventory, id) > 0
-        )
+        const kinds = deliveryKinds(this.job)
+        const carriesWood = countInventoryItem(actor.inventory, 'wood') > 0
+        const merchant = room.getCharacter('npc_merchant_1')
+        const market = room
+            .adventureForWorkers()
+            .economy.snapshot(merchant?.locationId ?? CENTER_LOCATION_ID, now)
+        const row = kinds
+            .map((id) => market?.rows.find((row) => row.itemId === id))
+            .find(
+                (candidate) =>
+                    candidate !== undefined &&
+                    countInventoryItem(actor.inventory, candidate.itemId) > 0 &&
+                    candidate.stock < candidate.capacity &&
+                    (candidate.itemId !== 'brushwood' ||
+                        carriesWood ||
+                        actor.locationId === merchant?.locationId)
+            )
         if (
-            itemId === undefined ||
+            row === undefined ||
             (this.job === 'farmer' && this.farming.remaining > 0)
         ) {
             return false
         }
-        const merchant = room.getCharacter('npc_merchant_1')
         if (merchant?.alive !== true) {
             return true
         }
         if (!approach(actor, room, merchant.locationId, merchant.position)) {
             return true
         }
-        const row = room
-            .adventureForWorkers()
-            .economy.snapshot(actor.locationId, now)
-            ?.rows.find((candidate) => candidate.itemId === itemId)
-        if (row === undefined) {
-            return true
-        }
+        const itemId = row.itemId
         const quantity = Math.min(
             countInventoryItem(actor.inventory, itemId),
             row.capacity - row.stock
@@ -190,7 +193,7 @@ export class EconomyWorkerController implements CharacterController {
                             ?.target ?? 0)
             )
             if (wanted.length === 0) {
-                stop(actor)
+                this.gatherBrushwood(actor, room, now)
                 return
             }
             const candidates = WORLD_LOCATION_DEFINITIONS.flatMap((location) =>
@@ -207,7 +210,7 @@ export class EconomyWorkerController implements CharacterController {
         }
         const target = this.selected
         if (target === undefined) {
-            stop(actor)
+            this.gatherBrushwood(actor, room, now)
             return
         }
         const live = service
@@ -215,6 +218,7 @@ export class EconomyWorkerController implements CharacterController {
             .find((node) => node.id === target.id)
         if (live === undefined || live.remaining <= 0) {
             this.selected = undefined
+            this.gatherBrushwood(actor, room, now)
             return
         }
         const navigation = room.navigationFor(actor)
@@ -224,6 +228,10 @@ export class EconomyWorkerController implements CharacterController {
         } else if (
             !approach(actor, room, target.locationId, target.position, 8)
         ) {
+            if (hasNoRoute(actor)) {
+                this.selected = undefined
+                this.gatherBrushwood(actor, room, now)
+            }
             return
         }
         const result = room.requestAdventure(
@@ -237,8 +245,22 @@ export class EconomyWorkerController implements CharacterController {
                 target.kind,
                 now + (this.job === 'lumberjack' ? 600_000 : 1_200_000)
             )
+        } else {
+            this.gatherBrushwood(actor, room, now)
         }
         this.selected = undefined
+    }
+
+    private gatherBrushwood(
+        actor: GameCharacter,
+        room: GameRoom,
+        now: number
+    ): void {
+        if (this.job === 'lumberjack') {
+            this.brushwood.update(actor, room, now)
+        } else {
+            stop(actor)
+        }
     }
 
     private plant(actor: GameCharacter, room: GameRoom, now: number): boolean {
@@ -274,4 +296,16 @@ export class EconomyWorkerController implements CharacterController {
     private requestId(actor: GameCharacter): string {
         return `work-${actor.id}-${String(this.requestIndex++)}`
     }
+}
+
+function deliveryKinds(job: WorkerJob): MarketItemId[] {
+    if (job === 'lumberjack') {
+        return ['wood', 'brushwood']
+    }
+    return job === 'miner' ? ['stone', 'scrap'] : ['grain']
+}
+
+function hasNoRoute(actor: GameCharacter): boolean {
+    const input = actor.getMoveInput()
+    return !actor.hasPath() && input.x === 0 && input.y === 0
 }

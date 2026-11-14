@@ -24,6 +24,7 @@ export const CITY_COMMODITIES: readonly CityCommodityDefinition[] = [
         fixedPrice: true,
     },
     { itemId: 'wood', basePrice: 4, target: 12, consumption: 2 },
+    { itemId: 'brushwood', basePrice: 1, target: 12, consumption: 1 },
     { itemId: 'stone', basePrice: 4, target: 6, consumption: 1 },
     { itemId: 'scrap', basePrice: 3, target: 6, consumption: 1 },
     { itemId: 'fiber', basePrice: 3, target: 6, consumption: 1 },
