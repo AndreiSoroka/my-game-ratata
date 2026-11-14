@@ -3,6 +3,7 @@ import type { AdventureQuestStatus, AdventureSnapshot } from '@my-game-ratata/co
 import { computed, useId } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
 const props = defineProps<{ adventure: AdventureSnapshot }>()
 const emit = defineEmits<{ close: [] }>()
 const progressId = useId()
@@ -77,6 +78,14 @@ const statuses: Record<AdventureQuestStatus, string> = {
         <p class="adventure-reward">
             {{ completed ? 'Получено' : 'Награда' }}: {{ adventure.quest.rewardGold }} золотых
         </p>
+        <section v-if="adventure.craftOrders?.length" aria-label="Заказы ремесленникам">
+            <h3>Заказы ремесленникам</h3>
+            <p v-for="order in adventure.craftOrders" :key="order.id">
+                <strong>{{ order.label }} — {{ craftOrderStatusLabels[order.status] }}</strong
+                ><br />
+                <small>{{ craftOrderPaymentText(order) }}</small>
+            </p>
+        </section>
     </section>
 </template>
 <style scoped>

@@ -3,6 +3,7 @@ import type { CharacterSnapshot, PartySnapshot } from '@my-game-ratata/contracts
 import { isDialogueCharacter } from '../runtime/runtimeQueries'
 import { relation } from './combatTargeting'
 import { interactionDistance } from './interactionTargets'
+import { merchantServiceActions } from './merchantServiceActions'
 import type { InteractionAction } from './nearbyInteractionActions'
 import { invitationActions } from './partyActions'
 
@@ -23,6 +24,7 @@ export function characterActions(
         )[0]
     if (!target) return []
     return [
+        ...merchantServiceActions(target),
         {
             id: `talk:${target.id}`,
             label: `Поговорить: ${target.nickname}`,

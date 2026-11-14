@@ -50,6 +50,7 @@ export interface RenderedTiledMap {
     bitmap: HTMLCanvasElement
     buildings: MapBuilding[]
     depthProps: MapDepthProp[]
+    harvestGraphics: HarvestGraphics
     footsteps: FootstepMap
     visibility: MapVisibility
     height: number
@@ -58,6 +59,13 @@ export interface RenderedTiledMap {
     width: number
     worldHeight: number
     worldWidth: number
+}
+
+export interface HarvestGraphics {
+    forest: HTMLCanvasElement
+    stump: HTMLCanvasElement
+    sapling: HTMLCanvasElement
+    grave: HTMLCanvasElement
 }
 
 export async function loadRenderedTiledMap(
@@ -85,6 +93,7 @@ export async function loadRenderedTiledMap(
             map.layers.find((layer) => layer.name === 'Depth props')?.objects ?? [],
             (canvas, tiles, columns) => renderDepthProp(canvas, tiles, columns, map, tilesets)
         ),
+        harvestGraphics: readHarvestGraphics(map, tilesets),
         footsteps: readFootstepMap(map),
         visibility: readMapVisibility(map),
         height: map.height,
@@ -93,6 +102,29 @@ export async function loadRenderedTiledMap(
         width: map.width,
         worldHeight: map.height * map.tileheight,
         worldWidth: map.width * map.tilewidth,
+    }
+}
+
+function readHarvestGraphics(map: TiledMap, tilesets: LoadedTileset[]): HarvestGraphics {
+    const objects =
+        map.tilesets.find((tileset) => tileset.source === 'tilesets/MysticWoods/objects.json')
+            ?.firstgid ?? 198
+    const bitmap = (x: number, y: number, columns: number, rows: number) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = columns * 16
+        canvas.height = rows * 16
+        const tiles = Array.from(
+            { length: columns * rows },
+            (_, index) => objects + (y + Math.floor(index / columns)) * 16 + x + (index % columns)
+        )
+        renderDepthProp(canvas, tiles, columns, map, tilesets)
+        return canvas
+    }
+    return {
+        forest: bitmap(0, 5, 3, 4),
+        stump: bitmap(10, 5, 2, 2),
+        sapling: bitmap(6, 7, 2, 2),
+        grave: bitmap(6, 0, 1, 1),
     }
 }
 

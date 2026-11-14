@@ -97,6 +97,7 @@ function fakeControllerRoom(
     requestAttack: ReturnType<typeof vi.fn>
 ): GameRoom {
     return {
+        charactersFor: () => [target],
         findVisibleTarget: () => target,
         navigationFor: () => fakeControllerNavigation,
         requestAttack,

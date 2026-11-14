@@ -1,7 +1,10 @@
 import type { AbilityId, DamageKind } from './abilities'
+import type { ProjectilePath } from './combatAim'
 import type { ItemId } from './index'
 
 export type GameEventKind =
+    | 'resource_gather'
+    | 'tree_plant'
     | 'heal'
     | 'absorb'
     | 'cast'
@@ -32,6 +35,8 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    /** Server-pinned projectile path for a shot with no selected target. */
+    projectile?: ProjectilePath
     /** New utterance receipt; repeated text receives a new value. */
     speechId?: number
     abilityId?: AbilityId

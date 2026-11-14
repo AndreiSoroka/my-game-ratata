@@ -32,6 +32,7 @@ function send(command: ClientMessage): void {
     props.game?.sendCommand(command)
 }
 function cancel(clear = false): void {
+    hotbar.value?.resetGesture()
     send({ type: 'cancel_control' })
     if (clear) selectedId.value = undefined
 }
@@ -42,17 +43,29 @@ function select(id: string, open = false): void {
     if (open && relation(character, props.player) !== 'hostile') emit('interact', id)
 }
 function key(event: KeyboardEvent): void {
+    if (
+        [
+            'KeyW',
+            'KeyA',
+            'KeyS',
+            'KeyD',
+            'ArrowUp',
+            'ArrowDown',
+            'ArrowLeft',
+            'ArrowRight',
+            'Space',
+        ].includes(event.code)
+    )
+        hotbar.value?.resetGesture()
     if (combatKeyBlocked(event, props.blocked)) return
     const digit = /^Digit([1-4])$/.exec(event.code)
-    if (!['KeyT', 'KeyF', 'KeyQ', 'Escape'].includes(event.code) && !digit) return
+    if (!['KeyT', 'KeyF', 'Escape'].includes(event.code) && !digit) return
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.repeat) return
     if (event.code !== 'Escape' && unavailable.value) return
     if (digit) {
-        const slot = Number(digit[1]) - 1
-        if (event.shiftKey) void hotbar.value?.edit(slot)
-        else hotbar.value?.activate(slot)
+        activateSlot(Number(digit[1]) - 1, event.shiftKey)
         return
     }
     const actions: Record<string, () => void> = {
@@ -68,22 +81,15 @@ function key(event: KeyboardEvent): void {
                 event.shiftKey
             )
         },
-        KeyQ: attack,
     }
     actions[event.code]?.()
 }
-function attack(): void {
-    if (target.value && relation(target.value, props.player) === 'hostile' && target.value.alive)
-        send({
-            type: 'auto_attack',
-            targetId:
-                props.player.control?.mode === 'attack' &&
-                props.player.control.targetId === target.value.id
-                    ? null
-                    : target.value.id,
-        })
-    else if (!target.value || relation(target.value, props.player) !== 'hostile')
-        send({ type: 'attack' })
+function activateSlot(slot: number, edit: boolean): void {
+    if (edit) void hotbar.value?.edit(slot)
+    else hotbar.value?.activate(slot)
+}
+function visibility(): void {
+    if (document.hidden) cancel()
 }
 function blur(): void {
     cancel()
@@ -153,6 +159,9 @@ watch(
             cancel(true)
     }
 )
+watch(selectedId, (id, previous) => {
+    if (id !== previous && props.player.control?.mode !== 'follow') cancel()
+})
 watch(target, (character) =>
     props.game?.setCombatTarget(
         character
@@ -168,11 +177,14 @@ watch(target, (character) =>
 onMounted(() => {
     window.addEventListener('keydown', key, true)
     window.addEventListener('blur', blur)
+    document.addEventListener('visibilitychange', visibility)
 })
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', key, true)
     window.removeEventListener('blur', blur)
+    document.removeEventListener('visibilitychange', visibility)
     props.game?.setCombatTarget(undefined)
+    cancel()
 })
 defineExpose({ selectedId, select, receive, cancel, assignItem })
 </script>
@@ -191,7 +203,7 @@ defineExpose({ selectedId, select, receive, cancel, assignItem })
             target.id === player.id
                 ? 'Вы'
                 : relation(target, player) === 'hostile'
-                  ? 'Враг · Q автоатака'
+                  ? 'Враг · 1–4 действия'
                   : 'Союзник · E действия'
         }}</small>
     </aside>
@@ -217,9 +229,10 @@ defineExpose({ selectedId, select, receive, cancel, assignItem })
         @command="send"
         @cancel="cancel()"
         @preview-change="game?.setPrayerPreview?.($event)"
+        @shot-preview-change="game?.setShotPreview?.($event)"
     />
     <SpeechBubbles ref="speech" :game="game" :snapshot="snapshot" :player="player" />
-    <span class="target-help">T враги · Shift+T союзники · F себя · Q автоатака</span>
+    <span class="target-help">T враги · Shift+T союзники · F себя · Дважды 1–4: повтор</span>
 </template>
 <style scoped>
 .target-panel {

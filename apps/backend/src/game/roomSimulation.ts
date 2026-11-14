@@ -17,7 +17,8 @@ import { recordMovementNoise } from './hearing'
 import { advanceCharacter } from './movement'
 import type { PartyService } from './parties'
 import type { GameRoom } from './room'
-import { advanceRoomLives } from './roomLifecycle'
+import { resourceOccupants } from './roomEconomy'
+import type { RoomLife } from './roomLife'
 import { type RoomSocket, send } from './roomMessaging'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
@@ -30,6 +31,7 @@ interface SimulationContext {
     controllers: Map<string, CharacterController>
     deltaMs: number
     nicknames: Map<string, string>
+    life: RoomLife
     now: number
     onEvents: (events: GameEventPayload[]) => void
     parties: PartyService
@@ -45,6 +47,12 @@ interface SimulationContext {
 
 export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, controllers, room, now } = context
+    room.adventureForWorkers().update(
+        now,
+        (id) => context.world.get(id).navigation,
+        characters.values(),
+        (id) => resourceOccupants(context.world, id)
+    )
     for (const character of characters.values()) {
         context.companions.hasActiveLease(character, now, room)
     }
@@ -64,17 +72,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     for (const character of characters.values()) {
         resolveWorldAttack(character, context)
     }
-    advanceRoomLives({
-        ...context,
-        abilityContextFor: (actor, at) => room.abilityContextFor(actor, at),
-        beforeRetire: (actor, at) => {
-            context.onEvents(
-                context.world
-                    .get(actor.locationId)
-                    .inventory.finalizeDeath(actor, at)
-            )
-        },
-    })
+    context.life.advance(now, (actor, at) => room.abilityContextFor(actor, at))
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))
     for (const [ws, id] of context.connections) {

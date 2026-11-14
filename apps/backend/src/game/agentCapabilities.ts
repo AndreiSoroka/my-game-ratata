@@ -11,6 +11,7 @@ import { parseAbilityCommand } from './abilityCommands'
 import { knowsAbility } from './abilityState'
 import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
+import { parseControlCommand } from './characterControl'
 import { companionProfiles } from './companionProfiles'
 import { prayerHarmTargets } from './prayerContext'
 import { canPerformSkillAction } from './skillProgression'
@@ -24,6 +25,7 @@ export function isAgentControl(
     decision: AgentDecision
 ): decision is CharacterControlCommand {
     return (
+        decision.type === 'auto_action' ||
         decision.type === 'follow' ||
         decision.type === 'auto_attack' ||
         decision.type === 'cancel_control'
@@ -38,23 +40,7 @@ export function parseAgentCapability(
     ) {
         return parseAbilityCommand(record)
     }
-    if (record['type'] === 'cancel_control') {
-        return { type: 'cancel_control' }
-    }
-    const type = record['type']
-    const targetId = record['targetId']
-    if (type !== 'follow' && type !== 'auto_attack') {
-        return undefined
-    }
-    if (
-        targetId === null ||
-        (typeof targetId === 'string' &&
-            targetId.trim().length > 0 &&
-            targetId.length <= 100)
-    ) {
-        return { type, targetId }
-    }
-    return undefined
+    return parseControlCommand(record)
 }
 export function actorRefusesCombat(actor: GameCharacter): boolean {
     return (

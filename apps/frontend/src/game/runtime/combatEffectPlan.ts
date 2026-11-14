@@ -3,6 +3,7 @@ import {
     type CharacterSnapshot,
     type DeityId,
     type GameEventPayload,
+    type ProjectilePath,
 } from '@my-game-ratata/contracts'
 
 import { BARRIER_COLOR, type EffectShape, FIRE_COLOR, SPARK_COLOR } from './effectGraphics'
@@ -10,6 +11,7 @@ import { deityColors } from './prayerGraphics'
 
 export interface EffectCue {
     kind: EffectShape
+    projectile?: ProjectilePath
     fromId: string
     targetId: string
     deity: DeityId
@@ -154,6 +156,7 @@ function attackCue(
         travel,
         color: colors[kind] ?? base.color,
         duration: attackDuration(event, kind),
+        ...(event.projectile ? { projectile: event.projectile } : {}),
         count: kind === 'arrow' ? 0 : 6,
     }
 }

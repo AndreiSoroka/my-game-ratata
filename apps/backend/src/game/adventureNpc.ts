@@ -1,5 +1,6 @@
 import type { GameCharacter } from './character'
 import { distance } from './math'
+import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
 
 const interactionRadius = 48
@@ -8,7 +9,8 @@ export function resolveAdventureNpc(
     actor: GameCharacter,
     npcId: string | undefined,
     locationNPCs: GameCharacter[],
-    now: number
+    now: number,
+    navigation?: NavigationService
 ): GameCharacter | undefined {
     return locationNPCs.find(
         (npc) =>
@@ -18,10 +20,15 @@ export function resolveAdventureNpc(
             npc.faction === 'peaceful' &&
             canPerformSkillAction(actor, now) &&
             !actor.tags.has('state.retired') &&
-            !npc.tags.has('offline') &&
-            !npc.tags.has('state.retired') &&
-            npc.alive &&
+            npcAvailable(npc) &&
             actor.locationId === npc.locationId &&
-            distance(actor.position, npc.position) <= interactionRadius
+            distance(actor.position, npc.position) <= interactionRadius &&
+            (navigation?.hasLineOfSight(actor.position, npc.position) ?? true)
+    )
+}
+
+function npcAvailable(npc: GameCharacter): boolean {
+    return (
+        npc.alive && !npc.tags.has('offline') && !npc.tags.has('state.retired')
     )
 }

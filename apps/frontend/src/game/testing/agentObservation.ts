@@ -9,14 +9,16 @@ import {
     CHEST_FOOTPRINT_SIZE,
     CHEST_INTERACTION_RANGE,
     FARM_INTERACTION_RANGE,
+    interactionApproachPoints,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
 import type { BuildingEntrance } from '../runtime/buildingEntrances'
 import { relation } from '../ui/combatTargeting'
-import { distanceToBounds } from '../ui/interactionTargets'
+import { targetInteractionDistance } from '../ui/interactionTargets'
 import { itemStackLabel } from '../ui/itemLabels'
 import { type InteractionAction, nearbyInteractionTarget } from '../ui/nearbyInteractionActions'
+import { observeAdventure } from './observeAdventure'
 import type { RatataTestState } from './testInterface'
 
 export interface AgentTarget {
@@ -26,6 +28,7 @@ export interface AgentTarget {
     name: string
     position: Vector2
     bounds?: WorldObjectBounds
+    interactionAreas?: WorldObjectBounds[]
     distance: number
     interactionRange: number
     /** UI candidates only. The server rechecks life, reach, visibility and costs. */
@@ -110,22 +113,6 @@ function observeSnapshot(
     }
 }
 
-function observeAdventure(adventure: AdventureSnapshot | undefined): AgentObservation['adventure'] {
-    if (!adventure) return undefined
-    return {
-        dialogue: adventure.dialogue,
-        gold: adventure.gold,
-        materials: adventure.materials,
-        notice: adventure.notice,
-        noticeId: adventure.noticeId,
-        quest: adventure.quest,
-        recipes: adventure.recipes,
-        shop: adventure.shop,
-        trophies: adventure.trophies,
-        wardRestored: adventure.wardRestored,
-    }
-}
-
 function observeDialogue(state: RatataTestState): InteractionAction[] {
     if (!state.connected || !state.player?.alive) return []
     return (state.snapshot?.adventure?.dialogue?.choices ?? []).map((choice) => ({
@@ -155,17 +142,16 @@ function observeTargets(
         .filter(
             (target) =>
                 target.kind === 'building' ||
-                visibility.isPositionVisible?.(target.position) !== false
+                (target.interactionAreas
+                    ? interactionApproachPoints(player.position, target.interactionAreas).some(
+                          (point) => visibility.isPositionVisible?.(point) !== false
+                      )
+                    : visibility.isPositionVisible?.(target.position) !== false)
         )
         .map((target) => ({
             ...target,
             key: `${target.kind}:${target.id}`,
-            distance: target.bounds
-                ? distanceToBounds(player.position, target.bounds)
-                : Math.hypot(
-                      target.position.x - player.position.x,
-                      target.position.y - player.position.y
-                  ),
+            distance: targetInteractionDistance(player.position, target),
             actions:
                 nearbyInteractionTarget(
                     snapshot,
@@ -225,6 +211,7 @@ function environmentTargets(snapshot: WorldSnapshot): TargetDescription[] {
             name: object.name,
             position: object.position,
             bounds: object.bounds,
+            interactionAreas: object.interactionAreas,
             interactionRange: 48,
             details: { kind: object.kind, depleted: object.depleted },
         })),
@@ -233,6 +220,7 @@ function environmentTargets(snapshot: WorldSnapshot): TargetDescription[] {
             kind: 'resource',
             name: node.kind,
             position: node.position,
+            ...(node.bounds === undefined ? {} : { bounds: node.bounds }),
             interactionRange: 48,
             details: { material: node.kind, remaining: node.remaining },
         })),

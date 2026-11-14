@@ -116,12 +116,14 @@ describe('bounded cooperative monster perception', () => {
         expect(coordinatedTarget(friendly, room, 5_000)).not.toBe(target)
     })
 
-    it('cannot chain a hunt indefinitely beyond the common home leash', () => {
-        const { scout, target, room } = setup()
+    it('keeps a directly visible opponent beyond home while bounding indirect investigation', () => {
+        const { scout, ally, target, room } = setup()
         scout.position.x = 530
+        ally.position.x = 520
         target.position.x = 550
         expect(room.findVisibleTarget(scout, 112)).toBe(target)
-        expect(coordinatedTarget(scout, room, 5_000)).toBeUndefined()
+        expect(coordinatedTarget(scout, room, 5_000)).toBe(target)
+        expect(reportedThreatPosition(ally, room, 5_000)).toBeUndefined()
     })
 
     it('does not publish target changes more than once per second', () => {

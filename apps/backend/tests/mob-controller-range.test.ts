@@ -97,6 +97,7 @@ function simulateApproach(
         events.push(...nextEvents.map((event) => ({ event, now })))
     }
     const room = {
+        charactersFor: () => [actor, target],
         findVisibleTarget: () => target,
         navigationFor: () => navigation,
         requestAttack: (_character: GameCharacter, now: number) => {

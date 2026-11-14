@@ -24,7 +24,10 @@ import {
     defaultVisualIdFor,
     type GameCharacterOptions,
 } from './characterIdentity'
-import { regenerateCharacter, restoreCharacter } from './characterRecovery'
+import {
+    regenerateCharacter,
+    tickCharacterTimedState,
+} from './characterRecovery'
 import { createCharacterSnapshot } from './characterSnapshot'
 import { createCharacterSoul } from './characterSoul'
 import {
@@ -52,6 +55,7 @@ export class GameCharacter {
     public maxHp: number
     public readonly heroClass: HeroClass | undefined
     public readonly mortal: boolean
+    public readonly respawnPolicy: 'automatic' | 'none'
     public readonly soul: SoulSnapshot
     public progression: CharacterProgression = createProgression()
     public movement = createMovementState()
@@ -105,6 +109,7 @@ export class GameCharacter {
             (options.archetype === 'human' ? 'vanguard' : undefined)
         this.mortal =
             options.mortal ?? options.controllerKind === 'network_player'
+        this.respawnPolicy = options.respawnPolicy ?? 'automatic'
         this.abilities = createAbilityState(this.heroClass, options.archetype)
         this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
@@ -213,6 +218,11 @@ export class GameCharacter {
         attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number }
     ): void {
         this.pendingAttack = {
+            weaponInstanceId:
+                attack.abilityId === undefined ||
+                attack.abilityId === 'skeleton_strike'
+                    ? this.equipment.weapon?.instanceId
+                    : undefined,
             targetId: attack.targetId,
             abilityId: attack.abilityId,
             canStun: attack.canStun,
@@ -244,19 +254,7 @@ export class GameCharacter {
     }
 
     public tickTimedState(now: number): void {
-        if (this.attackZoneUntil > 0 && now >= this.attackZoneUntil) {
-            this.attackZones = []
-            this.attackZoneUntil = 0
-        }
-
-        if (
-            !this.mortal &&
-            !this.alive &&
-            this.respawnAt > 0 &&
-            now >= this.respawnAt
-        ) {
-            restoreCharacter(this, now, true)
-        }
+        tickCharacterTimedState(this, now)
     }
 
     public applyRegen(

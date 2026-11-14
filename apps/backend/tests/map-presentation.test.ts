@@ -2,10 +2,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { WORLD_LOCATION_DEFINITIONS } from '@my-game-ratata/contracts'
+import {
+    WORLD_LOCATION_DEFINITIONS,
+    type WorldObjectBounds,
+} from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { loadNavigationService } from '../src/game/navigation'
+import { readInteractionAreas } from '../src/game/worldObjectGeometry'
 
 interface Property {
     name: string
@@ -88,7 +92,7 @@ function reachableCells(id: string): Set<number> {
     }
     return reached
 }
-function perimeter(object: MapObject, width: number): number[] {
+function perimeter(object: WorldObjectBounds, width: number): number[] {
     const result: number[] = []
     const left = object.x / 16,
         top = object.y / 16
@@ -228,26 +232,33 @@ describe('physical world interactions', () => {
                           : 'drink'
                 )
                 expect(property(object, 'text')).toBeTypeOf('string')
+                const areas = readInteractionAreas(
+                    property(object, 'interactionAreas'),
+                    object,
+                    'water'
+                ) ?? [object]
                 expect(
-                    perimeter(object, map.width).some((cell) =>
-                        reached.has(cell)
-                    ),
+                    areas
+                        .flatMap((area) => perimeter(area, map.width))
+                        .some((cell) => reached.has(cell)),
                     property(object, 'interactionId') as string
                 ).toBe(true)
                 if (object.type === 'sign') {
                     continue
                 }
-                for (
-                    let y = object.y / 16;
-                    y < (object.y + object.height) / 16;
-                    y += 1
-                ) {
+                for (const area of areas) {
                     for (
-                        let x = object.x / 16;
-                        x < (object.x + object.width) / 16;
-                        x += 1
+                        let y = area.y / 16;
+                        y < (area.y + area.height) / 16;
+                        y += 1
                     ) {
-                        expect(solid[y * map.width + x]).toBe(1)
+                        for (
+                            let x = area.x / 16;
+                            x < (area.x + area.width) / 16;
+                            x += 1
+                        ) {
+                            expect(solid[y * map.width + x]).toBe(1)
+                        }
                     }
                 }
             }

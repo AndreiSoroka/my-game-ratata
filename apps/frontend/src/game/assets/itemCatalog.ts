@@ -10,6 +10,11 @@ export interface ItemAssetDefinition {
 }
 
 export const itemAssetCatalog: Record<ItemId, ItemAssetDefinition> = {
+    axe: nativeItemAsset('axe'),
+    stone_axe: nativeItemAsset('stone_axe'),
+    pickaxe: nativeItemAsset('pickaxe'),
+    stone: nativeItemAsset('stone'),
+    sapling: nativeItemAsset('sapling'),
     boots: itemAsset('boots', 'Item__48.png'),
     food: itemAsset('food', 'Item__64.png'),
     fiber: nativeItemAsset('fiber'),

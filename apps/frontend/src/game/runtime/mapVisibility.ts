@@ -1,4 +1,5 @@
-import type { Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
+import type { AdventureResourceNode, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
+import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
 export interface MapVisibility {
     width: number
@@ -6,6 +7,8 @@ export interface MapVisibility {
     tileWidth: number
     tileHeight: number
     solid: boolean[]
+    resourceBase?: boolean[]
+    resourceSignature?: string
 }
 interface VisibilitySource {
     width: number
@@ -36,12 +39,46 @@ export function readMapVisibility(map: VisibilitySource): MapVisibility {
             if (gid !== 0 && index < solid.length) solid[index] = true
         })
     }
+    const resourceCells =
+        map.layers.find((layer) => layer.name === 'Resource collision')?.data ?? []
     return {
         width: map.width,
         height: map.height,
         tileWidth: map.tilewidth,
         tileHeight: map.tileheight,
         solid,
+        resourceBase: solid.map((blocked, index) => blocked && !resourceCells[index]),
+    }
+}
+
+/** Mirrors server-authored obstacle states; client does not decide depletion or growth. */
+export function updateResourceVisibility(
+    map: MapVisibility,
+    nodes: readonly AdventureResourceNode[]
+): void {
+    const sources = nodes.filter((node) => node.source !== undefined)
+    const signature = sources.map((node) => `${node.id}:${node.phase}`).join('|')
+    if (signature === map.resourceSignature) return
+    map.resourceSignature = signature
+    map.resourceBase ??= map.solid.slice()
+    map.solid = map.resourceBase.slice()
+    for (const node of sources) {
+        const bounds = node.collisionBounds
+        if (!bounds) continue
+        for (
+            let y = Math.floor(bounds.y / map.tileHeight);
+            y < Math.ceil((bounds.y + bounds.height) / map.tileHeight);
+            y++
+        ) {
+            for (
+                let x = Math.floor(bounds.x / map.tileWidth);
+                x < Math.ceil((bounds.x + bounds.width) / map.tileWidth);
+                x++
+            ) {
+                if (x >= 0 && y >= 0 && x < map.width && y < map.height)
+                    map.solid[y * map.width + x] = true
+            }
+        }
     }
 }
 
@@ -62,20 +99,13 @@ export function interactionHasLineOfSight(
     from: Vector2,
     position: Vector2,
     bounds?: WorldObjectBounds,
-    range = 48
+    range = 48,
+    interactionAreas?: readonly WorldObjectBounds[]
 ): boolean {
     if (!mapHasLineOfSight(map, from, from)) return false
     const reachable = (point: Vector2): boolean =>
         Math.hypot(point.x - from.x, point.y - from.y) <= range &&
         mapHasLineOfSight(map, from, point)
     if (!bounds) return reachable(position)
-    const { x, y, width, height } = bounds
-    const horizontal = Math.max(x, Math.min(x + width, from.x))
-    const vertical = Math.max(y, Math.min(y + height, from.y))
-    return [
-        { x: horizontal, y: y - 1 },
-        { x: horizontal, y: y + height + 1 },
-        { x: x - 1, y: vertical },
-        { x: x + width + 1, y: vertical },
-    ].some(reachable)
+    return interactionApproachPoints(from, interactionAreas ?? [bounds]).some(reachable)
 }

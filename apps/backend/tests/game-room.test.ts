@@ -90,9 +90,10 @@ describe('shared combat windup', () => {
         ).toEqual([])
         expect(target.hp).toBe(target.maxHp)
 
-        const hitEvents = resolvePendingAttackHit(
-            attackContext(attacker, [attacker, target], now + 50)
-        )
+        const hitEvents = resolvePendingAttackHit({
+            ...attackContext(attacker, [attacker, target], now + 50),
+            random: () => 0.9,
+        })
 
         expect(hitEvents).toEqual(
             expect.arrayContaining([

@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { wearWalkingEquipment } from './itemDurability'
 import { distance, moveToward, zeroVector } from './math'
 import { cancelMovementMode } from './movementActions'
 import { type MovementNoise, movementNoise } from './movementNoise'
@@ -52,6 +53,7 @@ function moveCharacter(context: MovementContext): void {
     const dashMs = dashTime(character, now, deltaMs)
     character.position = nextPosition(context, dashMs)
     const traveled = distance(before, character.position)
+    wearWalkingEquipment(character, traveled)
     character.velocity = {
         x: character.position.x - before.x,
         y: character.position.y - before.y,

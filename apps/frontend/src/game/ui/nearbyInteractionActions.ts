@@ -9,6 +9,7 @@ import {
     CHEST_FOOTPRINT_SIZE,
     CHEST_INTERACTION_RANGE,
     FARM_INTERACTION_RANGE,
+    interactionApproachPoints,
     THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
@@ -75,11 +76,23 @@ export function nearbyInteractionTarget(
         candidates.filter(
             (candidate) =>
                 candidate.actions.length > 0 &&
-                isPositionVisible(candidate.position, candidate.bounds, candidate.range)
+                targetVisible(candidate, player.position, isPositionVisible)
         ),
         player,
         targetKey,
         ignoreFacing
+    )
+}
+function targetVisible(
+    target: TargetCandidate,
+    from: Vector2,
+    visible: InteractionVisibility
+): boolean {
+    if (!target.interactionAreas) return visible(target.position, target.bounds, target.range)
+    return interactionApproachPoints(from, target.interactionAreas).some(
+        (point) =>
+            Math.hypot(point.x - from.x, point.y - from.y) <= target.range &&
+            visible(point, undefined, target.range)
     )
 }
 function characterTargets(
@@ -115,6 +128,7 @@ function objectTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Targ
         name: object.name,
         position: object.position,
         bounds: object.bounds,
+        interactionAreas: object.interactionAreas,
         range: 48,
         actions: worldInteractionActions(
             { ...snapshot, adventure: { ...snapshot.adventure!, worldObjects: [object] } },
@@ -132,6 +146,7 @@ function resourceTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Ta
             key: `resource:${node.id}`,
             name: actions[0]?.label ?? '',
             position: node.position,
+            ...(node.bounds === undefined ? {} : { bounds: node.bounds }),
             range: 48,
             actions,
         }

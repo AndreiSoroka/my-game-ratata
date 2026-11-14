@@ -134,8 +134,11 @@ describe('inhabited city interiors', () => {
         )
         expect(service.snapshot(hero.id).dialogue).toMatchObject({
             npcId: npc.id,
-            canTrade: false,
-            choices: [{ id: 'leave', label: 'До встречи' }],
+            canTrade: true,
+        })
+        expect(service.snapshot(hero.id).dialogue?.choices).toContainEqual({
+            id: 'repair',
+            label: 'Почини моё снаряжение',
         })
         expect(service.snapshot(hero.id).dialogue?.text).toContain('Игнат')
         service.grantGoldOnce(hero.id, 100, 'test-payment')

@@ -9,6 +9,8 @@ import {
     isInventoryDecisionType,
     parseInventoryDecision,
 } from './agentInventory'
+import { isAdventureCommand, parseExtraCommand } from './extraCommands'
+import { parseClientMessage } from './messages'
 import { isTheftCommandType } from './theftCommands'
 
 export function parseAgentDecision(input: unknown): AgentDecision | undefined {
@@ -102,6 +104,23 @@ function parseTheft(
 function parseSharedDecision(
     record: Record<string, unknown>
 ): AgentDecision | undefined {
+    if (
+        record['type'] === 'inventory_action' ||
+        record['type'] === 'equipment_action'
+    ) {
+        const parsed = parseClientMessage(JSON.stringify(record)).message
+        if (
+            parsed?.type === 'inventory_action' ||
+            parsed?.type === 'equipment_action'
+        ) {
+            return parsed
+        }
+        return undefined
+    }
+    const extra = parseExtraCommand(record)
+    if (extra.message !== undefined && isAdventureCommand(extra.message)) {
+        return extra.message
+    }
     if (isTheftCommandType(record['type'])) {
         return parseTheft(record['type'], record['targetId'])
     }

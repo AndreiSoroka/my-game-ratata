@@ -205,8 +205,11 @@ export class CombatEffects {
         if (this.reduced || isMeleeEffect(cue.kind)) return
         if (cue.travel) {
             effect.actor.pos = vec(
-                effect.from.x + (target.position.x - effect.from.x) * progress,
-                effect.from.y + (target.position.y - 15 - effect.from.y) * progress
+                effect.from.x +
+                    ((cue.projectile?.endpoint ?? target.position).x - effect.from.x) * progress,
+                effect.from.y +
+                    ((cue.projectile?.endpoint ?? target.position).y - 15 - effect.from.y) *
+                        progress
             )
         } else if (cue.wave) effect.actor.scale = vec(0.2 + 0.8 * progress, 0.2 + 0.8 * progress)
         else effect.actor.pos = vec(effect.from.x, effect.from.y - progress * 8)

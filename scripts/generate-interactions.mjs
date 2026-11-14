@@ -1,13 +1,14 @@
 import { signText } from './generate-sign-text.mjs'
+import { createPondDrinkingAreas } from './generate-pond-interactions.mjs'
 
 const barrelGids = new Set([198 + 3, 512 + 129, 512 + 130, 768 + 85])
 const waterGids = new Set([512 + 104, 512 + 131, 768 + 124])
 
 export function createWorldInteractions(ctx, location, landmarks) {
-    const { width, height, at, objects, terrain, structures, solid } = ctx
+    const { width, height, at, objects, structures, solid } = ctx
     const result = []
     const inside = (x, y) => x >= 0 && y >= 0 && x < width && y < height
-    function add(type, x, y, w, h, name, text) {
+    function add(type, x, y, w, h, name, text, geometry = {}) {
         const action =
             type === 'sign' ? 'read' : type === 'barrel' ? 'search' : 'drink'
         result.push({
@@ -24,10 +25,19 @@ export function createWorldInteractions(ctx, location, landmarks) {
                 {
                     name: 'interactionId',
                     type: 'string',
-                    value: `${location.id}:${type}:${x}:${y}`,
+                    value: geometry.id ?? `${location.id}:${type}:${x}:${y}`,
                 },
                 { name: 'action', type: 'string', value: action },
                 { name: 'text', type: 'string', value: text },
+                ...(geometry.interactionAreas
+                    ? [
+                          {
+                              name: 'interactionAreas',
+                              type: 'string',
+                              value: JSON.stringify(geometry.interactionAreas),
+                          },
+                      ]
+                    : []),
             ],
         })
     }
@@ -153,42 +163,20 @@ export function createWorldInteractions(ctx, location, landmarks) {
                 )
             }
         }
-    // One reachable shore per connected pond, rather than a drink action per water tile.
-    const seen = new Set()
-    const isWater = (cell) => terrain[cell] >= 110 && terrain[cell] < 134
-    for (let start = 0; start < terrain.length; start += 1) {
-        if (seen.has(start) || !isWater(start)) continue
-        const pond = [start]
-        seen.add(start)
-        for (const cell of pond) {
-            const x = cell % width,
-                y = Math.floor(cell / width)
-            for (const [dx, dy] of [
-                [1, 0],
-                [-1, 0],
-                [0, 1],
-                [0, -1],
-            ]) {
-                const next = at(x + dx, y + dy)
-                if (!inside(x + dx, y + dy) || seen.has(next) || !isWater(next))
-                    continue
-                seen.add(next)
-                pond.push(next)
+    for (const pond of createPondDrinkingAreas(ctx, perimeterReachable)) {
+        add(
+            'water',
+            pond.x,
+            pond.y,
+            pond.width,
+            pond.height,
+            'Вода у берега',
+            'У любого доступного берега этого небольшого пруда можно зачерпнуть воды.',
+            {
+                id: `${location.id}:water:pond:${pond.anchor}`,
+                interactionAreas: pond.interactionAreas,
             }
-        }
-        const shore = pond.find((cell) =>
-            perimeterReachable(cell % width, Math.floor(cell / width), 1, 1)
         )
-        if (shore !== undefined)
-            add(
-                'water',
-                shore % width,
-                Math.floor(shore / width),
-                1,
-                1,
-                'Вода у берега',
-                'Здесь можно зачерпнуть чистой воды, не заходя в пруд.'
-            )
     }
     return result
 }

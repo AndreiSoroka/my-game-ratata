@@ -13,6 +13,11 @@ export const itemIds = [
     'scrap',
     'wood',
     'grain',
+    'axe',
+    'stone_axe',
+    'pickaxe',
+    'stone',
+    'sapling',
 ] as const
 
 export type ItemId = (typeof itemIds)[number]
@@ -39,11 +44,76 @@ export interface ItemDefinition {
     healHp?: number
     id: ItemId
     name: string
+    price?: number
+    maxDurability?: number
+    gathering?: Partial<
+        Record<
+            'tree' | 'stone',
+            { energy: number; durationMs: number; wear: number }
+        >
+    >
+    fullRepairPrice?: number
+    durabilityWear?: {
+        attack?: number
+        walkPixels?: number
+        hit?: number
+    }
     statBonuses?: ItemStatBonuses
     weapon?: ItemWeaponStats
 }
 
 export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
+    axe: {
+        id: 'axe',
+        name: 'Топор',
+        description:
+            'Рубит деревья с минимальным износом. Можно использовать в бою.',
+        equipmentSlots: ['weapon'],
+        price: 25,
+        maxDurability: 1000,
+        gathering: { tree: { energy: 5, durationMs: 2000, wear: 1 } },
+        fullRepairPrice: 10,
+        durabilityWear: { attack: 5 },
+        weapon: { minDamage: 4, maxDamage: 7 },
+    },
+    stone_axe: {
+        id: 'stone_axe',
+        name: 'Каменный топор',
+        description:
+            'Дешёвый топор: рубит дерево, но служит заметно меньше железного.',
+        equipmentSlots: ['weapon'],
+        price: 10,
+        maxDurability: 100,
+        fullRepairPrice: 4,
+        durabilityWear: { attack: 5 },
+        gathering: { tree: { energy: 5, durationMs: 2000, wear: 1 } },
+        weapon: { minDamage: 2, maxDamage: 4 },
+    },
+    pickaxe: {
+        id: 'pickaxe',
+        name: 'Кирка',
+        description: 'Прочный инструмент для добычи камня.',
+        equipmentSlots: ['weapon'],
+        price: 25,
+        maxDurability: 1000,
+        gathering: { stone: { energy: 5, durationMs: 2000, wear: 1 } },
+        fullRepairPrice: 10,
+        durabilityWear: { attack: 5 },
+        weapon: { minDamage: 3, maxDamage: 6 },
+    },
+    stone: {
+        id: 'stone',
+        name: 'Камень',
+        maxStack: 1,
+        description: 'Добытый камень. Занимает отдельную ячейку.',
+    },
+    sapling: {
+        id: 'sapling',
+        name: 'Саженец',
+        maxStack: 1,
+        price: 3,
+        description: 'Посади на месте пня, чтобы вырастить новое дерево.',
+    },
     herbs: {
         id: 'herbs',
         name: 'Лечебные травы',
@@ -84,6 +154,10 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         equipmentSlots: ['boots'],
         id: 'boots',
         name: 'Old Boots',
+        price: 18,
+        maxDurability: 1000,
+        fullRepairPrice: 8,
+        durabilityWear: { walkPixels: 960, hit: 1 },
         statBonuses: {
             dodgeChance: 0.08,
         },
@@ -94,23 +168,67 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         name: 'Apple',
     },
     old_sword: {
+        gathering: { tree: { energy: 10, durationMs: 4000, wear: 20 } },
         equipmentSlots: ['weapon'],
         id: 'old_sword',
         name: 'Old Sword',
+        price: 12,
+        maxDurability: 200,
+        fullRepairPrice: 5,
+        durabilityWear: { attack: 1 },
         weapon: {
             maxDamage: 6,
             minDamage: 3,
         },
     },
     simple_sword: {
+        gathering: { tree: { energy: 10, durationMs: 4000, wear: 20 } },
         equipmentSlots: ['weapon'],
         id: 'simple_sword',
         name: 'Simple Sword',
+        price: 25,
+        maxDurability: 200,
+        fullRepairPrice: 10,
+        durabilityWear: { attack: 1 },
         weapon: {
             maxDamage: 11,
             minDamage: 7,
         },
     },
+}
+
+export type ItemCondition = Pick<ItemInstanceSnapshot, 'itemId' | 'durability'>
+
+/** Legacy instances without condition start intact; non-equipment has no condition. */
+export function itemDurability(item: ItemCondition): number | undefined {
+    const maximum = ITEM_DEFINITIONS[item.itemId].maxDurability
+    return maximum === undefined ? undefined : (item.durability ?? maximum)
+}
+
+export function isItemBroken(item: ItemCondition): boolean {
+    return itemDurability(item) === 0
+}
+
+/** Full restoration quote; payment and service access remain server-authoritative. */
+export function itemRepairPrice(item: ItemCondition): number {
+    const definition = ITEM_DEFINITIONS[item.itemId]
+    const current = itemDurability(item)
+    if (
+        current === undefined ||
+        definition.maxDurability === undefined ||
+        definition.fullRepairPrice === undefined ||
+        current >= definition.maxDurability
+    ) {
+        return 0
+    }
+    return Math.max(
+        1,
+        Math.ceil(
+            (definition.fullRepairPrice *
+                (definition.maxDurability - current)) /
+                definition.maxDurability
+        )
+    )
 }
 
 /** Predicts whether the entire item fits; the server still validates transfers. */

@@ -174,3 +174,42 @@ it('distinguishes allied circles and shields from hostile diamonds and crossed b
     expect(frame.graphics.use).toHaveBeenCalledOnce()
     expect(ground.graphics.use).toHaveBeenCalledOnce()
 })
+
+it('highlights only the exact compound shoreline without a ring or internal water seams', () => {
+    const { view, ground, frame } = setup()
+    const target: TargetHighlight = {
+        key: 'world:pond',
+        kind: 'object',
+        position: { x: 112, y: 112 },
+        bounds: { x: 64, y: 64, width: 96, height: 96 },
+        interactionAreas: [
+            { x: 64, y: 64, width: 16, height: 96 },
+            { x: 80, y: 144, width: 80, height: 16 },
+        ],
+    }
+    view.set(target)
+    expect(ground.graphics.isVisible).toBe(false)
+    expect(frame.pos).toEqual({ x: 61, y: 61 })
+    const context = {
+        fillRect: vi.fn<CanvasRenderingContext2D['fillRect']>(),
+        beginPath: vi.fn<CanvasRenderingContext2D['beginPath']>(),
+        moveTo: vi.fn<CanvasRenderingContext2D['moveTo']>(),
+        lineTo: vi.fn<CanvasRenderingContext2D['lineTo']>(),
+        stroke: vi.fn<CanvasRenderingContext2D['stroke']>(),
+    }
+    frame.graphics.use.mock.lastCall![0].options.draw(
+        context as unknown as CanvasRenderingContext2D
+    )
+    expect(context.fillRect.mock.calls).toEqual([
+        [3, 3, 16, 96],
+        [19, 83, 80, 16],
+    ])
+    const segments = context.moveTo.mock.calls.map((from, index) => ({
+        from,
+        to: context.lineTo.mock.calls[index],
+    }))
+    expect(segments).not.toContainEqual({ from: [19, 83], to: [19, 99] })
+    expect(context.stroke).toHaveBeenCalledTimes(2)
+    view.set({ ...target, key: 'world:same-shape' })
+    expect(frame.graphics.use).toHaveBeenCalledOnce()
+})

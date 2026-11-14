@@ -13,7 +13,7 @@ export interface AbilityContext {
     respawnDelayMsFor?: (target: GameCharacter) => number
     requestAbilityAttack?: (
         actor: GameCharacter,
-        targetId: string,
+        targetId: string | undefined,
         abilityId: AttackAbilityId,
         now: number
     ) => GameEventPayload[]

@@ -4,6 +4,7 @@ import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import {
     advanceRevive,
+    canAbandonLife,
     retireCharacter,
     shouldRetireCharacter,
 } from './characterLife'
@@ -19,7 +20,12 @@ interface LifeContext {
     now: number
     onEvents: (events: GameEventPayload[]) => void
     abilityContextFor?: (actor: GameCharacter, now: number) => AbilityContext
-    beforeRetire?: (character: GameCharacter, now: number) => void
+    beforeRetire?: (
+        character: GameCharacter,
+        now: number,
+        abandoned: boolean
+    ) => void
+    afterRetire?: (character: GameCharacter, now: number) => void
 }
 
 export function advanceRoomLives(context: LifeContext): void {
@@ -39,20 +45,34 @@ export function advanceRoomLives(context: LifeContext): void {
         )
     }
     for (const character of characters.values()) {
-        if (!shouldRetireCharacter(character, now)) {
-            continue
-        }
-        context.beforeRetire?.(character, now)
-        const event = retireCharacter(character)
-        onEvents([event])
-        for (const [ws, id] of context.connections) {
-            if (id !== character.id) {
-                continue
-            }
+        finalizeRoomLife(context, character)
+    }
+}
+
+export function finalizeRoomLife(
+    context: LifeContext,
+    character: GameCharacter,
+    abandoned = false
+): boolean {
+    if (
+        context.characters.get(character.id) !== character ||
+        !(abandoned
+            ? canAbandonLife(character)
+            : shouldRetireCharacter(character, context.now))
+    ) {
+        return false
+    }
+    context.beforeRetire?.(character, context.now, abandoned)
+    const event = retireCharacter(character)
+    context.afterRetire?.(character, context.now)
+    context.onEvents([event])
+    for (const [ws, id] of context.connections) {
+        if (id === character.id) {
             context.connections.set(ws, undefined)
         }
-        characters.delete(character.id)
-        context.controllers.delete(character.id)
-        context.nicknames.delete(normalizeNickname(character.nickname))
     }
+    context.characters.delete(character.id)
+    context.controllers.delete(character.id)
+    context.nicknames.delete(normalizeNickname(character.nickname))
+    return true
 }

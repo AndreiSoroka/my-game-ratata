@@ -29,8 +29,20 @@ export function shouldRetireCharacter(
     return (
         character.mortal &&
         !character.alive &&
+        !character.tags.has('state.retired') &&
         character.reviveUntil > 0 &&
         now >= character.reviveUntil
+    )
+}
+
+export function canAbandonLife(character: GameCharacter): boolean {
+    return (
+        character.controllerKind === 'network_player' &&
+        character.mortal &&
+        !character.alive &&
+        character.reviveUntil > 0 &&
+        !character.tags.has('state.retired') &&
+        !character.tags.has('offline')
     )
 }
 

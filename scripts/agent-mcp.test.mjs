@@ -139,6 +139,24 @@ test('MCP exposes pinned abilities and cancelable ordinary character control', (
             (entry) => entry.properties.type.const === 'cancel_control'
         )
     )
+    const automatic = choices.find(
+        (entry) => entry.properties.type.const === 'auto_action'
+    )
+    assert.deepEqual(automatic.required, ['type', 'action'])
+    assert.equal(automatic.additionalProperties, false)
+    assert.ok(
+        automatic.properties.action.oneOf.some((entry) => entry.type === 'null')
+    )
+    assert.ok(
+        automatic.properties.action.oneOf.some(
+            (entry) => entry.properties?.kind.const === 'prayer'
+        )
+    )
+    assert.ok(
+        prayer.properties.intent.oneOf.some(
+            (entry) => entry.properties.mode.const === 'devotion'
+        )
+    )
     assert.match(act.description, /waves may harm allies/)
     assert.doesNotMatch(act.description, /Cannot[^.]*resurrect/)
 })

@@ -3,32 +3,28 @@ import type {
     AdventureResourceNode,
     AdventureSnapshot,
     AdventureTradeItemId,
+    FarmPlotSnapshot,
     GameEventPayload,
+    WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import { observeAdventureDeath } from './adventureDeaths'
+import { chooseAdventureReply, interactAdventureNpc } from './adventureDialogue'
+import { AdventureResources, isResourceCommand } from './adventureResources'
+import { type PlayerAdventure } from './adventureState'
 import {
-    adventureDialogue,
-    adventureQuest,
-    adventureShop,
-    dragonStory,
-    isQuestTrophyTarget,
-} from './adventureContent'
-import { resolveAdventureNpc } from './adventureNpc'
-import { adventureRecipes, AdventureResources } from './adventureResources'
-import {
-    applyAdventureChoice,
-    createAdventureState,
-    type PlayerAdventure,
-} from './adventureState'
-import { purchaseAdventureItem, refreshTradeDialogue } from './adventureTrading'
+    type AdventureActionResult,
+    AdventureTrading,
+    refreshTradeDialogue,
+} from './adventureTrading'
+import { adventureSnapshot, resolvedAdventureAction } from './adventureViews'
+import { getAdventureState, grantAdventureGoldOnce } from './adventureWallet'
 import type { GameCharacter } from './character'
+import { CityEconomyService } from './cityEconomy'
 import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
-import { materialSnapshot } from './materialInventory'
+import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
-import { setNotice } from './notices'
-import { createSpeechEvent } from './speechReceipts'
-import { trophyDialogue, trophyProgress } from './trophyQuest'
 import type { WorldObjectDefinition } from './worldObjectData'
 import { WorldObjects } from './worldObjects'
 
@@ -44,11 +40,41 @@ export class AdventureService {
     private readonly resources: AdventureResources
     private readonly worldObjects: WorldObjects
     private readonly now: () => number
+    public readonly economy: CityEconomyService
+    private readonly trading: AdventureTrading
+    private readonly orderCommands: CraftOrderCommands
 
     public constructor(options: AdventureServiceOptions = {}) {
-        this.resources = new AdventureResources(options.resourceNodes)
+        this.resources = new AdventureResources(
+            options.resourceNodes,
+            (actor, recipeId, instanceId) =>
+                this.economy.recordCraftOutput(actor, recipeId, instanceId)
+        )
         this.worldObjects = new WorldObjects(options.worldObjects)
         this.now = options.now ?? Date.now
+        this.economy = new CityEconomyService(this.now())
+        this.trading = new AdventureTrading(this.economy)
+        this.orderCommands = new CraftOrderCommands(this.economy.customerOrders)
+    }
+
+    public update(
+        now: number,
+        navigationForLocation: (id: string) => NavigationService,
+        characters: Iterable<GameCharacter>,
+        occupants: (
+            locationId: string
+        ) => readonly WorldObjectBounds[] = () => []
+    ): void {
+        this.resources.update(now, navigationForLocation, characters, occupants)
+        this.economy.update(now)
+    }
+
+    public resourceSnapshot(locationId: string): AdventureResourceNode[] {
+        return this.resources.snapshot(locationId)
+    }
+
+    public farmSnapshot(locationId: string, now: number): FarmPlotSnapshot[] {
+        return this.resources.snapshotFarms(locationId, now)
     }
 
     public snapshot(
@@ -56,34 +82,15 @@ export class AdventureService {
         locationId: string = CENTER_LOCATION_ID,
         actor?: GameCharacter
     ): AdventureSnapshot {
-        const state = this.stateFor(playerId)
-        const progress = trophyProgress(
-            state,
-            actor?.id === playerId ? actor : undefined
-        )
-
-        return structuredClone({
-            dialogue: trophyDialogue(state.dialogue, progress),
-            worldObjects: this.worldObjects.snapshot(locationId),
-            farmPlots: this.resources.snapshotFarms(locationId, this.now()),
-            gold: state.gold,
-            materials: materialSnapshot(
-                actor?.id === playerId ? actor : undefined
-            ),
-            recipes: adventureRecipes,
-            resourceNodes: this.resources
-                .snapshot()
-                .filter((node) => node.locationId === locationId),
-            notice: state.notice,
-            noticeId: state.noticeId,
-            quest: {
-                ...adventureQuest,
-                kills: state.kills,
-                status: progress.questStatus,
-            },
-            shop: adventureShop,
-            trophies: progress.trophies,
-            wardRestored: state.wardRestored,
+        return adventureSnapshot({
+            playerId,
+            state: this.stateFor(playerId),
+            locationId,
+            actor,
+            economy: this.economy,
+            resources: this.resources,
+            worldObjects: this.worldObjects,
+            now: this.now(),
         })
     }
 
@@ -92,26 +99,25 @@ export class AdventureService {
         amount: number,
         rewardId: string
     ): boolean {
-        const state = this.stateFor(playerId)
-        if (
-            !Number.isSafeInteger(amount) ||
-            amount <= 0 ||
-            state.rewardKeys.has(rewardId)
-        ) {
-            return false
-        }
-        state.rewardKeys.add(rewardId)
-        state.gold += amount
-        setNotice(state, `Гильдия выплатила ${String(amount)} золотых.`)
-        return true
+        return grantAdventureGoldOnce(this.stateFor(playerId), amount, rewardId)
     }
 
     public handle(
         actor: GameCharacter,
         message: AdventureClientMessage,
         locationNPCs: GameCharacter[],
-        navigation?: NavigationService
+        navigation?: NavigationService,
+        now = this.now()
     ): GameEventPayload[] {
+        if (isResourceCommand(message)) {
+            return this.resources.handle(
+                actor,
+                this.stateFor(actor.id),
+                message,
+                now,
+                navigation
+            )
+        }
         switch (message.type) {
             case 'world_interact':
                 return this.worldObjects.interact(
@@ -122,110 +128,149 @@ export class AdventureService {
                     this.now()
                 )
             case 'interact':
-                return this.interact(actor, message.targetId, locationNPCs)
+                return this.interact(
+                    actor,
+                    message.targetId,
+                    locationNPCs,
+                    navigation,
+                    now,
+                    message.service
+                )
             case 'dialogue_choice':
-                return this.choose(actor, message.choiceId, locationNPCs)
+                return this.choose(
+                    actor,
+                    message.choiceId,
+                    locationNPCs,
+                    navigation,
+                    now
+                )
             case 'trade':
-                return this.trade(actor, message.itemId, locationNPCs)
-            case 'gather':
-            case 'farm_action':
-            case 'craft':
-                return this.resources.handle(
+                return this.trade(
+                    actor,
+                    message.itemId,
+                    locationNPCs,
+                    navigation,
+                    now
+                )
+            case 'craft_order_place':
+            case 'craft_order_claim':
+            case 'craft_order_cancel':
+                return this.orderCommands.handle(
                     actor,
                     this.stateFor(actor.id),
                     message,
-                    this.now()
-                )
+                    locationNPCs,
+                    navigation,
+                    now
+                ).events
+            case 'market_trade':
+            case 'repair_items':
+                return this.trading.handle(
+                    actor,
+                    this.stateFor(actor.id),
+                    message,
+                    locationNPCs,
+                    navigation,
+                    now
+                ).events
         }
+    }
+
+    public handleResult(
+        actor: GameCharacter,
+        message: AdventureClientMessage,
+        characters: GameCharacter[],
+        navigation: NavigationService | undefined,
+        now: number
+    ): AdventureActionResult {
+        if (
+            message.type === 'craft_order_place' ||
+            message.type === 'craft_order_claim' ||
+            message.type === 'craft_order_cancel'
+        ) {
+            return this.orderCommands.handle(
+                actor,
+                this.stateFor(actor.id),
+                message,
+                characters,
+                navigation,
+                now
+            )
+        }
+        if (
+            message.type === 'market_trade' ||
+            message.type === 'repair_items'
+        ) {
+            return this.trading.handle(
+                actor,
+                this.stateFor(actor.id),
+                message,
+                characters,
+                navigation,
+                now
+            )
+        }
+        return resolvedAdventureAction(
+            this,
+            this.stateFor(actor.id),
+            actor,
+            message,
+            characters,
+            navigation,
+            now
+        )
     }
 
     public interact(
         actor: GameCharacter,
         npcId: string,
-        locationNPCs: GameCharacter[]
+        locationNPCs: GameCharacter[],
+        navigation?: NavigationService,
+        now = this.now(),
+        service?: 'shop' | 'orders' | 'repair'
     ): GameEventPayload[] {
-        const state = this.stateFor(actor.id)
-        const npc = resolveAdventureNpc(actor, npcId, locationNPCs, this.now())
-
-        if (npc === undefined) {
-            return this.reject(
-                state,
-                'Подойди к живому собеседнику ближе: не дальше 48 шагов.'
-            )
-        }
-
-        setNotice(state, null)
-        state.dialogue = adventureDialogue(
-            npc.id,
-            npc.nickname,
-            trophyProgress(state, actor)
+        return interactAdventureNpc(
+            actor,
+            npcId,
+            locationNPCs,
+            this.stateFor(actor.id),
+            now,
+            navigation,
+            service
         )
-        this.refreshTradeAccess(actor)
-        return this.say(actor, npc, state.dialogue.text)
     }
-
     public choose(
         actor: GameCharacter,
         choiceId: string,
-        locationNPCs: GameCharacter[]
+        locationNPCs: GameCharacter[],
+        navigation?: NavigationService,
+        now = this.now()
     ): GameEventPayload[] {
-        const state = this.stateFor(actor.id)
-
-        if (choiceId === 'leave' || choiceId === 'close') {
-            state.dialogue = null
-            setNotice(state, null)
-            return []
-        }
-
-        const npc = resolveAdventureNpc(
+        return chooseAdventureReply(
             actor,
-            state.dialogue?.npcId,
+            choiceId,
             locationNPCs,
-            this.now()
+            this.stateFor(actor.id),
+            now,
+            navigation
         )
-
-        if (npc === undefined) {
-            return this.reject(
-                state,
-                'Разговор прерван. Вернись к собеседнику.'
-            )
-        }
-
-        const dialogue = adventureDialogue(
-            npc.id,
-            npc.nickname,
-            trophyProgress(state, actor)
-        )
-
-        if (!dialogue.choices.some((choice) => choice.id === choiceId)) {
-            return this.reject(state, 'Этот ответ сейчас недоступен.')
-        }
-
-        applyAdventureChoice(state, choiceId, actor)
-        const text = choiceId === 'ask_dragon' ? dragonStory : undefined
-        state.dialogue = adventureDialogue(
-            npc.id,
-            npc.nickname,
-            trophyProgress(state, actor),
-            text
-        )
-        this.refreshTradeAccess(actor)
-        return this.say(actor, npc, state.dialogue.text)
     }
 
     public trade(
         actor: GameCharacter,
         itemId: AdventureTradeItemId,
-        locationNPCs: GameCharacter[]
+        locationNPCs: GameCharacter[],
+        navigation?: NavigationService,
+        now = this.now()
     ): GameEventPayload[] {
-        const state = this.stateFor(actor.id)
-        const npc = resolveAdventureNpc(
+        return this.trading.legacy(
             actor,
-            state.dialogue?.npcId,
+            this.stateFor(actor.id),
+            itemId,
             locationNPCs,
-            this.now()
+            navigation,
+            now
         )
-        return purchaseAdventureItem(actor, state, npc, itemId)
     }
 
     public trySpendGold(playerId: string, amount: number): boolean {
@@ -250,85 +295,27 @@ export class AdventureService {
     ): GameEventPayload[] {
         for (const event of events) {
             if (event.kind === 'permadeath' && event.actorId !== undefined) {
+                this.economy.customerOrders.retire(event.actorId, this.now())
                 this.players.delete(event.actorId)
+                this.trading.forget(event.actorId)
+                this.economy.forgetActor(event.actorId)
                 this.worldObjects.forgetActor(event.actorId)
             }
 
             if (event.kind === 'death') {
-                this.observeDeath(event, findCharacter)
+                observeAdventureDeath(
+                    event,
+                    findCharacter,
+                    this.observedDeaths,
+                    (id) => this.stateFor(id)
+                )
             }
         }
 
         return []
     }
 
-    private observeDeath(
-        event: GameEventPayload,
-        findCharacter: (id: string) => GameCharacter | undefined
-    ): void {
-        const actor =
-            event.actorId === undefined
-                ? undefined
-                : findCharacter(event.actorId)
-        const target =
-            event.targetId === undefined
-                ? undefined
-                : findCharacter(event.targetId)
-
-        if (actor === undefined || target === undefined) {
-            return
-        }
-
-        if (
-            !isQuestTrophyTarget(actor, target) ||
-            this.observedDeaths.get(target) === target.deathSequence
-        ) {
-            return
-        }
-
-        this.observedDeaths.set(target, target.deathSequence)
-        const state = this.stateFor(actor.id)
-
-        if (state.questStatus !== 'active') {
-            return
-        }
-
-        state.kills += 1
-        setNotice(
-            state,
-            'Враждебный слизень повержен. Обыщи его тело и забери сердце.'
-        )
-    }
-
-    private reject(state: PlayerAdventure, notice: string): GameEventPayload[] {
-        setNotice(state, notice)
-        return []
-    }
-
-    private say(
-        actor: GameCharacter,
-        npc: GameCharacter,
-        text: string
-    ): GameEventPayload[] {
-        const event = createSpeechEvent(npc, text, {
-            targetId: actor.id,
-            audienceIds: [actor.id],
-        })
-        const dialogue = this.stateFor(actor.id).dialogue
-        if (dialogue !== null) {
-            dialogue.speechId = event.speechId
-        }
-        return [event]
-    }
-
     private stateFor(playerId: string): PlayerAdventure {
-        let state = this.players.get(playerId)
-
-        if (state === undefined) {
-            state = createAdventureState()
-            this.players.set(playerId, state)
-        }
-
-        return state
+        return getAdventureState(this.players, playerId)
     }
 }

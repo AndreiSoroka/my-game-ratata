@@ -4,6 +4,7 @@ import type {
     CharacterAbilitiesSnapshot,
 } from './abilities'
 export * from './abilities'
+export * from './combatAim'
 export * from './prayer'
 export * from './prayerPreview'
 import type {
@@ -20,6 +21,8 @@ import type {
     CorpseAppearance,
 } from './chests'
 export * from './chests'
+export * from './craftOrders'
+export * from './economy'
 export * from './inventory'
 import type {
     EquipmentActionKind,
@@ -51,8 +54,10 @@ import type { CharacterLifeSnapshot, HeroClass } from './life'
 export * from './life'
 import type { AdventureClientMessage, AdventureSnapshot } from './adventure'
 export type * from './adventure'
+export * from './environmentGeometry'
 export * from './farming'
 export * from './farms'
+export * from './graves'
 
 import type { ContractProtocolVersion } from './service'
 export type { PlayerIdentity, WorldPosition } from './identity'
@@ -120,6 +125,7 @@ export interface CharacterAnimationSnapshot {
 
 export interface ItemInstanceSnapshot {
     quantity?: number
+    durability?: number
     instanceId: string
     itemId: ItemId
 }
@@ -260,6 +266,7 @@ export type ClientMessage =
     | CompanionClientMessage
     | ProgressionClientMessage
     | { type: 'revive'; targetId: string }
+    | { type: 'abandon_life' }
     | AdventureClientMessage
     | AttackClientMessage
     | ChatClientMessage
@@ -271,6 +278,7 @@ export type ClientMessage =
     | PickupItemClientMessage
 
 export interface WorldSnapshot {
+    graves?: Array<import('./graves').WorldGraveSnapshot>
     chest?: ChestContainerSnapshot | null
     party?: PartySnapshot
     location?: WorldLocation

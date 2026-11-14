@@ -20,6 +20,9 @@ import {
     recordProp,
 } from './generate-depth.mjs'
 import { createWorldInteractions } from './generate-interactions.mjs'
+import { createHarvestMetadata } from './generate-resources.mjs'
+import { createEncounterMetadata } from './generate-encounters.mjs'
+import { WORLD_GENERATION_SETTINGS } from './generate-world-settings.mjs'
 import {
     doorwayGid,
     pavingGid,
@@ -285,7 +288,7 @@ function makeMap(column, row) {
             if (water[at(x, y)])
                 terrain[at(x, y)] = edgeTile(water, x, y, gid.water)
         }
-    function sprite(x, y, sx, sy, w, h, blocks = true) {
+    function sprite(x, y, sx, sy, w, h, blocks = true, kind) {
         if (x < 4 || y < 4 || x + w >= width - 4 || y + h >= height - 4)
             return false
         for (let dy = 0; dy < h; dy++)
@@ -317,7 +320,7 @@ function makeMap(column, row) {
                 (_, i) =>
                     gid.objects + (sy + Math.floor(i / w)) * 16 + sx + (i % w)
             ),
-            w === 3 && h === 4 ? 'tree' : 'plant'
+            kind ?? (w === 3 && h === 4 ? 'tree' : 'plant')
         )
         return true
     }
@@ -384,7 +387,7 @@ function makeMap(column, row) {
         const x = 5 + Math.floor(random() * (width - 11))
         const y = 5 + Math.floor(random() * (height - 11))
         if (biome.kind === 'rocky' || biome.kind === 'ruins')
-            sprite(x, y, Math.floor(random() * 3), 1, 1, 1)
+            sprite(x, y, Math.floor(random() * 3), 1, 1, 1, true, 'stone')
         else sprite(x, y, 6, 7, 2, 2)
     }
     for (let y = 0; y < height; y++)
@@ -419,6 +422,7 @@ function makeMap(column, row) {
     objects[at(55, 36)] = gid.objects + 4
     objects[at(55, 35)] = gid.objects + 6
     const settlementContext = {
+        settings: WORLD_GENERATION_SETTINGS,
         propPlacements,
         width,
         height,
@@ -486,6 +490,17 @@ function makeMap(column, row) {
             layer(4, 'Ruins', structures),
             layer(5, 'Trees and landmarks', objects),
             layer(6, 'Collision', solid, false, true),
+            ...createHarvestMetadata(
+                settlementContext,
+                definition.id,
+                depthProps,
+                buildings
+            ),
+            ...createEncounterMetadata(
+                settlementContext,
+                definition,
+                depthProps
+            ),
             {
                 id: 12,
                 name: 'Depth props',
@@ -555,8 +570,8 @@ function makeMap(column, row) {
                       },
                   ]),
         ],
-        nextlayerid: 14,
-        nextobjectid: 10000 + depthProps.length,
+        nextlayerid: 19,
+        nextobjectid: 40000,
         orientation: 'orthogonal',
         properties: [
             { name: 'locationName', type: 'string', value: name },
@@ -569,7 +584,7 @@ function makeMap(column, row) {
                 type: 'int',
                 value: 20261106 + index * 1709,
             },
-            { name: 'generationVersion', type: 'int', value: 6 },
+            { name: 'generationVersion', type: 'int', value: 7 },
             { name: 'worldColumn', type: 'int', value: column },
             { name: 'worldRow', type: 'int', value: row },
         ],

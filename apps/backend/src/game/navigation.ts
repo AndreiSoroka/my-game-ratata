@@ -6,9 +6,15 @@ import type {
     GroundSurface,
     MapSummary,
     Vector2,
+    WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import {
+    type AuthoredEncounters,
+    type EncounterMapObject,
+    readEncounterData,
+} from './encounterData'
 import { clamp } from './math'
 import { readNavigationSurfaces } from './navigationSurfaces'
 import { findPath } from './pathfinding'
@@ -19,6 +25,11 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    encounters?: AuthoredEncounters
+    /** Immutable terrain/walls, excluding authored harvestable obstacles. */
+    baseSolid?: boolean[]
+    /** Authored safe soil: independent of footstep sound and atlas tiles. */
+    plantable?: boolean[]
     surfaces?: GroundSurface[]
     height: number
     id: string
@@ -36,6 +47,7 @@ interface TiledProperty {
 }
 
 interface TiledLayer {
+    objects?: EncounterMapObject[]
     data?: number[]
     height: number
     name: string
@@ -55,9 +67,11 @@ interface TiledMap {
 export class NavigationService {
     public readonly grid: MapGrid
     public readonly summary: MapSummary
+    private resourceBase: boolean[] | undefined
 
     public constructor(grid: MapGrid) {
         this.grid = grid
+        this.resourceBase = grid.baseSolid?.slice()
         this.summary = {
             height: grid.height,
             id: grid.id,
@@ -68,6 +82,38 @@ export class NavigationService {
             worldHeight: grid.height * grid.tileHeight,
             worldWidth: grid.width * grid.tileWidth,
         }
+    }
+
+    public setResourceObstacles(bounds: readonly WorldObjectBounds[]): void {
+        this.resourceBase ??= this.grid.solid.slice()
+        const solid = this.resourceBase.slice()
+        for (const area of bounds) {
+            for (const index of this.cellsInBounds(area)) {
+                solid[index] = true
+            }
+        }
+        this.grid.solid = solid
+    }
+
+    public cellsInBounds(bounds: WorldObjectBounds): number[] {
+        const cells: number[] = []
+        const { tileWidth, tileHeight, width, height } = this.grid
+        for (
+            let y = Math.floor(bounds.y / tileHeight);
+            y < Math.ceil((bounds.y + bounds.height) / tileHeight);
+            y++
+        ) {
+            for (
+                let x = Math.floor(bounds.x / tileWidth);
+                x < Math.ceil((bounds.x + bounds.width) / tileWidth);
+                x++
+            ) {
+                if (x >= 0 && y >= 0 && x < width && y < height) {
+                    cells.push(y * width + x)
+                }
+            }
+        }
+        return cells
     }
 
     public worldToTile(point: Vector2): TileCoordinate {
@@ -260,7 +306,19 @@ function buildGrid(mapId: string, map: TiledMap): MapGrid {
         markSolidTiles(solid, layer.data)
     }
 
+    const resourceCells =
+        map.layers.find((layer) => layer.name === 'Resource collision')?.data ??
+        []
+    const planting = map.layers.find(
+        (layer) => layer.name === 'Plantable ground'
+    )?.data
+    const encounters = readEncounterData(map, mapId)
     return {
+        ...(encounters === undefined ? {} : { encounters }),
+        baseSolid: solid.map(
+            (blocked, index) => blocked && (resourceCells[index] ?? 0) === 0
+        ),
+        plantable: solid.map((_, index) => planting?.[index] === 1),
         surfaces: readNavigationSurfaces(map),
         height: map.height,
         id: mapId,

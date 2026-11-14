@@ -54,7 +54,7 @@ const party: PartySnapshot = {
 export const Party: Story = {
     render: () => renderVueStory(PartyPanel, { party, currentLocationId: 'map-2-2' }),
 }
-export const EmptyHotbar: Story = {
+export const DefaultHotbar: Story = {
     render: () => renderVueStory(ActionHotbar, { player, characters: [player], blocked: false }),
 }
 export const InventoryFoodQuickSlots: Story = {
@@ -94,4 +94,46 @@ export const LongSpeech: Story = {
                 },
             },
         }),
+}
+
+export const RepeatingPrayer: Story = {
+    render: () => {
+        const cleric = characterFixture('cleric', {
+            heroClass: 'cleric',
+            abilities: { known: ['pray'], cooldowns: { pray: 1800 }, casting: null, barrier: null },
+            control: {
+                mode: 'action',
+                targetId: null,
+                action: { kind: 'prayer', intent: { mode: 'devotion' } },
+                waiting: 'cooldown',
+            },
+        })
+        return renderVueStory(ActionHotbar, {
+            player: cleric,
+            characters: [cleric],
+            blocked: false,
+        })
+    },
+}
+export const WaitingForMana: Story = {
+    render: () => {
+        const mage = characterFixture('mage', {
+            heroClass: 'arcanist',
+            abilities: { known: ['spark'], cooldowns: {}, casting: null, barrier: null },
+            resources: { mana: 0, maxMana: 120, energy: 100, maxEnergy: 100 },
+            control: {
+                mode: 'action',
+                targetId: 'enemy',
+                action: { kind: 'ability', abilityId: 'spark', targetId: 'enemy' },
+                waiting: 'resources',
+            },
+        })
+        const enemy = characterFixture('enemy', { faction: 'monsters', relationship: 'hostile' })
+        return renderVueStory(ActionHotbar, {
+            player: mage,
+            characters: [mage, enemy],
+            target: enemy,
+            blocked: false,
+        })
+    },
 }

@@ -15,12 +15,14 @@ import {
 import { normalizeNickname } from './identity'
 import { cancelMovementMode } from './movementActions'
 import { cancelPrayerCast } from './prayerCancellation'
+import type { GameRoom } from './room'
 import {
     broadcastEvent,
     type RoomSocket,
     send,
     sendError,
 } from './roomMessaging'
+import type { WorldLocations } from './worldLocations'
 
 interface JoinContext {
     closeChestViews?: (actorId: string) => void
@@ -37,6 +39,38 @@ interface JoinContext {
     nicknames: Map<string, string>
     snapshotFor: (character: GameCharacter) => WorldSnapshot
     tickMs: number
+}
+
+export function createRoomJoiner(
+    context: Omit<JoinContext, 'closeChestViews' | 'mapFor' | 'snapshotFor'> & {
+        room: GameRoom
+        world: () => WorldLocations
+    }
+) {
+    return (
+        ws: RoomSocket,
+        nickname: string,
+        archetype: GameCharacter['archetype'],
+        heroClass?: HeroClass
+    ): void =>
+        joinRoom(
+            {
+                ...context,
+                closeChestViews: (id) => context.world().closeChestViews(id),
+                mapFor: (character) =>
+                    context.room.navigationFor(character).summary,
+                snapshotFor: (character) =>
+                    context.room.snapshot(
+                        Date.now(),
+                        character.locationId,
+                        character.id
+                    ),
+            },
+            ws,
+            nickname,
+            archetype,
+            heroClass
+        )
 }
 
 export function joinRoom(

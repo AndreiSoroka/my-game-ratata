@@ -121,3 +121,20 @@ small {
     position: static;
     display: block;
 }
+
+.hotbar-slot.active {
+    outline: 2px solid var(--rpg-focus);
+    box-shadow: 0 0 8px #e5bd5477;
+}
+.hotbar-auto {
+    position: absolute;
+    top: 1px;
+    right: 3px;
+    color: var(--rpg-focus);
+    font-size: 13px;
+    z-index: 1;
+}
+.hotbar .hotbar-waiting {
+    bottom: calc(100% + 3px);
+    color: var(--rpg-focus);
+}

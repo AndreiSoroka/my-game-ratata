@@ -15,6 +15,7 @@ import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { addInventoryItems, createItemInstance } from './inventory'
 import { distance } from './math'
+import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { canPerformSkillAction } from './skillProgression'
 
@@ -44,12 +45,13 @@ export class AdventureFarming {
         actor: GameCharacter,
         state: PlayerAdventure,
         message: FarmClientMessage,
-        now: number
+        now: number,
+        navigation?: NavigationService
     ): GameEventPayload[] {
         const plot = this.plots.find(
             (candidate) => candidate.id === message.plotId
         )
-        if (!canWork(actor, plot, now)) {
+        if (!canWork(actor, plot, now, navigation)) {
             setNotice(
                 state,
                 'Для работы подойди к грядке в своей локации: не дальше 48 шагов.'
@@ -72,13 +74,16 @@ export class AdventureFarming {
 function canWork(
     actor: GameCharacter,
     plot: FarmPlotSnapshot | undefined,
-    now: number
+    now: number,
+    navigation?: NavigationService
 ): plot is FarmPlotSnapshot {
     return (
         canPerformSkillAction(actor, now) &&
         !actor.tags.has('state.retired') &&
         actor.locationId === plot?.locationId &&
-        distance(actor.position, plot.position) <= FARM_INTERACTION_RANGE
+        distance(actor.position, plot.position) <= FARM_INTERACTION_RANGE &&
+        (navigation === undefined ||
+            navigation.hasLineOfSight(actor.position, plot.position))
     )
 }
 

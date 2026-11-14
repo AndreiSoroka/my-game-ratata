@@ -11,6 +11,12 @@ import {
     parseAgentDecision,
 } from '../src/game/agentDecisions'
 import type { GameCharacter } from '../src/game/character'
+import {
+    advanceCharacterControl,
+    type ControlWorld,
+    setCharacterControl,
+    snapshotControl,
+} from '../src/game/characterControl'
 import { PolicyController } from '../src/game/companionControllers'
 import { CompanionService } from '../src/game/companions'
 import type { GameRoom } from '../src/game/room'
@@ -219,4 +225,45 @@ it('parses the shared ability and control wire format without accepting state ed
     expect(
         parseAgentDecision({ type: 'use_ability', abilityId: 'barrier' })
     ).toEqual({ type: 'use_ability', abilityId: 'barrier' })
+})
+
+it('agent automatic actions use the same authoritative controller and costs as player commands', () => {
+    const actor = abilityHero('arcanist', 'humanoid', 'scripted')
+    const { world, context } = port([actor])
+    const publishEvents = vi.fn()
+    const controls: ControlWorld = {
+        ...world,
+        abilityContextFor: (_actor, now) => ({ ...context, now }),
+        publishEvents,
+    }
+    world.requestControl = (character, message, now) =>
+        setCharacterControl(character, message, controls, now)
+    const decision = {
+        type: 'auto_action',
+        action: { kind: 'ability', abilityId: 'barrier' },
+    } as const
+    expect(parseAgentDecision(decision)).toEqual(decision)
+    expect(applyAgentDecision(actor, decision, world, 1000).accepted).toBe(true)
+    expect(actor.mana).toBe(100)
+    expect(snapshotControl(actor).action).toEqual(decision.action)
+    advanceCharacterControl(actor, controls, 1000)
+    expect(actor.mana).toBe(88)
+    expect(publishEvents).toHaveBeenCalledOnce()
+    expect(
+        applyAgentDecision(
+            actor,
+            { type: 'auto_action', action: null },
+            world,
+            1001
+        ).accepted
+    ).toBe(true)
+    expect(snapshotControl(actor).mode).toBe('none')
+    advanceCharacterControl(actor, controls, 20000)
+    expect(actor.mana).toBe(88)
+    expect(
+        parseAgentDecision({
+            type: 'auto_action',
+            action: { kind: 'item', id: 'food' },
+        })
+    ).toBeUndefined()
 })

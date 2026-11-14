@@ -21,13 +21,13 @@ function applyHeroClass(config: CharacterConfig, heroClass: HeroClass): void {
                 (config.combat.damageMultiplier ?? 1) * 1.2
             return
         case 'ranger':
-            config.basicAttackKind = 'arrow'
+            config.basicAttackKind = 'melee'
             config.combat.maxHp = 24
             config.combat.minDamage = 4
             config.combat.maxDamage = 7
             config.combat.attackCooldownMs = 550
             config.moveSpeed = 110
-            config.attackZones = [{ minX: -0.7, maxX: 0.7, minY: 0, maxY: 4 }]
+            config.attackZones = [{ minX: -1, maxX: 1, minY: 0, maxY: 0.9 }]
             config.resources.attackEnergyCost = 10
             return
         case 'arcanist':

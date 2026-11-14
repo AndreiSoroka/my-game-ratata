@@ -115,6 +115,7 @@ function simulate(scenario: ReturnType<typeof encounter>): void {
         respawnDelayMsFor: () => 60_000,
     })
     const room = {
+        charactersFor: () => characters,
         getCharacter: (id: string) =>
             characters.find((character) => character.id === id),
         findVisibleTarget: (actor: GameCharacter, radius: number) =>

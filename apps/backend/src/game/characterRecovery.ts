@@ -4,6 +4,25 @@ import { regen } from './characterState'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
 
+export function tickCharacterTimedState(
+    character: GameCharacter,
+    now: number
+): void {
+    if (character.attackZoneUntil > 0 && now >= character.attackZoneUntil) {
+        character.attackZones = []
+        character.attackZoneUntil = 0
+    }
+    if (
+        !character.mortal &&
+        character.respawnPolicy === 'automatic' &&
+        !character.alive &&
+        character.respawnAt > 0 &&
+        now >= character.respawnAt
+    ) {
+        restoreCharacter(character, now, true)
+    }
+}
+
 export function restoreCharacter(
     character: GameCharacter,
     now: number,

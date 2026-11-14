@@ -98,7 +98,7 @@ it('keeps expired barrier and rejected attacks from spending or granting practic
             respawnDelayMs: 15000,
         }).absorbed
     ).toBe(0)
-    const calls: string[] = []
+    const calls: Array<string | undefined> = []
     context.requestAbilityAttack = (_, target) => {
         calls.push(target)
         return []

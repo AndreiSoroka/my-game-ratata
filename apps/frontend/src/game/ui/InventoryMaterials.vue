@@ -8,6 +8,8 @@ const labels = {
     scrap: 'Металл',
     wood: 'Древесина',
     grain: 'Зерно пшеницы',
+    stone: 'Камень',
+    sapling: 'Саженцы',
 }
 </script>
 <template>

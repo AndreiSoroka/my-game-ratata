@@ -2,6 +2,7 @@
 // Minimal stdio MCP adapter. Uses ordinary validated game intentions, no state editor.
 import { createInterface } from 'node:readline'
 import { abilityDecisionSchemas } from './agent-ability-schemas.mjs'
+import { economyDecisionSchemas } from './agent-economy-schemas.mjs'
 
 const token = process.env.GAME_AGENT_TOKEN
 const base = new URL(process.env.GAME_AGENT_URL ?? 'http://127.0.0.1:3000')
@@ -16,6 +17,13 @@ const tools = [
         inputSchema: {
             type: 'object',
             properties: {
+                actorId: {
+                    type: 'string',
+                    minLength: 1,
+                    maxLength: 100,
+                    description:
+                        'Observe this NPC’s own inventory, city market and resource actions in its actual location.',
+                },
                 locationId: { type: 'string', pattern: '^map-[0-9]+-[0-9]+$' },
             },
             additionalProperties: false,
@@ -25,7 +33,7 @@ const tools = [
     {
         name: 'ratata_act',
         description:
-            'Control a non-player character for 5 seconds through shared movement (walking, sneaking, energy-limited dash), combat, theft and speech rules. Theft requires sneaking, proximity, energy and cooldowns; guards can only be called after a witnessed attempt. Report a witnessed theft near a city guard to request blacklisting; absolution near the city cleric costs 30 gold and clears city sanctions. Chest commands open a private shared container, take one observed itemInstanceId or all that fits, put one held unequipped itemInstanceId into the actively viewed chest, and close it; open does not spill loot. The action result contains only this NPC’s validated chest view. pickup_item accepts an optional observed worldItemId to pick only that loose item in this location and range; a missing or unavailable explicit target never falls back to another item. Cannot override player control, grant resources, teleport or bypass speech capability. Known abilities use use_ability with ordinary mana, cooldown, reach and line-of-sight checks. Prayer requires a pinned intent: restore/revive with targetId or harm with an optional pinned targetId; revival costs 20 mana and channels for 3 seconds, other prayers cost 5. Deity waves may harm allies and the caster. Personalities that refuse combat cannot be forced to cast harmful abilities. follow and auto_attack take targetId (null cancels); cancel_control stops either mode. Renew intentions before the lease expires; wait releases control. Respect the observed character personality and consent.',
+            'Control a non-player character for 5 seconds through shared movement (walking, sneaking, energy-limited dash), combat, theft and speech rules. Theft requires sneaking, proximity, energy and cooldowns; guards can only be called after a witnessed attempt. Report a witnessed theft near a city guard to request blacklisting; absolution near the city cleric costs 30 gold and clears city sanctions. Chest commands open a private shared container, take one observed itemInstanceId or all that fits, put one held unequipped itemInstanceId into the actively viewed chest, and close it; open does not spill loot. The action result contains only this NPC’s validated chest view. pickup_item accepts an optional observed worldItemId to pick only that loose item in this location and range; a missing or unavailable explicit target never falls back to another item. Cannot override player control, grant resources, teleport or bypass speech capability. Known abilities use use_ability with ordinary mana, cooldown, reach and line-of-sight checks. Prayer requires a pinned intent: restore/revive with targetId or harm with an optional pinned targetId; revival costs 20 mana and channels for 3 seconds, other prayers cost 5. Deity waves may harm allies and the caster. Personalities that refuse combat cannot be forced to cast harmful abilities. follow and legacy auto_attack take targetId (null cancels). auto_action accepts action: {kind:attack,targetId}, {kind:ability,abilityId,targetId?}, or {kind:prayer,intent}; action:null and cancel_control stop repetition. Automatic actions wait for shared cooldowns and resources, pin their target/intent, and stop after healing or revival is complete. Targetless devotion is free and never trains skills. Renew intentions before the lease expires; wait releases control. Respect the observed character personality and consent.',
         inputSchema: {
             type: 'object',
             required: ['actorId', 'decision'],
@@ -35,6 +43,7 @@ const tools = [
                 decision: {
                     oneOf: [
                         ...abilityDecisionSchemas,
+                        ...economyDecisionSchemas,
                         {
                             type: 'object',
                             required: ['type'],
@@ -193,6 +202,7 @@ async function callTool(params) {
     }
     if (params.name === 'ratata_observe') {
         endpoint = new URL('/agent/state', base)
+        if (args.actorId) endpoint.searchParams.set('actorId', args.actorId)
         if (args.locationId)
             endpoint.searchParams.set('locationId', args.locationId)
     } else if (params.name === 'ratata_act') {

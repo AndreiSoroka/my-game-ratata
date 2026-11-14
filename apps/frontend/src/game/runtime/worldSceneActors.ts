@@ -64,7 +64,7 @@ export class WorldSceneActors {
     }
 
     private updateResources(nodes: AdventureResourceNode[]): void {
-        const active = nodes.filter((node) => node.remaining > 0)
+        const active = nodes.filter((node) => node.remaining > 0 && node.source === undefined)
         const ids = new Set(active.map((node) => node.id))
         for (const [id, actor] of this.resources) {
             if (!ids.has(id)) {
@@ -78,6 +78,8 @@ export class WorldSceneActors {
             wood: 'Древесина',
             grain: 'Зерно',
             scrap: 'Металл',
+            stone: 'Камень',
+            sapling: 'Саженцы',
         }
         const colors = {
             herbs: '#77b34d',
@@ -85,6 +87,8 @@ export class WorldSceneActors {
             wood: '#825138',
             grain: '#e8c26c',
             scrap: '#9aadb9',
+            stone: '#9b9a92',
+            sapling: '#6caa53',
         }
         for (const node of active) {
             if (this.resources.has(node.id)) continue

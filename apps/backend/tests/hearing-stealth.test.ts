@@ -45,6 +45,7 @@ function setup(surface: GroundSurface = 'grass') {
         getCharacter: (id: string) =>
             characters.find((actor) => actor.id === id),
         navigationFor: () => navigation,
+        charactersFor: () => characters,
         findVisibleTarget: (actor: GameCharacter, radius: number) =>
             findVisibleTarget(characters, navigation, actor, radius, 1_200),
         requestAttack: attacks,

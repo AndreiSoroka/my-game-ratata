@@ -1,10 +1,13 @@
 import {
     type AttackAbilityId,
     type GameEventPayload,
+    isItemBroken,
+    ITEM_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
 import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
+import type { PendingAttackHit } from './characterState'
 import {
     applyAttackStun,
     dodgedAttack,
@@ -12,6 +15,7 @@ import {
 } from './combatDamage'
 import { buildAttackZones, isInZones } from './combatGeometry'
 import { canTargetByFaction } from './factions'
+import { wearWeapon } from './itemDurability'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { hasEquippedSword, trainSkill } from './skillProgression'
@@ -33,6 +37,9 @@ export function resolvePendingAttackHit(
     const { actor, now } = context
     const attack = actor.consumePendingAttackHit(now)
     if (attack === undefined || !availableToAttack(actor, now)) {
+        return []
+    }
+    if (!validPendingWeapon(actor, attack)) {
         return []
     }
     const target = findHit(context, attack.targetId)
@@ -77,7 +84,51 @@ export function resolvePendingAttackHit(
     if (result.trainableDamage > 0) {
         events.push(...practiceAttack(actor, attack.abilityId))
     }
+    events.push(...resolvedWeaponWear(actor, attack, result.hpDamage))
     return events
+}
+
+function usesWeapon(attack: PendingAttackHit): boolean {
+    return (
+        attack.abilityId === undefined || attack.abilityId === 'skeleton_strike'
+    )
+}
+
+function validPendingWeapon(
+    actor: GameCharacter,
+    attack: PendingAttackHit
+): boolean {
+    if (!usesWeapon(attack)) {
+        return true
+    }
+    const weapon = actor.equipment.weapon
+    return (
+        attack.weaponInstanceId === weapon?.instanceId &&
+        (weapon === undefined || !isItemBroken(weapon))
+    )
+}
+
+function resolvedWeaponWear(
+    actor: GameCharacter,
+    attack: PendingAttackHit,
+    hpDamage: number
+): GameEventPayload[] {
+    const weapon = actor.equipment.weapon
+    if (
+        weapon === undefined ||
+        !usesWeapon(attack) ||
+        hpDamage <= 0 ||
+        !wearWeapon(actor)
+    ) {
+        return []
+    }
+    return [
+        {
+            kind: 'notice',
+            actorId: actor.id,
+            text: `${ITEM_DEFINITIONS[weapon.itemId].name}: предмет сломан. Нужен ремонт у кузнеца.`,
+        },
+    ]
 }
 export function isTargetInAttackRange(
     actor: GameCharacter,

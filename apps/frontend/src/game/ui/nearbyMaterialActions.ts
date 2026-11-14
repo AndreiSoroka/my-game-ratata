@@ -15,6 +15,8 @@ export function resourceActions(
         scrap: 'металл',
         wood: 'древесину',
         grain: 'зерно',
+        stone: 'камень',
+        sapling: 'саженец',
     }
     return nearestByKind(
         (snapshot.adventure?.resourceNodes ?? []).filter(

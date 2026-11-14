@@ -38,14 +38,14 @@ describe('four explicit hotbar bindings', () => {
             wrapper.vm.assignItem(0, 'food')
             await wrapper.vm.$nextTick()
             expect(wrapper.findAll('.hotbar-slot')[0]!.attributes('aria-label')).toContain(
-                '1: Пусто'
+                '1: Базовая атака'
             )
             expect(wrapper.get('.hotbar-slot small').text()).toBe('0')
         } finally {
             wrapper.unmount()
         }
     })
-    it('starts empty, binds food by type, consumes a real instance, keeps a zero count and resets on new identity', async () => {
+    it('starts with its basic action, binds food by type, consumes a real instance, keeps a zero count and resets on new identity', async () => {
         const player = characterFixture('self', {
             inventory: [{ instanceId: 'apple-1', itemId: 'food', quantity: 1 }],
         })

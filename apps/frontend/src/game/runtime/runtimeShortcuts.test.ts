@@ -10,7 +10,7 @@ describe('world context shortcut', () => {
         const context = vi.fn<() => void>()
         const pickup = vi.fn<() => void>()
         const noOp = () => undefined
-        const actions = { attack: noOp, inventory: noOp, pickup, context }
+        const actions = { inventory: noOp, pickup, context }
         const removedShortcut = key('KeyF')
         expect(handleRuntimeShortcut(removedShortcut, actions)).toBe(false)
         expect(removedShortcut.defaultPrevented).toBe(false)
@@ -25,7 +25,7 @@ describe('world context shortcut', () => {
     it('keeps E pickup fallback when no context menu is installed', () => {
         const pickup = vi.fn<() => void>()
         const noOp = () => undefined
-        const actions = { attack: noOp, inventory: noOp, pickup, context: undefined }
+        const actions = { inventory: noOp, pickup, context: undefined }
         expect(handleRuntimeShortcut(key('KeyF'), actions)).toBe(false)
         expect(pickup).not.toHaveBeenCalled()
         handleRuntimeShortcut(key('KeyE'), actions)

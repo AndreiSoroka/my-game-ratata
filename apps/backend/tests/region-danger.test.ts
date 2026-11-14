@@ -42,14 +42,14 @@ describe('Novogorod region definition and danger', () => {
             )
         ).toHaveLength(1)
         const nodes = createAdventureResourceNodes()
-        expect(nodes).toHaveLength(100)
+        expect(nodes).toHaveLength(75)
         for (const location of WORLD_LOCATION_DEFINITIONS) {
             expect(location.dangerLevel).toBe(
                 Math.abs(location.column - 2) + Math.abs(location.row - 2)
             )
             expect(
                 nodes.filter((node) => node.locationId === location.id)
-            ).toHaveLength(4)
+            ).toHaveLength(3)
             if (location.dangerLevel === 0) {
                 expect(createLocationEnemies(openMap(), location)).toEqual([])
             }

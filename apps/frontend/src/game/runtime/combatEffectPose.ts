@@ -29,6 +29,16 @@ export function combatEffectPose(
     target: Target,
     reduced: boolean
 ): { x: number; y: number; z: number; rotation: number } {
+    if (cue.projectile) {
+        const { origin, endpoint } = cue.projectile
+        const point = reduced ? endpoint : origin
+        return {
+            x: point.x,
+            y: point.y - 15,
+            z: Math.max(origin.y, endpoint.y) + 10,
+            rotation: Math.atan2(endpoint.y - origin.y, endpoint.x - origin.x),
+        }
+    }
     const origin = cue.channel || (cue.travel && reduced) ? target : from
     return {
         x: origin.position.x,

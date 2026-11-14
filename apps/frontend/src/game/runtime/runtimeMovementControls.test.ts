@@ -40,7 +40,7 @@ describe('shared movement commands', () => {
         controls.release()
         expect(send).toHaveBeenLastCalledWith({ type: 'movement_mode', mode: 'sneaking' })
     })
-    it('sends one dash, leaves attack on Q, and follows the authoritative end of stealth', () => {
+    it('sends one dash, leaves Q unused, and follows the authoritative end of stealth', () => {
         const send = vi.fn<(command: ClientMessage) => void>()
         const controls = new RuntimeMovementControls(send)
         controls.keyDown(key('KeyC'))
@@ -50,14 +50,12 @@ describe('shared movement commands', () => {
         controls.observe({ mode: 'walking', dashing: true, dashCooldownMsLeft: 2500 })
         controls.release()
         expect(send).toHaveBeenLastCalledWith({ type: 'movement_mode', mode: 'walking' })
-        const attack = vi.fn<() => void>()
         const noOp = () => undefined
-        handleRuntimeShortcut(key('KeyQ'), {
-            attack,
+        const handled = handleRuntimeShortcut(key('KeyQ'), {
             pickup: noOp,
             inventory: noOp,
             context: undefined,
         })
-        expect(attack).toHaveBeenCalledOnce()
+        expect(handled).toBe(false)
     })
 })

@@ -1,10 +1,13 @@
 import type {
     AbilityClientMessage,
+    AdventureClientMessage,
     AgentDecision,
     CharacterControlCommand,
     ChestClientMessage,
     ChestContainerSnapshot,
+    EquipmentActionClientMessage,
     GameEventPayload,
+    InventoryActionClientMessage,
     MovementClientMessage,
     TheftClientMessage,
 } from '@my-game-ratata/contracts'
@@ -21,6 +24,7 @@ import { applyAgentInventory, isInventoryDecision } from './agentInventory'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
+import { isAdventureCommand } from './extraCommands'
 import { canTargetByFaction } from './factions'
 import {
     cancelMovementMode,
@@ -33,6 +37,16 @@ import { isTheftCommand } from './theftCommands'
 import type { PickupRequest } from './worldPickup'
 
 export interface CompanionWorld {
+    requestAdventure?(
+        actor: GameCharacter,
+        message: AdventureClientMessage,
+        now: number
+    ): AgentDecisionResult
+    requestInventoryAction?(
+        actor: GameCharacter,
+        message: InventoryActionClientMessage | EquipmentActionClientMessage,
+        now: number
+    ): AgentDecisionResult
     charactersFor?(actor: GameCharacter): readonly GameCharacter[]
     requestAbility?(
         actor: GameCharacter,
@@ -247,6 +261,21 @@ function applySharedDecision(
     world: CompanionWorld,
     now: number
 ): AgentDecisionResult | undefined {
+    if (
+        decision.type === 'inventory_action' ||
+        decision.type === 'equipment_action'
+    ) {
+        return (
+            world.requestInventoryAction?.(actor, decision, now) ??
+            rejected('Inventory service unavailable')
+        )
+    }
+    if (isAdventureCommand(decision)) {
+        return (
+            world.requestAdventure?.(actor, decision, now) ??
+            rejected('Adventure service unavailable')
+        )
+    }
     if (isInventoryDecision(decision)) {
         return applyAgentInventory(actor, decision, world, now)
     }

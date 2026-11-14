@@ -1,7 +1,9 @@
 import {
     ABILITY_DEFINITIONS,
     type AttackAbilityId,
+    forwardShot,
     type GameEventPayload,
+    isItemBroken,
 } from '@my-game-ratata/contracts'
 
 import { knowsAbility } from './abilityState'
@@ -27,6 +29,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     }
     const { actor, now } = context
     if (
+        brokenWeapon(actor) ||
         !ready(context, actor.config.combat.attackCooldownMs) ||
         !prepareTarget(context)
     ) {
@@ -57,6 +60,7 @@ export function attemptAbilityAttack(
     const { actor, now } = context
     const definition = ABILITY_DEFINITIONS[id]
     if (
+        (id === 'skeleton_strike' && brokenWeapon(actor)) ||
         !ready(context, actor.config.combat.attackCooldownMs) ||
         !abilityReady(actor, id, now) ||
         !prepareTarget(context)
@@ -79,6 +83,13 @@ export function attemptAbilityAttack(
         windupMs: definition.windupMs,
     })
     return startAttack(context, Math.max(definition.windupMs, 200), id)
+}
+
+function brokenWeapon(actor: GameCharacter): boolean {
+    return (
+        actor.equipment.weapon !== undefined &&
+        isItemBroken(actor.equipment.weapon)
+    )
 }
 function abilityReady(
     actor: GameCharacter,
@@ -143,6 +154,9 @@ function startAttack(
         {
             actorId: actor.id,
             kind: 'attack',
+            ...(abilityId === 'shot' && context.targetId === undefined
+                ? { projectile: forwardShot(actor.position, actor.facing) }
+                : {}),
             ...(context.targetId === undefined
                 ? {}
                 : { targetId: context.targetId }),

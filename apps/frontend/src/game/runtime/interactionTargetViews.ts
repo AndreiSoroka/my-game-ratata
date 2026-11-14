@@ -1,10 +1,13 @@
 import type { CharacterRelationship, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
+import { contourShapeKey, interactionContour } from './interactionContour'
+
 export interface TargetHighlight {
     key: string
     position: Vector2
     bounds?: WorldObjectBounds
+    interactionAreas?: WorldObjectBounds[]
     kind?: 'character' | 'object'
     relationship?: CharacterRelationship
 }
@@ -27,6 +30,7 @@ export class InteractionTargetViews {
             this.clear()
             return
         }
+        if (this.setCompound(target)) return
         const bounds =
             target.kind === 'character'
                 ? { x: target.position.x - 12, y: target.position.y - 29, width: 24, height: 32 }
@@ -53,6 +57,21 @@ export class InteractionTargetViews {
         )
         this.ground.z = target.position.y - 1
         this.frame.graphics.isVisible = this.ground.graphics.isVisible = true
+    }
+
+    private setCompound(target: TargetHighlight): boolean {
+        const { bounds, interactionAreas } = target
+        if (!bounds || !interactionAreas?.length) return false
+        const shape = contourShapeKey(bounds, interactionAreas)
+        if (shape !== this.shape) {
+            this.frame.graphics.use(interactionContour(bounds, interactionAreas))
+            this.shape = shape
+        }
+        this.frame.pos = vec(bounds.x - 3, bounds.y - 3)
+        this.frame.z = bounds.y + bounds.height + 3
+        this.frame.graphics.isVisible = true
+        this.ground.graphics.isVisible = false
+        return true
     }
 
     public clear(): void {

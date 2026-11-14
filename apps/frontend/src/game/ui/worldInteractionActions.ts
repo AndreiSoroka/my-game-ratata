@@ -5,7 +5,7 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
-import { distanceToBounds, nearestByKind } from './interactionTargets'
+import { nearestByKind, targetInteractionDistance } from './interactionTargets'
 import type { InteractionAction } from './nearbyInteractionActions'
 
 export function worldInteractionActions(
@@ -14,7 +14,7 @@ export function worldInteractionActions(
     isVisible: (position: Vector2) => boolean = () => true
 ): InteractionAction[] {
     const distance = (target: WorldObjectSnapshot) =>
-        distanceToBounds(player.position, target.bounds)
+        targetInteractionDistance(player.position, target)
     const objects = (snapshot.adventure?.worldObjects ?? []).filter(
         (target) => distance(target) <= 48 && isVisible(target.position)
     )

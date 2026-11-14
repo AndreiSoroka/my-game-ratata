@@ -57,6 +57,7 @@ export class RuntimeSocket {
     }
 
     private handleSocketMessage(event: MessageEvent<string>): void {
+        if (this.handlers.isStopped()) return
         const message = JSON.parse(event.data) as ServerMessage
 
         if (message.type === 'world_init') {

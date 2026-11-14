@@ -136,13 +136,16 @@ describe('ordinary mob scavenging', () => {
         ).toBe(false)
         expect(f.world.snapshotItems()).toHaveLength(1)
     })
+})
 
+describe('mob scavenging respects combat priorities', () => {
     it('prioritizes visible combat threats over scavenging', () => {
         const f = fixture()
         const enemy = chestHero('enemy', { x: 110, y: 100 })
         const attack = vi.fn()
         const loot = vi.fn()
         const room = {
+            charactersFor: () => [f.actor, enemy],
             findVisibleTarget: () => enemy,
             navigationFor: () => f.navigation,
             requestAttack: attack,

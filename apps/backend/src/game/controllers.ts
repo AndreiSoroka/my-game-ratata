@@ -10,6 +10,7 @@ import {
     reportedThreatPosition,
 } from './mobAggro'
 import { tryPursuitDash } from './mobPursuit'
+import { MobSpacing } from './mobSpacing'
 import type { NavigationService, TileCoordinate } from './navigation'
 import { requestNpcAttack } from './npcAbilities'
 import type { GameRoom } from './room'
@@ -29,6 +30,7 @@ export class NetworkPlayerController implements CharacterController {
 }
 
 export class Mob1Controller implements CharacterController {
+    private readonly spacing = new MobSpacing()
     private readonly options: Mob1ControllerOptions
     private lastPlanAt = 0
     private nextWanderAt = 0
@@ -49,20 +51,40 @@ export class Mob1Controller implements CharacterController {
 
         const navigation = room.navigationFor(character)
         const target = coordinatedTarget(character, room, now)
-        const shouldFleeTarget =
-            target !== undefined &&
-            this.options.fleeWhenThreatened &&
-            shouldFlee(character, target)
-
-        if (target !== undefined) {
-            character.updateFacing({
-                x: target.position.x - character.position.x,
-                y: target.position.y - character.position.y,
-            })
+        if (
+            this.spacing.update(
+                character,
+                room.charactersFor(character),
+                navigation,
+                now,
+                target?.id
+            )
+        ) {
+            return
         }
+        if (target === undefined) {
+            this.investigateOrWander(character, room, navigation, now)
+            return
+        }
+        this.engage(character, target, room, navigation, now)
+    }
+
+    private engage(
+        character: GameCharacter,
+        target: GameCharacter,
+        room: GameRoom,
+        navigation: NavigationService,
+        now: number
+    ): void {
+        const shouldFleeTarget =
+            this.options.fleeWhenThreatened && shouldFlee(character, target)
+
+        character.updateFacing({
+            x: target.position.x - character.position.x,
+            y: target.position.y - character.position.y,
+        })
 
         if (
-            target !== undefined &&
             isTargetInAttackRange(character, target, navigation.grid.tileWidth)
         ) {
             if (!shouldFleeTarget) {
@@ -77,17 +99,12 @@ export class Mob1Controller implements CharacterController {
             return
         }
 
-        if (target !== undefined && shouldFleeTarget) {
+        if (shouldFleeTarget) {
             this.flee(character, target, navigation, now)
             return
         }
 
-        if (target !== undefined) {
-            this.pursue(character, target, room, navigation, now)
-            return
-        }
-
-        this.investigateOrWander(character, room, navigation, now)
+        this.pursue(character, target, room, navigation, now)
     }
 
     private investigateOrWander(

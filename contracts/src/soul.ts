@@ -1,8 +1,13 @@
 import type { AbilityClientMessage } from './abilities'
+import type { AdventureClientMessage } from './adventure'
 import type { CharacterControlCommand } from './control'
 export type { CharacterControlCommand } from './control'
 import type { ChestClientMessage } from './chests'
 import type { PickupItemClientMessage } from './index'
+import type {
+    EquipmentActionClientMessage,
+    InventoryActionClientMessage,
+} from './index'
 import type { MovementClientMessage } from './movement'
 import type { TheftClientMessage } from './theft'
 
@@ -37,6 +42,9 @@ export interface CompanionClientMessage {
 }
 
 export type AgentDecision =
+    | AdventureClientMessage
+    | InventoryActionClientMessage
+    | EquipmentActionClientMessage
     | AbilityClientMessage
     | CharacterControlCommand
     | PickupItemClientMessage

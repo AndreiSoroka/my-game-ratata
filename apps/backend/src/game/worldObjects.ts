@@ -3,11 +3,12 @@ import type {
     Vector2,
     WorldObjectSnapshot,
 } from '@my-game-ratata/contracts'
+import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { addInventoryItems, createItemInstance } from './inventory'
-import { clamp, distance } from './math'
+import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { nextSpeechId } from './speechReceipts'
@@ -31,6 +32,13 @@ export class WorldObjects {
             kind: object.kind,
             name: object.name,
             bounds: { ...object.bounds },
+            ...(object.interactionAreas === undefined
+                ? {}
+                : {
+                      interactionAreas: object.interactionAreas.map((area) => ({
+                          ...area,
+                      })),
+                  }),
             position: {
                 x: object.bounds.x + object.bounds.width / 2,
                 y: object.bounds.y + object.bounds.height / 2,
@@ -159,13 +167,8 @@ function interactionEdges(
     object: WorldObjectDefinition,
     actor: Vector2
 ): Vector2[] {
-    const { x, y, width, height } = object.bounds
-    const horizontal = clamp(actor.x, x, x + width)
-    const vertical = clamp(actor.y, y, y + height)
-    return [
-        { x: horizontal, y: y - 1 },
-        { x: horizontal, y: y + height + 1 },
-        { x: x - 1, y: vertical },
-        { x: x + width + 1, y: vertical },
-    ]
+    return interactionApproachPoints(
+        actor,
+        object.interactionAreas ?? [object.bounds]
+    )
 }

@@ -172,9 +172,14 @@ class TestDriver {
         if ((command as ClientMessage).type === 'join')
             throw new Error('Use join() to create a player')
         if (
-            ['move_input', 'move_to', 'follow', 'auto_attack', 'cancel_control'].includes(
-                command.type
-            )
+            [
+                'move_input',
+                'move_to',
+                'follow',
+                'auto_attack',
+                'auto_action',
+                'cancel_control',
+            ].includes(command.type)
         ) {
             this.cancelMovementTimer()
             this.navigator.cancel()

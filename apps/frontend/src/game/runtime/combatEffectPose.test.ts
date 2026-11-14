@@ -85,3 +85,28 @@ describe('melee neutral geometry', () => {
         }
     )
 })
+
+it('projects an untargeted authoritative shot along its pinned path even when the shooter turns', () => {
+    const from = characterFixture('ranger', {
+        basicAttackKind: 'melee',
+        facing: 'left',
+        position: { x: 150, y: 150 },
+    })
+    const [cue] = combatEffectCues(
+        {
+            kind: 'attack',
+            actorId: from.id,
+            abilityId: 'shot',
+            projectile: { origin: { x: 100, y: 100 }, endpoint: { x: 164, y: 100 } },
+        },
+        from
+    )
+    expect(cue?.kind).toBe('arrow')
+    expect(combatEffectPose(cue!, from, from, false)).toEqual({
+        x: 100,
+        y: 85,
+        z: 110,
+        rotation: 0,
+    })
+    expect(combatEffectPose(cue!, from, from, true)).toMatchObject({ x: 164, y: 85, rotation: 0 })
+})

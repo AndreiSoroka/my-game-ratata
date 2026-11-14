@@ -180,7 +180,8 @@ async function checkAssignment(page: Page) {
     await expect(slots.nth(1)).toHaveAccessibleName(/2: Пусто/)
     await expect(slots.nth(1)).toBeFocused()
     await expect(slots.nth(3)).toHaveAccessibleName(/4: Пусто/)
-    await expect(hotbar.getByRole('button', { name: /^Очистить слот/ })).toHaveCount(0)
+    await expect(hotbar.getByRole('button', { name: /^Очистить слот/ })).toHaveCount(1)
+    await expect(slots.nth(0)).toHaveAccessibleName(/1: Базовая атака/)
     expect(await inventoryAndPosition(page)).toEqual(before)
 }
 

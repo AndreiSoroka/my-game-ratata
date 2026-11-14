@@ -13,6 +13,7 @@ export function handleRoomControl(
     now: number
 ): boolean {
     if (
+        message.type === 'auto_action' ||
         message.type === 'auto_attack' ||
         message.type === 'follow' ||
         message.type === 'cancel_control'

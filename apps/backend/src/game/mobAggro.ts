@@ -100,15 +100,15 @@ function validTarget(
     target: GameCharacter | undefined,
     radius: number
 ): target is GameCharacter {
+    // The home leash bounds investigation of reports, not combat with a visible opponent.
+    // Applying it here leaves a monster harmless at point-blank range after a chase.
     return (
         target !== undefined &&
         target.alive &&
         !target.tags.has('offline') &&
         target.locationId === actor.locationId &&
         canTargetByFaction(actor, target) &&
-        distance(actor.position, target.position) <= radius &&
-        distance(actor.spawnPosition, target.position) <=
-            policy.spawnLeashRadius
+        distance(actor.position, target.position) <= radius
     )
 }
 

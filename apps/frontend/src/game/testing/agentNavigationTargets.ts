@@ -1,4 +1,5 @@
 import type { Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
+import { distanceToInteractionAreas, interactionApproachPoints } from '@my-game-ratata/contracts'
 
 import { distanceToBounds } from '../ui/interactionTargets'
 import type { AgentTarget } from './agentObservation'
@@ -14,6 +15,7 @@ export interface NavigationOptions {
 export interface NavigationGoal {
     point: Vector2
     bounds?: WorldObjectBounds
+    interactionAreas?: WorldObjectBounds[]
     tolerance: number
     candidates: Vector2[]
 }
@@ -36,12 +38,14 @@ export function navigationGoal(
     return {
         point: target.position,
         bounds: target.bounds,
+        interactionAreas: target.interactionAreas,
         tolerance: tolerance ?? Math.max(4, target.interactionRange - 8),
         candidates: approachPoints(state, target),
     }
 }
 
 export function goalDistance(position: Vector2, goal: NavigationGoal): number {
+    if (goal.interactionAreas) return distanceToInteractionAreas(position, goal.interactionAreas)
     return goal.bounds
         ? distanceToBounds(position, goal.bounds)
         : Math.hypot(position.x - goal.point.x, position.y - goal.point.y)
@@ -58,6 +62,10 @@ function approachPoints(state: RatataTestState, target: AgentTarget): Vector2[] 
     const position = state.player!.position
     const map = state.location!.map
     const margin = Math.min(map.tileWidth, map.tileHeight) / 2
+    if (target.interactionAreas)
+        return interactionApproachPoints(position, target.interactionAreas, margin).filter(
+            (point) => inMap(point, state)
+        )
     const x = Math.max(bounds.x, Math.min(position.x, bounds.x + bounds.width))
     const y = Math.max(bounds.y, Math.min(position.y, bounds.y + bounds.height))
     return [

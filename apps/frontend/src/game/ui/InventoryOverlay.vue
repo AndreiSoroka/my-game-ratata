@@ -10,14 +10,15 @@ import {
     type EquipmentSlotId,
     INVENTORY_CAPACITY,
     type InventoryActionKind,
-    ITEM_DEFINITIONS,
     type ItemInstanceSnapshot,
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import InventoryItemDetails from './InventoryItemDetails.vue'
 import { inventoryKey } from './inventoryKeyboard'
+import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
 import { useInventoryFocus } from './useInventoryFocus'
 
@@ -25,10 +26,12 @@ const props = defineProps<{
     character: CharacterSnapshot
     chests: WorldChestSnapshot[]
     materials?: AdventureMaterials
+    gold?: number
 }>()
 
 const emit = defineEmits<{
     close: []
+    plant: []
     assignHotbar: [payload: { slot: number; itemId: 'food' }]
     equipmentAction: [
         payload: {
@@ -47,6 +50,7 @@ const emit = defineEmits<{
 const panel = ref<HTMLElement>()
 const focusSurface = useInventoryFocus(panel, () => emit('close'))
 const selectedItemId = ref<string>()
+const focusedItemId = ref<string>()
 const assignedSlot = ref<number>()
 const equipmentSlots: EquipmentSlotId[] = ['weapon', 'boots']
 const inventorySlots = computed(() =>
@@ -54,6 +58,11 @@ const inventorySlots = computed(() =>
 )
 const selectedItem = computed(() =>
     props.character.inventory.find((item) => item.instanceId === selectedItemId.value)
+)
+const inspectedItem = computed(
+    () =>
+        selectedItem.value ??
+        props.character.inventory.find((item) => item.instanceId === focusedItemId.value)
 )
 const hasNearbyChest = computed(() =>
     props.chests.some(
@@ -138,27 +147,6 @@ function itemName(item: ItemInstanceSnapshot): string {
     return itemStackLabel(item)
 }
 
-function canEat(item: ItemInstanceSnapshot): boolean {
-    return ITEM_DEFINITIONS[item.itemId].healHp !== undefined
-}
-
-function canEquip(item: ItemInstanceSnapshot): boolean {
-    return ITEM_DEFINITIONS[item.itemId].equipmentSlots !== undefined
-}
-
-function sendInventoryAction(action: InventoryActionKind): void {
-    const item = selectedItem.value
-
-    if (item === undefined) {
-        return
-    }
-
-    emit('inventoryAction', {
-        action,
-        itemInstanceId: item.instanceId,
-    })
-}
-
 function unequip(slot: EquipmentSlotId): void {
     if (props.character.equipment[slot] === undefined) {
         return
@@ -168,10 +156,6 @@ function unequip(slot: EquipmentSlotId): void {
         action: 'unequip',
         slot,
     })
-}
-
-function slotLabel(slot: EquipmentSlotId): string {
-    return slot === 'weapon' ? 'Weapon' : 'Boots'
 }
 </script>
 
@@ -201,7 +185,9 @@ function slotLabel(slot: EquipmentSlotId): string {
                     type="button"
                     @click="unequip(slot)"
                 >
-                    <span class="equipment-slot__label">{{ slotLabel(slot) }}</span>
+                    <span class="equipment-slot__label">{{
+                        slot === 'weapon' ? 'Weapon' : 'Boots'
+                    }}</span>
                     <span class="equipment-slot__socket">
                         <img
                             v-if="character.equipment[slot]"
@@ -210,6 +196,10 @@ function slotLabel(slot: EquipmentSlotId): string {
                             :alt="itemName(character.equipment[slot])"
                         />
                     </span>
+                    <ItemCondition
+                        v-if="character.equipment[slot]"
+                        :item="character.equipment[slot]"
+                    />
                 </button>
             </div>
         </section>
@@ -230,6 +220,7 @@ function slotLabel(slot: EquipmentSlotId): string {
                 </button>
             </header>
 
+            <p class="inventory-gold" aria-label="Золото">Золото: {{ gold ?? '—' }} ◈</p>
             <div class="inventory-grid" aria-label="Inventory slots">
                 <button
                     v-for="(item, index) in inventorySlots"
@@ -244,6 +235,7 @@ function slotLabel(slot: EquipmentSlotId): string {
                     type="button"
                     :aria-label="item === undefined ? `Empty slot ${index + 1}` : itemName(item)"
                     :title="item ? itemName(item) : undefined"
+                    @focus="focusedItemId = item?.instanceId"
                     @click="selectItem(item)"
                 >
                     <img
@@ -261,54 +253,18 @@ function slotLabel(slot: EquipmentSlotId): string {
                 </button>
             </div>
 
-            <div v-if="selectedItem" class="inventory-actions">
-                <strong>{{ itemName(selectedItem) }}</strong>
-                <small v-if="(ITEM_DEFINITIONS[selectedItem.itemId].maxStack ?? 1) > 1"
-                    >До {{ ITEM_DEFINITIONS[selectedItem.itemId].maxStack }} в одном слоте</small
-                >
-                <p
-                    v-if="ITEM_DEFINITIONS[selectedItem.itemId].description"
-                    class="inventory-item-description"
-                >
-                    {{ ITEM_DEFINITIONS[selectedItem.itemId].description }}
-                </p>
-                <button
-                    v-if="canEat(selectedItem)"
-                    type="button"
-                    @click="sendInventoryAction('eat')"
-                >
-                    Eat
-                </button>
-                <button
-                    v-if="canEquip(selectedItem)"
-                    type="button"
-                    @click="sendInventoryAction('equip')"
-                >
-                    Equip
-                </button>
-                <button type="button" @click="sendInventoryAction('drop')">Drop</button>
-                <button v-if="hasNearbyChest" type="button" @click="sendInventoryAction('stash')">
-                    Put in chest
-                </button>
-                <template v-if="selectedItem.itemId === 'food'">
-                    <p class="inventory-hotbar-help">Быстрый доступ · Shift+1–4</p>
-                    <div
-                        class="inventory-hotbar-slots"
-                        role="group"
-                        aria-label="Назначить яблоко в быстрый слот"
-                    >
-                        <button
-                            v-for="slot in 4"
-                            :key="slot"
-                            type="button"
-                            :aria-label="`Назначить яблоко в слот ${slot}`"
-                            @click="assignHotbar(slot - 1, selectedItem)"
-                        >
-                            {{ slot }}
-                        </button>
-                    </div>
-                </template>
+            <div v-if="!selectedItem && inspectedItem" class="inventory-inspection">
+                <strong>{{ itemName(inspectedItem) }}</strong
+                ><ItemCondition :item="inspectedItem" />
             </div>
+            <InventoryItemDetails
+                v-if="selectedItem"
+                :item="selectedItem"
+                :has-nearby-chest="hasNearbyChest"
+                @inventory-action="emit('inventoryAction', $event)"
+                @assign-hotbar="assignHotbar($event, selectedItem)"
+                @plant="emit('plant')"
+            />
             <p v-if="assignedSlot !== undefined" class="inventory-hotbar-help" role="status">
                 Яблоко назначено в слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите
                 {{ assignedSlot + 1 }}, чтобы съесть.

@@ -2,7 +2,7 @@
     position: absolute;
     top: 58px;
     left: 14px;
-    z-index: 4;
+    z-index: 10;
     display: grid;
     grid-template-columns: 180px minmax(318px, 392px);
     gap: 10px;
@@ -87,6 +87,23 @@
     display: grid;
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 4px;
+}
+
+.inventory-gold {
+    margin: 0 0 12px;
+    padding: 9px 10px;
+    border: 1px solid #8f793c;
+    background: #24251b;
+    color: #ffe293;
+    font:
+        700 16px/1.4 system-ui,
+        sans-serif;
+}
+
+.inventory-inspection {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
 }
 
 .inventory-slot {

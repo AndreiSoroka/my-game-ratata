@@ -94,8 +94,12 @@ export class WorldInventory {
 
     public unequip(
         player: GameCharacter,
-        slot: Parameters<typeof unequipItem>[2]
+        slot: Parameters<typeof unequipItem>[2],
+        now = Date.now()
     ): GameEventPayload[] {
+        if (!canPerformSkillAction(player, now)) {
+            return []
+        }
         const item = unequipItem(player.inventory, player.equipment, slot)
 
         if (item === undefined) {
@@ -120,9 +124,10 @@ export class WorldInventory {
 
     public finalizeDeath(
         actor: GameCharacter,
-        now: number
+        now: number,
+        abandoned = false
     ): GameEventPayload[] {
-        return this.deathLoot.finalize(actor, now)
+        return this.deathLoot.finalize(actor, now, abandoned)
     }
 
     public openChestById(

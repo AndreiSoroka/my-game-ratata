@@ -18,8 +18,11 @@ import InventoryOverlay from './game/ui/InventoryOverlay.vue'
 import JoinGamePanel from './game/ui/JoinGamePanel.vue'
 import NearbyInteraction from './game/ui/NearbyInteraction.vue'
 import { createTransientNotices } from './game/ui/transientNotices'
+import TreePlanting from './game/ui/TreePlanting.vue'
 import { useCharacterViews } from './game/ui/useCharacterViews'
 import { useChestSession } from './game/ui/useChestSession'
+import { useInventoryUi } from './game/ui/useInventoryUi'
+import { useLifeChoice } from './game/ui/useLifeChoice'
 
 const gameplay = ref<InstanceType<typeof GameplayOverlay>>()
 const interaction = ref<InstanceType<typeof NearbyInteraction>>()
@@ -30,24 +33,37 @@ const defeated = ref(false)
 const errorMessage = ref('')
 const gameHost = ref<HTMLElement>()
 const game = ref<RatataGame>()
-const chatInput = ref<ChatInputState>({
-    active: false,
-    draft: '',
-    maxLength: 100,
-})
-const inventoryOpen = ref(false)
+const chatInput = ref<ChatInputState>({ active: false, draft: '', maxLength: 100 })
 const isJoining = ref(false)
 const isStarted = ref(false)
 const localPlayerId = ref<string>()
 const snapshot = ref<WorldSnapshot>()
 const status = ref('Ready')
 const notice = ref('')
-const notices = createTransientNotices((text) => {
-    notice.value = text
-})
+const notices = createTransientNotices((text) => (notice.value = text))
 
 const canJoin = computed(() => nickname.value.trim().length > 0 && !isJoining.value)
 const { localCharacter, visibleCharacters } = useCharacterViews(snapshot, game, localPlayerId)
+const { abandoning, abandonLife, confirmDeath } = useLifeChoice({
+    character: () => localCharacter.value,
+    connected: () => status.value === 'Connected',
+    send: (command) => game.value?.sendCommand(command),
+    newLife: beginNewLife,
+    defeated,
+})
+const {
+    inventoryOpen,
+    planting,
+    setInventory,
+    closeInventory,
+    startPlanting,
+    toggleInventory,
+    closeContainers,
+} = useInventoryUi(
+    () => game.value,
+    () => localCharacter.value,
+    () => closeChest()
+)
 const {
     chest,
     close: closeChest,
@@ -81,7 +97,20 @@ const { testState, testInterface } = useGameTestControls({
     setInventory,
 })
 
+const worldInputBlocked = computed(
+    () =>
+        planting.value ||
+        inventoryOpen.value ||
+        chestPending.value ||
+        chatInput.value.active ||
+        status.value !== 'Connected' ||
+        defeated.value ||
+        Boolean(adventurePanel.value?.hasOpenWindow) ||
+        Boolean(snapshot.value?.adventure?.dialogue)
+)
+
 function openNearbyMenu(id?: string): void {
+    if (planting.value) return
     if (id) gameplay.value?.select(id)
     if (chestPending.value) return
     closeInventory()
@@ -109,9 +138,7 @@ async function joinGame(): Promise<void> {
         container: gameHost.value,
         nickname: nickname.value.trim(),
         heroClass: heroClass.value,
-        onDefeat: () => {
-            defeated.value = true
-        },
+        onDefeat: confirmDeath,
         onChatState: (state) => {
             chatInput.value = state
         },
@@ -151,11 +178,6 @@ function cleanupFailedJoin(): void {
     }
 
     resetGameSession()
-    chatInput.value = {
-        active: false,
-        draft: '',
-        maxLength: 100,
-    }
 }
 
 function beginNewLife(): void {
@@ -163,6 +185,7 @@ function beginNewLife(): void {
     resetGameSession()
     defeated.value = false
     errorMessage.value = ''
+    void nextTick(() => document.getElementById('hero-class')?.focus())
 }
 
 function resetGameSession(): void {
@@ -172,32 +195,11 @@ function resetGameSession(): void {
     snapshot.value = undefined
     localPlayerId.value = undefined
     inventoryOpen.value = false
+    planting.value = false
+    chatInput.value = { active: false, draft: '', maxLength: 100 }
     isStarted.value = false
     isJoining.value = false
     status.value = 'Ready'
-}
-
-function setInventory(open: boolean): void {
-    if (open) {
-        closeChest()
-        const player = localCharacter.value
-        if (player?.path.length)
-            game.value?.sendCommand({ type: 'move_to', target: { ...player.position } })
-        game.value?.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } })
-    }
-    inventoryOpen.value = open
-}
-function toggleInventory(): void {
-    setInventory(!inventoryOpen.value)
-}
-
-function closeInventory(): void {
-    inventoryOpen.value = false
-}
-
-function closeContainers(): void {
-    closeInventory()
-    closeChest()
 }
 
 onBeforeUnmount(() => {
@@ -236,7 +238,9 @@ onBeforeUnmount(() => {
                     v-if="inventoryOpen && localCharacter"
                     :character="localCharacter"
                     :chests="snapshot?.chests ?? []"
+                    :gold="snapshot?.adventure?.gold"
                     @close="closeInventory"
+                    @plant="startPlanting"
                     @assign-hotbar="gameplay?.assignItem($event.slot, $event.itemId)"
                     @equipment-action="game?.sendEquipmentAction($event.action, $event.slot)"
                     @inventory-action="
@@ -244,6 +248,13 @@ onBeforeUnmount(() => {
                     "
                 />
             </GameHud>
+            <TreePlanting
+                v-if="planting && game && localCharacter && status === 'Connected'"
+                :game="game"
+                :player="localCharacter"
+                @close="planting = false"
+                @command="game.sendCommand($event)"
+            />
             <GameplayOverlay
                 v-if="snapshot && localCharacter"
                 ref="gameplay"
@@ -251,15 +262,7 @@ onBeforeUnmount(() => {
                 :snapshot="snapshot"
                 :player="localCharacter"
                 :characters="visibleCharacters"
-                :blocked="
-                    inventoryOpen ||
-                    chestPending ||
-                    chatInput.active ||
-                    status !== 'Connected' ||
-                    defeated ||
-                    Boolean(adventurePanel?.hasOpenWindow) ||
-                    Boolean(snapshot.adventure?.dialogue)
-                "
+                :blocked="worldInputBlocked"
                 @interact="openNearbyMenu"
             />
             <NearbyInteraction
@@ -272,15 +275,7 @@ onBeforeUnmount(() => {
                     (position, bounds, range) =>
                         game?.isInteractionVisible(position, bounds, range) ?? false
                 "
-                :blocked="
-                    inventoryOpen ||
-                    chestPending ||
-                    chatInput.active ||
-                    status !== 'Connected' ||
-                    defeated ||
-                    Boolean(adventurePanel?.hasOpenWindow) ||
-                    Boolean(snapshot?.adventure?.dialogue)
-                "
+                :blocked="worldInputBlocked"
                 @command="game?.sendCommand($event)"
                 @request-open="openNearbyMenu"
                 @target-change="game?.setInteractionTarget($event)"
@@ -311,6 +306,9 @@ onBeforeUnmount(() => {
                 v-if="defeated || (localCharacter && !localCharacter.alive)"
                 :character="localCharacter"
                 :defeated="defeated"
+                :pending="abandoning"
+                :connected="status === 'Connected'"
+                @abandon-life="abandonLife"
                 @new-life="beginNewLife"
             />
         </section>

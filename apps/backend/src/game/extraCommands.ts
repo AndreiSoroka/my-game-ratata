@@ -1,14 +1,16 @@
-import type {
-    AdventureClientMessage,
-    ClientMessage,
-} from '@my-game-ratata/contracts'
+import type { AdventureClientMessage } from '@my-game-ratata/contracts'
 
+import {
+    parseCraftOrderCommand,
+    parseMerchantService,
+} from './craftOrderCommands'
+import { parseEconomyCommand } from './economyCommands'
 import type { ParseResult } from './messages'
 import { parseMindCommand } from './mindCommands'
 
-export function isAdventureCommand(
-    message: ClientMessage
-): message is AdventureClientMessage {
+export function isAdventureCommand(message: {
+    type: string
+}): message is AdventureClientMessage {
     return [
         'world_interact',
         'interact',
@@ -17,6 +19,12 @@ export function isAdventureCommand(
         'gather',
         'craft',
         'farm_action',
+        'market_trade',
+        'repair_items',
+        'plant_tree',
+        'craft_order_place',
+        'craft_order_claim',
+        'craft_order_cancel',
     ].includes(message.type)
 }
 
@@ -24,6 +32,18 @@ export function parseExtraCommand(
     record: Record<string, unknown>
 ): ParseResult {
     const type = record['type']
+    const service = parseMerchantService(record)
+    if (service !== undefined) {
+        return service
+    }
+    const order = parseCraftOrderCommand(record)
+    if (order !== undefined) {
+        return order
+    }
+    const economy = parseEconomyCommand(record)
+    if (economy !== undefined) {
+        return economy
+    }
     if (type === 'dash') {
         return { message: { type } }
     }
@@ -74,13 +94,28 @@ function validId(value: unknown): value is string {
 
 function isCraftItem(
     value: unknown
-): value is 'food' | 'simple_sword' | 'boots' {
-    return value === 'food' || value === 'simple_sword' || value === 'boots'
+): value is
+    'food' | 'simple_sword' | 'boots' | 'axe' | 'pickaxe' | 'stone_axe' {
+    return (
+        value === 'food' ||
+        value === 'simple_sword' ||
+        value === 'boots' ||
+        value === 'axe' ||
+        value === 'pickaxe' ||
+        value === 'stone_axe'
+    )
 }
 
 function isRecipe(
     value: unknown
-): value is 'food' | 'simple_sword' | 'boots' | 'bake_bread' {
+): value is
+    | 'food'
+    | 'simple_sword'
+    | 'boots'
+    | 'axe'
+    | 'pickaxe'
+    | 'stone_axe'
+    | 'bake_bread' {
     return isCraftItem(value) || value === 'bake_bread'
 }
 

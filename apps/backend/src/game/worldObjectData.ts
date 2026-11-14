@@ -7,6 +7,8 @@ import type {
     WorldObjectKind,
 } from '@my-game-ratata/contracts'
 
+import { readInteractionAreas } from './worldObjectGeometry'
+
 export interface WorldObjectDefinition {
     id: string
     kind: WorldObjectKind
@@ -14,6 +16,7 @@ export interface WorldObjectDefinition {
     text: string
     locationId: string
     bounds: WorldObjectBounds
+    interactionAreas?: WorldObjectBounds[]
 }
 
 interface MapObject extends WorldObjectBounds {
@@ -64,12 +67,8 @@ export function readWorldObjects(
         ) {
             return []
         }
-        const id = object.properties?.find(
-            (property) => property.name === 'interactionId'
-        )?.value
-        const text = object.properties?.find(
-            (property) => property.name === 'text'
-        )?.value
+        const id = propertyValue(object, 'interactionId')
+        const text = propertyValue(object, 'text')
         if (
             typeof id !== 'string' ||
             typeof text !== 'string' ||
@@ -77,6 +76,11 @@ export function readWorldObjects(
         ) {
             throw new Error(`Invalid world interaction in ${locationId}`)
         }
+        const interactionAreas = readInteractionAreas(
+            propertyValue(object, 'interactionAreas'),
+            object,
+            object.type
+        )
         return [
             {
                 id,
@@ -84,6 +88,7 @@ export function readWorldObjects(
                 locationId,
                 kind: object.type,
                 name: object.name,
+                ...(interactionAreas === undefined ? {} : { interactionAreas }),
                 bounds: {
                     x: object.x,
                     y: object.y,
@@ -93,6 +98,10 @@ export function readWorldObjects(
             },
         ]
     })
+}
+
+function propertyValue(object: MapObject, name: string): unknown {
+    return object.properties?.find((property) => property.name === name)?.value
 }
 
 function validBounds(bounds: WorldObjectBounds): boolean {

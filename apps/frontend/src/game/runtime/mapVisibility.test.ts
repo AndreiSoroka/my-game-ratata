@@ -1,6 +1,12 @@
+import type { AdventureResourceNode } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
-import { interactionHasLineOfSight, mapHasLineOfSight, type MapVisibility } from './mapVisibility'
+import {
+    interactionHasLineOfSight,
+    mapHasLineOfSight,
+    type MapVisibility,
+    updateResourceVisibility,
+} from './mapVisibility'
 
 function arena(): MapVisibility {
     return {
@@ -63,5 +69,38 @@ describe('interaction visibility uses reachable geometry', () => {
         const map = arena()
         expect(interactionHasLineOfSight(map, { x: -1, y: 72 }, { x: 8, y: 72 })).toBe(false)
         expect(interactionHasLineOfSight(map, { x: 8, y: 72 }, { x: -1, y: 72 })).toBe(false)
+    })
+})
+
+describe('resource obstacle reconciliation', () => {
+    it('shrinks a tree to a stump, restores growth and never erases an unrelated wall', () => {
+        const map = arena()
+        map.solid[1] = true
+        map.resourceBase = map.solid.slice()
+        const node: AdventureResourceNode = {
+            id: 'tree',
+            source: 'tree',
+            phase: 'ready',
+            kind: 'wood',
+            remaining: 8,
+            locationId: 'map-2-2',
+            position: { x: 72, y: 72 },
+            collisionBounds: { x: 48, y: 48, width: 48, height: 32 },
+        }
+        updateResourceVisibility(map, [node])
+        expect(map.solid[3 * 12 + 3]).toBe(true)
+        node.phase = 'stump'
+        node.collisionBounds = { x: 64, y: 64, width: 16, height: 16 }
+        updateResourceVisibility(map, [node])
+        expect(map.solid[3 * 12 + 3]).toBe(false)
+        expect(map.solid[4 * 12 + 4]).toBe(true)
+        expect(map.solid[1]).toBe(true)
+        node.phase = 'ready'
+        node.collisionBounds = { x: 48, y: 48, width: 48, height: 32 }
+        updateResourceVisibility(map, [node])
+        expect(map.solid[3 * 12 + 3]).toBe(true)
+        updateResourceVisibility(map, [])
+        expect(map.solid[3 * 12 + 3]).toBe(false)
+        expect(map.solid[1]).toBe(true)
     })
 })

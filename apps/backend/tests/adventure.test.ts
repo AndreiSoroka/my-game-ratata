@@ -277,6 +277,8 @@ describe('adventure gathering and crafting', () => {
             herbs: 0,
             scrap: 0,
             wood: 0,
+            stone: 0,
+            sapling: 0,
         })
         expect(
             service.snapshot(player.id, player.locationId, player).gold

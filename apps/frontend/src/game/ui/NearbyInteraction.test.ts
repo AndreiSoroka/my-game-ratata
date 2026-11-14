@@ -225,6 +225,45 @@ describe('world item and farm interaction', () => {
 })
 
 describe('interaction highlight follows the actual E target', () => {
+    it('forwards exact pond geometry from the received snapshot to the actual canvas highlight event', async () => {
+        const player = characterFixture('self', { position: { x: 40, y: 88 }, facing: 'right' })
+        const pond = {
+            id: 'pond',
+            kind: 'water' as const,
+            name: 'Пруд',
+            depleted: false,
+            position: { x: 112, y: 112 },
+            bounds: { x: 64, y: 64, width: 96, height: 96 },
+            interactionAreas: [
+                { x: 64, y: 64, width: 16, height: 96 },
+                { x: 80, y: 144, width: 80, height: 16 },
+            ],
+        }
+        const snapshot = {
+            ...worldFixture([player]),
+            adventure: { ...adventureFixture(), worldObjects: [pond] },
+        }
+        const wrapper = interaction(player, [], snapshot)
+        try {
+            const highlight = {
+                key: 'world:pond',
+                position: pond.position,
+                bounds: pond.bounds,
+                interactionAreas: pond.interactionAreas,
+            }
+            expect(wrapper.emitted('targetChange')?.at(-1)?.[0]).toMatchObject(highlight)
+            await wrapper.setProps({
+                player: { ...player, position: { x: 184, y: 152 }, facing: 'left' },
+            })
+            expect(wrapper.emitted('targetChange')?.at(-1)?.[0]).toMatchObject(highlight)
+            wrapper.vm.openMenu()
+            expect(wrapper.emitted('command')?.at(-1)).toEqual([
+                { type: 'world_interact', objectId: pond.id },
+            ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
     it('keeps the highlighted target pinned with its menu and clears it behind another window', async () => {
         const player = characterFixture('self')
         const first = resident('first', 20)

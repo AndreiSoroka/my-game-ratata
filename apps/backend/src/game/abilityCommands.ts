@@ -95,6 +95,9 @@ function executeAbility(
     if (id === 'barrier') {
         return castBarrier(actor, context.now)
     }
+    if (id === 'shot') {
+        return executeAttackAbility(actor, message.targetId, id, context)
+    }
     if (message.targetId === undefined) {
         return abilityNotice(actor, 'Сначала выберите цель.')
     }
@@ -115,7 +118,7 @@ function executeAbility(
 }
 function executeAttackAbility(
     actor: GameCharacter,
-    targetId: string,
+    targetId: string | undefined,
     id: AbilityId,
     context: AbilityContext
 ): GameEventPayload[] {

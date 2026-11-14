@@ -7,15 +7,26 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import CityDemandReport from './CityDemandReport.vue'
+import CityMarket from './CityMarket.vue'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
+import RepairWorkshop from './RepairWorkshop.vue'
 import SoulBadge from './SoulBadge.vue'
 import { speechBubbleId } from './speechReceipts'
 import { activateFocusedButton } from './uiKeyboard'
+import WorkshopOrders from './WorkshopOrders.vue'
 const props = defineProps<{ adventure: AdventureSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const panel = ref<HTMLElement>()
-const view = ref<'conversation' | 'shop'>('conversation')
+const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
 const isSign = computed(() => props.adventure.dialogue?.kind === 'sign')
+const viewTitle = computed(() =>
+    view.value === 'conversation'
+        ? props.adventure.dialogue?.title
+        : { shop: 'Товары', repair: 'Ремонт', demand: 'Потребности города', orders: 'Заказы' }[
+              view.value
+          ]
+)
 function focusFirstAction(): void {
     void nextTick(() =>
         panel.value
@@ -25,6 +36,9 @@ function focusFirstAction(): void {
 }
 function choose(choiceId: string): void {
     if (choiceId === 'trade' && props.adventure.dialogue?.canTrade) view.value = 'shop'
+    if (choiceId === 'repair') view.value = 'repair'
+    if (choiceId === 'city_report') view.value = 'demand'
+    if (choiceId === 'orders') view.value = 'orders'
     emit('command', { choiceId, type: 'dialogue_choice' })
     focusFirstAction()
 }
@@ -36,10 +50,11 @@ function backToConversation(): void {
     focusFirstAction()
 }
 watch(
-    () => props.adventure.dialogue?.npcId,
+    () => `${props.adventure.dialogue?.npcId}:${props.adventure.dialogue?.initialView}`,
     () => {
-        view.value = 'conversation'
-    }
+        view.value = props.adventure.dialogue?.initialView ?? 'conversation'
+    },
+    { immediate: true }
 )
 function escapeOutside(event: KeyboardEvent): void {
     if (
@@ -59,11 +74,12 @@ let previousFocus: HTMLElement | undefined
 function handleKeys(event: KeyboardEvent): void {
     if (event.code === 'Escape') {
         event.preventDefault()
-        if (view.value === 'shop') backToConversation()
+        if (view.value !== 'conversation') backToConversation()
         else emit('command', { choiceId: 'close', type: 'dialogue_choice' })
         return
     }
     if (dialogueSpeechKeys(event, panel.value, props.adventure.dialogue)) return
+    if (event.target instanceof HTMLInputElement) return
     if (activateFocusedButton(event, panel.value)) return
     const direction = ['ArrowDown', 'KeyS'].includes(event.code)
         ? 1
@@ -133,7 +149,7 @@ watch(
             v-if="!isSign"
             :soul="characters.find((character) => character.id === adventure.dialogue?.npcId)?.soul"
         />
-        <h2 v-if="!isSign">{{ view === 'shop' ? 'Товары' : adventure.dialogue.title }}</h2>
+        <h2 v-if="!isSign">{{ viewTitle }}</h2>
         <p v-if="view === 'conversation' && isSign" class="adventure-dialogue__text">
             {{ adventure.dialogue.text }}
         </p>
@@ -159,11 +175,19 @@ watch(
             <p v-if="adventure.dialogue.tradeBlockedReason" class="trade-refusal" role="status">
                 {{ adventure.dialogue.tradeBlockedReason }}
             </p>
-            <h3>
+            <CityMarket
+                v-if="adventure.market"
+                :market="adventure.market"
+                :npc-id="adventure.dialogue.npcId"
+                :gold="adventure.gold"
+                :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
+                @command="emit('command', $event)"
+            />
+            <h3 v-if="!adventure.market">
                 В дорогу <span>У вас {{ adventure.gold }} золотых</span>
             </h3>
             <button
-                v-for="offer in adventure.shop"
+                v-for="offer in adventure.market ? [] : adventure.shop"
                 :key="offer.itemId"
                 data-dialogue-action
                 type="button"
@@ -179,5 +203,36 @@ watch(
                 ← Вернуться к разговору
             </button>
         </div>
+        <RepairWorkshop
+            v-if="view === 'repair' && adventure.repairs"
+            :repairs="adventure.repairs"
+            :gold="adventure.gold"
+            :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
+            @command="emit('command', $event)"
+        />
+        <CityDemandReport v-if="view === 'demand' && adventure.market" :market="adventure.market" />
+        <p
+            v-if="view === 'orders' && adventure.dialogue.tradeBlockedReason"
+            class="trade-refusal"
+            role="status"
+        >
+            {{ adventure.dialogue.tradeBlockedReason }}
+        </p>
+        <WorkshopOrders
+            v-if="view === 'orders' && adventure.workshop"
+            :workshop="adventure.workshop"
+            :market="adventure.market"
+            :gold="adventure.gold"
+            :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
+            @command="emit('command', $event)"
+        />
+        <button
+            v-if="view === 'repair' || view === 'demand' || view === 'orders'"
+            type="button"
+            data-dialogue-action
+            @click="backToConversation"
+        >
+            ← Вернуться к разговору
+        </button>
     </section>
 </template>

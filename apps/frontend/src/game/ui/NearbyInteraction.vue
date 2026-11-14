@@ -127,6 +127,7 @@ watch(
                       relationship: selected.relationship,
                       position: selected.position,
                       bounds: selected.bounds,
+                      interactionAreas: selected.interactionAreas,
                   }
                 : undefined
         )

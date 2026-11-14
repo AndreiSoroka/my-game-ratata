@@ -1,5 +1,40 @@
 const targetId = { type: 'string', minLength: 1, maxLength: 100 }
+const prayerIntent = {
+    oneOf: [
+        {
+            type: 'object',
+            required: ['mode'],
+            additionalProperties: false,
+            properties: { mode: { const: 'devotion' } },
+        },
+        {
+            type: 'object',
+            required: ['mode', 'targetId'],
+            additionalProperties: false,
+            properties: {
+                mode: { enum: ['restore', 'revive'] },
+                targetId,
+            },
+        },
+        {
+            type: 'object',
+            required: ['mode'],
+            additionalProperties: false,
+            properties: { mode: { const: 'harm' }, targetId },
+        },
+    ],
+}
 export const abilityDecisionSchemas = [
+    {
+        type: 'object',
+        required: ['type', 'abilityId'],
+        additionalProperties: false,
+        properties: {
+            type: { const: 'use_ability' },
+            abilityId: { const: 'shot' },
+            targetId,
+        },
+    },
     {
         type: 'object',
         required: ['type', 'abilityId', 'targetId'],
@@ -9,7 +44,6 @@ export const abilityDecisionSchemas = [
             abilityId: {
                 enum: [
                     'spark',
-                    'shot',
                     'skeleton_strike',
                     'fireball',
                     'greater_fireball',
@@ -34,25 +68,7 @@ export const abilityDecisionSchemas = [
         properties: {
             type: { const: 'use_ability' },
             abilityId: { const: 'pray' },
-            intent: {
-                oneOf: [
-                    {
-                        type: 'object',
-                        required: ['mode', 'targetId'],
-                        additionalProperties: false,
-                        properties: {
-                            mode: { enum: ['restore', 'revive'] },
-                            targetId,
-                        },
-                    },
-                    {
-                        type: 'object',
-                        required: ['mode'],
-                        additionalProperties: false,
-                        properties: { mode: { const: 'harm' }, targetId },
-                    },
-                ],
-            },
+            intent: prayerIntent,
         },
     },
     {
@@ -79,5 +95,69 @@ export const abilityDecisionSchemas = [
         required: ['type'],
         additionalProperties: false,
         properties: { type: { const: 'cancel_control' } },
+    },
+    {
+        type: 'object',
+        required: ['type', 'action'],
+        additionalProperties: false,
+        properties: {
+            type: { const: 'auto_action' },
+            action: {
+                oneOf: [
+                    {
+                        type: 'object',
+                        required: ['kind', 'abilityId'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'ability' },
+                            abilityId: { const: 'shot' },
+                            targetId,
+                        },
+                    },
+                    { type: 'null' },
+                    {
+                        type: 'object',
+                        required: ['kind', 'targetId'],
+                        additionalProperties: false,
+                        properties: { kind: { const: 'attack' }, targetId },
+                    },
+                    {
+                        type: 'object',
+                        required: ['kind', 'abilityId', 'targetId'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'ability' },
+                            abilityId: {
+                                enum: [
+                                    'spark',
+                                    'skeleton_strike',
+                                    'fireball',
+                                    'greater_fireball',
+                                ],
+                            },
+                            targetId,
+                        },
+                    },
+                    {
+                        type: 'object',
+                        required: ['kind', 'abilityId'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'ability' },
+                            abilityId: { const: 'barrier' },
+                        },
+                    },
+                    {
+                        type: 'object',
+                        required: ['kind', 'intent'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'prayer' },
+                            intent: prayerIntent,
+                        },
+                    },
+                ],
+            },
+        },
     },
 ]

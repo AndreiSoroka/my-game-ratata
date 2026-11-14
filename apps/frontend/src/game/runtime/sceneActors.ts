@@ -2,6 +2,7 @@ import type {
     CharacterSnapshot,
     GameEventPayload,
     ItemId,
+    ProjectilePath,
     Vector2,
     WorldObjectBounds,
     WorldSnapshot,
@@ -24,10 +25,15 @@ import { CorpseViews } from './corpseViews'
 import { DamageFeedback } from './damageFeedback'
 import { DepthPropViews } from './depthPropViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
-import { interactionHasLineOfSight, type MapVisibility } from './mapVisibility'
+import {
+    interactionHasLineOfSight,
+    type MapVisibility,
+    updateResourceVisibility,
+} from './mapVisibility'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { PrayerPreviewViews } from './prayerPreviewViews'
 import { createSceneMapActor } from './sceneMapActor'
+import { ShotPreviewViews } from './shotPreviewViews'
 import { SignReadingViews } from './signReadingViews'
 import { StatusViews } from './statusViews'
 import type { RenderedTiledMap } from './tiledMap'
@@ -43,6 +49,7 @@ export class SceneActors {
     private readonly worldActors: WorldSceneActors
     private readonly attackZones: AttackZoneViews
     private readonly prayerPreview: PrayerPreviewViews
+    private readonly shotPreview: ShotPreviewViews
     private readonly combatTarget: InteractionTargetViews
     private readonly interactionTarget: InteractionTargetViews
     private mapVisibility: MapVisibility | undefined
@@ -65,6 +72,7 @@ export class SceneActors {
         farmImage: ImageSource
     ) {
         this.prayerPreview = new PrayerPreviewViews(engine)
+        this.shotPreview = new ShotPreviewViews(engine)
         this.combatTarget = new InteractionTargetViews(engine)
         this.interactionTarget = new InteractionTargetViews(engine)
         this.attackZones = new AttackZoneViews(engine)
@@ -89,13 +97,16 @@ export class SceneActors {
 
     public clearDamage(): void {
         this.prayerPreview.clear()
+        this.shotPreview.clear()
         this.damageFeedback.clear()
         this.combatEffects.clear()
         this.statusViews.clear()
     }
     public dispose(): void {
         this.prayerPreview.dispose()
+        this.shotPreview.dispose()
         this.corpseViews.dispose()
+        this.depthProps.dispose()
         this.damageFeedback.dispose()
         this.combatEffects.dispose()
         this.statusViews.dispose()
@@ -113,6 +124,7 @@ export class SceneActors {
     public addMap(map: RenderedTiledMap): void {
         this.clearDamage()
         this.corpseViews.dispose()
+        this.depthProps.dispose()
         this.interactionTarget.clear()
         this.combatTarget.clear()
         this.signReading.setMap(map.visibility)
@@ -121,7 +133,7 @@ export class SceneActors {
         this.mapActor?.kill()
         this.mapBounds = new BoundingBox(0, 0, map.worldWidth, map.worldHeight)
         this.followedId = undefined
-        this.depthProps.setProps(map.depthProps)
+        this.depthProps.setProps(map.depthProps, map.harvestGraphics)
         this.buildingViews.setBuildings(map.buildings)
         const actor = createSceneMapActor(map)
         this.engine.add(actor)
@@ -131,6 +143,7 @@ export class SceneActors {
     public update(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
         if (this.localPlayerId !== localPlayerId) this.interactionTarget.clear()
         this.localPlayerId = localPlayerId
+        this.updateResourceViews(snapshot)
         this.serverClockOffset = snapshot.serverTime - performance.now()
         this.removeMissing(snapshot.characters)
         const player = snapshot.characters.find((character) => character.id === localPlayerId)
@@ -162,6 +175,17 @@ export class SceneActors {
         )
         this.attackZones.update(snapshot.characters.flatMap((character) => character.attackZones))
         this.followLocalPlayer(localPlayerId)
+    }
+
+    private updateResourceViews(snapshot: WorldSnapshot): void {
+        const nodes = snapshot.adventure?.resourceNodes ?? []
+        this.depthProps.updateResources(nodes)
+        this.depthProps.updateGraves(snapshot.graves ?? [])
+        if (this.mapVisibility) updateResourceVisibility(this.mapVisibility, nodes)
+    }
+
+    public setShotPreview(path: ProjectilePath | undefined): void {
+        this.shotPreview.set(path)
     }
 
     public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {

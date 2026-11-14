@@ -3,7 +3,9 @@ import type {
     AdventureDialogueChoice,
     AdventureQuestStatus,
     AdventureShopOffer,
+    MarketItemId,
 } from '@my-game-ratata/contracts'
+import { WORKSHOP_DEFINITIONS, workshopFor } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { residentDialogue } from './residentDialogue'
@@ -26,10 +28,29 @@ export const adventureShop: AdventureShopOffer[] = [
 
 export const adventureNpcRoles: Record<
     string,
-    { quest: boolean; trade: boolean }
+    { quest: boolean; trade: boolean; repair?: boolean; smith?: boolean }
 > = {
     npc_friendly_girl_1: { quest: true, trade: true },
     npc_merchant_1: { quest: false, trade: true },
+    ...Object.fromEntries(
+        WORKSHOP_DEFINITIONS.map((workshop) => [
+            workshop.npcId,
+            {
+                quest: false,
+                trade: true,
+                repair: workshop.repair,
+                smith: workshop.npcId === 'npc_smith_1',
+            },
+        ])
+    ),
+}
+
+export function npcMarketItemAllowed(
+    npcId: string | undefined,
+    itemId: MarketItemId
+): boolean {
+    const workshop = npcId === undefined ? undefined : workshopFor(npcId)
+    return workshop === undefined || workshop.items.includes(itemId)
 }
 
 export interface AdventureProgress {
@@ -52,6 +73,15 @@ export function adventureDialogue(
     const questChoices = role.quest ? questDialogueChoices(progress) : []
     const choices: AdventureDialogueChoice[] = [
         ...questChoices,
+        ...(workshopFor(npcId) === undefined
+            ? []
+            : [{ id: 'orders', label: 'Мои заказы и изготовление' }]),
+        ...(role.quest
+            ? [{ id: 'city_report', label: 'Что нужно городу? Спрос и запасы' }]
+            : []),
+        ...(role.repair === true
+            ? [{ id: 'repair', label: 'Почини моё снаряжение' }]
+            : []),
         { id: 'ask_dragon', label: 'А драконы здесь бывают?' },
         { id: 'trade', label: 'Покажи товары' },
         { id: 'leave', label: 'До встречи' },
@@ -62,7 +92,11 @@ export function adventureDialogue(
         choices,
         npcId,
         npcName,
-        text: text ?? dialogueText(progress, role.quest),
+        text:
+            text ??
+            (role.smith === true
+                ? 'Я Игнат. Продам топор или кирку, восстановлю оружие и одежду. Мечом дерево рубить можно, но лезвие быстро портится.'
+                : dialogueText(progress, role.quest)),
         title: progress.wardRestored
             ? 'Колокол снова звучит'
             : 'Тревога в Новогороде',

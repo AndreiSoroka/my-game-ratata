@@ -3,7 +3,7 @@ import { expect, type Page, test } from '@playwright/test'
 test.describe('shared gameplay controls', () => {
     test.setTimeout(60_000)
     for (const mobile of [false, true]) {
-        test(`assigns empty slots and casts with the keyboard (${mobile ? 'mobile' : 'desktop'})`, async ({
+        test(`rebinds default slots and casts with the keyboard (${mobile ? 'mobile' : 'desktop'})`, async ({
             page,
         }, info) => {
             await page.setViewportSize(
@@ -14,7 +14,7 @@ test.describe('shared gameplay controls', () => {
                 .getByLabel('Быстрые действия')
                 .getByRole('button', { name: /^[1-4]:/ })
             await expect(slots).toHaveCount(4)
-            await expect(slots.nth(0)).toHaveAccessibleName(/1: Пусто/)
+            await expect(slots.nth(0)).toHaveAccessibleName(/1: Искра/)
             await page.keyboard.press('Shift+Digit1')
             await expect(page.getByRole('dialog', { name: 'Назначить слот 1' })).toBeVisible()
             // Mage order: spark, barrier. Menu arrows must not leak into movement.
@@ -37,6 +37,7 @@ test.describe('shared gameplay controls', () => {
                 .toBe(8)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
+            await page.keyboard.press('ArrowDown')
             await page.keyboard.press('ArrowDown')
             await page.keyboard.press('ArrowDown')
             await page.keyboard.press('Enter')

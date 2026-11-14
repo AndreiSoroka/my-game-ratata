@@ -4,9 +4,20 @@ import type {
     Vector2,
 } from '@my-game-ratata/contracts'
 
+import type { AbilityContext } from './abilityContext'
+import {
+    allowedMode,
+    availableActor as available,
+    canFight,
+    reachedTarget,
+} from './autoActionTargets'
 import type { GameCharacter } from './character'
-import { isTargetInAttackRange } from './combat'
-import { companionProfiles } from './companionProfiles'
+import {
+    advanceAutoAction,
+    clearAutoAction,
+    setAutoAction,
+    snapshotAutoAction,
+} from './characterAutoAction'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -26,6 +37,10 @@ interface ControlState extends CharacterControlSnapshot {
     }
 }
 export interface ControlWorld {
+    abilityContextFor?(actor: GameCharacter, now: number): AbilityContext
+    publishEvents?(
+        events: Array<import('@my-game-ratata/contracts').GameEventPayload>
+    ): void
     getCharacter(id: string): GameCharacter | undefined
     navigationFor(actor: GameCharacter): NavigationService
     requestAttack(actor: GameCharacter, now?: number, targetId?: string): void
@@ -37,42 +52,55 @@ export function snapshotControl(
     actor: GameCharacter
 ): CharacterControlSnapshot {
     const state = controls.get(actor)
-    return { mode: state?.mode ?? 'none', targetId: state?.targetId ?? null }
+    return (
+        snapshotAutoAction(actor) ?? {
+            mode: state?.mode ?? 'none',
+            targetId: state?.targetId ?? null,
+        }
+    )
 }
 export function cancelCharacterControl(actor: GameCharacter): void {
-    if (!controls.delete(actor)) {
+    const automatic = clearAutoAction(actor)
+    if (!controls.delete(actor) && !automatic) {
         return
     }
     actor.clearPath()
     actor.setMoveInput({ x: 0, y: 0 })
 }
-export function parseControlCommand(
-    record: Record<string, unknown>
-): CharacterControlCommand | undefined {
-    if (record['type'] === 'cancel_control') {
-        return { type: 'cancel_control' }
-    }
-    if (record['type'] !== 'follow' && record['type'] !== 'auto_attack') {
-        return undefined
-    }
-    const targetId = record['targetId']
-    return targetId === null ||
-        (typeof targetId === 'string' &&
-            targetId.length > 0 &&
-            targetId.length <= 100)
-        ? { type: record['type'], targetId }
-        : undefined
-}
+export { parseControlCommand } from './controlCommands'
 export function setCharacterControl(
     actor: GameCharacter,
     command: CharacterControlCommand,
     world: ControlWorld,
     now: number
 ): boolean {
+    if (command.type === 'auto_action') {
+        cancelCharacterControl(actor)
+        return (
+            command.action === null ||
+            setAutoAction(actor, command.action, world, now)
+        )
+    }
     if (command.type === 'cancel_control' || command.targetId === null) {
         cancelCharacterControl(actor)
         return true
     }
+    return setTargetControl(
+        actor,
+        { ...command, targetId: command.targetId },
+        world,
+        now
+    )
+}
+function setTargetControl(
+    actor: GameCharacter,
+    command: Exclude<
+        CharacterControlCommand,
+        { type: 'auto_action' } | { type: 'cancel_control' }
+    > & { targetId: string },
+    world: ControlWorld,
+    now: number
+): boolean {
     const target = world.getCharacter(command.targetId)
     const navigation = world.navigationFor(actor)
     if (
@@ -107,6 +135,17 @@ export function setCharacterControl(
 
 /** All controllers share this intention policy; it never sets position or damage. */
 export function advanceCharacterControl(
+    actor: GameCharacter,
+    world: ControlWorld,
+    now: number
+): boolean {
+    const automatic = advanceAutoAction(actor, world, now)
+    if (automatic !== undefined) {
+        return automatic
+    }
+    return advanceTargetControl(actor, world, now)
+}
+function advanceTargetControl(
     actor: GameCharacter,
     world: ControlWorld,
     now: number
@@ -161,17 +200,6 @@ export function advanceCharacterControl(
     return true
 }
 
-function reachedTarget(
-    actor: GameCharacter,
-    target: GameCharacter,
-    mode: CharacterControlSnapshot['mode'],
-    tileSize: number
-): boolean {
-    return mode === 'attack'
-        ? isTargetInAttackRange(actor, target, tileSize)
-        : distance(actor.position, target.position) <= 28
-}
-
 function pursueLastKnown(
     actor: GameCharacter,
     state: ControlState,
@@ -188,23 +216,6 @@ function pursueLastKnown(
     }
     plan(actor, state.lastKnown, state, navigation, now)
     return true
-}
-
-function canFight(actor: GameCharacter): boolean {
-    return (
-        companionProfiles[actor.id]?.canFight !== false &&
-        actor.soul.companion?.canFight !== false
-    )
-}
-
-function allowedMode(
-    actor: GameCharacter,
-    target: GameCharacter,
-    mode: CharacterControlSnapshot['mode'],
-    now: number
-): boolean {
-    const hostile = canTargetByFaction(actor, target, now)
-    return mode === 'attack' ? hostile && canFight(actor) : !hostile
 }
 
 export function rememberObservedCrossing(
@@ -288,13 +299,5 @@ function visible(
         distance(actor.position, target.position) <=
             visibilityRadius(actor, target, sightRange, now) &&
         navigation.hasLineOfSight(actor.position, target.position)
-    )
-}
-function available(actor: GameCharacter, now?: number): boolean {
-    return (
-        actor.alive &&
-        !actor.tags.has('offline') &&
-        !actor.tags.has('state.retired') &&
-        (now === undefined || actor.stunUntil <= now)
     )
 }

@@ -108,6 +108,29 @@ function validQuantity(item: InventoryItemInstance): boolean {
     return Number.isSafeInteger(amount) && amount > 0
 }
 
+function validCondition(item: InventoryItemInstance): boolean {
+    if (!Object.hasOwn(ITEM_DEFINITIONS, item.itemId)) {
+        return false
+    }
+    const definition = ITEM_DEFINITIONS[item.itemId]
+    if (
+        item.durability !== undefined &&
+        (definition.maxDurability === undefined ||
+            !Number.isSafeInteger(item.durability) ||
+            item.durability < 0 ||
+            item.durability > definition.maxDurability)
+    ) {
+        return false
+    }
+    return (
+        item.wearDistance === undefined ||
+        (definition.durabilityWear?.walkPixels !== undefined &&
+            Number.isFinite(item.wearDistance) &&
+            item.wearDistance >= 0 &&
+            item.wearDistance < definition.durabilityWear.walkPixels)
+    )
+}
+
 function validInventory(inventory: readonly InventoryItemInstance[]): boolean {
     const ids = new Set<string>()
     for (const item of inventory) {
@@ -115,6 +138,7 @@ function validInventory(inventory: readonly InventoryItemInstance[]): boolean {
         if (
             !Object.hasOwn(ITEM_DEFINITIONS, item.itemId) ||
             !validQuantity(item) ||
+            !validCondition(item) ||
             itemQuantity(item) > (definition.maxStack ?? 1) ||
             ids.has(item.instanceId)
         ) {
@@ -142,6 +166,7 @@ function planAddition(
     for (const item of items) {
         if (
             !validQuantity(item) ||
+            !validCondition(item) ||
             !Object.hasOwn(ITEM_DEFINITIONS, item.itemId) ||
             ids.has(item.instanceId)
         ) {
@@ -184,11 +209,13 @@ function appendStack(
     }
     for (let index = 0; index < slots; index += 1) {
         const quantity = Math.min(remaining, maxStack)
-        plan.push({
+        const entry = {
+            ...item,
             instanceId: index === 0 ? item.instanceId : '',
-            itemId: item.itemId,
-            ...(quantity === 1 ? {} : { quantity }),
-        })
+            quantity,
+        }
+        setQuantity(entry, quantity)
+        plan.push(entry)
         remaining -= quantity
     }
     return true

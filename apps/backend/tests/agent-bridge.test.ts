@@ -29,6 +29,29 @@ function request(
     })
 }
 
+describe('private NPC observation', () => {
+    it('allows private observation only for the chosen existing NPC', async () => {
+        const response = await handleAgentRequest(
+            request('/agent/state?actorId=npc_smith_1'),
+            room,
+            token
+        )
+        expect(response.status).toBe(200)
+        expect(await response.json()).toMatchObject({
+            adventure: { market: { cityName: 'Новогород' } },
+        })
+        expect(
+            (
+                await handleAgentRequest(
+                    request('/agent/state?actorId=missing'),
+                    room,
+                    token
+                )
+            ).status
+        ).toBe(400)
+    })
+})
+
 describe('optional local NPC control bridge', () => {
     it('is disabled without a sufficiently long local token', async () => {
         expect(

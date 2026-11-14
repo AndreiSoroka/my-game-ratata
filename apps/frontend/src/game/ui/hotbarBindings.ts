@@ -1,6 +1,29 @@
-import type { AbilityId, CharacterSnapshot, PrayerPreview } from '@my-game-ratata/contracts'
+import type {
+    AbilityId,
+    CharacterAutoAction,
+    CharacterSnapshot,
+    PrayerPreview,
+} from '@my-game-ratata/contracts'
 
-export type HotbarBinding = { kind: 'ability'; id: AbilityId } | { kind: 'item'; id: 'food' }
+export type HotbarBinding =
+    { kind: 'attack' } | { kind: 'ability'; id: AbilityId } | { kind: 'item'; id: 'food' }
+export function defaultHotbarBinding(player: CharacterSnapshot): HotbarBinding {
+    const ability = { vanguard: undefined, ranger: 'shot', arcanist: 'spark', cleric: 'pray' }[
+        player.heroClass ?? 'vanguard'
+    ]
+    return ability ? { kind: 'ability', id: ability as AbilityId } : { kind: 'attack' }
+}
+export function bindingMatchesAction(
+    binding: HotbarBinding | null,
+    action: CharacterAutoAction | undefined
+): boolean {
+    if (!binding || !action || binding.kind === 'item') return false
+    if (binding.kind === 'attack') return action.kind === 'attack'
+    return action.kind === 'prayer'
+        ? binding.id === 'pray'
+        : action.kind === 'ability' && binding.id === action.abilityId
+}
+
 export const hotbarGlyphs: Record<AbilityId, string> = {
     pray: '✦',
     spark: 'ϟ',

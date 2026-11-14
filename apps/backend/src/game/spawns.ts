@@ -22,19 +22,21 @@ export interface SpawnedCharacter {
 export function createSkeleton(
     navigation: NavigationService,
     idSuffix = '',
-    spawnTile?: TileCoordinate
+    spawnTile?: TileCoordinate,
+    respawnPolicy: 'automatic' | 'none' = 'automatic'
 ): SpawnedCharacter {
     const skeleton = new Character({
         archetype: 'skeleton',
         creatureType: 'undead',
         controllerKind: 'mob1',
+        respawnPolicy,
         locationId: spawnLocationId(navigation),
         faction: 'monsters',
         id: `mob_skeleton_1${idSuffix}`,
         nickname: 'Skeleton',
         spawnPosition: spawnPosition(
             navigation,
-            { x: 10, y: 5 },
+            spawnTile ?? { x: 10, y: 5 },
             spawnTile ?? { x: 60, y: 36 }
         ),
     })
@@ -43,7 +45,9 @@ export function createSkeleton(
 
     return {
         character: skeleton,
-        controller: new Mob1Controller(13_371, { fleeWhenThreatened: false }),
+        controller: new Mob1Controller(mobSeed(skeleton.id, 13_371), {
+            fleeWhenThreatened: false,
+        }),
     }
 }
 
@@ -69,8 +73,18 @@ export function createSlime(
 
     return {
         character: slime,
-        controller: new Mob1Controller(41_337, { fleeWhenThreatened: true }),
+        controller: new Mob1Controller(mobSeed(slime.id, 41_337), {
+            fleeWhenThreatened: true,
+        }),
     }
+}
+
+function mobSeed(id: string, base: number): number {
+    let seed = base
+    for (const char of id) {
+        seed = Math.imul(seed ^ char.charCodeAt(0), 16_777_619) >>> 0
+    }
+    return seed
 }
 
 export function createFriendlyGirl(

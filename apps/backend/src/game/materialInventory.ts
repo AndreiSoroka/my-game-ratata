@@ -7,6 +7,8 @@ import { countInventoryItem } from './inventory'
 export function materialSnapshot(actor?: GameCharacter): AdventureMaterials {
     const inventory = actor?.inventory ?? []
     return {
+        stone: countInventoryItem(inventory, 'stone'),
+        sapling: countInventoryItem(inventory, 'sapling'),
         herbs: countInventoryItem(inventory, 'herbs'),
         fiber: countInventoryItem(inventory, 'fiber'),
         scrap: countInventoryItem(inventory, 'scrap'),

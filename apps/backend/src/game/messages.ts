@@ -58,7 +58,7 @@ export function parseClientMessage(raw: string): ParseResult {
             : { message }
     }
     if (
-        ['auto_attack', 'follow', 'cancel_control'].includes(
+        ['auto_action', 'auto_attack', 'follow', 'cancel_control'].includes(
             String(record['type'])
         )
     ) {
@@ -92,9 +92,17 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
             return parseEquipmentAction(record)
         case 'chat':
             return parseChat(record)
+        case 'abandon_life':
+            return parseAbandonLife(record)
         default:
             return parseExtraCommand(record)
     }
+}
+
+function parseAbandonLife(record: Record<string, unknown>): ParseResult {
+    return Object.keys(record).length === 1
+        ? { message: { type: 'abandon_life' } }
+        : { error: 'Abandon life does not accept a target or owner' }
 }
 
 function parseJoin(record: Record<string, unknown>): ParseResult {

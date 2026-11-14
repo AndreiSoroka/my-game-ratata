@@ -34,7 +34,9 @@ describe('prayer without an eligible target', () => {
                 },
             })
             wrapper.vm.activate(0)
-            expect(wrapper.emitted('command')).toHaveLength(1)
+            expect(wrapper.emitted('command')?.[1]).toEqual([
+                { type: 'auto_action', action: { kind: 'prayer', intent: { mode: 'devotion' } } },
+            ])
             expect(wrapper.get('.prayer-preview').text()).toBe('Молитва восстанавливается.')
         } finally {
             wrapper.unmount()

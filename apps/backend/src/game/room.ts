@@ -22,9 +22,14 @@ import { decideForRoomAgent } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
 import { handleCharacterMessage } from './roomClientMessages'
 import { controlIntent } from './roomControl'
+import {
+    createAdventureRequester,
+    createInventoryRequester,
+} from './roomEconomy'
 import { publishRoomEvents } from './roomEvents'
-import { joinRoom, leaveRoom } from './roomIdentity'
+import { createRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
+import { RoomLife } from './roomLife'
 import { type RoomSocket, sendError } from './roomMessaging'
 import { createRoomPlayer } from './roomPlayer'
 import { charactersInLocation, connectionsInLocation } from './roomQueries'
@@ -45,6 +50,15 @@ export class GameRoom {
     private readonly world: WorldLocations
     private readonly adventure = new AdventureService()
     private readonly companions = new CompanionService()
+    private readonly life = new RoomLife(
+        this.characters,
+        this.connections,
+        this.controllers,
+        this.playerIdsByNickname,
+        () => this.world,
+        this.companions,
+        (events) => this.publishEvents(events)
+    )
     private readonly theft = new TheftService()
     private readonly parties = new PartyService((id, amount, rewardId) =>
         this.adventure.grantGoldOnce(id, amount, rewardId)
@@ -57,13 +71,14 @@ export class GameRoom {
     public constructor(navigation = loadNavigationService()) {
         this.navigation = navigation
         this.world = new WorldLocations(navigation, this.adventure)
-        spawnRoomCharacters(
+        const graves = spawnRoomCharacters(
             this.world,
             this.navigation,
             this.characters,
             this.controllers,
             this.companions
         )
+        this.life.registerGraves(graves, Date.now())
         seedNpcPockets(this.characters.values())
     }
 
@@ -110,6 +125,16 @@ export class GameRoom {
     public getCharacter(id: string): GameCharacter | undefined {
         return this.characters.get(id)
     }
+
+    public readonly adventureForWorkers = () => this.adventure
+    public readonly requestAdventure = createAdventureRequester(
+        () => this.adventure,
+        () => [...this.characters.values()],
+        (actor) => this.navigationFor(actor)
+    )
+    public readonly requestInventoryAction = createInventoryRequester(
+        () => this.world
+    )
 
     public decideForAgent(actorId: string, decision: unknown) {
         return decideForRoomAgent(this, this.companions, actorId, decision)
@@ -195,6 +220,7 @@ export class GameRoom {
                 parties: this.parties,
                 tick: this.tickIndex,
                 world: this.world,
+                life: this.life,
             },
             now,
             locationId,
@@ -220,6 +246,11 @@ export class GameRoom {
             return
         }
 
+        if (message.type === 'abandon_life') {
+            this.life.abandon(player, Date.now())
+            return
+        }
+
         handleCharacterMessage(
             {
                 room: this,
@@ -236,36 +267,17 @@ export class GameRoom {
         )
     }
 
-    private join(
-        ws: RoomSocket,
-        nickname: string,
-        archetype: GameCharacter['archetype'],
-        heroClass?: HeroClass
-    ): void {
-        joinRoom(
-            {
-                characters: this.characters,
-                connections: this.connections,
-                controllers: this.controllers,
-                closeChestViews: (id) => this.world.closeChestViews(id),
-                createPlayer: (name, key, type, hero) =>
-                    this.createPlayerCharacter(name, key, type, hero),
-                mapFor: (character) => this.navigationFor(character).summary,
-                nicknames: this.playerIdsByNickname,
-                snapshotFor: (character) =>
-                    this.snapshot(
-                        Date.now(),
-                        character.locationId,
-                        character.id
-                    ),
-                tickMs,
-            },
-            ws,
-            nickname,
-            archetype,
-            heroClass
-        )
-    }
+    private readonly join = createRoomJoiner({
+        characters: this.characters,
+        connections: this.connections,
+        controllers: this.controllers,
+        nicknames: this.playerIdsByNickname,
+        room: this,
+        world: () => this.world,
+        createPlayer: (name, key, type, hero) =>
+            this.createPlayerCharacter(name, key, type, hero),
+        tickMs,
+    })
 
     private tick(now = Date.now()): void {
         const deltaMs = Math.max(1, Math.min(250, now - this.lastTickAt))
@@ -280,6 +292,7 @@ export class GameRoom {
             theft: this.theft,
             deltaMs,
             nicknames: this.playerIdsByNickname,
+            life: this.life,
             now,
             onEvents: (events) => this.publishEvents(events),
             parties: this.parties,

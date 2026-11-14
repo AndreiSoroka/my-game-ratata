@@ -51,6 +51,7 @@ function fixture(archetype: 'slime' | 'skeleton' = 'skeleton') {
         respawnDelayMsFor: () => 60_000,
     })
     const room = {
+        charactersFor: () => characters,
         getCharacter: (id: string) =>
             characters.find((character) => character.id === id),
         navigationFor: () => navigation,

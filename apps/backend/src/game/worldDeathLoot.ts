@@ -1,7 +1,7 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { shouldRetireCharacter } from './characterLife'
+import { canAbandonLife, shouldRetireCharacter } from './characterLife'
 import type { WorldChest } from './chestInteraction'
 import type { CorpseWallet } from './corpseWallet'
 import { createItemInstance } from './inventory'
@@ -32,8 +32,15 @@ export class WorldDeathLoot {
     }
 
     /** Must run before retirement clears items and the adventure wallet. */
-    public finalize(target: GameCharacter, now: number): GameEventPayload[] {
-        return shouldRetireCharacter(target, now) ? this.transfer(target) : []
+    public finalize(
+        target: GameCharacter,
+        now: number,
+        abandoned = false
+    ): GameEventPayload[] {
+        return shouldRetireCharacter(target, now) ||
+            (abandoned && canAbandonLife(target))
+            ? this.transfer(target)
+            : []
     }
 
     private transfer(target: GameCharacter): GameEventPayload[] {

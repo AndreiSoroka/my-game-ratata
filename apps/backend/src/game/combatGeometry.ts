@@ -2,6 +2,7 @@ import {
     ABILITY_DEFINITIONS,
     type AttackAbilityId,
     type AttackZone,
+    SHOT_HALF_WIDTH,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -78,7 +79,7 @@ export function buildAbilityAttackZones(
     id: AttackAbilityId
 ): AttackZone[] {
     const range = ABILITY_DEFINITIONS[id].range
-    const width = id === 'shot' ? 11.2 : 16
+    const width = id === 'shot' ? SHOT_HALF_WIDTH : 16
     const rotated = rotateZone(
         { minX: -width, maxX: width, minY: 0, maxY: range },
         actor.facing

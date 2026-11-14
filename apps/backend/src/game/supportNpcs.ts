@@ -5,7 +5,9 @@ import type {
     HeroClass,
 } from '@my-game-ratata/contracts'
 
+import { ArtisanController } from './artisanController'
 import { GameCharacter } from './character'
+import { artisanRecipes } from './cityEconomy'
 import { cityResidents } from './cityResidents'
 import { ClericController } from './clericController'
 import { CompanionController } from './companionControllers'
@@ -126,11 +128,13 @@ export function createSupportNpcs(
         return {
             character,
             controller:
-                definition.heroClass === 'cleric'
-                    ? new ClericController()
-                    : profile === undefined
-                      ? new NetworkPlayerController()
-                      : new CompanionController(companions),
+                artisanRecipes(definition.id).length > 0
+                    ? new ArtisanController()
+                    : definition.heroClass === 'cleric'
+                      ? new ClericController()
+                      : profile === undefined
+                        ? new NetworkPlayerController()
+                        : new CompanionController(companions),
         }
     })
 }

@@ -44,6 +44,7 @@ export function addNovogorod(ctx) {
         if (!inside(x, y) || solid[at(x, y)] !== 0) return
         // Flat top-down paving avoids turning the road into a rock wall.
         terrain[at(x, y)] = tile === undefined ? pavingGid : town + tile
+        ctx.roads[at(x, y)] = true
         plants[at(x, y)] = 0
         objects[at(x, y)] = 0
     }

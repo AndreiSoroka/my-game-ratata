@@ -2,6 +2,7 @@ import type { WorldLocation } from '@my-game-ratata/contracts'
 import { WORLD_LOCATION_DEFINITIONS } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
+import { navigationGoal } from './agentNavigationTargets'
 import { observeGame } from './agentObservation'
 import { adventureFixture, characterFixture, worldFixture } from './characterFixture'
 import type { RatataTestState } from './testInterface'
@@ -61,6 +62,32 @@ function fixture() {
 }
 
 describe('AI observation', () => {
+    it('approaches a harvestable trunk from outside its solid footprint', () => {
+        const { state, snapshot } = fixture()
+        const bounds = { x: 128, y: 96, width: 48, height: 32 }
+        snapshot.adventure.resourceNodes = [
+            {
+                id: 'tree',
+                kind: 'wood',
+                source: 'tree',
+                phase: 'ready',
+                locationId: 'map-2-2',
+                position: { x: 152, y: 120 },
+                bounds,
+                remaining: 8,
+            },
+        ]
+        const goal = navigationGoal(
+            state,
+            { targetKey: 'resource:tree' },
+            undefined,
+            observeGame(state).targets
+        )
+        expect(goal?.candidates.length).toBe(4)
+        for (const point of goal?.candidates ?? []) {
+            expect(point.x < 128 || point.x > 176 || point.y < 96 || point.y > 128).toBe(true)
+        }
+    })
     it('returns a serializable detached view without other characters’ bags', () => {
         const { player, state } = fixture()
         player.inventory = [{ itemId: 'food', instanceId: 'owned-food' }]

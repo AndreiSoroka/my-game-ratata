@@ -1,4 +1,5 @@
 import type { CharacterSnapshot, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
+import { distanceToInteractionAreas, nearestInteractionPoint } from '@my-game-ratata/contracts'
 
 export function nearestByKind<T>(
     targets: readonly T[],
@@ -25,6 +26,18 @@ export interface FacingInteractionTarget {
     key: string
     position: Vector2
     bounds?: WorldObjectBounds
+    interactionAreas?: WorldObjectBounds[]
+}
+
+export function targetInteractionDistance(
+    position: Vector2,
+    target: Omit<FacingInteractionTarget, 'key'>
+): number {
+    if (target.interactionAreas)
+        return distanceToInteractionAreas(position, target.interactionAreas)
+    return target.bounds
+        ? distanceToBounds(position, target.bounds)
+        : Math.hypot(target.position.x - position.x, target.position.y - position.y)
 }
 
 /** Select one physical target in the forward 90-degree sector, never a list of neighbors. */
@@ -43,31 +56,34 @@ export function facingInteractionTarget<T extends FacingInteractionTarget>(
     return targets
         .filter((target) => targetKey === undefined || target.key === targetKey)
         .map((target) => {
-            const reach = target.bounds
-                ? distanceToBounds(player.position, target.bounds)
-                : Math.hypot(
-                      target.position.x - player.position.x,
-                      target.position.y - player.position.y
-                  )
+            const reach = targetInteractionDistance(player.position, target)
             // Aim at the nearest surface ahead, including the accessible shore of large water objects.
-            const aim = target.bounds
-                ? {
-                      x: Math.max(
-                          target.bounds.x,
-                          Math.min(
-                              target.bounds.x + target.bounds.width,
-                              player.position.x + direction.x * 48
-                          )
-                      ),
-                      y: Math.max(
-                          target.bounds.y,
-                          Math.min(
-                              target.bounds.y + target.bounds.height,
-                              player.position.y + direction.y * 48
-                          )
-                      ),
-                  }
-                : target.position
+            const aim = target.interactionAreas
+                ? nearestInteractionPoint(
+                      {
+                          x: player.position.x + direction.x * 48,
+                          y: player.position.y + direction.y * 48,
+                      },
+                      target.interactionAreas
+                  )
+                : target.bounds
+                  ? {
+                        x: Math.max(
+                            target.bounds.x,
+                            Math.min(
+                                target.bounds.x + target.bounds.width,
+                                player.position.x + direction.x * 48
+                            )
+                        ),
+                        y: Math.max(
+                            target.bounds.y,
+                            Math.min(
+                                target.bounds.y + target.bounds.height,
+                                player.position.y + direction.y * 48
+                            )
+                        ),
+                    }
+                  : target.position
             const dx = aim.x - player.position.x
             const dy = aim.y - player.position.y
             const forward = dx * direction.x + dy * direction.y

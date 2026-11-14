@@ -1,6 +1,7 @@
 import {
     type DeityId,
     type GameEventPayload,
+    isItemBroken,
     type ProgressionSnapshot,
     type SkillBranch,
     type SkillId,
@@ -154,8 +155,12 @@ export function trainSkill(
 }
 
 export function hasEquippedSword(character: GameCharacter): boolean {
-    const weapon = character.equipment.weapon?.itemId
-    return weapon === 'simple_sword' || weapon === 'old_sword'
+    const weapon = character.equipment.weapon
+    return (
+        weapon !== undefined &&
+        !isItemBroken(weapon) &&
+        (weapon.itemId === 'simple_sword' || weapon.itemId === 'old_sword')
+    )
 }
 
 const branches: Record<SkillBranch, SkillId[]> = {

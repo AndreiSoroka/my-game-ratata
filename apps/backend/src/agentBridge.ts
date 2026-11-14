@@ -22,12 +22,7 @@ export async function handleAgentRequest(
     }
     const url = new URL(request.url)
     if (url.pathname === '/agent/state' && request.method === 'GET') {
-        const location =
-            url.searchParams.get('locationId') ?? CENTER_LOCATION_ID
-        if (!room.hasLocation(location)) {
-            return Response.json({ error: 'Unknown location' }, { status: 400 })
-        }
-        return Response.json(room.snapshot(Date.now(), location))
+        return observeState(url, room)
     }
     if (url.pathname === '/agent/act' && request.method === 'POST') {
         return handleAction(request, room)
@@ -70,4 +65,35 @@ async function handleAction(
 
 function validToken(token: string | undefined): token is string {
     return token !== undefined && token.length >= 24
+}
+
+function observeActor(url: URL, room: GameRoom): Response | undefined {
+    const actorId = url.searchParams.get('actorId')
+    if (actorId === null) {
+        return undefined
+    }
+    const actor = room.getCharacter(actorId)
+    if (
+        actor === undefined ||
+        actor.controllerKind === 'network_player' ||
+        actor.soul.controlSource === 'human'
+    ) {
+        return Response.json(
+            { error: 'Only existing NPCs may be observed privately' },
+            { status: 400 }
+        )
+    }
+    return Response.json(room.snapshot(Date.now(), actor.locationId, actor.id))
+}
+
+function observeState(url: URL, room: GameRoom): Response {
+    const actor = observeActor(url, room)
+    if (actor !== undefined) {
+        return actor
+    }
+    const location = url.searchParams.get('locationId') ?? CENTER_LOCATION_ID
+    if (!room.hasLocation(location)) {
+        return Response.json({ error: 'Unknown location' }, { status: 400 })
+    }
+    return Response.json(room.snapshot(Date.now(), location))
 }

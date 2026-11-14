@@ -95,9 +95,14 @@ describe('city trade blacklist integration', () => {
             expect(
                 adventure.snapshot(actor.id).dialogue?.tradeBlockedReason
             ).toBeUndefined()
+            const foodPrice =
+                adventure
+                    .snapshot(actor.id)
+                    .market?.rows.find((row) => row.itemId === 'food')
+                    ?.buyPrice ?? 0
             adventure.trade(actor, 'food', characters)
             expect(actor.inventory).toHaveLength(inventory.length + 1)
-            expect(balance()).toBe(1)
+            expect(balance()).toBe(5 - foodPrice)
         }
     )
 })

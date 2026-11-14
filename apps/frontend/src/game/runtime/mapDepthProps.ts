@@ -2,6 +2,7 @@ import type { TiledLandmark } from './mapLandmarks'
 
 export interface MapDepthProp {
     id: string
+    kind?: string
     x: number
     y: number
     width: number
@@ -21,7 +22,17 @@ export function readDepthProps(
         bitmap.width = data.width
         bitmap.height = data.height
         draw(bitmap, data.tiles, data.columns)
-        return [{ id: String(object.id), x: object.x, y: object.y, ...data, bitmap }]
+        const propId = object.properties?.find((property) => property.name === 'propId')?.value
+        return [
+            {
+                id: typeof propId === 'string' ? propId : String(object.id),
+                kind: object.name,
+                x: object.x,
+                y: object.y,
+                ...data,
+                bitmap,
+            },
+        ]
     })
 }
 

@@ -9,6 +9,7 @@ import type { GameCharacter } from './character'
 import { canTargetByFaction } from './factions'
 import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
+import type { RoomLife } from './roomLife'
 import { charactersInLocation } from './roomQueries'
 import type { TheftService } from './theft'
 import type { WorldLocations } from './worldLocations'
@@ -20,6 +21,7 @@ interface SnapshotContext {
     theft: TheftService
     tick: number
     world: WorldLocations
+    life?: RoomLife
 }
 
 export function roomSnapshot(
@@ -40,6 +42,7 @@ export function roomSnapshot(
     )
     return {
         ...snapshot,
+        graves: context.life?.graves(locationId) ?? [],
         characters: snapshot.characters.map((character) => ({
             ...character,
             relationship: relationshipFor(

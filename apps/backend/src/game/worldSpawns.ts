@@ -1,8 +1,11 @@
 import {
     encounterDifficulty,
+    GRAVE_MAX_LIVING,
     type WorldLocationDefinition,
 } from '@my-game-ratata/contracts'
 
+import type { GameCharacter } from './character'
+import { graveChildTile, slimeHabitatTile } from './encounterPlacement'
 import type { NavigationService } from './navigation'
 import { createSkeleton, createSlime, type SpawnedCharacter } from './spawns'
 
@@ -15,28 +18,69 @@ const encounterTiles = [
     { x: 53, y: 48 },
 ]
 
+export interface LocationEnemy extends SpawnedCharacter {
+    graveSourceId?: string
+}
+
 export function createLocationEnemies(
     navigation: NavigationService,
     location: WorldLocationDefinition
-): SpawnedCharacter[] {
+): LocationEnemy[] {
     const difficulty = encounterDifficulty(location.dangerLevel)
     if (difficulty.enemyCount === 0) {
         return []
     }
-    return encounterTiles.slice(0, difficulty.enemyCount).map((tile, index) => {
+    const result: LocationEnemy[] = []
+    const graves = navigation.grid.encounters?.graves ?? []
+    for (const [index, tile] of encounterTiles
+        .slice(0, difficulty.enemyCount)
+        .entries()) {
         const suffix = `_${location.id}${index < 2 ? '' : `_${String(index + 1)}`}`
-        const spawn =
-            index % 2 === 0
-                ? createSkeleton(navigation, suffix, tile)
-                : createSlime(navigation, suffix, tile)
-        const character = spawn.character
-        character.config.combat.maxHp = Math.ceil(
-            character.config.combat.maxHp * difficulty.hpMultiplier
-        )
-        character.maxHp = character.config.combat.maxHp
-        character.hp = character.maxHp
-        character.config.combat.damageMultiplier = difficulty.damageMultiplier
-        character.tags.add(`danger.${String(location.dangerLevel)}`)
-        return spawn
-    })
+        const occupied = result.map(({ character }) => character.position)
+        let spawn: LocationEnemy
+        if (index % 2 === 0) {
+            const source = graves[Math.floor(index / 2) % graves.length]
+            if (source !== undefined) {
+                if (
+                    result.filter((entry) => entry.graveSourceId === source.id)
+                        .length >= GRAVE_MAX_LIVING
+                ) {
+                    continue
+                }
+                const sourceTile = graveChildTile(navigation, source, occupied)
+                if (sourceTile === undefined) {
+                    continue
+                }
+                spawn = {
+                    ...createSkeleton(navigation, suffix, sourceTile, 'none'),
+                    graveSourceId: source.id,
+                }
+            } else {
+                spawn = createSkeleton(navigation, suffix, tile)
+            }
+        } else {
+            spawn = createSlime(
+                navigation,
+                suffix,
+                slimeHabitatTile(navigation, tile, occupied)
+            )
+        }
+        applyEncounterDifficulty(spawn.character, location)
+        result.push(spawn)
+    }
+    return result
+}
+
+export function applyEncounterDifficulty(
+    character: GameCharacter,
+    location: WorldLocationDefinition
+): void {
+    const difficulty = encounterDifficulty(location.dangerLevel)
+    character.config.combat.maxHp = Math.ceil(
+        character.config.combat.maxHp * difficulty.hpMultiplier
+    )
+    character.maxHp = character.config.combat.maxHp
+    character.hp = character.maxHp
+    character.config.combat.damageMultiplier = difficulty.damageMultiplier
+    character.tags.add(`danger.${String(location.dangerLevel)}`)
 }

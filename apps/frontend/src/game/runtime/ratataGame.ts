@@ -4,22 +4,23 @@ import type {
     EquipmentSlotId,
     GameEventPayload,
     InventoryActionKind,
+    ProjectilePath,
     Vector2,
     WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
-import { type Engine, PointerButton } from 'excalibur'
+import { type Engine } from 'excalibur'
 
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
 import { createCharacterResources } from './characterResources'
 import { GameAudio } from './gameAudio'
 import { axisFromKeys, movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
+import { PlantingPreview } from './plantingPreview'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import {
-    characterAt,
     characterDisrupted,
     createGameCanvas,
     createGameEngine,
@@ -29,9 +30,10 @@ import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
 import { runtimeEventFeedback } from './runtimeEventFeedback'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
+import { isGameKeyboardBlocked } from './runtimeKeyboardFocus'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
-import { isEditableTarget } from './runtimeQueries'
+import { handleRuntimePointer } from './runtimePointer'
 import { handleRuntimeShortcut } from './runtimeShortcuts'
 import { RuntimeSocket } from './runtimeSocket'
 import { SceneActors } from './sceneActors'
@@ -55,6 +57,7 @@ export class RatataGame {
     private readonly chat: RuntimeChatInput
     private readonly socket: RuntimeSocket
     private lastAxis: Vector2 = { x: 0, y: 0 }
+    private readonly plantingPreview = new PlantingPreview()
 
     public constructor(private readonly options: RatataGameOptions) {
         this.chat = new RuntimeChatInput(options.onChatState)
@@ -87,6 +90,7 @@ export class RatataGame {
 
         this.canvas = canvas
         this.engine = engine
+        this.plantingPreview.initialize(engine)
         this.audio = new GameAudio(resources.sounds, resources.music.adventureBegins)
         this.audio.setMap(map)
         this.sceneActors = new SceneActors(
@@ -116,6 +120,7 @@ export class RatataGame {
         this.socket.close()
         this.audio?.stop()
         this.sceneActors?.dispose()
+        this.plantingPreview.dispose()
         this.buildingEntrances.clear()
         this.engine?.stop()
         this.canvas?.remove()
@@ -124,18 +129,25 @@ export class RatataGame {
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {
-        this.sceneActors?.setInteractionTarget(
-            !this.connected || this.stopped || this.loadingMapId ? undefined : target
-        )
+        this.sceneActors?.setInteractionTarget(this.isMapReady ? target : undefined)
+    }
+
+    public setPlanting(handler?: (position: Vector2) => void): void {
+        this.plantingPreview.set(handler)
+        this.releaseInputs()
+    }
+    public previewPlanting(position: Vector2): void {
+        this.plantingPreview.preview(position)
     }
 
     public setCombatTarget(target: TargetHighlight | undefined): void {
         this.sceneActors?.setCombatTarget(target)
     }
+    public setShotPreview(path: ProjectilePath | undefined): void {
+        this.sceneActors?.setShotPreview(this.isMapReady ? path : undefined)
+    }
     public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {
-        this.sceneActors?.setPrayerPreview(
-            !this.connected || this.stopped || this.loadingMapId ? undefined : preview
-        )
+        this.sceneActors?.setPrayerPreview(this.isMapReady ? preview : undefined)
     }
     public projectCharacter(id: string) {
         return this.isCharacterVisible(id)
@@ -160,7 +172,7 @@ export class RatataGame {
     }
 
     private get isMapReady(): boolean {
-        return !this.stopped && this.snapshot?.location?.id === this.mapId
+        return this.connected && !this.stopped && this.snapshot?.location?.id === this.mapId
     }
 
     public getBuildings(): BuildingEntrance[] {
@@ -228,13 +240,7 @@ export class RatataGame {
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
-        if (
-            event.defaultPrevented ||
-            isEditableTarget(event.target) ||
-            document.querySelector('[role="dialog"], [role="menu"]')
-        ) {
-            return
-        }
+        if (isGameKeyboardBlocked(event)) return
         const wasChatActive = this.chat.isActive
 
         if (
@@ -253,7 +259,6 @@ export class RatataGame {
         if (this.movementControls.keyDown(event)) return
         if (
             handleRuntimeShortcut(event, {
-                attack: () => this.send({ type: 'attack' }),
                 pickup: () => this.send({ type: 'pickup_item' }),
                 inventory: () => {
                     this.options.onInventoryToggle()
@@ -292,22 +297,14 @@ export class RatataGame {
 
     private handlePointerDown(event: ExcaliburPointerEvent): void {
         if (this.chat.isActive) return
-
-        const target = {
-            x: event.worldPos.x,
-            y: event.worldPos.y,
-        }
-
-        const id = characterAt(this.snapshot, this.localPlayerId, target, (actorId) =>
-            this.isCharacterVisible(actorId)
-        )
-        if (id) {
-            this.options.onCharacterClick?.(id)
-            return
-        }
-        if (event.button === PointerButton.Right) return
-        this.send({ type: 'cancel_control' })
-        this.send({ target, type: 'move_to' })
+        handleRuntimePointer(event, {
+            snapshot: this.snapshot,
+            playerId: this.localPlayerId,
+            visible: (id) => this.isCharacterVisible(id),
+            plant: (point) => this.plantingPreview.pick(point),
+            select: (id) => this.options.onCharacterClick?.(id),
+            send: (command) => this.send(command),
+        })
     }
 
     private flushMoveInput(): void {
