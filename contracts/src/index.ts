@@ -14,7 +14,9 @@ import type {
 } from './control'
 import type { CreatureType } from './creatures'
 export * from './control'
+import type { AutomationCommand, AutomationSnapshot } from './scenarios'
 export * from './creatures'
+export * from './scenarios'
 import type {
     ChestClientMessage,
     ChestContainerSnapshot,
@@ -149,6 +151,7 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    connected?: boolean
     relationship?: CharacterRelationship
     control?: CharacterControlSnapshot
     basicAttackKind?: BasicAttackKind
@@ -232,6 +235,7 @@ export interface MoveInputClientMessage {
 }
 
 export interface MoveToClientMessage {
+    append?: boolean
     target: Vector2
     type: 'move_to'
 }
@@ -265,6 +269,7 @@ export interface ChatClientMessage {
 }
 
 export type ClientMessage =
+    | AutomationCommand
     | CharacterControlCommand
     | AbilityClientMessage
     | ChestClientMessage
@@ -286,6 +291,7 @@ export type ClientMessage =
     | PickupItemClientMessage
 
 export interface WorldSnapshot {
+    automation?: AutomationSnapshot
     graves?: Array<import('./graves').WorldGraveSnapshot>
     chest?: ChestContainerSnapshot | null
     party?: PartySnapshot

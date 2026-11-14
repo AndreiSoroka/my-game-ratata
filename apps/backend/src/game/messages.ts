@@ -12,6 +12,7 @@ import { parseControlCommand } from './characterControl'
 import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
+import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { parsePickupCommand } from './worldPickup'
 
 export interface ParseResult {
@@ -50,6 +51,13 @@ export function parseClientMessage(raw: string): ParseResult {
 
     if (record === undefined) {
         return { error: 'Message must be an object' }
+    }
+
+    if (isAutomationCommand(record['type'])) {
+        const message = parseAutomationCommand(record)
+        return message === undefined
+            ? { error: 'Invalid automation command' }
+            : { message }
     }
 
     if (isChestCommandType(record['type'])) {
@@ -153,7 +161,22 @@ function parseMoveTo(record: Record<string, unknown>): ParseResult {
         return { error: 'move_to.target must be a vector' }
     }
 
-    return { message: { target, type: 'move_to' } }
+    if (
+        record['append'] !== undefined &&
+        typeof record['append'] !== 'boolean'
+    ) {
+        return { error: 'move_to.append must be a boolean' }
+    }
+
+    return {
+        message: {
+            target,
+            type: 'move_to',
+            ...(record['append'] === undefined
+                ? {}
+                : { append: record['append'] }),
+        },
+    }
 }
 
 function parseChat(record: Record<string, unknown>): ParseResult {

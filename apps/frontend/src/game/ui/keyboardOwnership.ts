@@ -19,6 +19,14 @@ export function isConfirmationKey(event: KeyboardEvent): boolean {
 export function worldKeyboardOwned(): boolean {
     return document.querySelector(windowSelector) !== null || isTextEntry(document.activeElement)
 }
+/** A placement tool may own canvas clicks; other visible windows still block them. */
+export function worldPointerBlocked(): boolean {
+    const windows = Array.from(document.querySelectorAll<HTMLElement>(windowSelector))
+    return (
+        windows.some((window) => !window.hasAttribute('data-world-pointer-owner')) ||
+        isTextEntry(document.activeElement)
+    )
+}
 /** A HUD button owns confirmation, but its focus does not disable unrelated game shortcuts. */
 export function gameKeyBlocked(event: KeyboardEvent): boolean {
     if (

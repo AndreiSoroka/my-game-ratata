@@ -1,4 +1,5 @@
 import type { AbilityId, PrayerIntent } from './abilities'
+import type { Vector2 } from './index'
 
 export type CharacterRelationship = 'self' | 'friendly' | 'hostile'
 
@@ -19,11 +20,23 @@ export type CharacterAutoAction =
 export type AutoActionWaiting =
     'cooldown' | 'resources' | 'range' | 'action' | null
 
+export interface CharacterRoutePoint {
+    number: number
+    position: Vector2
+}
+
+export interface CharacterRouteSnapshot {
+    locationId: string
+    points: CharacterRoutePoint[]
+    waiting: 'blocked' | null
+}
+
 export interface CharacterControlSnapshot {
-    mode: 'none' | 'follow' | 'attack' | 'action'
+    mode: 'none' | 'follow' | 'attack' | 'action' | 'route'
     targetId: string | null
     action?: CharacterAutoAction
     waiting?: AutoActionWaiting
+    route?: CharacterRouteSnapshot
 }
 
 export type CharacterControlCommand =

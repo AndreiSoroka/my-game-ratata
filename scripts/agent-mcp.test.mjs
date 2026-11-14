@@ -21,6 +21,30 @@ function messages(input) {
         .map((line) => JSON.parse(line))
 }
 
+test('MCP exposes bounded ordinary scenario commands and route appends', () => {
+    const [message] = messages([
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    ])
+    const act = message.result.tools.find((tool) => tool.name === 'ratata_act')
+    const decisions = act.inputSchema.properties.decision.oneOf
+    const save = decisions.find(
+        (entry) => entry.properties.type.const === 'scenario_save'
+    )
+    assert.equal(save.additionalProperties, false)
+    assert.equal(save.properties.scenario.properties.steps.maxItems, 64)
+    assert.equal(save.properties.scenario.additionalProperties, false)
+    const start = decisions.find(
+        (entry) => entry.properties.type.const === 'scenario_start'
+    )
+    assert.deepEqual(start.required, ['type', 'scenarioId'])
+    assert.ok(start.properties.targetId)
+    assert.equal(start.properties.ownerId, undefined)
+    const move = decisions.find(
+        (entry) => entry.properties.type.const === 'move_to'
+    )
+    assert.deepEqual(move.properties.append, { type: 'boolean' })
+})
+
 test('MCP negotiates, lists tools and ignores notifications without stdout noise', () => {
     const output = messages([
         {

@@ -157,7 +157,7 @@ describe('optional local NPC control bridge', () => {
         expect(
             (
                 await handleAgentRequest(
-                    request('/agent/act', { text: 'a'.repeat(5000) }),
+                    request('/agent/act', { text: 'a'.repeat(70_000) }),
                     room,
                     token
                 )

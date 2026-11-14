@@ -32,6 +32,7 @@ import {
 } from './mapVisibility'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { PrayerPreviewViews } from './prayerPreviewViews'
+import { RouteWaypointViews } from './routeWaypointViews'
 import { createSceneMapActor } from './sceneMapActor'
 import { ShotPreviewViews } from './shotPreviewViews'
 import { SignReadingViews } from './signReadingViews'
@@ -64,6 +65,7 @@ export class SceneActors {
     private readonly combatEffects: CombatEffects
     private readonly damageFeedback: DamageFeedback
     private readonly signReading: SignReadingViews
+    private readonly routeWaypoints: RouteWaypointViews
 
     public constructor(
         private readonly engine: Engine,
@@ -78,6 +80,7 @@ export class SceneActors {
         this.interactionTarget = new InteractionTargetViews(engine)
         this.attackZones = new AttackZoneViews(engine)
         this.signReading = new SignReadingViews(engine)
+        this.routeWaypoints = new RouteWaypointViews(engine)
         this.buildingViews = new BuildingViews(engine)
         this.depthProps = new DepthPropViews(engine)
         this.corpseViews = new CorpseViews(engine, sheets)
@@ -117,6 +120,7 @@ export class SceneActors {
         this.combatEffects.dispose()
         this.statusViews.dispose()
         this.signReading.dispose()
+        this.routeWaypoints.dispose()
         this.interactionTarget.dispose()
         this.combatTarget.dispose()
         this.attackZones.update([])
@@ -134,6 +138,7 @@ export class SceneActors {
         this.depthProps.dispose()
         this.interactionTarget.clear()
         this.combatTarget.clear()
+        this.routeWaypoints.clear()
         this.signReading.setMap(map.visibility)
         this.mapVisibility = map.visibility
         this.playerPosition = undefined
@@ -158,6 +163,9 @@ export class SceneActors {
         this.playerPosition =
             player?.alive && !player.tags.includes('offline') ? player.position : undefined
         if (!this.playerPosition) this.interactionTarget.clear()
+        this.routeWaypoints.updateSnapshot(snapshot, player, (position) =>
+            this.isPositionVisible(position)
+        )
         this.buildingViews.update(player?.position)
         this.signReading.update(snapshot.adventure?.worldObjects ?? [], player, (position) =>
             this.isPositionVisible(position)
@@ -197,6 +205,10 @@ export class SceneActors {
 
     public setShotPreview(path: ProjectilePath | undefined): void {
         this.shotPreview.set(path)
+    }
+
+    public clearWaypoints(): void {
+        this.routeWaypoints.clear()
     }
 
     public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {

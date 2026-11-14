@@ -9,12 +9,22 @@ import type {
     InventoryActionClientMessage,
 } from './index'
 import type { MovementClientMessage } from './movement'
+import type { AutomationCommand } from './scenarios'
 import type { TheftClientMessage } from './theft'
 
 export type SoulKind = 'spark' | 'echo'
 export type ControlSource = 'human' | 'model' | 'script'
 export type CompanionOrder = 'idle' | 'follow' | 'guard' | 'help'
 export type CompanionRequest = 'follow' | 'guard' | 'help' | 'dismiss' | 'talk'
+
+/** Authored willingness to accept a scenario; evaluated by the server. */
+export type AssistancePolicy =
+    | { kind: 'always' }
+    | { kind: 'never' }
+    | { kind: 'met' }
+    | { kind: 'quest_completed'; questId: string }
+    | { kind: 'all'; conditions: AssistancePolicy[] }
+    | { kind: 'any'; conditions: AssistancePolicy[] }
 
 export interface SoulProfile {
     canSpeak: boolean
@@ -42,6 +52,7 @@ export interface CompanionClientMessage {
 }
 
 export type AgentDecision =
+    | AutomationCommand
     | AdventureClientMessage
     | InventoryActionClientMessage
     | EquipmentActionClientMessage
@@ -52,7 +63,7 @@ export type AgentDecision =
     | TheftClientMessage
     | MovementClientMessage
     | { type: 'move'; axis: { x: number; y: number } }
-    | { type: 'move_to'; target: { x: number; y: number } }
+    | { type: 'move_to'; target: { x: number; y: number }; append?: boolean }
     | {
           type: 'attack'
           targetId?: string

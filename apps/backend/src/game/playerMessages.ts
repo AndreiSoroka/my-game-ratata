@@ -6,6 +6,7 @@ import type {
 
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
+import { enqueueCharacterRoute, hasCharacterRoute } from './characterRoute'
 import { isChestCommand } from './chestCommands'
 import type { NavigationService } from './navigation'
 import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
@@ -41,11 +42,7 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     }
 
     if (message.type === 'move_to') {
-        context.sendEvents(cancelPrayerCast(player, Date.now()))
-        cancelCharacterControl(player)
-        player.setPath(
-            context.navigation.findPathWorld(player.position, message.target)
-        )
+        applyRouteMessage(context, message)
         return
     }
 
@@ -95,5 +92,34 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
             player,
             message.text
         )
+    }
+}
+
+function applyRouteMessage(
+    context: PlayerMessageContext,
+    message: Extract<ClientMessage, { type: 'move_to' }>
+): void {
+    const { player, navigation, sendEvents } = context
+    sendEvents(cancelPrayerCast(player, Date.now()))
+    if (message.append !== true || !hasCharacterRoute(player)) {
+        cancelCharacterControl(player)
+    }
+    if (
+        !enqueueCharacterRoute(
+            player,
+            message.target,
+            message.append ?? false,
+            navigation,
+            Date.now()
+        )
+    ) {
+        sendEvents([
+            {
+                kind: 'notice',
+                actorId: player.id,
+                audienceIds: [player.id],
+                text: 'Маршрут недоступен или уже содержит 32 точки.',
+            },
+        ])
     }
 }

@@ -17,6 +17,11 @@ import {
     setAutoAction,
     snapshotAutoAction,
 } from './characterAutoAction'
+import {
+    advanceCharacterRoute,
+    clearCharacterRoute,
+    snapshotCharacterRoute,
+} from './characterRoute'
 import type { ControlWorld } from './controlWorld'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
@@ -45,6 +50,7 @@ export function snapshotControl(
 ): CharacterControlSnapshot {
     const state = controls.get(actor)
     return (
+        snapshotCharacterRoute(actor) ??
         snapshotAutoAction(actor) ?? {
             mode: state?.mode ?? 'none',
             targetId: state?.targetId ?? null,
@@ -53,7 +59,8 @@ export function snapshotControl(
 }
 export function cancelCharacterControl(actor: GameCharacter): void {
     const automatic = clearAutoAction(actor)
-    if (!controls.delete(actor) && !automatic) {
+    const route = clearCharacterRoute(actor)
+    if (!controls.delete(actor) && !automatic && !route) {
         return
     }
     actor.clearPath()
@@ -131,6 +138,10 @@ export function advanceCharacterControl(
     world: ControlWorld,
     now: number
 ): boolean {
+    const route = advanceCharacterRoute(actor, world, now)
+    if (route !== undefined) {
+        return route
+    }
     const automatic = advanceAutoAction(actor, world, now)
     if (automatic !== undefined) {
         return automatic

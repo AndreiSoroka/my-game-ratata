@@ -143,11 +143,13 @@ export class NavigationService {
         const end = this.worldToTile(destination)
         const tiles = findPath(this.grid, start, end)
 
-        if (tiles.length <= 1) {
-            return this.isSolidTile(end) ? [] : [destination]
+        if (tiles.length === 0) {
+            return []
         }
-
-        return tiles.slice(1).map((tile) => this.tileToWorld(tile))
+        return [
+            ...tiles.slice(1, -1).map((tile) => this.tileToWorld(tile)),
+            destination,
+        ]
     }
 
     public clampWorld(point: Vector2): Vector2 {

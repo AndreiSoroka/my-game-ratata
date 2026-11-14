@@ -3,6 +3,7 @@
 import { createInterface } from 'node:readline'
 import { abilityDecisionSchemas } from './agent-ability-schemas.mjs'
 import { economyDecisionSchemas } from './agent-economy-schemas.mjs'
+import { scenarioDecisionSchemas } from './agent-scenario-schemas.mjs'
 
 const token = process.env.GAME_AGENT_TOKEN
 const base = new URL(process.env.GAME_AGENT_URL ?? 'http://127.0.0.1:3000')
@@ -44,6 +45,7 @@ const tools = [
                     oneOf: [
                         ...abilityDecisionSchemas,
                         ...economyDecisionSchemas,
+                        ...scenarioDecisionSchemas,
                         {
                             type: 'object',
                             required: ['type'],
@@ -112,6 +114,7 @@ const tools = [
                             properties: {
                                 type: { const: 'move_to' },
                                 target: vectorSchema(),
+                                append: { type: 'boolean' },
                             },
                             additionalProperties: false,
                         },

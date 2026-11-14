@@ -2,6 +2,7 @@ import type {
     AbilityClientMessage,
     AdventureClientMessage,
     AgentDecision,
+    AutomationCommand,
     CharacterControlCommand,
     ChestClientMessage,
     ChestContainerSnapshot,
@@ -23,6 +24,7 @@ import { parseAgentDecision } from './agentDecisionParsing'
 import { applyAgentInventory, isInventoryDecision } from './agentInventory'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
+import { enqueueCharacterRoute, hasCharacterRoute } from './characterRoute'
 import { isAdventureCommand } from './extraCommands'
 import {
     cancelMovementMode,
@@ -31,10 +33,16 @@ import {
 } from './movementActions'
 import type { NavigationService } from './navigation'
 import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
+import { isAutomationDecision } from './scenarioCommands'
 import { isTheftCommand } from './theftCommands'
 import type { PickupRequest } from './worldPickup'
 
 export interface CompanionWorld {
+    requestAutomation?(
+        actor: GameCharacter,
+        message: AutomationCommand,
+        now: number
+    ): AgentDecisionResult
     requestAdventure?(
         actor: GameCharacter,
         message: AdventureClientMessage,
@@ -129,7 +137,13 @@ export function applyAgentDecision(
                 cancelPrayerForMovement(character, decision.axis, now)
             )
         case 'move_to':
-            return agentMoveTo(character, decision.target, world, now)
+            return agentMoveTo(
+                character,
+                decision.target,
+                world,
+                now,
+                decision.append ?? false
+            )
         case 'attack':
             return applyAgentAttack(character, decision, world, now)
         case 'speak':
@@ -166,7 +180,8 @@ function agentMoveTo(
     character: GameCharacter,
     target: { x: number; y: number },
     world: CompanionWorld,
-    now: number
+    now: number,
+    append: boolean
 ): AgentDecisionResult {
     const navigation = world.navigationFor(character)
     if (
@@ -177,8 +192,12 @@ function agentMoveTo(
     ) {
         return rejected('Destination is outside this location')
     }
-    cancelAgentControl(character, world, now)
-    character.setPath(navigation.findPathWorld(character.position, target))
+    if (!append || !hasCharacterRoute(character)) {
+        cancelAgentControl(character, world, now)
+    }
+    if (!enqueueCharacterRoute(character, target, append, navigation, now)) {
+        return rejected('Route is unavailable or has 32 points')
+    }
     return accepted(cancelPrayerCast(character, now))
 }
 
@@ -227,6 +246,37 @@ function applySharedDecision(
     world: CompanionWorld,
     now: number
 ): AgentDecisionResult | undefined {
+    const service = applyServiceDecision(actor, decision, world, now)
+    if (service !== undefined) {
+        return service
+    }
+    if (isInventoryDecision(decision)) {
+        return applyAgentInventory(actor, decision, world, now)
+    }
+    if (isTheftCommand(decision)) {
+        return agentTheft(actor, decision, world, now)
+    }
+    if (isAgentAbility(decision)) {
+        return applyAgentAbility(actor, decision, world, now)
+    }
+    if (isAgentControl(decision)) {
+        return applyAgentControl(actor, decision, world, now)
+    }
+    return undefined
+}
+
+function applyServiceDecision(
+    actor: GameCharacter,
+    decision: AgentDecision,
+    world: CompanionWorld,
+    now: number
+): AgentDecisionResult | undefined {
+    if (isAutomationDecision(decision)) {
+        return (
+            world.requestAutomation?.(actor, decision, now) ??
+            rejected('Automation service unavailable')
+        )
+    }
     if (
         decision.type === 'inventory_action' ||
         decision.type === 'equipment_action'
@@ -241,18 +291,6 @@ function applySharedDecision(
             world.requestAdventure?.(actor, decision, now) ??
             rejected('Adventure service unavailable')
         )
-    }
-    if (isInventoryDecision(decision)) {
-        return applyAgentInventory(actor, decision, world, now)
-    }
-    if (isTheftCommand(decision)) {
-        return agentTheft(actor, decision, world, now)
-    }
-    if (isAgentAbility(decision)) {
-        return applyAgentAbility(actor, decision, world, now)
-    }
-    if (isAgentControl(decision)) {
-        return applyAgentControl(actor, decision, world, now)
     }
     return undefined
 }

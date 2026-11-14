@@ -12,6 +12,7 @@ import {
 import { parseCombatReference } from './combatTargetParsing'
 import { isAdventureCommand, parseExtraCommand } from './extraCommands'
 import { parseClientMessage } from './messages'
+import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { isTheftCommandType } from './theftCommands'
 
 export function parseAgentDecision(input: unknown): AgentDecision | undefined {
@@ -37,10 +38,30 @@ export function parseAgentDecision(input: unknown): AgentDecision | undefined {
         case 'move':
             return parseVector('move', record['axis'])
         case 'move_to':
-            return parseVector('move_to', record['target'])
+            return parseMoveTo(record)
         default:
             return undefined
     }
+}
+
+function parseMoveTo(
+    record: Record<string, unknown>
+): AgentDecision | undefined {
+    if (
+        record['append'] !== undefined &&
+        typeof record['append'] !== 'boolean'
+    ) {
+        return undefined
+    }
+    const move = parseVector('move_to', record['target'])
+    return move === undefined
+        ? undefined
+        : {
+              ...move,
+              ...(record['append'] === undefined
+                  ? {}
+                  : { append: record['append'] }),
+          }
 }
 
 function parseAttack(
@@ -107,6 +128,9 @@ function parseTheft(
 function parseSharedDecision(
     record: Record<string, unknown>
 ): AgentDecision | undefined {
+    if (isAutomationCommand(record['type'])) {
+        return parseAutomationCommand(record)
+    }
     if (
         record['type'] === 'inventory_action' ||
         record['type'] === 'equipment_action'

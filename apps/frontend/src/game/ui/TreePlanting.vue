@@ -67,6 +67,7 @@ onBeforeUnmount(() => {
     <section
         ref="panel"
         class="tree-planting rpg-panel"
+        data-world-pointer-owner
         role="dialog"
         aria-label="Посадка дерева"
         @keydown.stop

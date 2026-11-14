@@ -38,7 +38,7 @@ async function handleAction(
     room: GameRoom
 ): Promise<Response> {
     const text = await request.text()
-    if (text.length > 4096) {
+    if (text.length > 64 * 1024) {
         return Response.json({ error: 'Action is too large' }, { status: 413 })
     }
     let input: unknown
