@@ -2,7 +2,7 @@
 import './game/ui/gameNotice.css'
 
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { ChatInputState } from './game/runtime/chatInput'
 import type { RatataGame } from './game/runtime/ratataGame'
@@ -10,10 +10,10 @@ import TestControlPanel from './game/testing/TestControlPanel.vue'
 import { useGameTestControls } from './game/testing/useGameTestControls'
 import AdventurePanel from './game/ui/AdventurePanel.vue'
 import { startAppRuntime } from './game/ui/appRuntime'
+import AutomationPanels from './game/ui/AutomationPanels.vue'
 import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
 import DeathOverlay from './game/ui/DeathOverlay.vue'
-import { recoverFailedJoin } from './game/ui/failedJoin'
 import GameMenu from './game/ui/GameMenu.vue'
 import GameplayOverlay from './game/ui/GameplayOverlay.vue'
 import { provideHotbarSession } from './game/ui/hotbarSession'
@@ -22,9 +22,10 @@ import JoinGamePanel from './game/ui/JoinGamePanel.vue'
 import NearbyInteraction from './game/ui/NearbyInteraction.vue'
 import { createTransientNotices } from './game/ui/transientNotices'
 import TreePlanting from './game/ui/TreePlanting.vue'
+import { useAppSession } from './game/ui/useAppSession'
+import { useAppWindows } from './game/ui/useAppWindows'
 import { useCharacterViews } from './game/ui/useCharacterViews'
 import { useChestSession } from './game/ui/useChestSession'
-import { useGameMenu } from './game/ui/useGameMenu'
 import { useInventoryUi } from './game/ui/useInventoryUi'
 import { useLifeChoice } from './game/ui/useLifeChoice'
 
@@ -62,7 +63,7 @@ const {
     setInventory,
     closeInventory,
     startPlanting,
-    toggleInventory,
+    toggleInventory: toggleInventoryBase,
     closeContainers,
 } = useInventoryUi(
     () => game.value,
@@ -79,6 +80,7 @@ const {
     connected: () => status.value === 'Connected',
     send: (command) => game.value?.sendCommand(command),
     onOpen: () => {
+        automationPanels.value?.close()
         inventoryOpen.value = false
         adventurePanel.value?.closeWindows()
         if (snapshot.value?.adventure?.dialogue)
@@ -101,54 +103,60 @@ const { testState, testInterface } = useGameTestControls({
     joinGame,
     setInventory,
 })
-const gameMenu = useGameMenu({
-    available: () => isStarted.value,
-    game: () => game.value,
-    chatting: () => chatInput.value.active,
+const {
+    gameMenu,
+    automationPanels,
+    worldInputBlocked,
+    openNearbyMenu,
+    toggleInventory,
+    prepareAutomationWindow,
+    openAutomation,
+    closeOtherContainers,
+} = useAppWindows({
+    game,
+    isStarted,
+    chatInput,
+    planting,
+    inventoryOpen,
+    chestPending,
+    status,
+    defeated,
+    snapshot,
+    gameplay,
+    interaction,
+    adventure: adventurePanel,
+    closeInventory,
+    closeContainers,
+    toggleInventory: toggleInventoryBase,
     leave: () => leaveSession('nickname'),
 })
-
-const worldInputBlocked = computed(
-    () =>
-        gameMenu.open.value ||
-        planting.value ||
-        inventoryOpen.value ||
-        chestPending.value ||
-        chatInput.value.active ||
-        status.value !== 'Connected' ||
-        defeated.value ||
-        Boolean(adventurePanel.value?.hasOpenWindow) ||
-        Boolean(snapshot.value?.adventure?.dialogue)
-)
-
-function openNearbyMenu(id?: string): void {
-    if (planting.value) return
-    if (id) gameplay.value?.select(id)
-    if (chestPending.value) return
-    closeInventory()
-    adventurePanel.value?.closeWindows()
-    void nextTick(() => interaction.value?.openMenu())
-}
+const { leaveSession, cleanupFailedJoin } = useAppSession({
+    gameMenu,
+    automationPanels,
+    notices,
+    hotbarSession,
+    testInterface,
+    defeated,
+    errorMessage,
+    isJoining,
+    localPlayerId,
+    game,
+    snapshot,
+    inventoryOpen,
+    planting,
+    chatInput,
+    isStarted,
+    status,
+})
 
 async function joinGame(): Promise<void> {
     if (!canJoin.value) {
         return
     }
 
-    errorMessage.value = ''
-    isJoining.value = true
-    isStarted.value = true
-    await nextTick()
-
-    if (gameHost.value === undefined) {
-        errorMessage.value = 'Game surface is not ready'
-        cleanupFailedJoin()
-        return
-    }
-
     await startAppRuntime({
         game,
-        container: gameHost.value,
+        container: () => gameHost.value,
         nickname: nickname.value,
         heroClass: heroClass.value,
         gameplay: () => gameplay.value,
@@ -157,6 +165,7 @@ async function joinGame(): Promise<void> {
         snapshot,
         localPlayerId,
         isJoining,
+        isStarted,
         status,
         notices,
         confirmDeath: () => {
@@ -168,40 +177,6 @@ async function joinGame(): Promise<void> {
         toggleInventory,
     })
 }
-
-function cleanupFailedJoin(): void {
-    recoverFailedJoin(isJoining, localPlayerId.value, resetGameSession)
-}
-
-function leaveSession(focusId: string): void {
-    if (focusId === 'hero-class') hotbarSession.clear()
-    testInterface?.api.stop()
-    resetGameSession()
-    defeated.value = false
-    errorMessage.value = ''
-    void nextTick(() => document.getElementById(focusId)?.focus())
-}
-
-function resetGameSession(): void {
-    gameMenu.open.value = false
-    notices.reset()
-    game.value?.stop()
-    game.value = undefined
-    snapshot.value = undefined
-    localPlayerId.value = undefined
-    inventoryOpen.value = false
-    planting.value = false
-    chatInput.value = { active: false, draft: '', maxLength: 100 }
-    isStarted.value = false
-    isJoining.value = false
-    status.value = 'Ready'
-}
-
-onBeforeUnmount(() => {
-    notices.reset()
-    testInterface?.dispose()
-    game.value?.stop()
-})
 </script>
 
 <template>
@@ -227,6 +202,7 @@ onBeforeUnmount(() => {
                     :test-mode="Boolean(testInterface)"
                     @toggle-inventory="toggleInventory"
                     @open-menu="gameMenu.show"
+                    @create-marker="automationPanels?.create()"
                     @close-inventory="closeInventory"
                     @plant="startPlanting"
                     @assign-hotbar="gameplay?.assignItem($event.slot, $event.itemId)"
@@ -281,7 +257,19 @@ onBeforeUnmount(() => {
                     :player="localCharacter"
                     :party="snapshot.party"
                     :server-time="snapshot.serverTime"
-                    @close-inventory="closeContainers"
+                    @close-inventory="closeOtherContainers"
+                    @command="game?.sendCommand($event)"
+                />
+                <AutomationPanels
+                    v-if="snapshot && localCharacter"
+                    ref="automationPanels"
+                    :snapshot="snapshot"
+                    :player="localCharacter"
+                    :characters="visibleCharacters"
+                    :game="game"
+                    :connected="status === 'Connected'"
+                    :blocked="worldInputBlocked"
+                    @open="prepareAutomationWindow"
                     @command="game?.sendCommand($event)"
                 />
                 <ChestContainer
@@ -306,8 +294,11 @@ onBeforeUnmount(() => {
             </div>
             <GameMenu
                 v-if="gameMenu.open.value"
+                :automation-available="Boolean(localCharacter)"
                 @resume="gameMenu.resume"
                 @leave="gameMenu.leave"
+                @markers="openAutomation('markers')"
+                @scenarios="openAutomation('scenarios')"
             />
         </section>
         <p v-if="notice" class="game-notice" role="status" aria-live="polite">{{ notice }}</p>

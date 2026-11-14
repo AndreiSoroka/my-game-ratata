@@ -88,7 +88,7 @@ describe('companion consent and speech', () => {
         expect(enchanted.soul).toMatchObject({
             canSpeak: true,
             controlSource: 'script',
-            kind: 'spark',
+            kind: 'echo',
         })
     })
 
@@ -303,9 +303,11 @@ describe('validated external agent adapter', () => {
         expect(fallback.update).not.toHaveBeenCalled()
         expect(slime.getMoveInput()).toEqual({ x: 1, y: 0 })
         expect(slime.soul.controlSource).toBe('model')
+        expect(slime.soul.kind).toBe('spark')
         controller.update(slime, context.world as GameRoom, 10_000)
         expect(fallback.update).toHaveBeenCalledTimes(1)
         expect(slime.soul.controlSource).toBe('script')
+        expect(slime.soul.kind).toBe('echo')
         service.decide(
             slime,
             { axis: { x: -1, y: 0 }, type: 'move' },

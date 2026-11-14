@@ -1,4 +1,5 @@
 import type {
+    AssistancePolicy,
     CompanionOrder,
     CompanionRequest,
     SoulProfile,
@@ -13,6 +14,7 @@ export interface CompanionProfile {
     needsIntroduction: boolean
     personality: string
     stationary: boolean
+    assistancePolicy: AssistancePolicy
 }
 
 export const residentProfile: CompanionProfile = {
@@ -20,6 +22,7 @@ export const residentProfile: CompanionProfile = {
     canFollow: false,
     needsIntroduction: false,
     stationary: true,
+    assistancePolicy: { kind: 'never' },
     personality:
         'Житель бережёт свой дом и самостоятельно решает, кому доверять.',
     greeting:
@@ -28,16 +31,35 @@ export const residentProfile: CompanionProfile = {
 
 export const companionProfiles: Record<string, CompanionProfile> = {
     ...Object.fromEntries(
-        cityResidents.map(({ id, greeting, personality }) => [
-            id,
-            { ...residentProfile, greeting, personality },
-        ])
+        cityResidents.map(
+            ({
+                id,
+                greeting,
+                personality,
+                assistancePolicy,
+                idleRouteTiles,
+            }) => [
+                id,
+                {
+                    ...residentProfile,
+                    greeting,
+                    personality,
+                    ...(assistancePolicy === undefined
+                        ? {}
+                        : { assistancePolicy }),
+                    ...(idleRouteTiles === undefined
+                        ? {}
+                        : { canFollow: true, stationary: false }),
+                },
+            ]
+        )
     ),
     npc_princess_1: {
         canFight: false,
         canFollow: true,
         needsIntroduction: true,
         stationary: false,
+        assistancePolicy: { kind: 'met' },
         personality:
             'Любопытная принцесса Лея выбирает друзей сама. Хочет увидеть мир, но отказывается сражаться.',
         greeting:
@@ -48,6 +70,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
         canFollow: true,
         needsIntroduction: false,
         stationary: false,
+        assistancePolicy: { kind: 'always' },
         personality:
             'Ветеран Бран прямолинеен, бережёт товарищей и отвечает за согласие собственным словом.',
         greeting:
@@ -58,6 +81,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
         canFollow: false,
         needsIntroduction: false,
         stationary: true,
+        assistancePolicy: { kind: 'never' },
         personality:
             'Стражница Рада хранит пост. Преследует нарушителя недолго за городской чертой и возвращается; в спутники не нанимается.',
         greeting:
@@ -68,8 +92,9 @@ export const companionProfiles: Record<string, CompanionProfile> = {
         canFollow: true,
         needsIntroduction: false,
         stationary: false,
+        assistancePolicy: { kind: 'always' },
         personality:
-            'Заколдованный слизень Капля обладает Искрой и речью. Дружелюбен, но не любит насилие.',
+            'Заколдованный слизень Капля умеет говорить и повторяет привычку исследовать лужи. Дружелюбен, но не любит насилие.',
         greeting:
             'Буль! Я Капля. Обычные слизни не говорят, а меня разбудила искра колокола. Пойдём смотреть лужи?',
     },
@@ -78,7 +103,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
 export function companionSoul(id: string): Partial<SoulProfile> {
     const profile = companionProfiles[id] ?? residentProfile
     return {
-        kind: 'spark',
+        kind: 'echo',
         controlSource: 'script',
         canSpeak: true,
         personality: profile.personality,

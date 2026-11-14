@@ -8,6 +8,7 @@ import {
     retireCharacter,
     shouldRetireCharacter,
 } from './characterLife'
+import { setCharacterControlSource } from './characterSoul'
 import type { CharacterController } from './controllers'
 import { normalizeNickname } from './identity'
 import type { RoomSocket } from './roomMessaging'
@@ -66,6 +67,8 @@ export function finalizeRoomLife(
     const event = retireCharacter(character)
     context.afterRetire?.(character, context.now)
     context.onEvents([event])
+    character.connected = false
+    setCharacterControlSource(character, 'script')
     for (const [ws, id] of context.connections) {
         if (id === character.id) {
             context.connections.set(ws, undefined)

@@ -45,12 +45,12 @@ describe('production player status', () => {
         expect(wrapper.text()).not.toContain('NaN')
         wrapper.unmount()
     })
-    it('updates independent soul, controller and speech indicators without textual badges', async () => {
+    it('updates active model Spark and independent speech indicators without textual badges', async () => {
         const wrapper = mount(PlayerStatusPanel, { props: { character: playerStatusFixture() } })
         await wrapper.setProps({
             character: playerStatusFixture({
                 soul: {
-                    kind: 'echo',
+                    kind: 'spark',
                     controlSource: 'model',
                     canSpeak: false,
                     personality: 'Тихий',
@@ -60,8 +60,8 @@ describe('production player status', () => {
         })
         expect(
             wrapper.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))
-        ).toEqual(['Эхо', 'Управляется ИИ', 'Без речи'])
-        expect(wrapper.find('.soul-badge').text()).toBe('◌')
+        ).toEqual(['Искра', 'Управляется ИИ', 'Без речи'])
+        expect(wrapper.find('.soul-badge').text()).toBe('✧')
         wrapper.unmount()
     })
 })

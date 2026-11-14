@@ -73,8 +73,8 @@ function request(request: CompanionRequest): void {
             <button type="button" aria-label="Закрыть спутников" @click="emit('close')">×</button>
         </header>
         <p class="companion-intro">
-            У каждого своя воля. Сначала познакомьтесь, затем попросите о помощи. Речь и готовность
-            сражаться — разные качества.
+            У жителей разные привычки и условия помощи. Сначала познакомьтесь и попросите о помощи.
+            Речь и готовность сражаться — разные качества.
         </p>
         <div class="companion-roster" aria-label="Жители поблизости">
             <button

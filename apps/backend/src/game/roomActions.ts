@@ -78,7 +78,7 @@ export function handleRoomAction(
         )
     }
     if (message.type === 'companion_request') {
-        return context.companions.handle(player, message, characters, now)
+        return companionAction(context, message)
     }
     if (isProgressionCommand(message)) {
         const events = handleProgressionCommand(player, message, {
@@ -179,4 +179,47 @@ function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
     }
 
     return undefined
+}
+
+function companionAction(
+    context: ActionContext,
+    message: Extract<ClientMessage, { type: 'companion_request' }>
+): GameEventPayload[] {
+    const { player, characters, now } = context
+    if (message.request === 'talk') {
+        const npc = characters.find(
+            (character) => character.id === message.targetId
+        )
+        const events = context.adventure.interact(
+            player,
+            message.targetId,
+            characters,
+            context.navigation,
+            now,
+            undefined,
+            npc === undefined
+                ? undefined
+                : context.companions.dialogueText(player, npc)
+        )
+        if (
+            events.some(
+                (event) =>
+                    event.kind === 'chat' && event.actorId === message.targetId
+            )
+        ) {
+            context.companions.rememberMeeting(
+                player,
+                characters.find(
+                    (character) => character.id === message.targetId
+                )
+            )
+        }
+        return events
+    }
+    return context.companions.handle(player, message, characters, now, {
+        questCompleted: (actorId, questId) =>
+            context.adventure.hasCompletedQuest(actorId, questId),
+        hasLineOfSight: (actor, npc) =>
+            context.navigation.hasLineOfSight(actor.position, npc.position),
+    })
 }

@@ -31,7 +31,8 @@ const selectedId = ref<string>()
 const { selectedGraveId, grave, selectGrave, clearGrave } = useGraveSelection(
     props,
     selectedId,
-    () => cancel()
+    () => cancel(),
+    () => release()
 )
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
 const speech = ref<InstanceType<typeof SpeechBubbles>>()
@@ -48,10 +49,18 @@ function cancel(clear = false): void {
         clearGrave()
     }
 }
+function release(): void {
+    hotbar.value?.resetGesture()
+    send({ type: 'release_input' })
+}
+function selectTarget(id: string | undefined): void {
+    if (id !== selectedId.value) cancel()
+    selectedId.value = id
+}
 function select(id: string, open = false): void {
     const character = props.characters.find((actor) => actor.id === id)
     if (!character || character.tags.includes('offline')) return
-    selectedId.value = id
+    selectTarget(id)
     if (open && relation(character, props.player) !== 'hostile') emit('interact', id)
 }
 function key(event: KeyboardEvent): void {
@@ -82,14 +91,11 @@ function key(event: KeyboardEvent): void {
     }
     const actions: Record<string, () => void> = {
         KeyF: () => {
-            selectedId.value = props.player.id
+            selectTarget(props.player.id)
         },
         KeyT: () => {
-            selectedId.value = nextTarget(
-                props.characters,
-                props.player,
-                selectedId.value,
-                event.shiftKey
+            selectTarget(
+                nextTarget(props.characters, props.player, selectedId.value, event.shiftKey)
             )
         },
     }
@@ -101,6 +107,7 @@ useEscapeOwner({
         !props.blocked &&
         Boolean(
             props.player.abilities?.casting?.mode === 'purify_grave' ||
+            props.snapshot.automation?.run?.status === 'running' ||
             selectedId.value ||
             selectedGraveId.value ||
             (props.player.control && props.player.control.mode !== 'none')
@@ -116,10 +123,10 @@ function activateSlot(slot: number, edit: boolean): void {
     else hotbar.value?.activate(slot)
 }
 function visibility(): void {
-    if (document.hidden) cancel()
+    if (document.hidden) release()
 }
 function blur(): void {
-    cancel()
+    release()
 }
 function receive(event: GameEventPayload): void {
     speech.value?.receive(event)
@@ -155,20 +162,20 @@ watch(
     () => props.snapshot.location?.id,
     () => {
         selectedId.value = undefined
-        if (props.player.control?.mode !== 'follow') cancel()
+        if (props.player.control?.mode !== 'follow') release()
         speech.value?.clear()
     }
 )
 watch(
     () => props.blocked,
     (blocked) => {
-        if (blocked) cancel()
+        if (blocked) release()
     }
 )
 watch(
     () => !props.player.alive || props.player.cooldowns.stunMsLeft > 0,
     (disrupted) => {
-        if (disrupted) cancel()
+        if (disrupted) release()
     }
 )
 watch(
@@ -176,19 +183,18 @@ watch(
     () => {
         if (selectedId.value && !target.value) {
             selectedId.value = undefined
-            if (props.player.control?.mode !== 'follow') cancel()
+            if (props.player.control?.mode !== 'follow') release()
         }
         if (
             target.value &&
             !target.value.alive &&
             relation(target.value, props.player) === 'hostile'
-        )
-            cancel(true)
+        ) {
+            selectedId.value = undefined
+            release()
+        }
     }
 )
-watch(selectedId, (id, previous) => {
-    if (id !== previous && props.player.control?.mode !== 'follow') cancel()
-})
 watch([target, grave], ([character, selectedGrave]) =>
     props.game?.setCombatTarget(
         character
@@ -217,7 +223,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('blur', blur)
     document.removeEventListener('visibilitychange', visibility)
     props.game?.setCombatTarget(undefined)
-    cancel()
+    release()
 })
 defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel, assignItem })
 </script>

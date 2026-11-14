@@ -4,7 +4,8 @@ import { nextTick, onMounted, ref } from 'vue'
 import { dialogActionKeys } from './dialogActionKeys'
 import { useEscapeOwner } from './uiEscapeOwners'
 
-const emit = defineEmits<{ resume: []; leave: [] }>()
+withDefaults(defineProps<{ automationAvailable?: boolean }>(), { automationAvailable: true })
+const emit = defineEmits<{ resume: []; leave: []; markers: []; scenarios: [] }>()
 const panel = ref<HTMLElement>()
 useEscapeOwner({ active: () => true, escape: () => emit('resume'), element: panel, priority: 200 })
 onMounted(async () => {
@@ -29,6 +30,22 @@ onMounted(async () => {
             <p>Мир продолжает жить, пока открыто меню.</p>
             <button type="button" data-dialog-action="resume" @click="emit('resume')">
                 Вернуться в игру
+            </button>
+            <button
+                type="button"
+                data-dialog-action="markers"
+                :disabled="!automationAvailable"
+                @click="emit('markers')"
+            >
+                Метки
+            </button>
+            <button
+                type="button"
+                data-dialog-action="scenarios"
+                :disabled="!automationAvailable"
+                @click="emit('scenarios')"
+            >
+                Сценарии
             </button>
             <button type="button" data-dialog-action="leave" @click="emit('leave')">
                 Выйти из игры

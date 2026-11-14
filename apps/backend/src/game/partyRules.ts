@@ -17,6 +17,7 @@ export interface PartyRecord {
 export function available(character: GameCharacter | undefined): boolean {
     return (
         character?.controllerKind === 'network_player' &&
+        character.connected &&
         character.alive &&
         !character.tags.has('offline') &&
         !character.tags.has('state.retired')
@@ -55,6 +56,7 @@ export function shouldRemoveMember(
 ): boolean {
     return (
         character === undefined ||
+        !character.connected ||
         character.tags.has('offline') ||
         character.tags.has('state.retired')
     )
@@ -114,7 +116,9 @@ export function createPartySnapshot(
                                   )
                               ) * 100
                           ),
-                          online: !character.tags.has('offline'),
+                          online:
+                              character.connected &&
+                              !character.tags.has('offline'),
                           locationId: character.locationId,
                       },
                   ]

@@ -6,7 +6,8 @@ import type { RatataGame } from '../runtime/ratataGame'
 export function useGraveSelection(
     props: { snapshot: WorldSnapshot; player: CharacterSnapshot; game?: RatataGame },
     selectedId: Ref<string | undefined>,
-    cancel: () => void
+    cancel: () => void,
+    release: () => void = cancel
 ) {
     const selectedGraveId = ref<string>()
     const grave = computed(() =>
@@ -18,11 +19,12 @@ export function useGraveSelection(
     function selectGrave(id: string): void {
         const candidate = props.snapshot.graves?.find((entry) => entry.id === id)
         if (!props.player.alive || !candidate || candidate.phase === 'purified') return
+        if (selectedGraveId.value !== id) cancel()
         selectedId.value = undefined
         selectedGraveId.value = id
     }
     watch(selectedGraveId, (id, previous) => {
-        if (id !== previous) cancel()
+        if (id !== previous) release()
     })
     watch(selectedId, (id) => {
         if (id) clearGrave()
@@ -39,7 +41,7 @@ export function useGraveSelection(
             props.game?.isPositionVisible(current.position) === false
         )
             clearGrave()
-        else if (current.phase !== previous?.phase) cancel()
+        else if (current.phase !== previous?.phase) release()
     })
     return { selectedGraveId, grave, selectGrave, clearGrave }
 }

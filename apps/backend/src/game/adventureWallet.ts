@@ -1,4 +1,5 @@
 import { createAdventureState, type PlayerAdventure } from './adventureState'
+import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
 import { setNotice } from './notices'
 export function grantAdventureGoldOnce(
     state: PlayerAdventure,
@@ -29,4 +30,19 @@ export function getAdventureState(
     const state = createAdventureState()
     states.set(id, state)
     return state
+}
+
+export function createAdventureWalletActions(
+    states: Map<string, PlayerAdventure>
+) {
+    const stateFor = (id: string) => getAdventureState(states, id)
+    return {
+        grantGoldOnce: (id: string, amount: number, receipt: string) =>
+            grantAdventureGoldOnce(stateFor(id), amount, receipt),
+        trySpendGold: (id: string, amount: number) =>
+            spendWallet(stateFor(id), amount),
+        drainGold: (id: string) => drainWallet(stateFor(id)),
+        creditLootGold: (id: string, amount: number) =>
+            creditWallet(stateFor(id), amount),
+    }
 }

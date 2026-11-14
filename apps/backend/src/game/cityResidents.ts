@@ -1,4 +1,8 @@
-import type { CharacterVisualId, CreatureType } from '@my-game-ratata/contracts'
+import type {
+    AssistancePolicy,
+    CharacterVisualId,
+    CreatureType,
+} from '@my-game-ratata/contracts'
 
 import type { TileCoordinate } from './navigation'
 
@@ -10,6 +14,8 @@ interface CityResident {
     visualId: CharacterVisualId
     greeting: string
     personality: string
+    assistancePolicy?: AssistancePolicy
+    idleRouteTiles?: readonly TileCoordinate[]
 }
 
 export const cityResidents: CityResident[] = [

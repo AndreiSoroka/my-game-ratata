@@ -3,7 +3,6 @@ import {
     type ClientMessage,
     type HeroClass,
     type TheftClientMessage,
-    type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
 import { AdventureService } from './adventure'
@@ -21,7 +20,7 @@ import { findVisibleTarget as findVisibleTargetInRoom } from './queries'
 import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
-import { handleCharacterMessage } from './roomClientMessages'
+import { dispatchRoomClientMessage } from './roomClientDispatch'
 import { controlIntent } from './roomControl'
 import {
     createAdventureRequester,
@@ -34,11 +33,17 @@ import { RoomLife } from './roomLife'
 import { type RoomSocket, sendError } from './roomMessaging'
 import { createRoomPlayer } from './roomPlayer'
 import { charactersInLocation, connectionsInLocation } from './roomQueries'
+import {
+    createRoomScenarioService,
+    createScenarioEnvironment,
+    createScenarioRequester,
+    registerWandererScenarios,
+} from './roomScenarios'
 import { advanceRoomSimulation } from './roomSimulation'
-import { roomSnapshot } from './roomSnapshot'
+import { createRoomSnapshotter } from './roomSnapshot'
 import { spawnRoomCharacters } from './roomSpawns'
 import { TheftService } from './theft'
-import { centerLocationId, WorldLocations } from './worldLocations'
+import { WorldLocations } from './worldLocations'
 
 const tickMs = 50
 
@@ -53,6 +58,15 @@ export class GameRoom {
         adventureWorldOptions(() => this.world)
     )
     private readonly companions = new CompanionService()
+    public readonly scenarios = createRoomScenarioService(
+        this,
+        this.companions,
+        () => this.characters.values(),
+        this.adventure
+    )
+    public readonly scenarioEnvironment = createScenarioEnvironment(
+        () => this.world
+    )
     private readonly life = new RoomLife(
         this.characters,
         this.connections,
@@ -83,6 +97,11 @@ export class GameRoom {
         )
         this.life.registerGraves(graves, Date.now())
         seedNpcPockets(this.characters.values())
+        registerWandererScenarios(
+            this,
+            this.scenarios,
+            this.characters.values()
+        )
     }
 
     public start(): void {
@@ -116,8 +135,12 @@ export class GameRoom {
     }
 
     public handleClose(ws: RoomSocket): void {
-        leaveRoom(this.connections, this.characters, ws, (id) =>
-            this.world.closeChestViews(id)
+        leaveRoom(
+            this.connections,
+            this.characters,
+            ws,
+            (id) => this.world.closeChestViews(id),
+            (id) => this.adventure.closeConversations(id)
         )
     }
 
@@ -167,25 +190,20 @@ export class GameRoom {
         return this.world.get(character.locationId).navigation
     }
 
-    private connectionsIn(
-        locationId: string
-    ): Map<RoomSocket, string | undefined> {
-        return connectionsInLocation(
-            this.connections,
-            this.characters,
-            locationId
-        )
-    }
+    private readonly connectionsIn = (locationId: string) =>
+        connectionsInLocation(this.connections, this.characters, locationId)
 
     public findVisibleTarget(
         observer: GameCharacter,
-        radius: number
+        radius: number,
+        now = Date.now()
     ): GameCharacter | undefined {
         return findVisibleTargetInRoom(
             charactersInLocation(this.characters, observer.locationId).values(),
             this.navigationFor(observer),
             observer,
-            radius
+            radius,
+            now
         )
     }
 
@@ -207,51 +225,26 @@ export class GameRoom {
         return controlIntent(actor, message, this, now)
     }
 
-    public snapshot(
-        now = Date.now(),
-        locationId = centerLocationId,
-        playerId?: string
-    ): WorldSnapshot {
-        return roomSnapshot(
-            {
-                adventure: this.adventure,
-                theft: this.theft,
-                characters: this.characters,
-                parties: this.parties,
-                tick: this.tickIndex,
-                world: this.world,
-                life: this.life,
-            },
-            now,
-            locationId,
-            playerId
-        )
-    }
+    public readonly requestAutomation = createScenarioRequester(
+        this,
+        this.scenarios
+    )
+
+    public readonly snapshot = createRoomSnapshotter(
+        () => ({
+            adventure: this.adventure,
+            theft: this.theft,
+            characters: this.characters,
+            parties: this.parties,
+            tick: this.tickIndex,
+            world: this.world,
+            life: this.life,
+        }),
+        this.scenarios
+    )
 
     private handleClientMessage(ws: RoomSocket, message: ClientMessage): void {
-        if (message.type === 'join') {
-            this.join(
-                ws,
-                message.nickname,
-                message.archetype ?? 'human',
-                message.heroClass
-            )
-            return
-        }
-
-        const player = this.characters.get(this.connections.get(ws) ?? '')
-
-        if (player === undefined) {
-            sendError(ws, 'not_joined', 'Join the room before sending input')
-            return
-        }
-
-        if (message.type === 'abandon_life') {
-            this.life.abandon(player, Date.now())
-            return
-        }
-
-        handleCharacterMessage(
+        dispatchRoomClientMessage(
             {
                 room: this,
                 adventure: this.adventure,
@@ -261,13 +254,16 @@ export class GameRoom {
                 companions: this.companions,
                 world: this.world,
                 connections: this.connections,
+                join: (...args) => this.join(...args),
+                abandon: (actor) => this.life.abandon(actor, Date.now()),
             },
-            player,
+            ws,
             message
         )
     }
 
     private readonly join = createRoomJoiner({
+        closeConversations: (id) => this.adventure.closeConversations(id),
         characters: this.characters,
         connections: this.connections,
         controllers: this.controllers,

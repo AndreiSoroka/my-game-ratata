@@ -27,6 +27,7 @@ export function createCharacterSnapshot(
         archetype: character.archetype,
         attackZones: character.attackZones,
         controllerKind: character.controllerKind,
+        connected: character.connected,
         cooldowns: {
             attackMsLeft: Math.max(
                 0,

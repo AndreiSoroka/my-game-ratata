@@ -1,5 +1,5 @@
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
-import { type Ref, toRaw } from 'vue'
+import { nextTick, type Ref, toRaw } from 'vue'
 
 import type { ChatInputState } from '../runtime/chatInput'
 import { RatataGame } from '../runtime/ratataGame'
@@ -8,7 +8,7 @@ import type { createTransientNotices } from './transientNotices'
 
 interface AppRuntimeOptions {
     game: Ref<RatataGame | undefined>
-    container: HTMLElement
+    container: () => HTMLElement | undefined
     nickname: string
     heroClass: HeroClass
     gameplay: () => InstanceType<typeof GameplayOverlay> | undefined
@@ -17,6 +17,7 @@ interface AppRuntimeOptions {
     snapshot: Ref<WorldSnapshot | undefined>
     localPlayerId: Ref<string | undefined>
     isJoining: Ref<boolean>
+    isStarted: Ref<boolean>
     status: Ref<string>
     notices: ReturnType<typeof createTransientNotices>
     confirmDeath: () => void
@@ -25,7 +26,17 @@ interface AppRuntimeOptions {
     toggleInventory: () => void
 }
 export async function startAppRuntime(options: AppRuntimeOptions): Promise<void> {
-    const runtime = createAppRuntime(options)
+    options.errorMessage.value = ''
+    options.isJoining.value = true
+    options.isStarted.value = true
+    await nextTick()
+    const container = options.container()
+    if (!container) {
+        options.errorMessage.value = 'Game surface is not ready'
+        options.cleanupFailedJoin()
+        return
+    }
+    const runtime = createAppRuntime(options, container)
     options.game.value = runtime
     await runtime.start().catch((error: unknown) => {
         if (toRaw(options.game.value) !== runtime) return
@@ -34,9 +45,9 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
     })
 }
 
-function createAppRuntime(options: AppRuntimeOptions): RatataGame {
+function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): RatataGame {
     return new RatataGame({
-        container: options.container,
+        container,
         nickname: options.nickname.trim(),
         heroClass: options.heroClass,
         onDefeat: options.confirmDeath,

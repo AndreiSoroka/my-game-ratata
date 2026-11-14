@@ -11,6 +11,12 @@ import {
 } from './agentDecisions'
 import type { GameCharacter } from './character'
 import {
+    type AssistanceContext,
+    CompanionAssistance,
+} from './companionAssistance'
+export type { AssistanceContext, AssistanceResult } from './companionAssistance'
+import { setCharacterControlSource } from './characterSoul'
+import {
     advanceCompanionIntent,
     type CompanionRuntime,
 } from './companionMovement'
@@ -20,13 +26,39 @@ import {
     refusalFor,
     residentProfile,
 } from './companionProfiles'
-import { distance } from './math'
+import {
+    availableLeader,
+    canRequest,
+    notice,
+    release,
+    replyToCompanion,
+    sync,
+} from './companionState'
 import { cancelMovementMode } from './movementActions'
-import { createSpeechEvent } from './speechReceipts'
+import { isAutomationCommand } from './scenarioCommands'
 
 export class CompanionService {
     private readonly states = new Map<string, CompanionRuntime>()
-    private readonly leases = new Map<string, number>()
+    private readonly leases = new Map<
+        string,
+        { until: number; blocksScenario: boolean }
+    >()
+
+    private readonly assistance = new CompanionAssistance((npc) =>
+        this.stateFor(npc)
+    )
+    public readonly canAssist = this.assistance.canAssist
+    public readonly claimAssistance = this.assistance.claimAssistance
+    public readonly releaseAssistance = this.assistance.releaseAssistance
+    public readonly hasConsent = this.assistance.hasConsent
+    public readonly capabilities = this.assistance.capabilities
+
+    public dialogueText(actor: GameCharacter, npc: GameCharacter): string {
+        const state = this.stateFor(npc)
+        return state.metActors.has(actor.id)
+            ? `Помню тебя, ${actor.nickname}. ${state.leaderId === actor.id ? 'Я рядом по собственной воле.' : state.profile.greeting}`
+            : state.profile.greeting
+    }
 
     public rememberMeeting(
         actor: GameCharacter,
@@ -46,7 +78,8 @@ export class CompanionService {
         actor: GameCharacter,
         message: CompanionClientMessage,
         characters: Iterable<GameCharacter>,
-        now: number
+        now: number,
+        assistance?: AssistanceContext
     ): GameEventPayload[] {
         const npc = [...characters].find(
             (candidate) => candidate.id === message.targetId
@@ -68,14 +101,11 @@ export class CompanionService {
         }
         const state = this.stateFor(npc)
         if (message.request === 'talk') {
-            const known = state.metActors.has(actor.id)
+            const text = this.dialogueText(actor, npc)
             state.metActors.add(actor.id)
-            const text = known
-                ? `Помню тебя, ${actor.nickname}. ${state.leaderId === actor.id ? 'Я рядом по собственной воле.' : state.profile.greeting}`
-                : state.profile.greeting
             return this.reply(npc, actor, state, text)
         }
-        return this.handleRequest(npc, actor, state, message, now)
+        return this.handleRequest(npc, actor, state, message, now, assistance)
     }
 
     private handleRequest(
@@ -83,7 +113,8 @@ export class CompanionService {
         actor: GameCharacter,
         state: CompanionRuntime,
         message: CompanionClientMessage,
-        now: number
+        now: number,
+        assistance?: AssistanceContext
     ): GameEventPayload[] {
         if (state.leaderId !== null && state.leaderId !== actor.id) {
             return this.reply(
@@ -125,6 +156,15 @@ export class CompanionService {
         if (message.request === 'talk') {
             return []
         }
+        const consentError = this.assistance.requestError(
+            actor,
+            npc,
+            assistance,
+            now
+        )
+        if (consentError !== null) {
+            return this.reply(npc, actor, state, consentError)
+        }
         state.lastPlanAt = now - 300
         state.leaderId = actor.id
         state.order =
@@ -143,7 +183,7 @@ export class CompanionService {
         world: CompanionWorld,
         now: number
     ): GameEventPayload[] {
-        if (this.hasActiveLease(character, now, world)) {
+        if (this.blocksScenario(character, now, world)) {
             return []
         }
         const state = this.stateFor(character)
@@ -191,10 +231,15 @@ export class CompanionService {
         }
         if (parsed?.type === 'wait') {
             this.leases.delete(character.id)
-            character.soul.controlSource = 'script'
+            setCharacterControlSource(character, 'script')
         } else {
-            this.leases.set(character.id, now + 5_000)
-            character.soul.controlSource = 'model'
+            this.leases.set(character.id, {
+                until: now + 5_000,
+                blocksScenario:
+                    parsed?.type !== 'speak' &&
+                    !isAutomationCommand(parsed?.type),
+            })
+            setCharacterControlSource(character, 'model')
         }
         return result
     }
@@ -204,42 +249,40 @@ export class CompanionService {
         now: number,
         world?: CompanionWorld
     ): boolean {
-        const until = this.leases.get(character.id)
-        if (until === undefined) {
+        const lease = this.leases.get(character.id)
+        if (lease === undefined) {
             return false
         }
-        if (until > now && character.alive && !character.tags.has('offline')) {
+        if (
+            lease.until > now &&
+            character.alive &&
+            !character.tags.has('offline')
+        ) {
             return true
         }
         this.leases.delete(character.id)
-        world?.requestControl?.(character, { type: 'cancel_control' }, now)
-        cancelMovementMode(character)
-        character.soul.controlSource = 'script'
-        character.setMoveInput({ x: 0, y: 0 })
-        character.clearPath()
+        setCharacterControlSource(character, 'script')
+        if (lease.blocksScenario) {
+            world?.requestControl?.(character, { type: 'cancel_control' }, now)
+            cancelMovementMode(character)
+            character.setMoveInput({ x: 0, y: 0 })
+            character.clearPath()
+        }
         return false
     }
 
-    private reply(
-        npc: GameCharacter,
-        actor: GameCharacter | undefined,
-        state: CompanionRuntime,
-        text: string
-    ): GameEventPayload[] {
-        state.lastReply = text
-        sync(npc, state)
-        return npc.soul.canSpeak
-            ? [
-                  createSpeechEvent(
-                      npc,
-                      text,
-                      actor === undefined
-                          ? {}
-                          : { targetId: actor.id, audienceIds: [actor.id] }
-                  ),
-              ]
-            : []
+    public blocksScenario(
+        character: GameCharacter,
+        now: number,
+        world?: CompanionWorld
+    ): boolean {
+        return (
+            this.hasActiveLease(character, now, world) &&
+            this.leases.get(character.id)?.blocksScenario === true
+        )
     }
+
+    private readonly reply = replyToCompanion
 
     private stateFor(character: GameCharacter): CompanionRuntime {
         let state = this.states.get(character.id)
@@ -258,54 +301,4 @@ export class CompanionService {
         }
         return state
     }
-}
-
-function canRequest(
-    actor: GameCharacter,
-    npc: GameCharacter | undefined
-): npc is GameCharacter {
-    return (
-        npc !== undefined &&
-        actor.id !== npc.id &&
-        actor.alive &&
-        npc.alive &&
-        !actor.tags.has('offline') &&
-        !npc.tags.has('offline') &&
-        !npc.tags.has('state.retired') &&
-        actor.faction === npc.faction &&
-        actor.locationId === npc.locationId &&
-        distance(actor.position, npc.position) <= 64
-    )
-}
-
-function availableLeader(
-    leader: GameCharacter | undefined
-): leader is GameCharacter {
-    return (
-        leader !== undefined &&
-        leader.alive &&
-        !leader.tags.has('offline') &&
-        !leader.tags.has('state.retired')
-    )
-}
-
-function release(character: GameCharacter, state: CompanionRuntime): void {
-    state.leaderId = null
-    state.order = 'idle'
-    character.setMoveInput({ x: 0, y: 0 })
-    character.clearPath()
-    sync(character, state)
-}
-
-function sync(character: GameCharacter, state: CompanionRuntime): void {
-    character.soul.companion = {
-        canFight: state.profile.canFight,
-        lastReply: state.lastReply,
-        leaderId: state.leaderId,
-        order: state.order,
-    }
-}
-
-function notice(actor: GameCharacter, text: string): GameEventPayload[] {
-    return [{ actorId: actor.id, kind: 'notice', text }]
 }

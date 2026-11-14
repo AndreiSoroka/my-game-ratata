@@ -1,4 +1,5 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
+import type { AutomationCommand } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
@@ -10,9 +11,10 @@ import { handleRoomAction } from './roomActions'
 import { handleRoomControl } from './roomControl'
 import type { RoomSocket } from './roomMessaging'
 import { charactersInLocation, connectionsInLocation } from './roomQueries'
+import { isAutomationCommand } from './scenarioCommands'
 import type { TheftService } from './theft'
 import type { WorldLocations } from './worldLocations'
-interface ClientContext {
+export interface ClientContext {
     room: GameRoom
     adventure: AdventureService
     theft: TheftService
@@ -37,6 +39,12 @@ export function handleCharacterMessage(
         world,
         connections,
     } = context
+    if (handleAutomation(player, message, room)) {
+        return
+    }
+    if (manualScenarioOverride(message)) {
+        room.scenarios.pause(player)
+    }
     if (handleRoomControl(player, message, room, Date.now())) {
         return
     }
@@ -83,4 +91,54 @@ export function handleCharacterMessage(
         },
         worldInventory: world.get(player.locationId).inventory,
     })
+}
+
+function manualScenarioOverride(message: ClientMessage): boolean {
+    if (message.type === 'move_input') {
+        return message.axis.x !== 0 || message.axis.y !== 0
+    }
+    return [
+        'move_to',
+        'cancel_control',
+        'attack',
+        'auto_action',
+        'auto_attack',
+        'follow',
+        'dash',
+        'interact',
+        'pray',
+        'revive',
+        'cast_spell',
+        'use_ability',
+        'gather',
+        'farm_action',
+        'plant_tree',
+        'open_chest',
+    ].includes(message.type)
+}
+
+function handleAutomation(
+    player: GameCharacter,
+    message: ClientMessage,
+    room: GameRoom
+): boolean {
+    if (!isAutomationCommand(message.type)) {
+        return false
+    }
+    const result = room.requestAutomation(
+        player,
+        message as AutomationCommand,
+        Date.now()
+    )
+    if (result.error !== null) {
+        room.publishEvents([
+            {
+                kind: 'notice',
+                actorId: player.id,
+                audienceIds: [player.id],
+                text: result.error,
+            },
+        ])
+    }
+    return true
 }

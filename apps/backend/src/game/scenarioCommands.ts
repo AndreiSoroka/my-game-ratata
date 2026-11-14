@@ -94,7 +94,13 @@ export function parseScenario(value: unknown): ScenarioDefinition | undefined {
         }
         steps.push(step)
     }
-    return { ...metadata, steps }
+    return {
+        id: metadata.id,
+        name: metadata.name,
+        steps,
+        repeat: metadata.repeat,
+        threat: metadata.threat,
+    }
 }
 
 function parseMetadata(

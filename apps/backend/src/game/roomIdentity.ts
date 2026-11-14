@@ -8,6 +8,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
+import { setCharacterControlSource } from './characterSoul'
 import {
     type CharacterController,
     NetworkPlayerController,
@@ -38,6 +39,7 @@ interface JoinContext {
     mapFor: (character: GameCharacter) => MapSummary
     nicknames: Map<string, string>
     snapshotFor: (character: GameCharacter) => WorldSnapshot
+    closeConversations?: (characterId: string) => void
     tickMs: number
 }
 
@@ -90,10 +92,21 @@ export function joinRoom(
         return
     }
     const existingId = context.connections.get(ws)
-    if (existingId !== undefined) {
+    if (
+        existingId !== undefined &&
+        !isPlayerConnected(context.connections, existingId, ws)
+    ) {
         context.closeChestViews?.(existingId)
+        context.closeConversations?.(existingId)
         const existingCharacter = context.characters.get(existingId)
         stopAndPublish(existingCharacter, context.connections.keys())
+        if (
+            existingCharacter !== undefined &&
+            existingId !== existingPlayerId
+        ) {
+            existingCharacter.connected = false
+            setCharacterControlSource(existingCharacter, 'script')
+        }
     }
     const existingCharacter =
         existingPlayerId === undefined
@@ -103,6 +116,8 @@ export function joinRoom(
         existingCharacter ??
         context.createPlayer(nickname, nicknameKey, archetype, heroClass)
     character.tags.delete('offline')
+    character.connected = true
+    setCharacterControlSource(character, 'human')
     stopAndPublish(character, context.connections.keys())
     context.controllers.set(character.id, new NetworkPlayerController())
     context.connections.set(ws, character.id)
@@ -151,17 +166,25 @@ export function leaveRoom(
     connections: Map<RoomSocket, string | undefined>,
     characters: ReadonlyMap<string, GameCharacter>,
     socket: RoomSocket,
-    closeChestViews: (actorId: string) => void
+    closeChestViews: (actorId: string) => void,
+    closeConversations?: (characterId: string) => void
 ): void {
     const playerId = connections.get(socket)
     connections.delete(socket)
-    if (playerId === undefined) {
+    if (
+        playerId === undefined ||
+        isPlayerConnected(connections, playerId, socket)
+    ) {
         return
     }
     closeChestViews(playerId)
+    closeConversations?.(playerId)
     const player = characters.get(playerId)
     stopAndPublish(player, connections.keys())
-    player?.tags.add('offline')
+    if (player !== undefined) {
+        player.connected = false
+        setCharacterControlSource(player, 'script')
+    }
     broadcastEvent(connections.keys(), { actorId: playerId, kind: 'leave' })
 }
 

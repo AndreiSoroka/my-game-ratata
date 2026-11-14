@@ -165,3 +165,29 @@ describe('optional local NPC control bridge', () => {
         ).toBe(413)
     })
 })
+
+it('accepts a bounded 64-step scenario larger than the old single-action body limit', async () => {
+    const response = await handleAgentRequest(
+        request('/agent/act', {
+            actorId: 'npc_smith_1',
+            decision: {
+                type: 'scenario_save',
+                scenario: {
+                    id: 'bridge-work',
+                    name: 'Bridge work',
+                    repeat: 1,
+                    threat: 'continue',
+                    steps: Array.from({ length: 64 }, (_, index) => ({
+                        id: `step-${String(index)}-${'x'.repeat(70)}`,
+                        kind: 'wait',
+                        durationMs: 100,
+                    })),
+                },
+            },
+        }),
+        room,
+        token
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ accepted: true })
+})

@@ -28,6 +28,7 @@ export {
     type InventoryCosts,
     transferInventoryItem,
 } from './inventoryStacks'
+export { transferInventoryQuantity } from './inventoryTransfer'
 
 export type EquipmentState = Partial<
     Record<EquipmentSlotId, InventoryItemInstance>

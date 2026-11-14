@@ -39,7 +39,7 @@ const incomingInvitations = computed(
 
 function toggleWindow(window: AdventureWindow): void {
     emit('closeInventory')
-    emit('command', { axis: { x: 0, y: 0 }, type: 'move_input' })
+    emit('command', { type: 'release_input' })
     activeWindow.value = activeWindow.value === window ? null : window
     if (props.adventure.dialogue) emit('command', { choiceId: 'close', type: 'dialogue_choice' })
 }
@@ -72,7 +72,7 @@ defineExpose({
         @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
         @keyup.enter.stop
         @keyup.space.stop
-        @focusin="emit('command', { axis: { x: 0, y: 0 }, type: 'move_input' })"
+        @focusin="emit('command', { type: 'release_input' })"
     >
         <div class="adventure-tools" aria-label="Приключение">
             <span

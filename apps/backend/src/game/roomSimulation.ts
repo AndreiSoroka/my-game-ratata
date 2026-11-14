@@ -47,7 +47,7 @@ interface SimulationContext {
 }
 
 export function advanceRoomSimulation(context: SimulationContext): void {
-    const { characters, controllers, room, now } = context
+    const { characters, room, now } = context
     room.adventureForWorkers().update(
         now,
         (id) => context.world.get(id).navigation,
@@ -58,15 +58,15 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         context.companions.hasActiveLease(character, now, room)
     }
     const reacting = context.theft.update(room, characters.values(), now)
-    for (const [id, controller] of controllers) {
-        const character = characters.get(id)
-        if (character !== undefined && !reacting.has(id)) {
-            if (advanceCharacterControl(character, room, now)) {
-                continue
-            }
-            controller.update(character, room, now)
-        }
-    }
+    room.scenarios.reconcile(characters, now)
+    const conversations = room.adventureForWorkers().reconcileConversations(
+        characters.values(),
+        (actor) => room.navigationFor(actor),
+        (actor) =>
+            reacting.has(actor.id) ||
+            room.findVisibleTarget(actor, 240, now) !== undefined
+    )
+    advanceControllers(context, reacting, conversations)
     for (const character of characters.values()) {
         advanceWorldCharacter(character, context)
     }
@@ -83,6 +83,38 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             snapshot: context.snapshot(now, locationId, id),
             type: 'snapshot',
         })
+    }
+}
+
+function advanceControllers(
+    context: SimulationContext,
+    reacting: ReadonlySet<string>,
+    conversations: ReadonlySet<string>
+): void {
+    const { characters, controllers, room, now } = context
+    for (const [id, controller] of controllers) {
+        const character = characters.get(id)
+        if (character === undefined || reacting.has(id)) {
+            room.scenarios.defer(id, now)
+            continue
+        }
+        if (context.companions.blocksScenario(character, now, room)) {
+            room.scenarios.defer(id, now)
+            advanceCharacterControl(character, room, now)
+            continue
+        }
+        if (
+            room.scenarios.advance(character, room, now, conversations.has(id))
+        ) {
+            continue
+        }
+        if (conversations.has(id)) {
+            continue
+        }
+        if (advanceCharacterControl(character, room, now)) {
+            continue
+        }
+        room.scenarios.advancePolicy(character, controller, room, now)
     }
 }
 

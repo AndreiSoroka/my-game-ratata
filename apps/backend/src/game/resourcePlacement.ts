@@ -168,7 +168,7 @@ function flood(
 }
 
 export function resourceReachable(
-    actor: GameCharacter,
+    actor: Pick<GameCharacter, 'position'>,
     bounds: WorldObjectBounds,
     navigation: NavigationService
 ): boolean {

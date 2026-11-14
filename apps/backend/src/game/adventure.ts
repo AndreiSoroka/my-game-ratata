@@ -15,6 +15,7 @@ import {
     type AdventureResources,
     isResourceCommand,
 } from './adventureResources'
+import { createAdventureSessions } from './adventureSessions'
 import { type PlayerAdventure } from './adventureState'
 import {
     type AdventureActionResult,
@@ -22,14 +23,16 @@ import {
     refreshTradeDialogue,
 } from './adventureTrading'
 import { adventureSnapshot, resolvedAdventureAction } from './adventureViews'
-import { getAdventureState, grantAdventureGoldOnce } from './adventureWallet'
+import {
+    createAdventureWalletActions,
+    getAdventureState,
+} from './adventureWallet'
 import {
     type AdventureServiceOptions,
     createAdventureEnvironment,
 } from './adventureWorld'
 import type { GameCharacter } from './character'
 import { CityEconomyService } from './cityEconomy'
-import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
 import type { WorldObjects } from './worldObjects'
@@ -71,6 +74,11 @@ export class AdventureService {
         return this.resources.snapshot(locationId)
     }
 
+    private readonly sessions = createAdventureSessions(this.players)
+    public readonly reconcileConversations = this.sessions.reconcile
+    public readonly closeConversations = this.sessions.close
+    public readonly hasCompletedQuest = this.sessions.hasCompletedQuest
+
     public farmSnapshot(locationId: string, now: number): FarmPlotSnapshot[] {
         return this.resources.snapshotFarms(locationId, now)
     }
@@ -92,13 +100,11 @@ export class AdventureService {
         })
     }
 
-    public grantGoldOnce(
-        playerId: string,
-        amount: number,
-        rewardId: string
-    ): boolean {
-        return grantAdventureGoldOnce(this.stateFor(playerId), amount, rewardId)
-    }
+    private readonly walletActions = createAdventureWalletActions(this.players)
+    public readonly grantGoldOnce = this.walletActions.grantGoldOnce
+    public readonly trySpendGold = this.walletActions.trySpendGold
+    public readonly drainGold = this.walletActions.drainGold
+    public readonly creditLootGold = this.walletActions.creditLootGold
 
     public handle(
         actor: GameCharacter,
@@ -231,7 +237,8 @@ export class AdventureService {
         locationNPCs: GameCharacter[],
         navigation?: NavigationService,
         now = this.now(),
-        service?: 'shop' | 'orders' | 'repair'
+        service?: 'shop' | 'orders' | 'repair',
+        text?: string
     ): GameEventPayload[] {
         return interactAdventureNpc(
             actor,
@@ -240,7 +247,8 @@ export class AdventureService {
             this.stateFor(actor.id),
             now,
             navigation,
-            service
+            service,
+            text
         )
     }
     public choose(
@@ -275,18 +283,6 @@ export class AdventureService {
             navigation,
             now
         )
-    }
-
-    public trySpendGold(playerId: string, amount: number): boolean {
-        return spendWallet(this.stateFor(playerId), amount)
-    }
-
-    public drainGold(actorId: string): number {
-        return drainWallet(this.stateFor(actorId))
-    }
-
-    public creditLootGold(actorId: string, amount: number): boolean {
-        return creditWallet(this.stateFor(actorId), amount)
     }
 
     public refreshTradeAccess(actor: GameCharacter): void {

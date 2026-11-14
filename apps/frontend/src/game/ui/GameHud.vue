@@ -16,7 +16,7 @@ const props = defineProps<{
     inventoryOpen: boolean
     testMode: boolean
 }>()
-const emit = defineEmits<{ toggleInventory: []; openMenu: [] }>()
+const emit = defineEmits<{ toggleInventory: []; openMenu: []; createMarker: [] }>()
 const hud = computed(() => characterHudStatus(props.snapshot?.characters ?? []))
 const connectionLabel = computed(() =>
     props.status === 'Connecting'
@@ -35,6 +35,17 @@ const connectionLabel = computed(() =>
         </div>
         <div>
             <span>{{ hud.players }} players</span>
+            <button
+                class="hud-menu-button marker-quick-button"
+                type="button"
+                aria-label="Поставить метку"
+                title="Поставить метку · N"
+                :disabled="status !== 'Connected' || !player?.alive"
+                @click="emit('createMarker')"
+                @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
+            >
+                ⚑
+            </button>
             <button
                 class="hud-menu-button"
                 type="button"
@@ -88,5 +99,9 @@ const connectionLabel = computed(() =>
 .hud-menu-button:focus-visible {
     outline: 2px solid #f5d992;
     outline-offset: 2px;
+}
+.hud-menu-button:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
 </style>

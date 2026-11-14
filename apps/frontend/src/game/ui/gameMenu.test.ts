@@ -75,6 +75,25 @@ async function pressEscape(repeat = false): Promise<void> {
     )
     await flushPromises()
 }
+it('opens markers and scenarios from the game menu and lets Escape return to the world', async () => {
+    const wrapper = await joined()
+    try {
+        await pressEscape()
+        await wrapper.get('[data-dialog-action="markers"]').trigger('click')
+        await flushPromises()
+        expect(wrapper.find('.game-menu').exists()).toBe(false)
+        expect(wrapper.find('[role="dialog"][aria-label="Метки"]').exists()).toBe(true)
+        await pressEscape()
+        expect(wrapper.find('[aria-label="Метки"]').exists()).toBe(false)
+        await pressEscape()
+        await wrapper.get('[data-dialog-action="scenarios"]').trigger('click')
+        await flushPromises()
+        expect(wrapper.find('[role="dialog"][aria-label="Сценарии"]').exists()).toBe(true)
+        expect(wrapper.find('.game-menu').exists()).toBe(false)
+    } finally {
+        wrapper.unmount()
+    }
+})
 it('can leave a pending startup through Escape or the visible menu button before any snapshot arrives', async () => {
     let complete!: () => void
     runtime.pendingStart = new Promise<void>((resolve) => {

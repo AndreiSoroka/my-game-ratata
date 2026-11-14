@@ -63,7 +63,10 @@ export class RatataGame {
             onSnapshot: (snapshot) => this.applySnapshot(snapshot),
             onStatus: (status) => {
                 this.connected = status === 'Connected'
-                if (status !== 'Connected') this.sceneActors?.setInteractionTarget(undefined)
+                if (status !== 'Connected') {
+                    this.sceneActors?.setInteractionTarget(undefined)
+                    this.sceneActors?.clearWaypoints()
+                }
                 options.onStatus(status)
             },
             onWorldInit: (playerId, snapshot) => {
@@ -134,8 +137,6 @@ export class RatataGame {
 
     public releaseUiControls(): void {
         this.releaseInputs()
-        const player = this.snapshot?.characters.find((actor) => actor.id === this.localPlayerId)
-        if (player?.path.length) this.send({ type: 'move_to', target: { ...player.position } })
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {
@@ -282,9 +283,9 @@ export class RatataGame {
     }
 
     private readonly releaseInputs = (): void => {
-        this.send({ type: 'cancel_control' })
+        this.send({ type: 'release_input' })
         this.pressedKeys.clear()
-        this.flushMoveInput()
+        this.lastAxis = { x: 0, y: 0 }
         this.movementControls.release()
     }
 

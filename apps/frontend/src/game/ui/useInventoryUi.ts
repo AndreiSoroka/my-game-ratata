@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import type { RatataGame } from '../runtime/ratataGame'
 export function useInventoryUi(
     game: () => RatataGame | undefined,
-    player: () => CharacterSnapshot | undefined,
+    _player: () => CharacterSnapshot | undefined,
     closeChest: () => void
 ) {
     const inventoryOpen = ref(false),
@@ -13,10 +13,7 @@ export function useInventoryUi(
         planting.value = false
         if (open) {
             closeChest()
-            const character = player()
-            if (character?.path.length)
-                game()?.sendCommand({ type: 'move_to', target: { ...character.position } })
-            game()?.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } })
+            game()?.releaseUiControls()
         }
         inventoryOpen.value = open
     }

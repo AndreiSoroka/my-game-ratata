@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
+import { automationFixture, scenarioRunFixture } from '../testing/automationFixture'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import GameplayOverlay from './GameplayOverlay.vue'
 
@@ -89,7 +90,7 @@ it('keeps server follow active when its target crosses out of view, but clears a
         await wrapper.vm.$nextTick()
         await wrapper.setProps({ characters: [player, { ...enemy, alive: false }] })
         expect(wrapper.vm.selectedId).toBeUndefined()
-        expect(send).toHaveBeenCalledWith({ type: 'cancel_control' })
+        expect(send).toHaveBeenCalledWith({ type: 'release_input' })
     } finally {
         wrapper.unmount()
     }
@@ -119,12 +120,12 @@ it('retains a dead ally for resurrection and releases controls on stun and blur'
         await wrapper.setProps({
             player: { ...player, cooldowns: { ...player.cooldowns, stunMsLeft: 900 } },
         })
-        expect(send).toHaveBeenLastCalledWith({ type: 'cancel_control' })
+        expect(send).toHaveBeenLastCalledWith({ type: 'release_input' })
         send.mockClear()
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ' }))
         expect(send).not.toHaveBeenCalled()
         window.dispatchEvent(new Event('blur'))
-        expect(send).toHaveBeenLastCalledWith({ type: 'cancel_control' })
+        expect(send).toHaveBeenLastCalledWith({ type: 'release_input' })
     } finally {
         wrapper.unmount()
     }
@@ -184,6 +185,41 @@ it('ignores held hotbar keys and Q, clears gestures on movement, and cancels whe
         expect(send).toHaveBeenLastCalledWith({ type: 'cancel_control' })
         send.mockClear()
         await wrapper.setProps({ blocked: true })
+        expect(send).toHaveBeenLastCalledWith({ type: 'release_input' })
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('releases held input through focus loss and menus while preserving a server scenario, with Escape still explicit', async () => {
+    const player = characterFixture('self')
+    const enemy = characterFixture('enemy', { faction: 'monsters', relationship: 'hostile' })
+    const snapshot = {
+        ...worldFixture([player, enemy]),
+        automation: { ...automationFixture(), run: scenarioRunFixture() },
+    }
+    const send = vi.fn<() => void>()
+    const wrapper = mount(GameplayOverlay, {
+        props: {
+            player,
+            snapshot,
+            characters: [player, enemy],
+            blocked: false,
+            game: {
+                sendCommand: send,
+                setCombatTarget: vi.fn<() => void>(),
+                isInteractionVisible: () => true,
+            } as never,
+        },
+        global: { stubs: { SpeechBubbles: true } },
+    })
+    try {
+        await wrapper.setProps({ blocked: true })
+        window.dispatchEvent(new Event('blur'))
+        expect(send.mock.calls).toEqual([[{ type: 'release_input' }], [{ type: 'release_input' }]])
+        expect(snapshot.automation.run.status).toBe('running')
+        await wrapper.setProps({ blocked: false })
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', bubbles: true }))
         expect(send).toHaveBeenLastCalledWith({ type: 'cancel_control' })
     } finally {
         wrapper.unmount()

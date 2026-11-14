@@ -21,7 +21,8 @@ export function interactAdventureNpc(
     state: PlayerAdventure,
     now: number,
     navigation?: NavigationService,
-    service?: 'shop' | 'orders' | 'repair'
+    service?: 'shop' | 'orders' | 'repair',
+    text?: string
 ): GameEventPayload[] {
     const npc = resolveAdventureNpc(actor, npcId, locationNPCs, now, navigation)
 
@@ -39,12 +40,19 @@ export function interactAdventureNpc(
     state.dialogue = adventureDialogue(
         npc.id,
         npc.nickname,
-        trophyProgress(state, actor)
+        trophyProgress(state, actor),
+        text
     )
     if (service !== undefined) {
         state.dialogue.initialView = service
     }
     refreshTradeDialogue(actor, state.dialogue)
+    npc.setMoveInput({ x: 0, y: 0 })
+    npc.clearPath()
+    npc.updateFacing({
+        x: actor.position.x - npc.position.x,
+        y: actor.position.y - npc.position.y,
+    })
     return sayDialogue(actor, npc, state, state.dialogue.text)
 }
 
@@ -71,6 +79,7 @@ export function chooseAdventureReply(
     )
 
     if (npc === undefined) {
+        state.dialogue = null
         return rejectDialogue(state, 'Разговор прерван. Вернись к собеседнику.')
     }
 

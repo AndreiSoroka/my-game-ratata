@@ -22,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     toggleInventory: []
     openMenu: []
+    createMarker: []
     closeInventory: []
     plant: []
     assignHotbar: [payload: { slot: number; itemId: 'food' }]
@@ -35,6 +36,7 @@ const emit = defineEmits<{
         v-bind="props"
         @toggle-inventory="emit('toggleInventory')"
         @open-menu="emit('openMenu')"
+        @create-marker="emit('createMarker')"
     >
         <template #surface><slot name="surface" /></template>
         <InventoryOverlay

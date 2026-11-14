@@ -1,3 +1,4 @@
+import type { ClientMessage } from '@my-game-ratata/contracts'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 import { RatataGame } from './ratataGame'
@@ -14,6 +15,9 @@ const calls = vi.hoisted(() => ({
     dispose: vi.fn<() => void>(),
     inputs: vi.fn<() => void>(),
     removeInputs: vi.fn<() => void>(),
+    send: vi.fn<(command: ClientMessage) => void>(),
+    handlers: undefined as
+        { keyDown: (event: KeyboardEvent) => void; release: () => void } | undefined,
 }))
 vi.mock('./tiledMap', () => ({ loadRenderedTiledMap: calls.load }))
 vi.mock('./runtimePresentation', () => ({
@@ -31,8 +35,9 @@ vi.mock('./runtimePresentation', () => ({
     },
 }))
 vi.mock('./runtimeInputLifecycle', () => ({
-    installRuntimeInputs: () => {
+    installRuntimeInputs: (_engine: unknown, _canvas: unknown, handlers: typeof calls.handlers) => {
         calls.inputs()
+        calls.handlers = handlers
         return calls.removeInputs
     },
 }))
@@ -49,9 +54,7 @@ vi.mock('./plantingPreview', () => ({
 vi.mock('./runtimeSocket', () => ({
     RuntimeSocket: class {
         public connect = calls.connect
-        public send(): void {
-            /* No server is needed for an unjoined runtime. */
-        }
+        public send = calls.send
         public close(): void {
             /* No server is needed for an unjoined runtime. */
         }
@@ -96,6 +99,23 @@ it('starts the current scene, controls, music and socket once', async () => {
     expect(container.children).toHaveLength(1)
     game.stop()
     expect(container.children).toHaveLength(0)
+})
+it('sends fresh movement when the same direction is pressed after a UI input release', async () => {
+    const { game } = setup()
+    await game.start()
+    try {
+        calls.handlers?.keyDown(new KeyboardEvent('keydown', { code: 'KeyD' }))
+        game.releaseUiControls()
+        calls.handlers?.keyDown(new KeyboardEvent('keydown', { code: 'KeyD' }))
+        const movements = calls.send.mock.calls.filter(([command]) => command.type === 'move_input')
+        expect(movements).toEqual([
+            [{ type: 'move_input', axis: { x: 1, y: 0 } }],
+            [{ type: 'move_input', axis: { x: 1, y: 0 } }],
+        ])
+        expect(calls.send).toHaveBeenCalledWith({ type: 'release_input' })
+    } finally {
+        game.stop()
+    }
 })
 it('never creates a scene, input listeners or connection after stopping during map loading', async () => {
     const map = deferred<RenderedTiledMap>()

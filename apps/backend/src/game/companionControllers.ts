@@ -18,7 +18,7 @@ export class PolicyController implements CharacterController {
     ) {}
 
     public update(character: GameCharacter, room: GameRoom, now: number): void {
-        const leased = this.service.hasActiveLease(character, now, room)
+        const leased = this.service.blocksScenario(character, now, room)
         if (!leased && character.abilities.casting === null) {
             this.fallback.update(character, room, now)
         }

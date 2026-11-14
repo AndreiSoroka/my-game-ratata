@@ -251,7 +251,7 @@ describe('game room location and life integration', () => {
 })
 
 describe('room identity lifecycle', () => {
-    it('hides an offline hero from snapshots and targeting, then restores the same living identity', () => {
+    it('keeps a disconnected hero visible and vulnerable as an Echo, then restores its human Spark', () => {
         const room = openRoom()
         const first = socket()
         const init = join(room, first, 'returning-hero')
@@ -272,10 +272,21 @@ describe('room identity lifecycle', () => {
             room
                 .snapshot()
                 .characters.some((character) => character.id === init.playerId)
-        ).toBe(false)
-        expect(room.findVisibleTarget(observer, 0)).toBeUndefined()
+        ).toBe(true)
+        expect(player.connected).toBe(false)
+        expect(player.tags.has('offline')).toBe(false)
+        expect(player.soul).toMatchObject({
+            kind: 'echo',
+            controlSource: 'script',
+        })
+        expect(room.findVisibleTarget(observer, 0)?.id).toBe(init.playerId)
         const rejoined = join(room, socket(), 'returning-hero')
         expect(rejoined.playerId).toBe(init.playerId)
+        expect(player.connected).toBe(true)
+        expect(player.soul).toMatchObject({
+            kind: 'spark',
+            controlSource: 'human',
+        })
         const restored = rejoined.snapshot.characters.find(
             (character) => character.id === init.playerId
         )

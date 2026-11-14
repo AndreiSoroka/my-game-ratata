@@ -11,8 +11,10 @@ import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
 import type { RoomLife } from './roomLife'
 import { charactersInLocation } from './roomQueries'
+import type { ScenarioService } from './scenarios'
 import type { TheftService } from './theft'
 import type { WorldLocations } from './worldLocations'
+import { centerLocationId } from './worldLocations'
 
 interface SnapshotContext {
     adventure: AdventureService
@@ -22,6 +24,26 @@ interface SnapshotContext {
     tick: number
     world: WorldLocations
     life?: RoomLife
+}
+
+export function createRoomSnapshotter(
+    context: () => SnapshotContext,
+    scenarios: ScenarioService
+) {
+    return (
+        now = Date.now(),
+        locationId = centerLocationId,
+        playerId?: string
+    ): WorldSnapshot => {
+        const state = context()
+        const snapshot = roomSnapshot(state, now, locationId, playerId)
+        const observer =
+            playerId === undefined ? undefined : state.characters.get(playerId)
+        if (observer !== undefined) {
+            snapshot.automation = scenarios.snapshot(observer, now)
+        }
+        return snapshot
+    }
 }
 
 export function roomSnapshot(

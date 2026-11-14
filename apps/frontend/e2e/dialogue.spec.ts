@@ -1,4 +1,34 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
+
+async function selectVisibleAlly(page: Page, name: string): Promise<void> {
+    const limit = await page.evaluate(() => {
+        const snapshot = window.__ratataTest!.getState().snapshot!
+        return Math.min(128, snapshot.characters.length + (snapshot.graves?.length ?? 0) + 1)
+    })
+    const panel = page.getByLabel('Выбранная цель')
+    for (let count = 0; count < limit; count += 1) {
+        await page.keyboard.press('Shift+KeyT')
+        await expect(panel).toBeVisible()
+        if (await panel.getByText(name, { exact: true }).isVisible()) break
+    }
+    await expect(panel.getByText(name, { exact: true })).toBeVisible()
+}
+
+async function talkThroughKeyboardMenu(page: Page, name: string): Promise<void> {
+    await page.keyboard.press('KeyE')
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+    const talk = menu.getByRole('menuitem', { name: `Поговорить: ${name}`, exact: true })
+    await expect(talk).toBeEnabled()
+    const limit = await menu.getByRole('menuitem').count()
+    await page.keyboard.press('Home')
+    for (let count = 0; count < limit; count += 1) {
+        if (await talk.evaluate((element) => element === document.activeElement)) break
+        await page.keyboard.press('ArrowDown')
+    }
+    await expect(talk).toBeFocused()
+    await page.keyboard.press('Enter')
+}
 
 for (const mobile of [false, true]) {
     test(`keeps a private complete dialogue in one keyboard-accessible bubble (${mobile ? 'mobile' : 'desktop'})`, async ({
@@ -36,11 +66,14 @@ for (const mobile of [false, true]) {
                 })
             )
             .toBeLessThan(40)
-        await page.keyboard.press('Shift+KeyT')
-        await expect(page.getByLabel('Выбранная цель')).toContainText('Рада')
-        await page.keyboard.press('KeyE')
-        await expect(page.getByRole('menu')).toBeVisible()
-        await page.keyboard.press('Enter')
+        const guardName = await page.evaluate(
+            () =>
+                window
+                    .__ratataTest!.getState()
+                    .snapshot!.characters.find((actor) => actor.id === 'npc_guard_1')!.nickname
+        )
+        await selectVisibleAlly(page, guardName)
+        await talkThroughKeyboardMenu(page, guardName)
         await expect(page.getByRole('dialog', { name: /Разговор:.*Рада/ })).toBeVisible()
         const speech = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.adventure!.dialogue!

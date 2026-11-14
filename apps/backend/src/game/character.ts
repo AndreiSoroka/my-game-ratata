@@ -50,6 +50,8 @@ export class GameCharacter {
     public readonly archetype: CharacterArchetype
     public readonly config: CharacterConfig
     public readonly controllerKind: CharacterControllerKind
+    /** Socket presence is separate from participation in the world simulation. */
+    public connected: boolean
     public readonly faction: CharacterFactionId
     public readonly id: string
     public maxHp: number
@@ -113,6 +115,7 @@ export class GameCharacter {
         this.abilities = createAbilityState(this.heroClass, options.archetype)
         this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
+        this.connected = options.controllerKind === 'network_player'
         this.faction =
             options.faction ?? defaultFactionFor(options.controllerKind)
         this.energy = this.config.resources.maxEnergy

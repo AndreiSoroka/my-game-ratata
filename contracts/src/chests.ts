@@ -32,7 +32,12 @@ export interface OpenChestClientMessage {
 export type ChestClientMessage =
     | OpenChestClientMessage
     | { type: 'take_chest_item'; chestId: string; itemInstanceId: string }
-    | { type: 'put_chest_item'; chestId: string; itemInstanceId: string }
+    | {
+          type: 'put_chest_item'
+          chestId: string
+          itemInstanceId: string
+          quantity?: number
+      }
     | { type: 'take_all_chest_items'; chestId: string }
     | { type: 'close_chest'; chestId: string }
     | { type: 'take_chest_gold'; chestId: string }

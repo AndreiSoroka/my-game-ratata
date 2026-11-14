@@ -12,7 +12,11 @@ import {
     type WorldChest,
 } from './chestInteraction'
 import type { CorpseWallet } from './corpseWallet'
-import { snapshotItem, transferInventoryItem } from './inventory'
+import {
+    snapshotItem,
+    transferInventoryItem,
+    transferInventoryQuantity,
+} from './inventory'
 import { cancelMovementMode } from './movementActions'
 import type { NavigationService } from './navigation'
 
@@ -60,7 +64,13 @@ export class ChestContainers {
             return chestRefusalNotice(actor.id, 'Сначала открой этот сундук.')
         }
         if (message.type === 'put_chest_item') {
-            return this.stash(actor, chest.id, message.itemInstanceId, now)
+            return this.stash(
+                actor,
+                chest.id,
+                message.itemInstanceId,
+                now,
+                message.quantity
+            )
         }
         const events = this.take(actor, chest, message)
         this.removeEmptyCorpse(chest)
@@ -71,7 +81,8 @@ export class ChestContainers {
         actor: GameCharacter,
         chestId: string | undefined,
         instanceId: string,
-        now = Date.now()
+        now = Date.now(),
+        quantity?: number
     ): GameEventPayload[] {
         const chest =
             chestId === undefined ? undefined : this.chests.get(chestId)
@@ -85,12 +96,21 @@ export class ChestContainers {
                 'В тело нельзя складывать вещи.'
             )
         }
-        const item = transferInventoryItem(
-            actor.inventory,
-            chest.contents,
-            instanceId,
-            Infinity
-        )
+        const item =
+            quantity === undefined
+                ? transferInventoryItem(
+                      actor.inventory,
+                      chest.contents,
+                      instanceId,
+                      Infinity
+                  )
+                : transferInventoryQuantity(
+                      actor.inventory,
+                      chest.contents,
+                      instanceId,
+                      quantity,
+                      Infinity
+                  )
         if (item === undefined) {
             return chestRefusalNotice(actor.id, 'Предмета больше нет в сумке.')
         }

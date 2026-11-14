@@ -1,9 +1,8 @@
 import type { GameCharacter } from './character'
+import { CONVERSATION_REACH } from './conversationSessions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
-
-const interactionRadius = 48
 
 export function resolveAdventureNpc(
     actor: GameCharacter,
@@ -22,7 +21,7 @@ export function resolveAdventureNpc(
             !actor.tags.has('state.retired') &&
             npcAvailable(npc) &&
             actor.locationId === npc.locationId &&
-            distance(actor.position, npc.position) <= interactionRadius &&
+            distance(actor.position, npc.position) <= CONVERSATION_REACH &&
             (navigation?.hasLineOfSight(actor.position, npc.position) ?? true)
     )
 }
