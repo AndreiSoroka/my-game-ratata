@@ -67,6 +67,7 @@ export function searchKind(value: unknown): value is ScenarioSearchKind {
         'fiber',
         'scrap',
         'grain',
+        'brushwood',
         'enemy',
         'chest',
         'item',

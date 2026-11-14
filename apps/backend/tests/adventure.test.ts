@@ -278,6 +278,7 @@ describe('adventure gathering and crafting', () => {
             scrap: 0,
             wood: 0,
             stone: 0,
+            brushwood: 0,
             sapling: 0,
         })
         expect(

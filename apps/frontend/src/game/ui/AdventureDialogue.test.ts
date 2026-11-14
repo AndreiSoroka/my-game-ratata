@@ -25,7 +25,16 @@ const adventure: AdventureSnapshot = {
     recipes: [],
     trophies: 0,
     wardRestored: false,
-    materials: { grain: 3, herbs: 0, wood: 0, fiber: 0, scrap: 0, stone: 0, sapling: 0 },
+    materials: {
+        grain: 3,
+        herbs: 0,
+        wood: 0,
+        fiber: 0,
+        scrap: 0,
+        stone: 0,
+        brushwood: 0,
+        sapling: 0,
+    },
     quest: {
         id: 'quest',
         title: '',

@@ -61,7 +61,16 @@ export function adventureFixture(gold = 0): AdventureSnapshot {
         recipes: [],
         trophies: 0,
         wardRestored: false,
-        materials: { grain: 0, herbs: 0, wood: 0, fiber: 0, scrap: 0, stone: 0, sapling: 0 },
+        materials: {
+            grain: 0,
+            herbs: 0,
+            wood: 0,
+            fiber: 0,
+            scrap: 0,
+            stone: 0,
+            brushwood: 0,
+            sapling: 0,
+        },
         quest: {
             id: 'quest',
             title: '',

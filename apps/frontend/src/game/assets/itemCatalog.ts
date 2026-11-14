@@ -15,6 +15,7 @@ export const itemAssetCatalog: Record<ItemId, ItemAssetDefinition> = {
     pickaxe: nativeItemAsset('pickaxe'),
     stone: nativeItemAsset('stone'),
     sapling: nativeItemAsset('sapling'),
+    brushwood: nativeItemAsset('brushwood'),
     boots: itemAsset('boots', 'Item__48.png'),
     food: itemAsset('food', 'Item__64.png'),
     fiber: nativeItemAsset('fiber'),

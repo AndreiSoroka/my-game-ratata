@@ -1,36 +1,41 @@
 import {
     type AdventureResourceNode,
     type GameEventPayload,
-    isItemBroken,
+    type GatherOperation,
     ITEM_DEFINITIONS,
     TREE_PROFILES,
     type Vector2,
-    type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import {
+    deplete,
+    gatheringTool,
+    harvestOutputs,
+    operationMatches,
+    removeNode,
+} from './harvestRules'
+import {
     addInventoryItems,
+    canAddInventoryItems,
     createItemInstance,
     type InventoryItemInstance,
 } from './inventory'
+export { STONE_REGROW_MS, stumpBounds, TREE_GROW_MS } from './harvestRules'
+
 import { wearItem } from './itemDurability'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
-import { resourceReachable } from './resourcePlacement'
+import { resourceApproach, resourceReachable } from './resourcePlacement'
 import { canPerformSkillAction } from './skillProgression'
 
-export const TREE_GROW_MS = 10 * 60_000
-export const STONE_REGROW_MS = 20 * 60_000
-
-interface WorkTool {
-    tool: InventoryItemInstance
-    energy: number
-    duration: number
-    wear: number
+const workLocks = new WeakMap<GameCharacter, number>()
+export interface GatherInspection {
+    status: 'ready' | 'range' | 'cooldown' | 'stop'
+    target?: Vector2
+    reason?: string
 }
-
 export interface HarvestDrops {
     random: () => number
     drop: (
@@ -39,7 +44,6 @@ export interface HarvestDrops {
         node: AdventureResourceNode
     ) => void
 }
-
 export function workReady(
     actor: GameCharacter,
     state: PlayerAdventure,
@@ -47,72 +51,113 @@ export function workReady(
 ): boolean {
     return canPerformSkillAction(actor, now) && now >= state.gatherAllowedAt
 }
-
+export function inspectGather(
+    actor: GameCharacter,
+    state: PlayerAdventure,
+    node: AdventureResourceNode,
+    operation: GatherOperation,
+    now: number,
+    navigation?: NavigationService
+): GatherInspection {
+    const stop = (reason: string): GatherInspection => ({
+        status: 'stop',
+        reason,
+    })
+    if (
+        !gatherActorAvailable(actor, node, now) ||
+        navigation === undefined ||
+        node.bounds === undefined
+    ) {
+        return stop('Сейчас работать с этим ресурсом нельзя.')
+    }
+    if (!operationMatches(node, operation)) {
+        return stop('Этот источник уже изменился или исчерпан.')
+    }
+    const work = gatheringTool(actor, node, operation)
+    if (work === undefined) {
+        return stop(
+            operation === 'clear_stump'
+                ? 'Нужен исправный топор в руке.'
+                : 'Нужен исправный подходящий инструмент в руке.'
+        )
+    }
+    if (actor.energy < work.energy) {
+        return stop(`Для работы нужно ${String(work.energy)} сил.`)
+    }
+    if (
+        !canAddInventoryItems(actor.inventory, harvestOutputs(node, operation))
+    ) {
+        return stop(
+            'В рюкзаке нет места для всей добычи. Ресурс и инструмент сохранены.'
+        )
+    }
+    if (resourceReachable(actor, node.bounds, navigation)) {
+        return gatherCoolingDown(actor, state, now)
+            ? { status: 'cooldown' }
+            : { status: 'ready' }
+    }
+    const target = resourceApproach(actor, node.bounds, navigation, 240)
+    return target === undefined
+        ? stop('Ресурс не виден или к нему нет подхода.')
+        : { status: 'range', target }
+}
 export function resolveGather(
     actor: GameCharacter,
     state: PlayerAdventure,
     node: AdventureResourceNode,
     now: number,
     navigation?: NavigationService,
-    drops?: HarvestDrops
+    drops?: HarvestDrops,
+    operation: GatherOperation = 'harvest'
 ): GameEventPayload[] {
-    const problem = gatherProblem(actor, state, node, now, navigation)
-    if (problem !== undefined) {
-        return rejectWork(state, problem)
+    const check = inspectGather(actor, state, node, operation, now, navigation)
+    if (check.status !== 'ready') {
+        return rejectWork(
+            state,
+            check.reason ?? 'Подойди к ресурсу или дождись следующего удара.'
+        )
     }
-    const work = gatheringTool(actor, node)
+    const work = gatheringTool(actor, node, operation)
     if (work === undefined) {
-        return rejectWork(
-            state,
-            node.source === 'tree'
-                ? 'Нужен исправный топор или меч в руке.'
-                : 'Нужна исправная кирка в руке.'
-        )
+        return []
     }
-    if (actor.energy < work.energy) {
-        return rejectWork(state, `Для работы нужно ${String(work.energy)} сил.`)
-    }
-    const finalTree = node.source === 'tree' && node.remaining === 1
-    const outputs = [createItemInstance(node.kind)]
-    if (finalTree) {
-        outputs.push(createItemInstance('sapling', 2))
-    }
+    const outputs = harvestOutputs(node, operation)
     if (!addInventoryItems(actor.inventory, outputs)) {
-        return rejectWork(
-            state,
-            'В рюкзаке нет места для всей добычи. Ресурс и инструмент сохранены.'
-        )
+        return rejectWork(state, 'В рюкзаке нет места для всей добычи.')
     }
     actor.drainEnergy(work.energy)
     workAnimation(actor, state, now, work.duration)
-    const broken = wearItem(work.tool, work.wear)
-    node.remaining -= 1
-    if (node.remaining === 0) {
-        deplete(node, now)
+    const broken =
+        work.tool === undefined ? false : wearItem(work.tool, work.wear)
+    const treeCut = node.source === 'tree' && operation === 'harvest'
+    if (operation === 'harvest') {
+        node.remaining -= 1
+        if (node.remaining === 0) {
+            deplete(node, now)
+        }
+    } else {
+        removeNode(node)
     }
-    const text = setNotice(state, resultText(node, finalTree, broken))
-    dropTreeLoot(actor, node, drops)
-    return [
-        {
-            kind: 'resource_gather',
-            actorId: actor.id,
-            itemId: node.kind,
-            amount: 1,
-            text,
-        },
-    ]
+    const text = setNotice(state, resultText(node, operation, outputs, broken))
+    if (treeCut) {
+        dropTreeLoot(actor, node, drops)
+    }
+    return outputs.length === 0
+        ? [{ kind: 'notice', actorId: actor.id, text }]
+        : outputs.map((item) => ({
+              kind: 'resource_gather' as const,
+              actorId: actor.id,
+              itemId: item.itemId,
+              amount: item.quantity ?? 1,
+              text,
+          }))
 }
-
 function dropTreeLoot(
     actor: GameCharacter,
     node: AdventureResourceNode,
     drops?: HarvestDrops
 ): void {
-    if (
-        node.source !== 'tree' ||
-        node.treeProfile === undefined ||
-        drops === undefined
-    ) {
+    if (node.treeProfile === undefined || drops === undefined) {
         return
     }
     for (const loot of TREE_PROFILES[node.treeProfile].sideDrops) {
@@ -125,75 +170,6 @@ function dropTreeLoot(
         }
     }
 }
-
-function gatherProblem(
-    actor: GameCharacter,
-    state: PlayerAdventure,
-    node: AdventureResourceNode,
-    now: number,
-    navigation?: NavigationService
-): string | undefined {
-    if (
-        !workReady(actor, state, now) ||
-        actor.locationId !== node.locationId ||
-        navigation === undefined ||
-        node.bounds === undefined ||
-        !resourceReachable(actor, node.bounds, navigation)
-    ) {
-        return 'Подойди к ресурсу: работать через стену или во время другого действия нельзя.'
-    }
-    if (node.phase !== 'ready' || node.remaining <= 0) {
-        return node.source === 'tree'
-            ? 'Здесь пень или молодое дерево. Посади саженец и дай ему вырасти.'
-            : 'Камень исчерпан; залежь восстановится через 20 минут.'
-    }
-    return undefined
-}
-
-function gatheringTool(
-    actor: GameCharacter,
-    node: AdventureResourceNode
-): WorkTool | undefined {
-    const tool = actor.equipment.weapon
-    if (tool === undefined || isItemBroken(tool)) {
-        return undefined
-    }
-    const capability =
-        node.source === undefined
-            ? undefined
-            : ITEM_DEFINITIONS[tool.itemId].gathering?.[node.source]
-    return capability === undefined
-        ? undefined
-        : {
-              tool,
-              energy: capability.energy,
-              duration: capability.durationMs,
-              wear: capability.wear,
-          }
-}
-
-function deplete(node: AdventureResourceNode, now: number): void {
-    node.phase = node.source === 'tree' ? 'stump' : 'depleted'
-    node.readyAt = node.source === 'stone' ? now + STONE_REGROW_MS : 0
-    if (node.source === 'tree') {
-        node.collisionBounds = stumpBounds(node.position)
-    } else {
-        delete node.collisionBounds
-    }
-}
-
-function resultText(
-    node: AdventureResourceNode,
-    finalTree: boolean,
-    broken: boolean
-): string {
-    return `${node.source === 'tree' ? 'Древесина' : 'Камень'} +1.${finalTree ? ' Дерево стало пнём; саженцы +2.' : ''}${broken ? ' Инструмент сломан — кузнец сможет починить.' : ''}`
-}
-
-export function stumpBounds(position: Vector2): WorldObjectBounds {
-    return { x: position.x - 8, y: position.y - 8, width: 16, height: 16 }
-}
-
 export function rejectWork(
     state: PlayerAdventure,
     text: string
@@ -201,7 +177,12 @@ export function rejectWork(
     setNotice(state, text)
     return []
 }
-
+export function releaseWorkLock(actor: GameCharacter): void {
+    if (actor.actionLockUntil === workLocks.get(actor)) {
+        actor.actionLockUntil = 0
+    }
+    workLocks.delete(actor)
+}
 export function workAnimation(
     actor: GameCharacter,
     state: PlayerAdventure,
@@ -211,6 +192,49 @@ export function workAnimation(
     state.gatherAllowedAt = now + duration
     actor.setMoveInput({ x: 0, y: 0 })
     actor.clearPath()
+    const prior = actor.actionLockUntil
     actor.lockAction(now, duration)
+    if (actor.actionLockUntil > prior) {
+        workLocks.set(actor, actor.actionLockUntil)
+    }
     actor.setAnimation('attack', now, 400)
+}
+
+function gatherActorAvailable(
+    actor: GameCharacter,
+    node: AdventureResourceNode,
+    now: number
+): boolean {
+    return (
+        actor.alive &&
+        !actor.tags.has('offline') &&
+        !actor.tags.has('state.retired') &&
+        actor.stunUntil <= now &&
+        actor.locationId === node.locationId
+    )
+}
+function resultText(
+    node: AdventureResourceNode,
+    operation: GatherOperation,
+    outputs: InventoryItemInstance[],
+    broken: boolean
+): string {
+    const reward =
+        operation === 'cut_sapling'
+            ? 'Саженец удалён без добычи.'
+            : outputs
+                  .map(
+                      (item) =>
+                          `${ITEM_DEFINITIONS[item.itemId].name} +${String(item.quantity ?? 1)}`
+                  )
+                  .join('. ') + '.'
+    return `${reward}${node.phase === 'stump' ? ' Остался пень.' : ''}${broken ? ' Инструмент сломан — кузнец сможет починить.' : ''}`
+}
+
+function gatherCoolingDown(
+    actor: GameCharacter,
+    state: PlayerAdventure,
+    now: number
+): boolean {
+    return now < state.gatherAllowedAt || actor.isActionLocked(now)
 }

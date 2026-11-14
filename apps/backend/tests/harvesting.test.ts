@@ -1,86 +1,11 @@
-import {
-    type AdventureResourceNode,
-    INVENTORY_CAPACITY,
-    itemDurability,
-} from '@my-game-ratata/contracts'
+import { INVENTORY_CAPACITY, itemDurability } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
-import { AdventureResources } from '../src/game/adventureResources'
 import { createAdventureState } from '../src/game/adventureState'
 import { GameCharacter } from '../src/game/character'
 import { STONE_REGROW_MS, TREE_GROW_MS } from '../src/game/harvestResources'
 import { countInventoryItem, createItemInstance } from '../src/game/inventory'
-import { NavigationService } from '../src/game/navigation'
-
-function weapon(actor: GameCharacter) {
-    const item = actor.equipment.weapon
-    if (item === undefined) {
-        throw new Error('Missing tool')
-    }
-    return item
-}
-
-function fixture(source: 'tree' | 'stone' = 'tree', remaining = 8) {
-    const bounds = { x: 160, y: 160, width: 48, height: 32 }
-    const node: AdventureResourceNode = {
-        id: 'tree-one',
-        source,
-        phase: 'ready',
-        remaining,
-        readyAt: 0,
-        kind: source === 'tree' ? 'wood' : 'stone',
-        locationId: 'map-2-2',
-        position: { x: 184, y: 184 },
-        bounds,
-        matureBounds: bounds,
-        collisionBounds: bounds,
-    }
-    const plantable = Array.from({ length: 1024 }, () => true)
-    const navigation = new NavigationService({
-        id: 'map-2-2',
-        width: 32,
-        height: 32,
-        tileWidth: 16,
-        tileHeight: 16,
-        solid: Array.from({ length: 1024 }, () => false),
-        solidLayerNames: [],
-        plantable,
-    })
-    const actor = new GameCharacter({
-        id: 'hero',
-        nickname: 'Hero',
-        archetype: 'human',
-        controllerKind: 'network_player',
-        spawnPosition: { x: 184, y: 224 },
-    })
-    actor.equipment.weapon = createItemInstance(
-        source === 'tree' ? 'axe' : 'pickaxe'
-    )
-    const resources = new AdventureResources([node])
-    const state = createAdventureState()
-    const clock = { now: 0 }
-    const update = () => resources.update(clock.now, () => navigation, [actor])
-    update()
-    const gather = () =>
-        resources.handle(
-            actor,
-            state,
-            { type: 'gather', nodeId: node.id },
-            clock.now,
-            navigation
-        )
-    return {
-        actor,
-        state,
-        clock,
-        navigation,
-        resources,
-        gather,
-        update,
-        node,
-        plantable,
-    }
-}
+import { fixture, weapon } from './harvestTestHelpers'
 
 it('uses authored gathering capabilities for a crafted stone axe', () => {
     const f = fixture()
@@ -108,6 +33,7 @@ describe('shared authoritative logging and mining', () => {
         expect(itemDurability(tool)).toBe(992)
         expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(8)
         expect(countInventoryItem(f.actor.inventory, 'sapling')).toBe(2)
+        expect(countInventoryItem(f.actor.inventory, 'brushwood')).toBe(1)
         expect(f.resources.snapshot()[0]).toMatchObject({
             phase: 'stump',
             remaining: 0,
@@ -155,6 +81,7 @@ describe('shared authoritative logging and mining', () => {
         expect(f.actor.energy).toBe(energy)
         expect(itemDurability(weapon(f.actor))).toBe(1_000)
         expect(f.resources.snapshot()[0]?.remaining).toBe(1)
+        f.actor.inventory.pop()
         f.actor.inventory.pop()
         f.gather()
         expect(f.actor.inventory).toHaveLength(INVENTORY_CAPACITY)

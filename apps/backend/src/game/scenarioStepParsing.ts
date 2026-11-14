@@ -174,7 +174,13 @@ function parseRecover(
         : undefined
 }
 function resourceKind(value: unknown): value is ScenarioResourceKind {
-    return ['wood', 'stone', 'herbs', 'fiber', 'scrap', 'grain'].some(
-        (kind) => kind === value
-    )
+    return [
+        'wood',
+        'stone',
+        'herbs',
+        'fiber',
+        'scrap',
+        'grain',
+        'brushwood',
+    ].some((kind) => kind === value)
 }

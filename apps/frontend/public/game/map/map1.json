@@ -2571,6 +2571,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2604,6 +2609,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2639,6 +2649,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2672,6 +2687,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2707,6 +2727,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2740,6 +2765,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2775,6 +2805,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2805,7 +2840,12 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
                     ]
                 },
                 {
@@ -2835,7 +2875,12 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
                     ]
                 },
                 {
@@ -2865,7 +2910,12 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
                     ]
                 },
                 {
@@ -2895,7 +2945,12 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
                     ]
                 },
                 {
@@ -2925,7 +2980,12 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
                     ]
                 },
                 {
@@ -2955,7 +3015,12 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
                     ]
                 },
                 {
@@ -2985,7 +3050,793 @@
                             "value": "pine"
                         },
                         { "name": "visual", "type": "string", "value": "pine" },
-                        { "name": "capacity", "type": "int", "value": 8 }
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "small"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20014,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 96,
+                    "y": 192,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:6:12"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:6:12"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20015,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1168,
+                    "y": 80,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:73:5"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:73:5"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20016,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 864,
+                    "y": 1168,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:54:73"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:54:73"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20017,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1312,
+                    "y": 1136,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:82:71"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:82:71"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20018,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1424,
+                    "y": 544,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:89:34"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:89:34"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20019,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 912,
+                    "y": 1168,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:57:73"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:57:73"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20020,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1088,
+                    "y": 96,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:68:6"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:68:6"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20021,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1392,
+                    "y": 800,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:87:50"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:87:50"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20022,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1328,
+                    "y": 1168,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:83:73"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:83:73"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20023,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 96,
+                    "y": 272,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:6:17"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:6:17"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20024,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 112,
+                    "y": 1136,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:7:71"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:7:71"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20025,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1408,
+                    "y": 576,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:88:36"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:88:36"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20026,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 96,
+                    "y": 112,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:6:7"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:6:7"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20027,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 1136,
+                    "y": 112,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:71:7"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:71:7"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20028,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 96,
+                    "y": 224,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:6:14"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:6:14"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20029,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 880,
+                    "y": 96,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:55:6"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:55:6"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20030,
+                    "name": "Куст",
+                    "type": "bush",
+                    "x": 112,
+                    "y": 416,
+                    "width": 32,
+                    "height": 32,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:harvest:map-2-2:prop:7:26"
+                        },
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:7:26"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 2 }
+                    ]
+                },
+                {
+                    "id": 20031,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1424,
+                    "y": 848,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:89:53"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20032,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 912,
+                    "y": 256,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:57:16"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20033,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1120,
+                    "y": 112,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:70:7"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20034,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 912,
+                    "y": 304,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:57:19"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20035,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 240,
+                    "y": 576,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:15:36"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20036,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1120,
+                    "y": 224,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:70:14"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20037,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 336,
+                    "y": 752,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:21:47"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20038,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 336,
+                    "y": 1088,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:21:68"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20039,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 512,
+                    "y": 256,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:32:16"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20040,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1328,
+                    "y": 448,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:83:28"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20041,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1360,
+                    "y": 160,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:85:10"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20042,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 96,
+                    "y": 784,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-2-2:branches:6:49"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
                     ]
                 }
             ]
@@ -3027,31 +3878,21 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
+                1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1,
+                1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3066,6 +3907,20 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3075,15 +3930,11 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3120,11 +3971,11 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3160,21 +4011,21 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3233,12 +4084,12 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3325,25 +4176,25 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
+                1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3406,21 +4257,21 @@
                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1,
-                1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0,
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-                0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -3435,20 +4286,20 @@
                 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
-                0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-                1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0,
+                1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0,
                 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-                0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0,
+                0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-                0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1,
+                0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
                 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3458,11 +4309,11 @@
                 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
                 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-                0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
                 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
-                1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1,
+                1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3499,11 +4350,11 @@
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
-                0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1,
-                1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
+                1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
                 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0,
@@ -3539,21 +4390,21 @@
                 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1,
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
                 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1,
-                0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+                0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
                 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0,
+                0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
                 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -3612,12 +4463,12 @@
                 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
                 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+                0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
                 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
@@ -3704,25 +4555,25 @@
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0,
+                1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-                0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1,
+                0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1,
-                0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

@@ -5,6 +5,7 @@ import {
     parseMerchantService,
 } from './craftOrderCommands'
 import { parseEconomyCommand } from './economyCommands'
+import { isGatherOperation } from './forestCommands'
 import type { ParseResult } from './messages'
 import { parseMindCommand } from './mindCommands'
 
@@ -73,7 +74,16 @@ function parseResourceCommand(record: Record<string, unknown>): ParseResult {
         return parseFarmCommand(record)
     }
     if (type === 'gather' && validId(nodeId)) {
-        return { message: { type, nodeId } }
+        const operation = record['operation']
+        return operation === undefined || isGatherOperation(operation)
+            ? {
+                  message: {
+                      type,
+                      nodeId,
+                      ...(operation === undefined ? {} : { operation }),
+                  },
+              }
+            : { error: 'Invalid gather operation.' }
     }
     if (type === 'trade' && isCraftItem(itemId)) {
         return { message: { type, itemId } }

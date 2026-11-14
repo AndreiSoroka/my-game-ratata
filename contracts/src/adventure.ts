@@ -16,7 +16,14 @@ export type AdventureTradeItemId =
     'food' | 'simple_sword' | 'boots' | 'axe' | 'pickaxe' | 'stone_axe'
 export type AdventureRecipeId = AdventureTradeItemId | 'bake_bread'
 export type AdventureMaterial =
-    'herbs' | 'fiber' | 'scrap' | 'wood' | 'grain' | 'stone' | 'sapling'
+    | 'herbs'
+    | 'fiber'
+    | 'scrap'
+    | 'wood'
+    | 'grain'
+    | 'stone'
+    | 'sapling'
+    | 'brushwood'
 export type AdventureMaterials = Record<AdventureMaterial, number>
 
 export type AdventureClientMessage =
@@ -28,7 +35,7 @@ export type AdventureClientMessage =
     | { type: 'interact'; targetId: string; service?: MerchantServiceView }
     | { type: 'dialogue_choice'; choiceId: string }
     | { type: 'trade'; itemId: AdventureTradeItemId }
-    | { type: 'gather'; nodeId: string }
+    | { type: 'gather'; nodeId: string; operation?: GatherOperation }
     | { type: 'craft'; recipeId: AdventureRecipeId }
 
 export type AdventureQuestStatus =
@@ -92,10 +99,13 @@ export interface AdventureSnapshot {
     wardRestored: boolean
 }
 
+export type GatherOperation = 'harvest' | 'clear_stump' | 'cut_sapling'
+
 export interface AdventureResourceNode {
+    treeSize?: 'adult' | 'small'
     treeProfile?: TreeProfile
-    source?: 'tree' | 'stone'
-    phase?: 'ready' | 'stump' | 'growing' | 'depleted'
+    source?: 'tree' | 'stone' | 'bush' | 'branches'
+    phase?: 'ready' | 'stump' | 'growing' | 'depleted' | 'removed'
     readyAt?: number
     propId?: string
     bounds?: WorldObjectBounds

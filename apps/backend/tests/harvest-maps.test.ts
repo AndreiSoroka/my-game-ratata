@@ -88,3 +88,33 @@ describe('authored resource metadata', () => {
         }
     })
 })
+
+it('authors seven small city pines, finite bushes and at most twelve dry branch sources per location', () => {
+    const sources = loadHarvestSources()
+    const pines = sources.filter(
+        (node) =>
+            node.locationId === 'map-2-2' &&
+            node.source === 'tree' &&
+            node.treeProfile === 'pine'
+    )
+    expect(pines).toHaveLength(7)
+    expect(
+        pines.every((node) => node.treeSize === 'small' && node.remaining === 2)
+    ).toBe(true)
+    expect(sources.some((node) => node.source === 'bush')).toBe(true)
+    for (const { id } of WORLD_LOCATION_DEFINITIONS) {
+        const branches = sources.filter(
+            (node) => node.locationId === id && node.source === 'branches'
+        )
+        expect(branches.length).toBeGreaterThan(0)
+        expect(branches.length).toBeLessThanOrEqual(12)
+        expect(
+            branches.every(
+                (node) =>
+                    node.kind === 'brushwood' &&
+                    node.remaining === 1 &&
+                    node.collisionBounds === undefined
+            )
+        ).toBe(true)
+    }
+})

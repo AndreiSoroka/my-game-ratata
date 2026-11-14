@@ -8,6 +8,7 @@ const search = {
         'fiber',
         'scrap',
         'grain',
+        'brushwood',
         'enemy',
         'chest',
         'item',
@@ -75,7 +76,15 @@ const steps = {
             step('search', { target: search, itemId }, ['target']),
             step('gather', {
                 resource: {
-                    enum: ['wood', 'stone', 'herbs', 'fiber', 'scrap', 'grain'],
+                    enum: [
+                        'wood',
+                        'brushwood',
+                        'stone',
+                        'herbs',
+                        'fiber',
+                        'scrap',
+                        'grain',
+                    ],
                 },
                 amount: {
                     oneOf: [

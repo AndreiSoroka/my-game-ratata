@@ -18,6 +18,7 @@ export const itemIds = [
     'pickaxe',
     'stone',
     'sapling',
+    'brushwood',
 ] as const
 
 export type ItemId = (typeof itemIds)[number]
@@ -48,7 +49,7 @@ export interface ItemDefinition {
     maxDurability?: number
     gathering?: Partial<
         Record<
-            'tree' | 'stone',
+            'tree' | 'stone' | 'bush',
             { energy: number; durationMs: number; wear: number }
         >
     >
@@ -71,7 +72,10 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         equipmentSlots: ['weapon'],
         price: 25,
         maxDurability: 1000,
-        gathering: { tree: { energy: 5, durationMs: 2000, wear: 1 } },
+        gathering: {
+            tree: { energy: 5, durationMs: 2000, wear: 1 },
+            bush: { energy: 1, durationMs: 400, wear: 1 },
+        },
         fullRepairPrice: 10,
         durabilityWear: { attack: 5 },
         weapon: { minDamage: 4, maxDamage: 7 },
@@ -86,7 +90,10 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         maxDurability: 100,
         fullRepairPrice: 4,
         durabilityWear: { attack: 5 },
-        gathering: { tree: { energy: 5, durationMs: 2000, wear: 1 } },
+        gathering: {
+            tree: { energy: 5, durationMs: 2000, wear: 1 },
+            bush: { energy: 1, durationMs: 400, wear: 1 },
+        },
         weapon: { minDamage: 2, maxDamage: 4 },
     },
     pickaxe: {
@@ -107,12 +114,21 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         maxStack: 1,
         description: 'Добытый камень. Занимает отдельную ячейку.',
     },
+    brushwood: {
+        id: 'brushwood',
+        name: 'Хворост',
+        maxStack: 9,
+        price: 1,
+        description:
+            'Сухие ветки для растопки и городского отопления. До 9 единиц в ячейке.',
+    },
     sapling: {
         id: 'sapling',
         name: 'Саженец',
         maxStack: 1,
         price: 3,
-        description: 'Посади на месте пня, чтобы вырастить новое дерево.',
+        description:
+            'Посади на свободной земле, чтобы за 10 минут вырастить взрослое лесное дерево. Пень сначала нужно убрать.',
     },
     herbs: {
         id: 'herbs',
@@ -168,7 +184,10 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         name: 'Apple',
     },
     old_sword: {
-        gathering: { tree: { energy: 10, durationMs: 4000, wear: 20 } },
+        gathering: {
+            tree: { energy: 10, durationMs: 4000, wear: 20 },
+            bush: { energy: 2, durationMs: 600, wear: 1 },
+        },
         equipmentSlots: ['weapon'],
         id: 'old_sword',
         name: 'Old Sword',
@@ -182,7 +201,10 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         },
     },
     simple_sword: {
-        gathering: { tree: { energy: 10, durationMs: 4000, wear: 20 } },
+        gathering: {
+            tree: { energy: 10, durationMs: 4000, wear: 20 },
+            bush: { energy: 2, durationMs: 600, wear: 1 },
+        },
         equipmentSlots: ['weapon'],
         id: 'simple_sword',
         name: 'Simple Sword',

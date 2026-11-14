@@ -17,6 +17,7 @@ export function resourceActions(
         grain: 'зерно',
         stone: 'камень',
         sapling: 'саженец',
+        brushwood: 'хворост',
     }
     return nearestByKind(
         (snapshot.adventure?.resourceNodes ?? []).filter(

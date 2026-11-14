@@ -56,7 +56,7 @@ export class DepthPropViews {
             original.graphics.isVisible = node.phase === 'ready'
             if (node.phase === 'ready') return false
         }
-        if (node.source === 'stone') return false
+        if (['stone', 'bush'].includes(node.source) || node.phase === 'removed') return false
         const existing = this.resources.get(node.id)
         if (existing?.phase === node.phase) return true
         existing?.actor.kill()
@@ -72,6 +72,7 @@ export class DepthPropViews {
     }
 
     private graphicFor(node: AdventureResourceNode): HTMLCanvasElement | undefined {
+        if (node.source === 'branches') return this.graphics?.branches
         if (node.phase === 'ready')
             return (
                 this.graphics?.[node.treeProfile ?? node.visual ?? 'forest'] ??

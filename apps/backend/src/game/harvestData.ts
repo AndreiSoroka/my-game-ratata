@@ -54,52 +54,111 @@ export function readHarvestSources(
         map.layers.find((layer) => layer.name === 'Harvest sources')?.objects ??
         []
     ).map((object) => {
-        const get = (name: string) =>
-            object.properties?.find((property) => property.name === name)?.value
-        const id = get('sourceId')
-        const propId = get('propId')
-        const capacity = get('capacity')
-        const visual = get('visual')
-        const profile = treeProfileData(object.type, get('treeProfile'))
-        if (
-            (object.type !== 'tree' && object.type !== 'stone') ||
-            typeof id !== 'string' ||
-            id.length === 0 ||
-            ids.has(id) ||
-            typeof propId !== 'string' ||
-            !validBounds(object) ||
-            capacity !== 8 ||
-            (visual !== 'forest' && visual !== 'pine')
-        ) {
-            throw new Error(`Invalid harvest source in ${locationId}`)
+        const node = readSource(object, locationId)
+        if (ids.has(node.id)) {
+            throw new Error(`Duplicate harvest source in ${locationId}`)
         }
-        ids.add(id)
-        const bounds = {
-            x: object.x,
-            y: object.y,
-            width: object.width,
-            height: object.height,
-        }
-        return {
-            id,
-            propId,
-            locationId,
-            source: object.type,
-            kind: object.type === 'tree' ? 'wood' : 'stone',
-            phase: 'ready',
-            remaining: capacity,
-            readyAt: 0,
-            visual,
-            ...profile,
-            position: {
-                x: bounds.x + bounds.width / 2,
-                y: bounds.y + bounds.height - 8,
-            },
-            bounds: { ...bounds },
-            matureBounds: { ...bounds },
-            collisionBounds: { ...bounds },
-        }
+        ids.add(node.id)
+        return node
     })
+}
+
+type HarvestObject = NonNullable<
+    HarvestMap['layers'][number]['objects']
+>[number]
+function readSource(
+    object: HarvestObject,
+    locationId: string
+): AdventureResourceNode {
+    const get = (name: string) =>
+        object.properties?.find((property) => property.name === name)?.value
+    const id = get('sourceId'),
+        propId = get('propId'),
+        capacity = get('capacity'),
+        visual = get('visual')
+    const treeSize = get('treeSize') ?? 'adult'
+    validateSource(
+        object,
+        { id, propId, capacity, visual, treeSize },
+        locationId
+    )
+    const bounds = {
+        x: object.x,
+        y: object.y,
+        width: object.width,
+        height: object.height,
+    }
+    return {
+        id: id as string,
+        ...(typeof propId === 'string' ? { propId } : {}),
+        locationId,
+        source: object.type as NonNullable<AdventureResourceNode['source']>,
+        kind: sourceMaterial(object.type),
+        ...(object.type === 'tree'
+            ? { treeSize: treeSize as 'adult' | 'small' }
+            : {}),
+        phase: 'ready',
+        remaining: capacity as number,
+        readyAt: 0,
+        visual: visual as 'forest' | 'pine',
+        ...treeProfileData(object.type, get('treeProfile')),
+        position: {
+            x: bounds.x + bounds.width / 2,
+            y: bounds.y + bounds.height - 8,
+        },
+        bounds: { ...bounds },
+        matureBounds: { ...bounds },
+        ...(object.type === 'branches'
+            ? {}
+            : { collisionBounds: { ...bounds } }),
+    }
+}
+function sourceMaterial(source: string): AdventureResourceNode['kind'] {
+    return source === 'tree'
+        ? 'wood'
+        : source === 'stone'
+          ? 'stone'
+          : 'brushwood'
+}
+function capacityFor(source: string, size: unknown): number {
+    switch (source) {
+        case 'tree':
+            return size === 'small' ? 2 : 8
+        case 'bush':
+            return 2
+        case 'branches':
+            return 1
+        default:
+            return 8
+    }
+}
+function validateSource(
+    object: HarvestObject,
+    values: Record<string, unknown>,
+    locationId: string
+): void {
+    const { id, propId, capacity, visual, treeSize } = values
+    if (
+        !['tree', 'stone', 'bush', 'branches'].includes(object.type) ||
+        typeof id !== 'string' ||
+        id.length === 0 ||
+        !validBounds(object) ||
+        !validSourceDetails(object.type, propId, treeSize) ||
+        capacity !== capacityFor(object.type, treeSize) ||
+        (visual !== 'forest' && visual !== 'pine')
+    ) {
+        throw new Error(`Invalid harvest source in ${locationId}`)
+    }
+}
+function validSourceDetails(
+    source: string,
+    propId: unknown,
+    treeSize: unknown
+): boolean {
+    return (
+        (source === 'branches' || typeof propId === 'string') &&
+        (source !== 'tree' || treeSize === 'adult' || treeSize === 'small')
+    )
 }
 
 function treeProfileData(

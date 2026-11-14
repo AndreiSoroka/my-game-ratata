@@ -7,11 +7,12 @@ export type ScenarioSearchKind =
     | 'fiber'
     | 'scrap'
     | 'grain'
+    | 'brushwood'
     | 'enemy'
     | 'chest'
     | 'item'
 export type ScenarioResourceKind =
-    'wood' | 'stone' | 'herbs' | 'fiber' | 'scrap' | 'grain'
+    'wood' | 'stone' | 'herbs' | 'fiber' | 'scrap' | 'grain' | 'brushwood'
 export interface MarkerDefinition {
     id: string
     number: number

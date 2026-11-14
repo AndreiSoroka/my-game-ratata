@@ -1,6 +1,7 @@
 const id = { type: 'string', minLength: 1, maxLength: 100 }
 const items = [
     'wood',
+    'brushwood',
     'stone',
     'herbs',
     'fiber',
@@ -24,8 +25,12 @@ function command(type, properties) {
 }
 const interact = command('interact', { targetId: id })
 interact.properties.service = { enum: ['shop', 'orders', 'repair'] }
+const gather = command('gather', { nodeId: id })
+gather.properties.operation = {
+    enum: ['harvest', 'clear_stump', 'cut_sapling'],
+}
 export const economyDecisionSchemas = [
-    command('gather', { nodeId: id }),
+    gather,
     interact,
     command('dialogue_choice', { choiceId: id }),
     command('craft', {

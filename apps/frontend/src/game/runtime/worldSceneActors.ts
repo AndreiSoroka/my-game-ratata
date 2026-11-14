@@ -80,6 +80,7 @@ export class WorldSceneActors {
             scrap: 'Металл',
             stone: 'Камень',
             sapling: 'Саженцы',
+            brushwood: 'Хворост',
         }
         const colors = {
             herbs: '#77b34d',
@@ -89,6 +90,7 @@ export class WorldSceneActors {
             scrap: '#9aadb9',
             stone: '#9b9a92',
             sapling: '#6caa53',
+            brushwood: '#9c774e',
         }
         for (const node of active) {
             if (this.resources.has(node.id)) continue

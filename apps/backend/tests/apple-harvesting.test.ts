@@ -126,36 +126,52 @@ describe('real apple-tree food drops', () => {
             expect(f.inventory.snapshotItems()).toEqual([])
         }
     )
-    it('also rolls on the last cut and preserves the apple profile through stump planting and growth', () => {
+    it('rolls on the final cut but requires clearing the stump before a new forest tree can grow', () => {
         const f = fixture('apple', 1)
         f.gather()
         expect(f.random).toHaveBeenCalledTimes(1)
         expect(f.resources.snapshot()[0]).toMatchObject({
             phase: 'stump',
             treeProfile: 'apple',
-            remaining: 0,
         })
         f.clock.now += 2000
+        const plant = () =>
+            f.resources.handle(
+                f.actor,
+                f.state,
+                { type: 'plant_tree', position: f.node.position },
+                f.clock.now,
+                f.navigation
+            )
+        expect(plant()).toEqual([])
         f.resources.handle(
             f.actor,
             f.state,
-            { type: 'plant_tree', position: f.node.position },
+            { type: 'gather', nodeId: f.node.id, operation: 'clear_stump' },
             f.clock.now,
             f.navigation
         )
-        expect(f.resources.snapshot()[0]).toMatchObject({
+        expect(f.random).toHaveBeenCalledTimes(1)
+        f.clock.now += 2000
+        expect(plant()[0]?.kind).toBe('tree_plant')
+        const planted = required(
+            f.resources.snapshot().find((node) => node.id !== f.node.id)
+        )
+        expect(planted).toMatchObject({
             phase: 'growing',
-            treeProfile: 'apple',
+            treeProfile: 'forest',
+            treeSize: 'adult',
         })
         f.clock.now += TREE_GROW_MS
         f.update()
-        expect(f.resources.snapshot()[0]).toMatchObject({
-            phase: 'ready',
-            treeProfile: 'apple',
-            remaining: 8,
-        })
-        f.gather()
-        expect(f.random).toHaveBeenCalledTimes(2)
+        f.resources.gather(
+            f.actor,
+            f.state,
+            planted.id,
+            f.clock.now,
+            f.navigation
+        )
+        expect(f.random).toHaveBeenCalledTimes(1)
     })
     it('plants ordinary forest trees on new soil, with no apple roll', () => {
         const f = fixture()

@@ -1,6 +1,7 @@
 import {
     type AdventureResourceNode,
     type GameEventPayload,
+    type GatherOperation,
     type Vector2,
     type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
@@ -24,10 +25,20 @@ import {
     canPlantAt,
     occupied,
     overlaps,
+    resourceApproach,
     resourceReachable,
 } from './resourcePlacement'
 
+export interface PlantInspection {
+    position: Vector2
+    bounds: WorldObjectBounds
+    available: boolean
+    reason?: string
+    approach?: Vector2
+}
+
 export class HarvestResources {
+    private nextPlantId = 0
     private readonly dirty = new Set<string>()
     private characters: GameCharacter[] = []
     private occupants: (locationId: string) => readonly WorldObjectBounds[] =
@@ -74,7 +85,8 @@ export class HarvestResources {
         state: PlayerAdventure,
         node: AdventureResourceNode,
         now: number,
-        navigation?: NavigationService
+        navigation?: NavigationService,
+        operation: GatherOperation = 'harvest'
     ): GameEventPayload[] {
         const events = resolveGather(
             actor,
@@ -82,7 +94,8 @@ export class HarvestResources {
             node,
             now,
             navigation,
-            this.drops
+            this.drops,
+            operation
         )
         if (
             events.length > 0 &&
@@ -108,42 +121,27 @@ export class HarvestResources {
         ) {
             return reject(state, 'Сейчас дерево посадить нельзя.')
         }
-        const tile = navigation.worldToTile(position)
-        const center = navigation.tileToWorld(tile)
-        const replacing = this.stumpAt(actor.locationId, center)
-        const bounds = replacing?.matureBounds ?? {
-            x: center.x - 24,
-            y: center.y - 24,
-            width: 48,
-            height: 32,
-        }
+        const check = this.previewPlant(actor, position, navigation)
+        const { position: center, bounds } = check
         if (
+            !check.available ||
             !resourceReachable(actor, bounds, navigation) ||
-            this.occupants(actor.locationId).some((area) =>
-                overlaps(area, bounds)
-            ) ||
-            !canPlantAt(
-                navigation,
-                bounds,
-                actor,
-                this.nodes,
-                [...this.characters, actor],
-                replacing
-            )
+            occupied(bounds, [actor], actor.locationId)
         ) {
             return reject(
                 state,
-                'Нужна свободная земля рядом: не дорога, вода, грядка, здание или узкий проход.'
+                check.reason ?? 'Подойди к свободной точке рядом с участком.'
             )
         }
+        const tile = navigation.worldToTile(center)
         if (actor.energy < 5) {
             return reject(state, 'Для посадки нужно 5 сил.')
         }
         if (!consumeInventoryItems(actor.inventory, { sapling: 1 })) {
             return reject(state, 'Нужен саженец в рюкзаке.')
         }
-        const node: AdventureResourceNode = replacing ?? {
-            id: `${actor.locationId}:planted:${String(tile.x)}:${String(tile.y)}`,
+        const node: AdventureResourceNode = {
+            id: `${actor.locationId}:planted:${String(tile.x)}:${String(tile.y)}:${String(++this.nextPlantId)}`,
             kind: 'wood',
             locationId: actor.locationId,
             position: center,
@@ -151,6 +149,7 @@ export class HarvestResources {
             remaining: 0,
             visual: 'forest',
             treeProfile: 'forest',
+            treeSize: 'adult',
             bounds: { ...bounds },
             matureBounds: { ...bounds },
         }
@@ -158,9 +157,7 @@ export class HarvestResources {
         node.remaining = 0
         node.readyAt = now + TREE_GROW_MS
         node.collisionBounds = stumpBounds(center)
-        if (replacing === undefined) {
-            this.nodes.push(node)
-        }
+        this.nodes.push(node)
         actor.drainEnergy(5)
         workAnimation(actor, state, now, 2_000)
         this.dirty.add(actor.locationId)
@@ -172,19 +169,53 @@ export class HarvestResources {
         return [{ kind: 'tree_plant', actorId: actor.id, text }]
     }
 
-    private stumpAt(
-        locationId: string,
-        center: Vector2
-    ): AdventureResourceNode | undefined {
-        return this.nodes.find(
-            (node) =>
-                node.locationId === locationId &&
-                node.phase === 'stump' &&
-                Math.hypot(
-                    node.position.x - center.x,
-                    node.position.y - center.y
-                ) < 1
-        )
+    /** Authoritative geometry shared by preview and final atomic planting. */
+    public previewPlant(
+        actor: GameCharacter,
+        position: Vector2,
+        navigation: NavigationService
+    ): PlantInspection {
+        const finite =
+            Number.isFinite(position.x) && Number.isFinite(position.y)
+        const center = finite
+            ? navigation.tileToWorld(navigation.worldToTile(position))
+            : { x: 0, y: 0 }
+        const bounds = {
+            x: center.x - 24,
+            y: center.y - 24,
+            width: 48,
+            height: 32,
+        }
+        const fail = (reason: string): PlantInspection => ({
+            position: center,
+            bounds,
+            available: false,
+            reason,
+        })
+        if (!finite || !actor.alive || actor.tags.has('state.retired')) {
+            return fail('Сейчас дерево посадить нельзя.')
+        }
+        if (
+            this.occupants(actor.locationId).some((area) =>
+                overlaps(area, bounds)
+            ) ||
+            !canPlantAt(
+                navigation,
+                bounds,
+                actor,
+                this.nodes,
+                this.characters.filter((other) => other !== actor)
+            )
+        ) {
+            return fail(
+                'Нужна свободная земля: убери пень; дороги, вода, грядки, здания и проходы не подходят.'
+            )
+        }
+        const approach = resourceApproach(actor, bounds, navigation)
+        if (approach === undefined) {
+            return fail('К участку нет доступного подхода.')
+        }
+        return { position: center, bounds, available: true, approach }
     }
 
     private canGrow(node: AdventureResourceNode, now: number): boolean {

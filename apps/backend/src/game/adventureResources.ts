@@ -1,21 +1,36 @@
 import type {
     AdventureClientMessage,
     AdventureMaterial,
-    AdventureRecipe,
     AdventureRecipeId,
     AdventureResourceNode,
     FarmPlotSnapshot,
     GameEventPayload,
+    GatherOperation,
+    Vector2,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
-import { WORLD_LOCATION_DEFINITIONS } from '@my-game-ratata/contracts'
+
+import {
+    adventureMaterialLabels,
+    adventureRecipes,
+    createAdventureResourceNodes,
+} from './adventureResourceData'
+export {
+    adventureMaterialLabels,
+    adventureRecipes,
+    createAdventureResourceNodes,
+} from './adventureResourceData'
 
 import { AdventureFarming } from './adventureFarming'
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { loadHarvestSources } from './harvestData'
-import { HarvestResources } from './harvestResources'
-import type { HarvestDrops } from './harvestWork'
+import { HarvestResources, type PlantInspection } from './harvestResources'
+import {
+    type GatherInspection,
+    type HarvestDrops,
+    inspectGather,
+} from './harvestWork'
 import {
     addInventoryItems,
     countInventoryItem,
@@ -26,61 +41,6 @@ import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { canPerformSkillAction } from './skillProgression'
-
-export const adventureRecipes: AdventureRecipe[] = [
-    {
-        cost: { stone: 2, wood: 1 },
-        id: 'stone_axe',
-        itemId: 'stone_axe',
-        label: 'Сделать каменный топор',
-    },
-    {
-        cost: { grain: 3 },
-        id: 'bake_bread',
-        itemId: 'food',
-        label: 'Испечь хлеб',
-    },
-    {
-        cost: { herbs: 3 },
-        id: 'food',
-        itemId: 'food',
-        label: 'Приготовить походную еду',
-    },
-    {
-        cost: { fiber: 3 },
-        id: 'boots',
-        itemId: 'boots',
-        label: 'Сплести сапоги',
-    },
-    {
-        cost: { scrap: 3, wood: 2 },
-        id: 'simple_sword',
-        itemId: 'simple_sword',
-        label: 'Собрать простой меч',
-    },
-    {
-        cost: { scrap: 3, wood: 2 },
-        id: 'axe',
-        itemId: 'axe',
-        label: 'Сделать топор',
-    },
-    {
-        cost: { scrap: 3, wood: 2 },
-        id: 'pickaxe',
-        itemId: 'pickaxe',
-        label: 'Сделать кирку',
-    },
-]
-
-export const adventureMaterialLabels: Record<AdventureMaterial, string> = {
-    fiber: 'волокно',
-    grain: 'зерно',
-    herbs: 'травы',
-    scrap: 'металл',
-    wood: 'дерево',
-    stone: 'камень',
-    sapling: 'саженцы',
-}
 
 export class AdventureResources {
     private readonly nodes: AdventureResourceNode[]
@@ -145,7 +105,8 @@ export class AdventureResources {
                     state,
                     message.nodeId,
                     now,
-                    navigation
+                    navigation,
+                    message.operation
                 )
             case 'plant_tree':
                 return this.harvesting.plant(
@@ -167,20 +128,25 @@ export class AdventureResources {
         state: PlayerAdventure,
         nodeId: string,
         now: number,
-        navigation?: NavigationService
+        navigation?: NavigationService,
+        operation: GatherOperation = 'harvest'
     ): GameEventPayload[] {
         const node = this.nodes.find((candidate) => candidate.id === nodeId)
         if (node?.source !== undefined) {
-            return this.harvesting.gather(actor, state, node, now, navigation)
+            return this.harvesting.gather(
+                actor,
+                state,
+                node,
+                now,
+                navigation,
+                operation
+            )
         }
 
-        if (
-            !canPerformSkillAction(actor, now) ||
-            actor.tags.has('state.retired') ||
-            actor.locationId !== node?.locationId ||
-            distance(actor.position, node.position) > 48 ||
-            blockedResource(actor, node, navigation)
-        ) {
+        if (node === undefined || operation !== 'harvest') {
+            return []
+        }
+        if (genericResourceUnavailable(actor, node, now, navigation)) {
             setNotice(
                 state,
                 'Подойди к ресурсу в своей локации: не дальше 48 шагов.'
@@ -214,6 +180,54 @@ export class AdventureResources {
         state.gatherAllowedAt = now + 800
         setNotice(state, `Собрано: ${adventureMaterialLabels[node.kind]} +1.`)
         return []
+    }
+
+    public previewPlant(
+        actor: GameCharacter,
+        position: Vector2,
+        navigation: NavigationService
+    ): PlantInspection {
+        return this.harvesting.previewPlant(actor, position, navigation)
+    }
+
+    public inspectGather(
+        actor: GameCharacter,
+        state: PlayerAdventure,
+        nodeId: string,
+        operation: GatherOperation,
+        now: number,
+        navigation: NavigationService
+    ): GatherInspection {
+        const node = this.nodes.find((candidate) => candidate.id === nodeId)
+        if (node === undefined) {
+            return { status: 'stop', reason: 'Источник исчез.' }
+        }
+        if (node.source !== undefined) {
+            return inspectGather(actor, state, node, operation, now, navigation)
+        }
+        if (
+            operation !== 'harvest' ||
+            node.remaining <= 0 ||
+            actor.locationId !== node.locationId
+        ) {
+            return { status: 'stop' }
+        }
+        if (now < state.gatherAllowedAt) {
+            return { status: 'cooldown' }
+        }
+        if (!canPerformSkillAction(actor, now)) {
+            return { status: 'stop' }
+        }
+        if (!navigation.hasLineOfSight(actor.position, node.position)) {
+            return { status: 'stop' }
+        }
+        if (distance(actor.position, node.position) <= 48) {
+            return { status: 'ready' }
+        }
+        return navigation.findPathWorld(actor.position, node.position).length >
+            0
+            ? { status: 'range', target: node.position }
+            : { status: 'stop' }
     }
 
     public craft(
@@ -263,38 +277,19 @@ export class AdventureResources {
     }
 }
 
-function blockedResource(
+function genericResourceUnavailable(
     actor: GameCharacter,
     node: AdventureResourceNode,
+    now: number,
     navigation?: NavigationService
 ): boolean {
     return (
-        navigation !== undefined &&
-        !navigation.hasLineOfSight(actor.position, node.position)
+        !canPerformSkillAction(actor, now) ||
+        actor.locationId !== node.locationId ||
+        distance(actor.position, node.position) > 48 ||
+        (navigation !== undefined &&
+            !navigation.hasLineOfSight(actor.position, node.position))
     )
-}
-
-export function createAdventureResourceNodes(): AdventureResourceNode[] {
-    const nodes: AdventureResourceNode[] = []
-    const points: Array<{ kind: AdventureMaterial; x: number; y: number }> = [
-        { kind: 'herbs', x: 664, y: 712 },
-        { kind: 'fiber', x: 648, y: 728 },
-        { kind: 'scrap', x: 680, y: 696 },
-    ]
-
-    for (const { id: locationId } of WORLD_LOCATION_DEFINITIONS) {
-        for (const { kind, x, y } of points) {
-            nodes.push({
-                id: `${locationId}-${kind}`,
-                kind,
-                locationId,
-                position: { x, y },
-                remaining: 8,
-            })
-        }
-    }
-
-    return nodes
 }
 
 export function isResourceCommand(

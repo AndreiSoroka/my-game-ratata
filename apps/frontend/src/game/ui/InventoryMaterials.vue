@@ -10,6 +10,7 @@ const labels = {
     grain: 'Зерно пшеницы',
     stone: 'Камень',
     sapling: 'Саженцы',
+    brushwood: 'Хворост',
 }
 </script>
 <template>

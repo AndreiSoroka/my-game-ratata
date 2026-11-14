@@ -22,6 +22,7 @@ export const scenarioSearchLabels: Record<ScenarioSearchKind, string> = {
     fiber: 'Волокно',
     scrap: 'Металлолом',
     grain: 'Зерно',
+    brushwood: 'Хворост',
     enemy: 'Враг',
     chest: 'Сундук',
     item: 'Предмет на земле',

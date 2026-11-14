@@ -2459,6 +2459,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2492,6 +2497,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2527,6 +2537,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2560,6 +2575,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2595,6 +2615,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2628,6 +2653,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2663,6 +2693,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2696,6 +2731,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2731,6 +2771,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2764,6 +2809,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2799,6 +2849,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2832,6 +2887,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2867,6 +2927,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2900,6 +2965,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -2935,6 +3005,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -2968,6 +3043,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3003,6 +3083,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3036,6 +3121,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3071,6 +3161,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3104,6 +3199,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3139,6 +3239,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3172,6 +3277,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3207,6 +3317,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3240,6 +3355,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3275,6 +3395,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3308,6 +3433,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3343,6 +3473,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3376,6 +3511,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3411,6 +3551,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3444,6 +3589,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3479,6 +3629,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3512,6 +3667,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3547,6 +3707,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3580,6 +3745,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3615,6 +3785,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3648,6 +3823,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3683,6 +3863,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3716,6 +3901,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3751,6 +3941,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3784,6 +3979,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3819,6 +4019,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3852,6 +4057,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3887,6 +4097,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3920,6 +4135,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -3955,6 +4175,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -3988,6 +4213,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4023,6 +4253,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4056,6 +4291,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4091,6 +4331,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4124,6 +4369,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4159,6 +4409,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4192,6 +4447,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4227,6 +4487,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4260,6 +4525,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4295,6 +4565,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4328,6 +4603,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4363,6 +4643,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4396,6 +4681,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -4431,6 +4721,11 @@
                             "type": "string",
                             "value": "forest"
                         },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
+                        },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
                 },
@@ -4464,6 +4759,11 @@
                             "name": "visual",
                             "type": "string",
                             "value": "forest"
+                        },
+                        {
+                            "name": "treeSize",
+                            "type": "string",
+                            "value": "adult"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
                     ]
@@ -6699,6 +6999,294 @@
                             "value": "forest"
                         },
                         { "name": "capacity", "type": "int", "value": 8 }
+                    ]
+                },
+                {
+                    "id": 20137,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 704,
+                    "y": 176,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:44:11"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20138,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1280,
+                    "y": 944,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:80:59"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20139,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1440,
+                    "y": 1008,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:90:63"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20140,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 528,
+                    "y": 1056,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:33:66"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20141,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 576,
+                    "y": 288,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:36:18"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20142,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 272,
+                    "y": 80,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:17:5"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20143,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 656,
+                    "y": 272,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:41:17"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20144,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 208,
+                    "y": 864,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:13:54"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20145,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1136,
+                    "y": 1104,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:71:69"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20146,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1040,
+                    "y": 1088,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:65:68"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20147,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 1248,
+                    "y": 416,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:78:26"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
+                    ]
+                },
+                {
+                    "id": 20148,
+                    "name": "Сухие ветки",
+                    "type": "branches",
+                    "x": 352,
+                    "y": 784,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "sourceId",
+                            "type": "string",
+                            "value": "map-0-4:branches:22:49"
+                        },
+                        {
+                            "name": "visual",
+                            "type": "string",
+                            "value": "forest"
+                        },
+                        { "name": "capacity", "type": "int", "value": 1 }
                     ]
                 }
             ]

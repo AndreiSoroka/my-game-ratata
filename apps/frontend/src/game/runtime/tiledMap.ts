@@ -62,6 +62,7 @@ export interface RenderedTiledMap {
 }
 
 export interface HarvestGraphics {
+    branches?: HTMLCanvasElement
     forest: HTMLCanvasElement
     apple?: HTMLCanvasElement
     pine?: HTMLCanvasElement
@@ -123,6 +124,7 @@ function readHarvestGraphics(map: TiledMap, tilesets: LoadedTileset[]): HarvestG
         return canvas
     }
     return {
+        branches: branchesBitmap(),
         forest: bitmap(0, 5, 3, 4),
         apple: bitmap(3, 5, 3, 4),
         pine: pineBitmap(map, tilesets),
@@ -130,6 +132,27 @@ function readHarvestGraphics(map: TiledMap, tilesets: LoadedTileset[]): HarvestG
         sapling: bitmap(6, 7, 2, 2),
         grave: bitmap(6, 0, 1, 1),
     }
+}
+
+function branchesBitmap(): HTMLCanvasElement {
+    const canvas = document.createElement('canvas')
+    canvas.width = 16
+    canvas.height = 16
+    const context = canvas.getContext('2d')
+    if (context) {
+        context.strokeStyle = '#503b28'
+        context.lineWidth = 3
+        context.beginPath()
+        context.moveTo(2, 12)
+        context.lineTo(13, 5)
+        context.moveTo(3, 5)
+        context.lineTo(12, 12)
+        context.stroke()
+        context.strokeStyle = '#b08b52'
+        context.lineWidth = 1
+        context.stroke()
+    }
+    return canvas
 }
 
 function pineBitmap(map: TiledMap, tilesets: LoadedTileset[]): HTMLCanvasElement {

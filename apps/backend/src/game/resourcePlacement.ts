@@ -3,6 +3,7 @@ import type {
     Vector2,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
+import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { NavigationService } from './navigation'
@@ -37,7 +38,6 @@ export function occupied(
         if (
             actor.locationId === locationId &&
             actor.alive &&
-            !actor.tags.has('offline') &&
             containsPoint(
                 {
                     x: bounds.x - 4,
@@ -76,6 +76,7 @@ export function canPlantAt(
         nodes.some(
             (node) =>
                 node !== replacing &&
+                node.phase !== 'removed' &&
                 node.locationId === actor.locationId &&
                 node.matureBounds !== undefined &&
                 overlaps(bounds, node.matureBounds)
@@ -123,10 +124,13 @@ function preservesAccess(
     const first = start.y * navigation.grid.width + start.x
     const before = flood(navigation, first, new Set(reserved))
     const added = new Set([...reserved, ...blocked])
-    if (added.has(first)) {
+    const outside = [...before].find(
+        (cell) => !added.has(cell) && navigation.grid.solid[cell] !== true
+    )
+    if (outside === undefined) {
         return false
     }
-    const after = flood(navigation, first, added)
+    const after = flood(navigation, outside, added)
     for (const cell of before) {
         if (!added.has(cell) && !after.has(cell)) {
             return false
@@ -186,5 +190,37 @@ export function resourceReachable(
                 actor.position.x - point.x,
                 actor.position.y - point.y
             ) <= 48 && navigation.hasLineOfSight(actor.position, point)
+    )
+}
+
+/** Same exterior geometry for every controller; only reachable, visible paths qualify. */
+export function resourceApproach(
+    actor: Pick<GameCharacter, 'position'>,
+    bounds: WorldObjectBounds,
+    navigation: NavigationService,
+    visibilityRange = Infinity
+): Vector2 | undefined {
+    const visible =
+        visibilityRange === Infinity ||
+        interactionApproachPoints(actor.position, [bounds]).some(
+            (point) =>
+                Math.hypot(
+                    point.x - actor.position.x,
+                    point.y - actor.position.y
+                ) <= visibilityRange &&
+                navigation.hasLineOfSight(actor.position, point)
+        )
+    if (!visible) {
+        return undefined
+    }
+    return interactionApproachPoints(actor.position, [bounds], 12).find(
+        (point) =>
+            !navigation.isSolidTile(navigation.worldToTile(point)) &&
+            (Math.hypot(
+                point.x - actor.position.x,
+                point.y - actor.position.y
+            ) < 1 ||
+                navigation.findPathWorld(actor.position, point).length > 0) &&
+            resourceReachable({ position: point }, bounds, navigation)
     )
 }

@@ -3,10 +3,22 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
     const { width, height, at, solid, roads, reserved } = ctx
     const owned = Array(width * height).fill(0)
     const sources = []
-    for (const prop of props) {
-        if (prop.name !== 'tree' && prop.name !== 'stone') continue
+    const harvestProps = [
+        ...props.filter(
+            (prop) => prop.name === 'tree' || prop.name === 'stone'
+        ),
+        ...props.filter(
+            (prop) =>
+                prop.name === 'plant' && prop.width === 32 && prop.height === 32
+        ),
+    ]
+    for (const prop of harvestProps) {
+        const bush =
+            prop.name === 'plant' && prop.width === 32 && prop.height === 32
+        if (prop.name !== 'tree' && prop.name !== 'stone' && !bush) continue
         const tree = prop.name === 'tree'
-        const rows = tree ? (prop.width === 16 ? 1 : 2) : 1
+        const small = tree && prop.width === 16
+        const rows = tree ? (small ? 1 : 2) : bush ? 2 : 1
         const bounds = {
             x: prop.x,
             y: prop.y + prop.height - rows * 16,
@@ -24,8 +36,8 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
             throw new Error(`Missing tree profile: ${propId}`)
         sources.push({
             id: 20000 + sources.length,
-            name: tree ? 'Дерево' : 'Камень',
-            type: tree ? 'tree' : 'stone',
+            name: tree ? 'Дерево' : bush ? 'Куст' : 'Камень',
+            type: tree ? 'tree' : bush ? 'bush' : 'stone',
             ...bounds,
             rotation: 0,
             visible: true,
@@ -50,7 +62,20 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
                     type: 'string',
                     value: prop.width === 16 && tree ? 'pine' : 'forest',
                 },
-                { name: 'capacity', type: 'int', value: 8 },
+                ...(tree
+                    ? [
+                          {
+                              name: 'treeSize',
+                              type: 'string',
+                              value: small ? 'small' : 'adult',
+                          },
+                      ]
+                    : []),
+                {
+                    name: 'capacity',
+                    type: 'int',
+                    value: tree ? (small ? 2 : 8) : bush ? 2 : 8,
+                },
             ],
         })
     }
@@ -72,7 +97,12 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
                     plantable[at(x, y)] = 0
     }
     for (const prop of props) {
-        if (prop.name !== 'tree' && prop.name !== 'stone') protect(prop)
+        if (
+            prop.name !== 'tree' &&
+            prop.name !== 'stone' &&
+            !(prop.name === 'plant' && prop.width === 32 && prop.height === 32)
+        )
+            protect(prop)
     }
     for (const building of buildings)
         protect({
@@ -85,6 +115,7 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
         for (let x = 0; x < width; x++)
             if (x < 4 || y < 4 || x >= width - 4 || y >= height - 4)
                 plantable[at(x, y)] = 0
+    appendBranches(ctx, locationId, sources, props, buildings)
     const layer = (name, data) => ({
         name,
         type: 'tilelayer',
@@ -109,4 +140,49 @@ export function createHarvestMetadata(ctx, locationId, props, buildings) {
         { id: 15, ...layer('Resource collision', owned) },
         { id: 16, ...layer('Plantable ground', plantable) },
     ]
+}
+
+/** Independent deterministic pass: never consumes the world's placement RNG. */
+function appendBranches(ctx, locationId, sources, props, buildings) {
+    const { width, height, at, solid, roads, reserved } = ctx
+    let seed = 2166136261
+    for (const character of `${locationId}:branches:v1`)
+        seed = Math.imul(seed ^ character.charCodeAt(0), 16777619) >>> 0
+    const random = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+        return seed / 4294967296
+    }
+    const used = new Set()
+    for (let attempt = 0; used.size < 12 && attempt < 2048; attempt++) {
+        const x = 5 + Math.floor(random() * (width - 10)),
+            y = 5 + Math.floor(random() * (height - 10))
+        const cell = at(x, y)
+        if (used.has(cell) || solid[cell] || roads[cell] || reserved[cell])
+            continue
+        const bounds = { x: x * 16, y: y * 16, width: 16, height: 16 }
+        const overlaps = (area) =>
+            bounds.x < area.x + area.width &&
+            bounds.x + 16 > area.x &&
+            bounds.y < area.y + area.height &&
+            bounds.y + 16 > area.y
+        if (props.some(overlaps) || buildings.some(overlaps)) continue
+        used.add(cell)
+        sources.push({
+            id: 20000 + sources.length,
+            name: 'Сухие ветки',
+            type: 'branches',
+            ...bounds,
+            rotation: 0,
+            visible: true,
+            properties: [
+                {
+                    name: 'sourceId',
+                    type: 'string',
+                    value: `${locationId}:branches:${x}:${y}`,
+                },
+                { name: 'visual', type: 'string', value: 'forest' },
+                { name: 'capacity', type: 'int', value: 1 },
+            ],
+        })
+    }
 }

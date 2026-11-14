@@ -45,6 +45,7 @@ const resources = {
     fiber: 'Волокно',
     scrap: 'Металлолом',
     grain: 'Зерно',
+    brushwood: 'Хворост',
 }
 function value(event: Event): string {
     return (event.target as HTMLInputElement).value
