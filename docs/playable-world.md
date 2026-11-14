@@ -170,26 +170,51 @@ Ignat also sells and makes a **Каменный топор** for 10 gold. Its re
 stone and one wood. It harvests as quickly as an iron axe but has 100 condition
 instead of 1,000, and uses the same equipment, wear and repair rules.
 
-The generated trees are shared harvesting objects with stable identities and full
-footprints. Approach and face a tree, equip an axe or sword, and use **E** to cut
-wood. An axe harvest costs 5 energy with a two-second action interval; a sword costs
-10 energy and takes four seconds. Each tree supplies eight wood. The final harvest
-also grants two saplings and replaces the tree with a stump for every observer.
-The entire result must fit in the bag before the tree, energy or tool changes.
+Forest resources are shared objects with stable identities and semantic sizes. One
+click or **E** starts approaching and continuously gathering the selected source.
+The first successful strike gives loot immediately; an axe repeats every two
+seconds (5 energy), a sword every four seconds (10 energy), with their usual wear.
+An adult tree gives eight wood; its final strike also gives two saplings and one
+brushwood and leaves a stump. A small tree, including the seven small city pines,
+gives two wood and final brushwood, then disappears. The complete strike's output
+must fit in the bag before any costs or source changes. Becoming a stump ends
+harvesting; clearing it is a separate axe action that gives one wood.
 
-Apple trees are identified by their authored fruit-bearing art and explicit tree
-profile. Each successful wood harvest, including the final cut, has a 20% chance
-to drop one real food item onto nearby ground. It must be picked up normally;
-opening a view or a rejected harvest cannot roll for food. Players and workers
-use the same rule. Ordinary forest trees and pines do not drop food. Replanting
-an apple-tree stump preserves its profile; planting on fresh soil grows an
-ordinary forest tree.
+Bushes give one brushwood per strike, twice: hands take 800 ms and 1 energy; an axe
+400 ms, 1 energy and 1 condition; a sword 600 ms, 2 energy and 1 condition. Dry
+branches give one brushwood with an 800 ms interval and no tool or energy cost.
+Bushes and branches do not regenerate in the current server session. Brushwood is
+an ordinary item stacked to nine, used by the city for kindling and heating.
 
-A sapling can be planted on a suitable stump or free soil using the inventory's
-**Посадить дерево** action. Planting costs one sapling and 5 energy; growth takes
-ten minutes of server time. Roads, water, farms, buildings, occupied footprints and
-narrow passages are excluded. Growth waits if its mature footprint is occupied.
-A stump does not spontaneously become a tree without planting.
+Manual movement, **Esc**, another command, equipment changes, actual damage,
+stunning, death, disconnect and travel stop automatic work. Insufficient energy,
+space, broken tools or lost access also stop it. Cancellation keeps all earned
+items and the server cooldown, immediately releases work movement, and never
+selects another source or resumes by itself.
+
+Apple trees retain their authored fruit profile. Each successful wood strike,
+including the final one, can drop a real apple onto nearby ground (20% chance),
+which must be picked up normally. Rejected work cannot roll for apples. Ordinary
+forest trees and pines do not drop food.
+
+Assign **Саженец** to any hotbar slot with the existing assignment picker (Shift +
+the slot key), then click or press that slot to select a plot. Its assignment
+remains when the bag is empty. A compact hint follows the plot and camera; arrows
+move the selection, **E / Enter** or clicking confirms, **Esc** cancels. On a phone,
+the first touch selects and the next touch or hint button confirms. The future
+trunk is gray while checking or forbidden and yellow only after the private server
+preview accepts it. Invalid confirmation keeps selection open with a short reason.
+
+Confirmation starts ordinary pathfinding to a free point beside the plot. Before
+planting the server rechecks ground, paths, occupancy, energy and inventory, then
+atomically consumes one sapling and 5 energy. Cancellation before planting costs
+nothing; ten seconds without movement progress stops the intention. Roads, water,
+farms, buildings, occupied footprints and narrow passages are excluded. A stump
+must first be cleared with a working axe. Removed sources free collision and soil;
+each new planting gets a new ID. New saplings become adult forest trees after ten
+server minutes; growth waits for a free future trunk. **E** on a growing sapling
+shows growth information and a separate **Срубить без добычи** action, using an axe
+or sword with normal chopping costs.
 
 Equip a pickaxe to mine marked stone formations. A harvest costs 5 energy, one
 condition and a two-second interval. Each formation contains eight stone and becomes
@@ -208,7 +233,9 @@ or spoilage system.
 
 At the guild, ask Mira **Что нужно городу?** for current stock, ordinary target,
 reserve capacity, consumption per ten minutes, recent deliveries and consumption,
-and current buying/selling prices. Wood's normal target is 12, reserve capacity 24,
+and current buying/selling prices. Brushwood starts at 6, has normal target 12 and capacity 24, and consumes one real
+unit per ten minutes. Its base price is one gold; severe shortage raises the city
+buying price to two. Wood's normal target is 12, reserve capacity 24,
 and consumption two units per ten minutes. Stone, scrap and fiber consume one each;
 herbs and grain two each; food four each. Consumption removes real warehouse goods,
 never takes stock below zero and does not accumulate a debt while empty.
@@ -232,7 +259,13 @@ They walk to sources, carry actual items, return to Savva to sell and visit Igna
 for paid repairs. Work is paced according to shortages; a timer does not add goods
 to the warehouse. Threats interrupt work and workers can die. Initial tools and
 small purses are authored once, not recreated after loss. Danila can plant carried
-saplings through the same placement checks as a player.
+saplings through the same placement checks as a player. Lumberjacks sell wood
+before carried brushwood and skip full market rows. When ordinary wood work is
+unavailable and brushwood stock is below 12, one independent supplemental gather
+per ten-minute work period may use a ready visible bush or branches within 160
+pixels in the current location, with a reachable approach. Side brushwood from
+chopping does not use that budget. Brushwood travels with wood or sells when the
+worker is already in town; it never triggers a separate long trip.
 
 Ignat, Mila and Elisey replenish equipment or food only from existing warehouse
 ingredients. They take inputs into their own inventories, use ordinary crafting

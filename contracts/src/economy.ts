@@ -2,6 +2,7 @@ import type { ItemId } from './inventory'
 
 export const marketItemIds = [
     'wood',
+    'brushwood',
     'stone',
     'herbs',
     'fiber',

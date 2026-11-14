@@ -1,9 +1,7 @@
 import type {
     AdventureClientMessage,
-    AdventureResourceNode,
     AdventureSnapshot,
     AdventureTradeItemId,
-    FarmPlotSnapshot,
     GameEventPayload,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
@@ -11,6 +9,7 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import { observeAdventureEvents } from './adventureDeaths'
 import { chooseAdventureReply, interactAdventureNpc } from './adventureDialogue'
+import { createAdventureForest } from './adventureForest'
 import {
     type AdventureResources,
     isResourceCommand,
@@ -70,18 +69,22 @@ export class AdventureService {
         this.economy.update(now)
     }
 
-    public resourceSnapshot(locationId: string): AdventureResourceNode[] {
-        return this.resources.snapshot(locationId)
-    }
+    private readonly forest = createAdventureForest(
+        () => this.resources,
+        (actor) => this.stateFor(actor.id)
+    )
+    public readonly resourceSnapshot = this.forest.resourceSnapshot
+    public readonly inspectGather = this.forest.inspectGather
+    public readonly previewPlant = this.forest.previewPlant
+    public readonly workAvailableAt = this.forest.workAvailableAt
+    public readonly reportWorkProblem = this.forest.reportWorkProblem
 
     private readonly sessions = createAdventureSessions(this.players)
     public readonly reconcileConversations = this.sessions.reconcile
     public readonly closeConversations = this.sessions.close
     public readonly hasCompletedQuest = this.sessions.hasCompletedQuest
 
-    public farmSnapshot(locationId: string, now: number): FarmPlotSnapshot[] {
-        return this.resources.snapshotFarms(locationId, now)
-    }
+    public readonly farmSnapshot = this.forest.farmSnapshot
 
     public snapshot(
         playerId: string,
@@ -308,7 +311,6 @@ export class AdventureService {
         )
     }
 
-    private stateFor(playerId: string): PlayerAdventure {
-        return getAdventureState(this.players, playerId)
-    }
+    private readonly stateFor = (playerId: string): PlayerAdventure =>
+        getAdventureState(this.players, playerId)
 }

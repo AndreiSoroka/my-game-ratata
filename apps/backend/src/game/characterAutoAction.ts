@@ -11,9 +11,21 @@ import { autoActionStatus, autoTargetId } from './autoActionRules'
 import { autoWorldTarget } from './autoActionWorldTargets'
 import type { GameCharacter } from './character'
 import type { ControlWorld } from './characterControl'
+import {
+    advanceForestAction,
+    clearForestAction,
+    samePendingPlant,
+    setForestAction,
+    snapshotForestAction,
+} from './forestAutoAction'
+
+type CombatAction = Exclude<
+    CharacterAutoAction,
+    { kind: 'gather' | 'plant_tree' }
+>
 
 interface AutomaticActionState {
-    action: CharacterAutoAction
+    action: CombatAction
     waiting: AutoActionWaiting
     lastPlanAt: number
 }
@@ -22,6 +34,10 @@ export function snapshotAutoAction(
     actor: GameCharacter
 ): CharacterControlSnapshot | undefined {
     const state = actions.get(actor)
+    const forest = snapshotForestAction(actor)
+    if (forest !== undefined) {
+        return forest
+    }
     return state === undefined
         ? undefined
         : {
@@ -32,7 +48,8 @@ export function snapshotAutoAction(
           }
 }
 export function clearAutoAction(actor: GameCharacter): boolean {
-    return actions.delete(actor)
+    const forest = clearForestAction(actor)
+    return actions.delete(actor) || forest
 }
 export function setAutoAction(
     actor: GameCharacter,
@@ -40,6 +57,9 @@ export function setAutoAction(
     world: ControlWorld,
     now: number
 ): boolean {
+    if (action.kind === 'gather' || action.kind === 'plant_tree') {
+        return setForestAction(actor, action, world, now)
+    }
     const context = world.abilityContextFor?.(actor, now)
     if (
         context === undefined ||
@@ -62,6 +82,10 @@ export function advanceAutoAction(
     world: ControlWorld,
     now: number
 ): boolean | undefined {
+    const forest = advanceForestAction(actor, world, now)
+    if (forest !== undefined) {
+        return forest
+    }
     const state = actions.get(actor)
     if (state === undefined) {
         return undefined
@@ -92,7 +116,7 @@ export function advanceAutoAction(
 }
 function execute(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     world: ControlWorld,
     context: AbilityContext,
     now: number
@@ -146,4 +170,18 @@ function approach(
     actor.setPath(
         context.navigation.findPathWorld(actor.position, target.position)
     )
+}
+
+export function replaceAutoAction(
+    actor: GameCharacter,
+    action: CharacterAutoAction | null,
+    world: ControlWorld,
+    now: number,
+    cancel: () => void
+): boolean {
+    if (samePendingPlant(actor, action, world)) {
+        return true
+    }
+    cancel()
+    return action === null || setAutoAction(actor, action, world, now)
 }

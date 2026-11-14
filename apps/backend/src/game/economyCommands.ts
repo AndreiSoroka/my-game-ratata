@@ -39,6 +39,19 @@ export function parseEconomyCommand(
     record: Record<string, unknown>
 ): ParseResult | undefined {
     const type = record['type']
+    if (type === 'plant_tree_preview') {
+        const result = parsePlant(record['position'])
+        return result.message?.type === 'plant_tree' &&
+            validId(record['requestId'])
+            ? {
+                  message: {
+                      type,
+                      requestId: record['requestId'],
+                      position: result.message.position,
+                  },
+              }
+            : invalid
+    }
     if (type === 'plant_tree') {
         return parsePlant(record['position'])
     }

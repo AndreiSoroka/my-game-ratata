@@ -26,7 +26,7 @@ const props = defineProps<{
     characters: CharacterSnapshot[]
     blocked: boolean
 }>()
-const emit = defineEmits<{ interact: [id: string] }>()
+const emit = defineEmits<{ interact: [id: string]; plant: [] }>()
 const selectedId = ref<string>()
 const { selectedGraveId, grave, selectGrave, clearGrave } = useGraveSelection(
     props,
@@ -131,7 +131,7 @@ function blur(): void {
 function receive(event: GameEventPayload): void {
     speech.value?.receive(event)
 }
-function assignItem(slot: number, itemId: 'food'): void {
+function assignItem(slot: number, itemId: 'food' | 'sapling'): void {
     hotbar.value?.assignItem(slot, itemId)
 }
 let closingDialogue: string | undefined
@@ -258,6 +258,7 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
         :can-reach="(target) => game?.isInteractionVisible(target.position, undefined, 48) ?? false"
         :blocked="blocked"
         @command="send"
+        @plant="emit('plant')"
         @cancel="cancel()"
         @preview-change="game?.setPrayerPreview?.($event)"
         @shot-preview-change="game?.setShotPreview?.($event)"

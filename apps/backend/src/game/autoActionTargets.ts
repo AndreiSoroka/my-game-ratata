@@ -1,8 +1,13 @@
 import {
-    type CharacterAutoAction,
+    type CharacterAutoAction as AnyAutoAction,
     type CharacterControlSnapshot,
     DEITY_PRAYER_PROFILES,
 } from '@my-game-ratata/contracts'
+
+type CharacterAutoAction = Exclude<
+    AnyAutoAction,
+    { kind: 'gather' | 'plant_tree' }
+>
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'

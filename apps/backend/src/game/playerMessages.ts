@@ -33,11 +33,7 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     const { message, player } = context
 
     if (message.type === 'move_input') {
-        context.sendEvents(
-            cancelPrayerForMovement(player, message.axis, Date.now())
-        )
-        cancelCharacterControl(player)
-        player.setMoveInput(message.axis)
+        applyMovementInput(context, message)
         return
     }
 
@@ -122,4 +118,18 @@ function applyRouteMessage(
             },
         ])
     }
+}
+
+function applyMovementInput(
+    context: PlayerMessageContext,
+    message: Extract<ClientMessage, { type: 'move_input' }>
+): void {
+    const { player } = context
+    context.sendEvents(
+        cancelPrayerForMovement(player, message.axis, Date.now())
+    )
+    if (message.axis.x !== 0 || message.axis.y !== 0) {
+        cancelCharacterControl(player)
+    }
+    player.setMoveInput(message.axis)
 }

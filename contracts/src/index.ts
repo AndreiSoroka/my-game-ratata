@@ -7,6 +7,8 @@ export * from './abilities'
 export * from './combatAim'
 export * from './prayer'
 export * from './prayerPreview'
+import type { PlantTreePreviewCommand } from './planting'
+export * from './planting'
 import type {
     CharacterControlCommand,
     CharacterControlSnapshot,
@@ -39,9 +41,8 @@ import type {
     CharacterMovementSnapshot,
     MovementClientMessage,
 } from './movement'
-export * from './movement'
-import type { GameEventPayload } from './events'
 export type * from './events'
+export * from './movement'
 import type { PartyClientMessage, PartySnapshot } from './party'
 export type * from './party'
 import type { CompanionClientMessage, SoulSnapshot } from './soul'
@@ -62,13 +63,11 @@ import type { WorldObjectBounds } from './environment'
 export * from './farming'
 export * from './farms'
 export * from './graves'
+export type { PlayerIdentity, WorldPosition } from './identity'
 export * from './materials'
 export * from './pursuit'
-export * from './trees'
-
-import type { ContractProtocolVersion } from './service'
-export type { PlayerIdentity, WorldPosition } from './identity'
 export * from './service'
+export * from './trees'
 
 export interface Vector2 {
     x: number
@@ -269,6 +268,7 @@ export interface ChatClientMessage {
 }
 
 export type ClientMessage =
+    | PlantTreePreviewCommand
     | AutomationCommand
     | CharacterControlCommand
     | AbilityClientMessage
@@ -304,34 +304,4 @@ export interface WorldSnapshot {
     tick: number
 }
 
-export interface WorldInitServerMessage {
-    map: MapSummary
-    playerId: string
-    protocolVersion: ContractProtocolVersion
-    snapshot: WorldSnapshot
-    tickMs: number
-    type: 'world_init'
-}
-
-export interface GameEventServerMessage {
-    event: GameEventPayload
-    serverTime: number
-    type: 'event'
-}
-
-export interface SnapshotServerMessage {
-    snapshot: WorldSnapshot
-    type: 'snapshot'
-}
-
-export interface ErrorServerMessage {
-    code: string
-    message: string
-    type: 'error'
-}
-
-export type ServerMessage =
-    | ErrorServerMessage
-    | GameEventServerMessage
-    | SnapshotServerMessage
-    | WorldInitServerMessage
+export type * from './server'

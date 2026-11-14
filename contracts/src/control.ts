@@ -16,6 +16,12 @@ export type CharacterAutoAction =
           target?: import('./graves').WorldCombatTarget
       }
     | { kind: 'prayer'; intent: PrayerIntent }
+    | {
+          kind: 'gather'
+          nodeId: string
+          operation?: 'harvest' | 'clear_stump' | 'cut_sapling'
+      }
+    | { kind: 'plant_tree'; position: Vector2 }
 
 export type AutoActionWaiting =
     'cooldown' | 'resources' | 'range' | 'action' | null

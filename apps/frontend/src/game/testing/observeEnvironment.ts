@@ -39,19 +39,25 @@ export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[]
                 interactionRange: 48,
                 details: { kind: object.kind, depleted: object.depleted },
             })),
-        ...(snapshot.adventure?.resourceNodes ?? []).map((node): TargetDescription => ({
-            id: node.id,
-            kind: 'resource',
-            name: node.kind,
-            position: node.position,
-            ...(node.bounds === undefined ? {} : { bounds: node.bounds }),
-            interactionRange: 48,
-            details: {
-                material: node.kind,
-                remaining: node.remaining,
-                treeProfile: node.treeProfile,
-            },
-        })),
+        ...(snapshot.adventure?.resourceNodes ?? [])
+            .filter((node) => node.phase !== 'removed')
+            .map((node): TargetDescription => ({
+                id: node.id,
+                kind: 'resource',
+                name: node.kind,
+                position: node.position,
+                ...(node.bounds === undefined ? {} : { bounds: node.bounds }),
+                interactionRange: 48,
+                details: {
+                    material: node.kind,
+                    remaining: node.remaining,
+                    treeProfile: node.treeProfile,
+                    treeSize: node.treeSize,
+                    source: node.source,
+                    phase: node.phase,
+                    readyAt: node.readyAt,
+                },
+            })),
         ...(snapshot.adventure?.farmPlots ?? []).map((plot): TargetDescription => ({
             id: plot.id,
             kind: 'farm',

@@ -25,7 +25,7 @@ const emit = defineEmits<{
     createMarker: []
     closeInventory: []
     plant: []
-    assignHotbar: [payload: { slot: number; itemId: 'food' }]
+    assignHotbar: [payload: { slot: number; itemId: 'food' | 'sapling' }]
     equipmentAction: [payload: { action: EquipmentActionKind; slot: EquipmentSlotId }]
     inventoryAction: [payload: { action: InventoryActionKind; itemInstanceId: string }]
 }>()

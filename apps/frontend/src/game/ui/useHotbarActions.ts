@@ -21,6 +21,11 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const bindings = useSavedHotbarBindings(() => props.player)
     const food = computed(() => props.player.inventory.filter((item) => item.itemId === 'food'))
     const count = computed(() => food.value.reduce((sum, item) => sum + (item.quantity ?? 1), 0))
+    const saplings = computed(() =>
+        props.player.inventory
+            .filter((item) => item.itemId === 'sapling')
+            .reduce((sum, item) => sum + (item.quantity ?? 1), 0)
+    )
     const known = computed(() => props.player.abilities?.known ?? [])
     const prayerAssigned = computed(() =>
         bindings.value.some((binding) => binding?.kind === 'ability' && binding.id === 'pray')
@@ -30,9 +35,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const gestures = createGestures(props, emit, () => bindings.value)
     watch(
         () => props.player.id,
-        () => {
-            gestures.reset()
-        }
+        () => gestures.reset()
     )
     watch(
         [
@@ -76,6 +79,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         bindings,
         food,
         count,
+        saplings,
         known,
         prayerAssigned,
         label: bindingLabel,

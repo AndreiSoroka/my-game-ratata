@@ -1,10 +1,15 @@
 import {
     ABILITY_DEFINITIONS,
-    type CharacterAutoAction,
+    type CharacterAutoAction as AnyAutoAction,
     GRAVE_PURIFY_RANGE,
     isItemBroken,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
+
+type CharacterAutoAction = Exclude<
+    AnyAutoAction,
+    { kind: 'gather' | 'plant_tree' }
+>
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'

@@ -8,7 +8,9 @@ import {
 } from '@my-game-ratata/contracts'
 
 export type HotbarBinding =
-    { kind: 'attack' } | { kind: 'ability'; id: AbilityId } | { kind: 'item'; id: 'food' }
+    | { kind: 'attack' }
+    | { kind: 'ability'; id: AbilityId }
+    | { kind: 'item'; id: 'food' | 'sapling' }
 export function defaultHotbarBindings(player: CharacterSnapshot): (HotbarBinding | null)[] {
     const ability = { vanguard: undefined, ranger: 'shot', arcanist: 'spark', cleric: 'pray' }[
         player.heroClass ?? 'vanguard'

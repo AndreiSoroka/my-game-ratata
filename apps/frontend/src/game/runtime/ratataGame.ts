@@ -15,7 +15,7 @@ import { axisFromKeys, movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
 import { PlantingPreview } from './plantingPreview'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
-import { characterDisrupted, projectCharacter } from './runtimeCharacterTargets'
+import { characterDisrupted, projectCharacter, projectPosition } from './runtimeCharacterTargets'
 import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
 import { runtimeEventFeedback } from './runtimeEventFeedback'
@@ -49,7 +49,7 @@ export class RatataGame {
     private readonly chat: RuntimeChatInput
     private readonly socket: RuntimeSocket
     private lastAxis: Vector2 = { x: 0, y: 0 }
-    private readonly plantingPreview = new PlantingPreview()
+    public readonly planting = new PlantingPreview(() => this.releaseInputs())
 
     public constructor(private readonly options: RatataGameOptions) {
         this.chat = new RuntimeChatInput(options.onChatState, () => {
@@ -61,6 +61,7 @@ export class RatataGame {
             onError: options.onError,
             onEvent: (event) => this.handleServerEvent(event),
             onSnapshot: (snapshot) => this.applySnapshot(snapshot),
+            onPlantingPreview: (preview) => this.planting.receive(preview),
             onStatus: (status) => {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
@@ -101,7 +102,7 @@ export class RatataGame {
         this.engine = engine
         this.audio = audio
         this.sceneActors = sceneActors
-        this.plantingPreview.initialize(engine)
+        this.planting.initialize(engine)
         this.buildingEntrances.replace(this.mapId, map.buildings)
         this.removeInputs = installRuntimeInputs(engine, canvas, {
             keyDown: this.handleKeyDown,
@@ -125,7 +126,7 @@ export class RatataGame {
         this.socket.close()
         this.audio?.stop()
         this.sceneActors?.dispose()
-        this.plantingPreview.dispose()
+        this.planting.dispose()
         this.buildingEntrances.clear()
         this.engine?.stop()
         this.canvas?.remove()
@@ -143,12 +144,8 @@ export class RatataGame {
         this.sceneActors?.setInteractionTarget(this.isMapReady ? target : undefined)
     }
 
-    public setPlanting(handler?: (position: Vector2) => void): void {
-        this.plantingPreview.set(handler)
-        this.releaseInputs()
-    }
-    public previewPlanting(position: Vector2): void {
-        this.plantingPreview.preview(position)
+    public projectPosition(position: Vector2) {
+        return projectPosition(this.engine, this.canvas, position)
     }
 
     public setCombatTarget(target: TargetHighlight | undefined): void {
@@ -295,7 +292,8 @@ export class RatataGame {
             snapshot: this.snapshot,
             playerId: this.localPlayerId,
             visible: (id) => this.isCharacterVisible(id),
-            plant: (point) => this.plantingPreview.pick(point),
+            resourceVisible: (point, bounds) => this.isInteractionVisible(point, bounds, Infinity),
+            plant: (point) => this.planting.pick(point),
             select: (id) => this.options.onCharacterClick?.(id),
             send: (command) => this.send(command),
         })

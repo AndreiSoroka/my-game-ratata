@@ -32,7 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     close: []
     plant: []
-    assignHotbar: [payload: { slot: number; itemId: 'food' }]
+    assignHotbar: [payload: { slot: number; itemId: 'food' | 'sapling' }]
     equipmentAction: [
         payload: {
             action: EquipmentActionKind
@@ -78,8 +78,8 @@ watch(selectedItemId, () => {
 })
 
 function assignHotbar(slot: number, item: ItemInstanceSnapshot | undefined): void {
-    if (item?.itemId !== 'food') return
-    emit('assignHotbar', { slot, itemId: 'food' })
+    if (item?.itemId !== 'food' && item?.itemId !== 'sapling') return
+    emit('assignHotbar', { slot, itemId: item.itemId })
     assignedSlot.value = slot
 }
 
@@ -266,8 +266,8 @@ function unequip(slot: EquipmentSlotId): void {
                 @plant="emit('plant')"
             />
             <p v-if="assignedSlot !== undefined" class="inventory-hotbar-help" role="status">
-                Яблоко назначено в слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите
-                {{ assignedSlot + 1 }}, чтобы съесть.
+                {{ selectedItem?.itemId === 'sapling' ? 'Саженец назначен' : 'Яблоко назначено' }} в
+                слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите {{ assignedSlot + 1 }}.
             </p>
         </section>
     </aside>

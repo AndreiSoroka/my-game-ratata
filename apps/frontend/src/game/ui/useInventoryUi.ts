@@ -1,12 +1,7 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
-export function useInventoryUi(
-    game: () => RatataGame | undefined,
-    _player: () => CharacterSnapshot | undefined,
-    closeChest: () => void
-) {
+export function useInventoryUi(game: () => RatataGame | undefined, closeChest: () => void) {
     const inventoryOpen = ref(false),
         planting = ref(false)
     function setInventory(open: boolean): void {
@@ -22,6 +17,8 @@ export function useInventoryUi(
     }
     const startPlanting = () => {
         closeInventory()
+        closeChest()
+        game()?.releaseUiControls()
         planting.value = true
     }
     return {

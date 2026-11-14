@@ -14,7 +14,7 @@ import type { GameCharacter } from './character'
 import {
     advanceAutoAction,
     clearAutoAction,
-    setAutoAction,
+    replaceAutoAction,
     snapshotAutoAction,
 } from './characterAutoAction'
 import {
@@ -74,10 +74,8 @@ export function setCharacterControl(
     now: number
 ): boolean {
     if (command.type === 'auto_action') {
-        cancelCharacterControl(actor)
-        return (
-            command.action === null ||
-            setAutoAction(actor, command.action, world, now)
+        return replaceAutoAction(actor, command.action, world, now, () =>
+            cancelCharacterControl(actor)
         )
     }
     if (command.type === 'cancel_control' || command.targetId === null) {

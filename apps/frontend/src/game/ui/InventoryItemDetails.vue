@@ -40,18 +40,18 @@ function act(action: InventoryActionKind): void {
         </button>
         <button type="button" @click="act('drop')">Drop</button>
         <button v-if="hasNearbyChest" type="button" @click="act('stash')">Put in chest</button>
-        <template v-if="item.itemId === 'food'">
+        <template v-if="item.itemId === 'food' || item.itemId === 'sapling'">
             <p class="inventory-hotbar-help">Быстрый доступ · Shift+1–4</p>
             <div
                 class="inventory-hotbar-slots"
                 role="group"
-                aria-label="Назначить яблоко в быстрый слот"
+                :aria-label="`Назначить ${item.itemId === 'sapling' ? 'саженец' : 'яблоко'} в быстрый слот`"
             >
                 <button
                     v-for="slot in 4"
                     :key="slot"
                     type="button"
-                    :aria-label="`Назначить яблоко в слот ${slot}`"
+                    :aria-label="`Назначить ${item.itemId === 'sapling' ? 'саженец' : 'яблоко'} в слот ${slot}`"
                     @click="emit('assignHotbar', slot - 1)"
                 >
                     {{ slot }}

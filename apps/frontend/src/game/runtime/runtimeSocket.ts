@@ -2,6 +2,7 @@ import type {
     ClientMessage,
     GameEventPayload,
     HeroClass,
+    PlantTreePreview,
     ServerMessage,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -11,6 +12,7 @@ interface RuntimeSocketHandlers {
     onError: (message: string) => void
     onEvent: (event: GameEventPayload) => void
     onSnapshot: (snapshot: WorldSnapshot) => void
+    onPlantingPreview?: (preview: PlantTreePreview) => void
     onStatus: (message: string) => void
     onWorldInit: (playerId: string, snapshot: WorldSnapshot) => void
 }
@@ -71,6 +73,11 @@ export class RuntimeSocket {
 
         if (message.type === 'snapshot') {
             this.handlers.onSnapshot(message.snapshot)
+            return
+        }
+
+        if (message.type === 'plant_tree_preview') {
+            this.handlers.onPlantingPreview?.(message)
             return
         }
 

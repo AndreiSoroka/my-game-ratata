@@ -24,20 +24,36 @@ export function projectCharacter(
 ) {
     const character = snapshot?.characters.find((actor) => actor.id === id)
     if (!character || !engine || !canvas) return undefined
-    const point = engine.worldToScreenCoordinates(
-        vec(character.position.x, character.position.y - 42)
+    return projectPosition(
+        engine,
+        canvas,
+        {
+            x: character.position.x,
+            y: character.position.y - 42,
+        },
+        true
     )
+}
+export function projectPosition(
+    engine: Engine | undefined,
+    canvas: HTMLCanvasElement | undefined,
+    position: Vector2,
+    clip = false
+) {
+    if (!engine || !canvas) return undefined
+    const point = engine.worldToScreenCoordinates(vec(position.x, position.y))
     const rect = canvas.getBoundingClientRect()
-    if (point.x < 0 || point.y < 0 || point.x > rect.width || point.y > rect.height)
+    if (clip && (point.x < 0 || point.y < 0 || point.x > rect.width || point.y > rect.height))
         return undefined
     const parent = canvas.closest('.game-screen')?.getBoundingClientRect() ?? rect
     return {
-        x: point.x,
+        x: point.x + rect.left - parent.left,
         y: point.y + rect.top - parent.top,
-        width: rect.width,
+        width: parent.width,
         height: parent.height,
     }
 }
+
 export function createGameCanvas(container: HTMLElement): HTMLCanvasElement {
     const canvas = document.createElement('canvas')
     canvas.className = 'game-canvas'

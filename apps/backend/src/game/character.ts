@@ -10,7 +10,6 @@ import {
     type CharacterReputation,
     type CharacterVisualId,
     type CreatureType,
-    HERO_REVIVAL_WINDOW_MS,
     type HeroClass,
     isCreatureType,
     type SoulSnapshot,
@@ -19,6 +18,7 @@ import {
 
 import { createAbilityState } from './abilityState'
 import type { CharacterConfig } from './characterConfig'
+import { applyCharacterDamage } from './characterDamage'
 import {
     defaultFactionFor,
     defaultVisualIdFor,
@@ -76,6 +76,7 @@ export class GameCharacter {
     public alive = true
     public deathSequence = 0
     public actionLockUntil = 0
+    public interruptWork: (() => void) | undefined
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
     public equipment: EquipmentState = {}
@@ -311,26 +312,7 @@ export class GameCharacter {
     }
 
     public applyDamage(amount: number, now: number): void {
-        if (!this.alive) {
-            return
-        }
-
-        this.hp = Math.max(0, this.hp - amount)
-
-        if (this.hp <= 0) {
-            this.deathSequence += 1
-            this.alive = false
-            this.reviveUntil = now + HERO_REVIVAL_WINDOW_MS
-            this.actionLockUntil = 0
-            this.setAnimation('death', now)
-            this.clearPath()
-            this.clearPendingAttackHit()
-            this.setMoveInput(zeroVector())
-            this.velocity = zeroVector()
-            return
-        }
-
-        this.setAnimation('damaged', now, 300)
+        applyCharacterDamage(this, amount, now)
     }
 
     public queueRespawn(now: number, delayMs: number): void {

@@ -28,13 +28,14 @@ const props = defineProps<{
 const emit = defineEmits<{
     command: [message: ClientMessage]
     cancel: []
+    plant: []
     previewChange: [preview: PrayerPreviewHighlight | undefined]
     shotPreviewChange: [path: ProjectilePath | undefined]
 }>()
 const {
     bindings,
-    food,
     count,
+    saplings,
     known,
     prayerAssigned,
     label,
@@ -69,13 +70,13 @@ function assign(binding: Binding | null): void {
     if (editing.value !== undefined) bindings.value[editing.value] = binding
     close()
 }
-function assignItem(index: number, itemId: 'food'): void {
+function assignItem(index: number, itemId: 'food' | 'sapling'): void {
     if (
         !Number.isInteger(index) ||
         index < 0 ||
         index >= bindings.value.length ||
-        itemId !== 'food' ||
-        !food.value.length
+        (itemId !== 'food' && itemId !== 'sapling') ||
+        !props.player.inventory.some((item) => item.itemId === itemId)
     )
         return
     bindings.value[index] = { kind: 'item', id: itemId }
@@ -127,13 +128,15 @@ defineExpose({ activate, edit, assignItem, resetGesture })
                 <img
                     v-if="binding?.kind === 'item'"
                     class="hotbar-item"
-                    :src="itemAssetCatalog.food.src"
+                    :src="itemAssetCatalog[binding.id].src"
                     alt=""
                 />
                 <span v-else-if="binding">{{
                     binding.kind === 'attack' ? '⚔' : glyphs[binding.id]
                 }}</span>
-                <small v-if="binding?.kind === 'item'">{{ count }}</small>
+                <small v-if="binding?.kind === 'item'">{{
+                    binding.id === 'sapling' ? saplings : count
+                }}</small>
                 <b v-if="cooldown(binding) > 0" class="hotbar-cooldown">{{
                     (cooldown(binding) / 1000).toFixed(1)
                 }}</b>
@@ -186,6 +189,9 @@ defineExpose({ activate, edit, assignItem, resetGesture })
         </button>
         <button data-dialog-action type="button" @click="assign({ kind: 'item', id: 'food' })">
             Яблоко · {{ count }}
+        </button>
+        <button data-dialog-action type="button" @click="assign({ kind: 'item', id: 'sapling' })">
+            Саженец · {{ saplings }}
         </button>
         <button data-dialog-action type="button" @click="assign(null)">Очистить слот</button>
         <button data-dialog-action type="button" @click="close">Закрыть · Esc</button>

@@ -29,6 +29,9 @@ export function handleRoomControl(
         }
         return true
     }
+    if (interruptsForestWork(message)) {
+        actor.interruptWork?.()
+    }
     if (
         [
             'dash',
@@ -37,11 +40,23 @@ export function handleRoomControl(
             'revive',
             'cast_spell',
             'use_ability',
+            'gather',
+            'plant_tree',
+            'farm_action',
+            'world_interact',
+            'equipment_action',
+            'inventory_action',
         ].includes(message.type)
     ) {
         cancelCharacterControl(actor)
     }
     return false
+}
+function interruptsForestWork(message: ClientMessage): boolean {
+    if (message.type === 'move_input') {
+        return message.axis.x !== 0 || message.axis.y !== 0
+    }
+    return !['chat', 'plant_tree_preview', 'join'].includes(message.type)
 }
 export function controlIntent(
     actor: GameCharacter,

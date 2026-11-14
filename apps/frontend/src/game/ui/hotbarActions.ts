@@ -25,12 +25,17 @@ export interface HotbarProps {
 export interface HotbarEmit {
     (event: 'command', command: ClientMessage): void
     (event: 'cancel'): void
+    (event: 'plant'): void
     (event: 'previewChange', preview: PrayerPreviewHighlight | undefined): void
 }
 export function bindingLabel(binding: HotbarBinding | null): string {
     if (!binding) return 'Пусто'
     if (binding.kind === 'attack') return 'Базовая атака'
-    return binding.kind === 'item' ? 'Яблоко' : ABILITY_DEFINITIONS[binding.id].name
+    return binding.kind === 'item'
+        ? binding.id === 'sapling'
+            ? 'Посадить дерево'
+            : 'Яблоко'
+        : ABILITY_DEFINITIONS[binding.id].name
 }
 export function bindingUnavailable(
     binding: HotbarBinding | null,
@@ -40,7 +45,8 @@ export function bindingUnavailable(
     cooldown: number
 ): string | undefined {
     if (!binding) return undefined
-    if (binding.kind === 'item') return count === 0 ? 'Нет яблок' : undefined
+    if (binding.kind === 'item')
+        return binding.id === 'food' && count === 0 ? 'Нет яблок' : undefined
     if (binding.kind === 'attack') return attackUnavailable(props, cooldown)
     if (binding.id === 'pray') return prayerReason
     return abilityUnavailable(binding.id, props, cooldown)
@@ -67,7 +73,7 @@ function actionFor(
     binding: Exclude<HotbarBinding, { kind: 'item' }>,
     props: HotbarProps,
     intent: PrayerPreview['intent']
-): CharacterAutoAction | undefined {
+): Exclude<CharacterAutoAction, { kind: 'gather' | 'plant_tree' }> | undefined {
     const target = combatAddress(props)
     if (binding.kind === 'attack') return target ? { kind: 'attack', ...target } : undefined
     if (binding.id === 'pray') return intent ? { kind: 'prayer', intent } : undefined
@@ -84,7 +90,9 @@ function combatAddress(
         ? { targetId: props.target.id }
         : undefined
 }
-function singleCommand(action: CharacterAutoAction): ClientMessage {
+function singleCommand(
+    action: Exclude<CharacterAutoAction, { kind: 'gather' | 'plant_tree' }>
+): ClientMessage {
     if (action.kind === 'attack')
         return {
             type: 'attack',
@@ -125,6 +133,7 @@ export function createActivator(
     return function activate(index: number): void {
         const binding = bindings.value[index]
         if (!binding || !canAct(props)) return
+        if (activatePlanting(binding, emit, gestures)) return
         if (gestures.repeat(index, binding)) return
         if (binding.kind === 'item') {
             if (!unavailable(binding)) activateFood(food.value, emit, gestures, index)
@@ -139,6 +148,17 @@ export function createActivator(
         if (!unavailable(binding)) emit('command', singleCommand(action))
         gestures.remember(index, action)
     }
+}
+function activatePlanting(
+    binding: HotbarBinding,
+    emit: HotbarEmit,
+    gestures: ReturnType<typeof createGestures>
+): boolean {
+    if (binding.kind !== 'item' || binding.id !== 'sapling') return false
+    gestures.reset()
+    emit('cancel')
+    emit('plant')
+    return true
 }
 function canAct(props: HotbarProps): boolean {
     return !props.blocked && props.player.alive && props.player.cooldowns.stunMsLeft <= 0

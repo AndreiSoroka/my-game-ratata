@@ -26,6 +26,14 @@ vi.mock('../runtime/ratataGame', () => ({
             runtime.options?.onSnapshot(worldFixture([player]), player.id)
             return Promise.resolve()
         }
+        public readonly planting = {
+            set: () => undefined,
+            preview: () => undefined,
+            subscribe: () => () => undefined,
+        }
+        public projectPosition(): undefined {
+            return undefined
+        }
         public sendCommand(command: ClientMessage): void {
             runtime.send(command)
         }
@@ -294,6 +302,31 @@ it('clears selection and cancels a ritual before a subsequent Escape opens the m
         await flushPromises()
         await pressEscape()
         expect(wrapper.find('.game-menu').exists()).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('consumes planting Escape before the main game menu and allows another slot activation', async () => {
+    const wrapper = await joined()
+    try {
+        const hotbar = wrapper.getComponent(ActionHotbar)
+        await hotbar.vm.edit(3)
+        await flushPromises()
+        await hotbar
+            .get('.hotbar-picker')
+            .findAll('button')
+            .find((button) => button.text().startsWith('Саженец'))!
+            .trigger('click')
+        hotbar.vm.activate(3)
+        await flushPromises()
+        expect(wrapper.find('[aria-label="Посадка дерева"]').exists()).toBe(true)
+        await pressEscape()
+        expect(wrapper.find('[aria-label="Посадка дерева"]').exists()).toBe(false)
+        expect(wrapper.find('.game-menu').exists()).toBe(false)
+        hotbar.vm.activate(3)
+        await flushPromises()
+        expect(wrapper.find('[aria-label="Посадка дерева"]').exists()).toBe(true)
     } finally {
         wrapper.unmount()
     }

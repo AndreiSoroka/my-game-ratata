@@ -5,6 +5,7 @@ import type {
 
 import { parseAbilityCommand } from './abilityCommands'
 import { parseCombatReference } from './combatTargetParsing'
+import { parseGatherAction, parsePlantAction } from './forestCommands'
 export function parseControlCommand(
     record: Record<string, unknown>
 ): CharacterControlCommand | undefined {
@@ -38,6 +39,12 @@ export function parseAutoAction(
         return undefined
     }
     const record = value as Record<string, unknown>
+    if (record['kind'] === 'gather') {
+        return parseGatherAction(record)
+    }
+    if (record['kind'] === 'plant_tree') {
+        return parsePlantAction(record['position'])
+    }
     if (record['kind'] === 'attack') {
         const reference = parseCombatReference(record)
         return reference !== undefined &&

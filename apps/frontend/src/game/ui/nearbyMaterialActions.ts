@@ -1,4 +1,9 @@
-import type { CharacterSnapshot, FarmPlotSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    AdventureResourceNode,
+    CharacterSnapshot,
+    FarmPlotSnapshot,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import { FARM_SOW_ENERGY } from '@my-game-ratata/contracts'
 
 import { interactionDistance, nearestByKind } from './interactionTargets'
@@ -9,6 +14,42 @@ export function resourceActions(
     snapshot: WorldSnapshot,
     player: CharacterSnapshot
 ): InteractionAction[] {
+    return nearestByKind(
+        (snapshot.adventure?.resourceNodes ?? []).filter(
+            (node) =>
+                node.phase !== 'removed' &&
+                node.phase !== 'depleted' &&
+                (node.remaining > 0 || node.phase === 'stump' || node.phase === 'growing') &&
+                interactionDistance(player, node) <= 48
+        ),
+        (node) => `${node.kind}:${node.phase ?? 'ready'}`,
+        (node) => interactionDistance(player, node)
+    ).flatMap((node) => forestResourceActions(node, snapshot.serverTime))
+}
+export function forestResourceActions(
+    node: AdventureResourceNode,
+    now: number
+): InteractionAction[] {
+    const operation =
+        node.phase === 'stump'
+            ? 'clear_stump'
+            : node.phase === 'growing'
+              ? 'cut_sapling'
+              : 'harvest'
+    const command: InteractionAction['command'] = {
+        type: 'auto_action',
+        action: { kind: 'gather', nodeId: node.id, operation },
+    }
+    if (node.phase === 'growing')
+        return [
+            {
+                id: `growth:${node.id}`,
+                label: `Дерево растёт · ${Math.max(0, Math.ceil(((node.readyAt ?? now) - now) / 1000))} сек.`,
+                disabled: true,
+                command,
+            },
+            { id: `gather:${node.id}`, label: 'Срубить без добычи', command },
+        ]
     const labels = {
         herbs: 'травы',
         fiber: 'волокно',
@@ -19,17 +60,16 @@ export function resourceActions(
         sapling: 'саженец',
         brushwood: 'хворост',
     }
-    return nearestByKind(
-        (snapshot.adventure?.resourceNodes ?? []).filter(
-            (node) => node.remaining > 0 && interactionDistance(player, node) <= 48
-        ),
-        (node) => node.kind,
-        (node) => interactionDistance(player, node)
-    ).map<InteractionAction>((node) => ({
-        id: `gather:${node.id}`,
-        label: `Собрать ${labels[node.kind]}`,
-        command: { type: 'gather', nodeId: node.id },
-    }))
+    return [
+        {
+            id: `gather:${node.id}`,
+            label:
+                node.phase === 'stump'
+                    ? 'Убрать пень · +1 древесина'
+                    : `Собрать ${labels[node.kind]}`,
+            command,
+        },
+    ]
 }
 export function pickupActions(
     snapshot: WorldSnapshot,

@@ -150,6 +150,35 @@ export const abilityDecisionSchemas = [
                 oneOf: [
                     {
                         type: 'object',
+                        required: ['kind', 'nodeId'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'gather' },
+                            nodeId: targetId,
+                            operation: {
+                                enum: ['harvest', 'clear_stump', 'cut_sapling'],
+                            },
+                        },
+                    },
+                    {
+                        type: 'object',
+                        required: ['kind', 'position'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'plant_tree' },
+                            position: {
+                                type: 'object',
+                                required: ['x', 'y'],
+                                additionalProperties: false,
+                                properties: {
+                                    x: { type: 'number' },
+                                    y: { type: 'number' },
+                                },
+                            },
+                        },
+                    },
+                    {
+                        type: 'object',
                         required: ['kind', 'target'],
                         additionalProperties: false,
                         properties: {

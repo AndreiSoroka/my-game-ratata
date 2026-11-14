@@ -154,3 +154,22 @@ if (result.status !== 'condition_met') throw new Error(result.reason)
 ## NPC control is separate
 
 [`scripts/agent-mcp.mjs`](../scripts/agent-mcp.mjs) provides the existing token-protected `ratata_observe` and `ratata_act` tools for eligible NPCs. That bridge uses temporary controller leases and respects NPC capabilities and consent. The browser API described here owns an ordinary player connection and can exercise the full player quest flow; it neither takes over a human's character nor changes global Codex settings.
+
+## Forest intentions and previews
+
+`{ type: 'auto_action', action: { kind: 'gather', nodeId, operation: 'harvest' } }`
+approaches the pinned visible source and repeats shared gathering. Operations also
+include `clear_stump` and `cut_sapling`; neither silently switches to another phase.
+`{ type: 'auto_action', action: { kind: 'plant_tree', position: { x, y } } }` walks
+to the checked plot and attempts planting once. Cancel with `cancel_control` or
+manual movement; cancellation preserves already earned loot and gather cooldowns.
+Synchronous `gather` (optional operation, default `harvest`) and `plant_tree` remain
+available to scenarios and workers. All use the same authoritative services.
+
+`plant_tree_preview` accepts a request ID and position. Its private response carries
+that ID, location, normalized position, future trunk bounds, availability and an
+optional reason. At most ten requests per sliding second are answered. A preview
+reserves nothing: verify the planted growing node, sapling removal and energy cost
+after an intention completes, rather than treating a preview or newer tick as
+success. Brushwood is an ordinary inventory and market item, including scenario
+material filters; stock, delivery and heating consume real items.

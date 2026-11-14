@@ -1,7 +1,8 @@
-import type { ClientMessage } from '@my-game-ratata/contracts'
+import type { AdventureResourceNode, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import type { PointerEvent } from 'excalibur'
 import { describe, expect, it, vi } from 'vitest'
 
+import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
 import { handleRuntimePointer } from './runtimePointer'
 
 vi.mock('excalibur', () => ({ PointerButton: { Right: 2 } }))
@@ -69,4 +70,64 @@ describe('click route modifiers', () => {
             dialog.remove()
         }
     })
+})
+
+it('starts only the clicked visible source, clears stumps separately, and leaves saplings for their menu', () => {
+    const node: AdventureResourceNode = {
+        id: 'chosen',
+        source: 'tree',
+        kind: 'wood',
+        locationId: 'map-2-2',
+        position: { x: 100, y: 150 },
+        bounds: { x: 84, y: 134, width: 32, height: 32 },
+        remaining: 8,
+        phase: 'ready',
+    }
+    const context = {
+        ...setup(),
+        snapshot: {
+            ...worldFixture([characterFixture('hero')]),
+            adventure: {
+                ...adventureFixture(),
+                resourceNodes: [
+                    node,
+                    {
+                        ...node,
+                        id: 'neighbor',
+                        position: { x: 140, y: 150 },
+                        bounds: { x: 124, y: 134, width: 32, height: 32 },
+                    },
+                ],
+            },
+        } as WorldSnapshot,
+        resourceVisible: () => true,
+    }
+    handleRuntimePointer(pointer(), context)
+    expect(context.send).toHaveBeenLastCalledWith({
+        type: 'auto_action',
+        action: { kind: 'gather', nodeId: 'chosen', operation: 'harvest' },
+    })
+    node.phase = 'stump'
+    node.remaining = 0
+    handleRuntimePointer(pointer(), context)
+    expect(context.send).toHaveBeenLastCalledWith({
+        type: 'auto_action',
+        action: { kind: 'gather', nodeId: 'chosen', operation: 'clear_stump' },
+    })
+    for (const phase of ['removed', 'growing'] as const) {
+        context.send.mockClear()
+        node.phase = phase
+        handleRuntimePointer(pointer(), context)
+        expect(
+            context.send.mock.calls.flat().some((command) => command.type === 'auto_action')
+        ).toBe(false)
+    }
+    node.phase = 'ready'
+    node.remaining = 8
+    context.resourceVisible = () => false
+    context.send.mockClear()
+    handleRuntimePointer(pointer(), context)
+    expect(context.send.mock.calls.flat().some((command) => command.type === 'auto_action')).toBe(
+        false
+    )
 })

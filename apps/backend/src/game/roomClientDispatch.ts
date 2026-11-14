@@ -5,11 +5,12 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { plantingPreview } from './plantingPreview'
 import {
     type ClientContext,
     handleCharacterMessage,
 } from './roomClientMessages'
-import { type RoomSocket, sendError } from './roomMessaging'
+import { type RoomSocket, send, sendError } from './roomMessaging'
 
 interface DispatchContext extends ClientContext {
     join(
@@ -41,6 +42,19 @@ export function dispatchRoomClientMessage(
     }
     if (message.type === 'abandon_life') {
         context.abandon(player)
+        return
+    }
+    if (message.type === 'plant_tree_preview') {
+        const preview = plantingPreview(
+            player,
+            message,
+            context.adventure,
+            context.room.navigationFor(player),
+            Date.now()
+        )
+        if (preview !== undefined) {
+            send(ws, preview)
+        }
         return
     }
     handleCharacterMessage(context, player, message)

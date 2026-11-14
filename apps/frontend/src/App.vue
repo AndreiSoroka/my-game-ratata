@@ -67,7 +67,6 @@ const {
     closeContainers,
 } = useInventoryUi(
     () => game.value,
-    () => localCharacter.value,
     () => closeChest()
 )
 const {
@@ -217,6 +216,7 @@ async function joinGame(): Promise<void> {
                     v-if="planting && game && localCharacter && status === 'Connected'"
                     :game="game"
                     :player="localCharacter"
+                    :location="snapshot?.location"
                     @close="planting = false"
                     @command="game.sendCommand($event)"
                 />
@@ -229,6 +229,7 @@ async function joinGame(): Promise<void> {
                     :characters="visibleCharacters"
                     :blocked="worldInputBlocked"
                     @interact="openNearbyMenu"
+                    @plant="startPlanting"
                 />
                 <NearbyInteraction
                     ref="interaction"

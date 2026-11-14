@@ -6,6 +6,11 @@ import {
     prayerManaCost,
 } from '@my-game-ratata/contracts'
 
+type CombatAction = Exclude<
+    CharacterAutoAction,
+    { kind: 'gather' | 'plant_tree' }
+>
+
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import {
@@ -29,6 +34,12 @@ import { prayerHarmTargets } from './prayerContext'
 
 export type AutoActionStatus = 'stop' | 'ready' | NonNullable<AutoActionWaiting>
 export function autoTargetId(action: CharacterAutoAction): string | undefined {
+    if (action.kind === 'gather') {
+        return action.nodeId
+    }
+    if (action.kind === 'plant_tree') {
+        return undefined
+    }
     return action.kind === 'prayer'
         ? 'targetId' in action.intent
             ? action.intent.targetId
@@ -37,7 +48,7 @@ export function autoTargetId(action: CharacterAutoAction): string | undefined {
 }
 export function autoActionStatus(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     context: AbilityContext
 ): AutoActionStatus {
     if (!available(actor, action, context.now)) {
@@ -78,7 +89,7 @@ export function autoActionStatus(
 }
 function legalAutoTarget(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     target: GameCharacter | undefined,
     context: AbilityContext
 ): boolean {
@@ -108,7 +119,7 @@ function legalAutoTarget(
 }
 function reached(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     target: GameCharacter | undefined,
     context: AbilityContext
 ): boolean {
@@ -141,7 +152,7 @@ function reached(
         : distance(actor.position, target.position) <=
               ABILITY_DEFINITIONS[id].range
 }
-function cooldownAt(actor: GameCharacter, action: CharacterAutoAction): number {
+function cooldownAt(actor: GameCharacter, action: CombatAction): number {
     if (action.kind === 'attack') {
         return actor.lastAttackAt + actor.config.combat.attackCooldownMs
     }
@@ -166,7 +177,7 @@ function cooldownAt(actor: GameCharacter, action: CharacterAutoAction): number {
 }
 function actionCosts(
     actor: GameCharacter,
-    action: CharacterAutoAction
+    action: CombatAction
 ): { mana: number; energy: number } {
     if (action.kind === 'prayer') {
         return { mana: prayerManaCost(action.intent.mode), energy: 0 }
@@ -187,7 +198,7 @@ function actionCosts(
 }
 function refusesAutoCombat(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     context: AbilityContext
 ): boolean {
     if (canFight(actor)) {
@@ -204,7 +215,7 @@ function refusesAutoCombat(
 }
 function available(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     now: number
 ): boolean {
     if (!availableActor(actor, now)) {
@@ -220,7 +231,7 @@ function available(
 }
 function activeBarrier(
     actor: GameCharacter,
-    action: CharacterAutoAction,
+    action: CombatAction,
     now: number
 ): boolean {
     const barrier = actor.abilities.barrier

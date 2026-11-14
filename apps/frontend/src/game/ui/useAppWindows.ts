@@ -35,7 +35,6 @@ export function useAppWindows(options: AppWindowsOptions) {
     const worldInputBlocked = computed(() =>
         [
             gameMenu.open.value,
-            options.planting.value,
             options.inventoryOpen.value,
             options.chestPending.value,
             options.chatInput.value.active,
