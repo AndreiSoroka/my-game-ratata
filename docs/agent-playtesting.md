@@ -2,7 +2,7 @@
 
 An AI can play a normal player through the browser's opt-in `window.__ratataTest` interface. It can inspect its character and surroundings, navigate, cross location boundaries, fight, collect items and complete quests. The adapter submits ordinary WebSocket commands; the server owns movement, collision, costs, damage, inventory, quest progress and rewards. It does not connect a language model automatically.
 
-Start the backend and frontend preview using [Run locally](playable-world.md#run-locally), then use the connected Playwright/browser MCP at `http://localhost:4173/?test=1`. Keep the browser headless unless the user asks to see it. The interface is absent without `?test=1`.
+Start the backend and frontend preview using [Run locally](playable-world.md#run-locally), then use the connected Playwright/browser MCP at `http://localhost:4173/?test=1`. Keep the browser headless unless the user asks to see it. The interface is absent without `?test=1`. Test sessions are silent from startup: music, footsteps and event/UI clips stay muted even when the browser previously saved sound as enabled. `?mute=1` provides the same silent mode without enabling the test interface.
 
 ```js
 await window.__ratataTest.join('AI Explorer', 'ranger')

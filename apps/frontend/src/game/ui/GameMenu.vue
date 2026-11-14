@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import {
+    isAudioMuted,
+    isAudioMuteForced,
+    setAudioMuted,
+    subscribeAudioMute,
+} from '../runtime/audioPreference'
 import { dialogActionKeys } from './dialogActionKeys'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 withDefaults(defineProps<{ automationAvailable?: boolean }>(), { automationAvailable: true })
 const emit = defineEmits<{ resume: []; leave: []; markers: []; scenarios: [] }>()
 const panel = ref<HTMLElement>()
+const muted = ref(isAudioMuted())
+const forcedMute = isAudioMuteForced()
+const unsubscribeAudio = subscribeAudioMute((value) => {
+    muted.value = value
+})
+onBeforeUnmount(unsubscribeAudio)
 useEscapeOwner({ active: () => true, escape: () => emit('resume'), element: panel, priority: 200 })
 onMounted(async () => {
     await nextTick()
@@ -47,6 +59,17 @@ onMounted(async () => {
             >
                 Сценарии
             </button>
+            <button
+                type="button"
+                data-dialog-action="sound"
+                aria-label="Без звука"
+                :aria-pressed="muted"
+                :disabled="forcedMute"
+                @click="setAudioMuted(!muted)"
+            >
+                Звук: {{ muted ? 'выключен' : 'включён' }}
+            </button>
+            <p v-if="forcedMute">В этом режиме звук отключён.</p>
             <button type="button" data-dialog-action="leave" @click="emit('leave')">
                 Выйти из игры
             </button>

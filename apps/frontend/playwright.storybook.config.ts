@@ -13,6 +13,7 @@ export default defineConfig({
     outputDir: 'test-results/storybook',
     reporter: [['html', { outputFolder: 'playwright-report/storybook' }]],
     use: {
+        launchOptions: { args: ['--mute-audio'] },
         baseURL: 'http://127.0.0.1:6006',
         deviceScaleFactor: 1,
         headless: true,
@@ -33,7 +34,7 @@ export default defineConfig({
     ],
     webServer: {
         command:
-            'node node_modules/storybook/dist/bin/dispatcher.js dev -p 6006 -h 127.0.0.1 --ci --no-open',
+            'VITE_GAME_AUDIO_MUTED=1 node node_modules/storybook/dist/bin/dispatcher.js dev -p 6006 -h 127.0.0.1 --ci --no-open',
         reuseExistingServer: true,
         timeout: 60 * 1000,
         url: 'http://127.0.0.1:6006/',

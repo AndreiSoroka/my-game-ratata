@@ -319,6 +319,8 @@ The twelve plots belong to the world session: two players cannot harvest the sam
 
 ## Movement sounds and keyboard interaction
 
+The game menu has a **Без звука** toggle for music, footsteps and all event/UI sounds. Normal play saves this preference in the browser. `?test=1`, `?mute=1` and builds started with `VITE_GAME_AUDIO_MUTED=1` force silence before the first playback, regardless of saved settings; sound cannot be enabled within those sessions. Muting immediately stops current voices, and unmuting normal play resumes music at its authored volume while retaining the current footstep surface map.
+
 Footsteps come from the hidden authored `Footstep surfaces` Tiled layer. Grass and soil use soft clips, stone uses dry concrete steps and wooden interiors use wood steps, with three variations per material. Slimes retain their own hopping sound. Audible footsteps include other living characters in the current location and fall off quadratically, with a normal walking range of 240 world units. Sneaking is quieter with shorter range; dashing is louder and carries farther. Movement must actually change position; standing against a wall, death, map changes and large snapshot jumps do not produce fake steps. Each playing voice has its own gain and the mixer limits simultaneous steps; hiding the page or stopping the game clears them.
 
 The context action menu follows the focus and activation conventions in [W3C APG Menu Button](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/) and [Menu](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/). The broader idea of one nearby action key is also present in [Stardew Valley controls](https://stardewvalleywiki.com/Controls); Ratata uses E as requested rather than copying that game's bindings.

@@ -1,6 +1,7 @@
 import { type Sound, WebAudioInstance } from 'excalibur'
 
 import { type GameSoundId, soundCatalog } from '../assets/soundCatalog'
+import { isAudioMuted } from './audioPreference'
 import type { Footstep } from './footsteps'
 
 const samples: Record<string, readonly GameSoundId[]> = {
@@ -15,7 +16,7 @@ export class FootstepAudio {
     public constructor(private readonly sounds: Map<GameSoundId, Sound>) {}
 
     public play(step: Footstep): void {
-        if (this.voices.size >= 8) return
+        if (isAudioMuted() || this.voices.size >= 8) return
         const sample = step.slime ? 'slimeHop' : samples[step.surface]?.[step.variant]
         const sound = sample === undefined ? undefined : this.sounds.get(sample)
         if (sound === undefined || sample === undefined || !sound.isLoaded()) return

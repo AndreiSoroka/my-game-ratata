@@ -2,6 +2,7 @@ import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 import type { Sound } from 'excalibur'
 
 import type { GameSoundId } from '../assets/soundCatalog'
+import { isAudioMuted, subscribeAudioMute } from './audioPreference'
 import { FootstepAudio } from './footstepAudio'
 import { FootstepPlanner } from './footsteps'
 import { type FootstepMap, surfaceAt } from './mapSurfaces'
@@ -12,22 +13,38 @@ export class GameAudio {
     private surfaceMap: FootstepMap | undefined
     private readonly music: Sound
     private readonly sounds: Map<GameSoundId, Sound>
+    private readonly unsubscribeAudio: () => void
+    private musicRequested = false
 
     public constructor(sounds: Map<GameSoundId, Sound>, music: Sound) {
         this.sounds = sounds
         this.music = music
         this.footstepAudio = new FootstepAudio(sounds)
+        this.unsubscribeAudio = subscribeAudioMute((muted) => {
+            if (muted) this.stopVoices()
+            else if (this.musicRequested) this.playMusic()
+        })
         document.addEventListener('visibilitychange', this.onVisibilityChange)
     }
 
     public playMusic(): void {
+        this.musicRequested = true
+        if (isAudioMuted()) return
         void Promise.resolve(this.music.play()).catch(() => undefined)
     }
 
     public stop(): void {
-        this.music.stop()
-        this.pauseMovement()
+        this.musicRequested = false
+        this.unsubscribeAudio()
+        this.stopVoices()
+        this.surfaceMap = undefined
         document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    }
+
+    private stopVoices(): void {
+        this.music.stop()
+        for (const sound of this.sounds.values()) sound.stop()
+        this.stopFootsteps()
     }
 
     public setMap(map: { footsteps: FootstepMap }): void {
@@ -52,6 +69,7 @@ export class GameAudio {
     }
 
     public playSound(id: GameSoundId): void {
+        if (isAudioMuted()) return
         const sound = this.sounds.get(id)
 
         if (sound === undefined) {
@@ -96,7 +114,7 @@ export class GameAudio {
 
     public playMovementSound(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
         const map = this.surfaceMap
-        if (map === undefined || document.hidden) return
+        if (map === undefined || document.hidden || isAudioMuted()) return
         const listener = snapshot.characters.find((actor) => actor.id === localPlayerId)
         if (!listener?.alive) {
             this.stopFootsteps()

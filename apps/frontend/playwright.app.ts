@@ -14,8 +14,17 @@ export function createAppPlaywrightConfig(
         ? `graves${options.graveViewport === undefined ? '' : `-${options.graveViewport}`}`
         : 'app'
     const projects = [
-        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-        { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+        {
+            name: 'chromium',
+            use: { ...devices['Desktop Chrome'], launchOptions: { args: ['--mute-audio'] } },
+        },
+        {
+            name: 'firefox',
+            use: {
+                ...devices['Desktop Firefox'],
+                launchOptions: { firefoxUserPrefs: { 'media.volume_scale': '0.0' } },
+            },
+        },
         { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     ]
     return defineConfig({
@@ -51,7 +60,7 @@ export function createAppPlaywrightConfig(
                 reuseExistingServer: false,
             },
             {
-                command: `VITE_BACKEND_WS_URL=ws://127.0.0.1:${String(backendPort)}/ws bun run dev -- --port ${String(frontendPort)}`,
+                command: `VITE_GAME_AUDIO_MUTED=1 VITE_BACKEND_WS_URL=ws://127.0.0.1:${String(backendPort)}/ws bun run dev -- --port ${String(frontendPort)}`,
                 port: frontendPort,
                 reuseExistingServer: false,
             },
