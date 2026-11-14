@@ -24,7 +24,9 @@
         "lint:fix:eslint": "eslint . --fix --cache --cache-location ./node_modules/.tmp/eslint/.eslintcache",
         "format": "prettier . --check",
         "format:fix": "prettier . --write",
-        "test:e2e:graves": "playwright test --config playwright.graves.config.ts"
+        "test:e2e:graves": "run-s test:e2e:graves:desktop test:e2e:graves:mobile",
+        "test:e2e:graves:desktop": "E2E_GRAVE_VIEWPORT=desktop playwright test --config playwright.graves.config.ts",
+        "test:e2e:graves:mobile": "E2E_GRAVE_VIEWPORT=mobile playwright test --config playwright.graves.config.ts"
     },
     "dependencies": {
         "@my-game-ratata/contracts": "workspace:*",

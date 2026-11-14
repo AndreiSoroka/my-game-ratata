@@ -21,7 +21,7 @@ export function advanceScenario(
     now: number,
     held: boolean
 ): boolean {
-    const deltaMs = Math.max(0, Math.min(250, now - run.lastAt))
+    const deltaMs = Math.max(0, now - run.lastAt)
     run.lastAt = now
     run.ledger.reconcile(actor.inventory)
     if (run.snapshot.status !== 'running') {

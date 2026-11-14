@@ -12,6 +12,7 @@ import {
     onlyKeys,
     optionalId,
     optionalItem,
+    optionalPinnedLocationId,
     searchKind,
     validId,
 } from './scenarioParsingValues'
@@ -119,8 +120,16 @@ function parseDeposit(
     id: string
 ): ScenarioStep | undefined {
     if (
-        !onlyKeys(record, ['id', 'kind', 'chestId', 'mode', 'itemIds']) ||
-        !optionalId(record['chestId'])
+        !onlyKeys(record, [
+            'id',
+            'kind',
+            'chestId',
+            'mode',
+            'itemIds',
+            'locationId',
+        ]) ||
+        !optionalId(record['chestId']) ||
+        !optionalPinnedLocationId(record['locationId'], record['chestId'])
     ) {
         return undefined
     }
@@ -144,6 +153,9 @@ function parseDeposit(
         ...(record['chestId'] === undefined
             ? {}
             : { chestId: record['chestId'] }),
+        ...(record['locationId'] === undefined
+            ? {}
+            : { locationId: record['locationId'] }),
     }
 }
 function parseRecover(

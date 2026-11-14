@@ -72,3 +72,11 @@ it('counts every blocked second despite throttling failed work commands', () => 
         8
     )
 })
+
+it('uses server elapsed time for a blocked deadline even after a delayed tick', () => {
+    const f = scenarioFixture()
+    f.start(definition([{ id: 'search', kind: 'search', target: 'tree' }]))
+    f.scenarios.advance(f.actor, f.room, 11_000, false)
+    expect(f.snapshot().run?.status).toBe('completed')
+    expect(f.snapshot().run?.results[0]?.status).toBe('failed')
+})

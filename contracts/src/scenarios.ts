@@ -26,6 +26,7 @@ export type ScenarioDestination =
           kind: 'visible'
           target: ScenarioSearchKind
           targetId?: string
+          locationId?: string
           itemId?: ItemId
       }
 export type ScenarioStep = { id: string } & (
@@ -41,6 +42,7 @@ export type ScenarioStep = { id: string } & (
     | {
           kind: 'deposit'
           chestId?: string
+          locationId?: string
           mode: 'all' | 'acquired'
           itemIds: ItemId[]
       }

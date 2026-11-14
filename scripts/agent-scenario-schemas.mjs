@@ -14,6 +14,10 @@ const search = {
     ],
 }
 const itemId = { type: 'string', minLength: 1, maxLength: 100 }
+const locationId = {
+    type: 'string',
+    enum: WORLD_LOCATION_DEFINITIONS.map((location) => location.id),
+}
 function object(properties, required = Object.keys(properties)) {
     return { type: 'object', required, additionalProperties: false, properties }
 }
@@ -35,7 +39,7 @@ const destination = {
         object({ kind: { const: 'marker' }, markerId: id }),
         object({
             kind: { const: 'point' },
-            locationId: { type: 'string', pattern: '^map-[0-9]+-[0-9]+$' },
+            locationId,
             position: object({
                 x: { type: 'number', minimum: 0, maximum: 100000 },
                 y: { type: 'number', minimum: 0, maximum: 100000 },
@@ -45,10 +49,19 @@ const destination = {
             {
                 kind: { const: 'visible' },
                 target: search,
-                targetId: id,
                 itemId,
             },
             ['kind', 'target']
+        ),
+        object(
+            {
+                kind: { const: 'visible' },
+                target: search,
+                targetId: id,
+                itemId,
+                locationId,
+            },
+            ['kind', 'target', 'targetId']
         ),
     ],
 }
@@ -76,11 +89,20 @@ const steps = {
             step(
                 'deposit',
                 {
-                    chestId: id,
                     mode: { enum: ['all', 'acquired'] },
                     itemIds: { type: 'array', maxItems: 100, items: itemId },
                 },
                 ['mode', 'itemIds']
+            ),
+            step(
+                'deposit',
+                {
+                    chestId: id,
+                    locationId,
+                    mode: { enum: ['all', 'acquired'] },
+                    itemIds: { type: 'array', maxItems: 100, items: itemId },
+                },
+                ['chestId', 'mode', 'itemIds']
             ),
             step('wait', {
                 durationMs: { type: 'integer', minimum: 0, maximum: 3600000 },
@@ -117,3 +139,4 @@ export const scenarioDecisionSchemas = [
     ),
     command('release_input'),
 ]
+import { WORLD_LOCATION_DEFINITIONS } from '../contracts/src/world.ts'

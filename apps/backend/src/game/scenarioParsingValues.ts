@@ -2,6 +2,7 @@ import {
     ITEM_DEFINITIONS,
     type ItemId,
     type ScenarioSearchKind,
+    WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
 export function object(value: unknown): Record<string, unknown> | undefined {
@@ -36,6 +37,21 @@ export function validName(value: unknown): value is string {
 }
 export function optionalId(value: unknown): value is string | undefined {
     return value === undefined || validId(value)
+}
+export function validLocationId(value: unknown): value is string {
+    return (
+        typeof value === 'string' &&
+        WORLD_LOCATION_DEFINITIONS.some((location) => location.id === value)
+    )
+}
+export function optionalPinnedLocationId(
+    value: unknown,
+    targetId: unknown
+): value is string | undefined {
+    return (
+        value === undefined ||
+        (targetId !== undefined && validLocationId(value))
+    )
 }
 export function itemId(value: unknown): value is ItemId {
     return typeof value === 'string' && Object.hasOwn(ITEM_DEFINITIONS, value)

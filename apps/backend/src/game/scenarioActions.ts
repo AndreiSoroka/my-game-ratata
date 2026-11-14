@@ -100,6 +100,15 @@ function go(
             now
         )
     }
+    if (
+        destination.locationId !== undefined &&
+        destination.locationId !== actor.locationId
+    ) {
+        return {
+            state: 'blocked',
+            reason: 'Выбранная цель находится в другой локации.',
+        }
+    }
     const target = visibleScenarioTargets(
         actor,
         room,

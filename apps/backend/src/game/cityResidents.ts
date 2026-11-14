@@ -21,6 +21,45 @@ interface CityResident {
 export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
+        id: 'npc_wanderer_1',
+        nickname: 'Бродяга Прохор',
+        tile: { x: 39, y: 48 },
+        visualId: 'male_player_2',
+        greeting:
+            'Прохор. Дома нет, срочных дел тоже. Давай познакомимся — после разговора могу помочь с простой работой.',
+        personality:
+            'Бродит по городским улицам. Помогает знакомым, но не сражается.',
+        assistancePolicy: { kind: 'met' },
+        idleRouteTiles: [
+            { x: 39, y: 48 },
+            { x: 45, y: 48 },
+            { x: 45, y: 55 },
+            { x: 39, y: 55 },
+        ],
+    },
+    {
+        creatureType: 'humanoid',
+        id: 'npc_wanderer_2',
+        nickname: 'Бродяжка Дарья',
+        tile: { x: 36, y: 53 },
+        visualId: 'female_player',
+        greeting:
+            'Я Дарья. Пока скитаюсь по Новогороду. Помоги Мире собрать сердца для колокола памяти — тогда помогу и тебе.',
+        personality:
+            'Бродит по городу без работы. Доверяет тем, кто помог колоколу памяти; в бой не идёт.',
+        assistancePolicy: {
+            kind: 'quest_completed',
+            questId: 'hearts-for-the-border-bell',
+        },
+        idleRouteTiles: [
+            { x: 36, y: 53 },
+            { x: 36, y: 59 },
+            { x: 43, y: 59 },
+            { x: 43, y: 53 },
+        ],
+    },
+    {
+        creatureType: 'humanoid',
         id: 'npc_weaver_1',
         nickname: 'Мастерица Мила',
         tile: { x: 21, y: 31 },

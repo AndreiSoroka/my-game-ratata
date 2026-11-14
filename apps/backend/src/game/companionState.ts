@@ -1,9 +1,46 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import type { GameEventPayload, SoulSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { CompanionRuntime } from './companionMovement'
 import { distance } from './math'
 import { createSpeechEvent } from './speechReceipts'
+
+const replyRecipients = new WeakMap<GameCharacter, string>()
+
+/** Reply audience belongs to server state, never the public soul contract. */
+export function setCompanionReplyRecipient(
+    character: GameCharacter,
+    recipientId: string | undefined
+): void {
+    if (recipientId === undefined) {
+        replyRecipients.delete(character)
+    } else {
+        replyRecipients.set(character, recipientId)
+    }
+}
+
+export function snapshotCompanionSoul(
+    character: GameCharacter | undefined,
+    soul: SoulSnapshot,
+    viewerId: string | undefined
+): SoulSnapshot {
+    const recipientId =
+        character === undefined ? undefined : replyRecipients.get(character)
+    const readable =
+        recipientId === undefined ||
+        recipientId === viewerId ||
+        character?.id === viewerId
+    return {
+        ...soul,
+        companion:
+            soul.companion === null
+                ? null
+                : {
+                      ...soul.companion,
+                      lastReply: readable ? soul.companion.lastReply : null,
+                  },
+    }
+}
 
 export function canRequest(
     actor: GameCharacter,
@@ -66,6 +103,7 @@ export function replyToCompanion(
     text: string
 ): GameEventPayload[] {
     state.lastReply = text
+    setCompanionReplyRecipient(npc, actor?.id)
     sync(npc, state)
     return npc.soul.canSpeak
         ? [

@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS, SHOT_HALF_WIDTH } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
 import {
@@ -327,24 +328,8 @@ async function clearGraveApproach(
     )
     expect(source, 'The received location has an active authored grave').toBeDefined()
     const grave = { id: source!.id, key: `grave:${source!.id}`, position: source!.position }
-    const arrivals = await Promise.all(
-        rangers.map((page, index) =>
-            page.evaluate(
-                (position) =>
-                    window.__ratataTest!.navigate(
-                        // Keep separate firing lanes: one skeleton's melee arc
-                        // must not hit the whole party stacked at a single point.
-                        position,
-                        { timeoutMs: 20_000 }
-                    ),
-                {
-                    x: grave.position.x + (index - (rangers.length - 1) / 2) * 64,
-                    y: grave.position.y + 104,
-                }
-            )
-        )
-    )
-    for (const result of arrivals) expect(result.status, result.reason).toBe('arrived')
+    // Approach while fighting, rather than walking unarmed into the guardian's
+    // patrol first. Each ranger keeps its own cardinal firing lane at Shot reach.
     // Earlier cases can leave distant mobs and create new death graves. Clear only
     // actual threats to this source, rediscovering them after each resolved death.
     for (let count = 0; count < 12; count++) {
@@ -370,7 +355,9 @@ async function clearGraveApproach(
         await expect
             .poll(
                 async () => {
-                    await Promise.all(rangers.map((page) => maintainShot(page, threat.id)))
+                    await Promise.all(
+                        rangers.map((page, index) => maintainShot(page, threat.id, index))
+                    )
                     const witness = await livingRanger(rangers)
                     return witness.evaluate(
                         (id) =>
@@ -387,66 +374,63 @@ async function clearGraveApproach(
     throw new Error('The ranger party did not clear the observed ritual area')
 }
 
-async function maintainShot(page: Page, targetId: string): Promise<void> {
-    await page.evaluate(async (id) => {
-        const api = window.__ratataTest!
-        const current = () => {
-            const state = api.getState()
-            const player = state.player!
+async function maintainShot(page: Page, targetId: string, lane: number): Promise<void> {
+    await page.evaluate(
+        ({ id, lane, range, halfWidth }) => {
+            const api = window.__ratataTest!,
+                state = api.getState(),
+                player = state.player!
             const target = state.snapshot?.characters.find((actor) => actor.id === id)
+            if (!player.alive || !target?.alive || player.cooldowns.stunMsLeft > 0) return
+            const dx = player.position.x - target.position.x,
+                dy = player.position.y - target.position.y
+            const distance = Math.hypot(dx, dy)
+            const directions = [
+                { x: -1, y: 0 },
+                { x: 0, y: 1 },
+                { x: 1, y: 0 },
+                { x: 0, y: -1 },
+            ]
+            const direction = directions[lane % directions.length]!
+            const along = dx * direction.x + dy * direction.y
+            const across = Math.abs(dx * direction.y - dy * direction.x)
             const action = player.control?.action
-            return {
-                state,
-                player,
-                target,
-                active:
-                    action?.kind === 'ability' &&
-                    action.abilityId === 'shot' &&
-                    action.targetId === id,
+            const active =
+                action?.kind === 'ability' && action.abilityId === 'shot' && action.targetId === id
+            if (along >= 38 && along <= range && across <= halfWidth) {
+                if (!active)
+                    api.send({
+                        type: 'auto_action',
+                        action: { kind: 'ability', abilityId: 'shot', targetId: id },
+                    })
+                return
             }
-        }
-        let view = current()
-        if (
-            !view.player.alive ||
-            !view.target?.alive ||
-            view.player.cooldowns.stunMsLeft > 0 ||
-            view.active
-        )
-            return
-        const command = {
-            type: 'auto_action' as const,
-            action: { kind: 'ability' as const, abilityId: 'shot' as const, targetId: id },
-        }
-        await api.act(command, {
-            until: { type: 'tick', after: view.state.snapshot!.tick + 2 },
-            timeoutMs: 1500,
-        })
-        view = current()
-        if (
-            view.active ||
-            !view.player.alive ||
-            !view.target?.alive ||
-            view.player.cooldowns.stunMsLeft > 0
-        )
-            return
-        // A map-wide snapshot is not a combat lease: ordinary navigation must earn
-        // the server's 240px / line-of-sight acquisition before enabling repeat.
-        const route = await api.navigate(
-            { targetKey: `character:${id}` },
-            { tolerance: 40, timeoutMs: 8000 }
-        )
-        view = current()
-        if (!view.player.alive || !view.target?.alive) return
-        if (route.status !== 'arrived')
-            throw new Error(`Combat approach ${route.status}: ${route.reason}`)
-        await api.act(command, {
-            until: { type: 'tick', after: view.state.snapshot!.tick },
-            timeoutMs: 1500,
-        })
-        // A newer snapshot is not a command acknowledgement. Stun can expire
-        // between command validation and this snapshot; the bounded battle poll
-        // retries until actual target death instead of treating that race as failure.
-    }, targetId)
+            // A shared 40px target approach made all four shooters stack inside one
+            // skeleton arc. Orbit outside melee reach to distinct firing sides, and
+            // retreat before a chasing enemy can turn a ranged lane into that pile-up.
+            const angle = Math.atan2(dy, dx),
+                desired = Math.atan2(direction.y, direction.x)
+            const turn = Math.atan2(Math.sin(desired - angle), Math.cos(desired - angle))
+            const orbiting = Math.abs(turn) > Math.PI / 4
+            const nextAngle = orbiting
+                ? angle + Math.sign(turn) * Math.min(Math.abs(turn), Math.PI / 2)
+                : desired
+            const radius = distance < 38 || orbiting ? 104 : range - 8
+            const map = state.location!.map
+            const position = {
+                x: Math.max(
+                    16,
+                    Math.min(map.worldWidth - 16, target.position.x + Math.cos(nextAngle) * radius)
+                ),
+                y: Math.max(
+                    16,
+                    Math.min(map.worldHeight - 16, target.position.y + Math.sin(nextAngle) * radius)
+                ),
+            }
+            api.send({ type: 'move_to', target: position })
+        },
+        { id: targetId, lane, range: ABILITY_DEFINITIONS.shot.range, halfWidth: SHOT_HALF_WIDTH }
+    )
 }
 
 async function faceGrave(page: Page, id: string): Promise<void> {

@@ -6,6 +6,7 @@ import type {
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { snapshotCompanionSoul } from './companionState'
 import { canTargetByFaction } from './factions'
 import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
@@ -67,6 +68,15 @@ export function roomSnapshot(
         graves: context.life?.graves(locationId) ?? [],
         characters: snapshot.characters.map((character) => ({
             ...character,
+            ...(character.soul === undefined
+                ? {}
+                : {
+                      soul: snapshotCompanionSoul(
+                          context.characters.get(character.id),
+                          character.soul,
+                          playerId
+                      ),
+                  }),
             relationship: relationshipFor(
                 observer,
                 context.characters.get(character.id),

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 
+import { WORLD_LOCATION_DEFINITIONS } from '../contracts/src/world.ts'
+
 function messages(input) {
     const result = spawnSync(process.execPath, ['scripts/agent-mcp.mjs'], {
         encoding: 'utf8',
@@ -43,6 +45,47 @@ test('MCP exposes bounded ordinary scenario commands and route appends', () => {
         (entry) => entry.properties.type.const === 'move_to'
     )
     assert.deepEqual(move.properties.append, { type: 'boolean' })
+})
+
+test('MCP qualifies explicit scenario targets by authored location while nearest selectors stay unpinned', () => {
+    const [message] = messages([
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    ])
+    const act = message.result.tools.find((tool) => tool.name === 'ratata_act')
+    const save = act.inputSchema.properties.decision.oneOf.find(
+        (entry) => entry.properties.type.const === 'scenario_save'
+    )
+    const choices = save.properties.scenario.properties.steps.items.oneOf
+    const go = choices.find((entry) => entry.properties.kind.const === 'go')
+    const visible = go.properties.destination.oneOf.filter(
+        (entry) => entry.properties.kind.const === 'visible'
+    )
+    const pinned = visible.find((entry) => entry.properties.locationId)
+    assert.ok(pinned.required.includes('targetId'))
+    assert.deepEqual(
+        pinned.properties.locationId.enum,
+        WORLD_LOCATION_DEFINITIONS.map((location) => location.id)
+    )
+    assert.ok(
+        visible.some(
+            (entry) =>
+                !entry.properties.locationId && !entry.properties.targetId
+        )
+    )
+    const deposit = choices.filter(
+        (entry) => entry.properties.kind.const === 'deposit'
+    )
+    const explicitDeposit = deposit.find((entry) => entry.properties.locationId)
+    assert.ok(explicitDeposit.required.includes('chestId'))
+    assert.deepEqual(
+        explicitDeposit.properties.locationId.enum,
+        pinned.properties.locationId.enum
+    )
+    assert.ok(
+        deposit.some(
+            (entry) => !entry.properties.locationId && !entry.properties.chestId
+        )
+    )
 })
 
 test('MCP negotiates, lists tools and ignores notifications without stdout noise', () => {

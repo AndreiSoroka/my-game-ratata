@@ -51,7 +51,7 @@ export function editScenarioLibrary(
             )
             return null
         case 'scenario_save':
-            return saveScenario(library, command.scenario)
+            return saveScenario(library, command.scenario, actor.locationId)
         case 'scenario_delete':
             library.scenarios = library.scenarios.filter(
                 (entry) => entry.id !== command.scenarioId
@@ -63,12 +63,14 @@ export function editScenarioLibrary(
 }
 function saveScenario(
     library: ScenarioLibrary,
-    input: ScenarioDefinition
+    input: ScenarioDefinition,
+    locationId: string
 ): string | null {
     const scenario = parseScenario(input)
     if (scenario === undefined) {
         return 'Некорректный сценарий.'
     }
+    pinScenarioTargets(scenario, locationId)
     const index = library.scenarios.findIndex(
         (entry) => entry.id === scenario.id
     )
@@ -81,6 +83,23 @@ function saveScenario(
         library.scenarios[index] = scenario
     }
     return null
+}
+function pinScenarioTargets(
+    scenario: ScenarioDefinition,
+    locationId: string
+): void {
+    for (const step of scenario.steps) {
+        if (step.kind === 'deposit' && step.chestId !== undefined) {
+            step.locationId ??= locationId
+        }
+        if (
+            step.kind === 'go' &&
+            step.destination.kind === 'visible' &&
+            step.destination.targetId !== undefined
+        ) {
+            step.destination.locationId ??= locationId
+        }
+    }
 }
 export function resolveScenarioMarkers(
     definition: ScenarioDefinition,

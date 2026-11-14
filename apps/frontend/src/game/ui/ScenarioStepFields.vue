@@ -11,7 +11,11 @@ import { computed } from 'vue'
 import AutomationNumberField from './AutomationNumberField.vue'
 import ScenarioDestinationEditor from './ScenarioDestinationEditor.vue'
 import { newScenarioStep, scenarioSearchLabels, scenarioStepLabels } from './scenarioEditor'
-import type { ScenarioVisibleTarget } from './scenarioTargets'
+import {
+    scenarioTargetKey,
+    scenarioTargetLabel,
+    type ScenarioVisibleTarget,
+} from './scenarioTargets'
 
 const props = defineProps<{
     modelValue: ScenarioStep
@@ -19,12 +23,19 @@ const props = defineProps<{
     targets: ScenarioVisibleTarget[]
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: ScenarioStep] }>()
+const chests = computed(() => props.targets.filter((entry) => entry.kind === 'chest'))
+const explicitChestKey = computed(() => {
+    const step = props.modelValue
+    return step.kind === 'deposit' && step.chestId
+        ? scenarioTargetKey({ id: step.chestId, locationId: step.locationId })
+        : ''
+})
 const missingChest = computed(() => {
     const step = props.modelValue
     return (
         step.kind === 'deposit' &&
         step.chestId &&
-        !props.targets.some((entry) => entry.kind === 'chest' && entry.id === step.chestId)
+        !chests.value.some((entry) => scenarioTargetKey(entry) === explicitChestKey.value)
     )
 })
 const resources = {
@@ -50,6 +61,24 @@ function optionalItem(event: Event): void {
     const step = { ...props.modelValue } as Extract<ScenarioStep, { kind: 'pickup' | 'search' }>
     delete step.itemId
     emit('update:modelValue', { ...step, ...(itemId ? { itemId: itemId as ItemId } : {}) })
+}
+function chest(event: Event): void {
+    if (props.modelValue.kind !== 'deposit') return
+    const key = value(event)
+    const candidate = chests.value.find((entry) => scenarioTargetKey(entry) === key)
+    if (key && !candidate) return
+    const step = { ...props.modelValue }
+    delete step.chestId
+    delete step.locationId
+    emit('update:modelValue', {
+        ...step,
+        ...(candidate
+            ? {
+                  chestId: candidate.id,
+                  ...(candidate.locationId ? { locationId: candidate.locationId } : {}),
+              }
+            : {}),
+    })
 }
 </script>
 
@@ -115,19 +144,16 @@ function optionalItem(event: Event): void {
         <template v-else-if="modelValue.kind === 'deposit'">
             <label>
                 Сундук
-                <select
-                    :value="modelValue.chestId ?? ''"
-                    @change="patch({ chestId: value($event) || undefined })"
-                >
+                <select :value="explicitChestKey" @change="chest">
                     <option value="">Ближайший видимый</option>
                     <option
-                        v-for="target in targets.filter((entry) => entry.kind === 'chest')"
-                        :key="target.id"
-                        :value="target.id"
+                        v-for="target in chests"
+                        :key="scenarioTargetKey(target)"
+                        :value="scenarioTargetKey(target)"
                     >
-                        {{ target.label }}
+                        {{ scenarioTargetLabel(target) }}
                     </option>
-                    <option v-if="missingChest" :value="modelValue.chestId" disabled>
+                    <option v-if="missingChest" :value="explicitChestKey" disabled>
                         Выбранный сундук сейчас не виден
                     </option>
                 </select>

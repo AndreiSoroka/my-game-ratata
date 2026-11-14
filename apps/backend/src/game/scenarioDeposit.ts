@@ -7,7 +7,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { chestHasLineOfSight } from './chestInteraction'
-import { itemQuantity } from './inventory'
+import { type InventoryItemInstance, itemQuantity } from './inventory'
 import type { GameRoom } from './room'
 import { workingApproach } from './scenarioApproach'
 import type { ScenarioOutcome } from './scenarioNavigation'
@@ -22,15 +22,15 @@ export function depositScenario(
     step: Extract<ScenarioStep, { kind: 'deposit' }>,
     now: number
 ): ScenarioOutcome {
-    const eligible = actor.inventory.filter(
-        (item) =>
-            step.itemIds.length === 0 || step.itemIds.includes(item.itemId)
-    )
-    const item = eligible.find(
-        (candidate) => step.mode === 'all' || run.ledger.quantity(candidate) > 0
-    )
+    const item = itemForDeposit(actor, run, step)
     if (item === undefined) {
         return { state: 'done' }
+    }
+    if (!chestLocationMatches(actor, step)) {
+        return {
+            state: 'blocked',
+            reason: 'Выбранный сундук находится в другой локации.',
+        }
     }
     const target = visibleScenarioTargets(
         actor,
@@ -89,6 +89,25 @@ export function depositScenario(
     }
     delete run.step.lastFailure
     return { state: 'progress' }
+}
+
+function itemForDeposit(
+    actor: GameCharacter,
+    run: ScenarioRuntime,
+    step: Extract<ScenarioStep, { kind: 'deposit' }>
+): InventoryItemInstance | undefined {
+    return actor.inventory.find(
+        (item) =>
+            (step.itemIds.length === 0 || step.itemIds.includes(item.itemId)) &&
+            (step.mode === 'all' || run.ledger.quantity(item) > 0)
+    )
+}
+
+function chestLocationMatches(
+    actor: GameCharacter,
+    step: Extract<ScenarioStep, { kind: 'deposit' }>
+): boolean {
+    return step.locationId === undefined || step.locationId === actor.locationId
 }
 
 function chestReached(

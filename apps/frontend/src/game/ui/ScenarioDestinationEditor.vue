@@ -7,7 +7,11 @@ import type {
 import { computed } from 'vue'
 
 import { scenarioSearchLabels } from './scenarioEditor'
-import type { ScenarioVisibleTarget } from './scenarioTargets'
+import {
+    scenarioTargetKey,
+    scenarioTargetLabel,
+    type ScenarioVisibleTarget,
+} from './scenarioTargets'
 
 const props = defineProps<{
     modelValue: ScenarioDestination
@@ -39,8 +43,14 @@ const missingTarget = computed(() => {
     return (
         destination.kind === 'visible' &&
         destination.targetId &&
-        !candidates.value.some((entry) => entry.id === destination.targetId)
+        !candidates.value.some((entry) => scenarioTargetKey(entry) === explicitKey.value)
     )
+})
+const explicitKey = computed(() => {
+    const destination = props.modelValue
+    return destination.kind === 'visible' && destination.targetId
+        ? scenarioTargetKey({ id: destination.targetId, locationId: destination.locationId })
+        : ''
 })
 function change(event: Event): void {
     const value = (event.target as HTMLSelectElement).value
@@ -51,11 +61,19 @@ function change(event: Event): void {
 }
 function target(event: Event): void {
     if (props.modelValue.kind !== 'visible') return
-    const id = (event.target as HTMLSelectElement).value
+    const key = (event.target as HTMLSelectElement).value
+    const candidate = candidates.value.find((entry) => scenarioTargetKey(entry) === key)
+    if (key && !candidate) return
     emit('update:modelValue', {
         kind: 'visible',
         target: props.modelValue.target,
-        ...(id ? { targetId: id } : {}),
+        ...(props.modelValue.itemId ? { itemId: props.modelValue.itemId } : {}),
+        ...(candidate
+            ? {
+                  targetId: candidate.id,
+                  ...(candidate.locationId ? { locationId: candidate.locationId } : {}),
+              }
+            : {}),
     })
 }
 </script>
@@ -91,12 +109,16 @@ function target(event: Event): void {
         </label>
         <label v-if="modelValue.kind === 'visible'">
             Выбор цели
-            <select :value="modelValue.targetId ?? ''" @change="target">
+            <select :value="explicitKey" @change="target">
                 <option value="">Ближайшая подходящая</option>
-                <option v-for="candidate in candidates" :key="candidate.id" :value="candidate.id">
-                    {{ candidate.label }}
+                <option
+                    v-for="candidate in candidates"
+                    :key="scenarioTargetKey(candidate)"
+                    :value="scenarioTargetKey(candidate)"
+                >
+                    {{ scenarioTargetLabel(candidate) }}
                 </option>
-                <option v-if="missingTarget" :value="modelValue.targetId" disabled>
+                <option v-if="missingTarget" :value="explicitKey" disabled>
                     Выбранная цель сейчас не видна
                 </option>
             </select>

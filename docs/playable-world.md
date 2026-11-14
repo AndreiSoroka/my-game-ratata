@@ -324,13 +324,71 @@ Stealth also practices through actual unseen movement near an observer: at least
 
 Positive authoritative damage events trigger a short recoil pose, a red flash and a rising damage number. These are visual feedback only; death takes presentation priority and misses do not show a hit. Building facades sort at their front ground line, so characters standing in front remain visible while characters inside the footprint stay behind the cover until entering.
 
+## Routes, markers and scenarios
+
+Click empty ground to replace the current walking route. **Shift+click** appends
+another numbered destination, up to 32. Each marker disappears only after actual
+server-confirmed arrival; remaining numbers stay stable. A destination that cannot
+be reached for ten seconds is skipped with a notice. These temporary routes are
+separate from the pathfinder's intermediate cells.
+
+Press physical **N**, or use the HUD marker button, to remember your current place.
+The game menu's **Метки** window lists personal markers with their location names
+and supports renaming and deletion. These are prototype cartography tools, with no
+skill requirement yet. Markers, scenario definitions and current runs live only in
+server memory, attached to the current identity. Rejoining and resurrection retain
+them; permanent death, abandoning that life or restarting the world removes them.
+
+Open **Сценарии** from the game menu to arrange steps, choose one or several passes
+or an endless loop, and set the response to a visible enemy. Steps can walk to a
+marker, point or visible target; search for a nearby resource, enemy, chest or item;
+gather a quantity or exhaust a source; attack; pick up items; unload a chest; wait;
+or recover a resource. Search itself never moves and never sees through walls.
+Work steps independently select a suitable visible target. A stone search followed
+by woodcutting therefore does not make the stone a tree: woodcutting looks for an
+actual visible tree and fails if none is available.
+
+For example, save a marker near a grove and another near a chest, then repeat
+**go to grove → gather three wood → go to chest → unload wood**. Unloading defaults
+to units actually acquired by this run, even when they joined an older material
+stack. The alternative unloads all matching backpack goods; equipped items remain
+equipped. All transfers still use real items and validated container access.
+
+Each step has ten seconds of blocked time. Normal path progress, successful work
+and ordinary action intervals do not spend that budget. Missing targets, tools,
+capacity or a path do. The step is marked failed with its reason when the budget
+runs out, then the next step starts; a later loop tries again. Enemy responses
+and conversations freeze the remaining budget rather than resetting it. A run
+started from a saved definition keeps its own copy of steps and referenced marker
+coordinates, so editing the template does not silently change an active job.
+Explicit object selections also retain their location: a chest with the same ID
+in another location never substitutes for the selected container. A helper's latest
+completed or stopped result remains visible to its customer after the helper
+returns to its normal routine; a new assignment replaces that report.
+
+Use **Пауза**, **Продолжить** and **Остановить** in the scenario panel or active-run
+controls. Manual movement, a replacing click or a manual combat action pauses the
+scenario. World Escape pauses it after any owning window has closed. Opening a
+window, hiding the page and releasing held movement do not cancel a scenario.
+After disconnect, the character remains in the world as a vulnerable Эхо and
+continues the run. Rejoining returns control to the same identity. Temporary death
+suspends execution; resurrection resumes only after revalidating the current step.
+
 ## Искра, Эхо and companions
 
-Искра and Эхо are world concepts, independent of who controls a character. An Искра carries an individual will and can form new commitments. An Эхо repeats a purpose, habit or memory of a place. Neither concept determines speech, intelligence, combat ability or the current controller. A speaking slime is possible; a silent person is possible. A human, model or script can supply intentions to the same `GameCharacter`.
+An Искра means a currently connected human or an accepted model-control lease. Without either, the character is an Эхо and follows authored habits or an assigned scenario. Species, speech and combat capabilities are separate: a speaking scripted slime is an Эхо. Every controller uses the same `GameCharacter` and authoritative rules.
+
+Disconnecting removes the human connection, not the character. The same identity stays visible, vulnerable and able to continue its running scenario as an Эхо; manual held input and private conversation/container sessions close. Rejoining with the same nickname on the same running server restores the same identity and its Искра. Permanent death creates a new identity, and a backend restart resets the in-memory world. Party online status follows the actual connection.
 
 Open **Спутники** near city residents. The panel shows their nature, actual control source, speech capability, personality, current agreement and last reply. You make requests within 64 world units; characters may refuse. The princess can travel after an introduction and refuses combat. The veteran can accompany and fight. The guard protects his post and declines travel. Speech does not require movement or combat, and talking does not force someone to follow.
 
-The running personalities use local authored rules. The UI reports **Сценарий** for that controller. It reports **Модель** only when an external agent has supplied an accepted intention; this is a temporary control lease, not evidence of a built-in paid language-model service. Conversation policy, narration and character simulation remain separate.
+The running personalities use local authored rules. The UI reports **Сценарий** and **Эхо** for that controller. It reports **Модель** and **Искра** only when an external agent has supplied an accepted intention; the lease lasts five seconds. Expiry or an explicit wait returns the actor to its scripted scenario as an Эхо without changing its identity or inventory. This is not a built-in paid language-model service.
+
+Existing worker, artisan, guard, companion and hostile strategies enter the common scheduler as bounded server-owned policy tasks. Their retained controllers still choose the next ordinary intention; their profession logic is not yet an editable data-only scenario. The two new wanderers and player-assigned jobs use the semantic scenario steps directly. A running or paused assigned scenario, active conversation or exclusive control prevents the baseline policy from acting concurrently.
+
+Прохор and Дарья wander through city street routes using the shared scenario runner. Прохор accepts noncombat work after an introduction; Дарья requires completion of Мира’s hearts-for-the-bell quest. Willingness is authored as typed conditions (`always`, `never`, `met`, `quest_completed`, `all`, `any`), and existing promises, reach, line of sight and availability are checked on assignment. Echo does not mean a player can commandeer it.
+
+A successful conversation stops an NPC and suspends its current scenario step while at least one valid nearby viewer is talking. Closing the last conversation resumes the step. Lost reach or sight, travel, death, disconnect and urgent threats end the corresponding conversation holds. The **Спутники** talk action uses the same dialogue session as E.
 
 ## External agent MCP
 
@@ -419,7 +477,7 @@ window.__ratataTest.stop()
 
 Backend tests cover combat reach, map connectivity, crossings, isolated locations, quest credit, reward duplication, gathering/crafting, progression, resurrection/permadeath, atomic theft, private outcomes and bounded crime reactions. Frontend tests cover controls, theft interactions, hit presentation and movement cleanup. Use `bun run type-check`, `bun run lint`, `bun run test` and headless browser checks after changes.
 
-`bun run test:e2e` starts a fresh app-test world on backend/frontend ports 3500/5500, then a separate grave-scenario world on 3501/5501, followed by Storybook checks. Existing servers are not reused. `E2E_BACKEND_PORT` and `E2E_FRONTEND_PORT` change the app pair; grave scenarios use the next ports. Each phase keeps its own reports and artifacts. All gameplay actions use ordinary validated commands; long ritual scenarios wait for the real server deadline.
+`bun run test:e2e` starts a fresh app-test world on backend/frontend ports 3500/5500, then runs desktop and mobile grave scenarios in separate fresh processes on 3501/5501, followed by Storybook checks. Existing servers are not reused. `E2E_BACKEND_PORT` and `E2E_FRONTEND_PORT` change the app pair; grave scenarios use the next ports. Grave artifacts and reports are retained separately as `graves-desktop` and `graves-mobile`, so disconnected actors, earlier deaths and encounter age from one viewport cannot alter the other. Run either grave viewport alone with `bun run --cwd apps/frontend test:e2e:graves:desktop` or `test:e2e:graves:mobile`. All gameplay actions use ordinary validated commands; long ritual scenarios wait for the real server deadline.
 
 ## References
 

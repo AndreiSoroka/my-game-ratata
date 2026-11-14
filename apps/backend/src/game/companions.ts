@@ -32,6 +32,7 @@ import {
     notice,
     release,
     replyToCompanion,
+    setCompanionReplyRecipient,
     sync,
 } from './companionState'
 import { cancelMovementMode } from './movementActions'
@@ -227,6 +228,7 @@ export class CompanionService {
         if (parsed?.type === 'speak') {
             const state = this.stateFor(character)
             state.lastReply = parsed.text
+            setCompanionReplyRecipient(character, undefined)
             sync(character, state)
         }
         if (parsed?.type === 'wait') {

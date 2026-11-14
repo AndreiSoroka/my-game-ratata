@@ -1,15 +1,14 @@
-import {
-    type ScenarioDestination,
-    WORLD_LOCATION_DEFINITIONS,
-} from '@my-game-ratata/contracts'
+import { type ScenarioDestination } from '@my-game-ratata/contracts'
 
 import {
     object,
     onlyKeys,
     optionalId,
     optionalItem,
+    optionalPinnedLocationId,
     searchKind,
     validId,
+    validLocationId,
 } from './scenarioParsingValues'
 
 export function parseScenarioDestination(
@@ -41,12 +40,7 @@ function parsePoint(
         return undefined
     }
     const locationId = record['locationId']
-    if (
-        typeof locationId !== 'string' ||
-        !WORLD_LOCATION_DEFINITIONS.some(
-            (location) => location.id === locationId
-        )
-    ) {
+    if (!validLocationId(locationId)) {
         return undefined
     }
     const position = object(record['position'])
@@ -63,13 +57,22 @@ function parsePoint(
 function parseVisible(
     record: Record<string, unknown>
 ): ScenarioDestination | undefined {
-    if (!onlyKeys(record, ['kind', 'target', 'targetId', 'itemId'])) {
+    if (
+        !onlyKeys(record, [
+            'kind',
+            'target',
+            'targetId',
+            'itemId',
+            'locationId',
+        ])
+    ) {
         return undefined
     }
     if (
         !searchKind(record['target']) ||
         !optionalId(record['targetId']) ||
-        !optionalItem(record['itemId'])
+        !optionalItem(record['itemId']) ||
+        !optionalPinnedLocationId(record['locationId'], record['targetId'])
     ) {
         return undefined
     }
@@ -80,6 +83,9 @@ function parseVisible(
             ? {}
             : { targetId: record['targetId'] }),
         ...(record['itemId'] === undefined ? {} : { itemId: record['itemId'] }),
+        ...(record['locationId'] === undefined
+            ? {}
+            : { locationId: record['locationId'] }),
     }
 }
 

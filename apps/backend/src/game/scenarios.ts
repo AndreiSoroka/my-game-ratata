@@ -16,6 +16,7 @@ import {
     type ScenarioLibrary,
 } from './scenarioLibrary'
 import { ScenarioPolicies } from './scenarioPolicies'
+import { ScenarioReports } from './scenarioReports'
 import { advanceScenario } from './scenarioRunner'
 import { createScenarioRun, type ScenarioRuntime } from './scenarioState'
 
@@ -40,6 +41,7 @@ export interface ScenarioAccess {
 }
 export class ScenarioService {
     private readonly policies = new ScenarioPolicies()
+    private readonly reports = new ScenarioReports()
     private readonly libraries = new Map<string, ScenarioLibrary>()
     private readonly runs = new Map<string, ScenarioRuntime>()
     private readonly defaults = new Map<string, ScenarioDefinition>()
@@ -151,6 +153,7 @@ export class ScenarioService {
         now: number
     ): void {
         this.policies.reconcile(characters)
+        this.reports.reconcile(characters)
         for (const id of this.libraries.keys()) {
             if (!characters.has(id)) {
                 this.libraries.delete(id)
@@ -172,7 +175,13 @@ export class ScenarioService {
             markers: library.markers,
             scenarios: library.scenarios,
             run: this.runs.get(owner.id)?.snapshot ?? null,
-            helpers: scenarioHelpers(this.access, this.runs, owner, now),
+            helpers: scenarioHelpers(
+                this.access,
+                this.runs,
+                owner,
+                now,
+                this.reports
+            ),
         })
     }
     private start(
@@ -202,6 +211,7 @@ export class ScenarioService {
             }
         }
         cancelCharacterControl(actor)
+        this.reports.clear(actor.id)
         actor.clearPath()
         actor.setMoveInput({ x: 0, y: 0 })
         this.runs.set(
@@ -256,6 +266,9 @@ export class ScenarioService {
     }
     private restoreDefault(actor: GameCharacter, now: number): void {
         const old = this.runs.get(actor.id)
+        if (old !== undefined) {
+            this.reports.record(old.snapshot)
+        }
         if (old !== undefined && old.snapshot.ownerId !== actor.id) {
             this.access.release(old.snapshot.ownerId, actor)
         }

@@ -53,14 +53,19 @@ for (const mobile of [false, true]) {
         expect(during.player?.resources).toEqual(before.player?.resources)
         await menu.getByRole('button', { name: 'Вернуться в игру' }).click()
         await expect(menu).toHaveCount(0)
-        await page.evaluate(() => window.__ratataTest!.moveFor({ x: 1, y: 0 }, 250))
-        const moved = await page.evaluate(() => window.__ratataTest!.getState().player!)
-        expect(moved.position.x).toBeGreaterThan(before.player!.position.x)
+        await page.keyboard.down('KeyD')
+        try {
+            await expect
+                .poll(() => page.evaluate(() => window.__ratataTest!.getState().player!.position.x))
+                .toBeGreaterThan(before.player!.position.x)
+        } finally {
+            await page.keyboard.up('KeyD')
+        }
         await page.getByRole('button', { name: 'Игровое меню', exact: true }).click()
         const stoppingTick = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.tick
         )
-        // moveFor sends stop; later server snapshots prove its position has actually settled.
+        // Key release and the menu release input; later snapshots prove movement has settled.
         await expect
             .poll(() =>
                 page.evaluate((tick) => {

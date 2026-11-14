@@ -4,13 +4,15 @@ import { defineConfig, devices } from '@playwright/test'
 
 /** Share browser/server settings while destructive source-lifecycle tests get a fresh world. */
 export function createAppPlaywrightConfig(
-    options: { graveOnly?: boolean; portOffset?: number } = {}
+    options: { graveOnly?: boolean; portOffset?: number; graveViewport?: 'desktop' | 'mobile' } = {}
 ) {
     const graveOnly = options.graveOnly ?? false
     const offset = options.portOffset ?? 0
     const backendPort = readPortEnv('E2E_BACKEND_PORT', 3500, offset)
     const frontendPort = readPortEnv('E2E_FRONTEND_PORT', 5500, offset)
-    const phase = graveOnly ? 'graves' : 'app'
+    const phase = graveOnly
+        ? `graves${options.graveViewport === undefined ? '' : `-${options.graveViewport}`}`
+        : 'app'
     const projects = [
         { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
         { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
@@ -22,6 +24,9 @@ export function createAppPlaywrightConfig(
         testIgnore: graveOnly
             ? '**/*.visual.spec.ts'
             : ['**/*.visual.spec.ts', '**/grave-interaction.spec.ts'],
+        ...(options.graveViewport === undefined
+            ? {}
+            : { grep: new RegExp(`\\(${options.graveViewport}\\)$`) }),
         timeout: 30_000,
         expect: { timeout: 5_000 },
         forbidOnly: Boolean(process.env.CI),
