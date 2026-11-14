@@ -1,5 +1,7 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
+import { healthText } from './healthPresentation'
+
 export function characterHudStatus(characters: CharacterSnapshot[]): {
     players: number
     allies: string[]
@@ -13,18 +15,16 @@ export function characterHudStatus(characters: CharacterSnapshot[]): {
                 (character) =>
                     character.controllerKind === 'mob1' && character.faction === 'peaceful'
             )
-            .map(
-                (character) =>
-                    `Ally ${character.nickname} ${String(character.hp)}/${String(character.maxHp)}`
+            .map((character) =>
+                `Ally ${character.nickname} ${healthText(character.health)}`.trim()
             ),
         monsters: characters
             .filter(
                 (character) =>
                     character.controllerKind === 'mob1' && character.faction === 'monsters'
             )
-            .map(
-                (character) =>
-                    `${character.archetype.charAt(0).toUpperCase()}${character.archetype.slice(1)} ${String(character.hp)}/${String(character.maxHp)}`
+            .map((character) =>
+                `${character.archetype.charAt(0).toUpperCase()}${character.archetype.slice(1)} ${healthText(character.health)}`.trim()
             ),
     }
 }

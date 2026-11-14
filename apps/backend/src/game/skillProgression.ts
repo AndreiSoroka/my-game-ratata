@@ -192,6 +192,7 @@ export function canPerformSkillAction(
     now: number
 ): boolean {
     return (
+        character.trainingTarget === undefined &&
         character.alive &&
         !character.tags.has('offline') &&
         !character.tags.has('state.retired') &&

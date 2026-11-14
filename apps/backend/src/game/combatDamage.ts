@@ -1,11 +1,13 @@
 import {
     ABILITY_DEFINITIONS,
+    type CombatHitQuality,
     type GameEventPayload,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
 import { resolveCharacterStats } from './characterStats'
+import { combatHitQuality } from './combatHitQuality'
 export function dodgedAttack(
     target: GameCharacter,
     random: () => number
@@ -23,7 +25,7 @@ export function resolveAttackDamage(
     actor: GameCharacter,
     attack: PendingAttackHit,
     random: () => number
-): { amount: number; critical: boolean } {
+): { amount: number; critical: boolean; hitQuality: CombatHitQuality } {
     const stats = resolveCharacterStats(
         actor.config,
         actor.equipment,
@@ -35,7 +37,8 @@ export function resolveAttackDamage(
             : ABILITY_DEFINITIONS[attack.abilityId]
     const low = definition?.damage ?? stats.minDamage
     const high = definition?.maxDamage ?? stats.maxDamage
-    let amount = Math.floor(low + random() * (high - low + 1))
+    const roll = Math.floor(low + random() * (high - low + 1))
+    let amount = roll
     const critical = random() < stats.critChance
     if (critical) {
         amount = Math.round(amount * actor.config.combat.critMultiplier)
@@ -43,6 +46,13 @@ export function resolveAttackDamage(
     return {
         amount: Math.max(1, Math.round(amount * attack.damageMultiplier)),
         critical,
+        hitQuality: combatHitQuality(
+            roll,
+            low,
+            high,
+            critical,
+            attack.underpowered === true
+        ),
     }
 }
 export function applyAttackStun(

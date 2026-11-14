@@ -93,7 +93,11 @@ test.describe('shared gameplay controls', () => {
             })
             await expect(first.getByLabel('Мой отряд').getByRole('button')).toHaveCount(2)
             await expect(first.getByRole('img', { name: 'Лидер', exact: true })).toHaveCount(1)
-            await expect(first.getByLabel('Мой отряд')).toContainText('100%')
+            await expect(first.getByLabel('Мой отряд')).not.toContainText('100%')
+            await expect(first.locator('.party-member__hp > span').first()).toHaveAttribute(
+                'style',
+                'width: 100%;'
+            )
             await first.evaluate(
                 (targetId) => window.__ratataTest!.send({ type: 'follow', targetId }),
                 secondId

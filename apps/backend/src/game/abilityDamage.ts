@@ -1,4 +1,8 @@
-import type { DamageKind, GameEventPayload } from '@my-game-ratata/contracts'
+import type {
+    CombatHitQuality,
+    DamageKind,
+    GameEventPayload,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
@@ -7,12 +11,15 @@ import { wearHitEquipment } from './itemDurability'
 import { cancelPrayerCast } from './prayerCancellation'
 import { trainSkill } from './skillProgression'
 export interface DamageResolution {
+    /** Resolved contact used for weapon wear, independent of target HP loss. */
+    impactDamage: number
     hpDamage: number
     absorbed: number
     trainableDamage: number
     events: GameEventPayload[]
 }
 export interface CharacterDamageInput {
+    hitQuality?: CombatHitQuality
     actor: GameCharacter
     target: GameCharacter
     amount: number
@@ -23,14 +30,20 @@ export interface CharacterDamageInput {
 export function resolveCharacterDamage(
     input: CharacterDamageInput
 ): DamageResolution {
-    const { actor, target, now, damageKind } = input
+    const { actor, target, now } = input
     const result: DamageResolution = {
+        impactDamage: 0,
         hpDamage: 0,
         absorbed: 0,
         trainableDamage: 0,
         events: [],
     }
     if (!canReceiveDamage(input)) {
+        return result
+    }
+    if (target.trainingTarget !== undefined) {
+        result.impactDamage = input.amount
+        result.events.push(damageEvent(input, input.amount))
         return result
     }
     const hostile =
@@ -61,15 +74,23 @@ export function resolveCharacterDamage(
         tainted + (hostile ? 0 : result.hpDamage)
     )
     result.trainableDamage = hostile ? result.hpDamage : 0
-    result.events.push({
-        kind: 'damage',
-        actorId: actor.id,
-        targetId: target.id,
-        amount: result.hpDamage,
-        damageKind,
-    })
+    result.impactDamage = result.hpDamage
+    result.events.push(damageEvent(input, result.hpDamage))
     finishDamageDeath(input, result.events)
     return result
+}
+function damageEvent(
+    input: CharacterDamageInput,
+    amount: number
+): GameEventPayload {
+    return {
+        kind: 'damage',
+        actorId: input.actor.id,
+        targetId: input.target.id,
+        amount,
+        damageKind: input.damageKind,
+        hitQuality: input.hitQuality ?? 'normal',
+    }
 }
 function canReceiveDamage({ target, amount }: CharacterDamageInput): boolean {
     return (
@@ -101,6 +122,7 @@ function absorbDamage(
         actorId: actor.id,
         targetId: target.id,
         amount: result.absorbed,
+        hitQuality: input.hitQuality ?? 'normal',
         damageKind,
         statusId: 'barrier',
     })

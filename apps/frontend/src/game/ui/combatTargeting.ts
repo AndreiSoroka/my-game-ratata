@@ -22,7 +22,7 @@ export function selectableTargets(
                 character.id !== player.id &&
                 !character.tags.includes('offline') &&
                 (character.alive || (allies && (character.life?.reviveMsLeft ?? 0) > 0)) &&
-                (relation(character, player) !== 'hostile') === allies
+                attackableTarget(character, player) === !allies
         )
         .sort(
             (a, b) =>
@@ -49,4 +49,8 @@ export function combatInputBlocked(): boolean {
 
 export function combatKeyBlocked(event: KeyboardEvent, blocked: boolean): boolean {
     return blocked || gameKeyBlocked(event)
+}
+
+export function attackableTarget(character: CharacterSnapshot, player: CharacterSnapshot): boolean {
+    return character.trainingTarget !== undefined || relation(character, player) === 'hostile'
 }

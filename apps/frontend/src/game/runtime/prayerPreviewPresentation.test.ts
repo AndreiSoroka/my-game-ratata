@@ -6,7 +6,7 @@ import { createPrayerPreviewHighlight } from './prayerPreviewPresentation'
 
 function priest(patron: DeityId = 'hearth', level = 3) {
     return characterFixture('caster', {
-        hp: 5,
+        health: { kind: 'exact', current: 5, max: 24 },
         position: { x: 100, y: 100 },
         abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
         progression: {
@@ -35,7 +35,7 @@ function priest(patron: DeityId = 'hearth', level = 3) {
 
 it('hides harm warnings for a plain prayer even with nearby undead and an ineligible selection', () => {
     const player = priest()
-    player.hp = player.maxHp
+    player.health = { kind: 'exact', current: 24, max: 24 }
     const undead = characterFixture('undead', {
         creatureType: 'undead',
         position: { x: 110, y: 100 },

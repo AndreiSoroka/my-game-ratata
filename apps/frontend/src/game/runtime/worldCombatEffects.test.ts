@@ -123,7 +123,7 @@ it('shows exact hundredths at the grave, ignores misses and unknown world target
     expect(rendered.views).toHaveLength(1)
     effects.dispose()
     expect(rendered.views[0]?.dead).toBe(true)
-    expect(eventCaption({ kind: 'world_damage', amount: 1.25, critical: true })).toBe('−1,25 КРИТ!')
+    expect(eventCaption({ kind: 'world_damage', amount: 1.25, critical: true })).toBe('−1,25')
 })
 it.each([10_000, 50_000])(
     'keeps purification channel anchored for its authoritative %s ms duration',

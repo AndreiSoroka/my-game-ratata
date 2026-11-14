@@ -1,9 +1,9 @@
 import {
+    type CombatHitQuality,
     type GameEventPayload,
     ITEM_DEFINITIONS,
     materialDamage,
     type MaterialImpact,
-    type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -11,15 +11,15 @@ import type { PendingAttackHit } from './characterState'
 import type { AttackContext } from './combat'
 import { resolveAttackDamage } from './combatDamage'
 import { isInZones } from './combatGeometry'
-import type { GraveCombatContext } from './graveRules'
+import type { GraveCombatContext, GraveCombatTarget } from './graveRules'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 
 export function legalGraveTarget(
     actor: GameCharacter,
-    grave: WorldGraveSnapshot | undefined,
+    grave: GraveCombatTarget | undefined,
     navigation: NavigationService | undefined
-): grave is WorldGraveSnapshot {
+): grave is GraveCombatTarget {
     return (
         grave?.phase === 'active' &&
         grave.hp > 0 &&
@@ -32,7 +32,7 @@ export function legalGraveTarget(
 export function findGraveHit(
     context: AttackContext,
     attack: PendingAttackHit
-): WorldGraveSnapshot | undefined {
+): GraveCombatTarget | undefined {
     if (context.graves === undefined || attack.targetId !== undefined) {
         return undefined
     }
@@ -42,7 +42,7 @@ export function findGraveHit(
             : [context.graves.get(attack.target.id)]
     return candidates
         .filter(
-            (grave): grave is WorldGraveSnapshot =>
+            (grave): grave is GraveCombatTarget =>
                 legalGraveTarget(context.actor, grave, context.navigation) &&
                 isInZones(grave, context.actor.attackZones) &&
                 (attack.maxRange === undefined ||
@@ -58,12 +58,13 @@ export function findGraveHit(
 
 export function damageGrave(
     actor: GameCharacter,
-    grave: WorldGraveSnapshot,
+    grave: GraveCombatTarget,
     attack: PendingAttackHit,
     amount: number,
     critical: boolean,
     now: number,
-    graves: GraveCombatContext
+    graves: GraveCombatContext,
+    hitQuality: CombatHitQuality = critical ? 'critical' : 'normal'
 ): { events: GameEventPayload[]; hpDamage: number } {
     const impact = graveImpact(actor, attack)
     const result = graves.damage(
@@ -82,6 +83,7 @@ export function damageGrave(
             target,
             amount: result.hpDamage,
             critical,
+            hitQuality,
             damageKind: impact === 'arcane' ? 'arcane' : 'physical',
             ...(attack.abilityId === undefined
                 ? {}
@@ -138,7 +140,11 @@ export function resolveGraveHit(
                   attack,
                   context.random ?? Math.random
               )
-            : { amount: attack.rawDamage, critical: false }
+            : {
+                  amount: attack.rawDamage,
+                  critical: false,
+                  hitQuality: 'normal' as const,
+              }
     return damageGrave(
         context.actor,
         grave,
@@ -146,6 +152,7 @@ export function resolveGraveHit(
         roll.amount,
         roll.critical,
         context.now,
-        context.graves
+        context.graves,
+        roll.hitQuality
     )
 }

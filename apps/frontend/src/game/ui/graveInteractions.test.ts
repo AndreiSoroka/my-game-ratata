@@ -25,7 +25,11 @@ describe('explicit grave interactions', () => {
             },
         ])
         expect(actions.every((action) => !action.disabled)).toBe(true)
-        const ruined = graveActions(cleric(), { ...grave, phase: 'ruined', hp: 0 })
+        const ruined = graveActions(cleric(), {
+            ...grave,
+            phase: 'ruined',
+            health: { kind: 'exact', current: 0, max: 100 },
+        })
         expect(ruined[0]?.disabled).toBe(true)
         expect(ruined[1]?.disabled).toBe(false)
     })
@@ -91,7 +95,11 @@ describe('reusable grave facts', () => {
         expect(wrapper.text()).toContain('5% урона')
         expect(wrapper.text()).toContain('100% урона')
         await wrapper.setProps({
-            grave: graveFixture({ phase: 'ruined', hp: 0, restoresAt: 181_000 }),
+            grave: graveFixture({
+                phase: 'ruined',
+                health: { kind: 'exact', current: 0, max: 100 },
+                restoresAt: 181_000,
+            }),
         })
         expect(wrapper.text()).toContain('3:00')
         await wrapper.setProps({ serverTime: 182_000 })

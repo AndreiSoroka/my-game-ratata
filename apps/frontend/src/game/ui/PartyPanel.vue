@@ -41,7 +41,6 @@ const members = computed(() =>
                 <span class="party-member__hp"
                     ><span :style="{ width: `${member.hpPercent}%` }"></span
                 ></span>
-                <b>{{ member.hpPercent }}%</b>
             </span>
             <small v-if="!member.alive">Ожидает спасения</small>
             <small v-else-if="!member.online">Не в сети</small>
@@ -105,13 +104,6 @@ h2 {
     position: absolute;
     inset: 0 auto 0 0;
     background: #8daf72;
-}
-.party-member__health b {
-    min-width: 32px;
-    text-align: right;
-    font:
-        12px/1 'Pixelify Sans',
-        system-ui;
 }
 small {
     font-size: 10px;

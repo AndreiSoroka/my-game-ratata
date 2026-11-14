@@ -36,6 +36,10 @@ it.each<[ItemId | undefined, number, number]>([
                 target: f.reference,
                 amount,
                 critical: false,
+                hitQuality:
+                    itemId === 'simple_sword' || itemId === 'stone_axe'
+                        ? 'normal'
+                        : 'strong',
                 damageKind: 'physical',
             },
         ])
@@ -172,7 +176,24 @@ it.each([
             f.service.purify('grave', 0)
         }
         const hp = f.service.get('grave')?.hp
-        expect(f.hit()).toEqual([])
+        const misses = [
+            'travel',
+            'wall',
+            'out-of-range',
+            'ruin',
+            'purify',
+        ].includes(reason)
+        expect(f.hit()).toEqual(
+            misses
+                ? [
+                      expect.objectContaining({
+                          kind: 'miss',
+                          hitQuality: 'miss',
+                          target: f.reference,
+                      }),
+                  ]
+                : []
+        )
         expect(f.service.get('grave')?.hp).toBe(hp)
         expect(enemy.hp).toBe(enemy.maxHp)
         expect(sword.durability).toBe(reason === 'break' ? 0 : 200)
@@ -191,6 +212,7 @@ it('pins a copied grave reference and emits one world ruin outcome without chara
             target: f.reference,
             amount: 0.01,
             critical: false,
+            hitQuality: 'strong',
             damageKind: 'physical',
         },
         { kind: 'grave_ruined', actorId: f.actor.id, target: f.reference },

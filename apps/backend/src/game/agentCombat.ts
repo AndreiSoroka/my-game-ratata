@@ -4,7 +4,7 @@ import { actorRefusesCombat } from './agentCapabilities'
 import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
-import { canTargetByFaction } from './factions'
+import { canAttackCharacter } from './combatTargets'
 
 export function applyAgentAttack(
     actor: GameCharacter,
@@ -31,9 +31,9 @@ export function applyAgentAttack(
         !target.alive ||
         target.tags.has('offline') ||
         target.locationId !== actor.locationId ||
-        !canTargetByFaction(actor, target)
+        !canAttackCharacter(actor, target, now)
     ) {
-        return reject('Target is not a hostile character in this location')
+        return reject('Target is not an attackable character in this location')
     }
     const facing = actor.facing
     actor.updateFacing({

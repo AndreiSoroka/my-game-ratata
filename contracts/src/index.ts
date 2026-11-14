@@ -63,10 +63,13 @@ import type { WorldObjectBounds } from './environment'
 export * from './farming'
 export * from './farms'
 export * from './graves'
+import type { HealthSnapshot } from './health'
+export * from './health'
 export type { PlayerIdentity, WorldPosition } from './identity'
 export * from './materials'
 export * from './pursuit'
 export * from './service'
+export * from './training'
 export * from './trees'
 
 export interface Vector2 {
@@ -93,6 +96,7 @@ export const characterVisualIds = [
     'skeleton_swordless',
     'slime',
     'zombie',
+    'training_dummy',
     'zombie_mage',
 ] as const
 
@@ -150,6 +154,7 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    trainingTarget?: { areaId: string }
     connected?: boolean
     relationship?: CharacterRelationship
     control?: CharacterControlSnapshot
@@ -174,10 +179,9 @@ export interface CharacterSnapshot {
     equipment: EquipmentSnapshot
     facing: CharacterFacing
     faction: CharacterFactionId
-    hp: number
+    health: HealthSnapshot
     id: string
     inventory: ItemInstanceSnapshot[]
-    maxHp: number
     nickname: string
     path: Vector2[]
     position: Vector2

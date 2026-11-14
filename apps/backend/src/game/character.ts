@@ -45,6 +45,9 @@ import {
 } from './skillProgression'
 
 export class GameCharacter {
+    public readonly trainingTarget: { areaId: string } | undefined
+    /** Earned by server rules only; no client command grants this capability. */
+    public exactCombatNumbers = false
     public readonly abilities: ReturnType<typeof createAbilityState>
     public readonly creatureType: CreatureType
     public readonly archetype: CharacterArchetype
@@ -97,6 +100,10 @@ export class GameCharacter {
     private pathIndex = 0
 
     public constructor(options: GameCharacterOptions) {
+        this.trainingTarget =
+            options.trainingTarget === undefined
+                ? undefined
+                : { ...options.trainingTarget }
         const creatureType =
             options.creatureType ?? archetypeCreatureTypes[options.archetype]
         if (!isCreatureType(creatureType)) {
@@ -235,6 +242,7 @@ export class GameCharacter {
             abilityId: attack.abilityId,
             canStun: attack.canStun,
             damageMultiplier: attack.damageMultiplier,
+            underpowered: attack.underpowered ?? false,
             hitAt: now + attack.windupMs,
             targetEnergyDrain: attack.targetEnergyDrain,
         }

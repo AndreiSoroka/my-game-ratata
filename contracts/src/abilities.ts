@@ -36,7 +36,7 @@ export interface PrayerPreview {
 export interface CharacterAbilitiesSnapshot {
     known: AbilityId[]
     cooldowns: Partial<Record<AbilityId, number>>
-    barrier: { remaining: number; expiresAt: number } | null
+    barrier: { remaining?: number; expiresAt: number } | null
     casting: {
         abilityId: 'pray'
         mode?: 'revive' | 'purify_grave'

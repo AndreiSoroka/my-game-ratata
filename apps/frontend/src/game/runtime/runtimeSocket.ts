@@ -6,6 +6,7 @@ import type {
     ServerMessage,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
+import { CONTRACT_PROTOCOL_VERSION } from '@my-game-ratata/contracts'
 
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
@@ -36,7 +37,7 @@ export class RuntimeSocket {
             this.send({ nickname, type: 'join', ...(heroClass === undefined ? {} : { heroClass }) })
         })
         socket.addEventListener('message', (event) => {
-            this.handleSocketMessage(event)
+            if (this.socket === socket) this.handleSocketMessage(event)
         })
         socket.addEventListener('close', () => {
             if (!this.handlers.isStopped()) {
@@ -67,6 +68,14 @@ export class RuntimeSocket {
         const message = JSON.parse(event.data) as ServerMessage
 
         if (message.type === 'world_init') {
+            if (message.protocolVersion !== CONTRACT_PROTOCOL_VERSION) {
+                this.close()
+                this.handlers.onError(
+                    'Несовместимая версия сервера. Перезапустите сервер и обновите страницу.'
+                )
+                this.handlers.onStatus('Disconnected')
+                return
+            }
             this.handlers.onWorldInit(message.playerId, message.snapshot)
             return
         }

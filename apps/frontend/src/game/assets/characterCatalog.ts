@@ -18,7 +18,7 @@ export const characterActions = ['idle', 'walk', 'attack', 'damaged', 'death'] a
 
 export const characterDirections = ['down', 'right', 'left', 'up'] as const
 
-export type CharacterId = CharacterVisualId
+export type CharacterId = (typeof characterIds)[number]
 export type CharacterAction = (typeof characterActions)[number]
 export type CharacterDirection = (typeof characterDirections)[number]
 
@@ -111,7 +111,7 @@ const enemyAnimations: CharacterDefinition['animations'] = {
     },
 }
 
-export const characterCatalog: Record<CharacterVisualId, CharacterDefinition> = {
+export const characterCatalog: Record<CharacterId, CharacterDefinition> = {
     player: {
         animations: playerAnimations,
         columns: 7,

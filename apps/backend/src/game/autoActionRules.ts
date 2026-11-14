@@ -28,7 +28,7 @@ import {
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
-import { canTargetByFaction } from './factions'
+import { canAttackCharacter } from './combatTargets'
 import { distance } from './math'
 import { prayerHarmTargets } from './prayerContext'
 
@@ -113,7 +113,7 @@ function legalAutoTarget(
             : action.abilityId === 'skeleton_strike'
     return (
         target.alive &&
-        canTargetByFaction(actor, target, context.now) &&
+        canAttackCharacter(actor, target, context.now) &&
         !(weaponAction && weapon !== undefined && isItemBroken(weapon))
     )
 }

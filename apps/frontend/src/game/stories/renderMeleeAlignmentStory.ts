@@ -108,7 +108,7 @@ function addMeleeExample(
     })
     const body = createBundle().body
     body.pos = vec(source.position.x, source.position.y)
-    const definition = characterCatalog[source.visualId]
+    const definition = characterCatalog[kind === 'bone' ? 'skeleton' : 'player']
     const row = resolveAnimationRow(definition.animations.attack, fixture.facing)!
     body.graphics.use(sheet.getSprite(1, row))
     body.graphics.flipHorizontal = fixture.facing === 'left'

@@ -285,8 +285,8 @@ describe('put command boundaries and shared agent controller', () => {
         expect(result.chest?.items.at(-1)).toEqual(food)
         expect(result.events[0]).toMatchObject({
             kind: 'item_stash',
-            audienceIds: [npc.id],
         })
+        expect(result.events[0]).not.toHaveProperty('audienceIds')
         expect(
             npc.inventory.some((item) => item.instanceId === food.instanceId)
         ).toBe(false)

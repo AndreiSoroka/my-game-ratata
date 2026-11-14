@@ -29,7 +29,7 @@ describe('production player status', () => {
         const wrapper = mount(PlayerStatusPanel, {
             props: {
                 character: playerStatusFixture({
-                    hp: 0,
+                    health: { kind: 'exact', current: 0, max: 26 },
                     resources: { mana: 0, maxMana: 0, energy: 0, maxEnergy: 100 },
                 }),
             },

@@ -11,6 +11,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 export interface GameCharacterOptions {
+    trainingTarget?: { areaId: string }
     respawnPolicy?: 'automatic' | 'none'
     creatureType?: CreatureType
     archetype: CharacterArchetype

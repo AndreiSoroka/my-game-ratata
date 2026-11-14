@@ -307,7 +307,9 @@ export class GameRoom {
             this.parties,
             (locationId) => this.connectionsIn(locationId).keys(),
             this.connections,
-            this.world
+            this.world,
+            (character, now) =>
+                this.companions.hasActiveLease(character, now, this)
         )
     }
 

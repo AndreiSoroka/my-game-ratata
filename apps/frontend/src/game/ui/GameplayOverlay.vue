@@ -61,7 +61,8 @@ function select(id: string, open = false): void {
     const character = props.characters.find((actor) => actor.id === id)
     if (!character || character.tags.includes('offline')) return
     selectTarget(id)
-    if (open && relation(character, props.player) !== 'hostile') emit('interact', id)
+    if (open && !character.trainingTarget && relation(character, props.player) !== 'hostile')
+        emit('interact', id)
 }
 function key(event: KeyboardEvent): void {
     if (

@@ -1,4 +1,4 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import type { CombatHitQuality, GameEventPayload } from '@my-game-ratata/contracts'
 
 import { EFFECT_BUDGET } from './effectBudget'
 
@@ -9,7 +9,8 @@ export const maxDamageEffects = EFFECT_BUDGET.damage
 export interface DamageHit {
     id: number
     targetId: string
-    amount: number
+    amount?: number
+    quality: CombatHitQuality
     startedAt: number
 }
 
@@ -27,9 +28,7 @@ export class DamageTimeline {
             event.kind !== 'damage' ||
             !targetVisible ||
             typeof event.targetId !== 'string' ||
-            typeof event.amount !== 'number' ||
-            !Number.isFinite(event.amount) ||
-            event.amount <= 0
+            (event.amount !== undefined && (!Number.isFinite(event.amount) || event.amount <= 0))
         ) {
             return undefined
         }
@@ -37,6 +36,7 @@ export class DamageTimeline {
             id: ++this.nextId,
             targetId: event.targetId,
             amount: event.amount,
+            quality: event.hitQuality ?? (event.critical ? 'critical' : 'normal'),
             startedAt: now,
         }
         this.hits.delete(hit.targetId)

@@ -10,7 +10,7 @@ import {
 import type { ComputedRef, Ref } from 'vue'
 
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
-import { relation } from './combatTargeting'
+import { attackableTarget } from './combatTargeting'
 import type { HotbarBinding } from './hotbarBindings'
 import type { createGestures } from './hotbarGestures'
 export interface HotbarProps {
@@ -86,7 +86,7 @@ function combatAddress(
     | { targetId: string }
     | undefined {
     if (props.grave) return { target: { kind: 'grave', id: props.grave.id } }
-    return props.target?.alive && relation(props.target, props.player) === 'hostile'
+    return props.target?.alive && attackableTarget(props.target, props.player)
         ? { targetId: props.target.id }
         : undefined
 }
@@ -113,7 +113,7 @@ function singleCommand(
 function hostileTarget(props: HotbarProps): boolean {
     return (
         props.grave !== undefined ||
-        (props.target !== undefined && relation(props.target, props.player) === 'hostile')
+        (props.target !== undefined && attackableTarget(props.target, props.player))
     )
 }
 interface ActionState {

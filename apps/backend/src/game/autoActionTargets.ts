@@ -12,6 +12,7 @@ type CharacterAutoAction = Exclude<
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
+import { canAttackCharacter } from './combatTargets'
 import { companionProfiles } from './companionProfiles'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
@@ -136,6 +137,7 @@ export function allowedMode(
     mode: CharacterControlSnapshot['mode'],
     now: number
 ): boolean {
-    const hostile = canTargetByFaction(actor, target, now)
-    return mode === 'attack' ? hostile && canFight(actor) : !hostile
+    return mode === 'attack'
+        ? canAttackCharacter(actor, target, now) && canFight(actor)
+        : !canTargetByFaction(actor, target, now)
 }

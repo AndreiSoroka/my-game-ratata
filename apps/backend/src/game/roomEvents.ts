@@ -2,8 +2,9 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { type CombatObserver, observeCombatEvent } from './combatObservation'
 import type { PartyService } from './parties'
-import { broadcastEvent, type RoomSocket } from './roomMessaging'
+import { type RoomSocket, send } from './roomMessaging'
 import { stampSpeechEvent } from './speechReceipts'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
@@ -14,7 +15,8 @@ export function publishRoomEvents(
     parties: PartyService,
     socketsIn: (locationId: string) => Iterable<RoomSocket>,
     connections: ReadonlyMap<RoomSocket, string | undefined>,
-    world?: WorldLocations
+    world?: WorldLocations,
+    hasModelLease?: (character: GameCharacter, now: number) => boolean
 ): void {
     if (world !== undefined && events.some((event) => event.kind === 'death')) {
         events = [
@@ -38,20 +40,50 @@ export function publishRoomEvents(
     const partyEvents = parties.observe(events, (id) => characters.get(id))
     for (const event of [...events, ...partyEvents]) {
         stampSpeechEvent(event, characters.get(event.actorId ?? ''))
-        const { audienceIds, ...visibleEvent } = event
-        if (audienceIds !== undefined) {
-            const recipients = [...connections]
-                .filter(
-                    ([, id]) => id !== undefined && audienceIds.includes(id)
-                )
-                .map(([socket]) => socket)
-            broadcastEvent(recipients, visibleEvent)
-            continue
-        }
         const actor = characters.get(event.actorId ?? event.targetId ?? '')
-        broadcastEvent(
-            socketsIn(actor?.locationId ?? centerLocationId),
-            visibleEvent
+        const recipients =
+            event.audienceIds === undefined
+                ? socketsIn(actor?.locationId ?? centerLocationId)
+                : connections.keys()
+        deliverObservedEvent(
+            event,
+            recipients,
+            characters,
+            connections,
+            world,
+            hasModelLease
         )
+    }
+}
+function deliverObservedEvent(
+    event: GameEventPayload,
+    recipients: Iterable<RoomSocket>,
+    characters: Map<string, GameCharacter>,
+    connections: ReadonlyMap<RoomSocket, string | undefined>,
+    world: WorldLocations | undefined,
+    hasModelLease: CombatObserver['hasModelLease']
+): void {
+    for (const socket of recipients) {
+        const observerId = connections.get(socket)
+        const observer =
+            observerId === undefined ? undefined : characters.get(observerId)
+        const now = Date.now()
+        const visibleEvent = observeCombatEvent(event, {
+            observer,
+            getCharacter: (id) => characters.get(id),
+            navigation:
+                observer === undefined
+                    ? undefined
+                    : world?.get(observer.locationId).navigation,
+            now,
+            ...(hasModelLease === undefined ? {} : { hasModelLease }),
+        })
+        if (visibleEvent !== undefined) {
+            send(socket, {
+                type: 'event',
+                serverTime: now,
+                event: visibleEvent,
+            })
+        }
     }
 }

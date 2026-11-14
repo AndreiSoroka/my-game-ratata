@@ -170,7 +170,7 @@ it('retains a downed member at zero percent and promotes the next leader without
     ).toMatchObject({ alive: false, hpPercent: 0, online: true })
     expect(
         snapshot.members.find((member) => member.id === other.id)
-    ).toMatchObject({ hpPercent: 38, locationId: 'map-2-1' })
+    ).toMatchObject({ hpPercent: 37, locationId: 'map-2-1' })
     expect(
         snapshot.members.every(
             (member) => !('hp' in member) && !('maxHp' in member)

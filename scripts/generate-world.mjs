@@ -33,6 +33,21 @@ import {
 
 // CC0 Kenney Tiny Town and existing Mystic Woods artwork, arranged deterministically. Regenerate with:
 // node scripts/generate-world.mjs
+// Regenerate one authored location (and its alias): --location map-2-2
+const generationArguments = process.argv.slice(2)
+const selectedLocation = generationArguments[1]
+if (
+    generationArguments.length !== 0 &&
+    (generationArguments.length !== 2 ||
+        generationArguments[0] !== '--location' ||
+        !WORLD_LOCATION_DEFINITIONS.some(
+            (entry) => entry.id === selectedLocation
+        ))
+) {
+    throw new Error(
+        'Usage: generate-world.mjs [--location <world-location-id>]'
+    )
+}
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const mapRoot = path.join(root, 'apps/frontend/public/game/map')
 const width = 96
@@ -441,11 +456,11 @@ function makeMap(column, row) {
     }
     const settlement =
         definition.biome === 'city'
-            ? { ...addNovogorod(settlementContext), plots: [] }
+            ? { ...addNovogorod(settlementContext, definition), plots: [] }
             : definition.biome === 'outskirts'
               ? addFarmSettlement(settlementContext, definition)
               : { landmarks: [], buildings: [], covers: [], plots: [] }
-    const { landmarks, buildings, covers, plots } = settlement
+    const { landmarks, buildings, covers, plots, training = [] } = settlement
     // The transition system permits travel anywhere along an edge, not only at gates.
     for (let y = 0; y < height; y++)
         for (let x = 0; x < width; x++) {
@@ -502,6 +517,19 @@ function makeMap(column, row) {
                 definition,
                 depthProps
             ),
+            ...(training.length
+                ? [
+                      {
+                          id: 19,
+                          name: 'Training grounds',
+                          type: 'objectgroup',
+                          visible: true,
+                          opacity: 1,
+                          draworder: 'topdown',
+                          objects: training,
+                      },
+                  ]
+                : []),
             {
                 id: 12,
                 name: 'Depth props',
@@ -571,8 +599,8 @@ function makeMap(column, row) {
                       },
                   ]),
         ],
-        nextlayerid: 19,
-        nextobjectid: 40000,
+        nextlayerid: training.length ? 20 : 19,
+        nextobjectid: training.length ? 40002 : 40000,
         orientation: 'orthogonal',
         properties: [
             { name: 'locationName', type: 'string', value: name },
@@ -585,7 +613,11 @@ function makeMap(column, row) {
                 type: 'int',
                 value: 20261106 + index * 1709,
             },
-            { name: 'generationVersion', type: 'int', value: 7 },
+            {
+                name: 'generationVersion',
+                type: 'int',
+                value: training.length ? 8 : 7,
+            },
             { name: 'worldColumn', type: 'int', value: column },
             { name: 'worldRow', type: 'int', value: row },
         ],
@@ -619,9 +651,12 @@ function makeMap(column, row) {
 
 for (let row = 0; row < GRID_SIZE; row++)
     for (let column = 0; column < GRID_SIZE; column++) {
+        const id = WORLD_LOCATION_DEFINITIONS.find(
+            (entry) => entry.column === column && entry.row === row
+        ).id
+        if (selectedLocation && id !== selectedLocation) continue
         const map = makeMap(column, row)
         const data = JSON.stringify(map) + '\n'
-        const id = `map-${column}-${row}`
         fs.writeFileSync(path.join(mapRoot, `${id}.json`), data)
         if (id === CENTER_LOCATION_ID)
             fs.writeFileSync(path.join(mapRoot, 'map1.json'), data)

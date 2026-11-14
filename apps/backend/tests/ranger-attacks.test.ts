@@ -120,7 +120,13 @@ it.each(['behind', 'outside-width', 'beyond-range', 'wall'] as const)(
         }
         const before = structuredClone(f.actor.progression.skills)
         expect(f.shot()[0]?.kind).toBe('attack')
-        expect(resolvePendingAttackHit(f.attack(1050))).toEqual([])
+        expect(resolvePendingAttackHit(f.attack(1050))).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                abilityId: 'shot',
+            }),
+        ])
         expect(f.target.hp).toBe(f.target.maxHp)
         expect(f.actor.progression.skills).toEqual(before)
     }

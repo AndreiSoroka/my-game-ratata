@@ -138,6 +138,7 @@ describe('shared combat resources', () => {
             {
                 actorId: 'attacker',
                 amount: 6,
+                hitQuality: 'weak',
                 kind: 'damage',
                 damageKind: 'physical',
                 critical: false,
@@ -181,6 +182,7 @@ describe('shared combat resources', () => {
             {
                 actorId: 'attacker',
                 amount: 6,
+                hitQuality: 'weak',
                 kind: 'damage',
                 damageKind: 'physical',
                 critical: false,
@@ -229,6 +231,7 @@ describe('shared combat resources', () => {
             {
                 actorId: 'attacker',
                 amount: 2,
+                hitQuality: 'weak',
                 kind: 'damage',
                 damageKind: 'physical',
                 critical: false,
@@ -258,7 +261,13 @@ describe('shared combat hit validation', () => {
             resolvePendingAttackHit(
                 attackContext(attacker, [attacker, target], now + 50)
             )
-        ).toEqual([])
+        ).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: attacker.id,
+            }),
+        ])
         expect(target.hp).toBe(target.maxHp)
     })
 
@@ -279,7 +288,13 @@ describe('shared combat hit validation', () => {
             resolvePendingAttackHit(
                 attackContext(skeleton, [skeleton, slime], now + 220)
             )
-        ).toEqual([])
+        ).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: skeleton.id,
+            }),
+        ])
         expect(slime.hp).toBe(slime.maxHp)
     })
 
@@ -303,7 +318,13 @@ describe('shared combat hit validation', () => {
             resolvePendingAttackHit(
                 attackContext(skeleton, [skeleton, friendly], now + 220)
             )
-        ).toEqual([])
+        ).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: skeleton.id,
+            }),
+        ])
         expect(friendly.hp).toBe(friendly.maxHp)
     })
 

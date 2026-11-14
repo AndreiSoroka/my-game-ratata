@@ -81,7 +81,9 @@ function resourceMissing(
     target: CharacterSnapshot
 ): boolean {
     if (context.profile.resource === 'hp') {
-        return target.hp < target.maxHp
+        return target.health.kind === 'exact'
+            ? target.health.current < target.health.max
+            : target.health.percent < 100
     }
     if (context.profile.resource === 'energy') {
         return target.resources.energy < target.resources.maxEnergy

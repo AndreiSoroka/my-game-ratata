@@ -12,6 +12,7 @@ export interface PendingAttackHit {
     targetId?: string | undefined
     canStun: boolean
     damageMultiplier: number
+    underpowered?: boolean
     hitAt: number
     targetEnergyDrain: number
 }

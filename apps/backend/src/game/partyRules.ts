@@ -106,7 +106,7 @@ export function createPartySnapshot(
                           id,
                           nickname: character.nickname,
                           alive: character.alive,
-                          hpPercent: Math.round(
+                          hpPercent: Math.floor(
                               Math.max(
                                   0,
                                   Math.min(

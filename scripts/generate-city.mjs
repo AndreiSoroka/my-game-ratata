@@ -1,11 +1,12 @@
 import { recordProp } from './generate-depth.mjs'
 import { pavingGid } from './generate-ground.mjs'
 import { addInteriorBuilding } from './generate-interiors.mjs'
+import { addTrainingGround } from './generate-training.mjs'
 
 const town = 512
 
 // Kenney Tiny Town 1.1, original 16px packed atlas. No images are rescaled.
-export function addNovogorod(ctx) {
+export function addNovogorod(ctx, location) {
     const {
         width,
         height,
@@ -286,6 +287,9 @@ export function addNovogorod(ctx) {
             block(x, y)
         }
 
+    const training = addTrainingGround(ctx, location.id, ground)
+    fronts.push([58, 49], [67, 49])
+
     // Every open door connects to the streets; furniture must not trap a resident.
     function paveRoute(target, pave = true) {
         const start = at(48, 40)
@@ -377,5 +381,11 @@ export function addNovogorod(ctx) {
     landmark('Западные ворота', 'gate', 12, 40)
     landmark('Восточные ворота', 'gate', 84, 40)
     landmark('Площадь Новогорода', 'plaza', 48, 35)
-    return { landmarks, buildings, covers }
+    landmark('Тренировочный загон', 'training', 56, 47)
+    landmarks.at(-1).properties.push({
+        name: 'interactionId',
+        type: 'string',
+        value: `${location.id}:training:sign-1`,
+    })
+    return { landmarks, buildings, covers, training }
 }

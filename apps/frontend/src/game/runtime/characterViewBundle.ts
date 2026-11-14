@@ -1,6 +1,8 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, Label, Rectangle, vec } from 'excalibur'
 
+import { healthBarPercent } from '../ui/healthPresentation'
+
 export interface CharacterBundle {
     snapshot?: CharacterSnapshot
     body: Actor
@@ -49,8 +51,8 @@ export function updateBundleHealth(
     isLocalPlayer: boolean
 ): void {
     const width = 32
-    const ratio = Math.max(0, Math.min(1, snapshot.hp / snapshot.maxHp))
-    const opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.35
+    const ratio = healthBarPercent(snapshot.health) / 100
+    const opacity = isLocalPlayer || snapshot.trainingTarget ? 0 : snapshot.alive ? 1 : 0.35
 
     bundle.hpFill.graphics.use(
         new Rectangle({
@@ -61,4 +63,15 @@ export function updateBundleHealth(
     )
     bundle.hpBack.graphics.opacity = opacity
     bundle.hpFill.graphics.opacity = opacity
+}
+
+export function positionBundle(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {
+    bundle.body.pos = vec(snapshot.position.x, snapshot.position.y)
+    bundle.body.z = snapshot.position.y
+    bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - 44)
+    bundle.label.z = bundle.body.z + 3
+    for (const bar of [bundle.hpBack, bundle.hpFill]) {
+        bar.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
+        bar.z = bundle.body.z + 2
+    }
 }

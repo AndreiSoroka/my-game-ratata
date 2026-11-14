@@ -87,7 +87,13 @@ it.each(['behind', 'wall', 'width', 'range'] as const)(
                 'shot'
             )[0]?.kind
         ).toBe('attack')
-        expect(f.hit()).toEqual([])
+        expect(f.hit()).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                abilityId: 'shot',
+            }),
+        ])
         expect(f.service.get('grave')?.hp).toBe(100)
         expect(f.actor.progression.skills).toEqual(skills)
     }
@@ -198,7 +204,14 @@ it('rechecks spell LoS after cast start and never replaces a ruined grave with a
         )[0]?.kind
     ).toBe('attack')
     vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(false)
-    expect(f.hit(1400)).toEqual([])
+    expect(f.hit(1400)).toEqual([
+        expect.objectContaining({
+            kind: 'miss',
+            hitQuality: 'miss',
+            abilityId: 'fireball',
+            target: f.reference,
+        }),
+    ])
     expect(enemy.hp).toBe(enemy.maxHp)
     expect(f.service.get('grave')?.hp).toBe(100)
 })
@@ -223,7 +236,13 @@ it('automatic grave melee approaches using ordinary reach, pins its target and s
     advanceCharacterControl(f.actor, f.world, 1300)
     expect(f.events[0]).toMatchObject({ kind: 'attack', target: f.reference })
     f.service.damage('grave', 100, 1301)
-    expect(resolvePendingAttackHit(f.attack(1350))).toEqual([])
+    expect(resolvePendingAttackHit(f.attack(1350))).toEqual([
+        expect.objectContaining({
+            kind: 'miss',
+            hitQuality: 'miss',
+            target: f.reference,
+        }),
+    ])
     expect(advanceCharacterControl(f.actor, f.world, 1350)).toBe(false)
     expect(snapshotControl(f.actor).mode).toBe('none')
     expect(f.events).toHaveLength(1)
@@ -281,6 +300,7 @@ it('uses a normal NPC controller and shared heavy-strike weapon wear without gra
             actorId: f.actor.id,
             target: f.reference,
             amount: 1.5,
+            hitQuality: 'strong',
             critical: false,
             damageKind: 'physical',
             abilityId: 'skeleton_strike',

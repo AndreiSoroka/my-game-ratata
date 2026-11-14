@@ -65,6 +65,7 @@ export class RatataGame {
             onStatus: (status) => {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
+                    this.sceneActors?.clearDamage()
                     this.sceneActors?.setInteractionTarget(undefined)
                     this.sceneActors?.clearWaypoints()
                 }

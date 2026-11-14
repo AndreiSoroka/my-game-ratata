@@ -62,11 +62,16 @@ function fixture(heroClass: 'cleric' | 'ranger' = 'cleric') {
         throw new Error('Actor missing')
     }
     actor.position = { x: 90, y: 72 }
+    actor.exactCombatNumbers = true
     const grave = () =>
         room
             .snapshot(Date.now(), CENTER_LOCATION_ID, actor.id)
             .graves?.find((entry) => entry.id === target.id)
-    return { room, actor, send, grave, messages }
+    const graveHp = () => {
+        const health = grave()?.health
+        return health?.kind === 'exact' ? health.current : undefined
+    }
+    return { room, actor, send, grave, graveHp, messages }
 }
 
 describe('ordinary socket commands resolve grave actions in the real room', () => {
@@ -86,14 +91,14 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
             f.actor.abilities.known.add('spark')
             f.actor.progression.skills.fireball.unlocked = true
             f.actor.equipment.weapon = createItemInstance('pickaxe')
-            expect(f.grave()?.hp).toBe(100)
+            expect(f.graveHp()).toBe(100)
             f.send(command)
-            expect(f.grave()?.hp).toBe(100)
+            expect(f.graveHp()).toBe(100)
             f.room.start()
             vi.advanceTimersByTime(600)
             f.room.stop()
             expect(
-                f.grave()?.hp,
+                f.graveHp(),
                 JSON.stringify({
                     command,
                     position: f.actor.position,
@@ -160,14 +165,14 @@ it('preserves a due spell until the combat tick when another socket attack arriv
         expect(pending).toMatchObject({ target, rawDamage: 8, hitAt: 10403 })
         vi.advanceTimersByTime(401)
         expect(Date.now()).toBe(10404)
-        expect(f.grave()?.hp).toBe(100)
+        expect(f.graveHp()).toBe(100)
         const beforeRejected = f.actor.mana
         f.send({ type: 'use_ability', abilityId: 'spark', target })
         expect(f.actor.mana).toBe(beforeRejected)
         expect(f.actor.pendingAttack).toEqual(pending)
         expect(f.actor.attackZones).toEqual(zones)
         vi.advanceTimersByTime(46)
-        expect(f.grave()?.hp).toBe(98)
+        expect(f.graveHp()).toBe(98)
         expect(f.actor.pendingAttack).toBeUndefined()
         vi.advanceTimersByTime(100)
         expect(f.actor.attackZones).toEqual([])

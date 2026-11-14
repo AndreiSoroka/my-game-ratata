@@ -1,4 +1,5 @@
 import type { AgentDecisionResult } from './agentDecisions'
+import { observeCombatEvents } from './combatObservation'
 import type { CompanionService } from './companions'
 import type { GameRoom } from './room'
 
@@ -18,5 +19,15 @@ export function decideForRoomAgent(
     }
     const result = companions.decide(actor, decision, room, Date.now())
     room.publishEvents(result.events)
-    return result
+    return {
+        ...result,
+        events: observeCombatEvents(result.events, {
+            observer: actor,
+            getCharacter: (id) => room.getCharacter(id),
+            navigation: room.navigationFor(actor),
+            now: Date.now(),
+            hasModelLease: (character, now) =>
+                companions.hasActiveLease(character, now, room),
+        }),
+    }
 }

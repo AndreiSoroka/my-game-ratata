@@ -21,8 +21,7 @@ export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[]
                 interactionRange: GRAVE_INTERACTION_RANGE,
                 details: {
                     phase: grave.phase,
-                    hp: grave.hp,
-                    maxHp: grave.maxHp,
+                    health: grave.health,
                     material: grave.material,
                     restoresAt: grave.restoresAt,
                 },

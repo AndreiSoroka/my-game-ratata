@@ -1,4 +1,8 @@
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import {
+    CENTER_LOCATION_ID,
+    readTrainingMapData,
+    type TrainingMapData,
+} from '@my-game-ratata/contracts'
 
 import { type MapBuilding, readMapBuildings } from './mapBuildings'
 import { type MapDepthProp, readDepthProps } from './mapDepthProps'
@@ -47,6 +51,7 @@ interface LoadedTileset {
 }
 
 export interface RenderedTiledMap {
+    training: TrainingMapData
     bitmap: HTMLCanvasElement
     buildings: MapBuilding[]
     depthProps: MapDepthProp[]
@@ -90,6 +95,10 @@ export async function loadRenderedTiledMap(
         : []
 
     return {
+        training: readTrainingMapData(
+            map,
+            mapName === 'map1.json' ? CENTER_LOCATION_ID : mapName.replace(/\.json$/, '')
+        ),
         bitmap,
         buildings,
         depthProps: readDepthProps(

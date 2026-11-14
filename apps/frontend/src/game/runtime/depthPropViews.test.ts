@@ -48,8 +48,7 @@ const grave: WorldGraveSnapshot = {
     locationId: 'map-2-2',
     position: { x: 120, y: 160 },
     phase: 'active',
-    hp: 100,
-    maxHp: 100,
+    health: { kind: 'exact', current: 100, max: 100 },
     material: 'stone',
 }
 
@@ -140,7 +139,14 @@ describe('dynamic grave presentation', () => {
         const authored = { ...grave, propId: 'authored' }
         view.updateGraves([authored])
         expect(actors).toHaveLength(1)
-        view.updateGraves([{ ...authored, phase: 'ruined', hp: 0, restoresAt: 1_800_000 }])
+        view.updateGraves([
+            {
+                ...authored,
+                phase: 'ruined',
+                health: { kind: 'exact', current: 0, max: 100 },
+                restoresAt: 1_800_000,
+            },
+        ])
         const rubble = actors[1]!
         expect(original.graphics.isVisible).toBe(false)
         expect(rubble.options.collisionType).toBe('no-collision')
@@ -153,10 +159,14 @@ describe('dynamic grave presentation', () => {
         view.updateGraves([authored])
         expect(original.graphics.isVisible).toBe(true)
         expect(rubble.kill).toHaveBeenCalledOnce()
-        view.updateGraves([{ ...authored, phase: 'purified', hp: 0 }])
+        view.updateGraves([
+            { ...authored, phase: 'purified', health: { kind: 'exact', current: 0, max: 100 } },
+        ])
         expect(original.graphics.isVisible).toBe(false)
         expect(actors).toHaveLength(2)
-        view.updateGraves([{ ...authored, phase: 'purified', hp: 0 }])
+        view.updateGraves([
+            { ...authored, phase: 'purified', health: { kind: 'exact', current: 0, max: 100 } },
+        ])
         expect(original.graphics.isVisible).toBe(false)
         view.setProps([], graphics)
         expect(original.kill).toHaveBeenCalledOnce()

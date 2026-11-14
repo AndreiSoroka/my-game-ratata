@@ -1,6 +1,39 @@
 import { writeFile } from 'node:fs/promises'
 
+import type { ClientMessage, GameEventPayload, ServerMessage } from '@my-game-ratata/contracts'
 import type { Page, TestInfo } from '@playwright/test'
+
+export function capturePurificationTargets(page: Page): string[] {
+    const targets: string[] = []
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framesent', (frame) => {
+            if (typeof frame.payload !== 'string') return
+            const command = JSON.parse(frame.payload) as ClientMessage
+            if (
+                command.type === 'use_ability' &&
+                command.abilityId === 'pray' &&
+                command.intent?.mode === 'purify_grave'
+            )
+                targets.push(command.intent.target.id)
+        })
+    })
+    return targets
+}
+
+export function captureWorldDamage(page: Page): GameEventPayload[] {
+    const events: GameEventPayload[] = []
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', (frame) => {
+            if (typeof frame.payload !== 'string') return
+            const message = JSON.parse(frame.payload) as ServerMessage
+            if (message.type === 'event' && message.event.kind === 'world_damage')
+                events.push(message.event)
+        })
+    })
+    return events
+}
 
 export async function attachBrowserDiagnostics(
     info: TestInfo,
@@ -38,12 +71,16 @@ export async function attachCombatFailure(pages: Page[], info: TestInfo): Promis
                     return {
                         connected: state.connected,
                         notice: state.notice,
+                        prompt: document.querySelector('.nearby-prompt')?.textContent,
+                        dialogs: Array.from(
+                            document.querySelectorAll('[role="dialog"], [role="menu"]')
+                        ).map((node) => node.getAttribute('aria-label')),
                         tick: state.snapshot?.tick,
                         locationId: state.location?.id,
                         player: player && {
                             id: player.id,
                             alive: player.alive,
-                            hp: player.hp,
+                            health: player.health,
                             position: player.position,
                             control: player.control,
                             cooldowns: player.cooldowns,
@@ -53,7 +90,7 @@ export async function attachCombatFailure(pages: Page[], info: TestInfo): Promis
                             .map((actor) => ({
                                 id: actor.id,
                                 alive: actor.alive,
-                                hp: actor.hp,
+                                health: actor.health,
                                 position: actor.position,
                             })),
                         graves: state.snapshot?.graves,

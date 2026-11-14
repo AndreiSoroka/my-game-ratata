@@ -9,6 +9,7 @@ import {
 import { computed } from 'vue'
 
 import { graveName } from './graveInteractions'
+import { healthBarPercent } from './healthPresentation'
 
 const props = defineProps<{ grave: WorldGraveSnapshot; serverTime: number; compact?: boolean }>()
 const remaining = computed(() =>
@@ -30,9 +31,15 @@ function duration(ms: number): string {
     <section class="grave-details" aria-label="Состояние могилы">
         <div class="grave-details__heading">
             <strong>{{ graveName(grave) }}</strong>
-            <span>{{ hp(grave.hp) }} / {{ hp(grave.maxHp) }} HP</span>
+            <span v-if="grave.health.kind === 'exact'"
+                >{{ hp(grave.health.current) }} / {{ hp(grave.health.max) }} HP</span
+            >
         </div>
-        <progress :value="grave.hp" :max="grave.maxHp" aria-label="Прочность могилы" />
+        <progress
+            :value="healthBarPercent(grave.health)"
+            :max="100"
+            aria-label="Прочность могилы"
+        />
         <p v-if="grave.phase === 'ruined'">Восстановится через {{ duration(remaining) }}</p>
         <p v-else-if="grave.phase === 'purified'">Источник нежити очищен навсегда.</p>
         <p v-else>Источник скелетов · камень</p>

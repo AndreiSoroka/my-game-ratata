@@ -7,7 +7,7 @@ import type {
 import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { availableToStartAttack } from './combat'
-import { canTargetByFaction } from './factions'
+import { canAttackCharacter } from './combatTargets'
 import { castGraveSpell } from './graveSpellCasting'
 import { distance } from './math'
 import type { ProgressionContext } from './progressionCommands'
@@ -109,7 +109,7 @@ function canHit(
         return false
     }
     return (
-        canTargetByFaction(actor, target, context.now) &&
+        canAttackCharacter(actor, target, context.now) &&
         distance(actor.position, target.position) <= range &&
         context.navigation.hasLineOfSight(actor.position, target.position)
     )

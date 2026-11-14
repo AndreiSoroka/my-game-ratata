@@ -15,7 +15,7 @@ import {
     resolveAttackDamage,
 } from './combatDamage'
 import { buildAttackZones, isInZones } from './combatGeometry'
-import { canTargetByFaction } from './factions'
+import { canAttackCharacter } from './combatTargets'
 import { resolveGraveHit } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
 import { wearWeapon } from './itemDurability'
@@ -59,8 +59,25 @@ export function resolvePendingAttackHit(
         ]
     }
     return target === undefined
-        ? []
+        ? [missedAttack(actor, attack)]
         : resolveCharacterHit(context, attack, target)
+}
+function missedAttack(
+    actor: GameCharacter,
+    attack: PendingAttackHit
+): GameEventPayload {
+    return {
+        kind: 'miss',
+        hitQuality: 'miss',
+        actorId: actor.id,
+        ...(attack.targetId === undefined ? {} : { targetId: attack.targetId }),
+        ...(attack.target === undefined
+            ? {}
+            : { target: { ...attack.target } }),
+        ...(attack.abilityId === undefined
+            ? {}
+            : { abilityId: attack.abilityId }),
+    }
 }
 function resolveCharacterHit(
     context: AttackContext,
@@ -73,6 +90,7 @@ function resolveCharacterHit(
         return [
             {
                 kind: 'miss',
+                hitQuality: 'miss',
                 actorId: actor.id,
                 targetId: target.id,
                 text: 'Уклонение',
@@ -85,6 +103,7 @@ function resolveCharacterHit(
         target,
         now,
         amount: roll.amount,
+        hitQuality: roll.hitQuality,
         damageKind: attack.abilityId === 'spark' ? 'arcane' : 'physical',
         respawnDelayMs: context.respawnDelayMsFor(target),
     })
@@ -106,7 +125,7 @@ function resolveCharacterHit(
     if (result.trainableDamage > 0) {
         events.push(...practiceAttack(actor, attack.abilityId))
     }
-    events.push(...resolvedWeaponWear(actor, attack, result.hpDamage))
+    events.push(...resolvedWeaponWear(actor, attack, result.impactDamage))
     return events
 }
 
@@ -173,6 +192,7 @@ export function availableToStartAttack(
 export function availableToAttack(actor: GameCharacter, now: number): boolean {
     return (
         actor.alive &&
+        actor.trainingTarget === undefined &&
         !actor.tags.has('offline') &&
         !actor.tags.has('state.retired') &&
         actor.stunUntil <= now
@@ -186,7 +206,7 @@ export function isLegalAttackTarget(
     return (
         availableToAttackTarget(target) &&
         actor.locationId === target.locationId &&
-        canTargetByFaction(actor, target, context.now) &&
+        canAttackCharacter(actor, target, context.now) &&
         (context.navigation?.hasLineOfSight(actor.position, target.position) ??
             true)
     )

@@ -6,13 +6,12 @@ import {
     GRAVE_SPAWN_INTERVAL_MS,
     type GraveSourceDefinition,
     type Vector2,
-    type WorldGraveSnapshot,
     type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { GraveGuardians } from './graveGuardians'
-import type { GraveDamageResult } from './graveRules'
+import type { GraveCombatTarget, GraveDamageResult } from './graveRules'
 import type { NavigationService } from './navigation'
 import { createSkeleton, type SpawnedCharacter } from './spawns'
 
@@ -22,7 +21,7 @@ interface GraveSource {
     nextSpawnAt: number
     nextBirth: number
     retryAt: number
-    phase: WorldGraveSnapshot['phase']
+    phase: GraveCombatTarget['phase']
     hpUnits: number
     restoresAt: number | null
 }
@@ -40,13 +39,13 @@ export class GraveSpawns {
     private readonly sources = new Map<string, GraveSource>()
     private readonly guardians = new GraveGuardians()
 
-    public snapshot(locationId: string): WorldGraveSnapshot[] {
+    public snapshot(locationId: string): GraveCombatTarget[] {
         return [...this.sources.values()]
             .filter((source) => source.definition.locationId === locationId)
             .map(snapshotSource)
     }
 
-    public get(id: string): WorldGraveSnapshot | undefined {
+    public get(id: string): GraveCombatTarget | undefined {
         const source = this.sources.get(id)
         return source === undefined ? undefined : snapshotSource(source)
     }
@@ -237,7 +236,7 @@ function restoreSource(source: GraveSource, now: number): void {
     source.retryAt = 0
 }
 
-function snapshotSource(source: GraveSource): WorldGraveSnapshot {
+function snapshotSource(source: GraveSource): GraveCombatTarget {
     return {
         ...structuredClone(source.definition),
         phase: source.phase,

@@ -97,6 +97,8 @@ export function createWorldInteractions(ctx, location, landmarks) {
         { name: 'Южный путь', x: 45, y: 74 },
         ...landmarks.map((sign) => ({
             name: sign.name,
+            id: sign.properties?.find((entry) => entry.name === 'interactionId')
+                ?.value,
             x: Math.floor(sign.x / 16),
             y: Math.floor(sign.y / 16),
         })),
@@ -129,7 +131,9 @@ export function createWorldInteractions(ctx, location, landmarks) {
         const { x, y } = point
         objects[at(x, y)] = 512 + 83
         placed.add(at(x, y))
-        add('sign', x, y, 1, 1, sign.name, signText(location, sign.name))
+        add('sign', x, y, 1, 1, sign.name, signText(location, sign.name), {
+            id: sign.id,
+        })
     }
     for (let y = 0; y < height; y += 1)
         for (let x = 0; x < width; x += 1) {

@@ -21,7 +21,7 @@ export const EmptyResources: Story = {
     render: () =>
         renderVueStory(PlayerStatusPanel, {
             character: playerStatusFixture({
-                hp: 0,
+                health: { kind: 'exact', current: 0, max: 26 },
                 resources: { mana: 0, maxMana: 120, energy: 0, maxEnergy: 100 },
             }),
         }),
@@ -30,7 +30,7 @@ export const LowResources: Story = {
     render: () =>
         renderVueStory(PlayerStatusPanel, {
             character: playerStatusFixture({
-                hp: 1,
+                health: { kind: 'exact', current: 1, max: 26 },
                 resources: { mana: 6, maxMana: 120, energy: 5, maxEnergy: 100 },
             }),
         }),

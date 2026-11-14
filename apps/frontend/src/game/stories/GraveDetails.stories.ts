@@ -14,21 +14,28 @@ export const Active: Story = {
 export const Ruined: Story = {
     render: () =>
         renderVueStory(GraveDetails, {
-            grave: graveFixture({ phase: 'ruined', hp: 0, restoresAt: 1_201_000 }),
+            grave: graveFixture({
+                phase: 'ruined',
+                health: { kind: 'exact', current: 0, max: 100 },
+                restoresAt: 1_201_000,
+            }),
             serverTime: 1000,
         }),
 }
 export const Purified: Story = {
     render: () =>
         renderVueStory(GraveDetails, {
-            grave: graveFixture({ phase: 'purified', hp: 0 }),
+            grave: graveFixture({
+                phase: 'purified',
+                health: { kind: 'exact', current: 0, max: 100 },
+            }),
             serverTime: 1000,
         }),
 }
 export const CompactTarget: Story = {
     render: () =>
         renderVueStory(GraveDetails, {
-            grave: graveFixture({ hp: 0.05 }),
+            grave: graveFixture({ health: { kind: 'exact', current: 0.05, max: 100 } }),
             serverTime: 1000,
             compact: true,
         }),

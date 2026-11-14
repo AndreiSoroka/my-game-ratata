@@ -33,6 +33,8 @@ Starting another navigation supersedes the previous one. Low-level movement and 
 
 `act` and `waitFor` return a status and an observation. The default `act` status `updated` means a later server snapshot was received; it is **not** a success acknowledgement. Use an explicit outcome condition or compare authoritative facts such as quest status, item quantities, HP, receipts or dialogue. Never report a successful purchase, reward or attack just because a command was sent.
 
+Protocol 0.2.0 projects combat information on the server before either browser or agent observation. `health` is `{kind: 'exact', current, max}` for the acting identity, or `{kind: 'percent', percent}` for other characters and destructible combat targets. Damage events carry `hitQuality`; `amount` is normally absent. Exact damage on a training dummy is visible to an active observer inside its authored training area. A future server-only `exactCombatNumbers` capability can reveal all visible combat numbers; the test interface cannot grant it. Check an actual event or resource/durability change when testing dummy hits, since the dummy's health does not decrease.
+
 Both methods accept `{ timeoutMs }`; `act` accepts an additional `until` condition. Waits default to five seconds and accept deadlines from 0 to 60,000 milliseconds. Results have `status`, `reason`, `elapsedMs` and `observation`; statuses are `updated`, `condition_met`, `timeout`, `cancelled` and `unavailable`.
 
 | Condition                                | Meaning                                                                                                  |

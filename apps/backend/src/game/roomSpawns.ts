@@ -7,6 +7,7 @@ import type { CharacterController } from './controllers'
 import type { NavigationService } from './navigation'
 import { createFriendlyGirl } from './spawns'
 import { createSupportNpcs } from './supportNpcs'
+import { createTrainingTargets } from './trainingTargets'
 import { createEconomyWorkers } from './workerSpawns'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 import { createLocationEnemies } from './worldSpawns'
@@ -51,6 +52,12 @@ export function spawnRoomCharacters(
                 character.id,
                 new PolicyController(companions, controller)
             )
+        }
+        for (const { character, controller } of createTrainingTargets(
+            location.navigation
+        )) {
+            characters.set(character.id, character)
+            controllers.set(character.id, controller)
         }
     }
     for (const { character, controller } of [

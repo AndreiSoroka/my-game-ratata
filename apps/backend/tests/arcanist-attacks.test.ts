@@ -108,7 +108,13 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
     expect(f.actor.mana).toBe(94)
     expect(f.actor.energy).toBe(95)
     expect(resolvePendingAttackHit(f.attack(1199))).toEqual([])
-    expect(resolvePendingAttackHit(f.attack(1200))).toEqual([])
+    expect(resolvePendingAttackHit(f.attack(1200))).toEqual([
+        expect.objectContaining({
+            kind: 'miss',
+            hitQuality: 'miss',
+            abilityId: 'spark',
+        }),
+    ])
     expect(f.actor.progression.skills).toEqual(skills)
 })
 
@@ -129,7 +135,13 @@ it('stops Spark at walls and rejects missing resources before costs', () => {
     const f = setup()
     vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(false)
     expect(f.spark()[0]?.kind).toBe('attack')
-    expect(resolvePendingAttackHit(f.attack(1200))).toEqual([])
+    expect(resolvePendingAttackHit(f.attack(1200))).toEqual([
+        expect.objectContaining({
+            kind: 'miss',
+            hitQuality: 'miss',
+            abilityId: 'spark',
+        }),
+    ])
     const mana = f.actor.mana
     f.actor.energy = 0
     expect(f.spark(1800).every((event) => event.kind === 'notice')).toBe(true)

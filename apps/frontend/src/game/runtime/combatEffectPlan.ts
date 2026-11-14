@@ -8,6 +8,7 @@ import {
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
+import { combatHitLabel } from './combatHitLabel'
 import { BARRIER_COLOR, type EffectShape, FIRE_COLOR, SPARK_COLOR } from './effectGraphics'
 import { deityColors } from './prayerGraphics'
 
@@ -52,7 +53,7 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
     if (event.kind === 'attack') return [attackCue(event, actor, base)]
     if (event.kind === 'cast' && event.abilityId === 'pray')
         return prayerCastCues(event, actor, base)
-    if (event.kind === 'heal' && (event.amount ?? 0) > 0)
+    if (event.kind === 'heal' && (event.amount === undefined || event.amount > 0))
         return [{ ...base, kind: 'restore', count: 10 }]
     if (event.kind === 'revive') return [{ ...base, kind: 'revive', duration: 1000, count: 12 }]
     return impactCues(event, actor, base)
@@ -102,13 +103,14 @@ function impactCues(
                 count: 0,
             },
         ]
-    if (event.kind === 'absorb' && (event.amount ?? 0) > 0) {
+    if (event.kind === 'absorb' && (event.amount === undefined || event.amount > 0)) {
         const cues: EffectCue[] = [
             { ...base, kind: 'barrier', color: BARRIER_COLOR, duration: 250, count: 4 },
         ]
         return [...cues, ...prayerHit(event, actor, base)]
     }
-    if (event.kind === 'damage' && (event.amount ?? 0) > 0) return prayerHit(event, actor, base)
+    if (event.kind === 'damage' && (event.amount === undefined || event.amount > 0))
+        return prayerHit(event, actor, base)
     return []
 }
 function prayerHit(
@@ -133,13 +135,13 @@ function prayerHit(
 export function eventCaption(event: GameEventPayload): string | undefined {
     const captions: Partial<Record<GameEventPayload['kind'], () => string | undefined>> = {
         heal: () => healingCaption(event),
-        absorb: () => positiveAmount(event, 'Барьер −'),
+        absorb: () => (event.amount === undefined ? 'Барьер' : positiveAmount(event, 'Барьер −')),
         miss: () => 'Промах',
         revive: () => 'Возрождение',
         status: () => (event.statusId === 'stun' ? 'СТАН' : undefined),
         cast: () => castCaption(event),
-        damage: () => (event.critical ? 'КРИТ!' : undefined),
-        world_damage: () => worldDamageCaption(event),
+        world_damage: () =>
+            event.amount !== undefined && event.amount <= 0 ? undefined : combatHitLabel(event),
         attack: () => (event.abilityId === 'skeleton_strike' ? 'Костяной удар…' : undefined),
     }
     return captions[event.kind]?.()
@@ -180,6 +182,7 @@ function attackDuration(event: GameEventPayload, kind: EffectShape): number {
 }
 
 function healingCaption(event: GameEventPayload): string | undefined {
+    if (event.amount === undefined) return 'Восстановление'
     const resources: Record<string, string> = { hp: 'HP', mana: 'Мана', energy: 'Энергия' }
     return positiveAmount(event, `${resources[event.text ?? 'hp'] ?? 'HP'} +`)
 }
@@ -188,11 +191,4 @@ function castCaption(event: GameEventPayload): string | undefined {
     if (event.phase === 'completed' && event.abilityId === 'pray') return 'Молитва'
     if (event.phase === 'started' && event.abilityId === 'skeleton_strike') return 'Костяной удар…'
     return undefined
-}
-
-function worldDamageCaption(event: GameEventPayload): string | undefined {
-    const amount = event.amount
-    if (amount === undefined || !Number.isFinite(amount) || amount <= 0) return undefined
-    const value = amount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })
-    return `−${value}${event.critical ? ' КРИТ!' : ''}`
 }

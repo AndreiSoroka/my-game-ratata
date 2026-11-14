@@ -46,7 +46,9 @@ describe('prayer without an eligible target', () => {
     it('does not substitute a wounded neighbor for an ineligible selected target', () => {
         const player = priest()
         const healthy = characterFixture('healthy')
-        const wounded = characterFixture('wounded', { hp: 2 })
+        const wounded = characterFixture('wounded', {
+            health: { kind: 'exact' as const, current: 2, max: 24 },
+        })
         for (const selected of [healthy.id, 'lost-target']) {
             const preview = previewPrayerFromSnapshots(player, [healthy, wounded], selected)
             expect(preview.intent).toEqual({ mode: 'devotion' })
@@ -69,7 +71,11 @@ describe('prayer without an eligible target', () => {
             expect(previewPrayerFromSnapshots(unavailable, []).intent).toEqual({ mode: 'devotion' })
             expect(previewPrayerFromSnapshots(unavailable, []).unavailableReason).not.toBeNull()
         }
-        const wounded = { ...player, hp: 5, resources: { ...player.resources, mana: 4 } }
+        const wounded = {
+            ...player,
+            health: { kind: 'exact' as const, current: 5, max: 24 },
+            resources: { ...player.resources, mana: 4 },
+        }
         expect(previewPrayerFromSnapshots(wounded, []).manaCost).toBe(5)
         expect(previewPrayerFromSnapshots(wounded, []).unavailableReason).toBe('Недостаточно маны.')
     })

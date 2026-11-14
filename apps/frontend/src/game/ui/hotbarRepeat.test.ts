@@ -59,7 +59,7 @@ it('casts once immediately, enables repetition during cooldown, and stops withou
 it('pins the first prayer intent when its single cast has already filled the target', async () => {
     const player = characterFixture('self', {
         heroClass: 'cleric',
-        hp: 2,
+        health: { kind: 'exact' as const, current: 2, max: 24 },
         abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
     })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
@@ -67,7 +67,7 @@ it('pins the first prayer intent when its single cast has already filled the tar
         wrapper.vm.activate(1)
         const healed = {
             ...player,
-            hp: player.maxHp,
+            health: { kind: 'exact' as const, current: 24, max: 24 },
             abilities: { ...player.abilities!, cooldowns: { pray: 2800 } },
         }
         await wrapper.setProps({ player: healed, characters: [healed] })
@@ -85,7 +85,7 @@ it('pins the first prayer intent when its single cast has already filled the tar
 it('can arm a meaningful prayer while waiting for mana and displays authoritative waiting', async () => {
     const player = characterFixture('self', {
         heroClass: 'cleric',
-        hp: 2,
+        health: { kind: 'exact' as const, current: 2, max: 24 },
         resources: { mana: 0, maxMana: 40, energy: 100, maxEnergy: 100 },
         abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
     })

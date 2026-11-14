@@ -36,6 +36,7 @@ export function findVisibleTarget(
         .filter(
             (character) =>
                 character.alive &&
+                character.trainingTarget === undefined &&
                 !character.tags.has('offline') &&
                 character.locationId === observer.locationId
         )
@@ -61,7 +62,12 @@ export function faceNearestTarget(
     radius: number
 ): void {
     const target = [...characters]
-        .filter((character) => character.id !== actor.id && character.alive)
+        .filter(
+            (character) =>
+                character.id !== actor.id &&
+                character.alive &&
+                character.trainingTarget === undefined
+        )
         .filter((character) => canTargetByFaction(actor, character))
         .map((character) => ({
             character,

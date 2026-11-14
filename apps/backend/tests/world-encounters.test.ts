@@ -131,7 +131,10 @@ describe('reachable wilderness encounters', () => {
                 ).toBe(false)
                 for (const resident of city.characters) {
                     expect(resident.alive).toBe(true)
-                    expect(resident.hp).toBe(resident.maxHp)
+                    expect(resident.health).toEqual({
+                        kind: 'percent',
+                        percent: 100,
+                    })
                 }
             }
         } finally {

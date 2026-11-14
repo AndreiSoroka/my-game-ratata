@@ -47,7 +47,11 @@ describe('observed grave targets', () => {
         const state = fixture()
         const observation = observeGame(state)
         const target = observation.targets.find((candidate) => candidate.kind === 'grave')!
-        expect(target.details).toMatchObject({ phase: 'active', hp: 99.75, material: 'stone' })
+        expect(target.details).toMatchObject({
+            phase: 'active',
+            health: { kind: 'exact', current: 99.75, max: 100 },
+            material: 'stone',
+        })
         expect(target.actions[0]?.command).toEqual({
             type: 'attack',
             target: { kind: 'grave', id: target.id },

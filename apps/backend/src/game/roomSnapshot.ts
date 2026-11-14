@@ -6,6 +6,7 @@ import type {
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { observeCharacterCombat, observeGraveCombat } from './combatObservation'
 import { snapshotCompanionSoul } from './companionState'
 import { canTargetByFaction } from './factions'
 import type { PartyService } from './parties'
@@ -56,6 +57,12 @@ export function roomSnapshot(
     const location = context.world.get(locationId)
     const observer =
         playerId === undefined ? undefined : context.characters.get(playerId)
+    const combatView = {
+        observer,
+        getCharacter: (id: string) => context.characters.get(id),
+        navigation: location.navigation,
+        now,
+    }
     const snapshot = createSnapshot(
         charactersInLocation(context.characters, locationId).values(),
         location.inventory.snapshotItems(),
@@ -65,9 +72,15 @@ export function roomSnapshot(
     )
     return {
         ...snapshot,
-        graves: context.life?.graves(locationId) ?? [],
+        graves: (context.life?.graves(locationId) ?? []).map((grave) =>
+            observeGraveCombat(grave, combatView)
+        ),
         characters: snapshot.characters.map((character) => ({
-            ...character,
+            ...observeCharacterCombat(
+                character,
+                context.characters.get(character.id),
+                combatView
+            ),
             ...(character.soul === undefined
                 ? {}
                 : {

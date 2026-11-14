@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import PartyPanel from './PartyPanel.vue'
 
 describe('party roster', () => {
-    it('puts the crowned leader first, shows only percentages and distinguishes absent members', async () => {
+    it('puts the crowned leader first, shows health bars without numbers and distinguishes absent members', async () => {
         const party: PartySnapshot = {
             partyId: 'p',
             leaderId: 'leader',
@@ -45,10 +45,16 @@ describe('party roster', () => {
             const buttons = wrapper.findAll('button')
             expect(buttons[0]?.text()).toContain('Лидер')
             expect(buttons[0]?.find('[aria-label="Лидер"]').exists()).toBe(true)
-            expect(buttons[1]?.text()).toContain('27%')
+            expect(buttons[1]?.text()).not.toContain('27%')
+            expect(
+                buttons[1]?.find('.party-member__health span span').attributes('style')
+            ).toContain('27%')
             expect(buttons[1]?.text()).toContain('Другая локация')
             expect(buttons[2]?.text()).toContain('Ожидает спасения')
-            expect(buttons[2]?.text()).toContain('0%')
+            expect(buttons[2]?.text()).not.toContain('0%')
+            expect(
+                buttons[2]?.find('.party-member__health span span').attributes('style')
+            ).toContain('0%')
             expect(party.members[0]?.id).toBe('ally')
             expect(wrapper.text()).not.toContain('27/100')
             await buttons[1]?.trigger('click')

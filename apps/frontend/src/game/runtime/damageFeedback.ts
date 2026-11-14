@@ -10,6 +10,7 @@ import {
     vec,
 } from 'excalibur'
 
+import { combatHitLabel, hitColors } from './combatHitLabel'
 import {
     type DamageHit,
     damageNumberMs,
@@ -42,7 +43,8 @@ export class DamageFeedback {
     public constructor(
         private readonly engine: Engine,
         private readonly bodyFor: (id: string) => Actor | undefined,
-        private readonly refreshGraphic: (id: string) => void
+        private readonly refreshGraphic: (id: string) => void,
+        private readonly stationary: (id: string) => boolean = () => false
     ) {
         engine.on('postupdate', this.onFrame)
     }
@@ -57,13 +59,13 @@ export class DamageFeedback {
             body.actions.runAction(view.flash)
             view.until = this.now + hitFlashMs
         }
-        view.reacting = true
+        view.reacting = !this.stationary(hit.targetId)
         this.addNumber(hit, body, localTarget)
         this.refreshGraphic(hit.targetId)
     }
 
     public elapsed(targetId: string): number | undefined {
-        return this.timeline.elapsed(targetId, this.now)
+        return this.stationary(targetId) ? undefined : this.timeline.elapsed(targetId, this.now)
     }
 
     public forget(targetId: string): void {
@@ -127,13 +129,13 @@ export class DamageFeedback {
         const x = body.pos.x + ((hit.id % 3) - 1) * 4
         const y = body.pos.y - 24
         const label = new Label({
-            text: `−${hit.amount}`,
+            text: combatHitLabel({ kind: 'damage', amount: hit.amount, hitQuality: hit.quality }),
             pos: vec(x, y),
             z: body.z + 20,
             font: new Font({
                 size: local ? 11 : 9,
                 bold: true,
-                color: Color.fromHex(local ? '#ff7770' : '#ffe8a4'),
+                color: Color.fromHex(hitColors[hit.quality]),
                 family: 'Pixelify Sans, system-ui, sans-serif',
                 shadow: { color: Color.Black, offset: vec(1, 1), blur: 0 },
             }),

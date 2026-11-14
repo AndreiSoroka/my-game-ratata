@@ -38,6 +38,7 @@ export class CorpseViews {
         for (const corpse of corpses) {
             if (!corpse.corpse || this.actors.has(corpse.id)) continue
             const { visualId, facing } = corpse.corpse
+            if (visualId === 'training_dummy') continue
             const sheet = this.sheets.get(visualId)
             const frame = characterFrame(
                 characterCatalog[visualId],

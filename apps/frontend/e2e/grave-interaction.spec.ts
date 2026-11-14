@@ -1,11 +1,18 @@
-import { ABILITY_DEFINITIONS, SHOT_HALF_WIDTH } from '@my-game-ratata/contracts'
+import {
+    ABILITY_DEFINITIONS,
+    type GameEventPayload,
+    SHOT_HALF_WIDTH,
+} from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
 import {
     attachBrowserDiagnostics,
     attachCombatFailure,
     captureBrowserDiagnostics,
+    capturePurificationTargets,
+    captureWorldDamage,
 } from './grave-diagnostics'
+import { approachObservedGrave } from './grave-targeting'
 
 const cases = [
     // Final-death scenarios use the north; each ritual gets its own authored source.
@@ -21,6 +28,8 @@ for (const { mobile, direction, viewport } of cases) {
         await page.setViewportSize(viewport)
         const rangers = await Promise.all(Array.from({ length: 4 }, () => context.newPage()))
         const diagnostics = captureBrowserDiagnostics([page, ...rangers])
+        const worldDamage = captureWorldDamage(page)
+        const purificationTargets = capturePurificationTargets(page)
         try {
             await Promise.all(
                 rangers.map((ranger) => ranger.setViewportSize({ width: 480, height: 360 }))
@@ -33,32 +42,16 @@ for (const { mobile, direction, viewport } of cases) {
             const grave = await clearGraveApproach(rangers)
             const ranger = await livingRanger(rangers)
             await approachSource(page, grave)
-            await shootGrave(page, ranger, grave!)
+            await shootGrave(page, ranger, grave!, worldDamage)
             await withdrawRangers(rangers, grave!.position)
-            const approached = await page.evaluate(
-                (targetKey) =>
-                    window.__ratataTest!.navigate(
-                        { targetKey },
-                        { timeoutMs: 15_000, tolerance: 16 }
-                    ),
-                grave!.key
-            )
-            expect(approached.status).toBe('arrived')
-            await page.evaluate(
-                (position) =>
-                    window.__ratataTest!.navigate(
-                        { x: position.x + 32, y: position.y + 16 },
-                        { tolerance: 2 }
-                    ),
-                grave!.position
-            )
-            await faceGrave(page, grave!.id)
+            await approachObservedGrave(page, grave!.key)
             await page.screenshot({ path: info.outputPath('grave-active.png') })
             await openGraveMenu(page, mobile)
             await expect(page.getByRole('menu')).toBeVisible()
             await expect(page.getByLabel('Состояние могилы').last()).toContainText('5% урона')
             await page.screenshot({ path: info.outputPath('grave-menu.png') })
             await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 50 с' }).click()
+            await expect.poll(() => purificationTargets).toEqual([grave!.id])
             await expect(page.locator('.control-status')).toContainText('Очищение могилы')
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
             const casting = await page.evaluate(() => window.__ratataTest!.getState().player!)
@@ -85,9 +78,10 @@ for (const { mobile, direction, viewport } of cases) {
                     )
                 )
                 .toBe(0)
-            await faceGrave(page, grave!.id)
+            await approachObservedGrave(page, grave!.key)
             await openGraveMenu(page, mobile)
             await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 50 с' }).click()
+            await expect.poll(() => purificationTargets).toEqual([grave!.id, grave!.id])
             await expect
                 .poll(
                     () =>
@@ -203,8 +197,9 @@ async function attachOutcome(
 }
 
 async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
+    const prompt = page.getByRole('button', { name: /^E Могила / })
+    await expect(prompt).toBeVisible()
     if (mobile) {
-        const prompt = page.getByRole('button', { name: /E Могила/ })
         const bounds = await prompt.boundingBox()
         const preview = await page.locator('.prayer-preview').boundingBox()
         expect(bounds).not.toBeNull()
@@ -234,9 +229,18 @@ async function cancelRitual(page: Page, mobile: boolean): Promise<void> {
 async function shootGrave(
     page: Page,
     ranger: Page,
-    grave: { id: string; key: string }
+    grave: { id: string; key: string },
+    events: GameEventPayload[]
 ): Promise<void> {
-    await ranger.evaluate(async (key) => {
+    const first = events.length
+    const before = await page.evaluate(
+        (id) =>
+            window.__ratataTest!.getState().snapshot!.graves!.find((grave) => grave.id === id)!
+                .health,
+        grave.id
+    )
+    expect(before.kind).toBe('percent')
+    const actorId = await ranger.evaluate(async (key) => {
         const api = window.__ratataTest!
         const grave = api.observe().targets.find((target) => target.key === key)!
         // Interaction reach is wider than Shot's lane; line up with the source.
@@ -251,25 +255,54 @@ async function shootGrave(
             abilityId: 'shot',
             target: { kind: 'grave', id: grave.id },
         })
+        return api.getState().localPlayerId
     }, grave.key)
+    const matchingHit = () =>
+        events
+            .slice(first)
+            .find((event) => event.actorId === actorId && event.target?.id === grave.id)
+    await expect.poll(matchingHit).toBeTruthy()
+    expect(matchingHit()).not.toHaveProperty('amount')
+    expect(matchingHit()?.hitQuality).toMatch(/weak|normal|strong|critical/)
+    await page.evaluate(async () => {
+        const api = window.__ratataTest!
+        await api.waitFor({ type: 'tick', after: api.getState().snapshot!.tick })
+    })
     await expect
         .poll(() =>
             page.evaluate(
                 (id) =>
                     window
                         .__ratataTest!.getState()
-                        .snapshot?.graves?.find((grave) => grave.id === id)?.hp,
+                        .snapshot?.graves?.find((grave) => grave.id === id)?.health,
                 grave.id
             )
         )
-        .toBeLessThan(100)
+        .toMatchObject({ kind: 'percent' })
+    await expect
+        .poll(async () => {
+            const health = await page.evaluate(
+                (id) =>
+                    window
+                        .__ratataTest!.getState()
+                        .snapshot!.graves!.find((grave) => grave.id === id)!.health,
+                grave.id
+            )
+            return health.kind === 'percent' ? health.percent : 100
+        })
+        .toBeLessThanOrEqual(before.kind === 'percent' ? before.percent : 100)
     const hp = await page.evaluate(
         (id) =>
-            window.__ratataTest!.getState().snapshot!.graves!.find((grave) => grave.id === id)!.hp,
+            window.__ratataTest!.getState().snapshot!.graves!.find((grave) => grave.id === id)!
+                .health,
         grave.id
     )
-    expect(hp).toBeGreaterThan(99)
-    expect(hp % 1).not.toBe(0)
+    expect(hp.kind).toBe('percent')
+    if (hp.kind === 'percent') {
+        expect(Number.isInteger(hp.percent)).toBe(true)
+        expect(hp.percent).toBeGreaterThan(0)
+        expect(hp.percent).toBeLessThan(100)
+    }
     await ranger.evaluate(() => {
         const api = window.__ratataTest!,
             player = api.getState().player!
@@ -431,21 +464,4 @@ async function maintainShot(page: Page, targetId: string, lane: number): Promise
         },
         { id: targetId, lane, range: ABILITY_DEFINITIONS.shot.range, halfWidth: SHOT_HALF_WIDTH }
     )
-}
-
-async function faceGrave(page: Page, id: string): Promise<void> {
-    await page.evaluate(async (id) => {
-        const api = window.__ratataTest!,
-            player = api.getState().player!,
-            grave = api.getState().snapshot!.graves!.find((grave) => grave.id === id)!
-        const delta = {
-            x: grave.position.x - player.position.x,
-            y: grave.position.y - player.position.y,
-        }
-        const axis =
-            Math.abs(delta.x) > Math.abs(delta.y)
-                ? { x: Math.sign(delta.x), y: 0 }
-                : { x: 0, y: Math.sign(delta.y) }
-        await api.moveFor(axis, 60)
-    }, id)
 }

@@ -14,6 +14,9 @@ export function createCharacterSnapshot(
     now: number
 ): CharacterSnapshot {
     return {
+        ...(character.trainingTarget === undefined
+            ? {}
+            : { trainingTarget: { ...character.trainingTarget } }),
         control: snapshotControl(character),
         creatureType: character.creatureType,
         alive: character.alive,
@@ -42,7 +45,7 @@ export function createCharacterSnapshot(
         equipment: snapshotEquipment(character.equipment),
         facing: character.facing,
         faction: character.faction,
-        hp: Math.round(character.hp),
+        health: { kind: 'exact', current: character.hp, max: character.maxHp },
         heroClass: character.heroClass ?? null,
         level: character.level,
         xp: character.xp,
@@ -60,7 +63,6 @@ export function createCharacterSnapshot(
         },
         id: character.id,
         inventory: character.inventory.map(snapshotItem),
-        maxHp: character.maxHp,
         nickname: character.nickname,
         path: character.remainingPath(),
         position: character.position,

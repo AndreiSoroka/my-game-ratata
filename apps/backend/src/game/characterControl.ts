@@ -7,7 +7,6 @@ import type {
 import {
     allowedMode,
     availableActor as available,
-    canFight,
     reachedTarget,
 } from './autoActionTargets'
 import type { GameCharacter } from './character'
@@ -23,7 +22,6 @@ import {
     snapshotCharacterRoute,
 } from './characterRoute'
 import type { ControlWorld } from './controlWorld'
-import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { visibilityRadius } from './queries'
@@ -109,10 +107,13 @@ function setTargetControl(
     ) {
         return false
     }
-    const hostile = canTargetByFaction(actor, target, now)
     if (
-        (command.type === 'auto_attack') !== hostile ||
-        (command.type === 'auto_attack' && !canFight(actor))
+        !allowedMode(
+            actor,
+            target,
+            command.type === 'auto_attack' ? 'attack' : 'follow',
+            now
+        )
     ) {
         return false
     }

@@ -70,7 +70,13 @@ onBeforeUnmount(() => props.api.stop())
                     }}
                 </dd>
                 <dt>Health</dt>
-                <dd>{{ state.player ? `${state.player.hp}/${state.player.maxHp}` : '—' }}</dd>
+                <dd>
+                    {{
+                        state.player?.health.kind === 'exact'
+                            ? `${state.player.health.current}/${state.player.health.max}`
+                            : '—'
+                    }}
+                </dd>
             </dl>
             <fieldset :disabled="!state.connected">
                 <legend>Hold to move</legend>

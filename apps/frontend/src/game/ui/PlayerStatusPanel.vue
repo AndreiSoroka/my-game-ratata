@@ -15,9 +15,12 @@ const props = defineProps<{
 
 const resources = computed(() => [
     {
-        current: props.character.hp,
+        current:
+            props.character.health.kind === 'exact'
+                ? props.character.health.current
+                : props.character.health.percent,
         kind: 'hp' as const,
-        max: props.character.maxHp,
+        max: props.character.health.kind === 'exact' ? props.character.health.max : 100,
     },
     {
         current: props.character.resources.mana,

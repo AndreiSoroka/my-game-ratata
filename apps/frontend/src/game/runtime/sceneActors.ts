@@ -3,6 +3,7 @@ import type {
     GameEventPayload,
     ItemId,
     ProjectilePath,
+    TrainingAreaDefinition,
     Vector2,
     WorldObjectBounds,
     WorldSnapshot,
@@ -10,13 +11,12 @@ import type {
 import { Actor, BoundingBox, Engine, type ImageSource, type SpriteSheet, vec } from 'excalibur'
 
 import type { CharacterId } from '../assets/characterCatalog'
-import { characterCatalog } from '../assets/characterCatalog'
-import { AttackZoneViews } from './attackZoneViews'
 import { BuildingViews } from './buildingViews'
-import { characterFrame } from './characterFrame'
+import { CharacterGraphics } from './characterGraphics'
 import {
     type CharacterBundle,
     createBundle,
+    positionBundle,
     removeBundle,
     updateBundleHealth,
 } from './characterViewBundle'
@@ -31,13 +31,12 @@ import {
     updateResourceVisibility,
 } from './mapVisibility'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
-import { PrayerPreviewViews } from './prayerPreviewViews'
 import { RouteWaypointViews } from './routeWaypointViews'
 import { createSceneMapActor } from './sceneMapActor'
-import { ShotPreviewViews } from './shotPreviewViews'
 import { SignReadingViews } from './signReadingViews'
 import { StatusViews } from './statusViews'
 import type { RenderedTiledMap } from './tiledMap'
+import { observerTrainingArea, TrainingGuides } from './trainingGuides'
 import { WorldSceneActors } from './worldSceneActors'
 
 const cameraZoom = 3
@@ -49,9 +48,9 @@ export class SceneActors {
     private readonly depthProps: DepthPropViews
     private readonly corpseViews: CorpseViews
     private readonly worldActors: WorldSceneActors
-    private readonly attackZones: AttackZoneViews
-    private readonly prayerPreview: PrayerPreviewViews
-    private readonly shotPreview: ShotPreviewViews
+    private readonly guides: TrainingGuides
+    private trainingAreas: TrainingAreaDefinition[] = []
+    private readonly characterGraphics: CharacterGraphics
     private readonly combatTarget: InteractionTargetViews
     private readonly interactionTarget: InteractionTargetViews
     private mapVisibility: MapVisibility | undefined
@@ -69,16 +68,15 @@ export class SceneActors {
 
     public constructor(
         private readonly engine: Engine,
-        private readonly sheets: Map<CharacterId, SpriteSheet>,
+        sheets: Map<CharacterId, SpriteSheet>,
         itemImages: Map<ItemId, ImageSource>,
         chestImage: ImageSource,
         farmImage: ImageSource
     ) {
-        this.prayerPreview = new PrayerPreviewViews(engine)
-        this.shotPreview = new ShotPreviewViews(engine)
+        this.characterGraphics = new CharacterGraphics(sheets)
+        this.guides = new TrainingGuides(engine)
         this.combatTarget = new InteractionTargetViews(engine)
         this.interactionTarget = new InteractionTargetViews(engine)
-        this.attackZones = new AttackZoneViews(engine)
         this.signReading = new SignReadingViews(engine)
         this.routeWaypoints = new RouteWaypointViews(engine)
         this.buildingViews = new BuildingViews(engine)
@@ -100,20 +98,19 @@ export class SceneActors {
             (id) => {
                 const bundle = this.bundles.get(id)
                 if (bundle?.snapshot) this.updateGraphic(bundle.body, bundle.snapshot)
-            }
+            },
+            (id) => this.bundles.get(id)?.snapshot?.trainingTarget !== undefined
         )
     }
 
     public clearDamage(): void {
-        this.prayerPreview.clear()
-        this.shotPreview.clear()
+        this.guides.clear()
         this.damageFeedback.clear()
         this.combatEffects.clear()
         this.statusViews.clear()
     }
     public dispose(): void {
-        this.prayerPreview.dispose()
-        this.shotPreview.dispose()
+        this.guides.dispose()
         this.corpseViews.dispose()
         this.depthProps.dispose()
         this.damageFeedback.dispose()
@@ -123,7 +120,6 @@ export class SceneActors {
         this.routeWaypoints.dispose()
         this.interactionTarget.dispose()
         this.combatTarget.dispose()
-        this.attackZones.update([])
         this.mapVisibility = this.playerPosition = undefined
         this.gravePositions.clear()
     }
@@ -140,6 +136,7 @@ export class SceneActors {
         this.combatTarget.clear()
         this.routeWaypoints.clear()
         this.signReading.setMap(map.visibility)
+        this.trainingAreas = map.training.areas
         this.mapVisibility = map.visibility
         this.playerPosition = undefined
         this.gravePositions.clear()
@@ -175,12 +172,11 @@ export class SceneActors {
             this.updateCharacter(character, character.id === localPlayerId)
         }
 
-        this.statusViews.sync(
-            snapshot.characters.filter((character) => this.isCharacterVisible(character.id))
+        const visibleCharacters = snapshot.characters.filter((character) =>
+            this.isCharacterVisible(character.id)
         )
-        this.combatEffects.sync(
-            snapshot.characters.filter((character) => this.isCharacterVisible(character.id))
-        )
+        this.statusViews.sync(visibleCharacters)
+        this.combatEffects.sync(visibleCharacters)
         this.corpseViews.update(snapshot.chests, snapshot.characters)
         this.worldActors.update(
             snapshot.items,
@@ -189,7 +185,19 @@ export class SceneActors {
             snapshot.adventure?.farmPlots,
             snapshot.serverTime
         )
-        this.attackZones.update(snapshot.characters.flatMap((character) => character.attackZones))
+        this.guides.update(
+            observerTrainingArea(this.trainingAreas, player),
+            snapshot.characters,
+            (id) => {
+                const actor = this.bundles.get(id)?.snapshot
+                return (
+                    this.isCharacterVisible(id) &&
+                    actor !== undefined &&
+                    (id === localPlayerId ||
+                        this.isInteractionVisible(actor.position, undefined, 240))
+                )
+            }
+        )
         this.followLocalPlayer(localPlayerId)
     }
 
@@ -204,7 +212,7 @@ export class SceneActors {
     }
 
     public setShotPreview(path: ProjectilePath | undefined): void {
-        this.shotPreview.set(path)
+        this.guides.setShot(path)
     }
 
     public clearWaypoints(): void {
@@ -212,7 +220,7 @@ export class SceneActors {
     }
 
     public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {
-        this.prayerPreview.set(preview)
+        this.guides.setPrayer(preview)
     }
 
     public setCombatTarget(target: TargetHighlight | undefined): void {
@@ -246,15 +254,7 @@ export class SceneActors {
     private updateCharacter(snapshot: CharacterSnapshot, isLocalPlayer: boolean): void {
         const bundle = this.getBundle(snapshot)
         bundle.snapshot = snapshot
-        const position = vec(snapshot.position.x, snapshot.position.y)
-        bundle.body.pos = position
-        bundle.body.z = snapshot.position.y
-        bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - 44)
-        bundle.label.z = bundle.body.z + 3
-        bundle.hpBack.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
-        bundle.hpBack.z = bundle.body.z + 2
-        bundle.hpFill.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
-        bundle.hpFill.z = bundle.body.z + 2
+        positionBundle(bundle, snapshot)
         bundle.label.text = snapshot.nickname
         bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
         this.updateGraphic(bundle.body, snapshot)
@@ -282,19 +282,12 @@ export class SceneActors {
     }
 
     private updateGraphic(actor: Actor, snapshot: CharacterSnapshot): void {
-        const characterId = snapshot.visualId
-        const definition = characterCatalog[characterId]
-        const sheet = this.sheets.get(characterId)
-        const graphic = characterFrame(
-            definition,
+        this.characterGraphics.update(
+            actor,
             snapshot,
             performance.now() + this.serverClockOffset,
             this.damageFeedback.elapsed(snapshot.id)
         )
-        if (sheet === undefined || graphic === undefined) return
-        actor.graphics.use(sheet.getSprite(graphic.frame, graphic.row))
-        actor.graphics.flipHorizontal = graphic.flipHorizontal
-        actor.graphics.opacity = snapshot.alive ? 1 : 0.55
     }
 
     private followLocalPlayer(localPlayerId: string | undefined): void {

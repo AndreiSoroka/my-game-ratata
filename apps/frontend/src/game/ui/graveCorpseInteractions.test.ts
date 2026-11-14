@@ -36,7 +36,7 @@ describe('one E target for a grave and its coincident corpse', () => {
         (phase) => {
             const f = fixture()
             f.grave.phase = phase
-            if (phase === 'ruined') f.grave.hp = 0
+            if (phase === 'ruined') f.grave.health = { kind: 'exact', current: 0, max: 100 }
             const target = f.select()
             expect(target?.key).toBe(`grave:${f.grave.id}`)
             expect(target?.actions).toEqual([

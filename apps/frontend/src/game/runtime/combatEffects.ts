@@ -7,6 +7,7 @@ import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } fro
 
 import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
 import { combatEffectPose, isMeleeEffect } from './combatEffectPose'
+import { hitColors, hitQuality } from './combatHitLabel'
 import { CombatParticles } from './combatParticles'
 import { EFFECT_BUDGET } from './effectBudget'
 import { BARRIER_COLOR, EffectGraphics } from './effectGraphics'
@@ -240,8 +241,8 @@ export class CombatEffects {
 }
 
 function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefined): string {
-    return event.kind === 'world_damage'
-        ? '#e4e6ea'
+    return event.kind === 'world_damage' || event.kind === 'miss'
+        ? hitColors[event.kind === 'miss' ? 'miss' : hitQuality(event)]
         : event.kind === 'heal'
           ? '#a9ea8e'
           : deityColors[actor?.progression?.deity.id ?? 'hearth']

@@ -160,6 +160,9 @@ export function applyAgentDecision(
 }
 
 function unavailableReason(character: GameCharacter): string | undefined {
+    if (character.trainingTarget !== undefined) {
+        return 'Training targets do not accept controller intentions'
+    }
     if (
         !character.alive ||
         character.tags.has('offline') ||

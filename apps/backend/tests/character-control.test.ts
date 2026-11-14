@@ -274,7 +274,13 @@ describe('targeted shared hits', () => {
         }
         expect(attemptAttack(context)[0]?.targetId).toBe(target.id)
         target.position.x = 180
-        expect(resolvePendingAttackHit({ ...context, now: 1_100 })).toEqual([])
+        expect(resolvePendingAttackHit({ ...context, now: 1_100 })).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                targetId: target.id,
+            }),
+        ])
         expect(neighbor.hp).toBe(neighbor.maxHp)
     })
     it('revalidates line of sight and applies actual dodge outcomes', () => {

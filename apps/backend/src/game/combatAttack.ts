@@ -49,6 +49,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
         target: context.target,
         canStun: spend.canStun,
         damageMultiplier: spend.fullyPowered ? 1 : 1 / 3,
+        underpowered: !spend.fullyPowered,
         targetEnergyDrain: Math.ceil(
             actor.config.resources.attackEnergyCost / 2
         ),

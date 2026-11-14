@@ -191,8 +191,7 @@ function characterTargets(
             interactionRange: 48,
             details: {
                 alive: actor.alive,
-                hp: actor.hp,
-                maxHp: actor.maxHp,
+                health: actor.health,
                 relationship: relation(actor, player),
                 creatureType: actor.creatureType,
                 archetype: actor.archetype,

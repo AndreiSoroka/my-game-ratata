@@ -1,3 +1,4 @@
+import type { HealthSnapshot } from './health'
 import type { Vector2, WorldObjectBounds } from './index'
 
 export const GRAVE_SPAWN_INTERVAL_MS = 10 * 60_000
@@ -44,7 +45,6 @@ export interface GraveSourceDefinition {
 export interface WorldGraveSnapshot extends GraveSourceDefinition {
     phase: 'active' | 'ruined' | 'purified'
     material: 'stone'
-    hp: number
-    maxHp: number
+    health: HealthSnapshot
     restoresAt?: number
 }

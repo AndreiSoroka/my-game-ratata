@@ -75,6 +75,7 @@ function observeActor(url: URL, room: GameRoom): Response | undefined {
     const actor = room.getCharacter(actorId)
     if (
         actor === undefined ||
+        actor.trainingTarget !== undefined ||
         actor.controllerKind === 'network_player' ||
         actor.soul.controlSource === 'human'
     ) {

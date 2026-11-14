@@ -79,7 +79,7 @@ describe('four explicit hotbar bindings', () => {
     })
     it('shows pinned prayer cost before pressing its key and submits that exact intent', async () => {
         const player = characterFixture('self', {
-            hp: 5,
+            health: { kind: 'exact', current: 5, max: 24 },
             abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
         })
         const wrapper = mount(ActionHotbar, {

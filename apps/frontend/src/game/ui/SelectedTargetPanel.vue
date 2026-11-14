@@ -3,6 +3,7 @@ import type { CharacterSnapshot, WorldGraveSnapshot } from '@my-game-ratata/cont
 
 import { relation } from './combatTargeting'
 import GraveDetails from './GraveDetails.vue'
+import { healthBarPercent, healthText } from './healthPresentation'
 
 defineProps<{
     target?: CharacterSnapshot
@@ -16,13 +17,23 @@ defineProps<{
         <GraveDetails v-if="grave" :grave="grave" :server-time="serverTime" compact />
         <template v-else-if="target">
             <strong>{{ target.nickname }}</strong
-            ><span>{{ Math.round((target.hp / Math.max(1, target.maxHp)) * 100) }}%</span>
+            ><span v-if="!target.trainingTarget && target.health.kind === 'exact'">{{
+                healthText(target.health)
+            }}</span>
+            <progress
+                v-if="!target.trainingTarget"
+                :value="healthBarPercent(target.health)"
+                :max="100"
+                aria-label="Здоровье цели"
+            />
             <small>{{
                 target.id === player.id
                     ? 'Вы'
-                    : relation(target, player) === 'hostile'
-                      ? 'Враг · 1–4 действия'
-                      : 'Союзник · E действия'
+                    : target.trainingTarget
+                      ? 'Тренировочная цель · 1–4 действия'
+                      : relation(target, player) === 'hostile'
+                        ? 'Враг · 1–4 действия'
+                        : 'Союзник · E действия'
             }}</small>
         </template>
     </aside>
@@ -48,6 +59,11 @@ defineProps<{
     display: block;
     color: #b9c7a4;
     font-size: 10px;
+}
+progress {
+    width: 100%;
+    height: 6px;
+    accent-color: #91b577;
 }
 @media (max-width: 740px) {
     .target-panel {

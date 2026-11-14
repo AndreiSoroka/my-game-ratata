@@ -8,7 +8,7 @@ export function applyCharacterDamage(
     amount: number,
     now: number
 ): void {
-    if (!character.alive) {
+    if (!character.alive || character.trainingTarget !== undefined) {
         return
     }
 
