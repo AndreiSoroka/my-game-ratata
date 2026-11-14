@@ -1,7 +1,14 @@
-import type { AttackAbilityId } from '@my-game-ratata/contracts'
+import type {
+    AttackAbilityId,
+    SpellSkillId,
+    WorldCombatTarget,
+} from '@my-game-ratata/contracts'
 export interface PendingAttackHit {
     weaponInstanceId?: string | undefined
-    abilityId?: AttackAbilityId | undefined
+    abilityId?: AttackAbilityId | SpellSkillId | undefined
+    rawDamage?: number | undefined
+    maxRange?: number | undefined
+    target?: WorldCombatTarget | undefined
     targetId?: string | undefined
     canStun: boolean
     damageMultiplier: number

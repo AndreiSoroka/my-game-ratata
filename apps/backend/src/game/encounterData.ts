@@ -39,19 +39,26 @@ export function readEncounterData(
         map.layers.find((layer) => layer.name === 'Depth props')?.objects ?? []
     const graves = (graveLayer?.objects ?? []).map((object) => {
         const id = sourceId(object, 'sourceId', ids)
+        const propId = property(object, 'propId')
         const prop = props.find(
-            (candidate) =>
-                property(candidate, 'propId') === property(object, 'propId')
+            (candidate) => property(candidate, 'propId') === propId
         )
         if (
             object.type !== 'grave_source' ||
+            typeof propId !== 'string' ||
+            propId.length === 0 ||
             !validPoint(object, map) ||
             prop === undefined ||
             !contains(prop, object)
         ) {
             throw new Error(`Invalid grave source in ${locationId}`)
         }
-        return { id, locationId, position: { x: object.x, y: object.y } }
+        return {
+            id,
+            locationId,
+            propId,
+            position: { x: object.x, y: object.y },
+        }
     })
     const slimeHabitats = (habitatLayer?.objects ?? []).map((object) => {
         sourceId(object, 'habitatId', ids)

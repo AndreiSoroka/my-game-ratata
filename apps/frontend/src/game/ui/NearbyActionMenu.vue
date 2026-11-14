@@ -120,6 +120,7 @@ onBeforeUnmount(returnFocus)
                 ×
             </button>
         </header>
+        <slot />
         <div ref="menu" role="menu" :aria-labelledby="labelId" tabindex="-1">
             <button
                 v-for="action in actions"

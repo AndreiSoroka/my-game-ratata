@@ -60,12 +60,15 @@ export default defineConfig({
         },
         {
             name: 'firefox',
+            // This source lifecycle runs once (desktop/mobile Chromium) in the shared world.
+            testIgnore: ['**/*.visual.spec.ts', '**/grave-interaction.spec.ts'],
             use: {
                 ...devices['Desktop Firefox'],
             },
         },
         {
             name: 'webkit',
+            testIgnore: ['**/*.visual.spec.ts', '**/grave-interaction.spec.ts'],
             use: {
                 ...devices['Desktop Safari'],
             },

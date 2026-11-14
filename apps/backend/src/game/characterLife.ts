@@ -11,6 +11,7 @@ import { clearAbilityEffects, createAbilityState } from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
 import { resolveMiracle } from './deities'
+import { advanceGravePurification } from './gravePrayer'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
 import { cancelPrayerCast } from './prayerCancellation'
@@ -103,6 +104,9 @@ export function advanceRevive(
     const cast = caster.abilities.casting
     if (cast === null) {
         return []
+    }
+    if (cast.mode === 'purify_grave') {
+        return advanceGravePurification(caster, now, context)
     }
     const target = findTarget(cast.targetId)
     if (

@@ -19,6 +19,10 @@ export type GameEventKind =
     | 'farm_sow'
     | 'farm_harvest'
     | 'damage'
+    | 'world_damage'
+    | 'grave_ruined'
+    | 'grave_purified'
+    | 'grave_restored'
     | 'death'
     | 'item_drop'
     | 'item_eat'
@@ -55,5 +59,6 @@ export interface GameEventPayload {
     itemId?: ItemId
     kind: GameEventKind
     targetId?: string
+    target?: import('./graves').WorldCombatTarget
     text?: string
 }

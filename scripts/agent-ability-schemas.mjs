@@ -1,6 +1,28 @@
 const targetId = { type: 'string', minLength: 1, maxLength: 100 }
+const graveTarget = {
+    type: 'object',
+    required: ['kind', 'id'],
+    additionalProperties: false,
+    properties: { kind: { const: 'grave' }, id: targetId },
+}
+const graveAbilities = [
+    'shot',
+    'spark',
+    'skeleton_strike',
+    'fireball',
+    'greater_fireball',
+]
 const prayerIntent = {
     oneOf: [
+        {
+            type: 'object',
+            required: ['mode', 'target'],
+            additionalProperties: false,
+            properties: {
+                mode: { const: 'purify_grave' },
+                target: graveTarget,
+            },
+        },
         {
             type: 'object',
             required: ['mode'],
@@ -25,6 +47,28 @@ const prayerIntent = {
     ],
 }
 export const abilityDecisionSchemas = [
+    {
+        type: 'object',
+        required: ['type', 'target'],
+        additionalProperties: false,
+        properties: { type: { const: 'attack' }, target: graveTarget },
+    },
+    {
+        type: 'object',
+        required: ['type'],
+        additionalProperties: false,
+        properties: { type: { const: 'cancel_prayer' } },
+    },
+    {
+        type: 'object',
+        required: ['type', 'abilityId', 'target'],
+        additionalProperties: false,
+        properties: {
+            type: { const: 'use_ability' },
+            abilityId: { enum: graveAbilities },
+            target: graveTarget,
+        },
+    },
     {
         type: 'object',
         required: ['type', 'abilityId'],
@@ -104,6 +148,25 @@ export const abilityDecisionSchemas = [
             type: { const: 'auto_action' },
             action: {
                 oneOf: [
+                    {
+                        type: 'object',
+                        required: ['kind', 'target'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'attack' },
+                            target: graveTarget,
+                        },
+                    },
+                    {
+                        type: 'object',
+                        required: ['kind', 'abilityId', 'target'],
+                        additionalProperties: false,
+                        properties: {
+                            kind: { const: 'ability' },
+                            abilityId: { enum: graveAbilities },
+                            target: graveTarget,
+                        },
+                    },
                     {
                         type: 'object',
                         required: ['kind', 'abilityId'],

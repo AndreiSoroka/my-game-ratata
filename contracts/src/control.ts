@@ -3,11 +3,16 @@ import type { AbilityId, PrayerIntent } from './abilities'
 export type CharacterRelationship = 'self' | 'friendly' | 'hostile'
 
 export type CharacterAutoAction =
-    | { kind: 'attack'; targetId: string }
+    | {
+          kind: 'attack'
+          targetId?: string
+          target?: import('./graves').WorldCombatTarget
+      }
     | {
           kind: 'ability'
           abilityId: Exclude<AbilityId, 'pray'>
           targetId?: string
+          target?: import('./graves').WorldCombatTarget
       }
     | { kind: 'prayer'; intent: PrayerIntent }
 

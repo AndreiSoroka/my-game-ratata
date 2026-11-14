@@ -1,4 +1,8 @@
-import type { ClientMessage, GameEventPayload } from '@my-game-ratata/contracts'
+import type {
+    ClientMessage,
+    GameEventPayload,
+    WorldCombatTarget,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
@@ -15,7 +19,11 @@ interface PlayerMessageContext {
     message: ClientMessage
     navigation: NavigationService
     player: GameCharacter
-    requestAttack: (actor: GameCharacter, targetId?: string) => void
+    requestAttack: (
+        actor: GameCharacter,
+        targetId?: string,
+        target?: WorldCombatTarget
+    ) => void
     sendEvents: (events: GameEventPayload[]) => void
     worldInventory: WorldInventory
 }
@@ -43,10 +51,10 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
 
     if (message.type === 'attack') {
         cancelCharacterControl(player)
-        if (message.targetId === undefined) {
+        if (message.targetId === undefined && message.target === undefined) {
             faceNearestTarget(player, context.characters.values(), 48)
         }
-        context.requestAttack(player, message.targetId)
+        context.requestAttack(player, message.targetId, message.target)
         return
     }
 

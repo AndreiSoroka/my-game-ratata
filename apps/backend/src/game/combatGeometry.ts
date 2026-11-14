@@ -3,6 +3,7 @@ import {
     type AttackAbilityId,
     type AttackZone,
     SHOT_HALF_WIDTH,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -64,7 +65,10 @@ function rotatePoint(
     }
 }
 
-export function isInZones(target: GameCharacter, zones: AttackZone[]): boolean {
+export function isInZones(
+    target: { position: Vector2 },
+    zones: AttackZone[]
+): boolean {
     return zones.some(
         (zone) =>
             target.position.x >= zone.minX &&

@@ -16,6 +16,7 @@ import {
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import { chestActions } from './chestActions'
 import { relation } from './combatTargeting'
+import { corpseSharesGrave, graveTargets } from './graveInteractions'
 import { facingInteractionTarget, interactionDistance } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
 import { justiceActions } from './justiceActions'
@@ -66,6 +67,7 @@ export function nearbyInteractionTarget(
     if (!player.alive || player.tags.includes('offline')) return undefined
     const candidates = [
         ...characterTargets(snapshot, player, characters),
+        ...graveTargets(snapshot, player),
         ...objectTargets(snapshot, player),
         ...resourceTargets(snapshot, player),
         ...farmTargets(snapshot, player),
@@ -164,19 +166,24 @@ function farmTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Target
         }))
 }
 function chestTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
-    return snapshot.chests.map((chest) => ({
-        key: `chest:${chest.id}`,
-        name: chest.title ?? 'Сундук',
-        position: chest.position,
-        range: CHEST_INTERACTION_RANGE,
-        bounds: {
-            x: chest.position.x - CHEST_FOOTPRINT_SIZE / 2,
-            y: chest.position.y - CHEST_FOOTPRINT_SIZE / 2,
-            width: CHEST_FOOTPRINT_SIZE,
-            height: CHEST_FOOTPRINT_SIZE,
-        },
-        actions: chestActions({ ...snapshot, chests: [chest] }, player),
-    }))
+    return snapshot.chests
+        .filter(
+            (chest) =>
+                !(snapshot.graves ?? []).some((grave) => corpseSharesGrave(chest, grave, player))
+        )
+        .map((chest) => ({
+            key: `chest:${chest.id}`,
+            name: chest.title ?? 'Сундук',
+            position: chest.position,
+            range: CHEST_INTERACTION_RANGE,
+            bounds: {
+                x: chest.position.x - CHEST_FOOTPRINT_SIZE / 2,
+                y: chest.position.y - CHEST_FOOTPRINT_SIZE / 2,
+                width: CHEST_FOOTPRINT_SIZE,
+                height: CHEST_FOOTPRINT_SIZE,
+            },
+            actions: chestActions({ ...snapshot, chests: [chest] }, player),
+        }))
 }
 function itemTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
     return snapshot.items.map((item) => ({

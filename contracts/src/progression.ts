@@ -53,5 +53,10 @@ export type ProgressionClientMessage =
     | { type: 'study_magic'; targetId: string }
     | { type: 'teach_magic'; targetId: string }
     | { type: 'learn_skill'; skillId: 'fireball'; targetId: string }
-    | { type: 'cast_spell'; skillId: SpellSkillId; targetId: string }
+    | {
+          type: 'cast_spell'
+          skillId: SpellSkillId
+          targetId?: string
+          target?: import('./graves').WorldCombatTarget
+      }
 export type ProgressionCommand = ProgressionClientMessage

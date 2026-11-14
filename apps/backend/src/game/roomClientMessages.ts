@@ -41,6 +41,7 @@ export function handleCharacterMessage(
         return
     }
     const events = handleRoomAction({
+        graves: room.abilityContextFor(player, Date.now()).graves,
         requestAbilityAttack: room.abilityContextFor(player, Date.now())
             .requestAbilityAttack,
         adventure,
@@ -74,8 +75,8 @@ export function handleCharacterMessage(
         message,
         navigation: room.navigationFor(player),
         player,
-        requestAttack: (actor, targetId) => {
-            room.requestAttack(actor, Date.now(), targetId)
+        requestAttack: (actor, targetId, target) => {
+            room.requestAttack(actor, Date.now(), targetId, target)
         },
         sendEvents: (events) => {
             room.publishEvents(events)

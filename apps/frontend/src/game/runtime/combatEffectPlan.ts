@@ -3,7 +3,9 @@ import {
     type CharacterSnapshot,
     type DeityId,
     type GameEventPayload,
+    GRAVE_PURIFY_CAST_MS,
     type ProjectilePath,
+    type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import { BARRIER_COLOR, type EffectShape, FIRE_COLOR, SPARK_COLOR } from './effectGraphics'
@@ -12,6 +14,7 @@ import { deityColors } from './prayerGraphics'
 export interface EffectCue {
     kind: EffectShape
     projectile?: ProjectilePath
+    target?: WorldCombatTarget
     fromId: string
     targetId: string
     deity: DeityId
@@ -38,7 +41,14 @@ function attackShape(event: GameEventPayload, actor: CharacterSnapshot): EffectS
 export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapshot): EffectCue[] {
     const deity = actor.progression?.deity.id ?? 'hearth'
     const targetId = event.targetId ?? actor.id
-    const base = { fromId: targetId, targetId, deity, color: deityColors[deity], duration: 650 }
+    const base = {
+        fromId: targetId,
+        targetId,
+        deity,
+        color: deityColors[deity],
+        duration: 650,
+        ...(event.target ? { target: event.target } : {}),
+    }
     if (event.kind === 'attack') return [attackCue(event, actor, base)]
     if (event.kind === 'cast' && event.abilityId === 'pray')
         return prayerCastCues(event, actor, base)
@@ -69,7 +79,7 @@ function prayerCastCues(
                 ...base,
                 fromId: actor.id,
                 kind: 'casting',
-                duration: 3000,
+                duration: event.target ? GRAVE_PURIFY_CAST_MS : 3000,
                 channel: true,
                 count: 12,
             },
@@ -129,6 +139,7 @@ export function eventCaption(event: GameEventPayload): string | undefined {
         status: () => (event.statusId === 'stun' ? 'СТАН' : undefined),
         cast: () => castCaption(event),
         damage: () => (event.critical ? 'КРИТ!' : undefined),
+        world_damage: () => worldDamageCaption(event),
         attack: () => (event.abilityId === 'skeleton_strike' ? 'Костяной удар…' : undefined),
     }
     return captions[event.kind]?.()
@@ -177,4 +188,11 @@ function castCaption(event: GameEventPayload): string | undefined {
     if (event.phase === 'completed' && event.abilityId === 'pray') return 'Молитва'
     if (event.phase === 'started' && event.abilityId === 'skeleton_strike') return 'Костяной удар…'
     return undefined
+}
+
+function worldDamageCaption(event: GameEventPayload): string | undefined {
+    const amount = event.amount
+    if (amount === undefined || !Number.isFinite(amount) || amount <= 0) return undefined
+    const value = amount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })
+    return `−${value}${event.critical ? ' КРИТ!' : ''}`
 }

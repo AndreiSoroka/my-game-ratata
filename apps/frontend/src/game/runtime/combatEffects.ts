@@ -1,4 +1,8 @@
-import type { CharacterSnapshot, GameEventPayload } from '@my-game-ratata/contracts'
+import type {
+    CharacterSnapshot,
+    GameEventPayload,
+    WorldCombatTarget,
+} from '@my-game-ratata/contracts'
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
@@ -7,6 +11,8 @@ import { CombatParticles } from './combatParticles'
 import { EFFECT_BUDGET } from './effectBudget'
 import { BARRIER_COLOR, EffectGraphics } from './effectGraphics'
 import { deityColors } from './prayerGraphics'
+
+type EffectTarget = Pick<CharacterSnapshot, 'position'>
 
 interface Effect {
     actor: Actor
@@ -31,7 +37,10 @@ export class CombatEffects {
         typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
     public constructor(
         private readonly engine: Engine,
-        private readonly character: (id: string) => CharacterSnapshot | undefined
+        private readonly character: (id: string) => CharacterSnapshot | undefined,
+        private readonly worldTarget: (
+            target: WorldCombatTarget
+        ) => EffectTarget | undefined = () => undefined
     ) {
         this.particles = new CombatParticles(engine, this.reduced)
         engine.on('postupdate', this.update)
@@ -59,7 +68,8 @@ export class CombatEffects {
         }
         this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
     }
-    private eventTarget(event: GameEventPayload): CharacterSnapshot | undefined {
+    private eventTarget(event: GameEventPayload): EffectTarget | undefined {
+        if (event.target && event.kind !== 'attack') return this.worldTarget(event.target)
         const casterCaption =
             event.kind === 'cast' && event.abilityId === 'pray' && event.phase === 'completed'
         return this.character(
@@ -116,9 +126,12 @@ export class CombatEffects {
             if (effect.cue?.channel && effect.cue.fromId === actorId) this.remove(effect)
         this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
     }
+    private cueTarget(cue: EffectCue): EffectTarget | undefined {
+        return cue.target ? this.worldTarget(cue.target) : this.character(cue.targetId)
+    }
     private visual(cue: EffectCue): void {
         const from = this.character(cue.fromId),
-            target = this.character(cue.targetId)
+            target = this.cueTarget(cue)
         if (!from || !target) return
         if (!this.admitWave(cue)) return
         const pose = combatEffectPose(cue, from, target, this.reduced)
@@ -142,7 +155,7 @@ export class CombatEffects {
         const particles = this.particles.burst(cue, actor.pos, this.now)
         Object.assign(effect, { particles })
     }
-    private label(target: CharacterSnapshot, text: string, color: string): void {
+    private label(target: EffectTarget, text: string, color: string): void {
         const actor = new Label({
             text,
             pos: vec(target.position.x, target.position.y - 42),
@@ -184,7 +197,7 @@ export class CombatEffects {
         if (progress >= 1) return false
         const cue = effect.cue
         if (cue) {
-            const target = this.character(cue.targetId)
+            const target = this.cueTarget(cue)
             if (!target) return false
             this.animateVisual(effect, cue, target, progress)
         } else if (!this.reduced)
@@ -194,7 +207,7 @@ export class CombatEffects {
     private animateVisual(
         effect: Effect,
         cue: EffectCue,
-        target: CharacterSnapshot,
+        target: EffectTarget,
         progress: number
     ): void {
         if (cue.channel) {
@@ -227,7 +240,11 @@ export class CombatEffects {
 }
 
 function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefined): string {
-    return event.kind === 'heal' ? '#a9ea8e' : deityColors[actor?.progression?.deity.id ?? 'hearth']
+    return event.kind === 'world_damage'
+        ? '#e4e6ea'
+        : event.kind === 'heal'
+          ? '#a9ea8e'
+          : deityColors[actor?.progression?.deity.id ?? 'hearth']
 }
 function channelEnded(
     cue: EffectCue | undefined,

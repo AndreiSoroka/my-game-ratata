@@ -8,7 +8,12 @@ export function tickCharacterTimedState(
     character: GameCharacter,
     now: number
 ): void {
-    if (character.attackZoneUntil > 0 && now >= character.attackZoneUntil) {
+    // Movement/timed-state runs before hit resolution, including ticks later than the deadline.
+    if (
+        character.pendingAttack === undefined &&
+        character.attackZoneUntil > 0 &&
+        now >= character.attackZoneUntil
+    ) {
         character.attackZones = []
         character.attackZoneUntil = 0
     }

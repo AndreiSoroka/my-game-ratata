@@ -5,6 +5,7 @@ import type { GameCharacter } from './character'
 import { PolicyController } from './companionControllers'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
+import type { GraveCombatContext } from './graveRules'
 import { GraveSpawns } from './graveSpawns'
 import { resourceOccupants } from './roomEconomy'
 import { advanceRoomLives, finalizeRoomLife } from './roomLifecycle'
@@ -15,6 +16,12 @@ import { applyEncounterDifficulty } from './worldSpawns'
 
 export class RoomLife {
     private readonly deathSpawns = new GraveSpawns()
+    public readonly graveRules: GraveCombatContext = {
+        get: (id) => this.deathSpawns.get(id),
+        list: (locationId) => this.deathSpawns.snapshot(locationId),
+        damage: (id, amount, now) => this.deathSpawns.damage(id, amount, now),
+        purify: (id, now) => this.deathSpawns.purify(id, now),
+    }
 
     public constructor(
         private readonly characters: Map<string, GameCharacter>,
@@ -47,7 +54,13 @@ export class RoomLife {
         now: number,
         abilityContextFor: (actor: GameCharacter, at: number) => AbilityContext
     ): void {
-        advanceRoomLives({ ...this.context(now), abilityContextFor })
+        advanceRoomLives({
+            ...this.context(now),
+            abilityContextFor: (actor, at) => ({
+                ...abilityContextFor(actor, at),
+                graves: this.graveRules,
+            }),
+        })
         this.deathSpawns.update(now, {
             characters: this.characters,
             navigation: (id) => this.world().get(id).navigation,

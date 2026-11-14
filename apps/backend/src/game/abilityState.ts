@@ -3,16 +3,27 @@ import type {
     CharacterAbilitiesSnapshot,
     CharacterArchetype,
     HeroClass,
+    Vector2,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 
-export interface PrayerCast {
+interface PrayerCastBase {
     targetId: string
     startedAt: number
     completesAt: number
     patron: GameCharacter['progression']['patron']
 }
+export type PrayerCast = PrayerCastBase &
+    (
+        | { mode?: 'revive' }
+        | {
+              mode: 'purify_grave'
+              origin: Vector2
+              locationId: string
+              hpAtStart: number
+          }
+    )
 export interface CharacterAbilityState {
     known: Set<AbilityId>
     availableAt: Partial<Record<AbilityId, number>>
@@ -116,6 +127,12 @@ function snapshotCast(
               targetId: cast.targetId,
               startedAt: cast.startedAt,
               completesAt: cast.completesAt,
+              ...(cast.mode === 'purify_grave'
+                  ? {
+                        mode: cast.mode,
+                        target: { kind: 'grave' as const, id: cast.targetId },
+                    }
+                  : {}),
           }
         : null
 }

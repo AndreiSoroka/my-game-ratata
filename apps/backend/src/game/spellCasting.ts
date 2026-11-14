@@ -6,10 +6,12 @@ import type {
 
 import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
+import { availableToStartAttack } from './combat'
 import { canTargetByFaction } from './factions'
+import { castGraveSpell } from './graveSpellCasting'
 import { distance } from './math'
 import type { ProgressionContext } from './progressionCommands'
-import { canPerformSkillAction, trainSkill } from './skillProgression'
+import { trainSkill } from './skillProgression'
 
 const spells: Record<
     SpellSkillId,
@@ -36,7 +38,7 @@ export function castSpell(
     message: Extract<ProgressionClientMessage, { type: 'cast_spell' }>,
     context: ProgressionContext
 ): GameEventPayload[] {
-    if (!canPerformSkillAction(actor, context.now)) {
+    if (!availableToStartAttack(actor, context.now)) {
         return []
     }
     const skill = actor.progression.skills[message.skillId]
@@ -50,6 +52,11 @@ export function castSpell(
         context.now < actor.progression.spellAvailableAt
     ) {
         return []
+    }
+    if (message.target !== undefined) {
+        return message.targetId === undefined
+            ? castGraveSpell(actor, message, spell, context)
+            : []
     }
     if (!canHit(actor, target, spell.range, context)) {
         return []

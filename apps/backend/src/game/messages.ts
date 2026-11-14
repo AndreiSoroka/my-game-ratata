@@ -10,6 +10,7 @@ import { heroClasses } from '@my-game-ratata/contracts'
 
 import { parseControlCommand } from './characterControl'
 import { isChestCommandType, parseChestCommand } from './chestCommands'
+import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
 import { parsePickupCommand } from './worldPickup'
 
@@ -287,13 +288,8 @@ export function parseSocketMessage(raw: unknown): ParseResult {
 }
 
 function parseAttack(record: Record<string, unknown>): ParseResult {
-    const targetId = record['targetId']
-    if (targetId === undefined) {
-        return { message: { type: 'attack' } }
-    }
-    return typeof targetId === 'string' &&
-        targetId.length > 0 &&
-        targetId.length <= 100
-        ? { message: { type: 'attack', targetId } }
+    const reference = parseCombatReference(record)
+    return reference !== undefined
+        ? { message: { type: 'attack', ...reference } }
         : { error: 'Invalid attack target' }
 }

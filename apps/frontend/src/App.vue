@@ -12,6 +12,7 @@ import AdventurePanel from './game/ui/AdventurePanel.vue'
 import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
 import DeathOverlay from './game/ui/DeathOverlay.vue'
+import { recoverFailedJoin } from './game/ui/failedJoin'
 import GameHud from './game/ui/GameHud.vue'
 import GameplayOverlay from './game/ui/GameplayOverlay.vue'
 import InventoryOverlay from './game/ui/InventoryOverlay.vue'
@@ -172,12 +173,7 @@ async function joinGame(): Promise<void> {
 }
 
 function cleanupFailedJoin(): void {
-    if (localPlayerId.value !== undefined) {
-        isJoining.value = false
-        return
-    }
-
-    resetGameSession()
+    recoverFailedJoin(isJoining, localPlayerId.value, resetGameSession)
 }
 
 function beginNewLife(): void {
@@ -268,6 +264,7 @@ onBeforeUnmount(() => {
             <NearbyInteraction
                 ref="interaction"
                 :selected-id="gameplay?.selectedId"
+                :selected-grave-id="gameplay?.selectedGraveId"
                 :snapshot="snapshot"
                 :player="localCharacter"
                 :characters="visibleCharacters"
@@ -279,6 +276,7 @@ onBeforeUnmount(() => {
                 @command="game?.sendCommand($event)"
                 @request-open="openNearbyMenu"
                 @target-change="game?.setInteractionTarget($event)"
+                @select-grave="gameplay?.selectGrave($event)"
             />
             <AdventurePanel
                 ref="adventurePanel"

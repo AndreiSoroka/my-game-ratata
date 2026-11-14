@@ -1,8 +1,9 @@
 import {
-    type AttackAbilityId,
     type GameEventPayload,
     isItemBroken,
     ITEM_DEFINITIONS,
+    type Vector2,
+    type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import { resolveCharacterDamage } from './abilityDamage'
@@ -15,6 +16,8 @@ import {
 } from './combatDamage'
 import { buildAttackZones, isInZones } from './combatGeometry'
 import { canTargetByFaction } from './factions'
+import { resolveGraveHit } from './graveCombat'
+import type { GraveCombatContext } from './graveRules'
 import { wearWeapon } from './itemDurability'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -23,6 +26,8 @@ export { attemptAbilityAttack, attemptAttack } from './combatAttack'
 
 export interface AttackContext {
     actor: GameCharacter
+    target?: WorldCombatTarget | undefined
+    graves?: GraveCombatContext | undefined
     now: number
     respawnDelayMsFor: (target: GameCharacter) => number
     targets: readonly GameCharacter[]
@@ -42,10 +47,27 @@ export function resolvePendingAttackHit(
     if (!validPendingWeapon(actor, attack)) {
         return []
     }
-    const target = findHit(context, attack.targetId)
-    if (target === undefined) {
-        return []
+    const target =
+        attack.target === undefined
+            ? findHit(context, attack.targetId)
+            : undefined
+    const graveResult = resolveGraveHit(context, attack, target)
+    if (graveResult !== undefined) {
+        return [
+            ...graveResult.events,
+            ...resolvedWeaponWear(actor, attack, graveResult.hpDamage),
+        ]
     }
+    return target === undefined
+        ? []
+        : resolveCharacterHit(context, attack, target)
+}
+function resolveCharacterHit(
+    context: AttackContext,
+    attack: PendingAttackHit,
+    target: GameCharacter
+): GameEventPayload[] {
+    const { actor, now } = context
     const random = context.random ?? Math.random
     if (dodgedAttack(target, random)) {
         return [
@@ -132,10 +154,21 @@ function resolvedWeaponWear(
 }
 export function isTargetInAttackRange(
     actor: GameCharacter,
-    target: GameCharacter,
+    target: { position: Vector2 },
     tileSize: number
 ): boolean {
     return isInZones(target, buildAttackZones(actor, tileSize))
+}
+/** A due hit still belongs to the combat tick; a later command must not replace it. */
+export function availableToStartAttack(
+    actor: GameCharacter,
+    now: number
+): boolean {
+    return (
+        availableToAttack(actor, now) &&
+        !actor.isActionLocked(now) &&
+        actor.pendingAttack === undefined
+    )
 }
 export function availableToAttack(actor: GameCharacter, now: number): boolean {
     return (
@@ -185,7 +218,7 @@ function findHit(
 }
 function practiceAttack(
     actor: GameCharacter,
-    abilityId: AttackAbilityId | undefined
+    abilityId: PendingAttackHit['abilityId']
 ): GameEventPayload[] {
     if (abilityId === 'spark') {
         return trainSkill(actor, 'arcana')

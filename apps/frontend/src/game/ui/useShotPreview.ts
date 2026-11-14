@@ -14,7 +14,8 @@ export function useShotPreview(
         const assigned = bindings.value.some(
             (binding) => binding?.kind === 'ability' && binding.id === 'shot'
         )
-        const targeted = props.target && relation(props.target, props.player) === 'hostile'
+        const targeted =
+            props.grave || (props.target && relation(props.target, props.player) === 'hostile')
         if (!assigned || props.blocked || !props.player.alive || targeted) return undefined
         return forwardShot(props.player.position, props.player.facing)
     })

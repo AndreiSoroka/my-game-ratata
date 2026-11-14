@@ -201,6 +201,7 @@ function resolveWorldAttack(
     )
     const hitEvents = resolvePendingAttackHit({
         actor: character,
+        graves: context.life.graveRules,
         now,
         respawnDelayMsFor: resolveRespawnDelayMs,
         targets,

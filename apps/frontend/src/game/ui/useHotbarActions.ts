@@ -3,6 +3,7 @@ import { computed, type ComputedRef, onBeforeUnmount, ref, watch } from 'vue'
 
 import { createPrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { relation } from './combatTargeting'
+import { gravePrayerPreview } from './graveInteractions'
 import {
     actionTooltip,
     bindingLabel,
@@ -28,12 +29,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const prayerAssigned = computed(() =>
         bindings.value.some((binding) => binding?.kind === 'ability' && binding.id === 'pray')
     )
-    const preview = computed(() =>
-        previewPrayerFromSnapshots(props.player, props.characters, props.target?.id, {
-            canReach: props.canReach,
-            canAid: (target) => relation(target, props.player) !== 'hostile',
-        })
-    )
+    const preview = computed(() => prayerPreview(props))
     watchPrayerHighlight(props, emit, prayerAssigned, preview)
     const gestures = createGestures(props, emit, () => bindings.value)
     watch(
@@ -43,7 +39,15 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
             gestures.reset()
         }
     )
-    watch([() => props.target?.id, () => props.blocked], () => gestures.reset())
+    watch(
+        [
+            () => props.target?.id,
+            () => props.grave?.id,
+            () => props.grave?.phase,
+            () => props.blocked,
+        ],
+        () => gestures.reset()
+    )
     watch(
         () => props.player.control,
         () => gestures.acknowledge()
@@ -92,6 +96,14 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         resetGesture: gestures.reset,
     }
 }
+function prayerPreview(props: HotbarProps) {
+    return props.grave
+        ? gravePrayerPreview(props.player, props.grave, props.canReachGrave?.(props.grave) ?? true)
+        : previewPrayerFromSnapshots(props.player, props.characters, props.target?.id, {
+              canReach: props.canReach,
+              canAid: (target) => relation(target, props.player) !== 'hostile',
+          })
+}
 function watchPrayerHighlight(
     props: HotbarProps,
     emit: HotbarEmit,
@@ -99,7 +111,7 @@ function watchPrayerHighlight(
     preview: ComputedRef<ReturnType<typeof previewPrayerFromSnapshots>>
 ): void {
     const highlight = computed(() =>
-        prayerAssigned.value && !props.blocked
+        prayerAssigned.value && !props.blocked && !props.grave
             ? createPrayerPreviewHighlight(props.player, props.characters, preview.value, {
                   active: true,
                   canReach: props.canReach ?? (() => true),

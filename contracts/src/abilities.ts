@@ -12,11 +12,19 @@ export type LearnAbilityId = 'pray' | 'spark' | 'barrier' | 'shot'
 export type AttackAbilityId = 'spark' | 'shot' | 'skeleton_strike'
 export type BasicAttackKind = 'melee' | 'arrow' | 'spark'
 export type DamageKind = 'physical' | 'arcane' | 'holy' | 'unholy'
-export type PrayerMode = 'restore' | 'revive' | 'harm' | 'devotion'
-export interface PrayerIntent {
-    mode: PrayerMode
-    targetId?: string
-}
+export type PrayerMode =
+    'restore' | 'revive' | 'harm' | 'devotion' | 'purify_grave'
+export type PrayerIntent =
+    | {
+          mode: Exclude<PrayerMode, 'purify_grave'>
+          targetId?: string
+          target?: never
+      }
+    | {
+          mode: 'purify_grave'
+          target: import('./graves').WorldCombatTarget
+          targetId?: never
+      }
 export interface PrayerPreview {
     intent: PrayerIntent | null
     manaCost: number
@@ -31,6 +39,8 @@ export interface CharacterAbilitiesSnapshot {
     barrier: { remaining: number; expiresAt: number } | null
     casting: {
         abilityId: 'pray'
+        mode?: 'revive' | 'purify_grave'
+        target?: import('./graves').WorldCombatTarget
         targetId: string
         startedAt: number
         completesAt: number
@@ -41,9 +51,11 @@ export type AbilityClientMessage =
           type: 'use_ability'
           abilityId: Exclude<AbilityId, 'pray'>
           targetId?: string
+          target?: import('./graves').WorldCombatTarget
       }
     | { type: 'use_ability'; abilityId: 'pray'; intent: PrayerIntent }
     | { type: 'learn_ability'; abilityId: LearnAbilityId; targetId: string }
+    | { type: 'cancel_prayer' }
 export interface AbilityDefinition {
     name: string
     mana: number

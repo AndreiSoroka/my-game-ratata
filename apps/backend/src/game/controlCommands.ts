@@ -4,6 +4,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
+import { parseCombatReference } from './combatTargetParsing'
 export function parseControlCommand(
     record: Record<string, unknown>
 ): CharacterControlCommand | undefined {
@@ -38,7 +39,11 @@ export function parseAutoAction(
     }
     const record = value as Record<string, unknown>
     if (record['kind'] === 'attack') {
-        return parseAttack(record['targetId'])
+        const reference = parseCombatReference(record)
+        return reference !== undefined &&
+            (reference.targetId !== undefined || reference.target !== undefined)
+            ? { kind: 'attack', ...reference }
+            : undefined
     }
     return parseAutomaticAbility(record)
 }
@@ -49,6 +54,7 @@ function parseAutomaticAbility(
         type: 'use_ability',
         abilityId: record['kind'] === 'prayer' ? 'pray' : record['abilityId'],
         targetId: record['targetId'],
+        target: record['target'],
         intent: record['intent'],
     })
     if (message?.type !== 'use_ability') {
@@ -66,12 +72,6 @@ function parseAutomaticAbility(
         ...(message.targetId === undefined
             ? {}
             : { targetId: message.targetId }),
+        ...(message.target === undefined ? {} : { target: message.target }),
     }
-}
-function parseAttack(targetId: unknown): CharacterAutoAction | undefined {
-    return typeof targetId === 'string' &&
-        targetId.trim().length > 0 &&
-        targetId.length <= 100
-        ? { kind: 'attack', targetId }
-        : undefined
 }

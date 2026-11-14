@@ -8,7 +8,6 @@ import type {
 import {
     CHEST_FOOTPRINT_SIZE,
     CHEST_INTERACTION_RANGE,
-    FARM_INTERACTION_RANGE,
     interactionApproachPoints,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
@@ -19,12 +18,13 @@ import { targetInteractionDistance } from '../ui/interactionTargets'
 import { itemStackLabel } from '../ui/itemLabels'
 import { type InteractionAction, nearbyInteractionTarget } from '../ui/nearbyInteractionActions'
 import { observeAdventure } from './observeAdventure'
+import { environmentTargets } from './observeEnvironment'
 import type { RatataTestState } from './testInterface'
 
 export interface AgentTarget {
     key: string
     id: string
-    kind: 'character' | 'world' | 'resource' | 'farm' | 'chest' | 'item' | 'building'
+    kind: 'character' | 'world' | 'resource' | 'farm' | 'chest' | 'item' | 'building' | 'grave'
     name: string
     position: Vector2
     bounds?: WorldObjectBounds
@@ -201,38 +201,6 @@ function characterTargets(
                 canSpeak: actor.soul?.canSpeak,
             },
         }))
-}
-
-function environmentTargets(snapshot: WorldSnapshot): TargetDescription[] {
-    return [
-        ...(snapshot.adventure?.worldObjects ?? []).map((object): TargetDescription => ({
-            id: object.id,
-            kind: 'world',
-            name: object.name,
-            position: object.position,
-            bounds: object.bounds,
-            interactionAreas: object.interactionAreas,
-            interactionRange: 48,
-            details: { kind: object.kind, depleted: object.depleted },
-        })),
-        ...(snapshot.adventure?.resourceNodes ?? []).map((node): TargetDescription => ({
-            id: node.id,
-            kind: 'resource',
-            name: node.kind,
-            position: node.position,
-            ...(node.bounds === undefined ? {} : { bounds: node.bounds }),
-            interactionRange: 48,
-            details: { material: node.kind, remaining: node.remaining },
-        })),
-        ...(snapshot.adventure?.farmPlots ?? []).map((plot): TargetDescription => ({
-            id: plot.id,
-            kind: 'farm',
-            name: plot.name,
-            position: plot.position,
-            interactionRange: FARM_INTERACTION_RANGE,
-            details: { crop: plot.crop, phase: plot.phase, readyAt: plot.readyAt },
-        })),
-    ]
 }
 
 function inventoryTargets(snapshot: WorldSnapshot): TargetDescription[] {

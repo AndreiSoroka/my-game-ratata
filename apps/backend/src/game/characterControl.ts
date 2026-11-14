@@ -4,7 +4,6 @@ import type {
     Vector2,
 } from '@my-game-ratata/contracts'
 
-import type { AbilityContext } from './abilityContext'
 import {
     allowedMode,
     availableActor as available,
@@ -18,6 +17,7 @@ import {
     setAutoAction,
     snapshotAutoAction,
 } from './characterAutoAction'
+import type { ControlWorld } from './controlWorld'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -36,15 +36,7 @@ interface ControlState extends CharacterControlSnapshot {
         expiresAt: number
     }
 }
-export interface ControlWorld {
-    abilityContextFor?(actor: GameCharacter, now: number): AbilityContext
-    publishEvents?(
-        events: Array<import('@my-game-ratata/contracts').GameEventPayload>
-    ): void
-    getCharacter(id: string): GameCharacter | undefined
-    navigationFor(actor: GameCharacter): NavigationService
-    requestAttack(actor: GameCharacter, now?: number, targetId?: string): void
-}
+export type { ControlWorld } from './controlWorld'
 const controls = new WeakMap<GameCharacter, ControlState>()
 const sightRange = 240
 

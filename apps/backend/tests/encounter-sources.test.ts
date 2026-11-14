@@ -79,6 +79,12 @@ describe('semantic grave sources and natural-water habitats', () => {
                     candidate.y + candidate.height / 2 === source.position.y
             )
             expect(prop).toBeDefined()
+            expect(source.propId).toBe(
+                prop === undefined
+                    ? 'missing-rendered-prop'
+                    : property(prop, 'propId')
+            )
+            expect(source.propId).toBe(`${location.id}:prop:55:35`)
             expect(
                 JSON.parse(
                     String(prop === undefined ? '[]' : property(prop, 'tiles'))

@@ -19,6 +19,9 @@ export function legalPrayerTarget(
     target: GameCharacter,
     context: AbilityContext
 ): boolean {
+    if (action.intent.mode === 'purify_grave') {
+        return false
+    }
     if (action.intent.mode === 'harm') {
         return (
             target.alive &&
@@ -62,6 +65,9 @@ export function untargetedAction(
         }
     }
     if (action.kind === 'ability') {
+        if (action.target !== undefined) {
+            return undefined
+        }
         if (action.abilityId === 'barrier') {
             return action.targetId === undefined
         }

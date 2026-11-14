@@ -4,6 +4,7 @@ import {
     type CharacterSnapshot,
     type ClientMessage,
     type ProjectilePath,
+    type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 import { nextTick, ref, watch } from 'vue'
 
@@ -18,6 +19,8 @@ import { useShotPreview } from './useShotPreview'
 const props = defineProps<{
     player: CharacterSnapshot
     target?: CharacterSnapshot
+    grave?: WorldGraveSnapshot
+    canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
     blocked: boolean

@@ -8,6 +8,7 @@ import type {
 import { handleAbilityCommand } from './abilityCommands'
 import type { AbilityContext } from './abilityContext'
 import { autoActionStatus, autoTargetId } from './autoActionRules'
+import { autoWorldTarget } from './autoActionWorldTargets'
 import type { GameCharacter } from './character'
 import type { ControlWorld } from './characterControl'
 
@@ -97,7 +98,7 @@ function execute(
     now: number
 ): void {
     if (action.kind === 'attack') {
-        world.requestAttack(actor, now, action.targetId)
+        world.requestAttack(actor, now, action.targetId, action.target)
     } else {
         const command: AbilityClientMessage =
             action.kind === 'prayer'
@@ -109,6 +110,9 @@ function execute(
                 : {
                       type: 'use_ability',
                       abilityId: action.abilityId,
+                      ...(action.target === undefined
+                          ? {}
+                          : { target: action.target }),
                       ...(action.targetId === undefined
                           ? {}
                           : { targetId: action.targetId }),
@@ -130,7 +134,11 @@ function approach(
     context: AbilityContext,
     now: number
 ): void {
-    const target = world.getCharacter(autoTargetId(state.action) ?? '')
+    const reference = autoWorldTarget(state.action)
+    const target =
+        reference === undefined
+            ? world.getCharacter(autoTargetId(state.action) ?? '')
+            : context.graves?.get(reference.id)
     if (target === undefined || now - state.lastPlanAt < 300) {
         return
     }

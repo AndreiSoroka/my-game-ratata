@@ -15,7 +15,11 @@ import {
     snapshotControl,
 } from '../src/game/characterControl'
 import { advanceRevive } from '../src/game/characterLife'
-import { attemptAbilityAttack, attemptAttack } from '../src/game/combat'
+import {
+    attemptAbilityAttack,
+    attemptAttack,
+    resolvePendingAttackHit,
+} from '../src/game/combat'
 import { grantRetaliation } from '../src/game/crimeRelations'
 import { createItemInstance } from '../src/game/inventory'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
@@ -77,6 +81,10 @@ function fixture(heroClass: HeroClass = 'cleric') {
         enable,
         tick,
         hostile,
+        resolveHit: (now: number) => {
+            actor.tickTimedState(now)
+            publishEvents(resolvePendingAttackHit(attackContext(actor, now)))
+        },
     }
 }
 
@@ -103,6 +111,7 @@ describe('automatic action scheduling through shared rules', () => {
             f.events.filter((event) => event.kind === 'attack')
         ).toHaveLength(1)
         expect(f.actor.mana).toBe(100 - ABILITY_DEFINITIONS.spark.mana)
+        f.resolveHit(1200 + ABILITY_DEFINITIONS.spark.windupMs)
         f.tick(1200 + ABILITY_DEFINITIONS.spark.cooldownMs - 1)
         expect(snapshotControl(f.actor).waiting).toBe('cooldown')
         expect(

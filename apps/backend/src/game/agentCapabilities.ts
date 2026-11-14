@@ -19,7 +19,11 @@ import { canPerformSkillAction } from './skillProgression'
 export function isAgentAbility(
     decision: AgentDecision
 ): decision is AbilityClientMessage {
-    return decision.type === 'use_ability' || decision.type === 'learn_ability'
+    return (
+        decision.type === 'use_ability' ||
+        decision.type === 'learn_ability' ||
+        decision.type === 'cancel_prayer'
+    )
 }
 export function isAgentControl(
     decision: AgentDecision
@@ -36,7 +40,8 @@ export function parseAgentCapability(
 ): AbilityClientMessage | CharacterControlCommand | undefined {
     if (
         record['type'] === 'use_ability' ||
-        record['type'] === 'learn_ability'
+        record['type'] === 'learn_ability' ||
+        record['type'] === 'cancel_prayer'
     ) {
         return parseAbilityCommand(record)
     }
@@ -54,6 +59,9 @@ export function applyAgentAbility(
     world: CompanionWorld,
     now: number
 ): AgentDecisionResult {
+    if (message.type === 'cancel_prayer') {
+        return cancelAgentPrayer(actor, message, world, now)
+    }
     if (!canPerformSkillAction(actor, now)) {
         return rejected(
             'Ability unavailable while dead, offline, stunned or busy'
@@ -115,13 +123,16 @@ function abilityCanHarm(
     world: CompanionWorld,
     now: number
 ): boolean {
-    if (message.type === 'learn_ability' || message.abilityId === 'barrier') {
+    if (message.type !== 'use_ability' || message.abilityId === 'barrier') {
         return false
     }
     if (message.abilityId !== 'pray') {
         return true
     }
-    if (message.intent.mode === 'devotion') {
+    if (
+        message.intent.mode === 'devotion' ||
+        message.intent.mode === 'purify_grave'
+    ) {
         return false
     }
     const harmUnlocked =
@@ -141,6 +152,18 @@ function abilityCanHarm(
         }).length > 0
     )
 }
+function cancelAgentPrayer(
+    actor: GameCharacter,
+    message: AbilityClientMessage,
+    world: CompanionWorld,
+    now: number
+): AgentDecisionResult {
+    const events = world.requestAbility?.(actor, message, now)
+    return events === undefined
+        ? rejected('Ability service unavailable')
+        : { accepted: true, error: null, events }
+}
+
 function rejectionWithEvents(events: GameEventPayload[]): AgentDecisionResult {
     return {
         accepted: false,

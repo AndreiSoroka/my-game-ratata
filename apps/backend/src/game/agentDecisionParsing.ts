@@ -9,6 +9,7 @@ import {
     isInventoryDecisionType,
     parseInventoryDecision,
 } from './agentInventory'
+import { parseCombatReference } from './combatTargetParsing'
 import { isAdventureCommand, parseExtraCommand } from './extraCommands'
 import { parseClientMessage } from './messages'
 import { isTheftCommandType } from './theftCommands'
@@ -30,7 +31,7 @@ export function parseAgentDecision(input: unknown): AgentDecision | undefined {
         case 'movement_mode':
             return parseMovementMode(record['mode'])
         case 'attack':
-            return parseAttack(record['targetId'])
+            return parseAttack(record)
         case 'speak':
             return parseSpeech(record['text'])
         case 'move':
@@ -42,11 +43,13 @@ export function parseAgentDecision(input: unknown): AgentDecision | undefined {
     }
 }
 
-function parseAttack(targetId: unknown): AgentDecision | undefined {
-    return typeof targetId === 'string' &&
-        targetId.length > 0 &&
-        targetId.length <= 100
-        ? { targetId, type: 'attack' }
+function parseAttack(
+    record: Record<string, unknown>
+): AgentDecision | undefined {
+    const reference = parseCombatReference(record)
+    return reference !== undefined &&
+        (reference.targetId !== undefined || reference.target !== undefined)
+        ? { ...reference, type: 'attack' }
         : undefined
 }
 

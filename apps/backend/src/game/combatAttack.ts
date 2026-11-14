@@ -10,7 +10,7 @@ import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
 import {
     type AttackContext,
-    availableToAttack,
+    availableToStartAttack,
     isLegalAttackTarget,
 } from './combat'
 import {
@@ -18,6 +18,7 @@ import {
     buildAttackZones,
     isInZones,
 } from './combatGeometry'
+import { legalGraveTarget } from './graveCombat'
 
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
     const kind = context.actor.config.basicAttackKind
@@ -44,6 +45,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     const lockMs = actor.config.combat.attackLockMs * scale
     actor.queueAttackHit(now, {
         targetId: context.targetId,
+        target: context.target,
         canStun: spend.canStun,
         damageMultiplier: spend.fullyPowered ? 1 : 1 / 3,
         targetEnergyDrain: Math.ceil(
@@ -76,6 +78,7 @@ export function attemptAbilityAttack(
     actor.abilities.availableAt[id] = now + definition.cooldownMs
     actor.queueAttackHit(now, {
         targetId: context.targetId,
+        target: context.target,
         abilityId: id,
         canStun: id === 'skeleton_strike',
         damageMultiplier: 1,
@@ -106,13 +109,26 @@ function abilityReady(
 }
 function ready({ actor, now }: AttackContext, cooldown: number): boolean {
     return (
-        availableToAttack(actor, now) &&
+        availableToStartAttack(actor, now) &&
         actor.soul.companion?.canFight !== false &&
-        !actor.isActionLocked(now) &&
         now - actor.lastAttackAt >= cooldown
     )
 }
 function prepareTarget(context: AttackContext): boolean {
+    if (context.target !== undefined) {
+        const grave = context.graves?.get(context.target.id)
+        if (
+            context.targetId !== undefined ||
+            !legalGraveTarget(context.actor, grave, context.navigation)
+        ) {
+            return false
+        }
+        context.actor.updateFacing({
+            x: grave.position.x - context.actor.position.x,
+            y: grave.position.y - context.actor.position.y,
+        })
+        return true
+    }
     if (context.targetId === undefined) {
         return true
     }
@@ -132,6 +148,12 @@ function prepareTarget(context: AttackContext): boolean {
     return true
 }
 function targetWithinZones(context: AttackContext): boolean {
+    if (context.target !== undefined) {
+        const grave = context.graves?.get(context.target.id)
+        return (
+            grave !== undefined && isInZones(grave, context.actor.attackZones)
+        )
+    }
     if (context.targetId === undefined) {
         return true
     }
@@ -154,9 +176,14 @@ function startAttack(
         {
             actorId: actor.id,
             kind: 'attack',
-            ...(abilityId === 'shot' && context.targetId === undefined
+            ...(abilityId === 'shot' &&
+            context.targetId === undefined &&
+            context.target === undefined
                 ? { projectile: forwardShot(actor.position, actor.facing) }
                 : {}),
+            ...(context.target === undefined
+                ? {}
+                : { target: { ...context.target } }),
             ...(context.targetId === undefined
                 ? {}
                 : { targetId: context.targetId }),

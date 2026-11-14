@@ -13,19 +13,17 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import {
-    actorRefusesCombat,
     applyAgentAbility,
     applyAgentControl,
     isAgentAbility,
     isAgentControl,
 } from './agentCapabilities'
+import { applyAgentAttack } from './agentCombat'
 import { parseAgentDecision } from './agentDecisionParsing'
 import { applyAgentInventory, isInventoryDecision } from './agentInventory'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
-import { isTargetInAttackRange } from './combat'
 import { isAdventureCommand } from './extraCommands'
-import { canTargetByFaction } from './factions'
 import {
     cancelMovementMode,
     handleMovementCommand,
@@ -85,7 +83,8 @@ export interface CompanionWorld {
     requestAttack(
         character: GameCharacter,
         now?: number,
-        targetId?: string
+        targetId?: string,
+        target?: import('@my-game-ratata/contracts').WorldCombatTarget
     ): void
 }
 
@@ -127,7 +126,7 @@ export function applyAgentDecision(
         case 'move_to':
             return agentMoveTo(character, decision.target, world, now)
         case 'attack':
-            return agentAttack(character, decision.targetId, world, now)
+            return applyAgentAttack(character, decision, world, now)
         case 'speak':
             return agentSpeech(character, decision.text)
         case 'wait':
@@ -139,44 +138,6 @@ export function applyAgentDecision(
         default:
             return rejected('Unsupported agent decision')
     }
-}
-
-function agentAttack(
-    actor: GameCharacter,
-    targetId: string,
-    world: CompanionWorld,
-    now: number
-): AgentDecisionResult {
-    const target = world.getCharacter(targetId)
-    if (actorRefusesCombat(actor)) {
-        return rejected('This personality refuses combat')
-    }
-    if (
-        target === undefined ||
-        !target.alive ||
-        target.tags.has('offline') ||
-        target.locationId !== actor.locationId ||
-        !canTargetByFaction(actor, target)
-    ) {
-        return rejected('Target is not a hostile character in this location')
-    }
-    const facing = actor.facing
-    actor.updateFacing({
-        x: target.position.x - actor.position.x,
-        y: target.position.y - actor.position.y,
-    })
-    if (
-        !isTargetInAttackRange(
-            actor,
-            target,
-            world.navigationFor(actor).grid.tileWidth
-        )
-    ) {
-        actor.facing = facing
-        return rejected('Target is outside attack reach')
-    }
-    world.requestAttack(actor, now, target.id)
-    return accepted()
 }
 
 function unavailableReason(character: GameCharacter): string | undefined {

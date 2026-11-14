@@ -1,15 +1,18 @@
 import type { AdventureResourceNode, WorldGraveSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Canvas, CollisionType, type Engine, vec } from 'excalibur'
 
+import { GraveViews } from './graveViews'
 import type { MapDepthProp } from './mapDepthProps'
 import type { HarvestGraphics } from './tiledMap'
 
 export class DepthPropViews {
     private actors = new Map<string, Actor>()
     private resources = new Map<string, { actor: Actor; phase: string }>()
-    private graves = new Map<string, Actor>()
+    private readonly graves: GraveViews
     private graphics: HarvestGraphics | undefined
-    public constructor(private readonly engine: Engine) {}
+    public constructor(private readonly engine: Engine) {
+        this.graves = new GraveViews(engine)
+    }
 
     public setProps(props: MapDepthProp[], graphics?: HarvestGraphics): void {
         this.dispose()
@@ -22,32 +25,15 @@ export class DepthPropViews {
     public dispose(): void {
         for (const actor of this.actors.values()) actor.kill()
         for (const { actor } of this.resources.values()) actor.kill()
-        for (const actor of this.graves.values()) actor.kill()
+        this.graves.dispose()
         this.actors.clear()
         this.resources.clear()
-        this.graves.clear()
         this.graphics = undefined
     }
 
     /** Grave identity is independent of the emptied corpse container and character body. */
     public updateGraves(graves: readonly WorldGraveSnapshot[]): void {
-        const active = new Set(graves.map((grave) => grave.id))
-        for (const [id, actor] of this.graves) {
-            if (!active.has(id)) {
-                actor.kill()
-                this.graves.delete(id)
-            }
-        }
-        const bitmap = this.graphics?.grave
-        if (!bitmap) return
-        for (const grave of graves) {
-            const x = grave.position.x - bitmap.width / 2
-            const y = grave.position.y + 2 - bitmap.height
-            const actor = this.graves.get(grave.id) ?? this.create(bitmap, x, y, grave.position.y)
-            actor.pos = vec(x, y)
-            actor.z = grave.position.y
-            this.graves.set(grave.id, actor)
-        }
+        this.graves.update(graves, this.actors, this.graphics?.grave)
     }
 
     public updateResources(nodes: readonly AdventureResourceNode[]): void {

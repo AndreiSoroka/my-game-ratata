@@ -9,6 +9,7 @@ import type {
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
+import GraveDetails from './GraveDetails.vue'
 import NearbyActionMenu from './NearbyActionMenu.vue'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
 
@@ -17,6 +18,7 @@ const props = defineProps<{
     player: CharacterSnapshot | undefined
     characters: CharacterSnapshot[]
     selectedId?: string
+    selectedGraveId?: string
     blocked: boolean
     isPositionVisible?: (position: Vector2, bounds?: WorldObjectBounds, range?: number) => boolean
 }>()
@@ -24,6 +26,7 @@ const emit = defineEmits<{
     command: [command: ClientMessage]
     requestOpen: []
     targetChange: [target: TargetHighlight | undefined]
+    selectGrave: [id: string]
 }>()
 const open = ref(false)
 const openedKey = ref<string>()
@@ -37,12 +40,17 @@ const target = computed(() =>
               props.isPositionVisible,
               open.value
                   ? openedKey.value
-                  : props.selectedId
-                    ? `character:${props.selectedId}`
-                    : undefined,
-              Boolean(props.selectedId)
+                  : props.selectedGraveId
+                    ? `grave:${props.selectedGraveId}`
+                    : props.selectedId
+                      ? `character:${props.selectedId}`
+                      : undefined,
+              Boolean(props.selectedId || props.selectedGraveId)
           )
         : undefined
+)
+const grave = computed(() =>
+    props.snapshot?.graves?.find((entry) => `grave:${entry.id}` === target.value?.key)
 )
 const actions = computed(() =>
     open.value
@@ -62,10 +70,18 @@ function stopMovement(player: CharacterSnapshot): void {
     if (player.path.length > 0) emit('command', { type: 'move_to', target: { ...player.position } })
     emit('command', { type: 'move_input', axis: { x: 0, y: 0 } })
 }
+const canOpen = computed(
+    () =>
+        !open.value &&
+        !props.blocked &&
+        props.player?.alive &&
+        Boolean(target.value?.actions.length)
+)
 function openMenu(): void {
     const selected = target.value
-    if (open.value || props.blocked || !props.player?.alive || !selected?.actions.length) return
+    if (!selected || !props.player || !canOpen.value) return
     stopMovement(props.player)
+    if (grave.value) emit('selectGrave', grave.value.id)
     if (selected.actions.length === 1 && !selected.actions[0]!.disabled) {
         emit('command', selected.actions[0]!.command)
         document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
@@ -157,7 +173,9 @@ defineExpose({ openMenu })
         :context-label="target?.name ?? openedName"
         @select="select"
         @close="closeMenu"
-    />
+    >
+        <GraveDetails v-if="grave && snapshot" :grave="grave" :server-time="snapshot.serverTime" />
+    </NearbyActionMenu>
 </template>
 <style scoped>
 .nearby-prompt {
@@ -195,7 +213,7 @@ defineExpose({ openMenu })
 @media (max-width: 740px) {
     .nearby-prompt {
         left: 12px;
-        bottom: 114px;
+        bottom: 184px;
         padding: 7px 10px;
         font-size: 11px;
     }

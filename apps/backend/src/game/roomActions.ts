@@ -21,6 +21,7 @@ import { isTheftCommand } from './theftCommands'
 import type { WorldInventory } from './worldInventory'
 
 interface ActionContext {
+    graves?: AbilityContext['graves']
     requestAbilityAttack?: AbilityContext['requestAbilityAttack']
     theft: TheftService
     adventure: AdventureService
@@ -81,6 +82,7 @@ export function handleRoomAction(
     }
     if (isProgressionCommand(message)) {
         const events = handleProgressionCommand(player, message, {
+            ...(context.graves === undefined ? {} : { graves: context.graves }),
             characters,
             navigation: context.navigation,
             now,
@@ -154,11 +156,16 @@ function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
             { characters, navigation: context.navigation, now }
         )
     }
-    if (message.type === 'use_ability' || message.type === 'learn_ability') {
+    if (
+        message.type === 'use_ability' ||
+        message.type === 'learn_ability' ||
+        message.type === 'cancel_prayer'
+    ) {
         const events = handleAbilityCommand(player, message, {
             characters,
             navigation: context.navigation,
             now,
+            ...(context.graves === undefined ? {} : { graves: context.graves }),
             ...(context.requestAbilityAttack === undefined
                 ? {}
                 : { requestAbilityAttack: context.requestAbilityAttack }),

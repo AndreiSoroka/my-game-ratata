@@ -160,3 +160,42 @@ test('MCP exposes pinned abilities and cancelable ordinary character control', (
     assert.match(act.description, /waves may harm allies/)
     assert.doesNotMatch(act.description, /Cannot[^.]*resurrect/)
 })
+
+test('MCP exposes typed grave attacks, purification and explicit channel cancellation', () => {
+    const [message] = messages([
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    ])
+    const act = message.result.tools.find((tool) => tool.name === 'ratata_act')
+    const choices = act.inputSchema.properties.decision.oneOf
+    const attack = choices.find(
+        (entry) =>
+            entry.properties.type.const === 'attack' && entry.properties.target
+    )
+    assert.deepEqual(attack.required, ['type', 'target'])
+    assert.equal(attack.properties.target.properties.kind.const, 'grave')
+    assert.equal(attack.properties.target.additionalProperties, false)
+    const prayer = choices.find(
+        (entry) => entry.properties.abilityId?.const === 'pray'
+    )
+    const purification = prayer.properties.intent.oneOf.find(
+        (entry) => entry.properties.mode.const === 'purify_grave'
+    )
+    assert.deepEqual(purification.required, ['mode', 'target'])
+    assert.equal(purification.additionalProperties, false)
+    assert.equal(purification.properties.target.properties.kind.const, 'grave')
+    assert.ok(
+        choices.some((entry) => entry.properties.type.const === 'cancel_prayer')
+    )
+    const automatic = choices.find(
+        (entry) => entry.properties.type.const === 'auto_action'
+    )
+    assert.ok(
+        automatic.properties.action.oneOf.some(
+            (entry) =>
+                entry.properties?.kind.const === 'attack' &&
+                entry.properties.target?.properties.kind.const === 'grave'
+        )
+    )
+    assert.match(act.description, /10 seconds/)
+    assert.match(act.description, /20 mana only on success/)
+})

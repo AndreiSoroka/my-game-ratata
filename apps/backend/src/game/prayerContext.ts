@@ -11,6 +11,7 @@ import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
 import { canTargetByFaction } from './factions'
+import { canPurifyGrave } from './gravePrayer'
 import { distance } from './math'
 import { canPerformSkillAction, canUseResurrection } from './skillProgression'
 
@@ -86,6 +87,9 @@ export function validPrayerIntent(
 ): boolean {
     if (!knowsAbility(actor, 'pray')) {
         return false
+    }
+    if (intent.mode === 'purify_grave') {
+        return canPurifyGrave(actor, intent.target.id, context)
     }
     if (intent.mode === 'devotion') {
         return intent.targetId === undefined

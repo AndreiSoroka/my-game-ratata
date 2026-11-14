@@ -12,7 +12,7 @@ interface ViewActor {
     options: { collisionType: string; pos: Vector2; z: number }
     pos: Vector2
     z: number
-    graphics: { use: ReturnType<typeof vi.fn<(graphic: Graphic) => void>> }
+    graphics: { use: ReturnType<typeof vi.fn<(graphic: Graphic) => void>>; isVisible?: boolean }
     kill: ReturnType<typeof vi.fn<() => void>>
 }
 vi.mock('excalibur', () => ({
@@ -47,6 +47,10 @@ const grave: WorldGraveSnapshot = {
     id: 'grave:person',
     locationId: 'map-2-2',
     position: { x: 120, y: 160 },
+    phase: 'active',
+    hp: 100,
+    maxHp: 100,
+    material: 'stone',
 }
 
 describe('dynamic grave presentation', () => {
@@ -97,5 +101,38 @@ describe('dynamic grave presentation', () => {
         view.updateGraves([grave])
         expect(third.kill).toHaveBeenCalledOnce()
         expect(actors).toHaveLength(3)
+    })
+    it('replaces an authored grave with noncolliding rubble, restores its original art and permanently hides purification', () => {
+        const { actors, view, bitmap, graphics } = fixture()
+        view.setProps(
+            [{ id: 'authored', bitmap, x: 112, y: 146, baseY: 160, width: 16, height: 16 }],
+            graphics
+        )
+        const original = actors[0]!
+        const authored = { ...grave, propId: 'authored' }
+        view.updateGraves([authored])
+        expect(actors).toHaveLength(1)
+        view.updateGraves([{ ...authored, phase: 'ruined', hp: 0, restoresAt: 1_800_000 }])
+        const rubble = actors[1]!
+        expect(original.graphics.isVisible).toBe(false)
+        expect(rubble.options.collisionType).toBe('no-collision')
+        expect(rubble.pos).toEqual({ x: 112, y: 146 })
+        const fillRect = vi.fn<CanvasRenderingContext2D['fillRect']>()
+        rubble.graphics.use.mock.lastCall![0].options.draw({
+            fillRect,
+        } as unknown as CanvasRenderingContext2D)
+        expect(fillRect).toHaveBeenCalled()
+        view.updateGraves([authored])
+        expect(original.graphics.isVisible).toBe(true)
+        expect(rubble.kill).toHaveBeenCalledOnce()
+        view.updateGraves([{ ...authored, phase: 'purified', hp: 0 }])
+        expect(original.graphics.isVisible).toBe(false)
+        expect(actors).toHaveLength(2)
+        view.updateGraves([{ ...authored, phase: 'purified', hp: 0 }])
+        expect(original.graphics.isVisible).toBe(false)
+        view.setProps([], graphics)
+        expect(original.kill).toHaveBeenCalledOnce()
+        view.updateGraves([])
+        expect(actors).toHaveLength(2)
     })
 })

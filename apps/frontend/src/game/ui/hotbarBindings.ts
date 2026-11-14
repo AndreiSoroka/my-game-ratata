@@ -42,6 +42,19 @@ export function prayerDescription(
     if (preview.unavailableReason) return preview.unavailableReason
     const intent = preview.intent
     if (intent?.mode === 'devotion') return `Помолиться · ${preview.manaCost} MP · Без эффекта`
+    if (intent?.mode === 'purify_grave')
+        return `Очистить могилу · ${preview.manaCost} MP · 10 с · Esc — прервать`
+    const gift = prayerGift(intent, characters, player)
+    return [`${gift} · ${preview.manaCost} MP`, collateralDescription(preview)]
+        .filter(Boolean)
+        .join(' · ')
+}
+
+function prayerGift(
+    intent: PrayerPreview['intent'],
+    characters: CharacterSnapshot[],
+    player: CharacterSnapshot
+): string {
     const name =
         characters.find((actor) => actor.id === intent?.targetId)?.nickname ?? player.nickname
     const verb =
@@ -50,10 +63,7 @@ export function prayerDescription(
             : intent?.mode === 'harm'
               ? 'Карающая волна'
               : 'Восстановить'
-    const gift = intent?.mode === 'harm' ? verb : `${verb} ${name}`
-    return [`${gift} · ${preview.manaCost} MP`, collateralDescription(preview)]
-        .filter(Boolean)
-        .join(' · ')
+    return intent?.mode === 'harm' ? verb : `${verb} ${name}`
 }
 
 function collateralDescription(preview: PrayerPreview): string {

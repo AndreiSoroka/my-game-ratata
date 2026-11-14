@@ -8,6 +8,7 @@ import { type AbilityContext, abilityNotice } from './abilityContext'
 import type { GameCharacter } from './character'
 import { beginRevive } from './characterLife'
 import { resolveMiracle } from './deities'
+import { beginGravePurification } from './gravePrayer'
 import { resolvePrayerIntent, validPrayerIntent } from './prayerContext'
 import { completePrayer } from './prayerEffects'
 import { canPerformSkillAction } from './skillProgression'
@@ -23,6 +24,9 @@ export function pray(
         return abilityNotice(actor, 'Выберите цель молитвы.')
     }
     const intent = pinnedIntent ?? resolvePrayerIntent(actor, context)
+    if (intent.mode === 'purify_grave') {
+        return beginGravePurification(actor, intent.target.id, context)
+    }
     if (
         !canPerformSkillAction(actor, now) ||
         !validPrayerIntent(actor, intent, context)

@@ -11,21 +11,27 @@ export function cancelPrayerCast(
     if (cast === null) {
         return []
     }
+    releasePrayerCast(actor, now)
+    return [
+        {
+            kind: 'cast',
+            actorId: actor.id,
+            ...(cast.mode === 'purify_grave'
+                ? { target: { kind: 'grave' as const, id: cast.targetId } }
+                : { targetId: cast.targetId }),
+            abilityId: 'pray',
+            phase: 'interrupted',
+        },
+    ]
+}
+
+export function releasePrayerCast(actor: GameCharacter, now: number): void {
     actor.abilities.casting = null
     actor.actionLockUntil = Math.min(actor.actionLockUntil, now)
     if (actor.alive && actor.animationAction === 'attack') {
         actor.animationUntil = now
         actor.setAnimation('idle', now)
     }
-    return [
-        {
-            kind: 'cast',
-            actorId: actor.id,
-            targetId: cast.targetId,
-            abilityId: 'pray',
-            phase: 'interrupted',
-        },
-    ]
 }
 
 export function cancelPrayerForMovement(

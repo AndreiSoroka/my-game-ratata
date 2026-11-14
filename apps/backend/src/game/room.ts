@@ -193,7 +193,8 @@ export class GameRoom {
     private readonly combat = createRoomCombatActions(
         () => this.world,
         () => this.characters,
-        (events) => this.publishEvents(events)
+        (events) => this.publishEvents(events),
+        this.life.graveRules
     )
     public readonly requestAttack = this.combat.requestAttack
     public readonly requestAbility = this.combat.requestAbility

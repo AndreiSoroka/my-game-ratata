@@ -43,6 +43,7 @@ const cameraZoom = 3
 
 export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
+    private gravePositions = new Map<string, Vector2>()
     private readonly buildingViews: BuildingViews
     private readonly depthProps: DepthPropViews
     private readonly corpseViews: CorpseViews
@@ -82,8 +83,13 @@ export class SceneActors {
         this.corpseViews = new CorpseViews(engine, sheets)
         this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
         this.statusViews = new StatusViews(engine)
-        this.combatEffects = new CombatEffects(engine, (id) =>
-            this.isCharacterVisible(id) ? this.bundles.get(id)?.snapshot : undefined
+        this.combatEffects = new CombatEffects(
+            engine,
+            (id) => (this.isCharacterVisible(id) ? this.bundles.get(id)?.snapshot : undefined),
+            (target) => {
+                const position = this.gravePositions.get(target.id)
+                return position && this.isPositionVisible(position) ? { position } : undefined
+            }
         )
         this.damageFeedback = new DamageFeedback(
             engine,
@@ -115,6 +121,7 @@ export class SceneActors {
         this.combatTarget.dispose()
         this.attackZones.update([])
         this.mapVisibility = this.playerPosition = undefined
+        this.gravePositions.clear()
     }
     public showDamage(event: GameEventPayload): void {
         this.combatEffects.receive(event)
@@ -130,6 +137,7 @@ export class SceneActors {
         this.signReading.setMap(map.visibility)
         this.mapVisibility = map.visibility
         this.playerPosition = undefined
+        this.gravePositions.clear()
         this.mapActor?.kill()
         this.mapBounds = new BoundingBox(0, 0, map.worldWidth, map.worldHeight)
         this.followedId = undefined
@@ -178,6 +186,9 @@ export class SceneActors {
     }
 
     private updateResourceViews(snapshot: WorldSnapshot): void {
+        this.gravePositions = new Map(
+            (snapshot.graves ?? []).map((grave) => [grave.id, grave.position])
+        )
         const nodes = snapshot.adventure?.resourceNodes ?? []
         this.depthProps.updateResources(nodes)
         this.depthProps.updateGraves(snapshot.graves ?? [])

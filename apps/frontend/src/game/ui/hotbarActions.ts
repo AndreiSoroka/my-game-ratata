@@ -5,6 +5,7 @@ import {
     type CharacterSnapshot,
     type ClientMessage,
     type PrayerPreview,
+    type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 import type { ComputedRef, Ref } from 'vue'
 
@@ -15,6 +16,8 @@ import type { createGestures } from './hotbarGestures'
 export interface HotbarProps {
     player: CharacterSnapshot
     target?: CharacterSnapshot
+    grave?: WorldGraveSnapshot
+    canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
     blocked: boolean
@@ -38,47 +41,71 @@ export function bindingUnavailable(
 ): string | undefined {
     if (!binding) return undefined
     if (binding.kind === 'item') return count === 0 ? 'Нет яблок' : undefined
-    if (binding.kind === 'attack') return cooldown > 0 ? 'Атака восстанавливается' : undefined
+    if (binding.kind === 'attack') return attackUnavailable(props, cooldown)
     if (binding.id === 'pray') return prayerReason
-    const ability = ABILITY_DEFINITIONS[binding.id]
+    return abilityUnavailable(binding.id, props, cooldown)
+}
+function attackUnavailable(props: HotbarProps, cooldown: number): string | undefined {
+    if (props.grave?.phase === 'ruined') return 'Могила разрушена'
+    return cooldown > 0 ? 'Атака восстанавливается' : undefined
+}
+function abilityUnavailable(
+    id: Exclude<import('@my-game-ratata/contracts').AbilityId, 'pray'>,
+    props: HotbarProps,
+    cooldown: number
+): string | undefined {
+    if (id !== 'barrier' && props.grave?.phase === 'ruined') return 'Могила разрушена'
+    const ability = ABILITY_DEFINITIONS[id]
     if (cooldown > 0) return 'Умение восстанавливается'
     if (props.player.resources.mana < ability.mana) return 'Недостаточно маны'
     if (props.player.resources.energy < ability.energy) return 'Недостаточно энергии'
-    if (!['barrier', 'shot'].includes(binding.id) && !hostileTarget(props))
-        return 'Выберите врага: T'
+    if (!['barrier', 'shot'].includes(id) && !hostileTarget(props)) return 'Выберите врага: T'
     return undefined
 }
 function actionFor(
     binding: Exclude<HotbarBinding, { kind: 'item' }>,
-    player: CharacterSnapshot,
-    target: CharacterSnapshot | undefined,
+    props: HotbarProps,
     intent: PrayerPreview['intent']
 ): CharacterAutoAction | undefined {
-    if (binding.kind === 'attack')
-        return target?.alive && relation(target, player) === 'hostile'
-            ? { kind: 'attack', targetId: target.id }
-            : undefined
+    const target = combatAddress(props)
+    if (binding.kind === 'attack') return target ? { kind: 'attack', ...target } : undefined
     if (binding.id === 'pray') return intent ? { kind: 'prayer', intent } : undefined
-    return {
-        kind: 'ability',
-        abilityId: binding.id,
-        ...(target && binding.id !== 'barrier' && relation(target, player) === 'hostile'
-            ? { targetId: target.id }
-            : {}),
-    }
+    return { kind: 'ability', abilityId: binding.id, ...(binding.id === 'barrier' ? {} : target) }
+}
+function combatAddress(
+    props: HotbarProps
+):
+    | { target: import('@my-game-ratata/contracts').WorldCombatTarget }
+    | { targetId: string }
+    | undefined {
+    if (props.grave) return { target: { kind: 'grave', id: props.grave.id } }
+    return props.target?.alive && relation(props.target, props.player) === 'hostile'
+        ? { targetId: props.target.id }
+        : undefined
 }
 function singleCommand(action: CharacterAutoAction): ClientMessage {
-    if (action.kind === 'attack') return { type: 'attack', targetId: action.targetId }
+    if (action.kind === 'attack')
+        return {
+            type: 'attack',
+            ...(action.target ? { target: action.target } : { targetId: action.targetId }),
+        }
     return action.kind === 'prayer'
         ? { type: 'use_ability', abilityId: 'pray', intent: action.intent }
         : {
               type: 'use_ability',
               abilityId: action.abilityId,
-              ...(action.targetId ? { targetId: action.targetId } : {}),
+              ...(action.target
+                  ? { target: action.target }
+                  : action.targetId
+                    ? { targetId: action.targetId }
+                    : {}),
           }
 }
 function hostileTarget(props: HotbarProps): boolean {
-    return props.target !== undefined && relation(props.target, props.player) === 'hostile'
+    return (
+        props.grave !== undefined ||
+        (props.target !== undefined && relation(props.target, props.player) === 'hostile')
+    )
 }
 interface ActionState {
     bindings: Ref<(HotbarBinding | null)[]>
@@ -103,7 +130,7 @@ export function createActivator(
             return
         }
         if (binding.kind === 'ability' && !known.value.includes(binding.id)) return
-        const action = actionFor(binding, props.player, props.target, preview.value.intent)
+        const action = actionFor(binding, props, preview.value.intent)
         if (!action) {
             if (binding.kind === 'attack') emit('command', { type: 'attack' })
             return

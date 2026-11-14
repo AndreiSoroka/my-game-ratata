@@ -1,0 +1,378 @@
+import { expect, it, vi } from 'vitest'
+
+import {
+    advanceCharacterControl,
+    setCharacterControl,
+    snapshotControl,
+} from '../src/game/characterControl'
+import {
+    attemptAbilityAttack,
+    resolvePendingAttackHit,
+} from '../src/game/combat'
+import { createItemInstance } from '../src/game/inventory'
+import { advanceCharacter } from '../src/game/movement'
+import { castSpell } from '../src/game/spellCasting'
+import { graveCombatFixture } from './graveCombatFixture'
+
+it.each(['targeted', 'forward'] as const)(
+    'hits stone with a %s Shot for fractional projectile damage without sword wear or practice',
+    (mode) => {
+        const f = graveCombatFixture()
+        const sword = createItemInstance('simple_sword')
+        f.actor.equipment.weapon = sword
+        const skills = structuredClone(f.actor.progression.skills)
+        const start = f.ability(
+            'shot',
+            1000,
+            mode === 'targeted' ? f.reference : null
+        )
+        expect(start[0]?.kind).toBe('attack')
+        const hit = f.hit()
+        expect(hit[0]).toMatchObject({
+            kind: 'world_damage',
+            target: f.reference,
+            abilityId: 'shot',
+            amount: 0.3,
+        })
+        expect(f.actor.energy).toBe(90)
+        expect(sword.durability).toBe(200)
+        expect(f.actor.progression.skills).toEqual(skills)
+        expect(f.service.get('grave')?.hp).toBe(99.7)
+    }
+)
+it.each([106, 120])(
+    'a forward arrow hits exactly the nearest target when enemy at%d',
+    (enemyX) => {
+        const f = graveCombatFixture()
+        const enemy = f.enemy(enemyX)
+        attemptAbilityAttack({ ...f.attack(), target: undefined }, 'shot')
+        const events = f.hit()
+        expect(
+            events.filter(
+                (event) =>
+                    event.kind === 'damage' || event.kind === 'world_damage'
+            )
+        ).toHaveLength(1)
+        if (enemyX < 112) {
+            expect(enemy.hp).toBeLessThan(enemy.maxHp)
+            expect(f.service.get('grave')?.hp).toBe(100)
+        } else {
+            expect(enemy.hp).toBe(enemy.maxHp)
+            expect(f.service.get('grave')?.hp).toBe(99.7)
+        }
+    }
+)
+it.each(['behind', 'wall', 'width', 'range'] as const)(
+    'a forward arrow misses stone outside its legal %s',
+    (reason) => {
+        const f = graveCombatFixture()
+        if (reason === 'behind') {
+            f.actor.facing = 'left'
+        }
+        if (reason === 'wall') {
+            vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(
+                false
+            )
+        }
+        if (reason === 'width') {
+            f.actor.position.y = 112
+        }
+        if (reason === 'range') {
+            f.actor.position.x = 47
+        }
+        const skills = structuredClone(f.actor.progression.skills)
+        expect(
+            attemptAbilityAttack(
+                { ...f.attack(), target: undefined },
+                'shot'
+            )[0]?.kind
+        ).toBe('attack')
+        expect(f.hit()).toEqual([])
+        expect(f.service.get('grave')?.hp).toBe(100)
+        expect(f.actor.progression.skills).toEqual(skills)
+    }
+)
+it('uses arcane stone resistance and normal costs for Spark after its own windup', () => {
+    const f = graveCombatFixture('arcanist')
+    const skills = structuredClone(f.actor.progression.skills)
+    expect(f.ability('spark')[0]).toMatchObject({
+        kind: 'attack',
+        abilityId: 'spark',
+        target: f.reference,
+    })
+    expect(f.hit(1199)).toEqual([])
+    expect(f.hit(1200)[0]).toMatchObject({
+        kind: 'world_damage',
+        amount: 1.25,
+        damageKind: 'arcane',
+    })
+    expect(f.actor.mana).toBe(94)
+    expect(f.actor.energy).toBe(95)
+    expect(f.actor.progression.skills).toEqual(skills)
+})
+it.each(['fireball', 'greater_fireball'] as const)(
+    'resolves %s on the pinned grave after the ordinary cast lock, with no practice',
+    (id) => {
+        const f = graveCombatFixture('arcanist')
+        f.actor.abilities.known.add(id)
+        f.actor.progression.skills[id].unlocked = true
+        f.actor.progression.skills[id].level = 3
+        const skills = structuredClone(f.actor.progression.skills)
+        expect(f.ability(id)[0]).toMatchObject({
+            kind: 'attack',
+            abilityId: id,
+            target: f.reference,
+        })
+        expect(f.service.get('grave')?.hp).toBe(100)
+        expect(f.hit(1399)).toEqual([])
+        expect(f.hit(1400)[0]).toMatchObject({
+            kind: 'world_damage',
+            amount: id === 'fireball' ? 3 : 6,
+            damageKind: 'arcane',
+        })
+        expect(f.actor.mana).toBe(id === 'fireball' ? 88 : 76)
+        expect(f.actor.progression.skills).toEqual(skills)
+        expect(f.hit(1400)).toEqual([])
+    }
+)
+it.each([
+    'locked',
+    'mana',
+    'cooldown',
+    'range',
+    'wall',
+    'cross-location',
+    'purified',
+    'missing',
+    'dual-target',
+] as const)('rejects %s grave spells atomically', (reason) => {
+    const f = graveCombatFixture('arcanist')
+    const target = { ...f.reference }
+    f.actor.progression.skills.fireball.unlocked = reason !== 'locked'
+    if (reason === 'mana') {
+        f.actor.mana = 0
+    }
+    if (reason === 'cooldown') {
+        f.actor.progression.spellAvailableAt = 1001
+    }
+    if (reason === 'range') {
+        f.actor.position.x = 300
+    }
+    if (reason === 'wall') {
+        vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(false)
+    }
+    if (reason === 'cross-location') {
+        f.actor.locationId = 'map-0-0'
+    }
+    if (reason === 'purified') {
+        f.service.purify('grave', 0)
+    }
+    if (reason === 'missing') {
+        target.id = 'unknown'
+    }
+    const mana = f.actor.mana
+    expect(
+        castSpell(
+            f.actor,
+            {
+                type: 'cast_spell',
+                skillId: 'fireball',
+                target,
+                ...(reason === 'dual-target' ? { targetId: 'enemy' } : {}),
+            },
+            f.context
+        )
+    ).toEqual([])
+    expect(f.actor.mana).toBe(mana)
+    expect(f.actor.pendingAttack).toBeUndefined()
+})
+it('rechecks spell LoS after cast start and never replaces a ruined grave with a character', () => {
+    const f = graveCombatFixture('arcanist')
+    f.actor.progression.skills.fireball.unlocked = true
+    const enemy = f.enemy(110)
+    expect(
+        castSpell(
+            f.actor,
+            { type: 'cast_spell', skillId: 'fireball', target: f.reference },
+            f.context
+        )[0]?.kind
+    ).toBe('attack')
+    vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(false)
+    expect(f.hit(1400)).toEqual([])
+    expect(enemy.hp).toBe(enemy.maxHp)
+    expect(f.service.get('grave')?.hp).toBe(100)
+})
+it('automatic grave melee approaches using ordinary reach, pins its target and stops when ruined', () => {
+    const f = graveCombatFixture()
+    f.actor.position.x = 60
+    const action = { kind: 'attack' as const, target: { ...f.reference } }
+    expect(
+        setCharacterControl(
+            f.actor,
+            { type: 'auto_action', action },
+            f.world,
+            1000
+        )
+    ).toBe(true)
+    action.target.id = 'other'
+    advanceCharacterControl(f.actor, f.world, 1000)
+    expect(snapshotControl(f.actor).waiting).toBe('range')
+    expect(f.actor.hasPath()).toBe(true)
+    expect(f.events).toEqual([])
+    f.actor.position.x = 100
+    advanceCharacterControl(f.actor, f.world, 1300)
+    expect(f.events[0]).toMatchObject({ kind: 'attack', target: f.reference })
+    f.service.damage('grave', 100, 1301)
+    expect(resolvePendingAttackHit(f.attack(1350))).toEqual([])
+    expect(advanceCharacterControl(f.actor, f.world, 1350)).toBe(false)
+    expect(snapshotControl(f.actor).mode).toBe('none')
+    expect(f.events).toHaveLength(1)
+})
+it('automatic forward Shot damages stone without practice, silently waits for resources and never starts another attack on cancel', () => {
+    const f = graveCombatFixture()
+    f.actor.energy = 10
+    const skills = structuredClone(f.actor.progression.skills)
+    expect(
+        setCharacterControl(
+            f.actor,
+            {
+                type: 'auto_action',
+                action: { kind: 'ability', abilityId: 'shot' },
+            },
+            f.world,
+            1000
+        )
+    ).toBe(true)
+    advanceCharacterControl(f.actor, f.world, 1000)
+    f.hit()
+    advanceCharacterControl(f.actor, f.world, 1550)
+    expect(snapshotControl(f.actor).waiting).toBe('resources')
+    expect(f.events).toHaveLength(1)
+    f.actor.energy = 10
+    advanceCharacterControl(f.actor, f.world, 1600)
+    f.hit(1650)
+    expect(f.service.get('grave')?.hp).toBe(99.4)
+    expect(f.actor.progression.skills).toEqual(skills)
+    expect(
+        setCharacterControl(
+            f.actor,
+            { type: 'auto_action', action: null },
+            f.world,
+            1700
+        )
+    ).toBe(true)
+    advanceCharacterControl(f.actor, f.world, 2200)
+    expect(f.events).toHaveLength(2)
+})
+
+it('uses a normal NPC controller and shared heavy-strike weapon wear without grave stun or practice', () => {
+    const f = graveCombatFixture('ranger', 'scripted')
+    f.actor.abilities.known.add('skeleton_strike')
+    const weapon = createItemInstance('axe')
+    f.actor.equipment.weapon = weapon
+    const skills = structuredClone(f.actor.progression.skills)
+    expect(attemptAbilityAttack(f.attack(), 'skeleton_strike')[0]?.kind).toBe(
+        'attack'
+    )
+    expect(f.hit(1599)).toEqual([])
+    expect(f.hit(1600)).toEqual([
+        {
+            kind: 'world_damage',
+            actorId: f.actor.id,
+            target: f.reference,
+            amount: 1.5,
+            critical: false,
+            damageKind: 'physical',
+            abilityId: 'skeleton_strike',
+        },
+    ])
+    expect(weapon.durability).toBe(995)
+    expect(f.actor.progression.skills).toEqual(skills)
+})
+
+it.each([
+    { world: true, late: 0 },
+    { world: false, late: 0 },
+    { world: true, late: 47 },
+    { world: false, late: 47 },
+])(
+    'keeps Spark hit geometry through timed-state before resolution (world:$world, late:$late)',
+    ({ world, late }) => {
+        const f = graveCombatFixture('arcanist')
+        const enemy = f.enemy(110)
+        const context = {
+            ...f.attack(1003),
+            ...(world ? {} : { target: undefined, targetId: enemy.id }),
+        }
+        expect(attemptAbilityAttack(context, 'spark')[0]?.kind).toBe('attack')
+        const now = 1203 + late
+        advanceCharacter({
+            character: f.actor,
+            now,
+            deltaMs: 50,
+            navigation: f.context.navigation,
+        })
+        expect(f.actor.attackZones).not.toEqual([])
+        expect(f.hit(now)[0]?.kind).toBe(world ? 'world_damage' : 'damage')
+        expect(f.hit(now)).toEqual([])
+        f.actor.tickTimedState(now + 50)
+        expect(f.actor.attackZones).toEqual([])
+    }
+)
+
+it.each([
+    {
+        first: 'fireball' as const,
+        next: 'spark' as const,
+        windup: 400,
+        rawDamage: 12,
+        amount: 3,
+    },
+    {
+        first: 'spark' as const,
+        next: 'fireball' as const,
+        windup: 200,
+        rawDamage: undefined,
+        amount: 1.25,
+    },
+])(
+    'keeps pending $first target, geometry, damage and costs when $next arrives after its deadline',
+    ({ first, next, windup, rawDamage, amount }) => {
+        const f = graveCombatFixture('arcanist')
+        f.actor.abilities.known.add('fireball')
+        f.actor.progression.skills.fireball.unlocked = true
+        f.actor.progression.skills.fireball.level = 3
+        const other = { kind: 'grave' as const, id: 'second-grave' }
+        f.service.register(
+            {
+                id: other.id,
+                locationId: f.actor.locationId,
+                position: { x: 100, y: 112 },
+            },
+            [],
+            0
+        )
+        expect(f.ability(first, 1003)[0]?.kind).toBe('attack')
+        const pending = structuredClone(f.actor.pendingAttack)
+        const zones = structuredClone(f.actor.attackZones)
+        expect(pending).toMatchObject({ target: f.reference, rawDamage })
+        const mana = f.actor.mana,
+            energy = f.actor.energy
+        expect(
+            f
+                .ability(next, 1004 + windup, other)
+                .every((event) => event.kind === 'notice')
+        ).toBe(true)
+        expect(f.actor.pendingAttack).toEqual(pending)
+        expect(f.actor.attackZones).toEqual(zones)
+        expect(f.actor.facing).toBe('right')
+        expect(f.actor.mana).toBe(mana)
+        expect(f.actor.energy).toBe(energy)
+        expect(f.hit(1050 + windup)[0]).toMatchObject({
+            target: f.reference,
+            amount,
+        })
+        expect(f.service.get(other.id)?.hp).toBe(100)
+        expect(f.hit(1050 + windup)).toEqual([])
+    }
+)

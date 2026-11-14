@@ -53,6 +53,10 @@ export type AgentDecision =
     | MovementClientMessage
     | { type: 'move'; axis: { x: number; y: number } }
     | { type: 'move_to'; target: { x: number; y: number } }
-    | { type: 'attack'; targetId: string }
+    | {
+          type: 'attack'
+          targetId?: string
+          target?: import('./graves').WorldCombatTarget
+      }
     | { type: 'speak'; text: string }
     | { type: 'wait' }

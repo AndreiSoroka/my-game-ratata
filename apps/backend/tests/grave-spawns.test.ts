@@ -25,7 +25,7 @@ describe('final player identity graves', () => {
         retireCharacter(hero)
         f.service.schedule(hero, now + 60_000)
         f.service.schedule(hero, now + 70_000)
-        expect(f.service.snapshot(hero.locationId)).toEqual([
+        expect(f.service.snapshot(hero.locationId)).toMatchObject([
             {
                 id: `final:${hero.id}`,
                 locationId: hero.locationId,

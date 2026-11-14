@@ -40,6 +40,35 @@ Blocked or occupied spawn ground delays the birth. Grave markers survive emptyin
 the corpse, and death graves can exist in the city although its initial encounters
 remain empty.
 
+## Breaking and purifying graves
+
+Every skeleton-producing grave, authored or created by final death, has 100 HP and
+the stone material profile. Bare hands deal 10% damage, swords and axes 25%, a
+pickaxe 100%, arrows 5%, and Spark/fireballs 25%. Mitigation follows the ordinary
+damage roll and retains hundredths; weak arrow hits are not rounded up to one HP.
+Costs, windup, range, line of sight and weapon wear remain shared combat rules.
+Damage to a grave grants no combat practice, loot or kill reward.
+
+At zero HP the marker becomes rubble and stops producing skeletons for thirty
+minutes of server time. It then restores all HP and starts a fresh ten-minute birth
+interval. Its existing living descendants still count toward the cap of three;
+there is no instant catch-up spawn. A partially damaged grave continues producing.
+
+Select a grave through **E** to inspect its condition/material, attack it or choose
+**Упокоить могилу**. Purification requires learned Prayer and either a Cleric
+background or Miracles level 5, for every controller and patron. The ten-second
+channel must stay within 48 world units with clear sight; it spends 20 mana only
+after success and grants Faith/Miracles practice once. Movement, HP damage, stun,
+death, disconnect, lost reach/sight or Esc cancels without payment. Ordinary prayer
+never automatically chooses a grave for purification.
+
+Purification works on intact graves or rubble and permanently disables their source
+for this world session. The marker disappears, including authored gravestones after
+travel or reconnection. Existing skeletons and the independent corpse/loot remain.
+Sources retain a disabled identity so they cannot be registered again, while dead
+descendants still receive normal cleanup. These states currently live in server
+memory; restarting the server resets the world.
+
 ## Corpses and carried loot
 
 A mortal hero's backpack, equipped items and gold remain protected throughout the

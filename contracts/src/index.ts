@@ -58,6 +58,7 @@ export * from './environmentGeometry'
 export * from './farming'
 export * from './farms'
 export * from './graves'
+export * from './materials'
 
 import type { ContractProtocolVersion } from './service'
 export type { PlayerIdentity, WorldPosition } from './identity'
@@ -232,6 +233,7 @@ export interface MoveToClientMessage {
 export interface AttackClientMessage {
     type: 'attack'
     targetId?: string
+    target?: import('./graves').WorldCombatTarget
 }
 
 export interface PickupItemClientMessage {

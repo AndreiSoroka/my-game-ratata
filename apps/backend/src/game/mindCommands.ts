@@ -1,6 +1,7 @@
 import type { CompanionRequest } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
+import { parseCombatReference } from './combatTargetParsing'
 import type { ParseResult } from './messages'
 import { parseSocialCommand } from './socialCommands'
 
@@ -14,7 +15,11 @@ const requests: CompanionRequest[] = [
 
 export function parseMindCommand(record: Record<string, unknown>): ParseResult {
     const type = record['type']
-    if (type === 'use_ability' || type === 'learn_ability') {
+    if (
+        type === 'use_ability' ||
+        type === 'learn_ability' ||
+        type === 'cancel_prayer'
+    ) {
         const message = parseAbilityCommand(record)
         return message === undefined
             ? { error: 'Invalid ability command.' }
@@ -28,14 +33,20 @@ export function parseMindCommand(record: Record<string, unknown>): ParseResult {
     if (type === 'learn_skill' && skillId === 'fireball' && validId(targetId)) {
         return { message: { type, skillId, targetId } }
     }
-    if (
-        type === 'cast_spell' &&
-        (skillId === 'fireball' || skillId === 'greater_fireball') &&
-        validId(targetId)
-    ) {
-        return { message: { type, skillId, targetId } }
+    if (type === 'cast_spell') {
+        return parseSpell(record)
     }
     return parseKnowledgeCommand(record)
+}
+
+function parseSpell(record: Record<string, unknown>): ParseResult {
+    const skillId = record['skillId']
+    const reference = parseCombatReference(record)
+    return (skillId === 'fireball' || skillId === 'greater_fireball') &&
+        reference !== undefined &&
+        (reference.targetId !== undefined || reference.target !== undefined)
+        ? { message: { type: 'cast_spell', skillId, ...reference } }
+        : { error: 'Invalid spell target' }
 }
 
 function parseKnowledgeCommand(record: Record<string, unknown>): ParseResult {

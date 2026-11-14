@@ -1,11 +1,14 @@
 import type {
     AttackAbilityId,
     GameEventPayload,
+    WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { GraveCombatContext } from './graveRules'
 import type { NavigationService } from './navigation'
 export interface AbilityContext {
+    graves?: GraveCombatContext | undefined
     characters: readonly GameCharacter[]
     navigation: NavigationService
     now: number
@@ -15,7 +18,8 @@ export interface AbilityContext {
         actor: GameCharacter,
         targetId: string | undefined,
         abilityId: AttackAbilityId,
-        now: number
+        now: number,
+        target?: WorldCombatTarget
     ) => GameEventPayload[]
 }
 export function abilityNotice(

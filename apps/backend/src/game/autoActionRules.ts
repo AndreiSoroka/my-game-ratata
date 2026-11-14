@@ -15,6 +15,11 @@ import {
     untargetedAction,
     visibleTarget,
 } from './autoActionTargets'
+import {
+    autoWorldTarget,
+    legalAutoWorldTarget,
+    reachedAutoWorldTarget,
+} from './autoActionWorldTargets'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
@@ -24,7 +29,11 @@ import { prayerHarmTargets } from './prayerContext'
 
 export type AutoActionStatus = 'stop' | 'ready' | NonNullable<AutoActionWaiting>
 export function autoTargetId(action: CharacterAutoAction): string | undefined {
-    return action.kind === 'prayer' ? action.intent.targetId : action.targetId
+    return action.kind === 'prayer'
+        ? 'targetId' in action.intent
+            ? action.intent.targetId
+            : undefined
+        : action.targetId
 }
 export function autoActionStatus(
     actor: GameCharacter,
@@ -73,6 +82,9 @@ function legalAutoTarget(
     target: GameCharacter | undefined,
     context: AbilityContext
 ): boolean {
+    if (autoWorldTarget(action) !== undefined) {
+        return legalAutoWorldTarget(actor, action, context)
+    }
     const untargeted = untargetedAction(actor, action, context)
     if (untargeted !== undefined) {
         return untargeted
@@ -100,6 +112,9 @@ function reached(
     target: GameCharacter | undefined,
     context: AbilityContext
 ): boolean {
+    if (autoWorldTarget(action) !== undefined) {
+        return reachedAutoWorldTarget(actor, action, context)
+    }
     if (target === undefined) {
         return true
     }
@@ -181,6 +196,7 @@ function refusesAutoCombat(
     if (action.kind === 'prayer') {
         return (
             action.intent.mode !== 'devotion' &&
+            action.intent.mode !== 'purify_grave' &&
             prayerHarmTargets(actor, context).length > 0
         )
     }

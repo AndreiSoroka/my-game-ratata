@@ -1,0 +1,101 @@
+import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+
+import { characterFixture, worldFixture } from '../testing/characterFixture'
+import { graveFixture } from '../testing/graveFixture'
+import GraveDetails from './GraveDetails.vue'
+import { graveActions, gravePrayerPreview } from './graveInteractions'
+import { nearbyInteractionTarget } from './nearbyInteractionActions'
+
+const cleric = () =>
+    characterFixture('cleric', {
+        heroClass: 'cleric',
+        abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
+    })
+describe('explicit grave interactions', () => {
+    it('pins both ordinary attacks and purification to the same stable grave ID', () => {
+        const grave = graveFixture()
+        const actions = graveActions(cleric(), grave)
+        expect(actions.map((action) => action.command)).toEqual([
+            { type: 'attack', target: { kind: 'grave', id: grave.id } },
+            {
+                type: 'use_ability',
+                abilityId: 'pray',
+                intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
+            },
+        ])
+        expect(actions.every((action) => !action.disabled)).toBe(true)
+        const ruined = graveActions(cleric(), { ...grave, phase: 'ruined', hp: 0 })
+        expect(ruined[0]?.disabled).toBe(true)
+        expect(ruined[1]?.disabled).toBe(false)
+    })
+    it.each([
+        'unknown',
+        'unqualified',
+        'mana',
+        'cooldown',
+        'casting',
+        'dead',
+        'far',
+        'hidden',
+    ] as const)('explains the %s requirement without choosing a different prayer', (failure) => {
+        const player = cleric()
+        const grave = graveFixture()
+        if (failure === 'unknown') player.abilities!.known = []
+        if (failure === 'unqualified') player.heroClass = 'vanguard'
+        if (failure === 'mana') player.resources.mana = 19
+        if (failure === 'cooldown') player.abilities!.cooldowns.pray = 1
+        if (failure === 'casting')
+            player.abilities!.casting = {
+                abilityId: 'pray',
+                targetId: 'ally',
+                startedAt: 0,
+                completesAt: 1000,
+            }
+        if (failure === 'dead') player.alive = false
+        if (failure === 'far') grave.position.y = 49
+        const preview = gravePrayerPreview(player, grave, failure !== 'hidden')
+        expect(preview.unavailableReason).toBeTruthy()
+        expect(preview.intent).toEqual({
+            mode: 'purify_grave',
+            target: { kind: 'grave', id: grave.id },
+        })
+    })
+    it('removes purified, hidden, unreachable and dead-player targets from E selection', () => {
+        const player = cleric()
+        const grave = graveFixture()
+        const snapshot = { ...worldFixture([player]), graves: [grave] }
+        expect(nearbyInteractionTarget(snapshot, player, [])?.key).toBe(`grave:${grave.id}`)
+        expect(nearbyInteractionTarget(snapshot, player, [], () => false)).toBeUndefined()
+        expect(
+            nearbyInteractionTarget(
+                { ...snapshot, graves: [{ ...grave, phase: 'purified' }] },
+                player,
+                []
+            )
+        ).toBeUndefined()
+        expect(
+            nearbyInteractionTarget(
+                { ...snapshot, graves: [{ ...grave, position: { x: 0, y: 49 } }] },
+                player,
+                []
+            )
+        ).toBeUndefined()
+        expect(nearbyInteractionTarget(snapshot, { ...player, alive: false }, [])).toBeUndefined()
+    })
+})
+describe('reusable grave facts', () => {
+    it('retains fractional HP and shows material effectiveness and server-based restoration countdown', async () => {
+        const wrapper = mount(GraveDetails, { props: { grave: graveFixture(), serverTime: 1000 } })
+        expect(wrapper.text()).toContain('99,75 / 100 HP')
+        expect(wrapper.text()).toContain('5% урона')
+        expect(wrapper.text()).toContain('100% урона')
+        await wrapper.setProps({
+            grave: graveFixture({ phase: 'ruined', hp: 0, restoresAt: 181_000 }),
+        })
+        expect(wrapper.text()).toContain('3:00')
+        await wrapper.setProps({ serverTime: 182_000 })
+        expect(wrapper.text()).toContain('0:00')
+        wrapper.unmount()
+    })
+})

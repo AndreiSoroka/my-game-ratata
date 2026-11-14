@@ -10,10 +10,13 @@ import type {
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
+import ActionChannelStatus from './ActionChannelStatus.vue'
 import ActionHotbar from './ActionHotbar.vue'
 import { combatKeyBlocked, nextTarget, relation } from './combatTargeting'
 import PartyPanel from './PartyPanel.vue'
+import SelectedTargetPanel from './SelectedTargetPanel.vue'
 import SpeechBubbles from './SpeechBubbles.vue'
+import { useGraveSelection } from './useGraveSelection'
 
 const props = defineProps<{
     game?: RatataGame
@@ -24,6 +27,11 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ interact: [id: string] }>()
 const selectedId = ref<string>()
+const { selectedGraveId, grave, selectGrave, clearGrave } = useGraveSelection(
+    props,
+    selectedId,
+    () => cancel()
+)
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
 const speech = ref<InstanceType<typeof SpeechBubbles>>()
 const unavailable = computed(() => !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
@@ -34,7 +42,10 @@ function send(command: ClientMessage): void {
 function cancel(clear = false): void {
     hotbar.value?.resetGesture()
     send({ type: 'cancel_control' })
-    if (clear) selectedId.value = undefined
+    if (clear) {
+        selectedId.value = undefined
+        clearGrave()
+    }
 }
 function select(id: string, open = false): void {
     const character = props.characters.find((actor) => actor.id === id)
@@ -43,6 +54,7 @@ function select(id: string, open = false): void {
     if (open && relation(character, props.player) !== 'hostile') emit('interact', id)
 }
 function key(event: KeyboardEvent): void {
+    if (cancelRitualKey(event)) return
     if (
         [
             'KeyW',
@@ -83,6 +95,21 @@ function key(event: KeyboardEvent): void {
         },
     }
     actions[event.code]?.()
+}
+function cancelRitualKey(event: KeyboardEvent): boolean {
+    if (
+        event.code !== 'Escape' ||
+        props.player.abilities?.casting?.mode !== 'purify_grave' ||
+        combatKeyBlocked(event, props.blocked)
+    )
+        return false
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (!event.repeat) {
+        send({ type: 'cancel_prayer' })
+        cancel(true)
+    }
+    return true
 }
 function activateSlot(slot: number, edit: boolean): void {
     if (edit) void hotbar.value?.edit(slot)
@@ -162,7 +189,7 @@ watch(
 watch(selectedId, (id, previous) => {
     if (id !== previous && props.player.control?.mode !== 'follow') cancel()
 })
-watch(target, (character) =>
+watch([target, grave], ([character, selectedGrave]) =>
     props.game?.setCombatTarget(
         character
             ? {
@@ -171,7 +198,13 @@ watch(target, (character) =>
                   position: character.position,
                   relationship: relation(character, props.player),
               }
-            : undefined
+            : selectedGrave
+              ? {
+                    key: `grave:${selectedGrave.id}`,
+                    kind: 'object',
+                    position: selectedGrave.position,
+                }
+              : undefined
     )
 )
 onMounted(() => {
@@ -186,7 +219,7 @@ onBeforeUnmount(() => {
     props.game?.setCombatTarget(undefined)
     cancel()
 })
-defineExpose({ selectedId, select, receive, cancel, assignItem })
+defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel, assignItem })
 </script>
 <template>
     <PartyPanel
@@ -196,33 +229,25 @@ defineExpose({ selectedId, select, receive, cancel, assignItem })
         :selected-id="selectedId"
         @select="select"
     />
-    <aside v-if="target" class="target-panel rpg-panel" aria-label="Выбранная цель">
-        <strong>{{ target.nickname }}</strong
-        ><span>{{ Math.round((target.hp / Math.max(1, target.maxHp)) * 100) }}%</span>
-        <small>{{
-            target.id === player.id
-                ? 'Вы'
-                : relation(target, player) === 'hostile'
-                  ? 'Враг · 1–4 действия'
-                  : 'Союзник · E действия'
-        }}</small>
-    </aside>
-    <p v-if="player.cooldowns.stunMsLeft > 0" class="control-status rpg-panel" role="status">
-        СТАН · {{ (player.cooldowns.stunMsLeft / 1000).toFixed(1) }} с
-    </p>
-    <p v-else-if="player.abilities?.casting" class="control-status rpg-panel" role="status">
-        Воскрешение ·
-        {{
-            (
-                Math.max(0, player.abilities.casting.completesAt - snapshot.serverTime) / 1000
-            ).toFixed(1)
-        }}
-        с
-    </p>
+    <SelectedTargetPanel
+        :target="target"
+        :grave="grave"
+        :player="player"
+        :server-time="snapshot.serverTime"
+    />
+    <ActionChannelStatus
+        :player="player"
+        :server-time="snapshot.serverTime"
+        @cancel-prayer="send({ type: 'cancel_prayer' })"
+    />
     <ActionHotbar
         ref="hotbar"
         :player="player"
         :target="target"
+        :grave="grave"
+        :can-reach-grave="
+            (selected) => game?.isInteractionVisible(selected.position, undefined, 48) ?? false
+        "
         :characters="characters"
         :can-reach="(target) => game?.isInteractionVisible(target.position, undefined, 48) ?? false"
         :blocked="blocked"
@@ -235,36 +260,6 @@ defineExpose({ selectedId, select, receive, cancel, assignItem })
     <span class="target-help">T враги · Shift+T союзники · F себя · Дважды 1–4: повтор</span>
 </template>
 <style scoped>
-.target-panel {
-    position: absolute;
-    top: 58px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 220px;
-    z-index: 4;
-    padding: 9px 12px;
-    box-sizing: border-box;
-}
-.target-panel strong {
-    font-size: 13px;
-}
-.target-panel > span {
-    float: right;
-}
-.target-panel small {
-    display: block;
-    color: #b9c7a4;
-    font-size: 10px;
-}
-.control-status {
-    position: absolute;
-    left: 50%;
-    top: 42%;
-    transform: translateX(-50%);
-    padding: 10px;
-    z-index: 9;
-    color: var(--rpg-focus);
-}
 .target-help {
     position: absolute;
     left: 50%;
@@ -277,10 +272,6 @@ defineExpose({ selectedId, select, receive, cancel, assignItem })
     white-space: nowrap;
 }
 @media (max-width: 740px) {
-    .target-panel {
-        top: 54px;
-        width: 164px;
-    }
     .target-help {
         font-size: 9px;
     }

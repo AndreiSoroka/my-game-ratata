@@ -224,6 +224,10 @@ export class GameCharacter {
                     ? this.equipment.weapon?.instanceId
                     : undefined,
             targetId: attack.targetId,
+            target:
+                attack.target === undefined ? undefined : { ...attack.target },
+            rawDamage: attack.rawDamage,
+            maxRange: attack.maxRange,
             abilityId: attack.abilityId,
             canStun: attack.canStun,
             damageMultiplier: attack.damageMultiplier,
