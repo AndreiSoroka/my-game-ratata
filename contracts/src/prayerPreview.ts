@@ -1,11 +1,11 @@
 import {
-    PRAYER_RULES,
     type PrayerIntent,
     type PrayerMode,
     type PrayerPreview,
 } from './abilities'
+import { ABILITY_DEFINITIONS } from './abilities'
+import { type WorldGraveSnapshot } from './graves'
 import type { CharacterSnapshot } from './index'
-import { REVIVE_RANGE } from './life'
 import {
     DEITY_PRAYER_PROFILES,
     type DeityPrayerProfile,
@@ -15,6 +15,8 @@ import { resourceNeedsRestoration } from './resources'
 export interface PrayerPreviewOptions {
     canReach?: (target: CharacterSnapshot) => boolean
     canAid?: (target: CharacterSnapshot) => boolean
+    graves?: readonly WorldGraveSnapshot[]
+    canReachGrave?: (target: WorldGraveSnapshot) => boolean
 }
 interface PreviewContext {
     player: CharacterSnapshot
@@ -51,6 +53,7 @@ export function previewPrayerFromSnapshots(
     return {
         intent,
         manaCost,
+        ...previewParameters(player, intent.mode),
         harmfulTargets: harmed.length,
         includesSelf: harmed.some((target) => target.id === player.id),
         includesAllies: harmed.some(
@@ -63,7 +66,10 @@ export function previewPrayerFromSnapshots(
 function creatureType(target: CharacterSnapshot) {
     return target.creatureType
 }
-function distance(context: PreviewContext, target: CharacterSnapshot): number {
+function distance(
+    context: PreviewContext,
+    target: Pick<CharacterSnapshot, 'position'>
+): number {
     return Math.hypot(
         context.player.position.x - target.position.x,
         context.player.position.y - target.position.y
@@ -73,7 +79,9 @@ function nearby(context: PreviewContext, target: CharacterSnapshot): boolean {
     return (
         !target.tags.includes('offline') &&
         target.life?.retired !== true &&
-        distance(context, target) <= REVIVE_RANGE &&
+        distance(context, target) <=
+            (context.player.abilities?.prayer?.radius ??
+                ABILITY_DEFINITIONS.pray.range) &&
         (target.id === context.player.id ||
             (context.options.canReach?.(target) ?? true))
     )
@@ -111,11 +119,7 @@ function eligibleGift(
     )
 }
 function harmTargets(context: PreviewContext): CharacterSnapshot[] {
-    const level =
-        context.player.progression?.skills.find(
-            (skill) => skill.id === 'miracles'
-        )?.level ?? 1
-    if (level < PRAYER_RULES.harmLevel) {
+    if (context.player.abilities?.prayer?.harm !== true) {
         return []
     }
     return context.all.filter(
@@ -150,6 +154,13 @@ function chooseIntent(
     if (eligibleGift(context, context.player, 'restore')) {
         return { mode: 'restore', targetId: context.player.id }
     }
+    const grave = nearbyGraves(context).sort((a, b) => {
+        const delta = distance(context, a) - distance(context, b)
+        return delta === 0 ? a.id.localeCompare(b.id) : delta
+    })[0]
+    if (grave !== undefined) {
+        return { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } }
+    }
     return harmed.length > 0 ? { mode: 'harm' } : undefined
 }
 function selectedIntent(
@@ -157,6 +168,12 @@ function selectedIntent(
     harmed: CharacterSnapshot[],
     selectedId: string
 ): PrayerIntent | undefined {
+    const grave = nearbyGraves(context).find(
+        (candidate) => candidate.id === selectedId
+    )
+    if (grave !== undefined) {
+        return { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } }
+    }
     const target = context.all.find((candidate) => candidate.id === selectedId)
     if (target === undefined) {
         return undefined
@@ -202,4 +219,31 @@ function eligibleRevival(
         context.player.progression?.resurrectionUnlocked === true &&
         context.profile.reviveTypes.includes(creatureType(target))
     )
+}
+
+function nearbyGraves(context: PreviewContext): WorldGraveSnapshot[] {
+    return [...(context.options.graves ?? [])].filter(
+        (grave) =>
+            context.player.abilities?.known.includes('pray') === true &&
+            grave.phase !== 'purified' &&
+            Math.hypot(
+                grave.position.x - context.player.position.x,
+                grave.position.y - context.player.position.y
+            ) <=
+                (context.player.abilities.prayer?.radius ??
+                    ABILITY_DEFINITIONS.pray.range) &&
+            (context.options.canReachGrave?.(grave) ?? true)
+    )
+}
+
+function previewParameters(player: CharacterSnapshot, mode: PrayerMode) {
+    return {
+        radius:
+            player.abilities?.prayer?.radius ?? ABILITY_DEFINITIONS.pray.range,
+        durationMs:
+            mode === 'devotion'
+                ? 400
+                : (player.abilities?.prayer?.durationMs ??
+                  ABILITY_DEFINITIONS.pray.windupMs),
+    }
 }

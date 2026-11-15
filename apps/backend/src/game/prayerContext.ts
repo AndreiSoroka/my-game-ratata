@@ -1,10 +1,8 @@
 import {
     DEITY_PRAYER_PROFILES,
-    PRAYER_RULES,
     type PrayerIntent,
     prayerManaCost,
     type PrayerPreview,
-    REVIVE_RANGE,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -13,6 +11,7 @@ import type { GameCharacter } from './character'
 import { canTargetByFaction } from './factions'
 import { canPurifyGrave } from './gravePrayer'
 import { distance } from './math'
+import { prayerParameters } from './prayerParameters'
 import { canPerformSkillAction, canUseResurrection } from './skillProgression'
 
 export function prayerResourceMissing(
@@ -40,7 +39,8 @@ export function prayerTargetNearby(
         !target.tags.has('offline') &&
         !target.tags.has('state.retired') &&
         target.locationId === actor.locationId &&
-        distance(actor.position, target.position) <= REVIVE_RANGE &&
+        distance(actor.position, target.position) <=
+            prayerParameters(actor, context.navigation.grid.tileWidth).radius &&
         (actor.id === target.id ||
             context.navigation.hasLineOfSight(actor.position, target.position))
     )
@@ -65,7 +65,7 @@ export function prayerHarmTargets(
     actor: GameCharacter,
     context: AbilityContext
 ): GameCharacter[] {
-    if (actor.progression.skills.miracles.level < PRAYER_RULES.harmLevel) {
+    if (!prayerParameters(actor, context.navigation.grid.tileWidth).harm) {
         return []
     }
     const types = DEITY_PRAYER_PROFILES[actor.progression.patron].harmTypes
@@ -152,6 +152,17 @@ export function resolvePrayerIntent(
     if (validPrayerIntent(actor, self, context)) {
         return self
     }
+    const grave = (context.graves?.list(actor.locationId) ?? [])
+        .filter((candidate) => canPurifyGrave(actor, candidate.id, context))
+        .sort((a, b) => {
+            const delta =
+                distance(actor.position, a.position) -
+                distance(actor.position, b.position)
+            return delta === 0 ? a.id.localeCompare(b.id) : delta
+        })[0]
+    if (grave !== undefined) {
+        return { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } }
+    }
     return prayerHarmTargets(actor, context).length > 0
         ? { mode: 'harm' }
         : { mode: 'devotion' }
@@ -165,11 +176,19 @@ export function previewPrayer(
     const targets =
         intent.mode === 'devotion' ? [] : prayerHarmTargets(actor, context)
     const manaCost = prayerManaCost(intent.mode)
+    const parameters = prayerParameters(
+        actor,
+        context.navigation.grid.tileWidth
+    )
     const unavailableReason = !knowsAbility(actor, 'pray')
         ? 'Молитва не изучена.'
         : !canPerformSkillAction(actor, context.now)
           ? 'Персонаж не может молиться сейчас.'
-          : context.now < actor.progression.prayerAvailableAt
+          : context.now <
+              Math.max(
+                  actor.progression.prayerAvailableAt,
+                  actor.abilities.availableAt.pray ?? 0
+              )
             ? 'Молитва восстанавливается.'
             : actor.mana < manaCost
               ? 'Недостаточно маны.'
@@ -177,6 +196,8 @@ export function previewPrayer(
     return {
         intent,
         manaCost,
+        radius: parameters.radius,
+        durationMs: intent.mode === 'devotion' ? 400 : parameters.durationMs,
         harmfulTargets: targets.length,
         includesSelf: targets.some((target) => target.id === actor.id),
         includesAllies: targets.some(
@@ -192,6 +213,12 @@ function selectedPrayerIntent(
     context: AbilityContext,
     selectedTargetId: string
 ): PrayerIntent | undefined {
+    if (canPurifyGrave(actor, selectedTargetId, context)) {
+        return {
+            mode: 'purify_grave',
+            target: { kind: 'grave', id: selectedTargetId },
+        }
+    }
     for (const mode of ['revive', 'restore'] as const) {
         const intent = { mode, targetId: selectedTargetId }
         if (validPrayerIntent(actor, intent, context)) {
@@ -203,4 +230,33 @@ function selectedPrayerIntent(
     )
         ? { mode: 'harm', targetId: selectedTargetId }
         : undefined
+}
+
+export function prayerGiftTargets(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    context: AbilityContext
+): GameCharacter[] {
+    if (intent.mode === 'devotion' || intent.mode === 'revive') {
+        return []
+    }
+    const area = prayerParameters(actor, context.navigation.grid.tileWidth).area
+    const candidates = area
+        ? [...context.characters, actor]
+        : context.characters.filter(
+              (target) =>
+                  intent.mode === 'restore' && target.id === intent.targetId
+          )
+    if (!area && intent.mode === 'restore' && intent.targetId === actor.id) {
+        candidates.push(actor)
+    }
+    return [
+        ...new Map(candidates.map((target) => [target.id, target])).values(),
+    ].filter(
+        (target) =>
+            target.alive &&
+            !canTargetByFaction(actor, target, context.now) &&
+            prayerTargetNearby(actor, target, context) &&
+            prayerResourceMissing(actor, target) >= 1
+    )
 }

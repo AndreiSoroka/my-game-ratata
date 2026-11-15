@@ -1,7 +1,5 @@
 import {
-    ABILITY_DEFINITIONS,
     type CharacterAutoAction as AnyAutoAction,
-    GRAVE_PURIFY_RANGE,
     isItemBroken,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
@@ -15,9 +13,11 @@ import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
+import { effectiveAbility } from './effectiveParameters'
 import { legalGraveTarget } from './graveCombat'
 import { canApproachGravePurification } from './gravePrayer'
 import { distance } from './math'
+import { prayerParameters } from './prayerParameters'
 
 export function autoWorldTarget(
     action: CharacterAutoAction
@@ -93,11 +93,22 @@ export function reachedAutoWorldTarget(
         )
     }
     if (action.kind === 'prayer') {
-        return distance(actor.position, grave.position) <= GRAVE_PURIFY_RANGE
+        return (
+            distance(actor.position, grave.position) <=
+            prayerParameters(actor, context.navigation.grid.tileWidth).radius
+        )
     }
     const id = action.abilityId
     return id === 'shot' || id === 'spark' || id === 'skeleton_strike'
-        ? isInZones(grave, buildAbilityAttackZones(actor, id))
+        ? isInZones(
+              grave,
+              buildAbilityAttackZones(
+                  actor,
+                  id,
+                  context.navigation.grid.tileWidth
+              )
+          )
         : distance(actor.position, grave.position) <=
-              ABILITY_DEFINITIONS[id].range
+              effectiveAbility(actor, id, context.navigation.grid.tileWidth)
+                  .range
 }

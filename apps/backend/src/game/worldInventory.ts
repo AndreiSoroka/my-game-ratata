@@ -26,6 +26,7 @@ import {
 } from './inventory'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
+import { recordVitalityRecovery } from './vitalityPractice'
 import { WorldDeathLoot } from './worldDeathLoot'
 import { dropPosition, heal, isPointInZones } from './worldInventoryHelpers'
 import { type LooseWorldItem, pickupWorldItem } from './worldPickup'
@@ -64,7 +65,7 @@ export class WorldInventory {
         }
         switch (action) {
             case 'eat':
-                return this.eatInventoryItem(player, itemInstanceId)
+                return this.eatInventoryItem(player, itemInstanceId, now)
             case 'equip':
                 return this.equipInventoryItem(player, itemInstanceId)
             case 'drop':
@@ -189,7 +190,8 @@ export class WorldInventory {
 
     private eatInventoryItem(
         player: GameCharacter,
-        itemInstanceId: string
+        itemInstanceId: string,
+        now: number
     ): GameEventPayload[] {
         const item = player.inventory.find(
             (candidate) => candidate.instanceId === itemInstanceId
@@ -208,14 +210,16 @@ export class WorldInventory {
         }
 
         removeInventoryItem(player.inventory, itemInstanceId)
-
+        const beforeHp = player.hp
+        const restored = heal(player, healHp)
         return [
             {
                 actorId: player.id,
-                amount: heal(player, healHp),
+                amount: restored,
                 itemId: item.itemId,
                 kind: 'item_eat',
             },
+            ...recordVitalityRecovery(player, player.hp - beforeHp, now),
         ]
     }
 

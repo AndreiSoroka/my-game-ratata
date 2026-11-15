@@ -40,6 +40,7 @@ export class TrainingGuides {
     private zones: AttackZone[] = []
     private shot: ProjectilePath | undefined
     private prayer: PrayerPreviewHighlight | undefined
+    private learnedPrayer: PrayerPreviewHighlight | undefined
 
     public constructor(private readonly engine: Engine) {
         this.actor.graphics.isVisible = false
@@ -48,7 +49,8 @@ export class TrainingGuides {
     public update(
         area: TrainingAreaDefinition | undefined,
         characters: CharacterSnapshot[],
-        visible: (id: string) => boolean
+        visible: (id: string) => boolean,
+        observer?: CharacterSnapshot
     ): void {
         if (!area) {
             this.clear()
@@ -68,7 +70,13 @@ export class TrainingGuides {
             )
         }
         this.area = area
+        this.learnedPrayer = trainingPrayerHighlight(observer)
         if (this.engine.canvas) this.engine.canvas.dataset.trainingGuides = area.id
+        if (this.engine.canvas) {
+            if (this.learnedPrayer)
+                this.engine.canvas.dataset.trainingPrayerRadius = String(this.learnedPrayer.radius)
+            else delete this.engine.canvas.dataset.trainingPrayerRadius
+        }
         this.zones = characters
             .filter((c) => c.alive && insideTrainingArea(area, c.position) && visible(c.id))
             .flatMap((c) => c.attackZones)
@@ -85,8 +93,10 @@ export class TrainingGuides {
         this.zones = []
         this.shot = undefined
         this.prayer = undefined
+        this.learnedPrayer = undefined
         this.actor.graphics.isVisible = false
         if (this.engine.canvas) delete this.engine.canvas.dataset.trainingGuides
+        if (this.engine.canvas) delete this.engine.canvas.dataset.trainingPrayerRadius
     }
     public dispose(): void {
         this.clear()
@@ -104,7 +114,8 @@ export class TrainingGuides {
         ctx.fillStyle = '#ffcf5a59'
         for (const z of this.zones) ctx.fillRect(z.minX, z.minY, z.maxX - z.minX, z.maxY - z.minY)
         if (this.shot) this.drawShot(ctx, this.shot)
-        if (this.prayer) this.drawPrayer(ctx, this.prayer)
+        const prayer = this.prayer ?? this.learnedPrayer
+        if (prayer) this.drawPrayer(ctx, prayer)
         ctx.restore()
     }
     private drawShot(ctx: CanvasRenderingContext2D, path: ProjectilePath): void {
@@ -155,4 +166,13 @@ export class TrainingGuides {
             ctx.fillRect(x, y - 38, 1, 1)
         }
     }
+}
+
+export function trainingPrayerHighlight(
+    observer: CharacterSnapshot | undefined
+): PrayerPreviewHighlight | undefined {
+    const radius = observer?.abilities?.prayer?.radius
+    return observer?.alive && observer.abilities?.known.includes('pray') && radius !== undefined
+        ? { origin: { ...observer.position }, radius, warnings: [] }
+        : undefined
 }

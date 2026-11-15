@@ -89,14 +89,14 @@ describe('grave selection and hotbar', () => {
             wrapper.unmount()
         }
     })
-    it('ordinary prayer ignores nearby graves until the player explicitly selects one', async () => {
+    it('ordinary prayer pins an available nearby grave and keeps explicit selection stable', async () => {
         const { wrapper, grave, sendCommand } = fixture(true)
         try {
             press('Digit2')
             expect(sendCommand).toHaveBeenLastCalledWith({
                 type: 'use_ability',
                 abilityId: 'pray',
-                intent: { mode: 'devotion' },
+                intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
             })
             wrapper.vm.selectGrave(grave.id)
             await flushPromises()

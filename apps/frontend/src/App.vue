@@ -2,7 +2,7 @@
 import './game/ui/gameNotice.css'
 
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 import type { ChatInputState } from './game/runtime/chatInput'
 import type { RatataGame } from './game/runtime/ratataGame'
@@ -14,8 +14,8 @@ import AutomationPanels from './game/ui/AutomationPanels.vue'
 import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
 import DeathOverlay from './game/ui/DeathOverlay.vue'
-import GameMenu from './game/ui/GameMenu.vue'
 import GameplayOverlay from './game/ui/GameplayOverlay.vue'
+import GameWindows from './game/ui/GameWindows.vue'
 import { provideHotbarSession } from './game/ui/hotbarSession'
 import InventoryHud from './game/ui/InventoryHud.vue'
 import JoinGamePanel from './game/ui/JoinGamePanel.vue'
@@ -48,7 +48,6 @@ const notice = ref('')
 const notices = createTransientNotices((text) => (notice.value = text))
 const hotbarSession = provideHotbarSession()
 
-const canJoin = computed(() => nickname.value.trim().length > 0 && !isJoining.value)
 const { localCharacter, visibleCharacters } = useCharacterViews(snapshot, game, localPlayerId)
 const { abandoning, abandonLife, confirmDeath } = useLifeChoice({
     character: () => localCharacter.value,
@@ -102,16 +101,8 @@ const { testState, testInterface } = useGameTestControls({
     joinGame,
     setInventory,
 })
-const {
-    gameMenu,
-    automationPanels,
-    worldInputBlocked,
-    openNearbyMenu,
-    toggleInventory,
-    prepareAutomationWindow,
-    openAutomation,
-    closeOtherContainers,
-} = useAppWindows({
+const windows = useAppWindows({
+    characterId: () => localCharacter.value?.id,
     game,
     isStarted,
     chatInput,
@@ -129,9 +120,18 @@ const {
     toggleInventory: toggleInventoryBase,
     leave: () => leaveSession('nickname'),
 })
-const { leaveSession, cleanupFailedJoin } = useAppSession({
+const {
     gameMenu,
+    characterOpen,
     automationPanels,
+    worldInputBlocked,
+    openNearbyMenu,
+    toggleInventory,
+    prepareAutomationWindow,
+    closeOtherContainers,
+} = windows
+const { leaveSession, cleanupFailedJoin } = useAppSession({
+    ...windows,
     notices,
     hotbarSession,
     testInterface,
@@ -149,10 +149,6 @@ const { leaveSession, cleanupFailedJoin } = useAppSession({
 })
 
 async function joinGame(): Promise<void> {
-    if (!canJoin.value) {
-        return
-    }
-
     await startAppRuntime({
         game,
         container: () => gameHost.value,
@@ -172,8 +168,7 @@ async function joinGame(): Promise<void> {
             confirmDeath()
         },
         cleanupFailedJoin,
-        openNearbyMenu,
-        toggleInventory,
+        ...windows,
     })
 }
 </script>
@@ -184,13 +179,16 @@ async function joinGame(): Promise<void> {
             v-if="!isStarted"
             v-model:nickname="nickname"
             v-model:hero-class="heroClass"
-            :can-join="canJoin"
+            :can-join="nickname.trim().length > 0 && !isJoining"
             :error-message="errorMessage"
             @join="joinGame"
         />
 
         <section v-else class="game-screen" aria-label="Ratata game">
-            <div :inert="gameMenu.open.value || undefined" style="display: contents">
+            <div
+                :inert="gameMenu.open.value || characterOpen || undefined"
+                style="display: contents"
+            >
                 <InventoryHud
                     :nickname="nickname"
                     :status="status"
@@ -260,6 +258,7 @@ async function joinGame(): Promise<void> {
                     :server-time="snapshot.serverTime"
                     @close-inventory="closeOtherContainers"
                     @command="game?.sendCommand($event)"
+                    @character="windows.openDevelopment"
                 />
                 <AutomationPanels
                     v-if="snapshot && localCharacter"
@@ -293,13 +292,11 @@ async function joinGame(): Promise<void> {
                     @open-menu="gameMenu.show"
                 />
             </div>
-            <GameMenu
-                v-if="gameMenu.open.value"
-                :automation-available="Boolean(localCharacter)"
-                @resume="gameMenu.resume"
-                @leave="gameMenu.leave"
-                @markers="openAutomation('markers')"
-                @scenarios="openAutomation('scenarios')"
+            <GameWindows
+                :windows="windows"
+                :player="localCharacter"
+                :characters="visibleCharacters"
+                @command="game?.sendCommand($event)"
             />
         </section>
         <p v-if="notice" class="game-notice" role="status" aria-live="polite">{{ notice }}</p>

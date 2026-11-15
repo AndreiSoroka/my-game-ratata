@@ -107,15 +107,14 @@ useEscapeOwner({
     active: () =>
         !props.blocked &&
         Boolean(
-            props.player.abilities?.casting?.mode === 'purify_grave' ||
+            props.player.abilities?.casting ||
             props.snapshot.automation?.run?.status === 'running' ||
             selectedId.value ||
             selectedGraveId.value ||
             (props.player.control && props.player.control.mode !== 'none')
         ),
     escape: () => {
-        if (props.player.abilities?.casting?.mode === 'purify_grave')
-            send({ type: 'cancel_prayer' })
+        if (props.player.abilities?.casting) send({ type: 'cancel_prayer' })
         cancel(true)
     },
 })
@@ -252,11 +251,24 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
         :player="player"
         :target="target"
         :grave="grave"
+        :graves="snapshot.graves"
         :can-reach-grave="
-            (selected) => game?.isInteractionVisible(selected.position, undefined, 48) ?? false
+            (selected) =>
+                game?.isInteractionVisible(
+                    selected.position,
+                    undefined,
+                    player.abilities?.prayer?.radius ?? 48
+                ) ?? false
         "
         :characters="characters"
-        :can-reach="(target) => game?.isInteractionVisible(target.position, undefined, 48) ?? false"
+        :can-reach="
+            (target) =>
+                game?.isInteractionVisible(
+                    target.position,
+                    undefined,
+                    player.abilities?.prayer?.radius ?? 48
+                ) ?? false
+        "
         :blocked="blocked"
         @command="send"
         @plant="emit('plant')"

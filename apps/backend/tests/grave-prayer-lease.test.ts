@@ -13,7 +13,7 @@ import {
     prayerSource as source,
 } from './gravePrayerTestHelpers'
 
-it('expires a model lease normally while its shared 50 second prayer completes before scripted movement resumes', () => {
+it('finishes the shared short prayer and resumes scripted movement when the model lease expires', () => {
     const f = gravePrayerFixture(true)
     const service = new CompanionService()
     const world: CompanionWorld = {
@@ -46,24 +46,20 @@ it('expires a model lease normally while its shared 50 second prayer completes b
     expect(service.decide(f.actor, decision, world, now).accepted).toBe(true)
     expect(f.actor.soul.controlSource).toBe('model')
     const room = world as unknown as GameRoom
-    policy.update(f.actor, room, now + 4_999)
+    policy.update(f.actor, room, now + 2_999)
     expect(f.actor.soul.controlSource).toBe('model')
-    policy.update(f.actor, room, now + 5_000)
-    expect(f.actor.soul.controlSource).toBe('script')
     expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
-    expect(service.decide(f.actor, decision, world, now + 5_001).accepted).toBe(
-        false
-    )
     policy.update(f.actor, room, now + GRAVE_PURIFY_CAST_MS - 1)
     expect(fallbackCalls).toBe(0)
     expect(f.actor.getMoveInput()).toEqual({ x: 0, y: 0 })
     expect(f.advance(now + GRAVE_PURIFY_CAST_MS)).toContainEqual({
-        kind: 'grave_purified',
+        kind: 'grave_purification_progress',
+        abilityId: 'pray',
         actorId: f.actor.id,
         target: { kind: 'grave', id: source.id },
     })
-    expect(f.actor.mana).toBe(100)
-    policy.update(f.actor, room, now + GRAVE_PURIFY_CAST_MS + 1)
+    expect(f.actor.mana).toBe(115)
+    policy.update(f.actor, room, now + 5_000)
     expect(fallbackCalls).toBe(1)
     expect(f.actor.getMoveInput()).toEqual({ x: 1, y: 0 })
 })

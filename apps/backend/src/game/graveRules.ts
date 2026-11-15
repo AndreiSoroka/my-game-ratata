@@ -18,4 +18,13 @@ export interface GraveCombatContext {
     list(locationId: string): readonly GraveCombatTarget[]
     damage(id: string, amount: number, now: number): GraveDamageResult
     purify(id: string, now: number): boolean
+    contributePurification(
+        id: string,
+        receiptId: string,
+        now: number
+    ): {
+        accepted: boolean
+        purified: boolean
+        completed: number
+    }
 }

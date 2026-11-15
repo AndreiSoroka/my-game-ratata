@@ -7,6 +7,8 @@ export const skillIds = [
     'arcana',
     'fireball',
     'greater_fireball',
+    'marksmanship',
+    'vitality',
 ] as const
 export type SkillId = (typeof skillIds)[number]
 export type SpellSkillId = 'fireball' | 'greater_fireball'
@@ -22,7 +24,8 @@ export interface SkillSnapshot {
 
 export type DeityId = 'hearth' | 'road' | 'lantern' | 'grave'
 export type DeityMood = 'benevolent' | 'neutral' | 'wrathful'
-export type SkillBranch = 'warfare' | 'faith' | 'arcana' | 'cunning'
+export type SkillBranch =
+    'warfare' | 'faith' | 'arcana' | 'cunning' | 'survival'
 
 export interface DeitySnapshot {
     id: DeityId
@@ -38,6 +41,8 @@ export interface DeitySnapshot {
 export interface ProgressionSnapshot {
     skills: SkillSnapshot[]
     deity: DeitySnapshot
+    otherDeities?: DeitySnapshot[]
+    constellations?: import('./development').ConstellationSnapshot
     practicedBranches: SkillBranch[]
     magicChaptersRead: number
     magicChaptersTotal: number

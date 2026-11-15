@@ -24,8 +24,10 @@ interface AppRuntimeOptions {
     cleanupFailedJoin: () => void
     openNearbyMenu: (id?: string) => void
     toggleInventory: () => void
+    toggleCharacter?: () => void
 }
 export async function startAppRuntime(options: AppRuntimeOptions): Promise<void> {
+    if (options.nickname.trim().length === 0 || options.isJoining.value) return
     options.errorMessage.value = ''
     options.isJoining.value = true
     options.isStarted.value = true
@@ -63,6 +65,7 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         onCharacterClick: (id) => options.gameplay()?.select(id, true),
         onEvent: (event) => options.gameplay()?.receive(event),
         onInventoryToggle: options.toggleInventory,
+        onCharacterToggle: options.toggleCharacter,
         onSnapshot: (snapshot, playerId) => {
             if (options.localPlayerId.value !== playerId) options.notices.reset()
             options.notices.observe('adventure', snapshot.adventure)

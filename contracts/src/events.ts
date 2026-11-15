@@ -25,6 +25,7 @@ export type GameEventKind =
     | 'world_damage'
     | 'grave_ruined'
     | 'grave_purified'
+    | 'grave_purification_progress'
     | 'grave_restored'
     | 'death'
     | 'item_drop'

@@ -3,10 +3,13 @@ import type {
     CharacterAbilitiesSnapshot,
     CharacterArchetype,
     HeroClass,
+    PrayerIntent,
     Vector2,
 } from '@my-game-ratata/contracts'
 
+import { snapshotAbilityUsage } from './abilityUsage'
 import type { GameCharacter } from './character'
+import { prayerParameters } from './prayerParameters'
 
 interface PrayerCastBase {
     targetId: string
@@ -18,13 +21,16 @@ export type PrayerCast = PrayerCastBase &
     (
         | { mode?: 'revive' }
         | {
-              mode: 'purify_grave'
+              mode: 'prayer' | 'purify_grave'
+              intent: PrayerIntent
+              receiptId: string
               origin: Vector2
               locationId: string
               hpAtStart: number
           }
     )
 export interface CharacterAbilityState {
+    prayerSequence: number
     known: Set<AbilityId>
     availableAt: Partial<Record<AbilityId, number>>
     barrier: { remaining: number; expiresAt: number; practiced: boolean } | null
@@ -50,6 +56,7 @@ export function createAbilityState(
         known.add('skeleton_strike')
     }
     return {
+        prayerSequence: 0,
         known,
         availableAt: {},
         barrier: null,
@@ -100,7 +107,9 @@ export function snapshotAbilities(
     }
     return {
         known,
+        parameters: snapshotAbilityUsage(actor, known),
         cooldowns,
+        prayer: prayerParameters(actor),
         barrier: snapshotBarrier(actor, now),
         casting: snapshotCast(actor),
     }
@@ -127,10 +136,15 @@ function snapshotCast(
               targetId: cast.targetId,
               startedAt: cast.startedAt,
               completesAt: cast.completesAt,
-              ...(cast.mode === 'purify_grave'
+              ...(cast.mode === 'prayer' || cast.mode === 'purify_grave'
                   ? {
-                        mode: cast.mode,
-                        target: { kind: 'grave' as const, id: cast.targetId },
+                        mode:
+                            cast.intent.mode === 'devotion'
+                                ? ('restore' as const)
+                                : cast.intent.mode,
+                        ...(cast.intent.mode === 'purify_grave'
+                            ? { target: cast.intent.target }
+                            : {}),
                     }
                   : {}),
           }

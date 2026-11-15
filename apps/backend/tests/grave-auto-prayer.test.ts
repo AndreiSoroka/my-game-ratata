@@ -100,15 +100,34 @@ it.each([49, 80])(
             expect(f.actor.mana).toBe(120)
             expect(f.service.get(source.id)?.phase).toBe('active')
         }
+        // Controllers run before lifecycle completion at the deadline.
+        advanceCharacterControl(f.actor, world, cast.completesAt)
+        expect(snapshotControl(f.actor).waiting).toBe('action')
         expect(f.advance(cast.completesAt)).toContainEqual({
-            kind: 'grave_purified',
+            kind: 'grave_purification_progress',
+            abilityId: 'pray',
             actorId: f.actor.id,
             target: { kind: 'grave', id: source.id },
         })
-        expect(f.actor.mana).toBe(100)
+        expect(f.actor.mana).toBe(115)
         expect(f.actor.progression.skills.faith.practice).toBe(1)
         expect(f.actor.progression.skills.miracles.practice).toBe(1)
-        advanceCharacterControl(f.actor, world, cast.completesAt + 1)
+        let completedAt = cast.completesAt
+        for (let step = 1; step < 5; step++) {
+            advanceCharacterControl(f.actor, world, completedAt)
+            const nextCast = f.actor.abilities.casting
+            expect(nextCast).not.toBeNull()
+            if (nextCast === null) {
+                throw new Error('Automatic prayer did not repeat')
+            }
+            advanceCharacterControl(f.actor, world, nextCast.completesAt)
+            expect(snapshotControl(f.actor).waiting).toBe('action')
+            f.advance(nextCast.completesAt)
+            completedAt = nextCast.completesAt
+        }
+        expect(f.service.get(source.id)?.phase).toBe('purified')
+        expect(f.actor.mana).toBe(95)
+        advanceCharacterControl(f.actor, world, completedAt + 1)
         expect(snapshotControl(f.actor).mode).toBe('none')
     }
 )

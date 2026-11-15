@@ -3,6 +3,7 @@ import type {
     GameEventPayload,
     WorldCombatTarget,
 } from '@my-game-ratata/contracts'
+import { PRAYER_RULES } from '@my-game-ratata/contracts'
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
@@ -143,6 +144,10 @@ export class CombatEffects {
             rotation: pose.rotation,
         })
         actor.graphics.use(this.graphics.get(cue.kind, cue.deity, cue.channel ? 0 : 1))
+        if (cue.wave) {
+            const scale = (cue.radius ?? PRAYER_RULES.radius) / PRAYER_RULES.radius
+            actor.scale = vec(scale, scale)
+        }
         const duration = this.reduced && !cue.channel ? 220 : cue.duration
         const effect = {
             actor,
@@ -225,8 +230,11 @@ export class CombatEffects {
                     ((cue.projectile?.endpoint ?? target.position).y - 15 - effect.from.y) *
                         progress
             )
-        } else if (cue.wave) effect.actor.scale = vec(0.2 + 0.8 * progress, 0.2 + 0.8 * progress)
-        else effect.actor.pos = vec(effect.from.x, effect.from.y - progress * 8)
+        } else if (cue.wave) {
+            const scale =
+                ((0.2 + 0.8 * progress) * (cue.radius ?? PRAYER_RULES.radius)) / PRAYER_RULES.radius
+            effect.actor.scale = vec(scale, scale)
+        } else effect.actor.pos = vec(effect.from.x, effect.from.y - progress * 8)
     }
     private readonly update = (event: PostUpdateEvent<Engine>): void => {
         this.now += Math.max(0, event.elapsed)

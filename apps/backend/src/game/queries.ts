@@ -5,6 +5,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -14,11 +15,14 @@ export function createSnapshot(
     items: Iterable<WorldItemSnapshot>,
     chests: Iterable<WorldChestSnapshot>,
     tick: number,
-    now: number
+    now: number,
+    observerId?: string
 ): WorldSnapshot {
     return {
         chests: [...chests],
-        characters: [...characters].map((character) => character.snapshot(now)),
+        characters: [...characters].map((character) =>
+            character.snapshot(now, character.id === observerId)
+        ),
         items: [...items],
         serverTime: now,
         tick,
@@ -111,5 +115,14 @@ export function visibilityRadius(
     const dot = (vector.x * facing.x + vector.y * facing.y) / length
     const factor = dot >= 0.4 ? 0.65 : dot <= -0.4 ? 0.35 : 0.5
     const learned = 1 - (target.progression.skills.stealth.level - 1) * 0.03
-    return Math.min(radius, Math.max(28, radius * factor * learned))
+    return Math.min(
+        radius,
+        Math.max(
+            28,
+            radius *
+                factor *
+                learned *
+                constellationModifiers(target).sneakSightMultiplier
+        )
+    )
 }

@@ -1,9 +1,12 @@
+import type { GameEventPayload } from '@my-game-ratata/contracts'
+
 import { clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
 import { regen } from './characterState'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
 import { clearPursuit } from './pursuitState'
+import { recordVitalityRecovery } from './vitalityPractice'
 
 export function tickCharacterTimedState(
     character: GameCharacter,
@@ -53,6 +56,12 @@ export function restoreCharacter(
     const fraction = atSpawn ? 1 : 0.5
     character.energy = character.config.resources.maxEnergy * fraction
     character.hp = Math.max(1, Math.ceil(character.maxHp * fraction))
+    character.progression.constellations.lowHpFromHostile = false
+    character.progression.constellations.lowHpAwarded = false
+    character.progression.constellations.runicShotUntil = 0
+    if (atSpawn) {
+        character.progression.constellations.hostileWound = 0
+    }
     if (!atSpawn) {
         const healed = Math.max(0, character.hp - previousHp)
         character.abilities.untrainableHpDamage = Math.max(
@@ -76,10 +85,11 @@ export function regenerateCharacter(
     character: GameCharacter,
     deltaMs: number,
     moving: boolean,
-    energyAllowed = true
-): void {
+    energyAllowed = true,
+    now = 0
+): GameEventPayload[] {
     if (!character.alive) {
-        return
+        return []
     }
     const resources = character.config.resources
     character.energy = regen(
@@ -98,6 +108,7 @@ export function regenerateCharacter(
         moving ? resources.manaRegenMove : resources.manaRegenIdle,
         deltaMs
     )
+    const beforeHp = character.hp
     character.hp = regen(
         character.hp,
         character.maxHp,
@@ -106,4 +117,5 @@ export function regenerateCharacter(
             : character.config.hpRegenIdlePerSec,
         deltaMs
     )
+    return recordVitalityRecovery(character, character.hp - beforeHp, now)
 }

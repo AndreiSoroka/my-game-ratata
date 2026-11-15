@@ -17,6 +17,7 @@ import { companionProfiles } from './companionProfiles'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import { prayerResourceMissing, validPrayerIntent } from './prayerContext'
+import { prayerParameters } from './prayerParameters'
 import { visibilityRadius } from './queries'
 import { canUseResurrection } from './skillProgression'
 export function legalPrayerTarget(
@@ -34,7 +35,7 @@ export function legalPrayerTarget(
             DEITY_PRAYER_PROFILES[actor.progression.patron].harmTypes.includes(
                 target.creatureType
             ) &&
-            actor.progression.skills.miracles.level >= 3
+            prayerParameters(actor, context.navigation.grid.tileWidth).harm
         )
     }
     if (action.intent.mode === 'revive') {

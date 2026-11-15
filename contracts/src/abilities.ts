@@ -32,14 +32,32 @@ export interface PrayerPreview {
     includesAllies: boolean
     includesSelf: boolean
     unavailableReason: string | null
+    radius?: number
+    durationMs?: number
+}
+/** Public action parameters; numeric damage knowledge is projected separately. */
+export interface AbilityUsageSnapshot {
+    mana: number
+    energy: number
+    cooldownMs: number
+    range: number
+    windupMs: number
 }
 export interface CharacterAbilitiesSnapshot {
     known: AbilityId[]
+    parameters?: Partial<Record<AbilityId, AbilityUsageSnapshot>>
     cooldowns: Partial<Record<AbilityId, number>>
     barrier: { remaining?: number; expiresAt: number } | null
+    prayer?: {
+        radius: number
+        durationMs: number
+        manaCost: number
+        area: boolean
+        harm: boolean
+    }
     casting: {
         abilityId: 'pray'
-        mode?: 'revive' | 'purify_grave'
+        mode?: Exclude<PrayerMode, 'devotion'>
         target?: import('./graves').WorldCombatTarget
         targetId: string
         startedAt: number
@@ -74,7 +92,7 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
         energy: 0,
         cooldownMs: 3000,
         range: 48,
-        windupMs: 400,
+        windupMs: 3000,
     },
     spark: {
         name: 'Искра',

@@ -6,7 +6,7 @@ import type {
 import { describe, expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
-import { retireCharacter } from '../src/game/characterLife'
+import { advanceRevive, retireCharacter } from '../src/game/characterLife'
 import { attemptAttack, resolvePendingAttackHit } from '../src/game/combat'
 import { createItemInstance } from '../src/game/inventory'
 import { NavigationService } from '../src/game/navigation'
@@ -94,18 +94,40 @@ describe('shared prayers and learning', () => {
             expect(actor.progression.skills.faith.practice).toBe(0)
             expect(actor.progression.skills.miracles.practice).toBe(0)
             actor.hp -= 15
-            const events = command(actor, { type: 'pray' }, [], 4_000)
+            command(actor, { type: 'pray' }, [], 4_000)
+            const events = advanceRevive(
+                actor,
+                () => actor,
+                7_000,
+                () => 0,
+                {
+                    characters: [actor],
+                    navigation: openMap(),
+                    now: 7_000,
+                    random: () => 0,
+                }
+            )
             const restored =
                 events.find((event) => event.kind === 'heal')?.amount ?? 0
             expect(restored).toBeGreaterThan(0)
             expect(actor.progression.skills.miracles.practice).toBe(1)
             expect(actor.hp).toBe(actor.maxHp - 15 + restored)
             expect(actor.mana).toBe(startMana - 5)
-            expect(command(actor, { type: 'pray' }, [], 5_000)).toMatchObject([
-                { kind: 'notice' },
-            ])
+            expect(command(actor, { type: 'pray' }, [], 6_999)).toEqual([])
             expect(actor.progression.skills.miracles.practice).toBe(1)
             command(actor, { type: 'pray' }, [], 7_000)
+            advanceRevive(
+                actor,
+                () => actor,
+                10_000,
+                () => 0,
+                {
+                    characters: [actor],
+                    navigation: openMap(),
+                    now: 10_000,
+                    random: () => 0,
+                }
+            )
             expect(actor.progression.skills.miracles.practice).toBe(2)
             actor.mana = 4
             expect(command(actor, { type: 'pray' }, [], 10_000)).toMatchObject([

@@ -10,7 +10,13 @@ import {
 
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
-import { snapshotDeity } from './deities'
+import {
+    createConstellationState,
+    recordConstellationPractice,
+    snapshotConstellations,
+} from './constellations'
+import type { CharacterConstellations } from './constellationState'
+import { snapshotDeity, snapshotOtherDeities } from './deities'
 
 interface SkillPractice {
     level: number
@@ -19,6 +25,7 @@ interface SkillPractice {
 }
 
 export interface CharacterProgression {
+    constellations: CharacterConstellations
     skills: Record<SkillId, SkillPractice>
     patron: DeityId
     magicChaptersRead: number
@@ -35,6 +42,8 @@ const skillNames: Record<SkillId, string> = {
     arcana: 'Магические знания',
     fireball: 'Огненный шар',
     greater_fireball: 'Большой огненный шар',
+    marksmanship: 'Стрельба',
+    vitality: 'Жизненный опыт',
 }
 const practiceBase: Record<SkillId, number> = {
     stealth: 10,
@@ -45,10 +54,13 @@ const practiceBase: Record<SkillId, number> = {
     arcana: 8,
     fireball: 10,
     greater_fireball: 14,
+    marksmanship: 10,
+    vitality: 10,
 }
 
 export function createProgression(): CharacterProgression {
     return {
+        constellations: createConstellationState(),
         skills: {
             stealth: { level: 1, practice: 0, unlocked: true },
             theft: { level: 1, practice: 0, unlocked: true },
@@ -58,6 +70,8 @@ export function createProgression(): CharacterProgression {
             arcana: { level: 1, practice: 0, unlocked: true },
             fireball: { level: 1, practice: 0, unlocked: false },
             greater_fireball: { level: 1, practice: 0, unlocked: false },
+            marksmanship: { level: 1, practice: 0, unlocked: true },
+            vitality: { level: 1, practice: 0, unlocked: true },
         },
         patron: 'hearth',
         magicChaptersRead: 0,
@@ -95,7 +109,8 @@ export function canUseResurrection(character: GameCharacter): boolean {
 
 export function snapshotProgression(
     character: GameCharacter,
-    now: number
+    now: number,
+    includePrivate = true
 ): ProgressionSnapshot {
     const totalEarnedLevels = earnedSkillLevels(character.progression)
     return {
@@ -109,6 +124,12 @@ export function snapshotProgression(
         trainingMultiplier: trainingMultiplier(character.progression),
         practicedBranches: practicedBranches(character.progression),
         deity: snapshotDeity(character, now),
+        ...(includePrivate
+            ? {
+                  otherDeities: snapshotOtherDeities(character, now),
+                  constellations: snapshotConstellations(character),
+              }
+            : {}),
         magicChaptersRead: character.progression.magicChaptersRead,
         magicChaptersTotal: 3,
         resurrectionUnlocked: canUseResurrection(character),
@@ -124,12 +145,16 @@ export function trainSkill(
     if (
         !character.alive ||
         !skill.unlocked ||
-        skill.level >= 10 ||
         !Number.isFinite(amount) ||
-        amount <= 0
+        amount < 1
     ) {
         return []
     }
+    if (skill.level >= 10) {
+        recordConstellationPractice(character, id, 0)
+        return []
+    }
+    const previousLevel = skill.level
     skill.practice += Math.floor(amount)
     const events: GameEventPayload[] = []
     while (
@@ -151,6 +176,7 @@ export function trainSkill(
     if (character.progression.skills.fireball.level === 10) {
         character.progression.skills.greater_fireball.unlocked = true
     }
+    recordConstellationPractice(character, id, skill.level - previousLevel)
     return events
 }
 
@@ -165,9 +191,10 @@ export function hasEquippedSword(character: GameCharacter): boolean {
 
 const branches: Record<SkillBranch, SkillId[]> = {
     cunning: ['stealth', 'theft'],
-    warfare: ['swordsmanship'],
+    warfare: ['swordsmanship', 'marksmanship'],
     faith: ['faith', 'miracles'],
     arcana: ['arcana', 'fireball', 'greater_fireball'],
+    survival: ['vitality'],
 }
 
 export function practicedBranches(

@@ -1,6 +1,5 @@
 import type {
     CharacterRelationship,
-    ProgressionSnapshot,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -68,7 +67,8 @@ export function roomSnapshot(
         location.inventory.snapshotItems(),
         location.inventory.snapshotChests(),
         context.tick,
-        now
+        now,
+        playerId
     )
     return {
         ...snapshot,
@@ -104,9 +104,6 @@ export function roomSnapshot(
                       })
                     : { mode: 'none' as const, targetId: null },
             inventory: character.id === playerId ? character.inventory : [],
-            ...(character.id !== playerId && character.progression !== undefined
-                ? { progression: publicProgression(character.progression) }
-                : {}),
             theft: context.theft.snapshot(character.id, playerId, now),
         })),
         location: location.description,
@@ -142,19 +139,4 @@ function relationshipFor(
     return observer !== undefined && canTargetByFaction(observer, target, now)
         ? 'hostile'
         : 'friendly'
-}
-
-function publicProgression(
-    progression: ProgressionSnapshot
-): ProgressionSnapshot {
-    return {
-        ...progression,
-        skills: progression.skills.map((skill) => ({
-            ...skill,
-            practice: 0,
-            practiceToNext: 0,
-        })),
-        practicedBranches: [],
-        trainingMultiplier: 1,
-    }
 }

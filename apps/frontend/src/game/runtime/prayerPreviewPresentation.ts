@@ -30,14 +30,14 @@ export function createPrayerPreviewHighlight(
         !target.tags.includes('offline') &&
         target.life?.retired !== true &&
         Math.hypot(target.position.x - player.position.x, target.position.y - player.position.y) <=
-            PRAYER_RULES.radius &&
+            (preview.radius ?? player.abilities?.prayer?.radius ?? PRAYER_RULES.radius) &&
         (target.id === player.id || options.canReach(target))
     const targetId = preview.intent.targetId
     if (targetId !== undefined && !known.some((target) => target.id === targetId && nearby(target)))
         return undefined
     return {
         origin: { ...player.position },
-        radius: PRAYER_RULES.radius,
+        radius: preview.radius ?? player.abilities?.prayer?.radius ?? PRAYER_RULES.radius,
         ...(targetId === undefined ? {} : { targetId }),
         warnings: known
             .filter(
@@ -70,7 +70,8 @@ function activeHarmProfile(
         preview.unavailableReason !== null
     )
         return undefined
-    const level = player.progression?.skills.find((skill) => skill.id === 'miracles')?.level ?? 1
     const profile = DEITY_PRAYER_PROFILES[player.progression?.deity.id ?? 'hearth']
-    return level >= PRAYER_RULES.harmLevel && profile.harmTypes.length > 0 ? profile : undefined
+    return player.abilities?.prayer?.harm === true && profile.harmTypes.length > 0
+        ? profile
+        : undefined
 }

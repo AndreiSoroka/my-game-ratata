@@ -11,6 +11,13 @@ type Story = StoryObj
 export const Active: Story = {
     render: () => renderVueStory(GraveDetails, { grave: graveFixture(), serverTime: 1000 }),
 }
+export const PurificationProgress: Story = {
+    render: () =>
+        renderVueStory(GraveDetails, {
+            grave: graveFixture({ purification: { completed: 3, required: 5 } }),
+            serverTime: 1000,
+        }),
+}
 export const Ruined: Story = {
     render: () =>
         renderVueStory(GraveDetails, {

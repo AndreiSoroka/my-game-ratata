@@ -5,6 +5,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellations'
 
 export const deityMoodCycleMs = 30_000
 export const deityDefinitions: Record<
@@ -63,8 +64,12 @@ export function deityMood(deityId: DeityId, now: number): DeityMood {
     return moods[index] ?? 'neutral'
 }
 
-export function miracleChance(character: GameCharacter, now: number): number {
-    const mood = deityMood(character.progression.patron, now)
+export function miracleChance(
+    character: GameCharacter,
+    now: number,
+    deityId = character.progression.patron
+): number {
+    const mood = deityMood(deityId, now)
     const faithBonus = (character.progression.skills.faith.level - 1) * 0.015
     return Math.min(0.95, moodChances[mood] + faithBonus)
 }
@@ -83,33 +88,45 @@ export function resolveMiracle(
 
 export function snapshotDeity(
     character: GameCharacter,
-    now: number
+    now: number,
+    id: DeityId = character.progression.patron
 ): DeitySnapshot {
-    const id = character.progression.patron
-    const faith = character.progression.skills.faith.level
+    const modifiers = constellationModifiers(character)
+    const insight =
+        id === character.progression.patron
+            ? modifiers.deityInsight
+            : modifiers.otherDeityInsight
     const mood = deityMood(id, now)
     return {
         id,
         name: deityDefinitions[id].name,
         domain: deityDefinitions[id].domain,
         omen:
-            faith >= 4
+            insight >= 1
                 ? hints[mood]
                 : 'Знаки едва различимы. Воля божества непостижима.',
-        perception: perceptionFor(faith),
-        mood: faith >= 7 ? mood : null,
-        successChance: faith >= 7 ? miracleChance(character, now) : null,
+        perception:
+            insight >= 4
+                ? 'precise'
+                : insight >= 2
+                  ? 'clear'
+                  : insight >= 1
+                    ? 'hint'
+                    : 'vague',
+        mood: insight >= 2 ? mood : null,
+        successChance: insight >= 3 ? miracleChance(character, now, id) : null,
         changesInMs:
-            faith >= 10 ? deityMoodCycleMs - (now % deityMoodCycleMs) : null,
+            insight >= 4 ? deityMoodCycleMs - (now % deityMoodCycleMs) : null,
     }
 }
 
-function perceptionFor(faith: number): DeitySnapshot['perception'] {
-    if (faith >= 10) {
-        return 'precise'
-    }
-    if (faith >= 7) {
-        return 'clear'
-    }
-    return faith >= 4 ? 'hint' : 'vague'
+export function snapshotOtherDeities(
+    character: GameCharacter,
+    now: number
+): DeitySnapshot[] {
+    return constellationModifiers(character).otherDeityInsight > 0
+        ? (Object.keys(deityDefinitions) as DeityId[])
+              .filter((id) => id !== character.progression.patron)
+              .map((id) => snapshotDeity(character, now, id))
+        : []
 }

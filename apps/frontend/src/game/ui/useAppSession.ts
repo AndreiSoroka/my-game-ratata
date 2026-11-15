@@ -9,6 +9,7 @@ import type { TransientNotices } from './transientNotices'
 
 interface AppSessionOptions {
     gameMenu: { open: Ref<boolean> }
+    characterOpen?: Ref<boolean>
     automationPanels: Ref<InstanceType<typeof AutomationPanels> | undefined>
     notices: TransientNotices
     hotbarSession: { clear: () => void }
@@ -28,6 +29,7 @@ interface AppSessionOptions {
 export function useAppSession(options: AppSessionOptions) {
     function resetGameSession(): void {
         options.gameMenu.open.value = false
+        if (options.characterOpen) options.characterOpen.value = false
         options.automationPanels.value?.close()
         options.notices.reset()
         options.game.value?.stop()

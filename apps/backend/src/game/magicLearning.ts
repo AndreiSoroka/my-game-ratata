@@ -7,6 +7,10 @@ import type {
 import { type AbilityContext, abilityNotice } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
+import {
+    finishConstellationAction,
+    syncAbilityConstellations,
+} from './constellations'
 import { deityDefinitions } from './deities'
 import { distance } from './math'
 import { canPerformSkillAction, trainSkill } from './skillProgression'
@@ -73,6 +77,7 @@ export function studyMagic(
             text: `Прочитана глава ${String(actor.progression.magicChaptersRead)} из 3. Магические знания укрепились.`,
         },
         ...trainSkill(actor, 'arcana', 8),
+        ...finishConstellationAction(actor, { skillIds: ['arcana'], now }),
     ]
 }
 
@@ -100,6 +105,8 @@ export function teachMagic(
         },
         ...trainSkill(actor, 'arcana', 8),
         ...trainSkill(student, 'arcana', 8),
+        ...finishConstellationAction(actor, { skillIds: ['arcana'], now }),
+        ...finishConstellationAction(student, { skillIds: ['arcana'], now }),
     ]
 }
 
@@ -166,6 +173,7 @@ export function learnAbility(
         )
     }
     actor.abilities.known.add(id)
+    syncAbilityConstellations(actor)
     return abilityNotice(
         actor,
         'Способность изучена. Её можно назначить в свободную ячейку 1–4.'

@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import type { NavigationService } from './navigation'
 
 export interface MovementNoise {
@@ -61,6 +62,7 @@ function noiseMultiplier(character: GameCharacter, dashing: boolean): number {
     }
     return character.movement.mode === 'sneaking'
         ? MOVEMENT_RULES.sneakNoiseMultiplier *
-              (1 - (character.progression.skills.stealth.level - 1) * 0.035)
+              (1 - (character.progression.skills.stealth.level - 1) * 0.035) *
+              constellationModifiers(character).sneakNoiseMultiplier
         : 1
 }

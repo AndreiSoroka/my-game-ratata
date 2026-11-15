@@ -70,6 +70,7 @@ it.each([
 it('counts a successful area prayer once and respects exact range and walls for each victim', () => {
     const actor = abilityHero()
     actor.progression.skills.miracles.level = 3
+    actor.progression.constellations.opened.add('prayer.harm')
     const enemies = Array.from({ length: 3 }, () =>
         abilityHero('vanguard', 'undead')
     )
@@ -84,11 +85,15 @@ it('counts a successful area prayer once and respects exact range and walls for 
     hidden.position.x = 132
     const context = abilityContext([actor, ...enemies, edge, far, hidden])
     context.navigation.grid.solid[6 * 32 + 7] = true
-    const events = handleAbilityCommand(
+    handleAbilityCommand(
         actor,
         { type: 'use_ability', abilityId: 'pray', intent: { mode: 'harm' } },
         context
     )
+    const events = advanceRevive(actor, () => undefined, 4000, context.random, {
+        ...context,
+        now: 4000,
+    })
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(4)
     expect(actor.progression.skills.faith.practice).toBe(1)
     expect(actor.progression.skills.miracles.practice).toBe(1)

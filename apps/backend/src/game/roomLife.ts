@@ -21,6 +21,8 @@ export class RoomLife {
         list: (locationId) => this.deathSpawns.snapshot(locationId),
         damage: (id, amount, now) => this.deathSpawns.damage(id, amount, now),
         purify: (id, now) => this.deathSpawns.purify(id, now),
+        contributePurification: (id, receiptId, now) =>
+            this.deathSpawns.contributePurification(id, receiptId, now),
     }
 
     public constructor(

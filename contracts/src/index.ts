@@ -5,6 +5,7 @@ import type {
 } from './abilities'
 export * from './abilities'
 export * from './combatAim'
+export * from './development'
 export * from './prayer'
 export * from './prayerPreview'
 export * from './questRewards'
@@ -192,7 +193,9 @@ export interface CharacterSnapshot {
     reputation: CharacterReputation
     resources: CharacterResourcesSnapshot
     resourceChecks?: CharacterResourceChecks
-    stats: CharacterStatsSnapshot
+    /** Internal raw snapshots may contain stats; observer projections remove them. */
+    stats?: CharacterStatsSnapshot
+    characterSheet?: import('./development').CharacterSheetSnapshot
     tags: string[]
     velocity: Vector2
     visualId: CharacterVisualId

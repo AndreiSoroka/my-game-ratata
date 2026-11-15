@@ -29,14 +29,17 @@ export function gravePrayerFixture(scripted = false) {
         characters: [...f.characters.values()],
         navigation: f.navigation,
         now,
-        random: () => {
-            throw new Error('Purification cannot roll RNG')
-        },
+        random: () => 0,
         graves: {
             get: (id) => f.service.get(id),
             list: (id) => f.service.snapshot(id),
             damage: (id, amount, at) => f.service.damage(id, amount, at),
             purify: (id, at) => f.service.purify(id, at),
+            contributePurification: (
+                id: string,
+                receiptId: string,
+                at: number
+            ) => f.service.contributePurification(id, receiptId, at),
         },
     })
     const begin = (now = prayerNow) =>
@@ -46,5 +49,5 @@ export function gravePrayerFixture(scripted = false) {
         })
     const advance = (now: number) =>
         advanceRevive(actor, () => undefined, now, undefined, context(now))
-    return { ...f, actor, context, begin, advance }
+    return { ...f, actor, context, spawnContext: f.context, begin, advance }
 }

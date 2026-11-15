@@ -14,7 +14,13 @@ defineProps<{
 </script>
 <template>
     <aside v-if="target || grave" class="target-panel rpg-panel" aria-label="Выбранная цель">
-        <GraveDetails v-if="grave" :grave="grave" :server-time="serverTime" compact />
+        <GraveDetails
+            v-if="grave"
+            :grave="grave"
+            :server-time="serverTime"
+            :prayer="player.abilities?.prayer"
+            compact
+        />
         <template v-else-if="target">
             <strong>{{ target.nickname }}</strong
             ><span v-if="!target.trainingTarget && target.health.kind === 'exact'">{{
@@ -67,7 +73,7 @@ progress {
 }
 @media (max-width: 740px) {
     .target-panel {
-        top: 212px;
+        top: max(212px, var(--ratata-player-status-bottom, 240px));
         width: 210px;
     }
 }

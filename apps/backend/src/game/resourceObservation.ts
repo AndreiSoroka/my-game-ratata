@@ -1,17 +1,19 @@
 import {
-    ABILITY_DEFINITIONS,
     abilityIds,
     type CharacterResourceChecks,
     FARM_SOW_ENERGY,
-    MOVEMENT_RULES,
     prayerManaCost,
     type ResourceCheck,
     resourceFillPercent,
     type ResourceSnapshot,
-    THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import {
+    effectiveAbility,
+    effectiveDashCost,
+    effectiveTheftCost,
+} from './effectiveParameters'
 
 export function observeResource(
     resource: ResourceSnapshot,
@@ -41,7 +43,7 @@ export function resourceChecks(
             abilityIds
                 .filter((id) => id !== 'pray')
                 .map((id) => {
-                    const ability = ABILITY_DEFINITIONS[id]
+                    const ability = effectiveAbility(character, id)
                     return [id, check(ability.mana, ability.energy)]
                 })
         ) as CharacterResourceChecks['abilities'],
@@ -52,8 +54,8 @@ export function resourceChecks(
             revive: check(prayerManaCost('revive')),
             purify_grave: check(prayerManaCost('purify_grave')),
         },
-        dash: check(0, MOVEMENT_RULES.dashEnergy),
+        dash: check(0, effectiveDashCost(character)),
         sow: check(0, FARM_SOW_ENERGY),
-        steal: check(0, THEFT_RULES.energyCost),
+        steal: check(0, effectiveTheftCost(character)),
     }
 }

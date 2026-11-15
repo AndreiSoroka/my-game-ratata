@@ -1,18 +1,25 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import type {
+    CharacterSnapshot,
+    CharacterStatsSnapshot,
+} from '@my-game-ratata/contracts'
 
 import { snapshotAbilities } from './abilityState'
 import type { GameCharacter } from './character'
 import { snapshotControl } from './characterControl'
 import { shouldRetireCharacter } from './characterLife'
-import { resolveCharacterStats } from './characterStats'
+import {
+    effectiveAttackCooldown,
+    effectiveCharacterStats,
+} from './effectiveParameters'
 import { snapshotEquipment, snapshotItem } from './inventory'
 import { snapshotMovement } from './movementActions'
 import { snapshotProgression } from './skillProgression'
 
 export function createCharacterSnapshot(
     character: GameCharacter,
-    now: number
-): CharacterSnapshot {
+    now: number,
+    includePrivate = true
+): CharacterSnapshot & { stats: CharacterStatsSnapshot } {
     return {
         ...(character.trainingTarget === undefined
             ? {}
@@ -34,7 +41,7 @@ export function createCharacterSnapshot(
         cooldowns: {
             attackMsLeft: Math.max(
                 0,
-                character.config.combat.attackCooldownMs -
+                effectiveAttackCooldown(character) -
                     (now - character.lastAttackAt)
             ),
             respawnMsLeft: character.alive
@@ -50,7 +57,7 @@ export function createCharacterSnapshot(
         level: character.level,
         xp: character.xp,
         xpToNext: 0,
-        progression: snapshotProgression(character, now),
+        progression: snapshotProgression(character, now, includePrivate),
         soul: character.soul,
         life: {
             retired:
@@ -79,11 +86,7 @@ export function createCharacterSnapshot(
                 max: character.config.resources.maxMana,
             },
         },
-        stats: resolveCharacterStats(
-            character.config,
-            character.equipment,
-            character.progression.skills.swordsmanship.level
-        ),
+        stats: effectiveCharacterStats(character),
         tags: snapshotTags(character, now),
         velocity: character.velocity,
         visualId: character.visualId,

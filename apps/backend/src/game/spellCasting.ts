@@ -9,6 +9,8 @@ import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { availableToStartAttack } from './combat'
 import { canAttackCharacter } from './combatTargets'
+import { finishConstellationAction, recordRunicContact } from './constellations'
+import { effectiveAbility } from './effectiveParameters'
 import { castGraveSpell } from './graveSpellCasting'
 import { distance } from './math'
 import type { ProgressionContext } from './progressionCommands'
@@ -49,7 +51,7 @@ export function castSpell(
         return []
     }
     const skill = actor.progression.skills[message.skillId]
-    const spell = spells[message.skillId]
+    const spell = resolvedSpell(actor, message.skillId)
     const target = context.characters.find(
         (candidate) => candidate.id === message.targetId
     )
@@ -79,7 +81,7 @@ export function castSpell(
     const result = resolveCharacterDamage({
         actor,
         target,
-        amount: spell.damage + (skill.level - 1) * spell.growth,
+        amount: Math.round(spell.damage + (skill.level - 1) * spell.growth),
         now: context.now,
         damageKind: 'arcane',
         respawnDelayMs: context.respawnDelayMsFor?.(target) ?? 15000,
@@ -98,7 +100,26 @@ export function castSpell(
             ? trainSkill(actor, message.skillId)
             : []),
     ]
+    if (result.trainableDamage > 0) {
+        events.push(
+            ...recordRunicContact(actor, target.id, 'spell', context.now)
+        )
+        events.push(
+            ...finishConstellationAction(actor, {
+                skillIds: [message.skillId],
+                now: context.now,
+                random: context.random,
+            })
+        )
+    }
     return events
+}
+function resolvedSpell(actor: GameCharacter, id: SpellSkillId) {
+    return {
+        ...spells[id],
+        damage: effectiveAbility(actor, id).damage ?? spells[id].damage,
+        growth: 0,
+    }
 }
 
 function canHit(

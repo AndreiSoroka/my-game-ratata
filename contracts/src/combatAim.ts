@@ -12,22 +12,20 @@ export interface ProjectilePath {
 /** A visual/rule projection from authoritative facing; no target selection. */
 export function forwardShot(
     position: Vector2,
-    facing: CharacterFacing
+    facing: CharacterFacing,
+    range = ABILITY_DEFINITIONS.shot.range
 ): ProjectilePath {
-    return projectForward(position, facing, ABILITY_DEFINITIONS.shot.range)
+    return projectForward(position, facing, range)
 }
 
 export function forwardAbilityAttack(
     position: Vector2,
     facing: CharacterFacing,
-    abilityId: 'shot' | 'spark'
+    abilityId: 'shot' | 'spark',
+    range = ABILITY_DEFINITIONS[abilityId].range
 ): ProjectilePath {
     return {
-        ...projectForward(
-            position,
-            facing,
-            ABILITY_DEFINITIONS[abilityId].range
-        ),
+        ...projectForward(position, facing, range),
         halfWidth: abilityId === 'shot' ? SHOT_HALF_WIDTH : SPARK_HALF_WIDTH,
     }
 }

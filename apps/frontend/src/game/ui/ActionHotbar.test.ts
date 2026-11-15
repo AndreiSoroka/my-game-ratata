@@ -88,7 +88,7 @@ describe('four explicit hotbar bindings', () => {
         try {
             await wrapper.vm.edit(0)
             await wrapper.get('.hotbar-picker button').trigger('click')
-            expect(wrapper.get('.prayer-preview').text()).toBe('Восстановить self · 5 MP')
+            expect(wrapper.get('.prayer-preview').text()).toBe('Восстановить self · 5 MP · 3 с')
             wrapper.vm.activate(0)
             expect(wrapper.emitted('command')).toEqual([
                 [

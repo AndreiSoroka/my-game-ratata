@@ -10,6 +10,7 @@ import { nextTick, ref, watch } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
+import { abilityUsage } from './abilityUsage'
 import { dialogActionKeys } from './dialogActionKeys'
 import { type HotbarBinding as Binding, hotbarGlyphs as glyphs } from './hotbarBindings'
 import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
@@ -20,6 +21,7 @@ const props = defineProps<{
     player: CharacterSnapshot
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
+    graves?: WorldGraveSnapshot[]
     canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
@@ -180,8 +182,8 @@ defineExpose({ activate, edit, assignItem, resetGesture })
         >
             {{ glyphs[ability] }} {{ ABILITY_DEFINITIONS[ability].name }}
             <small
-                >{{ ABILITY_DEFINITIONS[ability].mana }} MP ·
-                {{ ABILITY_DEFINITIONS[ability].energy }} EN</small
+                >{{ abilityUsage(player, ability).mana }} MP ·
+                {{ abilityUsage(player, ability).energy }} EN</small
             >
         </button>
         <button data-dialog-action type="button" @click="assign({ kind: 'attack' })">

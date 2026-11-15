@@ -19,7 +19,15 @@ import {
     buildAttackZones,
     isInZones,
 } from './combatGeometry'
+import { constellationModifiers } from './constellationModifiers'
+import { consumeRunicShot } from './constellations'
+import {
+    effectiveAbility,
+    effectiveAttackCooldown,
+    effectiveAttackEnergyCost,
+} from './effectiveParameters'
 import { legalGraveTarget } from './graveCombat'
+import { hasEquippedSword } from './skillProgression'
 
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
     const kind = context.actor.config.basicAttackKind
@@ -32,7 +40,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     const { actor, now } = context
     if (
         brokenWeapon(actor) ||
-        !ready(context, actor.config.combat.attackCooldownMs) ||
+        !ready(context, effectiveAttackCooldown(actor)) ||
         !prepareTarget(context)
     ) {
         return []
@@ -43,17 +51,18 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     }
     const spend = actor.spendAttackResources()
     const scale = spend.fullyPowered ? 1 : 2
-    const lockMs = actor.config.combat.attackLockMs * scale
+    const tempo = hasEquippedSword(actor)
+        ? constellationModifiers(actor).swordTempoMultiplier
+        : 1
+    const lockMs = actor.config.combat.attackLockMs * scale * tempo
     actor.queueAttackHit(now, {
         targetId: context.targetId,
         target: context.target,
         canStun: spend.canStun,
         damageMultiplier: spend.fullyPowered ? 1 : 1 / 3,
         underpowered: !spend.fullyPowered,
-        targetEnergyDrain: Math.ceil(
-            actor.config.resources.attackEnergyCost / 2
-        ),
-        windupMs: actor.config.combat.attackWindupMs * scale,
+        targetEnergyDrain: Math.ceil(effectiveAttackEnergyCost(actor) / 2),
+        windupMs: actor.config.combat.attackWindupMs * scale * tempo,
     })
     return startAttack(context, lockMs)
 }
@@ -62,16 +71,19 @@ export function attemptAbilityAttack(
     id: AttackAbilityId
 ): GameEventPayload[] {
     const { actor, now } = context
-    const definition = ABILITY_DEFINITIONS[id]
+    const definition = effectiveAbility(actor, id, context.tileSize)
     if (
         (id === 'skeleton_strike' && brokenWeapon(actor)) ||
-        !ready(context, actor.config.combat.attackCooldownMs) ||
+        !ready(
+            context,
+            Math.min(effectiveAttackCooldown(actor), definition.cooldownMs)
+        ) ||
         !abilityReady(actor, id, now) ||
         !prepareTarget(context)
     ) {
         return []
     }
-    actor.attackZones = buildAbilityAttackZones(actor, id)
+    actor.attackZones = buildAbilityAttackZones(actor, id, context.tileSize)
     if (!targetWithinZones(context)) {
         return []
     }
@@ -83,7 +95,7 @@ export function attemptAbilityAttack(
         target: context.target,
         abilityId: id,
         canStun: id === 'skeleton_strike',
-        damageMultiplier: 1,
+        damageMultiplier: id === 'shot' ? consumeRunicShot(actor, now) : 1,
         targetEnergyDrain: Math.ceil(definition.energy / 2),
         windupMs: definition.windupMs,
     })
@@ -101,7 +113,7 @@ function abilityReady(
     id: AttackAbilityId,
     now: number
 ): boolean {
-    const definition = ABILITY_DEFINITIONS[id]
+    const definition = effectiveAbility(actor, id)
     return (
         knowsAbility(actor, id) &&
         now >= (actor.abilities.availableAt[id] ?? 0) &&
@@ -182,14 +194,11 @@ function startAttack(
             context.targetId === undefined &&
             context.target === undefined
                 ? {
-                      projectile:
-                          abilityId === 'shot'
-                              ? forwardShot(actor.position, actor.facing)
-                              : forwardAbilityAttack(
-                                    actor.position,
-                                    actor.facing,
-                                    abilityId
-                                ),
+                      projectile: abilityProjectile(
+                          actor,
+                          abilityId,
+                          context.tileSize
+                      ),
                   }
                 : {}),
             ...(context.target === undefined
@@ -201,4 +210,28 @@ function startAttack(
             ...(abilityId === undefined ? {} : { abilityId }),
         },
     ]
+}
+function abilityProjectile(
+    actor: GameCharacter,
+    id: 'shot' | 'spark',
+    tileWidth: number
+) {
+    const path =
+        id === 'shot'
+            ? forwardShot(actor.position, actor.facing)
+            : forwardAbilityAttack(actor.position, actor.facing, id)
+    const multiplier =
+        effectiveAbility(actor, id, tileWidth).range /
+        ABILITY_DEFINITIONS[id].range
+    return {
+        ...path,
+        endpoint: {
+            x:
+                actor.position.x +
+                (path.endpoint.x - actor.position.x) * multiplier,
+            y:
+                actor.position.y +
+                (path.endpoint.y - actor.position.y) * multiplier,
+        },
+    }
 }

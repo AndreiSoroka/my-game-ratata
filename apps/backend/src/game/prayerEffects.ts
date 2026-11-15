@@ -1,41 +1,63 @@
 import {
-    DEITY_PRAYER_PROFILES,
     type GameEventPayload,
-    PRAYER_RULES,
     type PrayerIntent,
+    type SkillId,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
-import { resolveCharacterDamage } from './abilityDamage'
-import { consumeHealingProvenance } from './abilityState'
 import type { GameCharacter } from './character'
-import { restoreCharacter } from './characterRecovery'
+import {
+    constellationModifiers,
+    finishConstellationAction,
+} from './constellations'
 import { miracleChance } from './deities'
-import { canTargetByFaction } from './factions'
-import { prayerHarmTargets, prayerResourceMissing } from './prayerContext'
+import { applyPrayerGifts } from './prayerGifts'
+import { applyPrayerGraves } from './prayerGraves'
+import { applyPrayerWave } from './prayerWave'
 import { trainSkill } from './skillProgression'
 
+/** One completed cast, one random sample, one practice award per relevant skill. */
 export function completePrayer(
     actor: GameCharacter,
     intent: PrayerIntent,
     context: AbilityContext,
     roll: number,
-    quality: number
+    quality: number,
+    receiptId?: string
 ): GameEventPayload[] {
-    // A pinned devotional prayer stays cosmetic even if targets appear later.
     if (intent.mode === 'devotion') {
         return []
     }
-    const target = prayerRecipient(actor, intent, context)
-    const chance = miracleChance(actor, context.now)
-    const events: GameEventPayload[] = []
-    let meaningful = false
-    let attemptMeaningful = meaningfulGiftAttempt(actor, target, intent)
-    if (roll < chance && target !== undefined && intent.mode !== 'harm') {
-        const gift = applyGift(actor, target, intent, context.now, quality)
-        events.push(...gift.events)
-        meaningful = gift.meaningful
-    } else if (intent.mode !== 'harm') {
+    // Capture modifiers and low-health evidence before any healing or learning.
+    const modifiers = constellationModifiers(actor)
+    const lowHpGift =
+        actor.hp < actor.maxHp * 0.2 &&
+        actor.progression.constellations.hostileWound > 0 &&
+        actor.progression.constellations.lowHpFromHostile
+    const castReceipt =
+        receiptId ??
+        `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`
+    const gift = applyPrayerGifts(
+        actor,
+        intent,
+        context,
+        roll < miracleChance(actor, context.now),
+        quality * modifiers.prayerGiftMultiplier
+    )
+    const wave = applyPrayerWave(
+        actor,
+        context,
+        roll,
+        quality * modifiers.prayerHarmMultiplier
+    )
+    const graves = applyPrayerGraves(actor, intent, context, roll, castReceipt)
+    const meaningful = gift.meaningful || wave.meaningful || graves.meaningful
+    const attempted =
+        gift.attemptMeaningful ||
+        wave.attemptMeaningful ||
+        graves.attemptMeaningful
+    const events = [...gift.events, ...wave.events, ...graves.events]
+    if (events.length === 0) {
         events.push({
             kind: 'notice',
             actorId: actor.id,
@@ -44,170 +66,82 @@ export function completePrayer(
             text: 'Божество не ответило на просьбу. Мана потрачена.',
         })
     }
-    const wave = applyPrayerWave(actor, context, roll, quality)
-    events.push(...wave.events)
-    if (intent.mode === 'harm' && wave.events.length === 0) {
-        events.push({
-            kind: 'notice',
-            actorId: actor.id,
-            audienceIds: [actor.id],
-            abilityId: 'pray',
-            text: 'Божество не ответило на просьбу. Мана потрачена.',
-        })
-    }
-    meaningful ||= wave.meaningful
-    attemptMeaningful ||= wave.attemptMeaningful
-    if (attemptMeaningful) {
-        events.push(...trainSkill(actor, 'faith'))
-    }
-    if (meaningful) {
-        events.push(...trainSkill(actor, 'miracles'))
-    }
-    return events
-}
-function prayerRecipient(
-    actor: GameCharacter,
-    intent: PrayerIntent,
-    context: AbilityContext
-): GameCharacter | undefined {
-    return intent.targetId === actor.id
-        ? actor
-        : context.characters.find(
-              (candidate) => candidate.id === intent.targetId
-          )
-}
-function meaningfulGiftAttempt(
-    actor: GameCharacter,
-    target: GameCharacter | undefined,
-    intent: PrayerIntent
-): boolean {
-    return (
-        intent.mode !== 'harm' &&
-        target !== undefined &&
-        (intent.mode === 'revive'
-            ? meaningfulRevival(target)
-            : meaningfulGift(actor, target))
-    )
-}
-function meaningfulRevival(target: GameCharacter): boolean {
-    return (
-        target.maxHp -
-            Math.min(target.maxHp, target.abilities.untrainableHpDamage) >
-        0
-    )
-}
-function meaningfulGift(actor: GameCharacter, target: GameCharacter): boolean {
-    const missing = prayerResourceMissing(actor, target)
-    return DEITY_PRAYER_PROFILES[actor.progression.patron].resource !== 'hp'
-        ? missing > 0
-        : missing - Math.min(missing, target.abilities.untrainableHpDamage) > 0
-}
-function applyGift(
-    actor: GameCharacter,
-    target: GameCharacter,
-    intent: PrayerIntent,
-    now: number,
-    quality: number
-): { events: GameEventPayload[]; meaningful: boolean } {
-    if (intent.mode === 'revive') {
-        const meaningful = meaningfulRevival(target)
-        restoreCharacter(target, now, false)
-        return {
+    return [
+        ...events,
+        ...practicePrayer(actor, context, {
+            attempted,
             meaningful,
-            events: [
-                {
-                    actorId: actor.id,
-                    targetId: target.id,
-                    kind: 'revive',
-                    abilityId: 'pray',
-                },
-            ],
-        }
-    }
-    const profile = DEITY_PRAYER_PROFILES[actor.progression.patron]
-    const level = actor.progression.skills.miracles.level - 1
-    const power =
-        profile.resource === 'hp'
-            ? 6 + level * 2
-            : profile.resource === 'energy'
-              ? 15 + level * 3
-              : 12 + level * 2
-    const missing = prayerResourceMissing(actor, target)
-    const amount = Math.min(missing, Math.round(power * quality))
-    if (amount <= 0) {
-        return { events: [], meaningful: false }
-    }
-    let meaningful = true
-    if (profile.resource === 'hp') {
-        meaningful = consumeHealingProvenance(target, amount, missing) > 0
-        target.hp += amount
-    } else if (profile.resource === 'energy') {
-        target.energy += amount
-    } else {
-        target.mana += amount
-    }
-    return {
-        meaningful,
-        events: [
-            {
-                kind: 'heal',
-                actorId: actor.id,
-                targetId: target.id,
-                amount,
-                abilityId: 'pray',
-                text: profile.resource,
-            },
-        ],
-    }
+            selfRecovery: gift.selfRecovery,
+            evidence: prayerEvidence(
+                gift.meaningful,
+                wave.meaningful,
+                graves.meaningful,
+                lowHpGift
+            ),
+            receiptId: castReceipt,
+        }),
+    ]
 }
 
-function applyPrayerWave(
+interface PrayerPractice {
+    attempted: boolean
+    meaningful: boolean
+    selfRecovery: boolean
+    evidence: string[]
+    receiptId: string
+}
+
+function practicePrayer(
     actor: GameCharacter,
     context: AbilityContext,
-    roll: number,
-    quality: number
-): {
-    events: GameEventPayload[]
-    meaningful: boolean
-    attemptMeaningful: boolean
-} {
-    const victims = prayerHarmTargets(actor, context)
-    const chance = miracleChance(actor, context.now)
-    const profile = DEITY_PRAYER_PROFILES[actor.progression.patron]
+    result: PrayerPractice
+): GameEventPayload[] {
     const events: GameEventPayload[] = []
-    let meaningful = false
-    let attemptMeaningful = false
-    const harm = Math.round(
-        (6 +
-            2 *
-                (actor.progression.skills.miracles.level -
-                    PRAYER_RULES.harmLevel)) *
-            quality
-    )
-    for (const victim of victims) {
-        const hostile =
-            victim.id !== actor.id &&
-            victim.faction !== actor.faction &&
-            canTargetByFaction(actor, victim, context.now)
-        attemptMeaningful ||= hostile
-        if (roll >= Math.min(0.95, chance + PRAYER_RULES.harmChanceBonus)) {
-            continue
-        }
-        const damage = resolveCharacterDamage({
-            actor,
-            target: victim,
-            amount: harm,
-            now: context.now,
-            damageKind: profile.damageKind,
-            respawnDelayMs: context.respawnDelayMsFor?.(victim) ?? 15000,
-        })
-        events.push(
-            ...damage.events.map((event) => ({
-                ...event,
-                abilityId: 'pray' as const,
-            }))
-        )
-        meaningful ||= damage.trainableDamage > 0
+    const skillIds: SkillId[] = []
+    if (result.attempted) {
+        events.push(...trainSkill(actor, 'faith'))
+        skillIds.push('faith')
     }
-    return { events, meaningful, attemptMeaningful }
+    if (result.meaningful) {
+        events.push(...trainSkill(actor, 'miracles'))
+        skillIds.push('miracles')
+    }
+    if (result.selfRecovery) {
+        skillIds.push('vitality')
+    }
+    if (skillIds.length === 0) {
+        return events
+    }
+    return [
+        ...events,
+        ...finishConstellationAction(actor, {
+            skillIds,
+            now: context.now,
+            random: context.random,
+            actionId: result.receiptId,
+            evidence: result.evidence,
+        }),
+    ]
+}
+
+function prayerEvidence(
+    gift: boolean,
+    harm: boolean,
+    purify: boolean,
+    lowHpGift: boolean
+): string[] {
+    const evidence = ['prayer']
+    if (gift) {
+        evidence.push('gift')
+    }
+    if (gift && lowHpGift) {
+        evidence.push('low_hp_gift')
+    }
+    if (harm) {
+        evidence.push('harm')
+    }
+    if (purify) {
+        evidence.push('purify')
+    }
+    return evidence
 }

@@ -3,6 +3,7 @@ import type { ScenarioStep } from '@my-game-ratata/contracts'
 import { canFight } from './autoActionTargets'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
+import { effectiveAttackCooldown } from './effectiveParameters'
 import { distance } from './math'
 import type { GameRoom } from './room'
 import { approachWorkTarget } from './scenarioApproach'
@@ -169,7 +170,7 @@ export function attackScenario(
     actor.setMoveInput({ x: 0, y: 0 })
     if (
         actor.isActionLocked(now) ||
-        now - actor.lastAttackAt < actor.config.combat.attackCooldownMs
+        now - actor.lastAttackAt < effectiveAttackCooldown(actor)
     ) {
         return { state: 'waiting' }
     }

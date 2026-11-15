@@ -1,9 +1,7 @@
 import {
     DEITY_PRAYER_PROFILES,
     type GameEventPayload,
-    REVIVE_CAST_MS,
     REVIVE_MANA_COST,
-    REVIVE_RANGE,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -11,12 +9,13 @@ import { clearAbilityEffects, createAbilityState } from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
 import { resolveMiracle } from './deities'
-import { advanceGravePurification } from './gravePrayer'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
+import { advancePrayerCast } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
 import { revivalTargetEligible } from './prayerContext'
 import { completePrayer } from './prayerEffects'
+import { prayerParameters } from './prayerParameters'
 import {
     canUseResurrection,
     createProgression,
@@ -84,13 +83,23 @@ export function beginRevive(
         return false
     }
     caster.abilities.casting = {
-        completesAt: now + REVIVE_CAST_MS,
+        completesAt:
+            now +
+            prayerParameters(caster, context?.navigation.grid.tileWidth)
+                .durationMs,
         startedAt: now,
         targetId: target.id,
         patron: caster.progression.patron,
     }
-    caster.lockAction(now, REVIVE_CAST_MS)
-    caster.setAnimation('attack', now, REVIVE_CAST_MS)
+    caster.lockAction(
+        now,
+        prayerParameters(caster, context?.navigation.grid.tileWidth).durationMs
+    )
+    caster.setAnimation(
+        'attack',
+        now,
+        prayerParameters(caster, context?.navigation.grid.tileWidth).durationMs
+    )
     return true
 }
 
@@ -105,8 +114,8 @@ export function advanceRevive(
     if (cast === null) {
         return []
     }
-    if (cast.mode === 'purify_grave') {
-        return advanceGravePurification(caster, now, context)
+    if ('intent' in cast) {
+        return advancePrayerCast(caster, now, context, random)
     }
     const target = findTarget(cast.targetId)
     if (
@@ -181,7 +190,8 @@ function canRevive(
         target.reviveUntil > now &&
         target.faction === caster.faction &&
         target.locationId === caster.locationId &&
-        distance(caster.position, target.position) <= REVIVE_RANGE
+        distance(caster.position, target.position) <=
+            prayerParameters(caster, context?.navigation.grid.tileWidth).radius
     )
 }
 

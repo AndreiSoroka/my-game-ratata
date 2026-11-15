@@ -106,3 +106,17 @@ describe('authoritative combat presentation', () => {
         expect(combatEffectCues({ kind: 'notice', text: 'Обычное уведомление' }, actor)).toEqual([])
     })
 })
+
+it('uses the resolved prayer radius for cosmetic waves without changing their budget', () => {
+    const actor = characterFixture('priest', {
+        abilities: {
+            known: ['pray'],
+            cooldowns: {},
+            casting: null,
+            barrier: null,
+            prayer: { radius: 96, durationMs: 2700, manaCost: 5, area: true, harm: true },
+        },
+    })
+    const cues = combatEffectCues({ kind: 'damage', abilityId: 'pray', targetId: 'victim' }, actor)
+    expect(cues[0]).toMatchObject({ kind: 'wave', radius: 96, count: 12 })
+})

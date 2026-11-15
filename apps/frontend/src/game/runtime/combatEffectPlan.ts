@@ -4,6 +4,7 @@ import {
     type DeityId,
     type GameEventPayload,
     GRAVE_PURIFY_CAST_MS,
+    PRAYER_RULES,
     type ProjectilePath,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
@@ -23,6 +24,7 @@ export interface EffectCue {
     duration: number
     travel?: boolean
     wave?: boolean
+    radius?: number
     channel?: boolean
     count?: number
 }
@@ -126,6 +128,7 @@ function prayerHit(
             fromId: actor.id,
             targetId: actor.id,
             wave: true,
+            radius: actor.abilities?.prayer?.radius ?? PRAYER_RULES.radius,
             duration: 550,
             count: 12,
         },

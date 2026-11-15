@@ -8,18 +8,14 @@ import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
 import { resolveCharacterStats } from './characterStats'
 import { combatHitQuality } from './combatHitQuality'
+import { constellationModifiers } from './constellationModifiers'
+import { effectiveCharacterStats } from './effectiveParameters'
+import { hasEquippedSword } from './skillProgression'
 export function dodgedAttack(
     target: GameCharacter,
     random: () => number
 ): boolean {
-    return (
-        random() <
-        resolveCharacterStats(
-            target.config,
-            target.equipment,
-            target.progression.skills.swordsmanship.level
-        ).dodgeChance
-    )
+    return random() < effectiveCharacterStats(target).dodgeChance
 }
 export function resolveAttackDamage(
     actor: GameCharacter,
@@ -39,12 +35,25 @@ export function resolveAttackDamage(
     const high = definition?.maxDamage ?? stats.maxDamage
     const roll = Math.floor(low + random() * (high - low + 1))
     let amount = roll
-    const critical = random() < stats.critChance
+    const modifiers = constellationModifiers(actor)
+    const sword = attack.abilityId === undefined && hasEquippedSword(actor)
+    const criticalBonus =
+        attack.abilityId === 'shot'
+            ? modifiers.shotCritBonus
+            : sword
+              ? modifiers.swordCritBonus
+              : 0
+    const critical = random() < Math.min(0.95, stats.critChance + criticalBonus)
     if (critical) {
-        amount = Math.round(amount * actor.config.combat.critMultiplier)
+        amount *= actor.config.combat.critMultiplier
     }
     return {
-        amount: Math.max(1, Math.round(amount * attack.damageMultiplier)),
+        amount: Math.max(
+            1,
+            Math.round(
+                amount * attack.damageMultiplier * attackBonus(actor, attack)
+            )
+        ),
         critical,
         hitQuality: combatHitQuality(
             roll,
@@ -54,6 +63,18 @@ export function resolveAttackDamage(
             attack.underpowered === true
         ),
     }
+}
+function attackBonus(actor: GameCharacter, attack: PendingAttackHit): number {
+    const modifiers = constellationModifiers(actor)
+    if (attack.abilityId === 'shot') {
+        return modifiers.shotDamageMultiplier
+    }
+    if (attack.abilityId === 'spark') {
+        return modifiers.sparkDamageMultiplier
+    }
+    return attack.abilityId === undefined && hasEquippedSword(actor)
+        ? modifiers.swordDamageMultiplier
+        : 1
 }
 export function applyAttackStun(
     actor: GameCharacter,
@@ -70,13 +91,16 @@ export function applyAttackStun(
     if (!heavy && random() >= combat.stunChance) {
         return []
     }
-    const duration = heavy
+    const baseDuration = heavy
         ? 800
         : Math.floor(
               combat.stunMinDurationMs +
                   random() *
                       (combat.stunMaxDurationMs - combat.stunMinDurationMs + 1)
           )
+    const duration = Math.round(
+        baseDuration * constellationModifiers(target).stunDurationMultiplier
+    )
     target.stunUntil = Math.max(target.stunUntil, now + duration)
     target.clearPath()
     target.setMoveInput({ x: 0, y: 0 })

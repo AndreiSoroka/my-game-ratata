@@ -7,8 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { handleAgentRequest } from '../src/agentBridge'
 import type { GameCharacter } from '../src/game/character'
-import { observeCombatEvent } from '../src/game/combatObservation'
+import {
+    observeCombatEvent,
+    observeCombatEvents,
+} from '../src/game/combatObservation'
 import { CompanionService } from '../src/game/companions'
+import { advancePrayerCast } from '../src/game/prayer'
 import {
     eventFor,
     observationFixture,
@@ -175,7 +179,7 @@ describe('serialized agent bridge combat privacy', () => {
                     ?.resourceChecks
             ).toBeDefined()
             expect(JSON.stringify(state)).not.toMatch(
-                /"(?:current|maxMana|maxEnergy)"/
+                /"(?:current|maxMana|maxEnergy)":-?\d/
             )
             expect(
                 state.characters
@@ -240,11 +244,37 @@ describe('serialized agent combat action results', () => {
                     room,
                     privacyToken
                 )
-                expect(response.status).toBe(200)
+                expect(
+                    response.status,
+                    JSON.stringify(await response.clone().json())
+                ).toBe(200)
                 const body = (await response.json()) as {
                     events: GameEventPayload[]
                 }
-                const heal = body.events.find((event) => event.kind === 'heal')
+                expect(body.events).toContainEqual(
+                    expect.objectContaining({ kind: 'cast', phase: 'started' })
+                )
+                expect(target.hp).toBe(before)
+                const at = actor.abilities.casting?.completesAt
+                if (at === undefined) {
+                    throw new Error('Expected prayer channel')
+                }
+                const completed = advancePrayerCast(
+                    actor,
+                    at,
+                    room.abilityContextFor(actor, at),
+                    () => 0
+                )
+                const projected = observeCombatEvents(completed, {
+                    observer: actor,
+                    getCharacter: (id) => room.getCharacter(id),
+                    navigation: room.navigationFor(actor),
+                    now: at,
+                })
+                const serialized = JSON.parse(
+                    JSON.stringify(projected)
+                ) as GameEventPayload[]
+                const heal = serialized.find((event) => event.kind === 'heal')
                 expect(heal).toBeDefined()
                 expect(target.hp).toBeGreaterThan(before)
                 expect(heal?.amount).toBe(

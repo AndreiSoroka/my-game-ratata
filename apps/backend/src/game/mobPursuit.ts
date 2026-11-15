@@ -5,6 +5,11 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import {
+    effectiveAttackEnergyCost,
+    effectiveDashCost,
+    effectiveMoveSpeed,
+} from './effectiveParameters'
 import { canTargetByFaction } from './factions'
 import { distance, normalize } from './math'
 import { handleMovementCommand, movementActionAllowed } from './movementActions'
@@ -25,7 +30,7 @@ export function tryPursuitDash(
         return []
     }
     const travel =
-        (actor.config.moveSpeed *
+        (effectiveMoveSpeed(actor) *
             MOVEMENT_RULES.dashSpeedMultiplier *
             MOVEMENT_RULES.dashDurationMs) /
         1_000
@@ -65,8 +70,7 @@ function readyToPursue(actor: GameCharacter, now: number): boolean {
         actor.controllerKind !== 'network_player' &&
         actor.soul.controlSource !== 'human' &&
         actor.energy >=
-            MOVEMENT_RULES.dashEnergy +
-                actor.config.resources.attackEnergyCost &&
+            effectiveDashCost(actor) + effectiveAttackEnergyCost(actor) &&
         actor.canSpendAttackResources() &&
         movementActionAllowed(actor, { type: 'dash' }, now)
     )

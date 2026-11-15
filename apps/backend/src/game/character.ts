@@ -35,6 +35,8 @@ import {
     type PendingAttackHit,
     spendResource,
 } from './characterState'
+import { initializeConstellations } from './constellations'
+import { effectiveAttackEnergyCost } from './effectiveParameters'
 import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { normalize, resolveFacing, zeroVector } from './math'
@@ -140,6 +142,7 @@ export class GameCharacter {
         this.spawnPosition = { ...options.spawnPosition }
         this.visualId =
             options.visualId ?? defaultVisualIdFor(options.archetype)
+        initializeConstellations(this)
     }
 
     public setMoveInput(axis: Vector2): void {
@@ -276,16 +279,17 @@ export class GameCharacter {
     public applyRegen(
         deltaMs: number,
         isMoving: boolean,
-        energyAllowed = true
-    ): void {
-        regenerateCharacter(this, deltaMs, isMoving, energyAllowed)
+        energyAllowed = true,
+        now = 0
+    ) {
+        return regenerateCharacter(this, deltaMs, isMoving, energyAllowed, now)
     }
 
     public canSpendAttackResources(): boolean {
         const resources = this.config.resources
 
         return (
-            this.energy >= resources.attackEnergyCost &&
+            this.energy >= effectiveAttackEnergyCost(this) &&
             this.mana >= resources.attackManaCost
         )
     }
@@ -302,7 +306,10 @@ export class GameCharacter {
             this.canSpendAttackResources()
         const fullyPowered = this.canSpendAttackResources()
 
-        this.energy = spendResource(this.energy, resources.attackEnergyCost)
+        this.energy = spendResource(
+            this.energy,
+            effectiveAttackEnergyCost(this)
+        )
         this.mana = spendResource(this.mana, resources.attackManaCost)
 
         return { canStun, fullyPowered }
@@ -329,7 +336,7 @@ export class GameCharacter {
         }
     }
 
-    public snapshot(now: number) {
-        return createCharacterSnapshot(this, now)
+    public snapshot(now: number, includePrivate = true) {
+        return createCharacterSnapshot(this, now, includePrivate)
     }
 }

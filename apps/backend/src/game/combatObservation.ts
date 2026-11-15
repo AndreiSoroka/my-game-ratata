@@ -3,13 +3,19 @@ import {
     type GameEventPayload,
     healthPercent,
     type HealthSnapshot,
+    MOVEMENT_RULES,
     trainingAreaAt,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { snapshotAbilityUsage } from './abilityUsage'
 import type { GameCharacter } from './character'
+import { createCharacterSheet } from './characterSheet'
+import { hasStar } from './constellations'
 import type { GraveCombatTarget } from './graveRules'
 import type { NavigationService } from './navigation'
+import { prayerParameters } from './prayerParameters'
+import { publicProgression } from './progressionObservation'
 import { visibilityRadius } from './queries'
 import { observeResource, resourceChecks } from './resourceObservation'
 
@@ -26,46 +32,112 @@ export function observeCharacterCombat(
     target: GameCharacter | undefined,
     view: CombatObserver
 ): CharacterSnapshot {
-    const exact = canReadNumbers(view)
+    const description = { ...snapshot }
+    delete description.resourceChecks
+    delete description.characterSheet
+    delete description.stats
+    if (
+        view.observer?.id !== snapshot.id &&
+        description.progression !== undefined
+    ) {
+        description.progression = publicProgression(description.progression)
+    }
+    return {
+        ...description,
+        health: observedHealth(snapshot, target, view),
+        resources: {
+            mana: observeResource(
+                snapshot.resources.mana,
+                canReadPool(target, view, 'magic.mana3')
+            ),
+            energy: observeResource(
+                snapshot.resources.energy,
+                canReadPool(target, view, 'life.energy3')
+            ),
+        },
+        ...privateSheet(target, view),
+        ...observedAbilities(snapshot.abilities, target, view),
+    }
+}
+
+function canReadPool(
+    target: GameCharacter | undefined,
+    view: CombatObserver,
+    star: string
+): boolean {
+    return (
+        canReadNumbers(view) ||
+        (target !== undefined &&
+            target.id === view.observer?.id &&
+            hasStar(target, star))
+    )
+}
+
+function observedHealth(
+    snapshot: CharacterSnapshot,
+    target: GameCharacter | undefined,
+    view: CombatObserver
+): HealthSnapshot {
     const health: HealthSnapshot =
         target === undefined
             ? snapshot.health
             : { kind: 'exact', current: target.hp, max: target.maxHp }
-    const abilities = snapshot.abilities
-    const description = { ...snapshot }
-    delete description.resourceChecks
+    return canReadPool(target, view, 'life.hp4')
+        ? health
+        : { kind: 'percent', percent: healthPercent(health) }
+}
+
+function privateSheet(
+    target: GameCharacter | undefined,
+    view: CombatObserver
+): Pick<CharacterSnapshot, 'resourceChecks' | 'characterSheet'> {
+    if (target === undefined || target.id !== view.observer?.id) {
+        return {}
+    }
     return {
-        ...description,
-        health: exact
-            ? health
-            : { kind: 'percent', percent: healthPercent(health) },
-        resources: {
-            mana: observeResource(snapshot.resources.mana, exact),
-            energy: observeResource(snapshot.resources.energy, exact),
+        resourceChecks: resourceChecks(target),
+        characterSheet: createCharacterSheet(
+            target,
+            view.navigation?.grid.tileWidth ?? MOVEMENT_RULES.stepDistance
+        ),
+    }
+}
+
+function observedAbilities(
+    abilities: CharacterSnapshot['abilities'],
+    target: GameCharacter | undefined,
+    view: CombatObserver
+): Pick<CharacterSnapshot, 'abilities'> {
+    if (abilities === undefined) {
+        return {}
+    }
+    return {
+        abilities: {
+            ...abilities,
+            ...(target !== undefined && view.navigation !== undefined
+                ? {
+                      prayer: prayerParameters(
+                          target,
+                          view.navigation.grid.tileWidth
+                      ),
+                      parameters: snapshotAbilityUsage(
+                          target,
+                          abilities.known,
+                          view.navigation.grid.tileWidth
+                      ),
+                  }
+                : {}),
+            barrier:
+                abilities.barrier === null
+                    ? null
+                    : {
+                          expiresAt: abilities.barrier.expiresAt,
+                          ...(canReadNumbers(view) &&
+                          abilities.barrier.remaining !== undefined
+                              ? { remaining: abilities.barrier.remaining }
+                              : {}),
+                      },
         },
-        ...(target !== undefined && view.observer?.id === snapshot.id
-            ? { resourceChecks: resourceChecks(target) }
-            : {}),
-        ...(abilities === undefined
-            ? {}
-            : {
-                  abilities: {
-                      ...abilities,
-                      barrier:
-                          abilities.barrier === null
-                              ? null
-                              : {
-                                    expiresAt: abilities.barrier.expiresAt,
-                                    ...(exact &&
-                                    abilities.barrier.remaining !== undefined
-                                        ? {
-                                              remaining:
-                                                  abilities.barrier.remaining,
-                                          }
-                                        : {}),
-                                },
-                  },
-              }),
     }
 }
 

@@ -34,6 +34,7 @@ describe('shared deities and meaningful faith', () => {
             deityMood('hearth', now + deityMoodCycleMs)
         )
         actor.progression.skills.faith.level = 4
+        actor.progression.constellations.opened.add('prayer.omen1')
         const hint = actor.snapshot(now).progression?.deity
         expect(hint).toMatchObject({
             perception: 'hint',
@@ -42,6 +43,8 @@ describe('shared deities and meaningful faith', () => {
         })
         expect(hint?.omen).not.toBe(vague?.omen)
         actor.progression.skills.faith.level = 7
+        actor.progression.constellations.opened.add('prayer.omen2')
+        actor.progression.constellations.opened.add('prayer.omen3')
         expect(actor.snapshot(now).progression?.deity).toMatchObject({
             perception: 'clear',
             mood: deityMood('hearth', now),
@@ -49,6 +52,7 @@ describe('shared deities and meaningful faith', () => {
             changesInMs: null,
         })
         actor.progression.skills.faith.level = 10
+        actor.progression.constellations.opened.add('prayer.omen4')
         expect(actor.snapshot(now).progression?.deity).toMatchObject({
             perception: 'precise',
             changesInMs: 15_000,
@@ -62,17 +66,19 @@ describe('shared deities and meaningful faith', () => {
         const before = actor.hp
         expect(
             command(actor, { type: 'pray' }, [], 1_000, () => 1)
-        ).toMatchObject([{ kind: 'cast' }, { kind: 'notice' }])
+        ).toMatchObject([{ kind: 'cast', phase: 'started' }])
+        expect(actor.mana).toBe(40)
+        expect(command(actor, { type: 'pray' }, [], 1_500, () => 0)).toEqual([])
+        expect(finishPrayer(actor, 4_000, () => 1)).toMatchObject([
+            { kind: 'cast', phase: 'completed' },
+            { kind: 'notice' },
+        ])
         expect(actor.hp).toBe(before)
         expect(actor.mana).toBe(35)
         expect(actor.progression.skills.faith.practice).toBe(1)
         expect(actor.progression.skills.miracles.practice).toBe(0)
-        expect(
-            command(actor, { type: 'pray' }, [], 1_500, () => 0)
-        ).toMatchObject([{ kind: 'notice' }])
-        expect(actor.mana).toBe(35)
-        expect(actor.progression.skills.faith.practice).toBe(1)
         command(actor, { type: 'pray' }, [], 4_000, () => 0)
+        finishPrayer(actor, 7_000, () => 0)
         expect(actor.hp).toBeGreaterThan(before)
         expect(actor.progression.skills.faith.practice).toBe(2)
         expect(actor.progression.skills.miracles.practice).toBe(1)
@@ -87,7 +93,8 @@ describe('shared deities and meaningful faith', () => {
             actor.hp = 10
             actor.energy = 20
             actor.mana = 20
-            const events = command(actor, { type: 'pray' }, [], 1_000, () => 0)
+            command(actor, { type: 'pray' }, [], 1_000, () => 0)
+            const events = finishPrayer(actor, 4_000, () => 0)
             expect(
                 events.find((event) => event.kind === 'heal')?.amount
             ).toBeGreaterThan(0)
@@ -307,6 +314,24 @@ function command(
     })
     return handleProgressionCommand(actor, message, {
         characters,
+        navigation,
+        now,
+        random,
+    })
+}
+
+function finishPrayer(actor: GameCharacter, now: number, random: () => number) {
+    const navigation = new NavigationService({
+        id: 'test',
+        width: 32,
+        height: 32,
+        tileWidth: 16,
+        tileHeight: 16,
+        solid: new Array<boolean>(1024).fill(false),
+        solidLayerNames: [],
+    })
+    return advanceRevive(actor, () => actor, now, random, {
+        characters: [actor],
         navigation,
         now,
         random,

@@ -6,6 +6,18 @@ const key = (code: string, repeat = false) =>
     new KeyboardEvent('keydown', { code, repeat, cancelable: true })
 
 describe('world context shortcut', () => {
+    it('uses physical P for the character menu and ignores held repeats', () => {
+        const character = vi.fn<() => void>()
+        const noOp = () => undefined
+        const actions = { inventory: noOp, pickup: noOp, context: undefined, character }
+        handleRuntimeShortcut(
+            new KeyboardEvent('keydown', { code: 'KeyP', key: 'з', repeat: true }),
+            actions
+        )
+        expect(character).not.toHaveBeenCalled()
+        handleRuntimeShortcut(new KeyboardEvent('keydown', { code: 'KeyP', key: 'з' }), actions)
+        expect(character).toHaveBeenCalledOnce()
+    })
     it('opens only on a fresh E and leaves F inactive', () => {
         const context = vi.fn<() => void>()
         const pickup = vi.fn<() => void>()

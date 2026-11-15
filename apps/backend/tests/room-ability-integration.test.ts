@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { handleAbilityCommand } from '../src/game/abilityCommands'
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
-import { beginRevive } from '../src/game/characterLife'
+import { advanceRevive, beginRevive } from '../src/game/characterLife'
 import { createItemInstance } from '../src/game/inventory'
 import { PartyService } from '../src/game/parties'
 import { publishRoomEvents } from '../src/game/roomEvents'
@@ -20,6 +20,7 @@ it('routes an NPC prayer death through ordinary world rewards exactly once', () 
     const actor = abilityHero('cleric', 'undead', 'scripted')
     actor.progression.patron = 'grave'
     actor.progression.skills.miracles.level = 3
+    actor.progression.constellations.opened.add('prayer.harm')
     const target = new GameCharacter({
         id: 'slime-victim',
         archetype: 'slime',
@@ -39,7 +40,7 @@ it('routes an NPC prayer death through ordinary world rewards exactly once', () 
     const objects = () =>
         inventory.snapshotItems().length + inventory.snapshotChests().length
     const before = objects()
-    const events = handleAbilityCommand(
+    handleAbilityCommand(
         actor,
         {
             type: 'use_ability',
@@ -47,6 +48,13 @@ it('routes an NPC prayer death through ordinary world rewards exactly once', () 
             intent: { mode: 'harm', targetId: target.id },
         },
         context
+    )
+    const events = advanceRevive(
+        actor,
+        (id) => characters.get(id),
+        4000,
+        () => 0,
+        { ...context, now: 4000 }
     )
     expect(events).toContainEqual(
         expect.objectContaining({ kind: 'death', targetId: target.id })

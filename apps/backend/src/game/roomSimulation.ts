@@ -133,6 +133,7 @@ function advanceWorldCharacter(
         deltaMs,
         now,
         navigation,
+        onEvents,
         onNoise: (noise) =>
             recordMovementNoise(
                 context.room,

@@ -125,8 +125,9 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
         }
     )
     // Fake time still runs every real room tick; allow CPU contention in the full suite.
-    it('channels, cancels and completes purification through the same player socket', () => {
+    it('channels, cancels and contributes to purification through the same player socket', () => {
         const f = fixture()
+        vi.spyOn(Math, 'random').mockReturnValue(0)
         const command = {
             type: 'use_ability',
             abilityId: 'pray',
@@ -145,8 +146,9 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
         const mana = f.actor.mana
         vi.advanceTimersByTime(50)
         f.room.stop()
-        expect(f.grave()?.phase).toBe('purified')
-        expect(f.actor.mana).toBe(mana - 20)
+        expect(f.grave()?.phase).toBe('active')
+        expect(f.grave()?.purification?.completed).toBe(1)
+        expect(f.actor.mana).toBe(mana - 5)
     }, 30_000)
 })
 

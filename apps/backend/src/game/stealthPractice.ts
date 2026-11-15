@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { finishConstellationAction } from './constellations'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -71,7 +72,10 @@ export function practiceStealthMovement(
     state.distance = 0
     state.cells = 0
     state.allowedAt = now + 4_000
-    return trainSkill(actor, 'stealth').map((event) => ({
+    return [
+        ...trainSkill(actor, 'stealth'),
+        ...finishConstellationAction(actor, { skillIds: ['stealth'], now }),
+    ].map((event) => ({
         ...event,
         audienceIds: [actor.id],
     }))

@@ -1,5 +1,4 @@
 import {
-    ABILITY_DEFINITIONS,
     type AutoActionWaiting,
     type CharacterAutoAction,
     isItemBroken,
@@ -29,8 +28,14 @@ import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
 import { canAttackCharacter } from './combatTargets'
+import {
+    effectiveAbility,
+    effectiveAttackCooldown,
+    effectiveAttackEnergyCost,
+} from './effectiveParameters'
 import { distance } from './math'
 import { prayerHarmTargets } from './prayerContext'
+import { prayerParameters } from './prayerParameters'
 
 export type AutoActionStatus = 'stop' | 'ready' | NonNullable<AutoActionWaiting>
 export function autoTargetId(action: CharacterAutoAction): string | undefined {
@@ -69,7 +74,7 @@ export function autoActionStatus(
     ) {
         return 'stop'
     }
-    if (actor.isActionLocked(context.now)) {
+    if (pendingAction(actor, context.now)) {
         return 'action'
     }
     if (!reached(actor, action, target, context)) {
@@ -86,6 +91,9 @@ export function autoActionStatus(
         return 'cooldown'
     }
     return 'ready'
+}
+function pendingAction(actor: GameCharacter, now: number): boolean {
+    return actor.abilities.casting !== null || actor.isActionLocked(now)
 }
 function legalAutoTarget(
     actor: GameCharacter,
@@ -143,18 +151,26 @@ function reached(
     if (action.kind === 'prayer') {
         return (
             distance(actor.position, target.position) <=
-            ABILITY_DEFINITIONS.pray.range
+            prayerParameters(actor, context.navigation.grid.tileWidth).radius
         )
     }
     const id = action.abilityId
     return id === 'shot' || id === 'spark' || id === 'skeleton_strike'
-        ? isInZones(target, buildAbilityAttackZones(actor, id))
+        ? isInZones(
+              target,
+              buildAbilityAttackZones(
+                  actor,
+                  id,
+                  context.navigation.grid.tileWidth
+              )
+          )
         : distance(actor.position, target.position) <=
-              ABILITY_DEFINITIONS[id].range
+              effectiveAbility(actor, id, context.navigation.grid.tileWidth)
+                  .range
 }
 function cooldownAt(actor: GameCharacter, action: CombatAction): number {
     if (action.kind === 'attack') {
-        return actor.lastAttackAt + actor.config.combat.attackCooldownMs
+        return actor.lastAttackAt + effectiveAttackCooldown(actor)
     }
     if (action.kind === 'prayer') {
         return Math.max(
@@ -172,7 +188,11 @@ function cooldownAt(actor: GameCharacter, action: CombatAction): number {
         actor.abilities.availableAt[action.abilityId] ?? 0,
         action.abilityId === 'barrier'
             ? 0
-            : actor.lastAttackAt + actor.config.combat.attackCooldownMs
+            : actor.lastAttackAt +
+                  Math.min(
+                      effectiveAttackCooldown(actor),
+                      effectiveAbility(actor, action.abilityId).cooldownMs
+                  )
     )
 }
 function actionCosts(
@@ -183,17 +203,17 @@ function actionCosts(
         return { mana: prayerManaCost(action.intent.mode), energy: 0 }
     }
     if (action.kind === 'ability') {
-        return ABILITY_DEFINITIONS[action.abilityId]
+        return effectiveAbility(actor, action.abilityId)
     }
     if (actor.config.basicAttackKind === 'arrow') {
-        return ABILITY_DEFINITIONS.shot
+        return effectiveAbility(actor, 'shot')
     }
     if (actor.config.basicAttackKind === 'spark') {
-        return ABILITY_DEFINITIONS.spark
+        return effectiveAbility(actor, 'spark')
     }
     return {
         mana: actor.config.resources.attackManaCost,
-        energy: actor.config.resources.attackEnergyCost,
+        energy: effectiveAttackEnergyCost(actor),
     }
 }
 function refusesAutoCombat(
@@ -207,7 +227,6 @@ function refusesAutoCombat(
     if (action.kind === 'prayer') {
         return (
             action.intent.mode !== 'devotion' &&
-            action.intent.mode !== 'purify_grave' &&
             prayerHarmTargets(actor, context).length > 0
         )
     }

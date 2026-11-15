@@ -35,6 +35,8 @@ function setup() {
         list: (id) => graves.snapshot(id),
         damage: (id, amount, now) => graves.damage(id, amount, now),
         purify: (id, now) => graves.purify(id, now),
+        contributePurification: (id: string, receiptId: string, at: number) =>
+            graves.contributePurification(id, receiptId, at),
     }
     const attack = (
         now: number,

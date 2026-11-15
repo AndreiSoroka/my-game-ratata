@@ -2,14 +2,17 @@ import type {
     CombatHitQuality,
     DamageKind,
     GameEventPayload,
+    SkillId,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { finishConstellationAction } from './constellations'
 import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelPrayerCast } from './prayerCancellation'
 import { trainSkill } from './skillProgression'
+import { recordVitalityDamage } from './vitalityPractice'
 export interface DamageResolution {
     /** Resolved contact used for weapon wear, independent of target HP loss. */
     impactDamage: number
@@ -50,6 +53,7 @@ export function resolveCharacterDamage(
         actor.id !== target.id &&
         actor.faction !== target.faction &&
         canTargetByFaction(actor, target, now)
+    const barrierPracticed = target.abilities.barrier?.practiced === true
     absorbDamage(input, result, hostile)
     if (
         actor.id !== target.id &&
@@ -60,6 +64,7 @@ export function resolveCharacterDamage(
     }
     result.hpDamage = Math.min(target.hp, input.amount - result.absorbed)
     if (result.hpDamage <= 0) {
+        finishDefenderPractice(input, result, hostile, barrierPracticed)
         return result
     }
     const tainted = Math.min(
@@ -76,8 +81,41 @@ export function resolveCharacterDamage(
     result.trainableDamage = hostile ? result.hpDamage : 0
     result.impactDamage = result.hpDamage
     result.events.push(damageEvent(input, result.hpDamage))
+    finishDefenderPractice(input, result, hostile, barrierPracticed)
     finishDamageDeath(input, result.events)
     return result
+}
+function finishDefenderPractice(
+    input: CharacterDamageInput,
+    result: DamageResolution,
+    hostile: boolean,
+    barrierPracticed: boolean
+): void {
+    if (!hostile) {
+        return
+    }
+    const skills: SkillId[] = []
+    if (result.hpDamage > 0) {
+        result.events.push(
+            ...recordVitalityDamage(
+                input.target,
+                result.hpDamage,
+                input.now,
+                true
+            )
+        )
+        skills.push('vitality')
+    }
+    if (result.absorbed > 0 && !barrierPracticed) {
+        skills.push('arcana')
+    }
+    result.events.push(
+        ...finishConstellationAction(input.target, {
+            skillIds: skills,
+            now: input.now,
+            evidence: skills.includes('arcana') ? ['barrier'] : [],
+        })
+    )
 }
 function damageEvent(
     input: CharacterDamageInput,

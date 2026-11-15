@@ -196,7 +196,8 @@ export class SceneActors {
                     (id === localPlayerId ||
                         this.isInteractionVisible(actor.position, undefined, 240))
                 )
-            }
+            },
+            player
         )
         this.followLocalPlayer(localPlayerId)
     }

@@ -7,6 +7,7 @@ import { expect, it, vi } from 'vitest'
 import { handleAbilityCommand } from '../src/game/abilityCommands'
 import type { CompanionWorld } from '../src/game/agentDecisions'
 import type { GameCharacter } from '../src/game/character'
+import { advanceRevive } from '../src/game/characterLife'
 import { ClericController } from '../src/game/clericController'
 import { requestNpcAttack, trySkeletonStrike } from '../src/game/npcAbilities'
 import type { GameRoom } from '../src/game/room'
@@ -29,27 +30,38 @@ function npcWorld(characters: GameCharacter[]) {
             published.push(...events)
         },
     }
-    return { world, published }
+    return { world, published, context }
 }
 it('scripted support priest submits the same paid contextual prayer and respects cooldown', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     const wounded = abilityHero()
     wounded.hp -= 12
-    const { world, published } = npcWorld([actor, wounded])
+    const { world, published, context } = npcWorld([actor, wounded])
     const controller = new ClericController()
     controller.update(actor, world as GameRoom, 1000)
+    expect(actor.mana).toBe(120)
+    published.push(
+        ...advanceRevive(
+            actor,
+            (id) => context.characters.find((target) => target.id === id),
+            4000,
+            () => 0,
+            { ...context, now: 4000 }
+        )
+    )
     expect(actor.mana).toBe(115)
     expect(wounded.hp).toBeGreaterThan(wounded.maxHp - 12)
     expect(published).toContainEqual(
         expect.objectContaining({ kind: 'heal', targetId: wounded.id })
     )
-    controller.update(actor, world as GameRoom, 1500)
+    controller.update(actor, world as GameRoom, 3999)
     expect(actor.mana).toBe(115)
 })
 it('support policy will not silently burn a friendly bystander and never takes over a human', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     actor.hp -= 10
     actor.progression.skills.miracles.level = 3
+    actor.progression.constellations.opened.add('prayer.harm')
     const undead = abilityHero('vanguard', 'undead')
     const { world } = npcWorld([actor, undead])
     const request = vi.spyOn(world, 'requestAbility')

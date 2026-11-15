@@ -1,7 +1,4 @@
-import {
-    GRAVE_PURIFY_CAST_MS,
-    GRAVE_PURIFY_MANA_COST,
-} from '@my-game-ratata/contracts'
+import { GRAVE_PURIFY_CAST_MS } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { resolveCharacterDamage } from '../src/game/abilityDamage'
@@ -20,53 +17,51 @@ import {
     prayerSource as source,
 } from './gravePrayerTestHelpers'
 
-describe('guaranteed grave prayer', () => {
+describe('shared probabilistic grave prayer', () => {
     it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
-        'channels for 50 seconds with %s, pays 20 MP only at completion and practices once',
+        'uses five ordinary three-second %s prayers, pays five mana per completed attempt and practices once',
         (patron) => {
             const f = gravePrayerFixture()
             f.actor.progression.patron = patron
-            const beforeMana = f.actor.mana
-            const beforeFaith = f.actor.progression.skills.faith.practice
-            const beforeMiracles = f.actor.progression.skills.miracles.practice
-            expect(f.begin()).toMatchObject([
-                {
+            for (let step = 0; step < 5; step++) {
+                const startsAt = now + step * GRAVE_PURIFY_CAST_MS
+                expect(f.begin(startsAt)[0]).toMatchObject({
                     kind: 'cast',
                     phase: 'started',
-                    target: { kind: 'grave', id: source.id },
-                },
-            ])
-            expect(f.actor.mana).toBe(beforeMana)
-            expect(f.actor.snapshot(now).abilities?.casting).toMatchObject({
-                mode: 'purify_grave',
-                target: { kind: 'grave', id: source.id },
-                completesAt: now + GRAVE_PURIFY_CAST_MS,
-            })
-            expect(f.advance(now + GRAVE_PURIFY_CAST_MS - 1)).toEqual([])
-            expect(f.service.get(source.id)?.phase).toBe('active')
-            const events = f.advance(now + GRAVE_PURIFY_CAST_MS)
-            expect(events).toContainEqual({
-                kind: 'grave_purified',
-                actorId: f.actor.id,
-                target: { kind: 'grave', id: source.id },
-            })
+                    durationMs: 3000,
+                })
+                expect(f.actor.mana).toBe(120 - step * 5)
+                expect(f.advance(startsAt + GRAVE_PURIFY_CAST_MS - 1)).toEqual(
+                    []
+                )
+                const events = f.advance(startsAt + GRAVE_PURIFY_CAST_MS)
+                expect(events).toContainEqual(
+                    expect.objectContaining({
+                        kind:
+                            step === 4
+                                ? 'grave_purified'
+                                : 'grave_purification_progress',
+                        target: { kind: 'grave', id: source.id },
+                    })
+                )
+                expect(f.service.get(source.id)?.purification).toEqual({
+                    completed: step + 1,
+                    required: 5,
+                })
+                expect(f.actor.mana).toBe(120 - (step + 1) * 5)
+                expect(f.actor.progression.skills.faith.practice).toBe(step + 1)
+                expect(f.actor.progression.skills.miracles.practice).toBe(
+                    step + 1
+                )
+                expect(f.advance(startsAt + GRAVE_PURIFY_CAST_MS)).toEqual([])
+            }
             expect(f.service.get(source.id)?.phase).toBe('purified')
-            expect(f.actor.mana).toBe(beforeMana - GRAVE_PURIFY_MANA_COST)
-            expect(f.actor.progression.skills.faith.practice).toBe(
-                beforeFaith + 1
-            )
-            expect(f.actor.progression.skills.miracles.practice).toBe(
-                beforeMiracles + 1
-            )
-            expect(f.advance(now + GRAVE_PURIFY_CAST_MS + 1)).toEqual([])
-            expect(f.begin(now + GRAVE_PURIFY_CAST_MS + 5_000)[0]?.kind).toBe(
-                'notice'
-            )
-            expect(f.actor.mana).toBe(beforeMana - GRAVE_PURIFY_MANA_COST)
+            expect(f.begin(now + 20_000)[0]?.kind).toBe('notice')
+            expect(f.actor.mana).toBe(95)
         }
     )
 
-    it('allows ruined graves and trained nonclerics but requires learned prayer and sufficient resources', () => {
+    it('allows any class with learned prayer, treats ruins identically and validates five mana', () => {
         const f = gravePrayerFixture()
         const learner = new GameCharacter({
             id: 'learner',
@@ -77,31 +72,29 @@ describe('guaranteed grave prayer', () => {
             locationId: source.locationId,
             spawnPosition: f.actor.position,
         })
-        learner.progression.skills.miracles.level = 5
         expect(canPurifyGrave(learner, source.id, f.context(now))).toBe(false)
         learner.abilities.known.add('pray')
-        learner.progression.skills.miracles.level = 4
-        expect(canPurifyGrave(learner, source.id, f.context(now))).toBe(false)
-        learner.progression.skills.miracles.level = 5
         f.service.damage(source.id, 100, now)
         expect(canPurifyGrave(learner, source.id, f.context(now))).toBe(true)
-        learner.mana = 19
+        learner.mana = 4
         expect(
             beginGravePurification(learner, source.id, f.context(now))[0]?.kind
         ).toBe('notice')
-        learner.mana = 20
+        learner.mana = 5
         expect(
-            beginGravePurification(learner, source.id, f.context(now))[0]?.phase
-        ).toBe('started')
+            beginGravePurification(learner, source.id, f.context(now))[0]
+                ?.durationMs
+        ).toBe(3000)
         advanceRevive(
             learner,
             () => undefined,
-            now + 10_000,
+            now + 3000,
             undefined,
-            f.context(now + 10_000)
+            f.context(now + 3000)
         )
         expect(learner.mana).toBe(0)
-        expect(f.service.get(source.id)?.phase).toBe('purified')
+        expect(f.service.get(source.id)?.purification?.completed).toBe(1)
+        expect(f.service.get(source.id)?.phase).toBe('ruined')
     })
 })
 
@@ -154,7 +147,7 @@ describe('purification interrupts', () => {
         [
             'lost mana',
             (f) => {
-                f.actor.mana = 19
+                f.actor.mana = 4
             },
         ],
         [
@@ -219,12 +212,13 @@ describe('ordinary NPC prayer and atomic completion', () => {
     it('checks mana at completion and permits a temporary shortfall during the channel', () => {
         const f = gravePrayerFixture()
         f.begin()
-        f.actor.mana = 19
-        expect(f.advance(now + 5_000)).toEqual([])
+        f.actor.mana = 4
+        expect(f.advance(now + 1_000)).toEqual([])
         expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
-        f.actor.mana = 20
+        f.actor.mana = 5
         expect(f.advance(now + GRAVE_PURIFY_CAST_MS)).toContainEqual({
-            kind: 'grave_purified',
+            kind: 'grave_purification_progress',
+            abilityId: 'pray',
             actorId: f.actor.id,
             target: { kind: 'grave', id: source.id },
         })
@@ -249,6 +243,13 @@ describe('ordinary NPC prayer and atomic completion', () => {
         expect(f.begin(now + 5_000)[0]?.kind).toBe('notice')
         expect(f.actor.abilities.casting).toBe(original)
         beginGravePurification(other, source.id, f.context(now))
+        for (let step = 0; step < 4; step++) {
+            f.service.contributePurification(
+                source.id,
+                `prior:${String(step)}`,
+                now - 1
+            )
+        }
         f.advance(now + GRAVE_PURIFY_CAST_MS)
         expect(
             advanceRevive(
@@ -259,7 +260,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
                 f.context(now + GRAVE_PURIFY_CAST_MS)
             )
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
-        expect(f.actor.mana).toBe(100)
+        expect(f.actor.mana).toBe(115)
         expect(other.mana).toBe(120)
         expect(other.progression.skills.faith.practice).toBe(0)
         expect(f.service.get(source.id)?.phase).toBe('purified')

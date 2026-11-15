@@ -33,37 +33,44 @@ describe('explicit grave interactions', () => {
         expect(ruined[0]?.disabled).toBe(true)
         expect(ruined[1]?.disabled).toBe(false)
     })
-    it.each([
-        'unknown',
-        'unqualified',
-        'mana',
-        'cooldown',
-        'casting',
-        'dead',
-        'far',
-        'hidden',
-    ] as const)('explains the %s requirement without choosing a different prayer', (failure) => {
+    it.each(['unknown', 'mana', 'cooldown', 'casting', 'dead', 'far', 'hidden'] as const)(
+        'explains the %s requirement without choosing a different prayer',
+        (failure) => {
+            const player = cleric()
+            const grave = graveFixture()
+            if (failure === 'unknown') player.abilities!.known = []
+            if (failure === 'mana') player.resourceChecks!.prayers.purify_grave = 'mana'
+            if (failure === 'cooldown') player.abilities!.cooldowns.pray = 1
+            if (failure === 'casting')
+                player.abilities!.casting = {
+                    abilityId: 'pray',
+                    targetId: 'ally',
+                    startedAt: 0,
+                    completesAt: 1000,
+                }
+            if (failure === 'dead') player.alive = false
+            if (failure === 'far') grave.position.y = 49
+            const preview = gravePrayerPreview(player, grave, failure !== 'hidden')
+            expect(preview.unavailableReason).toBeTruthy()
+            expect(preview.intent).toEqual({
+                mode: 'purify_grave',
+                target: { kind: 'grave', id: grave.id },
+            })
+        }
+    )
+    it('lets any character with learned prayer purify and uses effective reach and duration', () => {
         const player = cleric()
-        const grave = graveFixture()
-        if (failure === 'unknown') player.abilities!.known = []
-        if (failure === 'unqualified') player.heroClass = 'vanguard'
-        if (failure === 'mana') player.resourceChecks!.prayers.purify_grave = 'mana'
-        if (failure === 'cooldown') player.abilities!.cooldowns.pray = 1
-        if (failure === 'casting')
-            player.abilities!.casting = {
-                abilityId: 'pray',
-                targetId: 'ally',
-                startedAt: 0,
-                completesAt: 1000,
-            }
-        if (failure === 'dead') player.alive = false
-        if (failure === 'far') grave.position.y = 49
-        const preview = gravePrayerPreview(player, grave, failure !== 'hidden')
-        expect(preview.unavailableReason).toBeTruthy()
-        expect(preview.intent).toEqual({
-            mode: 'purify_grave',
-            target: { kind: 'grave', id: grave.id },
-        })
+        player.heroClass = 'vanguard'
+        player.abilities!.prayer = {
+            radius: 64,
+            durationMs: 2700,
+            manaCost: 5,
+            area: false,
+            harm: false,
+        }
+        const preview = gravePrayerPreview(player, graveFixture({ position: { x: 0, y: 64 } }))
+        expect(preview.unavailableReason).toBeNull()
+        expect(preview.durationMs).toBe(2700)
     })
     it('removes purified, hidden, unreachable and dead-player targets from E selection', () => {
         const player = cleric()

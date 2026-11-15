@@ -1,5 +1,4 @@
 import {
-    ABILITY_DEFINITIONS,
     type AttackAbilityId,
     type AttackZone,
     SHOT_HALF_WIDTH,
@@ -8,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { effectiveAbility } from './effectiveParameters'
 
 export function buildAttackZones(
     actor: GameCharacter,
@@ -81,9 +81,10 @@ export function isInZones(
 
 export function buildAbilityAttackZones(
     actor: GameCharacter,
-    id: AttackAbilityId
+    id: AttackAbilityId,
+    tileWidth = 0
 ): AttackZone[] {
-    const range = ABILITY_DEFINITIONS[id].range
+    const range = effectiveAbility(actor, id, tileWidth).range
     const width = id === 'shot' ? SHOT_HALF_WIDTH : SPARK_HALF_WIDTH
     const rotated = rotateZone(
         { minX: -width, maxX: width, minY: 0, maxY: range },

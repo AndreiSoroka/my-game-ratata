@@ -3,7 +3,7 @@ import type { Engine } from 'excalibur'
 import { expect, it, vi } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
-import { observerTrainingArea, TrainingGuides } from './trainingGuides'
+import { observerTrainingArea, TrainingGuides, trainingPrayerHighlight } from './trainingGuides'
 
 const rendered = vi.hoisted(() => ({
     draw: undefined as ((ctx: CanvasRenderingContext2D) => void) | undefined,
@@ -31,6 +31,25 @@ const area: TrainingAreaDefinition = {
     locationId: 'map-2-2',
     bounds: { x: 100, y: 100, width: 208, height: 192 },
 }
+it('uses learned server prayer radius without a target, mana, harm or ready cooldown', () => {
+    const player = characterFixture('priest', {
+        abilities: {
+            known: ['pray'],
+            cooldowns: { pray: 999 },
+            barrier: null,
+            casting: null,
+            prayer: { radius: 80, durationMs: 2700, manaCost: 5, area: false, harm: false },
+        },
+    })
+    player.resourceChecks!.prayers.restore = 'mana'
+    expect(trainingPrayerHighlight(player)).toEqual({
+        origin: { x: 0, y: 0 },
+        radius: 80,
+        warnings: [],
+    })
+    expect(trainingPrayerHighlight({ ...player, alive: false })).toBeUndefined()
+    expect(trainingPrayerHighlight(characterFixture('warrior'))).toBeUndefined()
+})
 it('requires a living connected observer inside the authored rectangle', () => {
     const player = characterFixture('hero', { position: { x: 101, y: 101 } })
     expect(observerTrainingArea([area], player)).toBe(area)

@@ -1,3 +1,4 @@
+import { PRAYER_RULES } from '@my-game-ratata/contracts'
 import { Canvas, Color, EmitterType, type Engine, ParticleEmitter, vec } from 'excalibur'
 
 import type { EffectCue } from './combatEffectPlan'
@@ -60,13 +61,14 @@ export class CombatParticles {
         if (count <= 0) return undefined
         const life = Math.min(650, cue.duration)
         const motion = combatParticleMotion(cue)
+        const waveScale = (cue.radius ?? PRAYER_RULES.radius) / PRAYER_RULES.radius
         const emitter = new ParticleEmitter({
             pos: vec(position.x, position.y),
             z: position.y + 25,
-            width: cue.wave ? 78 : 14,
-            height: cue.wave ? 78 : 14,
+            width: cue.wave ? 78 * waveScale : 14,
+            height: cue.wave ? 78 * waveScale : 14,
             emitterType: EmitterType.Circle,
-            radius: motion.radius ?? (cue.wave ? 44 : 7),
+            radius: motion.radius ?? (cue.wave ? 44 * waveScale : 7),
             isEmitting: false,
             emitRate: 0,
             particle: {

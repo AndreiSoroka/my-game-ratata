@@ -53,9 +53,13 @@ export function prayerDescription(
     const intent = preview.intent
     if (intent?.mode === 'devotion') return `Помолиться · ${preview.manaCost} MP · Без эффекта`
     if (intent?.mode === 'purify_grave')
-        return `Упокоить могилу · ${preview.manaCost} MP · ${gravePurifyCastMs(grave?.phase ?? 'active') / 1000} с · Esc — прервать`
+        return `Упокоить могилу · ${preview.manaCost} MP · ${(preview.durationMs ?? gravePurifyCastMs(grave?.phase ?? 'active')) / 1000} с · Esc — прервать`
     const gift = prayerGift(intent, characters, player)
-    return [`${gift} · ${preview.manaCost} MP`, collateralDescription(preview)]
+    return [
+        `${gift} · ${preview.manaCost} MP`,
+        preview.durationMs ? `${preview.durationMs / 1000} с` : '',
+        collateralDescription(preview),
+    ]
         .filter(Boolean)
         .join(' · ')
 }

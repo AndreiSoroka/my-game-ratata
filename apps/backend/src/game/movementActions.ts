@@ -8,6 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { effectiveDashCost } from './effectiveParameters'
 import { normalize } from './math'
 import { canPerformSkillAction } from './skillProgression'
 
@@ -54,7 +55,7 @@ export function handleMovementCommand(
     state.dashUntil = now + MOVEMENT_RULES.dashDurationMs
     state.dashAvailableAt = now + MOVEMENT_RULES.dashCooldownMs
     state.mode = 'walking'
-    character.drainEnergy(MOVEMENT_RULES.dashEnergy)
+    character.drainEnergy(effectiveDashCost(character))
     character.clearPath()
     return [{ kind: 'dash', actorId: character.id }]
 }
@@ -104,7 +105,7 @@ export function movementActionAllowed(
     return (
         canPerformSkillAction(character, now) &&
         now >= character.movement.dashAvailableAt &&
-        character.energy >= MOVEMENT_RULES.dashEnergy
+        character.energy >= effectiveDashCost(character)
     )
 }
 

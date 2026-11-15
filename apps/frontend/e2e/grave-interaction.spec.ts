@@ -26,7 +26,7 @@ for (const { mobile, direction, viewport } of cases) {
         page,
         context,
     }, info) => {
-        test.setTimeout(150_000)
+        test.setTimeout(300_000)
         await page.setViewportSize(viewport)
         const rangers = await Promise.all(Array.from({ length: 4 }, () => context.newPage()))
         const diagnostics = captureBrowserDiagnostics([page, ...rangers])
@@ -52,7 +52,7 @@ for (const { mobile, direction, viewport } of cases) {
             await expect(page.getByRole('menu')).toBeVisible()
             await expect(page.getByLabel('Состояние могилы').last()).toContainText('5% урона')
             await page.screenshot({ path: info.outputPath('grave-menu.png') })
-            await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 50 с' }).click()
+            await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
             await expect.poll(() => purificationTargets).toEqual([grave!.id])
             await expect(page.locator('.control-status')).toContainText('Очищение могилы')
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
@@ -83,21 +83,9 @@ for (const { mobile, direction, viewport } of cases) {
                 .toBe(0)
             await approachObservedGrave(page, grave!.key)
             await openGraveMenu(page, mobile)
-            await page.getByRole('menuitem', { name: 'Упокоить могилу · 20 MP · 50 с' }).click()
+            await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
             await expect.poll(() => purificationTargets).toEqual([grave!.id, grave!.id])
-            await expect
-                .poll(
-                    () =>
-                        page.evaluate(
-                            (id) =>
-                                window
-                                    .__ratataTest!.getState()
-                                    .snapshot?.graves?.find((grave) => grave.id === id)?.phase,
-                            grave!.id
-                        ),
-                    { timeout: 55_000 }
-                )
-                .toBe('purified')
+            await completePurification(page, grave!.id)
             expect(
                 await page.evaluate(
                     (key) =>
@@ -129,6 +117,41 @@ for (const { mobile, direction, viewport } of cases) {
             await Promise.all(rangers.map((ranger) => ranger.close()))
         }
     })
+}
+
+async function completePurification(page: Page, id: string): Promise<void> {
+    await page.evaluate(
+        (id) =>
+            window.__ratataTest!.send({
+                type: 'auto_action',
+                action: {
+                    kind: 'prayer',
+                    intent: { mode: 'purify_grave', target: { kind: 'grave', id } },
+                },
+            }),
+        id
+    )
+    await expect
+        .poll(
+            () =>
+                page.evaluate(
+                    (id) =>
+                        window
+                            .__ratataTest!.getState()
+                            .snapshot?.graves?.find((grave) => grave.id === id)?.phase,
+                    id
+                ),
+            { timeout: 210_000, intervals: [250] }
+        )
+        .toBe('purified')
+    expect(
+        await page.evaluate(
+            (id) =>
+                window.__ratataTest!.getState().snapshot?.graves?.find((grave) => grave.id === id)
+                    ?.purification,
+            id
+        )
+    ).toEqual({ completed: 5, required: 5 })
 }
 
 async function approachSource(

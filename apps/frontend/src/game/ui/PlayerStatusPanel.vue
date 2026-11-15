@@ -2,13 +2,17 @@
 import './interfaceStory.css'
 
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
+import FaithStatus from './FaithStatus.vue'
 import { healthBarPercent, healthText } from './healthPresentation'
 import SoulBadge from './SoulBadge.vue'
 import TheftStatus from './TheftStatus.vue'
+import { useStatusPanelBounds } from './useStatusPanelBounds'
 
 type ResourceKind = 'energy' | 'hp' | 'mana'
+const panel = ref<HTMLElement>()
+useStatusPanelBounds(panel)
 
 const props = defineProps<{
     character: CharacterSnapshot
@@ -44,6 +48,7 @@ function resourceAria(kind: ResourceKind): string {
 
 <template>
     <section
+        ref="panel"
         class="ratata-ui-panel ratata-ui-status ratata-kenney-window player-status"
         aria-label="Player status"
     >
@@ -82,6 +87,7 @@ function resourceAria(kind: ResourceKind): string {
                 </span>
             </div>
         </div>
+        <FaithStatus :character="character" />
         <TheftStatus :theft="character.theft" />
     </section>
 </template>

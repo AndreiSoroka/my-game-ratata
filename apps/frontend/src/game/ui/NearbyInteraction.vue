@@ -174,7 +174,12 @@ defineExpose({ openMenu })
         @select="select"
         @close="closeMenu"
     >
-        <GraveDetails v-if="grave && snapshot" :grave="grave" :server-time="snapshot.serverTime" />
+        <GraveDetails
+            v-if="grave && snapshot"
+            :grave="grave"
+            :server-time="snapshot.serverTime"
+            :prayer="player?.abilities?.prayer"
+        />
     </NearbyActionMenu>
 </template>
 <style scoped>

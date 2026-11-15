@@ -17,6 +17,7 @@ import {
     setCharacterControl,
     snapshotControl,
 } from '../src/game/characterControl'
+import { advanceRevive } from '../src/game/characterLife'
 import { PolicyController } from '../src/game/companionControllers'
 import { CompanionService } from '../src/game/companions'
 import type { GameRoom } from '../src/game/room'
@@ -49,17 +50,25 @@ function port(characters: GameCharacter[]) {
 it('agent ability requests use ordinary costs, cooldowns and pinned prayer targets', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     actor.hp -= 12
-    const { world, requestAbility } = port([actor])
+    const { world, requestAbility, context } = port([actor])
     const message = {
         type: 'use_ability',
         abilityId: 'pray',
         intent: { mode: 'restore', targetId: actor.id },
     } as const
     expect(applyAgentDecision(actor, message, world, 1000).accepted).toBe(true)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(120)
     expect(applyAgentDecision(actor, message, world, 2000).accepted).toBe(false)
+    expect(actor.mana).toBe(120)
+    expect(requestAbility).toHaveBeenCalledTimes(1)
+    advanceRevive(
+        actor,
+        () => actor,
+        4000,
+        () => 0,
+        { ...context, now: 4000 }
+    )
     expect(actor.mana).toBe(115)
-    expect(requestAbility).toHaveBeenCalledTimes(2)
 })
 it.each(['human', 'unknown', 'dead', 'offline', 'stun'] as const)(
     'agent does not bypass %s capability restrictions',
@@ -99,6 +108,7 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
     Object.assign(actor, { id: 'npc_princess_1' })
     actor.abilities.known.add('spark')
     actor.progression.skills.miracles.level = 3
+    actor.progression.constellations.opened.add('prayer.harm')
     actor.hp -= 10
     const undead = abilityHero('vanguard', 'undead', 'mob1')
     const { world, requestAbility, requestControl } = port([actor, undead])
@@ -135,6 +145,7 @@ it('allows a noncombat personality to devote a harmless prayer beside potential 
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     Object.assign(actor, { id: 'npc_princess_1' })
     actor.progression.skills.miracles.level = 3
+    actor.progression.constellations.opened.add('prayer.harm')
     const undead = abilityHero('vanguard', 'undead', 'mob1')
     const { world, requestAbility } = port([actor, undead])
     const result = applyAgentDecision(

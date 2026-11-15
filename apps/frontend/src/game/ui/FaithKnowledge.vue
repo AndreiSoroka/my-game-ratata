@@ -44,6 +44,24 @@ function choose(deityId: DeityId): void {
                 >Перемена через {{ Math.ceil(patron.changesInMs / 1000) }} сек.</span
             >
         </div>
+        <section v-if="player.progression?.otherDeities?.length" aria-label="Знамения других богов">
+            <h3>Другие боги</h3>
+            <div
+                v-for="deity in player.progression.otherDeities"
+                :key="deity.id"
+                class="faith-secrets"
+            >
+                <strong>{{ deity.name }}</strong
+                ><span>{{ deity.omen }}</span>
+                <span v-if="deity.mood !== null">{{ moods[deity.mood] }}</span>
+                <span v-if="deity.successChance !== null"
+                    >Шанс ответа: {{ Math.round(deity.successChance * 100) }}%</span
+                >
+                <span v-if="deity.changesInMs !== null"
+                    >Перемена через {{ Math.ceil(deity.changesInMs / 1000) }} сек.</span
+                >
+            </div>
+        </section>
         <p>
             Выберите цель: Shift+T — союзник, F — себя. Назначьте молитву через Shift+1–4. Слот
             показывает дар, цель, цену и возможную карающую волну до применения.

@@ -1,11 +1,14 @@
 import {
+    type AbilityClientMessage,
     creatureTypes,
     previewPrayerFromSnapshots,
 } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
 import { handleAbilityCommand } from '../src/game/abilityCommands'
+import type { AbilityContext } from '../src/game/abilityContext'
 import { resolveCharacterDamage } from '../src/game/abilityDamage'
+import type { GameCharacter } from '../src/game/character'
 import { advanceRevive } from '../src/game/characterLife'
 import { miracleChance } from '../src/game/deities'
 import { prayerHarmTargets, previewPrayer } from '../src/game/prayerContext'
@@ -30,23 +33,40 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
             )
         ).toBe(false)
         expect(caster.mana).toBe(120)
-        target.hp -= 15
+        target.hp -= 25
         expect(
-            handleAbilityCommand(caster, prayer(target.id), context)
+            handleAbilityCommand(caster, prayer(target.id), context)[0]?.phase
+        ).toBe('started')
+        expect(caster.mana).toBe(120)
+        expect(
+            advanceRevive(caster, () => target, 3999, context.random, {
+                ...context,
+                now: 3999,
+            })
+        ).toEqual([])
+        expect(caster.progression.skills.faith.practice).toBe(0)
+        expect(
+            advanceRevive(caster, () => target, 4000, context.random, {
+                ...context,
+                now: 4000,
+            })
         ).toContainEqual(
             expect.objectContaining({ kind: 'heal', targetId: target.id })
         )
         expect(caster.mana).toBe(115)
         expect(caster.progression.skills.faith.practice).toBe(1)
         expect(caster.progression.skills.miracles.practice).toBe(1)
-        handleAbilityCommand(caster, prayer(target.id), {
-            ...context,
-            now: 3999,
-        })
+        // The next attempt starts immediately at the completion boundary.
+        expect(
+            handleAbilityCommand(caster, prayer(target.id), {
+                ...context,
+                now: 4000,
+            })[0]?.phase
+        ).toBe('started')
         expect(caster.mana).toBe(115)
-        handleAbilityCommand(caster, prayer(target.id), {
+        advanceRevive(caster, () => target, 7000, context.random, {
             ...context,
-            now: 4000,
+            now: 7000,
         })
         expect(caster.mana).toBe(110)
     }
@@ -54,7 +74,7 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
 it('keeps a failed miracle probabilistic, paid, and only trains faith', () => {
     const caster = abilityHero()
     caster.hp -= 10
-    const events = handleAbilityCommand(
+    const events = castPrayer(
         caster,
         prayer(caster.id),
         abilityContext([caster], 1000, () => 1)
@@ -77,14 +97,14 @@ it('does not replace a stale pinned gift by another target or expensive revival'
     )
     expect(client.intent).toEqual(previewPrayer(caster, context).intent)
     expect(
-        handleAbilityCommand(caster, prayer(target.id), context).some(
+        castPrayer(caster, prayer(target.id), context).some(
             (event) => event.kind === 'cast'
         )
     ).toBe(false)
     expect(caster.mana).toBe(120)
     expect(caster.abilities.casting).toBe(null)
 })
-it('uses level three wave on all undead including allies, with one roll and no practice per victim', () => {
+it('uses the unlocked wave on all undead including allies, with one roll and no practice per victim', () => {
     const caster = abilityHero()
     caster.hp -= 10
     const allies = [
@@ -95,13 +115,14 @@ it('uses level three wave on all undead including allies, with one roll and no p
     caster.progression.skills.miracles.level = 2
     expect(prayerHarmTargets(caster, context)).toEqual([])
     caster.progression.skills.miracles.level = 3
+    caster.progression.constellations.opened.add('prayer.harm')
     let rolls = 0
     context.random = () => {
         rolls += 1
         return miracleChance(caster, context.now) + 0.01
     }
     const before = allies.map((target) => target.hp)
-    const events = handleAbilityCommand(caster, prayer(caster.id), context)
+    const events = castPrayer(caster, prayer(caster.id), context)
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(2)
     expect(events.some((event) => event.kind === 'heal')).toBe(false)
     expect(rolls).toBe(1)
@@ -115,6 +136,7 @@ it('supports grave polarity for all fourteen types, including self, excluding co
     const caster = abilityHero()
     caster.progression.patron = 'grave'
     caster.progression.skills.miracles.level = 3
+    caster.progression.constellations.opened.add('prayer.harm')
     const actors = creatureTypes.map((type) => abilityHero('vanguard', type))
     const context = abilityContext([caster, ...actors])
     const targets = prayerHarmTargets(caster, context)
@@ -132,7 +154,7 @@ it('supports grave polarity for all fourteen types, including self, excluding co
         throw new Error('Missing undead fixture')
     }
     undead.hp -= 10
-    const events = handleAbilityCommand(caster, prayer(undead.id), context)
+    const events = castPrayer(caster, prayer(undead.id), context)
     expect(
         events.some(
             (event) => event.kind === 'heal' && event.targetId === undead.id
@@ -155,7 +177,7 @@ it('prevents friendly damage and healing that damage from training miracles', ()
         damageKind: 'holy',
         respawnDelayMs: 15000,
     })
-    const events = handleAbilityCommand(actor, prayer(target.id), {
+    const events = castPrayer(actor, prayer(target.id), {
         ...abilityContext([actor, target]),
         now: 31_000,
     })
@@ -211,3 +233,24 @@ it('channels resurrection, preserves identity, and cancels for changed deity or 
     ).toContainEqual(expect.objectContaining({ phase: 'interrupted' }))
     expect(caster.mana).toBe(100)
 })
+
+function castPrayer(
+    actor: GameCharacter,
+    message: AbilityClientMessage,
+    context: AbilityContext
+) {
+    const events = handleAbilityCommand(actor, message, context)
+    const cast = actor.abilities.casting
+    return cast === null
+        ? events
+        : [
+              ...events,
+              ...advanceRevive(
+                  actor,
+                  (id) => context.characters.find((target) => target.id === id),
+                  cast.completesAt,
+                  context.random,
+                  { ...context, now: cast.completesAt }
+              ),
+          ]
+}

@@ -1,6 +1,7 @@
 interface ShortcutActions {
     pickup: () => void
     inventory: () => void
+    character?: () => void
     context: (() => void) | undefined
 }
 export function handleRuntimeShortcut(event: KeyboardEvent, actions: ShortcutActions): boolean {
@@ -9,7 +10,9 @@ export function handleRuntimeShortcut(event: KeyboardEvent, actions: ShortcutAct
             ? (actions.context ?? actions.pickup)
             : event.code === 'KeyI'
               ? actions.inventory
-              : undefined
+              : event.code === 'KeyP'
+                ? actions.character
+                : undefined
     if (!action) return false
     event.preventDefault()
     if (!event.repeat) action()

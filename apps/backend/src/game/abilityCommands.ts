@@ -1,5 +1,4 @@
 import {
-    ABILITY_DEFINITIONS,
     type AbilityClientMessage,
     type AbilityId,
     abilityIds,
@@ -18,6 +17,8 @@ import {
     parseCombatReference,
     parseWorldCombatTarget,
 } from './combatTargetParsing'
+import { constellationModifiers } from './constellationModifiers'
+import { effectiveAbility } from './effectiveParameters'
 import { learnAbility } from './magicLearning'
 import { pray } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
@@ -161,7 +162,11 @@ function executeAttackAbility(
     context: AbilityContext,
     target?: WorldCombatTarget
 ): GameEventPayload[] {
-    const definition = ABILITY_DEFINITIONS[id]
+    const definition = effectiveAbility(
+        actor,
+        id,
+        context.navigation.grid.tileWidth
+    )
     if (actor.mana < definition.mana || actor.energy < definition.energy) {
         return abilityNotice(actor, 'Недостаточно сил для способности.')
     }
@@ -189,7 +194,8 @@ function executeAttackAbility(
         : abilityNotice(actor, 'Цель недоступна для этой атаки.')
 }
 function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
-    const definition = ABILITY_DEFINITIONS.barrier
+    const definition = effectiveAbility(actor, 'barrier')
+    const modifiers = constellationModifiers(actor)
     if (actor.mana < definition.mana) {
         return abilityNotice(actor, 'Для барьера нужно 12 маны.')
     }
@@ -203,8 +209,9 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
     actor.mana -= definition.mana
     actor.abilities.availableAt.barrier = now + definition.cooldownMs
     actor.abilities.barrier = {
-        remaining: BARRIER_RULES.absorption,
-        expiresAt: now + BARRIER_RULES.durationMs,
+        remaining: BARRIER_RULES.absorption + modifiers.barrierAbsorptionBonus,
+        expiresAt:
+            now + BARRIER_RULES.durationMs + modifiers.barrierDurationBonus,
         practiced: false,
     }
     actor.lockAction(now, definition.windupMs)
@@ -216,8 +223,9 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
             targetId: actor.id,
             statusId: 'barrier',
             abilityId: 'barrier',
-            amount: BARRIER_RULES.absorption,
-            expiresAt: now + BARRIER_RULES.durationMs,
+            amount: BARRIER_RULES.absorption + modifiers.barrierAbsorptionBonus,
+            expiresAt:
+                now + BARRIER_RULES.durationMs + modifiers.barrierDurationBonus,
         },
     ]
 }

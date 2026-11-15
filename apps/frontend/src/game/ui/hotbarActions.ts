@@ -10,6 +10,7 @@ import {
 import type { ComputedRef, Ref } from 'vue'
 
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
+import { abilityUsage } from './abilityUsage'
 import { attackableTarget } from './combatTargeting'
 import type { HotbarBinding } from './hotbarBindings'
 import type { createGestures } from './hotbarGestures'
@@ -17,6 +18,7 @@ export interface HotbarProps {
     player: CharacterSnapshot
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
+    graves?: WorldGraveSnapshot[]
     canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
@@ -190,8 +192,8 @@ function activateFood(
 export function actionTooltip(binding: HotbarBinding | null, props: HotbarProps): string {
     if (binding?.kind === 'attack') return 'Ближняя базовая атака'
     if (binding?.kind === 'ability' && binding.id === 'shot' && !hostileTarget(props))
-        return `Выстрел вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${ABILITY_DEFINITIONS.shot.energy} EN`
+        return `Выстрел вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'shot').energy} EN`
     if (binding?.kind === 'ability' && binding.id === 'spark' && !hostileTarget(props))
-        return `Искра вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${ABILITY_DEFINITIONS.spark.mana} MP · ${ABILITY_DEFINITIONS.spark.energy} EN`
+        return `Искра вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'spark').mana} MP · ${abilityUsage(props.player, 'spark').energy} EN`
     return bindingLabel(binding)
 }

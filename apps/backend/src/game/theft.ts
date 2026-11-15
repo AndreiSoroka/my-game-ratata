@@ -8,7 +8,10 @@ import {
 
 import type { GameCharacter } from './character'
 import type { JusticeContext } from './cityJustice'
+import { constellationModifiers } from './constellationModifiers'
+import { finishConstellationAction } from './constellations'
 import { CrimeService } from './crime'
+import { effectiveTheftCost } from './effectiveParameters'
 import {
     canAddInventoryItems,
     type InventoryItemInstance,
@@ -99,8 +102,11 @@ export class TheftService {
         state: TheftState,
         context: TheftContext
     ): GameEventPayload[] {
-        actor.drainEnergy(THEFT_RULES.energyCost)
-        state.availableAt = context.now + THEFT_RULES.cooldownMs
+        actor.drainEnergy(effectiveTheftCost(actor))
+        state.availableAt =
+            context.now +
+            THEFT_RULES.cooldownMs -
+            constellationModifiers(actor).theftCooldownDiscount
         state.pairs.set(target.id, context.now + THEFT_RULES.pairCooldownMs)
         const outcome = rollTheft(actor, target, context.random ?? Math.random)
         if (outcome === 'stolen') {
@@ -148,6 +154,14 @@ export class TheftService {
                 )
             )
         }
+        events.push(
+            ...finishConstellationAction(actor, {
+                skillIds:
+                    outcome === 'stolen' ? ['theft', 'stealth'] : ['theft'],
+                now: context.now,
+                random: context.random,
+            })
+        )
         return events
     }
 
@@ -234,7 +248,7 @@ function attemptRestriction(
     if (now < (state.pairs.get(target.id) ?? 0)) {
         return 'Эта цель насторожена. Подожди минуту перед новой попыткой.'
     }
-    if (actor.energy < THEFT_RULES.energyCost) {
+    if (actor.energy < effectiveTheftCost(actor)) {
         return 'Для попытки нужно 10 сил.'
     }
     return undefined
@@ -267,7 +281,14 @@ function rollTheft(
     )
     const success = Math.max(
         0.05,
-        Math.min(0.9, 0.25 + theft * 0.04 + stealth * 0.015 + (front ? 0 : 0.1))
+        Math.min(
+            0.9,
+            0.25 +
+                theft * 0.04 +
+                stealth * 0.015 +
+                (front ? 0 : 0.1) +
+                constellationModifiers(actor).theftChanceBonus
+        )
     )
     if (random() < detected) {
         return 'caught'

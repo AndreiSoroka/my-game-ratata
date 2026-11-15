@@ -3,13 +3,34 @@ import {
     ABILITY_DEFINITIONS,
     type CharacterSnapshot,
     type ClientMessage,
+    type ConstellationId,
     type LearnAbilityId,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
-const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
+
+import { abilityUsage } from './abilityUsage'
+const props = defineProps<{
+    player: CharacterSnapshot
+    characters: CharacterSnapshot[]
+    constellationId?: ConstellationId
+}>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
-const learnable: LearnAbilityId[] = ['pray', 'spark', 'barrier', 'shot']
-const known = computed(() => props.player.abilities?.known ?? [])
+const learnable = computed<LearnAbilityId[]>(() =>
+    props.constellationId === 'prayer'
+        ? ['pray']
+        : props.constellationId === 'magic'
+          ? ['spark', 'barrier']
+          : props.constellationId === 'arrow'
+            ? ['shot']
+            : props.constellationId
+              ? []
+              : ['pray', 'spark', 'barrier', 'shot']
+)
+const known = computed(() =>
+    (props.player.abilities?.known ?? []).filter(
+        (id) => !props.constellationId || learnable.value.includes(id as LearnAbilityId)
+    )
+)
 function teacher(ability: LearnAbilityId): CharacterSnapshot | undefined {
     return props.characters.find(
         (actor) =>
@@ -39,19 +60,21 @@ function learn(abilityId: LearnAbilityId): void {
 }
 </script>
 <template>
-    <section class="ability-knowledge" aria-label="Умения персонажа">
+    <section v-if="learnable.length" class="ability-knowledge" aria-label="Умения персонажа">
         <h3>Умения</h3>
-        <p>Shift+1–4 назначает умение или еду. T выбирает врага, Shift+T — союзника, F — себя.</p>
+        <p v-if="!constellationId || constellationId === 'prayer'">
+            Shift+1–4 назначает умение или еду. T выбирает врага, Shift+T — союзника, F — себя.
+        </p>
         <p>
             Молитва помогает выбранной цели. Без цели выбирает нуждающегося рядом; описание слота
-            показывает результат и цену перед нажатием. Воскрешение длится 3 секунды и прерывается
-            движением или уроном.
+            показывает результат и цену перед нажатием. Полезная молитва длится
+            {{ abilityUsage(player, 'pray').windupMs / 1000 }} с и прерывается движением или уроном.
         </p>
         <ul>
             <li v-for="id in known" :key="id">
                 <strong>{{ ABILITY_DEFINITIONS[id].name }}</strong> ·
-                {{ ABILITY_DEFINITIONS[id].mana }} MP · {{ ABILITY_DEFINITIONS[id].energy }} EN ·
-                {{ ABILITY_DEFINITIONS[id].cooldownMs / 1000 }} с
+                {{ abilityUsage(player, id).mana }} MP · {{ abilityUsage(player, id).energy }} EN ·
+                {{ abilityUsage(player, id).cooldownMs / 1000 }} с
             </li>
         </ul>
         <div v-for="id in learnable.filter((ability) => !known.includes(ability))" :key="id">

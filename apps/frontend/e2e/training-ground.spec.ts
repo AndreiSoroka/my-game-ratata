@@ -4,6 +4,30 @@ import { expect, type Page, test } from '@playwright/test'
 const areaId = 'map-2-2:training:yard-1'
 const dummyId = 'map-2-2:training:dummy-1'
 
+test('shows the learned prayer radius in the authored training interior without a target', async ({
+    page,
+}, info) => {
+    test.setTimeout(60_000)
+    await page.goto('/?test=1')
+    await page.waitForFunction(() => Boolean(window.__ratataTest))
+    await page.evaluate(
+        (name) => window.__ratataTest!.join(name, 'cleric'),
+        `prayer-yard-${info.project.name}`
+    )
+    const canvas = page.locator('canvas[data-game-canvas=true]')
+    await expect(canvas).not.toHaveAttribute('data-training-prayer-radius')
+    await navigate(page, { x: 1024, y: 792 })
+    const prayer = await page.evaluate(
+        () => window.__ratataTest!.getState().player!.abilities!.prayer!
+    )
+    expect(prayer.harm).toBe(false)
+    await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
+    await expect(canvas).toHaveAttribute('data-training-prayer-radius', String(prayer.radius))
+    await page.screenshot({ path: info.outputPath('training-prayer-radius.png') })
+    await navigate(page, { x: 920, y: 792 })
+    await expect(canvas).not.toHaveAttribute('data-training-prayer-radius')
+})
+
 for (const mobile of [false, true]) {
     test(`trains with ordinary attacks and clears guides outside the pen (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,

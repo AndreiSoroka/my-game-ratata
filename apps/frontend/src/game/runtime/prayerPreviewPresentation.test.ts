@@ -8,7 +8,13 @@ function priest(patron: DeityId = 'hearth', level = 3) {
     return characterFixture('caster', {
         health: { kind: 'exact', current: 5, max: 24 },
         position: { x: 100, y: 100 },
-        abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
+        abilities: {
+            known: ['pray'],
+            cooldowns: {},
+            casting: null,
+            barrier: null,
+            prayer: { radius: 48, durationMs: 3000, manaCost: 5, area: false, harm: level >= 3 },
+        },
         progression: {
             skills: [
                 { id: 'miracles', name: '', level, practice: 0, practiceToNext: 8, unlocked: true },

@@ -5,14 +5,16 @@ export const GRAVE_SPAWN_INTERVAL_MS = 10 * 60_000
 export const GRAVE_MAX_LIVING = 3
 export const GRAVE_MAX_HP = 100
 export const GRAVE_RESTORE_MS = 30 * 60_000
-export const GRAVE_PURIFY_CAST_MS = 50_000
-export const GRAVE_RUINED_PURIFY_CAST_MS = 10_000
-export const GRAVE_PURIFY_MANA_COST = 20
+export const GRAVE_PURIFY_CAST_MS = 3_000
+export const GRAVE_RUINED_PURIFY_CAST_MS = 3_000
+export const GRAVE_PURIFY_MANA_COST = 5
+export const GRAVE_PURIFY_STEPS = 5
+export const GRAVE_PURIFY_BASE_CHANCE = 0.2
 export const GRAVE_PURIFY_RANGE = 48
 export const GRAVE_INTERACTION_RANGE = 48
 export const GRAVE_FOOTPRINT_SIZE = 16
 
-/** The phase is sampled when the ritual starts, not on each subsequent tick. */
+/** Purification uses the ordinary prayer channel in either grave phase. */
 export function gravePurifyCastMs(phase: WorldGraveSnapshot['phase']): number {
     return phase === 'ruined'
         ? GRAVE_RUINED_PURIFY_CAST_MS
@@ -45,6 +47,7 @@ export interface GraveSourceDefinition {
 export interface WorldGraveSnapshot extends GraveSourceDefinition {
     phase: 'active' | 'ruined' | 'purified'
     material: 'stone'
+    purification?: { completed: number; required: number }
     health: HealthSnapshot
     restoresAt?: number
 }

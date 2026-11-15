@@ -16,6 +16,7 @@ import {
 } from './combatDamage'
 import { buildAttackZones, isInZones } from './combatGeometry'
 import { canAttackCharacter } from './combatTargets'
+import { finishConstellationAction, recordRunicContact } from './constellations'
 import { resolveGraveHit } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
 import { wearWeapon } from './itemDurability'
@@ -123,7 +124,27 @@ function resolveCharacterHit(
         events.push(...applyAttackStun(actor, target, attack, now, random))
     }
     if (result.trainableDamage > 0) {
-        events.push(...practiceAttack(actor, attack.abilityId))
+        const skill = attackSkill(actor, attack.abilityId)
+        if (skill !== undefined) {
+            events.push(...trainSkill(actor, skill))
+            if (attack.abilityId === 'spark' || attack.abilityId === 'shot') {
+                events.push(
+                    ...recordRunicContact(
+                        actor,
+                        target.id,
+                        attack.abilityId === 'spark' ? 'spell' : 'shot',
+                        now
+                    )
+                )
+            }
+            events.push(
+                ...finishConstellationAction(actor, {
+                    skillIds: [skill],
+                    now,
+                    random,
+                })
+            )
+        }
     }
     events.push(...resolvedWeaponWear(actor, attack, result.impactDamage))
     return events
@@ -236,15 +257,18 @@ function findHit(
     )
     return candidates[0]
 }
-function practiceAttack(
+function attackSkill(
     actor: GameCharacter,
     abilityId: PendingAttackHit['abilityId']
-): GameEventPayload[] {
+) {
     if (abilityId === 'spark') {
-        return trainSkill(actor, 'arcana')
+        return 'arcana' as const
+    }
+    if (abilityId === 'shot') {
+        return 'marksmanship' as const
     }
     return (abilityId === undefined || abilityId === 'skeleton_strike') &&
         hasEquippedSword(actor)
-        ? trainSkill(actor, 'swordsmanship')
-        : []
+        ? ('swordsmanship' as const)
+        : undefined
 }

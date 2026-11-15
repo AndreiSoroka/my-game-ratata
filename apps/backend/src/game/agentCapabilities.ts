@@ -4,7 +4,6 @@ import {
     type CharacterControlCommand,
     DEITY_PRAYER_PROFILES,
     type GameEventPayload,
-    PRAYER_RULES,
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
@@ -13,6 +12,7 @@ import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { parseControlCommand } from './characterControl'
 import { companionProfiles } from './companionProfiles'
+import { hasStar } from './constellations'
 import { prayerHarmTargets } from './prayerContext'
 import { canPerformSkillAction } from './skillProgression'
 
@@ -129,14 +129,11 @@ function abilityCanHarm(
     if (message.abilityId !== 'pray') {
         return true
     }
-    if (
-        message.intent.mode === 'devotion' ||
-        message.intent.mode === 'purify_grave'
-    ) {
+    if (message.intent.mode === 'devotion') {
         return false
     }
     const harmUnlocked =
-        actor.progression.skills.miracles.level >= PRAYER_RULES.harmLevel &&
+        hasStar(actor, 'prayer.harm') &&
         DEITY_PRAYER_PROFILES[actor.progression.patron].harmTypes.length > 0
     if (!harmUnlocked) {
         return false

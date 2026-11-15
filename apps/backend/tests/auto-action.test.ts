@@ -81,6 +81,16 @@ function fixture(heroClass: HeroClass = 'cleric') {
         enable,
         tick,
         hostile,
+        completePrayer: (now: number) =>
+            publishEvents(
+                advanceRevive(
+                    actor,
+                    (id) => world.getCharacter(id),
+                    now,
+                    context.random,
+                    { ...context, now }
+                )
+            ),
         resolveHit: (now: number) => {
             actor.tickTimedState(now)
             publishEvents(resolvePendingAttackHit(attackContext(actor, now)))
@@ -315,14 +325,18 @@ describe('automatic prayer remains the pinned intention', () => {
             })
         ).toBe(true)
         f.tick(1000)
+        expect(f.target.hp).toBe(f.target.maxHp - 1)
+        f.completePrayer(4000)
         expect(f.target.hp).toBe(f.target.maxHp)
         expect(f.actor.mana).toBe(115)
-        expect(f.tick(1001)).toBe(false)
+        expect(f.tick(4001)).toBe(false)
         f.tick(5000)
         expect(neighbor.hp).toBe(neighbor.maxHp - 10)
-        expect(f.events.filter((event) => event.kind === 'cast')).toHaveLength(
-            1
-        )
+        expect(
+            f.events.filter(
+                (event) => event.kind === 'cast' && event.phase === 'started'
+            )
+        ).toHaveLength(1)
     })
     it('retries failed miracles only after cooldown while retaining the same recipient', () => {
         const f = fixture()
@@ -334,17 +348,26 @@ describe('automatic prayer remains the pinned intention', () => {
         })
         f.tick(1000)
         f.tick(3999)
-        expect(f.events.filter((event) => event.kind === 'cast')).toHaveLength(
-            1
-        )
-        expect(snapshotControl(f.actor).waiting).toBe('cooldown')
+        expect(
+            f.events.filter(
+                (event) => event.kind === 'cast' && event.phase === 'started'
+            )
+        ).toHaveLength(1)
+        expect(snapshotControl(f.actor).waiting).toBe('action')
+        f.completePrayer(4000)
         f.tick(4000)
-        expect(f.events.filter((event) => event.kind === 'cast')).toHaveLength(
-            2
-        )
+        expect(
+            f.events.filter(
+                (event) => event.kind === 'cast' && event.phase === 'started'
+            )
+        ).toHaveLength(2)
+        expect(f.actor.mana).toBe(115)
+        f.completePrayer(7000)
         expect(f.actor.mana).toBe(110)
         expect(f.target.hp).toBe(f.target.maxHp - 10)
-        expect(f.events.some((event) => event.kind === 'notice')).toBe(false)
+        expect(
+            f.events.filter((event) => event.kind === 'notice')
+        ).toHaveLength(2)
     })
     it('keeps devotion cosmetic, free and untrained when new prayer targets appear', () => {
         const f = fixture()

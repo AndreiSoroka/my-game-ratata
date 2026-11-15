@@ -39,8 +39,8 @@ function rescue(friendlyDamage: number) {
         () => 0,
         { ...context, now: 4000 }
     )
-    const heal = (now: number) =>
-        handleAbilityCommand(
+    const heal = (now: number) => {
+        const events = handleAbilityCommand(
             caster,
             {
                 type: 'use_ability',
@@ -49,6 +49,17 @@ function rescue(friendlyDamage: number) {
             },
             { ...context, now }
         )
+        return [
+            ...events,
+            ...advanceRevive(
+                caster,
+                () => victim,
+                now + 3000,
+                () => 0,
+                { ...context, now: now + 3000 }
+            ),
+        ]
+    }
     return { caster, victim, heal }
 }
 

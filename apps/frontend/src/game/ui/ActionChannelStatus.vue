@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import { computed } from 'vue'
 
-defineProps<{ player: CharacterSnapshot; serverTime: number }>()
+const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
 const emit = defineEmits<{ cancelPrayer: [] }>()
+const prayerName = computed(
+    () =>
+        ({
+            purify_grave: 'Очищение могилы',
+            revive: 'Воскрешение',
+            restore: 'Молитва',
+            harm: 'Карающая молитва',
+        })[props.player.abilities?.casting?.mode ?? 'revive']
+)
 </script>
 <template>
     <p v-if="player.cooldowns.stunMsLeft > 0" class="control-status rpg-panel" role="status">
         СТАН · {{ (player.cooldowns.stunMsLeft / 1000).toFixed(1) }} с
     </p>
     <div v-else-if="player.abilities?.casting" class="control-status rpg-panel" role="status">
-        {{ player.abilities.casting.mode === 'purify_grave' ? 'Очищение могилы' : 'Воскрешение' }} ·
+        {{ prayerName }} ·
         {{ (Math.max(0, player.abilities.casting.completesAt - serverTime) / 1000).toFixed(1) }} с
         <button
-            v-if="player.abilities.casting.mode === 'purify_grave'"
             type="button"
             @keydown.esc.stop.prevent="emit('cancelPrayer')"
             @click="emit('cancelPrayer')"

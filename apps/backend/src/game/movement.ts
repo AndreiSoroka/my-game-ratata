@@ -5,6 +5,8 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
+import { effectiveMoveSpeed } from './effectiveParameters'
 import { wearWalkingEquipment } from './itemDurability'
 import { distance, moveToward, zeroVector } from './math'
 import { cancelMovementMode } from './movementActions'
@@ -18,6 +20,7 @@ interface MovementContext {
     navigation: NavigationService
     now: number
     onNoise?: (noise: MovementNoise) => void
+    onEvents?: (events: GameEventPayload[]) => void
 }
 
 export function advanceCharacter(
@@ -41,7 +44,8 @@ export function advanceCharacter(
     if (character.isActionLocked(now)) {
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
-        character.applyRegen(deltaMs, false)
+        const events = character.applyRegen(deltaMs, false, true, now)
+        context.onEvents?.(events)
         return undefined
     }
     moveCharacter(context)
@@ -77,7 +81,13 @@ function moveCharacter(context: MovementContext): void {
         context.onNoise?.(noise)
     }
     character.updateMovementAnimation(moving, now)
-    character.applyRegen(deltaMs, moving, !moving || dashMs === 0)
+    const events = character.applyRegen(
+        deltaMs,
+        moving,
+        !moving || dashMs === 0,
+        now
+    )
+    context.onEvents?.(events)
     if (now >= character.movement.dashUntil) {
         character.movement.dashUntil = 0
     }
@@ -100,7 +110,7 @@ function nextPosition(context: MovementContext, dashMs: number): Vector2 {
     const { character, deltaMs, navigation } = context
     if (dashMs > 0) {
         const step =
-            (character.config.moveSpeed *
+            (effectiveMoveSpeed(character) *
                 MOVEMENT_RULES.dashSpeedMultiplier *
                 dashMs) /
             1000
@@ -123,9 +133,10 @@ function nextPosition(context: MovementContext, dashMs: number): Vector2 {
 function movementSpeed(character: GameCharacter): number {
     const multiplier =
         character.movement.mode === 'sneaking'
-            ? MOVEMENT_RULES.sneakSpeedMultiplier
+            ? MOVEMENT_RULES.sneakSpeedMultiplier *
+              constellationModifiers(character).sneakSpeedMultiplier
             : 1
-    return character.config.moveSpeed * multiplier
+    return effectiveMoveSpeed(character) * multiplier
 }
 
 function advancePath(

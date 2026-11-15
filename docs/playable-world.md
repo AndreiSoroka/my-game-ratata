@@ -63,14 +63,15 @@ interval. Its existing living descendants still count toward the cap of three;
 there is no instant catch-up spawn. A partially damaged grave continues producing.
 
 Select a grave through **E** to inspect its condition/material, attack it or choose
-**Упокоить могилу**. Purification requires learned Prayer and either a Cleric
-background or Miracles level 5, for every controller and patron. An intact or partly
-damaged grave takes fifty seconds; rubble takes ten. This duration is fixed when
-the ritual starts, even if the grave changes condition. The channel must stay
-within 48 world units with clear sight; it spends 20 mana only
-after success and grants Faith/Miracles practice once. Movement, HP damage, stun,
-death, disconnect, lost reach/sight or Esc cancels without payment. Ordinary prayer
-never automatically chooses a grave for purification.
+**Упокоить могилу**. Any character with learned Prayer can contribute. Each completed
+three-second attempt costs five mana, including a failed roll. Five successful
+contributions purify a grave; the shared segmented ring shows progress. The neutral
+initial success chance is 20%, scaled by mood and faith. Automatic prayer retains
+its chosen grave, waits for mana and repeats until purification or target loss.
+Movement, HP damage, stun, death, disconnect, lost reach/sight or cancellation
+interrupt without payment. Progress survives interruptions, travel and destruction
+or restoration of the grave during this world session. An unlocked area prayer can
+restore allies and contribute to multiple reachable graves with one cost and roll.
 
 Purification works on intact graves or rubble and permanently disables their source
 for this world session. The marker disappears, including authored gravestones after
@@ -113,11 +114,21 @@ Restarting the server begins a new world session; durable persistence is not imp
 
 ## Knowledge through use
 
-Open **Знания** to see each skill at levels 1–10, its practice counter and unlock requirements. Swordsmanship grows from successful weapon hits. Prayer for a miracle costs 5 mana and has a 3-second cooldown. When no eligible target is available, it becomes a free plain prayer with the same cooldown: the caster animates with their patron's emblem, without healing, damage, resurrection or skill practice. The hotbar shows **Помолиться · 0 MP · Без эффекта**. A meaningful prayer attempt advances faith, including refusals; a successful meaningful gift advances miracles. At miracles level 5 any background can attempt resurrection while following Hearth.
+Open **Персонаж** through the game menu or **P** for **Характеристики** and
+**Развитие**. The former Knowledge button opens Development. Six constellations
+represent blade, magic, prayer, archery, life and shadow. Skill levels remain 1–10;
+earned steps reveal weighted random eligible passive stars through meaningful use.
+Only known stars and nearest unknown neighbors are projected to the owner. See
+[Character development](character-development.md) for the catalogue and controls.
+Prayer now channels for three seconds, charges five mana on completion and can
+repeat immediately. Empty devotion stays free, cosmetic and untrainable. Failed
+meaningful requests train Faith; actual gifts, hostile damage or grave progress
+train Miracles once per completed cast. Harmful waves and deity insight require
+learned stars. Resurrection retains its existing class/mastery requirements.
 
 Use **Изучить огненный шар** near the scholar in camp, within 64 world units. Fireball is initially unlearned for every background, including Arcanist. Select a nearby hostile character in the knowledge window and cast: Fireball costs 12 mana, has range 160 and a 1-second cooldown. Greater Fireball unlocks automatically at Fireball level 10; it costs 24 mana, has range 192 and a 2-second cooldown. The server checks resources, range, line of sight and cooldowns. Successful hits advance practice. Practice across several branches raises the cost of future practice; the window displays the current multiplier and practiced branches. Kills no longer grant generic level XP. Overall learning level is one plus earned skill levels; further practice grows more expensive as that total rises.
 
-Faith is its own ten-level skill. Hearth restores health and permits resurrection, Road restores energy, and Lantern restores mana. Change patrons near a cleric or shrine. Their moods change with the world clock and affect the chance and strength of a gift; a resurrection ritual can fail. At low faith the client receives only a vague omen. Faith 4 provides a hint, faith 7 reveals mood and success chance, and faith 10 reveals the countdown. The UI only displays information present in the authoritative snapshot.
+Faith is its own ten-level skill. Hearth restores health and permits resurrection, Road restores energy, and Lantern restores mana. Change patrons near a cleric or shrine. Their moods change with the world clock and affect the chance and strength of a gift; a resurrection ritual can fail. Divine insight is earned through Prayer stars: an omen, the exact mood, the chance of an answer and the countdown are separate discoveries. Other deities have their own insight branch; Faith levels alone never reveal these details. The UI only displays information present in the authoritative snapshot.
 
 Arcana grows through three finite book chapters at the scholar and teaching a genuinely unlearned friendly character. Reading a completed chapter again or repeating an already-known lesson does not farm practice. Teaching requires that the teacher knows Fireball and the student is alive and nearby.
 
@@ -477,7 +488,7 @@ Melee and skeleton strike arcs begin at the same world anchor as the attacker's 
 
 Novogorod's wooden training pen is east of the square, before the smithy (outer tiles x57–71, y43–56, three-tile entrance on the west). Its stationary wood-and-straw construct uses shared character combat: select it with a click or T and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
 
-Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.3.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Numeric resource access is reserved for a future talent and currently has no player-accessible unlock. The local character's overhead HP bar stays hidden.
+Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.4.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
 
 ## Speech bubbles and dialogue keys
 

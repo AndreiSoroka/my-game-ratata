@@ -23,6 +23,7 @@ describe('grave material state', () => {
             hp: 100,
             maxHp: 100,
             material: 'stone',
+            purification: { completed: 0, required: 5 },
             phase: 'active',
         })
         for (let i = 0; i < 5; i++) {
@@ -80,6 +81,7 @@ describe('grave material state', () => {
             hp: 100,
             maxHp: 100,
             material: 'stone',
+            purification: { completed: 0, required: 5 },
             phase: 'active',
         })
         expect(f.created).toHaveLength(0)

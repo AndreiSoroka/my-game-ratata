@@ -2,6 +2,7 @@ import {
     FINAL_DEATH_SKELETON_DELAY_MS,
     GRAVE_MAX_HP,
     GRAVE_MAX_LIVING,
+    GRAVE_PURIFY_STEPS,
     GRAVE_RESTORE_MS,
     GRAVE_SPAWN_INTERVAL_MS,
     type GraveSourceDefinition,
@@ -12,19 +13,13 @@ import {
 import type { GameCharacter } from './character'
 import { GraveGuardians } from './graveGuardians'
 import type { GraveCombatTarget, GraveDamageResult } from './graveRules'
+import {
+    type GraveSource,
+    restoreSource,
+    snapshotSource,
+} from './graveSourceState'
 import type { NavigationService } from './navigation'
 import { createSkeleton, type SpawnedCharacter } from './spawns'
-
-interface GraveSource {
-    definition: GraveSourceDefinition
-    children: Set<string>
-    nextSpawnAt: number
-    nextBirth: number
-    retryAt: number
-    phase: GraveCombatTarget['phase']
-    hpUnits: number
-    restoresAt: number | null
-}
 
 interface SpawnContext {
     characters: ReadonlyMap<string, GameCharacter>
@@ -79,6 +74,27 @@ export class GraveSpawns {
         }
     }
 
+    public contributePurification(id: string, receiptId: string, now: number) {
+        const source = this.sources.get(id)
+        if (
+            source === undefined ||
+            source.phase === 'purified' ||
+            !Number.isFinite(now) ||
+            receiptId.length === 0 ||
+            source.purificationReceipts.has(receiptId)
+        ) {
+            return {
+                accepted: false,
+                purified: false,
+                completed: source?.purificationReceipts.size ?? 0,
+            }
+        }
+        source.purificationReceipts.add(receiptId)
+        const completed = source.purificationReceipts.size
+        const purified = completed >= GRAVE_PURIFY_STEPS && this.purify(id, now)
+        return { accepted: true, purified, completed }
+    }
+
     public purify(id: string, now: number): boolean {
         const source = this.sources.get(id)
         if (
@@ -114,6 +130,7 @@ export class GraveSpawns {
             hpUnits: GRAVE_MAX_HP * 100,
             phase: 'active',
             restoresAt: null,
+            purificationReceipts: new Set(),
         })
     }
 
@@ -218,34 +235,6 @@ export class GraveSpawns {
             }
         }
         return living
-    }
-}
-
-function restoreSource(source: GraveSource, now: number): void {
-    if (
-        source.phase !== 'ruined' ||
-        source.restoresAt === null ||
-        now < source.restoresAt
-    ) {
-        return
-    }
-    source.phase = 'active'
-    source.hpUnits = GRAVE_MAX_HP * 100
-    source.nextSpawnAt = source.restoresAt + GRAVE_SPAWN_INTERVAL_MS
-    source.restoresAt = null
-    source.retryAt = 0
-}
-
-function snapshotSource(source: GraveSource): GraveCombatTarget {
-    return {
-        ...structuredClone(source.definition),
-        phase: source.phase,
-        hp: source.hpUnits / 100,
-        maxHp: GRAVE_MAX_HP,
-        material: 'stone',
-        ...(source.restoresAt === null
-            ? {}
-            : { restoresAt: source.restoresAt }),
     }
 }
 

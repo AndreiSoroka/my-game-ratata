@@ -4,6 +4,7 @@ import {
     GRAVE_PURIFY_MANA_COST,
     gravePurifyCastMs,
     type PrayerPreview,
+    previewPrayerFromSnapshots,
     type WorldChestSnapshot,
     type WorldGraveSnapshot,
     type WorldSnapshot,
@@ -19,18 +20,25 @@ export function graveName(grave: WorldGraveSnapshot): string {
     ]
 }
 
-/** Explicit selection only: an ordinary prayer never searches nearby graves. */
+/** Explicit selection pins the grave even while the ordinary prayer preview changes. */
 export function gravePrayerPreview(
     player: CharacterSnapshot,
     grave: WorldGraveSnapshot,
-    canReach = true
+    canReach = true,
+    characters: readonly CharacterSnapshot[] = [],
+    canReachCharacter?: (target: CharacterSnapshot) => boolean
 ): PrayerPreview {
+    const wave = previewPrayerFromSnapshots(player, characters, undefined, {
+        canReach: canReachCharacter,
+    })
     return {
         intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
-        manaCost: GRAVE_PURIFY_MANA_COST,
-        harmfulTargets: 0,
-        includesAllies: false,
-        includesSelf: false,
+        manaCost: player.abilities?.prayer?.manaCost ?? GRAVE_PURIFY_MANA_COST,
+        radius: player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE,
+        durationMs: player.abilities?.prayer?.durationMs ?? gravePurifyCastMs(grave.phase),
+        harmfulTargets: wave.harmfulTargets,
+        includesAllies: wave.includesAllies,
+        includesSelf: wave.includesSelf,
         unavailableReason: purificationUnavailable(player, grave, canReach),
     }
 }
@@ -45,21 +53,24 @@ function purificationUnavailable(
     if (requirement) return requirement
     const availability = prayerAvailability(player)
     if (availability) return availability
-    if (!canReach || interactionDistance(player, grave) > GRAVE_INTERACTION_RANGE)
+    if (
+        !canReach ||
+        interactionDistance(player, grave) >
+            (player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE)
+    )
         return 'Подойдите ближе к могиле'
     return null
 }
 function purificationQualification(player: CharacterSnapshot): string | null {
     if (!player.abilities?.known.includes('pray')) return 'Нужно изучить молитву'
-    const miracles = player.progression?.skills.find((skill) => skill.id === 'miracles')?.level ?? 0
-    if (player.heroClass !== 'cleric' && miracles < 5) return 'Нужен жрец или Чудеса 5'
     return null
 }
 function prayerAvailability(player: CharacterSnapshot): string | null {
     if (!player.alive || player.cooldowns.stunMsLeft > 0 || player.abilities?.casting)
         return 'Сейчас нельзя молиться'
     if ((player.abilities?.cooldowns.pray ?? 0) > 0) return 'Молитва восстанавливается'
-    if (player.resourceChecks?.prayers.purify_grave !== 'ready') return 'Нужно 20 MP'
+    if (player.resourceChecks?.prayers.purify_grave !== 'ready')
+        return 'Недостаточно маны для молитвы'
     return null
 }
 
@@ -79,7 +90,7 @@ export function graveActions(
             id: `grave:purify:${grave.id}`,
             label:
                 preview.unavailableReason ??
-                `Упокоить могилу · ${GRAVE_PURIFY_MANA_COST} MP · ${gravePurifyCastMs(grave.phase) / 1000} с`,
+                `Упокоить могилу · ${preview.manaCost} MP · ${(preview.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000} с`,
             disabled: preview.unavailableReason !== null,
             command: {
                 type: 'use_ability',
@@ -98,7 +109,8 @@ export function graveTargets(
         .filter(
             (grave) =>
                 grave.phase !== 'purified' &&
-                interactionDistance(player, grave) <= GRAVE_INTERACTION_RANGE
+                interactionDistance(player, grave) <=
+                    (player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE)
         )
         .map((grave) => ({
             key: `grave:${grave.id}`,
@@ -106,7 +118,7 @@ export function graveTargets(
             name: graveName(grave),
             position: grave.position,
             bounds: { x: grave.position.x - 8, y: grave.position.y - 8, width: 16, height: 16 },
-            range: GRAVE_INTERACTION_RANGE,
+            range: player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE,
             actions: [
                 ...graveActions(player, grave),
                 ...snapshot.chests

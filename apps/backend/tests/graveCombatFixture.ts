@@ -41,6 +41,8 @@ export function graveCombatFixture(
         damage: (id: string, amount: number, now: number) =>
             service.damage(id, amount, now),
         purify: (id: string, now: number) => service.purify(id, now),
+        contributePurification: (id: string, receiptId: string, at: number) =>
+            service.contributePurification(id, receiptId, at),
     }
     const context: import('../src/game/abilityContext').AbilityContext = {
         ...abilityContext(characters, 1000, () => 0.5),

@@ -1,6 +1,7 @@
 import { forwardAbilityAttack, forwardShot, type ProjectilePath } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, type Ref, watch } from 'vue'
 
+import { abilityUsage } from './abilityUsage'
 import { attackableTarget } from './combatTargeting'
 import type { HotbarProps } from './hotbarActions'
 import type { HotbarBinding } from './hotbarBindings'
@@ -20,8 +21,17 @@ export function useShotPreview(
         if (assigned?.kind !== 'ability' || props.blocked || !props.player.alive || targeted)
             return undefined
         return assigned.id === 'spark'
-            ? forwardAbilityAttack(props.player.position, props.player.facing, 'spark')
-            : forwardShot(props.player.position, props.player.facing)
+            ? forwardAbilityAttack(
+                  props.player.position,
+                  props.player.facing,
+                  'spark',
+                  abilityUsage(props.player, 'spark').range
+              )
+            : forwardShot(
+                  props.player.position,
+                  props.player.facing,
+                  abilityUsage(props.player, 'shot').range
+              )
     })
     watch(preview, (path) => emit('shotPreviewChange', path), { immediate: true })
     onBeforeUnmount(() => emit('shotPreviewChange', undefined))

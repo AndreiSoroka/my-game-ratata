@@ -256,6 +256,10 @@ export class RatataGame {
                     this.options.onInventoryToggle()
                     this.audio?.playSound('ui')
                 },
+                character: () => {
+                    this.options.onCharacterToggle?.()
+                    this.audio?.playSound('ui')
+                },
                 context: this.options.onContextAction
                     ? () => {
                           this.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } })

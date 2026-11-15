@@ -11,6 +11,7 @@ export interface RatataGameOptions {
     onChatState: (state: ChatInputState) => void
     onError: (message: string) => void
     onInventoryToggle: () => void
+    onCharacterToggle?: () => void
     onContextAction?: () => void
     onNotice?: (message: string) => void
     onDefeat?: () => void

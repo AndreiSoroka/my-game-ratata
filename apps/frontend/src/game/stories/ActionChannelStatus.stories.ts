@@ -22,10 +22,10 @@ export const PurifyingGrave: Story = {
                         targetId: 'grave',
                         target: { kind: 'grave', id: 'grave' },
                         startedAt: 0,
-                        completesAt: 10_000,
+                        completesAt: 3000,
                     },
                 },
             }),
-            serverTime: 3500,
+            serverTime: 500,
         }),
 }

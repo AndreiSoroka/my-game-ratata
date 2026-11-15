@@ -100,6 +100,7 @@ describe('resolved shared attack abilities', () => {
         const { actor, target, context } = encounter()
         actor.abilities.known.add('pray')
         actor.progression.skills.miracles.level = 3
+        actor.progression.constellations.opened.add('prayer.harm')
         const intent = previewPrayer(actor, context, target.id).intent
         expect(intent).toEqual({ mode: 'harm', targetId: target.id })
         target.position.y = 300

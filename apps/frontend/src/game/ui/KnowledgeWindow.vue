@@ -4,6 +4,7 @@ import './knowledgeWindow.css'
 import {
     type CharacterSnapshot,
     type ClientMessage,
+    type ConstellationId,
     type SkillBranch,
     type SkillId,
     THEFT_RULES,
@@ -11,13 +12,31 @@ import {
 import { computed, ref } from 'vue'
 
 import AbilityKnowledge from './AbilityKnowledge.vue'
+import { abilityUsage } from './abilityUsage'
 import ArcanaStudy from './ArcanaStudy.vue'
 import FaithKnowledge from './FaithKnowledge.vue'
 
-const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
+const props = defineProps<{
+    player: CharacterSnapshot
+    characters: CharacterSnapshot[]
+    embedded?: boolean
+    constellationId?: ConstellationId
+}>()
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
 const targetId = ref('')
-const skills = computed(() => props.player.progression?.skills ?? [])
+const pathSkills: Record<ConstellationId, SkillId[]> = {
+    blade: ['swordsmanship'],
+    magic: ['arcana', 'fireball', 'greater_fireball'],
+    prayer: ['faith', 'miracles'],
+    arrow: ['marksmanship'],
+    life: ['vitality'],
+    shadow: ['stealth', 'theft'],
+}
+const skills = computed(() =>
+    (props.player.progression?.skills ?? []).filter(
+        (skill) => !props.constellationId || pathSkills[props.constellationId].includes(skill.id)
+    )
+)
 const arcanaLevel = computed(() => skills.value.find((skill) => skill.id === 'arcana')?.level ?? 0)
 const teacher = computed(() =>
     props.characters.find(
@@ -30,7 +49,11 @@ const enemies = computed(() =>
         (character) =>
             character.alive &&
             character.faction !== props.player.faction &&
-            distance(character) <= 192
+            distance(character) <=
+                Math.max(
+                    abilityUsage(props.player, 'fireball').range,
+                    abilityUsage(props.player, 'greater_fireball').range
+                )
     )
 )
 const target = computed(
@@ -41,6 +64,7 @@ const branchLabels: Record<SkillBranch, string> = {
     faith: 'Вера',
     arcana: 'Магия',
     cunning: 'Хитрость',
+    survival: 'Жизненный опыт',
 }
 const practicedBranches = computed(
     () =>
@@ -54,6 +78,9 @@ const descriptions: Record<SkillId, string> = {
     theft: `Растёт от настоящих попыток кражи. Подойдите крадучись, нажмите E и выберите цель. Замеченная попытка может вызвать отпор и стражу. За ${String(THEFT_RULES.evidenceMs / 60_000)} минут жертва может подать жалобу: городская стража станет врагом, торговцы откажут. Отпущение у клирика стоит ${String(THEFT_RULES.absolutionGold)} золотых. Чужие вещи заранее не видны.`,
 
     faith: 'Молитвы укрепляют веру. С опытом знамения раскрывают настроение божества и вероятность его ответа.',
+    marksmanship: 'Растёт от настоящих попаданий выстрелами по врагам. Манекены не дают практики.',
+    vitality:
+        'Растёт от потери и восстановления здоровья после вражеского урона. Опыт помогает точнее понимать своё тело.',
     arcana: 'Понимание магии растёт от чтения конечного числа глав и передачи изученного заклинания ученикам.',
     swordsmanship: 'Практика за успешные удары мечом. Возьмите оружие и вступите в бой.',
     miracles:
@@ -70,7 +97,8 @@ function distance(character: CharacterSnapshot): number {
     )
 }
 function canCast(skillId: SkillId): boolean {
-    const range = skillId === 'greater_fireball' ? 192 : 160
+    if (skillId !== 'fireball' && skillId !== 'greater_fireball') return false
+    const range = abilityUsage(props.player, skillId).range
     return (
         props.player.alive &&
         target.value !== undefined &&
@@ -91,20 +119,20 @@ function learnFireball(): void {
 
 <template>
     <section
-        class="adventure-window adventure-knowledge"
-        role="dialog"
-        aria-modal="false"
+        :class="embedded ? 'embedded-knowledge' : 'adventure-window adventure-knowledge'"
+        :role="embedded ? undefined : 'dialog'"
+        :aria-modal="embedded ? undefined : false"
         aria-label="Знания героя"
     >
-        <header class="adventure-window__header">
+        <header v-if="!embedded" class="adventure-window__header">
             <span>ЗНАНИЯ · ПРАКТИКА МЕНЯЕТ ГЕРОЯ</span>
             <button type="button" aria-label="Закрыть знания" @click="emit('close')">×</button>
         </header>
-        <p class="knowledge-intro">
+        <p v-if="!embedded" class="knowledge-intro">
             Любое прошлое, любой путь. Навыки растут от применения, а новые знания открывают
             следующую ступень.
         </p>
-        <div class="knowledge-target">
+        <div v-if="!constellationId || constellationId === 'magic'" class="knowledge-target">
             <label for="spell-target">Цель заклинаний</label>
             <select
                 id="spell-target"
@@ -120,6 +148,7 @@ function learnFireball(): void {
         <AbilityKnowledge
             :player="player"
             :characters="characters"
+            :constellation-id="constellationId"
             @command="emit('command', $event)"
         />
         <article
@@ -187,15 +216,12 @@ function learnFireball(): void {
                 class="knowledge-action"
             >
                 <button type="button" :disabled="!canCast(skill.id)" @click="cast(skill.id)">
-                    Сотворить · {{ skill.id === 'greater_fireball' ? 24 : 12 }} MP
+                    Сотворить · {{ abilityUsage(player, skill.id).mana }} MP
                 </button>
                 <small
-                    >{{
-                        skill.id === 'greater_fireball'
-                            ? 'Дальность 192 · раз в 2 сек.'
-                            : 'Дальность 160 · раз в 1 сек.'
-                    }}
-                    Препятствия закрывают цель.</small
+                    >Дальность {{ abilityUsage(player, skill.id).range }} · раз в
+                    {{ abilityUsage(player, skill.id).cooldownMs / 1000 }} сек. Препятствия
+                    закрывают цель.</small
                 >
             </div>
         </article>
@@ -207,3 +233,28 @@ function learnFireball(): void {
         </p>
     </section>
 </template>
+
+<style scoped>
+.embedded-knowledge {
+    margin-top: 20px;
+    color: #dbe3d8;
+}
+.embedded-knowledge :deep(button),
+.embedded-knowledge :deep(select) {
+    min-height: 36px;
+    padding: 7px 12px;
+    border: 1px solid #788775;
+    background: #233a3c;
+    color: #eee6cf;
+    cursor: pointer;
+}
+.embedded-knowledge :deep(button:disabled) {
+    opacity: 0.45;
+    cursor: default;
+}
+.embedded-knowledge :deep(button:focus-visible),
+.embedded-knowledge :deep(select:focus-visible) {
+    outline: 2px solid #f0d287;
+    outline-offset: 2px;
+}
+</style>

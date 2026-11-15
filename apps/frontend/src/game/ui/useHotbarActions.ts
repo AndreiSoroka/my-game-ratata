@@ -98,9 +98,17 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
 }
 function prayerPreview(props: HotbarProps) {
     return props.grave
-        ? gravePrayerPreview(props.player, props.grave, props.canReachGrave?.(props.grave) ?? true)
+        ? gravePrayerPreview(
+              props.player,
+              props.grave,
+              props.canReachGrave?.(props.grave) ?? true,
+              props.characters,
+              props.canReach
+          )
         : previewPrayerFromSnapshots(props.player, props.characters, props.target?.id, {
               canReach: props.canReach,
+              graves: props.graves,
+              canReachGrave: props.canReachGrave,
               canAid: (target) => relation(target, props.player) !== 'hostile',
           })
 }
@@ -111,7 +119,7 @@ function watchPrayerHighlight(
     preview: ComputedRef<ReturnType<typeof previewPrayerFromSnapshots>>
 ): void {
     const highlight = computed(() =>
-        prayerAssigned.value && !props.blocked && !props.grave
+        prayerAssigned.value && !props.blocked
             ? createPrayerPreviewHighlight(props.player, props.characters, preview.value, {
                   active: true,
                   canReach: props.canReach ?? (() => true),

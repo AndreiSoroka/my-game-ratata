@@ -14,7 +14,6 @@ import AdventureJournal from './AdventureJournal.vue'
 import CompanionWindow from './CompanionWindow.vue'
 import CraftingWindow from './CraftingWindow.vue'
 import GuildWindow from './GuildWindow.vue'
-import KnowledgeWindow from './KnowledgeWindow.vue'
 import TheftAlert from './TheftAlert.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
@@ -28,8 +27,8 @@ const props = defineProps<{
     party: PartySnapshot | undefined
     serverTime: number
 }>()
-const emit = defineEmits<{ command: [message: ClientMessage]; closeInventory: [] }>()
-type AdventureWindow = 'journal' | 'crafting' | 'knowledge' | 'companions' | 'guild'
+const emit = defineEmits<{ command: [message: ClientMessage]; closeInventory: []; character: [] }>()
+type AdventureWindow = 'journal' | 'crafting' | 'companions' | 'guild'
 const activeWindow = ref<AdventureWindow | null>(null)
 const windowRoot = ref<HTMLElement>()
 const showWindow = computed(() => !props.inventoryOpen && !props.adventure.dialogue)
@@ -87,13 +86,7 @@ defineExpose({
             >
                 Ремесло
             </button>
-            <button
-                type="button"
-                :aria-expanded="activeWindow === 'knowledge'"
-                @click="toggleWindow('knowledge')"
-            >
-                Знания
-            </button>
+            <button type="button" @click="emit('character')">Знания</button>
             <button
                 type="button"
                 :aria-expanded="activeWindow === 'companions'"
@@ -141,13 +134,6 @@ defineExpose({
             <p>{{ incomingInvitations[0]?.fromName }} приглашает в отряд.</p>
             <button type="button" @click="toggleWindow('guild')">Посмотреть приглашение</button>
         </div>
-        <KnowledgeWindow
-            v-if="activeWindow === 'knowledge' && showWindow"
-            :player="player"
-            :characters="characters"
-            @close="activeWindow = null"
-            @command="emit('command', $event)"
-        />
         <CompanionWindow
             v-if="activeWindow === 'companions' && showWindow"
             :player="player"

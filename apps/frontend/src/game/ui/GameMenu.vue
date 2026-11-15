@@ -11,7 +11,7 @@ import { dialogActionKeys } from './dialogActionKeys'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 withDefaults(defineProps<{ automationAvailable?: boolean }>(), { automationAvailable: true })
-const emit = defineEmits<{ resume: []; leave: []; markers: []; scenarios: [] }>()
+const emit = defineEmits<{ resume: []; leave: []; character: []; markers: []; scenarios: [] }>()
 const panel = ref<HTMLElement>()
 const muted = ref(isAudioMuted())
 const forcedMute = isAudioMuteForced()
@@ -42,6 +42,14 @@ onMounted(async () => {
             <p>Мир продолжает жить, пока открыто меню.</p>
             <button type="button" data-dialog-action="resume" @click="emit('resume')">
                 Вернуться в игру
+            </button>
+            <button
+                type="button"
+                data-dialog-action="character"
+                :disabled="!automationAvailable"
+                @click="emit('character')"
+            >
+                Персонаж · P
             </button>
             <button
                 type="button"
