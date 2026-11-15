@@ -1,72 +1,42 @@
 import {
-    type ConstellationId,
     GRAVE_PURIFY_STEPS,
-    PRAYER_RULES,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
 } from '@my-game-ratata/contracts'
 
 import type { ConstellationStar } from '../../../../backend/src/game/constellationCatalog'
-import type { ConstellationEffectChance } from './constellationChanceTypes'
+import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
+import type {
+    ConstellationChanceFormula,
+    ConstellationEffectChance,
+} from './constellationChanceTypes'
 import { prayerChanceExamples } from './constellationPrayerChanceExamples'
+import * as math from './constellationPrayerFormulas'
+import { prayerAbilityForConstellation, prayerSchoolInfo } from './constellationPrayerScenario'
 
-const schools: Partial<Record<ConstellationId, PrayerAbilityId>> = {
-    prayer: 'pray',
-    prayer_road: 'pray_road',
-    prayer_lantern: 'pray_lantern',
-    prayer_grave: 'pray_grave',
+interface PrayerDescription extends Omit<ConstellationEffectChance, 'formulas' | 'formulaDetails'> {
+    formulaDetails: ConstellationChanceFormula[]
 }
-const schoolInfo = {
-    pray: {
-        god: 'Угольная Мать',
-        faith: 'Вера',
-        miracles: 'Чудеса',
-        resource: 'HP',
-        power: '6 + 2 × (Чудеса − 1)',
-    },
-    pray_road: {
-        god: 'Безымянный Путник',
-        faith: 'Вера странника',
-        miracles: 'Чудеса странника',
-        resource: 'EN',
-        power: '15 + 3 × (Чудеса странника − 1)',
-    },
-    pray_lantern: {
-        god: 'Слепой Архивариус',
-        faith: 'Вера ясности',
-        miracles: 'Чудеса ясности',
-        resource: 'MP',
-        power: '12 + 2 × (Чудеса ясности − 1)',
-    },
-    pray_grave: {
-        god: 'Хранитель Праха',
-        faith: 'Вера праха',
-        miracles: 'Чудеса праха',
-        resource: 'HP нежити',
-        power: '6 + 2 × (Чудеса праха − 1)',
-    },
-}
-const answerFormula =
-    'Pответа = min(95%, Bнастроения + (Вера своей школы − 1) × 1,5 п.п.); B: благосклонность 80%, нейтральное настроение 55%, гнев 25%.'
-const qualityFormula = 'Qнастроения: благосклонность 1,3; нейтральное настроение 1; гнев 0,65.'
-const purificationFormula = `Pшага = min(95%, 20% × Pответа / 55%); очищение требует ${GRAVE_PURIFY_STEPS} успешных шагов.`
-const harmFormula = `Pкары = min(95%, Pответа + ${PRAYER_RULES.harmChanceBonus * 100} п.п.).`
-const healingMultiplier =
-    'Mлечения = 1 + 0,05 × I(Тёплый дар) + 0,05 × I(Щедрый дар) + 0,10 × I(Последний огонёк и выполнены его условия).'
-const harmPower = `Урон кары до поглощения = round((6 + 2 × max(0, Чудеса − ${PRAYER_RULES.harmLevel})) × Qнастроения × (1 + 0,30 × I(Суровый ответ) + 0,30 × I(Гнев небес))).`
 const oneRoll =
-    'На завершённую молитву берётся один r ∈ [0, 1). Он общий для лечения, кары и шагов очищения, а также для всех подходящих целей; отдельных бросков по целям нет.'
-const indicatorLegend =
-    'I(...) = 1, когда указанная звезда изучена и её условия выполнены; иначе 0.'
+    'На завершённую молитву берётся один случайный бросок от 0 включительно до 1 не включительно. Он общий для лечения, кары и шагов очищения, а также для всех подходящих целей; отдельных бросков по целям нет.'
 const faithAndPower =
     'Вера своей школы меняет шанс ответа; Чудеса своей школы меняют силу. Уровни навыков в игре — от 1 до 10.'
 
-/** Static debug explanation only; no current deity mood, character state or hidden practice is read. */
+/** Static debug formulas only: settings for the example calculator live in a separate pure API. */
 export function describePrayerEffectChance(
     node: ConstellationStar
 ): ConstellationEffectChance | undefined {
-    const ability = schools[node.constellationId]
+    const ability = prayerAbilityForConstellation(node.constellationId)
     if (ability === undefined) return undefined
+    const description = describePrayer(node, ability)
+    if (description === undefined) return undefined
+    const { formulaDetails, ...text } = description
+    return withChanceFormulas(text, formulaDetails)
+}
+function describePrayer(
+    node: ConstellationStar,
+    ability: PrayerAbilityId
+): PrayerDescription | undefined {
     if (node.kind === 'root') return rootChance(ability)
     if (node.id.endsWith('.revive')) return revivalChance(ability)
     if (node.id.startsWith('prayer.harm')) return harmChance(node.id)
@@ -79,79 +49,81 @@ export function describePrayerEffectChance(
         return insightChance(node.id)
     return undefined
 }
-
-function rootChance(ability: PrayerAbilityId): ConstellationEffectChance {
-    const info = schoolInfo[ability]
+function rootChance(ability: PrayerAbilityId): PrayerDescription {
+    const info = prayerSchoolInfo[ability]
     const definition = PRAYER_SCHOOL_DEFINITIONS[ability]
     return {
-        summary: `Ответ божества «${info.god}» вероятностный: ${info.faith} и его настроение определяют шанс восстановления ${info.resource}.`,
-        formulas: [
-            answerFormula,
-            `r < Pответа: восстановление ${info.resource} = min(нехватка ресурса, round((${info.power}) × Qнастроения × M)); M = ${ability === 'pray' ? 'Mлечения' : '1'}.`,
-            qualityFormula,
-            ...(ability === 'pray' ? [healingMultiplier, purificationFormula] : []),
+        summary: `Ответ божества «${info.god}» вероятностный: ${info.faithName} и его настроение определяют шанс восстановления ${info.resource}.`,
+        formulaDetails: [
+            math.prayerAnswerFormula(ability),
+            math.prayerRestorationFormula(ability),
+            math.prayerAnswerRollFormula(),
+            ...(ability === 'pray'
+                ? [
+                      math.prayerHealingMultiplierFormula(),
+                      math.prayerPurificationFormula(),
+                      chanceFormula('Успешных шагов до очищения', String(GRAVE_PURIFY_STEPS)),
+                  ]
+                : []),
         ],
-        examples: prayerChanceExamples(info.faith, ability === 'pray' ? 'grave' : 'answer'),
+        examples: prayerChanceExamples(info.faithName, ability === 'pray' ? 'grave' : 'answer'),
         notes: [
-            `Используются ${info.faith} (${definition.faithSkillId}), ${info.miracles} (${definition.miracleSkillId}) и настроение только своего бога (${definition.deityId}). Выбор покровителя в HUD эту привязку не меняет.`,
+            `Используются ${info.faithName} (${definition.faithSkillId}), ${info.miraclesName} (${definition.miracleSkillId}) и настроение только своего бога (${definition.deityId}). Выбор покровителя в HUD эту привязку не меняет.`,
             faithAndPower,
             oneRoll,
             ...(ability === 'pray'
                 ? [
                       'Пять шагов очищения не обязаны идти подряд; отказ сохраняет уже набранный прогресс. Каждый удачный бросок добавляет один шаг каждой подходящей могиле.',
-                      indicatorLegend,
                   ]
                 : [
                       'Модификаторы созвездия «Молитва», включая кару и общую молитву, эту школу не усиливают.',
                   ]),
-            'При r ≥ Pответа дар не срабатывает. Эти вероятности относятся к завершённой допустимой молитве; отмена не бросает r.',
+            'Если бросок не прошёл порог ответа, дар не срабатывает. Вероятности относятся к завершённой допустимой молитве; отмена не делает бросок.',
         ],
     }
 }
-
-function revivalChance(ability: PrayerAbilityId): ConstellationEffectChance {
-    const info = schoolInfo[ability]
+function revivalChance(ability: PrayerAbilityId): PrayerDescription {
+    const info = prayerSchoolInfo[ability]
     return {
-        summary: `Воскрешение использует тот же шанс ответа: ${info.faith} и настроение божества «${info.god}».`,
-        formulas: [
-            answerFormula,
-            'Pвоскрешения = Pответа; успех при r < Pответа.',
-            'После успеха HP = max(1, ceil(максимальное HP × 0,5)); MP и EN = 0,5 × соответствующий максимум.',
+        summary: `Воскрешение использует тот же шанс ответа: ${info.faithName} и настроение божества «${info.god}».`,
+        formulaDetails: [
+            math.prayerAnswerFormula(ability),
+            math.prayerRevivalChanceFormula(),
+            math.prayerAnswerRollFormula(),
+            math.prayerRevivalHpFormula(),
+            math.prayerRevivalResourceFormula(),
         ],
-        examples: prayerChanceExamples(info.faith),
+        examples: prayerChanceExamples(info.faithName),
         notes: [
             oneRoll,
-            `${info.miracles} и множители лечения не меняют шанс воскрешения или стандартную половину ресурсов. Нужна подходящая душа в пределах окна воскрешения и прочие условия режима.`,
+            `${info.miraclesName} и множители лечения не меняют шанс воскрешения или стандартную половину ресурсов. Нужна подходящая душа в пределах окна воскрешения и прочие условия режима.`,
         ],
     }
 }
-
 function deterministic(
     summary: string,
-    formulas: string[],
+    formulaDetails: ConstellationChanceFormula[],
     examples: ConstellationEffectChance['examples'] = []
-): ConstellationEffectChance {
+): PrayerDescription {
     return {
         summary,
-        formulas: [
-            'Pприменения изученного модификатора = 100% при выполнении его условий.',
-            ...formulas,
-            answerFormula,
+        formulaDetails: [
+            math.prayerModifierFormula(),
+            ...formulaDetails,
+            math.prayerAnswerFormula('pray'),
         ],
         examples,
         notes: [
             '100% относится к применению модификатора. Сам дар молитвы по-прежнему требует ответа божества; его вероятность этот модификатор не увеличивает.',
             faithAndPower,
-            indicatorLegend,
         ],
     }
 }
-
-function radiusChance(id: string): ConstellationEffectChance {
+function radiusChance(id: string): PrayerDescription {
     const cells = id === 'prayer.radius2' ? 2 : 1
     return deterministic(
         'Радиус увеличивается постоянно; дополнительного броска нет.',
-        ['R = 48 px + ширина клетки текущей карты × (I(Дальний голос) + I(Голос над долиной)).'],
+        [math.prayerRadiusFormula()],
         [
             {
                 label: 'Пример: ширина клетки 16 px',
@@ -160,35 +132,30 @@ function radiusChance(id: string): ConstellationEffectChance {
         ]
     )
 }
-function focusChance(): ConstellationEffectChance {
-    return deterministic(
+function focusChance(): PrayerDescription {
+    const description = deterministic(
         'Сосредоточение всегда сокращает канал молитвы на 10%.',
-        [
-            'T = round(3000 мс × (1 − 0,10 × I(Сосредоточение))). Следующая попытка доступна сразу после окончания канала.',
-        ],
+        [math.prayerFocusFormula()],
         [{ label: 'Со Сосредоточением', value: 'T = 2700 мс; применение 100%.' }]
     )
+    description.notes.push('Следующая попытка доступна сразу после окончания канала.')
+    return description
 }
-function giftChance(id: string): ConstellationEffectChance {
+function giftChance(id: string): PrayerDescription {
     const lastLight = id === 'prayer.last_light'
     const result = deterministic(
         lastLight
             ? 'Последний огонёк даёт условный гарантированный бонус силы; успех самого лечения остаётся вероятностным.'
             : 'Изученный дар гарантированно усиливает успешное обычное лечение; шанс ответа сохраняется.',
         [
-            healingMultiplier,
-            'HPвосстановлено = min(нехватка HP, round((6 + 2 × (Чудеса − 1)) × Qнастроения × Mлечения)).',
-            qualityFormula,
-            ...(lastLight
-                ? [
-                      'I(Последний огонёк) = 1 только при HP < 20% максимума, сохранённых вражеских ранах и пересечении порога из-за вражеского удара; условия фиксируются до исцеления.',
-                  ]
-                : []),
+            math.prayerHealingMultiplierFormula(),
+            math.prayerRestorationFormula('pray'),
+            ...(lastLight ? [math.prayerLowHpFormula()] : []),
         ],
         [
             {
                 label: 'Тёплый дар / оба дара',
-                value: 'M = 1,05 / 1,10; с обоими дарами и активным Последним огоньком M = 1,20.',
+                value: 'Множитель: 1,05 / 1,10; с обоими дарами и активным Последним огоньком — 1,20.',
             },
             ...(lastLight
                 ? [
@@ -203,46 +170,48 @@ function giftChance(id: string): ConstellationEffectChance {
     result.notes.push(
         'Бонус усиливает обычное лечение HP. Воскрешение сохраняет стандартную половину ресурсов; новые открытия этой молитвы не меняют уже рассчитанный дар.'
     )
+    if (lastLight)
+        result.notes.push(
+            'Порог здоровья, происхождение ран и условия бонуса проверяются до исцеления.'
+        )
     return result
 }
-function harmChance(id: string): ConstellationEffectChance {
+function harmChance(id: string): PrayerDescription {
     return {
         summary:
             id === 'prayer.harm'
                 ? 'Кара срабатывает по более высокому порогу, чем лечебный ответ.'
                 : 'Множитель урона кары применяется со 100% вероятностью, если сама кара сработала.',
-        formulas: [
-            ...(id === 'prayer.harm'
-                ? []
-                : ['Pприменения изученного множителя урона = 100% при сработавшей Каре.']),
-            answerFormula,
-            harmFormula,
-            'Кара действует при r < Pкары; у всех подходящих жертв один общий бросок.',
-            harmPower,
-            qualityFormula,
+        formulaDetails: [
+            ...(id === 'prayer.harm' ? [] : [math.prayerModifierFormula()]),
+            math.prayerAnswerFormula('pray'),
+            math.prayerHarmFormula(),
+            math.prayerHarmRollFormula(),
+            math.prayerHarmPowerFormula(),
+            math.prayerHarmMultiplierFormula(),
         ],
-        examples: prayerChanceExamples(schoolInfo.pray.faith, 'harm'),
+        examples: prayerChanceExamples(prayerSchoolInfo.pray.faithName, 'harm'),
         notes: [
             oneRoll,
-            indicatorLegend,
-            'Кара может сработать при отказе лечебного дара, если Pответа ≤ r < Pкары. Все подходящие цели — нежить в радиусе и прямой видимости; сторона цели не меняет порог.',
+            'Кара может сработать при отказе лечебного дара: её порог выше порога ответа. Все подходящие цели — нежить в радиусе и прямой видимости; сторона цели не меняет порог.',
             'Кара доступна после открытия звезды. При Чудесах 1–3 её базовая сила равна 6, а с 4 растёт на 2 за уровень.',
-            'Суровый ответ даёт Mурона = 1,30; вместе с Гневом небес Mурона = 1,60. Множители не повышают шанс кары; барьер может поглотить рассчитанный урон.',
+            'Суровый ответ даёт множитель 1,30; вместе с Гневом небес — 1,60. Множители не повышают шанс кары; барьер может поглотить рассчитанный урон.',
         ],
     }
 }
-function areaChance(): ConstellationEffectChance {
+function areaChance(): PrayerDescription {
     return {
         summary:
             'Общая молитва всегда расширяет выбор целей; ответ и шаги очищения остаются вероятностными.',
-        formulas: [
-            'Pвыбора всех подходящих союзников и могил в радиусе = 100%.',
-            answerFormula,
-            'Каждый подходящий союзник получает дар при r < Pответа.',
-            purificationFormula,
-            'Каждая подходящая могила получает +1 шаг при r < Pшага.',
+        formulaDetails: [
+            chanceFormula('Выбор всех подходящих союзников и могил в радиусе, %', '100'),
+            math.prayerAnswerFormula('pray'),
+            math.prayerAnswerRollFormula(),
+            math.prayerPurificationFormula(),
+            math.prayerPurificationRollFormula(),
+            chanceFormula('Успешных шагов до очищения', String(GRAVE_PURIFY_STEPS)),
         ],
-        examples: prayerChanceExamples(schoolInfo.pray.faith, 'grave'),
+        examples: prayerChanceExamples(prayerSchoolInfo.pray.faithName, 'grave'),
         notes: [
             oneRoll,
             `Очищение требует ${GRAVE_PURIFY_STEPS} накопленных успешных шагов, не обязательно подряд. У каждого союзника лечение ограничено его нехваткой HP.`,
@@ -250,7 +219,7 @@ function areaChance(): ConstellationEffectChance {
         ],
     }
 }
-function insightChance(id: string): ConstellationEffectChance {
+function insightChance(id: string): PrayerDescription {
     const others = id.startsWith('prayer.others')
     const rank = Number(id.at(-1))
     const information = [
@@ -261,14 +230,14 @@ function insightChance(id: string): ConstellationEffectChance {
     ][rank - 1]
     return {
         summary: `После открытия ${information} ${others ? 'других богов' : 'Угольной Матери'} раскрывается постоянно, со 100% вероятностью.`,
-        formulas: [
-            'Pраскрытия доступной информации = 100%; дополнительного броска нет.',
-            ...(rank === 3 ? [answerFormula] : []),
-            ...(rank === 4 ? ['Осталось мс = 30000 − (серверное время мс mod 30000).'] : []),
+        formulaDetails: [
+            math.prayerInsightFormula(),
+            ...(rank === 3 ? [math.prayerAnswerFormula(others ? undefined : 'pray')] : []),
+            ...(rank === 4 ? [math.prayerMoodTimerFormula()] : []),
         ],
         examples:
             rank === 3
-                ? prayerChanceExamples(schoolInfo.pray.faith).map((example) => ({
+                ? prayerChanceExamples(prayerSchoolInfo.pray.faithName).map((example) => ({
                       ...example,
                       label: others
                           ? example.label.replace('Вера', 'Вера школы божества')

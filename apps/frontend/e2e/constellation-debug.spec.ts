@@ -16,6 +16,7 @@ for (const width of [1280, 390, 320]) {
     test(`debug atlas exposes the full catalogue and stable personal sky at ${width}px`, async ({
         page,
     }) => {
+        test.setTimeout(60_000)
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/?debug=constellations&class=cleric&seed=e2e-atlas-stable')
         const viewer = page.getByTestId('constellation-debug')
@@ -122,6 +123,8 @@ for (const width of [1280, 390, 320]) {
             /полезные дары здоровья/
         )
         await assertEffectExplanations(page, width)
+        await assertPrayerCalculator(page, width)
+        await assertEveryFormulaLegend(page, width)
         await page.getByTestId('debug-search').fill('')
         await expect(list.locator('[data-star-id]')).toHaveCount(77)
     })
@@ -154,6 +157,10 @@ test('debug atlas starts without player requests, sockets or a join flow', async
     await page.getByTestId('debug-regenerate').click()
     await page.getByTestId('debug-class').selectOption('ranger')
     await assertCenter(page, 'arrow')
+    await selectAtlasStar(page, 'prayer.root')
+    await page.getByTestId('debug-prayer-faith').selectOption('10')
+    await page.getByTestId('debug-prayer-mood').selectOption('benevolent')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('93,5%')
     const attempts = await page.evaluate(
         () =>
             (
@@ -231,9 +238,9 @@ async function assertFocused(page: Page, id: string): Promise<void> {
 async function assertEffectExplanations(page: Page, width: number): Promise<void> {
     const chance = page.getByTestId('debug-effect-chance')
     for (const [id, pattern] of [
-        ['prayer.revive', /95\s*%/],
+        ['prayer.revive', /95/],
         ['prayer.root', /55\s*%/],
-        ['blade.critical', /min\s*\(\s*95\s*%/],
+        ['blade.critical', /min\s*\(\s*95/],
         ['blade.damage1', /100\s*%/],
         ['shadow.luck1', /17[,.]4\s*%/],
     ] as const) {
@@ -247,18 +254,18 @@ async function assertEffectExplanations(page: Page, width: number): Promise<void
         expect(await formulas.locator('li').count()).toBeGreaterThan(0)
         expect(await formulas.evaluate((element) => element.closest('details') === null)).toBe(true)
         if (id === 'prayer.root') {
-            const neutral = chance
-                .getByRole('row')
-                .filter({ hasText: 'Вера 1 · нейтральное настроение' })
-            await expect(neutral.locator('td')).toContainText('Ответ 55%')
-            await expect(neutral.locator('td')).not.toContainText('Ответ 20%')
+            await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('55%')
+            await expect(prayerMetric(page, 'Шаг очищения могилы')).toHaveText('20%')
         }
         if (id === 'shadow.luck1') {
-            await expect(chance).toContainText(/обнаружение/i)
-            await expect(formulas).toContainText(/D\s*=\s*clamp/)
-            await expect(formulas).toContainText(/U\s*=\s*clamp/)
-            await expect(formulas).toContainText(/\(1\s*[−-]\s*D\)\s*×\s*U/)
-            await formulas.scrollIntoViewIfNeeded()
+            await expect(formulas).toContainText(/обнаружен/i)
+            await expect(formulas).toContainText(/clamp\(10,\s*90/)
+            await expect(formulas).toContainText(/clamp\(5,\s*90/)
+            await expect(formulas).toContainText(/\(1\s*[−-]\s*D\s*\/\s*100\)\s*[×*]\s*U/)
+            await formulas
+                .locator('[data-testid="debug-effect-formula"]')
+                .first()
+                .scrollIntoViewIfNeeded()
             await page.screenshot({
                 path: test.info().outputPath(`debug-atlas-effect-chance-${width}.png`),
                 fullPage: true,
@@ -266,6 +273,130 @@ async function assertEffectExplanations(page: Page, width: number): Promise<void
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
             width
+        )
+    }
+}
+
+function prayerMetric(page: Page, label: string): Locator {
+    return page.getByTestId('debug-prayer-metrics').locator(`[data-metric="${label}"] dd`)
+}
+async function selectAtlasStar(page: Page, id: string): Promise<void> {
+    await page.getByTestId('debug-search').fill(id)
+    await page.getByTestId('debug-star-list').locator(`[data-star-id="${id}"]`).click()
+}
+async function assertPrayerCalculator(page: Page, width: number): Promise<void> {
+    await selectAtlasStar(page, 'prayer.root')
+    const faith = page.getByTestId('debug-prayer-faith'),
+        mood = page.getByTestId('debug-prayer-mood')
+    const graph = page.getByRole('group', { name: 'Созвездия развития' })
+    const original = {
+        coordinates: await coordinates(graph),
+        viewBox: await graph.getAttribute('viewBox'),
+        url: page.url(),
+    }
+    const formulas = await page
+        .getByTestId('debug-effect-chance-formulas')
+        .locator('code')
+        .allTextContents()
+    await expect(faith).toHaveValue('1')
+    await expect(mood).toHaveValue('neutral')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('55%')
+    await faith.scrollIntoViewIfNeeded()
+    await faith.selectOption('10')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('68,5%')
+    await expect(prayerMetric(page, 'Отказ божества')).toHaveText('31,5%')
+    await expect(prayerMetric(page, 'Шаг очищения могилы')).toHaveText('24,91%')
+    await mood.scrollIntoViewIfNeeded()
+    await mood.selectOption('benevolent')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('93,5%')
+    await expect(prayerMetric(page, 'Шаг очищения могилы')).toHaveText('34%')
+    await page
+        .getByRole('heading', { name: 'Параметры примера', exact: true })
+        .evaluate((element) => element.scrollIntoView({ block: 'start' }))
+    await page.screenshot({
+        path: test.info().outputPath(`debug-prayer-benevolent-${width}.png`),
+        fullPage: true,
+    })
+    await mood.scrollIntoViewIfNeeded()
+    await mood.selectOption('wrathful')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('38,5%')
+    await expect(prayerMetric(page, 'Шаг очищения могилы')).toHaveText('14%')
+    await expect(prayerMetric(page, 'Кара (если изучена)')).toHaveText('58,5%')
+    expect(await coordinates(graph)).toEqual(original.coordinates)
+    await expect(graph).toHaveAttribute('viewBox', original.viewBox!)
+    expect(page.url()).toBe(original.url)
+    await expect(page.getByTestId('debug-effect-chance-formulas').locator('code')).toHaveText(
+        formulas
+    )
+    for (const [id, level, moodValue] of [
+        ['prayer_road.root', '3', 'benevolent'],
+        ['prayer_lantern.root', '4', 'wrathful'],
+        ['prayer_grave.root', '7', 'neutral'],
+    ] as const) {
+        await selectAtlasStar(page, id)
+        await expect(faith).toHaveValue('1')
+        await expect(mood).toHaveValue('neutral')
+        await faith.scrollIntoViewIfNeeded()
+        await faith.selectOption(level)
+        await mood.scrollIntoViewIfNeeded()
+        await mood.selectOption(moodValue)
+    }
+    await selectAtlasStar(page, 'blade.critical')
+    await expect(page.getByTestId('debug-prayer-calculator')).toHaveCount(0)
+    for (const [id, level, moodValue] of [
+        ['prayer.root', '10', 'wrathful'],
+        ['prayer_road.root', '3', 'benevolent'],
+        ['prayer_lantern.root', '4', 'wrathful'],
+        ['prayer_grave.root', '7', 'neutral'],
+    ] as const) {
+        await selectAtlasStar(page, id)
+        await expect(faith).toHaveValue(level)
+        await expect(mood).toHaveValue(moodValue)
+    }
+    await selectAtlasStar(page, 'prayer.revive')
+    await expect(faith).toHaveValue('10')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('38,5%')
+    await expect(prayerMetric(page, 'Шаг очищения могилы')).toHaveCount(0)
+    await page.getByTestId('debug-class').selectOption('vanguard')
+    await expect(page.getByTestId('debug-prayer-calculator')).toHaveCount(0)
+    await page.getByTestId('debug-class').selectOption('cleric')
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('38,5%')
+    await page.getByTestId('debug-seed').fill('calculator-layout-only')
+    await page.getByTestId('debug-apply').click()
+    await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('38,5%')
+    await page.getByTestId('debug-prayer-calculator').scrollIntoViewIfNeeded()
+    await page.screenshot({
+        path: test.info().outputPath(`debug-prayer-calculator-${width}.png`),
+        fullPage: true,
+    })
+}
+async function assertEveryFormulaLegend(page: Page, width: number): Promise<void> {
+    if (width !== 1280) return
+    const ids = await page
+        .getByRole('group', { name: 'Созвездия развития' })
+        .locator('[data-node-id]')
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-node-id')!))
+    expect(ids).toHaveLength(77)
+    for (const id of ids) {
+        await selectAtlasStar(page, id)
+        const formulas = page
+            .getByTestId('debug-effect-chance-formulas')
+            .getByTestId('debug-effect-formula')
+        expect(await formulas.count()).toBeGreaterThan(0)
+        for (const formula of await formulas.all()) {
+            await expect(formula.locator('h3')).not.toHaveText('')
+            await expect(formula.locator('code')).not.toHaveText('')
+            await expect(formula.locator('code')).not.toHaveText(/[А-Яа-яЁё]/)
+            expect(await formula.evaluate((element) => element.closest('details') === null)).toBe(
+                true
+            )
+            const terms = await formula.locator('dt').allTextContents(),
+                definitions = await formula.locator('dd').allTextContents()
+            expect(definitions).toHaveLength(terms.length)
+            expect([...terms, ...definitions].every((entry) => entry.trim().length > 0)).toBe(true)
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+            1280
         )
     }
 }

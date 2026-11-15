@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import ConstellationChanceFormulas from './ConstellationChanceFormulas.vue'
 import { describeConstellationEffectChance } from './constellationEffectChance'
+import ConstellationPrayerCalculator from './ConstellationPrayerCalculator.vue'
 
 const props = defineProps<{ nodeId: string }>()
 const chance = computed(() => describeConstellationEffectChance(props.nodeId))
@@ -17,18 +19,10 @@ const longNotes = computed(
     >
         <h2>Шанс срабатывания эффекта</h2>
         <p data-testid="debug-effect-chance-summary">{{ chance.summary }}</p>
-        <ul
-            v-if="chance.formulas.length"
-            class="chance-formulas"
-            data-testid="debug-effect-chance-formulas"
-            aria-label="Формулы шанса"
-        >
-            <li v-for="formula in chance.formulas" :key="formula">
-                <code>{{ formula }}</code>
-            </li>
-        </ul>
-        <section v-if="chance.examples.length" class="chance-examples">
-            <h3>Примеры расчёта</h3>
+        <ConstellationPrayerCalculator :node-id="nodeId" />
+        <ConstellationChanceFormulas :details="chance.formulaDetails" :legacy="chance.formulas" />
+        <details v-if="chance.examples.length" class="chance-examples">
+            <summary>Готовые примеры расчёта</summary>
             <table aria-label="Примеры расчёта">
                 <tbody>
                     <tr v-for="example in chance.examples" :key="example.label">
@@ -37,7 +31,7 @@ const longNotes = computed(
                     </tr>
                 </tbody>
             </table>
-        </section>
+        </details>
         <details v-if="longNotes" class="chance-notes">
             <summary>Примечания</summary>
             <ul>
@@ -80,22 +74,6 @@ ul {
     display: grid;
     gap: 6px;
     padding-left: 18px;
-}
-.chance-formulas {
-    padding: 0;
-    list-style: none;
-}
-.chance-formulas li {
-    padding: 8px;
-    border: 1px solid #34505e;
-    background: #0a1c27;
-}
-code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    font:
-        11px/1.65 ui-monospace,
-        monospace;
 }
 .chance-examples,
 .chance-notes {

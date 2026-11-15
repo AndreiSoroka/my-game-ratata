@@ -33,7 +33,30 @@ describe('all non-prayer effect explanations', () => {
             expect(effect.formulas.length).toBeGreaterThan(0)
             expect(effect.formulas.every((line) => line.length > 0)).toBe(true)
             expect(JSON.stringify(effect)).not.toMatch(/undefined|NaN/)
-            expect(Object.keys(effect).sort()).toEqual(['examples', 'formulas', 'notes', 'summary'])
+            expect(Object.keys(effect).sort()).toEqual([
+                'examples',
+                'formulaDetails',
+                'formulas',
+                'notes',
+                'summary',
+            ])
+            expect(effect.formulaDetails?.map((formula) => formula.expression)).toEqual(
+                effect.formulas
+            )
+            for (const formula of effect.formulaDetails ?? []) {
+                expect(formula.label.length).toBeGreaterThan(0)
+                expect(formula.expression).not.toMatch(/[А-Яа-яЁё]/)
+                const symbols = formula.expression.match(/[A-Za-z]+[₀-₉]*/g) ?? []
+                const functions = ['min', 'max', 'floor', 'round', 'clamp']
+                const legend = formula.variables.map((variable) => variable.symbol)
+                for (const symbol of symbols.filter((entry) => !functions.includes(entry))) {
+                    expect(legend).toContain(symbol)
+                }
+                for (const variable of formula.variables) {
+                    expect(variable.description.length).toBeGreaterThan(0)
+                    expect(symbols).toContain(variable.symbol)
+                }
+            }
         }
         expect(JSON.stringify(fullConstellationCatalog)).toBe(before)
     })
@@ -47,6 +70,12 @@ describe('all non-prayer effect explanations', () => {
         const first = description('blade.damage1')
         first.notes.push('mutated-output')
         first.formulas[0] = 'mutated-output'
+        const formula = first.formulaDetails?.[0]
+        if (formula === undefined) throw new Error('Missing formula details')
+        formula.label = 'mutated-output'
+        const variable = formula.variables[0]
+        if (variable === undefined) throw new Error('Missing formula legend')
+        variable.description = 'mutated-output'
         expect(JSON.stringify(description('blade.damage1'))).not.toContain('mutated-output')
     })
 
@@ -68,12 +97,22 @@ describe('chance formula boundaries and examples', () => {
         expect(swordDodgeChance(0.05, 0, true)).toBeCloseTo(0.08)
         expect(swordDodgeChance(0.05, 0, false)).toBe(0.05)
         expect(swordDodgeChance(0.94, 0.02, true)).toBe(0.95)
-        expect(description('blade.critical').formulas.join(' ')).toContain('min(95%')
+        expect(description('blade.critical').formulas).toEqual([
+            'min(95, C + 3)',
+            '(1 − D / 100) × C',
+        ])
+        expect(description('blade.critical').formulaDetails?.[0]?.variables).toEqual([
+            expect.objectContaining({
+                symbol: 'C',
+                description: expect.stringContaining('процентах'),
+            }),
+        ])
         expect(description('blade.critical').notes.join(' ')).toContain('исправным')
         expect(description('arrow.critical').notes.join(' ')).toContain('не получает')
-        expect(description('magic.root').formulas.join(' ')).toContain(
-            'P(критического попадания Искры)'
-        )
+        expect(description('magic.root').formulaDetails?.[1]).toMatchObject({
+            label: 'Шанс критического попадания Искры, %',
+            expression: '(1 − D / 100) × min(95, C)',
+        })
     })
 
     it('keeps detection, conditional success and total theft probability separate', () => {
@@ -94,6 +133,11 @@ describe('chance formula boundaries and examples', () => {
         })
         expect(description('shadow.luck1').examples[0]?.value).toContain('17,4%')
         expect(description('shadow.luck2').examples[0]?.value).toContain('18,6%')
+        expect(description('shadow.luck1').formulas).toContain('(1 − D / 100) × U')
+        expect(description('shadow.luck1').formulaDetails?.[0]?.variables).toContainEqual({
+            symbol: 'F',
+            description: '12 при попытке спереди от цели; −8 в остальных случаях.',
+        })
         expect(chancePercent(0.0475)).toBe('4,75%')
     })
 
@@ -102,18 +146,49 @@ describe('chance formula boundaries and examples', () => {
             const effect = description(id)
             expect(effect.summary).toContain('100%')
             expect(effect.summary).toContain('без бросков')
-            expect(effect.formulas.join(' ')).toContain('Kжара')
-            expect(effect.formulas.join(' ')).not.toContain('P(крит')
+            expect(effect.formulaDetails?.[0]?.variables).toContainEqual({
+                symbol: 'K',
+                description: 'Множитель «Жара»: 1.10 при изученной звезде, иначе 1.',
+            })
+            expect(effect.formulas.join(' ')).not.toContain('C')
         }
     })
 
     it('distinguishes strict runic charge expiry from inclusive discovery and consumes misses too', () => {
         const effect = description('magic.runic_echo')
-        expect(effect.formulas[0]).toContain('now <')
+        expect(effect.formulas[0]).toBe('t < t₀ + 5000')
+        expect(effect.formulaDetails?.[0]?.variables).toContainEqual({
+            symbol: 't₀',
+            description: 'Время последнего полезного попадания боевым заклинанием.',
+        })
         expect(effect.examples[0]?.value).toContain('действует')
         expect(effect.examples[1]?.value).toContain('истекло')
         expect(effect.notes.join(' ')).toContain('при запуске оплаченного Выстрела')
         expect(effect.notes.join(' ')).toContain('≤5000 мс включительно')
         expect(effect.notes.join(' ')).toContain('другую допустимую цель')
+    })
+
+    it('moves units and knowledge precision out of expressions into captions and legends', () => {
+        expect(description('life.hp1').formulas).toEqual([
+            '[floor(V / S) × S; floor(V / S) × S + S)',
+        ])
+        expect(description('life.hp1').formulaDetails?.[0]?.variables).toContainEqual({
+            symbol: 'S',
+            description: 'Шаг его оценки, указанный ниже.',
+        })
+        expect(description('life.hp1').notes.join(' ')).toContain('шаг 25')
+        expect(description('life.hp4').formulas).toEqual(['V'])
+        expect(description('magic.spark_economy').formulaDetails?.[0]).toEqual({
+            label: 'Цена Искры, MP',
+            expression: '6 − 1 = 5',
+            variables: [],
+        })
+        expect(description('shadow.noise2').formulaDetails?.[0]?.variables).toContainEqual({
+            symbol: 'M',
+            description: 'Множитель громкости поверхности.',
+        })
+        expect(description('life.root').notes.join(' ')).toContain(
+            'не меняет численные характеристики'
+        )
     })
 })

@@ -29,4 +29,20 @@ describe('debug effect chance catalogue', () => {
             notes: [],
         })
     })
+
+    it('gives every formula its own readable caption and short mathematical expression', () => {
+        for (const node of fullConstellationCatalog) {
+            const chance = describeConstellationEffectChance(node.id)
+            expect(chance.formulaDetails?.length).toBe(chance.formulas.length)
+            for (const [index, formula] of (chance.formulaDetails ?? []).entries()) {
+                expect(formula.label.trim().length).toBeGreaterThan(0)
+                expect(formula.expression).toBe(chance.formulas[index])
+                expect(formula.expression).not.toMatch(/[А-Яа-яЁё]/u)
+                for (const variable of formula.variables) {
+                    expect(variable.symbol.trim().length).toBeGreaterThan(0)
+                    expect(variable.description.trim().length).toBeGreaterThan(0)
+                }
+            }
+        }
+    })
 })
