@@ -7,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, reactive } from 'vue'
 
+import { prayerBuildFocus } from './constellationPrayerBuild'
 import ConstellationPrayerBuild from './ConstellationPrayerBuild.vue'
 import { calculatePrayerScenario, prayerCalculatorSchool } from './constellationPrayerScenario'
 import { useConstellationDebugPanels } from './useConstellationDebugPanels'
@@ -31,6 +32,13 @@ const contexts = reactive(
     ) as Record<PrayerAbilityId, PrayerExampleContext>
 )
 const school = computed(() => prayerCalculatorSchool(props.nodeId))
+const focus = computed(() => prayerBuildFocus(props.nodeId))
+const resultName = computed(() => {
+    if (focus.value === 'harm') return 'Кара'
+    if (focus.value === 'revival')
+        return school.value?.id === 'pray_grave' ? 'Возвращение праха' : 'Воскрешение'
+    return school.value ? ABILITY_DEFINITIONS[school.value.id].name : ''
+})
 const context = computed(() => (school.value ? contexts[school.value.id] : undefined))
 const scenario = computed(() =>
     context.value
@@ -44,7 +52,10 @@ const metrics = computed(() => {
     return current.metrics
 })
 const lastLight = computed(
-    () => school.value?.id === 'pray' && props.enabledStarIds?.has('prayer.last_light')
+    () =>
+        focus.value === 'prayer' &&
+        school.value?.id === 'pray' &&
+        props.enabledStarIds?.has('prayer.last_light')
 )
 const moods: { id: DeityMood; name: string }[] = [
     { id: 'benevolent', name: 'Благосклонность' },
@@ -58,13 +69,11 @@ const moods: { id: DeityMood; name: string }[] = [
         v-if="school && context && scenario"
         class="prayer-calculator"
         data-testid="debug-prayer-calculator"
-        aria-label="Результат молитвы"
+        :aria-label="`${resultName}: результат`"
         :open="panels.result"
         @toggle.self="panels.result = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <summary @keydown.stop @keyup.stop>
-            {{ ABILITY_DEFINITIONS[school.id].name }}: результат
-        </summary>
+        <summary @keydown.stop @keyup.stop>{{ resultName }}: результат</summary>
         <div class="prayer-content">
             <p class="prayer-school">
                 <strong>{{ school.god }}</strong> · {{ school.masteryName }}
@@ -113,7 +122,7 @@ const moods: { id: DeityMood; name: string }[] = [
             <ConstellationPrayerBuild
                 v-if="scenario.build"
                 :result="scenario.build"
-                :revival="nodeId.endsWith('.revive')"
+                :focus="focus"
             />
         </div>
     </details>

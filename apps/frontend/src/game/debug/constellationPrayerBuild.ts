@@ -24,6 +24,11 @@ export interface PrayerBuildContext {
     resource: string
     basePower: number
 }
+export type PrayerBuildFocus = 'prayer' | 'harm' | 'revival'
+export function prayerBuildFocus(nodeId: string): PrayerBuildFocus {
+    if (nodeId.startsWith('prayer.harm')) return 'harm'
+    return nodeId.endsWith('.revive') ? 'revival' : 'prayer'
+}
 type Bonuses = ReturnType<typeof resolveConstellationBonuses>
 const insights = [
     'Нет',
@@ -40,10 +45,17 @@ export function calculatePrayerBuild(
     context: PrayerBuildContext
 ): PrayerBuildResult {
     const root = `${PRAYER_SCHOOL_DEFINITIONS[context.ability].constellationId}.root`
-    const revival = nodeId.endsWith('.revive')
-    if (!activeIds.has(root) || (revival && !activeIds.has(nodeId)))
+    const focus = prayerBuildFocus(nodeId)
+    const revival = focus === 'revival'
+    if (!activeIds.has(root) || (focus !== 'prayer' && !activeIds.has(nodeId)))
         return { available: false, effects: [], metrics: [] }
     const bonuses = resolveConstellationBonuses(activeIds, context.lowHealthEligible)
+    if (focus === 'harm') {
+        const effects: string[] = []
+        const metrics = [radiusMetric(context, bonuses)]
+        appendHarm(effects, metrics, bonuses, context)
+        return { available: true, effects, metrics }
+    }
     const mother = context.ability === 'pray'
     const metrics = commonMetrics(context, bonuses, revival)
     if (revival)
@@ -76,14 +88,7 @@ function commonMetrics(
     const definition = ABILITY_DEFINITIONS[context.ability]
     const mother = context.ability === 'pray'
     const metrics = [
-        {
-            label: 'Радиус',
-            value: constellationDistance(
-                definition.range,
-                mother ? bonuses.prayerRadiusCells : 0,
-                context.tileWidth
-            ),
-        },
+        radiusMetric(context, bonuses),
         {
             label: 'Время молитвы',
             value: `${Math.round(definition.windupMs * (mother ? bonuses.prayerDurationMultiplier : 1))} мс`,
@@ -91,6 +96,16 @@ function commonMetrics(
         { label: 'Цена молитвы', value: `${revival ? REVIVE_MANA_COST : definition.mana} MP` },
     ]
     return metrics
+}
+function radiusMetric(context: PrayerBuildContext, bonuses: Bonuses) {
+    return {
+        label: 'Радиус',
+        value: constellationDistance(
+            ABILITY_DEFINITIONS[context.ability].range,
+            context.ability === 'pray' ? bonuses.prayerRadiusCells : 0,
+            context.tileWidth
+        ),
+    }
 }
 function restorationMetrics(
     context: PrayerBuildContext,
@@ -125,16 +140,7 @@ function appendMotherEffects(
     context: PrayerBuildContext
 ): void {
     effects.push(`Очищение могил: требуется ${GRAVE_PURIFY_STEPS} успешных шагов.`)
-    if (activeIds.has('prayer.harm')) {
-        const damage = Math.round(
-            6 * (prayerMoodQuality[context.mood] * bonuses.prayerHarmMultiplier)
-        )
-        effects.push('Кара наносит урон подходящей нежити в радиусе.')
-        metrics.push(
-            { label: 'Урон кары', value: `${damage} HP до поглощения` },
-            { label: 'Множитель кары', value: times(bonuses.prayerHarmMultiplier) }
-        )
-    }
+    if (activeIds.has('prayer.harm')) appendHarm(effects, metrics, bonuses, context)
     if (bonuses.prayerArea)
         effects.push(
             'Общая молитва: одновременно лечит всех подходящих союзников и очищает все подходящие могилы в радиусе.'
@@ -146,6 +152,19 @@ function appendMotherEffects(
     }
     appendInsight(effects, metrics, 'Знание Угольной Матери', bonuses.deityInsight)
     appendInsight(effects, metrics, 'Знание других богов', bonuses.otherDeityInsight)
+}
+function appendHarm(
+    effects: string[],
+    metrics: PrayerBuildResult['metrics'],
+    bonuses: Bonuses,
+    context: PrayerBuildContext
+): void {
+    const damage = Math.round(6 * (prayerMoodQuality[context.mood] * bonuses.prayerHarmMultiplier))
+    effects.push('Кара наносит урон подходящей нежити в радиусе.')
+    metrics.push(
+        { label: 'Урон кары', value: `${damage} HP до поглощения` },
+        { label: 'Множитель кары', value: times(bonuses.prayerHarmMultiplier) }
+    )
 }
 function appendInsight(
     effects: string[],

@@ -8,7 +8,12 @@ import {
     prayerPurificationChance,
 } from '../../../../backend/src/game/prayerProbability'
 import { chancePercent } from './constellationChanceMath'
-import { calculatePrayerBuild, type PrayerBuildResult } from './constellationPrayerBuild'
+import {
+    calculatePrayerBuild,
+    type PrayerBuildFocus,
+    prayerBuildFocus,
+    type PrayerBuildResult,
+} from './constellationPrayerBuild'
 
 export interface PrayerCalculatorSchool {
     id: PrayerAbilityId
@@ -84,7 +89,7 @@ export function calculatePrayerScenario(
     if (school === undefined) return undefined
     const { mood } = settings
     const answer = prayerAnswerChance(mood)
-    const revival = nodeId.endsWith('.revive')
+    const focus = prayerBuildFocus(nodeId)
     const info = prayerSchoolInfo[school.id]
     const build =
         activeIds === undefined
@@ -97,7 +102,7 @@ export function calculatePrayerScenario(
                   tileWidth: settings.tileWidth ?? 16,
               })
     const available = build?.available ?? true
-    const metrics = available ? outcomeMetrics(school.id, revival, answer, activeIds) : []
+    const metrics = available ? outcomeMetrics(school.id, focus, answer, activeIds) : []
     return {
         school,
         metrics,
@@ -117,11 +122,13 @@ const reviveNodes: Partial<Record<PrayerAbilityId, string>> = {
 }
 function outcomeMetrics(
     ability: PrayerAbilityId,
-    revival: boolean,
+    focus: PrayerBuildFocus,
     answer: number,
     activeIds?: ReadonlySet<string>
 ): PrayerScenarioResult['metrics'] {
-    if (revival) return [{ label: 'Шанс воскрешения', value: chancePercent(answer) }]
+    if (focus === 'revival') return [{ label: 'Шанс воскрешения', value: chancePercent(answer) }]
+    if (focus === 'harm')
+        return [{ label: 'Шанс кары', value: chancePercent(prayerHarmChance(answer)) }]
     const metrics = [{ label: chanceLabels[ability], value: chancePercent(answer) }]
     if (ability === 'pray') {
         metrics.push({

@@ -19,6 +19,83 @@ async function assertChanceAccordion(page: Page, id: string): Promise<void> {
     await chance.locator(':scope > summary').click()
 }
 
+async function expectKaraResult(page: Page, damage: number): Promise<void> {
+    await expect(page.locator('[data-metric]')).toHaveCount(1)
+    await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('75%')
+    await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText(`${damage} HP`)
+    await expect(page.locator('[data-build-metric="Множитель кары"]')).toBeVisible()
+    await expect(page.locator('[data-build-metric="Радиус"] dd')).toHaveText('3 клетки')
+    await expect(page.locator('[data-build-metric="Лечение"]')).toHaveCount(0)
+    await expect(page.locator('[data-build-metric="Цена молитвы"]')).toHaveCount(0)
+    await expect(page.locator('[data-build-metric="Время молитвы"]')).toHaveCount(0)
+    await expect(page.getByTestId('debug-last-light')).toHaveCount(0)
+    await expect(page.getByTestId('debug-prayer-build-effects')).not.toContainText('Лечение')
+    await expect(page.getByTestId('debug-prayer-build-effects')).not.toContainText('Очищение')
+    await expect(page.getByTestId('debug-prayer-build-effects')).not.toContainText('Воскрешение')
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`atlas separates Kara result from the whole Prayer at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto('/?debug=constellations&class=cleric&seed=kara-result')
+        await expect(page.getByTestId('constellation-debug')).toBeVisible()
+        await setBuildPanelsOpen(page, true)
+        await selectBuildStar(page, 'prayer.harm')
+        await expect(buildResultPanel(page).locator(':scope > summary')).toHaveText(
+            'Кара: результат'
+        )
+        await expect(page.getByTestId('debug-build-count').locator('strong')).toHaveText('2')
+        await expect(page.getByTestId('debug-prayer-unavailable')).toBeVisible()
+        await expect(page.locator('[data-metric="Шанс кары"]')).toHaveCount(0)
+        await page.getByTestId('selected-star-toggle').click()
+        await expectKaraResult(page, 6)
+        await selectBuildStar(page, 'prayer.root')
+        await expect(buildResultPanel(page).locator(':scope > summary')).toHaveText(
+            'Молитва: результат'
+        )
+        await expect(page.locator('[data-metric]')).toHaveCount(4)
+        await expect(page.locator('[data-metric="Шанс лечения"] dd')).toHaveText('55%')
+        await expect(page.locator('[data-metric="Шанс очищения могилы"] dd')).toHaveText(
+            '20% за шаг'
+        )
+        await expect(page.locator('[data-metric="Шанс воскрешения"] dd')).toHaveText('55%')
+        await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('6 HP')
+        for (const id of ['prayer.gift1', 'prayer.gift2']) {
+            await selectBuildStar(page, id)
+            await page.getByTestId('selected-star-toggle').click()
+        }
+        await selectBuildStar(page, 'prayer.harm')
+        await expectKaraResult(page, 6)
+        await selectBuildStar(page, 'prayer.root')
+        await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('7 HP')
+        for (const [id, damage] of [
+            ['prayer.harm1', 8],
+            ['prayer.harm2', 10],
+        ] as const) {
+            await selectBuildStar(page, id)
+            await page.getByTestId('selected-star-toggle').click()
+            await expectKaraResult(page, damage)
+        }
+        await selectBuildStar(page, 'prayer.harm')
+        await expectKaraResult(page, 10)
+        await page
+            .getByTestId('debug-prayer-mood')
+            .getByRole('button', { name: 'Благосклонность' })
+            .click()
+        await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('95%')
+        await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText('12 HP')
+        await selectBuildStar(page, 'prayer.root')
+        await expect(page.locator('[data-metric="Шанс лечения"] dd')).toHaveText('80%')
+        await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('95%')
+        await expect(
+            page.getByTestId('debug-prayer-mood').getByRole('button', { name: 'Благосклонность' })
+        ).toHaveAttribute('aria-pressed', 'true')
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+            width
+        )
+    })
+}
+
 for (const width of [320, 390, 1280]) {
     test(`mastery atlas is compact and consistent at ${width}px`, async ({ page }) => {
         test.setTimeout(90_000)

@@ -14,6 +14,33 @@ const metric = (result: ReturnType<typeof calculate>, label: string) =>
     result.build!.metrics.find((row) => row.label === label)?.value
 
 describe('fixed prayer power and cumulative learned modifiers', () => {
+    it('limits the Kara branch to its own learned damage, area and chance', () => {
+        const kara = calculate(full, 'prayer.harm', 'neutral', true)
+        expect(kara.metrics).toEqual([{ label: 'Шанс кары', value: '75%' }])
+        expect(kara.build!.effects).toEqual(['Кара наносит урон подходящей нежити в радиусе.'])
+        expect(kara.build!.metrics).toEqual([
+            { label: 'Радиус', value: '5 клеток' },
+            { label: 'Урон кары', value: '10 HP до поглощения' },
+            { label: 'Множитель кары', value: '×1,6' },
+        ])
+        for (const node of ['prayer.harm1', 'prayer.harm2'])
+            expect(calculate(full, node).build).toEqual(kara.build)
+        const root = calculate(full)
+        expect(root.metrics).toContainEqual({ label: 'Шанс кары', value: '75%' })
+        expect(metric(root, 'Лечение')).toBe('7 HP')
+        expect(metric(root, 'Урон кары')).toBe('10 HP до поглощения')
+    })
+    it('keeps healing bonuses out of Kara and hides results for an unselected Kara star', () => {
+        const active = new Set(['prayer.root', 'prayer.harm'])
+        const before = calculate(active, 'prayer.harm')
+        active.add('prayer.gift1')
+        active.add('prayer.gift2')
+        expect(calculate(active, 'prayer.harm')).toEqual(before)
+        expect(metric(calculate(active), 'Лечение')).toBe('7 HP')
+        const unavailable = calculate(active, 'prayer.harm1')
+        expect(unavailable.metrics).toEqual([])
+        expect(unavailable.build).toEqual({ available: false, effects: [], metrics: [] })
+    })
     it('composes Kara without changing base healing or probability from acquired stars', () => {
         const active = new Set(['prayer.root'])
         expect(metric(calculate(active), 'Лечение')).toContain('6 HP')

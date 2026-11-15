@@ -1,22 +1,28 @@
 <script setup lang="ts">
-import type { PrayerBuildResult } from './constellationPrayerBuild'
+import type { PrayerBuildFocus, PrayerBuildResult } from './constellationPrayerBuild'
 
-defineProps<{ result: PrayerBuildResult; revival: boolean }>()
+defineProps<{ result: PrayerBuildResult; focus: PrayerBuildFocus }>()
+const headings: Record<PrayerBuildFocus, string> = {
+    prayer: 'Итог молитвы',
+    harm: 'Итог кары',
+    revival: 'Итог воскрешения',
+}
+const unavailable: Record<PrayerBuildFocus, string> = {
+    prayer: 'Молитва не включена в набор. Включите её корень.',
+    harm: 'Включите выбранную звезду Кары и корень молитвы.',
+    revival: 'Включите корень молитвы и звезду воскрешения.',
+}
 </script>
 <template>
     <section
         class="prayer-build"
         data-testid="debug-prayer-build"
-        aria-label="Итог молитвы"
+        :aria-label="headings[focus]"
         aria-live="polite"
     >
-        <h4>{{ revival ? 'Итог воскрешения' : 'Итог молитвы' }}</h4>
+        <h4>{{ headings[focus] }}</h4>
         <p v-if="!result.available" data-testid="debug-prayer-unavailable">
-            {{
-                revival
-                    ? 'Включите корень молитвы и звезду воскрешения.'
-                    : 'Молитва не включена в набор. Включите её корень.'
-            }}
+            {{ unavailable[focus] }}
         </p>
         <template v-else>
             <ul data-testid="debug-prayer-build-effects">
