@@ -4,8 +4,6 @@ import type {
     ConstellationNodeSnapshot,
 } from '@my-game-ratata/contracts'
 
-import { constellationPosition } from './constellationLayout'
-
 export interface ConstellationStar {
     id: string
     constellationId: ConstellationId
@@ -16,9 +14,10 @@ export interface ConstellationStar {
     kind: NonNullable<ConstellationNodeSnapshot['kind']>
     effectType: 'active' | 'passive'
     effects?: string[]
+    /** Ability required before this enhancement can be discovered. */
     ability?: AbilityId
-    x: number
-    y: number
+    /** Standalone hotbar action represented by an active node. */
+    activationAbilityId?: AbilityId
 }
 
 export function star(
@@ -40,6 +39,5 @@ export function star(
         kind: 'passive',
         effectType: 'passive',
         ...(ability === undefined ? {} : { ability }),
-        ...constellationPosition(`${path}.${suffix}`, path),
     }
 }

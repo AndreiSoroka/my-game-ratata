@@ -28,3 +28,10 @@ export const Unknown: Story = {
             },
         }),
 }
+
+export const PhysicalPassive: Story = {
+    render: () => renderVueStory(ConstellationStarCard, { node: node('blade.damage1') }),
+}
+export const PrayerPassive: Story = {
+    render: () => renderVueStory(ConstellationStarCard, { node: node('prayer.radius1') }),
+}

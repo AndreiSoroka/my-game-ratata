@@ -115,8 +115,12 @@ Restarting the server begins a new world session; durable persistence is not imp
 ## Knowledge through use
 
 Open **Персонаж** through the game menu or **P** for **Характеристики** and
-**Развитие**. The former Knowledge button opens Development. Six constellations
-represent blade, magic, prayer, archery, life and shadow. Skill levels remain 1–10;
+**Развитие**. The former Knowledge button opens Development. Nine constellations
+represent blade, magic, prayer, archery, life, shadow, the Wanderer, Clarity and Ash.
+Each living identity has its own irregular star map, with its initial class root
+at the center. Discoveries, patron changes, reconnecting and temporary death retain
+that map; a new identity gets a new one. Layout randomness is private and separate
+from combat and progression rolls. Skill levels remain 1–10;
 earned steps reveal weighted random eligible passive stars through meaningful use.
 Only known stars and nearest unknown neighbors are projected to the owner. See
 [Character development](character-development.md) for the catalogue and controls.
@@ -125,6 +129,10 @@ repeat immediately. Empty devotion stays free, cosmetic and untrainable. Failed
 meaningful requests train Faith; actual gifts, hostile damage or grave progress
 train Miracles once per completed cast. Harmful waves and deity insight require
 learned stars. Resurrection retains its existing class/mastery requirements.
+An active star describes a standalone hotbar action; all other stars are labelled
+«Пассивное заклинание», including resurrection enhancements to their parent prayer.
+Selecting a star only opens its card. Home and the overview button return to the
+initial class constellation.
 
 Use **Изучить огненный шар** near the scholar in camp, within 64 world units. Fireball is initially unlearned for every background, including Arcanist. Select a nearby hostile character in the knowledge window and cast: Fireball costs 12 mana, has range 160 and a 1-second cooldown. Greater Fireball unlocks automatically at Fireball level 10; it costs 24 mana, has range 192 and a 2-second cooldown. The server checks resources, range, line of sight and cooldowns. Successful hits advance practice. Practice across several branches raises the cost of future practice; the window displays the current multiplier and practiced branches. Kills no longer grant generic level XP. Overall learning level is one plus earned skill levels; further practice grows more expensive as that total rises.
 
@@ -571,4 +579,4 @@ Terrain borders use connected atlas quadrants, including diagonal concave corner
 
 Clerics start only with Hearth Prayer. Sister Vera can teach the four separate spells to any background through ordinary nearby interaction: Prayer (`pray`), Prayer of the Wanderer (`pray_road`), Prayer of Clarity (`pray_lantern`) and Prayer of Ash (`pray_grave`). Bind them independently using Shift+1–4. Each uses its own god, Faith and Miracles; changing the primary patron affects the affiliation shown under the resource bars, never a spell’s effect or knowledge. The three new paths currently have their base spells, with an additional undead resurrection node for Ash. Healing passives and grave purification belong only to the original Prayer constellation. Resurrection is still a mode of the matching prayer, without a separate hotbar binding.
 
-Character Development has nine stable constellation regions. Unknown cards say only «Неизвестно», and their grey translucent stars remain selectable in detailed view. Known cards contain their effect instead of training instructions. See [character development](character-development.md) for school practice, resource recovery and the training-yard radius selection.
+Character Development has nine constellations on a personal, stable star map centered on the initial class. Unknown cards say only «Неизвестно», and their grey translucent stars remain selectable in detailed view. Known cards contain their effect instead of training instructions. See [character development](character-development.md) for school practice, resource recovery and the training-yard radius selection.

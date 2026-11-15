@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import ConstellationGraph from './ConstellationGraph.vue'
 import ConstellationStarCard from './ConstellationStarCard.vue'
@@ -13,8 +13,15 @@ const sky = computed(() => props.player.progression?.constellations)
 const selected = computed(
     () =>
         sky.value?.nodes.find((node) => node.id === selectedId.value) ??
+        sky.value?.nodes.find((node) => node.id === sky.value?.layout?.centerNodeId) ??
         sky.value?.nodes.find((node) => node.kind === 'root' && node.unlocked) ??
         sky.value?.nodes[0]
+)
+watch(
+    () => props.player.id,
+    () => {
+        selectedId.value = ''
+    }
 )
 </script>
 
@@ -23,6 +30,7 @@ const selected = computed(
         <template v-if="sky">
             <div class="development-layout">
                 <ConstellationGraph
+                    :key="player.id"
                     :constellation="sky"
                     :selected-id="selected?.id"
                     @select="selectedId = $event"

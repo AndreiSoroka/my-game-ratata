@@ -9,7 +9,7 @@ defineProps<{ node: ConstellationNodeSnapshot }>()
         <template v-if="node.unlocked && node.name">
             <h3>{{ node.name }}</h3>
             <span v-if="node.effectType" class="constellation-detail__type">{{
-                node.effectType === 'active' ? 'Активное заклинание' : 'Пассивная способность'
+                node.effectType === 'active' ? 'Активное заклинание' : 'Пассивное заклинание'
             }}</span>
             <p v-if="node.description">{{ node.description }}</p>
             <ul v-if="node.effects?.length">
@@ -22,13 +22,23 @@ defineProps<{ node: ConstellationNodeSnapshot }>()
 
 <style scoped>
 .constellation-detail {
+    display: grid;
+    gap: 12px;
     min-width: 0;
     padding: 18px;
     border: 1px solid #4f6470;
     background: #122631;
+    color: #eee6d2;
+    font:
+        14px/1.5 system-ui,
+        sans-serif;
+}
+h3,
+p,
+ul {
+    margin: 0;
 }
 h3 {
-    margin: 0 0 10px;
     font-size: 20px;
     color: #f0d89c;
 }
@@ -42,11 +52,9 @@ li {
     line-height: 1.65;
 }
 ul {
+    display: grid;
+    gap: 4px;
     padding-left: 18px;
-    margin-bottom: 0;
-}
-li + li {
-    margin-top: 7px;
 }
 @media (max-width: 780px) {
     .constellation-detail {

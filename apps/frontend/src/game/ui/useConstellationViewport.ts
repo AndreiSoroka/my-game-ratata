@@ -6,9 +6,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     const zoom = ref(1)
     const offset = ref({ x: 0, y: 0 })
     const dimensions = ref({ width: 700, height: 450 })
-    const bounds = computed(() =>
-        cameraBounds(snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
-    )
+    const bounds = computed(() => snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
     const baseScale = computed(() =>
         Math.max(
             bounds.value.width / dimensions.value.width,
@@ -53,7 +51,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
             : (unitScale.value * zoom.value) / 2
         const desiredScale = Math.min(fitScale, minimumSpacing.value / 64)
         zoom.value = Math.min(maximumZoom.value, (unitScale.value * zoom.value) / desiredScale)
-        centerOn(pathFocus(snapshot(), node))
+        centerOn(pathFocus(snapshot(), node, dimensions.value, unitScale.value))
     }
     function ensureVisible(node: ConstellationNodeSnapshot): void {
         const margin = 32 * unitScale.value
@@ -176,21 +174,25 @@ function viewportBounds(
     }
 }
 
-function cameraBounds(bounds: { x: number; y: number; width: number; height: number }) {
-    return {
-        x: bounds.x - 240,
-        y: bounds.y - 240,
-        width: bounds.width + 480,
-        height: bounds.height + 1240,
-    }
-}
-
-function pathFocus(sky: ConstellationSnapshot, root: ConstellationNodeSnapshot) {
+function pathFocus(
+    sky: ConstellationSnapshot,
+    root: ConstellationNodeSnapshot,
+    dimensions: { width: number; height: number },
+    scale: number
+) {
     const nearest = sky.nodes
         .filter((node) => node.parents.includes(root.id))
         .sort(
             (a, b) =>
                 Math.hypot(a.x - root.x, a.y - root.y) - Math.hypot(b.x - root.x, b.y - root.y)
         )[0]
-    return nearest ? { x: (root.x + nearest.x) / 2, y: (root.y + nearest.y) / 2 } : root
+    if (!nearest) return root
+    const clampedShift = (difference: number, dimension: number) => {
+        const maximum = Math.max(0, dimension / 2 - 32) * scale
+        return Math.max(-maximum, Math.min(maximum, difference / 2))
+    }
+    return {
+        x: root.x + clampedShift(nearest.x - root.x, dimensions.width),
+        y: root.y + clampedShift(nearest.y - root.y, dimensions.height),
+    }
 }

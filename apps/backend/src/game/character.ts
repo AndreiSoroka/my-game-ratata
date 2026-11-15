@@ -41,6 +41,7 @@ import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { normalize, resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import { PersonalConstellationSky } from './personalConstellationSky'
 import { createResourcePractice } from './resourcePractice'
 import {
     type CharacterProgression,
@@ -61,6 +62,7 @@ export class GameCharacter {
     public readonly faction: CharacterFactionId
     public readonly id: string
     public maxHp: number
+    public readonly constellationSky = new PersonalConstellationSky(this)
     public readonly heroClass: HeroClass | undefined
     public readonly mortal: boolean
     public readonly respawnPolicy: 'automatic' | 'none'

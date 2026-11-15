@@ -187,3 +187,12 @@ Accept a quest with `rewardMode: 'submitter'` or `'party_equal'` (default) on `g
 Worker requests appear as dynamic guild jobs after the worker reaches its clerk. Use the currently observed `questId` to accept and the resulting `activeJob.instanceId` for `guild_report`, `guild_turn_in` and `guild_abandon`. A report requires one carried matching trophy once per request and starts the worker's physical work-and-return trial. Inspect `activeJob.workRequest.stage` and `reason`; an updated snapshot is not proof of trial success. Final turn-in also rechecks danger, so verify the completed contract, payout receipt and worker release. Do not inject trophies, teleport the worker or edit incident stages to claim a successful gameplay check.
 
 Prayer spells have independent gods and mastery. `pray` heals organic recipients and alone purifies graves; `pray_road` restores energy; `pray_lantern` restores mana; `pray_grave` heals undead. The selected ID stays pinned through preview, channel and repetition. Changing the primary patron does not learn or change a spell. Only Hearth and Grave support their own resurrection mode, within the existing soul deadline. Observe learned spell parameters and nested resource checks instead of assuming a single global prayer profile. Unknown constellation nodes omit names and effects, including closed roots and resurrection abilities.
+
+Each private constellation snapshot has a personal layout with an opaque
+`layout.centerNodeId` for the initial class root. Its full symmetric bounds,
+positions and edge vertices remain stable for that identity through discoveries,
+reconnects and temporary death. Different identities receive different irregular
+maps. Never infer gameplay practice from layout geometry: the private seed and
+layout RNG are independent of combat and progression. Public NPC snapshots do not
+prepare or disclose personal maps. Active nodes describe actual standalone hotbar
+actions; resurrection nodes are passive extensions of their prayer.

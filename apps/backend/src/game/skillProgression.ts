@@ -21,6 +21,7 @@ import {
 } from './constellations'
 import type { CharacterConstellations } from './constellationState'
 import { snapshotDeity, snapshotOtherDeities } from './deities'
+import { readCachedConstellationLayout } from './personalConstellationSky'
 
 interface SkillPractice {
     level: number
@@ -152,7 +153,9 @@ export function snapshotProgression(
         ...(includePrivate
             ? {
                   otherDeities: snapshotOtherDeities(character, now),
-                  constellations: snapshotConstellations(character),
+                  ...(readCachedConstellationLayout(character) === undefined
+                      ? {}
+                      : { constellations: snapshotConstellations(character) }),
               }
             : {}),
         magicChaptersRead: character.progression.magicChaptersRead,

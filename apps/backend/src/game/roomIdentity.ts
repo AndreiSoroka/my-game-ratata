@@ -15,6 +15,7 @@ import {
 } from './controllers'
 import { normalizeNickname } from './identity'
 import { cancelMovementMode } from './movementActions'
+import { prepareConstellationLayout } from './personalConstellationSky'
 import { cancelPrayerCast } from './prayerCancellation'
 import type { GameRoom } from './room'
 import {
@@ -115,6 +116,7 @@ export function joinRoom(
     const character =
         existingCharacter ??
         context.createPlayer(nickname, nicknameKey, archetype, heroClass)
+    prepareConstellationLayout(character)
     character.tags.delete('offline')
     character.connected = true
     setCharacterControlSource(character, 'human')

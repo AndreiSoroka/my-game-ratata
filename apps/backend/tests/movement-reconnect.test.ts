@@ -1,6 +1,7 @@
 import { MOVEMENT_RULES, type ServerMessage } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { readCachedConstellationLayout } from '../src/game/personalConstellationSky'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
 
@@ -38,6 +39,13 @@ it.each(['sneaking', 'dash'] as const)(
         if (actor === undefined) {
             throw new Error('Missing character')
         }
+        const personalSky = readCachedConstellationLayout(actor)
+        expect(personalSky).toBeDefined()
+        expect(
+            init.snapshot.characters.find(
+                (character) => character.id === actor.id
+            )?.progression?.constellations
+        ).toBeDefined()
         room.handleMessage(
             first,
             JSON.stringify({ type: 'move_input', axis: { x: 1, y: 0 } })
@@ -67,6 +75,7 @@ it.each(['sneaking', 'dash'] as const)(
             second,
             JSON.stringify({ type: 'join', nickname: 'Reconnect' })
         )
+        expect(readCachedConstellationLayout(actor)).toBe(personalSky)
         expect(actor.movement.dashAvailableAt).toBe(cooldown)
         expect(actor.energy).toBe(energy)
         expect(actor.getMoveInput()).toEqual({ x: 0, y: 0 })

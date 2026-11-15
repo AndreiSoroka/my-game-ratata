@@ -5,7 +5,6 @@ import {
     type ConstellationStar,
     constellationStars,
 } from './constellationCatalog'
-import { constellationPosition } from './constellationLayout'
 
 const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
     arrow: 'shot',
@@ -31,7 +30,9 @@ const roots: ConstellationStar[] = constellationPaths.map((path) => {
         evidence: [],
         kind: 'root',
         effectType: ability === undefined ? 'passive' : 'active',
-        ...(ability === undefined ? {} : { ability }),
+        ...(ability === undefined
+            ? {}
+            : { ability, activationAbilityId: ability }),
         ...(path.id === 'prayer'
             ? {
                   effects: [
@@ -40,7 +41,6 @@ const roots: ConstellationStar[] = constellationPaths.map((path) => {
                   ],
               }
             : {}),
-        ...constellationPosition(`${path.id}.root`, path.id),
     }
 })
 
@@ -50,7 +50,8 @@ function special(
     kind: 'ability' | 'joint',
     name: string,
     description: string,
-    parents: string[]
+    parents: string[],
+    activationAbilityId?: AbilityId
 ): ConstellationStar {
     return {
         id,
@@ -60,8 +61,8 @@ function special(
         description,
         parents,
         evidence: [],
-        effectType: kind === 'ability' ? 'active' : 'passive',
-        ...constellationPosition(id, path),
+        effectType: activationAbilityId === undefined ? 'passive' : 'active',
+        ...(activationAbilityId === undefined ? {} : { activationAbilityId }),
     }
 }
 
@@ -72,7 +73,8 @@ const explicitAbilities = [
         'ability',
         'Огненный шар',
         'Вы бросаете огненный шар в выбранную цель.',
-        ['magic.root']
+        ['magic.root'],
+        'fireball'
     ),
     special(
         'magic.greater_fireball',
@@ -80,7 +82,8 @@ const explicitAbilities = [
         'ability',
         'Большой огненный шар',
         'Вы обрушиваете на выбранную цель мощный огненный шар.',
-        ['magic.fireball']
+        ['magic.fireball'],
+        'greater_fireball'
     ),
     special(
         'prayer.revive',
@@ -120,12 +123,21 @@ const joints = [
 ]
 
 /** Complete authored graph. Owner snapshots disclose only earned metadata and the immediate frontier. */
-export const fullConstellationCatalog: ConstellationStar[] = [
-    ...roots,
-    ...constellationStars,
-    ...explicitAbilities,
-    ...joints,
-]
+export const fullConstellationCatalog: readonly ConstellationStar[] =
+    Object.freeze(
+        [...roots, ...constellationStars, ...explicitAbilities, ...joints].map(
+            freezeStar
+        )
+    )
+
+function freezeStar(node: ConstellationStar): Readonly<ConstellationStar> {
+    Object.freeze(node.parents)
+    Object.freeze(node.evidence)
+    if (node.effects !== undefined) {
+        Object.freeze(node.effects)
+    }
+    return Object.freeze(node)
+}
 
 const wireIds = new Map(
     fullConstellationCatalog.map((node, index) => [

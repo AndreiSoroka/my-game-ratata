@@ -55,3 +55,59 @@ it('places full-catalogue labels without overlapping at detailed scale', () => {
                     b.y + b.height <= a.y
             ).toBe(true)
 })
+
+it.each(['vanguard', 'arcanist', 'cleric', 'ranger'] as const)(
+    'centers %s on its immutable starting root and resets selection there',
+    async (heroClass) => {
+        const player = developmentCharacterFixture(heroClass)
+        const sky = player.progression!.constellations!
+        const center = sky.nodes.find((node) => node.id === sky.layout!.centerNodeId)!
+        expect(center.x).toBe(0)
+        expect(center.y).toBe(0)
+        const view = mount(CharacterDevelopment, { props: { player, characters: [] } })
+        expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe(center.name)
+        const box = () => view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+        const [x, y, width, height] = box()
+        expect(x! + width! / 2).toBeCloseTo(0)
+        expect(y! + height! / 2).toBeCloseTo(0)
+        const other = sky.nodes.find((node) => node.parents.length === 0 && node.id !== center.id)!
+        await view.get(`[data-node-id="${other.id}"]`).trigger('click')
+        await view.get('[aria-label="Показать весь небосвод"]').trigger('click')
+        expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe(center.name)
+        expect(box()).toEqual([x, y, width, height])
+        view.unmount()
+    }
+)
+it('preserves selected stars on reveal, then clears selection for a new identity', async () => {
+    const player = developmentCharacterFixture('cleric')
+    const view = mount(CharacterDevelopment, { props: { player, characters: [] } })
+    await view.get(`[data-node-id="${fixtureStarId('life.root')}"]`).trigger('click')
+    expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe('Жизнь')
+    const revealed = {
+        ...player,
+        progression: { ...player.progression!, constellations: constellationFixture(true) },
+    }
+    await view.setProps({ player: revealed })
+    expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe('Жизнь')
+    await view.setProps({ player: { ...developmentCharacterFixture('ranger'), id: 'new-life' } })
+    expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe('Стрела')
+    view.unmount()
+})
+
+it('keeps the selected root in view when its nearest branch cannot fit beside it', async () => {
+    const sky = constellationFixture(true)
+    const root = { ...sky.nodes.find((node) => node.id === sky.layout!.centerNodeId)!, x: 0, y: 0 }
+    const child = { ...sky.nodes.find((node) => node.parents.includes(root.id))!, x: 2000, y: 0 }
+    sky.nodes = [root, child]
+    sky.edges = [{ from: root.id, to: child.id }]
+    sky.layout!.minimumNodeSpacing = 80
+    const view = mount(ConstellationGraph, { props: { constellation: sky } })
+    await view.get(`[data-node-id="${root.id}"]`).trigger('click')
+    const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+    const scale = width! / 700
+    expect(root.x - x!).toBeGreaterThanOrEqual(31 * scale)
+    expect(x! + width! - root.x).toBeGreaterThanOrEqual(31 * scale)
+    expect(root.y - y!).toBeGreaterThanOrEqual(31 * scale)
+    expect(y! + height! - root.y).toBeGreaterThanOrEqual(31 * scale)
+    view.unmount()
+})

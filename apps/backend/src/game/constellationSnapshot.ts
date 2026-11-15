@@ -9,19 +9,25 @@ import {
     type ConstellationStar,
 } from './constellationCatalog'
 import {
-    constellationEdgeWaypoints,
-    constellationLayout,
-} from './constellationLayout'
-import {
     constellationWireId,
     fullConstellationCatalog,
 } from './constellationNodes'
 import { hasStar } from './constellations'
+import {
+    type CachedConstellationLayout,
+    readCachedConstellationLayout,
+} from './personalConstellationSky'
 import { canUseResurrection } from './skillProgression'
 
 export function snapshotConstellations(
     actor: GameCharacter
 ): ConstellationSnapshot {
+    const sky = readCachedConstellationLayout(actor)
+    if (sky === undefined) {
+        throw new Error(
+            'Prepare the personal constellation layout before private observation'
+        )
+    }
     const learned = new Set(
         fullConstellationCatalog
             .filter((node) => unlocked(actor, node))
@@ -36,40 +42,63 @@ export function snapshotConstellations(
     const visibleIds = new Set(visible.map((node) => node.id))
     return {
         version: 1,
-        layout: structuredClone(constellationLayout),
+        layout: {
+            ...structuredClone(sky.layout),
+            ...(sky.layout.centerNodeId === undefined
+                ? {}
+                : {
+                      centerNodeId: constellationWireId(
+                          sky.layout.centerNodeId
+                      ),
+                  }),
+        },
         paths: constellationPaths.map(({ id, name, description, color }) => ({
             id,
             color,
             unlocked: learned.has(`${id}.root`),
             ...(learned.has(`${id}.root`) ? { name, description } : {}),
         })),
-        nodes: visible.map((node) => observeNode(node, learned.has(node.id))),
+        nodes: visible.map((node) =>
+            observeNode(node, learned.has(node.id), sky)
+        ),
         edges: visible.flatMap((node) =>
             node.parents
                 .filter((id) => visibleIds.has(id))
-                .map((from) => observedEdge(from, node.id))
+                .map((from) => observedEdge(from, node.id, sky))
         ),
     }
 }
 
-function observedEdge(from: string, to: string) {
-    const via = constellationEdgeWaypoints(from, to)
+function observedEdge(
+    from: string,
+    to: string,
+    sky: CachedConstellationLayout
+) {
+    const via = sky.edgeWaypoints[`${from}>${to}`]
     return {
         from: constellationWireId(from),
         to: constellationWireId(to),
-        ...(via === undefined ? {} : { via }),
+        ...(via === undefined
+            ? {}
+            : { via: via.map((point) => ({ ...point })) }),
     }
 }
 
 function observeNode(
     node: ConstellationStar,
-    learned: boolean
+    learned: boolean,
+    sky: CachedConstellationLayout
 ): ConstellationNodeSnapshot {
+    const position = sky.positions[node.id]
+    if (position === undefined) {
+        throw new Error(
+            `Personal sky is missing a constellation node: ${node.id}`
+        )
+    }
     return {
         id: constellationWireId(node.id),
         constellationId: node.constellationId,
-        x: node.x,
-        y: node.y,
+        ...position,
         unlocked: learned,
         parents: node.parents.map(constellationWireId),
         ...(learned

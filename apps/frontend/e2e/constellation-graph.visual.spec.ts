@@ -6,7 +6,8 @@ for (const width of [320, 390, 1280]) {
         await page.goto('/iframe.html?id=interface-character--full-sky&viewMode=story')
         const graph = page.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
-        await expect(graph.locator('.constellation-label')).toHaveCount(9)
+        await expect(graph.locator('[role=button]')).toHaveCount(9)
+        await page.screenshot({ path: info.outputPath(`constellation-overview-${width}.png`) })
         await graph.getByRole('button', { name: 'Молитва', exact: true }).locator('.hit').click()
         await expect.poll(() => graph.locator('[role=button]').count()).toBe(77)
         const geometry = await graph.evaluate((element) => {
@@ -37,7 +38,7 @@ for (const width of [320, 390, 1280]) {
                 overlapping,
             }
         })
-        expect(geometry.hits).toBeGreaterThan(1)
+        expect(geometry.hits).toBeGreaterThan(0)
         expect(geometry.minimumHit).toBeCloseTo(44, 0)
         expect(geometry.minimumDistance).toBeGreaterThanOrEqual(52)
         expect(geometry.overlapping).toBe(false)

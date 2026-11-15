@@ -6,7 +6,14 @@ import {
 } from '../src/game/constellationNodes'
 import { syncAbilityConstellations } from '../src/game/constellations'
 import { snapshotConstellations } from '../src/game/constellationSnapshot'
-import { abilityHero } from './abilityTestHelpers'
+import { prepareConstellationLayout } from '../src/game/personalConstellationSky'
+import { abilityHero as unpreparedHero } from './abilityTestHelpers'
+
+function abilityHero(...args: Parameters<typeof unpreparedHero>) {
+    const actor = unpreparedHero(...args)
+    prepareConstellationLayout(actor)
+    return actor
+}
 
 describe('effect-only known card copy', () => {
     it('keeps acquisition instructions out of five general roots and both fireball cards', () => {
@@ -131,7 +138,7 @@ describe('known prayer school cards', () => {
         )
         expect(revive).toMatchObject({
             unlocked: true,
-            effectType: 'active',
+            effectType: 'passive',
             description:
                 'Позволяет поднимать павших товарищей, душа которых не успела уйти в мир иной.',
         })
@@ -184,7 +191,7 @@ describe('known prayer school cards', () => {
             )
         ).toMatchObject({
             unlocked: true,
-            effectType: 'active',
+            effectType: 'passive',
             name: 'Возвращение праха',
         })
         expect(
@@ -203,4 +210,51 @@ describe('known prayer school cards', () => {
             )
         ).toHaveLength(2)
     })
+})
+
+it('marks only standalone hotbar bindings active, never enhancement prerequisites or prayer modes', () => {
+    const expected = new Map([
+        ['arrow.root', 'shot'],
+        ['prayer.root', 'pray'],
+        ['prayer_road.root', 'pray_road'],
+        ['prayer_lantern.root', 'pray_lantern'],
+        ['prayer_grave.root', 'pray_grave'],
+        ['magic.fireball', 'fireball'],
+        ['magic.greater_fireball', 'greater_fireball'],
+    ])
+    for (const node of fullConstellationCatalog) {
+        expect(node.activationAbilityId).toBe(expected.get(node.id))
+        expect(node.effectType).toBe(
+            expected.has(node.id) ? 'active' : 'passive'
+        )
+    }
+    const enhancement = fullConstellationCatalog.find(
+        (node) => node.id === 'magic.fire_damage'
+    )
+    expect(enhancement?.ability).toBe('fireball')
+    expect(enhancement?.activationAbilityId).toBeUndefined()
+    expect(enhancement?.effectType).toBe('passive')
+})
+
+it('keeps shared catalog definitions deeply frozen while independent personal skies are projected', () => {
+    const before = structuredClone(fullConstellationCatalog)
+    const first = abilityHero('arcanist')
+    const second = abilityHero('cleric')
+    snapshotConstellations(first)
+    snapshotConstellations(second)
+    first.progression.skills.fireball.unlocked = true
+    snapshotConstellations(first)
+    expect(fullConstellationCatalog).toEqual(before)
+    expect(Object.isFrozen(fullConstellationCatalog)).toBe(true)
+    for (const node of fullConstellationCatalog) {
+        expect(Object.isFrozen(node)).toBe(true)
+        expect(Object.isFrozen(node.parents)).toBe(true)
+        expect(Object.isFrozen(node.evidence)).toBe(true)
+        if (node.effects !== undefined) {
+            expect(Object.isFrozen(node.effects)).toBe(true)
+        }
+        expect(Reflect.set(node, 'name', 'Changed shared metadata')).toBe(false)
+        expect(Reflect.set(node.parents, '0', 'foreign.root')).toBe(false)
+    }
+    expect(fullConstellationCatalog).toEqual(before)
 })

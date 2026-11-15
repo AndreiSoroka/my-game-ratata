@@ -47,6 +47,11 @@ const tabStop = computed(
         interactiveNodes.value.find((node) => node.id === props.selectedId)?.id ??
         interactiveNodes.value[0]?.id
 )
+function resetSky(): void {
+    reset()
+    const center = props.constellation.layout?.centerNodeId
+    if (center) emit('select', center)
+}
 function choose(node: ConstellationNodeSnapshot, pointer = true): void {
     if (pointer && didDrag()) return
     emit('select', node.id)
@@ -93,7 +98,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
         scale(1 / 1.2)
     } else if (event.code === 'Home') {
         event.preventDefault()
-        reset()
+        resetSky()
     }
 }
 </script>
@@ -103,7 +108,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
         <div class="constellation-map__tools" aria-label="Масштаб небосвода">
             <button type="button" aria-label="Приблизить небосвод" @click="scale(1.25)">+</button>
             <button type="button" aria-label="Отдалить небосвод" @click="scale(0.8)">−</button>
-            <button type="button" aria-label="Показать весь небосвод" @click="reset">⌖</button>
+            <button type="button" aria-label="Показать весь небосвод" @click="resetSky">⌖</button>
         </div>
         <svg
             ref="svg"
@@ -153,6 +158,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
                     :opacity="nodeById.get(edge.to)!.unlocked ? 0.7 : 0.2"
                     :stroke-dasharray="nodeById.get(edge.to)!.unlocked ? undefined : '3 4'"
                     stroke-width="1.4"
+                    vector-effect="non-scaling-stroke"
                 />
             </template>
             <ConstellationStar

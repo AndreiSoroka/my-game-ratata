@@ -1,7 +1,9 @@
+import type { WorldSnapshot } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { handleAgentRequest } from '../src/agentBridge'
 import { NavigationService } from '../src/game/navigation'
+import { readCachedConstellationLayout } from '../src/game/personalConstellationSky'
 import { GameRoom } from '../src/game/room'
 
 const token = 'local-test-token-longer-than-24-characters'
@@ -31,15 +33,44 @@ function request(
 
 describe('private NPC observation', () => {
     it('allows private observation only for the chosen existing NPC', async () => {
+        const actor = room.getCharacter('npc_smith_1')
+        if (actor === undefined) {
+            throw new Error('Missing authored NPC')
+        }
+        expect(actor.soul.controlSource).toBe('script')
+        expect(readCachedConstellationLayout(actor)).toBeUndefined()
         const response = await handleAgentRequest(
             request('/agent/state?actorId=npc_smith_1'),
             room,
             token
         )
         expect(response.status).toBe(200)
-        expect(await response.json()).toMatchObject({
+        const snapshot = (await response.json()) as WorldSnapshot
+        expect(snapshot).toMatchObject({
             adventure: { market: { cityName: 'Новогород' } },
         })
+        expect(
+            snapshot.characters.find((character) => character.id === actor.id)
+                ?.progression?.constellations
+        ).toBeDefined()
+        expect(actor.soul.controlSource).toBe('script')
+        const cached = readCachedConstellationLayout(actor)
+        expect(cached).toBeDefined()
+        for (const character of snapshot.characters.filter(
+            (character) => character.id !== actor.id
+        )) {
+            expect(character.progression).not.toHaveProperty('constellations')
+            const other = room.getCharacter(character.id)
+            if (other !== undefined) {
+                expect(readCachedConstellationLayout(other)).toBeUndefined()
+            }
+        }
+        await handleAgentRequest(
+            request('/agent/state?actorId=npc_smith_1'),
+            room,
+            token
+        )
+        expect(readCachedConstellationLayout(actor)).toBe(cached)
         expect(
             (
                 await handleAgentRequest(

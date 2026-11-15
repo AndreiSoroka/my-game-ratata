@@ -1,5 +1,6 @@
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import { prepareConstellationLayout } from './game/personalConstellationSky'
 import type { GameRoom } from './game/room'
 
 /** Optional local model-control port. Disabled unless the process has a token. */
@@ -84,6 +85,7 @@ function observeActor(url: URL, room: GameRoom): Response | undefined {
             { status: 400 }
         )
     }
+    prepareConstellationLayout(actor)
     return Response.json(room.snapshot(Date.now(), actor.locationId, actor.id))
 }
 

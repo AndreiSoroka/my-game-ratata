@@ -1,11 +1,14 @@
-import type { CharacterSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
+import type {
+    AbilityId,
+    CharacterSnapshot,
+    ConstellationId,
+    ConstellationSnapshot,
+    HeroClass,
+} from '@my-game-ratata/contracts'
 
 // Storybook/test-only data: production receives the observer-filtered snapshot.
 import { constellationPaths } from '../../../../backend/src/game/constellationCatalog'
-import {
-    constellationEdgeWaypoints,
-    constellationLayout,
-} from '../../../../backend/src/game/constellationLayout'
+import { generateConstellationLayout } from '../../../../backend/src/game/constellationLayout'
 import {
     constellationWireId,
     fullConstellationCatalog,
@@ -13,11 +16,36 @@ import {
 import { characterFixture } from './characterFixture'
 
 export const fixtureStarId = constellationWireId
-export function constellationFixture(full = false): ConstellationSnapshot {
+export const fixtureHeroPaths: Record<HeroClass, ConstellationId> = {
+    vanguard: 'blade',
+    arcanist: 'magic',
+    cleric: 'prayer',
+    ranger: 'arrow',
+}
+const fixtureAbilities: Record<HeroClass, AbilityId[]> = {
+    vanguard: [],
+    arcanist: ['spark', 'barrier'],
+    cleric: ['pray'],
+    ranger: ['shot'],
+}
+export function constellationFixture(
+    full = false,
+    heroClass: HeroClass = 'cleric'
+): ConstellationSnapshot {
+    const personal = generateConstellationLayout(
+        fullConstellationCatalog,
+        `storybook-personal-sky-${heroClass}`,
+        fixtureHeroPaths[heroClass]
+    )
     const opened = new Set(
         full
             ? fullConstellationCatalog.map((node) => node.id)
-            : ['prayer.root', 'prayer.radius1', 'prayer.omen1', 'life.root', 'life.hp1']
+            : [
+                  `${fixtureHeroPaths[heroClass]}.root`,
+                  'life.root',
+                  'life.hp1',
+                  ...(heroClass === 'cleric' ? ['prayer.radius1', 'prayer.omen1'] : []),
+              ]
     )
     const visible = fullConstellationCatalog.filter(
         (node) =>
@@ -28,7 +56,10 @@ export function constellationFixture(full = false): ConstellationSnapshot {
     const visibleIds = new Set(visible.map((node) => node.id))
     return {
         version: 1,
-        layout: structuredClone(constellationLayout),
+        layout: {
+            ...structuredClone(personal.layout),
+            centerNodeId: constellationWireId(`${fixtureHeroPaths[heroClass]}.root`),
+        },
         paths: constellationPaths.map((path) => ({
             id: path.id,
             color: path.color,
@@ -40,8 +71,7 @@ export function constellationFixture(full = false): ConstellationSnapshot {
         nodes: visible.map((node) => ({
             id: constellationWireId(node.id),
             constellationId: node.constellationId,
-            x: node.x,
-            y: node.y,
+            ...personal.positions[node.id]!,
             parents: node.parents.filter((id) => visibleIds.has(id)).map(constellationWireId),
             unlocked: opened.has(node.id),
             ...(opened.has(node.id)
@@ -60,20 +90,20 @@ export function constellationFixture(full = false): ConstellationSnapshot {
                 .map((from) => ({
                     from: constellationWireId(from),
                     to: constellationWireId(node.id),
-                    via: constellationEdgeWaypoints(from, node.id),
+                    via: personal.edgeWaypoints[`${from}>${node.id}`],
                 }))
         ),
     }
 }
 
-export function developmentCharacterFixture(): CharacterSnapshot {
+export function developmentCharacterFixture(heroClass: HeroClass = 'cleric'): CharacterSnapshot {
     const range = (lower: number, upper: number) => ({ kind: 'range' as const, lower, upper })
     return characterFixture('development-hero', {
         nickname: 'Андрей Сорока',
-        heroClass: 'cleric',
+        heroClass,
         health: { kind: 'percent', percent: 62 },
         abilities: {
-            known: ['pray'],
+            known: [...fixtureAbilities[heroClass]],
             cooldowns: {},
             casting: null,
             barrier: null,
@@ -138,7 +168,7 @@ export function developmentCharacterFixture(): CharacterSnapshot {
             totalEarnedLevels: 4,
             trainingMultiplier: 1,
             resurrectionUnlocked: false,
-            constellations: constellationFixture(),
+            constellations: constellationFixture(false, heroClass),
         },
     })
 }

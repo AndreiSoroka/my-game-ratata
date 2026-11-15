@@ -36,6 +36,7 @@ import {
     sync,
 } from './companionState'
 import { cancelMovementMode } from './movementActions'
+import { prepareConstellationLayout } from './personalConstellationSky'
 import { isAutomationCommand } from './scenarioCommands'
 
 export class CompanionService {
@@ -235,6 +236,7 @@ export class CompanionService {
             this.leases.delete(character.id)
             setCharacterControlSource(character, 'script')
         } else {
+            prepareConstellationLayout(character)
             this.leases.set(character.id, {
                 until: now + 5_000,
                 blocksScenario:

@@ -72,6 +72,8 @@ export interface ConstellationRegion {
 }
 
 export interface ConstellationLayoutSnapshot {
+    /** Opaque node identity used for the owner’s initial viewport; it grants no unlock. */
+    centerNodeId?: string
     bounds: ConstellationRegion
     regions: Record<ConstellationId, ConstellationRegion>
     minimumNodeSpacing: number

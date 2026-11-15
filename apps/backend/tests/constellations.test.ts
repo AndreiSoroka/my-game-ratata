@@ -15,6 +15,7 @@ import {
     recordRunicContact,
     snapshotConstellations,
 } from '../src/game/constellations'
+import { prepareConstellationLayout } from '../src/game/personalConstellationSky'
 import { trainSkill } from '../src/game/skillProgression'
 
 describe('server-owned constellation discovery', () => {
@@ -177,7 +178,7 @@ function hero(
     heroClass: HeroClass = 'vanguard',
     controllerKind: CharacterControllerKind = 'network_player'
 ) {
-    return new GameCharacter({
+    const actor = new GameCharacter({
         archetype: 'human',
         controllerKind,
         heroClass,
@@ -185,4 +186,6 @@ function hero(
         nickname: 'Герой',
         spawnPosition: { x: 100, y: 100 },
     })
+    prepareConstellationLayout(actor)
+    return actor
 }

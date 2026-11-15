@@ -1,3 +1,4 @@
+import type { HeroClass } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import {
@@ -11,9 +12,9 @@ import CharacterWindow from '../ui/CharacterWindow.vue'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import { renderVueStory } from './renderVueStory'
 
-function windowStory(tab: 'stats' | 'development'): HTMLElement {
+function windowStory(tab: 'stats' | 'development', heroClass: HeroClass = 'cleric'): HTMLElement {
     const host = renderVueStory(CharacterWindow, {
-        player: developmentCharacterFixture(),
+        player: developmentCharacterFixture(heroClass),
         characters: [],
         tab,
     })
@@ -53,6 +54,10 @@ export const FullSky: Story = {
     render: () =>
         renderVueStory(ConstellationGraph, {
             constellation: constellationFixture(true),
-            selectedId: fixtureStarId('prayer.revive'),
+            selectedId: constellationFixture(true).layout!.centerNodeId,
         }),
 }
+
+export const VanguardDevelopment: Story = { render: () => windowStory('development', 'vanguard') }
+export const ArcanistDevelopment: Story = { render: () => windowStory('development', 'arcanist') }
+export const RangerDevelopment: Story = { render: () => windowStory('development', 'ranger') }
