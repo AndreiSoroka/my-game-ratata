@@ -1,10 +1,12 @@
 import {
+    calculateResurrectionResources,
     type ConstellationId,
     type GameEventPayload,
     MASTERY_REWARDS,
     type PrayerAbilityId,
     type PrayerIntent,
     profileForPrayer,
+    type ResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -16,6 +18,7 @@ import {
     consumeResourceRecovery,
     practiceResourceMissing,
 } from './resourcePractice'
+import { characterResurrectionParameters } from './resurrection'
 import { recordVitalityRecovery } from './vitalityPractice'
 
 export function applyPrayerGifts(
@@ -25,7 +28,8 @@ export function applyPrayerGifts(
     succeeds: boolean,
     quality: number,
     abilityId: PrayerAbilityId = 'pray',
-    factors?: Record<ConstellationId, number>
+    factors?: Record<ConstellationId, number>,
+    resurrection?: ResurrectionParameters
 ) {
     const recipients =
         intent.mode === 'revive'
@@ -47,7 +51,9 @@ export function applyPrayerGifts(
             context.now,
             quality,
             abilityId,
-            target === actor ? factors : undefined
+            target === actor ? factors : undefined,
+            resurrection,
+            context.random
         )
         events.push(...gift.events)
         meaningful ||= gift.meaningful
@@ -89,10 +95,21 @@ export function applyPrayerGift(
     now: number,
     quality: number,
     abilityId: PrayerAbilityId = 'pray',
-    factors?: Record<ConstellationId, number>
+    factors?: Record<ConstellationId, number>,
+    resurrection?: ResurrectionParameters,
+    random: () => number = Math.random
 ) {
     if (intent.mode === 'revive') {
-        return reviveGift(actor, target, intent, now, abilityId, factors)
+        return reviveGift(
+            actor,
+            target,
+            intent,
+            now,
+            abilityId,
+            factors,
+            resurrection,
+            random
+        )
     }
     const profile = profileForPrayer(abilityId)
     const power =
@@ -150,11 +167,29 @@ function reviveGift(
     intent: PrayerIntent,
     now: number,
     abilityId: PrayerAbilityId,
-    factors?: Record<ConstellationId, number>
+    factors?: Record<ConstellationId, number>,
+    resurrection?: ResurrectionParameters,
+    random: () => number = Math.random
 ) {
+    if (target.alive) {
+        return { meaningful: false, hpRecovery: false, events: [] }
+    }
     const meaningful = meaningfulGiftAttempt(actor, target, intent, abilityId)
     const beforeHp = target.hp
-    restoreCharacter(target, now, false)
+    const parameters =
+        resurrection ?? characterResurrectionParameters(actor, abilityId, now)
+    const angelic =
+        parameters.angelicChance > 0 && random() < parameters.angelicChance
+    const resources = calculateResurrectionResources(
+        parameters,
+        {
+            hp: target.maxHp,
+            mana: target.config.resources.maxMana,
+            energy: target.config.resources.maxEnergy,
+        },
+        angelic
+    )
+    restoreCharacter(target, now, false, resources)
     const lifeEvents = recordVitalityRecovery(
         target,
         target.hp - beforeHp,

@@ -125,7 +125,7 @@ export class WorldObjects {
         }
         const recovered = Math.min(
             15,
-            actor.config.resources.maxEnergy - actor.energy
+            Math.max(0, actor.config.resources.maxEnergy - actor.energy)
         )
         consumeResourceRecovery(
             actor,

@@ -1,4 +1,7 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import type {
+    GameEventPayload,
+    ResurrectionResources,
+} from '@my-game-ratata/contracts'
 
 import { clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
@@ -39,12 +42,13 @@ export function tickCharacterTimedState(
 export function restoreCharacter(
     character: GameCharacter,
     now: number,
-    atSpawn: boolean
+    atSpawn: boolean,
+    resurrection?: ResurrectionResources
 ): void {
     const previousHp = character.hp
     const untrainableDamage = Math.min(
         character.abilities.untrainableHpDamage,
-        character.maxHp - previousHp
+        Math.max(0, character.maxHp - previousHp)
     )
     clearAbilityEffects(character)
     clearResourcePractice(character)
@@ -59,8 +63,11 @@ export function restoreCharacter(
     character.clearPath()
     character.setMoveInput(zeroVector())
     const fraction = atSpawn ? 1 : 0.5
-    character.energy = character.config.resources.maxEnergy * fraction
-    character.hp = Math.max(1, Math.ceil(character.maxHp * fraction))
+    const restored = atSpawn ? undefined : resurrection
+    character.energy =
+        restored?.energy ?? character.config.resources.maxEnergy * fraction
+    character.hp =
+        restored?.hp ?? Math.max(1, Math.ceil(character.maxHp * fraction))
     character.progression.constellations.lowHpFromHostile = false
     character.progression.constellations.lowHpAwarded = false
     character.progression.constellations.runicShotUntil = 0
@@ -74,7 +81,8 @@ export function restoreCharacter(
             untrainableDamage - healed
         )
     }
-    character.mana = character.config.resources.maxMana * fraction
+    character.mana =
+        restored?.mana ?? character.config.resources.maxMana * fraction
     if (atSpawn) {
         character.locationId = character.spawnLocationId
         character.position = { ...character.spawnPosition }

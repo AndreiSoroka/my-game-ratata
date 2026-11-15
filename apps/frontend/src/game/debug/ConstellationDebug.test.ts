@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import ConstellationDebug from './ConstellationDebug.vue'
 
 afterEach(() => {
@@ -13,9 +14,11 @@ it('shows the full catalogue without a character and keeps selected details when
     expect(view.get('h1').text()).toBe('Атлас созвездий · Отладка')
     expect(view.get('a[href="/"]').text()).toBe('В игру')
     expect(view.get('[data-testid="debug-seed"]').attributes('maxlength')).toBe('128')
-    expect(view.findAll('[data-star-id]')).toHaveLength(77)
+    expect(view.findAll('[data-star-id]')).toHaveLength(fullConstellationCatalog.length)
     await view.get('[data-testid="debug-search"]').setValue('prayer.revive')
-    expect(view.findAll('[data-star-id]')).toHaveLength(1)
+    expect(view.findAll('[data-star-id]')).toHaveLength(
+        fullConstellationCatalog.filter((node) => node.id.startsWith('prayer.revive')).length
+    )
     await view.get('[data-star-id="prayer.revive"]').trigger('click')
     expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Воскрешение')
     expect(view.get('[data-testid="selected-star-card"]').text()).toContain('Пассивный навык')

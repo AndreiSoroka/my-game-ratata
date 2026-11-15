@@ -129,7 +129,7 @@ describe('shared cleric revival ability', () => {
             kind: 'revive',
         })
         expect(target.alive).toBe(true)
-        expect(target.hp).toBe(Math.ceil(target.maxHp / 2))
+        expect(target.hp).toBe(Math.max(1, Math.ceil(target.maxHp * 0.01)))
         expect(target.progression.masteries.prayer.level).toBe(1)
         expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
         expect(target.inventory).toHaveLength(1)

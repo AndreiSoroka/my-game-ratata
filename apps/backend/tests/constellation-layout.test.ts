@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { skyComponents } from '../src/game/constellationComponents'
 import { generateConstellationLayout } from '../src/game/constellationLayout'
 import type { RealizedConstellationLayout } from '../src/game/constellationLayoutTypes'
 import { fullConstellationCatalog } from '../src/game/constellationNodes'
@@ -10,10 +11,11 @@ const centers = ['blade', 'magic', 'prayer', 'arrow'] as const
 
 describe('personal planar skies', () => {
     it('independently audits 256 seeds for every starting class, including all hidden stars', () => {
-        expect(fullConstellationCatalog).toHaveLength(77)
+        expect(fullConstellationCatalog).toHaveLength(82)
         expect(
             fullConstellationCatalog.flatMap((node) => node.parents)
-        ).toHaveLength(71)
+        ).toHaveLength(78)
+        expect(skyComponents(fullConstellationCatalog)).toHaveLength(7)
         for (let seed = 0; seed < 256; seed += 1) {
             for (const center of centers) {
                 const sky = generateConstellationLayout(
@@ -25,7 +27,9 @@ describe('personal planar skies', () => {
                     auditPersonalSky(fullConstellationCatalog, sky),
                     `seed ${String(seed)}, ${center}`
                 ).toBeUndefined()
-                expect(Object.keys(sky.positions)).toHaveLength(77)
+                expect(Object.keys(sky.positions)).toHaveLength(
+                    fullConstellationCatalog.length
+                )
                 expect(sky.positions[`${center}.root`]).toEqual({ x: 0, y: 0 })
                 expect(sky.layout.centerNodeId).toBe(`${center}.root`)
                 expect(sky.layout.bounds.x + sky.layout.bounds.width / 2).toBe(
@@ -63,7 +67,7 @@ describe('personal planar skies', () => {
                 JSON.stringify(first.positions[id]) !==
                 JSON.stringify(second.positions[id])
         )
-        expect(changed).toHaveLength(76)
+        expect(changed).toHaveLength(fullConstellationCatalog.length - 1)
         expect(distance(first, 'blade.damage1', 'blade.damage2')).not.toBe(
             distance(second, 'blade.damage1', 'blade.damage2')
         )

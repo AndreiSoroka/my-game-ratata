@@ -9,7 +9,7 @@ describe('debug effect chance catalogue', () => {
         const catalogue = JSON.stringify(fullConstellationCatalog)
         const sky = buildConstellationDebugSnapshot({ heroClass: 'cleric', seed: 'effect-chances' })
         const snapshot = JSON.stringify(sky)
-        expect(sky.nodes).toHaveLength(77)
+        expect(sky.nodes).toHaveLength(fullConstellationCatalog.length)
         for (const node of sky.nodes) {
             const chance = describeConstellationEffectChance(node.id)
             expect(chance.summary.trim().length).toBeGreaterThan(0)

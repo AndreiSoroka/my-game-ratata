@@ -19,7 +19,7 @@ async function toggleBySpace(page: Page, id: string, enabled: boolean): Promise<
 async function expectPrayerBase(list: Locator): Promise<void> {
     await expect(list.filter({ hasText: 'Лечит вас или союзника.' })).toHaveCount(1)
     await expect(list.filter({ hasText: 'Очищает могилы от тёмных сил.' })).toHaveCount(1)
-    await expect(list.filter({ hasText: /воскреш/i })).toHaveCount(1)
+    await expect(list.filter({ hasText: /^Воскрешает павших/i })).toHaveCount(1)
 }
 async function assertPrayerListUpdates(page: Page): Promise<void> {
     await inspectCard(page, 'prayer.root', 'Молитва')
@@ -44,7 +44,7 @@ async function assertPrayerListUpdates(page: Page): Promise<void> {
     await toggleBySpace(page, 'prayer.revive', false)
     await expect(page.getByTestId('debug-build-feedback')).toHaveCSS('pointer-events', 'none')
     await inspectCard(page, 'prayer.root', 'Молитва')
-    await expect(bullets(page).filter({ hasText: /воскреш/i })).toHaveCount(0)
+    await expect(bullets(page).filter({ hasText: /^Воскрешает павших/i })).toHaveCount(0)
     await toggleBySpace(page, 'prayer.revive', true)
     await inspectCard(page, 'prayer.root', 'Молитва')
     await expectPrayerBase(bullets(page))
@@ -68,7 +68,7 @@ test('active cards keep school and action improvements isolated', async ({ page 
     await page.goto('/?debug=constellations&class=cleric&seed=card-isolation')
     await page.getByTestId('debug-build-all').click()
     await inspectCard(page, 'prayer.root', 'Молитва')
-    await expect(bullets(page).filter({ hasText: /воскреш/i })).toHaveCount(1)
+    await expect(bullets(page).filter({ hasText: /^Воскрешает павших/i })).toHaveCount(1)
     await expect(bullets(page).filter({ hasText: /урон.*нежит/i })).toHaveCount(1)
     for (const [id, name] of [
         ['prayer_road.root', 'Молитва странника'],

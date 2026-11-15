@@ -17,7 +17,7 @@ export function recordVitalityDamage(
     const state = actor.progression.constellations
     state.opened.add('life.root')
     state.hostileWound = Math.min(
-        actor.maxHp - actor.hp,
+        Math.max(0, actor.maxHp - actor.hp),
         state.hostileWound + amount
     )
     state.woundPractice += amount
@@ -41,7 +41,10 @@ export function recordVitalityRecovery(
     factors: Record<ConstellationId, number> = captureMasteryFactors(actor)
 ): GameEventPayload[] {
     const state = actor.progression.constellations
-    const amount = Math.min(Math.max(0, healed), state.hostileWound)
+    const amount = Math.min(
+        Math.max(0, healed),
+        Math.max(0, state.hostileWound)
+    )
     state.hostileWound = Math.max(0, state.hostileWound - amount)
     state.recoveryPractice += amount
     if (actor.hp >= actor.maxHp * 0.2) {

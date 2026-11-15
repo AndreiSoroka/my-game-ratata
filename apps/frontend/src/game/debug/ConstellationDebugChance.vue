@@ -6,7 +6,7 @@ import { describeConstellationEffectChance } from './constellationEffectChance'
 import ConstellationPrayerCalculator from './ConstellationPrayerCalculator.vue'
 
 const props = defineProps<{ nodeId: string; enabledStarIds?: ReadonlySet<string> }>()
-const chance = computed(() => describeConstellationEffectChance(props.nodeId))
+const chance = computed(() => describeConstellationEffectChance(props.nodeId, props.enabledStarIds))
 const longNotes = computed(
     () => chance.value.notes.length > 2 || chance.value.notes.join(' ').length > 240
 )

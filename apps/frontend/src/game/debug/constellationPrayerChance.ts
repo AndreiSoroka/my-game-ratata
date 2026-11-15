@@ -13,6 +13,7 @@ import type {
 import { prayerChanceExamples } from './constellationPrayerChanceExamples'
 import * as math from './constellationPrayerFormulas'
 import { prayerAbilityForConstellation, prayerSchoolInfo } from './constellationPrayerScenario'
+import { describeRevivalChance, rootRevivalChance } from './constellationRevivalChance'
 
 interface PrayerDescription extends Omit<ConstellationEffectChance, 'formulas' | 'formulaDetails'> {
     formulaDetails: ConstellationChanceFormula[]
@@ -25,11 +26,13 @@ const moodBase = '80 при благосклонности; 55 при нейтр
 
 /** Static debug formulas only: settings for the example calculator live in a separate pure API. */
 export function describePrayerEffectChance(
-    node: ConstellationStar
+    node: ConstellationStar,
+    activeIds?: ReadonlySet<string>
 ): ConstellationEffectChance | undefined {
     const ability = prayerAbilityForConstellation(node.constellationId)
     if (ability === undefined) return undefined
-    const description = describePrayer(node, ability)
+    const description =
+        node.kind === 'root' ? rootChance(ability, activeIds) : describePrayer(node, ability)
     if (description === undefined) return undefined
     const { formulaDetails, ...text } = description
     return withChanceFormulas(text, formulaDetails)
@@ -39,7 +42,8 @@ function describePrayer(
     ability: PrayerAbilityId
 ): PrayerDescription | undefined {
     if (node.kind === 'root') return rootChance(ability)
-    if (node.id.endsWith('.revive')) return revivalChance(ability)
+    const revival = describeRevivalChance(node.id, ability)
+    if (revival) return revival
     if (node.id.startsWith('prayer.harm')) return harmChance(node.id)
     if (['prayer.gift1', 'prayer.gift2', 'prayer.last_light'].includes(node.id))
         return giftChance(node.id)
@@ -50,9 +54,10 @@ function describePrayer(
         return insightChance(node.id)
     return undefined
 }
-function rootChance(ability: PrayerAbilityId): PrayerDescription {
+function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): PrayerDescription {
     const info = prayerSchoolInfo[ability]
     const definition = PRAYER_SCHOOL_DEFINITIONS[ability]
+    const revival = revivalForRoot(ability, activeIds)
     return {
         summary: `Молитва божеству «${info.god}» восстанавливает ${info.resource} с вероятностью, зависящей от его настроения.`,
         formulaDetails: [
@@ -66,8 +71,12 @@ function rootChance(ability: PrayerAbilityId): PrayerDescription {
                       chanceFormula('Успешных шагов до очищения', String(GRAVE_PURIFY_STEPS)),
                   ]
                 : []),
+            ...(revival?.formulaDetails ?? []),
         ],
-        examples: prayerChanceExamples(info.masteryName, ability === 'pray' ? 'grave' : 'answer'),
+        examples: [
+            ...prayerChanceExamples(info.masteryName, ability === 'pray' ? 'grave' : 'answer'),
+            ...(revival?.examples ?? []),
+        ],
         notes: [
             `Используется настроение только своего бога (${definition.deityId}). Выбор покровителя в HUD эту привязку не меняет.`,
             faithAndPower,
@@ -83,22 +92,15 @@ function rootChance(ability: PrayerAbilityId): PrayerDescription {
         ],
     }
 }
-function revivalChance(ability: PrayerAbilityId): PrayerDescription {
-    const info = prayerSchoolInfo[ability]
-    return {
-        summary: `Шанс воскрешения определяется настроением божества «${info.god}».`,
-        formulaDetails: [
-            chanceFormula('Шанс воскрешения, %', 'B', { B: moodBase }),
-            math.prayerAnswerRollFormula(),
-            math.prayerRevivalHpFormula(),
-            math.prayerRevivalResourceFormula(),
-        ],
-        examples: prayerChanceExamples(info.masteryName),
-        notes: [
-            'Для одной выбранной павшей цели выполняется один случайный бросок.',
-            'Множители лечения не меняют шанс воскрешения или стандартную половину ресурсов. Нужна подходящая душа в пределах окна воскрешения и прочие условия режима.',
-        ],
-    }
+function revivalForRoot(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>) {
+    if (!activeIds) return undefined
+    const id =
+        ability === 'pray'
+            ? 'prayer.revive'
+            : ability === 'pray_grave'
+              ? 'prayer_grave.revive'
+              : undefined
+    return id && activeIds.has(id) ? rootRevivalChance(ability, activeIds) : undefined
 }
 function deterministic(
     summary: string,
@@ -169,7 +171,7 @@ function giftChance(id: string): PrayerDescription {
         ]
     )
     result.notes.push(
-        'Бонус усиливает обычное лечение HP. Воскрешение сохраняет стандартную половину ресурсов; новые открытия этой молитвы не меняют уже рассчитанный дар.'
+        'Бонус усиливает обычное лечение HP. Ресурсы воскрешения считаются отдельно; новые открытия этой молитвы не меняют уже рассчитанный дар.'
     )
     if (lastLight)
         result.notes.push(

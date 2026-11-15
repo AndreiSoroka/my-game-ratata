@@ -174,7 +174,8 @@ export function advancePrayerCast(
     releasePrayerCast(actor, now)
     actor.mana -= prayerManaCost(cast.intent.mode)
     setPrayerAvailableAt(actor, cast.abilityId, now)
-    const roll = (random ?? context.random ?? Math.random)()
+    const randomSource = random ?? context.random ?? Math.random
+    const roll = randomSource()
     const outcome = resolveMiracle(actor, now, () => roll, cast.patron)
     return [
         {
@@ -187,7 +188,7 @@ export function advancePrayerCast(
         ...completePrayer(
             actor,
             cast.intent,
-            { ...context, now },
+            { ...context, now, random: randomSource },
             roll,
             outcome.quality,
             cast.receiptId,

@@ -69,7 +69,7 @@ it('healing after a friendly-caused death and revival cannot grant mastery exper
     expect(victim.alive).toBe(true)
     expect(victim.abilities.untrainableHpDamage).toBe(victim.maxHp - victim.hp)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
-    for (const now of [4001, 7001, 10001, 13001]) {
+    for (const now of [4001, 7001, 10001, 13001, 16001, 19001, 22001]) {
         heal(now)
     }
     expect(victim.hp).toBe(victim.maxHp)
@@ -88,7 +88,7 @@ it('ordinary combat resurrection and healing remain meaningful practice', () => 
 
 it('resurrection consumes the healed portion of mixed damage provenance and retains only unhealed friendly wounds', () => {
     const { caster, victim } = rescue(20)
-    expect(victim.hp).toBe(13)
-    expect(victim.abilities.untrainableHpDamage).toBe(7)
+    expect(victim.hp).toBe(1)
+    expect(victim.abilities.untrainableHpDamage).toBe(19)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
 })

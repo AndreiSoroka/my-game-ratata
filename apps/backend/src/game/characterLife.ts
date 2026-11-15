@@ -4,6 +4,7 @@ import {
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
     profileForPrayer,
+    type ResurrectionParameters,
     REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
@@ -23,6 +24,7 @@ import { revivalTargetEligible } from './prayerContext'
 import { completePrayer } from './prayerEffects'
 import { applyPrayerGift } from './prayerGifts'
 import { prayerParameters, setPrayerAvailableAt } from './prayerParameters'
+import { characterResurrectionParameters } from './resurrection'
 import {
     awardMasteries,
     canUseResurrection,
@@ -146,8 +148,17 @@ export function advanceRevive(
     }
     caster.abilities.casting = null
     caster.mana -= REVIVE_MANA_COST
-    const roll = (random ?? context?.random ?? Math.random)()
-    const outcome = resolveMiracle(caster, now, () => roll, cast.patron)
+    const randomSource = random ?? context?.random ?? Math.random
+    const roll = randomSource()
+    const resurrection = characterResurrectionParameters(
+        caster,
+        cast.abilityId,
+        now
+    )
+    const outcome = {
+        ...resolveMiracle(caster, now, () => roll, cast.patron),
+        success: roll < resurrection.successChance,
+    }
     setPrayerAvailableAt(caster, cast.abilityId, now)
     if (context !== undefined) {
         return [
@@ -161,7 +172,7 @@ export function advanceRevive(
             ...completePrayer(
                 caster,
                 { mode: 'revive', targetId: target.id },
-                { ...context, now },
+                { ...context, now, random: randomSource },
                 roll,
                 outcome.quality,
                 cast.receiptId,
@@ -175,7 +186,8 @@ export function advanceRevive(
         cast,
         now,
         outcome,
-        random
+        resurrection,
+        randomSource
     )
 }
 
@@ -185,6 +197,7 @@ function completeReviveWithoutContext(
     cast: Pick<PrayerCast, 'abilityId' | 'receiptId'>,
     now: number,
     outcome: ReturnType<typeof resolveMiracle>,
+    resurrection: ResurrectionParameters,
     random?: () => number
 ): GameEventPayload[] {
     if (!outcome.success) {
@@ -208,7 +221,10 @@ function completeReviveWithoutContext(
         { mode: 'revive', targetId: target.id },
         now,
         outcome.quality,
-        cast.abilityId
+        cast.abilityId,
+        undefined,
+        resurrection,
+        random
     )
     return [
         ...gift.events,

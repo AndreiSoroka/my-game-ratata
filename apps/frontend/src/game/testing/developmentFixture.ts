@@ -6,6 +6,7 @@ import type {
     HeroClass,
 } from '@my-game-ratata/contracts'
 
+import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
 // Storybook/test-only data: production receives the observer-filtered snapshot.
 import { constellationPaths } from '../../../../backend/src/game/constellationCatalog'
 import { generateConstellationLayout } from '../../../../backend/src/game/constellationLayout'
@@ -45,7 +46,9 @@ export function constellationFixture(
                   `${fixtureHeroPaths[heroClass]}.root`,
                   'life.root',
                   'life.hp1',
-                  ...(heroClass === 'cleric' ? ['prayer.radius1', 'prayer.omen1'] : []),
+                  ...(heroClass === 'cleric'
+                      ? ['prayer.revive', 'prayer.radius1', 'prayer.omen1']
+                      : []),
               ]
     )
     const visible = fullConstellationCatalog.filter(
@@ -81,7 +84,7 @@ export function constellationFixture(
                       name: node.name,
                       description: node.description,
                       effectType: node.effectType,
-                      effects: node.effects,
+                      effects: resolveConstellationCardEffects(node.id, opened),
                   }
                 : {}),
         })),
@@ -140,7 +143,7 @@ export function developmentCharacterFixture(heroClass: HeroClass = 'cleric'): Ch
             },
             magicChaptersRead: 0,
             magicChaptersTotal: 3,
-            resurrectionUnlocked: false,
+            resurrectionUnlocked: heroClass === 'cleric',
             constellations: constellationFixture(false, heroClass),
         },
     })

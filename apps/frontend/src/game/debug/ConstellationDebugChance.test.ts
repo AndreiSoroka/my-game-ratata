@@ -6,7 +6,7 @@ import ConstellationDebugChance from './ConstellationDebugChance.vue'
 import { buildConstellationDebugSnapshot } from './constellationDebugData'
 import { describeConstellationEffectChance } from './constellationEffectChance'
 
-it('only shows the closed chance disclosure for random effects across all 77 stars', () => {
+it('only shows the closed chance disclosure for random effects across all catalog stars', () => {
     const sky = buildConstellationDebugSnapshot({ heroClass: 'cleric', seed: 'chance-ui-test' })
     for (const node of sky.nodes) {
         const chance = describeConstellationEffectChance(node.id)

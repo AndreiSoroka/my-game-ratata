@@ -1,4 +1,9 @@
-import { HERO_REVIVAL_WINDOW_MS, REVIVE_CAST_MS, REVIVE_MANA_COST } from '@my-game-ratata/contracts'
+import {
+    HERO_REVIVAL_WINDOW_MS,
+    resolveResurrectionParameters,
+    REVIVE_CAST_MS,
+    REVIVE_MANA_COST,
+} from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
@@ -37,7 +42,7 @@ export function describePrayerPassive(
                 row('Окно души', `${HERO_REVIVAL_WINDOW_MS / 1000} с`),
                 row('Время воскрешения', `${REVIVE_CAST_MS} мс`),
                 row('Цена воскрешения', `${REVIVE_MANA_COST} MP`),
-                row('Ресурсы после воскрешения', '50% максимума; HP округляется вверх, минимум 1'),
+                row('Ресурсы после воскрешения', baseRevivalResources(context)),
             ],
         }
     throw new Error(`Missing prayer passive result: ${nodeId}`)
@@ -47,6 +52,7 @@ function passiveMetrics(
     context: PrayerBuildContext,
     bonus: ReturnType<typeof resolveConstellationBonuses>
 ): PrayerBuildResult['metrics'] | undefined {
+    if (nodeRevivalMetrics[id]) return nodeRevivalMetrics[id]!.map((metric) => ({ ...metric }))
     if (['prayer.radius1', 'prayer.radius2'].includes(id))
         return [row('Радиус молитвы', `+${bonus.prayerRadiusCells} клетка`)]
     if (id === 'prayer.focus')
@@ -74,4 +80,25 @@ function passiveMetrics(
         return [row(id.startsWith('prayer.others') ? 'Другие боги' : 'Угольная Мать', insight)]
     }
     return undefined
+}
+const nodeRevivalMetrics: Record<string, PrayerBuildResult['metrics']> = {
+    'prayer.revive_higher': [
+        row('HP после воскрешения', '75% максимума; округление вверх, минимум 1'),
+    ],
+    'prayer.revive_experienced': [row('Бонус шанса воскрешения', '+10 п.п.')],
+    'prayer.revive_master': [row('Бонус шанса воскрешения', '+10 п.п.')],
+    'prayer.revive_angelic': [
+        row(
+            'Ресурсы при Ангельском воскрешении',
+            '150% максимума HP, MP и EN; минимум 1 каждого ресурса'
+        ),
+    ],
+    'prayer.revive_stable': [
+        row('HP после воскрешения', 'Не менее 100% максимума'),
+        row('Бонус шанса воскрешения', '+5 п.п.'),
+    ],
+}
+function baseRevivalResources(context: PrayerBuildContext): string {
+    const parameters = resolveResurrectionParameters(context.ability, new Set(), context.mood)
+    return `${number(parameters.hpFraction * 100)}% максимума; HP округляется вверх; минимум 1${parameters.minimumResource > 0 ? ' каждого ресурса' : ' HP'}`
 }

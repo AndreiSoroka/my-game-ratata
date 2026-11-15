@@ -105,7 +105,7 @@ function listKey(event: KeyboardEvent): void {
                 <h1>Атлас созвездий · Отладка</h1>
                 <a href="/">В игру</a>
             </div>
-            <p>Все 77 звёзд. Просмотр не меняет развитие героя.</p>
+            <p>Всего звёзд: {{ sky.nodes.length }}. Просмотр не меняет развитие героя.</p>
         </header>
         <form class="debug-settings" @submit.prevent="applySeed">
             <label
@@ -141,6 +141,7 @@ function listKey(event: KeyboardEvent): void {
         </form>
         <ConstellationBuildToolbar
             :count="enabledStarIds.size"
+            :total="sky.nodes.length"
             @clear="clear"
             @all="enableAll"
             @reset="reset"

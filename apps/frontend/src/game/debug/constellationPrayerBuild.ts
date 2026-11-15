@@ -4,8 +4,6 @@ import {
     GRAVE_PURIFY_STEPS,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
-    REVIVE_CAST_MS,
-    REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
@@ -13,6 +11,7 @@ import { fullConstellationCatalog } from '../../../../backend/src/game/constella
 import { prayerMoodQuality } from '../../../../backend/src/game/prayerProbability'
 import { constellationDistance } from './constellationDistance'
 import { describePrayerPassive } from './constellationPrayerPassive'
+import { revivalBuild } from './constellationRevivalBuild'
 
 export interface PrayerBuildResult {
     available: boolean
@@ -55,9 +54,9 @@ export function calculatePrayerBuild(
     if (mother) appendMotherEffects(effects, metrics, activeIds, bonuses, context)
     const reviveId = revivalNode(context.ability)
     if (reviveId !== undefined && activeIds.has(reviveId)) {
-        effects.push('Воскрешение: одна подходящая павшая цель, 50% ресурсов.')
-        metrics.push({ label: 'Цена воскрешения', value: `${REVIVE_MANA_COST} MP` })
-        metrics.push({ label: 'Время воскрешения', value: `${REVIVE_CAST_MS} мс` })
+        const revival = revivalBuild(activeIds, context)
+        effects.push(...revival.effects)
+        metrics.push(...revival.metrics)
     }
     return { available: true, effects, metrics }
 }

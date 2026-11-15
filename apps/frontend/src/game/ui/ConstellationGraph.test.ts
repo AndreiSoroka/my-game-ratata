@@ -238,8 +238,9 @@ it('keeps the selected root in view when its nearest branch cannot fit beside it
 
 it('focuses an externally requested leaf without changing the catalogue or accepting missing IDs', async () => {
     const sky = constellationFixture(true)
-    const id = fixtureStarId('prayer.revive')
+    const id = fixtureStarId('prayer.revive_master')
     const node = sky.nodes.find((node) => node.id === id)!
+    expect(sky.nodes.some((entry) => entry.parents.includes(id))).toBe(false)
     const before = structuredClone(sky)
     const view = mount(ConstellationGraph, { props: { constellation: sky } })
     view.vm.focusNode(id)

@@ -163,8 +163,11 @@ export function consumeHealingProvenance(
     amount: number,
     missingBefore: number
 ): number {
-    const tainted = Math.min(actor.abilities.untrainableHpDamage, missingBefore)
-    const untrainable = Math.min(tainted, amount)
+    const tainted = Math.min(
+        actor.abilities.untrainableHpDamage,
+        Math.max(0, missingBefore)
+    )
+    const untrainable = Math.min(tainted, Math.max(0, amount))
     actor.abilities.untrainableHpDamage = tainted - untrainable
-    return amount - untrainable
+    return Math.max(0, amount) - untrainable
 }

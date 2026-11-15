@@ -109,15 +109,18 @@ export const combatStars = [
         ['barrier'],
         'barrier'
     ),
-    star(
-        'magic',
-        'fire_damage',
-        'Жар',
-        'Огненные шары наносят на 10% больше урона.',
-        ['root'],
-        ['fireball', 'greater_fireball'],
-        'fireball'
-    ),
+    {
+        ...star(
+            'magic',
+            'fire_damage',
+            'Жар',
+            'Огненные шары наносят на 10% больше урона.',
+            ['root'],
+            ['fireball', 'greater_fireball'],
+            'fireball'
+        ),
+        minimumLevel: 3,
+    },
     star('magic', 'mana1', 'Чувство маны', 'Мана оценивается с шагом 25.'),
     star('magic', 'mana2', 'Поток маны', 'Мана оценивается с шагом 10.', [
         'mana1',

@@ -70,13 +70,13 @@ export function resolveCharacterDamage(
     }
     const tainted = Math.min(
         target.abilities.untrainableHpDamage,
-        target.maxHp - target.hp
+        Math.max(0, target.maxHp - target.hp)
     )
     target.applyDamage(result.hpDamage, now)
     wearHitEquipment(target)
     result.events.push(...cancelPrayerCast(target, now))
     target.abilities.untrainableHpDamage = Math.min(
-        target.maxHp - target.hp,
+        Math.max(0, target.maxHp - target.hp),
         tainted + (hostile ? 0 : result.hpDamage)
     )
     result.trainableDamage = hostile ? result.hpDamage : 0

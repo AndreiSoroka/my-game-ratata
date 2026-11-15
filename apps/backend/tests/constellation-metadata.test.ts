@@ -163,7 +163,7 @@ describe('known prayer school cards', () => {
         const healingNodes = fullConstellationCatalog.filter(
             (node) => node.constellationId === 'prayer'
         )
-        expect(healingNodes).toHaveLength(20)
+        expect(healingNodes).toHaveLength(25)
         for (const node of healingNodes) {
             actor.progression.constellations.opened.add(node.id)
         }

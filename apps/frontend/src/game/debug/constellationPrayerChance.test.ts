@@ -5,12 +5,12 @@ import { describePrayerEffectChance } from './constellationPrayerChance'
 
 const description = (id: string) =>
     describePrayerEffectChance(fullConstellationCatalog.find((node) => node.id === id)!)!
-it('describes all24 prayer nodes with independent readable complete mathematical legends', () => {
+it('describes all prayer nodes with independent readable complete mathematical legends', () => {
     const before = JSON.stringify(fullConstellationCatalog)
     const prayers = fullConstellationCatalog.filter((node) =>
         node.constellationId.startsWith('prayer')
     )
-    expect(prayers).toHaveLength(24)
+    expect(prayers).toHaveLength(29)
     for (const node of prayers) {
         const result = description(node.id)
         expect(result.summary.length).toBeGreaterThan(0)
@@ -71,11 +71,11 @@ it('preserves distinct per-step purification and Kara thresholds with fixed base
         expect(own.examples.map((entry) => entry.value).join(' ')).not.toMatch(/лечени/i)
     }
 })
-it('keeps resurrection at half resources and ordinary modifiers deterministic', () => {
-    for (const id of ['prayer.revive', 'prayer_grave.revive']) {
-        expect(description(id).formulas).toContain('max(1, ceil(N × 0,5))')
-        expect(description(id).formulas).toContain('0,5 × N')
-    }
+it('keeps school-specific resurrection resources and ordinary modifiers deterministic', () => {
+    expect(description('prayer.revive').formulas).toContain('max(1, ceil(N × 0,01))')
+    expect(description('prayer.revive').formulas).toContain('max(1, 0,01 × N)')
+    expect(description('prayer_grave.revive').formulas).toContain('max(1, ceil(N × 0,5))')
+    expect(description('prayer_grave.revive').formulas).toContain('0,5 × N')
     for (const id of ['prayer.radius1', 'prayer.focus', 'prayer.gift1', 'prayer.last_light'])
         expect(description(id).formulas[0]).toBe('100')
     expect(description('prayer.last_light').formulas).toContain('H < 0,20 × N')

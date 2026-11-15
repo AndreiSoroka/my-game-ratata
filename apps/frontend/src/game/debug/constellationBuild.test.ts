@@ -81,7 +81,7 @@ describe('manual constellation build dependencies', () => {
 })
 
 describe('manual constellation build cascades and isolation', () => {
-    it('preserves every dependency when any of the 77 stars is disabled', () => {
+    it('preserves every dependency when any of the catalog stars is disabled', () => {
         const all = enableAllConstellationStars()
         for (const star of fullConstellationCatalog) {
             const result = disableConstellationStar(all, star.id)
@@ -89,7 +89,7 @@ describe('manual constellation build cascades and isolation', () => {
             expect(result.disabledIds.every((id) => !result.enabledIds.has(id))).toBe(true)
             validBuild(result.enabledIds)
         }
-        expect(all.size).toBe(77)
+        expect(all.size).toBe(fullConstellationCatalog.length)
     })
 
     it('cascades all transitive descendants without removing an independent joint parent', () => {
@@ -123,7 +123,7 @@ describe('manual constellation build cascades and isolation', () => {
         expect(noArrow.enabledIds.has('magic.spark_damage')).toBe(true)
         expect(noArrow.enabledIds.has('magic.root')).toBe(true)
         validBuild(noArrow.enabledIds)
-        expect(all.size).toBe(77)
+        expect(all.size).toBe(fullConstellationCatalog.length)
     })
 
     it('makes repeated or unknown operations explicit no-ops with independent output sets', () => {
@@ -145,13 +145,13 @@ describe('manual constellation build cascades and isolation', () => {
         }
     })
 
-    it('enables all 77 nodes in topology order, without skill gates or randomness', () => {
+    it('enables all catalog nodes in topology order, without skill gates or randomness', () => {
         const before = JSON.stringify(fullConstellationCatalog)
         vi.spyOn(Math, 'random').mockImplementation(() => {
             throw new Error('Not gameplay RNG')
         })
         const all = enableAllConstellationStars()
-        expect(all.size).toBe(77)
+        expect(all.size).toBe(fullConstellationCatalog.length)
         const visited = new Set<string>()
         for (const id of all) {
             const star = fullConstellationCatalog.find((entry) => entry.id === id)

@@ -1,4 +1,9 @@
-import type { ConstellationId, DeityMood, PrayerAbilityId } from '@my-game-ratata/contracts'
+import {
+    type ConstellationId,
+    type DeityMood,
+    type PrayerAbilityId,
+    resolveResurrectionParameters,
+} from '@my-game-ratata/contracts'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import {
@@ -97,7 +102,7 @@ export function calculatePrayerScenario(
                   tileWidth: settings.tileWidth ?? 16,
               })
     const available = node.effectType === 'passive' || (build?.available ?? true)
-    const metrics = available ? outcomeMetrics(nodeId, school.id, answer, activeIds) : []
+    const metrics = available ? outcomeMetrics(nodeId, school.id, mood, answer, activeIds) : []
     return {
         school,
         metrics,
@@ -118,12 +123,22 @@ const reviveNodes: Partial<Record<PrayerAbilityId, string>> = {
 function outcomeMetrics(
     nodeId: string,
     ability: PrayerAbilityId,
+    mood: DeityMood,
     answer: number,
     activeIds?: ReadonlySet<string>
 ): PrayerScenarioResult['metrics'] {
     const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)!
     if (nodeId.endsWith('.revive'))
-        return [{ label: 'Шанс воскрешения', value: chancePercent(answer) }]
+        return [
+            {
+                label: 'Шанс воскрешения',
+                value: chancePercent(
+                    resolveResurrectionParameters(ability, new Set(), mood).successChance
+                ),
+            },
+        ]
+    if (nodeId === 'prayer.revive_angelic')
+        return [{ label: 'Ангельское при успешном воскрешении', value: '30%' }]
     if (nodeId === 'prayer.harm')
         return [{ label: 'Шанс кары', value: chancePercent(prayerHarmChance(answer)) }]
     if (node.effectType === 'passive') return []
@@ -137,8 +152,24 @@ function outcomeMetrics(
             metrics.push({ label: 'Шанс кары', value: chancePercent(prayerHarmChance(answer)) })
     }
     const revive = reviveNodes[ability]
-    if (revive && activeIds?.has(revive))
-        metrics.push({ label: 'Шанс воскрешения', value: chancePercent(answer) })
+    if (revive && activeIds?.has(revive)) {
+        const resurrection = resolveResurrectionParameters(ability, activeIds, mood)
+        metrics.push({
+            label: 'Шанс воскрешения',
+            value: chancePercent(resurrection.successChance),
+        })
+        if (resurrection.angelicChance > 0)
+            metrics.push(
+                {
+                    label: 'Ангельское при успешном воскрешении',
+                    value: chancePercent(resurrection.angelicChance),
+                },
+                {
+                    label: 'Общий шанс Ангельского воскрешения',
+                    value: chancePercent(resurrection.successChance * resurrection.angelicChance),
+                }
+            )
+    }
     return metrics
 }
 function validateSettings(settings: PrayerScenarioSettings): void {

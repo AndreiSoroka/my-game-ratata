@@ -1,11 +1,11 @@
 <script setup lang="ts">
-defineProps<{ count: number }>()
+defineProps<{ count: number; total: number }>()
 const emit = defineEmits<{ clear: []; all: []; reset: [] }>()
 </script>
 <template>
     <section class="build-toolbar" aria-label="Сборка персонажа">
         <p data-testid="debug-build-count">
-            В наборе: <strong>{{ count }}</strong> из 77
+            В наборе: <strong>{{ count }}</strong> из {{ total }}
         </p>
         <div>
             <button type="button" data-testid="debug-build-clear" @click="emit('clear')">

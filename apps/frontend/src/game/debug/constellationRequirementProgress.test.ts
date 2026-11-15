@@ -6,22 +6,21 @@ import ConstellationDebugUnlock from './ConstellationDebugUnlock.vue'
 import { constellationRequirementProgress } from './constellationRequirementProgress'
 
 it('compares the inspected minimum with current build levels below, at and above the gate', () => {
-    const active = new Set(['prayer.root', 'prayer.revive', 'prayer.harm'])
+    const active = new Set(['prayer.root', 'prayer.revive'])
     expect(constellationRequirementProgress('prayer.harm1', active, 'cleric')).toEqual([
-        { id: 'prayer', name: 'Чудеса', required: 3, current: 1, satisfied: false },
+        { id: 'prayer', name: 'Чудеса', required: 1, current: 0, satisfied: false },
     ])
-    active.add('prayer.gift1')
-    active.add('prayer.radius1')
+    active.add('prayer.harm')
     expect(constellationRequirementProgress('prayer.harm1', active, 'cleric')?.[0]).toMatchObject({
-        required: 3,
-        current: 3,
+        required: 1,
+        current: 1,
         satisfied: true,
     })
     active.add('prayer.harm1')
     active.add('prayer.harm2')
     expect(constellationRequirementProgress('prayer.harm1', active, 'cleric')?.[0]).toMatchObject({
-        required: 3,
-        current: 5,
+        required: 1,
+        current: 3,
         satisfied: true,
     })
 })
@@ -64,11 +63,11 @@ it('renders required/current levels and makes the insufficient state explicit wi
     const view = mount(ConstellationDebugUnlock, {
         props: {
             nodeId: 'prayer.harm1',
-            activeIds: new Set(['prayer.root', 'prayer.harm']),
+            activeIds: new Set(['prayer.root', 'prayer.revive']),
             heroClass: 'cleric',
         },
     })
-    expect(view.get('[data-required-path="prayer"]').text()).toBe('Чудеса: требуется 3 · сейчас 1')
+    expect(view.get('[data-required-path="prayer"]').text()).toBe('Чудеса: требуется 1 · сейчас 0')
     expect(view.get('[data-required-path="prayer"]').attributes('data-level-satisfied')).toBe(
         'false'
     )
@@ -76,9 +75,9 @@ it('renders required/current levels and makes the insufficient state explicit wi
         'Недостаточно уровня: звезда пока не может открыться.'
     )
     await view.setProps({
-        activeIds: new Set(['prayer.root', 'prayer.harm', 'prayer.gift1', 'prayer.radius1']),
+        activeIds: new Set(['prayer.root', 'prayer.revive', 'prayer.harm']),
     })
-    expect(view.get('[data-required-path="prayer"]').text()).toBe('Чудеса: требуется 3 · сейчас 3')
+    expect(view.get('[data-required-path="prayer"]').text()).toBe('Чудеса: требуется 1 · сейчас 1')
     expect(view.get('[data-testid="debug-star-level-status"]').text()).toBe(
         'Требование к уровню выполнено.'
     )

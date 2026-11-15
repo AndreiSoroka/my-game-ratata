@@ -15,7 +15,7 @@ it('excludes cleric starters from paid cost and uses authored gates', () => {
     const area = constellationStarPlan('prayer.area', 'cleric')
     expect(area.ids.size).toBe(4)
     expect(area.levels.prayer).toBe(3)
-    expect(constellationStarPlan('prayer.harm2', 'cleric').levels.prayer).toBe(5)
+    expect(constellationStarPlan('prayer.harm2', 'cleric').levels.prayer).toBe(3)
 })
 it('keeps spell knowledge prerequisites separate from presentation edges', () => {
     expect(constellationBuildParents('magic.fire_damage')).toContain('magic.fireball')

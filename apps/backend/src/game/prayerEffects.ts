@@ -12,9 +12,10 @@ import { miracleChance } from './deities'
 import { applyPrayerGifts } from './prayerGifts'
 import { applyPrayerGraves } from './prayerGraves'
 import { applyPrayerWave } from './prayerWave'
+import { characterResurrectionParameters } from './resurrection'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
 
-/** One completed cast, one random sample and one frozen conflict factor per mastery. */
+/** Freeze modifiers and conflict factors before resolving the completed cast and its awards. */
 export function completePrayer(
     actor: GameCharacter,
     intent: PrayerIntent,
@@ -31,6 +32,10 @@ export function completePrayer(
     const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
     const factors = captureMasteryFactors(actor)
     const modifiers = constellationModifiers(actor)
+    const resurrection =
+        intent.mode === 'revive'
+            ? characterResurrectionParameters(actor, abilityId, context.now)
+            : undefined
     const lowHpGift = wasLowHpGift(actor, abilityId)
     const castReceipt =
         receiptId ??
@@ -39,10 +44,13 @@ export function completePrayer(
         actor,
         intent,
         context,
-        roll < miracleChance(actor, context.now, school.deityId),
+        roll <
+            (resurrection?.successChance ??
+                miracleChance(actor, context.now, school.deityId)),
         quality * (abilityId === 'pray' ? modifiers.prayerGiftMultiplier : 1),
         abilityId,
-        factors
+        factors,
+        resurrection
     )
     const wave = applyPrayerWave(
         actor,
@@ -66,41 +74,44 @@ export function completePrayer(
     const experience = gift.experience + wave.experience + graves.experience
     return [
         ...events,
-        ...awardMasteries(
-            actor,
-            experience > 0
-                ? [
-                      {
-                          constellationId: school.constellationId,
-                          experience,
-                      },
-                  ]
-                : [],
-            {
-                now: context.now,
-                random: context.random,
-                receiptId: castReceipt,
-                factors,
-                evidence:
-                    abilityId === 'pray'
-                        ? prayerEvidence(
-                              gift.meaningful,
-                              wave.meaningful,
-                              graves.meaningful,
-                              lowHpGift
-                          )
-                        : [],
-            }
-        ),
+        ...awardMasteries(actor, prayerReward(abilityId, experience), {
+            now: context.now,
+            random: context.random,
+            receiptId: castReceipt,
+            factors,
+            evidence: prayerEvidence(
+                abilityId,
+                gift.meaningful,
+                wave.meaningful,
+                graves.meaningful,
+                lowHpGift
+            ),
+        }),
     ]
 }
 
+function prayerReward(abilityId: PrayerAbilityId, experience: number) {
+    return experience > 0
+        ? [
+              {
+                  constellationId:
+                      PRAYER_SCHOOL_DEFINITIONS[abilityId].constellationId,
+                  experience,
+              },
+          ]
+        : []
+}
+
 function prayerEvidence(
+    abilityId: PrayerAbilityId,
     gift: boolean,
     harm: boolean,
     purify: boolean,
     lowHpGift: boolean
 ): string[] {
+    if (abilityId !== 'pray') {
+        return []
+    }
     const evidence = ['prayer']
     if (gift) {
         evidence.push('gift')

@@ -31,6 +31,10 @@ export function regen(
     perSecond: number,
     deltaMs: number
 ): number {
+    // An Angelic revival may supply excess resources until they are actually spent.
+    if (current >= max) {
+        return Math.max(0, current)
+    }
     if (max <= 0 || perSecond <= 0) {
         return Math.max(0, Math.min(current, max))
     }

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
+
 for (const width of [320, 390, 1280]) {
     test(`full catalogue remains readable and pannable at ${width}px`, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 844 })
@@ -9,7 +11,9 @@ for (const width of [320, 390, 1280]) {
         await expect(graph.locator('[role=button]')).toHaveCount(9)
         await page.screenshot({ path: info.outputPath(`constellation-overview-${width}.png`) })
         await graph.getByRole('button', { name: 'Молитва', exact: true }).locator('.hit').click()
-        await expect.poll(() => graph.locator('[role=button]').count()).toBe(77)
+        await expect
+            .poll(() => graph.locator('[role=button]').count())
+            .toBe(fullConstellationCatalog.length)
         const geometry = await graph.evaluate((element) => {
             const frame = element.getBoundingClientRect()
             const inside = (rect: DOMRect) =>

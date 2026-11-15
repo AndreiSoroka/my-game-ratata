@@ -51,7 +51,7 @@ export function isPointInZones(
 }
 
 export function heal(player: GameCharacter, amount: number): number {
-    if (amount <= 0 || !player.alive) {
+    if (amount <= 0 || !player.alive || player.hp >= player.maxHp) {
         return 0
     }
 

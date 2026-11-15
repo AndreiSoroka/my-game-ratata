@@ -1,5 +1,8 @@
+import { resolveResurrectionParameters } from '@my-game-ratata/contracts'
+
 import { resolveConstellationBonuses } from './constellationBonuses'
 import { fullConstellationCatalog } from './constellationNodes'
+import { prayerAnswerChance } from './prayerProbability'
 
 type Bonuses = ReturnType<typeof resolveConstellationBonuses>
 interface Context {
@@ -78,6 +81,7 @@ function appendHealingPrayer(
         effects.push(
             'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.'
         )
+        appendRevivalEffects(effects, learned)
     }
     if (learned.has('prayer.harm')) {
         effects.push('Наносит урон нежити в радиусе молитвы.')
@@ -110,6 +114,31 @@ function appendHealingPrayer(
     appendDescription(effects, learned, 'prayer.last_light')
     appendDivineKnowledge(effects, b.deityInsight, false)
     appendDivineKnowledge(effects, b.otherDeityInsight, true)
+}
+function appendRevivalEffects(
+    effects: string[],
+    learned: ReadonlySet<string>
+): void {
+    const parameters = resolveResurrectionParameters('pray', learned, 'neutral')
+    if (
+        learned.has('prayer.revive_higher') ||
+        learned.has('prayer.revive_stable')
+    ) {
+        effects.push(
+            `Воскрешение возвращает не менее ${percent(parameters.hpFraction)}% HP.`
+        )
+    }
+    const bonus = parameters.successChance - prayerAnswerChance('neutral')
+    if (bonus > 0) {
+        effects.push(
+            `Шанс воскрешения повышен на ${percent(bonus)} процентных пунктов, но не выше 95%.`
+        )
+    }
+    if (parameters.angelicChance > 0) {
+        effects.push(
+            `После успешного воскрешения с вероятностью ${percent(parameters.angelicChance)}% возвращает по 150% здоровья, маны и энергии.`
+        )
+    }
 }
 function appendDivineKnowledge(
     effects: string[],

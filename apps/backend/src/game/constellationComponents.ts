@@ -14,6 +14,11 @@ export function skyComponents(
         node.parents.map((from) => ({ from, to: node.id }))
     )
     for (const edge of edges) {
+        if (!adjacent.has(edge.from) || !adjacent.has(edge.to)) {
+            throw new Error(
+                `Unknown personal constellation edge: ${edge.from}>${edge.to}`
+            )
+        }
         adjacent.get(edge.from)?.push(edge.to)
         adjacent.get(edge.to)?.push(edge.from)
     }
@@ -42,8 +47,8 @@ export function skyComponents(
             branches: branchCuts(ids, adjacent),
         })
     }
-    if (nodes.length !== 77 || edges.length !== 71 || result.length !== 7) {
-        throw new Error('Unexpected personal constellation topology')
+    if (seen.size !== nodes.length || adjacent.size !== nodes.length) {
+        throw new Error('Duplicate personal constellation nodes')
     }
     return result
 }

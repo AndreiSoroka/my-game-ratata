@@ -21,8 +21,14 @@ it('covers every star and separates mandatory eligibility from random weights', 
     expect(describeConstellationUnlock('missing')).toEqual({ conditions: [], chanceBoosts: [] })
 })
 it('shows real mastery gates and explicit spell learning prerequisites', () => {
-    expect(describeConstellationUnlock('prayer.harm2').conditions.join(' ')).toContain(
-        'уровень не ниже 5'
+    expect(describeConstellationUnlock('prayer.harm2').conditions.join(' ')).not.toMatch(
+        /уровень не ниже [357]/
+    )
+    expect(describeConstellationUnlock('prayer.revive_master').conditions.join(' ')).toContain(
+        'уровень не ниже 12'
+    )
+    expect(describeConstellationUnlock('prayer.revive_angelic').conditions.join(' ')).toContain(
+        'уровень не ниже 12'
     )
     const fire = describeConstellationUnlock('magic.fire_damage').conditions.join(' ')
     expect(fire).toContain('уровень не ниже 3')

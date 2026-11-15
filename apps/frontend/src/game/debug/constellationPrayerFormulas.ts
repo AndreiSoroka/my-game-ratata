@@ -105,15 +105,24 @@ export function prayerLowHpFormula() {
 export function prayerRevivalChanceFormula() {
     return chanceFormula('Шанс воскрешения, %', 'P', { P: answer })
 }
-export function prayerRevivalHpFormula() {
-    return chanceFormula('HP после успешного воскрешения', 'max(1, ceil(N × 0,5))', {
-        N: 'Максимальное HP воскрешаемой цели.',
-    })
+export function prayerRevivalHpFormula(fraction = 0.01) {
+    return chanceFormula(
+        'HP после успешного воскрешения',
+        `max(1, ceil(N × ${String(fraction).replace('.', ',')}))`,
+        {
+            N: 'Максимальное HP воскрешаемой цели.',
+        }
+    )
 }
-export function prayerRevivalResourceFormula() {
-    return chanceFormula('MP и EN после успешного воскрешения', '0,5 × N', {
-        N: 'Максимальный запас соответствующего ресурса цели: маны или энергии.',
-    })
+export function prayerRevivalResourceFormula(fraction = 0.01, minimumResource = 1) {
+    const amount = `${String(fraction).replace('.', ',')} × N`
+    return chanceFormula(
+        'MP и EN после успешного воскрешения',
+        minimumResource > 0 ? `max(1, ${amount})` : amount,
+        {
+            N: 'Максимальный запас соответствующего ресурса цели: маны или энергии.',
+        }
+    )
 }
 export function prayerInsightFormula() {
     return chanceFormula('Раскрытие информации после изучения, %', '100')

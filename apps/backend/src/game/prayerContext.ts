@@ -25,11 +25,14 @@ export function prayerResourceMissing(
         return 0
     }
     if (profile.resource === 'hp') {
-        return target.maxHp - target.hp
+        return Math.max(0, target.maxHp - target.hp)
     }
-    return profile.resource === 'energy'
-        ? target.config.resources.maxEnergy - target.energy
-        : target.config.resources.maxMana - target.mana
+    return Math.max(
+        0,
+        profile.resource === 'energy'
+            ? target.config.resources.maxEnergy - target.energy
+            : target.config.resources.maxMana - target.mana
+    )
 }
 
 export function prayerTargetNearby(

@@ -127,7 +127,7 @@ is no level 10 cap, and every attained level earns one random opening for that
 constellation. Levels never pay for stars or directly increase damage/healing.
 Equipment, baseline stats, moods and learned stars determine numerical effects.
 All requirements—parents, level and knowledge—must hold before a random star enters
-the pool. Normal star generations require levels 1, 3, 5, 7… Empty pools bank openings;
+the pool. Generation-based level gates are removed; only individually authored level requirements apply. Empty pools bank openings;
 newly satisfied conditions resolve all eligible pending openings. Special event
 stars remain free and cannot be substituted by a random discovery.
 

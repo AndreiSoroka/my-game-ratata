@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
 import { NavigationService } from '../src/game/navigation'
+import { practiceResourceMissing } from '../src/game/resourcePractice'
 import type { WorldObjectDefinition } from '../src/game/worldObjectData'
 import { readInteractionAreas } from '../src/game/worldObjectGeometry'
 
@@ -68,6 +69,19 @@ function fixture(position: Vector2) {
 }
 
 describe('exact pond reach', () => {
+    it('does not remove Angelic excess energy or create recovery credit when drinking', () => {
+        const { actor, drink, clock } = fixture({ x: 40, y: 88 })
+        actor.energy = actor.config.resources.maxEnergy * 1.5
+        const before = actor.energy
+        expect(drink()).toMatchObject([{ kind: 'water_drink' }])
+        expect(actor.energy).toBe(before)
+        expect(practiceResourceMissing(actor, 'energy')).toBe(0)
+        clock.now += 5000
+        actor.energy -= actor.config.resources.maxEnergy * 0.6
+        expect(drink()).toMatchObject([{ kind: 'water_drink' }])
+        expect(actor.energy).toBe(actor.config.resources.maxEnergy)
+        expect(practiceResourceMissing(actor, 'energy')).toBe(0)
+    })
     it.each([
         { x: 40, y: 88 },
         { x: 184, y: 152 },

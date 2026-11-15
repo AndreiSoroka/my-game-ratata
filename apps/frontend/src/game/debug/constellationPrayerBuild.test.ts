@@ -103,7 +103,7 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         expect(metric(result, 'Время молитвы')).toBe('3000 мс')
         expect(result.build!.effects.join(' ')).not.toContain('Кара')
     })
-    it('requires the own revival star, costs20 MP and restores fixed half resources', () => {
+    it('requires the own revival star, costs20 MP and restores school-specific resources', () => {
         for (const path of ['prayer', 'prayer_grave']) {
             const rootOnly = new Set([`${path}.root`])
             expect(calculate(rootOnly, `${path}.revive`).build!.available).toBe(false)
@@ -111,7 +111,9 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
             const revival = calculate(rootOnly, `${path}.revive`, 'benevolent', true)
             expect(revival.build!.available).toBe(true)
             expect(metric(revival, 'Цена воскрешения')).toBe('20 MP')
-            expect(metric(revival, 'Ресурсы после воскрешения')).toContain('50%')
+            expect(metric(revival, 'Ресурсы после воскрешения')).toContain(
+                path === 'prayer' ? '1% максимума' : '50% максимума'
+            )
             expect(metric(revival, 'Лечение')).toBeUndefined()
         }
     })

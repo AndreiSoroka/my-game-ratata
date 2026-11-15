@@ -66,6 +66,13 @@ describe('earned effects of active constellation cards', () => {
             effects.filter((line) => line.startsWith('Урон кары увеличен'))
         ).toHaveLength(1)
         expect(new Set(effects).size).toBe(effects.length)
+        expect(effects).toContain('Воскрешение возвращает не менее 100% HP.')
+        expect(effects).toContain(
+            'Шанс воскрешения повышен на 25 процентных пунктов, но не выше 95%.'
+        )
+        expect(effects).toContain(
+            'После успешного воскрешения с вероятностью 30% возвращает по 150% здоровья, маны и энергии.'
+        )
         expect(effects).not.toContain('Лечит вас или союзника.')
     })
     it('isolates the four prayer schools and the undead resurrection mode', () => {
@@ -144,6 +151,6 @@ describe('passive card data and catalogue isolation', () => {
             resolveConstellationCardEffects('prayer.root', all)
         ).not.toContain('Changed')
         expect(JSON.stringify(fullConstellationCatalog)).toBe(before)
-        expect(all.size).toBe(77)
+        expect(all.size).toBe(fullConstellationCatalog.length)
     })
 })

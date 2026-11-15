@@ -157,7 +157,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto('/?debug=constellations&class=cleric&seed=mastery-atlas')
         const atlas = page.getByTestId('constellation-debug')
         await expect(atlas).toBeVisible()
-        await expect(page.locator('[data-star-id]')).toHaveCount(77)
+        await expect(page.locator('[data-star-id]')).toHaveCount(fullConstellationCatalog.length)
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
             width
         )
@@ -212,7 +212,7 @@ for (const width of [320, 390, 1280]) {
             await assertCatalogResult(page, id, width === 1280)
         }
         await page.getByTestId('debug-search').fill('')
-        await expect(page.locator('[data-star-id]')).toHaveCount(77)
+        await expect(page.locator('[data-star-id]')).toHaveCount(fullConstellationCatalog.length)
         await assertOwnNonPrayerResults(page)
         await selectBuildStar(page, 'arrow.root')
         await page.getByTestId('debug-mastery-summary').locator(':scope > summary').click()
@@ -237,15 +237,15 @@ test('atlas compares current levels with every required path instead of claiming
     await expect(page.getByTestId('constellation-debug')).toBeVisible()
     await selectBuildStar(page, 'prayer.harm1')
     const prayer = page.locator('[data-required-path="prayer"]')
-    await expect(prayer).toHaveAttribute('data-required', '3')
+    await expect(prayer).toHaveAttribute('data-required', '1')
     await expect(prayer).toHaveAttribute('data-current', '0')
-    await expect(prayer).toContainText('Чудеса: требуется 3 · сейчас 0')
+    await expect(prayer).toContainText('Чудеса: требуется 1 · сейчас 0')
     await expect(page.getByTestId('debug-star-level-status')).toContainText('Недостаточно уровня')
     await enableInspectedStar(page, 'prayer.harm')
     await selectBuildStar(page, 'prayer.harm1')
     await expect(prayer).toHaveAttribute('data-current', '1')
     await page.getByTestId('selected-star-toggle').click()
-    await expect(prayer).toHaveAttribute('data-current', '3')
+    await expect(prayer).toHaveAttribute('data-current', '2')
     await expect(page.getByTestId('debug-star-level-status')).toHaveText(
         'Требование к уровню выполнено.'
     )

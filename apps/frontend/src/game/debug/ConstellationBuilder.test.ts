@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import { enableAllConstellationStars } from './constellationBuild'
 import ConstellationBuildSummary from './ConstellationBuildSummary.vue'
@@ -68,13 +69,17 @@ it('names missing prerequisites, provides inspect-only links and briefly reports
 it('keeps selected stars and example inputs through class and seed changes', async () => {
     const view = mount(ConstellationDebug, { props: { syncUrl: false } })
     await view.get('[data-testid="debug-build-all"]').trigger('click')
-    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(77)
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(
+        fullConstellationCatalog.length
+    )
     await view.get('[data-testid="debug-prayer-mood"] [data-mood="benevolent"]').trigger('click')
     await view.get('[data-testid="debug-last-light"]').setValue(true)
     await view.get('[data-testid="debug-class"]').setValue('vanguard')
     await view.get('[data-testid="debug-seed"]').setValue('preserve-build')
     await view.get('form').trigger('submit')
-    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(77)
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(
+        fullConstellationCatalog.length
+    )
     await view.get('[data-testid="debug-class"]').setValue('cleric')
     expect(
         view

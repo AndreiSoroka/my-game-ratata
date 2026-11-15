@@ -249,14 +249,16 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(77)
+        expect(fullConstellationCatalog).toHaveLength(82)
         expect(minimumConstellationLevel('prayer.harm')).toBe(1)
-        expect(minimumConstellationLevel('prayer.harm1')).toBe(3)
-        expect(minimumConstellationLevel('prayer.harm2')).toBe(5)
-        expect(minimumConstellationLevel('prayer.area')).toBe(3)
+        expect(minimumConstellationLevel('prayer.harm1')).toBe(1)
+        expect(minimumConstellationLevel('prayer.harm2')).toBe(1)
+        expect(minimumConstellationLevel('prayer.area')).toBe(1)
         expect(minimumConstellationLevel('magic.fire_damage')).toBe(3)
         expect(minimumConstellationLevel('prayer.revive', 'cleric')).toBe(0)
         expect(minimumConstellationLevel('prayer.revive', 'ranger')).toBe(5)
+        expect(minimumConstellationLevel('prayer.revive_master')).toBe(12)
+        expect(minimumConstellationLevel('prayer.revive_angelic')).toBe(12)
     })
     it('keeps credits when parents exist but level is too low, without consuming RNG', () => {
         const actor = abilityHero('cleric')
@@ -265,11 +267,13 @@ describe('all required star conditions', () => {
             (node) =>
                 node.constellationId === 'prayer' &&
                 node.acquisition === 'random' &&
-                !['prayer.harm1', 'prayer.harm2'].includes(node.id)
+                !['prayer.revive_master', 'prayer.revive_angelic'].includes(
+                    node.id
+                )
         )) {
             state.opened.add(node.id)
         }
-        actor.progression.masteries.prayer.level = 2
+        actor.progression.masteries.prayer.level = 11
         state.credits.prayer = 1
         const random = vi.fn(() => 0)
         expect(finishConstellationAction(actor, { now: 1000, random })).toEqual(
@@ -277,10 +281,10 @@ describe('all required star conditions', () => {
         )
         expect(random).not.toHaveBeenCalled()
         expect(state.credits.prayer).toBe(1)
-        actor.progression.masteries.prayer.level = 3
+        actor.progression.masteries.prayer.level = 12
         finishConstellationAction(actor, { now: 2000, random })
-        expect(hasStar(actor, 'prayer.harm1')).toBe(true)
-        expect(hasStar(actor, 'prayer.harm2')).toBe(false)
+        expect(hasStar(actor, 'prayer.revive_master')).toBe(true)
+        expect(hasStar(actor, 'prayer.revive_angelic')).toBe(false)
         expect(state.credits.prayer).toBe(0)
     })
     it('grants learned abilities separately from level slots', () => {
