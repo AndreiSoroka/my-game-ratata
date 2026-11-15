@@ -1,6 +1,6 @@
-import type {
-    CharacterAutoAction,
-    CharacterControlCommand,
+import {
+    type CharacterAutoAction,
+    type CharacterControlCommand,
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
@@ -59,7 +59,12 @@ function parseAutomaticAbility(
 ): CharacterAutoAction | undefined {
     const message = parseAbilityCommand({
         type: 'use_ability',
-        abilityId: record['kind'] === 'prayer' ? 'pray' : record['abilityId'],
+        abilityId:
+            record['kind'] === 'prayer'
+                ? record['abilityId'] === undefined
+                    ? 'pray'
+                    : record['abilityId']
+                : record['abilityId'],
         targetId: record['targetId'],
         target: record['target'],
         intent: record['intent'],
@@ -67,10 +72,16 @@ function parseAutomaticAbility(
     if (message?.type !== 'use_ability') {
         return undefined
     }
-    if (record['kind'] === 'prayer' && message.abilityId === 'pray') {
-        return { kind: 'prayer', intent: message.intent }
+    if (record['kind'] === 'prayer' && 'intent' in message) {
+        return {
+            kind: 'prayer',
+            ...(record['abilityId'] === undefined
+                ? {}
+                : { abilityId: message.abilityId }),
+            intent: message.intent,
+        }
     }
-    if (record['kind'] !== 'ability' || message.abilityId === 'pray') {
+    if (record['kind'] !== 'ability' || 'intent' in message) {
         return undefined
     }
     return {

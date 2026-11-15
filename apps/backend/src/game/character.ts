@@ -41,6 +41,7 @@ import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { normalize, resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import { createResourcePractice } from './resourcePractice'
 import {
     type CharacterProgression,
     createProgression,
@@ -66,6 +67,7 @@ export class GameCharacter {
     public readonly soul: SoulSnapshot
     public progression: CharacterProgression = createProgression()
     public movement = createMovementState()
+    public resourcePractice = createResourcePractice()
     public level = 1
     public xp = 0
     public reviveUntil = 0
@@ -178,12 +180,7 @@ export class GameCharacter {
 
     public nextPathPoint(): Vector2 | undefined {
         const point = this.path[this.pathIndex]
-
-        if (point === undefined) {
-            return undefined
-        }
-
-        return { ...point }
+        return point === undefined ? undefined : { ...point }
     }
 
     public completePathPoint(): void {
@@ -232,6 +229,7 @@ export class GameCharacter {
         attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number }
     ): void {
         this.pendingAttack = {
+            resourceSpends: attack.resourceSpends,
             weaponInstanceId:
                 attack.abilityId === undefined ||
                 attack.abilityId === 'skeleton_strike'

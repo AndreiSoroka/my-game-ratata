@@ -5,6 +5,9 @@ export const constellationIds = [
     'arrow',
     'life',
     'shadow',
+    'prayer_road',
+    'prayer_lantern',
+    'prayer_grave',
 ] as const
 export type ConstellationId = (typeof constellationIds)[number]
 
@@ -40,8 +43,8 @@ export interface CharacterSheetSnapshot {
 
 export interface ConstellationPathSnapshot {
     id: ConstellationId
-    name: string
-    description: string
+    name?: string
+    description?: string
     color: string
     unlocked: boolean
 }
@@ -51,17 +54,38 @@ export interface ConstellationNodeSnapshot {
     constellationId: ConstellationId
     x: number
     y: number
-    kind: 'root' | 'passive' | 'ability' | 'joint'
+    kind?: 'root' | 'passive' | 'ability' | 'joint'
     unlocked: boolean
     /** Closed neighboring stars have neither a name nor an effect description. */
     name?: string
     description?: string
+    effectType?: 'active' | 'passive'
+    effects?: string[]
     parents: string[]
+}
+
+export interface ConstellationRegion {
+    x: number
+    y: number
+    width: number
+    height: number
+}
+
+export interface ConstellationLayoutSnapshot {
+    bounds: ConstellationRegion
+    regions: Record<ConstellationId, ConstellationRegion>
+    minimumNodeSpacing: number
 }
 
 export interface ConstellationSnapshot {
     version: 1
+    layout?: ConstellationLayoutSnapshot
     paths: ConstellationPathSnapshot[]
     nodes: ConstellationNodeSnapshot[]
-    edges: Array<{ from: string; to: string }>
+    /** via contains intermediate vertices; endpoints are the corresponding node positions. */
+    edges: Array<{
+        from: string
+        to: string
+        via?: Array<{ x: number; y: number }>
+    }>
 }

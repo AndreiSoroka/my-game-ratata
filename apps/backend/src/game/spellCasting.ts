@@ -14,6 +14,10 @@ import { effectiveAbility } from './effectiveParameters'
 import { castGraveSpell } from './graveSpellCasting'
 import { distance } from './math'
 import type { ProgressionContext } from './progressionCommands'
+import {
+    confirmCombatResourceSpend,
+    recordResourceSpend,
+} from './resourcePractice'
 import { trainSkill } from './skillProgression'
 
 const spells: Record<
@@ -71,6 +75,7 @@ export function castSpell(
         return []
     }
     actor.mana -= spell.mana
+    const resourceSpend = recordResourceSpend(actor, 'mana', spell.mana)
     actor.progression.spellAvailableAt = context.now + spell.cooldown
     actor.lockAction(context.now, 400)
     actor.updateFacing({
@@ -86,6 +91,13 @@ export function castSpell(
         damageKind: 'arcane',
         respawnDelayMs: context.respawnDelayMsFor?.(target) ?? 15000,
     })
+    confirmCombatResourceSpend(
+        actor,
+        target,
+        result,
+        [resourceSpend],
+        context.now
+    )
     const events: GameEventPayload[] = [
         {
             actorId: actor.id,

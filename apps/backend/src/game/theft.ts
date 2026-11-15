@@ -18,6 +18,7 @@ import {
     transferInventoryItem,
 } from './inventory'
 import { distance } from './math'
+import { spendUsefulEnergy } from './resourcePractice'
 import type { GameRoom } from './room'
 import { canPerformSkillAction, trainSkill } from './skillProgression'
 import { privateTheftNotice } from './theftEvents'
@@ -102,7 +103,7 @@ export class TheftService {
         state: TheftState,
         context: TheftContext
     ): GameEventPayload[] {
-        actor.drainEnergy(effectiveTheftCost(actor))
+        spendUsefulEnergy(actor, effectiveTheftCost(actor))
         state.availableAt =
             context.now +
             THEFT_RULES.cooldownMs -
@@ -296,15 +297,13 @@ function rollTheft(
     return random() < success ? 'stolen' : 'failed'
 }
 function facingThief(target: GameCharacter, actor: GameCharacter): boolean {
-    const vector = {
-        x: actor.position.x - target.position.x,
-        y: actor.position.y - target.position.y,
-    }
+    const dx = actor.position.x - target.position.x
+    const dy = actor.position.y - target.position.y
     const direction = {
         up: { x: 0, y: -1 },
         down: { x: 0, y: 1 },
         left: { x: -1, y: 0 },
         right: { x: 1, y: 0 },
     }[target.facing]
-    return vector.x * direction.x + vector.y * direction.y > 0
+    return dx * direction.x + dy * direction.y > 0
 }

@@ -10,6 +10,10 @@ import {
 import type { GameCharacter } from './character'
 import { effectiveDashCost } from './effectiveParameters'
 import { normalize } from './math'
+import {
+    recordResourceSpend,
+    type ResourceSpendReceipt,
+} from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 
 export interface CharacterMovementState {
@@ -21,6 +25,7 @@ export interface CharacterMovementState {
     stepDistance: number
     lastStepAt: number
     stepLocationId: string
+    dashResourceSpend?: ResourceSpendReceipt
 }
 
 export function createMovementState(): CharacterMovementState {
@@ -55,7 +60,13 @@ export function handleMovementCommand(
     state.dashUntil = now + MOVEMENT_RULES.dashDurationMs
     state.dashAvailableAt = now + MOVEMENT_RULES.dashCooldownMs
     state.mode = 'walking'
-    character.drainEnergy(effectiveDashCost(character))
+    const spent = character.drainEnergy(effectiveDashCost(character))
+    const receipt = recordResourceSpend(character, 'energy', spent)
+    if (receipt !== undefined) {
+        state.dashResourceSpend = receipt
+    } else {
+        delete state.dashResourceSpend
+    }
     character.clearPath()
     return [{ kind: 'dash', actorId: character.id }]
 }

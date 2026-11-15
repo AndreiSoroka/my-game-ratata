@@ -39,7 +39,7 @@ describe('explicit grave interactions', () => {
             const player = cleric()
             const grave = graveFixture()
             if (failure === 'unknown') player.abilities!.known = []
-            if (failure === 'mana') player.resourceChecks!.prayers.purify_grave = 'mana'
+            if (failure === 'mana') player.resourceChecks!.prayers.pray.purify_grave = 'mana'
             if (failure === 'cooldown') player.abilities!.cooldowns.pray = 1
             if (failure === 'casting')
                 player.abilities!.casting = {

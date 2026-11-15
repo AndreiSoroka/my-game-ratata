@@ -1,4 +1,9 @@
-import { previewPrayerFromSnapshots } from '@my-game-ratata/contracts'
+import {
+    ABILITY_DEFINITIONS,
+    isPrayerAbility,
+    type PrayerAbilityId,
+    previewPrayerFromSnapshots,
+} from '@my-game-ratata/contracts'
 import { computed, type ComputedRef, onBeforeUnmount, watch } from 'vue'
 
 import { createPrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
@@ -16,6 +21,7 @@ import {
 import { type HotbarBinding, prayerDescription } from './hotbarBindings'
 import { createGestures } from './hotbarGestures'
 import { useSavedHotbarBindings } from './hotbarSession'
+import { preferredPrayer } from './prayerSelection'
 
 export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const bindings = useSavedHotbarBindings(() => props.player)
@@ -27,29 +33,22 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
             .reduce((sum, item) => sum + (item.quantity ?? 1), 0)
     )
     const known = computed(() => props.player.abilities?.known ?? [])
-    const prayerAssigned = computed(() =>
-        bindings.value.some((binding) => binding?.kind === 'ability' && binding.id === 'pray')
+    const boundPrayers = computed(() => [
+        ...new Set(
+            bindings.value.flatMap((binding) =>
+                binding?.kind === 'ability' && isPrayerAbility(binding.id) ? [binding.id] : []
+            )
+        ),
+    ])
+    const prayerAssigned = computed(() => boundPrayers.value.length > 0)
+    const selectedPrayer = computed(
+        () => preferredPrayer(props.player, boundPrayers.value) ?? boundPrayers.value[0] ?? 'pray'
     )
-    const preview = computed(() => prayerPreview(props))
+    const previewFor = (abilityId: PrayerAbilityId) => prayerPreview(props, abilityId)
+    const preview = computed(() => previewFor(selectedPrayer.value))
     watchPrayerHighlight(props, emit, prayerAssigned, preview)
     const gestures = createGestures(props, emit, () => bindings.value)
-    watch(
-        () => props.player.id,
-        () => gestures.reset()
-    )
-    watch(
-        [
-            () => props.target?.id,
-            () => props.grave?.id,
-            () => props.grave?.phase,
-            () => props.blocked,
-        ],
-        () => gestures.reset()
-    )
-    watch(
-        () => props.player.control,
-        () => gestures.acknowledge()
-    )
+    watchGestureChanges(props, gestures)
     const cooldown = (binding: HotbarBinding | null) =>
         binding?.kind === 'ability'
             ? (props.player.abilities?.cooldowns[binding.id] ?? 0)
@@ -57,19 +56,21 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
               ? props.player.cooldowns.attackMsLeft
               : 0
     const prayerTooltip = () =>
-        prayerDescription(preview.value, props.characters, props.player, props.grave)
+        describedPrayer(props, preview.value, selectedPrayer.value, boundPrayers.value.length)
     const unavailable = (binding: HotbarBinding | null) =>
         bindingUnavailable(
             binding,
             props,
             count.value,
-            preview.value.unavailableReason ?? undefined,
+            binding?.kind === 'ability' && isPrayerAbility(binding.id)
+                ? (previewFor(binding.id).unavailableReason ?? undefined)
+                : undefined,
             cooldown(binding)
         )
     const activate = createActivator(
         props,
         emit,
-        { bindings, food, known, preview },
+        { bindings, food, known, preview: previewFor },
         gestures,
         unavailable
     )
@@ -86,8 +87,13 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         cooldown,
         unavailable,
         tooltip: (binding: HotbarBinding | null) =>
-            binding?.kind === 'ability' && binding.id === 'pray'
-                ? prayerTooltip()
+            binding?.kind === 'ability' && isPrayerAbility(binding.id)
+                ? prayerDescription(
+                      previewFor(binding.id),
+                      props.characters,
+                      props.player,
+                      props.grave
+                  )
                 : actionTooltip(binding, props),
         prayerTooltip,
         activate,
@@ -96,16 +102,18 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         resetGesture: gestures.reset,
     }
 }
-function prayerPreview(props: HotbarProps) {
+function prayerPreview(props: HotbarProps, abilityId: PrayerAbilityId) {
     return props.grave
         ? gravePrayerPreview(
               props.player,
               props.grave,
               props.canReachGrave?.(props.grave) ?? true,
               props.characters,
-              props.canReach
+              props.canReach,
+              abilityId
           )
         : previewPrayerFromSnapshots(props.player, props.characters, props.target?.id, {
+              abilityId,
               canReach: props.canReach,
               graves: props.graves,
               canReachGrave: props.canReachGrave,
@@ -128,4 +136,39 @@ function watchPrayerHighlight(
     )
     watch(highlight, (value) => emit('previewChange', value), { immediate: true })
     onBeforeUnmount(() => emit('previewChange', undefined))
+}
+
+function watchGestureChanges(
+    props: HotbarProps,
+    gestures: ReturnType<typeof createGestures>
+): void {
+    watch(
+        () => props.player.id,
+        () => gestures.reset()
+    )
+    watch(
+        [
+            () => props.target?.id,
+            () => props.grave?.id,
+            () => props.grave?.phase,
+            () => props.blocked,
+        ],
+        () => gestures.reset()
+    )
+    watch(
+        () => props.player.control,
+        () => gestures.acknowledge()
+    )
+}
+
+function describedPrayer(
+    props: HotbarProps,
+    preview: ReturnType<typeof previewPrayerFromSnapshots>,
+    abilityId: PrayerAbilityId,
+    count: number
+): string {
+    const text = prayerDescription(preview, props.characters, props.player, props.grave)
+    return abilityId === 'pray' && count < 2
+        ? text
+        : `${ABILITY_DEFINITIONS[abilityId].name}: ${text}`
 }

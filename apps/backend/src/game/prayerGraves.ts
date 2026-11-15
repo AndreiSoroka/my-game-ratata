@@ -1,6 +1,7 @@
 import {
     type GameEventPayload,
     GRAVE_PURIFY_BASE_CHANCE,
+    type PrayerAbilityId,
     type PrayerIntent,
 } from '@my-game-ratata/contracts'
 
@@ -15,13 +16,19 @@ export function applyPrayerGraves(
     intent: PrayerIntent,
     context: AbilityContext,
     roll: number,
-    receiptId: string
+    receiptId: string,
+    abilityId: PrayerAbilityId = 'pray'
 ) {
     const events: GameEventPayload[] = []
+    if (abilityId !== 'pray') {
+        return { events, meaningful: false, attemptMeaningful: false }
+    }
     const graves = eligibleGraves(actor, intent, context)
     const chance = Math.min(
         0.95,
-        (GRAVE_PURIFY_BASE_CHANCE * miracleChance(actor, context.now)) / 0.55
+        (GRAVE_PURIFY_BASE_CHANCE *
+            miracleChance(actor, context.now, 'hearth')) /
+            0.55
     )
     if (roll < chance) {
         for (const grave of graves) {

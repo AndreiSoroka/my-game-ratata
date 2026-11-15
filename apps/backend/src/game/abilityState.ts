@@ -3,16 +3,19 @@ import type {
     CharacterAbilitiesSnapshot,
     CharacterArchetype,
     HeroClass,
+    PrayerAbilityId,
     PrayerIntent,
     Vector2,
 } from '@my-game-ratata/contracts'
 
 import { snapshotAbilityUsage } from './abilityUsage'
 import type { GameCharacter } from './character'
-import { prayerParameters } from './prayerParameters'
+import { prayerParameters, snapshotPrayerParameters } from './prayerParameters'
 
 interface PrayerCastBase {
     targetId: string
+    abilityId: PrayerAbilityId
+    receiptId: string
     startedAt: number
     completesAt: number
     patron: GameCharacter['progression']['patron']
@@ -30,10 +33,16 @@ export type PrayerCast = PrayerCastBase &
           }
     )
 export interface CharacterAbilityState {
+    lastPrayerAbilityId: PrayerAbilityId | null
     prayerSequence: number
     known: Set<AbilityId>
     availableAt: Partial<Record<AbilityId, number>>
-    barrier: { remaining: number; expiresAt: number; practiced: boolean } | null
+    barrier: {
+        remaining: number
+        expiresAt: number
+        practiced: boolean
+        resourceSpend?: import('./resourcePractice').ResourceSpendReceipt
+    } | null
     casting: PrayerCast | null
     untrainableHpDamage: number
 }
@@ -56,6 +65,7 @@ export function createAbilityState(
         known.add('skeleton_strike')
     }
     return {
+        lastPrayerAbilityId: null,
         prayerSequence: 0,
         known,
         availableAt: {},
@@ -109,7 +119,12 @@ export function snapshotAbilities(
         known,
         parameters: snapshotAbilityUsage(actor, known),
         cooldowns,
-        prayer: prayerParameters(actor),
+        ...(known.includes('pray') ? { prayer: prayerParameters(actor) } : {}),
+        prayers: snapshotPrayerParameters(actor, known),
+        ...(actor.abilities.lastPrayerAbilityId !== null &&
+        known.includes(actor.abilities.lastPrayerAbilityId)
+            ? { lastPrayerAbilityId: actor.abilities.lastPrayerAbilityId }
+            : {}),
         barrier: snapshotBarrier(actor, now),
         casting: snapshotCast(actor),
     }
@@ -132,7 +147,7 @@ function snapshotCast(
     const cast = actor.abilities.casting
     return actor.alive && cast !== null
         ? {
-              abilityId: 'pray',
+              abilityId: cast.abilityId,
               targetId: cast.targetId,
               startedAt: cast.startedAt,
               completesAt: cast.completesAt,

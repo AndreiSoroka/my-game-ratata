@@ -1,4 +1,4 @@
-export const CONTRACT_PROTOCOL_VERSION = '0.4.0'
+export const CONTRACT_PROTOCOL_VERSION = '0.5.0'
 
 export type ContractProtocolVersion = typeof CONTRACT_PROTOCOL_VERSION
 

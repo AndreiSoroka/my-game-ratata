@@ -66,6 +66,7 @@ function legalAutoPurification(
     context: AbilityContext
 ): boolean {
     return (
+        (action.abilityId ?? 'pray') === 'pray' &&
         action.intent.mode === 'purify_grave' &&
         canApproachGravePurification(actor, action.intent.target.id, context)
     )
@@ -95,7 +96,11 @@ export function reachedAutoWorldTarget(
     if (action.kind === 'prayer') {
         return (
             distance(actor.position, grave.position) <=
-            prayerParameters(actor, context.navigation.grid.tileWidth).radius
+            prayerParameters(
+                actor,
+                context.navigation.grid.tileWidth,
+                action.abilityId ?? 'pray'
+            ).radius
         )
     }
     const id = action.abilityId

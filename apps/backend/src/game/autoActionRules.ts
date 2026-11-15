@@ -35,7 +35,7 @@ import {
 } from './effectiveParameters'
 import { distance } from './math'
 import { prayerHarmTargets } from './prayerContext'
-import { prayerParameters } from './prayerParameters'
+import { prayerAvailableAt, prayerParameters } from './prayerParameters'
 
 export type AutoActionStatus = 'stop' | 'ready' | NonNullable<AutoActionWaiting>
 export function autoTargetId(action: CharacterAutoAction): string | undefined {
@@ -151,7 +151,11 @@ function reached(
     if (action.kind === 'prayer') {
         return (
             distance(actor.position, target.position) <=
-            prayerParameters(actor, context.navigation.grid.tileWidth).radius
+            prayerParameters(
+                actor,
+                context.navigation.grid.tileWidth,
+                action.abilityId ?? 'pray'
+            ).radius
         )
     }
     const id = action.abilityId
@@ -173,11 +177,9 @@ function cooldownAt(actor: GameCharacter, action: CombatAction): number {
         return actor.lastAttackAt + effectiveAttackCooldown(actor)
     }
     if (action.kind === 'prayer') {
-        return Math.max(
-            actor.progression.prayerAvailableAt,
-            actor.abilities.availableAt.pray ?? 0
-        )
+        return prayerAvailableAt(actor, action.abilityId ?? 'pray')
     }
+
     if (
         action.abilityId === 'fireball' ||
         action.abilityId === 'greater_fireball'
@@ -227,7 +229,8 @@ function refusesAutoCombat(
     if (action.kind === 'prayer') {
         return (
             action.intent.mode !== 'devotion' &&
-            prayerHarmTargets(actor, context).length > 0
+            prayerHarmTargets(actor, context, action.abilityId ?? 'pray')
+                .length > 0
         )
     }
     return action.kind === 'attack' || action.abilityId !== 'barrier'
@@ -244,7 +247,9 @@ function available(
         action.kind === 'attack' ||
         knowsAbility(
             actor,
-            action.kind === 'prayer' ? 'pray' : action.abilityId
+            action.kind === 'prayer'
+                ? (action.abilityId ?? 'pray')
+                : action.abilityId
         )
     )
 }

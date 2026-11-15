@@ -4,7 +4,10 @@ import {
     type CharacterSnapshot,
     type ClientMessage,
     type ConstellationId,
+    isPrayerAbility,
     type LearnAbilityId,
+    PRAYER_SCHOOL_DEFINITIONS,
+    prayerAbilityIds,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
@@ -15,17 +18,20 @@ const props = defineProps<{
     constellationId?: ConstellationId
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
-const learnable = computed<LearnAbilityId[]>(() =>
-    props.constellationId === 'prayer'
-        ? ['pray']
+const learnable = computed<LearnAbilityId[]>(() => {
+    const prayer = prayerAbilityIds.find(
+        (id) => PRAYER_SCHOOL_DEFINITIONS[id].constellationId === props.constellationId
+    )
+    return prayer
+        ? [prayer]
         : props.constellationId === 'magic'
           ? ['spark', 'barrier']
           : props.constellationId === 'arrow'
             ? ['shot']
             : props.constellationId
               ? []
-              : ['pray', 'spark', 'barrier', 'shot']
-)
+              : [...prayerAbilityIds, 'spark', 'barrier', 'shot']
+})
 const known = computed(() =>
     (props.player.abilities?.known ?? []).filter(
         (id) => !props.constellationId || learnable.value.includes(id as LearnAbilityId)
@@ -45,12 +51,7 @@ function teacher(ability: LearnAbilityId): CharacterSnapshot | undefined {
     )
 }
 function teaches(actor: CharacterSnapshot, ability: LearnAbilityId): boolean {
-    if (ability === 'pray')
-        return (
-            actor.heroClass === 'cleric' ||
-            actor.tags.includes('cleric') ||
-            actor.tags.includes('shrine')
-        )
+    if (isPrayerAbility(ability)) return actor.abilities?.known.includes(ability) === true
     if (ability === 'shot') return actor.id === 'npc_veteran_1' || actor.tags.includes('veteran')
     return actor.tags.includes('scholar')
 }
@@ -62,14 +63,6 @@ function learn(abilityId: LearnAbilityId): void {
 <template>
     <section v-if="learnable.length" class="ability-knowledge" aria-label="Умения персонажа">
         <h3>Умения</h3>
-        <p v-if="!constellationId || constellationId === 'prayer'">
-            Shift+1–4 назначает умение или еду. T выбирает врага, Shift+T — союзника, F — себя.
-        </p>
-        <p>
-            Молитва помогает выбранной цели. Без цели выбирает нуждающегося рядом; описание слота
-            показывает результат и цену перед нажатием. Полезная молитва длится
-            {{ abilityUsage(player, 'pray').windupMs / 1000 }} с и прерывается движением или уроном.
-        </p>
         <ul>
             <li v-for="id in known" :key="id">
                 <strong>{{ ABILITY_DEFINITIONS[id].name }}</strong> ·
@@ -77,7 +70,12 @@ function learn(abilityId: LearnAbilityId): void {
                 {{ abilityUsage(player, id).cooldownMs / 1000 }} с
             </li>
         </ul>
-        <div v-for="id in learnable.filter((ability) => !known.includes(ability))" :key="id">
+        <div
+            v-for="id in learnable.filter(
+                (ability) => !known.includes(ability) && !isPrayerAbility(ability)
+            )"
+            :key="id"
+        >
             <button type="button" :disabled="!player.alive || !teacher(id)" @click="learn(id)">
                 Изучить: {{ ABILITY_DEFINITIONS[id].name }}</button
             ><small

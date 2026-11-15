@@ -14,7 +14,7 @@ import { createCharacterSheet } from './characterSheet'
 import { hasStar } from './constellations'
 import type { GraveCombatTarget } from './graveRules'
 import type { NavigationService } from './navigation'
-import { prayerParameters } from './prayerParameters'
+import { prayerParameters, snapshotPrayerParameters } from './prayerParameters'
 import { publicProgression } from './progressionObservation'
 import { visibilityRadius } from './queries'
 import { observeResource, resourceChecks } from './resourceObservation'
@@ -116,8 +116,17 @@ function observedAbilities(
             ...abilities,
             ...(target !== undefined && view.navigation !== undefined
                 ? {
-                      prayer: prayerParameters(
+                      ...(abilities.known.includes('pray')
+                          ? {
+                                prayer: prayerParameters(
+                                    target,
+                                    view.navigation.grid.tileWidth
+                                ),
+                            }
+                          : {}),
+                      prayers: snapshotPrayerParameters(
                           target,
+                          abilities.known,
                           view.navigation.grid.tileWidth
                       ),
                       parameters: snapshotAbilityUsage(

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { GameCharacter } from '../src/game/character'
 import { retireCharacter } from '../src/game/characterLife'
 import { constellationStars } from '../src/game/constellationCatalog'
+import { constellationWireId } from '../src/game/constellationNodes'
 import {
     consumeRunicShot,
     finishConstellationAction,
@@ -96,16 +97,21 @@ describe('server-owned constellation discovery', () => {
     it('sends only roots and opaque neighboring unknown stars, with pure snapshots', () => {
         const actor = hero()
         const snapshot = snapshotConstellations(actor)
-        expect(snapshot.paths).toHaveLength(6)
+        expect(snapshot.paths).toHaveLength(9)
         const hidden = snapshot.nodes.filter(
-            (node) => node.kind === 'passive' && !node.unlocked
+            (node) =>
+                node.constellationId === 'blade' &&
+                node.parents.length > 0 &&
+                !node.unlocked
         )
         expect(hidden.length).toBeGreaterThan(0)
         for (const node of hidden) {
             expect(node.name).toBeUndefined()
             expect(node.description).toBeUndefined()
-            expect(node.id).toMatch(/^star-\d+$/)
-            expect(node.parents).toEqual(['blade.root'])
+            expect(node.kind).toBeUndefined()
+            expect(node.effectType).toBeUndefined()
+            expect(node.id).toMatch(/^node-\d+$/)
+            expect(node.parents).toEqual([constellationWireId('blade.root')])
         }
         expect(JSON.stringify(snapshot)).not.toContain('blade.damage2')
         expect(JSON.stringify(snapshot)).not.toContain('credits')

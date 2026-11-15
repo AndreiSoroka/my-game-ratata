@@ -1,4 +1,11 @@
-import type { CharacterSnapshot, PartySnapshot } from '@my-game-ratata/contracts'
+import {
+    ABILITY_DEFINITIONS,
+    type CharacterSnapshot,
+    type PartySnapshot,
+    prayerAbilityIds,
+    profileForPrayer,
+    snapshotPrayerParameters,
+} from '@my-game-ratata/contracts'
 
 import { isDialogueCharacter } from '../runtime/runtimeQueries'
 import { relation } from './combatTargeting'
@@ -32,6 +39,7 @@ export function characterActions(
         },
         ...companionActions(target, player),
         ...teacherActions(target, player),
+        ...prayerLearningActions(target, player),
     ]
 }
 function companionActions(
@@ -87,27 +95,56 @@ function teacherActions(target: CharacterSnapshot, player: CharacterSnapshot): I
         })
     return actions
 }
+export function prayerLearningActions(
+    target: CharacterSnapshot,
+    player: CharacterSnapshot
+): InteractionAction[] {
+    if (!target.alive || relation(target, player) === 'hostile') return []
+    return prayerAbilityIds
+        .filter(
+            (id) => target.abilities?.known.includes(id) && !player.abilities?.known.includes(id)
+        )
+        .map((abilityId) => ({
+            id: `learn:${abilityId}:${target.id}`,
+            label: `Изучить: ${ABILITY_DEFINITIONS[abilityId].name}`,
+            command: { type: 'learn_ability', abilityId, targetId: target.id },
+        }))
+}
 export function reviveActions(
     characters: CharacterSnapshot[],
     player: CharacterSnapshot
 ): InteractionAction[] {
-    if (!player.progression?.resurrectionUnlocked) return []
+    const schools =
+        player.progression?.resurrectionSchools ??
+        (player.progression?.resurrectionUnlocked ? ['pray' as const] : [])
     return characters
         .filter(
-            (character) =>
-                !character.alive &&
-                (character.life?.reviveMsLeft ?? 0) > 0 &&
-                character.faction === player.faction &&
-                interactionDistance(player, character) <= 48
+            (target) =>
+                !target.alive &&
+                (target.life?.reviveMsLeft ?? 0) > 0 &&
+                relation(target, player) !== 'hostile'
         )
-        .sort((a, b) => interactionDistance(player, a) - interactionDistance(player, b))
+        .flatMap((target) =>
+            schools
+                .filter(
+                    (abilityId) =>
+                        player.abilities?.known.includes(abilityId) &&
+                        profileForPrayer(abilityId).reviveTypes.includes(target.creatureType) &&
+                        interactionDistance(player, target) <=
+                            snapshotPrayerParameters(player, abilityId).radius
+                )
+                .map<InteractionAction>((abilityId) => ({
+                    id: `revive:${abilityId}:${target.id}`,
+                    label: `Воскресить: ${target.nickname}`,
+                    disabled: player.resourceChecks?.prayers[abilityId]?.revive !== 'ready',
+                    command: {
+                        type: 'use_ability',
+                        abilityId,
+                        intent: { mode: 'revive', targetId: target.id },
+                    },
+                }))
+        )
         .slice(0, 1)
-        .map<InteractionAction>((character) => ({
-            id: `revive:${character.id}`,
-            label: `Воскресить: ${character.nickname}`,
-            disabled: player.resourceChecks?.prayers.revive !== 'ready',
-            command: { type: 'revive', targetId: character.id },
-        }))
 }
 export function partyActions(
     characters: CharacterSnapshot[],

@@ -46,7 +46,7 @@ it.each([
     'target-offline',
     'target-retired',
     'mana',
-    'patron',
+    'knowledge',
 ] as const)(
     'revival interrupts on %s without spending mana or practice',
     (reason) => {
@@ -75,8 +75,8 @@ it.each([
         if (reason === 'mana') {
             caster.mana = 19
         }
-        if (reason === 'patron') {
-            caster.progression.patron = 'grave'
+        if (reason === 'knowledge') {
+            caster.abilities.known.delete('pray')
         }
         const mana = caster.mana
         expect(finish()).toContainEqual(

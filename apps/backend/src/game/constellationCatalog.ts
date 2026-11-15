@@ -1,113 +1,81 @@
-import type {
-    AbilityId,
-    ConstellationId,
-    ConstellationNodeSnapshot,
-} from '@my-game-ratata/contracts'
+import type { ConstellationId } from '@my-game-ratata/contracts'
 
 import { combatStars } from './constellationCombatStars'
+import type { ConstellationStar } from './constellationDefinition'
 import { otherStars } from './constellationOtherStars'
 
-export interface ConstellationStar {
-    id: string
-    constellationId: ConstellationId
-    name: string
-    description: string
-    parents: string[]
-    evidence: string[]
-    kind: ConstellationNodeSnapshot['kind']
-    ability?: AbilityId
-    x: number
-    y: number
-}
+export { type ConstellationStar, star } from './constellationDefinition'
 
 export const constellationPaths = [
     {
         id: 'blade',
         name: 'Клинок',
         description:
-            'Воину доступен сразу. Остальным — после полезного удара мечом по врагу.',
+            'Вы владеете ближним оружием и оттачиваете мастерство ударов.',
         color: '#edaa78',
-        x: 240,
-        y: 220,
     },
     {
         id: 'magic',
         name: 'Магия',
         description:
-            'Изучите Искру или Барьер у учёного. Практикуйтесь попаданиями, защитой и передачей знаний.',
+            'Вы направляете магическую силу, чтобы поражать врагов и защищаться.',
         color: '#b8a4ed',
-        x: 680,
-        y: 220,
     },
     {
         id: 'prayer',
         name: 'Молитва',
         description:
-            'Клирику доступна сразу. Других обучит дружественный клирик или служитель святилища.',
+            'Вы можете помолиться за живых или мёртвых. Есть шанс, что божество ответит на ваши просьбы.',
         color: '#eddb9b',
-        x: 1120,
-        y: 220,
     },
     {
         id: 'arrow',
         name: 'Стрела',
-        description:
-            'Лучнику доступна сразу. Остальным — после обучения Выстрелу у ветерана.',
+        description: 'Вы поражаете цели на расстоянии.',
         color: '#9ed4db',
-        x: 240,
-        y: 740,
     },
     {
         id: 'life',
         name: 'Жизнь',
-        description:
-            'Переживите настоящий вражеский урон. Знание тела растёт от потери и восстановления здоровья.',
+        description: 'Вы лучше понимаете своё тело и учитесь беречь силы.',
         color: '#b5da9a',
-        x: 680,
-        y: 740,
     },
     {
         id: 'shadow',
         name: 'Тень',
         description:
-            'Начните настоящую скрытную вылазку или допустимую попытку кражи.',
+            'Вы умеете скрывать своё присутствие и действовать незаметно.',
         color: '#c4b2d7',
-        x: 1120,
-        y: 740,
+    },
+    {
+        id: 'prayer_road',
+        name: 'Путь странника',
+        description:
+            'Вы обращаетесь к Безымянному Путнику за силами для дальнейшего пути. Есть шанс восстановить энергию себе или союзнику.',
+        color: '#9fcab0',
+    },
+    {
+        id: 'prayer_lantern',
+        name: 'Ясность',
+        description:
+            'Вы просите Слепого Архивариуса прояснить разум. Есть шанс восстановить ману себе или союзнику.',
+        color: '#a8bfea',
+    },
+    {
+        id: 'prayer_grave',
+        name: 'Прах',
+        description:
+            'Вы обращаетесь к Хранителю Праха. Есть шанс восстановить здоровье себе или союзнику, принадлежащему к нежити.',
+        color: '#b7a3cf',
     },
 ] satisfies Array<{
     id: ConstellationId
     name: string
     description: string
     color: string
-    x: number
-    y: number
 }>
 
 export const constellationStars: ConstellationStar[] = [
     ...combatStars,
     ...otherStars,
 ]
-
-export function star(
-    path: ConstellationId,
-    suffix: string,
-    name: string,
-    description: string,
-    parents: string[] = ['root'],
-    evidence: string[] = [],
-    ability?: AbilityId
-): ConstellationStar {
-    return {
-        id: `${path}.${suffix}`,
-        constellationId: path,
-        name,
-        description,
-        parents: parents.map((id) => (id.includes('.') ? id : `${path}.${id}`)),
-        evidence,
-        kind: 'passive',
-        ...(ability === undefined ? {} : { ability }),
-        x: 0,
-        y: 0,
-    }
-}

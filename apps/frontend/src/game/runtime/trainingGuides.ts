@@ -3,11 +3,13 @@ import {
     type CharacterSnapshot,
     type ProjectilePath,
     SHOT_HALF_WIDTH,
+    snapshotPrayerParameters,
     type TrainingAreaDefinition,
     type Vector2,
 } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
+import { preferredPrayer } from '../ui/prayerSelection'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 
 export function insideTrainingArea(area: TrainingAreaDefinition, position: Vector2): boolean {
@@ -114,7 +116,15 @@ export class TrainingGuides {
         ctx.fillStyle = '#ffcf5a59'
         for (const z of this.zones) ctx.fillRect(z.minX, z.minY, z.maxX - z.minX, z.maxY - z.minY)
         if (this.shot) this.drawShot(ctx, this.shot)
-        const prayer = this.prayer ?? this.learnedPrayer
+        const prayer = this.learnedPrayer
+            ? {
+                  ...this.learnedPrayer,
+                  warnings:
+                      this.prayer && this.prayer.abilityId === this.learnedPrayer.abilityId
+                          ? this.prayer.warnings
+                          : [],
+              }
+            : this.prayer
         if (prayer) this.drawPrayer(ctx, prayer)
         ctx.restore()
     }
@@ -171,8 +181,14 @@ export class TrainingGuides {
 export function trainingPrayerHighlight(
     observer: CharacterSnapshot | undefined
 ): PrayerPreviewHighlight | undefined {
-    const radius = observer?.abilities?.prayer?.radius
-    return observer?.alive && observer.abilities?.known.includes('pray') && radius !== undefined
-        ? { origin: { ...observer.position }, radius, warnings: [] }
+    if (!observer?.alive) return undefined
+    const abilityId = preferredPrayer(observer)
+    return abilityId
+        ? {
+              abilityId,
+              origin: { ...observer.position },
+              radius: snapshotPrayerParameters(observer, abilityId).radius,
+              warnings: [],
+          }
         : undefined
 }

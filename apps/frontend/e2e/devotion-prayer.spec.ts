@@ -35,7 +35,7 @@ for (const mobile of [false, true]) {
         const after = await page.evaluate(() => window.__ratataTest!.getState().player!)
         expect(after.health).toEqual(before.health)
         expect(after.resources.mana.kind).toBe('percent')
-        expect(after.resourceChecks?.prayers.devotion).toBe('ready')
+        expect(after.resourceChecks?.prayers.pray.devotion).toBe('ready')
         expect(after.position).toEqual(before.position)
         expect(after.progression?.skills).toEqual(before.progression?.skills)
         await expect(

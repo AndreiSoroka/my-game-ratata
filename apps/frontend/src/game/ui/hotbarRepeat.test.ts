@@ -75,7 +75,11 @@ it('pins the first prayer intent when its single cast has already filled the tar
         expect(wrapper.emitted('command')?.[1]).toEqual([
             {
                 type: 'auto_action',
-                action: { kind: 'prayer', intent: { mode: 'restore', targetId: player.id } },
+                action: {
+                    kind: 'prayer',
+                    abilityId: 'pray',
+                    intent: { mode: 'restore', targetId: player.id },
+                },
             },
         ])
     } finally {
@@ -92,7 +96,10 @@ it('can arm a meaningful prayer while waiting for mana and displays authoritativ
         },
         resourceChecks: {
             ...characterFixture('self').resourceChecks!,
-            prayers: { ...characterFixture('self').resourceChecks!.prayers, restore: 'mana' },
+            prayers: {
+                ...characterFixture('self').resourceChecks!.prayers,
+                pray: { ...characterFixture('self').resourceChecks!.prayers.pray, restore: 'mana' },
+            },
         },
         abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
     })
@@ -101,7 +108,11 @@ it('can arm a meaningful prayer while waiting for mana and displays authoritativ
         wrapper.vm.activate(1)
         expect(wrapper.emitted('command')).toBeUndefined()
         wrapper.vm.activate(1)
-        const action = { kind: 'prayer', intent: { mode: 'restore', targetId: player.id } } as const
+        const action = {
+            kind: 'prayer',
+            abilityId: 'pray',
+            intent: { mode: 'restore', targetId: player.id },
+        } as const
         expect(wrapper.emitted('command')).toEqual([[{ type: 'auto_action', action }]])
         await wrapper.setProps({
             player: {

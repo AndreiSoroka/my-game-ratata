@@ -1,4 +1,4 @@
-import { star } from './constellationCatalog'
+import { star } from './constellationDefinition'
 
 export const combatStars = [
     star(

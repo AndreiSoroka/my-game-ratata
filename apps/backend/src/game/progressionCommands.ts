@@ -44,7 +44,14 @@ export function handleProgressionCommand(
     }
     switch (message.type) {
         case 'pray':
-            return pray(actor, context.now, context.random, context)
+            return pray(
+                actor,
+                context.now,
+                context.random,
+                context,
+                undefined,
+                message.abilityId
+            )
         case 'learn_skill':
             return learnFireball(
                 actor,

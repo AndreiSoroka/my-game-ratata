@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import {
+    type CharacterSnapshot,
+    PRAYER_SCHOOL_DEFINITIONS,
+    prayerAbilityForDeity,
+} from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 const props = defineProps<{ character: CharacterSnapshot }>()
 const patron = computed(() => props.character.progression?.deity)
 const faith = computed(
-    () => props.character.progression?.skills.find((skill) => skill.id === 'faith')?.level ?? 1
+    () =>
+        props.character.progression?.skills.find(
+            (skill) =>
+                skill.id ===
+                PRAYER_SCHOOL_DEFINITIONS[prayerAbilityForDeity(patron.value?.id ?? 'hearth')]
+                    .faithSkillId
+        )?.level ?? 1
 )
 const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен', wrathful: 'Разгневан' }
 </script>
 <template>
     <div
-        v-if="character.abilities?.known.includes('pray') && patron"
+        v-if="patron && character.abilities?.known.includes(prayerAbilityForDeity(patron.id))"
         class="faith-status"
         aria-label="Вера и покровитель"
     >

@@ -27,6 +27,15 @@ for (const width of [320, 390, 1280]) {
         )
         const graph = menu.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
+        await expect
+            .poll(() =>
+                graph.evaluate((element) => {
+                    const box = (element as SVGSVGElement).viewBox.baseVal
+                    const rect = element.getBoundingClientRect()
+                    return Math.abs(box.width / box.height - rect.width / rect.height)
+                })
+            )
+            .toBeLessThan(0.001)
         const original = await graph.getAttribute('viewBox')
         await menu.getByRole('button', { name: 'Приблизить небосвод' }).click()
         await expect(graph).not.toHaveAttribute('viewBox', original!)

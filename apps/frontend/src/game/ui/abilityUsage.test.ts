@@ -51,7 +51,7 @@ describe('authoritative ability usage metadata', () => {
             expect(rows).toContain('Молитва · 5 MP · 0 EN · 2.7 с')
             expect(rows).toContain('Выстрел · 0 MP · 9 EN · 0.495 с')
             expect(rows).toContain('Искра · 5 MP · 4 EN · 0.8 с')
-            expect(wrapper.text()).toContain('2.7 с и прерывается')
+            expect(wrapper.find('p').exists()).toBe(false)
         } finally {
             wrapper.unmount()
         }

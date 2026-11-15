@@ -3,6 +3,7 @@ import {
     type CharacterAutoAction,
     type CharacterSnapshot,
     gravePurifyCastMs,
+    isPrayerAbility,
     type PrayerPreview,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
@@ -29,12 +30,15 @@ export function bindingMatchesAction(
     if (!binding || !action || binding.kind === 'item') return false
     if (binding.kind === 'attack') return action.kind === 'attack'
     return action.kind === 'prayer'
-        ? binding.id === 'pray'
+        ? isPrayerAbility(binding.id) && binding.id === (action.abilityId ?? 'pray')
         : action.kind === 'ability' && binding.id === action.abilityId
 }
 
 export const hotbarGlyphs: Record<AbilityId, string> = {
     pray: '✦',
+    pray_road: '➤',
+    pray_lantern: '✧',
+    pray_grave: '☾',
     spark: 'ϟ',
     barrier: '◇',
     shot: '➶',

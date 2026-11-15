@@ -2,24 +2,55 @@
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref } from 'vue'
 
+import { constellationLabels } from './constellationLabels'
+import ConstellationStar from './ConstellationStar.vue'
 import { useConstellationViewport } from './useConstellationViewport'
 
 const props = defineProps<{ constellation: ConstellationSnapshot; selectedId?: string }>()
 const emit = defineEmits<{ select: [id: string] }>()
-const { svg, zoom, bounds, viewBox, unitScale, reset, focusPath, scale, down, move, up, didDrag } =
-    useConstellationViewport(() => props.constellation.nodes)
+const {
+    svg,
+    bounds,
+    viewBox,
+    visibleBounds,
+    unitScale,
+    detailed,
+    reset,
+    focusPath,
+    ensureVisible,
+    scale,
+    down,
+    move,
+    up,
+    didDrag,
+} = useConstellationViewport(() => props.constellation)
 const nodeById = computed(() => new Map(props.constellation.nodes.map((node) => [node.id, node])))
 const colors = computed(
     () => new Map(props.constellation.paths.map((path) => [path.id, path.color]))
 )
 const focusedId = ref('')
-const tabStop = computed(
-    () => focusedId.value || props.selectedId || props.constellation.nodes[0]?.id
+const interactiveNodes = computed(() =>
+    props.constellation.nodes.filter((node) => detailed.value || node.parents.length === 0)
 )
-function choose(node: ConstellationNodeSnapshot): void {
-    if (didDrag()) return
+const labels = computed(() =>
+    constellationLabels(
+        props.constellation,
+        props.selectedId,
+        detailed.value,
+        unitScale.value,
+        visibleBounds.value
+    )
+)
+const tabStop = computed(
+    () =>
+        interactiveNodes.value.find((node) => node.id === focusedId.value)?.id ??
+        interactiveNodes.value.find((node) => node.id === props.selectedId)?.id ??
+        interactiveNodes.value[0]?.id
+)
+function choose(node: ConstellationNodeSnapshot, pointer = true): void {
+    if (pointer && didDrag()) return
     emit('select', node.id)
-    if (node.kind === 'root') focusPath(node)
+    if (node.parents.length === 0) focusPath(node)
 }
 function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
     const direction = {
@@ -31,7 +62,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
     if (direction) {
         event.preventDefault()
         const [dx = 0, dy = 0] = direction
-        const next = props.constellation.nodes
+        const next = interactiveNodes.value
             .filter(
                 (candidate) =>
                     candidate.id !== node.id &&
@@ -46,13 +77,14 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
         if (next) {
             focusedId.value = next.id
             emit('select', next.id)
+            ensureVisible(next)
             void nextTick(() =>
                 svg.value?.querySelector<SVGGElement>(`[data-node-id="${next.id}"]`)?.focus()
             )
         }
     } else if (['Enter', 'Space', 'KeyE'].includes(event.code)) {
         event.preventDefault()
-        if (!event.repeat) choose(node)
+        if (!event.repeat) choose(node, false)
     } else if (event.code === 'Equal' || event.code === 'NumpadAdd') {
         event.preventDefault()
         scale(1.2)
@@ -84,6 +116,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
             @pointermove="move"
             @pointerup="up"
             @pointercancel="up"
+            @lostpointercapture="up"
         >
             <defs>
                 <pattern
@@ -104,51 +137,51 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
                 fill="url(#character-sky-stars)"
             />
             <template v-for="edge in constellation.edges" :key="`${edge.from}:${edge.to}`">
-                <line
+                <polyline
                     v-if="nodeById.get(edge.from) && nodeById.get(edge.to)"
-                    :x1="nodeById.get(edge.from)!.x"
-                    :y1="nodeById.get(edge.from)!.y"
-                    :x2="nodeById.get(edge.to)!.x"
-                    :y2="nodeById.get(edge.to)!.y"
-                    :stroke="colors.get(nodeById.get(edge.to)!.constellationId)"
-                    :opacity="nodeById.get(edge.to)!.unlocked ? 0.7 : 0.22"
+                    :points="
+                        [nodeById.get(edge.from)!, ...(edge.via ?? []), nodeById.get(edge.to)!]
+                            .map((point) => `${point.x},${point.y}`)
+                            .join(' ')
+                    "
+                    fill="none"
+                    :stroke="
+                        nodeById.get(edge.to)!.unlocked
+                            ? colors.get(nodeById.get(edge.to)!.constellationId)
+                            : '#8b969e'
+                    "
+                    :opacity="nodeById.get(edge.to)!.unlocked ? 0.7 : 0.2"
                     :stroke-dasharray="nodeById.get(edge.to)!.unlocked ? undefined : '3 4'"
                     stroke-width="1.4"
                 />
             </template>
-            <g
+            <ConstellationStar
                 v-for="node in constellation.nodes"
                 :key="node.id"
-                :data-node-id="node.id"
-                class="constellation-node"
-                :class="{
-                    'constellation-node--selected': selectedId === node.id,
-                    'constellation-node--closed': !node.unlocked,
-                }"
-                :transform="`translate(${node.x},${node.y})`"
-                :style="{ color: colors.get(node.constellationId) }"
-                role="button"
-                :tabindex="tabStop === node.id ? 0 : -1"
-                :aria-label="`${node.name ?? 'Неизвестная звезда'} · ${node.unlocked ? 'открыта' : 'не открыта'}`"
-                :aria-pressed="selectedId === node.id"
+                :node="node"
+                :color="colors.get(node.constellationId) ?? '#dce6dd'"
+                :selected="selectedId === node.id"
+                :interactive="detailed || node.parents.length === 0"
+                :tab-stop="tabStop === node.id"
+                :unit-scale="unitScale"
                 @focus="focusedId = node.id"
-                @click="choose(node)"
-                @keydown.stop="nodeKey($event, node)"
+                @select="choose(node)"
+                @key="nodeKey($event, node)"
+            />
+            <foreignObject
+                v-for="label in labels"
+                :key="label.id"
+                :x="label.x"
+                :y="label.y"
+                :width="label.width"
+                :height="label.height"
+                aria-hidden="true"
+                class="constellation-label"
             >
-                <circle class="constellation-node__focus" :r="22 * unitScale" />
-                <circle class="constellation-node__halo" :r="node.kind === 'root' ? 12 : 8" />
-                <path v-if="node.kind === 'root'" d="M0 -8 8 0 0 8 -8 0Z" />
-                <circle v-else :r="node.kind === 'joint' ? 5 : 3" />
-                <text
-                    v-if="node.kind === 'root' || (node.unlocked && zoom > 1.25)"
-                    :y="22 * unitScale"
-                    :style="{ fontSize: `${(node.kind === 'root' ? 14 : 11) * unitScale}px` }"
-                    text-anchor="middle"
-                >
-                    {{ node.name }}
-                </text>
-                <text v-else y="4" text-anchor="middle" class="constellation-node__unknown">?</text>
-            </g>
+                <div :style="{ fontSize: `${label.fontSize}px`, color: label.color }">
+                    {{ label.text }}
+                </div>
+            </foreignObject>
         </svg>
         <p class="constellation-map__help">
             Перетаскивайте небосвод · + / − масштаб · стрелки выбирают звёзды
@@ -197,45 +230,20 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
 .constellation-map__tools button:focus-visible {
     outline: 2px solid #ffe0a1;
 }
-.constellation-node {
-    color: #c6dce0;
-    cursor: pointer;
-    outline: none;
+.constellation-label {
+    pointer-events: none;
+    overflow: hidden;
 }
-.constellation-node circle,
-.constellation-node path {
-    stroke: currentColor;
-    fill: currentColor;
-}
-.constellation-node__halo {
-    fill: none !important;
-    opacity: 0.4;
-}
-.constellation-node__focus {
-    fill: none !important;
-    stroke: transparent !important;
-    pointer-events: all;
-}
-.constellation-node--selected .constellation-node__focus,
-.constellation-node:focus-visible .constellation-node__focus {
-    stroke: #fff4c9 !important;
-    stroke-dasharray: 2 3;
-}
-.constellation-node--closed circle,
-.constellation-node--closed path {
-    fill: #122530;
-    opacity: 0.5;
-}
-.constellation-node text {
-    fill: currentColor;
-    font: 10px system-ui;
-    paint-order: stroke;
-    stroke: #08151f;
-    stroke-width: 3px;
-}
-.constellation-node .constellation-node__unknown {
-    font-size: 9px;
-    stroke: none;
+.constellation-label div {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-align: center;
+    background: #08151fe8;
+    line-height: 1.25;
+    padding: 2% 4%;
+    box-sizing: border-box;
 }
 .constellation-map__help {
     margin: 0;

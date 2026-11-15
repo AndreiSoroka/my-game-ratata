@@ -1,8 +1,9 @@
-import type {
-    CharacterArchetype,
-    CharacterVisualId,
-    CreatureType,
-    HeroClass,
+import {
+    type CharacterArchetype,
+    type CharacterVisualId,
+    type CreatureType,
+    type HeroClass,
+    prayerAbilityIds,
 } from '@my-game-ratata/contracts'
 
 import { ArtisanController } from './artisanController'
@@ -13,6 +14,7 @@ import { ClericController } from './clericController'
 import { CompanionController } from './companionControllers'
 import { companionProfiles, companionSoul } from './companionProfiles'
 import type { CompanionService } from './companions'
+import { syncAbilityConstellations } from './constellations'
 import { NetworkPlayerController } from './controllers'
 import { createItemInstance, equipDirect } from './inventory'
 import type { NavigationService, TileCoordinate } from './navigation'
@@ -110,6 +112,10 @@ export function createSupportNpcs(
         }
         if (definition.id === 'npc_cleric_1') {
             character.tags.add('cleric')
+            for (const id of prayerAbilityIds) {
+                character.abilities.known.add(id)
+            }
+            syncAbilityConstellations(character)
         }
         if (definition.id === 'npc_scholar_1') {
             character.tags.add('scholar')

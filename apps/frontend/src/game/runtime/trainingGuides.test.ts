@@ -41,8 +41,9 @@ it('uses learned server prayer radius without a target, mana, harm or ready cool
             prayer: { radius: 80, durationMs: 2700, manaCost: 5, area: false, harm: false },
         },
     })
-    player.resourceChecks!.prayers.restore = 'mana'
+    player.resourceChecks!.prayers.pray.restore = 'mana'
     expect(trainingPrayerHighlight(player)).toEqual({
+        abilityId: 'pray',
         origin: { x: 0, y: 0 },
         radius: 80,
         warnings: [],

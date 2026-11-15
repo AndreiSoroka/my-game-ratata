@@ -3,7 +3,7 @@ import type {
     GameEventPayload,
     WorldCombatTarget,
 } from '@my-game-ratata/contracts'
-import { PRAYER_RULES } from '@my-game-ratata/contracts'
+import { isPrayerAbility, PRAYER_RULES, PRAYER_SCHOOL_DEFINITIONS } from '@my-game-ratata/contracts'
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
@@ -73,7 +73,7 @@ export class CombatEffects {
     private eventTarget(event: GameEventPayload): EffectTarget | undefined {
         if (event.target && event.kind !== 'attack') return this.worldTarget(event.target)
         const casterCaption =
-            event.kind === 'cast' && event.abilityId === 'pray' && event.phase === 'completed'
+            event.kind === 'cast' && isPrayerAbility(event.abilityId) && event.phase === 'completed'
         return this.character(
             event.kind === 'attack' || casterCaption
                 ? (event.actorId ?? '')
@@ -253,7 +253,11 @@ function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefi
         ? hitColors[event.kind === 'miss' ? 'miss' : hitQuality(event)]
         : event.kind === 'heal'
           ? '#a9ea8e'
-          : deityColors[actor?.progression?.deity.id ?? 'hearth']
+          : deityColors[
+                isPrayerAbility(event.abilityId)
+                    ? PRAYER_SCHOOL_DEFINITIONS[event.abilityId].deityId
+                    : (actor?.progression?.deity.id ?? 'hearth')
+            ]
 }
 function channelEnded(
     cue: EffectCue | undefined,

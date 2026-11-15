@@ -2,6 +2,7 @@ import { HERO_REVIVAL_WINDOW_MS } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { zeroVector } from './math'
+import { clearResourcePractice } from './resourcePractice'
 
 export function applyCharacterDamage(
     character: GameCharacter,
@@ -19,6 +20,7 @@ export function applyCharacterDamage(
     character.hp = Math.max(0, character.hp - amount)
 
     if (character.hp <= 0) {
+        clearResourcePractice(character)
         character.deathSequence += 1
         character.alive = false
         character.reviveUntil = now + HERO_REVIVAL_WINDOW_MS

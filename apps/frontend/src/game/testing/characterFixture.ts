@@ -1,4 +1,9 @@
-import type { AdventureSnapshot, CharacterSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
+import {
+    type AdventureSnapshot,
+    type CharacterSnapshot,
+    prayerAbilityIds,
+    type WorldSnapshot,
+} from '@my-game-ratata/contracts'
 
 export function characterFixture(
     id: string,
@@ -37,13 +42,18 @@ export function characterFixture(
                 fireball: 'ready',
                 greater_fireball: 'ready',
             },
-            prayers: {
-                restore: 'ready',
-                revive: 'ready',
-                harm: 'ready',
-                devotion: 'ready',
-                purify_grave: 'ready',
-            },
+            prayers: Object.fromEntries(
+                prayerAbilityIds.map((id) => [
+                    id,
+                    {
+                        restore: 'ready',
+                        revive: 'ready',
+                        harm: 'ready',
+                        devotion: 'ready',
+                        purify_grave: 'ready',
+                    },
+                ])
+            ) as NonNullable<CharacterSnapshot['resourceChecks']>['prayers'],
             dash: 'ready',
             sow: 'ready',
             steal: 'ready',

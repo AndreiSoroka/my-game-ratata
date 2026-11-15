@@ -18,7 +18,7 @@ defineProps<{
             v-if="grave"
             :grave="grave"
             :server-time="serverTime"
-            :prayer="player.abilities?.prayer"
+            :prayer="player.abilities?.prayers?.pray ?? player.abilities?.prayer"
             compact
         />
         <template v-else-if="target">

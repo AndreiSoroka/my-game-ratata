@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
-import { developmentCharacterFixture } from '../testing/developmentFixture'
+import { developmentCharacterFixture, fixtureStarId } from '../testing/developmentFixture'
 import {
     observedDamageText,
     observedResourceText,
@@ -41,7 +41,7 @@ it('owns physical P, tabs, Escape after lost focus, and suppresses held P', asyn
         expect(view.emitted('update:tab')?.at(-1)).toEqual(['development'])
         await view.setProps({ tab: 'development' })
         expect(view.find('[aria-label="Созвездия развития"]').exists()).toBe(true)
-        const node = view.get('[data-node-id="prayer.root"]')
+        const node = view.get(`[data-node-id="${fixtureStarId('prayer.root')}"]`)
         ;(node.element as SVGGElement).focus()
         await node.trigger('keydown', { code: 'Tab' })
         expect(document.activeElement).not.toBe(node.element)

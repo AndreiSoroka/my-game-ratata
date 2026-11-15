@@ -1,7 +1,10 @@
-import type {
-    DeityId,
-    GameEventPayload,
-    LearnAbilityId,
+import {
+    type DeityId,
+    type GameEventPayload,
+    isPrayerAbility,
+    type LearnAbilityId,
+    PRAYER_SCHOOL_DEFINITIONS,
+    prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
@@ -126,6 +129,9 @@ export function chooseDeity(
     ) {
         return []
     }
+    if (!knowsAbility(actor, prayerAbilityForDeity(deityId))) {
+        return abilityNotice(actor, 'Сначала изучите молитву этой школы.')
+    }
     if (actor.progression.patron === deityId) {
         return []
     }
@@ -158,14 +164,11 @@ export function learnAbility(
     if (knowsAbility(actor, id)) {
         return abilityNotice(actor, 'Эта способность уже изучена.')
     }
-    const suitable =
-        id === 'pray'
-            ? teacher.heroClass === 'cleric' ||
-              teacher.tags.has('cleric') ||
-              teacher.tags.has('shrine')
-            : id === 'shot'
-              ? teacher.tags.has('veteran') || teacher.id === 'npc_veteran_1'
-              : teacher.tags.has('scholar')
+    const suitable = isPrayerAbility(id)
+        ? knowsAbility(teacher, id)
+        : id === 'shot'
+          ? teacher.tags.has('veteran') || teacher.id === 'npc_veteran_1'
+          : teacher.tags.has('scholar')
     if (!suitable) {
         return abilityNotice(
             actor,
@@ -173,6 +176,12 @@ export function learnAbility(
         )
     }
     actor.abilities.known.add(id)
+    if (
+        isPrayerAbility(id) &&
+        !knowsAbility(actor, prayerAbilityForDeity(actor.progression.patron))
+    ) {
+        actor.progression.patron = PRAYER_SCHOOL_DEFINITIONS[id].deityId
+    }
     syncAbilityConstellations(actor)
     return abilityNotice(
         actor,

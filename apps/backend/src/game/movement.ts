@@ -13,6 +13,7 @@ import { cancelMovementMode } from './movementActions'
 import { type MovementNoise, movementNoise } from './movementNoise'
 import type { NavigationService } from './navigation'
 import { boundedPursuitStep } from './pursuitMovement'
+import { confirmResourceSpend } from './resourcePractice'
 
 interface MovementContext {
     character: GameCharacter
@@ -63,6 +64,10 @@ function moveCharacter(context: MovementContext): void {
         now
     )
     const traveled = distance(before, character.position)
+    if (dashMs > 0 && traveled > 0) {
+        confirmResourceSpend(character.movement.dashResourceSpend)
+        delete character.movement.dashResourceSpend
+    }
     wearWalkingEquipment(character, traveled)
     character.velocity = {
         x: character.position.x - before.x,

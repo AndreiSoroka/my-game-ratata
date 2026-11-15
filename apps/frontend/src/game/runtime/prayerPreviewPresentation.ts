@@ -1,13 +1,15 @@
 import {
     type CharacterSnapshot,
-    DEITY_PRAYER_PROFILES,
     type DeityPrayerProfile,
-    PRAYER_RULES,
+    type PrayerAbilityId,
     type PrayerPreview,
+    profileForPrayer,
+    snapshotPrayerParameters,
     type Vector2,
 } from '@my-game-ratata/contracts'
 
 export interface PrayerPreviewHighlight {
+    abilityId?: PrayerAbilityId
     origin: Vector2
     radius: number
     targetId?: string
@@ -30,14 +32,17 @@ export function createPrayerPreviewHighlight(
         !target.tags.includes('offline') &&
         target.life?.retired !== true &&
         Math.hypot(target.position.x - player.position.x, target.position.y - player.position.y) <=
-            (preview.radius ?? player.abilities?.prayer?.radius ?? PRAYER_RULES.radius) &&
+            (preview.radius ??
+                snapshotPrayerParameters(player, preview.abilityId ?? 'pray').radius) &&
         (target.id === player.id || options.canReach(target))
     const targetId = preview.intent.targetId
     if (targetId !== undefined && !known.some((target) => target.id === targetId && nearby(target)))
         return undefined
     return {
+        abilityId: preview.abilityId ?? 'pray',
         origin: { ...player.position },
-        radius: preview.radius ?? player.abilities?.prayer?.radius ?? PRAYER_RULES.radius,
+        radius:
+            preview.radius ?? snapshotPrayerParameters(player, preview.abilityId ?? 'pray').radius,
         ...(targetId === undefined ? {} : { targetId }),
         warnings: known
             .filter(
@@ -70,8 +75,9 @@ function activeHarmProfile(
         preview.unavailableReason !== null
     )
         return undefined
-    const profile = DEITY_PRAYER_PROFILES[player.progression?.deity.id ?? 'hearth']
-    return player.abilities?.prayer?.harm === true && profile.harmTypes.length > 0
+    const abilityId = preview.abilityId ?? 'pray'
+    const profile = profileForPrayer(abilityId)
+    return snapshotPrayerParameters(player, abilityId).harm === true && profile.harmTypes.length > 0
         ? profile
         : undefined
 }

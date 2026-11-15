@@ -11,6 +11,7 @@ import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelPrayerCast } from './prayerCancellation'
+import { confirmResourceSpend } from './resourcePractice'
 import { trainSkill } from './skillProgression'
 import { recordVitalityDamage } from './vitalityPractice'
 export interface DamageResolution {
@@ -165,6 +166,7 @@ function absorbDamage(
         statusId: 'barrier',
     })
     if (hostile && !barrier.practiced && result.absorbed > 0) {
+        confirmResourceSpend(barrier.resourceSpend)
         barrier.practiced = true
         result.events.push(...trainSkill(target, 'arcana'))
     }

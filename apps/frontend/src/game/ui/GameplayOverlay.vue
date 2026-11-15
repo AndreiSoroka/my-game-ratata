@@ -254,20 +254,11 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
         :graves="snapshot.graves"
         :can-reach-grave="
             (selected) =>
-                game?.isInteractionVisible(
-                    selected.position,
-                    undefined,
-                    player.abilities?.prayer?.radius ?? 48
-                ) ?? false
+                game?.isInteractionVisible(selected.position, undefined, Infinity) ?? false
         "
         :characters="characters"
         :can-reach="
-            (target) =>
-                game?.isInteractionVisible(
-                    target.position,
-                    undefined,
-                    player.abilities?.prayer?.radius ?? 48
-                ) ?? false
+            (target) => game?.isInteractionVisible(target.position, undefined, Infinity) ?? false
         "
         :blocked="blocked"
         @command="send"

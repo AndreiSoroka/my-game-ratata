@@ -23,6 +23,7 @@ import {
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
+import { recordUsefulResourceSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 
 export class AdventureFarming {
@@ -146,7 +147,11 @@ function sow(
         )
         return []
     }
-    actor.drainEnergy(FARM_SOW_ENERGY)
+    recordUsefulResourceSpend(
+        actor,
+        'energy',
+        actor.drainEnergy(FARM_SOW_ENERGY)
+    )
     plot.phase = 'growing'
     plot.readyAt = now + FARM_GROW_MS
     state.gatherAllowedAt = now + FARM_ACTION_COOLDOWN_MS

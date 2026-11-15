@@ -1,7 +1,9 @@
 import {
-    DEITY_PRAYER_PROFILES,
     type GameEventPayload,
+    PRAYER_SCHOOL_DEFINITIONS,
+    type PrayerAbilityId,
     type PrayerIntent,
+    profileForPrayer,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -9,6 +11,10 @@ import { consumeHealingProvenance } from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
 import { prayerGiftTargets, prayerResourceMissing } from './prayerContext'
+import {
+    consumeResourceRecovery,
+    practiceResourceMissing,
+} from './resourcePractice'
 import { recordVitalityRecovery } from './vitalityPractice'
 
 export function applyPrayerGifts(
@@ -16,24 +22,37 @@ export function applyPrayerGifts(
     intent: PrayerIntent,
     context: AbilityContext,
     succeeds: boolean,
-    quality: number
+    quality: number,
+    abilityId: PrayerAbilityId = 'pray'
 ) {
     const recipients =
         intent.mode === 'revive'
             ? context.characters.filter(
                   (target) => target.id === intent.targetId
               )
-            : prayerGiftTargets(actor, intent, context)
+            : prayerGiftTargets(actor, intent, context, abilityId)
     const events: GameEventPayload[] = []
     let meaningful = false
     let attemptMeaningful = false
     let selfRecovery = false
     for (const target of recipients) {
-        attemptMeaningful ||= meaningfulGiftAttempt(actor, target, intent)
+        attemptMeaningful ||= meaningfulGiftAttempt(
+            actor,
+            target,
+            intent,
+            abilityId
+        )
         if (!succeeds) {
             continue
         }
-        const gift = applyGift(actor, target, intent, context.now, quality)
+        const gift = applyGift(
+            actor,
+            target,
+            intent,
+            context.now,
+            quality,
+            abilityId
+        )
         events.push(...gift.events)
         meaningful ||= gift.meaningful
         selfRecovery ||= target.id === actor.id && gift.hpRecovery
@@ -44,7 +63,8 @@ export function applyPrayerGifts(
 function meaningfulGiftAttempt(
     actor: GameCharacter,
     target: GameCharacter,
-    intent: PrayerIntent
+    intent: PrayerIntent,
+    abilityId: PrayerAbilityId
 ): boolean {
     if (target.trainingTarget !== undefined) {
         return false
@@ -52,9 +72,10 @@ function meaningfulGiftAttempt(
     const missing =
         intent.mode === 'revive'
             ? target.maxHp
-            : prayerResourceMissing(actor, target)
-    return DEITY_PRAYER_PROFILES[actor.progression.patron].resource !== 'hp'
-        ? missing > 0
+            : prayerResourceMissing(actor, target, abilityId)
+    const resource = profileForPrayer(abilityId).resource
+    return resource !== 'hp'
+        ? practiceResourceMissing(target, resource, missing) >= 1
         : missing - Math.min(missing, target.abilities.untrainableHpDamage) > 0
 }
 
@@ -63,20 +84,24 @@ function applyGift(
     target: GameCharacter,
     intent: PrayerIntent,
     now: number,
-    quality: number
+    quality: number,
+    abilityId: PrayerAbilityId = 'pray'
 ) {
     if (intent.mode === 'revive') {
-        return reviveGift(actor, target, intent, now)
+        return reviveGift(actor, target, intent, now, abilityId)
     }
-    const profile = DEITY_PRAYER_PROFILES[actor.progression.patron]
-    const level = actor.progression.skills.miracles.level - 1
+    const profile = profileForPrayer(abilityId)
+    const level =
+        actor.progression.skills[
+            PRAYER_SCHOOL_DEFINITIONS[abilityId].miracleSkillId
+        ].level - 1
     const power =
         profile.resource === 'hp'
             ? 6 + level * 2
             : profile.resource === 'energy'
               ? 15 + level * 3
               : 12 + level * 2
-    const missing = prayerResourceMissing(actor, target)
+    const missing = prayerResourceMissing(actor, target, abilityId)
     const amount = Math.min(missing, Math.round(power * quality))
     if (amount <= 0) {
         return { events: [], meaningful: false, hpRecovery: false }
@@ -90,10 +115,15 @@ function applyGift(
         lifeEvents.push(
             ...recordVitalityRecovery(target, amount, now, target === actor)
         )
-    } else if (profile.resource === 'energy') {
-        target.energy += amount
     } else {
-        target.mana += amount
+        meaningful =
+            consumeResourceRecovery(
+                target,
+                profile.resource,
+                amount,
+                missing
+            ) >= 1 && meaningful
+        target[profile.resource] += amount
     }
     return {
         meaningful,
@@ -105,7 +135,7 @@ function applyGift(
                 actorId: actor.id,
                 targetId: target.id,
                 amount,
-                abilityId: 'pray' as const,
+                abilityId,
                 text: profile.resource,
             },
         ],
@@ -116,9 +146,10 @@ function reviveGift(
     actor: GameCharacter,
     target: GameCharacter,
     intent: PrayerIntent,
-    now: number
+    now: number,
+    abilityId: PrayerAbilityId
 ) {
-    const meaningful = meaningfulGiftAttempt(actor, target, intent)
+    const meaningful = meaningfulGiftAttempt(actor, target, intent, abilityId)
     const beforeHp = target.hp
     restoreCharacter(target, now, false)
     const lifeEvents = recordVitalityRecovery(
@@ -136,7 +167,7 @@ function reviveGift(
                 actorId: actor.id,
                 targetId: target.id,
                 kind: 'revive' as const,
-                abilityId: 'pray' as const,
+                abilityId,
             },
         ],
     }

@@ -1,5 +1,7 @@
 import {
     type GameEventPayload,
+    PRAYER_SCHOOL_DEFINITIONS,
+    type PrayerAbilityId,
     type PrayerIntent,
     type SkillId,
 } from '@my-game-ratata/contracts'
@@ -23,17 +25,15 @@ export function completePrayer(
     context: AbilityContext,
     roll: number,
     quality: number,
-    receiptId?: string
+    receiptId?: string,
+    abilityId: PrayerAbilityId = 'pray'
 ): GameEventPayload[] {
     if (intent.mode === 'devotion') {
         return []
     }
     // Capture modifiers and low-health evidence before any healing or learning.
     const modifiers = constellationModifiers(actor)
-    const lowHpGift =
-        actor.hp < actor.maxHp * 0.2 &&
-        actor.progression.constellations.hostileWound > 0 &&
-        actor.progression.constellations.lowHpFromHostile
+    const lowHpGift = wasLowHpGift(actor, abilityId)
     const castReceipt =
         receiptId ??
         `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`
@@ -41,16 +41,30 @@ export function completePrayer(
         actor,
         intent,
         context,
-        roll < miracleChance(actor, context.now),
-        quality * modifiers.prayerGiftMultiplier
+        roll <
+            miracleChance(
+                actor,
+                context.now,
+                PRAYER_SCHOOL_DEFINITIONS[abilityId].deityId
+            ),
+        quality * (abilityId === 'pray' ? modifiers.prayerGiftMultiplier : 1),
+        abilityId
     )
     const wave = applyPrayerWave(
         actor,
         context,
         roll,
-        quality * modifiers.prayerHarmMultiplier
+        quality * modifiers.prayerHarmMultiplier,
+        abilityId
     )
-    const graves = applyPrayerGraves(actor, intent, context, roll, castReceipt)
+    const graves = applyPrayerGraves(
+        actor,
+        intent,
+        context,
+        roll,
+        castReceipt,
+        abilityId
+    )
     const meaningful = gift.meaningful || wave.meaningful || graves.meaningful
     const attempted =
         gift.attemptMeaningful ||
@@ -58,28 +72,28 @@ export function completePrayer(
         graves.attemptMeaningful
     const events = [...gift.events, ...wave.events, ...graves.events]
     if (events.length === 0) {
-        events.push({
-            kind: 'notice',
-            actorId: actor.id,
-            audienceIds: [actor.id],
-            abilityId: 'pray',
-            text: 'Божество не ответило на просьбу. Мана потрачена.',
-        })
+        events.push(unansweredPrayer(actor, abilityId))
     }
+
     return [
         ...events,
-        ...practicePrayer(actor, context, {
-            attempted,
-            meaningful,
-            selfRecovery: gift.selfRecovery,
-            evidence: prayerEvidence(
-                gift.meaningful,
-                wave.meaningful,
-                graves.meaningful,
-                lowHpGift
-            ),
-            receiptId: castReceipt,
-        }),
+        ...practicePrayer(
+            actor,
+            context,
+            {
+                attempted,
+                meaningful,
+                selfRecovery: gift.selfRecovery,
+                evidence: prayerEvidence(
+                    gift.meaningful,
+                    wave.meaningful,
+                    graves.meaningful,
+                    lowHpGift
+                ),
+                receiptId: castReceipt,
+            },
+            abilityId
+        ),
     ]
 }
 
@@ -94,17 +108,19 @@ interface PrayerPractice {
 function practicePrayer(
     actor: GameCharacter,
     context: AbilityContext,
-    result: PrayerPractice
+    result: PrayerPractice,
+    abilityId: PrayerAbilityId
 ): GameEventPayload[] {
     const events: GameEventPayload[] = []
     const skillIds: SkillId[] = []
+    const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
     if (result.attempted) {
-        events.push(...trainSkill(actor, 'faith'))
-        skillIds.push('faith')
+        events.push(...trainSkill(actor, school.faithSkillId))
+        skillIds.push(school.faithSkillId)
     }
     if (result.meaningful) {
-        events.push(...trainSkill(actor, 'miracles'))
-        skillIds.push('miracles')
+        events.push(...trainSkill(actor, school.miracleSkillId))
+        skillIds.push(school.miracleSkillId)
     }
     if (result.selfRecovery) {
         skillIds.push('vitality')
@@ -119,7 +135,7 @@ function practicePrayer(
             now: context.now,
             random: context.random,
             actionId: result.receiptId,
-            evidence: result.evidence,
+            evidence: abilityId === 'pray' ? result.evidence : [],
         }),
     ]
 }
@@ -144,4 +160,28 @@ function prayerEvidence(
         evidence.push('purify')
     }
     return evidence
+}
+
+function wasLowHpGift(
+    actor: GameCharacter,
+    abilityId: PrayerAbilityId
+): boolean {
+    return (
+        abilityId === 'pray' &&
+        actor.hp < actor.maxHp * 0.2 &&
+        actor.progression.constellations.hostileWound > 0 &&
+        actor.progression.constellations.lowHpFromHostile
+    )
+}
+function unansweredPrayer(
+    actor: GameCharacter,
+    abilityId: PrayerAbilityId
+): GameEventPayload {
+    return {
+        kind: 'notice',
+        actorId: actor.id,
+        audienceIds: [actor.id],
+        abilityId,
+        text: 'Божество не ответило на просьбу. Мана потрачена.',
+    }
 }

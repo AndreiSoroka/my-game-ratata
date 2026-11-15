@@ -207,6 +207,7 @@ it('cannot turn empty Lantern prayers into practice by manufacturing a mana defi
 it('distinguishes a projected zero-capacity mana pool from an empty pool when previewing Lantern aid', () => {
     const actor = abilityHero()
     actor.progression.patron = 'lantern'
+    actor.abilities.known.add('pray_lantern')
     const target = abilityHero('vanguard', 'undead')
     expect(target.config.resources.maxMana).toBe(0)
     const projected = observeCharacterCombat(target.snapshot(1000), target, {
@@ -221,8 +222,12 @@ it('distinguishes a projected zero-capacity mana pool from an empty pool when pr
         hasCapacity: false,
     })
     expect(
-        previewPrayerFromSnapshots(ownerSnapshot(actor), [projected], target.id)
-            .intent
+        previewPrayerFromSnapshots(
+            ownerSnapshot(actor),
+            [projected],
+            target.id,
+            { abilityId: 'pray_lantern' }
+        ).intent
     ).toEqual(devotion.intent)
     const empty = abilityHero()
     empty.mana = 0
@@ -233,8 +238,12 @@ it('distinguishes a projected zero-capacity mana pool from an empty pool when pr
         now: 1000,
     })
     expect(
-        previewPrayerFromSnapshots(ownerSnapshot(actor), [emptyView], empty.id)
-            .intent
+        previewPrayerFromSnapshots(
+            ownerSnapshot(actor),
+            [emptyView],
+            empty.id,
+            { abilityId: 'pray_lantern' }
+        ).intent
     ).toEqual({ mode: 'restore', targetId: empty.id })
 })
 

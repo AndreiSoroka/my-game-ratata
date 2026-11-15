@@ -7,6 +7,7 @@ import type { GameCharacter } from './character'
 import { legalGraveTarget } from './graveCombat'
 import { distance } from './math'
 import type { ProgressionContext } from './progressionCommands'
+import { recordPaidResources } from './resourcePractice'
 
 /** Uses the same spell costs and cast lock, resolving world damage at its end. */
 export function castGraveSpell(
@@ -31,6 +32,7 @@ export function castGraveSpell(
     ) {
         return []
     }
+    const before = { mana: actor.mana, energy: actor.energy }
     actor.mana -= spell.mana
     actor.progression.spellAvailableAt = context.now + spell.cooldown
     actor.lockAction(context.now, 400)
@@ -50,6 +52,7 @@ export function castGraveSpell(
         },
     ]
     actor.queueAttackHit(context.now, {
+        resourceSpends: recordPaidResources(actor, before),
         target,
         abilityId: message.skillId,
         rawDamage:

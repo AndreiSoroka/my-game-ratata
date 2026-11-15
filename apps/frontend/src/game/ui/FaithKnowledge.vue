@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import type { CharacterSnapshot, ClientMessage, DeityId } from '@my-game-ratata/contracts'
+import {
+    type CharacterSnapshot,
+    type ClientMessage,
+    type DeityId,
+    prayerAbilityForDeity,
+    prayerAbilityIds,
+} from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
-const patron = computed(() => props.player.progression?.deity)
+const known = computed(() =>
+    prayerAbilityIds.filter((id) => props.player.abilities?.known.includes(id))
+)
+const patron = computed(() => {
+    const deity = props.player.progression?.deity
+    return deity && known.value.includes(prayerAbilityForDeity(deity.id)) ? deity : undefined
+})
 const shrine = computed(() =>
     props.characters.find(
         (character) =>
@@ -26,7 +38,8 @@ const deities: { id: DeityId; label: string }[] = [
 ]
 const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен', wrathful: 'Разгневан' }
 function choose(deityId: DeityId): void {
-    if (shrine.value) emit('command', { type: 'choose_deity', deityId, targetId: shrine.value.id })
+    if (shrine.value && known.value.includes(prayerAbilityForDeity(deityId)))
+        emit('command', { type: 'choose_deity', deityId, targetId: shrine.value.id })
 }
 </script>
 <template>
@@ -62,15 +75,13 @@ function choose(deityId: DeityId): void {
                 >
             </div>
         </section>
-        <p>
-            Выберите цель: Shift+T — союзник, F — себя. Назначьте молитву через Shift+1–4. Слот
-            показывает дар, цель, цену и возможную карающую волну до применения.
-        </p>
         <details class="faith-patrons">
             <summary>Сменить покровителя</summary>
             <div>
                 <button
-                    v-for="deity in deities"
+                    v-for="deity in deities.filter((deity) =>
+                        known.includes(prayerAbilityForDeity(deity.id))
+                    )"
                     :key="deity.id"
                     type="button"
                     :aria-pressed="patron.id === deity.id"
@@ -84,9 +95,7 @@ function choose(deityId: DeityId): void {
                 >{{
                     shrine ? `У обряда: ${shrine.nickname}` : 'Подойдите к клирику или святилищу.'
                 }}
-                Очаг воскрешает живые виды, Хранитель Праха — нежить. Выберите цель и назначьте
-                молитву на 1–4.</small
-            >
+            </small>
         </details>
     </div>
 </template>

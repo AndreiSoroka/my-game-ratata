@@ -15,7 +15,7 @@ describe('prayer without an eligible target', () => {
     it('offers a plain prayer at full health and sends the exact cosmetic intent', async () => {
         const player = priest()
         player.resources.mana = { kind: 'percent', percent: 0, hasCapacity: true }
-        player.resourceChecks!.prayers.restore = 'mana'
+        player.resourceChecks!.prayers.pray.restore = 'mana'
         const wrapper = mount(ActionHotbar, {
             props: { player, characters: [player], blocked: false },
         })
@@ -36,7 +36,10 @@ describe('prayer without an eligible target', () => {
             })
             wrapper.vm.activate(0)
             expect(wrapper.emitted('command')?.[1]).toEqual([
-                { type: 'auto_action', action: { kind: 'prayer', intent: { mode: 'devotion' } } },
+                {
+                    type: 'auto_action',
+                    action: { kind: 'prayer', abilityId: 'pray', intent: { mode: 'devotion' } },
+                },
             ])
             expect(wrapper.get('.prayer-preview').text()).toBe('Молитва восстанавливается.')
         } finally {
@@ -81,7 +84,10 @@ describe('prayer without an eligible target', () => {
             },
             resourceChecks: {
                 ...player.resourceChecks!,
-                prayers: { ...player.resourceChecks!.prayers, restore: 'mana' as const },
+                prayers: {
+                    ...player.resourceChecks!.prayers,
+                    pray: { ...player.resourceChecks!.prayers.pray, restore: 'mana' as const },
+                },
             },
         }
         expect(previewPrayerFromSnapshots(wounded, []).manaCost).toBe(5)

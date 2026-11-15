@@ -1,7 +1,9 @@
-import type {
-    DeityId,
-    DeityMood,
-    DeitySnapshot,
+import {
+    type DeityId,
+    type DeityMood,
+    type DeitySnapshot,
+    PRAYER_SCHOOL_DEFINITIONS,
+    prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -70,18 +72,25 @@ export function miracleChance(
     deityId = character.progression.patron
 ): number {
     const mood = deityMood(deityId, now)
-    const faithBonus = (character.progression.skills.faith.level - 1) * 0.015
+    const faithBonus =
+        (character.progression.skills[
+            PRAYER_SCHOOL_DEFINITIONS[prayerAbilityForDeity(deityId)]
+                .faithSkillId
+        ].level -
+            1) *
+        0.015
     return Math.min(0.95, moodChances[mood] + faithBonus)
 }
 
 export function resolveMiracle(
     character: GameCharacter,
     now: number,
-    random: () => number = Math.random
+    random: () => number = Math.random,
+    deityId: DeityId = character.progression.patron
 ): { success: boolean; quality: number } {
-    const mood = deityMood(character.progression.patron, now)
+    const mood = deityMood(deityId, now)
     return {
-        success: random() < miracleChance(character, now),
+        success: random() < miracleChance(character, now, deityId),
         quality: moodQuality[mood],
     }
 }
@@ -93,9 +102,7 @@ export function snapshotDeity(
 ): DeitySnapshot {
     const modifiers = constellationModifiers(character)
     const insight =
-        id === character.progression.patron
-            ? modifiers.deityInsight
-            : modifiers.otherDeityInsight
+        id === 'hearth' ? modifiers.deityInsight : modifiers.otherDeityInsight
     const mood = deityMood(id, now)
     return {
         id,
@@ -124,9 +131,8 @@ export function snapshotOtherDeities(
     character: GameCharacter,
     now: number
 ): DeitySnapshot[] {
-    return constellationModifiers(character).otherDeityInsight > 0
-        ? (Object.keys(deityDefinitions) as DeityId[])
-              .filter((id) => id !== character.progression.patron)
-              .map((id) => snapshotDeity(character, now, id))
-        : []
+    return (Object.keys(deityDefinitions) as DeityId[])
+        .filter((id) => id !== character.progression.patron)
+        .map((id) => snapshotDeity(character, now, id))
+        .filter((deity) => deity.perception !== 'vague')
 }

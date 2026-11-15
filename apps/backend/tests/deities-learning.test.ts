@@ -1,6 +1,8 @@
-import type {
-    CharacterControllerKind,
-    ProgressionClientMessage,
+import {
+    type CharacterControllerKind,
+    PRAYER_SCHOOL_DEFINITIONS,
+    prayerAbilityForDeity,
+    type ProgressionClientMessage,
 } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
@@ -10,6 +12,7 @@ import { deityMood, deityMoodCycleMs, miracleChance } from '../src/game/deities'
 import { studyMagic } from '../src/game/magicLearning'
 import { NavigationService } from '../src/game/navigation'
 import { handleProgressionCommand } from '../src/game/progressionCommands'
+import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
 import {
     practiceThreshold,
     trainingMultiplier,
@@ -90,10 +93,26 @@ describe('shared deities and meaningful faith', () => {
             const actor = hero()
             actor.abilities.known.add('pray')
             actor.progression.patron = deityId
+            const abilityId = prayerAbilityForDeity(deityId)
+            actor.abilities.known.add(abilityId)
             actor.hp = 10
             actor.energy = 20
             actor.mana = 20
-            command(actor, { type: 'pray' }, [], 1_000, () => 0)
+            if (deityId === 'road') {
+                recordUsefulResourceSpend(
+                    actor,
+                    'energy',
+                    actor.config.resources.maxEnergy - actor.energy
+                )
+            }
+            if (deityId === 'lantern') {
+                recordUsefulResourceSpend(
+                    actor,
+                    'mana',
+                    actor.config.resources.maxMana - actor.mana
+                )
+            }
+            command(actor, { type: 'pray', abilityId }, [], 1_000, () => 0)
             const events = finishPrayer(actor, 4_000, () => 0)
             expect(
                 events.find((event) => event.kind === 'heal')?.amount
@@ -101,11 +120,17 @@ describe('shared deities and meaningful faith', () => {
             expect(actor.hp > 10).toBe(deityId === 'hearth')
             expect(actor.energy > 20).toBe(deityId === 'road')
             expect(actor.mana > 20).toBe(deityId === 'lantern')
-            expect(actor.progression.skills.miracles.practice).toBe(1)
+            expect(
+                actor.progression.skills[
+                    PRAYER_SCHOOL_DEFINITIONS[abilityId].miracleSkillId
+                ].practice
+            ).toBe(1)
         }
     )
+})
 
-    it('changes patron only near a living religious guide and gates resurrection by patron', () => {
+describe('learned schools and the selected HUD deity', () => {
+    it('changes the HUD patron only near a living religious guide after learning its school', () => {
         const actor = hero('cleric')
         const guide = hero('cleric')
         guide.position.x += 65
@@ -118,9 +143,12 @@ describe('shared deities and meaningful faith', () => {
         expect(actor.progression.patron).toBe('hearth')
         guide.position.x -= 1
         command(actor, message, [guide])
+        expect(actor.progression.patron).toBe('hearth')
+        actor.abilities.known.add('pray_road')
+        command(actor, message, [guide])
         expect(actor.progression.patron).toBe('road')
         expect(actor.snapshot(1_000).progression?.resurrectionUnlocked).toBe(
-            false
+            true
         )
         command(actor, { ...message, deityId: 'hearth' }, [guide])
         expect(actor.snapshot(1_000).progression?.resurrectionUnlocked).toBe(

@@ -1,5 +1,18 @@
-export const abilityIds = [
+export const prayerAbilityIds = [
     'pray',
+    'pray_road',
+    'pray_lantern',
+    'pray_grave',
+] as const
+export type PrayerAbilityId = (typeof prayerAbilityIds)[number]
+export function isPrayerAbility(value: unknown): value is PrayerAbilityId {
+    return (
+        typeof value === 'string' &&
+        prayerAbilityIds.includes(value as PrayerAbilityId)
+    )
+}
+export const abilityIds = [
+    ...prayerAbilityIds,
     'spark',
     'barrier',
     'shot',
@@ -8,7 +21,7 @@ export const abilityIds = [
     'greater_fireball',
 ] as const
 export type AbilityId = (typeof abilityIds)[number]
-export type LearnAbilityId = 'pray' | 'spark' | 'barrier' | 'shot'
+export type LearnAbilityId = PrayerAbilityId | 'spark' | 'barrier' | 'shot'
 export type AttackAbilityId = 'spark' | 'shot' | 'skeleton_strike'
 export type BasicAttackKind = 'melee' | 'arrow' | 'spark'
 export type DamageKind = 'physical' | 'arcane' | 'holy' | 'unholy'
@@ -26,6 +39,7 @@ export type PrayerIntent =
           targetId?: never
       }
 export interface PrayerPreview {
+    abilityId?: PrayerAbilityId
     intent: PrayerIntent | null
     manaCost: number
     harmfulTargets: number
@@ -48,15 +62,12 @@ export interface CharacterAbilitiesSnapshot {
     parameters?: Partial<Record<AbilityId, AbilityUsageSnapshot>>
     cooldowns: Partial<Record<AbilityId, number>>
     barrier: { remaining?: number; expiresAt: number } | null
-    prayer?: {
-        radius: number
-        durationMs: number
-        manaCost: number
-        area: boolean
-        harm: boolean
-    }
+    /** Healing alias retained for existing presentation fixtures. */
+    prayer?: PrayerParametersSnapshot
+    prayers?: Partial<Record<PrayerAbilityId, PrayerParametersSnapshot>>
+    lastPrayerAbilityId?: PrayerAbilityId
     casting: {
-        abilityId: 'pray'
+        abilityId: PrayerAbilityId
         mode?: Exclude<PrayerMode, 'devotion'>
         target?: import('./graves').WorldCombatTarget
         targetId: string
@@ -67,13 +78,20 @@ export interface CharacterAbilitiesSnapshot {
 export type AbilityClientMessage =
     | {
           type: 'use_ability'
-          abilityId: Exclude<AbilityId, 'pray'>
+          abilityId: Exclude<AbilityId, PrayerAbilityId>
           targetId?: string
           target?: import('./graves').WorldCombatTarget
       }
-    | { type: 'use_ability'; abilityId: 'pray'; intent: PrayerIntent }
+    | { type: 'use_ability'; abilityId: PrayerAbilityId; intent: PrayerIntent }
     | { type: 'learn_ability'; abilityId: LearnAbilityId; targetId: string }
     | { type: 'cancel_prayer' }
+export interface PrayerParametersSnapshot {
+    radius: number
+    durationMs: number
+    manaCost: number
+    area: boolean
+    harm: boolean
+}
 export interface AbilityDefinition {
     name: string
     mana: number
@@ -88,6 +106,30 @@ export interface AbilityDefinition {
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
     pray: {
         name: 'Молитва',
+        mana: 5,
+        energy: 0,
+        cooldownMs: 3000,
+        range: 48,
+        windupMs: 3000,
+    },
+    pray_road: {
+        name: 'Молитва странника',
+        mana: 5,
+        energy: 0,
+        cooldownMs: 3000,
+        range: 48,
+        windupMs: 3000,
+    },
+    pray_lantern: {
+        name: 'Молитва ясности',
+        mana: 5,
+        energy: 0,
+        cooldownMs: 3000,
+        range: 48,
+        windupMs: 3000,
+    },
+    pray_grave: {
+        name: 'Молитва праха',
         mana: 5,
         energy: 0,
         cooldownMs: 3000,

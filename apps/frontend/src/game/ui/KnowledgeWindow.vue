@@ -28,6 +28,9 @@ const pathSkills: Record<ConstellationId, SkillId[]> = {
     blade: ['swordsmanship'],
     magic: ['arcana', 'fireball', 'greater_fireball'],
     prayer: ['faith', 'miracles'],
+    prayer_road: ['road_faith', 'road_miracles'],
+    prayer_lantern: ['lantern_faith', 'lantern_miracles'],
+    prayer_grave: ['grave_faith', 'grave_miracles'],
     arrow: ['marksmanship'],
     life: ['vitality'],
     shadow: ['stealth', 'theft'],
@@ -77,6 +80,12 @@ const descriptions: Record<SkillId, string> = {
         'Растёт от движения крадучись рядом с враждебными существами. Безопасная прогулка по городу не даёт практики. C — тихий ход; рывок выдаёт себя громче.',
     theft: `Растёт от настоящих попыток кражи. Подойдите крадучись, нажмите E и выберите цель. Замеченная попытка может вызвать отпор и стражу. За ${String(THEFT_RULES.evidenceMs / 60_000)} минут жертва может подать жалобу: городская стража станет врагом, торговцы откажут. Отпущение у клирика стоит ${String(THEFT_RULES.absolutionGold)} золотых. Чужие вещи заранее не видны.`,
 
+    road_faith: 'Вера Пути странника.',
+    road_miracles: 'Ответы Пути странника.',
+    lantern_faith: 'Вера Ясности.',
+    lantern_miracles: 'Ответы Ясности.',
+    grave_faith: 'Вера Праха.',
+    grave_miracles: 'Ответы Праха.',
     faith: 'Молитвы укрепляют веру. С опытом знамения раскрывают настроение божества и вероятность его ответа.',
     marksmanship: 'Растёт от настоящих попаданий выстрелами по врагам. Манекены не дают практики.',
     vitality:
@@ -182,7 +191,7 @@ function learnFireball(): void {
             </div>
             <p v-else-if="skill.unlocked" class="knowledge-mastery">Мастерство достигнуто</p>
             <FaithKnowledge
-                v-if="skill.id === 'faith'"
+                v-if="skill.id === 'faith' || skill.id.endsWith('_faith')"
                 :player="player"
                 :characters="characters"
                 @command="emit('command', $event)"
@@ -225,7 +234,7 @@ function learnFireball(): void {
                 >
             </div>
         </article>
-        <p class="knowledge-footer">
+        <p v-if="!embedded" class="knowledge-footer">
             Ветви: {{ practicedBranches }}. Накоплено ступеней:
             {{ player.progression?.totalEarnedLevels ?? 0 }} · сложность практики ×{{
                 player.progression?.trainingMultiplier ?? 1

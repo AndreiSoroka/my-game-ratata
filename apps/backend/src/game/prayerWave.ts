@@ -1,7 +1,8 @@
 import {
-    DEITY_PRAYER_PROFILES,
     type GameEventPayload,
     PRAYER_RULES,
+    type PrayerAbilityId,
+    profileForPrayer,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -15,11 +16,19 @@ export function applyPrayerWave(
     actor: GameCharacter,
     context: AbilityContext,
     roll: number,
-    quality: number
+    quality: number,
+    abilityId: PrayerAbilityId = 'pray'
 ) {
-    const victims = prayerHarmTargets(actor, context)
-    const chance = miracleChance(actor, context.now)
-    const profile = DEITY_PRAYER_PROFILES[actor.progression.patron]
+    if (abilityId !== 'pray') {
+        return {
+            events: [] as GameEventPayload[],
+            meaningful: false,
+            attemptMeaningful: false,
+        }
+    }
+    const victims = prayerHarmTargets(actor, context, abilityId)
+    const chance = miracleChance(actor, context.now, 'hearth')
+    const profile = profileForPrayer(abilityId)
     const events: GameEventPayload[] = []
     let meaningful = false
     let attemptMeaningful = false

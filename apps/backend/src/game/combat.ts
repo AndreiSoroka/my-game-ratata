@@ -22,6 +22,11 @@ import type { GraveCombatContext } from './graveRules'
 import { wearWeapon } from './itemDurability'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
+import {
+    confirmCombatResourceSpend,
+    confirmResourceSpend,
+    recordUsefulResourceSpend,
+} from './resourcePractice'
 import { hasEquippedSword, trainSkill } from './skillProgression'
 export { attemptAbilityAttack, attemptAttack } from './combatAttack'
 
@@ -54,6 +59,9 @@ export function resolvePendingAttackHit(
             : undefined
     const graveResult = resolveGraveHit(context, attack, target)
     if (graveResult !== undefined) {
+        if (graveResult.hpDamage > 0) {
+            attack.resourceSpends?.forEach(confirmResourceSpend)
+        }
         return [
             ...graveResult.events,
             ...resolvedWeaponWear(actor, attack, graveResult.hpDamage),
@@ -108,6 +116,13 @@ function resolveCharacterHit(
         damageKind: attack.abilityId === 'spark' ? 'arcane' : 'physical',
         respawnDelayMs: context.respawnDelayMsFor(target),
     })
+    confirmCombatResourceSpend(
+        actor,
+        target,
+        result,
+        attack.resourceSpends ?? [],
+        now
+    )
     const events = result.events.map((event) =>
         event.kind === 'damage'
             ? {
@@ -120,7 +135,10 @@ function resolveCharacterHit(
             : event
     )
     if (result.hpDamage > 0) {
-        target.drainEnergy(attack.targetEnergyDrain)
+        const drained = target.drainEnergy(attack.targetEnergyDrain)
+        if (result.trainableDamage > 0) {
+            recordUsefulResourceSpend(target, 'energy', drained)
+        }
         events.push(...applyAttackStun(actor, target, attack, now, random))
     }
     if (result.trainableDamage > 0) {

@@ -85,6 +85,7 @@ it('uses the shared 48px harm radius and only marks known living reachable allie
         canReach,
     })
     expect(result).toEqual({
+        abilityId: 'pray',
         origin: { x: 100, y: 100 },
         radius: 48,
         targetId: player.id,
@@ -93,41 +94,37 @@ it('uses the shared 48px harm radius and only marks known living reachable allie
     expect(result?.origin).not.toBe(player.position)
 })
 
-it('marks the caster and known organic allies for Grave without selecting a replacement target', () => {
+it('keeps healing waves tied to the healing school when HUD affiliation changes', () => {
     const player = priest('grave')
-    const ally = characterFixture('ally', {
+    const organic = characterFixture('organic', { position: { x: 110, y: 100 } })
+    const undead = characterFixture('undead', {
         position: { x: 110, y: 100 },
-        relationship: 'friendly',
+        creatureType: 'undead',
     })
-    const canReach = () => true
-    const preview = previewPrayerFromSnapshots(player, [ally], ally.id, { canReach })
-    const result = createPrayerPreviewHighlight(player, [ally, ally], preview, {
+    const preview = previewPrayerFromSnapshots(player, [organic, undead], player.id)
+    const result = createPrayerPreviewHighlight(player, [organic, undead], preview, {
         active: true,
-        canReach,
+        canReach: () => true,
     })
-    expect(result?.targetId).toBe(ally.id)
-    expect(result?.warnings.map(({ id, self }) => ({ id, self }))).toEqual([
-        { id: 'ally', self: false },
-        { id: player.id, self: true },
-    ])
-    expect(
-        createPrayerPreviewHighlight(player, [], preview, { active: true, canReach })
-    ).toBeUndefined()
-    expect(
-        createPrayerPreviewHighlight(player, [ally], preview, {
-            active: true,
-            canReach: () => false,
-        })
-    ).toBeUndefined()
+    expect(result?.warnings.map((warning) => warning.id)).toEqual(['undead'])
 })
-
-it.each(['road', 'lantern'] as const)('never invents a harmful wave for %s', (patron) => {
-    const player = priest(patron)
-    const preview = previewPrayerFromSnapshots(player, [], player.id)
-    expect(
-        createPrayerPreviewHighlight(player, [], preview, { active: true, canReach: () => true })
-    ).toBeUndefined()
-})
+it.each(['pray_road', 'pray_lantern', 'pray_grave'] as const)(
+    'never invents a harmful wave for %s',
+    (abilityId) => {
+        const player = priest()
+        player.abilities!.known.push(abilityId)
+        player.abilities!.prayers = {
+            [abilityId]: { radius: 48, durationMs: 3000, manaCost: 5, area: false, harm: false },
+        }
+        const preview = previewPrayerFromSnapshots(player, [], player.id, { abilityId })
+        expect(
+            createPrayerPreviewHighlight(player, [], preview, {
+                active: true,
+                canReach: () => true,
+            })
+        ).toBeUndefined()
+    }
+)
 
 it('clears preview for an unassigned/blocked prayer, unavailable cast, low skill or lost identity', () => {
     const player = priest()

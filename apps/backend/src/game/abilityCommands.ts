@@ -4,7 +4,9 @@ import {
     abilityIds,
     BARRIER_RULES,
     type GameEventPayload,
+    isPrayerAbility,
     type LearnAbilityId,
+    type PrayerAbilityId,
     type PrayerIntent,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
@@ -22,6 +24,7 @@ import { effectiveAbility } from './effectiveParameters'
 import { learnAbility } from './magicLearning'
 import { pray } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
+import { recordResourceSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 import { castSpell } from './spellCasting'
 
@@ -40,7 +43,15 @@ export function parseAbilityCommand(
     const targetId = record['targetId']
     if (record['type'] === 'learn_ability') {
         if (
-            !['pray', 'spark', 'barrier', 'shot'].includes(id) ||
+            ![
+                'pray',
+                'pray_road',
+                'pray_lantern',
+                'pray_grave',
+                'spark',
+                'barrier',
+                'shot',
+            ].includes(id) ||
             !validId(targetId)
         ) {
             return undefined
@@ -54,11 +65,11 @@ export function parseAbilityCommand(
     if (record['type'] !== 'use_ability') {
         return undefined
     }
-    if (id === 'pray') {
+    if (isPrayerAbility(id)) {
         const intent = parsePrayerIntent(record['intent'])
         return intent === undefined
             ? undefined
-            : { type: 'use_ability', abilityId: 'pray', intent }
+            : { type: 'use_ability', abilityId: id, intent }
     }
     const reference = parseCombatReference(record)
     if (reference === undefined) {
@@ -66,7 +77,7 @@ export function parseAbilityCommand(
     }
     return {
         type: 'use_ability',
-        abilityId: id as Exclude<AbilityId, 'pray'>,
+        abilityId: id as Exclude<AbilityId, PrayerAbilityId>,
         ...reference,
     }
 }
@@ -107,8 +118,15 @@ function executeAbility(
     context: AbilityContext
 ): GameEventPayload[] {
     const id = message.abilityId
-    if (message.abilityId === 'pray') {
-        return pray(actor, context.now, context.random, context, message.intent)
+    if ('intent' in message) {
+        return pray(
+            actor,
+            context.now,
+            context.random,
+            context,
+            message.intent,
+            message.abilityId
+        )
     }
     if (id === 'barrier') {
         return castBarrier(actor, context.now)
@@ -208,7 +226,9 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
     }
     actor.mana -= definition.mana
     actor.abilities.availableAt.barrier = now + definition.cooldownMs
+    const resourceSpend = recordResourceSpend(actor, 'mana', definition.mana)
     actor.abilities.barrier = {
+        ...(resourceSpend === undefined ? {} : { resourceSpend }),
         remaining: BARRIER_RULES.absorption + modifiers.barrierAbsorptionBonus,
         expiresAt:
             now + BARRIER_RULES.durationMs + modifiers.barrierDurationBonus,

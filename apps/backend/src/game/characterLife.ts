@@ -1,6 +1,8 @@
 import {
-    DEITY_PRAYER_PROFILES,
     type GameEventPayload,
+    PRAYER_SCHOOL_DEFINITIONS,
+    type PrayerAbilityId,
+    profileForPrayer,
     REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
@@ -15,7 +17,7 @@ import { advancePrayerCast } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
 import { revivalTargetEligible } from './prayerContext'
 import { completePrayer } from './prayerEffects'
-import { prayerParameters } from './prayerParameters'
+import { prayerParameters, setPrayerAvailableAt } from './prayerParameters'
 import {
     canUseResurrection,
     createProgression,
@@ -73,32 +75,41 @@ export function beginRevive(
     caster: GameCharacter,
     target: GameCharacter,
     now: number,
-    context?: AbilityContext
+    context?: AbilityContext,
+    abilityId: PrayerAbilityId = 'pray'
 ): boolean {
     if (
         caster.abilities.casting !== null ||
         caster.isActionLocked(now) ||
-        !canRevive(caster, target, now, context)
+        !canRevive(caster, target, now, context, abilityId)
     ) {
         return false
     }
     caster.abilities.casting = {
+        abilityId,
+        receiptId: `${caster.id}:prayer:${String(++caster.abilities.prayerSequence)}`,
         completesAt:
             now +
-            prayerParameters(caster, context?.navigation.grid.tileWidth)
-                .durationMs,
+            prayerParameters(
+                caster,
+                context?.navigation.grid.tileWidth,
+                abilityId
+            ).durationMs,
         startedAt: now,
         targetId: target.id,
-        patron: caster.progression.patron,
+        patron: PRAYER_SCHOOL_DEFINITIONS[abilityId].deityId,
     }
+    caster.abilities.lastPrayerAbilityId = abilityId
     caster.lockAction(
         now,
-        prayerParameters(caster, context?.navigation.grid.tileWidth).durationMs
+        prayerParameters(caster, context?.navigation.grid.tileWidth, abilityId)
+            .durationMs
     )
     caster.setAnimation(
         'attack',
         now,
-        prayerParameters(caster, context?.navigation.grid.tileWidth).durationMs
+        prayerParameters(caster, context?.navigation.grid.tileWidth, abilityId)
+            .durationMs
     )
     return true
 }
@@ -120,8 +131,7 @@ export function advanceRevive(
     const target = findTarget(cast.targetId)
     if (
         target === undefined ||
-        cast.patron !== caster.progression.patron ||
-        !canRevive(caster, target, now, context)
+        !canRevive(caster, target, now, context, cast.abilityId)
     ) {
         return cancelPrayerCast(caster, now)
     }
@@ -131,15 +141,15 @@ export function advanceRevive(
     caster.abilities.casting = null
     caster.mana -= REVIVE_MANA_COST
     const roll = (random ?? context?.random ?? Math.random)()
-    const outcome = resolveMiracle(caster, now, () => roll)
-    caster.progression.prayerAvailableAt = now
+    const outcome = resolveMiracle(caster, now, () => roll, cast.patron)
+    setPrayerAvailableAt(caster, cast.abilityId, now)
     if (context !== undefined) {
         return [
             {
                 kind: 'cast',
                 actorId: caster.id,
                 targetId: target.id,
-                abilityId: 'pray',
+                abilityId: cast.abilityId,
                 phase: 'completed',
             },
             ...completePrayer(
@@ -147,18 +157,21 @@ export function advanceRevive(
                 { mode: 'revive', targetId: target.id },
                 { ...context, now },
                 roll,
-                outcome.quality
+                outcome.quality,
+                cast.receiptId,
+                cast.abilityId
             ),
         ]
     }
-    const faithEvents = trainSkill(caster, 'faith')
+    const school = PRAYER_SCHOOL_DEFINITIONS[cast.abilityId]
+    const faithEvents = trainSkill(caster, school.faithSkillId)
     if (!outcome.success) {
         return [
             {
                 actorId: caster.id,
                 targetId: target.id,
                 kind: 'notice',
-                text: 'Угольная Мать не вернула душу. Мана потрачена; можно повторить молитву, пока не истекло время.',
+                text: 'Божество не вернуло душу. Мана потрачена; можно повторить молитву, пока не истекло время.',
             },
             ...faithEvents,
         ]
@@ -167,7 +180,7 @@ export function advanceRevive(
     return [
         { actorId: caster.id, targetId: target.id, kind: 'revive' },
         ...faithEvents,
-        ...trainSkill(caster, 'miracles'),
+        ...trainSkill(caster, school.miracleSkillId),
     ]
 }
 
@@ -175,29 +188,36 @@ function canRevive(
     caster: GameCharacter,
     target: GameCharacter,
     now: number,
-    context?: AbilityContext
+    context: AbilityContext | undefined,
+    abilityId: PrayerAbilityId
 ): boolean {
     return (
         (context === undefined ||
-            revivalTargetEligible(caster, target, context)) &&
-        revivalCasterReady(caster, now) &&
+            revivalTargetEligible(caster, target, context, abilityId)) &&
+        revivalCasterReady(caster, now, abilityId) &&
         !target.tags.has('offline') &&
-        DEITY_PRAYER_PROFILES[caster.progression.patron].reviveTypes.includes(
-            target.creatureType
-        ) &&
+        profileForPrayer(abilityId).reviveTypes.includes(target.creatureType) &&
         !target.alive &&
         !target.tags.has('state.retired') &&
         target.reviveUntil > now &&
         target.faction === caster.faction &&
         target.locationId === caster.locationId &&
         distance(caster.position, target.position) <=
-            prayerParameters(caster, context?.navigation.grid.tileWidth).radius
+            prayerParameters(
+                caster,
+                context?.navigation.grid.tileWidth,
+                abilityId
+            ).radius
     )
 }
 
-function revivalCasterReady(caster: GameCharacter, now: number): boolean {
+function revivalCasterReady(
+    caster: GameCharacter,
+    now: number,
+    abilityId: PrayerAbilityId
+): boolean {
     return (
-        canUseResurrection(caster) &&
+        canUseResurrection(caster, abilityId) &&
         caster.alive &&
         !caster.tags.has('offline') &&
         caster.stunUntil <= now &&

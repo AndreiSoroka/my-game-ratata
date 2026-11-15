@@ -6,6 +6,10 @@ import { regen } from './characterState'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
 import { clearPursuit } from './pursuitState'
+import {
+    clearResourcePractice,
+    consumeResourceRecovery,
+} from './resourcePractice'
 import { recordVitalityRecovery } from './vitalityPractice'
 
 export function tickCharacterTimedState(
@@ -43,6 +47,7 @@ export function restoreCharacter(
         character.maxHp - previousHp
     )
     clearAbilityEffects(character)
+    clearResourcePractice(character)
     clearPursuit(character)
     character.alive = true
     character.movement = createMovementState()
@@ -92,6 +97,8 @@ export function regenerateCharacter(
         return []
     }
     const resources = character.config.resources
+    const beforeEnergy = character.energy
+    const beforeMana = character.mana
     character.energy = regen(
         character.energy,
         resources.maxEnergy,
@@ -107,6 +114,18 @@ export function regenerateCharacter(
         resources.maxMana,
         moving ? resources.manaRegenMove : resources.manaRegenIdle,
         deltaMs
+    )
+    consumeResourceRecovery(
+        character,
+        'energy',
+        character.energy - beforeEnergy,
+        resources.maxEnergy - beforeEnergy
+    )
+    consumeResourceRecovery(
+        character,
+        'mana',
+        character.mana - beforeMana,
+        resources.maxMana - beforeMana
     )
     const beforeHp = character.hp
     character.hp = regen(

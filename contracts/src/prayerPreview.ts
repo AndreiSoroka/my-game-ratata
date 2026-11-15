@@ -1,18 +1,22 @@
 import {
+    type PrayerAbilityId,
     type PrayerIntent,
     type PrayerMode,
+    type PrayerParametersSnapshot,
     type PrayerPreview,
 } from './abilities'
 import { ABILITY_DEFINITIONS } from './abilities'
 import { type WorldGraveSnapshot } from './graves'
 import type { CharacterSnapshot } from './index'
 import {
-    DEITY_PRAYER_PROFILES,
     type DeityPrayerProfile,
+    PRAYER_SCHOOL_DEFINITIONS,
     prayerManaCost,
+    profileForPrayer,
 } from './prayer'
 import { resourceNeedsRestoration } from './resources'
 export interface PrayerPreviewOptions {
+    abilityId?: PrayerAbilityId
     canReach?: (target: CharacterSnapshot) => boolean
     canAid?: (target: CharacterSnapshot) => boolean
     graves?: readonly WorldGraveSnapshot[]
@@ -20,6 +24,8 @@ export interface PrayerPreviewOptions {
 }
 interface PreviewContext {
     player: CharacterSnapshot
+    abilityId: PrayerAbilityId
+    parameters: PrayerParametersSnapshot
     all: CharacterSnapshot[]
     profile: DeityPrayerProfile
     options: PrayerPreviewOptions
@@ -31,16 +37,36 @@ export function previewPrayerFromSnapshots(
     selectedTargetId?: string,
     options: PrayerPreviewOptions = {}
 ): PrayerPreview {
+    const abilityId = options.abilityId ?? 'pray'
     const context: PreviewContext = {
         player,
+        abilityId,
+        parameters: snapshotPrayerParameters(player, abilityId),
         options,
-        profile:
-            DEITY_PRAYER_PROFILES[player.progression?.deity.id ?? 'hearth'],
+        profile: profileForPrayer(abilityId),
         all: [
             ...new Map(
                 [...characters, player].map((target) => [target.id, target])
             ).values(),
         ],
+    }
+    if (
+        selectedTargetId !== undefined &&
+        options.graves?.some((grave) => grave.id === selectedTargetId) ===
+            true &&
+        !PRAYER_SCHOOL_DEFINITIONS[abilityId].canPurify
+    ) {
+        return {
+            abilityId,
+            intent: null,
+            manaCost: context.parameters.manaCost,
+            radius: context.parameters.radius,
+            durationMs: context.parameters.durationMs,
+            harmfulTargets: 0,
+            includesSelf: false,
+            includesAllies: false,
+            unavailableReason: 'Эта молитва не очищает могилы.',
+        }
     }
     const possibleHarm = harmTargets(context)
     const intent: PrayerIntent = chooseIntent(
@@ -49,18 +75,22 @@ export function previewPrayerFromSnapshots(
         selectedTargetId
     ) ?? { mode: 'devotion' }
     const harmed = intent.mode === 'devotion' ? [] : possibleHarm
-    const manaCost = prayerManaCost(intent.mode)
+    const manaCost =
+        intent.mode === 'devotion' || intent.mode === 'revive'
+            ? prayerManaCost(intent.mode)
+            : context.parameters.manaCost
     return {
+        abilityId,
         intent,
         manaCost,
-        ...previewParameters(player, intent.mode),
+        ...previewParameters(context, intent.mode),
         harmfulTargets: harmed.length,
         includesSelf: harmed.some((target) => target.id === player.id),
         includesAllies: harmed.some(
             (target) =>
                 target.id !== player.id && target.faction === player.faction
         ),
-        unavailableReason: unavailableReason(player, intent.mode),
+        unavailableReason: unavailableReason(player, intent.mode, abilityId),
     }
 }
 function creatureType(target: CharacterSnapshot) {
@@ -79,9 +109,7 @@ function nearby(context: PreviewContext, target: CharacterSnapshot): boolean {
     return (
         !target.tags.includes('offline') &&
         target.life?.retired !== true &&
-        distance(context, target) <=
-            (context.player.abilities?.prayer?.radius ??
-                ABILITY_DEFINITIONS.pray.range) &&
+        distance(context, target) <= context.parameters.radius &&
         (target.id === context.player.id ||
             (context.options.canReach?.(target) ?? true))
     )
@@ -119,7 +147,7 @@ function eligibleGift(
     )
 }
 function harmTargets(context: PreviewContext): CharacterSnapshot[] {
-    if (context.player.abilities?.prayer?.harm !== true) {
+    if (!context.parameters.harm) {
         return []
     }
     return context.all.filter(
@@ -189,9 +217,10 @@ function selectedIntent(
 }
 function unavailableReason(
     player: CharacterSnapshot,
-    mode: PrayerMode
+    mode: PrayerMode,
+    abilityId: PrayerAbilityId
 ): string | null {
-    if (player.abilities?.known.includes('pray') !== true) {
+    if (player.abilities?.known.includes(abilityId) !== true) {
         return 'Молитва не изучена.'
     }
     if (
@@ -201,10 +230,10 @@ function unavailableReason(
     ) {
         return 'Персонаж не может молиться сейчас.'
     }
-    if ((player.abilities.cooldowns.pray ?? 0) > 0) {
+    if ((player.abilities.cooldowns[abilityId] ?? 0) > 0) {
         return 'Молитва восстанавливается.'
     }
-    return player.resourceChecks?.prayers[mode] === 'ready'
+    return player.resourceChecks?.prayers[abilityId][mode] === 'ready'
         ? null
         : 'Недостаточно маны.'
 }
@@ -216,34 +245,51 @@ function eligibleRevival(
     return (
         !target.alive &&
         (target.life?.reviveMsLeft ?? 0) > 0 &&
-        context.player.progression?.resurrectionUnlocked === true &&
+        (context.player.progression?.resurrectionSchools?.includes(
+            context.abilityId
+        ) === true ||
+            (context.abilityId === 'pray' &&
+                context.player.progression?.resurrectionUnlocked === true)) &&
         context.profile.reviveTypes.includes(creatureType(target))
     )
 }
 
 function nearbyGraves(context: PreviewContext): WorldGraveSnapshot[] {
+    if (!PRAYER_SCHOOL_DEFINITIONS[context.abilityId].canPurify) {
+        return []
+    }
     return [...(context.options.graves ?? [])].filter(
         (grave) =>
-            context.player.abilities?.known.includes('pray') === true &&
+            context.player.abilities?.known.includes(context.abilityId) ===
+                true &&
             grave.phase !== 'purified' &&
             Math.hypot(
                 grave.position.x - context.player.position.x,
                 grave.position.y - context.player.position.y
-            ) <=
-                (context.player.abilities.prayer?.radius ??
-                    ABILITY_DEFINITIONS.pray.range) &&
+            ) <= context.parameters.radius &&
             (context.options.canReachGrave?.(grave) ?? true)
     )
 }
 
-function previewParameters(player: CharacterSnapshot, mode: PrayerMode) {
+function previewParameters(context: PreviewContext, mode: PrayerMode) {
     return {
-        radius:
-            player.abilities?.prayer?.radius ?? ABILITY_DEFINITIONS.pray.range,
-        durationMs:
-            mode === 'devotion'
-                ? 400
-                : (player.abilities?.prayer?.durationMs ??
-                  ABILITY_DEFINITIONS.pray.windupMs),
+        radius: context.parameters.radius,
+        durationMs: mode === 'devotion' ? 400 : context.parameters.durationMs,
     }
+}
+
+export function snapshotPrayerParameters(
+    player: CharacterSnapshot,
+    abilityId: PrayerAbilityId
+): PrayerParametersSnapshot {
+    return (
+        player.abilities?.prayers?.[abilityId] ??
+        (abilityId === 'pray' ? player.abilities?.prayer : undefined) ?? {
+            radius: ABILITY_DEFINITIONS[abilityId].range,
+            durationMs: ABILITY_DEFINITIONS[abilityId].windupMs,
+            manaCost: ABILITY_DEFINITIONS[abilityId].mana,
+            area: false,
+            harm: false,
+        }
+    )
 }

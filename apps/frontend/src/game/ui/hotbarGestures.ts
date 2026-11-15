@@ -78,6 +78,11 @@ function acknowledge(state: GestureState, action: CharacterAutoAction | undefine
 }
 /** Vue wraps local gesture state; commands stay plain serializable messages. */
 function plainAction(action: CharacterAutoAction): CharacterAutoAction {
-    if (action.kind === 'prayer') return { kind: 'prayer', intent: { ...action.intent } }
+    if (action.kind === 'prayer')
+        return {
+            kind: 'prayer',
+            abilityId: action.abilityId ?? 'pray',
+            intent: { ...action.intent },
+        }
     return { ...action }
 }

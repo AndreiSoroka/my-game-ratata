@@ -1,6 +1,7 @@
-import type {
-    AbilityClientMessage,
-    GameEventPayload,
+import {
+    type AbilityClientMessage,
+    type GameEventPayload,
+    prayerAbilityIds,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -17,7 +18,21 @@ export function supportPrayerDecision(
         now: number
     ) => GameEventPayload[]
 ): GameEventPayload[] {
-    const preview = previewPrayer(actor, context)
+    const previews = prayerAbilityIds
+        .filter((id) => actor.abilities.known.has(id))
+        .map((id) => previewPrayer(actor, context, undefined, id))
+    const useful = previews.filter(
+        (preview) =>
+            preview.unavailableReason === null &&
+            preview.intent?.mode !== 'devotion' &&
+            !preview.includesAllies &&
+            !preview.includesSelf
+    )
+    const preview =
+        useful.find((preview) => preview.intent?.mode === 'revive') ?? useful[0]
+    if (preview === undefined) {
+        return []
+    }
     if (
         preview.unavailableReason !== null ||
         preview.intent === null ||
@@ -30,12 +45,19 @@ export function supportPrayerDecision(
         return []
     }
     return requestAbility === undefined
-        ? pray(actor, context.now, context.random, context, preview.intent)
+        ? pray(
+              actor,
+              context.now,
+              context.random,
+              context,
+              preview.intent,
+              preview.abilityId ?? 'pray'
+          )
         : requestAbility(
               actor,
               {
                   type: 'use_ability',
-                  abilityId: 'pray',
+                  abilityId: preview.abilityId ?? 'pray',
                   intent: preview.intent,
               },
               context.now

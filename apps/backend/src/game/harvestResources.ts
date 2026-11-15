@@ -28,6 +28,7 @@ import {
     resourceApproach,
     resourceReachable,
 } from './resourcePlacement'
+import { recordUsefulResourceSpend } from './resourcePractice'
 
 export interface PlantInspection {
     position: Vector2
@@ -158,7 +159,7 @@ export class HarvestResources {
         node.readyAt = now + TREE_GROW_MS
         node.collisionBounds = stumpBounds(center)
         this.nodes.push(node)
-        actor.drainEnergy(5)
+        recordUsefulResourceSpend(actor, 'energy', actor.drainEnergy(5))
         workAnimation(actor, state, now, 2_000)
         this.dirty.add(actor.locationId)
         this.sync(actor.locationId, navigation)

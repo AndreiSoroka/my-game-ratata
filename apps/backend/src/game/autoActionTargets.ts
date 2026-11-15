@@ -1,7 +1,8 @@
 import {
     type CharacterAutoAction as AnyAutoAction,
     type CharacterControlSnapshot,
-    DEITY_PRAYER_PROFILES,
+    type PrayerAbilityId,
+    profileForPrayer,
 } from '@my-game-ratata/contracts'
 
 type CharacterAutoAction = Exclude<
@@ -26,33 +27,31 @@ export function legalPrayerTarget(
     target: GameCharacter,
     context: AbilityContext
 ): boolean {
+    const abilityId = action.abilityId ?? 'pray'
     if (action.intent.mode === 'purify_grave') {
         return false
     }
     if (action.intent.mode === 'harm') {
         return (
             target.alive &&
-            DEITY_PRAYER_PROFILES[actor.progression.patron].harmTypes.includes(
+            profileForPrayer(abilityId).harmTypes.includes(
                 target.creatureType
             ) &&
-            prayerParameters(actor, context.navigation.grid.tileWidth).harm
+            prayerParameters(
+                actor,
+                context.navigation.grid.tileWidth,
+                abilityId
+            ).harm
         )
     }
     if (action.intent.mode === 'revive') {
-        return (
-            !target.alive &&
-            target.reviveUntil > context.now &&
-            canUseResurrection(actor) &&
-            target.faction === actor.faction &&
-            DEITY_PRAYER_PROFILES[
-                actor.progression.patron
-            ].reviveTypes.includes(target.creatureType)
-        )
+        return legalRevivalTarget(actor, target, context.now, abilityId)
     }
+
     return (
         target.alive &&
         !canTargetByFaction(actor, target, context.now) &&
-        prayerResourceMissing(actor, target) >= 1
+        prayerResourceMissing(actor, target, abilityId) >= 1
     )
 }
 export function untargetedAction(
@@ -68,7 +67,12 @@ export function untargetedAction(
             action.intent.mode === 'harm' &&
             action.intent.targetId === undefined
         ) {
-            return validPrayerIntent(actor, action.intent, context)
+            return validPrayerIntent(
+                actor,
+                action.intent,
+                context,
+                action.abilityId ?? 'pray'
+            )
         }
     }
     if (action.kind === 'ability') {
@@ -141,4 +145,19 @@ export function allowedMode(
     return mode === 'attack'
         ? canAttackCharacter(actor, target, now) && canFight(actor)
         : !canTargetByFaction(actor, target, now)
+}
+
+function legalRevivalTarget(
+    actor: GameCharacter,
+    target: GameCharacter,
+    now: number,
+    abilityId: PrayerAbilityId
+): boolean {
+    return (
+        !target.alive &&
+        target.reviveUntil > now &&
+        canUseResurrection(actor, abilityId) &&
+        target.faction === actor.faction &&
+        profileForPrayer(abilityId).reviveTypes.includes(target.creatureType)
+    )
 }

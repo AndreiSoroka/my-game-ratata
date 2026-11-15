@@ -162,16 +162,18 @@ it('preserves a due spell until the combat tick when another socket attack arriv
         const mana = f.actor.mana
         f.send({ type: 'cast_spell', skillId: 'fireball', target })
         expect(f.actor.mana).toBe(mana - 12)
-        const pending = structuredClone(f.actor.pendingAttack)
+        const pending = f.actor.pendingAttack
         const zones = structuredClone(f.actor.attackZones)
         expect(pending).toMatchObject({ target, rawDamage: 8, hitAt: 10403 })
         vi.advanceTimersByTime(401)
         expect(Date.now()).toBe(10404)
         expect(f.graveHp()).toBe(100)
         const beforeRejected = f.actor.mana
+        const beforeRejectedAttack = structuredClone(f.actor.pendingAttack)
         f.send({ type: 'use_ability', abilityId: 'spark', target })
         expect(f.actor.mana).toBe(beforeRejected)
-        expect(f.actor.pendingAttack).toEqual(pending)
+        expect(f.actor.pendingAttack).toBe(pending)
+        expect(f.actor.pendingAttack).toEqual(beforeRejectedAttack)
         expect(f.actor.attackZones).toEqual(zones)
         vi.advanceTimersByTime(46)
         expect(f.graveHp()).toBe(98)

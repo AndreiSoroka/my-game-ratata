@@ -178,7 +178,7 @@ defineExpose({ openMenu })
             v-if="grave && snapshot"
             :grave="grave"
             :server-time="snapshot.serverTime"
-            :prayer="player?.abilities?.prayer"
+            :prayer="player?.abilities?.prayers?.pray ?? player?.abilities?.prayer"
         />
     </NearbyActionMenu>
 </template>

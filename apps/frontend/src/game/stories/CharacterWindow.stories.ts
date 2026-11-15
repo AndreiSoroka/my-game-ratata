@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
-import { constellationFixture, developmentCharacterFixture } from '../testing/developmentFixture'
+import {
+    constellationFixture,
+    developmentCharacterFixture,
+    fixtureStarId,
+} from '../testing/developmentFixture'
 import CharacterDevelopment from '../ui/CharacterDevelopment.vue'
 import CharacterStats from '../ui/CharacterStats.vue'
 import CharacterWindow from '../ui/CharacterWindow.vue'
@@ -34,7 +38,7 @@ export const Sky: Story = {
     render: () =>
         renderVueStory(ConstellationGraph, {
             constellation: constellationFixture(),
-            selectedId: 'prayer.radius1',
+            selectedId: fixtureStarId('prayer.radius1'),
         }),
 }
 export const PrayerPath: Story = {
@@ -42,5 +46,13 @@ export const PrayerPath: Story = {
         renderVueStory(CharacterDevelopment, {
             player: developmentCharacterFixture(),
             characters: [],
+        }),
+}
+
+export const FullSky: Story = {
+    render: () =>
+        renderVueStory(ConstellationGraph, {
+            constellation: constellationFixture(true),
+            selectedId: fixtureStarId('prayer.revive'),
         }),
 }

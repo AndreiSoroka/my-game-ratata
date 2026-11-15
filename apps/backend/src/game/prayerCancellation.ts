@@ -19,7 +19,7 @@ export function cancelPrayerCast(
             ...(cast.mode === 'purify_grave'
                 ? { target: { kind: 'grave' as const, id: cast.targetId } }
                 : { targetId: cast.targetId }),
-            abilityId: 'pray',
+            abilityId: cast.abilityId,
             phase: 'interrupted',
         },
     ]

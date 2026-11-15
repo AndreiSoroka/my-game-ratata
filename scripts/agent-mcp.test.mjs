@@ -282,6 +282,46 @@ test('MCP exposes typed grave attacks, purification and explicit channel cancell
                 entry.properties.target?.properties.kind.const === 'grave'
         )
     )
-    assert.match(act.description, /10 seconds/)
-    assert.match(act.description, /20 mana only on success/)
+    assert.match(act.description, /three-second completed attempt costs 5 mana/)
+    assert.match(act.description, /five successful contributions/)
+    assert.match(act.description, /including refusal/)
+})
+
+test('MCP pins each learned prayer school in manual commands and repetition', () => {
+    const [message] = messages([
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    ])
+    const choices = message.result.tools.find(
+        (tool) => tool.name === 'ratata_act'
+    ).inputSchema.properties.decision.oneOf
+    const automatic = choices.find(
+        (entry) => entry.properties.type.const === 'auto_action'
+    )
+    for (const id of ['pray', 'pray_road', 'pray_lantern', 'pray_grave']) {
+        const manual = choices.find(
+            (entry) => entry.properties.abilityId?.const === id
+        )
+        assert.ok(manual.required.includes('intent'))
+        const repeated = automatic.properties.action.oneOf.find(
+            (entry) =>
+                entry.properties?.kind.const === 'prayer' &&
+                entry.properties.abilityId.const === id
+        )
+        assert.ok(repeated.required.includes('abilityId'))
+        assert.deepEqual(repeated.properties.intent, manual.properties.intent)
+        const modes = manual.properties.intent.oneOf.flatMap(
+            (entry) =>
+                entry.properties.mode.enum ?? [entry.properties.mode.const]
+        )
+        assert.equal(modes.includes('purify_grave'), id === 'pray')
+        assert.equal(
+            modes.includes('revive'),
+            id === 'pray' || id === 'pray_grave'
+        )
+        assert.equal(modes.includes('harm'), id === 'pray')
+    }
+    const learning = choices.find(
+        (entry) => entry.properties.type.const === 'learn_ability'
+    )
+    assert.ok(learning.properties.abilityId.enum.includes('pray_grave'))
 })

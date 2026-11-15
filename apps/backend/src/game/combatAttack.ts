@@ -27,6 +27,7 @@ import {
     effectiveAttackEnergyCost,
 } from './effectiveParameters'
 import { legalGraveTarget } from './graveCombat'
+import { recordPaidResources } from './resourcePractice'
 import { hasEquippedSword } from './skillProgression'
 
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
@@ -49,6 +50,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
     if (!targetWithinZones(context)) {
         return []
     }
+    const before = { energy: actor.energy, mana: actor.mana }
     const spend = actor.spendAttackResources()
     const scale = spend.fullyPowered ? 1 : 2
     const tempo = hasEquippedSword(actor)
@@ -56,6 +58,7 @@ export function attemptAttack(context: AttackContext): GameEventPayload[] {
         : 1
     const lockMs = actor.config.combat.attackLockMs * scale * tempo
     actor.queueAttackHit(now, {
+        resourceSpends: recordPaidResources(actor, before),
         targetId: context.targetId,
         target: context.target,
         canStun: spend.canStun,
@@ -87,10 +90,12 @@ export function attemptAbilityAttack(
     if (!targetWithinZones(context)) {
         return []
     }
+    const before = { energy: actor.energy, mana: actor.mana }
     actor.energy -= definition.energy
     actor.mana -= definition.mana
     actor.abilities.availableAt[id] = now + definition.cooldownMs
     actor.queueAttackHit(now, {
+        resourceSpends: recordPaidResources(actor, before),
         targetId: context.targetId,
         target: context.target,
         abilityId: id,

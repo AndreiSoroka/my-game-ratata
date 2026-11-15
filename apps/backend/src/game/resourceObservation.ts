@@ -2,6 +2,8 @@ import {
     abilityIds,
     type CharacterResourceChecks,
     FARM_SOW_ENERGY,
+    isPrayerAbility,
+    prayerAbilityIds,
     prayerManaCost,
     type ResourceCheck,
     resourceFillPercent,
@@ -41,19 +43,24 @@ export function resourceChecks(
     return {
         abilities: Object.fromEntries(
             abilityIds
-                .filter((id) => id !== 'pray')
+                .filter((id) => !isPrayerAbility(id))
                 .map((id) => {
                     const ability = effectiveAbility(character, id)
                     return [id, check(ability.mana, ability.energy)]
                 })
         ) as CharacterResourceChecks['abilities'],
-        prayers: {
-            devotion: check(prayerManaCost('devotion')),
-            restore: check(prayerManaCost('restore')),
-            harm: check(prayerManaCost('harm')),
-            revive: check(prayerManaCost('revive')),
-            purify_grave: check(prayerManaCost('purify_grave')),
-        },
+        prayers: Object.fromEntries(
+            prayerAbilityIds.map((id) => [
+                id,
+                {
+                    devotion: check(prayerManaCost('devotion')),
+                    restore: check(prayerManaCost('restore')),
+                    harm: check(prayerManaCost('harm')),
+                    revive: check(prayerManaCost('revive')),
+                    purify_grave: check(prayerManaCost('purify_grave')),
+                },
+            ])
+        ) as CharacterResourceChecks['prayers'],
         dash: check(0, effectiveDashCost(character)),
         sow: check(0, FARM_SOW_ENERGY),
         steal: check(0, effectiveTheftCost(character)),

@@ -1,113 +1,68 @@
 import type { CharacterSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 
+// Storybook/test-only data: production receives the observer-filtered snapshot.
+import { constellationPaths } from '../../../../backend/src/game/constellationCatalog'
+import {
+    constellationEdgeWaypoints,
+    constellationLayout,
+} from '../../../../backend/src/game/constellationLayout'
+import {
+    constellationWireId,
+    fullConstellationCatalog,
+} from '../../../../backend/src/game/constellationNodes'
 import { characterFixture } from './characterFixture'
 
-const paths: ConstellationSnapshot['paths'] = [
-    {
-        id: 'blade',
-        name: 'Клинок',
-        description: 'Начните путь настоящим ударом меча.',
-        color: '#e6a48b',
-        unlocked: false,
-    },
-    {
-        id: 'magic',
-        name: 'Магия',
-        description: 'Изучите Искру или Барьер у учёного.',
-        color: '#91bce8',
-        unlocked: false,
-    },
-    {
-        id: 'prayer',
-        name: 'Молитва',
-        description: 'Изучите молитву у клирика.',
-        color: '#ead491',
-        unlocked: true,
-    },
-    {
-        id: 'arrow',
-        name: 'Стрела',
-        description: 'Изучите Выстрел у ветерана.',
-        color: '#a4cba1',
-        unlocked: false,
-    },
-    {
-        id: 'life',
-        name: 'Жизнь',
-        description: 'Приключения научат понимать своё тело.',
-        color: '#e5afc0',
-        unlocked: true,
-    },
-    {
-        id: 'shadow',
-        name: 'Тень',
-        description: 'Двигайтесь скрытно рядом с врагами.',
-        color: '#afa0d2',
-        unlocked: false,
-    },
-]
-
-export function constellationFixture(): ConstellationSnapshot {
-    const nodes: ConstellationSnapshot['nodes'] = paths.map((path, index) => ({
-        id: `${path.id}.root`,
-        constellationId: path.id,
-        x: (index % 3) * 220 + 80,
-        y: Math.floor(index / 3) * 200 + 70,
-        kind: 'root',
-        unlocked: path.unlocked,
-        name: path.name,
-        description: path.description,
-        parents: [],
-    }))
-    nodes.push(
-        {
-            id: 'prayer.radius1',
-            constellationId: 'prayer',
-            x: 460,
-            y: 145,
-            kind: 'passive',
-            unlocked: true,
-            name: 'Далёкий зов',
-            description: 'Радиус молитвы увеличен на одну клетку.',
-            parents: ['prayer.root'],
-        },
-        {
-            id: 'prayer.radius2',
-            constellationId: 'prayer',
-            x: 390,
-            y: 210,
-            kind: 'passive',
-            unlocked: false,
-            parents: ['prayer.radius1'],
-        },
-        {
-            id: 'prayer.omen1',
-            constellationId: 'prayer',
-            x: 585,
-            y: 155,
-            kind: 'passive',
-            unlocked: true,
-            name: 'Знамения',
-            description: 'Вы чувствуете намёк о настроении покровителя.',
-            parents: ['prayer.root'],
-        },
-        {
-            id: 'life.hp1',
-            constellationId: 'life',
-            x: 235,
-            y: 330,
-            kind: 'passive',
-            unlocked: true,
-            name: 'Пульс жизни',
-            description: 'Вы оцениваете здоровье с шагом 25.',
-            parents: ['life.root'],
-        }
+export const fixtureStarId = constellationWireId
+export function constellationFixture(full = false): ConstellationSnapshot {
+    const opened = new Set(
+        full
+            ? fullConstellationCatalog.map((node) => node.id)
+            : ['prayer.root', 'prayer.radius1', 'prayer.omen1', 'life.root', 'life.hp1']
     )
+    const visible = fullConstellationCatalog.filter(
+        (node) =>
+            node.parents.length === 0 ||
+            opened.has(node.id) ||
+            node.parents.some((parent) => opened.has(parent))
+    )
+    const visibleIds = new Set(visible.map((node) => node.id))
     return {
         version: 1,
-        paths,
-        nodes,
-        edges: nodes.flatMap((node) => node.parents.map((from) => ({ from, to: node.id }))),
+        layout: structuredClone(constellationLayout),
+        paths: constellationPaths.map((path) => ({
+            id: path.id,
+            color: path.color,
+            unlocked: opened.has(`${path.id}.root`),
+            ...(opened.has(`${path.id}.root`)
+                ? { name: path.name, description: path.description }
+                : {}),
+        })),
+        nodes: visible.map((node) => ({
+            id: constellationWireId(node.id),
+            constellationId: node.constellationId,
+            x: node.x,
+            y: node.y,
+            parents: node.parents.filter((id) => visibleIds.has(id)).map(constellationWireId),
+            unlocked: opened.has(node.id),
+            ...(opened.has(node.id)
+                ? {
+                      kind: node.kind,
+                      name: node.name,
+                      description: node.description,
+                      effectType: node.effectType,
+                      effects: node.effects,
+                  }
+                : {}),
+        })),
+        edges: visible.flatMap((node) =>
+            node.parents
+                .filter((id) => visibleIds.has(id))
+                .map((from) => ({
+                    from: constellationWireId(from),
+                    to: constellationWireId(node.id),
+                    via: constellationEdgeWaypoints(from, node.id),
+                }))
+        ),
     }
 }
 

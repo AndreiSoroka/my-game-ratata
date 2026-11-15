@@ -36,6 +36,9 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
     const known = actor.abilities.known
     for (const [ability, path] of [
         ['pray', 'prayer'],
+        ['pray_road', 'prayer_road'],
+        ['pray_lantern', 'prayer_lantern'],
+        ['pray_grave', 'prayer_grave'],
         ['shot', 'arrow'],
         ['spark', 'magic'],
         ['barrier', 'magic'],

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import { ABILITY_DEFINITIONS, type CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
@@ -9,7 +9,7 @@ const prayerName = computed(
         ({
             purify_grave: 'Очищение могилы',
             revive: 'Воскрешение',
-            restore: 'Молитва',
+            restore: ABILITY_DEFINITIONS[props.player.abilities?.casting?.abilityId ?? 'pray'].name,
             harm: 'Карающая молитва',
         })[props.player.abilities?.casting?.mode ?? 'revive']
 )

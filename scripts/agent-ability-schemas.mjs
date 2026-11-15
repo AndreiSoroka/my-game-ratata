@@ -46,6 +46,31 @@ const prayerIntent = {
         },
     ],
 }
+const prayerAbilities = ['pray', 'pray_road', 'pray_lantern', 'pray_grave']
+function intentForPrayer(abilityId) {
+    if (abilityId === 'pray') return prayerIntent
+    return {
+        oneOf: prayerIntent.oneOf.flatMap((variant) => {
+            const mode = variant.properties.mode
+            if (mode.const === 'devotion') return [variant]
+            if (!mode.enum) return []
+            return [
+                {
+                    ...variant,
+                    properties: {
+                        ...variant.properties,
+                        mode: {
+                            enum:
+                                abilityId === 'pray_grave'
+                                    ? ['restore', 'revive']
+                                    : ['restore'],
+                        },
+                    },
+                },
+            ]
+        }),
+    }
+}
 export const abilityDecisionSchemas = [
     {
         type: 'object',
@@ -105,23 +130,25 @@ export const abilityDecisionSchemas = [
             abilityId: { const: 'barrier' },
         },
     },
-    {
+    ...prayerAbilities.map((abilityId) => ({
         type: 'object',
         required: ['type', 'abilityId', 'intent'],
         additionalProperties: false,
         properties: {
             type: { const: 'use_ability' },
-            abilityId: { const: 'pray' },
-            intent: prayerIntent,
+            abilityId: { const: abilityId },
+            intent: intentForPrayer(abilityId),
         },
-    },
+    })),
     {
         type: 'object',
         required: ['type', 'abilityId', 'targetId'],
         additionalProperties: false,
         properties: {
             type: { const: 'learn_ability' },
-            abilityId: { enum: ['pray', 'spark', 'barrier', 'shot'] },
+            abilityId: {
+                enum: [...prayerAbilities, 'spark', 'barrier', 'shot'],
+            },
             targetId,
         },
     },
@@ -239,15 +266,16 @@ export const abilityDecisionSchemas = [
                             abilityId: { const: 'barrier' },
                         },
                     },
-                    {
+                    ...prayerAbilities.map((abilityId) => ({
                         type: 'object',
-                        required: ['kind', 'intent'],
+                        required: ['kind', 'abilityId', 'intent'],
                         additionalProperties: false,
                         properties: {
                             kind: { const: 'prayer' },
-                            intent: prayerIntent,
+                            abilityId: { const: abilityId },
+                            intent: intentForPrayer(abilityId),
                         },
-                    },
+                    })),
                 ],
             },
         },

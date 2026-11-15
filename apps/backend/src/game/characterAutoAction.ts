@@ -69,7 +69,13 @@ export function setAutoAction(
         return false
     }
     actions.set(actor, {
-        action: structuredClone(action),
+        action:
+            action.kind === 'prayer'
+                ? {
+                      ...structuredClone(action),
+                      abilityId: action.abilityId ?? 'pray',
+                  }
+                : structuredClone(action),
         waiting: null,
         lastPlanAt: -Infinity,
     })
@@ -128,7 +134,7 @@ function execute(
             action.kind === 'prayer'
                 ? {
                       type: 'use_ability',
-                      abilityId: 'pray',
+                      abilityId: action.abilityId ?? 'pray',
                       intent: action.intent,
                   }
                 : {

@@ -1,12 +1,11 @@
 import {
-    ABILITY_DEFINITIONS,
     type GameEventPayload,
     resourceFillPercent,
     type ResourceSnapshot,
-    SHOT_HALF_WIDTH,
 } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
+import { defendRitual, maintainShot, withdrawRangers } from './grave-defense'
 import {
     attachBrowserDiagnostics,
     attachCombatFailure,
@@ -57,7 +56,7 @@ for (const { mobile, direction, viewport } of cases) {
             await expect(page.locator('.control-status')).toContainText('Очищение могилы')
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
             const casting = await page.evaluate(() => window.__ratataTest!.getState().player!)
-            expect(casting.resourceChecks?.prayers.purify_grave).toBe('ready')
+            expect(casting.resourceChecks?.prayers.pray.purify_grave).toBe('ready')
             expect(casting.resources.mana.kind).toBe('percent')
             await cancelRitual(page, mobile)
             await expect
@@ -85,7 +84,7 @@ for (const { mobile, direction, viewport } of cases) {
             await openGraveMenu(page, mobile)
             await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
             await expect.poll(() => purificationTargets).toEqual([grave!.id, grave!.id])
-            await completePurification(page, grave!.id)
+            await completePurification(page, rangers, grave!.id, grave!.position)
             expect(
                 await page.evaluate(
                     (key) =>
@@ -119,31 +118,49 @@ for (const { mobile, direction, viewport } of cases) {
     })
 }
 
-async function completePurification(page: Page, id: string): Promise<void> {
+async function completePurification(
+    page: Page,
+    rangers: Page[],
+    id: string,
+    position: { x: number; y: number }
+): Promise<void> {
+    const identity = await page.evaluate(() => window.__ratataTest!.getState().player!.id)
     await page.evaluate(
         (id) =>
             window.__ratataTest!.send({
                 type: 'auto_action',
                 action: {
                     kind: 'prayer',
+                    abilityId: 'pray',
                     intent: { mode: 'purify_grave', target: { kind: 'grave', id } },
                 },
             }),
         id
     )
-    await expect
-        .poll(
-            () =>
-                page.evaluate(
-                    (id) =>
-                        window
-                            .__ratataTest!.getState()
-                            .snapshot?.graves?.find((grave) => grave.id === id)?.phase,
-                    id
-                ),
-            { timeout: 210_000, intervals: [250] }
+    const deadline = Date.now() + 210_000
+    let phase: string | undefined
+    while (Date.now() < deadline) {
+        await defendRitual(rangers, position)
+        const state = await page.evaluate((id) => {
+            const state = window.__ratataTest!.getState()
+            return {
+                identity: state.player?.id,
+                alive: state.player?.alive,
+                notice: state.notice,
+                tick: state.snapshot!.tick,
+                phase: state.snapshot?.graves?.find((grave) => grave.id === id)?.phase,
+            }
+        }, id)
+        expect(state.identity, `Ritual identity lost: ${JSON.stringify(state)}`).toBe(identity)
+        expect(state.alive, `Ritual caster defeated: ${JSON.stringify(state)}`).toBe(true)
+        phase = state.phase
+        if (phase === 'purified') break
+        await page.evaluate(
+            (after) => window.__ratataTest!.waitFor({ type: 'tick', after }, { timeoutMs: 1000 }),
+            state.tick
         )
-        .toBe('purified')
+    }
+    expect(phase).toBe('purified')
     expect(
         await page.evaluate(
             (id) =>
@@ -350,24 +367,6 @@ async function join(page: Page, heroClass: 'cleric' | 'ranger', suffix = ''): Pr
     await page.addStyleTag({ content: '.test-panel { display: none !important }' })
 }
 
-async function withdrawRangers(rangers: Page[], position: { x: number; y: number }): Promise<void> {
-    await Promise.all(
-        rangers.map((page, index) =>
-            page.evaluate(
-                async ({ position, index }) => {
-                    const api = window.__ratataTest!
-                    if (!api.getState().player?.alive) return
-                    await api.navigate(
-                        { x: position.x + 128, y: position.y + 80 + index * 16 },
-                        { timeoutMs: 10_000 }
-                    )
-                },
-                { position, index }
-            )
-        )
-    )
-}
-
 async function livingRanger(rangers: Page[]): Promise<Page> {
     for (const ranger of rangers) {
         if (await ranger.evaluate(() => window.__ratataTest!.getState().player?.alive))
@@ -431,63 +430,4 @@ async function clearGraveApproach(
             .toBe(false)
     }
     throw new Error('The ranger party did not clear the observed ritual area')
-}
-
-async function maintainShot(page: Page, targetId: string, lane: number): Promise<void> {
-    await page.evaluate(
-        ({ id, lane, range, halfWidth }) => {
-            const api = window.__ratataTest!,
-                state = api.getState(),
-                player = state.player!
-            const target = state.snapshot?.characters.find((actor) => actor.id === id)
-            if (!player.alive || !target?.alive || player.cooldowns.stunMsLeft > 0) return
-            const dx = player.position.x - target.position.x,
-                dy = player.position.y - target.position.y
-            const distance = Math.hypot(dx, dy)
-            const directions = [
-                { x: -1, y: 0 },
-                { x: 0, y: 1 },
-                { x: 1, y: 0 },
-                { x: 0, y: -1 },
-            ]
-            const direction = directions[lane % directions.length]!
-            const along = dx * direction.x + dy * direction.y
-            const across = Math.abs(dx * direction.y - dy * direction.x)
-            const action = player.control?.action
-            const active =
-                action?.kind === 'ability' && action.abilityId === 'shot' && action.targetId === id
-            if (along >= 38 && along <= range && across <= halfWidth) {
-                if (!active)
-                    api.send({
-                        type: 'auto_action',
-                        action: { kind: 'ability', abilityId: 'shot', targetId: id },
-                    })
-                return
-            }
-            // A shared 40px target approach made all four shooters stack inside one
-            // skeleton arc. Orbit outside melee reach to distinct firing sides, and
-            // retreat before a chasing enemy can turn a ranged lane into that pile-up.
-            const angle = Math.atan2(dy, dx),
-                desired = Math.atan2(direction.y, direction.x)
-            const turn = Math.atan2(Math.sin(desired - angle), Math.cos(desired - angle))
-            const orbiting = Math.abs(turn) > Math.PI / 4
-            const nextAngle = orbiting
-                ? angle + Math.sign(turn) * Math.min(Math.abs(turn), Math.PI / 2)
-                : desired
-            const radius = distance < 38 || orbiting ? 104 : range - 8
-            const map = state.location!.map
-            const position = {
-                x: Math.max(
-                    16,
-                    Math.min(map.worldWidth - 16, target.position.x + Math.cos(nextAngle) * radius)
-                ),
-                y: Math.max(
-                    16,
-                    Math.min(map.worldHeight - 16, target.position.y + Math.sin(nextAngle) * radius)
-                ),
-            }
-            api.send({ type: 'move_to', target: position })
-        },
-        { id: targetId, lane, range: ABILITY_DEFINITIONS.shot.range, halfWidth: SHOT_HALF_WIDTH }
-    )
 }

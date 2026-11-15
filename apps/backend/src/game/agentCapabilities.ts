@@ -2,8 +2,8 @@ import {
     type AbilityClientMessage,
     type AgentDecision,
     type CharacterControlCommand,
-    DEITY_PRAYER_PROFILES,
     type GameEventPayload,
+    profileForPrayer,
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
@@ -126,15 +126,16 @@ function abilityCanHarm(
     if (message.type !== 'use_ability' || message.abilityId === 'barrier') {
         return false
     }
-    if (message.abilityId !== 'pray') {
+    if (!('intent' in message)) {
         return true
     }
     if (message.intent.mode === 'devotion') {
         return false
     }
     const harmUnlocked =
+        message.abilityId === 'pray' &&
         hasStar(actor, 'prayer.harm') &&
-        DEITY_PRAYER_PROFILES[actor.progression.patron].harmTypes.length > 0
+        profileForPrayer(message.abilityId).harmTypes.length > 0
     if (!harmUnlocked) {
         return false
     }
@@ -142,11 +143,15 @@ function abilityCanHarm(
         return true
     }
     return (
-        prayerHarmTargets(actor, {
-            characters: world.charactersFor(actor),
-            navigation: world.navigationFor(actor),
-            now,
-        }).length > 0
+        prayerHarmTargets(
+            actor,
+            {
+                characters: world.charactersFor(actor),
+                navigation: world.navigationFor(actor),
+                now,
+            },
+            message.abilityId
+        ).length > 0
     )
 }
 function cancelAgentPrayer(

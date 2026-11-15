@@ -1,10 +1,11 @@
 import {
     type CharacterSnapshot,
     GRAVE_INTERACTION_RANGE,
-    GRAVE_PURIFY_MANA_COST,
     gravePurifyCastMs,
+    type PrayerAbilityId,
     type PrayerPreview,
     previewPrayerFromSnapshots,
+    snapshotPrayerParameters,
     type WorldChestSnapshot,
     type WorldGraveSnapshot,
     type WorldSnapshot,
@@ -26,16 +27,32 @@ export function gravePrayerPreview(
     grave: WorldGraveSnapshot,
     canReach = true,
     characters: readonly CharacterSnapshot[] = [],
-    canReachCharacter?: (target: CharacterSnapshot) => boolean
+    canReachCharacter?: (target: CharacterSnapshot) => boolean,
+    abilityId: PrayerAbilityId = 'pray'
 ): PrayerPreview {
+    const parameters = snapshotPrayerParameters(player, abilityId)
+    if (abilityId !== 'pray')
+        return {
+            abilityId,
+            intent: null,
+            manaCost: parameters.manaCost,
+            radius: parameters.radius,
+            durationMs: parameters.durationMs,
+            harmfulTargets: 0,
+            includesAllies: false,
+            includesSelf: false,
+            unavailableReason: 'Эта молитва не очищает могилы.',
+        }
     const wave = previewPrayerFromSnapshots(player, characters, undefined, {
+        abilityId,
         canReach: canReachCharacter,
     })
     return {
+        abilityId,
         intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
-        manaCost: player.abilities?.prayer?.manaCost ?? GRAVE_PURIFY_MANA_COST,
-        radius: player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE,
-        durationMs: player.abilities?.prayer?.durationMs ?? gravePurifyCastMs(grave.phase),
+        manaCost: parameters.manaCost,
+        radius: snapshotPrayerParameters(player, 'pray').radius,
+        durationMs: parameters.durationMs,
         harmfulTargets: wave.harmfulTargets,
         includesAllies: wave.includesAllies,
         includesSelf: wave.includesSelf,
@@ -55,8 +72,7 @@ function purificationUnavailable(
     if (availability) return availability
     if (
         !canReach ||
-        interactionDistance(player, grave) >
-            (player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE)
+        interactionDistance(player, grave) > snapshotPrayerParameters(player, 'pray').radius
     )
         return 'Подойдите ближе к могиле'
     return null
@@ -69,7 +85,7 @@ function prayerAvailability(player: CharacterSnapshot): string | null {
     if (!player.alive || player.cooldowns.stunMsLeft > 0 || player.abilities?.casting)
         return 'Сейчас нельзя молиться'
     if ((player.abilities?.cooldowns.pray ?? 0) > 0) return 'Молитва восстанавливается'
-    if (player.resourceChecks?.prayers.purify_grave !== 'ready')
+    if (player.resourceChecks?.prayers.pray.purify_grave !== 'ready')
         return 'Недостаточно маны для молитвы'
     return null
 }
@@ -110,7 +126,7 @@ export function graveTargets(
             (grave) =>
                 grave.phase !== 'purified' &&
                 interactionDistance(player, grave) <=
-                    (player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE)
+                    snapshotPrayerParameters(player, 'pray').radius
         )
         .map((grave) => ({
             key: `grave:${grave.id}`,
@@ -118,7 +134,7 @@ export function graveTargets(
             name: graveName(grave),
             position: grave.position,
             bounds: { x: grave.position.x - 8, y: grave.position.y - 8, width: 16, height: 16 },
-            range: player.abilities?.prayer?.radius ?? GRAVE_INTERACTION_RANGE,
+            range: snapshotPrayerParameters(player, 'pray').radius,
             actions: [
                 ...graveActions(player, grave),
                 ...snapshot.chests

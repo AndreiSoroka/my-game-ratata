@@ -3,7 +3,10 @@ import type {
     SpellSkillId,
     WorldCombatTarget,
 } from '@my-game-ratata/contracts'
+
+import type { ResourceSpendReceipt } from './resourcePractice'
 export interface PendingAttackHit {
+    resourceSpends?: ResourceSpendReceipt[] | undefined
     weaponInstanceId?: string | undefined
     abilityId?: AttackAbilityId | SpellSkillId | undefined
     rawDamage?: number | undefined

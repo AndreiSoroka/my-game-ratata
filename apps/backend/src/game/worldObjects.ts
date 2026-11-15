@@ -11,6 +11,7 @@ import type { GameCharacter } from './character'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
+import { consumeResourceRecovery } from './resourcePractice'
 import { nextSpeechId } from './speechReceipts'
 import { loadWorldObjects, type WorldObjectDefinition } from './worldObjectData'
 
@@ -124,6 +125,12 @@ export class WorldObjects {
         }
         const recovered = Math.min(
             15,
+            actor.config.resources.maxEnergy - actor.energy
+        )
+        consumeResourceRecovery(
+            actor,
+            'energy',
+            recovered,
             actor.config.resources.maxEnergy - actor.energy
         )
         actor.energy += recovered

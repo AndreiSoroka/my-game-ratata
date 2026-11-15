@@ -1,4 +1,7 @@
-import type { CompanionRequest } from '@my-game-ratata/contracts'
+import {
+    type CompanionRequest,
+    isPrayerAbility,
+} from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
 import { parseCombatReference } from './combatTargetParsing'
@@ -28,7 +31,11 @@ export function parseMindCommand(record: Record<string, unknown>): ParseResult {
     const targetId = record['targetId']
     const skillId = record['skillId']
     if (type === 'pray') {
-        return { message: { type } }
+        return record['abilityId'] === undefined
+            ? { message: { type } }
+            : isPrayerAbility(record['abilityId'])
+              ? { message: { type, abilityId: record['abilityId'] } }
+              : { error: 'Invalid prayer school.' }
     }
     if (type === 'learn_skill' && skillId === 'fireball' && validId(targetId)) {
         return { message: { type, skillId, targetId } }

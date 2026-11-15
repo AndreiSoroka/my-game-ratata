@@ -4,8 +4,10 @@ import {
     type DeityId,
     type GameEventPayload,
     GRAVE_PURIFY_CAST_MS,
-    PRAYER_RULES,
+    isPrayerAbility,
+    PRAYER_SCHOOL_DEFINITIONS,
     type ProjectilePath,
+    snapshotPrayerParameters,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
@@ -42,7 +44,7 @@ function attackShape(event: GameEventPayload, actor: CharacterSnapshot): EffectS
     return 'slash'
 }
 export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapshot): EffectCue[] {
-    const deity = actor.progression?.deity.id ?? 'hearth'
+    const deity = eventDeity(event, actor)
     const targetId = event.targetId ?? actor.id
     const base = {
         fromId: targetId,
@@ -53,7 +55,7 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
         ...(event.target ? { target: event.target } : {}),
     }
     if (event.kind === 'attack') return [attackCue(event, actor, base)]
-    if (event.kind === 'cast' && event.abilityId === 'pray')
+    if (event.kind === 'cast' && isPrayerAbility(event.abilityId))
         return prayerCastCues(event, actor, base)
     if (event.kind === 'heal' && (event.amount === undefined || event.amount > 0))
         return [{ ...base, kind: 'restore', count: 10 }]
@@ -94,7 +96,7 @@ function impactCues(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (event.kind === 'notice' && event.abilityId === 'pray')
+    if (event.kind === 'notice' && isPrayerAbility(event.abilityId))
         return [
             {
                 ...base,
@@ -120,7 +122,7 @@ function prayerHit(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (event.abilityId !== 'pray') return []
+    if (!isPrayerAbility(event.abilityId)) return []
     return [
         {
             ...base,
@@ -128,7 +130,7 @@ function prayerHit(
             fromId: actor.id,
             targetId: actor.id,
             wave: true,
-            radius: actor.abilities?.prayer?.radius ?? PRAYER_RULES.radius,
+            radius: snapshotPrayerParameters(actor, event.abilityId).radius,
             duration: 550,
             count: 12,
         },
@@ -191,7 +193,14 @@ function healingCaption(event: GameEventPayload): string | undefined {
 }
 function castCaption(event: GameEventPayload): string | undefined {
     if (event.phase === 'interrupted') return 'Прервано'
-    if (event.phase === 'completed' && event.abilityId === 'pray') return 'Молитва'
+    if (event.phase === 'completed' && isPrayerAbility(event.abilityId))
+        return ABILITY_DEFINITIONS[event.abilityId].name
     if (event.phase === 'started' && event.abilityId === 'skeleton_strike') return 'Костяной удар…'
     return undefined
+}
+
+function eventDeity(event: GameEventPayload, actor: CharacterSnapshot): DeityId {
+    return isPrayerAbility(event.abilityId)
+        ? PRAYER_SCHOOL_DEFINITIONS[event.abilityId].deityId
+        : (actor.progression?.deity.id ?? 'hearth')
 }

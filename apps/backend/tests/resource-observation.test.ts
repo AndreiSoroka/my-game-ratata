@@ -1,6 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     FARM_SOW_ENERGY,
+    isPrayerAbility,
     MOVEMENT_RULES,
     prayerManaCost,
     resourceNeedsRestoration,
@@ -44,7 +45,7 @@ describe('resource projection and affordability', () => {
     it('checks fractional balances at every existing cost boundary without spending', () => {
         const actor = abilityHero()
         for (const [id, definition] of Object.entries(ABILITY_DEFINITIONS)) {
-            if (id === 'pray') {
+            if (isPrayerAbility(id)) {
                 continue
             }
             const abilityId = id as keyof ReturnType<
@@ -73,10 +74,10 @@ describe('resource projection and affordability', () => {
             'purify_grave',
         ] as const) {
             actor.mana = prayerManaCost(mode)
-            expect(resourceChecks(actor).prayers[mode]).toBe('ready')
+            expect(resourceChecks(actor).prayers.pray[mode]).toBe('ready')
             if (actor.mana > 0) {
                 actor.mana -= 0.001
-                expect(resourceChecks(actor).prayers[mode]).toBe('mana')
+                expect(resourceChecks(actor).prayers.pray[mode]).toBe('mana')
             }
         }
         actor.mana = 0
@@ -97,7 +98,7 @@ describe('resource projection and affordability', () => {
         const actor = abilityHero()
         actor.mana = 0
         actor.energy = 0
-        expect(resourceChecks(actor).prayers.devotion).toBe('ready')
+        expect(resourceChecks(actor).prayers.pray.devotion).toBe('ready')
         expect(actor.spendAttackResources().fullyPowered).toBe(false)
         expect(actor.energy).toBe(0)
         expect(actor.mana).toBe(0)

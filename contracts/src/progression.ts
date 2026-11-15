@@ -4,6 +4,12 @@ export const skillIds = [
     'swordsmanship',
     'miracles',
     'faith',
+    'road_faith',
+    'road_miracles',
+    'lantern_faith',
+    'lantern_miracles',
+    'grave_faith',
+    'grave_miracles',
     'arcana',
     'fireball',
     'greater_fireball',
@@ -49,11 +55,12 @@ export interface ProgressionSnapshot {
     totalEarnedLevels: number
     trainingMultiplier: number
     resurrectionUnlocked: boolean
+    resurrectionSchools?: Array<import('./abilities').PrayerAbilityId>
 }
 
 export type SkillProgressionSnapshot = ProgressionSnapshot
 export type ProgressionClientMessage =
-    | { type: 'pray' }
+    | { type: 'pray'; abilityId?: import('./abilities').PrayerAbilityId }
     | { type: 'choose_deity'; deityId: DeityId; targetId: string }
     | { type: 'study_magic'; targetId: string }
     | { type: 'teach_magic'; targetId: string }

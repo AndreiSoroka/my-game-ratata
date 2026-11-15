@@ -132,39 +132,39 @@ it('uses the unlocked wave on all undead including allies, with one roll and no 
     expect(caster.progression.skills.faith.practice).toBe(1)
     expect(caster.progression.skills.miracles.practice).toBe(0)
 })
-it('supports grave polarity for all fourteen types, including self, excluding constructs', () => {
+it('restores only undead through the grave school without inheriting a harmful wave', () => {
     const caster = abilityHero()
-    caster.progression.patron = 'grave'
-    caster.progression.skills.miracles.level = 3
+    caster.abilities.known.add('pray_grave')
     caster.progression.constellations.opened.add('prayer.harm')
     const actors = creatureTypes.map((type) => abilityHero('vanguard', type))
     const context = abilityContext([caster, ...actors])
-    const targets = prayerHarmTargets(caster, context)
-    expect(targets).toContain(caster)
-    expect(
-        targets.filter(
-            (target) =>
-                target.creatureType === 'undead' ||
-                target.creatureType === 'construct'
-        )
-    ).toEqual([])
-    expect(targets).toHaveLength(13)
-    const undead = actors.find((target) => target.creatureType === 'undead')
+    expect(prayerHarmTargets(caster, context, 'pray_grave')).toEqual([])
+    const undead = actors.find((actor) => actor.creatureType === 'undead')
     if (undead === undefined) {
         throw new Error('Missing undead fixture')
     }
     undead.hp -= 10
-    const events = castPrayer(caster, prayer(undead.id), context)
+    const before = actors
+        .filter((actor) => actor !== undead)
+        .map((actor) => actor.hp)
+    const events = castPrayer(
+        caster,
+        {
+            type: 'use_ability',
+            abilityId: 'pray_grave',
+            intent: { mode: 'restore', targetId: undead.id },
+        },
+        context
+    )
     expect(
         events.some(
             (event) => event.kind === 'heal' && event.targetId === undead.id
         )
     ).toBe(true)
+    expect(events.some((event) => event.kind === 'damage')).toBe(false)
     expect(
-        events.some(
-            (event) => event.kind === 'damage' && event.targetId === caster.id
-        )
-    ).toBe(true)
+        actors.filter((actor) => actor !== undead).map((actor) => actor.hp)
+    ).toEqual(before)
 })
 it('prevents friendly damage and healing that damage from training miracles', () => {
     const actor = abilityHero()

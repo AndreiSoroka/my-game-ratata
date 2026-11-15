@@ -28,6 +28,7 @@ import { wearItem } from './itemDurability'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { resourceApproach, resourceReachable } from './resourcePlacement'
+import { recordUsefulResourceSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 
 const workLocks = new WeakMap<GameCharacter, number>()
@@ -125,7 +126,7 @@ export function resolveGather(
     if (!addInventoryItems(actor.inventory, outputs)) {
         return rejectWork(state, 'В рюкзаке нет места для всей добычи.')
     }
-    actor.drainEnergy(work.energy)
+    recordUsefulResourceSpend(actor, 'energy', actor.drainEnergy(work.energy))
     workAnimation(actor, state, now, work.duration)
     const broken =
         work.tool === undefined ? false : wearItem(work.tool, work.wear)

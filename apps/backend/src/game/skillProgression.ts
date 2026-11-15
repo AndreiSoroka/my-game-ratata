@@ -2,6 +2,10 @@ import {
     type DeityId,
     type GameEventPayload,
     isItemBroken,
+    PRAYER_SCHOOL_DEFINITIONS,
+    type PrayerAbilityId,
+    prayerAbilityIds,
+    profileForPrayer,
     type ProgressionSnapshot,
     type SkillBranch,
     type SkillId,
@@ -44,6 +48,12 @@ const skillNames: Record<SkillId, string> = {
     greater_fireball: 'Большой огненный шар',
     marksmanship: 'Стрельба',
     vitality: 'Жизненный опыт',
+    road_faith: 'Вера странника',
+    road_miracles: 'Чудеса странника',
+    lantern_faith: 'Вера ясности',
+    lantern_miracles: 'Чудеса ясности',
+    grave_faith: 'Вера праха',
+    grave_miracles: 'Чудеса праха',
 }
 const practiceBase: Record<SkillId, number> = {
     stealth: 10,
@@ -56,6 +66,12 @@ const practiceBase: Record<SkillId, number> = {
     greater_fireball: 14,
     marksmanship: 10,
     vitality: 10,
+    road_faith: 8,
+    road_miracles: 8,
+    lantern_faith: 8,
+    lantern_miracles: 8,
+    grave_faith: 8,
+    grave_miracles: 8,
 }
 
 export function createProgression(): CharacterProgression {
@@ -72,6 +88,12 @@ export function createProgression(): CharacterProgression {
             greater_fireball: { level: 1, practice: 0, unlocked: false },
             marksmanship: { level: 1, practice: 0, unlocked: true },
             vitality: { level: 1, practice: 0, unlocked: true },
+            road_faith: { level: 1, practice: 0, unlocked: true },
+            road_miracles: { level: 1, practice: 0, unlocked: true },
+            lantern_faith: { level: 1, practice: 0, unlocked: true },
+            lantern_miracles: { level: 1, practice: 0, unlocked: true },
+            grave_faith: { level: 1, practice: 0, unlocked: true },
+            grave_miracles: { level: 1, practice: 0, unlocked: true },
         },
         patron: 'hearth',
         magicChaptersRead: 0,
@@ -97,13 +119,16 @@ export function practiceThreshold(
         : Math.ceil(practiceBase[id] * level * trainingMultiplier(progression))
 }
 
-export function canUseResurrection(character: GameCharacter): boolean {
+export function canUseResurrection(
+    character: GameCharacter,
+    abilityId: PrayerAbilityId = 'pray'
+): boolean {
+    const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
     return (
-        knowsAbility(character, 'pray') &&
-        (character.progression.patron === 'hearth' ||
-            character.progression.patron === 'grave') &&
+        knowsAbility(character, abilityId) &&
+        profileForPrayer(abilityId).reviveTypes.length > 0 &&
         (character.heroClass === 'cleric' ||
-            character.progression.skills.miracles.level >= 5)
+            character.progression.skills[school.miracleSkillId].level >= 5)
     )
 }
 
@@ -133,6 +158,9 @@ export function snapshotProgression(
         magicChaptersRead: character.progression.magicChaptersRead,
         magicChaptersTotal: 3,
         resurrectionUnlocked: canUseResurrection(character),
+        resurrectionSchools: prayerAbilityIds.filter((id) =>
+            canUseResurrection(character, id)
+        ),
     }
 }
 
@@ -192,7 +220,16 @@ export function hasEquippedSword(character: GameCharacter): boolean {
 const branches: Record<SkillBranch, SkillId[]> = {
     cunning: ['stealth', 'theft'],
     warfare: ['swordsmanship', 'marksmanship'],
-    faith: ['faith', 'miracles'],
+    faith: [
+        'faith',
+        'miracles',
+        'road_faith',
+        'road_miracles',
+        'lantern_faith',
+        'lantern_miracles',
+        'grave_faith',
+        'grave_miracles',
+    ],
     arcana: ['arcana', 'fireball', 'greater_fireball'],
     survival: ['vitality'],
 }
