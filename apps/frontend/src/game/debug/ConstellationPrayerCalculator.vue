@@ -2,22 +2,50 @@
 import { type DeityMood, type PrayerAbilityId, prayerAbilityIds } from '@my-game-ratata/contracts'
 import { computed, reactive } from 'vue'
 
+import ConstellationPrayerBuild from './ConstellationPrayerBuild.vue'
 import { calculatePrayerScenario, prayerCalculatorSchool } from './constellationPrayerScenario'
 
 interface PrayerExampleContext {
     faithLevel: number
     mood: DeityMood
+    miraclesLevel: number
+    lowHealthEligible: boolean
+    tileWidth: number
 }
-const props = defineProps<{ nodeId: string }>()
+const props = defineProps<{ nodeId: string; enabledStarIds?: ReadonlySet<string> }>()
 const contexts = reactive(
     Object.fromEntries(
-        prayerAbilityIds.map((id) => [id, { faithLevel: 1, mood: 'neutral' }])
+        prayerAbilityIds.map((id) => [
+            id,
+            {
+                faithLevel: 1,
+                mood: 'neutral',
+                miraclesLevel: 1,
+                lowHealthEligible: false,
+                tileWidth: 16,
+            },
+        ])
     ) as Record<PrayerAbilityId, PrayerExampleContext>
 )
 const school = computed(() => prayerCalculatorSchool(props.nodeId))
 const context = computed(() => (school.value ? contexts[school.value.id] : undefined))
 const scenario = computed(() =>
-    context.value ? calculatePrayerScenario(props.nodeId, context.value) : undefined
+    context.value
+        ? calculatePrayerScenario(props.nodeId, context.value, props.enabledStarIds)
+        : undefined
+)
+const available = computed(() => scenario.value?.build?.available ?? true)
+const metrics = computed(() => {
+    const current = scenario.value
+    if (!current || !available.value) return []
+    return current.build
+        ? current.metrics.filter((metric) =>
+              ['Шанс ответа', 'Отказ божества'].includes(metric.label)
+          )
+        : current.metrics
+})
+const lastLight = computed(
+    () => school.value?.id === 'pray' && props.enabledStarIds?.has('prayer.last_light')
 )
 const moods: { id: DeityMood; name: string }[] = [
     { id: 'benevolent', name: 'Благосклонность' },
@@ -27,6 +55,7 @@ const moods: { id: DeityMood; name: string }[] = [
 </script>
 <template>
     <section
+        id="debug-build-result"
         v-if="school && context && scenario"
         class="prayer-calculator"
         data-testid="debug-prayer-calculator"
@@ -36,6 +65,7 @@ const moods: { id: DeityMood; name: string }[] = [
         <p class="prayer-school">
             <strong>{{ school.god }}</strong> · {{ school.faithName }}
         </p>
+        <p class="prayer-example-scale">Размер клетки в примере: {{ context.tileWidth }} px</p>
         <div class="prayer-inputs">
             <label
                 >Уровень Веры
@@ -44,6 +74,12 @@ const moods: { id: DeityMood; name: string }[] = [
                 </select>
             </label>
             <label
+                >Уровень Чудес
+                <select v-model.number="context.miraclesLevel" data-testid="debug-prayer-miracles">
+                    <option v-for="level in 10" :key="level" :value="level">{{ level }}</option>
+                </select>
+            </label>
+            <label class="prayer-mood"
                 >Настроение бога
                 <select v-model="context.mood" data-testid="debug-prayer-mood">
                     <option v-for="mood in moods" :key="mood.id" :value="mood.id">
@@ -52,13 +88,31 @@ const moods: { id: DeityMood; name: string }[] = [
                 </select>
             </label>
         </div>
-        <dl class="prayer-metrics" data-testid="debug-prayer-metrics" aria-live="polite">
-            <div v-for="metric in scenario.metrics" :key="metric.label" :data-metric="metric.label">
+        <label v-if="lastLight" class="last-light-condition"
+            ><input
+                v-model="context.lowHealthEligible"
+                type="checkbox"
+                data-testid="debug-last-light"
+            />
+            Условия «Последнего огонька» выполнены: мало HP после вражеского ранения</label
+        >
+        <dl
+            v-if="available"
+            class="prayer-metrics"
+            data-testid="debug-prayer-metrics"
+            aria-live="polite"
+        >
+            <div v-for="metric in metrics" :key="metric.label" :data-metric="metric.label">
                 <dt>{{ metric.label }}</dt>
                 <dd>{{ metric.value }}</dd>
             </div>
         </dl>
-        <p class="prayer-substitution">
+        <ConstellationPrayerBuild
+            v-if="scenario.build"
+            :result="scenario.build"
+            :revival="nodeId.endsWith('.revive')"
+        />
+        <p v-if="available" class="prayer-substitution">
             <span>Подстановка значений</span
             ><code data-testid="debug-prayer-substitution">{{ scenario.substitution }}</code>
         </p>
@@ -115,6 +169,19 @@ select {
 select:focus-visible {
     outline: 2px solid #ffe0a1;
     outline-offset: 2px;
+}
+.prayer-mood {
+    grid-column: 1/-1;
+}
+.last-light-condition {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.last-light-condition input {
+    width: 20px;
+    height: 20px;
+    accent-color: #d7b96f;
 }
 .prayer-metrics {
     display: grid;

@@ -2,15 +2,19 @@
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref } from 'vue'
 
+import ConstellationBackground from './ConstellationBackground.vue'
 import { constellationLabels } from './constellationLabels'
 import ConstellationStar from './ConstellationStar.vue'
 import { useConstellationViewport } from './useConstellationViewport'
 
-const props = defineProps<{ constellation: ConstellationSnapshot; selectedId?: string }>()
-const emit = defineEmits<{ select: [id: string] }>()
+const props = defineProps<{
+    constellation: ConstellationSnapshot
+    selectedId?: string
+    enabledStarIds?: ReadonlySet<string>
+}>()
+const emit = defineEmits<{ select: [id: string]; activate: [id: string] }>()
 const {
     svg,
-    bounds,
     viewBox,
     visibleBounds,
     unitScale,
@@ -29,6 +33,12 @@ const colors = computed(
     () => new Map(props.constellation.paths.map((path) => [path.id, path.color]))
 )
 const focusedId = ref('')
+const backgroundSeed = computed(() =>
+    props.constellation.nodes
+        .filter((node) => node.parents.length === 0)
+        .map((node) => `${node.id}:${node.x}:${node.y}`)
+        .join('|')
+)
 const interactiveNodes = computed(() =>
     props.constellation.nodes.filter((node) => detailed.value || node.parents.length === 0)
 )
@@ -39,8 +49,22 @@ const labels = computed(() =>
         detailed.value,
         unitScale.value,
         visibleBounds.value
+    ).map((label) =>
+        props.enabledStarIds !== undefined && !props.enabledStarIds.has(label.id)
+            ? { ...label, color: '#8b969e' }
+            : label
     )
 )
+function nodeEnabled(node: ConstellationNodeSnapshot): boolean {
+    return node.unlocked && (props.enabledStarIds?.has(node.id) ?? true)
+}
+function edgeEnabled(from: string, to: string): boolean {
+    const target = nodeById.value.get(to)
+    if (!target) return false
+    if (props.enabledStarIds === undefined) return target.unlocked
+    const source = nodeById.value.get(from)
+    return source !== undefined && nodeEnabled(source) && nodeEnabled(target)
+}
 const tabStop = computed(
     () =>
         interactiveNodes.value.find((node) => node.id === focusedId.value)?.id ??
@@ -62,6 +86,7 @@ defineExpose({ focusNode })
 function choose(node: ConstellationNodeSnapshot, pointer = true): void {
     if (pointer && didDrag()) return
     emit('select', node.id)
+    if (props.enabledStarIds !== undefined) emit('activate', node.id)
     if (node.parents.length === 0) focusPath(node)
 }
 function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
@@ -130,23 +155,17 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
             @pointercancel="up"
             @lostpointercapture="up"
         >
-            <defs>
-                <pattern
-                    id="character-sky-stars"
-                    width="71"
-                    height="61"
-                    patternUnits="userSpaceOnUse"
-                >
-                    <circle cx="9" cy="12" r="0.7" fill="#a9ccd4" opacity=".35" />
-                    <circle cx="47" cy="43" r=".5" fill="#c8d5cb" opacity=".25" />
-                </pattern>
-            </defs>
             <rect
-                :x="bounds.x - bounds.width * 3"
-                :y="bounds.y - bounds.height * 3"
-                :width="bounds.width * 7"
-                :height="bounds.height * 7"
-                fill="url(#character-sky-stars)"
+                :x="visibleBounds.x"
+                :y="visibleBounds.y"
+                :width="visibleBounds.width"
+                :height="visibleBounds.height"
+                fill="transparent"
+            />
+            <ConstellationBackground
+                :view="visibleBounds"
+                :unit-scale="unitScale"
+                :seed="backgroundSeed"
             />
             <template v-for="edge in constellation.edges" :key="`${edge.from}:${edge.to}`">
                 <polyline
@@ -158,12 +177,12 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
                     "
                     fill="none"
                     :stroke="
-                        nodeById.get(edge.to)!.unlocked
+                        edgeEnabled(edge.from, edge.to)
                             ? colors.get(nodeById.get(edge.to)!.constellationId)
                             : '#8b969e'
                     "
-                    :opacity="nodeById.get(edge.to)!.unlocked ? 0.7 : 0.2"
-                    :stroke-dasharray="nodeById.get(edge.to)!.unlocked ? undefined : '3 4'"
+                    :opacity="edgeEnabled(edge.from, edge.to) ? 0.7 : 0.2"
+                    :stroke-dasharray="edgeEnabled(edge.from, edge.to) ? undefined : '3 4'"
                     stroke-width="1.4"
                     vector-effect="non-scaling-stroke"
                 />
@@ -174,6 +193,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
                 :node="node"
                 :color="colors.get(node.constellationId) ?? '#dce6dd'"
                 :selected="selectedId === node.id"
+                :enabled="enabledStarIds === undefined ? undefined : nodeEnabled(node)"
                 :interactive="detailed || node.parents.length === 0"
                 :tab-stop="tabStop === node.id"
                 :unit-scale="unitScale"

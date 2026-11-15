@@ -24,10 +24,10 @@ for (const width of [320, 390, 1280]) {
         await page.goto(
             '/iframe.html?id=interface-constellation-star--physical-passive&viewMode=story'
         )
-        await expect(card).toContainText('Пассивное заклинание')
+        await expect(card).toContainText('Пассивный навык')
         await expect(card).not.toContainText('Пассивная способность')
         await page.goto('/iframe.html?id=interface-constellation-star--resurrection&viewMode=story')
-        await expect(card).toContainText('Пассивное заклинание')
+        await expect(card).toContainText('Пассивный навык')
         await page.goto('/iframe.html?id=interface-constellation-star--unknown&viewMode=story')
         await expect(card).toHaveText('Неизвестно')
     })

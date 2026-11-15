@@ -1,11 +1,101 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
+import { nextTick } from 'vue'
 
 import { constellationFixture, fixtureStarId } from '../testing/developmentFixture'
 import { developmentCharacterFixture } from '../testing/developmentFixture'
 import CharacterDevelopment from './CharacterDevelopment.vue'
 import ConstellationGraph from './ConstellationGraph.vue'
 import { constellationLabels } from './constellationLabels'
+
+it('keeps ordinary development selection separate from debug build activation', async () => {
+    const root = fixtureStarId('prayer.root')
+    const view = mount(ConstellationGraph, {
+        props: { constellation: constellationFixture(true), selectedId: root },
+    })
+    await view.get(`[data-node-id="${root}"]`).trigger('click')
+    expect(view.emitted('select')?.at(-1)).toEqual([root])
+    expect(view.emitted('activate')).toBeUndefined()
+    view.unmount()
+})
+
+it('dims disabled known build stars without hiding their names or descriptions', async () => {
+    const sky = constellationFixture(true)
+    const original = JSON.stringify(sky)
+    const root = fixtureStarId('prayer.root')
+    const child = fixtureStarId('prayer.radius1')
+    const view = mount(ConstellationGraph, {
+        props: { constellation: sky, selectedId: child, enabledStarIds: new Set([root]) },
+    })
+    await view.get(`[data-node-id="${root}"]`).trigger('click')
+    const star = view.get(`[data-node-id="${child}"]`)
+    expect(star.attributes('aria-label')).toBe('Дальний голос')
+    expect(star.attributes('aria-pressed')).toBe('false')
+    expect(star.classes()).toContain('inactive')
+    await star.trigger('click')
+    expect(view.emitted('activate')?.at(-1)).toEqual([child])
+    expect(star.attributes('aria-pressed')).toBe('false')
+    await view.setProps({ enabledStarIds: new Set([root, child]) })
+    expect(star.attributes('aria-pressed')).toBe('true')
+    expect(star.classes()).not.toContain('inactive')
+    expect(JSON.stringify(sky)).toBe(original)
+    view.unmount()
+})
+
+it('activates a build star only on an explicit click or non-repeated confirmation', async () => {
+    const root = fixtureStarId('prayer.root')
+    const view = mount(ConstellationGraph, {
+        props: { constellation: constellationFixture(true), enabledStarIds: new Set([root]) },
+    })
+    view.vm.focusNode(root)
+    await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'ArrowDown' })
+    await view.get('[aria-label="Показать весь небосвод"]').trigger('click')
+    expect(view.emitted('activate')).toBeUndefined()
+    await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'Enter' })
+    expect(view.emitted('activate')).toEqual([[root]])
+    await view.get(`[data-node-id="${root}"]`).trigger('keydown', {
+        code: 'Enter',
+        repeat: true,
+    })
+    expect(view.emitted('activate')).toEqual([[root]])
+    view.unmount()
+})
+
+it('does not activate stars after a pan made of small pointer movements or a pinch', async () => {
+    const root = fixtureStarId('prayer.root')
+    const view = mount(ConstellationGraph, {
+        props: { constellation: constellationFixture(true), enabledStarIds: new Set([root]) },
+    })
+    const star = view.get(`[data-node-id="${root}"]`)
+    const svg = view.get('svg')
+    const pointer = async (target: Element, type: string, id: number, x = 0, y = 0) => {
+        const event = new MouseEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y })
+        Object.defineProperty(event, 'pointerId', { value: id })
+        target.dispatchEvent(event)
+        await nextTick()
+    }
+    const initial = svg.attributes('viewBox')
+    await pointer(star.element, 'pointerdown', 1, 20, 20)
+    for (let x = 21; x <= 30; x++) await pointer(svg.element, 'pointermove', 1, x, 20)
+    await pointer(svg.element, 'pointerup', 1)
+    expect(svg.attributes('viewBox')).not.toBe(initial)
+    await star.trigger('click')
+    expect(view.emitted('activate')).toBeUndefined()
+
+    await pointer(star.element, 'pointerdown', 1, 20, 20)
+    await pointer(svg.element, 'pointerdown', 2, 40, 20)
+    await pointer(svg.element, 'pointermove', 2, 50, 20)
+    await pointer(svg.element, 'pointerup', 2)
+    await pointer(svg.element, 'pointerup', 1)
+    await star.trigger('click')
+    expect(view.emitted('activate')).toBeUndefined()
+
+    await pointer(star.element, 'pointerdown', 1, 20, 20)
+    await pointer(svg.element, 'pointerup', 1)
+    await star.trigger('click')
+    expect(view.emitted('activate')).toEqual([[root]])
+    view.unmount()
+})
 
 it('keeps unknown stars generic and clickable in detailed mode and preserves fixed bounds across reveals', async () => {
     const sky = constellationFixture()

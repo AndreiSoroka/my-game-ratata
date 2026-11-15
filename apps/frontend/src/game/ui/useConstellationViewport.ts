@@ -88,6 +88,7 @@ function viewportGestures(
     unitScale: () => number
 ) {
     const pointers = new Map<number, { x: number; y: number }>()
+    const origins = new Map<number, { x: number; y: number }>()
     let dragged = false
     function scale(factor: number): void {
         const next = Math.max(1, Math.min(maximumZoom(), zoom.value * factor))
@@ -95,8 +96,10 @@ function viewportGestures(
     }
     function down(event: PointerEvent): void {
         if (event.button !== 0) return
-        dragged = false
+        if (pointers.size === 0) dragged = false
+        else dragged = true
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+        origins.set(event.pointerId, { x: event.clientX, y: event.clientY })
         if (!(event.target instanceof Element && event.target.closest('.constellation-node')))
             svg.value?.setPointerCapture?.(event.pointerId)
     }
@@ -106,12 +109,14 @@ function viewportGestures(
         if (!previous || !rect) return
         const other = [...pointers.entries()].find(([id]) => id !== event.pointerId)?.[1]
         if (other) {
+            dragged = true
             const old = Math.hypot(previous.x - other.x, previous.y - other.y)
             if (old > 0) scale(Math.hypot(event.clientX - other.x, event.clientY - other.y) / old)
         } else {
             const dx = event.clientX - previous.x,
                 dy = event.clientY - previous.y
-            if (Math.abs(dx) + Math.abs(dy) > 2) {
+            const origin = origins.get(event.pointerId)!
+            if (Math.abs(event.clientX - origin.x) + Math.abs(event.clientY - origin.y) > 2) {
                 dragged = true
                 svg.value?.setPointerCapture?.(event.pointerId)
             }
@@ -126,7 +131,11 @@ function viewportGestures(
         scale,
         down,
         move,
-        up: (event: PointerEvent) => pointers.delete(event.pointerId),
+        up: (event: PointerEvent) => {
+            if (event.type === 'pointercancel') dragged = true
+            pointers.delete(event.pointerId)
+            origins.delete(event.pointerId)
+        },
         didDrag: () => dragged,
     }
 }

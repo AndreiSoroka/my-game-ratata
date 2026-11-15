@@ -11,6 +11,7 @@ import {
     readConstellationDebugSettings,
     writeConstellationDebugSettings,
 } from './constellationDebugSettings'
+import { useConstellationBuild } from './useConstellationBuild'
 
 export function useConstellationDebug(options: {
     syncUrl: boolean
@@ -23,6 +24,10 @@ export function useConstellationDebug(options: {
     const path = ref<ConstellationId | ''>('')
     const generation = ref(0)
     const sky = computed(() => buildConstellationDebugSnapshot(settings.value))
+    const build = useConstellationBuild(
+        () => settings.value.heroClass,
+        () => sky.value.nodes
+    )
     const selectedId = ref(sky.value.layout?.centerNodeId ?? sky.value.nodes[0]!.id)
     const selected = computed(() => sky.value.nodes.find((node) => node.id === selectedId.value)!)
     const pathNames = computed(
@@ -47,6 +52,7 @@ export function useConstellationDebug(options: {
         if (seed) apply({ ...settings.value, seed })
     }
     return {
+        ...build,
         settings,
         draftSeed,
         query,

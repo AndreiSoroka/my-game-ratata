@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { assertBuildWorkflow, buildMetric } from './atlas-build-workflow'
+
 const pathSizes = {
     blade: 10,
     magic: 14,
@@ -48,6 +50,7 @@ for (const width of [1280, 390, 320]) {
             path: test.info().outputPath(`debug-atlas-overview-${width}.png`),
             fullPage: true,
         })
+        await assertBuildWorkflow(page, width, test.info())
         const initial = await coordinates(graph)
         await page.reload()
         await expect(graph.locator('[data-node-id]')).toHaveCount(77)
@@ -82,7 +85,7 @@ for (const width of [1280, 390, 320]) {
         await list.locator('[data-star-id="prayer.revive"]').click()
         const card = page.getByTestId('selected-star-card')
         await expect(card.getByRole('heading', { name: 'Воскрешение', exact: true })).toBeVisible()
-        await expect(card).toContainText('Пассивное заклинание')
+        await expect(card).toContainText('Пассивный навык')
         await expect(card.getByText('Условия открытия', { exact: true })).toHaveCount(0)
         await expect(card.getByText('Шанс срабатывания эффекта', { exact: true })).toHaveCount(0)
         await expect(page.getByTestId('debug-unlock-conditions')).toContainText(/Молитв/)
@@ -109,7 +112,7 @@ for (const width of [1280, 390, 320]) {
         await expect(
             card.getByRole('heading', { name: 'Возвращение праха', exact: true })
         ).toBeVisible()
-        await expect(card).toContainText('Пассивное заклинание')
+        await expect(card).toContainText('Пассивный навык')
         await expect(page.getByTestId('debug-unlock-conditions')).toContainText('Молитва праха')
 
         await page.getByTestId('debug-search').fill('prayer.gift1')
@@ -122,6 +125,7 @@ for (const width of [1280, 390, 320]) {
         await expect(page.getByTestId('debug-chance-actions')).toContainText(
             /полезные дары здоровья/
         )
+        await page.getByTestId('debug-build-all').click()
         await assertEffectExplanations(page, width)
         await assertPrayerCalculator(page, width)
         await assertEveryFormulaLegend(page, width)
@@ -218,7 +222,7 @@ async function assertFocused(page: Page, id: string): Promise<void> {
     await graph.scrollIntoViewIfNeeded()
     const node = graph.locator(`[data-node-id="${id}"]`)
     await expect(node).toHaveClass(/selected/)
-    await expect(node).toHaveAttribute('aria-pressed', 'true')
+    await expect(node).toHaveAttribute('aria-current', 'true')
     await expect
         .poll(async () => {
             const frame = await graph.boundingBox(),
@@ -278,6 +282,8 @@ async function assertEffectExplanations(page: Page, width: number): Promise<void
 }
 
 function prayerMetric(page: Page, label: string): Locator {
+    if (label === 'Шаг очищения могилы') return buildMetric(page, 'Шанс шага очищения')
+    if (label === 'Кара (если изучена)') return buildMetric(page, 'Шанс кары')
     return page.getByTestId('debug-prayer-metrics').locator(`[data-metric="${label}"] dd`)
 }
 async function selectAtlasStar(page: Page, id: string): Promise<void> {
@@ -357,6 +363,8 @@ async function assertPrayerCalculator(page: Page, width: number): Promise<void> 
     await expect(faith).toHaveValue('10')
     await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('38,5%')
     await expect(prayerMetric(page, 'Шаг очищения могилы')).toHaveCount(0)
+    await page.getByTestId('debug-prayer-miracles').selectOption('7')
+    await page.getByTestId('debug-last-light').check()
     await page.getByTestId('debug-class').selectOption('vanguard')
     await expect(page.getByTestId('debug-prayer-calculator')).toHaveCount(0)
     await page.getByTestId('debug-class').selectOption('cleric')
@@ -364,6 +372,8 @@ async function assertPrayerCalculator(page: Page, width: number): Promise<void> 
     await page.getByTestId('debug-seed').fill('calculator-layout-only')
     await page.getByTestId('debug-apply').click()
     await expect(prayerMetric(page, 'Шанс ответа')).toHaveText('38,5%')
+    await expect(page.getByTestId('debug-prayer-miracles')).toHaveValue('7')
+    await expect(page.getByTestId('debug-last-light')).toBeChecked()
     await page.getByTestId('debug-prayer-calculator').scrollIntoViewIfNeeded()
     await page.screenshot({
         path: test.info().outputPath(`debug-prayer-calculator-${width}.png`),

@@ -9,6 +9,7 @@ import {
     prayerPurificationChance,
 } from '../../../../backend/src/game/prayerProbability'
 import { chancePercent } from './constellationChanceMath'
+import { calculatePrayerBuild, type PrayerBuildResult } from './constellationPrayerBuild'
 
 export interface PrayerCalculatorSchool {
     id: PrayerAbilityId
@@ -18,11 +19,15 @@ export interface PrayerCalculatorSchool {
 export interface PrayerScenarioSettings {
     faithLevel: number
     mood: DeityMood
+    miraclesLevel?: number
+    lowHealthEligible?: boolean
+    tileWidth?: number
 }
 export interface PrayerScenarioResult {
     school: PrayerCalculatorSchool
     metrics: Array<{ label: string; value: string }>
     substitution: string
+    build?: PrayerBuildResult
 }
 export const prayerSchoolInfo = {
     pray: {
@@ -82,7 +87,8 @@ export function prayerCalculatorSchool(nodeId: string): PrayerCalculatorSchool |
 /** Pure example calculation. Invalid public inputs are rejected rather than rendered as NaN. */
 export function calculatePrayerScenario(
     nodeId: string,
-    settings: PrayerScenarioSettings
+    settings: PrayerScenarioSettings,
+    activeIds?: ReadonlySet<string>
 ): PrayerScenarioResult | undefined {
     validateSettings(settings)
     const school = prayerCalculatorSchool(nodeId)
@@ -110,6 +116,23 @@ export function calculatePrayerScenario(
     return {
         school,
         metrics,
+        ...(activeIds === undefined
+            ? {}
+            : {
+                  build: calculatePrayerBuild(nodeId, activeIds, {
+                      ...prayerSchoolInfo[school.id],
+                      ability: school.id,
+                      faithLevel,
+                      mood,
+                      miraclesLevel:
+                          settings.miraclesLevel === undefined ? 1 : settings.miraclesLevel,
+                      lowHealthEligible:
+                          settings.lowHealthEligible === undefined
+                              ? false
+                              : settings.lowHealthEligible,
+                      tileWidth: settings.tileWidth === undefined ? 16 : settings.tileWidth,
+                  }),
+              }),
         substitution: `min(95, ${base} + (${faithLevel} − 1) × 1,5) = ${chancePercent(answer)}`,
     }
 }
@@ -122,6 +145,19 @@ function validateSettings(settings: PrayerScenarioSettings): void {
         throw new RangeError('Faith level must be an integer from 1 to 10')
     }
     if (!moods.includes(settings.mood)) throw new RangeError('Unknown deity mood')
+    validateBuildSettings(settings)
+}
+function validateBuildSettings(settings: PrayerScenarioSettings): void {
+    const miracles = settings.miraclesLevel === undefined ? 1 : settings.miraclesLevel
+    if (!Number.isInteger(miracles) || miracles < 1 || miracles > 10)
+        throw new RangeError('Miracles level must be an integer from 1 to 10')
+    if (settings.lowHealthEligible !== undefined && typeof settings.lowHealthEligible !== 'boolean')
+        throw new RangeError('Low-health eligibility must be a boolean')
+    if (
+        settings.tileWidth !== undefined &&
+        (!Number.isFinite(settings.tileWidth) || settings.tileWidth <= 0)
+    )
+        throw new RangeError('Tile width must be positive and finite')
 }
 function number(value: number): string {
     return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)

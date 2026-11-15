@@ -9,7 +9,7 @@ defineProps<{ node: ConstellationNodeSnapshot }>()
         <template v-if="node.unlocked && node.name">
             <h3>{{ node.name }}</h3>
             <span v-if="node.effectType" class="constellation-detail__type">{{
-                node.effectType === 'active' ? 'Активное заклинание' : 'Пассивное заклинание'
+                node.effectType === 'active' ? 'Активное заклинание' : 'Пассивный навык'
             }}</span>
             <p v-if="node.description">{{ node.description }}</p>
             <ul v-if="node.effects?.length">

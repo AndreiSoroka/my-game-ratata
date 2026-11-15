@@ -5,7 +5,7 @@ import ConstellationChanceFormulas from './ConstellationChanceFormulas.vue'
 import { describeConstellationEffectChance } from './constellationEffectChance'
 import ConstellationPrayerCalculator from './ConstellationPrayerCalculator.vue'
 
-const props = defineProps<{ nodeId: string }>()
+const props = defineProps<{ nodeId: string; enabledStarIds?: ReadonlySet<string> }>()
 const chance = computed(() => describeConstellationEffectChance(props.nodeId))
 const longNotes = computed(
     () => chance.value.notes.length > 2 || chance.value.notes.join(' ').length > 240
@@ -19,7 +19,7 @@ const longNotes = computed(
     >
         <h2>Шанс срабатывания эффекта</h2>
         <p data-testid="debug-effect-chance-summary">{{ chance.summary }}</p>
-        <ConstellationPrayerCalculator :node-id="nodeId" />
+        <ConstellationPrayerCalculator :node-id="nodeId" :enabled-star-ids="enabledStarIds" />
         <ConstellationChanceFormulas :details="chance.formulaDetails" :legacy="chance.formulas" />
         <details v-if="chance.examples.length" class="chance-examples">
             <summary>Готовые примеры расчёта</summary>

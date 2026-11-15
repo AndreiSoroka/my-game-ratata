@@ -130,7 +130,7 @@ meaningful requests train Faith; actual gifts, hostile damage or grave progress
 train Miracles once per completed cast. Harmful waves and deity insight require
 learned stars. Resurrection retains its existing class/mastery requirements.
 An active star describes a standalone hotbar action; all other stars are labelled
-«Пассивное заклинание», including resurrection enhancements to their parent prayer.
+«Пассивный навык», including resurrection enhancements to their parent prayer.
 Selecting a star only opens its card. Home and the overview button return to the
 initial class constellation.
 

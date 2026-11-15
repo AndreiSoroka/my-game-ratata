@@ -18,7 +18,7 @@ it('shows the full catalogue without a character and keeps selected details when
     expect(view.findAll('[data-star-id]')).toHaveLength(1)
     await view.get('[data-star-id="prayer.revive"]').trigger('click')
     expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Воскрешение')
-    expect(view.get('[data-testid="selected-star-card"]').text()).toContain('Пассивное заклинание')
+    expect(view.get('[data-testid="selected-star-card"]').text()).toContain('Пассивный навык')
     expect(view.get('[data-testid="debug-effect-chance"] h2').text()).toBe(
         'Шанс срабатывания эффекта'
     )

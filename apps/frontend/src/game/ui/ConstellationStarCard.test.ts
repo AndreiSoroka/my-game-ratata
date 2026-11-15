@@ -8,7 +8,7 @@ it('classifies every revealed star as an active or passive spell, including phys
     for (const node of constellationFixture(true).nodes) {
         const view = mount(ConstellationStarCard, { props: { node } })
         expect(view.get('.constellation-detail__type').text()).toBe(
-            node.effectType === 'active' ? 'Активное заклинание' : 'Пассивное заклинание'
+            node.effectType === 'active' ? 'Активное заклинание' : 'Пассивный навык'
         )
         view.unmount()
     }

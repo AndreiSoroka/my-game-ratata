@@ -1,0 +1,119 @@
+import { mount } from '@vue/test-utils'
+import { expect, it } from 'vitest'
+
+import ConstellationGraph from '../ui/ConstellationGraph.vue'
+import { enableAllConstellationStars } from './constellationBuild'
+import ConstellationBuildSummary from './ConstellationBuildSummary.vue'
+import ConstellationDebug from './ConstellationDebug.vue'
+import ConstellationPrayerCalculator from './ConstellationPrayerCalculator.vue'
+
+it('starts with only Prayer and inspects enabled stars without switching them off', async () => {
+    const view = mount(ConstellationDebug, { props: { syncUrl: false } })
+    const graph = view.getComponent(ConstellationGraph)
+    expect(view.get('[data-testid="debug-build-count"]').text()).toContain('1')
+    expect(graph.props('enabledStarIds')?.size).toBe(1)
+    expect(graph.props('enabledStarIds')?.has('prayer.root')).toBe(true)
+    graph.vm.focusNode('prayer.harm')
+    await view.vm.$nextTick()
+    expect(graph.props('enabledStarIds')?.size).toBe(1)
+    await view.get('[data-node-id="prayer.harm"]').trigger('click')
+    expect(graph.props('enabledStarIds')?.has('prayer.harm')).toBe(true)
+    await view.get('[data-node-id="prayer.root"]').trigger('click')
+    expect(graph.props('enabledStarIds')?.size).toBe(2)
+    expect(view.get('[data-testid="debug-prayer-build-effects"]').text()).toContain('Кара')
+    expect(view.find('[data-metric="Кара (если изучена)"]').exists()).toBe(false)
+    expect(view.get('[data-testid="debug-prayer-faith"]').element).toHaveProperty('value', '1')
+    view.unmount()
+})
+it('names missing prerequisites, provides inspect-only links and persists cascade details', async () => {
+    const view = mount(ConstellationDebug, { props: { syncUrl: false } })
+    const toggle = async (id: string) => view.get(`[data-star-toggle="${id}"]`).trigger('click')
+    await toggle('prayer.harm')
+    await toggle('prayer.harm2')
+    expect(view.get('[data-testid="debug-build-blocked"]').text()).toContain(
+        'Нужно открыть «Суровый ответ»'
+    )
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(2)
+    await view.get('[data-find-parent="prayer.harm1"]').trigger('click')
+    expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Суровый ответ')
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(2)
+    await view.get('[data-testid="selected-star-toggle"]').trigger('click')
+    await toggle('prayer.harm2')
+    await view.get('[data-star-id="prayer.root"]').trigger('click')
+    expect(view.get('[data-build-metric="Множитель кары"] dd').text()).toBe('×1,6')
+    expect(view.get('[data-build-metric="Урон кары"] dd').text()).toContain('10 HP')
+    await toggle('prayer.harm')
+    const cascade = view.get('[data-testid="debug-build-cascade"]')
+    expect(cascade.text()).toContain('Отключено звёзд: 3')
+    expect(cascade.text()).toContain('Кара')
+    expect(cascade.text()).toContain('Суровый ответ')
+    expect(cascade.text()).toContain('Гнев небес')
+    await view.get('[data-star-id="prayer.root"]').trigger('click')
+    expect(view.get('[data-testid="debug-build-cascade"]').text()).toContain('Суровый ответ')
+    expect(view.find('[data-build-metric="Урон кары"]').exists()).toBe(false)
+    view.unmount()
+})
+it('keeps selected stars and example inputs through class and seed changes', async () => {
+    const view = mount(ConstellationDebug, { props: { syncUrl: false } })
+    await view.get('[data-testid="debug-build-all"]').trigger('click')
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(77)
+    expect(view.get('[data-testid="debug-prayer-faith"]').element).toHaveProperty('value', '1')
+    await view.get('[data-testid="debug-prayer-faith"]').setValue('7')
+    await view.get('[data-testid="debug-prayer-miracles"]').setValue('10')
+    await view.get('[data-testid="debug-last-light"]').setValue(true)
+    await view.get('[data-testid="debug-class"]').setValue('vanguard')
+    await view.get('[data-testid="debug-seed"]').setValue('preserve-build')
+    await view.get('form').trigger('submit')
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(77)
+    await view.get('[data-testid="debug-class"]').setValue('cleric')
+    expect(view.get('[data-testid="debug-prayer-faith"]').element).toHaveProperty('value', '7')
+    expect(view.get('[data-testid="debug-prayer-miracles"]').element).toHaveProperty('value', '10')
+    expect(view.get('[data-testid="debug-last-light"]').element).toHaveProperty('checked', true)
+    await view.get('[data-testid="debug-build-reset"]').trigger('click')
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(1)
+    await view.get('[data-testid="debug-build-clear"]').trigger('click')
+    expect(view.get('[data-testid="debug-prayer-unavailable"]').text()).toContain('не включена')
+    expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Молитва')
+    view.unmount()
+})
+it('calculates the whole prayer set and applies Miracles plus the complete Last Light condition', async () => {
+    const full = enableAllConstellationStars()
+    const view = mount(ConstellationPrayerCalculator, {
+        props: { nodeId: 'prayer.root', enabledStarIds: full },
+    })
+    const metric = (label: string) => view.get(`[data-build-metric="${label}"] dd`).text()
+    await view.get('[data-testid="debug-prayer-miracles"]').setValue('10')
+    expect(metric('Лечение при ответе')).toContain('26 HP')
+    await view.get('[data-testid="debug-last-light"]').setValue(true)
+    expect(metric('Лечение при ответе')).toContain('29 HP')
+    expect(metric('Множитель лечения')).toBe('×1,2')
+    const noLastLight = new Set(full)
+    noLastLight.delete('prayer.last_light')
+    await view.setProps({ enabledStarIds: noLastLight })
+    expect(view.find('[data-testid="debug-last-light"]').exists()).toBe(false)
+    expect(metric('Лечение при ответе')).toContain('26 HP')
+    view.unmount()
+})
+it('shows cross-path runic totals only while its example charge is active', async () => {
+    const full = enableAllConstellationStars()
+    const view = mount(ConstellationBuildSummary, { props: { path: 'arrow', activeIds: full } })
+    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
+        '×1,2'
+    )
+    await view.get('[data-testid="debug-runic-charged"]').setValue(true)
+    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
+        '×1,32'
+    )
+    await view.setProps({ path: 'magic' })
+    expect(view.get('[data-build-metric="Урон Выстрела с учётом всей сборки"] dd').text()).toBe(
+        '×1,32'
+    )
+    const noEcho = new Set(full)
+    noEcho.delete('magic.runic_echo')
+    await view.setProps({ activeIds: noEcho })
+    expect(view.find('[data-testid="debug-runic-charged"]').exists()).toBe(false)
+    expect(view.get('[data-build-metric="Урон Выстрела с учётом всей сборки"] dd').text()).toBe(
+        '×1,2'
+    )
+    view.unmount()
+})

@@ -5,6 +5,7 @@ defineProps<{
     node: ConstellationNodeSnapshot
     color: string
     selected: boolean
+    enabled?: boolean
     interactive: boolean
     tabStop: boolean
     unitScale: number
@@ -15,14 +16,21 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
     <g
         :data-node-id="node.id"
         class="constellation-node"
-        :class="{ selected, closed: !node.unlocked, inert: !interactive }"
+        :class="{
+            selected,
+            closed: !node.unlocked,
+            inactive: enabled === false,
+            inert: !interactive,
+        }"
         :transform="`translate(${node.x},${node.y})`"
-        :style="{ color: node.unlocked ? color : '#8b969e' }"
+        :style="{ color: node.unlocked && enabled !== false ? color : '#8b969e' }"
         :role="interactive ? 'button' : undefined"
         :tabindex="interactive && tabStop ? 0 : -1"
         :aria-hidden="!interactive || undefined"
         :aria-label="node.unlocked && node.name ? node.name : 'Неизвестно'"
-        :aria-pressed="interactive ? selected : undefined"
+        :aria-pressed="interactive ? (enabled ?? selected) : undefined"
+        :aria-current="selected ? 'true' : undefined"
+        :data-enabled="enabled"
         @focus="emit('focus')"
         @click="emit('select')"
         @keydown.stop="emit('key', $event)"
@@ -56,11 +64,14 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
     stroke: transparent !important;
     pointer-events: all;
 }
-.closed {
+.closed,
+.inactive {
     opacity: 0.5;
 }
 .closed circle:not(.hit),
-.closed path {
+.closed path,
+.inactive circle:not(.hit),
+.inactive path {
     fill: #122530;
 }
 .selected,

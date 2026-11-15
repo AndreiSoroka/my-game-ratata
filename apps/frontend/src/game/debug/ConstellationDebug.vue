@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import type { HeroClass } from '@my-game-ratata/contracts'
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
+import ConstellationBuildFeedback from './ConstellationBuildFeedback.vue'
+import ConstellationBuildStatus from './ConstellationBuildStatus.vue'
+import ConstellationBuildSummary from './ConstellationBuildSummary.vue'
+import ConstellationBuildToolbar from './ConstellationBuildToolbar.vue'
 import ConstellationDebugChance from './ConstellationDebugChance.vue'
 import { debugHeroClasses } from './constellationDebugSettings'
 import ConstellationDebugUnlock from './ConstellationDebugUnlock.vue'
@@ -18,6 +22,16 @@ const props = withDefaults(
     { syncUrl: true }
 )
 const {
+    enabledStarIds,
+    feedback,
+    lastCascade,
+    activate,
+    toggle,
+    clearFeedback,
+    dismissCascade,
+    clear,
+    enableAll,
+    reset,
     settings,
     draftSeed,
     query,
@@ -35,8 +49,10 @@ const {
 const graph = ref<InstanceType<typeof ConstellationGraph>>()
 const list = ref<HTMLUListElement>()
 const detailsPanel = ref<HTMLElement>()
+const feedbackPanel = ref<HTMLElement>()
 function selectNode(id: string): void {
     selectedId.value = id
+    clearFeedback()
     if (detailsPanel.value) detailsPanel.value.scrollTop = 0
 }
 watch(selected, () => {
@@ -44,6 +60,20 @@ watch(selected, () => {
 })
 function selectStar(id: string): void {
     graph.value?.focusNode(id)
+}
+watch(
+    () => [feedback.value?.id, lastCascade.value?.id],
+    ([blocked, cascade], [oldBlocked, oldCascade]) => {
+        if ((blocked && blocked !== oldBlocked) || (cascade && cascade !== oldCascade))
+            void nextTick(() => feedbackPanel.value?.scrollIntoView?.({ block: 'nearest' }))
+    }
+)
+function inspectParent(id: string): void {
+    selectStar(id)
+    document.getElementById('debug-sky')?.scrollIntoView?.({ block: 'start' })
+}
+function showSummary(): void {
+    detailsPanel.value?.querySelector('#debug-build-result')?.scrollIntoView?.({ block: 'start' })
 }
 function listKey(event: KeyboardEvent): void {
     if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.code)) return
@@ -71,7 +101,7 @@ function listKey(event: KeyboardEvent): void {
         </header>
         <form class="debug-settings" @submit.prevent="applySeed">
             <label
-                >Начальный класс
+                >Класс для карты
                 <select
                     data-testid="debug-class"
                     :value="settings.heroClass"
@@ -101,6 +131,13 @@ function listKey(event: KeyboardEvent): void {
                 Новая карта
             </button>
         </form>
+        <ConstellationBuildToolbar
+            :count="enabledStarIds.size"
+            @clear="clear"
+            @all="enableAll"
+            @reset="reset"
+        />
+        <p class="debug-build-help">Класс и seed меняют карту. Набор звёзд сохраняется.</p>
         <div class="debug-workspace">
             <ConstellationGraph
                 id="debug-sky"
@@ -108,7 +145,9 @@ function listKey(event: KeyboardEvent): void {
                 :key="generation"
                 :constellation="sky"
                 :selected-id="selectedId"
+                :enabled-star-ids="enabledStarIds"
                 @select="selectNode"
+                @activate="activate"
             />
             <aside class="debug-sidebar" aria-label="Каталог звёзд">
                 <div
@@ -117,11 +156,42 @@ function listKey(event: KeyboardEvent): void {
                     tabindex="0"
                     aria-label="Описание выбранной звезды"
                 >
-                    <a class="debug-map-link" href="#debug-sky">Показать на карте</a>
+                    <nav class="debug-card-nav" aria-label="Действия карточки">
+                        <a class="debug-map-link" href="#debug-sky">Показать на карте</a
+                        ><button
+                            class="debug-summary-link"
+                            type="button"
+                            data-testid="debug-show-summary"
+                            @click="showSummary"
+                        >
+                            Сводка
+                        </button>
+                    </nav>
+                    <ConstellationBuildStatus
+                        :name="selected.name ?? selected.id"
+                        :enabled="enabledStarIds.has(selectedId)"
+                        @toggle="toggle(selectedId)"
+                    />
+                    <div ref="feedbackPanel">
+                        <ConstellationBuildFeedback
+                            :feedback="feedback"
+                            :cascade="lastCascade"
+                            :nodes="sky.nodes"
+                            @inspect="inspectParent"
+                            @dismiss="dismissCascade"
+                        />
+                    </div>
                     <div id="debug-star-details" data-testid="selected-star-card">
                         <ConstellationStarCard :node="selected" />
                     </div>
-                    <ConstellationDebugChance :node-id="selectedId" />
+                    <ConstellationBuildSummary
+                        :path="selected.constellationId"
+                        :active-ids="enabledStarIds"
+                    />
+                    <ConstellationDebugChance
+                        :node-id="selectedId"
+                        :enabled-star-ids="enabledStarIds"
+                    />
                     <ConstellationDebugUnlock :node-id="selectedId" />
                 </div>
                 <section class="debug-catalog">
@@ -157,7 +227,7 @@ function listKey(event: KeyboardEvent): void {
                         aria-label="Звёзды"
                         @keydown="listKey"
                     >
-                        <li v-for="node in filtered" :key="node.id">
+                        <li v-for="node in filtered" :key="node.id" class="debug-star-row">
                             <button
                                 type="button"
                                 :data-star-id="node.id"
@@ -167,6 +237,17 @@ function listKey(event: KeyboardEvent): void {
                             >
                                 <strong>{{ node.name }}</strong>
                                 <span>{{ pathNames.get(node.constellationId) }}</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="switch"
+                                class="debug-star-toggle"
+                                :data-star-toggle="node.id"
+                                :aria-label="`В наборе: ${node.name}`"
+                                :aria-checked="enabledStarIds.has(node.id)"
+                                @click="toggle(node.id)"
+                            >
+                                {{ enabledStarIds.has(node.id) ? '✓' : '+' }}
                             </button>
                         </li>
                     </ul>
