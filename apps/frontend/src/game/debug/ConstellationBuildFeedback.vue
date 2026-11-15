@@ -40,6 +40,7 @@ watch(
         v-if="feedback || cascade"
         ref="notice"
         class="build-feedback"
+        :class="{ 'build-feedback--info': !feedback }"
         aria-live="polite"
         aria-atomic="true"
         data-testid="debug-build-feedback"
@@ -92,6 +93,9 @@ watch(
     color: #f4dfae;
     font-size: 12px;
     line-height: 1.5;
+}
+.build-feedback--info {
+    pointer-events: none;
 }
 p {
     margin: 0;

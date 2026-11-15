@@ -1,0 +1,100 @@
+import { expect, type Locator, type Page, test } from '@playwright/test'
+
+import { selectBuildStar } from './atlas-build-workflow'
+
+const card = (page: Page) => page.getByTestId('selected-star-card')
+const bullets = (page: Page) => card(page).locator('li')
+async function inspectCard(page: Page, id: string, name: string): Promise<void> {
+    await selectBuildStar(page, id)
+    await expect(card(page).getByRole('heading')).toHaveText(name)
+}
+async function toggleBySpace(page: Page, id: string, enabled: boolean): Promise<void> {
+    await selectBuildStar(page, id)
+    await page.locator(`[data-star-id="${id}"]`).press('Space')
+    await expect(page.getByTestId('selected-star-toggle')).toHaveAttribute(
+        'aria-checked',
+        String(enabled)
+    )
+}
+async function expectPrayerBase(list: Locator): Promise<void> {
+    await expect(list.filter({ hasText: 'Лечит вас или союзника.' })).toHaveCount(1)
+    await expect(list.filter({ hasText: 'Очищает могилы от тёмных сил.' })).toHaveCount(1)
+    await expect(list.filter({ hasText: /воскреш/i })).toHaveCount(1)
+}
+async function assertPrayerListUpdates(page: Page): Promise<void> {
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expectPrayerBase(bullets(page))
+    await expect(bullets(page)).toHaveCount(3)
+    await expect(bullets(page).filter({ hasText: /нежит/i })).toHaveCount(0)
+    await toggleBySpace(page, 'prayer.harm', true)
+    await expect(card(page)).not.toContainText(/воскреш|очищает могилы|лечит вас/i)
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expectPrayerBase(bullets(page))
+    await expect(bullets(page).filter({ hasText: /урон.*нежит/i })).toHaveCount(1)
+    await expect(bullets(page)).toHaveCount(4)
+    await toggleBySpace(page, 'prayer.harm1', true)
+    await toggleBySpace(page, 'prayer.gift1', true)
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expect(bullets(page).filter({ hasText: /30\s*%/ })).toHaveCount(1)
+    await expect(bullets(page).filter({ hasText: /5\s*%/ })).toHaveCount(1)
+    await toggleBySpace(page, 'prayer.harm', false)
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expect(bullets(page).filter({ hasText: /нежит|30\s*%/i })).toHaveCount(0)
+    await expect(bullets(page).filter({ hasText: /5\s*%/ })).toHaveCount(1)
+    await toggleBySpace(page, 'prayer.revive', false)
+    await expect(page.getByTestId('debug-build-feedback')).toHaveCSS('pointer-events', 'none')
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expect(bullets(page).filter({ hasText: /воскреш/i })).toHaveCount(0)
+    await toggleBySpace(page, 'prayer.revive', true)
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expectPrayerBase(bullets(page))
+}
+for (const width of [320, 390, 1280]) {
+    test(`active Prayer card lists only currently enabled features at ${width}px`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto('/?debug=constellations&class=cleric&seed=card-features')
+        await expect(page.getByTestId('constellation-debug')).toBeVisible()
+        await assertPrayerListUpdates(page)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+            width
+        )
+    })
+}
+
+test('active cards keep school and action improvements isolated', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/?debug=constellations&class=cleric&seed=card-isolation')
+    await page.getByTestId('debug-build-all').click()
+    await inspectCard(page, 'prayer.root', 'Молитва')
+    await expect(bullets(page).filter({ hasText: /воскреш/i })).toHaveCount(1)
+    await expect(bullets(page).filter({ hasText: /урон.*нежит/i })).toHaveCount(1)
+    for (const [id, name] of [
+        ['prayer_road.root', 'Молитва странника'],
+        ['prayer_lantern.root', 'Молитва ясности'],
+    ] as const) {
+        await inspectCard(page, id, name)
+        expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(
+            /воскреш|нежит|могил/i
+        )
+    }
+    await inspectCard(page, 'prayer_grave.root', 'Молитва праха')
+    await expect(bullets(page).filter({ hasText: /Возвращает павших.*нежит/i })).toHaveCount(1)
+    await toggleBySpace(page, 'prayer_grave.revive', false)
+    await inspectCard(page, 'prayer_grave.root', 'Молитва праха')
+    await expect(bullets(page).filter({ hasText: /Возвращает павших/i })).toHaveCount(0)
+    await inspectCard(page, 'arrow.root', 'Стрела')
+    await expect(bullets(page).filter({ hasText: /20\s*%/ })).toHaveCount(1)
+    await expect(
+        bullets(page).filter({ hasText: /следующий Выстрел на 10% сильнее/i })
+    ).toHaveCount(1)
+    expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(/Искр|лечени|воскреш/i)
+    await inspectCard(page, 'magic.fireball', 'Огненный шар')
+    await expect(
+        bullets(page).filter({ hasText: /Урон огненных шаров увеличен на 10%/ })
+    ).toHaveCount(1)
+    expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(/Искр|Барьер|воскреш/i)
+    await inspectCard(page, 'prayer.gift1', 'Тёплый дар')
+    expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(/воскреш|нежит|могил/i)
+})

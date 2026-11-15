@@ -13,6 +13,7 @@ it('starts with Prayer and Resurrection and changes ownership only with Space', 
     expect(view.get('[data-testid="debug-build-count"]').text()).toContain('2')
     expect(graph.props('enabledStarIds')?.size).toBe(2)
     expect(graph.props('enabledStarIds')?.has('prayer.root')).toBe(true)
+    expect(view.get('[data-testid="selected-star-card"] ul').text()).toMatch(/воскреш/i)
     graph.vm.focusNode('prayer.harm')
     await view.vm.$nextTick()
     expect(graph.props('enabledStarIds')?.size).toBe(2)
@@ -26,6 +27,7 @@ it('starts with Prayer and Resurrection and changes ownership only with Space', 
     await view.get('[data-node-id="prayer.root"]').trigger('click')
     expect(graph.props('enabledStarIds')?.size).toBe(3)
     expect(view.get('[data-testid="debug-prayer-build-effects"]').text()).toContain('Кара')
+    expect(view.get('[data-testid="selected-star-card"] ul').text()).toMatch(/урон нежити/i)
     expect(view.find('[data-metric="Кара (если изучена)"]').exists()).toBe(false)
     expect(view.find('[data-testid="debug-prayer-faith"]').exists()).toBe(false)
     expect(view.get('[data-testid="debug-mastery-level"]').text()).toBe('1')
@@ -60,6 +62,7 @@ it('names missing prerequisites, provides inspect-only links and briefly reports
     await view.get('[data-star-id="prayer.root"]').trigger('click')
     expect(view.get('[data-testid="debug-build-cascade"]').text()).toContain('Суровый ответ')
     expect(view.find('[data-build-metric="Урон кары"]').exists()).toBe(false)
+    expect(view.get('[data-testid="selected-star-card"] ul').text()).not.toMatch(/урон нежити/i)
     view.unmount()
 })
 it('keeps selected stars and example inputs through class and seed changes', async () => {

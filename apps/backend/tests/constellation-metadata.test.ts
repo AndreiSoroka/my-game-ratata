@@ -15,6 +15,16 @@ function abilityHero(...args: Parameters<typeof unpreparedHero>) {
     return actor
 }
 
+function requiredCard(actor: ReturnType<typeof abilityHero>, id: string) {
+    const card = snapshotConstellations(actor).nodes.find(
+        (node) => node.id === constellationWireId(id)
+    )
+    if (card === undefined) {
+        throw new Error(`Missing card: ${id}`)
+    }
+    return card
+}
+
 describe('effect-only known card copy', () => {
     it('keeps acquisition instructions out of five general roots and both fireball cards', () => {
         const actor = abilityHero('vanguard')
@@ -108,6 +118,45 @@ describe('earned constellation metadata', () => {
     })
 })
 
+describe('dynamic active card capabilities', () => {
+    it('publishes only earned extra capabilities in the active card, including automatic cleric resurrection', () => {
+        const actor = abilityHero('cleric')
+        const card = () => requiredCard(actor, 'prayer.root')
+        expect(card().effects).toEqual([
+            'Лечит вас или союзника.',
+            'Очищает могилы от тёмных сил.',
+            'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.',
+        ])
+        expect(JSON.stringify(card())).not.toContain('кар')
+        actor.progression.constellations.opened.add('prayer.harm')
+        expect(card().effects).toContain(
+            'Наносит урон нежити в радиусе молитвы.'
+        )
+        actor.progression.constellations.opened.delete('prayer.harm')
+        expect(card().effects).not.toContain(
+            'Наносит урон нежити в радиусе молитвы.'
+        )
+        const unknown = requiredCard(actor, 'prayer.harm')
+        expect(unknown.unlocked).toBe(false)
+        expect(Object.hasOwn(unknown, 'effects')).toBe(false)
+    })
+    it('keeps a newly learned non-cleric prayer at its base list until resurrection is actually earned', () => {
+        const actor = abilityHero('vanguard')
+        actor.abilities.known.add('pray')
+        syncAbilityConstellations(actor)
+        const card = requiredCard(actor, 'prayer.root')
+        expect(card.unlocked).toBe(true)
+        expect(card.effects).toEqual([
+            'Лечит вас или союзника.',
+            'Очищает могилы от тёмных сил.',
+        ])
+        const revive = requiredCard(actor, 'prayer.revive')
+        expect(revive.unlocked).toBe(false)
+        expect(Object.hasOwn(revive, 'effects')).toBe(false)
+        expect(Object.hasOwn(revive, 'name')).toBe(false)
+    })
+})
+
 describe('known prayer school cards', () => {
     it('publishes the exact healing root and twenty-node catalogue with correct active and passive cards', () => {
         const actor = abilityHero('cleric')
@@ -128,11 +177,15 @@ describe('known prayer school cards', () => {
             effectType: 'active',
             description:
                 'Вы можете помолиться за живых или мёртвых. Есть шанс, что божество ответит на ваши просьбы.',
-            effects: [
-                'Лечит вас или союзника.',
-                'Очищает могилы от тёмных сил.',
-            ],
         })
+        expect(root?.effects).toEqual(
+            expect.arrayContaining([
+                'Лечит вас и всех подходящих союзников в радиусе молитвы.',
+                'Очищает могилы от тёмных сил.',
+                'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.',
+                'Наносит урон нежити в радиусе молитвы.',
+            ])
+        )
         const revive = snapshot.nodes.find(
             (node) => node.id === constellationWireId('prayer.revive')
         )

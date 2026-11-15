@@ -4,6 +4,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { resolveConstellationCardEffects } from './constellationCardEffects'
 import {
     constellationPaths,
     type ConstellationStar,
@@ -58,9 +59,7 @@ export function snapshotConstellations(
             unlocked: learned.has(`${id}.root`),
             ...(learned.has(`${id}.root`) ? { name, description } : {}),
         })),
-        nodes: visible.map((node) =>
-            observeNode(node, learned.has(node.id), sky)
-        ),
+        nodes: visible.map((node) => observeNode(node, learned, sky)),
         edges: visible.flatMap((node) =>
             node.parents
                 .filter((id) => visibleIds.has(id))
@@ -86,7 +85,7 @@ function observedEdge(
 
 function observeNode(
     node: ConstellationStar,
-    learned: boolean,
+    learnedIds: ReadonlySet<string>,
     sky: CachedConstellationLayout
 ): ConstellationNodeSnapshot {
     const position = sky.positions[node.id]
@@ -95,6 +94,10 @@ function observeNode(
             `Personal sky is missing a constellation node: ${node.id}`
         )
     }
+    const learned = learnedIds.has(node.id)
+    const effects = learned
+        ? resolveConstellationCardEffects(node.id, learnedIds)
+        : undefined
     return {
         id: constellationWireId(node.id),
         constellationId: node.constellationId,
@@ -107,9 +110,7 @@ function observeNode(
                   name: node.name,
                   description: node.description,
                   effectType: node.effectType,
-                  ...(node.effects === undefined
-                      ? {}
-                      : { effects: [...node.effects] }),
+                  ...(effects === undefined ? {} : { effects }),
               }
             : {}),
     }

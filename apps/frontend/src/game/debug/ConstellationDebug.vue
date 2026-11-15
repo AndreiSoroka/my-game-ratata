@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { HeroClass } from '@my-game-ratata/contracts'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
+import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
 import ConstellationBuildFeedback from './ConstellationBuildFeedback.vue'
@@ -52,6 +53,11 @@ const graph = ref<InstanceType<typeof ConstellationGraph>>()
 const list = ref<HTMLUListElement>()
 const detailsPanel = ref<HTMLElement>()
 const debugPanels = provideConstellationDebugPanels()
+const selectedCard = computed(() => {
+    const node = selected.value
+    const effects = resolveConstellationCardEffects(node.id, enabledStarIds.value)
+    return { ...node, ...(effects === undefined ? {} : { effects }) }
+})
 function selectNode(id: string): void {
     selectedId.value = id
     clearFeedback()
@@ -177,7 +183,7 @@ function listKey(event: KeyboardEvent): void {
                         @toggle="toggle(selectedId)"
                     />
                     <div id="debug-star-details" data-testid="selected-star-card">
-                        <ConstellationStarCard :node="selected" />
+                        <ConstellationStarCard :node="selectedCard" />
                     </div>
                     <ConstellationMasterySummary
                         :path="selected.constellationId"
