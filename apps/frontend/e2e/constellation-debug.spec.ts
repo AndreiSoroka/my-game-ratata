@@ -83,6 +83,7 @@ for (const width of [1280, 390, 320]) {
         await expect(card.getByRole('heading', { name: 'Воскрешение', exact: true })).toBeVisible()
         await expect(card).toContainText('Пассивное заклинание')
         await expect(card.getByText('Условия открытия', { exact: true })).toHaveCount(0)
+        await expect(card.getByText('Шанс срабатывания эффекта', { exact: true })).toHaveCount(0)
         await expect(page.getByTestId('debug-unlock-conditions')).toContainText(/Молитв/)
         await expect(page.getByTestId('debug-unlock-conditions')).toContainText(/кл[еи]рик/i)
         await expect(page.getByTestId('debug-unlock-conditions')).toContainText(/5|пят/i)
@@ -112,10 +113,15 @@ for (const width of [1280, 390, 320]) {
 
         await page.getByTestId('debug-search').fill('prayer.gift1')
         await list.locator('[data-star-id="prayer.gift1"]').click()
-        await expect(page.getByTestId('debug-chance-actions')).toContainText('Повышают шанс')
+        await expect(
+            page
+                .getByTestId('debug-chance-actions')
+                .getByRole('heading', { name: 'Повышают шанс открытия', exact: true })
+        ).toBeVisible()
         await expect(page.getByTestId('debug-chance-actions')).toContainText(
             /полезные дары здоровья/
         )
+        await assertEffectExplanations(page, width)
         await page.getByTestId('debug-search').fill('')
         await expect(list.locator('[data-star-id]')).toHaveCount(77)
     })
@@ -220,4 +226,46 @@ async function assertFocused(page: Page, id: string): Promise<void> {
             )
         })
         .toBe(true)
+}
+
+async function assertEffectExplanations(page: Page, width: number): Promise<void> {
+    const chance = page.getByTestId('debug-effect-chance')
+    for (const [id, pattern] of [
+        ['prayer.revive', /95\s*%/],
+        ['prayer.root', /55\s*%/],
+        ['blade.critical', /min\s*\(\s*95\s*%/],
+        ['blade.damage1', /100\s*%/],
+        ['shadow.luck1', /17[,.]4\s*%/],
+    ] as const) {
+        await page.getByTestId('debug-search').fill(id)
+        await page.getByTestId('debug-star-list').locator(`[data-star-id="${id}"]`).click()
+        await expect(
+            chance.getByRole('heading', { name: 'Шанс срабатывания эффекта', exact: true })
+        ).toBeVisible()
+        await expect(chance).toContainText(pattern)
+        const formulas = chance.getByTestId('debug-effect-chance-formulas')
+        expect(await formulas.locator('li').count()).toBeGreaterThan(0)
+        expect(await formulas.evaluate((element) => element.closest('details') === null)).toBe(true)
+        if (id === 'prayer.root') {
+            const neutral = chance
+                .getByRole('row')
+                .filter({ hasText: 'Вера 1 · нейтральное настроение' })
+            await expect(neutral.locator('td')).toContainText('Ответ 55%')
+            await expect(neutral.locator('td')).not.toContainText('Ответ 20%')
+        }
+        if (id === 'shadow.luck1') {
+            await expect(chance).toContainText(/обнаружение/i)
+            await expect(formulas).toContainText(/D\s*=\s*clamp/)
+            await expect(formulas).toContainText(/U\s*=\s*clamp/)
+            await expect(formulas).toContainText(/\(1\s*[−-]\s*D\)\s*×\s*U/)
+            await formulas.scrollIntoViewIfNeeded()
+            await page.screenshot({
+                path: test.info().outputPath(`debug-atlas-effect-chance-${width}.png`),
+                fullPage: true,
+            })
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+            width
+        )
+    }
 }

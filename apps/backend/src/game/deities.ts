@@ -8,6 +8,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellations'
+import { prayerAnswerChance, prayerMoodQuality } from './prayerProbability'
 
 export const deityMoodCycleMs = 30_000
 export const deityDefinitions: Record<
@@ -43,16 +44,6 @@ const moods: DeityMood[] = [
     'neutral',
     'wrathful',
 ]
-const moodChances: Record<DeityMood, number> = {
-    benevolent: 0.8,
-    neutral: 0.55,
-    wrathful: 0.25,
-}
-const moodQuality: Record<DeityMood, number> = {
-    benevolent: 1.3,
-    neutral: 1,
-    wrathful: 0.65,
-}
 const hints: Record<DeityMood, string> = {
     benevolent: 'Знаки обещают благосклонность, но не дают гарантий.',
     neutral: 'Знаки противоречивы. Ответ божества неясен.',
@@ -72,14 +63,12 @@ export function miracleChance(
     deityId = character.progression.patron
 ): number {
     const mood = deityMood(deityId, now)
-    const faithBonus =
-        (character.progression.skills[
+    const faithLevel =
+        character.progression.skills[
             PRAYER_SCHOOL_DEFINITIONS[prayerAbilityForDeity(deityId)]
                 .faithSkillId
-        ].level -
-            1) *
-        0.015
-    return Math.min(0.95, moodChances[mood] + faithBonus)
+        ].level
+    return prayerAnswerChance(faithLevel, mood)
 }
 
 export function resolveMiracle(
@@ -91,7 +80,7 @@ export function resolveMiracle(
     const mood = deityMood(deityId, now)
     return {
         success: random() < miracleChance(character, now, deityId),
-        quality: moodQuality[mood],
+        quality: prayerMoodQuality[mood],
     }
 }
 

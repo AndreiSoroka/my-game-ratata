@@ -20,9 +20,9 @@ const details = computed(() => describeConstellationUnlock(props.nodeId))
         <section
             v-if="details.chanceBoosts.length"
             data-testid="debug-chance-actions"
-            aria-label="Повышают шанс"
+            aria-label="Повышают шанс открытия"
         >
-            <h3>Повышают шанс</h3>
+            <h3>Повышают шанс открытия</h3>
             <ul>
                 <li v-for="hint in details.chanceBoosts" :key="hint">{{ hint }}</li>
             </ul>

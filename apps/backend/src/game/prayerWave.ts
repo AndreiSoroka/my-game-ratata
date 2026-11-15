@@ -11,6 +11,7 @@ import type { GameCharacter } from './character'
 import { miracleChance } from './deities'
 import { canTargetByFaction } from './factions'
 import { prayerHarmTargets } from './prayerContext'
+import { prayerHarmChance } from './prayerProbability'
 
 export function applyPrayerWave(
     actor: GameCharacter,
@@ -49,7 +50,7 @@ export function applyPrayerWave(
             victim.trainingTarget === undefined &&
             canTargetByFaction(actor, victim, context.now)
         attemptMeaningful ||= hostile
-        if (roll >= Math.min(0.95, chance + PRAYER_RULES.harmChanceBonus)) {
+        if (roll >= prayerHarmChance(chance)) {
             continue
         }
         const damage = resolveCharacterDamage({

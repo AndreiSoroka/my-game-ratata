@@ -19,6 +19,13 @@ it('shows the full catalogue without a character and keeps selected details when
     await view.get('[data-star-id="prayer.revive"]').trigger('click')
     expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Воскрешение')
     expect(view.get('[data-testid="selected-star-card"]').text()).toContain('Пассивное заклинание')
+    expect(view.get('[data-testid="debug-effect-chance"] h2').text()).toBe(
+        'Шанс срабатывания эффекта'
+    )
+    expect(view.get('[data-testid="debug-effect-chance-formulas"]').text()).toContain('95')
+    expect(view.get('[data-testid="selected-star-card"]').text()).not.toContain(
+        'Шанс срабатывания эффекта'
+    )
     expect(view.get('[data-testid="debug-unlock-conditions"]').text()).toContain('5')
     const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
     const selected = view
@@ -33,6 +40,7 @@ it('shows the full catalogue without a character and keeps selected details when
     await view.get('[data-testid="debug-search"]').setValue('звезда без совпадений')
     expect(view.findAll('[data-star-id]')).toHaveLength(0)
     expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Воскрешение')
+    expect(view.get('[data-testid="debug-effect-chance-formulas"]').text()).toContain('95')
     expect(view.get('[data-testid="debug-unlock-conditions"]').text()).toContain('5')
     expect(view.emitted('command')).toBeUndefined()
     view.unmount()

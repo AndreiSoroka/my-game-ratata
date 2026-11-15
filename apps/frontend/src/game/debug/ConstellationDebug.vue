@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
+import ConstellationDebugChance from './ConstellationDebugChance.vue'
 import { debugHeroClasses } from './constellationDebugSettings'
 import ConstellationDebugUnlock from './ConstellationDebugUnlock.vue'
 import { useConstellationDebug } from './useConstellationDebug'
@@ -120,6 +121,7 @@ function listKey(event: KeyboardEvent): void {
                     <div id="debug-star-details" data-testid="selected-star-card">
                         <ConstellationStarCard :node="selected" />
                     </div>
+                    <ConstellationDebugChance :node-id="selectedId" />
                     <ConstellationDebugUnlock :node-id="selectedId" />
                 </div>
                 <section class="debug-catalog">
