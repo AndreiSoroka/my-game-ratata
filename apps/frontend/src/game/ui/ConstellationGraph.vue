@@ -52,6 +52,13 @@ function resetSky(): void {
     const center = props.constellation.layout?.centerNodeId
     if (center) emit('select', center)
 }
+function focusNode(id: string): void {
+    const node = nodeById.value.get(id)
+    if (!node) return
+    emit('select', node.id)
+    focusPath(node)
+}
+defineExpose({ focusNode })
 function choose(node: ConstellationNodeSnapshot, pointer = true): void {
     if (pointer && didDrag()) return
     emit('select', node.id)

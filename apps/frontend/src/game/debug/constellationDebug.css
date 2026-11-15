@@ -1,0 +1,196 @@
+.constellation-debug {
+    box-sizing: border-box;
+    min-height: 100dvh;
+    padding: clamp(12px, 2.5vw, 32px);
+    background: radial-gradient(ellipse at 35% 0, #163344, transparent 65%), #08151e;
+    color: #eee6d2;
+    font:
+        14px/1.5 system-ui,
+        sans-serif;
+}
+.debug-header h1 {
+    margin: 0;
+    color: #f0d89c;
+    font-size: clamp(22px, 2.5vw, 30px);
+}
+.debug-header p {
+    margin: 8px 0 24px;
+    color: #adc3cd;
+}
+.debug-settings {
+    display: grid;
+    grid-template-columns: minmax(140px, 200px) minmax(180px, 360px) auto auto;
+    justify-content: start;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 20px;
+}
+label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: #b8cbd3;
+    font-size: 12px;
+}
+input,
+select,
+button {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    border: 1px solid #55717d;
+    border-radius: 0;
+    background: #102733;
+    color: #eee6d2;
+    font: inherit;
+}
+input,
+select {
+    width: 100%;
+    padding: 10px;
+}
+button {
+    padding: 10px 14px;
+    cursor: pointer;
+}
+button:hover {
+    background: #1a3a48;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid #ffe0a1;
+    outline-offset: 2px;
+}
+.debug-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
+    gap: 20px;
+    align-items: start;
+}
+.debug-workspace :deep(.constellation-map__sky) {
+    height: 65vh;
+    min-height: 420px;
+}
+.debug-sidebar {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 12px;
+    max-height: calc(65vh + 44px);
+}
+.debug-selected-details {
+    flex: 0 0 auto;
+    min-height: 120px;
+    max-height: 42vh;
+    overflow: auto;
+    scrollbar-color: #65838b #10232d;
+}
+.debug-catalog {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 180px;
+    border: 1px solid #405d6a;
+    background: #0d202b;
+}
+.debug-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 12px;
+}
+.debug-star-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    margin: 0;
+    padding: 0 8px 8px;
+    list-style: none;
+    scrollbar-color: #65838b #10232d;
+}
+.debug-star-list li + li {
+    margin-top: 4px;
+}
+.debug-star-list button {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    text-align: left;
+}
+.debug-star-list button[aria-pressed='true'] {
+    border-color: #e9c77d;
+    background: #213b43;
+}
+.debug-star-list strong {
+    font-size: 13px;
+    font-weight: 500;
+}
+.debug-star-list span {
+    font-size: 11px;
+    color: #a2bcc8;
+}
+.debug-empty {
+    margin: 0;
+    padding: 12px;
+    color: #a2bcc8;
+}
+@media (max-width: 850px) {
+    .debug-catalog {
+        flex: 0 0 auto;
+    }
+    .debug-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .debug-settings {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .debug-workspace {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .debug-workspace :deep(.constellation-map__sky) {
+        height: 50vh;
+        min-height: 280px;
+    }
+    .debug-sidebar {
+        max-height: none;
+    }
+    .debug-selected-details {
+        position: sticky;
+        top: 8px;
+        z-index: 2;
+        max-height: 44vh;
+        flex-shrink: 0;
+    }
+    .debug-star-list {
+        max-height: 40vh;
+    }
+}
+
+.debug-header-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+a {
+    color: #cce2e7;
+    text-underline-offset: 3px;
+}
+a:focus-visible {
+    outline: 2px solid #ffe0a1;
+    outline-offset: 2px;
+}
+.debug-map-link {
+    display: block;
+    padding: 8px 12px;
+    border: 1px solid #425f6d;
+    border-bottom: 0;
+    background: #10232d;
+    font-size: 12px;
+}

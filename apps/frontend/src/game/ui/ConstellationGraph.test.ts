@@ -111,3 +111,27 @@ it('keeps the selected root in view when its nearest branch cannot fit beside it
     expect(y! + height! - root.y).toBeGreaterThanOrEqual(31 * scale)
     view.unmount()
 })
+
+it('focuses an externally requested leaf without changing the catalogue or accepting missing IDs', async () => {
+    const sky = constellationFixture(true)
+    const id = fixtureStarId('prayer.revive')
+    const node = sky.nodes.find((node) => node.id === id)!
+    const before = structuredClone(sky)
+    const view = mount(ConstellationGraph, { props: { constellation: sky } })
+    view.vm.focusNode(id)
+    await view.vm.$nextTick()
+    expect(view.emitted('select')?.at(-1)).toEqual([id])
+    expect(sky).toEqual(before)
+    const emitted = view.emitted('select')!.length
+    view.vm.focusNode('no-such-star')
+    expect(view.emitted('select')).toHaveLength(emitted)
+    const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+    expect(x! + width! / 2).toBeCloseTo(node.x)
+    expect(y! + height! / 2).toBeCloseTo(node.y)
+    expect(view.get(`[data-node-id="${id}"]`).attributes('role')).toBe('button')
+    expect(node.x).toBeGreaterThan(x!)
+    expect(node.x).toBeLessThan(x! + width!)
+    expect(node.y).toBeGreaterThan(y!)
+    expect(node.y).toBeLessThan(y! + height!)
+    view.unmount()
+})
