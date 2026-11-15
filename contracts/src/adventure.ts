@@ -10,6 +10,7 @@ import type { MarketClientMessage } from './economy'
 import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
 import type { FarmSupplyClientMessage } from './farmSupply'
 import type { ItemId } from './index'
+import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 import type { TreeProfile } from './trees'
 export type { TreeProfile } from './trees'
 
@@ -35,7 +36,11 @@ export type AdventureClientMessage =
     | CraftOrderClientMessage
     | { type: 'plant_tree'; position: { x: number; y: number } }
     | { type: 'interact'; targetId: string; service?: MerchantServiceView }
-    | { type: 'dialogue_choice'; choiceId: string }
+    | {
+          type: 'dialogue_choice'
+          choiceId: string
+          rewardMode?: QuestRewardMode
+      }
     | { type: 'trade'; itemId: AdventureTradeItemId }
     | { type: 'gather'; nodeId: string; operation?: GatherOperation }
     | { type: 'craft'; recipeId: AdventureRecipeId }
@@ -44,6 +49,8 @@ export type AdventureQuestStatus =
     'available' | 'active' | 'ready' | 'completed'
 
 export interface AdventureQuestSnapshot {
+    rewardMode?: QuestRewardMode
+    rewardShares?: QuestRewardShare[]
     requiredItemId?: ItemId
     description: string
     goal: number

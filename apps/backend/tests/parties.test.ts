@@ -110,8 +110,106 @@ describe('adventurer party consent and lifecycle', () => {
     )
 })
 
+describe('guild abandonment authority', () => {
+    it('allows the living connected leader to abandon away from an unavailable clerk', () => {
+        const setup = scenario(2)
+        const leader = setup.first()
+        const member = setup.players[1]
+        if (member === undefined) {
+            throw new Error('Missing member')
+        }
+        setup.join(leader, member)
+        setup.command(leader, { type: 'guild_accept', questId: 'slime_hunt' })
+        const instanceId =
+            setup.party.snapshot(leader.id).activeJob?.instanceId ?? 'missing'
+        leader.position.x += 500
+        setup.contact.alive = false
+        setup.command(leader, { type: 'guild_abandon', instanceId })
+        expect(setup.party.snapshot(leader.id).activeJob).toBeNull()
+        expect(setup.party.snapshot(member.id).activeJob).toBeNull()
+        expect(setup.gold.snapshot(leader.id).gold).toBe(0)
+    })
+
+    it('rejects stale, foreign, nonleader and dead-actor abandonment requests', () => {
+        const setup = scenario(3)
+        const leader = setup.first()
+        const member = setup.players[1]
+        const stranger = setup.players[2]
+        if (member === undefined || stranger === undefined) {
+            throw new Error('Missing players')
+        }
+        setup.join(leader, member)
+        setup.command(leader, { type: 'guild_accept', questId: 'slime_hunt' })
+        const instanceId =
+            setup.party.snapshot(leader.id).activeJob?.instanceId ?? 'missing'
+        leader.position.x += 500
+        setup.command(leader, { type: 'guild_abandon', instanceId: 'obsolete' })
+        setup.command(member, { type: 'guild_abandon', instanceId })
+        setup.command(stranger, { type: 'guild_abandon', instanceId })
+        leader.applyDamage(leader.hp, 10_000)
+        setup.command(leader, { type: 'guild_abandon', instanceId })
+        expect(setup.party.snapshot(member.id).activeJob).toMatchObject({
+            instanceId,
+            status: 'active',
+        })
+        expect(setup.gold.snapshot(leader.id).gold).toBe(0)
+    })
+})
+
+describe('guild reward choices', () => {
+    it('locks submitter mode and rejects stale instance IDs without changing the current contract', () => {
+        const setup = scenario(2)
+        const leader = setup.first()
+        const member = setup.players[1]
+        if (member === undefined) {
+            throw new Error('Missing member')
+        }
+        setup.join(leader, member)
+        setup.command(leader, {
+            type: 'guild_accept',
+            questId: 'slime_hunt',
+            rewardMode: 'submitter',
+        })
+        setup.command(leader, {
+            type: 'guild_accept',
+            questId: 'slime_hunt',
+            rewardMode: 'party_equal',
+        })
+        for (let index = 0; index < 3; index += 1) {
+            setup.kill(leader, 'slime', `proof-${String(index)}`)
+        }
+        setup.command(leader, { type: 'guild_turn_in', instanceId: 'obsolete' })
+        expect(setup.gold.snapshot(leader.id).gold).toBe(0)
+        expect(setup.party.snapshot(leader.id).activeJob?.rewardMode).toBe(
+            'submitter'
+        )
+        setup.turnIn(leader)
+        expect(setup.gold.snapshot(leader.id).gold).toBe(30)
+        expect(setup.gold.snapshot(member.id).gold).toBe(0)
+    })
+
+    it('lets someone paid a share later accept their own instance of the same static quest', () => {
+        const setup = scenario(2)
+        const leader = setup.first()
+        const member = setup.players[1]
+        if (member === undefined) {
+            throw new Error('Missing member')
+        }
+        setup.join(leader, member)
+        setup.command(leader, { type: 'guild_accept', questId: 'slime_hunt' })
+        for (let index = 0; index < 3; index += 1) {
+            setup.kill(leader, 'slime', `proof-${String(index)}`)
+        }
+        setup.turnIn(leader)
+        expect(setup.gold.snapshot(member.id).gold).toBe(15)
+        setup.command(member, { type: 'party_leave' })
+        setup.command(member, { type: 'guild_accept', questId: 'slime_hunt' })
+        expect(setup.party.snapshot(member.id).activeJob?.status).toBe('active')
+    })
+})
+
 describe('shared guild contracts', () => {
-    it('credits nearby living participants once and pays only contributors once', () => {
+    it('credits nearby living participants once and splits one budget across the current roster once', () => {
         const setup = scenario(4)
         const leader = setup.first()
         const [member, remote, downed] = setup.players.slice(1)
@@ -145,19 +243,19 @@ describe('shared guild contracts', () => {
             job?.participants.find((entry) => entry.id === downed.id)
                 ?.contribution
         ).toBe(0)
-        setup.command(leader, { type: 'guild_turn_in' })
-        setup.command(leader, { type: 'guild_turn_in' })
-        expect(setup.gold.snapshot(leader.id).gold).toBe(30)
-        expect(setup.gold.snapshot(member.id).gold).toBe(30)
-        expect(setup.gold.snapshot(remote.id).gold).toBe(0)
-        expect(setup.gold.snapshot(downed.id).gold).toBe(0)
+        setup.turnIn(leader)
+        setup.turnIn(leader)
+        expect(setup.gold.snapshot(leader.id).gold).toBe(8)
+        expect(setup.gold.snapshot(member.id).gold).toBe(8)
+        expect(setup.gold.snapshot(remote.id).gold).toBe(7)
+        expect(setup.gold.snapshot(downed.id).gold).toBe(7)
         setup.command(leader, { questId: 'slime_hunt', type: 'guild_accept' })
         expect(setup.party.snapshot(leader.id).activeJob?.status).toBe(
             'completed'
         )
     })
 
-    it('locks the reward roster, permits late helpers, and removes rewards on leaving', () => {
+    it('includes late helpers without contribution and excludes members who left', () => {
         const setup = scenario()
         const leader = setup.first()
         const original = setup.players[1]
@@ -174,16 +272,16 @@ describe('shared guild contracts', () => {
         setup.kill(late, 'skeleton', 'one')
         setup.command(original, { type: 'party_leave' })
         setup.kill(leader, 'skeleton', 'two')
-        setup.command(leader, { type: 'guild_turn_in' })
-        expect(setup.gold.snapshot(leader.id).gold).toBe(40)
+        setup.turnIn(leader)
+        expect(setup.gold.snapshot(leader.id).gold).toBe(20)
         expect(setup.gold.snapshot(original.id).gold).toBe(0)
-        expect(setup.gold.snapshot(late.id).gold).toBe(0)
+        expect(setup.gold.snapshot(late.id).gold).toBe(20)
         expect(
             setup.party
                 .snapshot(leader.id)
                 .activeJob?.participants.find((entry) => entry.id === late.id)
                 ?.eligible
-        ).toBe(false)
+        ).toBe(true)
     })
 
     it('credits a consenting NPC companion only through a nearby living owner', () => {
@@ -213,7 +311,7 @@ describe('shared guild contracts', () => {
 })
 
 describe('guild exploration and contacts', () => {
-    it('requires actual frontier exploration, rejects repeated visits, and excludes camp freeloaders', () => {
+    it('requires actual exploration but splits the budget with the current roster', () => {
         const setup = scenario()
         const leader = setup.first()
         const explorer = setup.players[1]
@@ -238,10 +336,10 @@ describe('guild exploration and contacts', () => {
         explorer.locationId = 'map-2-0'
         setup.party.update(setup.characters, 10_400)
         leader.locationId = setup.contact.locationId
-        setup.command(leader, { type: 'guild_turn_in' })
-        expect(setup.gold.snapshot(leader.id).gold).toBe(35)
-        expect(setup.gold.snapshot(explorer.id).gold).toBe(35)
-        expect(setup.gold.snapshot(camper.id).gold).toBe(0)
+        setup.turnIn(leader)
+        expect(setup.gold.snapshot(leader.id).gold).toBe(12)
+        expect(setup.gold.snapshot(explorer.id).gold).toBe(12)
+        expect(setup.gold.snapshot(camper.id).gold).toBe(11)
     })
 
     it('uses real nearby guild NPCs, leader authority, and solo contracts', () => {
@@ -266,9 +364,7 @@ describe('guild exploration and contacts', () => {
 
 function scenario(count = 3) {
     const gold = new AdventureService()
-    const party = new PartyService((id, amount, key) =>
-        gold.grantGoldOnce(id, amount, key)
-    )
+    const party = new PartyService(gold.grantQuestGoldOnce)
     const players = Array.from(
         { length: count },
         (_, index) =>
@@ -340,6 +436,12 @@ function scenario(count = 3) {
         contact,
         characters,
         command,
+        turnIn: (actor: GameCharacter) =>
+            command(actor, {
+                type: 'guild_turn_in',
+                instanceId:
+                    party.snapshot(actor.id).activeJob?.instanceId ?? 'missing',
+            }),
         join,
         kill,
         find,

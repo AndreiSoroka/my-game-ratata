@@ -1,4 +1,8 @@
-import { FARM_PLOTS, type MarketItemId } from '@my-game-ratata/contracts'
+import {
+    FARM_PLOTS,
+    type MarketItemId,
+    type WorkerWorkTarget,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { countInventoryItem } from './inventory'
@@ -6,6 +10,7 @@ import type { GameRoom } from './room'
 import { approach, sourceCost, stop } from './workerNavigation'
 export class WorkerFarm {
     public remaining = 0
+    public target: WorkerWorkTarget | undefined
 
     public reconcile(actor: GameCharacter, room: GameRoom): void {
         const supply = room.adventureForWorkers().farmSupply
@@ -25,6 +30,12 @@ export class WorkerFarm {
         if (plot === undefined) {
             this.finish(actor, room)
             return
+        }
+        this.target = {
+            kind: 'farm',
+            sourceId: plot.id,
+            locationId: plot.locationId,
+            position: { ...plot.position },
         }
         if (
             plot.phase === 'bare' &&
@@ -137,4 +148,11 @@ export function workerDeliveryCount(
             ? 1
             : 0
     return Math.max(0, countInventoryItem(actor.inventory, itemId) - reserve)
+}
+
+export function deliveryKinds(job: string): MarketItemId[] {
+    if (job === 'lumberjack') {
+        return ['wood', 'brushwood']
+    }
+    return job === 'miner' ? ['stone', 'scrap'] : ['grain']
 }

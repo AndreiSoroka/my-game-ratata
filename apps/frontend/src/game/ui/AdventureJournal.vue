@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import type { AdventureQuestStatus, AdventureSnapshot } from '@my-game-ratata/contracts'
+import type {
+    AdventureQuestStatus,
+    AdventureSnapshot,
+    ClientMessage,
+    PartySnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, useId } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
-const props = defineProps<{ adventure: AdventureSnapshot }>()
-const emit = defineEmits<{ close: [] }>()
+import GuildQuestCard from './GuildQuestCard.vue'
+import QuestRewardSummary from './QuestRewardSummary.vue'
+const props = defineProps<{
+    adventure: AdventureSnapshot
+    party?: PartySnapshot
+    playerId?: string
+    alive?: boolean
+}>()
+const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
 const progressId = useId()
 const heart = computed(
     () => itemAssetCatalog[props.adventure.quest.requiredItemId ?? 'slime_heart']
 )
 const completed = computed(() => props.adventure.quest.status === 'completed')
+const canAbandon = computed(
+    () =>
+        props.alive &&
+        props.party &&
+        (!props.party.leaderId || props.party.leaderId === props.playerId)
+)
+const canAct = computed(() => canAbandon.value && Boolean(props.party?.guildContact))
 const statuses: Record<AdventureQuestStatus, string> = {
     active: 'Соберите сердца',
     available: 'Новая история',
@@ -75,9 +94,21 @@ const statuses: Record<AdventureQuestStatus, string> = {
         <p v-else-if="completed" class="adventure-subtle">
             Последний шаг: поговорите с Мирой и выберите «Восстановить колокол памяти».
         </p>
-        <p class="adventure-reward">
-            {{ completed ? 'Получено' : 'Награда' }}: {{ adventure.quest.rewardGold }} золотых
-        </p>
+        <QuestRewardSummary
+            :total="adventure.quest.rewardGold"
+            :mode="adventure.quest.rewardMode"
+            :shares="adventure.quest.rewardShares"
+            :player-id="playerId"
+            :completed="completed"
+        />
+        <GuildQuestCard
+            v-if="party?.activeJob"
+            :job="party.activeJob"
+            :player-id="playerId"
+            :can-act="Boolean(canAct)"
+            :can-abandon="Boolean(canAbandon)"
+            @command="emit('command', $event)"
+        />
         <section v-if="adventure.craftOrders?.length" aria-label="Заказы ремесленникам">
             <h3>Заказы ремесленникам</h3>
             <p v-for="order in adventure.craftOrders" :key="order.id">

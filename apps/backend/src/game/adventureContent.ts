@@ -119,7 +119,7 @@ function questDialogueChoices(
             return [
                 {
                     id: 'turn_in_trophies',
-                    label: 'Отдать три сердца · награда 40 золотых',
+                    label: 'Отдать три сердца · общая награда 40 золотых',
                 },
             ]
         case 'completed':

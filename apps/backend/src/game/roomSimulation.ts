@@ -48,6 +48,8 @@ interface SimulationContext {
 
 export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, room, now } = context
+    context.parties.update(characters.values(), now)
+    room.workerRequests.reconcile(characters, now)
     room.adventureForWorkers().update(
         now,
         (id) => context.world.get(id).navigation,

@@ -52,7 +52,7 @@ it('routes an NPC prayer death through ordinary world rewards exactly once', () 
         expect.objectContaining({ kind: 'death', targetId: target.id })
     )
     const adventure = new AdventureService()
-    const parties = new PartyService(() => false)
+    const parties = new PartyService(() => ({ ok: false, shares: [] }))
     for (let replay = 0; replay < 2; replay += 1) {
         publishRoomEvents(
             events,

@@ -3,6 +3,7 @@ import type {
     AdventureSnapshot,
     AdventureTradeItemId,
     GameEventPayload,
+    QuestRewardMode,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
@@ -48,6 +49,28 @@ export class AdventureService {
     public readonly farmSupply: CityFarmSupply
     private readonly trading: AdventureTrading
     private readonly orderCommands: CraftOrderCommands
+    private workPermission: (
+        actor: GameCharacter,
+        message: AdventureClientMessage
+    ) => boolean = () => true
+    private questRewardMembers = (actorId: string): readonly string[] => [
+        actorId,
+    ]
+
+    public setWorkPermission(
+        check: (
+            actor: GameCharacter,
+            message: AdventureClientMessage
+        ) => boolean
+    ): void {
+        this.workPermission = check
+    }
+
+    public setQuestRewardMembers(
+        resolve: (actorId: string) => readonly string[]
+    ): void {
+        this.questRewardMembers = resolve
+    }
 
     public constructor(options: AdventureServiceOptions = {}) {
         ;[this.resources, this.worldObjects] = createAdventureEnvironment(
@@ -111,6 +134,7 @@ export class AdventureService {
 
     private readonly walletActions = createAdventureWalletActions(this.players)
     public readonly grantGoldOnce = this.walletActions.grantGoldOnce
+    public readonly grantQuestGoldOnce = this.walletActions.grantQuestGoldOnce
     public readonly trySpendGold = this.walletActions.trySpendGold
     public readonly drainGold = this.walletActions.drainGold
     public readonly creditLootGold = this.walletActions.creditLootGold
@@ -122,6 +146,13 @@ export class AdventureService {
         navigation?: NavigationService,
         now = this.now()
     ): GameEventPayload[] {
+        if (!this.workPermission(actor, message)) {
+            this.reportWorkProblem(
+                actor,
+                'Работа приостановлена до завершения обращения за помощью.'
+            )
+            return []
+        }
         return executeAdventureCommand(
             {
                 ...this.commandServices(),
@@ -153,6 +184,12 @@ export class AdventureService {
         navigation: NavigationService | undefined,
         now: number
     ): AdventureActionResult {
+        if (!this.workPermission(actor, message)) {
+            const error =
+                'Работа приостановлена до завершения обращения за помощью.'
+            this.reportWorkProblem(actor, error)
+            return { accepted: false, error, events: [] }
+        }
         if (message.type === 'world_interact') {
             const result = this.worldObjects.open(actor, message.objectId, now)
             if (result !== undefined) {
@@ -207,7 +244,8 @@ export class AdventureService {
         choiceId: string,
         locationNPCs: GameCharacter[],
         navigation?: NavigationService,
-        now = this.now()
+        now = this.now(),
+        rewardMode?: QuestRewardMode
     ): GameEventPayload[] {
         return chooseAdventureReply(
             actor,
@@ -215,7 +253,12 @@ export class AdventureService {
             locationNPCs,
             this.stateFor(actor.id),
             now,
-            navigation
+            navigation,
+            {
+                ...(rewardMode === undefined ? {} : { rewardMode }),
+                memberIds: this.questRewardMembers(actor.id),
+                award: this.grantQuestGoldOnce,
+            }
         )
     }
 

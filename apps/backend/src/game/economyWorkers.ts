@@ -1,27 +1,33 @@
 import {
     type AdventureResourceNode,
     CENTER_LOCATION_ID,
-    isItemBroken,
     type MarketItemId,
     quoteMarketTrade,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
-import { repairSnapshot } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { CharacterController } from './controllers'
 import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
 import { WorkerBrushwood } from './workerBrushwood'
-import { hasNoRoute, workerDeliveryCount, WorkerFarm } from './workerFarm'
+import {
+    deliveryKinds,
+    hasNoRoute,
+    workerDeliveryCount,
+    WorkerFarm,
+} from './workerFarm'
 import {
     approach,
+    fleeWorker,
     reachedResource,
     sourceCost,
     stop,
-    walkableNear,
 } from './workerNavigation'
+import { repairWorker } from './workerRepair'
+import { resourceWorkTarget } from './workerRequestData'
+import { recordWorkerProbeWork } from './workerRequestWork'
 import type { WorkerJob } from './workerSpawns'
 /** The controller chooses work; every harvest, sale, repair and planting uses ordinary commands. */
 export class EconomyWorkerController implements CharacterController {
@@ -42,14 +48,11 @@ export class EconomyWorkerController implements CharacterController {
             service.grantGoldOnce(actor.id, 20, `worker-start-${actor.id}`)
             this.initialized = true
         }
-        if (!canPerformSkillAction(actor, now) || now < this.nextDecisionAt) {
+        if (now < this.nextDecisionAt) {
             return
         }
         this.nextDecisionAt = now + 500
-        if (this.job === 'farmer') {
-            this.farming.reconcile(actor, room)
-        }
-        if (this.flee(actor, room)) {
+        if (this.interrupted(actor, room, now)) {
             return
         }
         if (this.deliver(actor, room, now)) {
@@ -66,27 +69,6 @@ export class EconomyWorkerController implements CharacterController {
         } else {
             this.gather(actor, room, now)
         }
-    }
-
-    private flee(actor: GameCharacter, room: GameRoom): boolean {
-        const threat = room.findVisibleTarget(actor, 160)
-        if (threat === undefined) {
-            return false
-        }
-        const navigation = room.navigationFor(actor)
-        const dx = actor.position.x - threat.position.x
-        const dy = actor.position.y - threat.position.y
-        const scale = 120 / Math.max(1, Math.hypot(dx, dy))
-        actor.setPath(
-            navigation.findPathWorld(
-                actor.position,
-                walkableNear(navigation, {
-                    x: actor.position.x + dx * scale,
-                    y: actor.position.y + dy * scale,
-                })
-            )
-        )
-        return true
     }
 
     private deliver(
@@ -153,33 +135,13 @@ export class EconomyWorkerController implements CharacterController {
     }
 
     private repair(actor: GameCharacter, room: GameRoom, now: number): boolean {
-        const broken = Object.values(actor.equipment).some(isItemBroken)
-        if (!broken) {
+        const delay = repairWorker(actor, room, now, () =>
+            this.requestId(actor)
+        )
+        if (delay === undefined) {
             return false
         }
-        const smith = room.getCharacter('npc_smith_1')
-        if (smith?.alive !== true) {
-            return true
-        }
-        if (!approach(actor, room, smith.locationId, smith.position)) {
-            return true
-        }
-        const quote = repairSnapshot(actor)
-        const result = room.requestAdventure(
-            actor,
-            {
-                type: 'repair_items',
-                npcId: smith.id,
-                instanceIds: quote.items.map((item) => item.instanceId),
-                expectedTotal: quote.total,
-                requestId: this.requestId(actor),
-            },
-            now
-        )
-        room.publishEvents(result.events)
-        if (!result.accepted) {
-            this.nextDecisionAt = now + 10_000
-        }
+        this.nextDecisionAt = now + delay
         return true
     }
 
@@ -301,11 +263,44 @@ export class EconomyWorkerController implements CharacterController {
     private requestId(actor: GameCharacter): string {
         return `work-${actor.id}-${String(this.requestIndex++)}`
     }
-}
 
-function deliveryKinds(job: WorkerJob): MarketItemId[] {
-    if (job === 'lumberjack') {
-        return ['wood', 'brushwood']
+    private interrupted(
+        actor: GameCharacter,
+        room: GameRoom,
+        now: number
+    ): boolean {
+        if (this.job === 'farmer') {
+            this.farming.reconcile(actor, room)
+        }
+        const target =
+            this.job === 'farmer'
+                ? this.farming.target
+                : resourceWorkTarget(this.selected)
+        if (
+            Object.hasOwn(room, 'workerRequests') &&
+            room.workerRequests.updateWorker(
+                actor,
+                this.job,
+                room,
+                now,
+                target,
+                (message) => {
+                    this.selected = undefined
+                    recordWorkerProbeWork(
+                        actor,
+                        room,
+                        message,
+                        this.job,
+                        now,
+                        this.nextWorkAt
+                    )
+                }
+            )
+        ) {
+            return true
+        }
+        return (
+            !canPerformSkillAction(actor, now) || fleeWorker(actor, room, now)
+        )
     }
-    return job === 'miner' ? ['stone', 'scrap'] : ['grain']
 }

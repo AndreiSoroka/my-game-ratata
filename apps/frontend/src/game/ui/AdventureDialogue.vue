@@ -4,12 +4,15 @@ import type {
     AdventureTradeItemId,
     CharacterSnapshot,
     ClientMessage,
+    QuestRewardMode,
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import CityDemandReport from './CityDemandReport.vue'
 import CityMarket from './CityMarket.vue'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
+import QuestRewardChoice from './QuestRewardChoice.vue'
+import QuestRewardSummary from './QuestRewardSummary.vue'
 import RepairWorkshop from './RepairWorkshop.vue'
 import SoulBadge from './SoulBadge.vue'
 import { speechBubbleId } from './speechReceipts'
@@ -21,6 +24,10 @@ const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const panel = ref<HTMLElement>()
 const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
 const isSign = computed(() => props.adventure.dialogue?.kind === 'sign')
+const rewardMode = ref<QuestRewardMode>('party_equal')
+const acceptingQuest = computed(() =>
+    props.adventure.dialogue?.choices.some((choice) => choice.id === 'accept_quest')
+)
 const viewTitle = computed(() =>
     view.value === 'conversation'
         ? props.adventure.dialogue?.title
@@ -40,7 +47,11 @@ function choose(choiceId: string): void {
     if (choiceId === 'repair') view.value = 'repair'
     if (choiceId === 'city_report') view.value = 'demand'
     if (choiceId === 'orders') view.value = 'orders'
-    emit('command', { choiceId, type: 'dialogue_choice' })
+    emit('command', {
+        choiceId,
+        type: 'dialogue_choice',
+        ...(choiceId === 'accept_quest' ? { rewardMode: rewardMode.value } : {}),
+    })
     focusFirstAction()
 }
 function buy(itemId: AdventureTradeItemId): void {
@@ -152,6 +163,22 @@ watch(
             >PageUp / PageDown — читать реплику · Tab — ответы</small
         >
         <div v-if="view === 'conversation'" class="adventure-choices">
+            <template v-if="acceptingQuest">
+                <p class="adventure-reward">
+                    Общая награда: {{ adventure.quest.rewardGold }} золотых
+                </p>
+                <QuestRewardChoice v-model="rewardMode" />
+            </template>
+            <QuestRewardSummary
+                v-else-if="
+                    adventure.dialogue.choices.some(
+                        (choice) =>
+                            choice.id === 'quest_progress' || choice.id === 'turn_in_trophies'
+                    )
+                "
+                :total="adventure.quest.rewardGold"
+                :mode="adventure.quest.rewardMode"
+            />
             <button
                 v-for="choice in adventure.dialogue.choices"
                 :key="choice.id"

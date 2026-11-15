@@ -12,7 +12,7 @@ export function createAppPlaywrightConfig(
     const frontendPort = readPortEnv('E2E_FRONTEND_PORT', 5500, offset)
     const phase = graveOnly
         ? `graves${options.graveViewport === undefined ? '' : `-${options.graveViewport}`}`
-        : 'app'
+        : appPhase()
     const projects = [
         {
             name: 'chromium',
@@ -43,7 +43,7 @@ export function createAppPlaywrightConfig(
         // Sequential WebGL pages avoid competing software renderers during cold startup.
         workers: 1,
         outputDir: `test-results/${phase}`,
-        reporter: [['html', { outputFolder: `playwright-report/${phase}` }]],
+        reporter: [['html', { outputFolder: `playwright-report/${phase}`, open: 'never' }]],
         use: {
             actionTimeout: 0,
             baseURL: `http://127.0.0.1:${String(frontendPort)}`,
@@ -75,4 +75,14 @@ function readPortEnv(name: string, fallback: number, offset: number): number {
         throw new Error(`Invalid ${name} with offset ${String(offset)}: ${String(raw ?? fallback)}`)
     }
     return port
+}
+
+/** Sequential browser runs each own a fresh finite world and keep separate evidence. */
+function appPhase(): string {
+    const browser = process.env['E2E_BROWSER']
+    if (browser === undefined || browser.length === 0) return 'app'
+    if (!['chromium', 'firefox', 'webkit'].includes(browser)) {
+        throw new Error(`Invalid E2E_BROWSER: ${browser}`)
+    }
+    return `app-${browser}`
 }

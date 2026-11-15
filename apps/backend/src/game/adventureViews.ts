@@ -74,6 +74,12 @@ export function adventureSnapshot(context: {
         noticeId: state.noticeId,
         quest: {
             ...adventureQuest,
+            ...(state.questRewardMode === null
+                ? {}
+                : { rewardMode: state.questRewardMode }),
+            ...(state.questRewardShares === null
+                ? {}
+                : { rewardShares: state.questRewardShares }),
             kills: state.kills,
             status: progress.questStatus,
         },

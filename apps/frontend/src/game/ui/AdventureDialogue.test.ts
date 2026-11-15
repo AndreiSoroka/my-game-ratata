@@ -50,6 +50,46 @@ const adventure: AdventureSnapshot = {
     ],
 }
 
+describe('story quest reward choice', () => {
+    it('selects reward sharing only while accepting the story quest', async () => {
+        const questDialogue: AdventureSnapshot = {
+            ...adventure,
+            dialogue: {
+                ...adventure.dialogue!,
+                choices: [{ id: 'accept_quest', label: 'Я принесу три слизневых сердца' }],
+            },
+        }
+        const wrapper = mount(AdventureDialogue, {
+            props: { adventure: questDialogue, characters: [] },
+        })
+        try {
+            await wrapper.get('input[value="submitter"]').setValue()
+            await wrapper.get('.adventure-choices button').trigger('click')
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'dialogue_choice', choiceId: 'accept_quest', rewardMode: 'submitter' }],
+            ])
+            await wrapper.setProps({
+                adventure: {
+                    ...questDialogue,
+                    quest: { ...questDialogue.quest, status: 'active', rewardMode: 'submitter' },
+                    dialogue: {
+                        ...questDialogue.dialogue!,
+                        choices: [{ id: 'quest_progress', label: 'Напомни задание' }],
+                    },
+                },
+            })
+            expect(wrapper.find('input[type="radio"]').exists()).toBe(false)
+            expect(wrapper.text()).toContain('Вся награда сдающему')
+            await wrapper.get('.adventure-choices button').trigger('click')
+            expect(wrapper.emitted('command')?.at(-1)).toEqual([
+                { type: 'dialogue_choice', choiceId: 'quest_progress' },
+            ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
+})
+
 describe('conversation and shop navigation', () => {
     it('shows goods only after the trade choice, skips unaffordable goods, and returns to conversation', async () => {
         const wrapper = mount(AdventureDialogue, {

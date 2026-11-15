@@ -134,7 +134,7 @@ The current quest, **Сердца для колокола памяти**, is off
 4. Find a hostile slime in the received snapshot. Use ordinary `attack`, a known `use_ability`, or `{ type: 'auto_action', action: { kind: 'attack', targetId } }` with that target ID. Ability repetition uses `{ kind: 'ability', abilityId, targetId }`; prayer repetition uses `{ kind: 'prayer', intent }`. Cancel with `{ type: 'auto_action', action: null }`. Observe HP, energy, cooldowns and life state; retreat or stop when necessary.
 5. After a confirmed death, approach its corpse, execute `open_chest` and inspect the private `chest` view. Use `take_chest_item` or `take_all_chest_items` to transfer actual contents. If the container was struck and spilled, approach and pick up the observed loose items instead.
 6. Repeat until the player's bag contains the quest's required quantity of `slime_heart` and the authoritative quest status is `ready`. Kill credit alone does not satisfy this quest.
-7. Return through ordinary exits to Novogorod, approach Мира again and submit the offered `turn_in_trophies` choice. Verify `completed`, the removal of three hearts and a single 40-gold reward. The optional `restore_ward` choice then restores the bell.
+7. Return through ordinary exits to Novogorod, approach Мира again and submit the offered `turn_in_trophies` choice. Verify `completed`, the removal of three hearts and one payout of the 40-gold total, distributed according to the reward mode fixed at acceptance. The optional `restore_ward` choice then restores the bell.
 
 Re-read dialogue choices after every step; choices depend on current quest state and inventory. Do not inject items, change character coordinates, edit HP or forge quest counters to make a playtest pass. A deterministic script choosing commands is not evidence that a live model is connected.
 
@@ -179,3 +179,9 @@ reserves nothing: verify the planted growing node, sapling removal and energy co
 after an intention completes, rather than treating a preview or newer tick as
 success. Brushwood is an ordinary inventory and market item, including scenario
 material filters; stock, delivery and heating consume real items.
+
+## Quest reward choices and worker requests
+
+Accept a quest with `rewardMode: 'submitter'` or `'party_equal'` (default) on `guild_accept`, or on the story `dialogue_choice` with `choiceId: 'accept_quest'`. Later commands cannot change it. The journal shows `rewardMode` and the resolved `rewardShares`; compare actual wallet deltas with your share, not the total advertised reward.
+
+Worker requests appear as dynamic guild jobs after the worker reaches its clerk. Use the currently observed `questId` to accept and the resulting `activeJob.instanceId` for `guild_report`, `guild_turn_in` and `guild_abandon`. A report requires one carried matching trophy once per request and starts the worker's physical work-and-return trial. Inspect `activeJob.workRequest.stage` and `reason`; an updated snapshot is not proof of trial success. Final turn-in also rechecks danger, so verify the completed contract, payout receipt and worker release. Do not inject trophies, teleport the worker or edit incident stages to claim a successful gameplay check.

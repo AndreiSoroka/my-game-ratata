@@ -1,4 +1,7 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    HOSTILE_TROPHY_ITEMS,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { canAbandonLife, shouldRetireCharacter } from './characterLife'
@@ -58,8 +61,9 @@ export class WorldDeathLoot {
             ...target.inventory,
             ...Object.values(target.equipment),
         ]
-        if (hasHeart(target)) {
-            contents.push(createItemInstance('slime_heart'))
+        const trophy = trophyFor(target)
+        if (trophy !== undefined) {
+            contents.push(createItemInstance(trophy))
         }
         const gold = this.wallet?.drainGold(target.id) ?? 0
         target.inventory = []
@@ -85,11 +89,10 @@ export class WorldDeathLoot {
     }
 }
 
-function hasHeart(target: GameCharacter): boolean {
-    return (
-        target.archetype === 'slime' &&
-        target.faction === 'monsters' &&
+function trophyFor(target: GameCharacter) {
+    return target.faction === 'monsters' &&
         target.controllerKind !== 'network_player' &&
         target.soul.controlSource !== 'human'
-    )
+        ? HOSTILE_TROPHY_ITEMS[target.archetype]
+        : undefined
 }

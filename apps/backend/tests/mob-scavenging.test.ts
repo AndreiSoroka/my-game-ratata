@@ -68,7 +68,10 @@ describe('ordinary mob scavenging', () => {
             { type: 'take_all_chest_items', chestId: corpse.id },
             now + 5_000
         )
-        expect(f.giver.inventory).toEqual([f.item])
+        expect(f.giver.inventory).toEqual([
+            f.item,
+            expect.objectContaining({ itemId: 'bone' }),
+        ])
     })
 
     it('takes corpse gold at full capacity, then stops retrying uncarryable contents', () => {

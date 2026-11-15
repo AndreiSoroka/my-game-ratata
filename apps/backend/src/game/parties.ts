@@ -6,8 +6,15 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { type GoldAwarder, GuildService } from './guild'
+import { GuildService, type WorkerGuildGateway } from './guild'
 import { NoticeStore } from './notices'
+import {
+    findGuildContact,
+    type GuildCommand,
+    handleGuildCommand,
+} from './partyGuildCommands'
+import { inviteToParty } from './partyInvitations'
+import { removePartyMember, resolvePartyGroup } from './partyMembership'
 import {
     available,
     cancelPartyInvitations,
@@ -15,10 +22,10 @@ import {
     guildContact,
     nearbyPlayers,
     type PartyRecord,
-    pendingPartyInvitation,
     shouldRemoveMember,
     staleInvitation,
 } from './partyRules'
+import type { QuestGoldAwarder } from './questRewards'
 
 export class PartyService {
     private readonly parties = new Map<string, PartyRecord>()
@@ -26,13 +33,45 @@ export class PartyService {
     private readonly invitations = new Map<string, PartyInvitationSnapshot>()
     private readonly notices = new NoticeStore()
     private characters = new Map<string, GameCharacter>()
-    private readonly guild = new GuildService()
+    private readonly guild: GuildService
+    private currentNow = 0
     private nextParty = 1
     private nextInvitation = 1
 
-    public constructor(private awardGold: GoldAwarder = () => false) {}
+    public constructor(
+        private awardGold: QuestGoldAwarder = () => ({ ok: false, shares: [] }),
+        private readonly options: {
+            workers?: WorkerGuildGateway
+            canContact?: (actor: GameCharacter, npc: GameCharacter) => boolean
+        } = {}
+    ) {
+        this.guild = new GuildService(options.workers)
+    }
+
+    public rewardMembers(actorId: string): string[] {
+        return [...this.groupFor(actorId).members].filter(
+            (id) => !shouldRemoveMember(this.characters.get(id))
+        )
+    }
+
+    private contactFor(
+        actor: GameCharacter,
+        now: number,
+        questId?: string
+    ): GameCharacter | undefined {
+        return findGuildContact(
+            this.guild,
+            this.groupFor(actor.id).key,
+            actor,
+            this.characters,
+            this.options.canContact ?? guildContact,
+            now,
+            questId
+        )
+    }
 
     public snapshot(playerId: string): PartySnapshot {
+        const actor = this.characters.get(playerId)
         return createPartySnapshot(playerId, {
             parties: this.parties,
             membership: this.membership,
@@ -40,6 +79,10 @@ export class PartyService {
             notices: this.notices,
             characters: this.characters,
             guild: this.guild,
+            contact:
+                actor === undefined
+                    ? undefined
+                    : this.contactFor(actor, this.currentNow),
         })
     }
 
@@ -70,12 +113,14 @@ export class PartyService {
                 this.remove(actor.id)
                 return this.tell(
                     actor.id,
-                    'Ты покинул группу и отказался от доли в её действующем договоре.'
+                    'Ты покинул группу. Награда делится между участниками группы на момент сдачи.'
                 )
             case 'guild_accept':
-                return this.guildAction(actor, message)
+                return this.guildAction(actor, message, now)
             case 'guild_turn_in':
-                return this.guildAction(actor, message)
+            case 'guild_report':
+            case 'guild_abandon':
+                return this.guildAction(actor, message, now)
         }
     }
 
@@ -83,6 +128,7 @@ export class PartyService {
         characters: Iterable<GameCharacter>,
         now: number
     ): GameEventPayload[] {
+        this.currentNow = now
         this.characters = new Map(
             [...characters].map((character) => [character.id, character])
         )
@@ -118,7 +164,7 @@ export class PartyService {
     public observe(
         events: GameEventPayload[],
         findCharacter: (id: string) => GameCharacter | undefined,
-        awardGold?: GoldAwarder
+        awardGold?: QuestGoldAwarder
     ): GameEventPayload[] {
         if (awardGold !== undefined) {
             this.awardGold = awardGold
@@ -138,60 +184,20 @@ export class PartyService {
         targetId: string,
         now: number
     ): GameEventPayload[] {
-        const target = this.characters.get(targetId)
-        if (!nearbyPlayers(actor, target)) {
-            return this.tell(
-                actor.id,
-                'Пригласи другого живого игрока в своей локации, не дальше 240 шагов.'
-            )
-        }
-        const pending = pendingPartyInvitation(
-            this.invitations.values(),
+        return this.tell(
             actor.id,
-            target.id
+            inviteToParty(actor, targetId, now, {
+                characters: this.characters,
+                membership: this.membership,
+                parties: this.parties,
+                invitations: this.invitations,
+                notices: this.notices,
+                guild: this.guild,
+                newPartyId: () => `party_${String(this.nextParty++)}`,
+                newInvitationId: () =>
+                    `invitation_${String(this.nextInvitation++)}`,
+            })
         )
-        if (pending !== undefined) {
-            return this.tell(
-                actor.id,
-                pending.toId === actor.id
-                    ? 'Сначала ответь на полученное приглашение.'
-                    : 'Приглашение уже отправлено.'
-            )
-        }
-        if (this.membership.has(target.id)) {
-            return this.tell(actor.id, 'Этот искатель уже состоит в группе.')
-        }
-        let party = this.parties.get(this.membership.get(actor.id) ?? '')
-        if (party === undefined) {
-            party = {
-                id: `party_${String(this.nextParty++)}`,
-                leaderId: actor.id,
-                members: new Set([actor.id]),
-            }
-            this.parties.set(party.id, party)
-            this.membership.set(actor.id, party.id)
-            this.guild.moveJob(`solo:${actor.id}`, party.id)
-        }
-        if (party.leaderId !== actor.id || party.members.size >= 4) {
-            return this.tell(
-                actor.id,
-                'Приглашает только лидер; в группе не больше четырёх участников.'
-            )
-        }
-        const invitation: PartyInvitationSnapshot = {
-            id: `invitation_${String(this.nextInvitation++)}`,
-            fromId: actor.id,
-            fromName: actor.nickname,
-            toId: target.id,
-            toName: target.nickname,
-            expiresAt: now + 30_000,
-        }
-        this.invitations.set(invitation.id, invitation)
-        this.notices.set(
-            target.id,
-            `${actor.nickname} приглашает тебя в группу. Решение за тобой.`
-        )
-        return this.tell(actor.id, 'Приглашение отправлено на 30 секунд.')
     }
 
     private answer(
@@ -239,70 +245,44 @@ export class PartyService {
 
     private guildAction(
         actor: GameCharacter,
-        message: Extract<
-            PartyClientMessage,
-            { type: 'guild_accept' | 'guild_turn_in' }
-        >
+        message: GuildCommand,
+        now: number
     ): GameEventPayload[] {
         const group = this.groupFor(actor.id)
-        const party = this.parties.get(group.key)
-        if (party !== undefined && party.leaderId !== actor.id) {
-            return this.tell(
-                actor.id,
-                'Договор принимает и сдаёт лидер группы.'
-            )
-        }
-        if (
-            ![...this.characters.values()].some((npc) =>
-                guildContact(actor, npc)
-            )
-        ) {
-            return this.tell(
-                actor.id,
-                'Подойди к Мире или Савве в Новогороде: не дальше 64 шагов.'
-            )
-        }
-        const text =
-            message.type === 'guild_accept'
-                ? this.guild.accept(
-                      group.key,
-                      message.questId,
-                      actor.id,
-                      group.members,
-                      this.characters
-                  )
-                : this.guild.turnIn(
-                      group.key,
-                      group.members,
-                      this.characters,
-                      this.awardGold
-                  )
-        for (const id of group.members) {
-            this.notices.set(id, text)
-        }
-        return []
+        return handleGuildCommand({
+            guild: this.guild,
+            group,
+            actor,
+            message,
+            characters: this.characters,
+            award: this.awardGold,
+            now,
+            notices: this.notices,
+            leaderId: this.parties.get(group.key)?.leaderId,
+            contact:
+                message.type === 'guild_abandon' ||
+                this.contactFor(
+                    actor,
+                    now,
+                    message.type === 'guild_accept'
+                        ? message.questId
+                        : undefined
+                ) !== undefined,
+        })
     }
 
     private groupFor(playerId: string): { key: string; members: Set<string> } {
-        const party = this.parties.get(this.membership.get(playerId) ?? '')
-        return party === undefined
-            ? { key: `solo:${playerId}`, members: new Set([playerId]) }
-            : { key: party.id, members: party.members }
+        return resolvePartyGroup(playerId, this.parties, this.membership)
     }
 
     private remove(playerId: string): void {
-        const party = this.parties.get(this.membership.get(playerId) ?? '')
-        if (party !== undefined) {
-            party.members.delete(playerId)
-            this.guild.removeMember(party.id, playerId)
-            if (party.members.size === 0) {
-                this.parties.delete(party.id)
-            } else if (party.leaderId === playerId) {
-                party.leaderId = [...party.members][0] ?? ''
-            }
-        }
-        this.membership.delete(playerId)
-        cancelPartyInvitations(this.invitations, playerId)
+        removePartyMember(
+            playerId,
+            this.parties,
+            this.membership,
+            this.guild,
+            this.invitations
+        )
     }
 
     private tell(playerId: string, text: string): GameEventPayload[] {

@@ -1,12 +1,20 @@
-import type { GuildQuestDefinition } from '@my-game-ratata/contracts'
+import type {
+    GuildQuestDefinition,
+    QuestRewardMode,
+    QuestRewardShare,
+} from '@my-game-ratata/contracts'
+import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { distance } from './math'
 
 export interface GuildJob {
+    acceptedBy: string
     completed: boolean
     definition: GuildQuestDefinition
     id: string
+    rewardMode: QuestRewardMode
+    rewardShares?: QuestRewardShare[]
     participants: Map<
         string,
         {
@@ -25,7 +33,7 @@ export const guildQuests: GuildQuestDefinition[] = [
         id: 'slime_hunt',
         title: 'Зачистка троп',
         description:
-            'Победите трёх враждебных слизней. Участники должны быть рядом с добычей, а не ждать награду в другом краю.',
+            'Победите трёх враждебных слизней. Для общего прогресса участник отряда должен быть рядом с победой.',
         goal: 3,
         rewardGold: 30,
     },
@@ -33,7 +41,7 @@ export const guildQuests: GuildQuestDefinition[] = [
         id: 'skeleton_hunt',
         title: 'Кости старого тракта',
         description:
-            'Победите двух скелетов одной группой. Награда достанется участникам принятого договора, которые помогали рядом.',
+            'Победите двух скелетов одной группой. Победы засчитываются при участии отряда поблизости.',
         goal: 2,
         rewardGold: 40,
     },
@@ -41,7 +49,7 @@ export const guildQuests: GuildQuestDefinition[] = [
         id: 'survey_frontier',
         title: 'Разведчики Пограничья',
         description:
-            'Исследуйте три разные земли за пределами Новогорода. Каждый оплачиваемый участник должен сам выйти в разведку.',
+            'Исследуйте три разные земли за пределами Новогорода. Отряд делится результатами разведки.',
         goal: 3,
         rewardGold: 35,
     },
@@ -86,16 +94,14 @@ export function nearKill(
 }
 
 export function rewardEligible(
-    participant: { eligible: boolean; contribution: number },
     id: string,
     members: Set<string>,
     character: GameCharacter | undefined
 ): boolean {
     return (
-        participant.eligible &&
-        participant.contribution > 0 &&
         members.has(id) &&
         character !== undefined &&
+        character.connected &&
         !character.tags.has('offline') &&
         !character.tags.has('state.retired')
     )
@@ -131,4 +137,50 @@ export function contributorsFor(
             members.has(id) &&
             nearKill(find(id), target)
     )
+}
+
+export function createGuildParticipants(
+    members: Set<string>,
+    characters: Map<string, GameCharacter>
+): GuildJob['participants'] {
+    const participants: GuildJob['participants'] = new Map()
+    for (const id of members) {
+        const character = characters.get(id)
+        if (character !== undefined) {
+            participants.set(id, {
+                nickname: character.nickname,
+                contribution: 0,
+                eligible: true,
+                visited: new Set(),
+            })
+        }
+    }
+    return participants
+}
+
+export function advanceExploration(
+    job: GuildJob,
+    members: Set<string>,
+    characters: Map<string, GameCharacter>
+): void {
+    for (const [id, participant] of job.participants) {
+        const character = characters.get(id)
+        if (
+            !participant.eligible ||
+            !members.has(id) ||
+            !canContribute(character)
+        ) {
+            continue
+        }
+        if (
+            character.locationId === CENTER_LOCATION_ID ||
+            participant.visited.has(character.locationId)
+        ) {
+            continue
+        }
+        participant.visited.add(character.locationId)
+        participant.contribution += 1
+        job.visited.add(character.locationId)
+        job.progress = Math.min(job.definition.goal, job.visited.size)
+    }
 }

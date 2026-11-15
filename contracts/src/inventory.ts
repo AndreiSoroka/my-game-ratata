@@ -8,6 +8,7 @@ export const itemIds = [
     'old_sword',
     'simple_sword',
     'slime_heart',
+    'bone',
     'herbs',
     'fiber',
     'scrap',
@@ -65,6 +66,13 @@ export interface ItemDefinition {
 }
 
 export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
+    bone: {
+        id: 'bone',
+        name: 'Кость',
+        maxStack: 1,
+        description:
+            'Кость скелета. Подойдёт как доказательство для обращения работника.',
+    },
     axe: {
         id: 'axe',
         name: 'Топор',

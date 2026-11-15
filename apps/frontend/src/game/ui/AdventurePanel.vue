@@ -166,7 +166,11 @@ defineExpose({
         <AdventureJournal
             v-if="activeWindow === 'journal' && showWindow"
             :adventure="adventure"
+            :party="party"
+            :player-id="player.id"
+            :alive="player.alive"
             @close="activeWindow = null"
+            @command="emit('command', $event)"
         />
 
         <AdventureDialogue

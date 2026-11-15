@@ -4,7 +4,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { guildQuests, type GuildService } from './guild'
+import { type GuildService } from './guild'
 import { distance } from './math'
 import type { NoticeStore } from './notices'
 
@@ -81,6 +81,7 @@ interface PartyView {
     notices: NoticeStore
     characters: Map<string, GameCharacter>
     guild: GuildService
+    contact: GameCharacter | undefined
 }
 
 export function createPartySnapshot(
@@ -95,7 +96,11 @@ export function createPartySnapshot(
             (invitation) =>
                 invitation.fromId === playerId || invitation.toId === playerId
         ),
-        jobs: guildQuests,
+        jobs: view.guild.definitions(),
+        guildContact:
+            view.contact === undefined
+                ? null
+                : { npcId: view.contact.id, nickname: view.contact.nickname },
         leaderId: party?.leaderId ?? null,
         members: [...members].flatMap((id) => {
             const character = view.characters.get(id)

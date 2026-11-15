@@ -118,6 +118,8 @@ function isPartyCommand(message: ClientMessage): message is PartyClientMessage {
         'party_leave',
         'guild_accept',
         'guild_turn_in',
+        'guild_report',
+        'guild_abandon',
     ].includes(message.type)
 }
 

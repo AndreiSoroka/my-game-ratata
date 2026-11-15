@@ -131,7 +131,8 @@ export function executeAdventureCommand(
                 message.choiceId,
                 characters,
                 navigation,
-                now
+                now,
+                message.rewardMode
             )
         case 'trade':
             return service.trade(

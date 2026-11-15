@@ -27,13 +27,15 @@ function command(type, properties) {
 const interact = command('interact', { targetId: id })
 interact.properties.service = { enum: ['shop', 'orders', 'repair'] }
 const gather = command('gather', { nodeId: id })
+const dialogueChoice = command('dialogue_choice', { choiceId: id })
+dialogueChoice.properties.rewardMode = { enum: ['submitter', 'party_equal'] }
 gather.properties.operation = {
     enum: ['harvest', 'clear_stump', 'cut_sapling'],
 }
 export const economyDecisionSchemas = [
     gather,
     interact,
-    command('dialogue_choice', { choiceId: id }),
+    dialogueChoice,
     command('craft', {
         recipeId: {
             enum: [

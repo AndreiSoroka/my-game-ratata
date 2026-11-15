@@ -41,7 +41,7 @@ Grass, concrete and wood footsteps use nine unchanged clips (three per material)
 
 The flat paving, transparent soil-bed strips and dark doorway threshold are small vector tiles authored in `scripts/generate-ground.mjs`. Their SVG sources are saved under `apps/frontend/public/game/map/assets/Novogorod/`. They replace the raised-rock paving and opaque light-grass rectangles; they are not modified Kenney atlas images. The original Kenney and Mystic Woods source images remain unchanged.
 
-- `game/assets/items/{slime-heart,herbs,fiber,scrap,wood,grain,wheat_seed}.svg`: original 16×16 pixel-style SVG icons authored for this project (quest heart, seeds and material inventory items).
+- `game/assets/items/{slime-heart,bone,herbs,fiber,scrap,wood,grain,wheat_seed}.svg`: original 16×16 pixel-style SVG icons authored for this project (quest heart, seeds and material inventory items).
 
 ## Project-authored combat and interface visuals
 

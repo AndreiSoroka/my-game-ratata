@@ -1,4 +1,7 @@
-import type { AdventureClientMessage } from '@my-game-ratata/contracts'
+import {
+    type AdventureClientMessage,
+    isQuestRewardMode,
+} from '@my-game-ratata/contracts'
 
 import {
     parseCraftOrderCommand,
@@ -61,9 +64,28 @@ export function parseExtraCommand(
         return { message: { type, targetId } }
     }
     if (type === 'dialogue_choice' && validId(choiceId)) {
-        return { message: { type, choiceId } }
+        return parseDialogueChoice(choiceId, record['rewardMode'])
     }
     return parseResourceCommand(record)
+}
+
+function parseDialogueChoice(
+    choiceId: string,
+    rewardMode: unknown
+): ParseResult {
+    if (
+        rewardMode !== undefined &&
+        (choiceId !== 'accept_quest' || !isQuestRewardMode(rewardMode))
+    ) {
+        return { error: 'Invalid quest reward mode.' }
+    }
+    return {
+        message: {
+            type: 'dialogue_choice',
+            choiceId,
+            ...(rewardMode === undefined ? {} : { rewardMode }),
+        },
+    }
 }
 
 function parseResourceCommand(record: Record<string, unknown>): ParseResult {

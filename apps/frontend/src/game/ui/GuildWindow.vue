@@ -4,11 +4,14 @@ import './guildWindow.css'
 import type {
     CharacterSnapshot,
     ClientMessage,
-    GuildParticipantSnapshot,
-    GuildQuestId,
+    GuildQuestDefinition,
     PartySnapshot,
+    QuestRewardMode,
 } from '@my-game-ratata/contracts'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+
+import GuildQuestCard from './GuildQuestCard.vue'
+import QuestRewardChoice from './QuestRewardChoice.vue'
 
 const props = defineProps<{
     player: CharacterSnapshot
@@ -41,39 +44,25 @@ const candidates = computed(() =>
             )
     )
 )
-const clerk = computed(() =>
-    props.characters.find(
-        (character) =>
-            character.alive &&
-            (character.id === 'npc_friendly_girl_1' || character.id === 'npc_merchant_1') &&
-            Math.hypot(
-                character.position.x - props.player.position.x,
-                character.position.y - props.player.position.y
-            ) <= 64
-    )
-)
-const canUseBoard = computed(() => props.player.alive && clerk.value !== undefined && leader.value)
-const progressLabels: Record<GuildQuestId, string> = {
-    slime_hunt: 'Побеждено враждебных слизней',
-    skeleton_hunt: 'Побеждено скелетов',
-    survey_frontier: 'Исследовано разных земель',
-}
-function contributionLabel(participant: GuildParticipantSnapshot): string {
-    if (!participant.eligible) return 'Без награды за этот контракт'
-    if (participant.contribution > 0) return 'Есть личный вклад'
-    return props.party.activeJob?.status === 'active'
-        ? 'Нужен личный вклад'
-        : 'Без награды: нет личного вклада'
-}
-function jobRequirement(id: GuildQuestId): string {
-    return id === 'survey_frontier'
-        ? 'Засчитываются посещённые земли. Каждый участник должен сам выйти в разведку.'
+const clerk = computed(() => props.party.guildContact)
+const canAbandon = computed(() => props.player.alive && leader.value)
+const canUseBoard = computed(() => canAbandon.value && Boolean(clerk.value))
+const selectedRewards = ref<Record<string, QuestRewardMode>>({})
+function jobRequirement(job: GuildQuestDefinition): string {
+    if (job.workRequest) return 'Передайте один трофей и дождитесь пробного рабочего рейса.'
+    return job.id === 'survey_frontier'
+        ? 'Засчитываются посещённые земли за пределами города.'
         : 'Засчитываются победы по принятому контракту. Сердца и другие предметы сдавать не нужно.'
 }
-const jobStatuses = {
-    active: 'Выполняется',
-    ready: 'Можно получить награду',
-    completed: 'Завершено',
+function accept(job: GuildQuestDefinition): void {
+    emit('command', {
+        type: 'guild_accept',
+        questId: job.id,
+        rewardMode: selectedRewards.value[job.id] ?? 'party_equal',
+    })
+}
+function canTake(job: GuildQuestDefinition): boolean {
+    return canUseBoard.value && (!job.workRequest || job.workRequest.clerkId === clerk.value?.npcId)
 }
 </script>
 <template>
@@ -176,47 +165,21 @@ const jobStatuses = {
                 Приглашение отправлено: {{ invitation.toName }}
             </p>
         </section>
-        <section v-if="party.activeJob" class="guild-active" aria-label="Общий контракт">
-            <span class="guild-eyebrow">{{ jobStatuses[party.activeJob.status] }}</span>
-            <h2>{{ party.activeJob.title }}</h2>
-            <p>{{ party.activeJob.description }}</p>
-            <p class="guild-muted">{{ jobRequirement(party.activeJob.id) }}</p>
-            <label for="guild-progress"
-                >{{ progressLabels[party.activeJob.id] }}: {{ party.activeJob.progress }} /
-                {{ party.activeJob.goal }}</label
-            ><progress
-                id="guild-progress"
-                :value="party.activeJob.progress"
-                :max="party.activeJob.goal"
-            />
-            <ul class="guild-contributions">
-                <li v-for="participant in party.activeJob.participants" :key="participant.id">
-                    <span>{{ participant.nickname }}</span
-                    ><strong
-                        >{{ participant.contribution }} ·
-                        {{ contributionLabel(participant) }}</strong
-                    >
-                </li>
-            </ul>
-            <div class="guild-reward">
-                <span>Награда: {{ party.activeJob.rewardGold }} ◈</span
-                ><button
-                    v-if="party.activeJob.status === 'ready'"
-                    type="button"
-                    :disabled="!canUseBoard"
-                    @click="emit('command', { type: 'guild_turn_in' })"
-                >
-                    Сдать контракт
-                </button>
-            </div>
-        </section>
+        <GuildQuestCard
+            v-if="party.activeJob"
+            :job="party.activeJob"
+            :player-id="player.id"
+            :can-act="Boolean(canUseBoard)"
+            :can-abandon="canAbandon"
+            @command="emit('command', $event)"
+        />
         <section class="guild-board" aria-label="Доска контрактов">
             <h2>Доска контрактов</h2>
             <p class="guild-muted">
                 {{
                     clerk
                         ? `Представитель гильдии: ${clerk.nickname}`
-                        : 'За контрактом и наградой подойдите к Мире или Савве.'
+                        : 'За контрактом и наградой подойдите к местному представителю гильдии.'
                 }}
                 {{ !leader ? 'Контракт выбирает лидер отряда.' : '' }}
             </p>
@@ -224,16 +187,30 @@ const jobStatuses = {
                 <div>
                     <h3>{{ job.title }}</h3>
                     <p>{{ job.description }}</p>
-                    <p class="guild-muted">{{ jobRequirement(job.id) }}</p>
-                    <span>{{ job.rewardGold }} ◈ · цель {{ job.goal }}</span>
+                    <p class="guild-muted">{{ jobRequirement(job) }}</p>
+                    <p
+                        v-if="job.workRequest && job.workRequest.clerkId !== clerk?.npcId"
+                        class="guild-muted"
+                    >
+                        Подойдите к распорядителю этого обращения.
+                    </p>
+                    <span>Общая награда: {{ job.rewardGold }} ◈</span>
+                    <QuestRewardChoice
+                        :model-value="selectedRewards[job.id] ?? 'party_equal'"
+                        :disabled="
+                            !canTake(job) ||
+                            Boolean(party.activeJob && party.activeJob.status !== 'completed')
+                        "
+                        @update:model-value="selectedRewards[job.id] = $event"
+                    />
                 </div>
                 <button
                     type="button"
                     :disabled="
-                        !canUseBoard ||
+                        !canTake(job) ||
                         (party.activeJob !== null && party.activeJob.status !== 'completed')
                     "
-                    @click="emit('command', { type: 'guild_accept', questId: job.id })"
+                    @click="accept(job)"
                 >
                     Взять
                 </button>

@@ -7,7 +7,11 @@ import {
     dragonStory,
 } from './adventureContent'
 import { resolveAdventureNpc } from './adventureNpc'
-import { applyAdventureChoice, type PlayerAdventure } from './adventureState'
+import {
+    type AdventureChoiceContext,
+    applyAdventureChoice,
+    type PlayerAdventure,
+} from './adventureState'
 import { refreshTradeDialogue } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { NavigationService } from './navigation'
@@ -62,7 +66,8 @@ export function chooseAdventureReply(
     locationNPCs: GameCharacter[],
     state: PlayerAdventure,
     now: number,
-    navigation?: NavigationService
+    navigation?: NavigationService,
+    context: AdventureChoiceContext = {}
 ): GameEventPayload[] {
     if (choiceId === 'leave' || choiceId === 'close') {
         state.dialogue = null
@@ -93,7 +98,7 @@ export function chooseAdventureReply(
         return rejectDialogue(state, 'Этот ответ сейчас недоступен.')
     }
 
-    applyAdventureChoice(state, choiceId, actor)
+    applyAdventureChoice(state, choiceId, actor, context)
     const text = choiceId === 'ask_dragon' ? dragonStory : undefined
     state.dialogue = adventureDialogue(
         npc.id,

@@ -37,6 +37,32 @@ export function stop(actor: GameCharacter): void {
     actor.clearPath()
 }
 
+/** Fallback for unsupported threats or isolated worker-controller fixtures. */
+export function fleeWorker(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number
+): boolean {
+    const threat = room.findVisibleTarget(actor, 160, now)
+    if (threat === undefined) {
+        return false
+    }
+    const navigation = room.navigationFor(actor)
+    const dx = actor.position.x - threat.position.x
+    const dy = actor.position.y - threat.position.y
+    const scale = 120 / Math.max(1, Math.hypot(dx, dy))
+    actor.setPath(
+        navigation.findPathWorld(
+            actor.position,
+            walkableNear(navigation, {
+                x: actor.position.x + dx * scale,
+                y: actor.position.y + dy * scale,
+            })
+        )
+    )
+    return true
+}
+
 /** Ordinary path movement reaches a border, then ordinary movement intent crosses it. */
 export function approach(
     actor: GameCharacter,

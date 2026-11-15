@@ -15,7 +15,6 @@ import { parseSocketMessage } from './messages'
 import { createRoomScavenger } from './mobScavenging'
 import { loadNavigationService, type NavigationService } from './navigation'
 import { seedNpcPockets } from './npcPockets'
-import { PartyService } from './parties'
 import { findVisibleTarget as findVisibleTargetInRoom } from './queries'
 import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
@@ -42,13 +41,14 @@ import {
 import { advanceRoomSimulation } from './roomSimulation'
 import { createRoomSnapshotter } from './roomSnapshot'
 import { spawnRoomCharacters } from './roomSpawns'
+import { configureRoomQuests, createRoomParties } from './roomWorkerRequests'
 import { TheftService } from './theft'
+import { WorkerRequestService } from './workerRequests'
 import { WorldLocations } from './worldLocations'
 
 const tickMs = 50
 
 export class GameRoom {
-    public readonly navigation: NavigationService
     private readonly characters = new Map<string, GameCharacter>()
     private readonly connections = new Map<RoomSocket, string | undefined>()
     private readonly controllers = new Map<string, CharacterController>()
@@ -77,17 +77,16 @@ export class GameRoom {
         (events) => this.publishEvents(events)
     )
     private readonly theft = new TheftService()
-    private readonly parties = new PartyService((id, amount, rewardId) =>
-        this.adventure.grantGoldOnce(id, amount, rewardId)
-    )
+    public readonly workerRequests = new WorkerRequestService()
+    private readonly parties = createRoomParties(this, this.adventure)
     private lastTickAt = Date.now()
     private nextPlayerIndex = 1
     private timer: ReturnType<typeof setInterval> | undefined
     private tickIndex = 0
 
-    public constructor(navigation = loadNavigationService()) {
-        this.navigation = navigation
+    public constructor(public readonly navigation = loadNavigationService()) {
         this.world = new WorldLocations(navigation, this.adventure)
+        configureRoomQuests(this, this.adventure, this.parties, this.characters)
         const graves = spawnRoomCharacters(
             this.world,
             this.navigation,
@@ -144,9 +143,8 @@ export class GameRoom {
         )
     }
 
-    public hasLocation(locationId: string): boolean {
-        return this.world.locations.has(locationId)
-    }
+    public readonly hasLocation = (locationId: string): boolean =>
+        this.world.locations.has(locationId)
 
     public getCharacter(id: string): GameCharacter | undefined {
         return this.characters.get(id)
@@ -186,7 +184,9 @@ export class GameRoom {
         (events) => this.publishEvents(events)
     )
 
-    public navigationFor(character: GameCharacter): NavigationService {
+    public navigationFor(
+        character: Pick<GameCharacter, 'locationId'>
+    ): NavigationService {
         return this.world.get(character.locationId).navigation
     }
 
