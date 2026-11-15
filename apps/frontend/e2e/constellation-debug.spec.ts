@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 
+import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
 import { describeConstellationEffectChance } from '../src/game/debug/constellationEffectChance'
 import {
     assertBuildWorkflow,
@@ -16,37 +17,58 @@ async function assertChanceAccordion(page: Page, id: string): Promise<void> {
     if (!visible) return
     await chance.locator(':scope > summary').click()
     await expect(chance.locator('[data-testid="debug-effect-formula"]').first()).toBeVisible()
+    if (fullConstellationCatalog.find((node) => node.id === id)?.effectType === 'passive') {
+        await expect(chance).not.toContainText('Шанс лечения')
+        await expect(chance).not.toContainText(/очищени/i)
+    }
     await chance.locator(':scope > summary').click()
 }
 
-async function expectKaraResult(page: Page, damage: number): Promise<void> {
-    await expect(page.locator('[data-metric]')).toHaveCount(1)
-    await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('75%')
-    await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText(`${damage} HP`)
-    await expect(page.locator('[data-build-metric="Множитель кары"]')).toBeVisible()
-    await expect(page.locator('[data-build-metric="Радиус"] dd')).toHaveText('3 клетки')
-    await expect(page.locator('[data-build-metric="Лечение"]')).toHaveCount(0)
-    await expect(page.locator('[data-build-metric="Цена молитвы"]')).toHaveCount(0)
-    await expect(page.locator('[data-build-metric="Время молитвы"]')).toHaveCount(0)
+async function expectKaraResult(page: Page, damage: number, chance = '75%'): Promise<void> {
+    const result = buildResultPanel(page)
+    await expect(result.locator(':scope > summary')).toHaveText('Кара: результат')
+    await expect(result.locator('[data-metric]')).toHaveCount(1)
+    await expect(result.locator('[data-metric="Шанс кары"] dd')).toHaveText(chance)
+    await expect(result.locator('[data-build-metric="Урон кары"] dd')).toContainText(`${damage} HP`)
+    await expect(result.locator('[data-build-metric="Лечение"]')).toHaveCount(0)
+    await expect(result.locator('[data-build-metric="Цена молитвы"]')).toHaveCount(0)
+    await expect(result.locator('[data-build-metric="Время молитвы"]')).toHaveCount(0)
+    await expect(result.locator('[data-build-metric="Множитель кары"]')).toHaveCount(0)
     await expect(page.getByTestId('debug-last-light')).toHaveCount(0)
-    await expect(page.getByTestId('debug-prayer-build-effects')).not.toContainText('Лечение')
-    await expect(page.getByTestId('debug-prayer-build-effects')).not.toContainText('Очищение')
-    await expect(page.getByTestId('debug-prayer-build-effects')).not.toContainText('Воскрешение')
+    await expect(result.getByTestId('debug-prayer-build-effects')).not.toContainText('Лечение')
+    await expect(result.getByTestId('debug-prayer-build-effects')).not.toContainText('Очищение')
+    await expect(result.getByTestId('debug-prayer-build-effects')).not.toContainText('Воскрешение')
 }
-
+async function enableInspectedStar(page: Page, id: string): Promise<void> {
+    await selectBuildStar(page, id)
+    await page.getByTestId('selected-star-toggle').click()
+}
+async function assertOwnPrayerModifiers(page: Page): Promise<void> {
+    for (const id of ['prayer.gift1', 'prayer.gift2']) {
+        await enableInspectedStar(page, id)
+        await expect(buildResultPanel(page)).toContainText('+5%')
+        await expect(buildResultPanel(page).locator('[data-metric]')).toHaveCount(0)
+        await expect(buildResultPanel(page)).not.toContainText('Шанс лечения')
+    }
+    for (const id of ['prayer.harm1', 'prayer.harm2']) {
+        await enableInspectedStar(page, id)
+        await expect(
+            buildResultPanel(page).locator('[data-build-metric="Урон кары"] dd')
+        ).toHaveText('+30%')
+        await expect(buildResultPanel(page).locator('[data-metric]')).toHaveCount(0)
+        await expect(buildResultPanel(page).getByTestId('debug-prayer-mood')).toHaveCount(0)
+    }
+}
 for (const width of [320, 390, 1280]) {
-    test(`atlas separates Kara result from the whole Prayer at ${width}px`, async ({ page }) => {
+    test(`atlas isolates passive contributions and combines the active Prayer at ${width}px`, async ({
+        page,
+    }) => {
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/?debug=constellations&class=cleric&seed=kara-result')
         await expect(page.getByTestId('constellation-debug')).toBeVisible()
         await setBuildPanelsOpen(page, true)
         await selectBuildStar(page, 'prayer.harm')
-        await expect(buildResultPanel(page).locator(':scope > summary')).toHaveText(
-            'Кара: результат'
-        )
         await expect(page.getByTestId('debug-build-count').locator('strong')).toHaveText('2')
-        await expect(page.getByTestId('debug-prayer-unavailable')).toBeVisible()
-        await expect(page.locator('[data-metric="Шанс кары"]')).toHaveCount(0)
         await page.getByTestId('selected-star-toggle').click()
         await expectKaraResult(page, 6)
         await selectBuildStar(page, 'prayer.root')
@@ -60,33 +82,19 @@ for (const width of [320, 390, 1280]) {
         )
         await expect(page.locator('[data-metric="Шанс воскрешения"] dd')).toHaveText('55%')
         await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('6 HP')
-        for (const id of ['prayer.gift1', 'prayer.gift2']) {
-            await selectBuildStar(page, id)
-            await page.getByTestId('selected-star-toggle').click()
-        }
+        await assertOwnPrayerModifiers(page)
         await selectBuildStar(page, 'prayer.harm')
         await expectKaraResult(page, 6)
-        await selectBuildStar(page, 'prayer.root')
-        await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('7 HP')
-        for (const [id, damage] of [
-            ['prayer.harm1', 8],
-            ['prayer.harm2', 10],
-        ] as const) {
-            await selectBuildStar(page, id)
-            await page.getByTestId('selected-star-toggle').click()
-            await expectKaraResult(page, damage)
-        }
-        await selectBuildStar(page, 'prayer.harm')
-        await expectKaraResult(page, 10)
         await page
             .getByTestId('debug-prayer-mood')
             .getByRole('button', { name: 'Благосклонность' })
             .click()
-        await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('95%')
-        await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText('12 HP')
+        await expectKaraResult(page, 8, '95%')
         await selectBuildStar(page, 'prayer.root')
         await expect(page.locator('[data-metric="Шанс лечения"] dd')).toHaveText('80%')
         await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('95%')
+        await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('9 HP')
+        await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText('12 HP')
         await expect(
             page.getByTestId('debug-prayer-mood').getByRole('button', { name: 'Благосклонность' })
         ).toHaveAttribute('aria-pressed', 'true')
@@ -95,10 +103,56 @@ for (const width of [320, 390, 1280]) {
         )
     })
 }
+async function ownResultContent(page: Page): Promise<string[]> {
+    return buildResultPanel(page).locator('dl, ul').allTextContents()
+}
+async function assertCatalogResult(
+    page: Page,
+    id: string,
+    compareOtherBuild: boolean
+): Promise<void> {
+    const node = fullConstellationCatalog.find((entry) => entry.id === id)!
+    const result = buildResultPanel(page)
+    await expect(result).toHaveAttribute('data-result-node', id)
+    await expect(result).toHaveAttribute('data-result-type', node.effectType)
+    await expect(result.locator(':scope > summary')).toHaveText(`${node.name}: результат`)
+    if (node.effectType !== 'passive' || !compareOtherBuild) return
+    const before = await ownResultContent(page)
+    expect(before.join('')).not.toBe('')
+    const unrelated = node.constellationId.startsWith('prayer') ? 'arrow.root' : 'prayer.root'
+    await page.getByTestId('debug-search').fill(unrelated)
+    await page.locator(`[data-star-toggle="${unrelated}"]`).click()
+    await expect(page.getByTestId('selected-star-toggle')).toHaveAttribute('aria-checked', 'true')
+    expect(await ownResultContent(page)).toEqual(before)
+    await page.getByTestId('debug-build-all').click()
+}
+
+async function assertOwnNonPrayerResults(page: Page): Promise<void> {
+    await selectBuildStar(page, 'arrow.damage2')
+    await expect(page.locator('[data-build-metric="Усиление урона Выстрела"] dd')).toHaveText(
+        '+10%'
+    )
+    await expect(
+        page.locator('[data-build-metric="Итоговый множитель урона Выстрела"]')
+    ).toHaveCount(0)
+    await selectBuildStar(page, 'magic.runic_echo')
+    await expect(page.locator('[data-build-metric="Усиление следующего Выстрела"] dd')).toHaveText(
+        '+10%'
+    )
+    await expect(page.locator('[data-build-metric="Время на Выстрел"] dd')).toHaveText('5000 мс')
+    await expect(page.getByTestId('debug-runic-charged')).toHaveCount(0)
+    await selectBuildStar(page, 'magic.fireball')
+    await expect(page.locator('[data-build-metric="Урон Огненного шара"] dd')).toHaveText('9 HP')
+    await expect(page.locator('[data-build-metric="Дальность Огненного шара"] dd')).toHaveText(
+        '10 клеток'
+    )
+    await expect(buildResultPanel(page).locator('dl')).not.toContainText('Искры')
+    await expect(buildResultPanel(page).locator('dl')).not.toContainText('Выстрела')
+}
 
 for (const width of [320, 390, 1280]) {
     test(`mastery atlas is compact and consistent at ${width}px`, async ({ page }) => {
-        test.setTimeout(90_000)
+        test.setTimeout(180_000)
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/?debug=constellations&class=cleric&seed=mastery-atlas')
         const atlas = page.getByTestId('constellation-debug')
@@ -155,9 +209,11 @@ for (const width of [320, 390, 1280]) {
             await expect(page.getByTestId('debug-star-minimum')).toBeAttached()
             await expect(page.getByTestId('debug-unlock-conditions')).toBeAttached()
             await assertChanceAccordion(page, id)
+            await assertCatalogResult(page, id, width === 1280)
         }
         await page.getByTestId('debug-search').fill('')
         await expect(page.locator('[data-star-id]')).toHaveCount(77)
+        await assertOwnNonPrayerResults(page)
         await selectBuildStar(page, 'arrow.root')
         await page.getByTestId('debug-mastery-summary').locator(':scope > summary').click()
         await expect(page.getByTestId('debug-mastery-rate')).toContainText('XP')
@@ -172,6 +228,43 @@ for (const width of [320, 390, 1280]) {
         ).toHaveText('×1,32')
     })
 }
+
+test('atlas compares current levels with every required path instead of claiming a star is ready', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto('/?debug=constellations&class=cleric&seed=required-current')
+    await expect(page.getByTestId('constellation-debug')).toBeVisible()
+    await selectBuildStar(page, 'prayer.harm1')
+    const prayer = page.locator('[data-required-path="prayer"]')
+    await expect(prayer).toHaveAttribute('data-required', '3')
+    await expect(prayer).toHaveAttribute('data-current', '0')
+    await expect(prayer).toContainText('Чудеса: требуется 3 · сейчас 0')
+    await expect(page.getByTestId('debug-star-level-status')).toContainText('Недостаточно уровня')
+    await enableInspectedStar(page, 'prayer.harm')
+    await selectBuildStar(page, 'prayer.harm1')
+    await expect(prayer).toHaveAttribute('data-current', '1')
+    await page.getByTestId('selected-star-toggle').click()
+    await expect(prayer).toHaveAttribute('data-current', '3')
+    await expect(page.getByTestId('debug-star-level-status')).toHaveText(
+        'Требование к уровню выполнено.'
+    )
+    await page.getByTestId('debug-build-reset').click()
+    await enableInspectedStar(page, 'prayer.gift1')
+    await selectBuildStar(page, 'prayer.last_light')
+    await expect(page.locator('[data-required-path="prayer"]')).toHaveAttribute('data-current', '1')
+    const life = page.locator('[data-required-path="life"]')
+    await expect(life).toHaveAttribute('data-required', '1')
+    await expect(life).toHaveAttribute('data-current', '0')
+    await expect(page.getByTestId('debug-star-level-status')).toContainText('Недостаточно уровня')
+    await enableInspectedStar(page, 'life.root')
+    await enableInspectedStar(page, 'life.hp1')
+    await selectBuildStar(page, 'prayer.last_light')
+    await expect(life).toHaveAttribute('data-current', '1')
+    await expect(page.getByTestId('debug-star-level-status')).toHaveText(
+        'Требование к уровню выполнено.'
+    )
+})
 
 test('atlas notices pause while reading and refresh on another failed attempt', async ({
     page,

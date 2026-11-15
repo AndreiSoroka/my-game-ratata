@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import { enableAllConstellationStars } from './constellationBuild'
 import { calculatePrayerScenario } from './constellationPrayerScenario'
 
@@ -14,23 +15,23 @@ const metric = (result: ReturnType<typeof calculate>, label: string) =>
     result.build!.metrics.find((row) => row.label === label)?.value
 
 describe('fixed prayer power and cumulative learned modifiers', () => {
-    it('limits the Kara branch to its own learned damage, area and chance', () => {
+    it('isolates the own effect of Kara and each damage enhancement', () => {
         const kara = calculate(full, 'prayer.harm', 'neutral', true)
         expect(kara.metrics).toEqual([{ label: 'Шанс кары', value: '75%' }])
-        expect(kara.build!.effects).toEqual(['Кара наносит урон подходящей нежити в радиусе.'])
-        expect(kara.build!.metrics).toEqual([
-            { label: 'Радиус', value: '5 клеток' },
-            { label: 'Урон кары', value: '10 HP до поглощения' },
-            { label: 'Множитель кары', value: '×1,6' },
-        ])
-        for (const node of ['prayer.harm1', 'prayer.harm2'])
-            expect(calculate(full, node).build).toEqual(kara.build)
+        expect(kara.build!.effects).toEqual(['Наносит урон подходящей нежити в радиусе молитвы.'])
+        expect(kara.build!.metrics).toEqual([{ label: 'Урон кары', value: '6 HP до поглощения' }])
+        for (const node of ['prayer.harm1', 'prayer.harm2']) {
+            expect(calculate(full, node).build!.metrics).toEqual([
+                { label: 'Урон кары', value: '+30%' },
+            ])
+            expect(calculate(full, node).metrics).toEqual([])
+        }
         const root = calculate(full)
         expect(root.metrics).toContainEqual({ label: 'Шанс кары', value: '75%' })
         expect(metric(root, 'Лечение')).toBe('7 HP')
         expect(metric(root, 'Урон кары')).toBe('10 HP до поглощения')
     })
-    it('keeps healing bonuses out of Kara and hides results for an unselected Kara star', () => {
+    it('keeps authored passive contributions readable when not included in the build', () => {
         const active = new Set(['prayer.root', 'prayer.harm'])
         const before = calculate(active, 'prayer.harm')
         active.add('prayer.gift1')
@@ -39,7 +40,25 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         expect(metric(calculate(active), 'Лечение')).toBe('7 HP')
         const unavailable = calculate(active, 'prayer.harm1')
         expect(unavailable.metrics).toEqual([])
-        expect(unavailable.build).toEqual({ available: false, effects: [], metrics: [] })
+        expect(unavailable.build).toEqual({
+            available: false,
+            effects: [],
+            metrics: [{ label: 'Урон кары', value: '+30%' }],
+        })
+    })
+    it('isolates every prayer passive from every other selected star, including its ancestors', () => {
+        const nodes = fullConstellationCatalog.filter(
+            (node) => node.constellationId.startsWith('prayer') && node.effectType === 'passive'
+        )
+        for (const node of nodes) {
+            const combined = calculate(full, node.id)
+            const isolated = calculate(new Set([node.id]), node.id)
+            expect(combined.build).toEqual(isolated.build)
+            expect(combined.metrics).toEqual(isolated.metrics)
+            expect(combined.build!.effects.length + combined.build!.metrics.length).toBeGreaterThan(
+                0
+            )
+        }
     })
     it('composes Kara without changing base healing or probability from acquired stars', () => {
         const active = new Set(['prayer.root'])
@@ -91,7 +110,7 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
             rootOnly.add(`${path}.revive`)
             const revival = calculate(rootOnly, `${path}.revive`, 'benevolent', true)
             expect(revival.build!.available).toBe(true)
-            expect(metric(revival, 'Цена молитвы')).toBe('20 MP')
+            expect(metric(revival, 'Цена воскрешения')).toBe('20 MP')
             expect(metric(revival, 'Ресурсы после воскрешения')).toContain('50%')
             expect(metric(revival, 'Лечение')).toBeUndefined()
         }

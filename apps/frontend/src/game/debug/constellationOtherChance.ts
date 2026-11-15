@@ -44,6 +44,7 @@ function describeCritical(id: string): ConstellationEffectChance {
     const sword = id === 'blade.critical'
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 'Бонус +3 п.п. применяется всегда при подходящей атаке; критический удар остаётся случайным.',
             examples: [
@@ -85,6 +86,7 @@ function describeDodge(): ConstellationEffectChance {
     }
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 'При исправном мече +3 п.п. добавляются всегда; само уклонение проверяется случайным броском.',
             examples: [
@@ -122,6 +124,7 @@ function describeTheft(id: string): ConstellationEffectChance {
     const front = theftEffectChances(true, bonus)
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 bonus === 0
                     ? 'Кража имеет два броска: сначала обнаружение, затем получение предмета, если вас не обнаружили.'

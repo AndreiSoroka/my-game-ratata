@@ -54,7 +54,7 @@ it('changes the inspected result without changing the build or losing the shared
     expect(view.find('[data-testid="debug-last-light"]').exists()).toBe(true)
     await view.setProps({ nodeId: 'prayer.harm' })
     expect(view.get('summary').text()).toBe('Кара: результат')
-    expect(view.get('h4').text()).toBe('Итог кары')
+    expect(view.get('h4').text()).toBe('Эффект навыка')
     expect(view.get('[data-testid="debug-prayer-metrics"]').text()).toBe('Шанс кары95%')
     expect(view.find('[data-testid="debug-last-light"]').exists()).toBe(false)
     expect(view.find('[data-build-metric="Лечение"]').exists()).toBe(false)

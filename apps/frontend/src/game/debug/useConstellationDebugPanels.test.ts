@@ -54,7 +54,7 @@ it('shares independent collapsed panel preferences across stars, classes and res
     expect(mastery().attributes('open')).toBe('')
     expect(result().attributes('open')).toBe('')
     expect(result().attributes('id')).toBe('debug-build-result')
-    expect(result().get('summary').text()).toBe('Результат способности')
+    expect(result().get('summary').text()).toBe('Магия: результат')
     await changeOpen(result(), false)
     await view.setProps({ path: 'prayer', nodeId: 'prayer.revive', heroClass: 'cleric' })
     expect(mastery().attributes('open')).toBe('')

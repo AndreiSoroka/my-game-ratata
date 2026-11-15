@@ -105,7 +105,9 @@ it('calculates the whole prayer set and applies only learned bonuses plus the co
 })
 it('shows cross-path runic totals only while its example charge is active', async () => {
     const full = enableAllConstellationStars()
-    const view = mount(ConstellationBuildSummary, { props: { path: 'arrow', activeIds: full } })
+    const view = mount(ConstellationBuildSummary, {
+        props: { nodeId: 'arrow.root', activeIds: full },
+    })
     expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
         '×1,2'
     )
@@ -113,15 +115,18 @@ it('shows cross-path runic totals only while its example charge is active', asyn
     expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
         '×1,32'
     )
-    await view.setProps({ path: 'magic' })
-    expect(view.get('[data-build-metric="Урон Выстрела с учётом всей сборки"] dd').text()).toBe(
+    await view.setProps({ nodeId: 'magic.runic_echo' })
+    expect(view.get('[data-build-metric="Усиление следующего Выстрела"] dd').text()).toBe('+10%')
+    expect(view.find('[data-testid="debug-runic-charged"]').exists()).toBe(false)
+    await view.setProps({ nodeId: 'arrow.root' })
+    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
         '×1,32'
     )
     const noEcho = new Set(full)
     noEcho.delete('magic.runic_echo')
     await view.setProps({ activeIds: noEcho })
     expect(view.find('[data-testid="debug-runic-charged"]').exists()).toBe(false)
-    expect(view.get('[data-build-metric="Урон Выстрела с учётом всей сборки"] dd').text()).toBe(
+    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
         '×1,2'
     )
     view.unmount()

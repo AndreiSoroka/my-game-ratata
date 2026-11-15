@@ -10,6 +10,7 @@ export function describeOtherRootChance(id: string): ConstellationEffectChance {
     if (id === 'blade.root' || id === 'arrow.root') {
         return withChanceFormulas(
             {
+                ...(id === 'blade.root' ? { deterministic: true } : {}),
                 summary:
                     'Сам корень не добавляет случайного эффекта. Для допустимого обычного удара или Выстрела действуют боевые броски.',
                 examples: [
@@ -56,6 +57,7 @@ export function describeOtherRootChance(id: string): ConstellationEffectChance {
 function describeMagicRoot(): ConstellationEffectChance {
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 'Искра использует боевые броски; допустимая активация Барьера происходит без случайного отказа.',
             examples: [

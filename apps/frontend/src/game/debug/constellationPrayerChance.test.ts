@@ -56,14 +56,20 @@ it('preserves distinct per-step purification and Kara thresholds with fixed base
         'Успех 25%; очищение 9,09% за шаг.',
     ])
     const harm = description('prayer.harm')
-    expect(harm.formulas).toContain('min(95, P + 20)')
-    expect(harm.formulas).toContain('round(6 × Q × M)')
-    expect(harm.notes.join(' ')).toContain('один случайный бросок')
+    expect(harm.formulas).toContain('min(95, B + 20)')
+    expect(harm.formulas).toContain('round(6 × Q)')
+    expect(harm.formulas).not.toContain('round(6 × Q × M)')
+    expect(harm.notes.join(' ')).toMatch(/один случайный бросок/i)
     expect(harm.examples.map((entry) => entry.value)).toEqual([
-        'Успех 80%; кара 95%.',
-        'Успех 55%; кара 75%.',
-        'Успех 25%; кара 45%.',
+        'Кара 95%.',
+        'Кара 75%.',
+        'Кара 45%.',
     ])
+    for (const id of ['prayer.harm', 'prayer.revive', 'prayer_grave.revive']) {
+        const own = description(id)
+        expect(own.formulaDetails?.map((entry) => entry.label).join(' ')).not.toMatch(/лечени/i)
+        expect(own.examples.map((entry) => entry.value).join(' ')).not.toMatch(/лечени/i)
+    }
 })
 it('keeps resurrection at half resources and ordinary modifiers deterministic', () => {
     for (const id of ['prayer.revive', 'prayer_grave.revive']) {

@@ -5,17 +5,23 @@ import { computed, ref, watch } from 'vue'
 import { describeConstellationBuild } from './constellationBuildSummary'
 import { useConstellationDebugPanels } from './useConstellationDebugPanels'
 
-const props = defineProps<{ path: ConstellationId; activeIds: ReadonlySet<string> }>()
+const props = defineProps<{
+    nodeId?: string
+    path?: ConstellationId
+    activeIds: ReadonlySet<string>
+}>()
 const panels = useConstellationDebugPanels()
 const charged = ref(false)
-const visible = computed(() => !props.path.startsWith('prayer'))
+const selectedId = computed(() => props.nodeId ?? `${props.path}.root`)
 const canCharge = computed(
     () =>
         props.activeIds.has('magic.runic_echo') &&
-        (props.path === 'magic' || props.path === 'arrow')
+        summary.value.available &&
+        summary.value.effectType === 'active' &&
+        summary.value.activationAbilityId === 'shot'
 )
 const summary = computed(() =>
-    describeConstellationBuild(props.path, props.activeIds, {
+    describeConstellationBuild(selectedId.value, props.activeIds, {
         runicCharged: charged.value,
         tileWidth: 16,
     })
@@ -30,16 +36,24 @@ watch(
 <template>
     <details
         id="debug-build-result"
-        v-if="visible"
+        v-if="summary.effectType"
         class="build-summary"
         data-testid="debug-build-summary"
-        aria-label="Итог созвездия"
+        :data-result-node="selectedId"
+        :data-result-type="summary.effectType"
+        :aria-label="`${summary.name}: результат`"
         :open="panels.result"
         @toggle.self="panels.result = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <summary @keydown.stop @keyup.stop>Результат способности</summary>
+        <summary @keydown.stop @keyup.stop>{{ summary.name }}: результат</summary>
         <div class="build-content">
-            <p v-if="!activeIds.has(`${path}.root`)">Корень созвездия не включён в набор.</p>
+            <p v-if="!summary.available" data-testid="debug-build-inactive">
+                {{
+                    summary.effectType === 'passive'
+                        ? 'Навык не включён в набор. Его эффект не применяется.'
+                        : 'Заклинание не включено в набор.'
+                }}
+            </p>
             <label v-if="canCharge" class="runic-example"
                 ><input v-model="charged" type="checkbox" data-testid="debug-runic-charged" />
                 Рунический заряд активен в примере</label

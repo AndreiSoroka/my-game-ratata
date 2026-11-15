@@ -22,12 +22,13 @@ export function prayerChanceExamples(
         const derived =
             mode === 'grave'
                 ? `; очищение ${chancePercent(prayerPurificationChance(chance))} за шаг`
-                : mode === 'harm'
-                  ? `; кара ${chancePercent(prayerHarmChance(chance))}`
-                  : ''
+                : ''
         return {
             label: `${schoolName} · ${moodNames[mood]}`,
-            value: `Успех ${chancePercent(chance)}${derived}.`,
+            value:
+                mode === 'harm'
+                    ? `Кара ${chancePercent(prayerHarmChance(chance))}.`
+                    : `Успех ${chancePercent(chance)}${derived}.`,
         }
     })
 }

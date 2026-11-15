@@ -185,6 +185,7 @@ function listKey(event: KeyboardEvent): void {
                         :hero-class="settings.heroClass"
                     />
                     <ConstellationBuildSummary
+                        :node-id="selectedId"
                         :path="selected.constellationId"
                         :active-ids="enabledStarIds"
                     />

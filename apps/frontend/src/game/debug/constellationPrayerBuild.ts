@@ -4,12 +4,15 @@ import {
     GRAVE_PURIFY_STEPS,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
+    REVIVE_CAST_MS,
     REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
+import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import { prayerMoodQuality } from '../../../../backend/src/game/prayerProbability'
 import { constellationDistance } from './constellationDistance'
+import { describePrayerPassive } from './constellationPrayerPassive'
 
 export interface PrayerBuildResult {
     available: boolean
@@ -23,11 +26,6 @@ export interface PrayerBuildContext {
     tileWidth: number
     resource: string
     basePower: number
-}
-export type PrayerBuildFocus = 'prayer' | 'harm' | 'revival'
-export function prayerBuildFocus(nodeId: string): PrayerBuildFocus {
-    if (nodeId.startsWith('prayer.harm')) return 'harm'
-    return nodeId.endsWith('.revive') ? 'revival' : 'prayer'
 }
 type Bonuses = ReturnType<typeof resolveConstellationBonuses>
 const insights = [
@@ -45,31 +43,13 @@ export function calculatePrayerBuild(
     context: PrayerBuildContext
 ): PrayerBuildResult {
     const root = `${PRAYER_SCHOOL_DEFINITIONS[context.ability].constellationId}.root`
-    const focus = prayerBuildFocus(nodeId)
-    const revival = focus === 'revival'
-    if (!activeIds.has(root) || (focus !== 'prayer' && !activeIds.has(nodeId)))
-        return { available: false, effects: [], metrics: [] }
+    const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)
+    if (node?.effectType === 'passive')
+        return { available: activeIds.has(nodeId), ...describePrayerPassive(nodeId, context) }
+    if (!activeIds.has(root)) return { available: false, effects: [], metrics: [] }
     const bonuses = resolveConstellationBonuses(activeIds, context.lowHealthEligible)
-    if (focus === 'harm') {
-        const effects: string[] = []
-        const metrics = [radiusMetric(context, bonuses)]
-        appendHarm(effects, metrics, bonuses, context)
-        return { available: true, effects, metrics }
-    }
     const mother = context.ability === 'pray'
-    const metrics = commonMetrics(context, bonuses, revival)
-    if (revival)
-        return {
-            available: true,
-            effects: ['Воскрешение: одна подходящая павшая цель; возвращает половину ресурсов.'],
-            metrics: [
-                ...metrics,
-                {
-                    label: 'Ресурсы после воскрешения',
-                    value: '50% максимума; HP округляется вверх, минимум 1',
-                },
-            ],
-        }
+    const metrics = commonMetrics(context, bonuses)
     metrics.push(...restorationMetrics(context, bonuses))
     const effects = [healingTargets(context.ability, mother && bonuses.prayerArea)]
     if (mother) appendMotherEffects(effects, metrics, activeIds, bonuses, context)
@@ -77,13 +57,13 @@ export function calculatePrayerBuild(
     if (reviveId !== undefined && activeIds.has(reviveId)) {
         effects.push('Воскрешение: одна подходящая павшая цель, 50% ресурсов.')
         metrics.push({ label: 'Цена воскрешения', value: `${REVIVE_MANA_COST} MP` })
+        metrics.push({ label: 'Время воскрешения', value: `${REVIVE_CAST_MS} мс` })
     }
     return { available: true, effects, metrics }
 }
 function commonMetrics(
     context: PrayerBuildContext,
-    bonuses: Bonuses,
-    revival: boolean
+    bonuses: Bonuses
 ): PrayerBuildResult['metrics'] {
     const definition = ABILITY_DEFINITIONS[context.ability]
     const mother = context.ability === 'pray'
@@ -93,7 +73,7 @@ function commonMetrics(
             label: 'Время молитвы',
             value: `${Math.round(definition.windupMs * (mother ? bonuses.prayerDurationMultiplier : 1))} мс`,
         },
-        { label: 'Цена молитвы', value: `${revival ? REVIVE_MANA_COST : definition.mana} MP` },
+        { label: 'Цена молитвы', value: `${definition.mana} MP` },
     ]
     return metrics
 }

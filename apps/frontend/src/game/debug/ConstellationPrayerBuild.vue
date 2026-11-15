@@ -1,31 +1,25 @@
 <script setup lang="ts">
-import type { PrayerBuildFocus, PrayerBuildResult } from './constellationPrayerBuild'
+import type { PrayerBuildResult } from './constellationPrayerBuild'
 
-defineProps<{ result: PrayerBuildResult; focus: PrayerBuildFocus }>()
-const headings: Record<PrayerBuildFocus, string> = {
-    prayer: 'Итог молитвы',
-    harm: 'Итог кары',
-    revival: 'Итог воскрешения',
-}
-const unavailable: Record<PrayerBuildFocus, string> = {
-    prayer: 'Молитва не включена в набор. Включите её корень.',
-    harm: 'Включите выбранную звезду Кары и корень молитвы.',
-    revival: 'Включите корень молитвы и звезду воскрешения.',
-}
+defineProps<{ result: PrayerBuildResult; passive: boolean }>()
 </script>
 <template>
     <section
         class="prayer-build"
         data-testid="debug-prayer-build"
-        :aria-label="headings[focus]"
+        :aria-label="passive ? 'Эффект навыка' : 'Итог молитвы'"
         aria-live="polite"
     >
-        <h4>{{ headings[focus] }}</h4>
+        <h4>{{ passive ? 'Эффект навыка' : 'Итог молитвы' }}</h4>
         <p v-if="!result.available" data-testid="debug-prayer-unavailable">
-            {{ unavailable[focus] }}
+            {{
+                passive
+                    ? 'Навык не включён в набор.'
+                    : 'Молитва не включена в набор. Включите её корень.'
+            }}
         </p>
-        <template v-else>
-            <ul data-testid="debug-prayer-build-effects">
+        <template v-if="result.available || passive">
+            <ul v-if="result.effects.length" data-testid="debug-prayer-build-effects">
                 <li v-for="effect in result.effects" :key="effect">{{ effect }}</li>
             </ul>
             <dl data-testid="debug-prayer-build-metrics">

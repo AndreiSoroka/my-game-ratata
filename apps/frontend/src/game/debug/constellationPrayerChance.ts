@@ -21,6 +21,7 @@ const oneRoll =
     'На завершённую молитву берётся один случайный бросок от 0 включительно до 1 не включительно. Он общий для лечения, кары и шагов очищения, а также для всех подходящих целей; отдельных бросков по целям нет.'
 const faithAndPower =
     'Мастерство определяет открытия звёзд. Вероятность и базовая сила зависят от настроения божества; изученные звёзды добавляют усиления.'
+const moodBase = '80 при благосклонности; 55 при нейтральном настроении; 25 при гневе.'
 
 /** Static debug formulas only: settings for the example calculator live in a separate pure API. */
 export function describePrayerEffectChance(
@@ -87,15 +88,14 @@ function revivalChance(ability: PrayerAbilityId): PrayerDescription {
     return {
         summary: `Шанс воскрешения определяется настроением божества «${info.god}».`,
         formulaDetails: [
-            math.prayerAnswerFormula(ability),
-            math.prayerRevivalChanceFormula(),
+            chanceFormula('Шанс воскрешения, %', 'B', { B: moodBase }),
             math.prayerAnswerRollFormula(),
             math.prayerRevivalHpFormula(),
             math.prayerRevivalResourceFormula(),
         ],
         examples: prayerChanceExamples(info.masteryName),
         notes: [
-            oneRoll,
+            'Для одной выбранной павшей цели выполняется один случайный бросок.',
             'Множители лечения не меняют шанс воскрешения или стандартную половину ресурсов. Нужна подходящая душа в пределах окна воскрешения и прочие условия режима.',
         ],
     }
@@ -186,18 +186,21 @@ function harmChance(id: string): PrayerDescription {
                 : 'Множитель урона кары применяется со 100% вероятностью, если сама кара сработала.',
         formulaDetails: [
             ...(id === 'prayer.harm' ? [] : [math.prayerModifierFormula()]),
-            math.prayerAnswerFormula('pray'),
-            math.prayerHarmFormula(),
+            chanceFormula('Шанс кары, %', 'min(95, B + 20)', { B: moodBase }),
             math.prayerHarmRollFormula(),
-            math.prayerHarmPowerFormula(),
-            math.prayerHarmMultiplierFormula(),
+            ...(id === 'prayer.harm'
+                ? [
+                      chanceFormula('Собственный урон кары до поглощения', 'round(6 × Q)', {
+                          Q: 'Качество настроения: 1,3 при благосклонности; 1 при нейтральном; 0,65 при гневе.',
+                      }),
+                  ]
+                : [math.prayerHarmPowerFormula(), math.prayerHarmMultiplierFormula()]),
         ],
         examples: prayerChanceExamples(prayerSchoolInfo.pray.masteryName, 'harm'),
         notes: [
-            oneRoll,
+            'Один случайный бросок общий для всей подходящей нежити в радиусе молитвы.',
             'Кара может сработать при отказе лечебного дара: её порог выше порога ответа. Все подходящие цели — нежить в радиусе и прямой видимости; сторона цели не меняет порог.',
-            'Кара доступна после открытия звезды. Её базовая сила равна 6 и усиливается настроением и изученными звёздами.',
-            'Суровый ответ даёт множитель 1,30; вместе с Гневом небес — 1,60. Множители не повышают шанс кары; барьер может поглотить рассчитанный урон.',
+            'Собственный эффект Кары имеет базовую силу 6, зависит от настроения божества и может поглощаться Барьером. Полный результат с усилениями показан у Молитвы.',
         ],
     }
 }

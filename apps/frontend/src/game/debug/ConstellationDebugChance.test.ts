@@ -46,8 +46,7 @@ it('only shows the closed chance disclosure for random effects across all 77 sta
 it.each([
     ['prayer.root', /55\s*%/],
     ['prayer.revive', /55/],
-    ['blade.critical', /min\s*\(\s*95/],
-    ['shadow.luck1', /17[,.]4\s*%/],
+    ['prayer.harm', /75\s*%/],
 ])('shows effect probabilities and examples for %s', (nodeId, expected) => {
     const view = mount(ConstellationDebugChance, { props: { nodeId: String(nodeId) } })
     expect(view.text()).toMatch(expected)
@@ -58,6 +57,13 @@ it.each([
 })
 it.each([
     'blade.damage1',
+    'blade.critical',
+    'blade.dodge',
+    'shadow.luck1',
+    'shadow.luck2',
+    'blade.root',
+    'magic.root',
+    'shadow.root',
     'magic.spark_economy',
     'life.root',
     'magic.fireball',

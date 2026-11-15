@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import {
-    ABILITY_DEFINITIONS,
-    type DeityMood,
-    type PrayerAbilityId,
-    prayerAbilityIds,
-} from '@my-game-ratata/contracts'
+import { type DeityMood, type PrayerAbilityId, prayerAbilityIds } from '@my-game-ratata/contracts'
 import { computed, reactive } from 'vue'
 
-import { prayerBuildFocus } from './constellationPrayerBuild'
+import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import ConstellationPrayerBuild from './ConstellationPrayerBuild.vue'
 import { calculatePrayerScenario, prayerCalculatorSchool } from './constellationPrayerScenario'
 import { useConstellationDebugPanels } from './useConstellationDebugPanels'
@@ -32,20 +27,18 @@ const contexts = reactive(
     ) as Record<PrayerAbilityId, PrayerExampleContext>
 )
 const school = computed(() => prayerCalculatorSchool(props.nodeId))
-const focus = computed(() => prayerBuildFocus(props.nodeId))
-const resultName = computed(() => {
-    if (focus.value === 'harm') return 'Кара'
-    if (focus.value === 'revival')
-        return school.value?.id === 'pray_grave' ? 'Возвращение праха' : 'Воскрешение'
-    return school.value ? ABILITY_DEFINITIONS[school.value.id].name : ''
-})
+const node = computed(() => fullConstellationCatalog.find((entry) => entry.id === props.nodeId))
+const passive = computed(() => node.value?.effectType === 'passive')
+const showMood = computed(
+    () => !passive.value || props.nodeId === 'prayer.harm' || props.nodeId.endsWith('.revive')
+)
 const context = computed(() => (school.value ? contexts[school.value.id] : undefined))
 const scenario = computed(() =>
     context.value
         ? calculatePrayerScenario(props.nodeId, context.value, props.enabledStarIds)
         : undefined
 )
-const available = computed(() => scenario.value?.build?.available ?? true)
+const available = computed(() => passive.value || (scenario.value?.build?.available ?? true))
 const metrics = computed(() => {
     const current = scenario.value
     if (!current || !available.value) return []
@@ -53,9 +46,10 @@ const metrics = computed(() => {
 })
 const lastLight = computed(
     () =>
-        focus.value === 'prayer' &&
-        school.value?.id === 'pray' &&
-        props.enabledStarIds?.has('prayer.last_light')
+        props.nodeId === 'prayer.last_light' ||
+        (!passive.value &&
+            school.value?.id === 'pray' &&
+            props.enabledStarIds?.has('prayer.last_light'))
 )
 const moods: { id: DeityMood; name: string }[] = [
     { id: 'benevolent', name: 'Благосклонность' },
@@ -69,16 +63,18 @@ const moods: { id: DeityMood; name: string }[] = [
         v-if="school && context && scenario"
         class="prayer-calculator"
         data-testid="debug-prayer-calculator"
-        :aria-label="`${resultName}: результат`"
+        :data-result-node="nodeId"
+        :data-result-type="node?.effectType"
+        :aria-label="`${node?.name}: результат`"
         :open="panels.result"
         @toggle.self="panels.result = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <summary @keydown.stop @keyup.stop>{{ resultName }}: результат</summary>
+        <summary @keydown.stop @keyup.stop>{{ node?.name }}: результат</summary>
         <div class="prayer-content">
             <p class="prayer-school">
                 <strong>{{ school.god }}</strong> · {{ school.masteryName }}
             </p>
-            <div class="prayer-mood">
+            <div v-if="showMood" class="prayer-mood">
                 <p>Настроение бога</p>
                 <div
                     class="mood-buttons"
@@ -109,7 +105,7 @@ const moods: { id: DeityMood; name: string }[] = [
                 Условия «Последнего огонька» выполнены: мало HP после вражеского ранения</label
             >
             <dl
-                v-if="available"
+                v-if="available && metrics.length"
                 class="prayer-metrics"
                 data-testid="debug-prayer-metrics"
                 aria-live="polite"
@@ -122,7 +118,7 @@ const moods: { id: DeityMood; name: string }[] = [
             <ConstellationPrayerBuild
                 v-if="scenario.build"
                 :result="scenario.build"
-                :focus="focus"
+                :passive="passive"
             />
         </div>
     </details>

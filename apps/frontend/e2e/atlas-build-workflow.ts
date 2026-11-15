@@ -92,6 +92,18 @@ async function assertPrayerMood(page: Page): Promise<void> {
     await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('95%')
     await page.getByTestId('debug-prayer-mood').getByRole('button', { name: 'Нейтральное' }).click()
 }
+async function expectPrayerRequirement(
+    page: Page,
+    current: number,
+    required: number
+): Promise<void> {
+    const row = page.locator('[data-required-path="prayer"]')
+    await expect(row).toHaveAttribute('data-required', String(required))
+    await expect(row).toHaveAttribute('data-current', String(current))
+    await expect(page.getByTestId('debug-star-level-status')).toContainText(
+        current < required ? 'Недостаточно уровня' : 'Требование к уровню выполнено.'
+    )
+}
 export async function assertBuildWorkflow(
     page: Page,
     width: number,
@@ -143,8 +155,10 @@ export async function assertBuildWorkflow(
     await page.screenshot({ path: info.outputPath(`mastery-blocked-${width}.png`), fullPage: true })
     await page.locator('[data-find-parent="prayer.harm1"]').click()
     await count(page, 3)
+    await expectPrayerRequirement(page, 1, 3)
     await page.getByTestId('selected-star-toggle').click()
     await count(page, 4)
+    await expectPrayerRequirement(page, 3, 3)
     await expect(page.getByTestId('debug-mastery-level')).toHaveText('3')
     await spaceStar(page, 'prayer.harm2')
     await count(page, 5)
