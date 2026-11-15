@@ -30,10 +30,6 @@ export function effectiveAbility(
         scaleDamage(definition, modifiers.sparkDamageMultiplier)
     }
     if (id === 'fireball' || id === 'greater_fireball') {
-        definition.damage =
-            (definition.damage ?? 0) +
-            (actor.progression.skills[id].level - 1) *
-                (id === 'fireball' ? 2 : 3)
         scaleDamage(definition, modifiers.fireDamageMultiplier)
     }
     return definition
@@ -52,11 +48,7 @@ function scaleDamage(
 }
 
 export function effectiveCharacterStats(actor: GameCharacter) {
-    const stats = resolveCharacterStats(
-        actor.config,
-        actor.equipment,
-        actor.progression.skills.swordsmanship.level
-    )
+    const stats = resolveCharacterStats(actor.config, actor.equipment)
     const modifiers = constellationModifiers(actor)
     if (hasEquippedSword(actor)) {
         stats.minDamage = Math.round(

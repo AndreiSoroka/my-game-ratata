@@ -14,6 +14,7 @@ import {
     fullConstellationCatalog,
 } from '../../../../backend/src/game/constellationNodes'
 import { characterFixture } from './characterFixture'
+import { masteriesFixture } from './masteryFixture'
 
 export const fixtureStarId = constellationWireId
 export const fixtureHeroPaths: Record<HeroClass, ConstellationId> = {
@@ -126,32 +127,7 @@ export function developmentCharacterFixture(heroClass: HeroClass = 'cleric'): Ch
             ],
         },
         progression: {
-            skills: [
-                {
-                    id: 'faith',
-                    name: 'Вера',
-                    level: 3,
-                    practice: 2,
-                    practiceToNext: 12,
-                    unlocked: true,
-                },
-                {
-                    id: 'miracles',
-                    name: 'Чудеса',
-                    level: 2,
-                    practice: 3,
-                    practiceToNext: 10,
-                    unlocked: true,
-                },
-                {
-                    id: 'vitality',
-                    name: 'Жизненный опыт',
-                    level: 2,
-                    practice: 1,
-                    practiceToNext: 8,
-                    unlocked: true,
-                },
-            ],
+            masteries: masteriesFixture({ prayer: 3, life: 2 }),
             deity: {
                 id: 'hearth',
                 name: 'Очаг',
@@ -162,11 +138,8 @@ export function developmentCharacterFixture(heroClass: HeroClass = 'cleric'): Ch
                 successChance: null,
                 changesInMs: null,
             },
-            practicedBranches: ['faith', 'survival'],
             magicChaptersRead: 0,
             magicChaptersTotal: 3,
-            totalEarnedLevels: 4,
-            trainingMultiplier: 1,
             resurrectionUnlocked: false,
             constellations: constellationFixture(false, heroClass),
         },

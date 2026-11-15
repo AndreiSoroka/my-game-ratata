@@ -1,3 +1,4 @@
+import { parseMasteryExperience } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createItemInstance, inventoryCapacity } from '../src/game/inventory'
@@ -19,8 +20,9 @@ describe('atomic real-item theft', () => {
         expect(victim.inventory).toEqual([equipped])
         expect(victim.equipment.weapon).toBe(equipped)
         expect(actor.energy).toBe(actor.config.resources.maxEnergy - 10)
-        expect(actor.progression.skills.theft.practice).toBe(1)
-        expect(actor.progression.skills.stealth.practice).toBe(1)
+        expect(actor.progression.masteries.shadow.experience).toBe(
+            parseMasteryExperience('70')
+        )
         expect(service.snapshot(actor.id, actor.id, 1_000)).toMatchObject({
             cooldownMsLeft: 8_000,
             lastResult: {
@@ -49,7 +51,9 @@ describe('atomic real-item theft', () => {
         attempt([0.99, 0], 60_999)
         expect(actor.inventory).toHaveLength(1)
         expect(actor.energy).toBe(actor.config.resources.maxEnergy - 10)
-        expect(actor.progression.skills.theft.practice).toBe(1)
+        expect(actor.progression.masteries.shadow.experience).toBe(
+            parseMasteryExperience('70')
+        )
         attempt([0.99, 0], 61_000)
         expect(actor.inventory).toHaveLength(2)
         expect(actor.energy).toBe(actor.config.resources.maxEnergy - 20)
@@ -74,7 +78,7 @@ describe('atomic real-item theft', () => {
         expect(second.inventory).toEqual([])
         expect(victim.inventory).toEqual([])
         expect(second.energy).toBe(second.config.resources.maxEnergy)
-        expect(second.progression.skills.theft.practice).toBe(0)
+        expect(second.progression.masteries.shadow.experience).toBe(0n)
         expect(
             service.snapshot(second.id, second.id, 1_000).cooldownMsLeft
         ).toBe(0)
@@ -85,8 +89,7 @@ describe('atomic real-item theft', () => {
         expect(actor.inventory).toEqual([])
         expect(victim.inventory).toHaveLength(1)
         expect(actor.energy).toBe(actor.config.resources.maxEnergy - 10)
-        expect(actor.progression.skills.theft.practice).toBe(1)
-        expect(actor.progression.skills.stealth.practice).toBe(0)
+        expect(actor.progression.masteries.shadow.experience).toBe(0n)
         expect(
             service.snapshot(actor.id, actor.id, 1_000).lastResult
         ).toMatchObject({ outcome: 'failed' })
@@ -101,6 +104,35 @@ describe('atomic real-item theft', () => {
             )
         ).toBe(true)
     })
+})
+
+describe('resolved theft transfer', () => {
+    it('grants no mastery or success claim if the selected real item disappears before transfer', () => {
+        const { actor, victim, service, navigation, characters } =
+            theftFixture()
+        let roll = 0
+        service.handle(
+            actor,
+            { type: 'steal', targetId: victim.id },
+            {
+                characters,
+                navigation,
+                now: 1000,
+                random: () => {
+                    victim.inventory = []
+                    return roll++ === 0 ? 0.99 : 0
+                },
+            }
+        )
+        expect(actor.inventory).toEqual([])
+        expect(actor.progression.masteries.shadow.experience).toBe(0n)
+        expect(
+            service.snapshot(actor.id, actor.id, 1000).lastResult?.outcome
+        ).toBe('failed')
+    })
+})
+
+describe('authored finite NPC pockets', () => {
     it('seeds finite NPC pockets once and never creates items while inspecting or respawning', () => {
         const npc = theftCharacter(
             'npc_merchant_1',
@@ -142,7 +174,6 @@ describe('theft authority and invalid attempts', () => {
         'empty',
         'full',
         'energy',
-        'locked skill',
         'wall',
     ] as const)(
         'rejects %s without spending resources, granting practice or transferring items',
@@ -190,9 +221,6 @@ describe('theft authority and invalid attempts', () => {
             if (reason === 'energy') {
                 actor.energy = 9
             }
-            if (reason === 'locked skill') {
-                actor.progression.skills.theft.unlocked = false
-            }
             if (reason === 'wall') {
                 navigation.grid.solid[6 * 30 + 7] = true
             }
@@ -211,7 +239,7 @@ describe('theft authority and invalid attempts', () => {
             expect(actor.inventory).toEqual(before.thief)
             expect(victim.inventory).toEqual(before.victim)
             expect(actor.energy).toBe(before.energy)
-            expect(actor.progression.skills.theft.practice).toBe(0)
+            expect(actor.progression.masteries.shadow.experience).toBe(0n)
             expect(
                 service.snapshot(actor.id, actor.id, 1_000).cooldownMsLeft
             ).toBe(0)

@@ -6,9 +6,7 @@ import ConstellationPrayerBuild from './ConstellationPrayerBuild.vue'
 import { calculatePrayerScenario, prayerCalculatorSchool } from './constellationPrayerScenario'
 
 interface PrayerExampleContext {
-    faithLevel: number
     mood: DeityMood
-    miraclesLevel: number
     lowHealthEligible: boolean
     tileWidth: number
 }
@@ -18,9 +16,7 @@ const contexts = reactive(
         prayerAbilityIds.map((id) => [
             id,
             {
-                faithLevel: 1,
                 mood: 'neutral',
-                miraclesLevel: 1,
                 lowHealthEligible: false,
                 tileWidth: 16,
             },
@@ -38,11 +34,7 @@ const available = computed(() => scenario.value?.build?.available ?? true)
 const metrics = computed(() => {
     const current = scenario.value
     if (!current || !available.value) return []
-    return current.build
-        ? current.metrics.filter((metric) =>
-              ['Шанс ответа', 'Отказ божества'].includes(metric.label)
-          )
-        : current.metrics
+    return current.metrics
 })
 const lastLight = computed(
     () => school.value?.id === 'pray' && props.enabledStarIds?.has('prayer.last_light')
@@ -59,26 +51,14 @@ const moods: { id: DeityMood; name: string }[] = [
         v-if="school && context && scenario"
         class="prayer-calculator"
         data-testid="debug-prayer-calculator"
-        aria-label="Параметры примера"
+        aria-label="Результат молитвы"
     >
-        <h3>Параметры примера</h3>
+        <h3>Молитва: результат</h3>
         <p class="prayer-school">
-            <strong>{{ school.god }}</strong> · {{ school.faithName }}
+            <strong>{{ school.god }}</strong> · {{ school.masteryName }}
         </p>
         <p class="prayer-example-scale">Размер клетки в примере: {{ context.tileWidth }} px</p>
         <div class="prayer-inputs">
-            <label
-                >Уровень Веры
-                <select v-model.number="context.faithLevel" data-testid="debug-prayer-faith">
-                    <option v-for="level in 10" :key="level" :value="level">{{ level }}</option>
-                </select>
-            </label>
-            <label
-                >Уровень Чудес
-                <select v-model.number="context.miraclesLevel" data-testid="debug-prayer-miracles">
-                    <option v-for="level in 10" :key="level" :value="level">{{ level }}</option>
-                </select>
-            </label>
             <label class="prayer-mood"
                 >Настроение бога
                 <select v-model="context.mood" data-testid="debug-prayer-mood">
@@ -112,10 +92,6 @@ const moods: { id: DeityMood; name: string }[] = [
             :result="scenario.build"
             :revival="nodeId.endsWith('.revive')"
         />
-        <p v-if="available" class="prayer-substitution">
-            <span>Подстановка значений</span
-            ><code data-testid="debug-prayer-substitution">{{ scenario.substitution }}</code>
-        </p>
     </section>
 </template>
 <style scoped>
@@ -203,20 +179,6 @@ dd {
     color: #f4dc9b;
     font-size: 18px;
     font-variant-numeric: tabular-nums;
-}
-.prayer-substitution {
-    display: grid;
-    gap: 6px;
-    color: #adc3cd;
-}
-code {
-    display: block;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    color: #eee6d2;
-    font:
-        13px/1.6 ui-monospace,
-        monospace;
 }
 @media (max-width: 420px) {
     .prayer-inputs {

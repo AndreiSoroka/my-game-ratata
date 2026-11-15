@@ -186,7 +186,7 @@ function life({ active, bonuses: b }: Context): ConstellationBuildSummary {
 }
 
 function shadow({ bonuses: b }: Context): ConstellationBuildSummary {
-    const example = theftEffectChances(1, 1, false, b.theftChanceBonus)
+    const example = theftEffectChances(false, b.theftChanceBonus)
     return {
         rows: [
             row(
@@ -199,7 +199,7 @@ function shadow({ bonuses: b }: Context): ConstellationBuildSummary {
             ),
             row('Множитель радиуса шума от звёзд тишины', multiplier(b.sneakNoiseMultiplier)),
             row(
-                'Радиус шума: пример S = 1, трава, пиксели',
+                'Радиус шума: трава, пиксели',
                 number(
                     MOVEMENT_RULES.walkingNoiseRadius *
                         SURFACE_NOISE_MULTIPLIERS.grass *
@@ -212,16 +212,13 @@ function shadow({ bonuses: b }: Context): ConstellationBuildSummary {
             row('Общий кулдаун кражи, мс', THEFT_RULES.cooldownMs - b.theftCooldownDiscount),
             row('Повторная кража у той же цели, мс', THEFT_RULES.pairCooldownMs),
             row('Добавка к успеху кражи при незамеченности', points(b.theftChanceBonus)),
-            row('Пример S = T = 1, сзади: обнаружение', chancePercent(example.detected)),
-            row(
-                'Пример S = T = 1, сзади: получение при незамеченности',
-                chancePercent(example.success)
-            ),
-            row('Пример S = T = 1, сзади: незаметная кража', chancePercent(example.unnoticed)),
+            row('Сзади: обнаружение', chancePercent(example.detected)),
+            row('Сзади: получение при незамеченности', chancePercent(example.success)),
+            row('Сзади: незаметная кража', chancePercent(example.unnoticed)),
         ],
         effects: [
-            'S — уровень Скрытности, T — уровень Воровства. Это явно заданный пример, а не уровни выбранного персонажа.',
-            'Фактический шум дополнительно зависит от поверхности и Скрытности. Обнаружение использует расстояние, направление взгляда, прямую видимость и границу 28 пикселей; случайной невидимости нет.',
+            'Мастерство Тени открывает звёзды. Базовые вероятность кражи и геометрия скрытности от его уровня не растут.',
+            'Фактический шум дополнительно зависит от поверхности и изученных звёзд. Обнаружение использует расстояние, направление взгляда, прямую видимость и границу 28 пикселей; случайной невидимости нет.',
             'Удача прибавляется к условному получению предмета и не снижает обнаружение. Для кражи сохраняются обычные проверки цели, карманов, ресурсов и кулдаунов.',
         ],
     }

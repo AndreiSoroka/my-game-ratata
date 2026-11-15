@@ -8,14 +8,13 @@ import { computed } from 'vue'
 
 const props = defineProps<{ character: CharacterSnapshot }>()
 const patron = computed(() => props.character.progression?.deity)
-const faith = computed(
-    () =>
-        props.character.progression?.skills.find(
-            (skill) =>
-                skill.id ===
-                PRAYER_SCHOOL_DEFINITIONS[prayerAbilityForDeity(patron.value?.id ?? 'hearth')]
-                    .faithSkillId
-        )?.level ?? 1
+const mastery = computed(() =>
+    props.character.progression?.masteries.find(
+        (entry) =>
+            entry.id ===
+            PRAYER_SCHOOL_DEFINITIONS[prayerAbilityForDeity(patron.value?.id ?? 'hearth')]
+                .constellationId
+    )
 )
 const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен', wrathful: 'Разгневан' }
 </script>
@@ -23,9 +22,9 @@ const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен
     <div
         v-if="patron && character.abilities?.known.includes(prayerAbilityForDeity(patron.id))"
         class="faith-status"
-        aria-label="Вера и покровитель"
+        aria-label="Покровитель и развитие"
     >
-        <span>✦ {{ patron.name }} · Вера {{ faith }}</span>
+        <span>✦ {{ patron.name }} · {{ mastery?.name ?? 'Чудеса' }} {{ mastery?.level ?? 0 }}</span>
         <span v-if="patron.mood !== null">{{ moods[patron.mood] }}</span>
         <span v-else-if="patron.perception !== 'vague'" class="faith-status__omen">{{
             patron.omen

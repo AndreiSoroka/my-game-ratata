@@ -1,6 +1,6 @@
 import type { ProgressionSnapshot } from '@my-game-ratata/contracts'
 
-/** Attained skill levels are public; pending practice and earned perception are private. */
+/** Attained mastery levels are public; pending practice and earned perception are private. */
 export function publicProgression(
     progression: ProgressionSnapshot
 ): ProgressionSnapshot {
@@ -17,12 +17,13 @@ export function publicProgression(
             successChance: null,
             changesInMs: null,
         },
-        skills: progression.skills.map((skill) => ({
-            ...skill,
-            practice: 0,
-            practiceToNext: 0,
+        masteries: progression.masteries.map((mastery) => ({
+            ...mastery,
+            experience: '0',
+            experienceToNext: '0',
+            totalExperience: '0',
+            pendingOpenings: 0,
+            conflictMultiplier: 1,
         })),
-        practicedBranches: [],
-        trainingMultiplier: 1,
     }
 }

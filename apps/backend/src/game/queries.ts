@@ -114,14 +114,12 @@ export function visibilityRadius(
     const length = Math.max(1, Math.hypot(vector.x, vector.y))
     const dot = (vector.x * facing.x + vector.y * facing.y) / length
     const factor = dot >= 0.4 ? 0.65 : dot <= -0.4 ? 0.35 : 0.5
-    const learned = 1 - (target.progression.skills.stealth.level - 1) * 0.03
     return Math.min(
         radius,
         Math.max(
             28,
             radius *
                 factor *
-                learned *
                 constellationModifiers(target).sneakSightMultiplier
         )
     )

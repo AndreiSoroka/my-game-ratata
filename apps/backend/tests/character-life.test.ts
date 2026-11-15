@@ -10,7 +10,8 @@ import {
     shouldRetireCharacter,
 } from '../src/game/characterLife'
 import { createItemInstance } from '../src/game/inventory'
-import { trainSkill } from '../src/game/skillProgression'
+import { awardMasteries } from '../src/game/skillProgression'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 describe('shared hero classes and progression', () => {
     it('changes actual common stats for each class without changing archetype defaults', () => {
@@ -35,8 +36,11 @@ describe('shared hero classes and progression', () => {
 
     it('keeps hit points and class configuration independent of skill practice', () => {
         const actor = hero('ranger')
-        trainSkill(actor, 'swordsmanship', 12)
-        expect(actor.progression.skills.swordsmanship.level).toBe(2)
+        awardMasteries(actor, [{ constellationId: 'blade', experience: 200 }], {
+            now: 1050,
+            random: () => 0,
+        })
+        expect(actor.progression.masteries.blade.level).toBe(2)
         expect(actor.maxHp).toBe(24)
         expect(actor.config.combat.minDamage).toBe(4)
         expect(actor.snapshot(1_050)).toMatchObject({
@@ -52,7 +56,10 @@ describe('hero death and retirement', () => {
         const actor = hero('vanguard')
         actor.inventory.push(createItemInstance('boots'))
         actor.equipment.weapon = createItemInstance('simple_sword')
-        trainSkill(actor, 'swordsmanship', 12)
+        awardMasteries(actor, [{ constellationId: 'blade', experience: 200 }], {
+            now: 1050,
+            random: () => 0,
+        })
         kill(actor, 2_000)
         actor.tickTimedState(7_001)
         expect(actor.alive).toBe(false)
@@ -70,8 +77,8 @@ describe('hero death and retirement', () => {
         expect(actor.equipment).toEqual({})
         expect(actor.xp).toBe(0)
         expect(actor.level).toBe(1)
-        expect(actor.progression.skills.swordsmanship.level).toBe(1)
-        expect(actor.progression.skills.fireball.unlocked).toBe(false)
+        expect(actor.progression.masteries.blade.level).toBe(0)
+        expect(actor.abilities.known.has('fireball')).toBe(false)
     })
 
     it('keeps NPC respawning as a life policy on the same character class', () => {
@@ -97,7 +104,11 @@ describe('shared cleric revival ability', () => {
     it('channels for three seconds, spends mana and preserves the revived hero identity', () => {
         const caster = hero('cleric')
         const target = hero('ranger')
-        trainSkill(target, 'miracles', 8)
+        awardMasteries(
+            target,
+            [{ constellationId: 'prayer', experience: 100 }],
+            { now: 1000, random: () => 0 }
+        )
         target.inventory.push(createItemInstance('boots'))
         kill(target, 2_000)
         expect(beginRevive(caster, target, 3_000)).toBe(true)
@@ -111,11 +122,16 @@ describe('shared cleric revival ability', () => {
                 6_000,
                 () => 0
             )
-        ).toEqual([{ actorId: caster.id, targetId: target.id, kind: 'revive' }])
+        ).toContainEqual({
+            actorId: caster.id,
+            targetId: target.id,
+            abilityId: 'pray',
+            kind: 'revive',
+        })
         expect(target.alive).toBe(true)
         expect(target.hp).toBe(Math.ceil(target.maxHp / 2))
-        expect(target.progression.skills.miracles.level).toBe(2)
-        expect(caster.progression.skills.miracles.practice).toBe(1)
+        expect(target.progression.masteries.prayer.level).toBe(1)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
         expect(target.inventory).toHaveLength(1)
         expect(caster.mana).toBe(100)
         expect(target.reviveUntil).toBe(0)
@@ -145,10 +161,14 @@ describe('shared cleric revival ability', () => {
         kill(target, 2_000)
         expect(beginRevive(caster, target, 3_000)).toBe(false)
         caster.abilities.known.add('pray')
-        trainSkill(caster, 'miracles', 200)
-        expect(caster.progression.skills.miracles.level).toBeGreaterThanOrEqual(
-            5
+        awardMasteries(
+            caster,
+            [{ constellationId: 'prayer', experience: 1200 }],
+            { now: 3000, random: () => 0 }
         )
+        expect(
+            caster.progression.masteries.prayer.level
+        ).toBeGreaterThanOrEqual(5)
         expect(caster.snapshot(3_000).progression?.resurrectionUnlocked).toBe(
             true
         )

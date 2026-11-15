@@ -1,6 +1,8 @@
 import type { HeroClass } from '@my-game-ratata/contracts'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
+import { starterConstellationStars } from '../../../../backend/src/game/constellationRequirements'
+import { constellationBuildParents } from './constellationMasteryPlan'
 
 export interface ConstellationBuildChange {
     enabledIds: Set<string>
@@ -10,17 +12,11 @@ export interface ConstellationBuildChange {
     error?: string
 }
 
-const startingRoots: Record<HeroClass, string> = {
-    vanguard: 'blade.root',
-    arcanist: 'magic.root',
-    cleric: 'prayer.root',
-    ranger: 'arrow.root',
-}
 const stars = new Map(fullConstellationCatalog.map((star) => [star.id, star]))
 
 /** A debug ownership model: discovery conditions and practice remain explanatory metadata. */
 export function initialConstellationBuild(heroClass: HeroClass): ReadonlySet<string> {
-    return new Set([startingRoots[heroClass]])
+    return starterConstellationStars(heroClass)
 }
 
 export function enableConstellationStar(
@@ -31,7 +27,7 @@ export function enableConstellationStar(
     const star = stars.get(id)
     if (star === undefined) return { ...result, error: 'Звезда не найдена.' }
     if (current.has(id)) return result
-    const missingParents = star.parents.filter((parent) => !current.has(parent))
+    const missingParents = constellationBuildParents(id).filter((parent) => !current.has(parent))
     if (missingParents.length > 0) return { ...result, missingParents }
     result.enabledIds.add(id)
     return { ...result, changed: true }
@@ -47,7 +43,8 @@ export function disableConstellationStar(
     const disabled = new Set([id])
     for (const removed of disabled) {
         for (const star of fullConstellationCatalog) {
-            if (current.has(star.id) && star.parents.includes(removed)) disabled.add(star.id)
+            if (current.has(star.id) && constellationBuildParents(star.id).includes(removed))
+                disabled.add(star.id)
         }
     }
     for (const removed of disabled) result.enabledIds.delete(removed)
@@ -60,7 +57,8 @@ export function enableAllConstellationStars(): ReadonlySet<string> {
     while (enabled.size < fullConstellationCatalog.length) {
         const previousSize = enabled.size
         for (const star of fullConstellationCatalog) {
-            if (star.parents.every((parent) => enabled.has(parent))) enabled.add(star.id)
+            if (constellationBuildParents(star.id).every((parent) => enabled.has(parent)))
+                enabled.add(star.id)
         }
         if (enabled.size === previousSize)
             throw new Error('В графе созвездий есть недоступная зависимость.')

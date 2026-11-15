@@ -37,9 +37,9 @@ function encounter() {
 describe('resolved shared attack abilities', () => {
     it('uses explicit Spark costs and cooldown while ignoring melee weapon bonuses', () => {
         const { actor, target, attack } = encounter()
-        actor.equipment.weapon = createItemInstance('old_sword')
+        actor.equipment.weapon = createItemInstance('simple_sword')
         expect(
-            resolveCharacterStats(actor.config, actor.equipment, 20).maxDamage
+            resolveCharacterStats(actor.config, actor.equipment).maxDamage
         ).toBeGreaterThan(6)
         const mana = actor.mana
         expect(attemptAbilityAttack(attack, 'spark')[0]).toMatchObject({
@@ -94,12 +94,11 @@ describe('resolved shared attack abilities', () => {
         expect(events.filter((event) => event.kind === 'death')).toHaveLength(1)
         expect(target.alive).toBe(false)
         expect(resolvePendingAttackHit({ ...attack, now: 2001 })).toEqual([])
-        expect(actor.progression.skills.arcana.practice).toBeGreaterThan(0)
+        expect(actor.progression.masteries.magic.experience).toBeGreaterThan(0n)
     })
     it('pins a harmful prayer target and does not replace a stale selection', () => {
         const { actor, target, context } = encounter()
         actor.abilities.known.add('pray')
-        actor.progression.skills.miracles.level = 3
         actor.progression.constellations.opened.add('prayer.harm')
         const intent = previewPrayer(actor, context, target.id).intent
         expect(intent).toEqual({ mode: 'harm', targetId: target.id })

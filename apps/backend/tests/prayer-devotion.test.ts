@@ -11,6 +11,7 @@ import { pray } from '../src/game/prayer'
 import { previewPrayer } from '../src/game/prayerContext'
 import { completePrayer } from '../src/game/prayerEffects'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 function ownerSnapshot(actor: ReturnType<typeof abilityHero>) {
     return observeCharacterCombat(actor.snapshot(1000), actor, {
@@ -32,7 +33,7 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
     (patron) => {
         const actor = abilityHero('cleric', 'construct')
         actor.progression.patron = patron
-        actor.progression.skills.miracles.level = 3
+
         const random = vi.fn(() => 0)
         const context = abilityContext([actor], 1000, random)
         const preview = previewPrayer(actor, context)
@@ -90,7 +91,7 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
 
 it('pins devotion for an unsuitable selected ally rather than healing or burning neighbors', () => {
     const actor = abilityHero()
-    actor.progression.skills.miracles.level = 3
+
     const selected = abilityHero()
     const wounded = abilityHero()
     const undead = abilityHero('vanguard', 'undead')
@@ -127,8 +128,7 @@ it('uses the same devotion through legacy prayers and keeps the three-second coo
             ?.kind
     ).toBe('cast')
     expect(actor.mana).toBe(120)
-    expect(actor.progression.skills.faith.practice).toBe(0)
-    expect(actor.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
 })
 
 it.each(['unknown', 'dead', 'offline', 'retired', 'stun', 'busy'] as const)(
@@ -200,8 +200,7 @@ it('cannot turn empty Lantern prayers into practice by manufacturing a mana defi
         )
         expect(actor.mana).toBe(actor.config.resources.maxMana)
     }
-    expect(actor.progression.skills.faith.practice).toBe(0)
-    expect(actor.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
 })
 
 it('distinguishes a projected zero-capacity mana pool from an empty pool when previewing Lantern aid', () => {

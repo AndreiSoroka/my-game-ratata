@@ -20,7 +20,7 @@ it.each(['targeted', 'forward'] as const)(
         const f = graveCombatFixture()
         const sword = createItemInstance('simple_sword')
         f.actor.equipment.weapon = sword
-        const skills = structuredClone(f.actor.progression.skills)
+        const masteries = structuredClone(f.actor.progression.masteries)
         const start = f.ability(
             'shot',
             1000,
@@ -36,7 +36,7 @@ it.each(['targeted', 'forward'] as const)(
         })
         expect(f.actor.energy).toBe(90)
         expect(sword.durability).toBe(200)
-        expect(f.actor.progression.skills).toEqual(skills)
+        expect(f.actor.progression.masteries).toEqual(masteries)
         expect(f.service.get('grave')?.hp).toBe(99.7)
     }
 )
@@ -80,7 +80,7 @@ it.each(['behind', 'wall', 'width', 'range'] as const)(
         if (reason === 'range') {
             f.actor.position.x = 47
         }
-        const skills = structuredClone(f.actor.progression.skills)
+        const masteries = structuredClone(f.actor.progression.masteries)
         expect(
             attemptAbilityAttack(
                 { ...f.attack(), target: undefined },
@@ -95,12 +95,12 @@ it.each(['behind', 'wall', 'width', 'range'] as const)(
             }),
         ])
         expect(f.service.get('grave')?.hp).toBe(100)
-        expect(f.actor.progression.skills).toEqual(skills)
+        expect(f.actor.progression.masteries).toEqual(masteries)
     }
 )
 it('uses arcane stone resistance and normal costs for Spark after its own windup', () => {
     const f = graveCombatFixture('arcanist')
-    const skills = structuredClone(f.actor.progression.skills)
+    const masteries = structuredClone(f.actor.progression.masteries)
     expect(f.ability('spark')[0]).toMatchObject({
         kind: 'attack',
         abilityId: 'spark',
@@ -114,16 +114,14 @@ it('uses arcane stone resistance and normal costs for Spark after its own windup
     })
     expect(f.actor.mana).toBe(94)
     expect(f.actor.energy).toBe(95)
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(masteries)
 })
 it.each(['fireball', 'greater_fireball'] as const)(
     'resolves %s on the pinned grave after the ordinary cast lock, with no practice',
     (id) => {
         const f = graveCombatFixture('arcanist')
         f.actor.abilities.known.add(id)
-        f.actor.progression.skills[id].unlocked = true
-        f.actor.progression.skills[id].level = 3
-        const skills = structuredClone(f.actor.progression.skills)
+        const masteries = structuredClone(f.actor.progression.masteries)
         expect(f.ability(id)[0]).toMatchObject({
             kind: 'attack',
             abilityId: id,
@@ -133,11 +131,11 @@ it.each(['fireball', 'greater_fireball'] as const)(
         expect(f.hit(1399)).toEqual([])
         expect(f.hit(1400)[0]).toMatchObject({
             kind: 'world_damage',
-            amount: id === 'fireball' ? 3 : 6,
+            amount: id === 'fireball' ? 2 : 4.5,
             damageKind: 'arcane',
         })
         expect(f.actor.mana).toBe(id === 'fireball' ? 88 : 76)
-        expect(f.actor.progression.skills).toEqual(skills)
+        expect(f.actor.progression.masteries).toEqual(masteries)
         expect(f.hit(1400)).toEqual([])
     }
 )
@@ -154,7 +152,9 @@ it.each([
 ] as const)('rejects %s grave spells atomically', (reason) => {
     const f = graveCombatFixture('arcanist')
     const target = { ...f.reference }
-    f.actor.progression.skills.fireball.unlocked = reason !== 'locked'
+    if (reason !== 'locked') {
+        f.actor.abilities.known.add('fireball')
+    }
     if (reason === 'mana') {
         f.actor.mana = 0
     }
@@ -194,7 +194,7 @@ it.each([
 })
 it('rechecks spell LoS after cast start and never replaces a ruined grave with a character', () => {
     const f = graveCombatFixture('arcanist')
-    f.actor.progression.skills.fireball.unlocked = true
+    f.actor.abilities.known.add('fireball')
     const enemy = f.enemy(110)
     expect(
         castSpell(
@@ -250,7 +250,7 @@ it('automatic grave melee approaches using ordinary reach, pins its target and s
 it('automatic forward Shot damages stone without practice, silently waits for resources and never starts another attack on cancel', () => {
     const f = graveCombatFixture()
     f.actor.energy = 10
-    const skills = structuredClone(f.actor.progression.skills)
+    const masteries = structuredClone(f.actor.progression.masteries)
     expect(
         setCharacterControl(
             f.actor,
@@ -271,7 +271,7 @@ it('automatic forward Shot damages stone without practice, silently waits for re
     advanceCharacterControl(f.actor, f.world, 1600)
     f.hit(1650)
     expect(f.service.get('grave')?.hp).toBe(99.4)
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(masteries)
     expect(
         setCharacterControl(
             f.actor,
@@ -289,7 +289,7 @@ it('uses a normal NPC controller and shared heavy-strike weapon wear without gra
     f.actor.abilities.known.add('skeleton_strike')
     const weapon = createItemInstance('axe')
     f.actor.equipment.weapon = weapon
-    const skills = structuredClone(f.actor.progression.skills)
+    const masteries = structuredClone(f.actor.progression.masteries)
     expect(attemptAbilityAttack(f.attack(), 'skeleton_strike')[0]?.kind).toBe(
         'attack'
     )
@@ -307,7 +307,7 @@ it('uses a normal NPC controller and shared heavy-strike weapon wear without gra
         },
     ])
     expect(weapon.durability).toBe(995)
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(masteries)
 })
 
 it.each([
@@ -345,8 +345,8 @@ it.each([
         first: 'fireball' as const,
         next: 'spark' as const,
         windup: 400,
-        rawDamage: 12,
-        amount: 3,
+        rawDamage: 8,
+        amount: 2,
     },
     {
         first: 'spark' as const,
@@ -360,8 +360,6 @@ it.each([
     ({ first, next, windup, rawDamage, amount }) => {
         const f = graveCombatFixture('arcanist')
         f.actor.abilities.known.add('fireball')
-        f.actor.progression.skills.fireball.unlocked = true
-        f.actor.progression.skills.fireball.level = 3
         const other = { kind: 'grave' as const, id: 'second-grave' }
         f.service.register(
             {

@@ -7,7 +7,7 @@ import {
 import { type CreatureType, creatureTypes } from './creatures'
 import { GRAVE_PURIFY_MANA_COST } from './graves'
 import { REVIVE_MANA_COST } from './life'
-import type { DeityId, SkillId } from './progression'
+import type { DeityId } from './progression'
 
 export function prayerManaCost(mode: PrayerMode): number {
     if (mode === 'devotion') {
@@ -62,8 +62,6 @@ export const DEITY_PRAYER_PROFILES: Record<DeityId, DeityPrayerProfile> = {
 
 export interface PrayerSchoolDefinition {
     deityId: DeityId
-    faithSkillId: SkillId
-    miracleSkillId: SkillId
     constellationId: import('./development').ConstellationId
     canPurify: boolean
 }
@@ -73,29 +71,21 @@ export const PRAYER_SCHOOL_DEFINITIONS: Record<
 > = {
     pray: {
         deityId: 'hearth',
-        faithSkillId: 'faith',
-        miracleSkillId: 'miracles',
         constellationId: 'prayer',
         canPurify: true,
     },
     pray_road: {
         deityId: 'road',
-        faithSkillId: 'road_faith',
-        miracleSkillId: 'road_miracles',
         constellationId: 'prayer_road',
         canPurify: false,
     },
     pray_lantern: {
         deityId: 'lantern',
-        faithSkillId: 'lantern_faith',
-        miracleSkillId: 'lantern_miracles',
         constellationId: 'prayer_lantern',
         canPurify: false,
     },
     pray_grave: {
         deityId: 'grave',
-        faithSkillId: 'grave_faith',
-        miracleSkillId: 'grave_miracles',
         constellationId: 'prayer_grave',
         canPurify: false,
     },

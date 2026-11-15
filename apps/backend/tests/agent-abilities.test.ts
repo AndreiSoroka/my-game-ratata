@@ -107,7 +107,6 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     Object.assign(actor, { id: 'npc_princess_1' })
     actor.abilities.known.add('spark')
-    actor.progression.skills.miracles.level = 3
     actor.progression.constellations.opened.add('prayer.harm')
     actor.hp -= 10
     const undead = abilityHero('vanguard', 'undead', 'mob1')
@@ -144,7 +143,6 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
 it('allows a noncombat personality to devote a harmless prayer beside potential wave victims', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     Object.assign(actor, { id: 'npc_princess_1' })
-    actor.progression.skills.miracles.level = 3
     actor.progression.constellations.opened.add('prayer.harm')
     const undead = abilityHero('vanguard', 'undead', 'mob1')
     const { world, requestAbility } = port([actor, undead])
@@ -170,7 +168,7 @@ it('allows a noncombat personality to devote a harmless prayer beside potential 
     ])
     expect(undead.hp).toBe(undead.maxHp)
     expect(actor.mana).toBe(120)
-    expect(actor.progression.skills.faith.practice).toBe(0)
+    expect(actor.progression.masteries.prayer.experience).toBe(0n)
 })
 it('shared control rejection propagates and wait, manual move and lease expiry cancel ongoing control', () => {
     const actor = abilityHero('vanguard', 'humanoid', 'scripted')

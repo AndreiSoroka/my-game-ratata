@@ -383,8 +383,7 @@ describe('automatic prayer remains the pinned intention', () => {
         expect(f.events.every((event) => event.kind === 'cast')).toBe(true)
         expect(f.actor.mana).toBe(0)
         expect(f.target.hp).toBe(f.target.maxHp - 10)
-        expect(f.actor.progression.skills.faith.practice).toBe(0)
-        expect(f.actor.progression.skills.miracles.practice).toBe(0)
+        expect(f.actor.progression.masteries.prayer.experience).toBe(0n)
         expect(random).not.toHaveBeenCalled()
     })
     it('channels one revival through the shared life-cycle service and stops after resurrection', () => {

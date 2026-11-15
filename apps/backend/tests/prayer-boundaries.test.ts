@@ -3,6 +3,7 @@ import { expect, it } from 'vitest'
 import { handleAbilityCommand } from '../src/game/abilityCommands'
 import { advanceRevive } from '../src/game/characterLife'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 it.each([
     'dead',
@@ -64,12 +65,11 @@ it.each([
     )
     expect(actor.mana).toBe(mana)
     expect(target.hp).toBe(hp)
-    expect(actor.progression.skills.faith.practice).toBe(0)
-    expect(actor.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
 })
-it('counts a successful area prayer once and respects exact range and walls for each victim', () => {
+it('rewards each hostile prayer victim and respects exact range and walls', () => {
     const actor = abilityHero()
-    actor.progression.skills.miracles.level = 3
+
     actor.progression.constellations.opened.add('prayer.harm')
     const enemies = Array.from({ length: 3 }, () =>
         abilityHero('vanguard', 'undead')
@@ -95,8 +95,7 @@ it('counts a successful area prayer once and respects exact range and walls for 
         now: 4000,
     })
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(4)
-    expect(actor.progression.skills.faith.practice).toBe(1)
-    expect(actor.progression.skills.miracles.practice).toBe(1)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(210))
     expect(far.hp).toBe(far.maxHp)
     expect(hidden.hp).toBe(hidden.maxHp)
 })

@@ -31,8 +31,7 @@ export function footstepGain(distance: number, radius = footstepHearingRadius): 
 function noiseMultiplier(actor: WalkingActor): number {
     if (actor.movement?.dashing) return MOVEMENT_RULES.dashNoiseMultiplier
     if (actor.movement?.mode === 'sneaking') {
-        const level = actor.progression?.skills.find((skill) => skill.id === 'stealth')?.level ?? 1
-        return MOVEMENT_RULES.sneakNoiseMultiplier * (1 - (level - 1) * 0.035)
+        return MOVEMENT_RULES.sneakNoiseMultiplier
     }
     return 1
 }

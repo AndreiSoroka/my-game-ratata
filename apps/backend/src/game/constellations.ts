@@ -1,15 +1,16 @@
 import type {
     ConstellationId,
     GameEventPayload,
-    SkillId,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { type ConstellationStar } from './constellationCatalog'
+import { fullConstellationCatalog } from './constellationNodes'
 import {
-    type ConstellationStar,
-    constellationStars,
-} from './constellationCatalog'
-import { skillConstellations } from './constellationState'
+    canDiscoverConstellationStar,
+    starterConstellationStars,
+} from './constellationRequirements'
+import { captureMasteryLevels } from './skillProgression'
 
 export { constellationModifiers } from './constellationModifiers'
 export { snapshotConstellations } from './constellationSnapshot'
@@ -20,14 +21,8 @@ export function hasStar(actor: GameCharacter, id: string): boolean {
 }
 
 export function initializeConstellations(actor: GameCharacter): void {
-    const path = {
-        vanguard: 'blade',
-        arcanist: 'magic',
-        cleric: 'prayer',
-        ranger: 'arrow',
-    }[actor.heroClass ?? 'vanguard']
-    if (actor.heroClass !== undefined) {
-        actor.progression.constellations.opened.add(`${path}.root`)
+    for (const id of starterConstellationStars(actor.heroClass)) {
+        actor.progression.constellations.opened.add(id)
     }
     syncAbilityConstellations(actor)
 }
@@ -47,29 +42,35 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
             actor.progression.constellations.opened.add(`${path}.root`)
         }
     }
-}
-
-export function recordConstellationPractice(
-    actor: GameCharacter,
-    id: SkillId,
-    levels: number
-): void {
-    const state = actor.progression.constellations
-    const path = skillConstellations[id]
-    state.credits[path] += levels
-    state.evidence[id] = (state.evidence[id] ?? 0) + 1
-    if (path === 'blade' || path === 'life' || path === 'shadow') {
-        state.opened.add(`${path}.root`)
+    if (known.has('fireball')) {
+        actor.progression.constellations.opened.add('magic.fireball')
+        if (actor.progression.masteries.magic.level >= 10) {
+            known.add('greater_fireball')
+        }
     }
-    syncAbilityConstellations(actor)
+    if (known.has('greater_fireball')) {
+        actor.progression.constellations.opened.add('magic.greater_fireball')
+    }
+    for (const [ability, path] of [
+        ['pray', 'prayer'],
+        ['pray_grave', 'prayer_grave'],
+    ] as const) {
+        if (
+            known.has(ability) &&
+            (actor.heroClass === 'cleric' ||
+                actor.progression.masteries[path].level >= 5)
+        ) {
+            actor.progression.constellations.opened.add(`${path}.revive`)
+        }
+    }
 }
 
 export interface ConstellationAction {
-    skillIds: readonly SkillId[]
+    constellationIds?: readonly ConstellationId[]
     now: number
     random?: (() => number) | undefined
-    actionId?: string
-    evidence?: string[]
+    actionId?: string | undefined
+    evidence?: string[] | undefined
 }
 
 /** Call once after resolving all effects and practice of a meaningful action. */
@@ -77,12 +78,7 @@ export function finishConstellationAction(
     actor: GameCharacter,
     action: ConstellationAction
 ): GameEventPayload[] {
-    if (
-        !actor.alive ||
-        actor.trainingTarget !== undefined ||
-        actor.tags.has('offline') ||
-        actor.tags.has('state.retired')
-    ) {
+    if (!canResolveDiscoveries(actor)) {
         return []
     }
     const state = actor.progression.constellations
@@ -93,23 +89,49 @@ export function finishConstellationAction(
         state.evidence[signal] = (state.evidence[signal] ?? 0) + 1
     }
     const events = discoverLastLight(actor, action)
-    const paths = new Set(action.skillIds.map((id) => skillConstellations[id]))
-    const candidates = constellationStars.filter((node) =>
-        eligible(actor, node, paths)
-    )
-    if (candidates.length === 0) {
-        return events
+    syncAbilityConstellations(actor)
+    const requirementContext = {
+        opened: state.opened,
+        levels: captureMasteryLevels(actor),
+        knownAbilities: actor.abilities.known,
+        ...(actor.heroClass === undefined
+            ? {}
+            : { heroClass: actor.heroClass }),
     }
-    const node = chooseStar(actor, candidates, action.random ?? Math.random)
-    state.opened.add(node.id)
-    state.credits[node.constellationId] -= 1
-    state.evidence = Object.fromEntries(
-        Object.entries(state.evidence).filter(
-            ([key]) => evidencePath(key) !== node.constellationId
+    let remaining = fullConstellationCatalog.length
+    while (remaining > 0) {
+        remaining -= 1
+        const candidates = fullConstellationCatalog.filter(
+            (node) =>
+                state.credits[node.constellationId] > 0 &&
+                canDiscoverConstellationStar(node, requirementContext)
         )
-    )
-    return [...events, discoveryNotice(actor, node.name)]
+        if (candidates.length === 0) {
+            break
+        }
+        const node = chooseStar(actor, candidates, action.random ?? Math.random)
+        state.opened.add(node.id)
+        state.credits[node.constellationId] -= 1
+        state.evidence = Object.fromEntries(
+            Object.entries(state.evidence).filter(
+                ([key]) => evidencePath(key) !== node.constellationId
+            )
+        )
+        events.push(discoveryNotice(actor, node.name))
+    }
+    events.push(...discoverLastLight(actor, action))
+    return events
 }
+
+function canResolveDiscoveries(actor: GameCharacter): boolean {
+    return (
+        actor.alive &&
+        actor.trainingTarget === undefined &&
+        !actor.tags.has('offline') &&
+        !actor.tags.has('state.retired')
+    )
+}
+
 function acceptActionReceipt(
     actor: GameCharacter,
     actionId: string | undefined
@@ -140,30 +162,27 @@ function evidencePath(key: string): ConstellationId | undefined {
     if (key === 'barrier') {
         return 'magic'
     }
-    return skillConstellations[key as SkillId]
-}
-
-function eligible(
-    actor: GameCharacter,
-    node: ConstellationStar,
-    paths: Set<ConstellationId>
-): boolean {
     return (
-        paths.has(node.constellationId) &&
-        actor.progression.constellations.credits[node.constellationId] > 0 &&
-        !hasStar(actor, node.id) &&
-        node.parents.every((id) => hasStar(actor, id)) &&
-        (node.ability === undefined || knownAbility(actor, node.ability))
-    )
-}
-
-function knownAbility(
-    actor: GameCharacter,
-    id: NonNullable<ConstellationStar['ability']>
-): boolean {
-    return id === 'fireball' || id === 'greater_fireball'
-        ? actor.progression.skills[id].unlocked
-        : actor.abilities.known.has(id)
+        {
+            swordsmanship: 'blade',
+            arcana: 'magic',
+            fireball: 'magic',
+            greater_fireball: 'magic',
+            marksmanship: 'arrow',
+            vitality: 'life',
+            stealth: 'shadow',
+            theft: 'shadow',
+            prayer: 'prayer',
+            blade: 'blade',
+            magic: 'magic',
+            arrow: 'arrow',
+            life: 'life',
+            shadow: 'shadow',
+            prayer_road: 'prayer_road',
+            prayer_lantern: 'prayer_lantern',
+            prayer_grave: 'prayer_grave',
+        } as Record<string, ConstellationId>
+    )[key]
 }
 
 function chooseStar(

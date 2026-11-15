@@ -83,8 +83,8 @@ it.each([
             expect.objectContaining({ kind: 'cast', phase: 'interrupted' })
         )
         expect(caster.mana).toBe(mana)
-        expect(caster.progression.skills.faith.practice).toBe(0)
-        expect(caster.progression.skills.miracles.practice).toBe(0)
+        expect(caster.progression.masteries.prayer.experience).toBe(0n)
+        expect(caster.progression.masteries.prayer.level).toBe(0)
         expect(target.alive).toBe(false)
         expect(finish(4500)).toEqual([])
     }
@@ -114,8 +114,8 @@ it.each([0, 0.99])(
         expect(target.alive).toBe(true)
         expect(caster.mana).toBe(100)
         expect(second.mana).toBe(firstRoll === 0 ? 120 : 100)
-        expect(second.progression.skills.miracles.practice).toBe(
-            firstRoll === 0 ? 0 : 1
+        expect(second.progression.masteries.prayer.level).toBe(
+            firstRoll === 0 ? 0 : 2
         )
     }
 )
@@ -231,6 +231,6 @@ it('resurrection of a victim killed only by friendly damage grants no practice',
     )
     expect(victim.alive).toBe(true)
     expect(caster.mana).toBe(100)
-    expect(caster.progression.skills.faith.practice).toBe(0)
-    expect(caster.progression.skills.miracles.practice).toBe(0)
+    expect(caster.progression.masteries.prayer.experience).toBe(0n)
+    expect(caster.progression.masteries.prayer.level).toBe(0)
 })

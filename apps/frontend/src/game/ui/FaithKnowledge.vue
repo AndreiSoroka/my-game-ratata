@@ -36,6 +36,12 @@ const deities: { id: DeityId; label: string }[] = [
     { id: 'lantern', label: 'Фонарь · мана' },
     { id: 'grave', label: 'Хранитель Праха · нежить' },
 ]
+const chanceLabels: Record<DeityId, string> = {
+    hearth: 'Шанс лечения',
+    road: 'Шанс восстановления энергии',
+    lantern: 'Шанс восстановления маны',
+    grave: 'Шанс лечения нежити',
+}
 const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен', wrathful: 'Разгневан' }
 function choose(deityId: DeityId): void {
     if (shrine.value && known.value.includes(prayerAbilityForDeity(deityId)))
@@ -51,7 +57,7 @@ function choose(deityId: DeityId): void {
         <div class="faith-secrets">
             <span v-if="patron.mood !== null">{{ moods[patron.mood] }}</span>
             <span v-if="patron.successChance !== null"
-                >Шанс ответа: {{ Math.round(patron.successChance * 100) }}%</span
+                >{{ chanceLabels[patron.id] }}: {{ Math.round(patron.successChance * 100) }}%</span
             >
             <span v-if="patron.changesInMs !== null"
                 >Перемена через {{ Math.ceil(patron.changesInMs / 1000) }} сек.</span
@@ -68,7 +74,8 @@ function choose(deityId: DeityId): void {
                 ><span>{{ deity.omen }}</span>
                 <span v-if="deity.mood !== null">{{ moods[deity.mood] }}</span>
                 <span v-if="deity.successChance !== null"
-                    >Шанс ответа: {{ Math.round(deity.successChance * 100) }}%</span
+                    >{{ chanceLabels[deity.id] }}:
+                    {{ Math.round(deity.successChance * 100) }}%</span
                 >
                 <span v-if="deity.changesInMs !== null"
                     >Перемена через {{ Math.ceil(deity.changesInMs / 1000) }} сек.</span

@@ -7,22 +7,25 @@ import ConstellationBuildSummary from './ConstellationBuildSummary.vue'
 import ConstellationDebug from './ConstellationDebug.vue'
 import ConstellationPrayerCalculator from './ConstellationPrayerCalculator.vue'
 
-it('starts with only Prayer and inspects enabled stars without switching them off', async () => {
+it('starts with Prayer and Resurrection and changes ownership only with Space', async () => {
     const view = mount(ConstellationDebug, { props: { syncUrl: false } })
     const graph = view.getComponent(ConstellationGraph)
-    expect(view.get('[data-testid="debug-build-count"]').text()).toContain('1')
-    expect(graph.props('enabledStarIds')?.size).toBe(1)
+    expect(view.get('[data-testid="debug-build-count"]').text()).toContain('2')
+    expect(graph.props('enabledStarIds')?.size).toBe(2)
     expect(graph.props('enabledStarIds')?.has('prayer.root')).toBe(true)
     graph.vm.focusNode('prayer.harm')
     await view.vm.$nextTick()
-    expect(graph.props('enabledStarIds')?.size).toBe(1)
+    expect(graph.props('enabledStarIds')?.size).toBe(2)
     await view.get('[data-node-id="prayer.harm"]').trigger('click')
+    expect(graph.props('enabledStarIds')?.has('prayer.harm')).toBe(false)
+    await view.get('[data-node-id="prayer.harm"]').trigger('keydown', { code: 'Space' })
     expect(graph.props('enabledStarIds')?.has('prayer.harm')).toBe(true)
     await view.get('[data-node-id="prayer.root"]').trigger('click')
-    expect(graph.props('enabledStarIds')?.size).toBe(2)
+    expect(graph.props('enabledStarIds')?.size).toBe(3)
     expect(view.get('[data-testid="debug-prayer-build-effects"]').text()).toContain('Кара')
     expect(view.find('[data-metric="Кара (если изучена)"]').exists()).toBe(false)
-    expect(view.get('[data-testid="debug-prayer-faith"]').element).toHaveProperty('value', '1')
+    expect(view.find('[data-testid="debug-prayer-faith"]').exists()).toBe(false)
+    expect(view.get('[data-testid="debug-mastery-level"]').text()).toBe('1')
     view.unmount()
 })
 it('names missing prerequisites, provides inspect-only links and persists cascade details', async () => {
@@ -33,10 +36,10 @@ it('names missing prerequisites, provides inspect-only links and persists cascad
     expect(view.get('[data-testid="debug-build-blocked"]').text()).toContain(
         'Нужно открыть «Суровый ответ»'
     )
-    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(2)
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(3)
     await view.get('[data-find-parent="prayer.harm1"]').trigger('click')
     expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Суровый ответ')
-    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(2)
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(3)
     await view.get('[data-testid="selected-star-toggle"]').trigger('click')
     await toggle('prayer.harm2')
     await view.get('[data-star-id="prayer.root"]').trigger('click')
@@ -57,41 +60,40 @@ it('keeps selected stars and example inputs through class and seed changes', asy
     const view = mount(ConstellationDebug, { props: { syncUrl: false } })
     await view.get('[data-testid="debug-build-all"]').trigger('click')
     expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(77)
-    expect(view.get('[data-testid="debug-prayer-faith"]').element).toHaveProperty('value', '1')
-    await view.get('[data-testid="debug-prayer-faith"]').setValue('7')
-    await view.get('[data-testid="debug-prayer-miracles"]').setValue('10')
+    await view.get('[data-testid="debug-prayer-mood"]').setValue('benevolent')
     await view.get('[data-testid="debug-last-light"]').setValue(true)
     await view.get('[data-testid="debug-class"]').setValue('vanguard')
     await view.get('[data-testid="debug-seed"]').setValue('preserve-build')
     await view.get('form').trigger('submit')
     expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(77)
     await view.get('[data-testid="debug-class"]').setValue('cleric')
-    expect(view.get('[data-testid="debug-prayer-faith"]').element).toHaveProperty('value', '7')
-    expect(view.get('[data-testid="debug-prayer-miracles"]').element).toHaveProperty('value', '10')
+    expect(view.get('[data-testid="debug-prayer-mood"]').element).toHaveProperty(
+        'value',
+        'benevolent'
+    )
     expect(view.get('[data-testid="debug-last-light"]').element).toHaveProperty('checked', true)
     await view.get('[data-testid="debug-build-reset"]').trigger('click')
-    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(1)
+    expect(view.getComponent(ConstellationGraph).props('enabledStarIds')?.size).toBe(2)
     await view.get('[data-testid="debug-build-clear"]').trigger('click')
     expect(view.get('[data-testid="debug-prayer-unavailable"]').text()).toContain('не включена')
     expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Молитва')
     view.unmount()
 })
-it('calculates the whole prayer set and applies Miracles plus the complete Last Light condition', async () => {
+it('calculates the whole prayer set and applies only learned bonuses plus the complete Last Light condition', async () => {
     const full = enableAllConstellationStars()
     const view = mount(ConstellationPrayerCalculator, {
         props: { nodeId: 'prayer.root', enabledStarIds: full },
     })
     const metric = (label: string) => view.get(`[data-build-metric="${label}"] dd`).text()
-    await view.get('[data-testid="debug-prayer-miracles"]').setValue('10')
-    expect(metric('Лечение при ответе')).toContain('26 HP')
+    expect(metric('Лечение при ответе')).toContain('7 HP')
     await view.get('[data-testid="debug-last-light"]').setValue(true)
-    expect(metric('Лечение при ответе')).toContain('29 HP')
+    expect(metric('Лечение при ответе')).toContain('7 HP')
     expect(metric('Множитель лечения')).toBe('×1,2')
     const noLastLight = new Set(full)
     noLastLight.delete('prayer.last_light')
     await view.setProps({ enabledStarIds: noLastLight })
     expect(view.find('[data-testid="debug-last-light"]').exists()).toBe(false)
-    expect(metric('Лечение при ответе')).toContain('26 HP')
+    expect(metric('Лечение при ответе')).toContain('7 HP')
     view.unmount()
 })
 it('shows cross-path runic totals only while its example charge is active', async () => {

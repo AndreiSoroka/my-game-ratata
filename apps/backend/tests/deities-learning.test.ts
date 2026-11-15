@@ -13,13 +13,9 @@ import { studyMagic } from '../src/game/magicLearning'
 import { NavigationService } from '../src/game/navigation'
 import { handleProgressionCommand } from '../src/game/progressionCommands'
 import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
-import {
-    practiceThreshold,
-    trainingMultiplier,
-    trainSkill,
-} from '../src/game/skillProgression'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
-describe('shared deities and meaningful faith', () => {
+describe('shared deities and meaningful miracles', () => {
     it('uses the same changing mood for everybody and reveals progressively better information', () => {
         const actor = hero()
         const peer = hero()
@@ -36,7 +32,7 @@ describe('shared deities and meaningful faith', () => {
         expect(deityMood('hearth', now)).not.toBe(
             deityMood('hearth', now + deityMoodCycleMs)
         )
-        actor.progression.skills.faith.level = 4
+
         actor.progression.constellations.opened.add('prayer.omen1')
         const hint = actor.snapshot(now).progression?.deity
         expect(hint).toMatchObject({
@@ -45,7 +41,7 @@ describe('shared deities and meaningful faith', () => {
             successChance: null,
         })
         expect(hint?.omen).not.toBe(vague?.omen)
-        actor.progression.skills.faith.level = 7
+
         actor.progression.constellations.opened.add('prayer.omen2')
         actor.progression.constellations.opened.add('prayer.omen3')
         expect(actor.snapshot(now).progression?.deity).toMatchObject({
@@ -54,7 +50,7 @@ describe('shared deities and meaningful faith', () => {
             successChance: miracleChance(actor, now),
             changesInMs: null,
         })
-        actor.progression.skills.faith.level = 10
+
         actor.progression.constellations.opened.add('prayer.omen4')
         expect(actor.snapshot(now).progression?.deity).toMatchObject({
             perception: 'precise',
@@ -62,7 +58,7 @@ describe('shared deities and meaningful faith', () => {
         })
     })
 
-    it('charges a failed prayer, trains faith, and never trains miracles from failure or cooldown spam', () => {
+    it('charges a failed prayer without granting XP from failure or cooldown spam', () => {
         const actor = hero()
         actor.abilities.known.add('pray')
         actor.hp -= 10
@@ -78,13 +74,11 @@ describe('shared deities and meaningful faith', () => {
         ])
         expect(actor.hp).toBe(before)
         expect(actor.mana).toBe(35)
-        expect(actor.progression.skills.faith.practice).toBe(1)
-        expect(actor.progression.skills.miracles.practice).toBe(0)
+        expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
         command(actor, { type: 'pray' }, [], 4_000, () => 0)
         finishPrayer(actor, 7_000, () => 0)
         expect(actor.hp).toBeGreaterThan(before)
-        expect(actor.progression.skills.faith.practice).toBe(2)
-        expect(actor.progression.skills.miracles.practice).toBe(1)
+        expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(30))
     })
 
     it.each(['hearth', 'road', 'lantern'] as const)(
@@ -121,10 +115,11 @@ describe('shared deities and meaningful faith', () => {
             expect(actor.energy > 20).toBe(deityId === 'road')
             expect(actor.mana > 20).toBe(deityId === 'lantern')
             expect(
-                actor.progression.skills[
-                    PRAYER_SCHOOL_DEFINITIONS[abilityId].miracleSkillId
-                ].practice
-            ).toBe(1)
+                masteryExperience(
+                    actor,
+                    PRAYER_SCHOOL_DEFINITIONS[abilityId].constellationId
+                )
+            ).toBe(prayerXp(30))
         }
     )
 })
@@ -182,8 +177,7 @@ describe('unreliable resurrection', () => {
         expect(target.alive).toBe(false)
         expect(target.reviveUntil).toBe(61_000)
         expect(caster.mana).toBe(100)
-        expect(caster.progression.skills.faith.practice).toBe(1)
-        expect(caster.progression.skills.miracles.practice).toBe(0)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
         expect(beginRevive(caster, target, 5_001)).toBe(true)
         expect(
             advanceRevive(
@@ -192,11 +186,10 @@ describe('unreliable resurrection', () => {
                 8_001,
                 () => 0
             )
-        ).toMatchObject([{ kind: 'revive' }])
+        ).toContainEqual(expect.objectContaining({ kind: 'revive' }))
         expect(target.alive).toBe(true)
         expect(caster.mana).toBe(80)
-        expect(caster.progression.skills.faith.practice).toBe(2)
-        expect(caster.progression.skills.miracles.practice).toBe(1)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
     })
 })
 
@@ -210,9 +203,9 @@ describe('finite studies and shared teaching', () => {
             expect(command(actor, message, [scholar]).length).toBeGreaterThan(0)
         }
         expect(actor.progression.magicChaptersRead).toBe(3)
-        expect(actor.progression.skills.arcana.level).toBe(2)
-        expect(actor.progression.skills.arcana.practice).toBe(16)
-        expect(actor.progression.skills.fireball.unlocked).toBe(false)
+        expect(actor.progression.masteries.magic.level).toBe(1)
+        expect(masteryExperience(actor, 'magic')).toBe(prayerXp(150))
+        expect(actor.abilities.known.has('fireball')).toBe(false)
         const before = structuredClone(actor.progression)
         expect(command(actor, message, [scholar])).toEqual([])
         const secondScholar = hero()
@@ -228,48 +221,26 @@ describe('finite studies and shared teaching', () => {
     it('validates teacher knowledge and distance, teaches atomically to another controller and prevents repeat practice', () => {
         const teacher = hero()
         const student = hero('vanguard', 'scripted')
-        student.progression.skills.arcana.level = 3
+        student.progression.masteries.magic.level = 3
         const message = { type: 'teach_magic', targetId: student.id } as const
         expect(command(teacher, message, [student])).toEqual([])
-        teacher.progression.skills.fireball.unlocked = true
+        teacher.abilities.known.add('fireball')
         student.position.x += 65
         expect(command(teacher, message, [student])).toEqual([])
         student.position.x -= 1
-        expect(command(teacher, message, [student])).toMatchObject([
-            { kind: 'notice' },
-            { kind: 'skill_up' },
-        ])
-        expect(student.progression.skills.fireball.unlocked).toBe(true)
-        expect(student.progression.skills.arcana.level).toBe(3)
-        expect(teacher.progression.skills.arcana.level).toBe(2)
+        expect(command(teacher, message, [student])).toContainEqual(
+            expect.objectContaining({ kind: 'notice' })
+        )
+        expect(student.abilities.known.has('fireball')).toBe(true)
+        expect(student.progression.masteries.magic.level).toBe(3)
+        expect(masteryExperience(student, 'magic')).toBe(prayerXp(400))
+        expect(masteryExperience(teacher, 'magic')).toBe(prayerXp(50))
         const before = structuredClone(teacher.progression)
         expect(command(teacher, message, [student])).toEqual([])
         expect(teacher.progression).toEqual(before)
         expect(
             command(teacher, { ...message, targetId: teacher.id }, [teacher])
         ).toEqual([])
-    })
-
-    it('adds multi-branch difficulty only after genuine practice, on top of all earned levels', () => {
-        const actor = hero()
-        actor.progression.skills.fireball.unlocked = true
-        expect(trainingMultiplier(actor.progression)).toBe(1)
-        trainSkill(actor, 'swordsmanship')
-        expect(trainingMultiplier(actor.progression)).toBe(1)
-        trainSkill(actor, 'faith')
-        expect(trainingMultiplier(actor.progression)).toBe(1.25)
-        trainSkill(actor, 'miracles')
-        expect(trainingMultiplier(actor.progression)).toBe(1.25)
-        trainSkill(actor, 'arcana')
-        expect(trainingMultiplier(actor.progression)).toBe(1.5)
-        expect(practiceThreshold(actor.progression, 'swordsmanship')).toBe(18)
-        trainSkill(actor, 'swordsmanship', 17)
-        expect(trainingMultiplier(actor.progression)).toBe(1.6)
-        expect(actor.snapshot(0).progression?.practicedBranches).toEqual([
-            'warfare',
-            'faith',
-            'arcana',
-        ])
     })
 })
 

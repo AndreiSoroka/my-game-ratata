@@ -1,8 +1,10 @@
 import {
+    type ConstellationId,
     type DeityId,
     type GameEventPayload,
     isPrayerAbility,
     type LearnAbilityId,
+    MASTERY_REWARDS,
     PRAYER_SCHOOL_DEFINITIONS,
     prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
@@ -16,7 +18,11 @@ import {
 } from './constellations'
 import { deityDefinitions } from './deities'
 import { distance } from './math'
-import { canPerformSkillAction, trainSkill } from './skillProgression'
+import {
+    awardMasteries,
+    canPerformSkillAction,
+    captureMasteryFactors,
+} from './skillProgression'
 
 export function canInteractWith(
     actor: GameCharacter,
@@ -43,19 +49,35 @@ export function learnFireball(
     if (
         !canInteractWith(actor, scholar, now) ||
         !scholar.tags.has('scholar') ||
-        actor.progression.skills.fireball.unlocked ||
-        actor.progression.skills.arcana.level < 3
+        actor.abilities.known.has('fireball') ||
+        actor.progression.masteries.magic.level < 3
     ) {
         return []
     }
-    actor.progression.skills.fireball.unlocked = true
+    const factors = captureMasteryFactors(scholar)
+    actor.abilities.known.add('fireball')
+    syncAbilityConstellations(actor)
     return [
         {
             actorId: actor.id,
             targetId: scholar.id,
             kind: 'notice',
-            text: 'Изучен Огненный шар. Применяйте его в бою, чтобы развивать навык.',
+            text: 'Изучен Огненный шар. Применяйте его в бою, чтобы развивать Магию.',
         },
+        ...finishConstellationAction(actor, {
+            constellationIds: ['magic'],
+            now,
+        }),
+        ...awardMasteries(
+            scholar,
+            [
+                {
+                    constellationId: 'magic',
+                    experience: MASTERY_REWARDS.magicTeaching,
+                },
+            ],
+            { now, factors, evidence: ['arcana'] }
+        ),
     ]
 }
 
@@ -71,6 +93,7 @@ export function studyMagic(
     ) {
         return []
     }
+    const factors = captureMasteryFactors(actor)
     actor.progression.magicChaptersRead += 1
     return [
         {
@@ -79,8 +102,16 @@ export function studyMagic(
             kind: 'notice',
             text: `Прочитана глава ${String(actor.progression.magicChaptersRead)} из 3. Магические знания укрепились.`,
         },
-        ...trainSkill(actor, 'arcana', 8),
-        ...finishConstellationAction(actor, { skillIds: ['arcana'], now }),
+        ...awardMasteries(
+            actor,
+            [
+                {
+                    constellationId: 'magic',
+                    experience: MASTERY_REWARDS.magicChapter,
+                },
+            ],
+            { now, factors, evidence: ['arcana'] }
+        ),
     ]
 }
 
@@ -92,24 +123,36 @@ export function teachMagic(
     if (
         !canInteractWith(actor, student, now) ||
         actor.id === student.id ||
-        !actor.progression.skills.fireball.unlocked ||
-        student.progression.skills.fireball.unlocked ||
-        student.progression.skills.arcana.level < 3
+        !actor.abilities.known.has('fireball') ||
+        student.abilities.known.has('fireball') ||
+        student.progression.masteries.magic.level < 3
     ) {
         return []
     }
-    student.progression.skills.fireball.unlocked = true
+    const factors = captureMasteryFactors(actor)
+    student.abilities.known.add('fireball')
+    syncAbilityConstellations(student)
     return [
         {
             actorId: actor.id,
             targetId: student.id,
             kind: 'notice',
-            text: `${student.nickname} изучает Огненный шар. Учитель и ученик развивают магические знания.`,
+            text: `${student.nickname} изучает Огненный шар.`,
         },
-        ...trainSkill(actor, 'arcana', 8),
-        ...trainSkill(student, 'arcana', 8),
-        ...finishConstellationAction(actor, { skillIds: ['arcana'], now }),
-        ...finishConstellationAction(student, { skillIds: ['arcana'], now }),
+        ...finishConstellationAction(student, {
+            constellationIds: ['magic'],
+            now,
+        }),
+        ...awardMasteries(
+            actor,
+            [
+                {
+                    constellationId: 'magic',
+                    experience: MASTERY_REWARDS.magicTeaching,
+                },
+            ],
+            { now, factors, evidence: ['arcana'] }
+        ),
     ]
 }
 
@@ -183,8 +226,20 @@ export function learnAbility(
         actor.progression.patron = PRAYER_SCHOOL_DEFINITIONS[id].deityId
     }
     syncAbilityConstellations(actor)
-    return abilityNotice(
-        actor,
-        'Способность изучена. Её можно назначить в свободную ячейку 1–4.'
-    )
+    const path: ConstellationId = isPrayerAbility(id)
+        ? PRAYER_SCHOOL_DEFINITIONS[id].constellationId
+        : id === 'shot'
+          ? 'arrow'
+          : 'magic'
+    return [
+        ...abilityNotice(
+            actor,
+            'Способность изучена. Её можно назначить в свободную ячейку 1–4.'
+        ),
+        ...finishConstellationAction(actor, {
+            constellationIds: [path],
+            now: context.now,
+            random: context.random,
+        }),
+    ]
 }

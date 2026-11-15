@@ -16,10 +16,11 @@ import {
     prayerNow as now,
     prayerSource as source,
 } from './gravePrayerTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 describe('shared probabilistic grave prayer', () => {
     it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
-        'uses five ordinary three-second %s prayers, pays five mana per completed attempt and practices once',
+        'uses five ordinary three-second %s prayers, pays five mana and awards ten XP per step with a final one hundred fifty',
         (patron) => {
             const f = gravePrayerFixture()
             f.actor.progression.patron = patron
@@ -49,9 +50,8 @@ describe('shared probabilistic grave prayer', () => {
                     required: 5,
                 })
                 expect(f.actor.mana).toBe(120 - (step + 1) * 5)
-                expect(f.actor.progression.skills.faith.practice).toBe(step + 1)
-                expect(f.actor.progression.skills.miracles.practice).toBe(
-                    step + 1
+                expect(masteryExperience(f.actor, 'prayer')).toBe(
+                    prayerXp(step === 4 ? 190 : (step + 1) * 10)
                 )
                 expect(f.advance(startsAt + GRAVE_PURIFY_CAST_MS)).toEqual([])
             }
@@ -173,8 +173,7 @@ describe('purification interrupts', () => {
             ])
             expect(f.actor.abilities.casting).toBeNull()
             expect(f.actor.mana).toBe(mana)
-            expect(f.actor.progression.skills.faith.practice).toBe(0)
-            expect(f.actor.progression.skills.miracles.practice).toBe(0)
+            expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(0))
             expect(f.service.get(source.id)?.phase).toBe('active')
         }
     )
@@ -262,7 +261,8 @@ describe('ordinary NPC prayer and atomic completion', () => {
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
         expect(f.actor.mana).toBe(115)
         expect(other.mana).toBe(120)
-        expect(other.progression.skills.faith.practice).toBe(0)
+        expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(150))
+        expect(masteryExperience(other, 'prayer')).toBe(prayerXp(0))
         expect(f.service.get(source.id)?.phase).toBe('purified')
     })
 

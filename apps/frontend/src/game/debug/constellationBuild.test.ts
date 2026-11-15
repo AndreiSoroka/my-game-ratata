@@ -22,7 +22,19 @@ describe('manual constellation build dependencies', () => {
         ['cleric', 'prayer.root'],
         ['ranger', 'arrow.root'],
     ] as const)('starts %s with exactly its own root', (heroClass, root) => {
-        expect([...initialConstellationBuild(heroClass)]).toEqual([root])
+        expect([...initialConstellationBuild(heroClass)]).toEqual(
+            heroClass === 'cleric' ? [root, 'prayer.revive'] : [root]
+        )
+    })
+
+    it('requires a learned spell before planning its passive enhancement', () => {
+        const missing = enableConstellationStar(new Set(['magic.root']), 'magic.fire_damage')
+        expect(missing.missingParents).toEqual(['magic.fireball'])
+        const learned = enableConstellationStar(
+            new Set(['magic.root', 'magic.fireball']),
+            'magic.fire_damage'
+        )
+        expect(learned.changed).toBe(true)
     })
 
     it('blocks a descendant without automatically opening missing parents', () => {
@@ -33,7 +45,7 @@ describe('manual constellation build dependencies', () => {
             missingParents: ['prayer.harm1'],
             disabledIds: [],
         })
-        expect([...blocked.enabledIds]).toEqual(['prayer.root'])
+        expect([...blocked.enabledIds]).toEqual(['prayer.root', 'prayer.revive'])
         const harm = enableConstellationStar(initial, 'prayer.harm')
         expect(harm.changed).toBe(true)
         expect(enableConstellationStar(harm.enabledIds, 'prayer.harm2').missingParents).toEqual([
@@ -43,7 +55,7 @@ describe('manual constellation build dependencies', () => {
         const anger = enableConstellationStar(answer.enabledIds, 'prayer.harm2')
         expect(anger.changed).toBe(true)
         validBuild(anger.enabledIds)
-        expect([...initial]).toEqual(['prayer.root'])
+        expect([...initial]).toEqual(['prayer.root', 'prayer.revive'])
     })
 
     it('requires both immediate parents for area prayer and cross-path stars', () => {
@@ -129,7 +141,7 @@ describe('manual constellation build cascades and isolation', () => {
             expect(result.error).toBe('Звезда не найдена.')
             expect(result.changed).toBe(false)
             result.enabledIds.clear()
-            expect([...initial]).toEqual(['prayer.root'])
+            expect([...initial]).toEqual(['prayer.root', 'prayer.revive'])
         }
     })
 

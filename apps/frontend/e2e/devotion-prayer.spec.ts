@@ -37,7 +37,7 @@ for (const mobile of [false, true]) {
         expect(after.resources.mana.kind).toBe('percent')
         expect(after.resourceChecks?.prayers.pray.devotion).toBe('ready')
         expect(after.position).toEqual(before.position)
-        expect(after.progression?.skills).toEqual(before.progression?.skills)
+        expect(after.progression?.masteries).toEqual(before.progression?.masteries)
         await expect(
             page.getByText('Нет подходящей цели для молитвы.', { exact: true })
         ).toHaveCount(0)

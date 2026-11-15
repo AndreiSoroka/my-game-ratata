@@ -4,6 +4,7 @@ import { computed, nextTick, ref } from 'vue'
 
 import ConstellationBackground from './ConstellationBackground.vue'
 import { constellationLabels } from './constellationLabels'
+import { nextConstellationNode } from './constellationNavigation'
 import ConstellationStar from './ConstellationStar.vue'
 import { useConstellationViewport } from './useConstellationViewport'
 
@@ -40,7 +41,9 @@ const backgroundSeed = computed(() =>
         .join('|')
 )
 const interactiveNodes = computed(() =>
-    props.constellation.nodes.filter((node) => detailed.value || node.parents.length === 0)
+    props.constellation.nodes.filter(
+        (node) => canInteract(node) && (detailed.value || node.parents.length === 0)
+    )
 )
 const labels = computed(() =>
     constellationLabels(
@@ -55,6 +58,9 @@ const labels = computed(() =>
             : label
     )
 )
+function canInteract(node: ConstellationNodeSnapshot): boolean {
+    return props.enabledStarIds !== undefined || node.unlocked
+}
 function nodeEnabled(node: ConstellationNodeSnapshot): boolean {
     return node.unlocked && (props.enabledStarIds?.has(node.id) ?? true)
 }
@@ -74,22 +80,28 @@ const tabStop = computed(
 function resetSky(): void {
     reset()
     const center = props.constellation.layout?.centerNodeId
-    if (center) emit('select', center)
+    if (center && nodeById.value.get(center) && canInteract(nodeById.value.get(center)!))
+        emit('select', center)
 }
 function focusNode(id: string): void {
     const node = nodeById.value.get(id)
-    if (!node) return
+    if (!node || !canInteract(node)) return
     emit('select', node.id)
     focusPath(node)
 }
 defineExpose({ focusNode })
 function choose(node: ConstellationNodeSnapshot, pointer = true): void {
-    if (pointer && didDrag()) return
+    if ((pointer && didDrag()) || !interactiveNodes.value.some((entry) => entry.id === node.id))
+        return
+    focusedId.value = node.id
+    void nextTick(() =>
+        svg.value?.querySelector<SVGGElement>(`[data-node-id="${node.id}"]`)?.focus()
+    )
     emit('select', node.id)
-    if (props.enabledStarIds !== undefined) emit('activate', node.id)
     if (node.parents.length === 0) focusPath(node)
 }
 function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
+    if (!interactiveNodes.value.some((entry) => entry.id === node.id)) return
     const direction = {
         ArrowLeft: [-1, 0],
         ArrowRight: [1, 0],
@@ -98,19 +110,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
     }[event.code]
     if (direction) {
         event.preventDefault()
-        const [dx = 0, dy = 0] = direction
-        const next = interactiveNodes.value
-            .filter(
-                (candidate) =>
-                    candidate.id !== node.id &&
-                    (candidate.x - node.x) * dx + (candidate.y - node.y) * dy > 0
-            )
-            .sort((a, b) => {
-                const score = (candidate: ConstellationNodeSnapshot) =>
-                    Math.hypot(candidate.x - node.x, candidate.y - node.y) +
-                    Math.abs((candidate.x - node.x) * dy - (candidate.y - node.y) * dx) * 2
-                return score(a) - score(b)
-            })[0]
+        const next = nextConstellationNode(interactiveNodes.value, node, direction)
         if (next) {
             focusedId.value = next.id
             emit('select', next.id)
@@ -119,18 +119,33 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
                 svg.value?.querySelector<SVGGElement>(`[data-node-id="${next.id}"]`)?.focus()
             )
         }
+    } else if (event.code === 'Space' && props.enabledStarIds !== undefined) {
+        event.preventDefault()
+        if (!event.repeat) {
+            emit('select', node.id)
+            emit('activate', node.id)
+        }
     } else if (['Enter', 'Space', 'KeyE'].includes(event.code)) {
         event.preventDefault()
         if (!event.repeat) choose(node, false)
-    } else if (event.code === 'Equal' || event.code === 'NumpadAdd') {
-        event.preventDefault()
-        scale(1.2)
-    } else if (event.code === 'Minus' || event.code === 'NumpadSubtract') {
-        event.preventDefault()
-        scale(1 / 1.2)
-    } else if (event.code === 'Home') {
-        event.preventDefault()
-        resetSky()
+    } else cameraKey(event)
+}
+function cameraKey(event: KeyboardEvent): void {
+    switch (event.code) {
+        case 'Equal':
+        case 'NumpadAdd':
+            event.preventDefault()
+            scale(1.2)
+            break
+        case 'Minus':
+        case 'NumpadSubtract':
+            event.preventDefault()
+            scale(1 / 1.2)
+            break
+        case 'Home':
+            event.preventDefault()
+            resetSky()
+            break
     }
 }
 </script>
@@ -192,10 +207,11 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
                 :key="node.id"
                 :node="node"
                 :color="colors.get(node.constellationId) ?? '#dce6dd'"
-                :selected="selectedId === node.id"
+                :selected="selectedId === node.id && canInteract(node)"
                 :enabled="enabledStarIds === undefined ? undefined : nodeEnabled(node)"
-                :interactive="detailed || node.parents.length === 0"
+                :interactive="interactiveNodes.some((entry) => entry.id === node.id)"
                 :tab-stop="tabStop === node.id"
+                :show-halo="detailed || node.parents.length === 0"
                 :unit-scale="unitScale"
                 @focus="focusedId = node.id"
                 @select="choose(node)"
@@ -217,80 +233,12 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
             </foreignObject>
         </svg>
         <p class="constellation-map__help">
-            Перетаскивайте небосвод · + / − масштаб · стрелки выбирают звёзды
+            Перетаскивайте небосвод · + / − масштаб · клик и стрелки выбирают звёзды
+            <template v-if="enabledStarIds !== undefined">
+                · Пробел включает или отключает</template
+            >
         </p>
     </div>
 </template>
 
-<style scoped>
-.constellation-map {
-    position: relative;
-    min-width: 0;
-    overflow: hidden;
-    border: 1px solid #3a5663;
-    background:
-        radial-gradient(ellipse at 20% 25%, #183e4a80, transparent 55%),
-        radial-gradient(ellipse at 75% 80%, #40312566, transparent 55%), #08151f;
-}
-.constellation-map__sky {
-    display: block;
-    width: 100%;
-    height: 450px;
-    touch-action: none;
-    user-select: none;
-    cursor: grab;
-}
-.constellation-map__sky:active {
-    cursor: grabbing;
-}
-.constellation-map__tools {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    display: flex;
-    gap: 5px;
-    z-index: 1;
-}
-.constellation-map__tools button {
-    width: 36px;
-    height: 36px;
-    border: 1px solid #68818b;
-    background: #102832e8;
-    color: #e8d4a8;
-    font-size: 20px;
-    cursor: pointer;
-}
-.constellation-map__tools button:focus-visible {
-    outline: 2px solid #ffe0a1;
-}
-.constellation-label {
-    pointer-events: none;
-    overflow: hidden;
-}
-.constellation-label div {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-align: center;
-    background: #08151fe8;
-    line-height: 1.25;
-    padding: 2% 4%;
-    box-sizing: border-box;
-}
-.constellation-map__help {
-    margin: 0;
-    padding: 8px 12px;
-    border-top: 1px solid #294350;
-    color: #8ca5b4;
-    font-size: 10px;
-}
-@media (max-width: 600px) {
-    .constellation-map__sky {
-        height: 340px;
-    }
-    .constellation-map__help {
-        font-size: 9px;
-    }
-}
-</style>
+<style scoped src="./constellationGraph.css"></style>

@@ -6,80 +6,11 @@ import type {
 import { describe, expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
-import { advanceRevive, retireCharacter } from '../src/game/characterLife'
-import { attemptAttack, resolvePendingAttackHit } from '../src/game/combat'
-import { createItemInstance } from '../src/game/inventory'
+import { advanceRevive } from '../src/game/characterLife'
+import { syncAbilityConstellations } from '../src/game/constellations'
 import { NavigationService } from '../src/game/navigation'
 import { handleProgressionCommand } from '../src/game/progressionCommands'
-import { practiceThreshold, trainSkill } from '../src/game/skillProgression'
 import { castSpell } from '../src/game/spellCasting'
-
-describe('practice-driven knowledge', () => {
-    it('starts with basic skills, makes later training harder, and caps each branch at ten', () => {
-        const actor = hero()
-        expect(actor.snapshot(0).progression).toMatchObject({
-            totalEarnedLevels: 0,
-            trainingMultiplier: 1,
-            resurrectionUnlocked: false,
-        })
-        expect(practiceThreshold(actor.progression, 'miracles')).toBe(8)
-        expect(trainSkill(actor, 'swordsmanship', 11)).toEqual([])
-        expect(trainSkill(actor, 'swordsmanship')).toMatchObject([
-            { kind: 'skill_up', amount: 2 },
-        ])
-        expect(practiceThreshold(actor.progression, 'miracles')).toBe(9)
-        expect(practiceThreshold(actor.progression, 'swordsmanship')).toBe(27)
-        expect(actor.snapshot(0).progression?.totalEarnedLevels).toBe(1)
-        trainSkill(actor, 'fireball', 100_000)
-        expect(actor.progression.skills.fireball.level).toBe(1)
-        actor.progression.skills.fireball.unlocked = true
-        trainSkill(actor, 'fireball', 100_000)
-        expect(actor.progression.skills.fireball.level).toBe(10)
-        expect(actor.progression.skills.fireball.practice).toBe(0)
-        expect(actor.progression.skills.greater_fireball.unlocked).toBe(true)
-        expect(practiceThreshold(actor.progression, 'fireball')).toBe(0)
-        expect(trainSkill(actor, 'fireball', 100_000)).toEqual([])
-    })
-
-    it('practices swords only on damaging hits with an equipped sword', () => {
-        const actor = hero()
-        const target = enemy()
-        strike(actor, target, 1_000)
-        expect(actor.progression.skills.swordsmanship.practice).toBe(0)
-        actor.equipment.weapon = createItemInstance('old_sword')
-        target.position.y = 200
-        strike(actor, target, 2_000)
-        expect(actor.progression.skills.swordsmanship.practice).toBe(0)
-        target.position.y = 112
-        strike(actor, target, 3_000)
-        expect(actor.progression.skills.swordsmanship.practice).toBe(1)
-        const before = actor.snapshot(3_000).stats.minDamage
-        trainSkill(actor, 'swordsmanship', 11)
-        expect(actor.snapshot(3_000).stats.minDamage).toBe(before + 1)
-        expect(actor.level).toBe(1)
-        expect(actor.xp).toBe(0)
-    })
-
-    it('clears learned spells and all skill practice at permanent death', () => {
-        const actor = hero()
-        actor.progression.skills.fireball.unlocked = true
-        trainSkill(actor, 'fireball', 100_000)
-        trainSkill(actor, 'miracles', 30)
-        actor.applyDamage(actor.hp, 1_000)
-        retireCharacter(actor)
-        expect(actor.progression.skills.fireball).toEqual({
-            level: 1,
-            practice: 0,
-            unlocked: false,
-        })
-        expect(actor.progression.skills.greater_fireball.unlocked).toBe(false)
-        expect(actor.progression.skills.miracles).toEqual({
-            level: 1,
-            practice: 0,
-            unlocked: true,
-        })
-    })
-})
 
 describe('shared prayers and learning', () => {
     it.each(['network_player', 'scripted'] as const)(
@@ -91,8 +22,8 @@ describe('shared prayers and learning', () => {
                 { kind: 'cast', abilityId: 'pray', phase: 'completed' },
             ])
             expect(actor.mana).toBe(startMana)
-            expect(actor.progression.skills.faith.practice).toBe(0)
-            expect(actor.progression.skills.miracles.practice).toBe(0)
+            expect(actor.progression.masteries.prayer.experience).toBe(0n)
+            expect(actor.progression.masteries.prayer.experience).toBe(0n)
             actor.hp -= 15
             command(actor, { type: 'pray' }, [], 4_000)
             const events = advanceRevive(
@@ -110,11 +41,15 @@ describe('shared prayers and learning', () => {
             const restored =
                 events.find((event) => event.kind === 'heal')?.amount ?? 0
             expect(restored).toBeGreaterThan(0)
-            expect(actor.progression.skills.miracles.practice).toBe(1)
+            expect(actor.progression.masteries.prayer.experience).toBe(
+                30_000_000n
+            )
             expect(actor.hp).toBe(actor.maxHp - 15 + restored)
             expect(actor.mana).toBe(startMana - 5)
             expect(command(actor, { type: 'pray' }, [], 6_999)).toEqual([])
-            expect(actor.progression.skills.miracles.practice).toBe(1)
+            expect(actor.progression.masteries.prayer.experience).toBe(
+                30_000_000n
+            )
             command(actor, { type: 'pray' }, [], 7_000)
             advanceRevive(
                 actor,
@@ -128,7 +63,9 @@ describe('shared prayers and learning', () => {
                     random: () => 0,
                 }
             )
-            expect(actor.progression.skills.miracles.practice).toBe(2)
+            expect(actor.progression.masteries.prayer.experience).toBe(
+                60_000_000n
+            )
             actor.mana = 4
             expect(command(actor, { type: 'pray' }, [], 10_000)).toMatchObject([
                 { kind: 'notice' },
@@ -140,7 +77,7 @@ describe('shared prayers and learning', () => {
         'teaches fireball to %s only near a living friendly scholar',
         (heroClass) => {
             const actor = hero(heroClass)
-            actor.progression.skills.arcana.level = 3
+            actor.progression.masteries.magic.level = 3
             const scholar = hero()
             scholar.tags.add('scholar')
             scholar.position.x += 65
@@ -155,7 +92,7 @@ describe('shared prayers and learning', () => {
                     [scholar]
                 )
             ).toEqual([])
-            expect(actor.progression.skills.fireball.unlocked).toBe(false)
+            expect(actor.abilities.known.has('fireball')).toBe(false)
             scholar.position.x -= 1
             expect(
                 command(
@@ -168,10 +105,8 @@ describe('shared prayers and learning', () => {
                     [scholar]
                 )
             ).toMatchObject([{ kind: 'notice' }])
-            expect(actor.progression.skills.fireball.unlocked).toBe(true)
-            expect(actor.progression.skills.greater_fireball.unlocked).toBe(
-                false
-            )
+            expect(actor.abilities.known.has('fireball')).toBe(true)
+            expect(actor.abilities.known.has('greater_fireball')).toBe(false)
         }
     )
 })
@@ -179,7 +114,7 @@ describe('shared prayers and learning', () => {
 describe('authoritative ranged spells', () => {
     it('damages an enemy, spends mana, observes cooldown, and trains on successful hits', () => {
         const actor = hero()
-        actor.progression.skills.fireball.unlocked = true
+        actor.abilities.known.add('fireball')
         const target = enemy()
         target.position.x += 100
         const events = command(
@@ -194,7 +129,7 @@ describe('authoritative ranged spells', () => {
         ])
         expect(target.hp).toBe(target.maxHp - 8)
         expect(actor.mana).toBe(28)
-        expect(actor.progression.skills.fireball.practice).toBe(1)
+        expect(actor.progression.masteries.magic.experience).toBe(40_000_000n)
         expect(
             command(
                 actor,
@@ -227,7 +162,7 @@ describe('authoritative ranged spells', () => {
         ])
         expect(target.alive).toBe(false)
         expect(target.respawnAt).toBe(17_000)
-        expect(actor.progression.skills.fireball.practice).toBe(2)
+        expect(actor.progression.masteries.magic.experience).toBe(80_000_000n)
         expect(
             command(
                 actor,
@@ -256,7 +191,7 @@ describe('spell validation', () => {
             expect(command(actor, message, [target])).toEqual([])
         }
         check()
-        actor.progression.skills.fireball.unlocked = true
+        actor.abilities.known.add('fireball')
         target.tags.add('offline')
         check()
         target.tags.delete('offline')
@@ -286,7 +221,7 @@ describe('spell validation', () => {
             })
         ).toEqual([])
         expect(actor.mana).toBe(40)
-        expect(actor.progression.skills.fireball.practice).toBe(0)
+        expect(actor.progression.masteries.magic.experience).toBe(0n)
     })
 
     it('requires greater fireball mastery and validates the caster even at the shared spell entry point', () => {
@@ -298,8 +233,9 @@ describe('spell validation', () => {
             targetId: target.id,
         } as const
         expect(command(actor, message, [target])).toEqual([])
-        actor.progression.skills.fireball.unlocked = true
-        trainSkill(actor, 'fireball', 100_000)
+        actor.abilities.known.add('fireball')
+        actor.progression.masteries.magic.level = 10
+        syncAbilityConstellations(actor)
         const context = {
             characters: [target],
             navigation: openMap(),
@@ -316,7 +252,7 @@ describe('spell validation', () => {
             { kind: 'damage', amount: 18 },
         ])
         expect(actor.mana).toBe(16)
-        expect(actor.progression.skills.greater_fireball.practice).toBe(1)
+        expect(actor.progression.masteries.magic.experience).toBe(70_000_000n)
         actor.applyDamage(actor.hp, 2_000)
         expect(castSpell(actor, message, { ...context, now: 4_000 })).toEqual(
             []
@@ -370,23 +306,5 @@ function command(
         navigation: openMap(),
         now,
         random: () => 0,
-    })
-}
-function strike(
-    actor: GameCharacter,
-    target: GameCharacter,
-    now: number
-): void {
-    const context = {
-        actor,
-        targets: [target],
-        now,
-        tileSize: 16,
-        respawnDelayMsFor: () => 15_000,
-    }
-    attemptAttack(context)
-    resolvePendingAttackHit({
-        ...context,
-        now: now + actor.config.combat.attackWindupMs,
     })
 }

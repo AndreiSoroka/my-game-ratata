@@ -12,44 +12,48 @@ const longNotes = computed(
 )
 </script>
 <template>
-    <section
-        class="debug-effect-chance"
-        data-testid="debug-effect-chance"
-        aria-label="Шанс срабатывания эффекта"
-    >
-        <h2>Шанс срабатывания эффекта</h2>
-        <p data-testid="debug-effect-chance-summary">{{ chance.summary }}</p>
+    <div>
         <ConstellationPrayerCalculator :node-id="nodeId" :enabled-star-ids="enabledStarIds" />
-        <ConstellationChanceFormulas :details="chance.formulaDetails" :legacy="chance.formulas" />
-        <details v-if="chance.examples.length" class="chance-examples">
-            <summary>Готовые примеры расчёта</summary>
-            <table aria-label="Примеры расчёта">
-                <tbody>
-                    <tr v-for="example in chance.examples" :key="example.label">
-                        <th scope="row">{{ example.label }}</th>
-                        <td>{{ example.value }}</td>
-                    </tr>
-                </tbody>
-            </table>
+        <details
+            class="debug-effect-chance"
+            data-testid="debug-effect-chance"
+            aria-label="Шанс срабатывания эффекта"
+        >
+            <summary>Шанс срабатывания эффекта</summary>
+            <p data-testid="debug-effect-chance-summary">{{ chance.summary }}</p>
+            <ConstellationChanceFormulas
+                :details="chance.formulaDetails"
+                :legacy="chance.formulas"
+            />
+            <details v-if="chance.examples.length" class="chance-examples">
+                <summary>Готовые примеры расчёта</summary>
+                <table aria-label="Примеры расчёта">
+                    <tbody>
+                        <tr v-for="example in chance.examples" :key="example.label">
+                            <th scope="row">{{ example.label }}</th>
+                            <td>{{ example.value }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </details>
+            <details v-if="longNotes" class="chance-notes">
+                <summary>Примечания</summary>
+                <ul>
+                    <li v-for="note in chance.notes" :key="note">{{ note }}</li>
+                </ul>
+            </details>
+            <section v-else-if="chance.notes.length" class="chance-notes">
+                <h3>Примечания</h3>
+                <ul>
+                    <li v-for="note in chance.notes" :key="note">{{ note }}</li>
+                </ul>
+            </section>
         </details>
-        <details v-if="longNotes" class="chance-notes">
-            <summary>Примечания</summary>
-            <ul>
-                <li v-for="note in chance.notes" :key="note">{{ note }}</li>
-            </ul>
-        </details>
-        <section v-else-if="chance.notes.length" class="chance-notes">
-            <h3>Примечания</h3>
-            <ul>
-                <li v-for="note in chance.notes" :key="note">{{ note }}</li>
-            </ul>
-        </section>
-    </section>
+    </div>
 </template>
 <style scoped>
 .debug-effect-chance {
-    display: grid;
-    gap: 12px;
+    display: block;
     padding: 16px;
     border: 1px solid #425f6d;
     border-top: 0;
@@ -59,7 +63,7 @@ const longNotes = computed(
         12px/1.55 system-ui,
         sans-serif;
 }
-h2,
+summary,
 h3,
 p,
 ul {
@@ -110,6 +114,12 @@ summary {
 summary:focus-visible {
     outline: 2px solid #ffe0a1;
     outline-offset: 3px;
+}
+details[open] > p,
+details[open] > ul,
+details[open] > details,
+details[open] > section {
+    margin-top: 12px;
 }
 details[open] ul {
     margin-top: 8px;

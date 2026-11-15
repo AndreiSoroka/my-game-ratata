@@ -1,5 +1,5 @@
 import type { ConstellationNodeSnapshot, HeroClass } from '@my-game-ratata/contracts'
-import { ref, shallowRef } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
 
 import {
     type ConstellationBuildChange,
@@ -23,6 +23,12 @@ export function useConstellationBuild(
     nodes: () => ConstellationNodeSnapshot[]
 ) {
     const enabledStarIds = shallowRef<ReadonlySet<string>>(initialConstellationBuild(heroClass()))
+    watch(heroClass, (next) => {
+        enabledStarIds.value = new Set([
+            ...enabledStarIds.value,
+            ...initialConstellationBuild(next),
+        ])
+    })
     const feedback = ref<BuildFeedback>()
     const lastCascade = ref<BuildCascade>()
     let receipt = 0

@@ -5,6 +5,8 @@ import type {
 } from '@my-game-ratata/contracts'
 
 export interface ConstellationStar {
+    acquisition: 'root' | 'random' | 'learned' | 'event'
+    minimumLevel: number
     id: string
     constellationId: ConstellationId
     name: string
@@ -30,6 +32,8 @@ export function star(
     ability?: AbilityId
 ): ConstellationStar {
     return {
+        acquisition: 'random',
+        minimumLevel: 1,
         id: `${path}.${suffix}`,
         constellationId: path,
         name,

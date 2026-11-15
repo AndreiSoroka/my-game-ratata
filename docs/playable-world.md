@@ -114,31 +114,57 @@ Restarting the server begins a new world session; durable persistence is not imp
 
 ## Knowledge through use
 
-Open **Персонаж** through the game menu or **P** for **Характеристики** and
-**Развитие**. The former Knowledge button opens Development. Nine constellations
-represent blade, magic, prayer, archery, life, shadow, the Wanderer, Clarity and Ash.
-Each living identity has its own irregular star map, with its initial class root
-at the center. Discoveries, patron changes, reconnecting and temporary death retain
-that map; a new identity gets a new one. Layout randomness is private and separate
-from combat and progression rolls. Skill levels remain 1–10;
-earned steps reveal weighted random eligible passive stars through meaningful use.
-Only known stars and nearest unknown neighbors are projected to the owner. See
-[Character development](character-development.md) for the catalogue and controls.
-Prayer now channels for three seconds, charges five mana on completion and can
-repeat immediately. Empty devotion stays free, cosmetic and untrainable. Failed
-meaningful requests train Faith; actual gifts, hostile damage or grave progress
-train Miracles once per completed cast. Harmful waves and deity insight require
-learned stars. Resurrection retains its existing class/mastery requirements.
-An active star describes a standalone hotbar action; all other stars are labelled
-«Пассивный навык», including resurrection enhancements to their parent prayer.
-Selecting a star only opens its card. Home and the overview button return to the
-initial class constellation.
+Open **Персонаж** from the menu or **P** for **Характеристики** and **Развитие**.
+Nine independent constellation masteries start at 0: Blade, Magic, Prayer, Arrow, Life,
+Shadow, Road, Clarity and Ash. Prayer mastery is named **Чудеса**. Each living identity
+has a stable personal star map centered on its initial class; discoveries, patron
+changes, reconnects and temporary death preserve it. Layout randomness is private
+and independent of combat and progression. Unknown grey stars cannot be clicked
+or focused, and their metadata is not projected to the owner.
 
-Use **Изучить огненный шар** near the scholar in camp, within 64 world units. Fireball is initially unlearned for every background, including Arcanist. Select a nearby hostile character in the knowledge window and cast: Fireball costs 12 mana, has range 160 and a 1-second cooldown. Greater Fireball unlocks automatically at Fireball level 10; it costs 24 mana, has range 192 and a 2-second cooldown. The server checks resources, range, line of sight and cooldowns. Successful hits advance practice. Practice across several branches raises the cost of future practice; the window displays the current multiplier and practiced branches. Kills no longer grant generic level XP. Overall learning level is one plus earned skill levels; further practice grows more expensive as that total rises.
+Thresholds follow Fibonacci: 100, 100, 200, 300, 500, 800… XP. Remainders carry, there
+is no level 10 cap, and every attained level earns one random opening for that
+constellation. Levels never pay for stars or directly increase damage/healing.
+Equipment, baseline stats, moods and learned stars determine numerical effects.
+All requirements—parents, level and knowledge—must hold before a random star enters
+the pool. Normal star generations require levels 1, 3, 5, 7… Empty pools bank openings;
+newly satisfied conditions resolve all eligible pending openings. Special event
+stars remain free and cannot be substituted by a random discovery.
 
-Faith is its own ten-level skill. Hearth restores health and permits resurrection, Road restores energy, and Lantern restores mana. Change patrons near a cleric or shrine. Their moods change with the world clock and affect the chance and strength of a gift; a resurrection ritual can fail. Divine insight is earned through Prayer stars: an omen, the exact mood, the chance of an answer and the countdown are separate discoveries. Other deities have their own insight branch; Faith levels alone never reveal these details. The UI only displays information present in the authoritative snapshot.
+Constellation conflict reduces earned XP from all nine branches, including Life.
+For own level L, total level T, and summed positive lag D, the multiplier is
+`((L+2)/(T+2))^(2/3) * sqrt((L+2)/(L+2+D))`. One developed path has no penalty;
+two paths at 10 give 20.03 of 30 XP. Frozen per-action factors and integer micro-XP
+keep multi-target rewards stable. The previous global training-cost multiplier
+and separate Faith/Miracles scales are removed. See
+[Character development](character-development.md) for rewards, examples and controls.
 
-Arcana grows through three finite book chapters at the scholar and teaching a genuinely unlearned friendly character. Reading a completed chapter again or repeating an already-known lesson does not farm practice. Teaching requires that the teacher knows Fireball and the student is alive and nearby.
+Prayer channels for three seconds and costs five mana on completion. Empty
+and failed requests give no XP. Each useful recipient earns 30 base XP; Kara earns 70
+per hostile victim; grave steps earn 10 each and the final step 150 instead, 190 in all.
+Resurrection earns 200. Resource gifts credit only genuinely useful resource loss,
+never the prayers' own mana cost or repeated repayment of the same loss. Training
+objects, artificial friendly injuries and empty applications remain untrainable.
+The four prayers keep separate constellations and bonuses remain school-specific.
+Mood controls the baseline success chances 80/55/25%; no level bonus applies.
+
+Clerics start with Prayer and its passive Resurrection at mastery 0. Other classes
+need the appropriate learned prayer and mastery 5; Ash revives undead, Mother
+revives living species. Active stars represent assignable actions; enhancements
+are labelled «Пассивный навык». A normal player click only reads a known star.
+
+Fireball is learned from a living friendly scholar within 64 world units with Magic 3.
+It costs 12 mana, range 160, cooldown 1 second. Greater Fireball requires Magic 10 and known
+Fireball; it costs 24 mana, range 192, cooldown 2 seconds. Knowledge is stored independently
+from mastery. Three finite chapters and successful teaching give 50 Magic XP; repeated
+known chapters or lessons give none. Only the actual teacher earns teaching XP.
+
+The standalone [debug atlas](http://localhost:4173/?debug=constellations) uses the
+same mastery math and requirements without sending gameplay commands. Clicking
+reads; Space toggles the chosen star, with explicit switches for touch use. Levels
+are derived from the selected plan and gates. The summary shows conflict, useful
+XP and actions to the next level; formulas and unlock conditions start collapsed.
+The plan shows unassigned openings explicitly instead of assuming unknown bonuses.
 
 ## Guild contracts and parties
 
@@ -384,7 +410,7 @@ Trees and tall props are complete cached sprites sorted by their ground contact 
 
 C enables sneaking. Approach a living NPC or player within 28 world units, then use E and choose **Попытаться украсть**. The server validates reach, line of sight, action readiness, 10 energy and capacity. Each paid attempt has an 8-second cooldown; retrying the same target requires 60 seconds. Empty pockets and invalid attempts give no practice. The theft action takes one existing, unequipped item or whole material stack from the victim's inventory; equipped items are not pickpocketed. Stack limits and receiving capacity are checked before the transfer. Named residents start with finite authored pocket contents, independent of shop offers. Nothing is generated on demand by stealing.
 
-An undetected success transfers the same item instance atomically. It raises theft and stealth practice. A paid failed attempt still practices theft; standing with C enabled or retrying rejected commands does not. The target's facing and both learned skills affect the roll, with a remaining risk even at high levels. An undetected failure or success sends no accusation to the victim. Normal character snapshots reveal only the viewer's own bag and exact practice counters. Other characters' equipment and attained skill levels remain visible; hidden practice does not reveal an unnoticed attempt.
+An undetected success transfers the same item instance atomically. It grants 70 base Shadow XP. Failed attempts grant no XP; standing with C enabled or retrying rejected commands does not. The target's facing and learned stars affect the roll, with a remaining risk. An undetected failure or success sends no accusation to the victim. Normal character snapshots reveal only the viewer's own bag and exact mastery experience. Other characters' equipment and attained constellation levels remain visible; hidden experience does not reveal an unnoticed attempt.
 
 On detection, combat-capable NPCs defend themselves and noncombatants flee and can call the city guard. A human-controlled victim retains control and receives a private warning. **Позвать стражу** is available for 30 seconds after a witnessed attempt. It requests a temporary response; arbitrary accusations are rejected. Retaliation uses ordinary movement and combat and is limited to the actual participants. Pursuit remembers the last-known point when sight is lost.
 
@@ -392,7 +418,7 @@ A witnessed theft also provides five minutes to file **Пожаловаться 
 
 Approach **Сестра Вера** in the chapel and choose **Отпустить грехи · 30 золотых**. The shared server rule validates the living cleric, reach, line of sight, action readiness, blacklist and balance before one atomic payment. It clears the city record, outstanding old evidence and related pursuit/retaliation; replaying the command does not charge again. An old complaint cannot immediately restore a forgiven record. Quest rewards remain available to earn the fee while merchants refuse trade. Resurrection preserves the same identity and its record; permanent death ends that identity and a new character begins clean. All records are currently in server memory, so a server restart starts a new world session.
 
-Stealth also practices through actual unseen movement near an observer: at least 64 world units across four new cells, with a four-second award interval and a minute before repeated ground counts again. Safe crouching, movement into a wall, following one's own companion or pacing beside allied human players does not train it. Higher stealth reduces sight detection and footstep loudness. **Знания** shows both skills in **Хитрость**; they use the common increasing practice costs, multiclass penalty and permanent-death reset.
+Stealth also practices through actual unseen movement near an observer: at least 64 world units across four new cells, with a four-second award interval and a minute before repeated ground counts again. Safe crouching, movement into a wall, following one's own companion or pacing beside allied human players does not train it. Stealth stars reduce sight detection and noise; mastery levels do not directly change them. Successful theft and validated stealth movement award the shared Shadow mastery, using Fibonacci thresholds and constellation conflict. Permanent death resets the identity.
 
 Positive authoritative damage events trigger a short recoil pose, a red flash and a rising damage number. These are visual feedback only; death takes presentation priority and misses do not show a hit. Building facades sort at their front ground line, so characters standing in front remain visible while characters inside the footprint stay behind the cover until entering.
 
@@ -496,7 +522,7 @@ Melee and skeleton strike arcs begin at the same world anchor as the attacker's 
 
 Novogorod's wooden training pen is east of the square, before the smithy (outer tiles x57–71, y43–56, three-tile entrance on the west). Its stationary wood-and-straw construct uses shared character combat: select it with a click or T and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
 
-Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.5.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
+Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.6.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
 
 ## Speech bubbles and dialogue keys
 
@@ -579,4 +605,4 @@ Terrain borders use connected atlas quadrants, including diagonal concave corner
 
 Clerics start only with Hearth Prayer. Sister Vera can teach the four separate spells to any background through ordinary nearby interaction: Prayer (`pray`), Prayer of the Wanderer (`pray_road`), Prayer of Clarity (`pray_lantern`) and Prayer of Ash (`pray_grave`). Bind them independently using Shift+1–4. Each uses its own god, Faith and Miracles; changing the primary patron affects the affiliation shown under the resource bars, never a spell’s effect or knowledge. The three new paths currently have their base spells, with an additional undead resurrection node for Ash. Healing passives and grave purification belong only to the original Prayer constellation. Resurrection is still a mode of the matching prayer, without a separate hotbar binding.
 
-Character Development has nine constellations on a personal, stable star map centered on the initial class. Unknown cards say only «Неизвестно», and their grey translucent stars remain selectable in detailed view. Known cards contain their effect instead of training instructions. See [character development](character-development.md) for school practice, resource recovery and the training-yard radius selection.
+Character Development has nine constellations on a personal, stable star map centered on the initial class. Unknown cards say only «Неизвестно», and their grey translucent stars cannot be selected or focused. Known cards contain their effect instead of training instructions. See [character development](character-development.md) for school practice, resource recovery and the training-yard radius selection.

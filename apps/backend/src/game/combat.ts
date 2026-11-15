@@ -15,8 +15,9 @@ import {
     resolveAttackDamage,
 } from './combatDamage'
 import { buildAttackZones, isInZones } from './combatGeometry'
+import { attackMasteryReward } from './combatMastery'
 import { canAttackCharacter } from './combatTargets'
-import { finishConstellationAction, recordRunicContact } from './constellations'
+import { recordRunicContact } from './constellations'
 import { resolveGraveHit } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
 import { wearWeapon } from './itemDurability'
@@ -27,7 +28,7 @@ import {
     confirmResourceSpend,
     recordUsefulResourceSpend,
 } from './resourcePractice'
-import { hasEquippedSword, trainSkill } from './skillProgression'
+import { awardMasteries, captureMasteryFactors } from './skillProgression'
 export { attemptAbilityAttack, attemptAttack } from './combatAttack'
 
 export interface AttackContext {
@@ -106,6 +107,7 @@ function resolveCharacterHit(
             },
         ]
     }
+    const factors = captureMasteryFactors(actor)
     const roll = resolveAttackDamage(actor, attack, random)
     const result = resolveCharacterDamage({
         actor,
@@ -142,9 +144,8 @@ function resolveCharacterHit(
         events.push(...applyAttackStun(actor, target, attack, now, random))
     }
     if (result.trainableDamage > 0) {
-        const skill = attackSkill(actor, attack.abilityId)
-        if (skill !== undefined) {
-            events.push(...trainSkill(actor, skill))
+        const reward = attackMasteryReward(actor, attack.abilityId)
+        if (reward !== undefined) {
             if (attack.abilityId === 'spark' || attack.abilityId === 'shot') {
                 events.push(
                     ...recordRunicContact(
@@ -156,10 +157,11 @@ function resolveCharacterHit(
                 )
             }
             events.push(
-                ...finishConstellationAction(actor, {
-                    skillIds: [skill],
+                ...awardMasteries(actor, [reward], {
                     now,
                     random,
+                    factors,
+                    evidence: reward.evidence,
                 })
             )
         }
@@ -274,19 +276,4 @@ function findHit(
             distance(actor.position, b.position)
     )
     return candidates[0]
-}
-function attackSkill(
-    actor: GameCharacter,
-    abilityId: PendingAttackHit['abilityId']
-) {
-    if (abilityId === 'spark') {
-        return 'arcana' as const
-    }
-    if (abilityId === 'shot') {
-        return 'marksmanship' as const
-    }
-    return (abilityId === undefined || abilityId === 'skeleton_strike') &&
-        hasEquippedSword(actor)
-        ? ('swordsmanship' as const)
-        : undefined
 }

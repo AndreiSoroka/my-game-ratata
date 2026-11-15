@@ -1,37 +1,7 @@
-export const skillIds = [
-    'stealth',
-    'theft',
-    'swordsmanship',
-    'miracles',
-    'faith',
-    'road_faith',
-    'road_miracles',
-    'lantern_faith',
-    'lantern_miracles',
-    'grave_faith',
-    'grave_miracles',
-    'arcana',
-    'fireball',
-    'greater_fireball',
-    'marksmanship',
-    'vitality',
-] as const
-export type SkillId = (typeof skillIds)[number]
 export type SpellSkillId = 'fireball' | 'greater_fireball'
-
-export interface SkillSnapshot {
-    id: SkillId
-    name: string
-    level: number
-    practice: number
-    practiceToNext: number
-    unlocked: boolean
-}
 
 export type DeityId = 'hearth' | 'road' | 'lantern' | 'grave'
 export type DeityMood = 'benevolent' | 'neutral' | 'wrathful'
-export type SkillBranch =
-    'warfare' | 'faith' | 'arcana' | 'cunning' | 'survival'
 
 export interface DeitySnapshot {
     id: DeityId
@@ -45,15 +15,12 @@ export interface DeitySnapshot {
 }
 
 export interface ProgressionSnapshot {
-    skills: SkillSnapshot[]
+    masteries: Array<import('./mastery').MasterySnapshot>
     deity: DeitySnapshot
     otherDeities?: DeitySnapshot[]
     constellations?: import('./development').ConstellationSnapshot
-    practicedBranches: SkillBranch[]
     magicChaptersRead: number
     magicChaptersTotal: number
-    totalEarnedLevels: number
-    trainingMultiplier: number
     resurrectionUnlocked: boolean
     resurrectionSchools?: Array<import('./abilities').PrayerAbilityId>
 }

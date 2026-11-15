@@ -54,3 +54,30 @@ for (const width of [320, 390, 1280]) {
         await page.screenshot({ path: info.outputPath(`constellation-detail-${width}.png`) })
     })
 }
+
+for (const width of [320, 390, 1280]) {
+    test(`unknown player stars stay inert at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto('/iframe.html?id=interface-character--development&viewMode=story')
+        const graph = page.getByRole('group', { name: 'Созвездия развития' })
+        await expect(graph).toBeVisible()
+        const unknown = graph.locator('[data-node-id].closed').first()
+        await expect(unknown).toHaveAttribute('aria-hidden', 'true')
+        expect(await unknown.getAttribute('role')).toBeNull()
+        expect(await unknown.getAttribute('tabindex')).toBeNull()
+        expect(await unknown.evaluate((element) => getComputedStyle(element).cursor)).toBe(
+            'default'
+        )
+        const card = page.getByLabel('Выбранная звезда')
+        const before = await card.innerText()
+        const camera = await graph.getAttribute('viewBox')
+        const box = await unknown.boundingBox()
+        await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
+        await expect.poll(() => card.innerText()).toBe(before)
+        await expect(graph).toHaveAttribute('viewBox', camera!)
+        await graph.getByRole('button', { name: 'Молитва', exact: true }).locator('.hit').click()
+        await expect(graph.locator('.closed[role="button"]')).toHaveCount(0)
+        await expect(graph.locator('.closed[tabindex]')).toHaveCount(0)
+        await expect(graph.locator('.closed.selected')).toHaveCount(0)
+    })
+}

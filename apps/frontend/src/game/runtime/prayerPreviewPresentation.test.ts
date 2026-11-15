@@ -2,6 +2,7 @@ import { type DeityId, previewPrayerFromSnapshots } from '@my-game-ratata/contra
 import { expect, it } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
+import { masteriesFixture } from '../testing/masteryFixture'
 import { createPrayerPreviewHighlight } from './prayerPreviewPresentation'
 
 function priest(patron: DeityId = 'hearth', level = 3) {
@@ -16,9 +17,7 @@ function priest(patron: DeityId = 'hearth', level = 3) {
             prayer: { radius: 48, durationMs: 3000, manaCost: 5, area: false, harm: level >= 3 },
         },
         progression: {
-            skills: [
-                { id: 'miracles', name: '', level, practice: 0, practiceToNext: 8, unlocked: true },
-            ],
+            masteries: masteriesFixture(),
             deity: {
                 id: patron,
                 name: '',
@@ -29,11 +28,8 @@ function priest(patron: DeityId = 'hearth', level = 3) {
                 successChance: null,
                 changesInMs: null,
             },
-            practicedBranches: [],
             magicChaptersRead: 0,
             magicChaptersTotal: 3,
-            totalEarnedLevels: 0,
-            trainingMultiplier: 1,
             resurrectionUnlocked: true,
         },
     })

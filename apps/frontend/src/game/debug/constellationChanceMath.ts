@@ -11,15 +11,9 @@ export function swordDodgeChance(base: number, equipment: number, soundSword: bo
 }
 
 /** Explanatory examples only: the authoritative service still owns the actual two rolls. */
-export function theftEffectChances(stealth: number, theft: number, front: boolean, bonus: number) {
-    const detected = Math.max(
-        0.1,
-        Math.min(0.9, 0.68 - (stealth - 1) * 0.03 - (theft - 1) * 0.02 + (front ? 0.12 : -0.08))
-    )
-    const success = Math.max(
-        0.05,
-        Math.min(0.9, 0.25 + theft * 0.04 + stealth * 0.015 + (front ? 0 : 0.1) + bonus)
-    )
+export function theftEffectChances(front: boolean, bonus: number) {
+    const detected = Math.max(0.1, Math.min(0.9, 0.68 + (front ? 0.12 : -0.08)))
+    const success = Math.max(0.05, Math.min(0.9, 0.305 + (front ? 0 : 0.1) + bonus))
     return {
         detected,
         success,

@@ -3,22 +3,18 @@ import {
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
     type PrayerIntent,
-    type SkillId,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
-import {
-    constellationModifiers,
-    finishConstellationAction,
-} from './constellations'
+import { constellationModifiers } from './constellations'
 import { miracleChance } from './deities'
 import { applyPrayerGifts } from './prayerGifts'
 import { applyPrayerGraves } from './prayerGraves'
 import { applyPrayerWave } from './prayerWave'
-import { trainSkill } from './skillProgression'
+import { awardMasteries, captureMasteryFactors } from './skillProgression'
 
-/** One completed cast, one random sample, one practice award per relevant skill. */
+/** One completed cast, one random sample and one frozen conflict factor per mastery. */
 export function completePrayer(
     actor: GameCharacter,
     intent: PrayerIntent,
@@ -32,6 +28,8 @@ export function completePrayer(
         return []
     }
     // Capture modifiers and low-health evidence before any healing or learning.
+    const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
+    const factors = captureMasteryFactors(actor)
     const modifiers = constellationModifiers(actor)
     const lowHpGift = wasLowHpGift(actor, abilityId)
     const castReceipt =
@@ -41,14 +39,10 @@ export function completePrayer(
         actor,
         intent,
         context,
-        roll <
-            miracleChance(
-                actor,
-                context.now,
-                PRAYER_SCHOOL_DEFINITIONS[abilityId].deityId
-            ),
+        roll < miracleChance(actor, context.now, school.deityId),
         quality * (abilityId === 'pray' ? modifiers.prayerGiftMultiplier : 1),
-        abilityId
+        abilityId,
+        factors
     )
     const wave = applyPrayerWave(
         actor,
@@ -65,78 +59,39 @@ export function completePrayer(
         castReceipt,
         abilityId
     )
-    const meaningful = gift.meaningful || wave.meaningful || graves.meaningful
-    const attempted =
-        gift.attemptMeaningful ||
-        wave.attemptMeaningful ||
-        graves.attemptMeaningful
     const events = [...gift.events, ...wave.events, ...graves.events]
     if (events.length === 0) {
         events.push(unansweredPrayer(actor, abilityId))
     }
-
+    const experience = gift.experience + wave.experience + graves.experience
     return [
         ...events,
-        ...practicePrayer(
+        ...awardMasteries(
             actor,
-            context,
+            experience > 0
+                ? [
+                      {
+                          constellationId: school.constellationId,
+                          experience,
+                      },
+                  ]
+                : [],
             {
-                attempted,
-                meaningful,
-                selfRecovery: gift.selfRecovery,
-                evidence: prayerEvidence(
-                    gift.meaningful,
-                    wave.meaningful,
-                    graves.meaningful,
-                    lowHpGift
-                ),
+                now: context.now,
+                random: context.random,
                 receiptId: castReceipt,
-            },
-            abilityId
+                factors,
+                evidence:
+                    abilityId === 'pray'
+                        ? prayerEvidence(
+                              gift.meaningful,
+                              wave.meaningful,
+                              graves.meaningful,
+                              lowHpGift
+                          )
+                        : [],
+            }
         ),
-    ]
-}
-
-interface PrayerPractice {
-    attempted: boolean
-    meaningful: boolean
-    selfRecovery: boolean
-    evidence: string[]
-    receiptId: string
-}
-
-function practicePrayer(
-    actor: GameCharacter,
-    context: AbilityContext,
-    result: PrayerPractice,
-    abilityId: PrayerAbilityId
-): GameEventPayload[] {
-    const events: GameEventPayload[] = []
-    const skillIds: SkillId[] = []
-    const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
-    if (result.attempted) {
-        events.push(...trainSkill(actor, school.faithSkillId))
-        skillIds.push(school.faithSkillId)
-    }
-    if (result.meaningful) {
-        events.push(...trainSkill(actor, school.miracleSkillId))
-        skillIds.push(school.miracleSkillId)
-    }
-    if (result.selfRecovery) {
-        skillIds.push('vitality')
-    }
-    if (skillIds.length === 0) {
-        return events
-    }
-    return [
-        ...events,
-        ...finishConstellationAction(actor, {
-            skillIds,
-            now: context.now,
-            random: context.random,
-            actionId: result.receiptId,
-            evidence: abilityId === 'pray' ? result.evidence : [],
-        }),
     ]
 }
 

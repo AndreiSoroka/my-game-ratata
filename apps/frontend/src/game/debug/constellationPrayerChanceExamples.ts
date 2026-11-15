@@ -5,37 +5,29 @@ import {
     prayerHarmChance,
     prayerPurificationChance,
 } from '../../../../backend/src/game/prayerProbability'
+import { chancePercent } from './constellationChanceMath'
 import type { ConstellationEffectChance } from './constellationChanceTypes'
 
 const moodNames: Record<DeityMood, string> = {
-    benevolent: 'благосклонность',
-    neutral: 'нейтральное настроение',
-    wrathful: 'гнев',
+    benevolent: 'Благосклонность',
+    neutral: 'Нейтральное настроение',
+    wrathful: 'Гнев',
 }
-const moods: DeityMood[] = ['benevolent', 'neutral', 'wrathful']
-
 export function prayerChanceExamples(
-    faithName: string,
+    schoolName: string,
     mode: 'answer' | 'grave' | 'harm' = 'answer'
 ): ConstellationEffectChance['examples'] {
-    return [1, 10].flatMap((faith) =>
-        moods.map((mood) => {
-            const chance = prayerAnswerChance(faith, mood)
-            const derived =
-                mode === 'grave'
-                    ? `; шаг очищения ${percent(prayerPurificationChance(chance))}`
-                    : mode === 'harm'
-                      ? `; кара ${percent(prayerHarmChance(chance))}`
-                      : ''
-            return {
-                label: `${faithName} ${faith} · ${moodNames[mood]}`,
-                value: `Ответ ${percent(chance)}; отказ ${percent(1 - chance)}${derived}.`,
-            }
-        })
-    )
-}
-function percent(value: number): string {
-    return `${Number((value * 100).toFixed(2))
-        .toString()
-        .replace('.', ',')}%`
+    return (['benevolent', 'neutral', 'wrathful'] as const).map((mood) => {
+        const chance = prayerAnswerChance(mood)
+        const derived =
+            mode === 'grave'
+                ? `; очищение ${chancePercent(prayerPurificationChance(chance))} за шаг`
+                : mode === 'harm'
+                  ? `; кара ${chancePercent(prayerHarmChance(chance))}`
+                  : ''
+        return {
+            label: `${schoolName} · ${moodNames[mood]}`,
+            value: `Успех ${chancePercent(chance)}${derived}.`,
+        }
+    })
 }

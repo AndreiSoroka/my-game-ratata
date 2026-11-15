@@ -75,9 +75,6 @@ export function createAbilityState(
     }
 }
 export function knowsAbility(actor: GameCharacter, id: AbilityId): boolean {
-    if (id === 'fireball' || id === 'greater_fireball') {
-        return actor.progression.skills[id].unlocked
-    }
     return actor.abilities.known.has(id)
 }
 export function clearAbilityEffects(actor: GameCharacter): void {
@@ -90,11 +87,6 @@ export function snapshotAbilities(
     now: number
 ): CharacterAbilitiesSnapshot {
     const known = [...actor.abilities.known]
-    for (const id of ['fireball', 'greater_fireball'] as const) {
-        if (knowsAbility(actor, id)) {
-            known.push(id)
-        }
-    }
     const cooldowns: Partial<Record<AbilityId, number>> = {}
     for (const id of known) {
         cooldowns[id] = Math.max(

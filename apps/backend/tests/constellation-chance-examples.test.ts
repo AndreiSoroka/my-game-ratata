@@ -73,7 +73,7 @@ describe('debug chance examples agree with authoritative rules', () => {
     ] as const)(
         'matches real detection and conditional item rolls for S=%s T=%s front=%s bonus=%s',
         (stealth, theft, front, bonus) => {
-            const chance = theftEffectChances(stealth, theft, front, bonus)
+            const chance = theftEffectChances(front, bonus)
             expect(
                 theftOutcome(stealth, theft, front, bonus, [
                     chance.detected - 1e-8,
@@ -101,8 +101,8 @@ describe('debug chance examples agree with authoritative rules', () => {
             const actor = abilityHero('arcanist')
             const target = abilityHero('vanguard')
             actor.config.combat.critChance = 0.95
-            actor.progression.skills[skillId].unlocked = true
-            actor.progression.skills[skillId].level = 4
+            actor.abilities.known.add(skillId)
+            actor.progression.masteries.magic.level = 100
             actor.progression.constellations.opened.add('magic.fire_damage')
             target.config.combat.dodgeChance = 0.95
             Object.assign(target, {
@@ -111,7 +111,7 @@ describe('debug chance examples agree with authoritative rules', () => {
                 maxHp: 200,
                 position: { x: 100, y: 132 },
             })
-            const base = skillId === 'fireball' ? 8 + 2 * 3 : 18 + 3 * 3
+            const base = skillId === 'fireball' ? 8 : 18
             const events = castSpell(
                 actor,
                 { type: 'cast_spell', skillId, targetId: target.id },
@@ -161,8 +161,7 @@ function theftOutcome(
     rolls: number[]
 ) {
     const fixture = theftFixture()
-    fixture.actor.progression.skills.stealth.level = stealth
-    fixture.actor.progression.skills.theft.level = theft
+    fixture.actor.progression.masteries.shadow.level = Math.max(stealth, theft)
     fixture.victim.facing = front ? 'left' : 'right'
     if (bonus > 0) {
         fixture.actor.progression.constellations.opened.add('shadow.luck1')

@@ -81,7 +81,7 @@ function companionActions(
 function teacherActions(target: CharacterSnapshot, player: CharacterSnapshot): InteractionAction[] {
     if (!target.tags.includes('scholar')) return []
     const actions: InteractionAction[] = []
-    if (!player.progression?.skills.some((skill) => skill.id === 'fireball' && skill.unlocked))
+    if (!player.abilities?.known.includes('fireball'))
         actions.push({
             id: `learn:${target.id}`,
             label: 'Изучить огненный шар',

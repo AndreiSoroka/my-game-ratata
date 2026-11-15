@@ -1,14 +1,18 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import {
+    type ConstellationId,
+    type GameEventPayload,
+    MASTERY_REWARDS,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { finishConstellationAction } from './constellations'
-import { trainSkill } from './skillProgression'
+import { awardMasteries, captureMasteryFactors } from './skillProgression'
 
 export function recordVitalityDamage(
     actor: GameCharacter,
     amount: number,
     now: number,
-    deferDiscovery = false
+    _deferDiscovery?: boolean,
+    factors: Record<ConstellationId, number> = captureMasteryFactors(actor)
 ): GameEventPayload[] {
     const state = actor.progression.constellations
     state.opened.add('life.root')
@@ -17,18 +21,15 @@ export function recordVitalityDamage(
         state.hostileWound + amount
     )
     state.woundPractice += amount
-    let practice = takePractice(actor, 'woundPractice')
+    const practice = takePractice(actor, 'woundPractice')
     if (
         actor.hp < actor.maxHp * 0.2 &&
         actor.hp + amount >= actor.maxHp * 0.2
     ) {
         state.lowHpFromHostile = true
-        if (!state.lowHpAwarded) {
-            state.lowHpAwarded = true
-            practice += 1
-        }
+        state.lowHpAwarded = true
     }
-    return awardVitality(actor, practice, now, 'wound', deferDiscovery)
+    return awardVitality(actor, practice, now, 'wound', factors)
 }
 
 /** Only recovery backed by real hostile HP loss can train knowledge of the body. */
@@ -36,7 +37,8 @@ export function recordVitalityRecovery(
     actor: GameCharacter,
     healed: number,
     now: number,
-    deferDiscovery = false
+    _deferDiscovery?: boolean,
+    factors: Record<ConstellationId, number> = captureMasteryFactors(actor)
 ): GameEventPayload[] {
     const state = actor.progression.constellations
     const amount = Math.min(Math.max(0, healed), state.hostileWound)
@@ -53,7 +55,7 @@ export function recordVitalityRecovery(
         takePractice(actor, 'recoveryPractice'),
         now,
         'recovery',
-        deferDiscovery
+        factors
     )
 }
 
@@ -76,19 +78,18 @@ function awardVitality(
     amount: number,
     now: number,
     evidence: string,
-    deferDiscovery = false
+    factors: Record<ConstellationId, number>
 ): GameEventPayload[] {
-    if (amount <= 0) {
-        return []
-    }
-    return [
-        ...trainSkill(actor, 'vitality', amount),
-        ...(deferDiscovery
-            ? []
-            : finishConstellationAction(actor, {
-                  skillIds: ['vitality'],
-                  now,
-                  evidence: [evidence],
-              })),
-    ]
+    return amount <= 0
+        ? []
+        : awardMasteries(
+              actor,
+              [
+                  {
+                      constellationId: 'life',
+                      experience: amount * MASTERY_REWARDS.vitalityBlock,
+                  },
+              ],
+              { now, evidence: [evidence], factors }
+          )
 }

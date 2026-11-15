@@ -27,6 +27,7 @@ import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
 import { canUseResurrection } from '../src/game/skillProgression'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
 import { gravePrayerFixture, prayerSource } from './gravePrayerTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 type Hero = ReturnType<typeof abilityHero>
 function known(actor: Hero, ...ids: PrayerAbilityId[]) {
@@ -113,9 +114,9 @@ it('keeps spell effects fixed while the chosen HUD patron changes', () => {
         )
     ).toBe(true)
     expect(living.hp).toBe(livingHp)
-    expect(actor.progression.skills.miracles.practice).toBe(1)
-    expect(actor.progression.skills.grave_miracles.practice).toBe(1)
-    expect(actor.progression.skills.road_miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(30))
+    expect(masteryExperience(actor, 'prayer_grave')).toBe(prayerXp(30))
+    expect(masteryExperience(actor, 'prayer_road')).toBe(prayerXp(0))
 })
 
 it.each(['pray_road', 'pray_lantern'] as const)(
@@ -134,10 +135,10 @@ it.each(['pray_road', 'pray_lantern'] as const)(
             )
         ).toBe(true)
         const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
-        expect(actor.progression.skills[school.faithSkillId].practice).toBe(1)
-        expect(actor.progression.skills[school.miracleSkillId].practice).toBe(1)
-        expect(actor.progression.skills.faith.practice).toBe(0)
-        expect(actor.progression.skills.miracles.practice).toBe(0)
+        expect(masteryExperience(actor, school.constellationId)).toBe(
+            prayerXp(30)
+        )
+        expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
         expect(actor.mana).toBe(115)
     }
 )
@@ -147,18 +148,17 @@ it('does not train resource prayers from artificial deficits or their own mana p
     known(actor, 'pray_lantern')
     actor.mana -= 5
     complete(actor, 'pray_lantern', actor)
-    expect(actor.progression.skills.lantern_faith.practice).toBe(0)
-    expect(actor.progression.skills.lantern_miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer_lantern')).toBe(prayerXp(0))
 })
 
-it('uses the fixed school deity and its own faith for the chance of an answer', () => {
+it('uses the fixed school deity and mood without a mastery-level chance bonus', () => {
     const actor = abilityHero()
     known(actor, 'pray_road')
-    actor.progression.skills.faith.level = 10
+
     expect(miracleChance(actor, 0, 'road')).toBeCloseTo(0.25)
-    actor.progression.skills.road_faith.level = 3
-    expect(miracleChance(actor, 0, 'road')).toBeCloseTo(0.28)
-    expect(miracleChance(actor, 0, 'hearth')).toBeCloseTo(0.385)
+    actor.progression.masteries.prayer_road.level = 100
+    expect(miracleChance(actor, 0, 'road')).toBeCloseTo(0.25)
+    expect(miracleChance(actor, 0, 'hearth')).toBeCloseTo(0.25)
 })
 
 it.each(['pray_road', 'pray_lantern', 'pray_grave'] as const)(
@@ -214,9 +214,9 @@ it.each(['pray_road', 'pray_lantern', 'pray_grave'] as const)(
 it('gates undead resurrection by the learned grave school and its own mastery', () => {
     const actor = abilityHero('vanguard')
     known(actor, 'pray_grave')
-    actor.progression.skills.miracles.level = 10
+
     expect(canUseResurrection(actor, 'pray_grave')).toBe(false)
-    actor.progression.skills.grave_miracles.level = 5
+    actor.progression.masteries.prayer_grave.level = 5
     expect(canUseResurrection(actor, 'pray_grave')).toBe(true)
     const target = abilityHero('vanguard', 'undead')
     target.applyDamage(target.hp, 100)
@@ -242,8 +242,8 @@ it('gates undead resurrection by the learned grave school and its own mastery', 
     )
     expect(target.alive).toBe(true)
     expect(actor.mana).toBe(20)
-    expect(actor.progression.skills.grave_miracles.practice).toBe(1)
-    expect(actor.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer_grave')).toBe(prayerXp(1400))
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
 })
 
 it('pins the school during a channel and records only accepted uses for training presentation', () => {
@@ -354,7 +354,7 @@ it('parses all four explicit schools and keeps a legacy automatic prayer healing
 })
 
 it.each(prayerAbilityIds)(
-    'charges a failed useful %s attempt once and trains only its faith',
+    'charges a failed useful %s attempt once without granting XP',
     (abilityId) => {
         const actor = abilityHero()
         known(actor, abilityId)
@@ -375,8 +375,9 @@ it.each(prayerAbilityIds)(
         const events = complete(actor, abilityId, target, 1000, random)
         expect(events.some((event) => event.kind === 'heal')).toBe(false)
         const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
-        expect(actor.progression.skills[school.faithSkillId].practice).toBe(1)
-        expect(actor.progression.skills[school.miracleSkillId].practice).toBe(0)
+        expect(masteryExperience(actor, school.constellationId)).toBe(
+            prayerXp(0)
+        )
         expect(actor.mana).toBe(115)
         expect(random).toHaveBeenCalledTimes(1)
     }

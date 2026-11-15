@@ -5,9 +5,7 @@ import {
     type CharacterSnapshot,
     type ClientMessage,
     type ConstellationId,
-    type SkillBranch,
-    type SkillId,
-    THEFT_RULES,
+    type SpellSkillId,
 } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
@@ -15,6 +13,7 @@ import AbilityKnowledge from './AbilityKnowledge.vue'
 import { abilityUsage } from './abilityUsage'
 import ArcanaStudy from './ArcanaStudy.vue'
 import FaithKnowledge from './FaithKnowledge.vue'
+import { displayMasteryExperience, masteryProgressPercent } from './masteryPresentation'
 
 const props = defineProps<{
     player: CharacterSnapshot
@@ -24,28 +23,27 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
 const targetId = ref('')
-const pathSkills: Record<ConstellationId, SkillId[]> = {
-    blade: ['swordsmanship'],
-    magic: ['arcana', 'fireball', 'greater_fireball'],
-    prayer: ['faith', 'miracles'],
-    prayer_road: ['road_faith', 'road_miracles'],
-    prayer_lantern: ['lantern_faith', 'lantern_miracles'],
-    prayer_grave: ['grave_faith', 'grave_miracles'],
-    arrow: ['marksmanship'],
-    life: ['vitality'],
-    shadow: ['stealth', 'theft'],
-}
-const skills = computed(() =>
-    (props.player.progression?.skills ?? []).filter(
-        (skill) => !props.constellationId || pathSkills[props.constellationId].includes(skill.id)
+const masteries = computed(() =>
+    (props.player.progression?.masteries ?? []).filter(
+        (entry) => !props.constellationId || entry.id === props.constellationId
     )
 )
-const arcanaLevel = computed(() => skills.value.find((skill) => skill.id === 'arcana')?.level ?? 0)
+const magicLevel = computed(
+    () => props.player.progression?.masteries.find((entry) => entry.id === 'magic')?.level ?? 0
+)
 const teacher = computed(() =>
     props.characters.find(
         (character) =>
-            character.alive && character.tags.includes('scholar') && distance(character) <= 64
+            character.id !== props.player.id &&
+            character.alive &&
+            character.faction === props.player.faction &&
+            character.tags.includes('scholar') &&
+            distance(character) <= 64
     )
+)
+const spells: SpellSkillId[] = ['fireball', 'greater_fireball']
+const knownSpells = computed(() =>
+    spells.filter((id) => props.player.abilities?.known.includes(id))
 )
 const enemies = computed(() =>
     props.characters.filter(
@@ -53,51 +51,22 @@ const enemies = computed(() =>
             character.alive &&
             character.faction !== props.player.faction &&
             distance(character) <=
-                Math.max(
-                    abilityUsage(props.player, 'fireball').range,
-                    abilityUsage(props.player, 'greater_fireball').range
-                )
+                Math.max(...spells.map((id) => abilityUsage(props.player, id).range))
     )
 )
 const target = computed(
     () => enemies.value.find((character) => character.id === targetId.value) ?? enemies.value[0]
 )
-const branchLabels: Record<SkillBranch, string> = {
-    warfare: 'Воинское дело',
-    faith: 'Вера',
-    arcana: 'Магия',
-    cunning: 'Хитрость',
-    survival: 'Жизненный опыт',
-}
-const practicedBranches = computed(
-    () =>
-        props.player.progression?.practicedBranches
-            .map((branch) => branchLabels[branch])
-            .join(', ') || 'пока нет'
-)
-const descriptions: Record<SkillId, string> = {
-    stealth:
-        'Растёт от движения крадучись рядом с враждебными существами. Безопасная прогулка по городу не даёт практики. C — тихий ход; рывок выдаёт себя громче.',
-    theft: `Растёт от настоящих попыток кражи. Подойдите крадучись, нажмите E и выберите цель. Замеченная попытка может вызвать отпор и стражу. За ${String(THEFT_RULES.evidenceMs / 60_000)} минут жертва может подать жалобу: городская стража станет врагом, торговцы откажут. Отпущение у клирика стоит ${String(THEFT_RULES.absolutionGold)} золотых. Чужие вещи заранее не видны.`,
-
-    road_faith: 'Вера Пути странника.',
-    road_miracles: 'Ответы Пути странника.',
-    lantern_faith: 'Вера Ясности.',
-    lantern_miracles: 'Ответы Ясности.',
-    grave_faith: 'Вера Праха.',
-    grave_miracles: 'Ответы Праха.',
-    faith: 'Молитвы укрепляют веру. С опытом знамения раскрывают настроение божества и вероятность его ответа.',
-    marksmanship: 'Растёт от настоящих попаданий выстрелами по врагам. Манекены не дают практики.',
-    vitality:
-        'Растёт от потери и восстановления здоровья после вражеского урона. Опыт помогает точнее понимать своё тело.',
-    arcana: 'Понимание магии растёт от чтения конечного числа глав и передачи изученного заклинания ученикам.',
-    swordsmanship: 'Практика за успешные удары мечом. Возьмите оружие и вступите в бой.',
-    miracles:
-        'Практика за принятый дар божества. На 5-м уровне можно воскрешать союзников: Очаг возвращает органические виды, Хранитель Праха — нежить.',
-    fireball:
-        'Изучите у учёного в Новогороде. Практика за попадания; 10-й уровень открывает следующую ветвь.',
-    greater_fireball:
-        'Открывается после 10-го уровня огненного шара. Более сильное и дальнее заклинание.',
+const descriptions: Record<ConstellationId, string> = {
+    blade: 'Опыт за полезные удары клинком.',
+    magic: 'Опыт за полезные боевые заклинания, защиту Барьером, новые главы и обучение других.',
+    prayer: 'Опыт за полезное лечение, очищение могил, Кару и воскрешение. Каждый получатель учитывается отдельно.',
+    prayer_road: 'Опыт за восстановление полезно потраченной энергии.',
+    prayer_lantern: 'Опыт за восстановление полезно потраченной маны.',
+    prayer_grave: 'Опыт за полезное лечение и воскрешение нежити.',
+    arrow: 'Опыт за полезные попадания стрелами.',
+    life: 'Опыт за учтённые вражеские раны и их восстановление.',
+    shadow: 'Опыт за скрытное перемещение рядом с врагами и успешные кражи предметов. C — тихий ход, F — взаимодействие.',
 }
 function distance(character: CharacterSnapshot): number {
     return Math.hypot(
@@ -105,27 +74,22 @@ function distance(character: CharacterSnapshot): number {
         character.position.y - props.player.position.y
     )
 }
-function canCast(skillId: SkillId): boolean {
-    if (skillId !== 'fireball' && skillId !== 'greater_fireball') return false
-    const range = abilityUsage(props.player, skillId).range
+function canCast(id: SpellSkillId): boolean {
     return (
         props.player.alive &&
         target.value !== undefined &&
-        distance(target.value) <= range &&
-        (skillId === 'fireball' || skillId === 'greater_fireball') &&
-        props.player.resourceChecks?.abilities[skillId] === 'ready'
+        distance(target.value) <= abilityUsage(props.player, id).range &&
+        props.player.resourceChecks?.abilities[id] === 'ready'
     )
 }
-function cast(skillId: SkillId): void {
-    if (target.value && (skillId === 'fireball' || skillId === 'greater_fireball'))
-        emit('command', { type: 'cast_spell', skillId, targetId: target.value.id })
+function cast(skillId: SpellSkillId): void {
+    if (target.value) emit('command', { type: 'cast_spell', skillId, targetId: target.value.id })
 }
 function learnFireball(): void {
     if (teacher.value)
         emit('command', { type: 'learn_skill', skillId: 'fireball', targetId: teacher.value.id })
 }
 </script>
-
 <template>
     <section
         :class="embedded ? 'embedded-knowledge' : 'adventure-window adventure-knowledge'"
@@ -134,26 +98,13 @@ function learnFireball(): void {
         aria-label="Знания героя"
     >
         <header v-if="!embedded" class="adventure-window__header">
-            <span>ЗНАНИЯ · ПРАКТИКА МЕНЯЕТ ГЕРОЯ</span>
-            <button type="button" aria-label="Закрыть знания" @click="emit('close')">×</button>
+            <span>ЗНАНИЯ · СОЗВЕЗДИЯ</span
+            ><button type="button" aria-label="Закрыть знания" @click="emit('close')">×</button>
         </header>
         <p v-if="!embedded" class="knowledge-intro">
-            Любое прошлое, любой путь. Навыки растут от применения, а новые знания открывают
-            следующую ступень.
+            Полезные действия дают опыт. Уровни дают открытия звёзд; неиспользованные открытия
+            сохраняются. Развитие нескольких ветвей создаёт конфликт.
         </p>
-        <div v-if="!constellationId || constellationId === 'magic'" class="knowledge-target">
-            <label for="spell-target">Цель заклинаний</label>
-            <select
-                id="spell-target"
-                :value="target?.id ?? ''"
-                @change="targetId = ($event.target as HTMLSelectElement).value"
-            >
-                <option v-if="!enemies.length" value="">Врагов поблизости нет</option>
-                <option v-for="enemy in enemies" :key="enemy.id" :value="enemy.id">
-                    {{ enemy.nickname }} · {{ Math.round(distance(enemy)) }} шагов
-                </option>
-            </select>
-        </div>
         <AbilityKnowledge
             :player="player"
             :characters="characters"
@@ -161,88 +112,86 @@ function learnFireball(): void {
             @command="emit('command', $event)"
         />
         <article
-            v-for="skill in skills"
-            :key="skill.id"
+            v-for="mastery in masteries"
+            :key="mastery.id"
             class="knowledge-skill"
-            :class="{ 'knowledge-skill--locked': !skill.unlocked }"
-            :data-skill="skill.id"
+            :data-mastery="mastery.id"
         >
             <div class="knowledge-skill__heading">
-                <h2>{{ skill.name }}</h2>
-                <span>{{ skill.unlocked ? `Ур. ${skill.level} / 10` : 'Не изучено' }}</span>
+                <h2>{{ mastery.name }}</h2>
+                <span>Ур. {{ mastery.level }}</span>
             </div>
-            <div class="knowledge-steps" aria-hidden="true">
-                <i
-                    v-for="step in 10"
-                    :key="step"
-                    :class="{ learned: skill.unlocked && step <= skill.level }"
-                ></i>
-            </div>
-            <p>{{ descriptions[skill.id] }}</p>
-            <div v-if="skill.unlocked && skill.level < 10" class="knowledge-practice">
-                <label :for="`practice-${skill.id}`"
-                    >Практика <span>{{ skill.practice }} / {{ skill.practiceToNext }}</span></label
+            <p>{{ descriptions[mastery.id] }}</p>
+            <div class="knowledge-practice">
+                <label :for="`practice-${mastery.id}`"
+                    >Опыт
+                    <span
+                        >{{ displayMasteryExperience(mastery.experience) }} /
+                        {{ displayMasteryExperience(mastery.experienceToNext) }}</span
+                    ></label
                 >
                 <progress
-                    :id="`practice-${skill.id}`"
-                    :value="skill.practice"
-                    :max="skill.practiceToNext"
+                    :id="`practice-${mastery.id}`"
+                    :value="masteryProgressPercent(mastery)"
+                    max="100"
                 />
             </div>
-            <p v-else-if="skill.unlocked" class="knowledge-mastery">Мастерство достигнуто</p>
+            <p>
+                Конфликт −{{
+                    ((1 - mastery.conflictMultiplier) * 100).toFixed(1).replace('.', ',')
+                }}% · Неиспользованных открытий: {{ mastery.pendingOpenings }}
+            </p>
             <FaithKnowledge
-                v-if="skill.id === 'faith' || skill.id.endsWith('_faith')"
+                v-if="mastery.id.startsWith('prayer')"
                 :player="player"
                 :characters="characters"
                 @command="emit('command', $event)"
             />
-            <ArcanaStudy
-                v-else-if="skill.id === 'arcana'"
-                :player="player"
-                :characters="characters"
-                @command="emit('command', $event)"
-            />
-            <div v-else-if="skill.id === 'fireball' && !skill.unlocked" class="knowledge-action">
-                <button
-                    type="button"
-                    :disabled="!player.alive || !teacher || arcanaLevel < 3"
-                    @click="learnFireball"
-                >
-                    Изучить огненный шар
-                </button>
-                <small>{{
-                    arcanaLevel < 3
-                        ? 'Нужна магия 3-го уровня. Изучайте главы у учёного.'
-                        : teacher
-                          ? `Учитель: ${teacher.nickname}`
-                          : 'Подойдите к учёному в Новогороде.'
-                }}</small>
-            </div>
-            <div
-                v-else-if="
-                    (skill.id === 'fireball' || skill.id === 'greater_fireball') && skill.unlocked
-                "
-                class="knowledge-action"
-            >
-                <button type="button" :disabled="!canCast(skill.id)" @click="cast(skill.id)">
-                    Сотворить · {{ abilityUsage(player, skill.id).mana }} MP
-                </button>
-                <small
-                    >Дальность {{ abilityUsage(player, skill.id).range }} · раз в
-                    {{ abilityUsage(player, skill.id).cooldownMs / 1000 }} сек. Препятствия
-                    закрывают цель.</small
-                >
-            </div>
+            <template v-if="mastery.id === 'magic'">
+                <ArcanaStudy
+                    :player="player"
+                    :characters="characters"
+                    @command="emit('command', $event)"
+                />
+                <div v-if="!player.abilities?.known.includes('fireball')" class="knowledge-action">
+                    <button
+                        type="button"
+                        :disabled="!player.alive || !teacher || magicLevel < 3"
+                        @click="learnFireball"
+                    >
+                        Изучить огненный шар
+                    </button>
+                    <small>{{
+                        magicLevel < 3
+                            ? 'Требуется Магия 3.'
+                            : teacher
+                              ? `Учитель: ${teacher.nickname}`
+                              : 'Подойдите к учёному.'
+                    }}</small>
+                </div>
+                <div v-if="knownSpells.length" class="knowledge-target">
+                    <label for="spell-target">Цель заклинаний</label
+                    ><select
+                        id="spell-target"
+                        :value="target?.id ?? ''"
+                        @change="targetId = ($event.target as HTMLSelectElement).value"
+                    >
+                        <option v-if="!enemies.length" value="">Врагов поблизости нет</option>
+                        <option v-for="enemy in enemies" :key="enemy.id" :value="enemy.id">
+                            {{ enemy.nickname }}
+                        </option>
+                    </select>
+                </div>
+                <div v-for="id in knownSpells" :key="id" class="knowledge-action">
+                    <button type="button" :disabled="!canCast(id)" @click="cast(id)">
+                        {{ id === 'fireball' ? 'Огненный шар' : 'Большой огненный шар' }} ·
+                        {{ abilityUsage(player, id).mana }} MP
+                    </button>
+                </div>
+            </template>
         </article>
-        <p v-if="!embedded" class="knowledge-footer">
-            Ветви: {{ practicedBranches }}. Накоплено ступеней:
-            {{ player.progression?.totalEarnedLevels ?? 0 }} · сложность практики ×{{
-                player.progression?.trainingMultiplier ?? 1
-            }}
-        </p>
     </section>
 </template>
-
 <style scoped>
 .embedded-knowledge {
     margin-top: 20px;

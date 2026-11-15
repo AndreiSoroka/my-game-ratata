@@ -33,6 +33,8 @@ it('dims disabled known build stars without hiding their names or descriptions',
     expect(star.attributes('aria-pressed')).toBe('false')
     expect(star.classes()).toContain('inactive')
     await star.trigger('click')
+    expect(view.emitted('activate')).toBeUndefined()
+    await star.trigger('keydown', { code: 'Space' })
     expect(view.emitted('activate')?.at(-1)).toEqual([child])
     expect(star.attributes('aria-pressed')).toBe('false')
     await view.setProps({ enabledStarIds: new Set([root, child]) })
@@ -42,7 +44,7 @@ it('dims disabled known build stars without hiding their names or descriptions',
     view.unmount()
 })
 
-it('activates a build star only on an explicit click or non-repeated confirmation', async () => {
+it('toggles debug ownership only on non-repeated Space and keeps clicks or Enter inspect-only', async () => {
     const root = fixtureStarId('prayer.root')
     const view = mount(ConstellationGraph, {
         props: { constellation: constellationFixture(true), enabledStarIds: new Set([root]) },
@@ -52,9 +54,13 @@ it('activates a build star only on an explicit click or non-repeated confirmatio
     await view.get('[aria-label="Показать весь небосвод"]').trigger('click')
     expect(view.emitted('activate')).toBeUndefined()
     await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'Enter' })
+    expect(view.emitted('activate')).toBeUndefined()
+    await view.get(`[data-node-id="${root}"]`).trigger('click')
+    expect(view.emitted('activate')).toBeUndefined()
+    await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'Space' })
     expect(view.emitted('activate')).toEqual([[root]])
     await view.get(`[data-node-id="${root}"]`).trigger('keydown', {
-        code: 'Enter',
+        code: 'Space',
         repeat: true,
     })
     expect(view.emitted('activate')).toEqual([[root]])
@@ -93,11 +99,13 @@ it('does not activate stars after a pan made of small pointer movements or a pin
     await pointer(star.element, 'pointerdown', 1, 20, 20)
     await pointer(svg.element, 'pointerup', 1)
     await star.trigger('click')
+    expect(view.emitted('activate')).toBeUndefined()
+    await star.trigger('keydown', { code: 'Space' })
     expect(view.emitted('activate')).toEqual([[root]])
     view.unmount()
 })
 
-it('keeps unknown stars generic and clickable in detailed mode and preserves fixed bounds across reveals', async () => {
+it('keeps unknown stars inert in detailed mode and preserves fixed bounds across reveals', async () => {
     const sky = constellationFixture()
     const view = mount(ConstellationGraph, {
         props: { constellation: sky, selectedId: fixtureStarId('prayer.root') },
@@ -107,9 +115,13 @@ it('keeps unknown stars generic and clickable in detailed mode and preserves fix
     expect(unknown().attributes('aria-label')).toBe('Неизвестно')
     expect(unknown().attributes('aria-hidden')).toBe('true')
     await view.get(`[data-node-id="${fixtureStarId('prayer.root')}"]`).trigger('click')
-    expect(unknown().attributes('role')).toBe('button')
+    expect(unknown().attributes('role')).toBeUndefined()
+    expect(unknown().attributes('tabindex')).toBeUndefined()
     await unknown().trigger('click')
-    expect(view.emitted('select')?.at(-1)).toEqual([fixtureStarId('prayer.radius2')])
+    expect(view.emitted('select')?.at(-1)).toEqual([fixtureStarId('prayer.root')])
+    view.vm.focusNode(fixtureStarId('prayer.radius2'))
+    await unknown().trigger('keydown', { code: 'Space' })
+    expect(view.emitted('select')?.at(-1)).toEqual([fixtureStarId('prayer.root')])
     const focused = view.get('svg').attributes('viewBox')
     await view.setProps({ constellation: constellationFixture(true) })
     expect(view.get('svg').attributes('viewBox')).toBe(focused)
@@ -117,13 +129,35 @@ it('keeps unknown stars generic and clickable in detailed mode and preserves fix
     expect(view.get('svg').attributes('viewBox')).toBe(initial)
     view.unmount()
 })
-it('shows one word and no knowledge or predecessor metadata for an unknown root', async () => {
+it('skips unknown stars during keyboard navigation and ignores their key events', async () => {
+    const sky = constellationFixture(true)
+    const root = { ...sky.nodes.find((node) => node.id === sky.layout!.centerNodeId)!, x: 0, y: 0 }
+    const child = sky.nodes.find((node) => node.parents.includes(root.id))!
+    const unknown = { ...child, id: 'closed', x: 100, y: 0, unlocked: false, name: undefined }
+    const known = { ...child, id: 'known', x: 200, y: 0 }
+    sky.nodes = [root, unknown, known]
+    sky.edges = []
+    const view = mount(ConstellationGraph, { props: { constellation: sky, selectedId: root.id } })
+    await view.get(`[data-node-id="${root.id}"]`).trigger('click')
+    await view.get(`[data-node-id="${root.id}"]`).trigger('keydown', { code: 'ArrowRight' })
+    expect(view.emitted('select')?.at(-1)).toEqual(['known'])
+    const before = view.emitted('select')!.length
+    await view.get('[data-node-id="closed"]').trigger('keydown', { code: 'Enter' })
+    view.vm.focusNode('closed')
+    expect(view.emitted('select')).toHaveLength(before)
+    expect(view.get('[data-node-id="closed"]').attributes('role')).toBeUndefined()
+    view.unmount()
+})
+
+it('ignores an unknown root and preserves the current known card', async () => {
     const view = mount(CharacterDevelopment, {
         props: { player: developmentCharacterFixture(), characters: [] },
     })
+    const before = view.get('[aria-label="Выбранная звезда"]').text()
+    const camera = view.get('svg').attributes('viewBox')
     await view.get(`[data-node-id="${fixtureStarId('prayer_road.root')}"]`).trigger('click')
-    expect(view.get('[aria-label="Выбранная звезда"]').text()).toBe('Неизвестно')
-    expect(view.find('.embedded-knowledge').exists()).toBe(false)
+    expect(view.get('[aria-label="Выбранная звезда"]').text()).toBe(before)
+    expect(view.get('svg').attributes('viewBox')).toBe(camera)
     view.unmount()
 })
 it('places full-catalogue labels without overlapping at detailed scale', () => {

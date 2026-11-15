@@ -1,5 +1,6 @@
 import {
     type GameEventPayload,
+    MASTERY_REWARDS,
     type PrayerAbilityId,
     type PrayerIntent,
 } from '@my-game-ratata/contracts'
@@ -21,12 +22,17 @@ export function applyPrayerGraves(
 ) {
     const events: GameEventPayload[] = []
     if (abilityId !== 'pray') {
-        return { events, meaningful: false, attemptMeaningful: false }
+        return {
+            events,
+            meaningful: false,
+            experience: 0,
+        }
     }
     const graves = eligibleGraves(actor, intent, context)
     const chance = prayerPurificationChance(
         miracleChance(actor, context.now, 'hearth')
     )
+    let experience = 0
     if (roll < chance) {
         for (const grave of graves) {
             const contribution = context.graves?.contributePurification(
@@ -37,6 +43,9 @@ export function applyPrayerGraves(
             if (contribution?.accepted !== true) {
                 continue
             }
+            experience += contribution.purified
+                ? MASTERY_REWARDS.graveFinal
+                : MASTERY_REWARDS.graveStep
             events.push({
                 kind: contribution.purified
                     ? 'grave_purified'
@@ -50,7 +59,7 @@ export function applyPrayerGraves(
     return {
         events,
         meaningful: events.length > 0,
-        attemptMeaningful: graves.length > 0,
+        experience,
     }
 }
 

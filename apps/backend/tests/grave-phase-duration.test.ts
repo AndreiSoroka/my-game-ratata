@@ -41,7 +41,9 @@ describe('ordinary prayer duration in every grave phase', () => {
                 expect.objectContaining({ kind: 'grave_purification_progress' })
             )
             expect(f.actor.mana).toBe(115)
-            expect(f.actor.progression.skills.faith.practice).toBe(1)
+            expect(f.actor.progression.masteries.prayer.experience).toBe(
+                10_000_000n
+            )
             expect(f.advance(now + duration + 1)).toEqual([])
             expect(f.actor.mana).toBe(115)
         }

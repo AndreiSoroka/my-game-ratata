@@ -20,7 +20,7 @@ interface PrayerDescription extends Omit<ConstellationEffectChance, 'formulas' |
 const oneRoll =
     'На завершённую молитву берётся один случайный бросок от 0 включительно до 1 не включительно. Он общий для лечения, кары и шагов очищения, а также для всех подходящих целей; отдельных бросков по целям нет.'
 const faithAndPower =
-    'Вера своей школы меняет шанс ответа; Чудеса своей школы меняют силу. Уровни навыков в игре — от 1 до 10.'
+    'Мастерство определяет открытия звёзд. Вероятность и базовая сила зависят от настроения божества; изученные звёзды добавляют усиления.'
 
 /** Static debug formulas only: settings for the example calculator live in a separate pure API. */
 export function describePrayerEffectChance(
@@ -53,7 +53,7 @@ function rootChance(ability: PrayerAbilityId): PrayerDescription {
     const info = prayerSchoolInfo[ability]
     const definition = PRAYER_SCHOOL_DEFINITIONS[ability]
     return {
-        summary: `Ответ божества «${info.god}» вероятностный: ${info.faithName} и его настроение определяют шанс восстановления ${info.resource}.`,
+        summary: `Молитва божеству «${info.god}» восстанавливает ${info.resource} с вероятностью, зависящей от его настроения.`,
         formulaDetails: [
             math.prayerAnswerFormula(ability),
             math.prayerRestorationFormula(ability),
@@ -66,9 +66,9 @@ function rootChance(ability: PrayerAbilityId): PrayerDescription {
                   ]
                 : []),
         ],
-        examples: prayerChanceExamples(info.faithName, ability === 'pray' ? 'grave' : 'answer'),
+        examples: prayerChanceExamples(info.masteryName, ability === 'pray' ? 'grave' : 'answer'),
         notes: [
-            `Используются ${info.faithName} (${definition.faithSkillId}), ${info.miraclesName} (${definition.miracleSkillId}) и настроение только своего бога (${definition.deityId}). Выбор покровителя в HUD эту привязку не меняет.`,
+            `Используется настроение только своего бога (${definition.deityId}). Выбор покровителя в HUD эту привязку не меняет.`,
             faithAndPower,
             oneRoll,
             ...(ability === 'pray'
@@ -85,7 +85,7 @@ function rootChance(ability: PrayerAbilityId): PrayerDescription {
 function revivalChance(ability: PrayerAbilityId): PrayerDescription {
     const info = prayerSchoolInfo[ability]
     return {
-        summary: `Воскрешение использует тот же шанс ответа: ${info.faithName} и настроение божества «${info.god}».`,
+        summary: `Шанс воскрешения определяется настроением божества «${info.god}».`,
         formulaDetails: [
             math.prayerAnswerFormula(ability),
             math.prayerRevivalChanceFormula(),
@@ -93,10 +93,10 @@ function revivalChance(ability: PrayerAbilityId): PrayerDescription {
             math.prayerRevivalHpFormula(),
             math.prayerRevivalResourceFormula(),
         ],
-        examples: prayerChanceExamples(info.faithName),
+        examples: prayerChanceExamples(info.masteryName),
         notes: [
             oneRoll,
-            `${info.miraclesName} и множители лечения не меняют шанс воскрешения или стандартную половину ресурсов. Нужна подходящая душа в пределах окна воскрешения и прочие условия режима.`,
+            'Множители лечения не меняют шанс воскрешения или стандартную половину ресурсов. Нужна подходящая душа в пределах окна воскрешения и прочие условия режима.',
         ],
     }
 }
@@ -160,8 +160,8 @@ function giftChance(id: string): PrayerDescription {
             ...(lastLight
                 ? [
                       {
-                          label: 'Чудеса 1, нейтральное настроение, Тёплый дар и активный Последний огонёк',
-                          value: 'Сила: round(6 × 1,15) = 7 HP; при Вере 1 ответ всё ещё 55%.',
+                          label: 'Нейтральное настроение, Тёплый дар и активный Последний огонёк',
+                          value: 'Сила: round(6 × 1,15) = 7 HP; шанс лечения остаётся 55%.',
                       },
                   ]
                 : []),
@@ -190,11 +190,11 @@ function harmChance(id: string): PrayerDescription {
             math.prayerHarmPowerFormula(),
             math.prayerHarmMultiplierFormula(),
         ],
-        examples: prayerChanceExamples(prayerSchoolInfo.pray.faithName, 'harm'),
+        examples: prayerChanceExamples(prayerSchoolInfo.pray.masteryName, 'harm'),
         notes: [
             oneRoll,
             'Кара может сработать при отказе лечебного дара: её порог выше порога ответа. Все подходящие цели — нежить в радиусе и прямой видимости; сторона цели не меняет порог.',
-            'Кара доступна после открытия звезды. При Чудесах 1–3 её базовая сила равна 6, а с 4 растёт на 2 за уровень.',
+            'Кара доступна после открытия звезды. Её базовая сила равна 6 и усиливается настроением и изученными звёздами.',
             'Суровый ответ даёт множитель 1,30; вместе с Гневом небес — 1,60. Множители не повышают шанс кары; барьер может поглотить рассчитанный урон.',
         ],
     }
@@ -211,7 +211,7 @@ function areaChance(): PrayerDescription {
             math.prayerPurificationRollFormula(),
             chanceFormula('Успешных шагов до очищения', String(GRAVE_PURIFY_STEPS)),
         ],
-        examples: prayerChanceExamples(prayerSchoolInfo.pray.faithName, 'grave'),
+        examples: prayerChanceExamples(prayerSchoolInfo.pray.masteryName, 'grave'),
         notes: [
             oneRoll,
             `Очищение требует ${GRAVE_PURIFY_STEPS} накопленных успешных шагов, не обязательно подряд. У каждого союзника лечение ограничено его нехваткой HP.`,
@@ -237,11 +237,9 @@ function insightChance(id: string): PrayerDescription {
         ],
         examples:
             rank === 3
-                ? prayerChanceExamples(prayerSchoolInfo.pray.faithName).map((example) => ({
+                ? prayerChanceExamples(prayerSchoolInfo.pray.masteryName).map((example) => ({
                       ...example,
-                      label: others
-                          ? example.label.replace('Вера', 'Вера школы божества')
-                          : example.label,
+                      label: others ? `Пантеон · ${example.label}` : example.label,
                   }))
                 : [
                       {
@@ -252,9 +250,7 @@ function insightChance(id: string): PrayerDescription {
         notes: [
             'Знание настроения раскрывает информацию, сохраняя прежнюю вероятность ответа.',
             ...(others
-                ? [
-                      'Для каждого другого бога вероятность считается по Вере его собственной школы; таблица примеров использует такие же уровни Веры.',
-                  ]
+                ? ['Для каждого другого бога вероятность определяется его собственным настроением.']
                 : []),
         ],
     }

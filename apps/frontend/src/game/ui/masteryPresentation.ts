@@ -1,0 +1,15 @@
+import { type MasterySnapshot, parseMasteryExperience } from '@my-game-ratata/contracts'
+
+export function displayMasteryExperience(value: string): string {
+    const micros = parseMasteryExperience(value)
+    const cents = (micros + 5000n) / 10000n
+    const whole = new Intl.NumberFormat('ru-RU').format(cents / 100n)
+    const fraction = (cents % 100n).toString().padStart(2, '0').replace(/0+$/, '')
+    return fraction ? `${whole},${fraction}` : whole
+}
+export function masteryProgressPercent(mastery: MasterySnapshot): number {
+    const maximum = parseMasteryExperience(mastery.experienceToNext)
+    return maximum > 0n
+        ? Number((parseMasteryExperience(mastery.experience) * 10000n) / maximum) / 100
+        : 0
+}

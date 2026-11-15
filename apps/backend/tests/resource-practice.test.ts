@@ -142,7 +142,7 @@ describe('resource recovery receipts', () => {
         actor.applyRegen(1000, false, true, 1000)
         expect(practiceResourceMissing(actor, 'energy')).toBe(6)
         expect(consumeResourceRecovery(actor, 'energy', 6, 6)).toBe(6)
-        expect(actor.progression.skills.faith.practice).toBe(0)
+        expect(actor.progression.masteries.prayer.experience).toBe(0n)
     })
 
     it('clears receipts on death and resurrection', () => {

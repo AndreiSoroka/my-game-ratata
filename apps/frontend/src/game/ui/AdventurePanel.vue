@@ -74,10 +74,14 @@ defineExpose({
         @focusin="emit('command', { type: 'release_input' })"
     >
         <div class="adventure-tools" aria-label="Приключение">
-            <span
-                class="adventure-level"
-                :title="`Общий уровень: 1 + ${player.progression?.totalEarnedLevels ?? 0} освоенных ступеней. Сложность практики ×${player.progression?.trainingMultiplier ?? 1}`"
-                >Ур. {{ 1 + (player.progression?.totalEarnedLevels ?? 0) }}</span
+            <span class="adventure-level" title="Сумма уровней созвездий"
+                >Ступени
+                {{
+                    player.progression?.masteries.reduce(
+                        (sum, mastery) => sum + mastery.level,
+                        0
+                    ) ?? 0
+                }}</span
             >
             <button
                 type="button"

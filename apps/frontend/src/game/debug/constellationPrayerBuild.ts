@@ -2,20 +2,13 @@ import {
     ABILITY_DEFINITIONS,
     type DeityMood,
     GRAVE_PURIFY_STEPS,
-    PRAYER_RULES,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
     REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
-import {
-    prayerAnswerChance,
-    prayerHarmChance,
-    prayerMoodQuality,
-    prayerPurificationChance,
-} from '../../../../backend/src/game/prayerProbability'
-import { chancePercent } from './constellationChanceMath'
+import { prayerMoodQuality } from '../../../../backend/src/game/prayerProbability'
 
 export interface PrayerBuildResult {
     available: boolean
@@ -24,14 +17,11 @@ export interface PrayerBuildResult {
 }
 export interface PrayerBuildContext {
     ability: PrayerAbilityId
-    faithLevel: number
-    miraclesLevel: number
     mood: DeityMood
     lowHealthEligible: boolean
     tileWidth: number
     resource: string
     basePower: number
-    growth: number
 }
 type Bonuses = ReturnType<typeof resolveConstellationBonuses>
 const insights = [
@@ -103,10 +93,7 @@ function restorationMetrics(
 ): PrayerBuildResult['metrics'] {
     const mother = context.ability === 'pray'
     const multiplier = mother ? bonuses.prayerGiftMultiplier : 1
-    const amount = Math.round(
-        (context.basePower + context.growth * (context.miraclesLevel - 1)) *
-            (prayerMoodQuality[context.mood] * multiplier)
-    )
+    const amount = Math.round(context.basePower * (prayerMoodQuality[context.mood] * multiplier))
     return [
         {
             label: context.resource.startsWith('HP')
@@ -132,23 +119,13 @@ function appendMotherEffects(
     bonuses: Bonuses,
     context: PrayerBuildContext
 ): void {
-    const answer = prayerAnswerChance(context.faithLevel, context.mood)
-    const purification = chancePercent(prayerPurificationChance(answer))
-    effects.push(
-        `Очищение могил: ${purification} на шаг; требуется ${GRAVE_PURIFY_STEPS} успешных шагов.`
-    )
-    metrics.push({ label: 'Шанс шага очищения', value: purification })
+    effects.push(`Очищение могил: требуется ${GRAVE_PURIFY_STEPS} успешных шагов.`)
     if (activeIds.has('prayer.harm')) {
-        const chance = chancePercent(prayerHarmChance(answer))
         const damage = Math.round(
-            (6 + 2 * Math.max(0, context.miraclesLevel - PRAYER_RULES.harmLevel)) *
-                (prayerMoodQuality[context.mood] * bonuses.prayerHarmMultiplier)
+            6 * (prayerMoodQuality[context.mood] * bonuses.prayerHarmMultiplier)
         )
-        effects.push(
-            `Кара: ${damage} HP урона подходящей нежити в радиусе до поглощения; шанс ${chance}.`
-        )
+        effects.push('Кара наносит урон подходящей нежити в радиусе.')
         metrics.push(
-            { label: 'Шанс кары', value: chance },
             { label: 'Урон кары', value: `${damage} HP до поглощения` },
             { label: 'Множитель кары', value: times(bonuses.prayerHarmMultiplier) }
         )

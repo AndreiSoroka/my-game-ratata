@@ -13,6 +13,7 @@ import { advanceRevive } from '../src/game/characterLife'
 import { miracleChance } from '../src/game/deities'
 import { prayerHarmTargets, previewPrayer } from '../src/game/prayerContext'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 const prayer = (targetId: string) =>
     ({
@@ -44,7 +45,7 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
                 now: 3999,
             })
         ).toEqual([])
-        expect(caster.progression.skills.faith.practice).toBe(0)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
         expect(
             advanceRevive(caster, () => target, 4000, context.random, {
                 ...context,
@@ -54,8 +55,7 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
             expect.objectContaining({ kind: 'heal', targetId: target.id })
         )
         expect(caster.mana).toBe(115)
-        expect(caster.progression.skills.faith.practice).toBe(1)
-        expect(caster.progression.skills.miracles.practice).toBe(1)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(30))
         // The next attempt starts immediately at the completion boundary.
         expect(
             handleAbilityCommand(caster, prayer(target.id), {
@@ -71,7 +71,7 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
         expect(caster.mana).toBe(110)
     }
 )
-it('keeps a failed miracle probabilistic, paid, and only trains faith', () => {
+it('keeps a failed miracle probabilistic and paid without granting mastery experience', () => {
     const caster = abilityHero()
     caster.hp -= 10
     const events = castPrayer(
@@ -81,8 +81,7 @@ it('keeps a failed miracle probabilistic, paid, and only trains faith', () => {
     )
     expect(events.some((event) => event.kind === 'heal')).toBe(false)
     expect(caster.mana).toBe(115)
-    expect(caster.progression.skills.faith.practice).toBe(1)
-    expect(caster.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
 })
 it('does not replace a stale pinned gift by another target or expensive revival', () => {
     const caster = abilityHero()
@@ -104,7 +103,7 @@ it('does not replace a stale pinned gift by another target or expensive revival'
     expect(caster.mana).toBe(120)
     expect(caster.abilities.casting).toBe(null)
 })
-it('uses the unlocked wave on all undead including allies, with one roll and no practice per victim', () => {
+it('uses the unlocked wave on all undead including allies, with one roll and no XP from friendly harm', () => {
     const caster = abilityHero()
     caster.hp -= 10
     const allies = [
@@ -112,9 +111,9 @@ it('uses the unlocked wave on all undead including allies, with one roll and no 
         abilityHero('vanguard', 'undead'),
     ]
     const context = abilityContext([caster, ...allies], 1000)
-    caster.progression.skills.miracles.level = 2
+
     expect(prayerHarmTargets(caster, context)).toEqual([])
-    caster.progression.skills.miracles.level = 3
+
     caster.progression.constellations.opened.add('prayer.harm')
     let rolls = 0
     context.random = () => {
@@ -129,8 +128,7 @@ it('uses the unlocked wave on all undead including allies, with one roll and no 
     expect(
         allies.every((target, index) => target.hp < (before[index] ?? 0))
     ).toBe(true)
-    expect(caster.progression.skills.faith.practice).toBe(1)
-    expect(caster.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
 })
 it('restores only undead through the grave school without inheriting a harmful wave', () => {
     const caster = abilityHero()
@@ -182,8 +180,7 @@ it('prevents friendly damage and healing that damage from training miracles', ()
         now: 31_000,
     })
     expect(events.some((event) => event.kind === 'heal')).toBe(true)
-    expect(actor.progression.skills.faith.practice).toBe(0)
-    expect(actor.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
     expect(target.abilities.untrainableHpDamage).toBeGreaterThan(0)
 })
 it('channels resurrection, preserves identity, and cancels for changed deity or offline target', () => {

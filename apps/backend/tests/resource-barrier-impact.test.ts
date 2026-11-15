@@ -34,11 +34,7 @@ describe('resource provenance of barrier impacts', () => {
             expect(practiceResourceMissing(actor, 'energy')).toBe(
                 spell === 'spark' ? 5 : 0
             )
-            expect(
-                actor.progression.skills[
-                    spell === 'spark' ? 'arcana' : 'fireball'
-                ].practice
-            ).toBe(0)
+            expect(actor.progression.masteries.magic.experience).toBe(0n)
         }
     )
 
@@ -103,7 +99,7 @@ describe('training dummy authority', () => {
 
 function encounter(kind: 'hostile' | 'friendly' | 'dummy') {
     const actor = abilityHero('arcanist')
-    actor.progression.skills.fireball.unlocked = true
+    actor.abilities.known.add('fireball')
     const target =
         kind === 'dummy'
             ? createTrainingTarget({

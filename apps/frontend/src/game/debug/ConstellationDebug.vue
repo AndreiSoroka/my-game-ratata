@@ -11,6 +11,7 @@ import ConstellationBuildToolbar from './ConstellationBuildToolbar.vue'
 import ConstellationDebugChance from './ConstellationDebugChance.vue'
 import { debugHeroClasses } from './constellationDebugSettings'
 import ConstellationDebugUnlock from './ConstellationDebugUnlock.vue'
+import ConstellationMasterySummary from './ConstellationMasterySummary.vue'
 import { useConstellationDebug } from './useConstellationDebug'
 
 const props = withDefaults(
@@ -25,7 +26,6 @@ const {
     enabledStarIds,
     feedback,
     lastCascade,
-    activate,
     toggle,
     clearFeedback,
     dismissCascade,
@@ -74,6 +74,12 @@ function inspectParent(id: string): void {
 }
 function showSummary(): void {
     detailsPanel.value?.querySelector('#debug-build-result')?.scrollIntoView?.({ block: 'start' })
+}
+function listToggle(event: KeyboardEvent, id: string): void {
+    if (event.code !== 'Space') return
+    event.preventDefault()
+    event.stopPropagation()
+    if (!event.repeat) toggle(id)
 }
 function listKey(event: KeyboardEvent): void {
     if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.code)) return
@@ -137,7 +143,9 @@ function listKey(event: KeyboardEvent): void {
             @all="enableAll"
             @reset="reset"
         />
-        <p class="debug-build-help">Класс и seed меняют карту. Набор звёзд сохраняется.</p>
+        <p class="debug-build-help">
+            Seed меняет карту. Класс добавляет стартовые звёзды; набор сохраняется.
+        </p>
         <div class="debug-workspace">
             <ConstellationGraph
                 id="debug-sky"
@@ -147,7 +155,7 @@ function listKey(event: KeyboardEvent): void {
                 :selected-id="selectedId"
                 :enabled-star-ids="enabledStarIds"
                 @select="selectNode"
-                @activate="activate"
+                @activate="toggle"
             />
             <aside class="debug-sidebar" aria-label="Каталог звёзд">
                 <div
@@ -184,6 +192,11 @@ function listKey(event: KeyboardEvent): void {
                     <div id="debug-star-details" data-testid="selected-star-card">
                         <ConstellationStarCard :node="selected" />
                     </div>
+                    <ConstellationMasterySummary
+                        :path="selected.constellationId"
+                        :active-ids="enabledStarIds"
+                        :hero-class="settings.heroClass"
+                    />
                     <ConstellationBuildSummary
                         :path="selected.constellationId"
                         :active-ids="enabledStarIds"
@@ -192,7 +205,11 @@ function listKey(event: KeyboardEvent): void {
                         :node-id="selectedId"
                         :enabled-star-ids="enabledStarIds"
                     />
-                    <ConstellationDebugUnlock :node-id="selectedId" />
+                    <ConstellationDebugUnlock
+                        :node-id="selectedId"
+                        :active-ids="enabledStarIds"
+                        :hero-class="settings.heroClass"
+                    />
                 </div>
                 <section class="debug-catalog">
                     <div class="debug-filters">
@@ -234,6 +251,7 @@ function listKey(event: KeyboardEvent): void {
                                 :aria-pressed="selectedId === node.id"
                                 aria-controls="debug-star-details"
                                 @click="selectStar(node.id)"
+                                @keydown="listToggle($event, node.id)"
                             >
                                 <strong>{{ node.name }}</strong>
                                 <span>{{ pathNames.get(node.constellationId) }}</span>

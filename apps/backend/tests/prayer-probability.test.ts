@@ -22,14 +22,10 @@ import { gravePrayerFixture, prayerSource } from './gravePrayerTestHelpers'
 const moods: DeityMood[] = ['benevolent', 'neutral', 'wrathful']
 const base = { benevolent: 0.8, neutral: 0.55, wrathful: 0.25 }
 const qualities = { benevolent: 1.3, neutral: 1, wrathful: 0.65 }
-const cases = Array.from({ length: 10 }, (_, index) => index + 1).flatMap(
-    (faith) =>
-        moods.map((mood) => ({
-            faith,
-            mood,
-            expected: Math.min(0.95, base[mood] + (faith - 1) * 0.015),
-        }))
+const cases = [0, 3, 100].flatMap((level) =>
+    moods.map((mood) => ({ level, mood, expected: base[mood] }))
 )
+
 function timeFor(deity: DeityId, mood: DeityMood): number {
     const time = Array.from(
         { length: 6 },
@@ -43,22 +39,22 @@ function timeFor(deity: DeityId, mood: DeityMood): number {
 
 describe('shared prayer probability math matches independent oracle and live school selection', () => {
     it.each(cases)(
-        'matches Faith $faith / $mood for every school',
-        ({ faith, mood, expected }) => {
+        'matches mastery $level / $mood for every school',
+        ({ level, mood, expected }) => {
             const actor = abilityHero('cleric')
             for (const ability of prayerAbilityIds) {
                 const school = PRAYER_SCHOOL_DEFINITIONS[ability]
                 for (const other of prayerAbilityIds) {
-                    actor.progression.skills[
-                        PRAYER_SCHOOL_DEFINITIONS[other].faithSkillId
-                    ].level = 10
+                    actor.progression.masteries[
+                        PRAYER_SCHOOL_DEFINITIONS[other].constellationId
+                    ].level = 1000
                 }
-                actor.progression.skills[school.faithSkillId].level = faith
-                actor.progression.skills[school.miracleSkillId].level = 10
+                actor.progression.masteries[school.constellationId].level =
+                    level
                 actor.progression.patron =
                     school.deityId === 'hearth' ? 'road' : 'hearth'
                 const now = timeFor(school.deityId, mood)
-                expect(prayerAnswerChance(faith, mood)).toBe(expected)
+                expect(prayerAnswerChance(mood)).toBe(expected)
                 expect(miracleChance(actor, now, school.deityId)).toBe(expected)
                 expect(prayerPurificationChance(expected)).toBe(
                     Math.min(0.95, (0.2 * expected) / 0.55)
@@ -71,10 +67,10 @@ describe('shared prayer probability math matches independent oracle and live sch
         }
     )
     it.each(cases)(
-        'keeps strict refusal boundaries and exactly one answer roll for Faith $faith / $mood',
-        ({ faith, mood, expected }) => {
+        'keeps strict refusal boundaries and exactly one answer roll for mastery $level / $mood',
+        ({ level, mood, expected }) => {
             const actor = abilityHero('cleric')
-            actor.progression.skills.faith.level = faith
+            actor.progression.masteries.prayer.level = level
             const now = timeFor('hearth', mood)
             for (const [roll, succeeds] of [
                 [expected - Number.EPSILON, true],
@@ -90,10 +86,8 @@ describe('shared prayer probability math matches independent oracle and live sch
             }
         }
     )
-    it('retains the defensive derived caps and the actual level-10 favorable harm cap', () => {
-        expect(prayerHarmChance(prayerAnswerChance(10, 'benevolent'))).toBe(
-            0.95
-        )
+    it('retains defensive derived caps and the favorable harm cap', () => {
+        expect(prayerHarmChance(prayerAnswerChance('benevolent'))).toBe(0.95)
         expect(prayerPurificationChance(10)).toBe(0.95)
         expect(prayerPurificationChance(0.55)).toBe(0.2)
         expect(prayerHarmChance(0.25)).toBe(0.45)
@@ -102,11 +96,11 @@ describe('shared prayer probability math matches independent oracle and live sch
 
 describe('resolved grave and harm outcomes keep the same single supplied roll', () => {
     it.each(cases)(
-        'uses the strict grave step threshold at Faith $faith / $mood',
-        ({ faith, mood, expected }) => {
+        'uses the strict grave step threshold at mastery $level / $mood',
+        ({ level, mood, expected }) => {
             const f = gravePrayerFixture()
             const now = timeFor('hearth', mood)
-            f.actor.progression.skills.faith.level = faith
+            f.actor.progression.masteries.prayer.level = level
             const threshold = Math.min(0.95, (0.2 * expected) / 0.55)
             const intent = {
                 mode: 'purify_grave',
@@ -138,8 +132,8 @@ describe('resolved grave and harm outcomes keep the same single supplied roll', 
         }
     )
     it.each(cases)(
-        'uses the strict harm threshold without a Miracles-three gate at Faith $faith / $mood',
-        ({ faith, mood, expected }) => {
+        'uses the strict harm threshold without a numeric power level at mastery $level / $mood',
+        ({ level, mood, expected }) => {
             const threshold = Math.min(0.95, expected + 0.2)
             for (const [roll, succeeds] of [
                 [threshold - Number.EPSILON, true],
@@ -154,8 +148,7 @@ describe('resolved grave and harm outcomes keep the same single supplied roll', 
                     faction: 'monsters',
                     spawnPosition: { x: 100, y: 100 },
                 })
-                actor.progression.skills.faith.level = faith
-                actor.progression.skills.miracles.level = 1
+                actor.progression.masteries.prayer.level = level
                 actor.progression.constellations.opened.add('prayer.harm')
                 const now = timeFor('hearth', mood)
                 const context = {

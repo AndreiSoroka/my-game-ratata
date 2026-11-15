@@ -13,6 +13,7 @@ import { previewPrayer } from '../src/game/prayerContext'
 import { prayerParameters } from '../src/game/prayerParameters'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
 import { gravePrayerFixture, prayerSource } from './gravePrayerTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 it.each([0.199999, 0.2])(
     'uses the neutral twenty-percent threshold without a second roll: %s',
@@ -36,9 +37,8 @@ it.each([0.199999, 0.2])(
         )
         expect(random).toHaveBeenCalledTimes(1)
         expect(f.actor.mana).toBe(115)
-        expect(f.actor.progression.skills.faith.practice).toBe(1)
-        expect(f.actor.progression.skills.miracles.practice).toBe(
-            roll < 0.2 ? 1 : 0
+        expect(masteryExperience(f.actor, 'prayer')).toBe(
+            prayerXp(roll < 0.2 ? 10 : 0)
         )
         expect(f.service.get(prayerSource.id)?.purification?.completed).toBe(
             roll < 0.2 ? 1 : 0
@@ -73,7 +73,7 @@ it('shares progress across interruptions, ruin/restoration and duplicate registr
     })
 })
 
-it('resolves area gifts and multiple grave steps with one roll, payment and practice award', () => {
+it('resolves area gifts and multiple grave steps with one roll and per-result XP', () => {
     const f = gravePrayerFixture()
     f.actor.progression.constellations.opened.add('prayer.area')
     f.actor.hp -= 10
@@ -102,8 +102,7 @@ it('resolves area gifts and multiple grave steps with one roll, payment and prac
         events.filter((event) => event.kind === 'grave_purification_progress')
     ).toHaveLength(2)
     expect(f.actor.mana).toBe(115)
-    expect(f.actor.progression.skills.faith.practice).toBe(1)
-    expect(f.actor.progression.skills.miracles.practice).toBe(1)
+    expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(80))
     expect(random).toHaveBeenCalledTimes(1)
 })
 
@@ -167,10 +166,10 @@ it('uses authored cell size for prayer reach and fixes duration when a channel s
     expect(actor.mana).toBe(115)
 })
 
-it('learns harmful prayer from its star instead of miracles level three', () => {
+it('learns harmful prayer from its star instead of a mastery level', () => {
     const actor = abilityHero()
     const undead = abilityHero('vanguard', 'undead')
-    actor.progression.skills.miracles.level = 10
+
     const context = abilityContext([actor, undead])
     expect(previewPrayer(actor, context).harmfulTargets).toBe(0)
     actor.progression.constellations.opened.add('prayer.harm')
@@ -179,7 +178,7 @@ it('learns harmful prayer from its star instead of miracles level three', () => 
 
 it('reveals own and other divine knowledge only through their independently learned stars', () => {
     const actor = abilityHero()
-    actor.progression.skills.faith.level = 10
+
     expect(snapshotDeity(actor, 30_000)).toMatchObject({
         perception: 'vague',
         mood: null,
@@ -198,7 +197,7 @@ it('reveals own and other divine knowledge only through their independently lear
         successChance: null,
     })
     actor.progression.constellations.opened.add('prayer.omen3')
-    expect(snapshotDeity(actor, 30_000).successChance).toBeCloseTo(0.685)
+    expect(snapshotDeity(actor, 30_000).successChance).toBeCloseTo(0.55)
     actor.progression.constellations.opened.add('prayer.omen4')
     expect(snapshotDeity(actor, 30_000).changesInMs).toBe(30_000)
     actor.progression.constellations.opened.add('prayer.others1')
@@ -255,8 +254,7 @@ it('cancels a restored pinned recipient before payment, rolls or area effects', 
     expect(actor.mana).toBe(120)
     expect(neighbor.hp).toBe(neighbor.maxHp - 10)
     expect(random).not.toHaveBeenCalled()
-    expect(actor.progression.skills.faith.practice).toBe(0)
-    expect(actor.progression.skills.miracles.practice).toBe(0)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
 })
 
 it('does not turn a small hostile wound followed by friendly damage into Last Light', () => {

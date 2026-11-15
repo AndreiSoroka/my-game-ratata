@@ -18,7 +18,6 @@ export function castGraveSpell(
         cooldown: number
         range: number
         damage: number
-        growth: number
     },
     context: ProgressionContext
 ): GameEventPayload[] {
@@ -55,10 +54,7 @@ export function castGraveSpell(
         resourceSpends: recordPaidResources(actor, before),
         target,
         abilityId: message.skillId,
-        rawDamage:
-            spell.damage +
-            (actor.progression.skills[message.skillId].level - 1) *
-                spell.growth,
+        rawDamage: spell.damage,
         maxRange: spell.range,
         canStun: false,
         damageMultiplier: 1,

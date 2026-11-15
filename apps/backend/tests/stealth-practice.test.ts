@@ -1,3 +1,4 @@
+import { parseMasteryExperience } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
@@ -5,7 +6,6 @@ import { retireCharacter } from '../src/game/characterLife'
 import { movementNoise } from '../src/game/movementNoise'
 import { NavigationService } from '../src/game/navigation'
 import { visibilityRadius } from '../src/game/queries'
-import { practiceThreshold, trainSkill } from '../src/game/skillProgression'
 import { practiceStealthMovement } from '../src/game/stealthPractice'
 
 function fixture(kind: GameCharacter['controllerKind'] = 'network_player') {
@@ -61,10 +61,16 @@ describe('stealth practice through meaningful movement', () => {
         (kind) => {
             const { actor, pass } = fixture(kind)
             pass()
-            expect(actor.progression.skills.stealth.practice).toBe(1)
+            expect(actor.progression.masteries.shadow.experience).toBe(
+                parseMasteryExperience('15')
+            )
             expect(
-                actor.snapshot(3000).progression?.practicedBranches
-            ).toContain('cunning')
+                actor
+                    .snapshot(3000)
+                    .progression?.masteries.find(
+                        (mastery) => mastery.id === 'shadow'
+                    )?.experience
+            ).toBe('15')
         }
     )
 
@@ -72,7 +78,7 @@ describe('stealth practice through meaningful movement', () => {
         const { actor, pass, move } = fixture()
         move(136, 1000)
         move(200, 1100)
-        expect(actor.progression.skills.stealth.practice).toBe(0)
+        expect(actor.progression.masteries.shadow.experience).toBe(0n)
         actor.position.x = 136
         pass()
         for (let now = 3000; now < 10_000; now += 1000) {
@@ -83,10 +89,14 @@ describe('stealth practice through meaningful movement', () => {
             move(184, now + 400)
             move(200, now + 500)
         }
-        expect(actor.progression.skills.stealth.practice).toBe(1)
+        expect(actor.progression.masteries.shadow.experience).toBe(
+            parseMasteryExperience('15')
+        )
         actor.position.x = 136
         pass(65_000)
-        expect(actor.progression.skills.stealth.practice).toBe(2)
+        expect(actor.progression.masteries.shadow.experience).toBe(
+            parseMasteryExperience('30')
+        )
     })
 
     it.each([
@@ -140,37 +150,30 @@ describe('stealth practice through meaningful movement', () => {
             }
         }
         pass()
-        expect(actor.progression.skills.stealth.practice).toBe(0)
+        expect(actor.progression.masteries.shadow.experience).toBe(0n)
     })
 
-    it('earns levels with increasing costs, improves perception/noise and loses both skills on permadeath', () => {
+    it('only learned stars improve perception and noise, and resets mastery on permanent death', () => {
         const { actor, observer, navigation } = fixture()
         actor.position = { x: 168, y: 152 }
         const radius = visibilityRadius(observer, actor, 112, 1000)
         const firstNoise = movementNoise(actor, navigation, 16, false, 1000)
-        const base = practiceThreshold(actor.progression, 'stealth')
-        trainSkill(actor, 'stealth', base)
-        expect(actor.progression.skills.stealth.level).toBe(2)
-        expect(practiceThreshold(actor.progression, 'stealth')).toBeGreaterThan(
-            base
-        )
-        expect(visibilityRadius(observer, actor, 112, 2000)).toBeLessThan(
+        actor.progression.masteries.shadow.level = 10
+        expect(visibilityRadius(observer, actor, 112, 2000)).toBe(radius)
+        const advancedNoise = movementNoise(actor, navigation, 16, false, 2000)
+        expect(advancedNoise?.radius).toBe(firstNoise?.radius)
+        actor.progression.constellations.opened.add('shadow.sight')
+        actor.progression.constellations.opened.add('shadow.noise1')
+        expect(visibilityRadius(observer, actor, 112, 3000)).toBeLessThan(
             radius
         )
-        const trainedNoise = movementNoise(actor, navigation, 16, false, 2000)
-        expect(trainedNoise?.radius).toBeLessThan(firstNoise?.radius ?? 0)
-        trainSkill(actor, 'theft', 100)
-        actor.applyDamage(actor.hp, 3000)
+        const improvedNoise = movementNoise(actor, navigation, 16, false, 3000)
+        expect(improvedNoise?.radius).toBeLessThan(firstNoise?.radius ?? 0)
+        actor.applyDamage(actor.hp, 4000)
         retireCharacter(actor)
-        expect(actor.progression.skills.stealth).toEqual({
-            level: 1,
-            practice: 0,
-            unlocked: true,
-        })
-        expect(actor.progression.skills.theft).toEqual({
-            level: 1,
-            practice: 0,
-            unlocked: true,
+        expect(actor.progression.masteries.shadow).toEqual({
+            level: 0,
+            experience: 0n,
         })
     })
 })
@@ -182,6 +185,6 @@ describe('human observers', () => {
         observer.soul.canSpeak = true
         observer.soul.controlSource = 'human'
         pass()
-        expect(actor.progression.skills.stealth.practice).toBe(0)
+        expect(actor.progression.masteries.shadow.experience).toBe(0n)
     })
 })

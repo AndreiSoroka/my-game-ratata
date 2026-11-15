@@ -104,8 +104,8 @@ describe('public effective ability usage', () => {
     it('includes only attained abilities and adds learned spells without exporting their numeric power', () => {
         const actor = abilityHero('vanguard')
         expect(snapshotAbilities(actor, 1000).parameters).toEqual({})
-        actor.progression.skills.fireball.unlocked = true
-        actor.progression.skills.fireball.level = 8
+        actor.abilities.known.add('fireball')
+        actor.progression.masteries.magic.level = 8
         actor.progression.constellations.opened.add('magic.fire_damage')
         const snapshot = snapshotAbilities(actor, 1000)
         expect(snapshot.parameters).toEqual({

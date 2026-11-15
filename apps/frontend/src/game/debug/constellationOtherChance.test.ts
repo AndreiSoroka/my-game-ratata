@@ -116,21 +116,17 @@ describe('chance formula boundaries and examples', () => {
     })
 
     it('keeps detection, conditional success and total theft probability separate', () => {
-        const first = theftEffectChances(1, 1, false, 0.03)
+        const first = theftEffectChances(false, 0.03)
         expect(first.detected).toBeCloseTo(0.6)
         expect(first.success).toBeCloseTo(0.435)
         expect(first.unnoticed).toBeCloseTo(0.174)
         expect(first.detected + first.unnoticed + first.failedUnnoticed).toBeCloseTo(1)
-        expect(theftEffectChances(1, 1, false, 0.06).unnoticed).toBeCloseTo(0.186)
-        expect(theftEffectChances(1, 1, true, 0).unnoticed).toBeCloseTo(0.061)
-        expect(theftEffectChances(100, 100, false, 0.06)).toMatchObject({
-            detected: 0.1,
-            success: 0.9,
-        })
-        expect(theftEffectChances(-100, -100, true, 0)).toMatchObject({
-            detected: 0.9,
-            success: 0.05,
-        })
+        expect(theftEffectChances(false, 0.06).unnoticed).toBeCloseTo(0.186)
+        expect(theftEffectChances(true, 0).unnoticed).toBeCloseTo(0.061)
+        expect(theftEffectChances(false, 100).success).toBe(0.9)
+        expect(theftEffectChances(false, 100).detected).toBeCloseTo(0.6)
+        expect(theftEffectChances(true, -100).success).toBe(0.05)
+        expect(theftEffectChances(true, -100).detected).toBeCloseTo(0.8)
         expect(description('shadow.luck1').examples[0]?.value).toContain('17,4%')
         expect(description('shadow.luck2').examples[0]?.value).toContain('18,6%')
         expect(description('shadow.luck1').formulas).toContain('(1 − D / 100) × U')

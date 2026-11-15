@@ -1,4 +1,4 @@
-import type { ConstellationId, SkillId } from '@my-game-ratata/contracts'
+import type { ConstellationId } from '@my-game-ratata/contracts'
 
 export interface CharacterConstellations {
     opened: Set<string>
@@ -12,25 +12,6 @@ export interface CharacterConstellations {
     lowHpFromHostile: boolean
     lastSpellHit: { targetId: string; at: number } | null
     runicShotUntil: number
-}
-
-export const skillConstellations: Record<SkillId, ConstellationId> = {
-    swordsmanship: 'blade',
-    arcana: 'magic',
-    fireball: 'magic',
-    greater_fireball: 'magic',
-    faith: 'prayer',
-    miracles: 'prayer',
-    road_faith: 'prayer_road',
-    road_miracles: 'prayer_road',
-    lantern_faith: 'prayer_lantern',
-    lantern_miracles: 'prayer_lantern',
-    grave_faith: 'prayer_grave',
-    grave_miracles: 'prayer_grave',
-    marksmanship: 'arrow',
-    vitality: 'life',
-    stealth: 'shadow',
-    theft: 'shadow',
 }
 
 export function createConstellationState(): CharacterConstellations {

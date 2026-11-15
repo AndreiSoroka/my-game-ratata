@@ -152,8 +152,8 @@ it('shows the actual attack family critical chance and mastered spell power', ()
     ]) {
         actor.progression.constellations.opened.add(id)
     }
-    actor.progression.skills.fireball.unlocked = true
-    actor.progression.skills.fireball.level = 4
+    actor.abilities.known.add('fireball')
+    actor.progression.masteries.magic.level = 4
     const attacks = createCharacterSheet(actor, 16).attacks
     expect(
         attacks.find((attack) => attack.id === 'basic_attack')?.critChance
@@ -164,8 +164,8 @@ it('shows the actual attack family critical chance and mastered spell power', ()
     })
     expect(attacks.find((attack) => attack.id === 'fireball')).toMatchObject({
         damage: {
-            min: { kind: 'exact', value: 15 },
-            max: { kind: 'exact', value: 15 },
+            min: { kind: 'exact', value: 9 },
+            max: { kind: 'exact', value: 9 },
         },
         critChance: { kind: 'exact', value: 0 },
     })

@@ -19,7 +19,6 @@ it('routes an NPC prayer death through ordinary world rewards exactly once', () 
     vi.stubGlobal('Bun', { env: {} })
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     actor.progression.patron = 'hearth'
-    actor.progression.skills.miracles.level = 3
     actor.progression.constellations.opened.add('prayer.harm')
     const target = new GameCharacter({
         id: 'slime-victim',

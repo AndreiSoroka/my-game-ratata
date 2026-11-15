@@ -1,16 +1,16 @@
 import {
     type GameEventPayload,
+    MASTERY_REWARDS,
     type Vector2,
     WILDERNESS_AGGRO_POLICY,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { finishConstellationAction } from './constellations'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { visibilityRadius } from './queries'
-import { canPerformSkillAction, trainSkill } from './skillProgression'
+import { awardMasteries, canPerformSkillAction } from './skillProgression'
 
 interface StealthPracticeState {
     locationId: string
@@ -72,10 +72,16 @@ export function practiceStealthMovement(
     state.distance = 0
     state.cells = 0
     state.allowedAt = now + 4_000
-    return [
-        ...trainSkill(actor, 'stealth'),
-        ...finishConstellationAction(actor, { skillIds: ['stealth'], now }),
-    ].map((event) => ({
+    return awardMasteries(
+        actor,
+        [
+            {
+                constellationId: 'shadow',
+                experience: MASTERY_REWARDS.stealthMove,
+            },
+        ],
+        { now, evidence: ['stealth'] }
+    ).map((event) => ({
         ...event,
         audienceIds: [actor.id],
     }))

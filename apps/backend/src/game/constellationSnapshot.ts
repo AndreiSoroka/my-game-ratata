@@ -117,10 +117,10 @@ function observeNode(
 
 function unlocked(actor: GameCharacter, node: ConstellationStar): boolean {
     if (node.id === 'magic.fireball') {
-        return actor.progression.skills.fireball.unlocked
+        return actor.abilities.known.has('fireball')
     }
     if (node.id === 'magic.greater_fireball') {
-        return actor.progression.skills.greater_fireball.unlocked
+        return actor.abilities.known.has('greater_fireball')
     }
     if (node.id === 'prayer.revive') {
         return canUseResurrection(actor, 'pray')

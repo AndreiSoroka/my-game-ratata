@@ -60,7 +60,6 @@ it('scripted support priest submits the same paid contextual prayer and respects
 it('support policy will not silently burn a friendly bystander and never takes over a human', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     actor.hp -= 10
-    actor.progression.skills.miracles.level = 3
     actor.progression.constellations.opened.add('prayer.harm')
     const undead = abilityHero('vanguard', 'undead')
     const { world } = npcWorld([actor, undead])

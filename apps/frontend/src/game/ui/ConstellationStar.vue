@@ -7,6 +7,7 @@ defineProps<{
     selected: boolean
     enabled?: boolean
     interactive: boolean
+    showHalo?: boolean
     tabStop: boolean
     unitScale: number
 }>()
@@ -21,17 +22,18 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
             closed: !node.unlocked,
             inactive: enabled === false,
             inert: !interactive,
+            compact: showHalo === false,
         }"
         :transform="`translate(${node.x},${node.y})`"
         :style="{ color: node.unlocked && enabled !== false ? color : '#8b969e' }"
         :role="interactive ? 'button' : undefined"
-        :tabindex="interactive && tabStop ? 0 : -1"
+        :tabindex="interactive ? (tabStop ? 0 : -1) : undefined"
         :aria-hidden="!interactive || undefined"
         :aria-label="node.unlocked && node.name ? node.name : 'Неизвестно'"
         :aria-pressed="interactive ? (enabled ?? selected) : undefined"
         :aria-current="selected ? 'true' : undefined"
         :data-enabled="enabled"
-        @focus="emit('focus')"
+        @focus="interactive && emit('focus')"
         @click="emit('select')"
         @keydown.stop="emit('key', $event)"
     >
@@ -83,7 +85,7 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
     stroke: #fff4c9 !important;
     stroke-dasharray: 2 3;
 }
-.inert .halo {
+.compact .halo {
     display: none;
 }
 .inert .hit {

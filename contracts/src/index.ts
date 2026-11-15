@@ -6,6 +6,7 @@ import type {
 export * from './abilities'
 export * from './combatAim'
 export * from './development'
+export * from './mastery'
 export * from './prayer'
 export * from './prayerPreview'
 export * from './questRewards'

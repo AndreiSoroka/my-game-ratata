@@ -63,7 +63,7 @@ describe('effective shared constellation parameters', () => {
             position: { x: 100, y: 112 },
         })
         actor.equipment.weapon = createItemInstance('old_sword')
-        actor.progression.skills.swordsmanship.practice = 11
+        actor.progression.masteries.blade.experience = 85_000_000n
         const draws = [0.5, 0.5, 0.5, 0.5, 0]
         const context = {
             actor,
@@ -115,8 +115,8 @@ describe('effective shared constellation parameters', () => {
             remaining: 10,
             expiresAt: 7000,
         })
-        actor.progression.skills.fireball.level = 4
-        expect(effectiveAbility(actor, 'fireball').damage).toBeCloseTo(15.4)
+        actor.progression.masteries.magic.level = 100
+        expect(effectiveAbility(actor, 'fireball').damage).toBeCloseTo(8.8)
     })
 
     it('changes collision-resolved movement and actual dash cost for every controller', () => {
@@ -157,17 +157,17 @@ describe('life experience provenance', () => {
                 respawnDelayMs: 15000,
             })
         strike(6)
-        expect(actor.progression.skills.vitality.practice).toBe(1)
+        expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
         actor.hp += 3
         recordVitalityRecovery(actor, 3, 2000)
-        expect(actor.progression.skills.vitality.practice).toBe(1)
+        expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
         actor.hp += 3
         recordVitalityRecovery(actor, 3, 3000)
-        expect(actor.progression.skills.vitality.practice).toBe(2)
+        expect(actor.progression.masteries.life.experience).toBe(40_000_000n)
         strike(25)
-        expect(actor.progression.skills.vitality.practice).toBe(7)
+        expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
         strike(1)
-        expect(actor.progression.skills.vitality.practice).toBe(7)
+        expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
     })
 
     it('does not mistake a friendly low-health crossing for an enemy-inflicted one', () => {
@@ -190,7 +190,7 @@ describe('life experience provenance', () => {
         expect(actor.hp).toBe(4)
         expect(actor.progression.constellations.lowHpFromHostile).toBe(false)
         expect(actor.progression.constellations.lowHpAwarded).toBe(false)
-        expect(actor.progression.skills.vitality.practice).toBe(0)
+        expect(actor.progression.masteries.life.experience).toBe(0n)
     })
 
     it('never practices from friendly damage, its recovery, or idle low health', () => {
@@ -204,10 +204,10 @@ describe('life experience provenance', () => {
             damageKind: 'physical',
             respawnDelayMs: 15000,
         })
-        expect(actor.progression.skills.vitality.practice).toBe(0)
+        expect(actor.progression.masteries.life.experience).toBe(0n)
         actor.hp += 20
         expect(recordVitalityRecovery(actor, 20, 2000)).toEqual([])
-        expect(actor.progression.skills.vitality.practice).toBe(0)
+        expect(actor.progression.masteries.life.experience).toBe(0n)
         expect(actor.progression.constellations.opened.has('life.root')).toBe(
             false
         )

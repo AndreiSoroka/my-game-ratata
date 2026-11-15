@@ -22,7 +22,7 @@ it.each<[ItemId | undefined, number, number]>([
             f.actor.equipment.weapon = weapon
         }
         const condition = weapon?.durability ?? 0
-        const skills = structuredClone(f.actor.progression.skills)
+        const skills = structuredClone(f.actor.progression.masteries)
         expect(attemptAttack(f.attack())[0]).toMatchObject({
             kind: 'attack',
             target: f.reference,
@@ -45,7 +45,7 @@ it.each<[ItemId | undefined, number, number]>([
         ])
         expect(f.service.get('grave')?.hp).toBe(100 - amount)
         expect(weapon?.durability ?? 0).toBe(condition - wear)
-        expect(f.actor.progression.skills).toEqual(skills)
+        expect(f.actor.progression.masteries).toEqual(skills)
         expect(f.actor.inventory).toEqual([])
         expect(f.hit()).toEqual([])
     }

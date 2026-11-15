@@ -118,8 +118,8 @@ function describeDodge(): ConstellationEffectChance {
 
 function describeTheft(id: string): ConstellationEffectChance {
     const bonus = id === 'shadow.luck2' ? 0.06 : id === 'shadow.luck1' ? 0.03 : 0
-    const behind = theftEffectChances(1, 1, false, bonus)
-    const front = theftEffectChances(1, 1, true, bonus)
+    const behind = theftEffectChances(false, bonus)
+    const front = theftEffectChances(true, bonus)
     return withChanceFormulas(
         {
             summary:
@@ -128,11 +128,11 @@ function describeTheft(id: string): ConstellationEffectChance {
                     : 'Бонус применяется в 100% допустимых попыток, но сама кража остаётся двухэтапной случайной проверкой.',
             examples: [
                 {
-                    label: 'S = 1, T = 1, сзади',
+                    label: 'Сзади',
                     value: `Обнаружение ${chancePercent(behind.detected)}; получение при незамеченности ${chancePercent(behind.success)}; незаметная кража ${chancePercent(behind.unnoticed)}.`,
                 },
                 {
-                    label: 'S = 1, T = 1, спереди',
+                    label: 'Спереди',
                     value: `Обнаружение ${chancePercent(front.detected)}; получение при незамеченности ${chancePercent(front.success)}; незаметная кража ${chancePercent(front.unnoticed)}.`,
                 },
             ],
@@ -146,22 +146,19 @@ function describeTheft(id: string): ConstellationEffectChance {
 }
 
 function theftFormulas() {
-    const skills = { S: 'Уровень Скрытности.', T: 'Уровень Воровства.' }
     const outcomes = {
         D: 'Шанс обнаружения в процентах.',
         U: 'Шанс получить предмет при незамеченности, в процентах.',
     }
     return [
-        chanceFormula('Шанс обнаружения, %', 'clamp(10, 90, 68 − 3 × (S − 1) − 2 × (T − 1) + F)', {
-            ...skills,
+        chanceFormula('Шанс обнаружения, %', 'clamp(10, 90, 68 + F)', {
             F: '12 при попытке спереди от цели; −8 в остальных случаях.',
             clamp,
         }),
         chanceFormula(
             'Шанс получить предмет, если не обнаружили, %',
-            'clamp(5, 90, 25 + 4 × T + 1.5 × S + A + B)',
+            'clamp(5, 90, 30.5 + A + B)',
             {
-                ...skills,
                 A: '0 спереди от цели; 10 в остальных случаях.',
                 B: 'Бонус удачи в процентных пунктах: 0 без звёзд, 3 с одной, 6 с обеими.',
                 clamp,
@@ -187,10 +184,9 @@ function describeNoise(): ConstellationEffectChance {
         [
             chanceFormula(
                 'Радиус шума при движении крадучись, пиксели',
-                '64 × M × 0.18 × (1 − 0.035 × (S − 1)) × (1 − 0.15 × N)',
+                '64 × M × 0.18 × (1 − 0.15 × N)',
                 {
                     M: 'Множитель громкости поверхности.',
-                    S: 'Уровень Скрытности.',
                     N: 'Число изученных звёзд тишины: 1 или 2.',
                 }
             ),
@@ -209,15 +205,10 @@ function describeSight(): ConstellationEffectChance {
             ],
         },
         [
-            chanceFormula(
-                'Радиус обнаружения цели, пиксели',
-                'min(R, max(28, R × F × (1 − 0.03 × (S − 1)) × 0.90))',
-                {
-                    R: 'Исходный радиус зрения наблюдателя в мировых пикселях.',
-                    S: 'Уровень Скрытности цели.',
-                    F: 'Множитель угла к взгляду наблюдателя: 0.65 спереди, 0.35 сзади, 0.50 сбоку.',
-                }
-            ),
+            chanceFormula('Радиус обнаружения цели, пиксели', 'min(R, max(28, R × F × 0.90))', {
+                R: 'Исходный радиус зрения наблюдателя в мировых пикселях.',
+                F: 'Множитель угла к взгляду наблюдателя: 0.65 спереди, 0.35 сзади, 0.50 сбоку.',
+            }),
         ]
     )
 }
@@ -234,15 +225,10 @@ function describeFireball(id: string): ConstellationEffectChance {
             ],
         },
         [
-            chanceFormula(
-                'Рассчитанный урон',
-                `round((${greater ? '18 + 3' : '8 + 2'} × (L − 1)) × K)`,
-                {
-                    L: 'Уровень навыка этого огненного шара.',
-                    K: 'Множитель «Жара»: 1.10 при изученной звезде, иначе 1.',
-                    round: 'Округление до ближайшего целого.',
-                }
-            ),
+            chanceFormula('Рассчитанный урон', `round(${greater ? '18' : '8'} × K)`, {
+                K: 'Множитель «Жара»: 1.10 при изученной звезде, иначе 1.',
+                round: 'Округление до ближайшего целого.',
+            }),
             chanceFormula('Потеря здоровья цели', 'min(H, max(0, D − B))', {
                 H: 'Текущее здоровье цели до попадания.',
                 D: 'Рассчитанный урон.',

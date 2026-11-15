@@ -1,32 +1,38 @@
-import { PRAYER_SCHOOL_DEFINITIONS, type PrayerAbilityId } from '@my-game-ratata/contracts'
+import { type PrayerAbilityId } from '@my-game-ratata/contracts'
 
 import { chanceFormula } from './constellationChanceFormula'
 import { prayerSchoolInfo } from './constellationPrayerScenario'
 
 const quality =
     'Множитель силы от настроения: 1,3 при благосклонности; 1 при нейтральном настроении; 0,65 при гневе.'
-const answer = 'Шанс ответа в процентах, рассчитанный формулой «Шанс ответа».'
+const answer =
+    'Шанс успешной молитвы в процентах: 80 при благосклонности, 55 при нейтральном настроении, 25 при гневе.'
 const roll =
     'Один общий случайный бросок завершённой молитвы: от 0 включительно до 1 не включительно.'
 const learned = (name: string) => `1, если изучена звезда «${name}»; иначе 0.`
 
 export function prayerAnswerFormula(ability?: PrayerAbilityId) {
-    return chanceFormula('Шанс ответа, %', 'min(95, B + (C − 1) × 1,5)', {
-        B: 'База настроения в процентах: 80 при благосклонности; 55 при нейтральном настроении; 25 при гневе.',
-        C:
-            ability === undefined
-                ? 'Вера собственной школы отвечающего бога, уровень от 1 до 10: Вера, Вера странника, Вера ясности или Вера праха.'
-                : `${prayerSchoolInfo[ability].faithName} (${PRAYER_SCHOOL_DEFINITIONS[ability].faithSkillId}), уровень от 1 до 10.`,
+    const label =
+        ability === 'pray'
+            ? 'Шанс лечения, %'
+            : ability === 'pray_road'
+              ? 'Шанс восстановления энергии, %'
+              : ability === 'pray_lantern'
+                ? 'Шанс восстановления маны, %'
+                : ability === 'pray_grave'
+                  ? 'Шанс лечения нежити, %'
+                  : 'Шанс молитвы, %'
+    return chanceFormula(label, 'B', {
+        B: '80 при благосклонности; 55 при нейтральном настроении; 25 при гневе. Уровень мастерства не меняет вероятность.',
     })
 }
 export function prayerRestorationFormula(ability: PrayerAbilityId) {
     const info = prayerSchoolInfo[ability]
     return chanceFormula(
         `Восстановление ${info.resource} при ответе`,
-        `min(N, round((${info.basePower} + ${info.growth} × (L − 1)) × Q × M))`,
+        `min(N, round(${info.basePower} × Q × M))`,
         {
             N: `Недостающий запас ${info.resource} у получателя в момент разрешения молитвы.`,
-            L: `${info.miraclesName} (${PRAYER_SCHOOL_DEFINITIONS[ability].miracleSkillId}), уровень от 1 до 10.`,
             Q: quality,
             M:
                 ability === 'pray'
@@ -49,8 +55,7 @@ export function prayerHarmFormula() {
     return chanceFormula('Шанс кары, %', 'min(95, P + 20)', { P: answer })
 }
 export function prayerHarmPowerFormula() {
-    return chanceFormula('Урон кары до поглощения', 'round((6 + 2 × max(0, L − 3)) × Q × M)', {
-        L: 'Чудеса (miracles), уровень от 1 до 10.',
+    return chanceFormula('Урон кары до поглощения', 'round(6 × Q × M)', {
         Q: quality,
         M: 'Множитель из формулы «Множитель урона кары».',
     })
@@ -62,7 +67,7 @@ export function prayerHarmMultiplierFormula() {
     })
 }
 export function prayerAnswerRollFormula() {
-    return chanceFormula('Условие ответа', 'r < P / 100', { r: roll, P: answer })
+    return chanceFormula('Условие успеха', 'r < P / 100', { r: roll, P: answer })
 }
 export function prayerHarmRollFormula() {
     return chanceFormula('Условие кары для каждой подходящей цели', 'r < H / 100', {

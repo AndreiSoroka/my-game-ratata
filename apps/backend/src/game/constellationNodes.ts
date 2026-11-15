@@ -22,6 +22,8 @@ const rootNames: Partial<Record<ConstellationId, string>> = {
 const roots: ConstellationStar[] = constellationPaths.map((path) => {
     const ability = rootAbilities[path.id]
     return {
+        acquisition: 'root',
+        minimumLevel: 0,
         id: `${path.id}.root`,
         constellationId: path.id,
         name: rootNames[path.id] ?? path.name,
@@ -54,6 +56,15 @@ function special(
     activationAbilityId?: AbilityId
 ): ConstellationStar {
     return {
+        acquisition: id === 'magic.fireball' ? 'learned' : 'event',
+        minimumLevel:
+            id === 'magic.fireball'
+                ? 3
+                : id === 'magic.greater_fireball'
+                  ? 10
+                  : id.endsWith('.revive')
+                    ? 5
+                    : 0,
         id,
         constellationId: path,
         kind,
@@ -123,10 +134,45 @@ const joints = [
 ]
 
 /** Complete authored graph. Owner snapshots disclose only earned metadata and the immediate frontier. */
+const authoredNodes = [
+    ...roots,
+    ...constellationStars,
+    ...explicitAbilities,
+    ...joints,
+]
+const authoredById = new Map(authoredNodes.map((node) => [node.id, node]))
+const depths = new Map<string, number>()
+function randomDepth(id: string): number {
+    const cached = depths.get(id)
+    if (cached !== undefined) {
+        return cached
+    }
+    const node = authoredById.get(id)
+    if (node === undefined) {
+        throw new Error(`Missing prerequisite star: ${id}`)
+    }
+    const depth =
+        Math.max(0, ...node.parents.map(randomDepth)) +
+        (node.acquisition === 'random' ? 1 : 0)
+    depths.set(id, depth)
+    return depth
+}
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(
-        [...roots, ...constellationStars, ...explicitAbilities, ...joints].map(
-            freezeStar
+        authoredNodes.map((node) =>
+            freezeStar({
+                ...node,
+                minimumLevel: Math.max(
+                    node.acquisition === 'random'
+                        ? 2 * randomDepth(node.id) - 1
+                        : node.minimumLevel,
+                    node.ability === 'fireball'
+                        ? 3
+                        : node.ability === 'greater_fireball'
+                          ? 10
+                          : 0
+                ),
+            })
         )
     )
 

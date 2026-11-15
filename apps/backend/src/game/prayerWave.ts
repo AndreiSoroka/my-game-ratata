@@ -1,6 +1,6 @@
 import {
     type GameEventPayload,
-    PRAYER_RULES,
+    MASTERY_REWARDS,
     type PrayerAbilityId,
     profileForPrayer,
 } from '@my-game-ratata/contracts'
@@ -9,7 +9,6 @@ import type { AbilityContext } from './abilityContext'
 import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { miracleChance } from './deities'
-import { canTargetByFaction } from './factions'
 import { prayerHarmTargets } from './prayerContext'
 import { prayerHarmChance } from './prayerProbability'
 
@@ -24,7 +23,7 @@ export function applyPrayerWave(
         return {
             events: [] as GameEventPayload[],
             meaningful: false,
-            attemptMeaningful: false,
+            experience: 0,
         }
     }
     const victims = prayerHarmTargets(actor, context, abilityId)
@@ -32,24 +31,9 @@ export function applyPrayerWave(
     const profile = profileForPrayer(abilityId)
     const events: GameEventPayload[] = []
     let meaningful = false
-    let attemptMeaningful = false
-    const harm = Math.round(
-        (6 +
-            2 *
-                Math.max(
-                    0,
-                    actor.progression.skills.miracles.level -
-                        PRAYER_RULES.harmLevel
-                )) *
-            quality
-    )
+    let experience = 0
+    const harm = Math.round(6 * quality)
     for (const victim of victims) {
-        const hostile =
-            victim.id !== actor.id &&
-            victim.faction !== actor.faction &&
-            victim.trainingTarget === undefined &&
-            canTargetByFaction(actor, victim, context.now)
-        attemptMeaningful ||= hostile
         if (roll >= prayerHarmChance(chance)) {
             continue
         }
@@ -68,6 +52,9 @@ export function applyPrayerWave(
             }))
         )
         meaningful ||= damage.trainableDamage > 0
+        if (damage.trainableDamage > 0) {
+            experience += MASTERY_REWARDS.prayerHarm
+        }
     }
-    return { events, meaningful, attemptMeaningful }
+    return { events, meaningful, experience }
 }

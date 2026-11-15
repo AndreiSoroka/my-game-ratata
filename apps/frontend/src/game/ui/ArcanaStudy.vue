@@ -18,22 +18,17 @@ const nearby = computed(() =>
     )
 )
 const students = computed(() =>
-    nearby.value.filter(
-        (character) =>
-            !character.progression?.skills.some(
-                (skill) => skill.id === 'fireball' && skill.unlocked
-            )
-    )
+    nearby.value.filter((character) => !character.abilities?.known.includes('fireball'))
 )
 const student = computed(
     () => students.value.find((character) => character.id === selectedId.value) ?? students.value[0]
 )
-const canTeach = computed(
+const studentReady = computed(
     () =>
-        props.player.progression?.skills.some(
-            (skill) => skill.id === 'fireball' && skill.unlocked
-        ) ?? false
+        (student.value?.progression?.masteries.find((entry) => entry.id === 'magic')?.level ?? 0) >=
+        3
 )
+const canTeach = computed(() => props.player.abilities?.known.includes('fireball') ?? false)
 const chaptersRead = computed(() => props.player.progression?.magicChaptersRead ?? 0)
 const chaptersTotal = computed(() => props.player.progression?.magicChaptersTotal ?? 3)
 function study(): void {
@@ -75,9 +70,17 @@ function teach(): void {
             </select>
         </div>
         <div v-if="canTeach" class="knowledge-action">
-            <button type="button" :disabled="!player.alive || !student" @click="teach">
+            <button
+                type="button"
+                :disabled="!player.alive || !student || !studentReady"
+                @click="teach"
+            >
                 Научить огненному шару</button
-            ><small>Знание получает ученик, практика — наставник.</small>
+            ><small>{{
+                student && !studentReady
+                    ? 'Ученику требуется Магия 3.'
+                    : 'Знание получает ученик, опыт — наставник.'
+            }}</small>
         </div>
     </div>
 </template>

@@ -44,7 +44,7 @@ it('absorbs once with the common damage path, trains only real hostile absorptio
     })
     expect(first.hpDamage).toBe(0)
     expect(first.absorbed).toBe(3)
-    expect(actor.progression.skills.arcana.practice).toBe(1)
+    expect(actor.progression.masteries.magic.experience).toBe(20_000_000n)
     const next = resolveCharacterDamage({
         actor: enemy,
         target: actor,
@@ -55,7 +55,7 @@ it('absorbs once with the common damage path, trains only real hostile absorptio
     })
     expect(next.absorbed).toBe(5)
     expect(next.hpDamage).toBe(4)
-    expect(actor.progression.skills.arcana.practice).toBe(1)
+    expect(actor.progression.masteries.magic.experience).toBe(20_000_000n)
     const kill = () =>
         resolveCharacterDamage({
             actor: enemy,
@@ -81,7 +81,7 @@ it('keeps expired barrier and rejected attacks from spending or granting practic
         { type: 'use_ability', abilityId: 'barrier' },
         context
     )
-    expect(actor.progression.skills.arcana.practice).toBe(0)
+    expect(actor.progression.masteries.magic.experience).toBe(0n)
     handleAbilityCommand(
         actor,
         { type: 'use_ability', abilityId: 'barrier' },
@@ -112,7 +112,7 @@ it('keeps expired barrier and rejected attacks from spending or granting practic
     expect(actor.abilities.availableAt.spark).toBeUndefined()
     expect(actor.mana).toBe(88)
 })
-it('allows later learning through ordinary nearby teachers and gates fireball at arcana three', () => {
+it('allows later learning through ordinary nearby teachers and gates fireball at Magic three', () => {
     const actor = abilityHero('vanguard')
     const cleric = abilityHero('cleric')
     const scholar = abilityHero('arcanist')
@@ -135,7 +135,7 @@ it('allows later learning through ordinary nearby teachers and gates fireball at
     )
     expect(knowsAbility(actor, 'barrier')).toBe(true)
     expect(learnFireball(actor, scholar, 1000)).toEqual([])
-    actor.progression.skills.arcana.level = 3
+    actor.progression.masteries.magic.level = 3
     expect(learnFireball(actor, scholar, 1000)).not.toEqual([])
     actor.abilities.known.delete('pray')
     cleric.position.x += 65

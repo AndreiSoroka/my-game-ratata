@@ -30,8 +30,8 @@ describe('effect-only known card copy', () => {
         for (const id of ids) {
             actor.progression.constellations.opened.add(id)
         }
-        actor.progression.skills.fireball.unlocked = true
-        actor.progression.skills.greater_fireball.unlocked = true
+        actor.abilities.known.add('fireball')
+        actor.abilities.known.add('greater_fireball')
         const visibleIds = new Set(ids.map(constellationWireId))
         const cards = snapshotConstellations(actor).nodes.filter((node) =>
             visibleIds.has(node.id)
@@ -91,7 +91,7 @@ describe('earned constellation metadata', () => {
         expect(
             before.nodes.find((node) => node.id === greaterId)
         ).toBeUndefined()
-        actor.progression.skills.fireball.unlocked = true
+        actor.abilities.known.add('fireball')
         const after = snapshotConstellations(actor)
         expect(
             after.nodes.find((node) => node.id === fireballId)
@@ -242,7 +242,7 @@ it('keeps shared catalog definitions deeply frozen while independent personal sk
     const second = abilityHero('cleric')
     snapshotConstellations(first)
     snapshotConstellations(second)
-    first.progression.skills.fireball.unlocked = true
+    first.abilities.known.add('fireball')
     snapshotConstellations(first)
     expect(fullConstellationCatalog).toEqual(before)
     expect(Object.isFrozen(fullConstellationCatalog)).toBe(true)

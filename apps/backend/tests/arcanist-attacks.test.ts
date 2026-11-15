@@ -71,7 +71,6 @@ function setup() {
 it('uses a real melee weapon and no mana for the arcanist basic attack', () => {
     const f = setup(),
         sword = createItemInstance('simple_sword')
-    f.actor.progression.skills.swordsmanship.unlocked = true
     f.actor.equipment.weapon = sword
     const mana = f.actor.mana,
         energy = f.actor.energy
@@ -89,13 +88,13 @@ it('uses a real melee weapon and no mana for the arcanist basic attack', () => {
         expect.objectContaining({ kind: 'damage', damageKind: 'physical' })
     )
     expect(sword.durability).toBe(199)
-    expect(f.actor.progression.skills.swordsmanship.practice).toBeGreaterThan(0)
+    expect(f.actor.progression.masteries.blade.experience).toBeGreaterThan(0n)
 })
 
 it('casts forward Spark into empty space with its own costs and a server-pinned 80px trajectory', () => {
     const f = setup()
     f.target.position.x = 95
-    const skills = structuredClone(f.actor.progression.skills)
+    const skills = structuredClone(f.actor.progression.masteries)
     expect(f.spark()[0]).toEqual({
         kind: 'attack',
         actorId: f.actor.id,
@@ -117,7 +116,7 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
             abilityId: 'spark',
         }),
     ])
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(skills)
 })
 
 it.each([
@@ -162,13 +161,13 @@ it('hits only the nearest legal world or character target and never trains on st
         [],
         0
     )
-    const skills = structuredClone(f.actor.progression.skills)
+    const skills = structuredClone(f.actor.progression.masteries)
     f.spark()
     expect(resolvePendingAttackHit(f.attack(1200))).toContainEqual(
         expect.objectContaining({ kind: 'world_damage', amount: 1.25 })
     )
     expect(f.target.hp).toBe(f.target.maxHp)
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(skills)
     f.target.position.x = 110
     f.spark(1800)
     const events = resolvePendingAttackHit(f.attack(2000))
@@ -193,7 +192,7 @@ it('repeats untargeted Spark and waits silently for mana without gaining practic
     const f = setup(),
         events: GameEventPayload[] = []
     f.target.position.x = 95
-    const skills = structuredClone(f.actor.progression.skills)
+    const skills = structuredClone(f.actor.progression.masteries)
     const world = {
         getCharacter: (id: string) =>
             f.characters.find((actor) => actor.id === id),
@@ -226,6 +225,6 @@ it('repeats untargeted Spark and waits silently for mana without gaining practic
     advanceCharacterControl(f.actor, world, 2650)
     expect(snapshotControl(f.actor).waiting).toBe('resources')
     expect(events.filter((event) => event.kind === 'notice')).toHaveLength(0)
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(skills)
     expect(f.actor.energy).toBe(100 - 2 * ABILITY_DEFINITIONS.spark.energy)
 })

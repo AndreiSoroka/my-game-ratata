@@ -118,7 +118,7 @@ it.each(['behind', 'outside-width', 'beyond-range', 'wall'] as const)(
                 false
             )
         }
-        const before = structuredClone(f.actor.progression.skills)
+        const before = structuredClone(f.actor.progression.masteries)
         expect(f.shot()[0]?.kind).toBe('attack')
         expect(resolvePendingAttackHit(f.attack(1050))).toEqual([
             expect.objectContaining({
@@ -128,7 +128,7 @@ it.each(['behind', 'outside-width', 'beyond-range', 'wall'] as const)(
             }),
         ])
         expect(f.target.hp).toBe(f.target.maxHp)
-        expect(f.actor.progression.skills).toEqual(before)
+        expect(f.actor.progression.masteries).toEqual(before)
     }
 )
 it('still aims at an explicitly selected target and rejects unknown, depleted or cooling down shots', () => {
@@ -181,7 +181,7 @@ it('approaches into melee for automatic basic attack but repeats empty forward S
     advanceCharacterControl(f.actor, world, 1300)
     expect(world.requestAttack).toHaveBeenCalledOnce()
     f.target.position.x = 90
-    const skills = structuredClone(f.actor.progression.skills)
+    const skills = structuredClone(f.actor.progression.masteries)
     expect(
         setCharacterControl(
             f.actor,
@@ -201,5 +201,5 @@ it('approaches into melee for automatic basic attack but repeats empty forward S
     expect(events.filter((event) => event.kind === 'attack')).toHaveLength(2)
     expect(f.actor.facing).toBe('right')
     expect(f.target.hp).toBe(f.target.maxHp)
-    expect(f.actor.progression.skills).toEqual(skills)
+    expect(f.actor.progression.masteries).toEqual(skills)
 })

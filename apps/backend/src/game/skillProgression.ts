@@ -1,269 +1,253 @@
 import {
+    type ConstellationId,
+    constellationIds,
     type DeityId,
+    formatMasteryExperience,
     type GameEventPayload,
     isItemBroken,
+    MASTERY_NAMES,
+    masteryConflict,
+    masteryRewardMicros,
+    masteryThreshold,
+    masteryTotalExperience,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
     prayerAbilityIds,
     profileForPrayer,
     type ProgressionSnapshot,
-    type SkillBranch,
-    type SkillId,
-    skillIds,
 } from '@my-game-ratata/contracts'
 
-import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
 import {
     createConstellationState,
-    recordConstellationPractice,
+    finishConstellationAction,
     snapshotConstellations,
+    syncAbilityConstellations,
 } from './constellations'
 import type { CharacterConstellations } from './constellationState'
 import { snapshotDeity, snapshotOtherDeities } from './deities'
 import { readCachedConstellationLayout } from './personalConstellationSky'
 
-interface SkillPractice {
+export interface MasteryPractice {
     level: number
-    practice: number
-    unlocked: boolean
+    experience: bigint
 }
-
 export interface CharacterProgression {
     constellations: CharacterConstellations
-    skills: Record<SkillId, SkillPractice>
+    masteries: Record<ConstellationId, MasteryPractice>
+    rewardReceipts: Set<string>
     patron: DeityId
     magicChaptersRead: number
     prayerAvailableAt: number
     spellAvailableAt: number
 }
-
-const skillNames: Record<SkillId, string> = {
-    stealth: 'Скрытность',
-    theft: 'Воровство',
-    swordsmanship: 'Владение мечом',
-    miracles: 'Чудеса',
-    faith: 'Вера',
-    arcana: 'Магические знания',
-    fireball: 'Огненный шар',
-    greater_fireball: 'Большой огненный шар',
-    marksmanship: 'Стрельба',
-    vitality: 'Жизненный опыт',
-    road_faith: 'Вера странника',
-    road_miracles: 'Чудеса странника',
-    lantern_faith: 'Вера ясности',
-    lantern_miracles: 'Чудеса ясности',
-    grave_faith: 'Вера праха',
-    grave_miracles: 'Чудеса праха',
-}
-const practiceBase: Record<SkillId, number> = {
-    stealth: 10,
-    theft: 8,
-    swordsmanship: 12,
-    miracles: 8,
-    faith: 8,
-    arcana: 8,
-    fireball: 10,
-    greater_fireball: 14,
-    marksmanship: 10,
-    vitality: 10,
-    road_faith: 8,
-    road_miracles: 8,
-    lantern_faith: 8,
-    lantern_miracles: 8,
-    grave_faith: 8,
-    grave_miracles: 8,
-}
-
 export function createProgression(): CharacterProgression {
     return {
         constellations: createConstellationState(),
-        skills: {
-            stealth: { level: 1, practice: 0, unlocked: true },
-            theft: { level: 1, practice: 0, unlocked: true },
-            swordsmanship: { level: 1, practice: 0, unlocked: true },
-            miracles: { level: 1, practice: 0, unlocked: true },
-            faith: { level: 1, practice: 0, unlocked: true },
-            arcana: { level: 1, practice: 0, unlocked: true },
-            fireball: { level: 1, practice: 0, unlocked: false },
-            greater_fireball: { level: 1, practice: 0, unlocked: false },
-            marksmanship: { level: 1, practice: 0, unlocked: true },
-            vitality: { level: 1, practice: 0, unlocked: true },
-            road_faith: { level: 1, practice: 0, unlocked: true },
-            road_miracles: { level: 1, practice: 0, unlocked: true },
-            lantern_faith: { level: 1, practice: 0, unlocked: true },
-            lantern_miracles: { level: 1, practice: 0, unlocked: true },
-            grave_faith: { level: 1, practice: 0, unlocked: true },
-            grave_miracles: { level: 1, practice: 0, unlocked: true },
-        },
+        masteries: Object.fromEntries(
+            constellationIds.map((id) => [id, { level: 0, experience: 0n }])
+        ) as Record<ConstellationId, MasteryPractice>,
+        rewardReceipts: new Set(),
         patron: 'hearth',
         magicChaptersRead: 0,
         prayerAvailableAt: 0,
         spellAvailableAt: 0,
     }
 }
-
-export function earnedSkillLevels(progression: CharacterProgression): number {
-    return skillIds.reduce(
-        (sum, id) => sum + progression.skills[id].level - 1,
-        0
-    )
+export function captureMasteryLevels(
+    actor: GameCharacter
+): Record<ConstellationId, number> {
+    return Object.fromEntries(
+        constellationIds.map((id) => [
+            id,
+            actor.progression.masteries[id].level,
+        ])
+    ) as Record<ConstellationId, number>
 }
-
-export function practiceThreshold(
-    progression: CharacterProgression,
-    id: SkillId
-): number {
-    const level = progression.skills[id].level
-    return level >= 10
-        ? 0
-        : Math.ceil(practiceBase[id] * level * trainingMultiplier(progression))
+export function captureMasteryFactors(
+    actor: GameCharacter
+): Record<ConstellationId, number> {
+    const levels = captureMasteryLevels(actor)
+    return Object.fromEntries(
+        constellationIds.map((id) => [id, masteryConflict(levels, id)])
+    ) as Record<ConstellationId, number>
 }
-
 export function canUseResurrection(
-    character: GameCharacter,
+    actor: GameCharacter,
     abilityId: PrayerAbilityId = 'pray'
 ): boolean {
-    const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
     return (
-        knowsAbility(character, abilityId) &&
+        actor.abilities.known.has(abilityId) &&
         profileForPrayer(abilityId).reviveTypes.length > 0 &&
-        (character.heroClass === 'cleric' ||
-            character.progression.skills[school.miracleSkillId].level >= 5)
+        (actor.heroClass === 'cleric' ||
+            actor.progression.masteries[
+                PRAYER_SCHOOL_DEFINITIONS[abilityId].constellationId
+            ].level >= 5)
     )
 }
-
 export function snapshotProgression(
-    character: GameCharacter,
+    actor: GameCharacter,
     now: number,
     includePrivate = true
 ): ProgressionSnapshot {
-    const totalEarnedLevels = earnedSkillLevels(character.progression)
+    const factors = captureMasteryFactors(actor)
     return {
-        skills: skillIds.map((id) => ({
-            id,
-            name: skillNames[id],
-            ...character.progression.skills[id],
-            practiceToNext: practiceThreshold(character.progression, id),
-        })),
-        totalEarnedLevels,
-        trainingMultiplier: trainingMultiplier(character.progression),
-        practicedBranches: practicedBranches(character.progression),
-        deity: snapshotDeity(character, now),
+        masteries: constellationIds.map((id) => {
+            const mastery = actor.progression.masteries[id]
+            return {
+                id,
+                name: MASTERY_NAMES[id],
+                level: mastery.level,
+                experience: formatMasteryExperience(mastery.experience),
+                experienceToNext: formatMasteryExperience(
+                    masteryThreshold(mastery.level)
+                ),
+                totalExperience: formatMasteryExperience(
+                    masteryTotalExperience(mastery.level) + mastery.experience
+                ),
+                pendingOpenings: actor.progression.constellations.credits[id],
+                conflictMultiplier: factors[id],
+            }
+        }),
+        deity: snapshotDeity(actor, now),
         ...(includePrivate
             ? {
-                  otherDeities: snapshotOtherDeities(character, now),
-                  ...(readCachedConstellationLayout(character) === undefined
+                  otherDeities: snapshotOtherDeities(actor, now),
+                  ...(readCachedConstellationLayout(actor) === undefined
                       ? {}
-                      : { constellations: snapshotConstellations(character) }),
+                      : { constellations: snapshotConstellations(actor) }),
               }
             : {}),
-        magicChaptersRead: character.progression.magicChaptersRead,
+        magicChaptersRead: actor.progression.magicChaptersRead,
         magicChaptersTotal: 3,
-        resurrectionUnlocked: canUseResurrection(character),
+        resurrectionUnlocked: canUseResurrection(actor),
         resurrectionSchools: prayerAbilityIds.filter((id) =>
-            canUseResurrection(character, id)
+            canUseResurrection(actor, id)
         ),
     }
 }
-
-export function trainSkill(
-    character: GameCharacter,
-    id: SkillId,
-    amount = 1
+export interface MasteryAward {
+    constellationId: ConstellationId
+    experience: number
+}
+export interface MasteryAwardOptions {
+    now: number
+    random?: (() => number) | undefined
+    receiptId?: string | undefined
+    evidence?: string[] | undefined
+    factors?: Readonly<Record<ConstellationId, number>> | undefined
+}
+/** One validated action. Repeated targets of a branch share one frozen conflict factor. */
+export function awardMasteries(
+    actor: GameCharacter,
+    awards: readonly MasteryAward[],
+    options: MasteryAwardOptions
 ): GameEventPayload[] {
-    const skill = character.progression.skills[id]
     if (
-        !character.alive ||
-        !skill.unlocked ||
-        !Number.isFinite(amount) ||
-        amount < 1
+        !canReceiveMastery(actor) ||
+        (options.receiptId !== undefined &&
+            actor.progression.rewardReceipts.has(options.receiptId))
     ) {
         return []
     }
-    if (skill.level >= 10) {
-        recordConstellationPractice(character, id, 0)
+    const sums = sumMasteryAwards(awards)
+    if (sums.size === 0) {
         return []
     }
-    const previousLevel = skill.level
-    skill.practice += Math.floor(amount)
+    const factors = options.factors ?? captureMasteryFactors(actor)
+    const resolved = [...sums].map(([id, amount]) => ({
+        id,
+        micros: masteryRewardMicros(amount, factors[id]),
+    }))
+    if (options.receiptId !== undefined) {
+        actor.progression.rewardReceipts.add(options.receiptId)
+    }
+    const events = resolved.flatMap(({ id, micros }) =>
+        applyMasteryAward(actor, id, micros)
+    )
+    syncAbilityConstellations(actor)
+    return [
+        ...events,
+        ...finishConstellationAction(actor, {
+            constellationIds: [...sums.keys()],
+            now: options.now,
+            random: options.random,
+            actionId: options.receiptId,
+            evidence: options.evidence,
+        }),
+    ]
+}
+function canReceiveMastery(actor: GameCharacter): boolean {
+    return (
+        actor.alive &&
+        actor.trainingTarget === undefined &&
+        !actor.tags.has('offline') &&
+        !actor.tags.has('state.retired')
+    )
+}
+function sumMasteryAwards(
+    awards: readonly MasteryAward[]
+): Map<ConstellationId, number> {
+    const sums = new Map<ConstellationId, number>()
+    for (const award of awards) {
+        if (
+            !constellationIds.includes(award.constellationId) ||
+            !Number.isFinite(award.experience) ||
+            award.experience <= 0
+        ) {
+            continue
+        }
+        sums.set(
+            award.constellationId,
+            (sums.get(award.constellationId) ?? 0) + award.experience
+        )
+    }
+    return sums
+}
+function applyMasteryAward(
+    actor: GameCharacter,
+    id: ConstellationId,
+    micros: bigint
+): GameEventPayload[] {
+    const state = actor.progression.constellations
+    const mastery = actor.progression.masteries[id]
+    mastery.experience += micros
+    state.evidence[id] = (state.evidence[id] ?? 0) + 1
+    if (id === 'blade' || id === 'life' || id === 'shadow') {
+        state.opened.add(`${id}.root`)
+    }
     const events: GameEventPayload[] = []
-    while (
-        skill.level < 10 &&
-        skill.practice >= practiceThreshold(character.progression, id)
-    ) {
-        skill.practice -= practiceThreshold(character.progression, id)
-        skill.level += 1
+    while (mastery.experience >= masteryThreshold(mastery.level)) {
+        mastery.experience -= masteryThreshold(mastery.level)
+        mastery.level += 1
+        state.credits[id] += 1
         events.push({
-            actorId: character.id,
+            actorId: actor.id,
             kind: 'skill_up',
-            amount: skill.level,
-            text: `${skillNames[id]}: уровень ${String(skill.level)}`,
+            amount: mastery.level,
+            text: `${MASTERY_NAMES[id]}: уровень ${String(mastery.level)}`,
         })
     }
-    if (skill.level === 10) {
-        skill.practice = 0
-    }
-    if (character.progression.skills.fireball.level === 10) {
-        character.progression.skills.greater_fireball.unlocked = true
-    }
-    recordConstellationPractice(character, id, skill.level - previousLevel)
     return events
 }
-
-export function hasEquippedSword(character: GameCharacter): boolean {
-    const weapon = character.equipment.weapon
+export function hasEquippedSword(actor: GameCharacter): boolean {
+    const weapon = actor.equipment.weapon
     return (
         weapon !== undefined &&
         !isItemBroken(weapon) &&
         (weapon.itemId === 'simple_sword' || weapon.itemId === 'old_sword')
     )
 }
-
-const branches: Record<SkillBranch, SkillId[]> = {
-    cunning: ['stealth', 'theft'],
-    warfare: ['swordsmanship', 'marksmanship'],
-    faith: [
-        'faith',
-        'miracles',
-        'road_faith',
-        'road_miracles',
-        'lantern_faith',
-        'lantern_miracles',
-        'grave_faith',
-        'grave_miracles',
-    ],
-    arcana: ['arcana', 'fireball', 'greater_fireball'],
-    survival: ['vitality'],
-}
-
-export function practicedBranches(
-    progression: CharacterProgression
-): SkillBranch[] {
-    return (Object.keys(branches) as SkillBranch[]).filter((branch) =>
-        branches[branch].some(
-            (id) =>
-                progression.skills[id].level > 1 ||
-                progression.skills[id].practice > 0
-        )
-    )
-}
-
-export function trainingMultiplier(progression: CharacterProgression): number {
-    const extraBranches = Math.max(0, practicedBranches(progression).length - 1)
-    return 1 + earnedSkillLevels(progression) / 10 + extraBranches * 0.25
-}
-
 export function canPerformSkillAction(
-    character: GameCharacter,
+    actor: GameCharacter,
     now: number
 ): boolean {
     return (
-        character.trainingTarget === undefined &&
-        character.alive &&
-        !character.tags.has('offline') &&
-        !character.tags.has('state.retired') &&
-        character.stunUntil <= now &&
-        !character.isActionLocked(now)
+        actor.trainingTarget === undefined &&
+        actor.alive &&
+        !actor.tags.has('offline') &&
+        !actor.tags.has('state.retired') &&
+        actor.stunUntil <= now &&
+        !actor.isActionLocked(now)
     )
 }

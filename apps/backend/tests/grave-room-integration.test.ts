@@ -89,7 +89,7 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
         (command) => {
             const f = fixture('ranger')
             f.actor.abilities.known.add('spark')
-            f.actor.progression.skills.fireball.unlocked = true
+            f.actor.abilities.known.add('fireball')
             f.actor.equipment.weapon = createItemInstance('pickaxe')
             expect(f.graveHp()).toBe(100)
             f.send(command)
@@ -155,7 +155,7 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
 it('preserves a due spell until the combat tick when another socket attack arrives between ticks', () => {
     const f = fixture('ranger')
     f.actor.abilities.known.add('spark')
-    f.actor.progression.skills.fireball.unlocked = true
+    f.actor.abilities.known.add('fireball')
     f.room.start()
     try {
         vi.advanceTimersByTime(3)

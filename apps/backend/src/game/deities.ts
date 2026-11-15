@@ -2,8 +2,6 @@ import {
     type DeityId,
     type DeityMood,
     type DeitySnapshot,
-    PRAYER_SCHOOL_DEFINITIONS,
-    prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -63,12 +61,7 @@ export function miracleChance(
     deityId = character.progression.patron
 ): number {
     const mood = deityMood(deityId, now)
-    const faithLevel =
-        character.progression.skills[
-            PRAYER_SCHOOL_DEFINITIONS[prayerAbilityForDeity(deityId)]
-                .faithSkillId
-        ].level
-    return prayerAnswerChance(faithLevel, mood)
+    return prayerAnswerChance(mood)
 }
 
 export function resolveMiracle(

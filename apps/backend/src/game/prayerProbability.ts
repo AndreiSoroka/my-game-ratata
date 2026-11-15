@@ -6,20 +6,13 @@ import {
 
 /** Pure shared math: no character state, clocks or random draws. */
 export const prayerChanceCap = 0.95
-export const prayerFaithBonusPerLevel = 0.015
 export const prayerMoodBaseChance: Readonly<Record<DeityMood, number>> =
     Object.freeze({ benevolent: 0.8, neutral: 0.55, wrathful: 0.25 })
 export const prayerMoodQuality: Readonly<Record<DeityMood, number>> =
     Object.freeze({ benevolent: 1.3, neutral: 1, wrathful: 0.65 })
 
-export function prayerAnswerChance(
-    faithLevel: number,
-    mood: DeityMood
-): number {
-    return Math.min(
-        prayerChanceCap,
-        prayerMoodBaseChance[mood] + (faithLevel - 1) * prayerFaithBonusPerLevel
-    )
+export function prayerAnswerChance(mood: DeityMood): number {
+    return prayerMoodBaseChance[mood]
 }
 
 export function prayerPurificationChance(answerChance: number): number {

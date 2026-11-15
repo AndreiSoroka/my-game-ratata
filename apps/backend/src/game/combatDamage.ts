@@ -22,11 +22,7 @@ export function resolveAttackDamage(
     attack: PendingAttackHit,
     random: () => number
 ): { amount: number; critical: boolean; hitQuality: CombatHitQuality } {
-    const stats = resolveCharacterStats(
-        actor.config,
-        actor.equipment,
-        actor.progression.skills.swordsmanship.level
-    )
+    const stats = resolveCharacterStats(actor.config, actor.equipment)
     const definition =
         attack.abilityId === undefined
             ? undefined

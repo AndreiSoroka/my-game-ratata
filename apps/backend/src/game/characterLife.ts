@@ -1,5 +1,6 @@
 import {
     type GameEventPayload,
+    MASTERY_REWARDS,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerAbilityId,
     profileForPrayer,
@@ -7,9 +8,12 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
-import { clearAbilityEffects, createAbilityState } from './abilityState'
+import {
+    clearAbilityEffects,
+    createAbilityState,
+    type PrayerCast,
+} from './abilityState'
 import type { GameCharacter } from './character'
-import { restoreCharacter } from './characterRecovery'
 import { resolveMiracle } from './deities'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
@@ -17,11 +21,13 @@ import { advancePrayerCast } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
 import { revivalTargetEligible } from './prayerContext'
 import { completePrayer } from './prayerEffects'
+import { applyPrayerGift } from './prayerGifts'
 import { prayerParameters, setPrayerAvailableAt } from './prayerParameters'
 import {
+    awardMasteries,
     canUseResurrection,
+    captureMasteryFactors,
     createProgression,
-    trainSkill,
 } from './skillProgression'
 
 export function shouldRetireCharacter(
@@ -163,8 +169,24 @@ export function advanceRevive(
             ),
         ]
     }
-    const school = PRAYER_SCHOOL_DEFINITIONS[cast.abilityId]
-    const faithEvents = trainSkill(caster, school.faithSkillId)
+    return completeReviveWithoutContext(
+        caster,
+        target,
+        cast,
+        now,
+        outcome,
+        random
+    )
+}
+
+function completeReviveWithoutContext(
+    caster: GameCharacter,
+    target: GameCharacter,
+    cast: Pick<PrayerCast, 'abilityId' | 'receiptId'>,
+    now: number,
+    outcome: ReturnType<typeof resolveMiracle>,
+    random?: () => number
+): GameEventPayload[] {
     if (!outcome.success) {
         return [
             {
@@ -173,14 +195,50 @@ export function advanceRevive(
                 kind: 'notice',
                 text: 'Божество не вернуло душу. Мана потрачена; можно повторить молитву, пока не истекло время.',
             },
-            ...faithEvents,
         ]
     }
-    restoreCharacter(target, now, false)
+    const factors = captureMasteryFactors(caster)
+    const lowHpGift =
+        caster.hp < caster.maxHp * 0.2 &&
+        caster.progression.constellations.hostileWound > 0 &&
+        caster.progression.constellations.lowHpFromHostile
+    const gift = applyPrayerGift(
+        caster,
+        target,
+        { mode: 'revive', targetId: target.id },
+        now,
+        outcome.quality,
+        cast.abilityId
+    )
     return [
-        { actorId: caster.id, targetId: target.id, kind: 'revive' },
-        ...faithEvents,
-        ...trainSkill(caster, school.miracleSkillId),
+        ...gift.events,
+        ...awardMasteries(
+            caster,
+            gift.meaningful
+                ? [
+                      {
+                          constellationId:
+                              PRAYER_SCHOOL_DEFINITIONS[cast.abilityId]
+                                  .constellationId,
+                          experience: MASTERY_REWARDS.resurrection,
+                      },
+                  ]
+                : [],
+            {
+                now,
+                random,
+                receiptId: cast.receiptId,
+                factors,
+                evidence:
+                    gift.meaningful && cast.abilityId === 'pray'
+                        ? [
+                              'prayer',
+                              'gift',
+                              ...(lowHpGift ? ['low_hp_gift'] : []),
+                          ]
+                        : [],
+            }
+        ),
     ]
 }
 

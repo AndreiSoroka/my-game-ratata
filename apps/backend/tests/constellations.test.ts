@@ -2,6 +2,10 @@ import type {
     CharacterControllerKind,
     HeroClass,
 } from '@my-game-ratata/contracts'
+import {
+    formatMasteryExperience,
+    masteryTotalExperience,
+} from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
@@ -16,37 +20,39 @@ import {
     snapshotConstellations,
 } from '../src/game/constellations'
 import { prepareConstellationLayout } from '../src/game/personalConstellationSky'
-import { trainSkill } from '../src/game/skillProgression'
+import { awardMasteries } from '../src/game/skillProgression'
 
 describe('server-owned constellation discovery', () => {
     it.each(['network_player', 'scripted', 'mob1'] as const)(
-        'banks mastery and opens at most one star after an action for %s',
+        'resolves every eligible opening and banks the rest for %s',
         (controllerKind) => {
             const actor = hero('vanguard', controllerKind)
-            trainSkill(actor, 'swordsmanship', 100_000)
-            expect(actor.progression.constellations.credits.blade).toBe(9)
-            expect(hasStar(actor, 'blade.damage1')).toBe(false)
-            const first = {
-                skillIds: ['swordsmanship'] as const,
+            const award = [
+                {
+                    constellationId: 'blade' as const,
+                    experience: Number(
+                        formatMasteryExperience(masteryTotalExperience(12))
+                    ),
+                },
+            ]
+            const options = {
                 now: 1000,
                 random: () => 0,
-                actionId: 'resolved-1',
+                receiptId: 'resolved-1',
             }
-            expect(finishConstellationAction(actor, first)).toHaveLength(1)
-            expect(hasStar(actor, 'blade.damage1')).toBe(true)
-            expect(hasStar(actor, 'blade.damage2')).toBe(false)
-            expect(actor.progression.constellations.credits.blade).toBe(8)
-            expect(finishConstellationAction(actor, first)).toEqual([])
+            awardMasteries(actor, award, options)
+            expect(actor.progression.masteries.blade.level).toBe(12)
+            expect(
+                constellationStars
+                    .filter((star) => star.constellationId === 'blade')
+                    .every((star) => hasStar(actor, star.id))
+            ).toBe(true)
+            expect(actor.progression.constellations.credits.blade).toBe(3)
+            expect(awardMasteries(actor, award, options)).toEqual([])
             snapshotConstellations(actor)
             snapshotConstellations(actor)
-            expect(actor.progression.constellations.credits.blade).toBe(8)
-            expect(trainSkill(actor, 'swordsmanship')).toEqual([])
-            finishConstellationAction(actor, {
-                ...first,
-                actionId: 'resolved-2',
-            })
-            expect(hasStar(actor, 'blade.damage2')).toBe(true)
-            expect(actor.progression.constellations.credits.blade).toBe(7)
+            expect(actor.progression.constellations.credits.blade).toBe(3)
+            expect(actor.progression.masteries.blade.experience).toBe(0n)
         }
     )
 
@@ -55,10 +61,11 @@ describe('server-owned constellation discovery', () => {
         const neutral = hero()
         for (const actor of [practiced, neutral]) {
             actor.progression.constellations.credits.blade = 1
+            actor.progression.masteries.blade.level = 1
         }
         practiced.progression.constellations.evidence['swordsmanship'] = 5
         const action = {
-            skillIds: ['swordsmanship'] as const,
+            constellationIds: ['blade'] as const,
             now: 1000,
             random: () => 0.3,
         }
@@ -81,14 +88,15 @@ describe('server-owned constellation discovery', () => {
             actor.progression.constellations.opened.add(node.id)
         }
         actor.progression.constellations.credits.magic = 1
+        actor.progression.masteries.magic.level = 3
         const action = {
-            skillIds: ['arcana'] as const,
+            constellationIds: ['magic'] as const,
             now: 1000,
             random: () => 0,
         }
         expect(finishConstellationAction(actor, action)).toEqual([])
         expect(actor.progression.constellations.credits.magic).toBe(1)
-        actor.progression.skills.fireball.unlocked = true
+        actor.abilities.known.add('fireball')
         expect(
             finishConstellationAction(actor, { ...action, now: 2000 })
         ).toHaveLength(1)
@@ -156,14 +164,14 @@ describe('cross-constellation discoveries', () => {
         actor.progression.constellations.opened.add('life.hp1')
         expect(
             finishConstellationAction(actor, {
-                skillIds: ['faith'],
+                constellationIds: ['prayer'],
                 now: 1000,
                 evidence: ['gift'],
             })
         ).toEqual([])
         expect(
             finishConstellationAction(actor, {
-                skillIds: ['faith'],
+                constellationIds: ['prayer'],
                 now: 2000,
                 evidence: ['gift', 'low_hp_gift'],
             })

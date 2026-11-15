@@ -221,7 +221,7 @@ describe('guard accusations are proven, bounded and private', () => {
             service.snapshot(victim.id, victim.id, 1_100).accusations
         ).toHaveLength(1)
     })
-    it('uses higher theft and stealth skills to change the result of the same rolls', () => {
+    it('does not turn higher constellation mastery into an implicit theft chance bonus', () => {
         const beginner = theftFixture()
         beginner.attempt([0.5, 0.5])
         expect(
@@ -232,13 +232,12 @@ describe('guard accusations are proven, bounded and private', () => {
             ).lastResult?.outcome
         ).toBe('caught')
         const trained = theftFixture()
-        trained.actor.progression.skills.theft.level = 10
-        trained.actor.progression.skills.stealth.level = 10
+        trained.actor.progression.masteries.shadow.level = 10
         trained.attempt([0.5, 0.5])
         expect(
             trained.service.snapshot(trained.actor.id, trained.actor.id, 1_000)
                 .lastResult?.outcome
-        ).toBe('stolen')
+        ).toBe('caught')
     })
 })
 

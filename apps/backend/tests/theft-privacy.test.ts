@@ -1,11 +1,14 @@
-import type { ClientMessage, ServerMessage } from '@my-game-ratata/contracts'
+import {
+    type ClientMessage,
+    parseMasteryExperience,
+    type ServerMessage,
+} from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createItemInstance } from '../src/game/inventory'
 import { NavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
-import { practiceThreshold } from '../src/game/skillProgression'
 
 function fixture() {
     vi.stubGlobal('Bun', { env: {} })
@@ -58,8 +61,8 @@ describe('unnoticed theft privacy through real room sockets', () => {
     it('sends result and skill-up only to the thief, strips recipient metadata, and hides others inventories/results', () => {
         const { room, thief, victim, observer } = fixture()
         const item = victim.character.inventory[0]
-        thief.character.progression.skills.theft.practice =
-            practiceThreshold(thief.character.progression, 'theft') - 1
+        thief.character.progression.masteries.shadow.experience =
+            parseMasteryExperience('99')
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -206,10 +209,10 @@ describe('pending skill practice stays private in room snapshots', () => {
         'cannot reveal an unnoticed %s result through practice or branch metadata',
         (outcome) => {
             const { room, thief, victim, observer } = fixture()
-            const skills = thief.character.progression.skills
-            skills.fireball.unlocked = true
-            skills.fireball.level = 3
-            skills.swordsmanship.practice = 1
+            const masteries = thief.character.progression.masteries
+            thief.character.abilities.known.add('fireball')
+            masteries.magic.level = 3
+            masteries.blade.experience = parseMasteryExperience('1')
             const progression = (viewerId: string) =>
                 room
                     .snapshot(1_000, thief.character.locationId, viewerId)
@@ -222,14 +225,15 @@ describe('pending skill practice stays private in room snapshots', () => {
                 .mockReturnValueOnce(outcome === 'stolen' ? 0 : 0.99)
             thief.send({ type: 'steal', targetId: victim.character.id })
             const owner = progression(thief.character.id)
-            expect(
-                owner?.skills.find((skill) => skill.id === 'theft')?.practice
-            ).toBe(1)
-            expect(
-                owner?.skills.find((skill) => skill.id === 'stealth')?.practice
-            ).toBe(outcome === 'stolen' ? 1 : 0)
-            expect(owner?.practicedBranches).toContain('cunning')
-            expect(owner?.trainingMultiplier).toBeGreaterThan(1)
+            const ownShadow = owner?.masteries.find(
+                (mastery) => mastery.id === 'shadow'
+            )
+            if (outcome === 'failed') {
+                expect(ownShadow?.experience).toBe('0')
+            }
+            if (outcome === 'stolen') {
+                expect(Number(ownShadow?.experience)).toBeGreaterThan(0)
+            }
             for (const viewerId of [
                 victim.character.id,
                 observer.character.id,
@@ -237,27 +241,20 @@ describe('pending skill practice stays private in room snapshots', () => {
                 const otherView = progression(viewerId)
                 expect(otherView).toEqual(before)
                 expect(
-                    otherView?.skills.every(
-                        (skill) =>
-                            skill.practice === 0 && skill.practiceToNext === 0
+                    otherView?.masteries.every(
+                        (mastery) =>
+                            mastery.experience === '0' &&
+                            mastery.pendingOpenings === 0
                     )
                 ).toBe(true)
-                expect(otherView?.practicedBranches).toEqual([])
-                expect(otherView?.trainingMultiplier).toBe(1)
                 expect(
-                    otherView?.skills.find((skill) => skill.id === 'fireball')
-                ).toMatchObject({ level: 3, unlocked: true })
-                expect(
-                    otherView?.skills.find(
-                        (skill) => skill.id === 'greater_fireball'
-                    )?.unlocked
-                ).toBe(false)
+                    otherView?.masteries.find(
+                        (mastery) => mastery.id === 'magic'
+                    )?.level
+                ).toBe(3)
             }
-            expect(skills.theft.practice).toBe(1)
-            expect(
-                owner?.skills.find((skill) => skill.id === 'theft')
-                    ?.practiceToNext
-            ).toBeGreaterThan(0)
+            expect(masteries.shadow.experience > 0n).toBe(outcome === 'stolen')
+            expect(Number(ownShadow?.experienceToNext)).toBeGreaterThan(0)
         }
     )
 })

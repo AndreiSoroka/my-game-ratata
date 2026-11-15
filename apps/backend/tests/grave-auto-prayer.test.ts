@@ -18,6 +18,7 @@ import {
     prayerNow as now,
     prayerSource as source,
 } from './gravePrayerTestHelpers'
+import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 const action: CharacterAutoAction = {
     kind: 'prayer',
@@ -63,8 +64,7 @@ it.each([49, 80])(
                 expect(events).toEqual([])
             }
             expect(f.actor.mana).toBe(120)
-            expect(f.actor.progression.skills.faith.practice).toBe(0)
-            expect(f.actor.progression.skills.miracles.practice).toBe(0)
+            expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(0))
             advanceCharacter({
                 character: f.actor,
                 navigation: f.navigation,
@@ -110,8 +110,7 @@ it.each([49, 80])(
             target: { kind: 'grave', id: source.id },
         })
         expect(f.actor.mana).toBe(115)
-        expect(f.actor.progression.skills.faith.practice).toBe(1)
-        expect(f.actor.progression.skills.miracles.practice).toBe(1)
+        expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(10))
         let completedAt = cast.completesAt
         for (let step = 1; step < 5; step++) {
             advanceCharacterControl(f.actor, world, completedAt)
@@ -150,5 +149,5 @@ it('does not approach an unseen, distant, purified or ineligible target', () => 
     f.service.purify(source.id, now)
     expect(autoActionStatus(f.actor, action, f.context(now))).toBe('stop')
     expect(f.actor.mana).toBe(120)
-    expect(f.actor.progression.skills.faith.practice).toBe(0)
+    expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(0))
 })

@@ -1,6 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     type GameEventPayload,
+    MASTERY_REWARDS,
     type ProgressionClientMessage,
     type SpellSkillId,
 } from '@my-game-ratata/contracts'
@@ -9,7 +10,7 @@ import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { availableToStartAttack } from './combat'
 import { canAttackCharacter } from './combatTargets'
-import { finishConstellationAction, recordRunicContact } from './constellations'
+import { recordRunicContact } from './constellations'
 import { effectiveAbility } from './effectiveParameters'
 import { castGraveSpell } from './graveSpellCasting'
 import { distance } from './math'
@@ -18,7 +19,7 @@ import {
     confirmCombatResourceSpend,
     recordResourceSpend,
 } from './resourcePractice'
-import { trainSkill } from './skillProgression'
+import { awardMasteries, captureMasteryFactors } from './skillProgression'
 
 const spells: Record<
     SpellSkillId,
@@ -27,7 +28,6 @@ const spells: Record<
         cooldown: number
         range: number
         damage: number
-        growth: number
     }
 > = {
     fireball: {
@@ -35,14 +35,12 @@ const spells: Record<
         cooldown: 1_000,
         range: 160,
         damage: 8,
-        growth: 2,
     },
     greater_fireball: {
         mana: ABILITY_DEFINITIONS.greater_fireball.mana,
         cooldown: 2_000,
         range: 192,
         damage: 18,
-        growth: 3,
     },
 }
 
@@ -54,13 +52,12 @@ export function castSpell(
     if (!availableToStartAttack(actor, context.now)) {
         return []
     }
-    const skill = actor.progression.skills[message.skillId]
     const spell = resolvedSpell(actor, message.skillId)
     const target = context.characters.find(
         (candidate) => candidate.id === message.targetId
     )
     if (
-        !skill.unlocked ||
+        !actor.abilities.known.has(message.skillId) ||
         actor.mana < spell.mana ||
         context.now < actor.progression.spellAvailableAt
     ) {
@@ -74,6 +71,7 @@ export function castSpell(
     if (!canHit(actor, target, spell.range, context)) {
         return []
     }
+    const factors = captureMasteryFactors(actor)
     actor.mana -= spell.mana
     const resourceSpend = recordResourceSpend(actor, 'mana', spell.mana)
     actor.progression.spellAvailableAt = context.now + spell.cooldown
@@ -86,7 +84,7 @@ export function castSpell(
     const result = resolveCharacterDamage({
         actor,
         target,
-        amount: Math.round(spell.damage + (skill.level - 1) * spell.growth),
+        amount: Math.round(spell.damage),
         now: context.now,
         damageKind: 'arcane',
         respawnDelayMs: context.respawnDelayMsFor?.(target) ?? 15000,
@@ -108,29 +106,39 @@ export function castSpell(
             damageKind: 'arcane',
         },
         ...result.events,
-        ...(result.trainableDamage > 0
-            ? trainSkill(actor, message.skillId)
-            : []),
     ]
     if (result.trainableDamage > 0) {
         events.push(
             ...recordRunicContact(actor, target.id, 'spell', context.now)
         )
-        events.push(
-            ...finishConstellationAction(actor, {
-                skillIds: [message.skillId],
-                now: context.now,
-                random: context.random,
-            })
-        )
+        events.push(...rewardSpellHit(actor, message.skillId, context, factors))
     }
     return events
+}
+function rewardSpellHit(
+    actor: GameCharacter,
+    id: SpellSkillId,
+    context: ProgressionContext,
+    factors: ReturnType<typeof captureMasteryFactors>
+): GameEventPayload[] {
+    return awardMasteries(
+        actor,
+        [
+            {
+                constellationId: 'magic',
+                experience:
+                    id === 'fireball'
+                        ? MASTERY_REWARDS.fireballHit
+                        : MASTERY_REWARDS.greaterFireballHit,
+            },
+        ],
+        { now: context.now, random: context.random, factors, evidence: [id] }
+    )
 }
 function resolvedSpell(actor: GameCharacter, id: SpellSkillId) {
     return {
         ...spells[id],
         damage: effectiveAbility(actor, id).damage ?? spells[id].damage,
-        growth: 0,
     }
 }
 

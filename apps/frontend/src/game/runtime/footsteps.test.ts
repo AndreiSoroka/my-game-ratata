@@ -173,19 +173,19 @@ describe('movement noise presentation', () => {
 })
 
 describe('learned stealth audio', () => {
-    it('makes mastered footsteps quieter at the same distance without changing ordinary walking', () => {
+    it('keeps level growth from silently changing footstep volume', () => {
         const volume = (level: number, mode: 'sneaking' | 'walking') => {
             const planner = new FootstepPlanner()
             const actor = (x: number): WalkingActor => ({
                 ...walker('me', x),
                 movement: { mode, dashCooldownMsLeft: 0, dashing: false },
-                progression: { skills: [{ id: 'stealth', level }] } as ProgressionSnapshot,
+                progression: { masteries: [{ id: 'shadow', level }] } as ProgressionSnapshot,
             })
             planner.collect([actor(0)], 'me', 0, () => 'grass')
             return planner.collect([actor(12)], 'me', 200, () => 'grass')[0]!.volume
         }
         expect(volume(10, 'sneaking')).toBeGreaterThan(0)
-        expect(volume(10, 'sneaking')).toBeLessThan(volume(1, 'sneaking'))
+        expect(volume(10, 'sneaking')).toEqual(volume(1, 'sneaking'))
         expect(volume(10, 'walking')).toEqual(volume(1, 'walking'))
     })
 })

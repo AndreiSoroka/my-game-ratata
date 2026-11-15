@@ -6,18 +6,13 @@ import type { EquipmentState } from './inventory'
 
 export function resolveCharacterStats(
     config: CharacterConfig,
-    equipment: EquipmentState,
-    swordLevel = 1
+    equipment: EquipmentState
 ): CharacterStatsSnapshot {
     const weapon = physicalWeapon(config, equipment)
     const weaponStats =
         weapon === undefined
             ? undefined
             : ITEM_DEFINITIONS[weapon.itemId].weapon
-    const swordBonus =
-        weapon?.itemId === 'simple_sword' || weapon?.itemId === 'old_sword'
-            ? Math.max(0, swordLevel - 1)
-            : 0
     const damageMultiplier = config.combat.damageMultiplier ?? 1
     const dodgeBonus = Object.values(equipment).reduce(
         (total, item) =>
@@ -36,16 +31,14 @@ export function resolveCharacterStats(
             0,
             Math.min(0.95, config.combat.dodgeChance + dodgeBonus)
         ),
-        maxDamage:
-            Math.ceil(
-                (weaponStats?.maxDamage ?? config.combat.maxDamage) *
-                    damageMultiplier
-            ) + swordBonus,
-        minDamage:
-            Math.ceil(
-                (weaponStats?.minDamage ?? config.combat.minDamage) *
-                    damageMultiplier
-            ) + swordBonus,
+        maxDamage: Math.ceil(
+            (weaponStats?.maxDamage ?? config.combat.maxDamage) *
+                damageMultiplier
+        ),
+        minDamage: Math.ceil(
+            (weaponStats?.minDamage ?? config.combat.minDamage) *
+                damageMultiplier
+        ),
         moveSpeed: config.moveSpeed,
     }
 }

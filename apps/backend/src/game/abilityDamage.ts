@@ -1,18 +1,18 @@
 import type {
     CombatHitQuality,
+    ConstellationId,
     DamageKind,
     GameEventPayload,
-    SkillId,
 } from '@my-game-ratata/contracts'
+import { MASTERY_REWARDS } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { finishConstellationAction } from './constellations'
 import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelPrayerCast } from './prayerCancellation'
 import { confirmResourceSpend } from './resourcePractice'
-import { trainSkill } from './skillProgression'
+import { awardMasteries, captureMasteryFactors } from './skillProgression'
 import { recordVitalityDamage } from './vitalityPractice'
 export interface DamageResolution {
     /** Resolved contact used for weapon wear, independent of target HP loss. */
@@ -54,8 +54,8 @@ export function resolveCharacterDamage(
         actor.id !== target.id &&
         actor.faction !== target.faction &&
         canTargetByFaction(actor, target, now)
-    const barrierPracticed = target.abilities.barrier?.practiced === true
-    absorbDamage(input, result, hostile)
+    const factors = captureMasteryFactors(target)
+    absorbDamage(input, result, hostile, factors)
     if (
         actor.id !== target.id &&
         !hostile &&
@@ -65,7 +65,7 @@ export function resolveCharacterDamage(
     }
     result.hpDamage = Math.min(target.hp, input.amount - result.absorbed)
     if (result.hpDamage <= 0) {
-        finishDefenderPractice(input, result, hostile, barrierPracticed)
+        finishDefenderPractice(input, result, hostile, factors)
         return result
     }
     const tainted = Math.min(
@@ -82,7 +82,7 @@ export function resolveCharacterDamage(
     result.trainableDamage = hostile ? result.hpDamage : 0
     result.impactDamage = result.hpDamage
     result.events.push(damageEvent(input, result.hpDamage))
-    finishDefenderPractice(input, result, hostile, barrierPracticed)
+    finishDefenderPractice(input, result, hostile, factors)
     finishDamageDeath(input, result.events)
     return result
 }
@@ -90,34 +90,21 @@ function finishDefenderPractice(
     input: CharacterDamageInput,
     result: DamageResolution,
     hostile: boolean,
-    barrierPracticed: boolean
+    factors: Record<ConstellationId, number>
 ): void {
-    if (!hostile) {
-        return
-    }
-    const skills: SkillId[] = []
-    if (result.hpDamage > 0) {
+    if (hostile && result.hpDamage > 0) {
         result.events.push(
             ...recordVitalityDamage(
                 input.target,
                 result.hpDamage,
                 input.now,
-                true
+                false,
+                factors
             )
         )
-        skills.push('vitality')
     }
-    if (result.absorbed > 0 && !barrierPracticed) {
-        skills.push('arcana')
-    }
-    result.events.push(
-        ...finishConstellationAction(input.target, {
-            skillIds: skills,
-            now: input.now,
-            evidence: skills.includes('arcana') ? ['barrier'] : [],
-        })
-    )
 }
+
 function damageEvent(
     input: CharacterDamageInput,
     amount: number
@@ -143,7 +130,8 @@ function canReceiveDamage({ target, amount }: CharacterDamageInput): boolean {
 function absorbDamage(
     input: CharacterDamageInput,
     result: DamageResolution,
-    hostile: boolean
+    hostile: boolean,
+    factors: Record<ConstellationId, number>
 ): void {
     const { actor, target, now, damageKind } = input
     const barrier = target.abilities.barrier
@@ -168,7 +156,18 @@ function absorbDamage(
     if (hostile && !barrier.practiced && result.absorbed > 0) {
         confirmResourceSpend(barrier.resourceSpend)
         barrier.practiced = true
-        result.events.push(...trainSkill(target, 'arcana'))
+        result.events.push(
+            ...awardMasteries(
+                target,
+                [
+                    {
+                        constellationId: 'magic',
+                        experience: MASTERY_REWARDS.barrierAbsorb,
+                    },
+                ],
+                { now, evidence: ['barrier'], factors }
+            )
+        )
     }
     if (barrier.remaining <= 0) {
         target.abilities.barrier = null

@@ -83,7 +83,13 @@
 }
 .knowledge-practice label {
     display: flex;
+    gap: 8px;
     justify-content: space-between;
+}
+.knowledge-practice label > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
 }
 .knowledge-practice progress {
     width: 100%;

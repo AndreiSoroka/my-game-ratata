@@ -1,6 +1,7 @@
 import {
     type CharacterTheftSnapshot,
     type GameEventPayload,
+    MASTERY_REWARDS,
     THEFT_RULES,
     type TheftClientMessage,
     type TheftResult,
@@ -9,7 +10,6 @@ import {
 import type { GameCharacter } from './character'
 import type { JusticeContext } from './cityJustice'
 import { constellationModifiers } from './constellationModifiers'
-import { finishConstellationAction } from './constellations'
 import { CrimeService } from './crime'
 import { effectiveTheftCost } from './effectiveParameters'
 import {
@@ -20,7 +20,11 @@ import {
 import { distance } from './math'
 import { spendUsefulEnergy } from './resourcePractice'
 import type { GameRoom } from './room'
-import { canPerformSkillAction, trainSkill } from './skillProgression'
+import {
+    awardMasteries,
+    canPerformSkillAction,
+    captureMasteryFactors,
+} from './skillProgression'
 import { privateTheftNotice } from './theftEvents'
 
 interface TheftState {
@@ -103,19 +107,23 @@ export class TheftService {
         state: TheftState,
         context: TheftContext
     ): GameEventPayload[] {
+        const factors = captureMasteryFactors(actor)
         spendUsefulEnergy(actor, effectiveTheftCost(actor))
         state.availableAt =
             context.now +
             THEFT_RULES.cooldownMs -
             constellationModifiers(actor).theftCooldownDiscount
         state.pairs.set(target.id, context.now + THEFT_RULES.pairCooldownMs)
-        const outcome = rollTheft(actor, target, context.random ?? Math.random)
-        if (outcome === 'stolen') {
+        let outcome = rollTheft(actor, target, context.random ?? Math.random)
+        if (
+            outcome === 'stolen' &&
             transferInventoryItem(
                 target.inventory,
                 actor.inventory,
                 item.instanceId
-            )
+            ) === undefined
+        ) {
+            outcome = 'failed'
         }
         const text =
             outcome === 'caught'
@@ -130,19 +138,24 @@ export class TheftService {
             text,
             ...(outcome === 'stolen' ? { itemId: item.itemId } : {}),
         }
-        const events = [
-            privateTheftNotice(actor.id, text, target.id),
-            ...trainSkill(actor, 'theft').map((event) => ({
-                ...event,
-                audienceIds: [actor.id],
-            })),
-        ]
+        const events = [privateTheftNotice(actor.id, text, target.id)]
         if (outcome === 'stolen') {
             events.push(
-                ...trainSkill(actor, 'stealth').map((event) => ({
-                    ...event,
-                    audienceIds: [actor.id],
-                }))
+                ...awardMasteries(
+                    actor,
+                    [
+                        {
+                            constellationId: 'shadow',
+                            experience: MASTERY_REWARDS.theftSuccess,
+                        },
+                    ],
+                    {
+                        now: context.now,
+                        random: context.random,
+                        factors,
+                        evidence: ['theft', 'stealth'],
+                    }
+                ).map((event) => ({ ...event, audienceIds: [actor.id] }))
             )
         }
         if (outcome === 'caught') {
@@ -155,14 +168,6 @@ export class TheftService {
                 )
             )
         }
-        events.push(
-            ...finishConstellationAction(actor, {
-                skillIds:
-                    outcome === 'stolen' ? ['theft', 'stealth'] : ['theft'],
-                now: context.now,
-                random: context.random,
-            })
-        )
         return events
     }
 
@@ -225,7 +230,6 @@ function validTarget(
 ): target is GameCharacter {
     return (
         canPerformSkillAction(actor, context.now) &&
-        actor.progression.skills.theft.unlocked &&
         actor.movement.mode === 'sneaking' &&
         actor.movement.dashUntil <= context.now &&
         target !== undefined &&
@@ -267,26 +271,15 @@ function rollTheft(
     target: GameCharacter,
     random: () => number
 ): TheftResult['outcome'] {
-    const theft = actor.progression.skills.theft.level
-    const stealth = actor.progression.skills.stealth.level
     const front = facingThief(target, actor)
-    const detected = Math.max(
-        0.1,
-        Math.min(
-            0.9,
-            0.68 -
-                (stealth - 1) * 0.03 -
-                (theft - 1) * 0.02 +
-                (front ? 0.12 : -0.08)
-        )
-    )
+    const detected = Math.max(0.1, Math.min(0.9, 0.68 + (front ? 0.12 : -0.08)))
     const success = Math.max(
         0.05,
         Math.min(
             0.9,
             0.25 +
-                theft * 0.04 +
-                stealth * 0.015 +
+                0.04 +
+                0.015 +
                 (front ? 0 : 0.1) +
                 constellationModifiers(actor).theftChanceBonus
         )

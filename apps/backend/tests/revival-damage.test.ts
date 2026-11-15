@@ -59,7 +59,7 @@ it('positive nonlethal damage interrupts a revival once without spending complet
     )
     expect(finish()).toEqual([])
     expect(caster.mana).toBe(120)
-    expect(caster.progression.skills.faith.practice).toBe(0)
+    expect(caster.progression.masteries.prayer.experience).toBe(0n)
     expect(target.alive).toBe(false)
 })
 

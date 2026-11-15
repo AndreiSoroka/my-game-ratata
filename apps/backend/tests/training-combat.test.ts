@@ -96,14 +96,14 @@ it('measures the shared heavy strike and critical weak attack without applying s
     const sword = createItemInstance('simple_sword')
     sword.durability = 1
     heavy.actor.equipment.weapon = sword
-    const skills = structuredClone(heavy.actor.progression.skills)
+    const skills = structuredClone(heavy.actor.progression.masteries)
     expect(heavy.ability('skeleton_strike')[0]?.kind).toBe('attack')
     expect(heavy.hit(1600)).toContainEqual(
         expect.objectContaining({ kind: 'damage' })
     )
     expect(sword.durability).toBe(0)
     expect(heavy.dummy.stunUntil).toBe(0)
-    expect(heavy.actor.progression.skills).toEqual(skills)
+    expect(heavy.actor.progression.masteries).toEqual(skills)
     const weak = trainingCombatFixture()
     weak.actor.energy = 0
     expect(weak.start()).toHaveLength(1)
@@ -154,15 +154,15 @@ describe('training attack abilities', () => {
         'measures fixed %s damage without practice or target death',
         (id) => {
             const f = trainingCombatFixture('arcanist')
-            f.actor.progression.skills[id].unlocked = true
-            f.actor.progression.skills[id].level = 3
+            f.actor.abilities.known.add(id)
+            f.actor.progression.masteries.magic.level = 3
             const before = structuredClone(f.actor.progression)
             const mana = f.actor.mana
             const events = f.ability(id)
             expect(events).toContainEqual(
                 expect.objectContaining({
                     kind: 'damage',
-                    amount: id === 'fireball' ? 12 : 24,
+                    amount: id === 'fireball' ? 8 : 18,
                     hitQuality: 'normal',
                 })
             )
@@ -172,7 +172,7 @@ describe('training attack abilities', () => {
                 )
             ).toBe(false)
             expect(f.actor.mana).toBe(mana - ABILITY_DEFINITIONS[id].mana)
-            expect(f.actor.progression.skills).toEqual(before.skills)
+            expect(f.actor.progression.masteries).toEqual(before.masteries)
             expect(f.dummy.hp).toBe(f.dummy.maxHp)
         }
     )
@@ -286,7 +286,6 @@ describe('training target intentions', () => {
         (patron) => {
             const f = trainingCombatFixture('cleric')
             f.actor.progression.patron = patron
-            f.actor.progression.skills.miracles.level = 3
             expect(prayerHarmTargets(f.actor, f.context)).not.toContain(f.dummy)
             expect(
                 handleAbilityCommand(
@@ -300,8 +299,8 @@ describe('training target intentions', () => {
                 ).some((event) => event.kind === 'damage')
             ).toBe(false)
             expect(f.dummy.hp).toBe(f.dummy.maxHp)
-            expect(f.actor.progression.skills.faith.practice).toBe(0)
-            expect(f.actor.progression.skills.miracles.practice).toBe(0)
+            expect(f.actor.progression.masteries.prayer.experience).toBe(0n)
+            expect(f.actor.progression.masteries.prayer.level).toBe(0)
         }
     )
 })
