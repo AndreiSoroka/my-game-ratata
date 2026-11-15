@@ -6,12 +6,12 @@ async function openGraveStory(page: Page, state: string): Promise<void> {
 }
 
 test.describe('Storybook production grave states', () => {
-    test('active source preserves fractional HP and all stone damage multipliers', async ({
+    test('active source rounds authorized HP and preserves stone damage multipliers', async ({
         page,
     }) => {
         await openGraveStory(page, 'active')
         const details = page.getByLabel('Состояние могилы')
-        await expect(details).toContainText('99,75 / 100 HP')
+        await expect(details).toContainText('100/100 HP')
         await expect(details).toContainText('Источник скелетов · камень')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
             'value',
@@ -42,7 +42,7 @@ test.describe('Storybook production grave states', () => {
         await openGraveStory(page, 'ruined')
         const details = page.getByLabel('Состояние могилы')
         await expect(details).toContainText('Разрушенная могила')
-        await expect(details).toContainText('0 / 100 HP')
+        await expect(details).toContainText('0/100 HP')
         await expect(details).toContainText('Восстановится через 20:00')
         await expect(details).toContainText('20 MP · 10 с без движения. Esc — прервать.')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
@@ -62,10 +62,12 @@ test.describe('Storybook production grave states', () => {
         await expect(details.locator('dl')).toHaveCount(0)
     })
 
-    test('compact target retains hundredths of HP without expanded details', async ({ page }) => {
+    test('compact target rounds HP text while retaining its fractional bar fill', async ({
+        page,
+    }) => {
         await openGraveStory(page, 'compact-target')
         const details = page.getByLabel('Состояние могилы')
-        await expect(details).toContainText('0,05 / 100 HP')
+        await expect(details).toContainText('0/100 HP')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
             'value',
             '0.05'

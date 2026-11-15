@@ -71,10 +71,22 @@ describe('city and wilderness initial snapshots', () => {
         expect(skeleton.faction).toBe('monsters')
         expect(skeleton.health).toEqual({ kind: 'percent', percent: 100 })
         expect(room.getCharacter(skeleton.id)?.maxHp).toBe(44)
-        expect(skeleton.resources.maxEnergy).toBe(225)
+        expect(skeleton.resources.energy).toEqual({
+            kind: 'percent',
+            percent: 100,
+            hasCapacity: true,
+        })
+        expect(room.getCharacter(skeleton.id)?.config.resources.maxEnergy).toBe(
+            225
+        )
         expect(slime.archetype).toBe('slime')
         expect(slime.faction).toBe('monsters')
-        expect(slime.resources.maxEnergy).toBe(60)
+        expect(slime.resources.energy).toEqual({
+            kind: 'percent',
+            percent: 100,
+            hasCapacity: true,
+        })
+        expect(room.getCharacter(slime.id)?.config.resources.maxEnergy).toBe(60)
 
         expect(skeleton).toBeDefined()
         expect(slime).toBeDefined()

@@ -40,9 +40,10 @@ export class WorldInventory {
     public constructor(
         private readonly navigation: NavigationService,
         private readonly locationId = navigation.grid.id,
-        wallet?: CorpseWallet
+        wallet?: CorpseWallet,
+        random: () => number = Math.random
     ) {
-        this.chests = createWorldChests(navigation)
+        this.chests = createWorldChests(navigation, locationId, random)
         this.deathLoot = new WorldDeathLoot(locationId, this.chests, wallet)
         this.containers = new ChestContainers(
             this.chests,

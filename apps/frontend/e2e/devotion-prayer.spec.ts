@@ -34,7 +34,8 @@ for (const mobile of [false, true]) {
         await expect(slot.locator('.hotbar-cooldown')).toBeVisible()
         const after = await page.evaluate(() => window.__ratataTest!.getState().player!)
         expect(after.health).toEqual(before.health)
-        expect(after.resources.mana).toBe(before.resources.mana)
+        expect(after.resources.mana.kind).toBe('percent')
+        expect(after.resourceChecks?.prayers.devotion).toBe('ready')
         expect(after.position).toEqual(before.position)
         expect(after.progression?.skills).toEqual(before.progression?.skills)
         await expect(

@@ -153,9 +153,9 @@ describe('authored world objects', () => {
         actor.energy = actor.config.resources.maxEnergy - 2
         act()
         expect(actor.energy).toBe(actor.config.resources.maxEnergy)
-        expect(
-            service.snapshot(actor.id, actor.locationId, actor).notice
-        ).toContain('Энергия +2')
+        expect(service.snapshot(actor.id, actor.locationId, actor).notice).toBe(
+            'Прохладная вода освежает. Силы восстановлены.'
+        )
     })
 })
 

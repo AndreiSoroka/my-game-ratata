@@ -131,7 +131,7 @@ export class WorldObjects {
         const text = setNotice(
             state,
             recovered > 0
-                ? `Прохладная вода освежает. Энергия +${String(Math.round(recovered))}.`
+                ? 'Прохладная вода освежает. Силы восстановлены.'
                 : 'Ты утолил жажду. Силы уже восстановлены.'
         )
         return [{ kind: 'water_drink', actorId: actor.id, text }]

@@ -43,6 +43,7 @@ export function handleRoomControl(
             'gather',
             'plant_tree',
             'farm_action',
+            'farm_supply',
             'world_interact',
             'equipment_action',
             'inventory_action',

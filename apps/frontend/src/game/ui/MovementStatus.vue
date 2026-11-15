@@ -20,7 +20,7 @@ const cooldown = computed(() =>
         <span>{{ label }}</span>
         <span
             :class="{
-                unavailable: cooldown > 0 || character.resources.energy < MOVEMENT_RULES.dashEnergy,
+                unavailable: cooldown > 0 || character.resourceChecks?.dash !== 'ready',
             }"
         >
             {{ cooldown > 0 ? `Рывок: ${cooldown} с` : `Рывок: ${MOVEMENT_RULES.dashEnergy} EN` }}

@@ -6,10 +6,20 @@ import {
     parseAbilityCommand,
 } from '../src/game/abilityCommands'
 import { supportPrayerDecision } from '../src/game/clericPolicy'
+import { observeCharacterCombat } from '../src/game/combatObservation'
 import { pray } from '../src/game/prayer'
 import { previewPrayer } from '../src/game/prayerContext'
 import { completePrayer } from '../src/game/prayerEffects'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+
+function ownerSnapshot(actor: ReturnType<typeof abilityHero>) {
+    return observeCharacterCombat(actor.snapshot(1000), actor, {
+        observer: actor,
+        getCharacter: () => undefined,
+        navigation: undefined,
+        now: 1000,
+    })
+}
 
 const devotion = {
     type: 'use_ability',
@@ -34,7 +44,7 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
             includesSelf: false,
             unavailableReason: null,
         })
-        expect(previewPrayerFromSnapshots(actor.snapshot(1000), [])).toEqual(
+        expect(previewPrayerFromSnapshots(ownerSnapshot(actor), [])).toEqual(
             preview
         )
         const living = abilityHero()
@@ -94,7 +104,7 @@ it('pins devotion for an unsuitable selected ally rather than healing or burning
         expect(preview.unavailableReason).toBe(null)
         expect(
             previewPrayerFromSnapshots(
-                actor.snapshot(1000),
+                ownerSnapshot(actor),
                 context.characters.map((target) => target.snapshot(1000)),
                 targetId
             )
@@ -192,6 +202,40 @@ it('cannot turn empty Lantern prayers into practice by manufacturing a mana defi
     }
     expect(actor.progression.skills.faith.practice).toBe(0)
     expect(actor.progression.skills.miracles.practice).toBe(0)
+})
+
+it('distinguishes a projected zero-capacity mana pool from an empty pool when previewing Lantern aid', () => {
+    const actor = abilityHero()
+    actor.progression.patron = 'lantern'
+    const target = abilityHero('vanguard', 'undead')
+    expect(target.config.resources.maxMana).toBe(0)
+    const projected = observeCharacterCombat(target.snapshot(1000), target, {
+        observer: actor,
+        getCharacter: () => undefined,
+        navigation: undefined,
+        now: 1000,
+    })
+    expect(projected.resources.mana).toEqual({
+        kind: 'percent',
+        percent: 0,
+        hasCapacity: false,
+    })
+    expect(
+        previewPrayerFromSnapshots(ownerSnapshot(actor), [projected], target.id)
+            .intent
+    ).toEqual(devotion.intent)
+    const empty = abilityHero()
+    empty.mana = 0
+    const emptyView = observeCharacterCombat(empty.snapshot(1000), empty, {
+        observer: actor,
+        getCharacter: () => undefined,
+        navigation: undefined,
+        now: 1000,
+    })
+    expect(
+        previewPrayerFromSnapshots(ownerSnapshot(actor), [emptyView], empty.id)
+            .intent
+    ).toEqual({ mode: 'restore', targetId: empty.id })
 })
 
 it('accepts only an explicit targetless devotion at the command boundary', () => {

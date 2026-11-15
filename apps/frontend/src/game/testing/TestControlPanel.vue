@@ -4,6 +4,7 @@ import './testControlPanel.css'
 import type { Vector2 } from '@my-game-ratata/contracts'
 import { onBeforeUnmount, ref } from 'vue'
 
+import { healthText } from '../ui/healthPresentation'
 import type { RatataTestApi, RatataTestState } from './testInterface'
 
 const props = defineProps<{ api: RatataTestApi; state: RatataTestState }>()
@@ -71,11 +72,7 @@ onBeforeUnmount(() => props.api.stop())
                 </dd>
                 <dt>Health</dt>
                 <dd>
-                    {{
-                        state.player?.health.kind === 'exact'
-                            ? `${state.player.health.current}/${state.player.health.max}`
-                            : '—'
-                    }}
+                    {{ state.player ? healthText(state.player.health) || '—' : '—' }}
                 </dd>
             </dl>
             <fieldset :disabled="!state.connected">

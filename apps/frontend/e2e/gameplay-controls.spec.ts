@@ -28,13 +28,7 @@ test.describe('shared gameplay controls', () => {
                 await page.evaluate(() => window.__ratataTest?.getState().player?.position)
             ).toEqual(position)
             await page.keyboard.press('Digit1')
-            await expect
-                .poll(() =>
-                    page.evaluate(
-                        () => window.__ratataTest?.getState().player?.abilities?.barrier?.remaining
-                    )
-                )
-                .toBe(8)
+            await expectPrivateBarrier(page)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
             await page.keyboard.press('ArrowDown')
@@ -119,6 +113,19 @@ test.describe('shared gameplay controls', () => {
         }
     })
 })
+
+async function expectPrivateBarrier(page: Page): Promise<void> {
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__ratataTest?.getState().player?.abilities?.barrier?.expiresAt ?? 0
+            )
+        )
+        .toBeGreaterThan(0)
+    expect(
+        await page.evaluate(() => window.__ratataTest!.getState().player?.abilities?.barrier)
+    ).not.toHaveProperty('remaining')
+}
 
 async function join(page: Page, name: string, heroClass: 'arcanist' | 'cleric' | 'vanguard') {
     await page.goto('/?test=1')

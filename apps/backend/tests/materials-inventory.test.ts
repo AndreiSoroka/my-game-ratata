@@ -85,6 +85,34 @@ describe('gathered materials are ordinary bag items', () => {
 })
 
 describe('whole harvests and barrel rewards', () => {
+    it('fits the whole grain and seed yield before changing either stack', () => {
+        const setup = fixture('herbs', 'network_player', () => 0.9)
+        addInventoryItems(setup.actor.inventory, [
+            createItemInstance('grain', 6),
+            createItemInstance('wheat_seed', 8),
+        ])
+        fillFood(setup.actor, INVENTORY_CAPACITY - 2)
+        const command = {
+            type: 'farm_action',
+            plotId: setup.plot.id,
+            action: 'harvest',
+        } as const
+        const before = structuredClone(setup.actor.inventory)
+        setup.service.handle(setup.actor, command, [])
+        expect(setup.actor.inventory).toEqual(before)
+        expect(setup.snapshot().farmPlots[0]?.phase).toBe('ripe')
+        setup.actor.inventory.pop()
+        setup.service.handle(setup.actor, command, [])
+        expect(countInventoryItem(setup.actor.inventory, 'grain')).toBe(9)
+        expect(
+            setup.actor.inventory
+                .filter((item) => item.itemId === 'wheat_seed')
+                .map((item) => item.quantity ?? 1)
+        ).toEqual([9, 1])
+        expect(setup.actor.inventory).toHaveLength(INVENTORY_CAPACITY)
+        expect(setup.snapshot().farmPlots[0]?.phase).toBe('bare')
+    })
+
     it('keeps the ripe farm intact when only part of the grain would fit', () => {
         const setup = fixture()
         addInventoryItems(setup.actor.inventory, [
@@ -262,7 +290,8 @@ describe('material source of truth and capacity hints', () => {
 
 function fixture(
     kind: AdventureResourceNode['kind'] = 'herbs',
-    controllerKind: GameCharacter['controllerKind'] = 'network_player'
+    controllerKind: GameCharacter['controllerKind'] = 'network_player',
+    farmRandom: () => number = () => 0
 ) {
     const plot = FARM_PLOTS[0]
     if (plot === undefined) {
@@ -314,6 +343,7 @@ function fixture(
     const inventory = new WorldInventory(navigation, plot.locationId)
     const service = new AdventureService({
         now: () => clock.now,
+        farmRandom,
         resourceNodes: [node],
         openContainer: (who, id, now) =>
             executeContainerCommand(

@@ -1,0 +1,59 @@
+import {
+    ABILITY_DEFINITIONS,
+    abilityIds,
+    type CharacterResourceChecks,
+    FARM_SOW_ENERGY,
+    MOVEMENT_RULES,
+    prayerManaCost,
+    type ResourceCheck,
+    resourceFillPercent,
+    type ResourceSnapshot,
+    THEFT_RULES,
+} from '@my-game-ratata/contracts'
+
+import type { GameCharacter } from './character'
+
+export function observeResource(
+    resource: ResourceSnapshot,
+    exact: boolean
+): ResourceSnapshot {
+    if (exact || resource.kind === 'percent') {
+        return { ...resource }
+    }
+    return {
+        kind: 'percent',
+        percent: resourceFillPercent(resource),
+        hasCapacity: resource.max > 0,
+    }
+}
+
+export function resourceChecks(
+    character: GameCharacter
+): CharacterResourceChecks {
+    const check = (mana: number, energy = 0): ResourceCheck =>
+        character.mana < mana
+            ? 'mana'
+            : character.energy < energy
+              ? 'energy'
+              : 'ready'
+    return {
+        abilities: Object.fromEntries(
+            abilityIds
+                .filter((id) => id !== 'pray')
+                .map((id) => {
+                    const ability = ABILITY_DEFINITIONS[id]
+                    return [id, check(ability.mana, ability.energy)]
+                })
+        ) as CharacterResourceChecks['abilities'],
+        prayers: {
+            devotion: check(prayerManaCost('devotion')),
+            restore: check(prayerManaCost('restore')),
+            harm: check(prayerManaCost('harm')),
+            revive: check(prayerManaCost('revive')),
+            purify_grave: check(prayerManaCost('purify_grave')),
+        },
+        dash: check(0, MOVEMENT_RULES.dashEnergy),
+        sow: check(0, FARM_SOW_ENERGY),
+        steal: check(0, THEFT_RULES.energyCost),
+    }
+}

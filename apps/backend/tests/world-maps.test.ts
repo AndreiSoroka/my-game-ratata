@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import {
     CENTER_LOCATION_ID,
     FARM_PLOTS,
+    FARM_SUPPLY_CHESTS,
     GRID_SIZE,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
@@ -76,7 +77,12 @@ describe('explorable world maps', () => {
 
             expect(navigation.grid.width).toBe(96)
             expect(navigation.grid.height).toBe(80)
-            expect(chests).toHaveLength(5)
+            expect(chests).toHaveLength(
+                5 +
+                    FARM_SUPPLY_CHESTS.filter(
+                        (chest) => chest.locationId === id
+                    ).length
+            )
             expect(chests[0]?.itemCount).toBe(1)
             for (const target of destinations) {
                 expect(

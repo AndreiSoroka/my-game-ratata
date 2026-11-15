@@ -68,10 +68,16 @@ export function createCharacterSnapshot(
         position: character.position,
         reputation: character.reputation,
         resources: {
-            energy: Math.round(character.energy),
-            mana: Math.round(character.mana),
-            maxEnergy: character.config.resources.maxEnergy,
-            maxMana: character.config.resources.maxMana,
+            energy: {
+                kind: 'exact',
+                current: character.energy,
+                max: character.config.resources.maxEnergy,
+            },
+            mana: {
+                kind: 'exact',
+                current: character.mana,
+                max: character.config.resources.maxMana,
+            },
         },
         stats: resolveCharacterStats(
             character.config,

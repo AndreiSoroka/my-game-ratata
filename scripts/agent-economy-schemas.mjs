@@ -7,6 +7,7 @@ const items = [
     'fiber',
     'scrap',
     'grain',
+    'wheat_seed',
     'food',
     'sapling',
     'simple_sword',
@@ -50,6 +51,7 @@ export const economyDecisionSchemas = [
         plotId: id,
         action: { enum: ['sow', 'harvest'] },
     }),
+    command('farm_supply', { npcId: id, plotId: id, requestId: id }),
     command('plant_tree', {
         position: {
             type: 'object',

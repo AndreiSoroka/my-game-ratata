@@ -1,6 +1,8 @@
 import {
     ABILITY_DEFINITIONS,
     type GameEventPayload,
+    resourceFillPercent,
+    type ResourceSnapshot,
     SHOT_HALF_WIDTH,
 } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
@@ -55,7 +57,8 @@ for (const { mobile, direction, viewport } of cases) {
             await expect(page.locator('.control-status')).toContainText('Очищение могилы')
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
             const casting = await page.evaluate(() => window.__ratataTest!.getState().player!)
-            expect(casting.resources.mana).toBeGreaterThanOrEqual(20)
+            expect(casting.resourceChecks?.prayers.purify_grave).toBe('ready')
+            expect(casting.resources.mana.kind).toBe('percent')
             await cancelRitual(page, mobile)
             await expect
                 .poll(() =>
@@ -103,8 +106,8 @@ for (const { mobile, direction, viewport } of cases) {
                 )
             ).toBe(false)
             const finished = await page.evaluate(() => window.__ratataTest!.getState().player!)
-            expect(finished.resources.mana).toBeGreaterThanOrEqual(finished.resources.maxMana - 20)
-            expect(finished.resources.mana).toBeLessThan(finished.resources.maxMana - 12)
+            expect(finished.resources.mana.kind).toBe('percent')
+            expect(resourceFillPercent(finished.resources.mana)).toBeLessThan(100)
             await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
             await page.screenshot({ path: info.outputPath('grave-purified.png') })
             await attachOutcome(
@@ -166,8 +169,8 @@ async function attachOutcome(
     ranger: Page,
     info: TestInfo,
     id: string,
-    manaDuringChannel: number,
-    manaAfterCompletion: number
+    manaDuringChannel: ResourceSnapshot,
+    manaAfterCompletion: ResourceSnapshot
 ): Promise<void> {
     await expect
         .poll(() =>

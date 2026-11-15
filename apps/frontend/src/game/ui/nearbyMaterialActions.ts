@@ -4,7 +4,7 @@ import type {
     FarmPlotSnapshot,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import { FARM_SOW_ENERGY } from '@my-game-ratata/contracts'
+import { FARM_SOW_ENERGY, FARM_SOW_SEEDS } from '@my-game-ratata/contracts'
 
 import { interactionDistance, nearestByKind } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
@@ -94,21 +94,30 @@ export function farmAction(
     now: number
 ): InteractionAction {
     const seconds = Math.max(0, Math.ceil((plot.readyAt - now) / 1000))
+    const seeds = player.inventory.reduce(
+        (total, item) => total + (item.itemId === 'wheat_seed' ? (item.quantity ?? 1) : 0),
+        0
+    )
+    const unavailable = sowUnavailable(player, seeds)
     return {
         id: `farm:${plot.id}:${plot.phase === 'ripe' ? 'harvest' : 'sow'}`,
         label:
             plot.phase === 'ripe'
                 ? 'Собрать пшеницу · +3 зерна'
                 : plot.phase === 'bare'
-                  ? 'Посеять пшеницу · 5 EN'
+                  ? `Посеять · ${String(FARM_SOW_SEEDS)} семя · ${String(FARM_SOW_ENERGY)} EN · в рюкзаке: ${String(seeds)}${unavailable === undefined ? '' : ` · ${unavailable}`}`
                   : `Пшеница растёт · ${String(seconds)} сек.`,
-        disabled:
-            plot.phase === 'growing' ||
-            (plot.phase === 'bare' && player.resources.energy < FARM_SOW_ENERGY),
+        disabled: plot.phase === 'growing' || (plot.phase === 'bare' && unavailable !== undefined),
         command: {
             type: 'farm_action',
             plotId: plot.id,
             action: plot.phase === 'ripe' ? 'harvest' : 'sow',
         },
     }
+}
+
+function sowUnavailable(player: CharacterSnapshot, seeds: number): string | undefined {
+    if (seeds < FARM_SOW_SEEDS) return 'нет семян'
+    if (player.resourceChecks?.sow === 'energy') return 'недостаточно сил'
+    return player.resourceChecks?.sow === 'ready' ? undefined : 'нет данных о силах'
 }

@@ -11,6 +11,7 @@ import type { GameCharacter } from './character'
 import type { GraveCombatTarget } from './graveRules'
 import type { NavigationService } from './navigation'
 import { visibilityRadius } from './queries'
+import { observeResource, resourceChecks } from './resourceObservation'
 
 export interface CombatObserver {
     observer: GameCharacter | undefined
@@ -25,17 +26,26 @@ export function observeCharacterCombat(
     target: GameCharacter | undefined,
     view: CombatObserver
 ): CharacterSnapshot {
-    const exact = exactForTarget(view, snapshot.id)
+    const exact = canReadNumbers(view)
     const health: HealthSnapshot =
         target === undefined
             ? snapshot.health
             : { kind: 'exact', current: target.hp, max: target.maxHp }
     const abilities = snapshot.abilities
+    const description = { ...snapshot }
+    delete description.resourceChecks
     return {
-        ...snapshot,
+        ...description,
         health: exact
             ? health
             : { kind: 'percent', percent: healthPercent(health) },
+        resources: {
+            mana: observeResource(snapshot.resources.mana, exact),
+            energy: observeResource(snapshot.resources.energy, exact),
+        },
+        ...(target !== undefined && view.observer?.id === snapshot.id
+            ? { resourceChecks: resourceChecks(target) }
+            : {}),
         ...(abilities === undefined
             ? {}
             : {
@@ -93,7 +103,7 @@ export function observeCombatEvent(
             ? { amount }
             : {}),
     }
-    if (event.kind === 'water_drink' && !exactForTarget(view, event.actorId)) {
+    if (event.kind === 'water_drink' && !canReadNumbers(view)) {
         visible.text = 'Пьёт воду.'
     }
     return visible
@@ -109,14 +119,8 @@ export function observeCombatEvents(
     })
 }
 
-function exactForTarget(
-    view: CombatObserver,
-    targetId: string | undefined
-): boolean {
-    return (
-        view.observer !== undefined &&
-        (view.observer.exactCombatNumbers || view.observer.id === targetId)
-    )
+function canReadNumbers(view: CombatObserver): boolean {
+    return view.observer?.exactCombatNumbers === true
 }
 
 function amountVisible(event: GameEventPayload, view: CombatObserver): boolean {
@@ -130,7 +134,7 @@ function amountVisible(event: GameEventPayload, view: CombatObserver): boolean {
         ['heal', 'absorb', 'item_eat', 'revive'].includes(event.kind) ||
         (event.kind === 'status' && event.statusId === 'barrier')
     ) {
-        return exactForTarget(view, event.targetId ?? event.actorId)
+        return canReadNumbers(view)
     }
     return true
 }

@@ -3,6 +3,7 @@ import {
     chestInteractionDistance,
     containerBounds,
     type ContainerKind,
+    FARM_SUPPLY_CHESTS,
     type GameEventPayload,
     type Vector2,
     type WorldChestSnapshot,
@@ -15,7 +16,11 @@ import { createItemInstance } from './inventory'
 import { clamp, distance } from './math'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
-import { dropPosition, generateChestContents } from './worldInventoryHelpers'
+import {
+    dropPosition,
+    generateChestContents,
+    generateFarmSupplyContents,
+} from './worldInventoryHelpers'
 
 export function chestOpenRefusal(
     actor: GameCharacter,
@@ -131,7 +136,9 @@ export function findNearestChest(
 }
 
 export function createWorldChests(
-    navigation: NavigationService
+    navigation: NavigationService,
+    locationId = navigation.grid.id,
+    random: () => number = Math.random
 ): Map<string, WorldChest> {
     const chests = new Map<string, WorldChest>()
     const large = navigation.grid.width >= 64 && navigation.grid.height >= 64
@@ -147,10 +154,21 @@ export function createWorldChests(
     for (const [index, tile] of tiles.entries()) {
         const id = `chest_forest_${String(index + 1)}`
         chests.set(id, {
-            contents: generateChestContents(large && index === 0),
+            contents: generateChestContents(large && index === 0, random),
             id,
             opened: false,
             position: navigation.tileToWorld(tile),
+        })
+    }
+    for (const definition of FARM_SUPPLY_CHESTS) {
+        if (definition.locationId !== locationId) {
+            continue
+        }
+        chests.set(definition.id, {
+            contents: generateFarmSupplyContents(random),
+            id: definition.id,
+            position: { ...definition.position },
+            opened: false,
         })
     }
     for (const definition of navigation.grid.containers ?? []) {

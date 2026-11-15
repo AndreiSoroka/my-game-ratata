@@ -20,6 +20,7 @@ export const itemAssetCatalog: Record<ItemId, ItemAssetDefinition> = {
     food: itemAsset('food', 'Item__64.png'),
     fiber: nativeItemAsset('fiber'),
     grain: nativeItemAsset('grain'),
+    wheat_seed: nativeItemAsset('wheat_seed'),
     herbs: nativeItemAsset('herbs'),
     old_sword: itemAsset('old_sword', 'Item__02.png'),
     simple_sword: itemAsset('simple_sword', 'Item__00.png'),

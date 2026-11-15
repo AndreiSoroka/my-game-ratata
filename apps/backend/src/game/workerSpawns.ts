@@ -64,6 +64,7 @@ export function createEconomyWorkers(
             },
         })
         character.tags.add(`worker.${definition.job}`)
+        character.tags.add(`worker.city.${CENTER_LOCATION_ID}`)
         equipDirect(character.equipment, createItemInstance('boots'))
         if (definition.tool !== undefined) {
             equipDirect(

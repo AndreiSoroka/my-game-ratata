@@ -4,48 +4,51 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { RuntimeSocket } from './runtimeSocket'
 
 afterEach(() => vi.unstubAllGlobals())
-it('rejects the old combat protocol before delivering legacy snapshots to presentation', () => {
-    const sockets: EventTarget[] = []
-    const close = vi.fn<() => void>()
-    class TestSocket extends EventTarget {
-        public close = close
-        public constructor() {
-            super()
-            sockets.push(this)
+it.each(['0.1.0', '0.2.0'])(
+    'rejects protocol %s before delivering legacy resource snapshots to presentation',
+    (protocolVersion) => {
+        const sockets: EventTarget[] = []
+        const close = vi.fn<() => void>()
+        class TestSocket extends EventTarget {
+            public close = close
+            public constructor() {
+                super()
+                sockets.push(this)
+            }
         }
+        vi.stubGlobal('WebSocket', TestSocket)
+        const onSnapshot = vi.fn<() => void>(),
+            onWorldInit = vi.fn<() => void>(),
+            onError = vi.fn<(message: string) => void>()
+        const socket = new RuntimeSocket({
+            isStopped: () => false,
+            onSnapshot,
+            onWorldInit,
+            onError,
+            onEvent: vi.fn<(event: GameEventPayload) => void>(),
+            onStatus: vi.fn<(status: string) => void>(),
+        })
+        socket.connect('Hero')
+        sockets[0]!.dispatchEvent(
+            new MessageEvent('message', {
+                data: JSON.stringify({
+                    type: 'world_init',
+                    protocolVersion,
+                    snapshot: { characters: [] },
+                }),
+            })
+        )
+        sockets[0]!.dispatchEvent(
+            new MessageEvent('message', {
+                data: JSON.stringify({ type: 'snapshot', snapshot: { characters: [] } }),
+            })
+        )
+        expect(close).toHaveBeenCalledOnce()
+        expect(onError).toHaveBeenCalledWith(expect.stringContaining('Перезапустите сервер'))
+        expect(onSnapshot).not.toHaveBeenCalled()
+        expect(onWorldInit).not.toHaveBeenCalled()
     }
-    vi.stubGlobal('WebSocket', TestSocket)
-    const onSnapshot = vi.fn<() => void>(),
-        onWorldInit = vi.fn<() => void>(),
-        onError = vi.fn<(message: string) => void>()
-    const socket = new RuntimeSocket({
-        isStopped: () => false,
-        onSnapshot,
-        onWorldInit,
-        onError,
-        onEvent: vi.fn<(event: GameEventPayload) => void>(),
-        onStatus: vi.fn<(status: string) => void>(),
-    })
-    socket.connect('Hero')
-    sockets[0]!.dispatchEvent(
-        new MessageEvent('message', {
-            data: JSON.stringify({
-                type: 'world_init',
-                protocolVersion: '0.1.0',
-                snapshot: { characters: [] },
-            }),
-        })
-    )
-    sockets[0]!.dispatchEvent(
-        new MessageEvent('message', {
-            data: JSON.stringify({ type: 'snapshot', snapshot: { characters: [] } }),
-        })
-    )
-    expect(close).toHaveBeenCalledOnce()
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining('Перезапустите сервер'))
-    expect(onSnapshot).not.toHaveBeenCalled()
-    expect(onWorldInit).not.toHaveBeenCalled()
-})
+)
 it('ignores late messages from a retired client runtime after starting another life', () => {
     const sockets: EventTarget[] = []
     class TestSocket extends EventTarget {

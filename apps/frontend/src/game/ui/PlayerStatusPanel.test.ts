@@ -5,17 +5,20 @@ import { LONG_PLAYER_NAME, playerStatusFixture } from '../testing/playerStatusFi
 import PlayerStatusPanel from './PlayerStatusPanel.vue'
 
 describe('production player status', () => {
-    it('retains the full nickname and only resources plus three accessible identity icons', () => {
+    it('keeps the nickname and two accessible identity icons inside its ribbon', () => {
         expect(LONG_PLAYER_NAME).toHaveLength(24)
         const wrapper = mount(PlayerStatusPanel, {
             props: { character: playerStatusFixture({ nickname: LONG_PLAYER_NAME }) },
         })
         expect(wrapper.get('h2').text()).toBe(LONG_PLAYER_NAME)
         expect(wrapper.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
-        expect(wrapper.find('.ratata-kenney-title').exists()).toBe(false)
+        expect(wrapper.get('.ratata-ui-status__header').classes()).toContain(
+            'ratata-kenney-title--compact'
+        )
+        expect(wrapper.find('.ratata-kenney-title .soul-badge').exists()).toBe(true)
         expect(
             wrapper.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))
-        ).toEqual(['Искра', 'Управляется игроком', 'Есть речь'])
+        ).toEqual(['Искра', 'Есть речь'])
         for (const label of ['Connected', 'Шаг', 'Рывок', 'DMG', 'Dodge', 'Crit', 'Speed', 'CD'])
             expect(wrapper.text()).not.toContain(label)
         expect(wrapper.findAll('.ratata-ui-resource__label').map((label) => label.text())).toEqual([
@@ -23,6 +26,9 @@ describe('production player status', () => {
             'MP',
             'EN',
         ])
+        expect(wrapper.findAll('.ratata-ui-resource__text')).toHaveLength(0)
+        expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(3)
+        expect(wrapper.findAll('[aria-valuetext]')).toHaveLength(0)
         wrapper.unmount()
     })
     it('keeps zero resources readable without NaN or a hidden resource track', () => {
@@ -30,7 +36,10 @@ describe('production player status', () => {
             props: {
                 character: playerStatusFixture({
                     health: { kind: 'exact', current: 0, max: 26 },
-                    resources: { mana: 0, maxMana: 0, energy: 0, maxEnergy: 100 },
+                    resources: {
+                        mana: { kind: 'exact', current: 0, max: 0 },
+                        energy: { kind: 'exact', current: 0, max: 100 },
+                    },
                 }),
             },
         })
@@ -43,6 +52,40 @@ describe('production player status', () => {
             '0/100',
         ])
         expect(wrapper.text()).not.toContain('NaN')
+        wrapper.unmount()
+    })
+    it('rounds authorized numbers and removes them when resource visibility changes', async () => {
+        const wrapper = mount(PlayerStatusPanel, {
+            props: {
+                character: playerStatusFixture({
+                    health: { kind: 'exact', current: 17.870400000000018, max: 30 },
+                    resources: {
+                        mana: { kind: 'exact', current: 39.6, max: 40 },
+                        energy: { kind: 'exact', current: 102.4, max: 150 },
+                    },
+                }),
+            },
+        })
+        expect(wrapper.findAll('.ratata-ui-resource__text').map((bar) => bar.text())).toEqual([
+            '18/30',
+            '40/40',
+            '102/150',
+        ])
+        expect(wrapper.get('[aria-label="Health"]').attributes('aria-valuetext')).toBe('18/30')
+        await wrapper.setProps({
+            character: playerStatusFixture({
+                health: { kind: 'percent', percent: 59 },
+                resources: {
+                    mana: { kind: 'percent', percent: 99, hasCapacity: true },
+                    energy: { kind: 'percent', percent: 68, hasCapacity: true },
+                },
+            }),
+        })
+        expect(wrapper.findAll('.ratata-ui-resource__text')).toHaveLength(0)
+        expect(wrapper.findAll('[aria-valuetext]')).toHaveLength(0)
+        expect(wrapper.text()).not.toContain('59')
+        expect(wrapper.text()).not.toContain('18/30')
+        expect(wrapper.get('[aria-label="Health"]').attributes('aria-valuenow')).toBe('59')
         wrapper.unmount()
     })
     it('updates active model Spark and independent speech indicators without textual badges', async () => {
@@ -60,7 +103,7 @@ describe('production player status', () => {
         })
         expect(
             wrapper.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))
-        ).toEqual(['Искра', 'Управляется ИИ', 'Без речи'])
+        ).toEqual(['Искра', 'Без речи'])
         expect(wrapper.find('.soul-badge').text()).toBe('✧')
         wrapper.unmount()
     })

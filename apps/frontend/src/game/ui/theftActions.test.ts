@@ -28,9 +28,9 @@ describe('theft context actions', () => {
         player.movement!.mode = 'walking'
         expect(theftActions(state, player, state.characters)[0]?.disabled).toBe(true)
         player.movement!.mode = 'sneaking'
-        player.resources.energy = 9
+        player.resourceChecks!.steal = 'energy'
         expect(theftActions(state, player, state.characters)[0]?.disabled).toBe(true)
-        player.resources.energy = 100
+        player.resourceChecks!.steal = 'ready'
         player.theft!.cooldownMsLeft = 4000
         expect(theftActions(state, player, state.characters)[0]?.disabled).toBe(true)
         player.theft!.cooldownMsLeft = 0

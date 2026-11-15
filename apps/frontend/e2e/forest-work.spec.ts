@@ -256,7 +256,6 @@ async function plantAndCancel(
     const hint = page.getByRole('region', { name: 'Посадка дерева' })
     await expect(hint).toBeVisible()
     const chosen = await findPlot(page, previews)
-    const before = await page.evaluate(() => window.__ratataTest!.getState().player!)
     await hint.getByRole('button', { name: 'Посадить · E / Enter' }).click()
     await expect
         .poll(() =>
@@ -270,7 +269,8 @@ async function plantAndCancel(
         .toBe('none')
     const cancelled = await page.evaluate(() => window.__ratataTest!.getState().player!)
     expect(cancelled.inventory.filter((item) => item.itemId === 'sapling')).toHaveLength(1)
-    expect(cancelled.resources.energy).toBeGreaterThanOrEqual(before.resources.energy)
+    expect(cancelled.resources.energy.kind).toBe('percent')
+    expect(cancelled.resourceChecks?.sow).toBe('ready')
     await canvas.focus()
     const repeatedPreviewCount = previews.length
     await page.keyboard.press(`Digit${slot}`)

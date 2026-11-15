@@ -17,7 +17,7 @@ import {
 afterEach(() => vi.restoreAllMocks())
 
 describe('observer combat information', () => {
-    it('projects foreign health downwards without retaining exact health or barrier fields', () => {
+    it('projects own and foreign resources downwards without retaining numeric fields', () => {
         const { observer, target, view } = observationFixture()
         target.hp = target.maxHp * 0.375
         target.abilities.barrier = {
@@ -31,11 +31,14 @@ describe('observer combat information', () => {
             view
         )
         expect(own.health).toEqual({
-            kind: 'exact',
-            current: observer.hp,
-            max: observer.maxHp,
+            kind: 'percent',
+            percent: 100,
         })
-        expect(own.resources).toEqual(observer.snapshot(1000).resources)
+        expect(own.resources).toEqual({
+            mana: { kind: 'percent', percent: 100, hasCapacity: true },
+            energy: { kind: 'percent', percent: 100, hasCapacity: true },
+        })
+        expect(own.resourceChecks?.dash).toBe('ready')
         const foreign = observeCharacterCombat(
             target.snapshot(1000),
             target,
@@ -46,12 +49,14 @@ describe('observer combat information', () => {
         expect(JSON.stringify(foreign)).not.toContain('"current"')
         expect(foreign).not.toHaveProperty('hp')
         expect(foreign).not.toHaveProperty('maxHp')
+        expect(foreign).not.toHaveProperty('resourceChecks')
         const anonymous = observeCharacterCombat(
             observer.snapshot(1000),
             observer,
             { ...view, observer: undefined }
         )
         expect(anonymous.health.kind).toBe('percent')
+        expect(anonymous).not.toHaveProperty('resourceChecks')
     })
 
     it('keeps grave simulation health internal and grants every numeric channel only with capability', () => {
@@ -87,6 +92,8 @@ describe('observer combat information', () => {
             max: target.maxHp,
         })
         expect(snapshot.abilities?.barrier?.remaining).toBe(3.25)
+        expect(snapshot.resources).toEqual(target.snapshot(1000).resources)
+        expect(snapshot).not.toHaveProperty('resourceChecks')
         expect(observeGraveCombat(grave, view).health).toEqual({
             kind: 'exact',
             current: 37.8,
@@ -124,8 +131,8 @@ describe('observer combat events', () => {
                 observeCombatEvent(eventFor(target, kind), view)
             ).not.toHaveProperty('amount')
             expect(
-                observeCombatEvent(eventFor(observer, kind), view)?.amount
-            ).toBe(7.25)
+                observeCombatEvent(eventFor(observer, kind), view)
+            ).not.toHaveProperty('amount')
         }
         expect(
             observeCombatEvent(
@@ -156,7 +163,7 @@ describe('observer combat events', () => {
         } as const
         expect(observeCombatEvent(water, view)?.text).toBe('Пьёт воду.')
         const ownView = { ...view, observer: target }
-        expect(observeCombatEvent(water, ownView)?.text).toBe('Энергия +17.')
+        expect(observeCombatEvent(water, ownView)?.text).toBe('Пьёт воду.')
         expect(observeCombatEvent(event, ownView)).not.toHaveProperty(
             'audienceIds'
         )

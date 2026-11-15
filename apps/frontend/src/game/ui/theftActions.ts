@@ -36,21 +36,22 @@ function stealAction(
             ? Math.max(0, lastAttempt.at + THEFT_RULES.pairCooldownMs - now)
             : 0
     const wait = Math.max(player.theft?.cooldownMsLeft ?? 0, pairWait)
-    const requirement =
-        player.movement?.mode !== 'sneaking'
-            ? 'C — красться'
-            : wait > 0
-              ? `через ${String(Math.ceil(wait / 1000))} с`
-              : `${String(THEFT_RULES.energyCost)} EN`
     return {
         id: `steal:${target.id}`,
-        label: `Попытаться украсть: ${target.nickname} · ${requirement}`,
+        label: `Попытаться украсть: ${target.nickname} · ${stealRequirement(player, wait)}`,
         disabled:
             player.movement?.mode !== 'sneaking' ||
             wait > 0 ||
-            player.resources.energy < THEFT_RULES.energyCost,
+            player.resourceChecks?.steal !== 'ready',
         command: { type: 'steal', targetId: target.id },
     }
+}
+
+function stealRequirement(player: CharacterSnapshot, wait: number): string {
+    if (player.movement?.mode !== 'sneaking') return 'C — красться'
+    return wait > 0
+        ? `через ${String(Math.ceil(wait / 1000))} с`
+        : `${String(THEFT_RULES.energyCost)} EN`
 }
 
 export function guardActions(

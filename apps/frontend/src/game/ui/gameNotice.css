@@ -3,7 +3,7 @@
     width: max-content;
     box-sizing: border-box;
     z-index: 70;
-    bottom: 80px;
+    top: max(16px, env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
     max-width: min(560px, calc(100vw - 32px));
@@ -17,10 +17,4 @@
         13px/1.5 system-ui,
         sans-serif;
     pointer-events: none;
-}
-
-@media (max-width: 740px) {
-    .game-notice {
-        bottom: 116px;
-    }
 }

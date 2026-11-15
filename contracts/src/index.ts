@@ -28,6 +28,7 @@ import type {
 export * from './chests'
 export * from './craftOrders'
 export * from './economy'
+export * from './farmSupply'
 export * from './inventory'
 import type {
     EquipmentActionKind,
@@ -65,9 +66,11 @@ export * from './farms'
 export * from './graves'
 import type { HealthSnapshot } from './health'
 export * from './health'
+import type { CharacterResourceChecks, ResourceSnapshot } from './resources'
 export type { PlayerIdentity, WorldPosition } from './identity'
 export * from './materials'
 export * from './pursuit'
+export * from './resources'
 export * from './service'
 export * from './training'
 export * from './trees'
@@ -116,10 +119,8 @@ export interface AttackZone {
 }
 
 export interface CharacterResourcesSnapshot {
-    energy: number
-    mana: number
-    maxEnergy: number
-    maxMana: number
+    energy: ResourceSnapshot
+    mana: ResourceSnapshot
 }
 
 export interface CharacterCooldownsSnapshot {
@@ -187,6 +188,7 @@ export interface CharacterSnapshot {
     position: Vector2
     reputation: CharacterReputation
     resources: CharacterResourcesSnapshot
+    resourceChecks?: CharacterResourceChecks
     stats: CharacterStatsSnapshot
     tags: string[]
     velocity: Vector2

@@ -39,5 +39,5 @@ function dashReason(character: GameCharacter, now: number): string {
     if (cooldown > 0) {
         return `Рывок восстанавливается: ещё ${String(Math.ceil(cooldown / 1000))} с.`
     }
-    return `Для рывка нужно ${String(MOVEMENT_RULES.dashEnergy)} энергии. Сейчас ${String(Math.floor(character.energy))}.`
+    return `Для рывка нужно ${String(MOVEMENT_RULES.dashEnergy)} энергии. Недостаточно сил.`
 }

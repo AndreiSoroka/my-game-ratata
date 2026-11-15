@@ -44,7 +44,7 @@ import { canPerformSkillAction } from './skillProgression'
 
 export class AdventureResources {
     private readonly nodes: AdventureResourceNode[]
-    private readonly farms = new AdventureFarming()
+    private readonly farms: AdventureFarming
     private readonly harvesting: HarvestResources
 
     public constructor(
@@ -54,7 +54,8 @@ export class AdventureResources {
             recipeId: AdventureRecipeId,
             instanceId: string
         ) => void,
-        drops?: HarvestDrops
+        drops?: HarvestDrops,
+        farmRandom?: () => number
     ) {
         this.nodes = structuredClone(
             nodes ?? [
@@ -63,6 +64,7 @@ export class AdventureResources {
             ]
         )
         this.harvesting = new HarvestResources(this.nodes, drops)
+        this.farms = new AdventureFarming(undefined, farmRandom)
     }
 
     public update(

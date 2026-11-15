@@ -41,7 +41,7 @@ describe('Space dash feedback', () => {
             })
             expect(events[0]?.text).toMatch(
                 {
-                    energy: /30.*29/,
+                    energy: /30.*Недостаточно сил/,
                     cooldown: /восстанавливается/,
                     stun: /оглушён/,
                     action: /окончания действия/,

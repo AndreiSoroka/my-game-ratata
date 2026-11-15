@@ -1,7 +1,8 @@
-import type {
-    GameEventPayload,
-    ProgressionClientMessage,
-    SpellSkillId,
+import {
+    ABILITY_DEFINITIONS,
+    type GameEventPayload,
+    type ProgressionClientMessage,
+    type SpellSkillId,
 } from '@my-game-ratata/contracts'
 
 import { resolveCharacterDamage } from './abilityDamage'
@@ -23,9 +24,15 @@ const spells: Record<
         growth: number
     }
 > = {
-    fireball: { mana: 12, cooldown: 1_000, range: 160, damage: 8, growth: 2 },
+    fireball: {
+        mana: ABILITY_DEFINITIONS.fireball.mana,
+        cooldown: 1_000,
+        range: 160,
+        damage: 8,
+        growth: 2,
+    },
     greater_fireball: {
-        mana: 24,
+        mana: ABILITY_DEFINITIONS.greater_fireball.mana,
         cooldown: 2_000,
         range: 192,
         damage: 18,

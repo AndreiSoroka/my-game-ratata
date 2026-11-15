@@ -8,6 +8,7 @@ export type * from './environment'
 import type { CraftOrderClientMessage } from './craftOrders'
 import type { MarketClientMessage } from './economy'
 import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
+import type { FarmSupplyClientMessage } from './farmSupply'
 import type { ItemId } from './index'
 import type { TreeProfile } from './trees'
 export type { TreeProfile } from './trees'
@@ -29,6 +30,7 @@ export type AdventureMaterials = Record<AdventureMaterial, number>
 export type AdventureClientMessage =
     | WorldObjectClientMessage
     | FarmClientMessage
+    | FarmSupplyClientMessage
     | MarketClientMessage
     | CraftOrderClientMessage
     | { type: 'plant_tree'; position: { x: number; y: number } }

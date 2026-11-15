@@ -4,6 +4,25 @@ import test from 'node:test'
 
 import { WORLD_LOCATION_DEFINITIONS } from '../contracts/src/world.ts'
 
+test('MCP exposes seed purchases and municipal farm supply as bounded intentions', () => {
+    const [message] = messages([
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    ])
+    const decisions = message.result.tools.find(
+        (tool) => tool.name === 'ratata_act'
+    ).inputSchema.properties.decision.oneOf
+    const supply = decisions.find(
+        (entry) => entry.properties.type.const === 'farm_supply'
+    )
+    assert.deepEqual(supply.required, ['type', 'npcId', 'plotId', 'requestId'])
+    assert.equal(supply.additionalProperties, false)
+    assert.equal(supply.properties.ownerId, undefined)
+    const trade = decisions.find(
+        (entry) => entry.properties.type.const === 'market_trade'
+    )
+    assert.ok(trade.properties.itemId.enum.includes('wheat_seed'))
+})
+
 function messages(input) {
     const result = spawnSync(process.execPath, ['scripts/agent-mcp.mjs'], {
         encoding: 'utf8',

@@ -69,7 +69,7 @@ describe('grave selection and hotbar', () => {
         try {
             wrapper.vm.selectGrave(grave.id)
             await flushPromises()
-            expect(wrapper.get('[aria-label="Выбранная цель"]').text()).toContain('99,75')
+            expect(wrapper.get('[aria-label="Выбранная цель"]').text()).toContain('100/100 HP')
             press('Digit1')
             expect(sendCommand).toHaveBeenLastCalledWith({
                 type: 'attack',

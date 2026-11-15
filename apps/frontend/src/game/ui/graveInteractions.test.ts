@@ -47,7 +47,7 @@ describe('explicit grave interactions', () => {
         const grave = graveFixture()
         if (failure === 'unknown') player.abilities!.known = []
         if (failure === 'unqualified') player.heroClass = 'vanguard'
-        if (failure === 'mana') player.resources.mana = 19
+        if (failure === 'mana') player.resourceChecks!.prayers.purify_grave = 'mana'
         if (failure === 'cooldown') player.abilities!.cooldowns.pray = 1
         if (failure === 'casting')
             player.abilities!.casting = {
@@ -89,9 +89,9 @@ describe('explicit grave interactions', () => {
     })
 })
 describe('reusable grave facts', () => {
-    it('retains fractional HP and shows material effectiveness and server-based restoration countdown', async () => {
+    it('rounds displayed HP and shows material effectiveness and server-based restoration countdown', async () => {
         const wrapper = mount(GraveDetails, { props: { grave: graveFixture(), serverTime: 1000 } })
-        expect(wrapper.text()).toContain('99,75 / 100 HP')
+        expect(wrapper.text()).toContain('100/100 HP')
         expect(wrapper.text()).toContain('5% урона')
         expect(wrapper.text()).toContain('100% урона')
         await wrapper.setProps({

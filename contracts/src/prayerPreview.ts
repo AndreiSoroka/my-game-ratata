@@ -1,6 +1,7 @@
 import {
     PRAYER_RULES,
     type PrayerIntent,
+    type PrayerMode,
     type PrayerPreview,
 } from './abilities'
 import type { CharacterSnapshot } from './index'
@@ -10,6 +11,7 @@ import {
     type DeityPrayerProfile,
     prayerManaCost,
 } from './prayer'
+import { resourceNeedsRestoration } from './resources'
 export interface PrayerPreviewOptions {
     canReach?: (target: CharacterSnapshot) => boolean
     canAid?: (target: CharacterSnapshot) => boolean
@@ -55,7 +57,7 @@ export function previewPrayerFromSnapshots(
             (target) =>
                 target.id !== player.id && target.faction === player.faction
         ),
-        unavailableReason: unavailableReason(player, manaCost),
+        unavailableReason: unavailableReason(player, intent.mode),
     }
 }
 function creatureType(target: CharacterSnapshot) {
@@ -85,10 +87,7 @@ function resourceMissing(
             ? target.health.current < target.health.max
             : target.health.percent < 100
     }
-    if (context.profile.resource === 'energy') {
-        return target.resources.energy < target.resources.maxEnergy
-    }
-    return target.resources.mana < target.resources.maxMana
+    return resourceNeedsRestoration(target.resources[context.profile.resource])
 }
 function eligibleGift(
     context: PreviewContext,
@@ -173,7 +172,7 @@ function selectedIntent(
 }
 function unavailableReason(
     player: CharacterSnapshot,
-    manaCost: number
+    mode: PrayerMode
 ): string | null {
     if (player.abilities?.known.includes('pray') !== true) {
         return 'Молитва не изучена.'
@@ -188,7 +187,9 @@ function unavailableReason(
     if ((player.abilities.cooldowns.pray ?? 0) > 0) {
         return 'Молитва восстанавливается.'
     }
-    return player.resources.mana < manaCost ? 'Недостаточно маны.' : null
+    return player.resourceChecks?.prayers[mode] === 'ready'
+        ? null
+        : 'Недостаточно маны.'
 }
 
 function eligibleRevival(

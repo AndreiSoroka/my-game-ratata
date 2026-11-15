@@ -73,17 +73,25 @@ describe('serialized WebSocket combat privacy', () => {
                 (entry) => entry.id === actor.id
             )
             expect(own?.health).toEqual({
-                kind: 'exact',
-                current: actor.hp,
-                max: actor.maxHp,
+                kind: 'percent',
+                percent: 37,
             })
-            expect(own?.abilities?.barrier?.remaining).toBe(3.25)
+            expect(own?.abilities?.barrier).not.toHaveProperty('remaining')
+            expect(own?.resourceChecks).toBeDefined()
             for (const observer of [foreign, anonymous]) {
                 const snapshot = receivedSnapshot(observer.messages)
                 const target = snapshot.characters.find(
                     (entry) => entry.id === actor.id
                 )
                 expect(target?.health).toEqual({ kind: 'percent', percent: 37 })
+                expect(target?.resources).toMatchObject({
+                    mana: { kind: 'percent' },
+                    energy: { kind: 'percent' },
+                })
+                expect(target).not.toHaveProperty('resourceChecks')
+                expect(JSON.stringify(target)).not.toMatch(
+                    /"(?:current|maxMana|maxEnergy)"/
+                )
                 expect(target?.abilities?.barrier).not.toHaveProperty(
                     'remaining'
                 )
@@ -98,7 +106,7 @@ describe('serialized WebSocket combat privacy', () => {
                 receivedEvents(owner.messages).find(
                     (event) => event.kind === 'heal'
                 )?.amount
-            ).toBe(7.25)
+            ).toBeUndefined()
             expect(events.every((event) => event.amount === 7.25)).toBe(true)
             const observerActor = requireActor(foreign.actor)
             observerActor.exactCombatNumbers = true
@@ -108,12 +116,27 @@ describe('serialized WebSocket combat privacy', () => {
                 (entry) => entry.id === actor.id
             )
             expect(revealed?.health.kind).toBe('exact')
+            expect(revealed?.resources).toMatchObject({
+                mana: { kind: 'exact' },
+                energy: { kind: 'exact' },
+            })
+            expect(revealed).not.toHaveProperty('resourceChecks')
             expect(revealed?.abilities?.barrier?.remaining).toBe(3.25)
             expect(
                 receivedEvents(foreign.messages).findLast(
                     (event) => event.kind === 'damage'
                 )?.amount
             ).toBe(7.25)
+            observerActor.exactCombatNumbers = false
+            vi.advanceTimersByTime(50)
+            const hiddenAgain = receivedSnapshot(
+                foreign.messages
+            ).characters.find((entry) => entry.id === actor.id)
+            expect(hiddenAgain?.health.kind).toBe('percent')
+            expect(hiddenAgain?.resources).toMatchObject({
+                mana: { kind: 'percent' },
+                energy: { kind: 'percent' },
+            })
         } finally {
             room.stop()
         }
@@ -121,7 +144,7 @@ describe('serialized WebSocket combat privacy', () => {
 })
 
 describe('serialized agent bridge combat privacy', () => {
-    it('keeps anonymous snapshots public and grants private exact health only to an eligible NPC identity', async () => {
+    it('keeps anonymous and NPC snapshots public until server capability is granted', async () => {
         const { room } = observationRoom()
         try {
             const publicResponse = await handleAgentRequest(
@@ -146,7 +169,14 @@ describe('serialized agent bridge combat privacy', () => {
             expect(
                 state.characters.find((entry) => entry.id === actor.id)?.health
                     .kind
-            ).toBe('exact')
+            ).toBe('percent')
+            expect(
+                state.characters.find((entry) => entry.id === actor.id)
+                    ?.resourceChecks
+            ).toBeDefined()
+            expect(JSON.stringify(state)).not.toMatch(
+                /"(?:current|maxMana|maxEnergy)"/
+            )
             expect(
                 state.characters
                     .filter((entry) => entry.id !== actor.id)
@@ -166,6 +196,13 @@ describe('serialized agent bridge combat privacy', () => {
                 privacyToken
             )
             const privilegedState = (await privileged.json()) as WorldSnapshot
+            expect(
+                privilegedState.characters.every(
+                    (entry) =>
+                        entry.resources.mana.kind === 'exact' &&
+                        entry.resources.energy.kind === 'exact'
+                )
+            ).toBe(true)
             expect(
                 privilegedState.characters.every(
                     (entry) => entry.health.kind === 'exact'

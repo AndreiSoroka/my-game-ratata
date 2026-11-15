@@ -9,15 +9,12 @@ import {
 import { computed } from 'vue'
 
 import { graveName } from './graveInteractions'
-import { healthBarPercent } from './healthPresentation'
+import { healthBarPercent, healthText } from './healthPresentation'
 
 const props = defineProps<{ grave: WorldGraveSnapshot; serverTime: number; compact?: boolean }>()
 const remaining = computed(() =>
     Math.max(0, (props.grave.restoresAt ?? props.serverTime) - props.serverTime)
 )
-function hp(value: number): string {
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)
-}
 function percent(impact: MaterialImpact): string {
     return `${MATERIAL_DAMAGE_MULTIPLIERS[props.grave.material][impact] * 100}% урона`
 }
@@ -31,9 +28,7 @@ function duration(ms: number): string {
     <section class="grave-details" aria-label="Состояние могилы">
         <div class="grave-details__heading">
             <strong>{{ graveName(grave) }}</strong>
-            <span v-if="grave.health.kind === 'exact'"
-                >{{ hp(grave.health.current) }} / {{ hp(grave.health.max) }} HP</span
-            >
+            <span v-if="grave.health.kind === 'exact'">{{ healthText(grave.health) }} HP</span>
         </div>
         <progress
             :value="healthBarPercent(grave.health)"

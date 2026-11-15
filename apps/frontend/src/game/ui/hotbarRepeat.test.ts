@@ -86,7 +86,14 @@ it('can arm a meaningful prayer while waiting for mana and displays authoritativ
     const player = characterFixture('self', {
         heroClass: 'cleric',
         health: { kind: 'exact' as const, current: 2, max: 24 },
-        resources: { mana: 0, maxMana: 40, energy: 100, maxEnergy: 100 },
+        resources: {
+            mana: { kind: 'percent', percent: 0, hasCapacity: true },
+            energy: { kind: 'percent', percent: 100, hasCapacity: true },
+        },
+        resourceChecks: {
+            ...characterFixture('self').resourceChecks!,
+            prayers: { ...characterFixture('self').resourceChecks!.prayers, restore: 'mana' },
+        },
         abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
     })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })

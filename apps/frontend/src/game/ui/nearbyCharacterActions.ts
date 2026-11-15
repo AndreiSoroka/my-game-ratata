@@ -105,7 +105,7 @@ export function reviveActions(
         .map<InteractionAction>((character) => ({
             id: `revive:${character.id}`,
             label: `Воскресить: ${character.nickname}`,
-            disabled: player.resources.mana < 20,
+            disabled: player.resourceChecks?.prayers.revive !== 'ready',
             command: { type: 'revive', targetId: character.id },
         }))
 }

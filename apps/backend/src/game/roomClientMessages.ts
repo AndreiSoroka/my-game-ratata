@@ -112,6 +112,7 @@ function manualScenarioOverride(message: ClientMessage): boolean {
         'use_ability',
         'gather',
         'farm_action',
+        'farm_supply',
         'plant_tree',
         'open_chest',
     ].includes(message.type)

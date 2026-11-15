@@ -1,4 +1,8 @@
-import type { ServerMessage, WorldSnapshot } from '@my-game-ratata/contracts'
+import {
+    resourceFillPercent,
+    type ServerMessage,
+    type WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NavigationService } from '../../../../backend/src/game/navigation'
@@ -79,7 +83,9 @@ describe('AI navigation through authoritative player commands', () => {
         expect(stopped.position).toEqual(before.position)
         expect(stopped.movement?.dashing).toBe(false)
         expect(stopped.movement?.dashCooldownMsLeft).toBeGreaterThan(0)
-        expect(stopped.resources.energy).toBeLessThan(before.resources.energy)
+        expect(resourceFillPercent(stopped.resources.energy)).toBeLessThan(
+            resourceFillPercent(before.resources.energy)
+        )
         await vi.advanceTimersByTimeAsync(500)
         expect(getState().player!.position).toEqual(stopped.position)
     })

@@ -14,7 +14,8 @@ function priest() {
 describe('prayer without an eligible target', () => {
     it('offers a plain prayer at full health and sends the exact cosmetic intent', async () => {
         const player = priest()
-        player.resources.mana = 0
+        player.resources.mana = { kind: 'percent', percent: 0, hasCapacity: true }
+        player.resourceChecks!.prayers.restore = 'mana'
         const wrapper = mount(ActionHotbar, {
             props: { player, characters: [player], blocked: false },
         })
@@ -74,7 +75,14 @@ describe('prayer without an eligible target', () => {
         const wounded = {
             ...player,
             health: { kind: 'exact' as const, current: 5, max: 24 },
-            resources: { ...player.resources, mana: 4 },
+            resources: {
+                ...player.resources,
+                mana: { kind: 'percent' as const, percent: 10, hasCapacity: true },
+            },
+            resourceChecks: {
+                ...player.resourceChecks!,
+                prayers: { ...player.resourceChecks!.prayers, restore: 'mana' as const },
+            },
         }
         expect(previewPrayerFromSnapshots(wounded, []).manaCost).toBe(5)
         expect(previewPrayerFromSnapshots(wounded, []).unavailableReason).toBe('Недостаточно маны.')

@@ -8,8 +8,11 @@ export function playerStatusFixture(overrides: Partial<CharacterSnapshot> = {}):
     return characterFixture('status-hero', {
         nickname: 'Андрей Сорока',
         heroClass: 'cleric',
-        health: { kind: 'exact', current: 26, max: 26 },
-        resources: { mana: 120, maxMana: 120, energy: 100, maxEnergy: 100 },
+        health: { kind: 'percent', percent: 100 },
+        resources: {
+            mana: { kind: 'percent', percent: 100, hasCapacity: true },
+            energy: { kind: 'percent', percent: 100, hasCapacity: true },
+        },
         soul: {
             kind: 'spark',
             controlSource: 'human',

@@ -13,6 +13,7 @@ export const itemIds = [
     'scrap',
     'wood',
     'grain',
+    'wheat_seed',
     'axe',
     'stone_axe',
     'pickaxe',
@@ -141,6 +142,13 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         name: 'Зерно',
         maxStack: 9,
         description: 'Собранная пшеница для хлеба. До 9 единиц в ячейке.',
+    },
+    wheat_seed: {
+        id: 'wheat_seed',
+        name: 'Семена пшеницы',
+        maxStack: 9,
+        description:
+            'Одно семя нужно для посева грядки пшеницы. Иногда встречаются в сундуках и выпадают с урожаем. До 9 единиц в ячейке.',
     },
     fiber: {
         id: 'fiber',

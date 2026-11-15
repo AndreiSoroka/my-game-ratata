@@ -14,7 +14,7 @@ import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
 import { WorkerBrushwood } from './workerBrushwood'
-import { WorkerFarm } from './workerFarm'
+import { hasNoRoute, workerDeliveryCount, WorkerFarm } from './workerFarm'
 import {
     approach,
     reachedResource,
@@ -46,6 +46,9 @@ export class EconomyWorkerController implements CharacterController {
             return
         }
         this.nextDecisionAt = now + 500
+        if (this.job === 'farmer') {
+            this.farming.reconcile(actor, room)
+        }
         if (this.flee(actor, room)) {
             return
         }
@@ -97,12 +100,14 @@ export class EconomyWorkerController implements CharacterController {
         const market = room
             .adventureForWorkers()
             .economy.snapshot(merchant?.locationId ?? CENTER_LOCATION_ID, now)
+        const deliveryCount = (itemId: MarketItemId) =>
+            workerDeliveryCount(actor, itemId, this.job)
         const row = kinds
             .map((id) => market?.rows.find((row) => row.itemId === id))
             .find(
                 (candidate) =>
                     candidate !== undefined &&
-                    countInventoryItem(actor.inventory, candidate.itemId) > 0 &&
+                    deliveryCount(candidate.itemId) > 0 &&
                     candidate.stock < candidate.capacity &&
                     (candidate.itemId !== 'brushwood' ||
                         carriesWood ||
@@ -122,7 +127,7 @@ export class EconomyWorkerController implements CharacterController {
         }
         const itemId = row.itemId
         const quantity = Math.min(
-            countInventoryItem(actor.inventory, itemId),
+            deliveryCount(itemId),
             row.capacity - row.stock
         )
         const total = quoteMarketTrade(row, 'sell', quantity)
@@ -303,9 +308,4 @@ function deliveryKinds(job: WorkerJob): MarketItemId[] {
         return ['wood', 'brushwood']
     }
     return job === 'miner' ? ['stone', 'scrap'] : ['grain']
-}
-
-function hasNoRoute(actor: GameCharacter): boolean {
-    const input = actor.getMoveInput()
-    return !actor.hasPath() && input.x === 0 && input.y === 0
 }

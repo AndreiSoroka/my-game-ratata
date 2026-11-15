@@ -8,6 +8,7 @@ export const marketItemIds = [
     'fiber',
     'scrap',
     'grain',
+    'wheat_seed',
     'food',
     'sapling',
     'simple_sword',

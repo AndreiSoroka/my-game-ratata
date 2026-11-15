@@ -5,13 +5,17 @@ import {
     type FarmAction,
     type FarmPlotDefinition,
 } from '@my-game-ratata/contracts'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
 import { retireCharacter } from '../src/game/characterLife'
 import { isAdventureCommand } from '../src/game/extraCommands'
-import { createItemInstance, inventoryCapacity } from '../src/game/inventory'
+import {
+    countInventoryItem,
+    createItemInstance,
+    inventoryCapacity,
+} from '../src/game/inventory'
 import { parseClientMessage } from '../src/game/messages'
 
 function plotAt(index: number): FarmPlotDefinition {
@@ -38,11 +42,14 @@ function farmer(
     })
 }
 
-function fixture() {
+function fixture(farmRandom: () => number = () => 0) {
     const clock = { now: 1_000 }
     const ripe = plotAt(0)
     const bare = plotAt(1)
-    const service = new AdventureService({ now: () => clock.now })
+    const service = new AdventureService({
+        now: () => clock.now,
+        farmRandom,
+    })
     return { clock, ripe, bare, service, actor: farmer('hero', bare) }
 }
 
@@ -125,6 +132,7 @@ describe('shared communal farms', () => {
         (controllerKind) => {
             const { service, clock, bare } = fixture()
             const actor = farmer(controllerKind, bare, controllerKind)
+            actor.inventory.push(createItemInstance('wheat_seed', 2))
             const energy = actor.energy
             expect(act(service, actor, bare, 'sow')).toEqual([
                 {
@@ -139,6 +147,7 @@ describe('shared communal farms', () => {
                 readyAt,
             })
             expect(actor.energy).toBe(energy - 5)
+            expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(1)
             act(service, actor, bare, 'sow')
             clock.now += 800
             act(service, actor, bare, 'sow')
@@ -159,6 +168,7 @@ describe('shared communal farms', () => {
             clock.now += 800
             act(service, actor, bare, 'sow')
             expect(actor.energy).toBe(energy - 10)
+            expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(0)
             expect(state(service, actor).farmPlots[1]?.readyAt).toBe(
                 clock.now + FARM_GROW_MS
             )
@@ -213,10 +223,14 @@ describe('farm work validation', () => {
                 [ripe, 'harvest'],
             ] as const) {
                 const actor = farmer(action, plot)
+                actor.inventory.push(createItemInstance('wheat_seed'))
                 const energy = actor.energy
                 invalidate(actor)
                 expect(act(service, actor, plot, action)).toEqual([])
                 expect(actor.energy).toBe(energy)
+                expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(
+                    1
+                )
                 expect(state(service, actor).materials.grain).toBe(0)
             }
             expect(
@@ -229,8 +243,10 @@ describe('farm work validation', () => {
 
     it('requires real labor, validates unknown plots, and includes the exact 48px reach boundary', () => {
         const { service, actor, bare } = fixture()
+        actor.inventory.push(createItemInstance('wheat_seed'))
         actor.energy = 4
         expect(act(service, actor, bare, 'sow')).toEqual([])
+        expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(1)
         actor.energy = 5
         expect(act(service, actor, { ...bare, id: 'invented' }, 'sow')).toEqual(
             []
@@ -238,12 +254,15 @@ describe('farm work validation', () => {
         actor.position.x += 48
         expect(act(service, actor, bare, 'sow')).toHaveLength(1)
         expect(actor.energy).toBe(0)
+        expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(0)
     })
 
     it('shares the labor cooldown with gathering and prevents instant harvest after sowing elsewhere', () => {
         const { clock, bare, ripe, actor } = fixture()
+        actor.inventory.push(createItemInstance('wheat_seed'))
         const service = new AdventureService({
             now: () => clock.now,
+            farmRandom: () => 0,
             resourceNodes: [
                 {
                     id: 'herbs',
@@ -262,6 +281,122 @@ describe('farm work validation', () => {
         expect(act(service, actor, ripe, 'harvest')).toEqual([])
         clock.now += 800
         expect(act(service, actor, ripe, 'harvest')).toHaveLength(1)
+    })
+})
+
+describe('sowing seed costs', () => {
+    it.each(['network_player', 'scripted'] as const)(
+        'requires an actual carried seed rather than grain for %s controllers',
+        (controllerKind) => {
+            const { service, bare } = fixture()
+            const actor = farmer(controllerKind, bare, controllerKind)
+            actor.inventory.push(createItemInstance('grain', 3))
+            const energy = actor.energy
+            expect(act(service, actor, bare, 'sow')).toEqual([])
+            expect(actor.energy).toBe(energy)
+            expect(countInventoryItem(actor.inventory, 'grain')).toBe(3)
+            expect(state(service, actor).farmPlots[1]?.phase).toBe('bare')
+            expect(state(service, actor).notice).toContain('1 семя пшеницы')
+            actor.inventory.push(createItemInstance('wheat_seed'))
+            expect(act(service, actor, bare, 'sow')).toHaveLength(1)
+            expect(actor.energy).toBe(energy - 5)
+            expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(0)
+        }
+    )
+
+    it('does not consume another seed when two actors race to sow the same bed', () => {
+        const { service, bare } = fixture()
+        const first = farmer('first', bare)
+        const second = farmer('second', bare)
+        first.inventory.push(createItemInstance('wheat_seed'))
+        second.inventory.push(createItemInstance('wheat_seed'))
+        const energy = second.energy
+        expect(act(service, first, bare, 'sow')).toHaveLength(1)
+        expect(act(service, second, bare, 'sow')).toEqual([])
+        expect(countInventoryItem(first.inventory, 'wheat_seed')).toBe(0)
+        expect(countInventoryItem(second.inventory, 'wheat_seed')).toBe(1)
+        expect(second.energy).toBe(energy)
+    })
+})
+
+describe('frozen harvest seed drops', () => {
+    it.each([
+        [0, 0],
+        [0.499_999, 0],
+        [0.5, 1],
+        [0.799_999, 1],
+        [0.8, 2],
+        [0.949_999, 2],
+        [0.95, 3],
+        [0.999_999, 3],
+    ])(
+        'resolves random roll %s to %s seeds alongside three grain',
+        (roll, seeds) => {
+            const { service, ripe } = fixture(() => roll)
+            const actor = farmer('harvester', ripe)
+            expect(act(service, actor, ripe, 'harvest')).toHaveLength(1)
+            expect(countInventoryItem(actor.inventory, 'grain')).toBe(3)
+            expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(
+                seeds
+            )
+        }
+    )
+
+    it('keeps the complete hidden yield through snapshots, full-bag failures and another harvester', () => {
+        const farmRandom = vi.fn(() => 0.99)
+        const { service, ripe, actor } = fixture(farmRandom)
+        actor.position = { ...ripe.position }
+        actor.inventory.push(
+            createItemInstance('grain', 6),
+            ...Array.from({ length: inventoryCapacity - 1 }, () =>
+                createItemInstance('food')
+            )
+        )
+        const rolls = farmRandom.mock.calls.length
+        const inventory = structuredClone(actor.inventory)
+        farmRandom.mockReturnValue(0)
+        expect(state(service, actor).farmPlots[0]).toEqual({
+            id: ripe.id,
+            locationId: ripe.locationId,
+            position: ripe.position,
+            crop: ripe.crop,
+            name: ripe.name,
+            phase: 'ripe',
+            readyAt: 0,
+        })
+        expect(act(service, actor, ripe, 'harvest')).toEqual([])
+        expect(act(service, actor, ripe, 'harvest')).toEqual([])
+        expect(actor.inventory).toEqual(inventory)
+        expect(state(service, actor).farmPlots[0]?.phase).toBe('ripe')
+        const second = farmer('second', ripe)
+        expect(act(service, second, ripe, 'harvest')).toHaveLength(1)
+        expect(countInventoryItem(second.inventory, 'grain')).toBe(3)
+        expect(countInventoryItem(second.inventory, 'wheat_seed')).toBe(3)
+        expect(farmRandom).toHaveBeenCalledTimes(rolls)
+        expect(act(service, actor, ripe, 'harvest')).toEqual([])
+    })
+
+    it('rolls again only for a successful new sow, never for rejected work or snapshot reads', () => {
+        const farmRandom = vi.fn(() => 0)
+        const { service, bare, clock, actor } = fixture(farmRandom)
+        const initialRolls = farmRandom.mock.calls.length
+        expect(act(service, actor, bare, 'sow')).toEqual([])
+        expect(act(service, actor, bare, 'harvest')).toEqual([])
+        state(service, actor)
+        expect(farmRandom).toHaveBeenCalledTimes(initialRolls)
+        actor.inventory.push(createItemInstance('wheat_seed', 2))
+        farmRandom.mockReturnValue(0.8)
+        expect(act(service, actor, bare, 'sow')).toHaveLength(1)
+        expect(farmRandom).toHaveBeenCalledTimes(initialRolls + 1)
+        expect(act(service, actor, bare, 'sow')).toEqual([])
+        farmRandom.mockReturnValue(0)
+        clock.now += FARM_GROW_MS
+        expect(act(service, actor, bare, 'harvest')).toHaveLength(1)
+        expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(3)
+        expect(farmRandom).toHaveBeenCalledTimes(initialRolls + 1)
+        clock.now += 800
+        expect(act(service, actor, bare, 'sow')).toHaveLength(1)
+        expect(farmRandom).toHaveBeenCalledTimes(initialRolls + 2)
     })
 })
 

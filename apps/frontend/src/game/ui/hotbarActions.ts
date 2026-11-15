@@ -61,10 +61,11 @@ function abilityUnavailable(
     cooldown: number
 ): string | undefined {
     if (id !== 'barrier' && props.grave?.phase === 'ruined') return 'Могила разрушена'
-    const ability = ABILITY_DEFINITIONS[id]
     if (cooldown > 0) return 'Умение восстанавливается'
-    if (props.player.resources.mana < ability.mana) return 'Недостаточно маны'
-    if (props.player.resources.energy < ability.energy) return 'Недостаточно энергии'
+    const resourceCheck = props.player.resourceChecks?.abilities[id]
+    if (resourceCheck === 'mana') return 'Недостаточно маны'
+    if (resourceCheck === 'energy') return 'Недостаточно энергии'
+    if (resourceCheck !== 'ready') return 'Сейчас недоступно'
     if (!['barrier', 'shot', 'spark'].includes(id) && !hostileTarget(props))
         return 'Выберите врага: T'
     return undefined

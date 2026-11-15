@@ -12,6 +12,7 @@ import type { WorldObjectDefinition } from './worldObjectData'
 import { WorldObjects } from './worldObjects'
 
 export interface AdventureServiceOptions {
+    farmRandom?: () => number
     harvestDrops?: HarvestDrops
     openContainer?: (
         actor: GameCharacter,
@@ -32,7 +33,8 @@ export function createAdventureEnvironment(
             options.resourceNodes,
             (actor, recipeId, instanceId) =>
                 economy().recordCraftOutput(actor, recipeId, instanceId),
-            options.harvestDrops
+            options.harvestDrops,
+            options.farmRandom
         ),
         new WorldObjects(options.worldObjects, options.openContainer),
     ]

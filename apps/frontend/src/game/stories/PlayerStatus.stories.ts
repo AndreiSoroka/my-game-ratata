@@ -21,8 +21,11 @@ export const EmptyResources: Story = {
     render: () =>
         renderVueStory(PlayerStatusPanel, {
             character: playerStatusFixture({
-                health: { kind: 'exact', current: 0, max: 26 },
-                resources: { mana: 0, maxMana: 120, energy: 0, maxEnergy: 100 },
+                health: { kind: 'percent', percent: 0 },
+                resources: {
+                    mana: { kind: 'percent', percent: 0, hasCapacity: true },
+                    energy: { kind: 'percent', percent: 0, hasCapacity: true },
+                },
             }),
         }),
 }
@@ -30,8 +33,23 @@ export const LowResources: Story = {
     render: () =>
         renderVueStory(PlayerStatusPanel, {
             character: playerStatusFixture({
-                health: { kind: 'exact', current: 1, max: 26 },
-                resources: { mana: 6, maxMana: 120, energy: 5, maxEnergy: 100 },
+                health: { kind: 'percent', percent: 3 },
+                resources: {
+                    mana: { kind: 'percent', percent: 5, hasCapacity: true },
+                    energy: { kind: 'percent', percent: 5, hasCapacity: true },
+                },
+            }),
+        }),
+}
+export const AuthorizedNumbers: Story = {
+    render: () =>
+        renderVueStory(PlayerStatusPanel, {
+            character: playerStatusFixture({
+                health: { kind: 'exact', current: 17.870400000000018, max: 30 },
+                resources: {
+                    mana: { kind: 'exact', current: 39.6, max: 40 },
+                    energy: { kind: 'exact', current: 102.4, max: 150 },
+                },
             }),
         }),
 }

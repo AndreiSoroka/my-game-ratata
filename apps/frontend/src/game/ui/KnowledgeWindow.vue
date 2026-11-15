@@ -70,13 +70,13 @@ function distance(character: CharacterSnapshot): number {
     )
 }
 function canCast(skillId: SkillId): boolean {
-    const cost = skillId === 'greater_fireball' ? 24 : 12
     const range = skillId === 'greater_fireball' ? 192 : 160
     return (
         props.player.alive &&
         target.value !== undefined &&
         distance(target.value) <= range &&
-        props.player.resources.mana >= cost
+        (skillId === 'fireball' || skillId === 'greater_fireball') &&
+        props.player.resourceChecks?.abilities[skillId] === 'ready'
     )
 }
 function cast(skillId: SkillId): void {

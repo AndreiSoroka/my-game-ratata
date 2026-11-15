@@ -12,7 +12,9 @@ it('shows a foreign health bar without numeric text and respects exact health wh
     const view = mount(SelectedTargetPanel, { props: { player, target, serverTime: 0 } })
     expect(view.get('progress').attributes('value')).toBe('37')
     expect(view.text()).not.toContain('37')
-    await view.setProps({ target: { ...target, health: { kind: 'exact', current: 9, max: 24 } } })
+    await view.setProps({
+        target: { ...target, health: { kind: 'exact', current: 8.870400000000018, max: 24 } },
+    })
     expect(view.text()).toContain('9/24')
     view.unmount()
 })

@@ -120,7 +120,14 @@ export const WaitingForMana: Story = {
         const mage = characterFixture('mage', {
             heroClass: 'arcanist',
             abilities: { known: ['spark'], cooldowns: {}, casting: null, barrier: null },
-            resources: { mana: 0, maxMana: 120, energy: 100, maxEnergy: 100 },
+            resources: {
+                mana: { kind: 'percent', percent: 0, hasCapacity: true },
+                energy: { kind: 'percent', percent: 100, hasCapacity: true },
+            },
+            resourceChecks: {
+                ...characterFixture('mage').resourceChecks!,
+                abilities: { ...characterFixture('mage').resourceChecks!.abilities, spark: 'mana' },
+            },
             control: {
                 mode: 'action',
                 targetId: 'enemy',

@@ -7,13 +7,14 @@ import type {
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import {
+    executeAdventureCommand,
+    resolveAdventureService,
+} from './adventureCommands'
 import { observeAdventureEvents } from './adventureDeaths'
 import { chooseAdventureReply, interactAdventureNpc } from './adventureDialogue'
 import { createAdventureForest } from './adventureForest'
-import {
-    type AdventureResources,
-    isResourceCommand,
-} from './adventureResources'
+import type { AdventureResources } from './adventureResources'
 import { createAdventureSessions } from './adventureSessions'
 import { type PlayerAdventure } from './adventureState'
 import {
@@ -32,6 +33,7 @@ import {
 } from './adventureWorld'
 import type { GameCharacter } from './character'
 import { CityEconomyService } from './cityEconomy'
+import { CityFarmSupply } from './cityFarmSupply'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
 import type { WorldObjects } from './worldObjects'
@@ -43,6 +45,7 @@ export class AdventureService {
     private readonly worldObjects: WorldObjects
     private readonly now: () => number
     public readonly economy: CityEconomyService
+    public readonly farmSupply: CityFarmSupply
     private readonly trading: AdventureTrading
     private readonly orderCommands: CraftOrderCommands
 
@@ -53,6 +56,9 @@ export class AdventureService {
         )
         this.now = options.now ?? Date.now
         this.economy = new CityEconomyService(this.now())
+        this.farmSupply = new CityFarmSupply(this.economy, (locationId, now) =>
+            this.farmSnapshot(locationId, now)
+        )
         this.trading = new AdventureTrading(this.economy)
         this.orderCommands = new CraftOrderCommands(this.economy.customerOrders)
     }
@@ -116,70 +122,27 @@ export class AdventureService {
         navigation?: NavigationService,
         now = this.now()
     ): GameEventPayload[] {
-        if (isResourceCommand(message)) {
-            return this.resources.handle(
-                actor,
-                this.stateFor(actor.id),
-                message,
-                now,
-                navigation
-            )
-        }
-        switch (message.type) {
-            case 'world_interact':
-                return this.worldObjects.interact(
-                    actor,
-                    this.stateFor(actor.id),
-                    message.objectId,
-                    navigation,
-                    now
-                )
-            case 'interact':
-                return this.interact(
-                    actor,
-                    message.targetId,
-                    locationNPCs,
-                    navigation,
-                    now,
-                    message.service
-                )
-            case 'dialogue_choice':
-                return this.choose(
-                    actor,
-                    message.choiceId,
-                    locationNPCs,
-                    navigation,
-                    now
-                )
-            case 'trade':
-                return this.trade(
-                    actor,
-                    message.itemId,
-                    locationNPCs,
-                    navigation,
-                    now
-                )
-            case 'craft_order_place':
-            case 'craft_order_claim':
-            case 'craft_order_cancel':
-                return this.orderCommands.handle(
-                    actor,
-                    this.stateFor(actor.id),
-                    message,
-                    locationNPCs,
-                    navigation,
-                    now
-                ).events
-            case 'market_trade':
-            case 'repair_items':
-                return this.trading.handle(
-                    actor,
-                    this.stateFor(actor.id),
-                    message,
-                    locationNPCs,
-                    navigation,
-                    now
-                ).events
+        return executeAdventureCommand(
+            {
+                ...this.commandServices(),
+                service: this,
+                resources: this.resources,
+                worldObjects: this.worldObjects,
+                state: this.stateFor(actor.id),
+            },
+            actor,
+            message,
+            locationNPCs,
+            navigation,
+            now
+        )
+    }
+
+    private commandServices() {
+        return {
+            farmSupply: this.farmSupply,
+            trading: this.trading,
+            orderCommands: this.orderCommands,
         }
     }
 
@@ -196,32 +159,17 @@ export class AdventureService {
                 return result
             }
         }
-        if (
-            message.type === 'craft_order_place' ||
-            message.type === 'craft_order_claim' ||
-            message.type === 'craft_order_cancel'
-        ) {
-            return this.orderCommands.handle(
-                actor,
-                this.stateFor(actor.id),
-                message,
-                characters,
-                navigation,
-                now
-            )
-        }
-        if (
-            message.type === 'market_trade' ||
-            message.type === 'repair_items'
-        ) {
-            return this.trading.handle(
-                actor,
-                this.stateFor(actor.id),
-                message,
-                characters,
-                navigation,
-                now
-            )
+        const result = resolveAdventureService(
+            this.commandServices(),
+            actor,
+            this.stateFor(actor.id),
+            message,
+            characters,
+            navigation,
+            now
+        )
+        if (result !== undefined) {
+            return result
         }
         return resolvedAdventureAction(
             this,
@@ -305,6 +253,7 @@ export class AdventureService {
                 this.economy.customerOrders.retire(id, this.now())
                 this.players.delete(id)
                 this.trading.forget(id)
+                this.farmSupply.forget(id)
                 this.economy.forgetActor(id)
                 this.worldObjects.forgetActor(id)
             }

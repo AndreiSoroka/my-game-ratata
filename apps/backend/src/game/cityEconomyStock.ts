@@ -30,6 +30,7 @@ export const CITY_COMMODITIES: readonly CityCommodityDefinition[] = [
     { itemId: 'fiber', basePrice: 3, target: 6, consumption: 1 },
     { itemId: 'herbs', basePrice: 1, target: 12, consumption: 2 },
     { itemId: 'grain', basePrice: 1, target: 12, consumption: 2 },
+    { itemId: 'wheat_seed', basePrice: 1, target: 12, consumption: 0 },
     { itemId: 'food', basePrice: 4, target: 24, consumption: 4 },
     { itemId: 'sapling', basePrice: 1, target: 12, consumption: 0 },
     {

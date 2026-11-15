@@ -59,7 +59,7 @@ function prayerAvailability(player: CharacterSnapshot): string | null {
     if (!player.alive || player.cooldowns.stunMsLeft > 0 || player.abilities?.casting)
         return 'Сейчас нельзя молиться'
     if ((player.abilities?.cooldowns.pray ?? 0) > 0) return 'Молитва восстанавливается'
-    if (player.resources.mana < GRAVE_PURIFY_MANA_COST) return 'Нужно 20 MP'
+    if (player.resourceChecks?.prayers.purify_grave !== 'ready') return 'Нужно 20 MP'
     return null
 }
 
