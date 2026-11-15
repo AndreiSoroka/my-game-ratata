@@ -1,22 +1,52 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot } from '@my-game-ratata/contracts'
+import { computed, nextTick, ref, watch } from 'vue'
 
-import type { BuildCascade, BuildFeedback } from './useConstellationBuild'
+import type { BuildCascade, BuildFeedback, BuildNoticePause } from './useConstellationBuild'
 
-defineProps<{
+const props = defineProps<{
     feedback?: BuildFeedback
     cascade?: BuildCascade
     nodes: ConstellationNodeSnapshot[]
 }>()
-const emit = defineEmits<{ inspect: [id: string]; dismiss: [] }>()
+const emit = defineEmits<{
+    inspect: [id: string]
+    pause: [reason: BuildNoticePause]
+    resume: [reason: BuildNoticePause]
+}>()
+const notice = ref<HTMLElement>()
+const cascadeNames = computed(() =>
+    props.cascade?.ids
+        .slice(0, 3)
+        .map((id) => props.nodes.find((node) => node.id === id)?.name ?? id)
+        .join(', ')
+)
+function focusOut(event: FocusEvent): void {
+    if (!(event.relatedTarget instanceof Node) || !notice.value?.contains(event.relatedTarget))
+        emit('resume', 'focus')
+}
+watch(
+    () => props.feedback?.id ?? props.cascade?.id,
+    async () => {
+        await nextTick()
+        if (notice.value?.matches(':hover')) emit('pause', 'pointer')
+        if (document.activeElement && notice.value?.contains(document.activeElement))
+            emit('pause', 'focus')
+    }
+)
 </script>
 <template>
     <section
         v-if="feedback || cascade"
+        ref="notice"
         class="build-feedback"
         aria-live="polite"
         aria-atomic="true"
         data-testid="debug-build-feedback"
+        @pointerenter="emit('pause', 'pointer')"
+        @pointerleave="emit('resume', 'pointer')"
+        @focusin="emit('pause', 'focus')"
+        @focusout="focusOut"
     >
         <div
             v-if="feedback"
@@ -36,53 +66,37 @@ const emit = defineEmits<{ inspect: [id: string]; dismiss: [] }>()
                 Показать «{{ nodes.find((node) => node.id === id)?.name ?? id }}»
             </button>
         </div>
-        <div v-if="cascade" :key="cascade.id" data-testid="debug-build-cascade">
-            <div class="cascade-heading">
-                <strong>Отключено звёзд: {{ cascade.ids.length }}</strong
-                ><button
-                    type="button"
-                    aria-label="Скрыть список отключённых звёзд"
-                    @click="emit('dismiss')"
-                >
-                    ×
-                </button>
-            </div>
-            <ul v-if="cascade.ids.length <= 5">
-                <li v-for="id in cascade.ids" :key="id">
-                    {{ nodes.find((node) => node.id === id)?.name ?? id }}
-                </li>
-            </ul>
-            <details v-else>
-                <summary>Список отключённых звёзд</summary>
-                <ul>
-                    <li v-for="id in cascade.ids" :key="id">
-                        {{ nodes.find((node) => node.id === id)?.name ?? id }}
-                    </li>
-                </ul>
-            </details>
+        <div v-else-if="cascade" :key="cascade.id" role="status" data-testid="debug-build-cascade">
+            <strong>Отключено звёзд: {{ cascade.ids.length }}</strong>
+            <p>
+                {{ cascadeNames
+                }}<template v-if="cascade.ids.length > 3">
+                    и ещё {{ cascade.ids.length - 3 }}</template
+                >.
+            </p>
         </div>
     </section>
 </template>
 <style scoped>
 .build-feedback {
-    display: grid;
-    gap: 12px;
-    padding: 12px;
+    position: fixed;
+    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 30;
+    box-sizing: border-box;
+    width: min(360px, calc(100vw - 32px));
+    padding: 12px 16px;
     border: 1px solid #b8945d;
     background: #302a1c;
+    box-shadow: 0 4px 20px #0008;
     color: #f4dfae;
     font-size: 12px;
     line-height: 1.5;
 }
-p,
-ul {
+p {
     margin: 0;
 }
-ul {
-    margin-top: 8px;
-    padding-left: 18px;
-}
-li + li {
+strong + p {
     margin-top: 4px;
 }
 .build-blocked {
@@ -99,23 +113,8 @@ button {
     font: inherit;
     cursor: pointer;
 }
-button:focus-visible,
-summary:focus-visible {
+button:focus-visible {
     outline: 2px solid #ffe0a1;
     outline-offset: 2px;
-}
-.cascade-heading {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: center;
-}
-.cascade-heading button {
-    min-width: 44px;
-    text-align: center;
-}
-summary {
-    margin-top: 8px;
-    cursor: pointer;
 }
 </style>

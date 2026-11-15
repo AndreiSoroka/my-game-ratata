@@ -14,6 +14,8 @@ it('shows current planned level and exact next-level actions without a whole-his
     const view = mount(ConstellationMasterySummary, {
         props: { path: 'prayer', activeIds: active, heroClass: 'cleric' },
     })
+    expect(view.get('details').attributes('open')).toBeUndefined()
+    expect(view.get('summary').text()).toBe('Развитие созвездия')
     expect(view.get('[data-testid="debug-mastery-level"]').text()).toBe('5')
     expect(view.get('[data-testid="debug-mastery-total"]').text()).toMatch(/1\s200 XP/)
     expect(view.get('[data-testid="debug-mastery-next"]').text()).toBe('27 действий · 0 / 800 XP')

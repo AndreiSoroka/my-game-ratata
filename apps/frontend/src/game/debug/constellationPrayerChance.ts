@@ -106,6 +106,7 @@ function deterministic(
     examples: ConstellationEffectChance['examples'] = []
 ): PrayerDescription {
     return {
+        deterministic: true,
         summary,
         formulaDetails: [
             math.prayerModifierFormula(),
@@ -178,6 +179,7 @@ function giftChance(id: string): PrayerDescription {
 }
 function harmChance(id: string): PrayerDescription {
     return {
+        ...(id === 'prayer.harm' ? {} : { deterministic: true }),
         summary:
             id === 'prayer.harm'
                 ? 'Кара срабатывает по более высокому порогу, чем лечебный ответ.'
@@ -201,6 +203,7 @@ function harmChance(id: string): PrayerDescription {
 }
 function areaChance(): PrayerDescription {
     return {
+        deterministic: true,
         summary:
             'Общая молитва всегда расширяет выбор целей; ответ и шаги очищения остаются вероятностными.',
         formulaDetails: [
@@ -229,6 +232,7 @@ function insightChance(id: string): PrayerDescription {
         'время до смены настроения',
     ][rank - 1]
     return {
+        deterministic: true,
         summary: `После открытия ${information} ${others ? 'других богов' : 'Угольной Матери'} раскрывается постоянно, со 100% вероятностью.`,
         formulaDetails: [
             math.prayerInsightFormula(),

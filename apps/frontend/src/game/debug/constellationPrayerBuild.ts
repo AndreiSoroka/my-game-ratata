@@ -9,6 +9,7 @@ import {
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { prayerMoodQuality } from '../../../../backend/src/game/prayerProbability'
+import { constellationDistance } from './constellationDistance'
 
 export interface PrayerBuildResult {
     available: boolean
@@ -77,7 +78,11 @@ function commonMetrics(
     const metrics = [
         {
             label: 'Радиус',
-            value: `${definition.range + (mother ? bonuses.prayerRadiusCells * context.tileWidth : 0)} px`,
+            value: constellationDistance(
+                definition.range,
+                mother ? bonuses.prayerRadiusCells : 0,
+                context.tileWidth
+            ),
         },
         {
             label: 'Время молитвы',
@@ -97,9 +102,9 @@ function restorationMetrics(
     return [
         {
             label: context.resource.startsWith('HP')
-                ? 'Лечение при ответе'
-                : `Восстановление ${context.resource} при ответе`,
-            value: `${amount} ${context.resource} (не больше нехватки ресурса)`,
+                ? 'Лечение'
+                : `Восстановление ${context.resource}`,
+            value: `${amount} ${context.resource}`,
         },
         {
             label: mother ? 'Множитель лечения' : 'Множитель восстановления',

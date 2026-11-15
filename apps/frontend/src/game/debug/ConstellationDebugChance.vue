@@ -15,11 +15,12 @@ const longNotes = computed(
     <div>
         <ConstellationPrayerCalculator :node-id="nodeId" :enabled-star-ids="enabledStarIds" />
         <details
+            v-if="!chance.deterministic && chance.formulas.length"
             class="debug-effect-chance"
             data-testid="debug-effect-chance"
             aria-label="Шанс срабатывания эффекта"
         >
-            <summary>Шанс срабатывания эффекта</summary>
+            <summary @keydown.stop @keyup.stop>Шанс срабатывания эффекта</summary>
             <p data-testid="debug-effect-chance-summary">{{ chance.summary }}</p>
             <ConstellationChanceFormulas
                 :details="chance.formulaDetails"

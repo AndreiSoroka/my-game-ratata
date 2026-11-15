@@ -9,6 +9,7 @@ import {
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { chancePercent, theftEffectChances } from './constellationChanceMath'
+import { constellationDistance } from './constellationDistance'
 
 export interface ConstellationBuildSummary {
     rows: Array<{ label: string; value: string }>
@@ -92,7 +93,11 @@ function magic(context: Context): ConstellationBuildSummary {
             row('Урон Искры', multiplier(b.sparkDamageMultiplier)),
             row(
                 'Дальность Искры',
-                range(ABILITY_DEFINITIONS.spark.range, b.sparkRangeCells, options.tileWidth)
+                constellationDistance(
+                    ABILITY_DEFINITIONS.spark.range,
+                    b.sparkRangeCells,
+                    options.tileWidth
+                )
             ),
             row('Цена Искры, MP', ABILITY_DEFINITIONS.spark.mana - b.sparkManaDiscount),
             row('Цена Искры, EN', ABILITY_DEFINITIONS.spark.energy),
@@ -135,7 +140,11 @@ function arrow(context: Context): ConstellationBuildSummary {
             ),
             row(
                 'Дальность Выстрела',
-                range(ABILITY_DEFINITIONS.shot.range, b.shotRangeCells, options.tileWidth)
+                constellationDistance(
+                    ABILITY_DEFINITIONS.shot.range,
+                    b.shotRangeCells,
+                    options.tileWidth
+                )
             ),
             row('Цена Выстрела, EN', ABILITY_DEFINITIONS.shot.energy - b.shotEnergyDiscount),
             row(
@@ -185,7 +194,7 @@ function life({ active, bonuses: b }: Context): ConstellationBuildSummary {
     }
 }
 
-function shadow({ bonuses: b }: Context): ConstellationBuildSummary {
+function shadow({ bonuses: b, options }: Context): ConstellationBuildSummary {
     const example = theftEffectChances(false, b.theftChanceBonus)
     return {
         rows: [
@@ -199,12 +208,14 @@ function shadow({ bonuses: b }: Context): ConstellationBuildSummary {
             ),
             row('Множитель радиуса шума от звёзд тишины', multiplier(b.sneakNoiseMultiplier)),
             row(
-                'Радиус шума: трава, пиксели',
-                number(
+                'Радиус шума: трава',
+                constellationDistance(
                     MOVEMENT_RULES.walkingNoiseRadius *
                         SURFACE_NOISE_MULTIPLIERS.grass *
                         MOVEMENT_RULES.sneakNoiseMultiplier *
-                        b.sneakNoiseMultiplier
+                        b.sneakNoiseMultiplier,
+                    0,
+                    options.tileWidth
                 )
             ),
             row('Множитель радиуса обнаружения от звезды Тени', multiplier(b.sneakSightMultiplier)),
@@ -218,18 +229,12 @@ function shadow({ bonuses: b }: Context): ConstellationBuildSummary {
         ],
         effects: [
             'Мастерство Тени открывает звёзды. Базовые вероятность кражи и геометрия скрытности от его уровня не растут.',
-            'Фактический шум дополнительно зависит от поверхности и изученных звёзд. Обнаружение использует расстояние, направление взгляда, прямую видимость и границу 28 пикселей; случайной невидимости нет.',
+            `Фактический шум дополнительно зависит от поверхности и изученных звёзд. Обнаружение использует расстояние, направление взгляда, прямую видимость и границу ${constellationDistance(28, 0, options.tileWidth)}; случайной невидимости нет.`,
             'Удача прибавляется к условному получению предмета и не снижает обнаружение. Для кражи сохраняются обычные проверки цели, карманов, ресурсов и кулдаунов.',
         ],
     }
 }
 
-function range(base: number, cells: number, tileWidth: number | undefined): string {
-    if (cells === 0) return `${number(base)} px`
-    if (tileWidth !== undefined && Number.isFinite(tileWidth) && tileWidth > 0)
-        return `${number(base + cells * tileWidth)} px`
-    return `${number(base)} px + ${number(cells)} кл.`
-}
 function rank(active: ReadonlySet<string>, prefix: string, maximum: number): number {
     for (let value = maximum; value > 0; value -= 1) {
         if (active.has(`${prefix}${value}`)) return value

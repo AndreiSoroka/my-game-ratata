@@ -13,6 +13,7 @@ import { debugHeroClasses } from './constellationDebugSettings'
 import ConstellationDebugUnlock from './ConstellationDebugUnlock.vue'
 import ConstellationMasterySummary from './ConstellationMasterySummary.vue'
 import { useConstellationDebug } from './useConstellationDebug'
+import { provideConstellationDebugPanels } from './useConstellationDebugPanels'
 
 const props = withDefaults(
     defineProps<{
@@ -28,7 +29,8 @@ const {
     lastCascade,
     toggle,
     clearFeedback,
-    dismissCascade,
+    pauseNotice,
+    resumeNotice,
     clear,
     enableAll,
     reset,
@@ -49,30 +51,24 @@ const {
 const graph = ref<InstanceType<typeof ConstellationGraph>>()
 const list = ref<HTMLUListElement>()
 const detailsPanel = ref<HTMLElement>()
-const feedbackPanel = ref<HTMLElement>()
+const debugPanels = provideConstellationDebugPanels()
 function selectNode(id: string): void {
     selectedId.value = id
     clearFeedback()
-    if (detailsPanel.value) detailsPanel.value.scrollTop = 0
 }
-watch(selected, () => {
+watch(selectedId, () => {
     if (detailsPanel.value) detailsPanel.value.scrollTop = 0
 })
 function selectStar(id: string): void {
     graph.value?.focusNode(id)
 }
-watch(
-    () => [feedback.value?.id, lastCascade.value?.id],
-    ([blocked, cascade], [oldBlocked, oldCascade]) => {
-        if ((blocked && blocked !== oldBlocked) || (cascade && cascade !== oldCascade))
-            void nextTick(() => feedbackPanel.value?.scrollIntoView?.({ block: 'nearest' }))
-    }
-)
 function inspectParent(id: string): void {
     selectStar(id)
     document.getElementById('debug-sky')?.scrollIntoView?.({ block: 'start' })
 }
-function showSummary(): void {
+async function showSummary(): Promise<void> {
+    debugPanels.result = true
+    await nextTick()
     detailsPanel.value?.querySelector('#debug-build-result')?.scrollIntoView?.({ block: 'start' })
 }
 function listToggle(event: KeyboardEvent, id: string): void {
@@ -180,15 +176,6 @@ function listKey(event: KeyboardEvent): void {
                         :enabled="enabledStarIds.has(selectedId)"
                         @toggle="toggle(selectedId)"
                     />
-                    <div ref="feedbackPanel">
-                        <ConstellationBuildFeedback
-                            :feedback="feedback"
-                            :cascade="lastCascade"
-                            :nodes="sky.nodes"
-                            @inspect="inspectParent"
-                            @dismiss="dismissCascade"
-                        />
-                    </div>
                     <div id="debug-star-details" data-testid="selected-star-card">
                         <ConstellationStarCard :node="selected" />
                     </div>
@@ -273,6 +260,14 @@ function listKey(event: KeyboardEvent): void {
                 </section>
             </aside>
         </div>
+        <ConstellationBuildFeedback
+            :feedback="feedback"
+            :cascade="lastCascade"
+            :nodes="sky.nodes"
+            @inspect="inspectParent"
+            @pause="pauseNotice"
+            @resume="resumeNotice"
+        />
     </main>
 </template>
 <style scoped src="./constellationDebug.css"></style>

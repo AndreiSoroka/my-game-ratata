@@ -1,6 +1,23 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
-import { assertBuildWorkflow, selectBuildStar } from './atlas-build-workflow'
+import { describeConstellationEffectChance } from '../src/game/debug/constellationEffectChance'
+import {
+    assertBuildWorkflow,
+    buildResultPanel,
+    selectBuildStar,
+    setBuildPanelsOpen,
+} from './atlas-build-workflow'
+
+async function assertChanceAccordion(page: Page, id: string): Promise<void> {
+    const effect = describeConstellationEffectChance(id)
+    const visible = !effect.deterministic && effect.formulas.length > 0
+    const chance = page.getByTestId('debug-effect-chance')
+    await expect(chance).toHaveCount(visible ? 1 : 0)
+    if (!visible) return
+    await chance.locator(':scope > summary').click()
+    await expect(chance.locator('[data-testid="debug-effect-formula"]').first()).toBeVisible()
+    await chance.locator(':scope > summary').click()
+}
 
 for (const width of [320, 390, 1280]) {
     test(`mastery atlas is compact and consistent at ${width}px`, async ({ page }) => {
@@ -14,6 +31,11 @@ for (const width of [320, 390, 1280]) {
             width
         )
         await assertBuildWorkflow(page, width, test.info())
+        await setBuildPanelsOpen(page, false)
+        await selectBuildStar(page, 'arrow.root')
+        expect(await buildResultPanel(page).getAttribute('open')).toBeNull()
+        await selectBuildStar(page, 'prayer.root')
+        expect(await buildResultPanel(page).getAttribute('open')).toBeNull()
         const initial = await page
             .locator('[data-node-id]')
             .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
@@ -30,6 +52,8 @@ for (const width of [320, 390, 1280]) {
             'data-enabled',
             'true'
         )
+        expect(await page.getByTestId('debug-mastery-summary').getAttribute('open')).toBeNull()
+        expect(await buildResultPanel(page).getAttribute('open')).toBeNull()
         await page.getByTestId('debug-class').selectOption('vanguard')
         await expect(page.locator('[data-node-id="blade.root"]')).toHaveAttribute(
             'data-enabled',
@@ -40,6 +64,8 @@ for (const width of [320, 390, 1280]) {
             'data-enabled',
             'true'
         )
+        expect(await page.getByTestId('debug-mastery-summary').getAttribute('open')).toBeNull()
+        expect(await buildResultPanel(page).getAttribute('open')).toBeNull()
         await page.getByTestId('debug-build-all').click()
         const ids = await page
             .locator('[data-star-id]')
@@ -50,20 +76,16 @@ for (const width of [320, 390, 1280]) {
                 page.getByTestId('selected-star-card').getByRole('heading')
             ).not.toBeEmpty()
             await expect(page.getByTestId('debug-star-minimum')).toBeAttached()
-            await expect(page.getByTestId('debug-effect-chance')).toBeAttached()
             await expect(page.getByTestId('debug-unlock-conditions')).toBeAttached()
-            const chance = page.getByTestId('debug-effect-chance')
-            await chance.locator(':scope > summary').click()
-            await expect(
-                chance.locator('[data-testid="debug-effect-formula"]').first()
-            ).toBeVisible()
-            await chance.locator(':scope > summary').click()
+            await assertChanceAccordion(page, id)
         }
         await page.getByTestId('debug-search').fill('')
         await expect(page.locator('[data-star-id]')).toHaveCount(77)
         await selectBuildStar(page, 'arrow.root')
+        await page.getByTestId('debug-mastery-summary').locator(':scope > summary').click()
         await expect(page.getByTestId('debug-mastery-rate')).toContainText('XP')
         await page.getByTestId('debug-show-summary').click()
+        await expect(buildResultPanel(page)).toHaveAttribute('open', '')
         await expect(
             page.locator('[data-build-metric="Итоговый множитель урона Выстрела"] dd')
         ).toHaveText('×1,2')
@@ -74,6 +96,35 @@ for (const width of [320, 390, 1280]) {
     })
 }
 
+test('atlas notices pause while reading and refresh on another failed attempt', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto('/?debug=constellations&class=cleric&seed=notice-timing')
+    await expect(page.getByTestId('constellation-debug')).toBeVisible()
+    await page.clock.install()
+    await selectBuildStar(page, 'prayer.harm2')
+    const toggle = page.getByTestId('selected-star-toggle')
+    await toggle.click()
+    const feedback = page.getByTestId('debug-build-feedback')
+    await expect(feedback).toBeVisible()
+    await feedback.hover()
+    await page.clock.fastForward(7_000)
+    await expect(feedback).toBeVisible()
+    await page.mouse.move(0, 0)
+    await page.locator('[data-find-parent="prayer.harm1"]').focus()
+    await page.clock.fastForward(7_000)
+    await expect(feedback).toBeVisible()
+    await toggle.focus()
+    await page.clock.fastForward(5_000)
+    await expect(feedback).toBeVisible()
+    await toggle.click()
+    await page.clock.fastForward(5_000)
+    await expect(feedback).toBeVisible()
+    await page.clock.fastForward(1_001)
+    await expect(feedback).toHaveCount(0)
+})
+
 test('debug atlas never joins a player or sends gameplay requests', async ({ page }) => {
     const sockets: string[] = [],
         requests: string[] = []
@@ -83,7 +134,8 @@ test('debug atlas never joins a player or sends gameplay requests', async ({ pag
     await expect(page.getByTestId('constellation-debug')).toBeVisible()
     await page.getByTestId('debug-build-all').click()
     await selectBuildStar(page, 'prayer.root')
-    await page.getByTestId('debug-prayer-mood').selectOption('wrathful')
+    await setBuildPanelsOpen(page, true)
+    await page.getByTestId('debug-prayer-mood').getByRole('button', { name: 'Гнев' }).click()
     expect(sockets).toEqual([])
     expect(requests.filter((url) => /\/ws\b|\/api\/|:3000/.test(url))).toEqual([])
 })

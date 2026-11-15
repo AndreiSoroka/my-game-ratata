@@ -14,12 +14,14 @@ import { computed, ref } from 'vue'
 
 import { displayMasteryExperience } from '../ui/masteryPresentation'
 import { constellationBuildLevels, paidConstellationStars } from './constellationMasteryPlan'
+import { useConstellationDebugPanels } from './useConstellationDebugPanels'
 
 const props = defineProps<{
     path: ConstellationId
     activeIds: ReadonlySet<string>
     heroClass: HeroClass
 }>()
+const panels = useConstellationDebugPanels()
 const selectedRewards = ref<Record<string, string>>({})
 const levels = computed(() => constellationBuildLevels(props.activeIds, props.heroClass))
 const level = computed(() => levels.value[props.path])
@@ -50,70 +52,88 @@ const percent = (value: number) =>
     new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 2 }).format(value)
 </script>
 <template>
-    <section
+    <details
         class="mastery-summary"
         data-testid="debug-mastery-summary"
         aria-label="Развитие выбранного созвездия"
-        aria-live="polite"
+        :open="panels.mastery"
+        @toggle.self="panels.mastery = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <h2>
-            {{ MASTERY_NAMES[path] }} · нужен уровень
-            <strong data-testid="debug-mastery-level">{{ level }}</strong>
-        </h2>
-        <p>
-            Для набора:
-            <strong data-testid="debug-mastery-total"
-                >{{ xp(masteryTotalExperience(level)) }} XP</strong
-            >
-            от начала.
-        </p>
-        <p v-if="pending" data-testid="debug-mastery-pending">
-            Не распределено открытий в плане: {{ pending }}. Дополнительные случайные звёзды не
-            выбраны.
-        </p>
-        <label
-            >Действие для расчёта
-            <select
-                :value="reward.id"
-                data-testid="debug-mastery-reward"
-                @change="selectedRewards[path] = ($event.target as HTMLSelectElement).value"
-            >
-                <option v-for="entry in rewards" :key="entry.id" :value="entry.id">
-                    {{ entry.label }} · {{ entry.experience }} XP
-                </option>
-            </select>
-        </label>
-        <dl>
-            <div>
-                <dt>
-                    База {{ reward.experience }} XP · конфликт
-                    {{ conflict < 1 ? `−${percent(1 - conflict)}` : '0%' }}
-                </dt>
-                <dd data-testid="debug-mastery-rate">{{ xp(rate) }} XP</dd>
-            </div>
-            <div>
-                <dt>До следующего уровня (прогресс 0)</dt>
-                <dd data-testid="debug-mastery-next">
-                    {{ repetitions.toString() }} действий · 0 / {{ xp(threshold) }} XP
-                </dd>
-            </div>
-        </dl>
-        <p class="mastery-note">
-            Расчёт следующего уровня сохраняет остальные созвездия и предполагает доступное
-            действие.
-        </p>
-    </section>
+        <summary @keydown.stop @keyup.stop>Развитие созвездия</summary>
+        <div class="mastery-content">
+            <h2>
+                {{ MASTERY_NAMES[path] }} · нужен уровень
+                <strong data-testid="debug-mastery-level">{{ level }}</strong>
+            </h2>
+            <p>
+                Для набора:
+                <strong data-testid="debug-mastery-total"
+                    >{{ xp(masteryTotalExperience(level)) }} XP</strong
+                >
+                от начала.
+            </p>
+            <p v-if="pending" data-testid="debug-mastery-pending">
+                Не распределено открытий в плане: {{ pending }}. Дополнительные случайные звёзды не
+                выбраны.
+            </p>
+            <label
+                >Действие для расчёта
+                <select
+                    :value="reward.id"
+                    data-testid="debug-mastery-reward"
+                    @change="selectedRewards[path] = ($event.target as HTMLSelectElement).value"
+                >
+                    <option v-for="entry in rewards" :key="entry.id" :value="entry.id">
+                        {{ entry.label }} · {{ entry.experience }} XP
+                    </option>
+                </select>
+            </label>
+            <dl>
+                <div>
+                    <dt>
+                        База {{ reward.experience }} XP · конфликт
+                        {{ conflict < 1 ? `−${percent(1 - conflict)}` : '0%' }}
+                    </dt>
+                    <dd data-testid="debug-mastery-rate">{{ xp(rate) }} XP</dd>
+                </div>
+                <div>
+                    <dt>До следующего уровня (прогресс 0)</dt>
+                    <dd data-testid="debug-mastery-next">
+                        {{ repetitions.toString() }} действий · 0 / {{ xp(threshold) }} XP
+                    </dd>
+                </div>
+            </dl>
+            <p class="mastery-note">
+                Расчёт следующего уровня сохраняет остальные созвездия и предполагает доступное
+                действие.
+            </p>
+        </div>
+    </details>
 </template>
 <style scoped>
 .mastery-summary {
-    display: grid;
-    gap: 10px;
-    padding: 14px;
     border: 1px solid #425f6d;
     border-top: 0;
     background: #10232d;
     font-size: 12px;
     line-height: 1.5;
+}
+summary {
+    padding: 12px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+    color: #e8d6aa;
+    font-size: 14px;
+    cursor: pointer;
+}
+summary:focus-visible {
+    outline: 2px solid #ffe0a1;
+    outline-offset: -3px;
+}
+.mastery-content {
+    display: grid;
+    gap: 10px;
+    padding: 0 14px 14px;
 }
 h2,
 p,

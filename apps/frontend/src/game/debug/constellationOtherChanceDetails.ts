@@ -258,6 +258,7 @@ export function describeDeterministicOtherChance(
     if (effect === undefined) return undefined
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 id.startsWith('blade.') && id !== 'blade.resolve'
                     ? '100%: изученный бонус применяется при обычном ударе исправным мечом; отдельного броска нет.'
@@ -282,6 +283,7 @@ function describeKnowledge(accuracy: KnowledgeEffect): ConstellationEffectChance
               })
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 '100%: изученное знание всегда уточняет собственные показатели; отдельного броска нет.',
             examples: [],

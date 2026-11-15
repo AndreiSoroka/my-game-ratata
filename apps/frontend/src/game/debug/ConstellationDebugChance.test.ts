@@ -6,11 +6,18 @@ import ConstellationDebugChance from './ConstellationDebugChance.vue'
 import { buildConstellationDebugSnapshot } from './constellationDebugData'
 import { describeConstellationEffectChance } from './constellationEffectChance'
 
-it('keeps every authored formula available in a closed disclosure for all 77 stars', () => {
+it('only shows the closed chance disclosure for random effects across all 77 stars', () => {
     const sky = buildConstellationDebugSnapshot({ heroClass: 'cleric', seed: 'chance-ui-test' })
     for (const node of sky.nodes) {
         const chance = describeConstellationEffectChance(node.id)
         const view = mount(ConstellationDebugChance, { props: { nodeId: node.id } })
+        expect(view.find('[data-testid="debug-effect-chance"]').exists()).toBe(
+            !chance.deterministic
+        )
+        if (chance.deterministic) {
+            view.unmount()
+            continue
+        }
         expect(view.get('[data-testid="debug-effect-chance"] > summary').text()).toBe(
             'Шанс срабатывания эффекта'
         )
@@ -41,13 +48,37 @@ it.each([
     ['prayer.revive', /55/],
     ['blade.critical', /min\s*\(\s*95/],
     ['shadow.luck1', /17[,.]4\s*%/],
-    ['blade.damage1', /100\s*%/],
 ])('shows effect probabilities and examples for %s', (nodeId, expected) => {
     const view = mount(ConstellationDebugChance, { props: { nodeId: String(nodeId) } })
     expect(view.text()).toMatch(expected)
     expect(view.findAll('table tr')).toHaveLength(
         describeConstellationEffectChance(String(nodeId)).examples.length
     )
+    view.unmount()
+})
+it.each([
+    'blade.damage1',
+    'magic.spark_economy',
+    'life.root',
+    'magic.fireball',
+    'prayer.gift1',
+    'prayer.harm1',
+    'prayer.harm2',
+    'prayer.area',
+    'prayer.omen3',
+    'magic.runic_echo',
+])('omits the entire chance panel for the guaranteed rule %s', (nodeId) => {
+    const view = mount(ConstellationDebugChance, { props: { nodeId } })
+    expect(describeConstellationEffectChance(nodeId).deterministic).toBe(true)
+    expect(view.text()).not.toContain('Шанс срабатывания эффекта')
+    view.unmount()
+})
+it('keeps the build result for a prayer modifier while omitting its guaranteed chance panel', () => {
+    const view = mount(ConstellationDebugChance, {
+        props: { nodeId: 'prayer.gift1', enabledStarIds: new Set(['prayer.root', 'prayer.gift1']) },
+    })
+    expect(view.find('[data-testid="debug-prayer-calculator"]').exists()).toBe(true)
+    expect(view.find('[data-testid="debug-effect-chance"]').exists()).toBe(false)
     view.unmount()
 })
 it('keeps probability explanations out of the ordinary spell card', () => {

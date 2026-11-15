@@ -173,6 +173,7 @@ function theftFormulas() {
 function describeNoise(): ConstellationEffectChance {
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 '100%: при настоящих шагах крадучись громкость уменьшается без случайного броска.',
             examples: [],
@@ -197,6 +198,7 @@ function describeNoise(): ConstellationEffectChance {
 function describeSight(): ConstellationEffectChance {
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 '100%: радиус обнаружения уменьшается по геометрическим правилам, а не по шансу невидимости.',
             examples: [],
@@ -217,6 +219,7 @@ function describeFireball(id: string): ConstellationEffectChance {
     const greater = id === 'magic.greater_fireball'
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 '100% применения при допустимой цели, без бросков на случайное уклонение или крит. Барьер может полностью поглотить урон.',
             examples: [],
@@ -241,6 +244,7 @@ function describeFireball(id: string): ConstellationEffectChance {
 function describeRunicEcho(): ConstellationEffectChance {
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 '100%: полезное попадание боевым заклинанием даёт один заряд; дополнительного броска на усиление нет.',
             examples: [

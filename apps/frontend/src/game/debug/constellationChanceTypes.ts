@@ -5,6 +5,8 @@ export interface ConstellationChanceFormula {
 }
 
 export interface ConstellationEffectChance {
+    /** The node only changes a rule; it has no additional random outcome to explain. */
+    deterministic?: boolean
     summary: string
     formulas: string[]
     examples: Array<{ label: string; value: string }>

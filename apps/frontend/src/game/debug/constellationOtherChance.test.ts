@@ -34,6 +34,7 @@ describe('all non-prayer effect explanations', () => {
             expect(effect.formulas.every((line) => line.length > 0)).toBe(true)
             expect(JSON.stringify(effect)).not.toMatch(/undefined|NaN/)
             expect(Object.keys(effect).sort()).toEqual([
+                ...(effect.deterministic ? ['deterministic'] : []),
                 'examples',
                 'formulaDetails',
                 'formulas',

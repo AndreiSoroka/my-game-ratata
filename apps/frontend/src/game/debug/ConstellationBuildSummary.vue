@@ -3,8 +3,10 @@ import type { ConstellationId } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
 import { describeConstellationBuild } from './constellationBuildSummary'
+import { useConstellationDebugPanels } from './useConstellationDebugPanels'
 
 const props = defineProps<{ path: ConstellationId; activeIds: ReadonlySet<string> }>()
+const panels = useConstellationDebugPanels()
 const charged = ref(false)
 const visible = computed(() => !props.path.startsWith('prayer'))
 const canCharge = computed(
@@ -26,52 +28,64 @@ watch(
 )
 </script>
 <template>
-    <section
+    <details
         id="debug-build-result"
         v-if="visible"
         class="build-summary"
         data-testid="debug-build-summary"
         aria-label="Итог созвездия"
+        :open="panels.result"
+        @toggle.self="panels.result = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <h2>Итог созвездия</h2>
-        <p>Размер клетки в примере: 16 px</p>
-        <p v-if="!activeIds.has(`${path}.root`)">Корень созвездия не включён в набор.</p>
-        <label v-if="canCharge" class="runic-example"
-            ><input v-model="charged" type="checkbox" data-testid="debug-runic-charged" />
-            Рунический заряд активен в примере</label
-        >
-        <dl>
-            <div v-for="row in summary.rows" :key="row.label" :data-build-metric="row.label">
-                <dt>{{ row.label }}</dt>
-                <dd>{{ row.value }}</dd>
-            </div>
-        </dl>
-        <ul v-if="summary.effects?.length">
-            <li v-for="effect in summary.effects" :key="effect">{{ effect }}</li>
-        </ul>
-    </section>
+        <summary @keydown.stop @keyup.stop>Результат способности</summary>
+        <div class="build-content">
+            <p v-if="!activeIds.has(`${path}.root`)">Корень созвездия не включён в набор.</p>
+            <label v-if="canCharge" class="runic-example"
+                ><input v-model="charged" type="checkbox" data-testid="debug-runic-charged" />
+                Рунический заряд активен в примере</label
+            >
+            <dl>
+                <div v-for="row in summary.rows" :key="row.label" :data-build-metric="row.label">
+                    <dt>{{ row.label }}</dt>
+                    <dd>{{ row.value }}</dd>
+                </div>
+            </dl>
+            <ul v-if="summary.effects?.length">
+                <li v-for="effect in summary.effects" :key="effect">{{ effect }}</li>
+            </ul>
+        </div>
+    </details>
 </template>
 <style scoped>
 .build-summary {
-    display: grid;
-    gap: 12px;
-    padding: 16px;
     border: 1px solid #425f6d;
     border-top: 0;
     background: #10232d;
     font-size: 12px;
     line-height: 1.55;
 }
-h2,
+summary {
+    padding: 12px 16px;
+    min-height: 44px;
+    box-sizing: border-box;
+    color: #d4e3df;
+    font-size: 14px;
+    cursor: pointer;
+}
+summary:focus-visible {
+    outline: 2px solid #ffe0a1;
+    outline-offset: -3px;
+}
+.build-content {
+    display: grid;
+    gap: 12px;
+    padding: 0 16px 16px;
+}
 p,
 dl,
 dd,
 ul {
     margin: 0;
-}
-h2 {
-    color: #d4e3df;
-    font-size: 14px;
 }
 dl {
     display: grid;

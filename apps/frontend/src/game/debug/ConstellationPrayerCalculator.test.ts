@@ -13,8 +13,18 @@ it('shows named learned outcomes and a mood input without editable Faith or Mira
     expect(view.get('[data-testid="debug-prayer-metrics"]').text()).toContain('Шанс лечения55%')
     expect(view.get('[data-testid="debug-prayer-metrics"]').text()).toContain('Шанс воскрешения55%')
     expect(view.text()).not.toContain('Отказ божества')
-    await view.get('[data-testid="debug-prayer-mood"]').setValue('benevolent')
+    expect(view.find('select').exists()).toBe(false)
+    expect(view.get('[data-testid="debug-prayer-calculator"]').attributes('open')).toBeUndefined()
+    expect(view.get('summary').text()).toBe('Молитва: результат')
+    expect(view.get('[data-mood="neutral"]').attributes('aria-pressed')).toBe('true')
+    await view.get('[data-mood="benevolent"]').trigger('click')
+    expect(view.get('[data-mood="benevolent"]').attributes('aria-pressed')).toBe('true')
+    expect(view.get('[data-mood="neutral"]').attributes('aria-pressed')).toBe('false')
     expect(view.get('[data-testid="debug-prayer-metrics"]').text()).toContain('80%')
+    expect(view.get('[data-build-metric="Радиус"]').text()).toBe('Радиус3 клетки')
+    expect(view.get('[data-build-metric="Лечение"]').text()).toBe('Лечение8 HP')
+    expect(view.text()).not.toContain('Размер клетки')
+    expect(view.text()).not.toContain('не больше нехватки ресурса')
     view.unmount()
 })
 it('retains independent moods across schools and non-prayer selections', async () => {
@@ -22,21 +32,16 @@ it('retains independent moods across schools and non-prayer selections', async (
     const view = mount(ConstellationPrayerCalculator, {
         props: { nodeId: 'prayer.root', enabledStarIds: active },
     })
-    await view.get('[data-testid="debug-prayer-mood"]').setValue('wrathful')
+    await view.get('[data-mood="wrathful"]').trigger('click')
     await view.setProps({ nodeId: 'prayer_road.root' })
-    expect(view.get('[data-testid="debug-prayer-mood"]').element).toHaveProperty('value', 'neutral')
-    await view.get('[data-testid="debug-prayer-mood"]').setValue('benevolent')
+    expect(view.get('[data-mood="neutral"]').attributes('aria-pressed')).toBe('true')
+    expect(view.get('summary').text()).toBe('Молитва странника: результат')
+    await view.get('[data-mood="benevolent"]').trigger('click')
     await view.setProps({ nodeId: 'blade.root' })
-    expect(view.find('section').exists()).toBe(false)
+    expect(view.find('details').exists()).toBe(false)
     await view.setProps({ nodeId: 'prayer.root' })
-    expect(view.get('[data-testid="debug-prayer-mood"]').element).toHaveProperty(
-        'value',
-        'wrathful'
-    )
+    expect(view.get('[data-mood="wrathful"]').attributes('aria-pressed')).toBe('true')
     await view.setProps({ nodeId: 'prayer_road.root' })
-    expect(view.get('[data-testid="debug-prayer-mood"]').element).toHaveProperty(
-        'value',
-        'benevolent'
-    )
+    expect(view.get('[data-mood="benevolent"]').attributes('aria-pressed')).toBe('true')
     view.unmount()
 })

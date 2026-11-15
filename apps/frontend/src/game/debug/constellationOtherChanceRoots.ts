@@ -41,6 +41,7 @@ export function describeOtherRootChance(id: string): ConstellationEffectChance {
     }
     return withChanceFormulas(
         {
+            deterministic: true,
             summary:
                 '100% при выполнении условий: корень сам по себе не добавляет случайного эффекта или нового бонуса.',
             examples: [],

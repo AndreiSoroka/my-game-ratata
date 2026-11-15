@@ -46,7 +46,7 @@ describe('selected non-prayer constellation totals', () => {
         expect(values('arrow', all, { tileWidth: 24 })).toMatchObject({
             'Урон Выстрела от звёзд Стрелы': '×1,2',
             'Итоговый множитель урона Выстрела': '×1,2',
-            'Дальность Выстрела': '112 px',
+            'Дальность Выстрела': '4,67 клетки',
             'Цена Выстрела, EN': '9',
             'Кулдаун Выстрела, мс': '495',
             'Бонус критического шанса Выстрела': '+3 п.п.',
@@ -61,18 +61,26 @@ describe('selected non-prayer constellation totals', () => {
         expect(
             values('arrow', noEcho, { runicCharged: true })['Итоговый множитель урона Выстрела']
         ).toBe('×1,2')
-        expect(values('arrow', all)['Дальность Выстрела']).toBe('64 px + 2 кл.')
+        expect(values('arrow', all)['Дальность Выстрела']).toBe('64 px + 2 клетки')
         expect(values('arrow', all, { tileWidth: Number.NaN })['Дальность Выстрела']).toBe(
-            '64 px + 2 кл.'
+            '64 px + 2 клетки'
         )
-        expect(values('arrow', all, { tileWidth: 0 })['Дальность Выстрела']).toBe('64 px + 2 кл.')
+        expect(values('arrow', all, { tileWidth: 0 })['Дальность Выстрела']).toBe(
+            '64 px + 2 клетки'
+        )
+        expect(values('arrow', all, { tileWidth: 16 })['Дальность Выстрела']).toBe('6 клеток')
+        expect(
+            values('arrow', initialConstellationBuild('ranger'), { tileWidth: 16 })[
+                'Дальность Выстрела'
+            ]
+        ).toBe('4 клетки')
     })
 
     it('totals Spark, Barrier, fire damage and knowledge without inventing skill levels', () => {
         const all = enableAllConstellationStars()
         expect(values('magic', all, { tileWidth: 24 })).toMatchObject({
             'Урон Искры': '×1,1',
-            'Дальность Искры': '104 px',
+            'Дальность Искры': '4,33 клетки',
             'Цена Искры, MP': '5',
             'Цена Искры, EN': '5',
             'Запас поглощения Барьера': '10',
@@ -84,6 +92,7 @@ describe('selected non-prayer constellation totals', () => {
             'Знание изученных заклинаний': 'точные урон, интервал и крит',
         })
         const base = values('magic', initialConstellationBuild('arcanist'))
+        expect(values('magic', all, { tileWidth: 16 })['Дальность Искры']).toBe('6 клеток')
         expect(base).toMatchObject({
             'Урон Искры': '×1',
             'Цена Искры, MP': '6',
@@ -128,7 +137,7 @@ describe('body and stealth totals and summary isolation', () => {
         expect(values('shadow', all)).toMatchObject({
             'Скорость крадучись с учётом Жизни': '×0,51975',
             'Множитель радиуса шума от звёзд тишины': '×0,7',
-            'Радиус шума: трава, пиксели': '8,064',
+            'Радиус шума: трава': '8,06 px',
             'Множитель радиуса обнаружения от звезды Тени': '×0,9',
             'Цена попытки кражи, EN': '9',
             'Общий кулдаун кражи, мс': '7000',
