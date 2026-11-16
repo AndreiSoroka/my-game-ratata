@@ -57,7 +57,9 @@ function interruptsForestWork(message: ClientMessage): boolean {
     if (message.type === 'move_input') {
         return message.axis.x !== 0 || message.axis.y !== 0
     }
-    return !['chat', 'plant_tree_preview', 'join'].includes(message.type)
+    return !['chat', 'plant_tree_preview', 'join', 'move_to'].includes(
+        message.type
+    )
 }
 export function controlIntent(
     actor: GameCharacter,

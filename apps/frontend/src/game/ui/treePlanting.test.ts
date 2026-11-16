@@ -102,6 +102,26 @@ function setup() {
         pick: (point: Vector2) => pick?.(point),
     }
 }
+it('confirms planting with a fresh physical F, keeping E and held repeats inactive', async () => {
+    const { wrapper, answer } = setup()
+    try {
+        answer()
+        await wrapper.vm.$nextTick()
+        const plantCommands = () =>
+            wrapper
+                .emitted<[ClientMessage]>('command')!
+                .flat()
+                .filter((command) => command.type === 'auto_action')
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'у' }))
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', key: 'а', repeat: true }))
+        expect(plantCommands()).toHaveLength(0)
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', key: 'а' }))
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', key: 'а' }))
+        expect(plantCommands()).toHaveLength(1)
+    } finally {
+        wrapper.unmount()
+    }
+})
 it('ignores stale replies, throttles selection, and submits exactly one pinned intention', async () => {
     const { wrapper, latest, answer, pick, previewPlanting, onCommand } = setup()
     try {

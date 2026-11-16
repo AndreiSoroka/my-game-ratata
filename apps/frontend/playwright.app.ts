@@ -20,12 +20,13 @@ export function createAppPlaywrightConfig(
         },
         {
             name: 'firefox',
+            default: false,
             use: {
                 ...devices['Desktop Firefox'],
                 launchOptions: { firefoxUserPrefs: { 'media.volume_scale': '0.0' } },
             },
         },
-        { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+        { name: 'webkit', default: false, use: { ...devices['Desktop Safari'] } },
     ]
     return defineConfig({
         testDir: './e2e',

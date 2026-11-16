@@ -21,6 +21,7 @@ export interface HotbarProps {
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
     graves?: WorldGraveSnapshot[]
+    objectTarget?: boolean
     canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
@@ -49,11 +50,24 @@ export function bindingUnavailable(
     cooldown: number
 ): string | undefined {
     if (!binding) return undefined
+    const objectReason = objectTargetUnavailable(binding, props)
+    if (objectReason) return objectReason
     if (binding.kind === 'item')
         return binding.id === 'food' && count === 0 ? 'Нет яблок' : undefined
     if (binding.kind === 'attack') return attackUnavailable(props, cooldown)
     if (isPrayerAction(binding.id)) return prayerReason
     return abilityUnavailable(binding.id, props, cooldown)
+}
+export function objectTargetUnavailable(
+    binding: HotbarBinding | null,
+    props: HotbarProps
+): string | undefined {
+    return props.objectTarget &&
+        binding &&
+        binding.kind !== 'item' &&
+        (binding.kind === 'attack' || binding.id !== 'barrier')
+        ? 'Для этой цели используйте F'
+        : undefined
 }
 function attackUnavailable(props: HotbarProps, cooldown: number): string | undefined {
     if (props.grave?.phase === 'ruined') return 'Могила разрушена'
@@ -71,7 +85,7 @@ function abilityUnavailable(
     if (resourceCheck === 'energy') return 'Недостаточно энергии'
     if (resourceCheck !== 'ready') return 'Сейчас недоступно'
     if (!['barrier', 'shot', 'spark'].includes(id) && !hostileTarget(props))
-        return 'Выберите врага: T'
+        return 'Выберите врага: E'
     return undefined
 }
 function actionFor(
@@ -138,7 +152,7 @@ export function createActivator(
     const { bindings, food, known, preview } = state
     return function activate(index: number): void {
         const binding = bindings.value[index]
-        if (!binding || !canAct(props)) return
+        if (!binding || !canAct(props, binding)) return
         if (activatePlanting(binding, emit, gestures)) return
         if (gestures.repeat(index, binding)) return
         if (binding.kind === 'item') {
@@ -166,8 +180,13 @@ function activatePlanting(
     emit('plant')
     return true
 }
-function canAct(props: HotbarProps): boolean {
-    return !props.blocked && props.player.alive && props.player.cooldowns.stunMsLeft <= 0
+function canAct(props: HotbarProps, binding: HotbarBinding): boolean {
+    return (
+        !props.blocked &&
+        props.player.alive &&
+        props.player.cooldowns.stunMsLeft <= 0 &&
+        !objectTargetUnavailable(binding, props)
+    )
 }
 export function controlWaitingLabel(waiting: AutoActionWaiting | undefined): string {
     return {

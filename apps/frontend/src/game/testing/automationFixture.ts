@@ -1,4 +1,23 @@
-import type { AutomationSnapshot, ScenarioRunSnapshot } from '@my-game-ratata/contracts'
+import type {
+    AutomationSnapshot,
+    CharacterRouteSnapshot,
+    ScenarioRunSnapshot,
+} from '@my-game-ratata/contracts'
+
+export function routeFixture(
+    overrides: Partial<CharacterRouteSnapshot> = {}
+): CharacterRouteSnapshot {
+    return {
+        locationId: 'map-2-2',
+        points: [
+            { number: 4, position: { x: 420, y: 620 } },
+            { number: 5, position: { x: 480, y: 620 } },
+        ],
+        waiting: 'blocked',
+        remainingFailureMs: 8000,
+        ...overrides,
+    }
+}
 
 export function automationFixture(): AutomationSnapshot {
     return {

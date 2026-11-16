@@ -18,7 +18,13 @@ export function useShotPreview(
         )
         const targeted =
             props.grave || (props.target && attackableTarget(props.target, props.player))
-        if (assigned?.kind !== 'ability' || props.blocked || !props.player.alive || targeted)
+        if (
+            assigned?.kind !== 'ability' ||
+            props.blocked ||
+            !props.player.alive ||
+            targeted ||
+            props.objectTarget
+        )
             return undefined
         return assigned.id === 'spark'
             ? forwardAbilityAttack(

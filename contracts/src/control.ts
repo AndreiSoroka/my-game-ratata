@@ -35,6 +35,8 @@ export interface CharacterRouteSnapshot {
     locationId: string
     points: CharacterRoutePoint[]
     waiting: 'blocked' | null
+    /** Authoritative no-progress time left; pauses follow server control locks. */
+    remainingFailureMs?: number
 }
 
 export interface CharacterControlSnapshot {

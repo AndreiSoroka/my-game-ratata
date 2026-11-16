@@ -11,7 +11,7 @@ const options: Array<{ value: QuestRewardMode; label: string }> = [
 ]
 
 function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
-    if (event.code !== 'KeyE') return
+    if (event.code !== 'KeyF') return
     event.preventDefault()
     event.stopPropagation()
     if (!event.repeat) mode.value = value

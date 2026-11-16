@@ -2,12 +2,11 @@ import { expect, type Page, test } from '@playwright/test'
 
 async function selectVisibleAlly(page: Page, name: string): Promise<void> {
     const limit = await page.evaluate(() => {
-        const snapshot = window.__ratataTest!.getState().snapshot!
-        return Math.min(128, snapshot.characters.length + (snapshot.graves?.length ?? 0) + 1)
+        return Math.min(256, window.__ratataTest!.observe().targets.length + 1)
     })
     const panel = page.getByLabel('Выбранная цель')
     for (let count = 0; count < limit; count += 1) {
-        await page.keyboard.press('Shift+KeyT')
+        await page.keyboard.press('KeyE')
         await expect(panel).toBeVisible()
         if (await panel.getByText(name, { exact: true }).isVisible()) break
     }
@@ -15,7 +14,7 @@ async function selectVisibleAlly(page: Page, name: string): Promise<void> {
 }
 
 async function talkThroughKeyboardMenu(page: Page, name: string): Promise<void> {
-    await page.keyboard.press('KeyE')
+    await page.keyboard.press('KeyF')
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
     const talk = menu.getByRole('menuitem', { name: `Поговорить: ${name}`, exact: true })

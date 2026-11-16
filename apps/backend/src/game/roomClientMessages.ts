@@ -83,6 +83,7 @@ export function handleCharacterMessage(
         message,
         navigation: room.navigationFor(player),
         player,
+        onRouteStart: () => room.scenarios.pause(player),
         requestAttack: (actor, targetId, target) => {
             room.requestAttack(actor, Date.now(), targetId, target)
         },
@@ -98,7 +99,6 @@ function manualScenarioOverride(message: ClientMessage): boolean {
         return message.axis.x !== 0 || message.axis.y !== 0
     }
     return [
-        'move_to',
         'cancel_control',
         'attack',
         'auto_action',

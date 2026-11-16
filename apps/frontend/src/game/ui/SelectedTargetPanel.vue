@@ -4,16 +4,22 @@ import type { CharacterSnapshot, WorldGraveSnapshot } from '@my-game-ratata/cont
 import { relation } from './combatTargeting'
 import GraveDetails from './GraveDetails.vue'
 import { healthBarPercent, healthText } from './healthPresentation'
+import type { WorldSelectionTarget } from './worldTargetSelection'
 
 defineProps<{
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
+    object?: WorldSelectionTarget
     player: CharacterSnapshot
     serverTime: number
 }>()
 </script>
 <template>
-    <aside v-if="target || grave" class="target-panel rpg-panel" aria-label="Выбранная цель">
+    <aside
+        v-if="target || grave || object"
+        class="target-panel rpg-panel"
+        aria-label="Выбранная цель"
+    >
         <GraveDetails
             v-if="grave"
             :grave="grave"
@@ -39,8 +45,12 @@ defineProps<{
                       ? 'Тренировочная цель · 1–4 действия'
                       : relation(target, player) === 'hostile'
                         ? 'Враг · 1–4 действия'
-                        : 'Союзник · E действия'
+                        : 'Союзник · F действия'
             }}</small>
+        </template>
+        <template v-else-if="object">
+            <strong>{{ object.name }}</strong>
+            <small>Предмет · F действие</small>
         </template>
     </aside>
 </template>

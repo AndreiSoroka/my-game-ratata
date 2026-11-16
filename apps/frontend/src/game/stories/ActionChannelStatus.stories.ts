@@ -1,5 +1,8 @@
+import '../ui/rpgControls.css'
+
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
+import { routeFixture } from '../testing/automationFixture'
 import { characterFixture } from '../testing/characterFixture'
 import ActionChannelStatus from '../ui/ActionChannelStatus.vue'
 import { renderVueStory } from './renderVueStory'
@@ -27,5 +30,25 @@ export const PurifyingGrave: Story = {
                 },
             }),
             serverTime: 500,
+        }),
+}
+
+export const BlockedRoute: Story = {
+    render: () =>
+        renderVueStory(ActionChannelStatus, {
+            player: characterFixture('route-walker', {
+                control: { mode: 'route', targetId: null, route: routeFixture() },
+            }),
+            serverTime: 3500,
+        }),
+}
+
+export const RouteInProgress: Story = {
+    render: () =>
+        renderVueStory(ActionChannelStatus, {
+            player: characterFixture('route-walker', {
+                control: { mode: 'route', targetId: null, route: routeFixture({ waiting: null }) },
+            }),
+            serverTime: 3500,
         }),
 }

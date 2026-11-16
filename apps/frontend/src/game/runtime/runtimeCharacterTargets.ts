@@ -69,7 +69,7 @@ export function characterDisrupted(player: CharacterSnapshot | undefined): boole
 
 export function createGameEngine(canvas: HTMLCanvasElement): Engine {
     return new Engine({
-        backgroundColor: Color.fromHex('#0b0d0c'),
+        backgroundColor: Color.Black,
         canvasElement: canvas,
         displayMode: DisplayMode.FillContainer,
         pixelArt: true,

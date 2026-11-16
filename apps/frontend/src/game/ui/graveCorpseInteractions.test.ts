@@ -30,7 +30,7 @@ function fixture() {
     return { player, grave, corpse, snapshot, select }
 }
 
-describe('one E target for a grave and its coincident corpse', () => {
+describe('one F target for a grave and its coincident corpse', () => {
     it.each(['active', 'ruined'] as const)(
         'offers the %s grave and exact corpse commands together instead of hiding purification behind loot',
         (phase) => {
@@ -130,7 +130,7 @@ describe('independent interaction identities', () => {
     })
 })
 
-it('opens one E menu with grave and corpse actions, then closes instead of selecting replacement loot', async () => {
+it('opens one F menu with grave and corpse actions, then closes instead of selecting replacement loot', async () => {
     const f = fixture()
     const wrapper = mount(NearbyInteraction, {
         props: { snapshot: f.snapshot, player: f.player, characters: [], blocked: false },

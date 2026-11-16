@@ -35,15 +35,12 @@ describe('click route modifiers', () => {
             [{ type: 'move_to', target: { x: 100, y: 150 }, append: true }],
         ])
     })
-    it('replaces the route on an ordinary click and ignores right clicks', () => {
+    it('requests replacement atomically on an ordinary click and ignores right clicks', () => {
         const context = setup()
         handleRuntimePointer(pointer(), context)
-        expect(context.send.mock.calls).toEqual([
-            [{ type: 'cancel_control' }],
-            [{ type: 'move_to', target: { x: 100, y: 150 } }],
-        ])
+        expect(context.send.mock.calls).toEqual([[{ type: 'move_to', target: { x: 100, y: 150 } }]])
         handleRuntimePointer(pointer(true, 2), context)
-        expect(context.send).toHaveBeenCalledTimes(2)
+        expect(context.send).toHaveBeenCalledTimes(1)
     })
     it('retains planting ownership even while Shift is held', () => {
         const context = setup()

@@ -32,14 +32,12 @@ import {
 } from './mapVisibility'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { RouteWaypointViews } from './routeWaypointViews'
-import { createSceneMapActor } from './sceneMapActor'
+import { SceneMapView } from './sceneMapActor'
 import { SignReadingViews } from './signReadingViews'
 import { StatusViews } from './statusViews'
 import type { RenderedTiledMap } from './tiledMap'
 import { observerTrainingArea, TrainingGuides } from './trainingGuides'
 import { WorldSceneActors } from './worldSceneActors'
-
-const cameraZoom = 3
 
 export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
@@ -55,9 +53,8 @@ export class SceneActors {
     private readonly interactionTarget: InteractionTargetViews
     private mapVisibility: MapVisibility | undefined
     private playerPosition: Vector2 | undefined
-    private mapActor: Actor | undefined
+    private readonly mapView: SceneMapView
     private mapBounds = new BoundingBox()
-    private followedId: string | undefined
     private serverClockOffset = 0
     private localPlayerId: string | undefined
     private readonly statusViews: StatusViews
@@ -73,6 +70,7 @@ export class SceneActors {
         chestImage: ImageSource,
         farmImage: ImageSource
     ) {
+        this.mapView = new SceneMapView(engine)
         this.characterGraphics = new CharacterGraphics(sheets)
         this.guides = new TrainingGuides(engine)
         this.combatTarget = new InteractionTargetViews(engine)
@@ -110,6 +108,7 @@ export class SceneActors {
         this.statusViews.clear()
     }
     public dispose(): void {
+        this.mapView.dispose()
         this.guides.dispose()
         this.corpseViews.dispose()
         this.depthProps.dispose()
@@ -140,14 +139,10 @@ export class SceneActors {
         this.mapVisibility = map.visibility
         this.playerPosition = undefined
         this.gravePositions.clear()
-        this.mapActor?.kill()
         this.mapBounds = new BoundingBox(0, 0, map.worldWidth, map.worldHeight)
-        this.followedId = undefined
+        this.mapView.setMap(map)
         this.depthProps.setProps(map.depthProps, map.harvestGraphics)
         this.buildingViews.setBuildings(map.buildings)
-        const actor = createSceneMapActor(map)
-        this.engine.add(actor)
-        this.mapActor = actor
     }
 
     public update(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
@@ -292,21 +287,8 @@ export class SceneActors {
     }
 
     private followLocalPlayer(localPlayerId: string | undefined): void {
-        if (localPlayerId === undefined || localPlayerId === this.followedId) {
-            return
-        }
-
-        const bundle = this.bundles.get(localPlayerId)
-
-        if (bundle === undefined) {
-            return
-        }
-
-        this.engine.currentScene.camera.clearAllStrategies()
-        this.engine.currentScene.camera.zoom = cameraZoom
-        this.engine.currentScene.camera.strategy.lockToActor(bundle.body)
-        this.engine.currentScene.camera.strategy.limitCameraBounds(this.mapBounds)
-        this.followedId = localPlayerId
+        const bundle = localPlayerId ? this.bundles.get(localPlayerId) : undefined
+        if (bundle) this.mapView.follow(bundle.body)
     }
 
     private removeMissing(characters: CharacterSnapshot[]): void {

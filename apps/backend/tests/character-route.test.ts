@@ -1,9 +1,7 @@
 import type { ServerMessage } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { GameCharacter } from '../src/game/character'
 import {
-    advanceCharacterControl,
     cancelCharacterControl,
     snapshotControl,
 } from '../src/game/characterControl'
@@ -11,43 +9,10 @@ import {
     enqueueCharacterRoute,
     MAX_ROUTE_POINTS,
 } from '../src/game/characterRoute'
-import type { ControlWorld } from '../src/game/controlWorld'
 import { parseClientMessage } from '../src/game/messages'
-import { advanceCharacter } from '../src/game/movement'
-import { NavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
-
-function setup() {
-    const navigation = new NavigationService({
-        id: 'route-test',
-        width: 20,
-        height: 20,
-        tileWidth: 16,
-        tileHeight: 16,
-        solid: new Array<boolean>(400).fill(false),
-        solidLayerNames: [],
-    })
-    const actor = new GameCharacter({
-        id: 'hero',
-        nickname: 'Hero',
-        archetype: 'human',
-        controllerKind: 'network_player',
-        spawnPosition: { x: 40, y: 40 },
-    })
-    const publishEvents = vi.fn<NonNullable<ControlWorld['publishEvents']>>()
-    const world: ControlWorld = {
-        navigationFor: () => navigation,
-        getCharacter: () => undefined,
-        requestAttack: () => undefined,
-        publishEvents,
-    }
-    const tick = (now: number) => {
-        advanceCharacterControl(actor, world, now)
-        advanceCharacter({ character: actor, navigation, now, deltaMs: 50 })
-    }
-    return { actor, navigation, world, publishEvents, tick }
-}
+import { routeFixture as setup } from './routeTestHelpers'
 
 afterEach(() => {
     vi.useRealTimers()
@@ -87,12 +52,12 @@ describe('authoritative click routes', () => {
                     index > 0,
                     navigation,
                     0
-                )
+                ).accepted
             ).toBe(true)
         }
         expect(
             enqueueCharacterRoute(actor, { x: 80, y: 40 }, true, navigation, 0)
-        ).toBe(false)
+        ).toEqual({ accepted: false, reason: 'full' })
         expect(snapshotControl(actor).route?.points).toHaveLength(
             MAX_ROUTE_POINTS
         )
@@ -106,44 +71,62 @@ describe('authoritative click routes', () => {
         expect(actor.getMoveInput()).toEqual({ x: 0, y: 0 })
     })
 
-    it('waits ten seconds without progress before skipping an unreachable free cell', () => {
-        const { actor, navigation, tick, publishEvents } = setup()
-        for (let y = 0; y < 20; y++) {
-            navigation.grid.solid[y * 20 + 5] = true
-        }
+    it('waits ten seconds without progress then cancels all remaining points once', () => {
+        const { actor, navigation, control, publishEvents, divideMap } = setup()
         const blocked = { x: 120, y: 40 }
-        expect(navigation.findPathWorld(actor.position, blocked)).toEqual([])
         enqueueCharacterRoute(actor, blocked, false, navigation, 0)
         enqueueCharacterRoute(actor, { x: 40, y: 80 }, true, navigation, 0)
-        tick(9_999)
+        divideMap()
+        actor.clearPath()
+        expect(navigation.findPathWorld(actor.position, blocked)).toEqual([])
+        control(9_999)
         expect(actor.position).toEqual({ x: 40, y: 40 })
         expect(snapshotControl(actor).route?.points[0]?.number).toBe(1)
-        tick(10_000)
-        expect(snapshotControl(actor).route?.points[0]?.number).toBe(2)
+        expect(snapshotControl(actor).route).toMatchObject({
+            waiting: 'blocked',
+            remainingFailureMs: 1,
+        })
+        control(10_000)
+        expect(snapshotControl(actor).mode).toBe('none')
+        expect(actor.hasPath()).toBe(false)
         expect(publishEvents).toHaveBeenCalledOnce()
-        for (let now = 10_050; now <= 12_000; now += 50) {
-            tick(now)
-        }
-        expect(
-            Math.hypot(actor.position.x - 40, actor.position.y - 80)
-        ).toBeLessThanOrEqual(1)
+        expect(publishEvents.mock.calls[0]?.[0]).toEqual([
+            expect.objectContaining({
+                kind: 'notice',
+                audienceIds: [actor.id],
+                text: 'Маршрут отменён: к точке 1 нет прохода',
+            }),
+        ])
+        control(20_000)
+        expect(publishEvents).toHaveBeenCalledOnce()
     })
 })
 
 describe('route validation and privacy', () => {
-    it('freezes remaining failure time while stunned', () => {
-        const { actor, navigation, tick } = setup()
-        navigation.grid.solid[2 * 20 + 6] = true
-        enqueueCharacterRoute(actor, { x: 104, y: 40 }, false, navigation, 0)
-        tick(9_000)
-        actor.stunUntil = 20_000
-        tick(19_999)
-        expect(snapshotControl(actor).route?.points[0]?.number).toBe(1)
-        tick(20_000)
-        expect(snapshotControl(actor).route?.points[0]?.number).toBe(1)
-        tick(20_999)
-        expect(snapshotControl(actor).mode).toBe('none')
-    })
+    it.each(['stunUntil', 'actionLockUntil'] as const)(
+        'freezes remaining failure time during %s',
+        (deadline) => {
+            const { actor, navigation, control, divideMap } = setup()
+            enqueueCharacterRoute(
+                actor,
+                { x: 120, y: 40 },
+                false,
+                navigation,
+                0
+            )
+            divideMap()
+            actor.clearPath()
+            control(9_000)
+            actor[deadline] = 20_000
+            control(19_999)
+            expect(snapshotControl(actor).route?.remainingFailureMs).toBe(1000)
+            expect(snapshotControl(actor).route?.points[0]?.number).toBe(1)
+            control(20_000)
+            expect(snapshotControl(actor).route?.points[0]?.number).toBe(1)
+            control(20_999)
+            expect(snapshotControl(actor).mode).toBe('none')
+        }
+    )
 
     it('parses optional append and rejects non-boolean values', () => {
         expect(

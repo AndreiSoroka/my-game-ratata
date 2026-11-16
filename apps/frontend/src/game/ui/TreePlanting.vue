@@ -147,7 +147,7 @@ function key(event: KeyboardEvent): void {
     }
     if (
         submitted.value ||
-        !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'Enter', 'Space'].includes(
+        !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyF', 'Enter', 'Space'].includes(
             event.code
         )
     )

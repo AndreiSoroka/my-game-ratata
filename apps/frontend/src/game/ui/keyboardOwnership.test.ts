@@ -14,12 +14,21 @@ describe('HUD and window keyboard ownership', () => {
         document.body.append(button)
         try {
             button.focus()
-            for (const code of ['KeyI', 'KeyW', 'KeyC', 'KeyT', 'KeyF', 'Digit1', 'Escape']) {
+            for (const code of [
+                'KeyI',
+                'KeyW',
+                'KeyC',
+                'KeyQ',
+                'KeyE',
+                'KeyT',
+                'Digit1',
+                'Escape',
+            ]) {
                 const event = keyOn(button, code)
                 expect(isGameKeyboardBlocked(event)).toBe(false)
                 expect(combatKeyBlocked(event, false)).toBe(false)
             }
-            for (const code of ['Space', 'Enter', 'KeyE'])
+            for (const code of ['Space', 'Enter', 'KeyF'])
                 expect(isGameKeyboardBlocked(keyOn(button, code))).toBe(true)
         } finally {
             button.remove()

@@ -14,7 +14,7 @@ for (const mobile of [false, true]) {
             `prayer-${info.project.name}-${mobile}`
         )
         await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
-        await page.keyboard.press('KeyF')
+        await page.keyboard.press('KeyQ')
         await page.keyboard.press('Shift+Digit1')
         await expect(page.getByRole('dialog', { name: 'Назначить слот 1' })).toBeVisible()
         await page.keyboard.press('Enter')

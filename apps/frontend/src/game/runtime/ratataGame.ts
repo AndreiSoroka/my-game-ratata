@@ -9,6 +9,7 @@ import type {
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import type { Engine, PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 
+import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
 import type { GameAudio } from './gameAudio'
 import { axisFromKeys, movementKeys } from './input'
@@ -20,13 +21,17 @@ import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
 import { runtimeEventFeedback } from './runtimeEventFeedback'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
-import { isGameKeyboardBlocked } from './runtimeKeyboardFocus'
+import { handleRuntimeKeyDown } from './runtimeKeyDown'
 import { loadRuntimeMap } from './runtimeMapLoading'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
 import { handleRuntimePointer } from './runtimePointer'
 import { createRuntimePresentation } from './runtimePresentation'
-import { handleRuntimeShortcut } from './runtimeShortcuts'
+import {
+    runtimeCanSelect,
+    type RuntimeSelectionContext,
+    runtimeSelectionVisible,
+} from './runtimeSelection'
 import { RuntimeSocket } from './runtimeSocket'
 import type { SceneActors } from './sceneActors'
 import { loadRenderedTiledMap, type RenderedTiledMap } from './tiledMap'
@@ -49,6 +54,7 @@ export class RatataGame {
     private readonly chat: RuntimeChatInput
     private readonly socket: RuntimeSocket
     private lastAxis: Vector2 = { x: 0, y: 0 }
+    public selectionTileSize = 16
     public readonly planting = new PlantingPreview(() => this.releaseInputs())
 
     public constructor(private readonly options: RatataGameOptions) {
@@ -95,6 +101,7 @@ export class RatataGame {
     private async startPresentation(): Promise<void> {
         const map = await loadRenderedTiledMap()
         if (this.stopped) return
+        this.selectionTileSize = map.tileWidth
         const { canvas, engine, audio, sceneActors, loader } = createRuntimePresentation(
             this.options.container,
             map
@@ -180,6 +187,25 @@ export class RatataGame {
         return this.isMapReady && (this.sceneActors?.isCharacterVisible(id) ?? false)
     }
 
+    public isSelectionVisible(target: WorldSelectionTarget): boolean {
+        return runtimeSelectionVisible(target, this.selectionContext())
+    }
+
+    public canSelectTarget(key: string): boolean {
+        return runtimeCanSelect(key, this.selectionContext())
+    }
+
+    private selectionContext(): RuntimeSelectionContext {
+        return {
+            snapshot: this.snapshot,
+            playerId: this.localPlayerId,
+            tileSize: this.selectionTileSize,
+            viewport: this.isMapReady ? this.engine?.currentScene.camera.viewport : undefined,
+            characterVisible: (id) => this.isCharacterVisible(id),
+            positionVisible: (point) => this.isPositionVisible(point),
+        }
+    }
+
     private get isMapReady(): boolean {
         return this.connected && !this.stopped && this.snapshot?.location?.id === this.mapId
     }
@@ -231,6 +257,7 @@ export class RatataGame {
     }
 
     private applyMap(mapId: string, map: RenderedTiledMap): void {
+        this.selectionTileSize = map.tileWidth
         this.audio?.setMap(map)
         this.sceneActors?.addMap(map)
         this.buildingEntrances.replace(mapId, map.buildings)
@@ -239,42 +266,18 @@ export class RatataGame {
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
-        if (isGameKeyboardBlocked(event)) return
-        if (
-            this.chat.handleKey(event, (text) => {
-                this.send({ text, type: 'chat' })
-            })
-        ) {
-            return
-        }
-
-        if (this.movementControls.keyDown(event)) return
-        if (
-            handleRuntimeShortcut(event, {
-                pickup: () => this.send({ type: 'pickup_item' }),
-                inventory: () => {
-                    this.options.onInventoryToggle()
-                    this.audio?.playSound('ui')
-                },
-                character: () => {
-                    this.options.onCharacterToggle?.()
-                    this.audio?.playSound('ui')
-                },
-                context: this.options.onContextAction
-                    ? () => {
-                          this.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } })
-                          this.options.onContextAction?.()
-                      }
-                    : undefined,
-            })
-        )
-            return
-
-        if (movementKeys.has(event.code)) {
-            this.send({ type: 'cancel_control' })
-            this.pressedKeys.add(event.code)
-            this.flushMoveInput()
-        }
+        handleRuntimeKeyDown(event, {
+            chat: this.chat,
+            movement: this.movementControls,
+            send: (command) => this.send(command),
+            move: (code) => {
+                this.pressedKeys.add(code)
+                this.flushMoveInput()
+            },
+            options: this.options,
+            playUi: () => this.audio?.playSound('ui'),
+            stopMovement: () => this.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } }),
+        })
     }
 
     private readonly handleKeyUp = (event: KeyboardEvent): void => {
@@ -296,8 +299,10 @@ export class RatataGame {
         handleRuntimePointer(event, {
             snapshot: this.snapshot,
             playerId: this.localPlayerId,
-            visible: (id) => this.isCharacterVisible(id),
-            resourceVisible: (point, bounds) => this.isInteractionVisible(point, bounds, Infinity),
+            visible: (id) => this.canSelectTarget(`character:${id}`),
+            resourceVisible: (node) =>
+                this.canSelectTarget(`resource:${node.id}`) &&
+                this.isInteractionVisible(node.position, node.bounds, Infinity),
             plant: (point) => this.planting.pick(point),
             select: (id) => this.options.onCharacterClick?.(id),
             send: (command) => this.send(command),
@@ -315,9 +320,7 @@ export class RatataGame {
         this.send({ axis, type: 'move_input' })
     }
 
-    private send(message: ClientMessage): void {
-        this.socket.send(message)
-    }
+    private readonly send = (message: ClientMessage): void => this.socket.send(message)
 
     private handleServerEvent(event: GameEventPayload): void {
         this.options.onEvent?.(event)

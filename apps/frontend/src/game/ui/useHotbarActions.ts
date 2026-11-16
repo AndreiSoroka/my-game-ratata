@@ -17,6 +17,7 @@ import {
     createActivator,
     type HotbarEmit,
     type HotbarProps,
+    objectTargetUnavailable,
 } from './hotbarActions'
 import { type HotbarBinding, prayerDescription } from './hotbarBindings'
 import { createGestures } from './hotbarGestures'
@@ -103,6 +104,17 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     }
 }
 function prayerPreview(props: HotbarProps, abilityId: PrayerActionId) {
+    const objectReason = objectTargetUnavailable({ kind: 'ability', id: abilityId }, props)
+    if (objectReason !== undefined)
+        return {
+            abilityId,
+            intent: null,
+            manaCost: 0,
+            harmfulTargets: 0,
+            includesAllies: false,
+            includesSelf: false,
+            unavailableReason: objectReason,
+        }
     return props.grave
         ? gravePrayerPreview(
               props.player,
@@ -127,7 +139,7 @@ function watchPrayerHighlight(
     preview: ComputedRef<ReturnType<typeof previewPrayerFromSnapshots>>
 ): void {
     const highlight = computed(() =>
-        prayerAssigned.value && !props.blocked
+        prayerAssigned.value && !props.blocked && !props.objectTarget
             ? createPrayerPreviewHighlight(props.player, props.characters, preview.value, {
                   active: true,
                   canReach: props.canReach ?? (() => true),
@@ -151,6 +163,7 @@ function watchGestureChanges(
             () => props.target?.id,
             () => props.grave?.id,
             () => props.grave?.phase,
+            () => props.objectTarget,
             () => props.blocked,
         ],
         () => gestures.reset()

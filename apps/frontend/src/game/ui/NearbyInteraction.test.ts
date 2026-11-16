@@ -71,7 +71,7 @@ describe('opening a one-target interaction', () => {
             expect(wrapper.find('[data-action-id="talk:second"]').exists()).toBe(false)
             await wrapper
                 .get('[data-action-id="talk:first"]')
-                .trigger('keydown', { code: 'KeyE', key: 'у' })
+                .trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'interact', targetId: first.id },
             ])
@@ -162,6 +162,34 @@ describe('interaction menu invalidation', () => {
 })
 
 describe('world item and farm interaction', () => {
+    it('acts on the explicitly selected item behind the hero and never falls back from an unavailable target', async () => {
+        const player = characterFixture('self')
+        const snapshot = {
+            ...worldFixture([player]),
+            items: [
+                { id: 'front', itemId: 'food' as const, position: { x: 0, y: 16 } },
+                { id: 'selected', itemId: 'simple_sword' as const, position: { x: 0, y: -8 } },
+            ],
+        }
+        const wrapper = interaction(player, [], snapshot)
+        try {
+            await wrapper.setProps({ selectedKey: 'item:selected' })
+            wrapper.vm.openMenu()
+            expect(wrapper.emitted('command')?.at(-1)).toEqual([
+                { type: 'pickup_item', worldItemId: 'selected' },
+            ])
+            expect(wrapper.emitted('targetChange')?.at(-1)).toEqual([undefined])
+            const count = wrapper.emitted('command')?.length
+            await wrapper.setProps({ selectedKey: 'item:missing' })
+            wrapper.vm.openMenu()
+            expect(wrapper.emitted('command')).toHaveLength(count!)
+            await wrapper.setProps({ selectedKey: 'item:front', canSelectTarget: () => false })
+            wrapper.vm.openMenu()
+            expect(wrapper.emitted('command')).toHaveLength(count!)
+        } finally {
+            wrapper.unmount()
+        }
+    })
     it('executes a single item action immediately with the chosen world instance ID', () => {
         const player = characterFixture('self')
         const snapshot = worldFixture([player])
@@ -199,7 +227,7 @@ describe('world item and farm interaction', () => {
             wrapper.vm.openMenu()
             await flushPromises()
             expect(wrapper.get('[role="menuitem"]').attributes('disabled')).toBeDefined()
-            await wrapper.get('[role="menu"]').trigger('keydown', { code: 'KeyE', key: 'у' })
+            await wrapper.get('[role="menu"]').trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('command')).toHaveLength(1)
             const ripe = {
                 ...snapshot,
@@ -224,7 +252,7 @@ describe('world item and farm interaction', () => {
     })
 })
 
-describe('interaction highlight follows the actual E target', () => {
+describe('interaction highlight follows the actual F target', () => {
     it('forwards exact pond geometry from the received snapshot to the actual canvas highlight event', async () => {
         const player = characterFixture('self', { position: { x: 40, y: 88 }, facing: 'right' })
         const pond = {

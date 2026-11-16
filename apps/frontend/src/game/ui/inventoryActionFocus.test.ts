@@ -79,7 +79,7 @@ describe('inventory action focus', () => {
                 .findAll<HTMLButtonElement>('.inventory-actions button')
                 .find((button) => button.text() === 'Drop')!
             drop.element.focus()
-            await drop.trigger('keydown', { code: 'KeyE' })
+            await drop.trigger('keydown', { code: 'KeyF' })
             await wrapper.setProps({
                 character: characterFixture('self', { inventory: [wood] }),
             })

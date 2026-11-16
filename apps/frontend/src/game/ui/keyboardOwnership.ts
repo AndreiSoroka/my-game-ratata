@@ -14,7 +14,7 @@ export function isOwnedUiTarget(target: EventTarget | null): boolean {
     )
 }
 export function isConfirmationKey(event: KeyboardEvent): boolean {
-    return ['Enter', 'Space', 'KeyE'].includes(event.code) || ['Enter', ' '].includes(event.key)
+    return ['Enter', 'Space', 'KeyF'].includes(event.code) || ['Enter', ' '].includes(event.key)
 }
 export function worldKeyboardOwned(): boolean {
     return document.querySelector(windowSelector) !== null || isTextEntry(document.activeElement)

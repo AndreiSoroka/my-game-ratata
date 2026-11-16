@@ -12,6 +12,7 @@ import { itemAssetCatalog } from '../assets/itemCatalog'
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { abilityUsage } from './abilityUsage'
 import { dialogActionKeys } from './dialogActionKeys'
+import { objectTargetUnavailable } from './hotbarActions'
 import { type HotbarBinding as Binding, hotbarGlyphs as glyphs } from './hotbarBindings'
 import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
@@ -22,6 +23,7 @@ const props = defineProps<{
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
     graves?: WorldGraveSnapshot[]
+    objectTarget?: boolean
     canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
@@ -112,7 +114,9 @@ defineExpose({ activate, edit, assignItem, resetGesture })
                 class="hotbar-slot"
                 :class="{ active: active(binding, index) }"
                 :aria-pressed="active(binding, index)"
-                :aria-disabled="blocked || !player.alive"
+                :aria-disabled="
+                    blocked || !player.alive || Boolean(objectTargetUnavailable(binding, props))
+                "
                 :aria-label="`${index + 1}: ${label(binding)}. Shift+${index + 1} — назначить`"
                 :title="`${unavailable(binding) ?? tooltip(binding)} · Shift+${index + 1}: назначить`"
                 :aria-description="unavailable(binding) ?? tooltip(binding)"

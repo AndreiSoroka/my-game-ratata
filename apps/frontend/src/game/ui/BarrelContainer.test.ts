@@ -40,7 +40,7 @@ describe('shared barrel inspection', () => {
             wrapper.unmount()
         }
     })
-    it('provides one E target at chest range, even if old world metadata is still present', () => {
+    it('provides one F target at chest range, even if old world metadata is still present', () => {
         const player = characterFixture('player', { position: { x: 64, y: 64 }, facing: 'right' })
         const bounds = { x: 92, y: 56, width: 16, height: 16 }
         const barrel = {

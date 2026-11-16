@@ -22,9 +22,9 @@ import {
 import { applyAgentAttack } from './agentCombat'
 import { parseAgentDecision } from './agentDecisionParsing'
 import { applyAgentInventory, isInventoryDecision } from './agentInventory'
+import { applyAgentRoute } from './agentRoute'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
-import { enqueueCharacterRoute, hasCharacterRoute } from './characterRoute'
 import { isAdventureCommand } from './extraCommands'
 import {
     cancelMovementMode,
@@ -137,12 +137,12 @@ export function applyAgentDecision(
                 cancelPrayerForMovement(character, decision.axis, now)
             )
         case 'move_to':
-            return agentMoveTo(
+            return applyAgentRoute(
                 character,
                 decision.target,
+                decision.append ?? false,
                 world,
-                now,
-                decision.append ?? false
+                now
             )
         case 'attack':
             return applyAgentAttack(character, decision, world, now)
@@ -177,31 +177,6 @@ function unavailableReason(character: GameCharacter): string | undefined {
         return 'Human control cannot be replaced'
     }
     return undefined
-}
-
-function agentMoveTo(
-    character: GameCharacter,
-    target: { x: number; y: number },
-    world: CompanionWorld,
-    now: number,
-    append: boolean
-): AgentDecisionResult {
-    const navigation = world.navigationFor(character)
-    if (
-        target.x < 0 ||
-        target.y < 0 ||
-        target.x > navigation.summary.worldWidth ||
-        target.y > navigation.summary.worldHeight
-    ) {
-        return rejected('Destination is outside this location')
-    }
-    if (!append || !hasCharacterRoute(character)) {
-        cancelAgentControl(character, world, now)
-    }
-    if (!enqueueCharacterRoute(character, target, append, navigation, now)) {
-        return rejected('Route is unavailable or has 32 points')
-    }
-    return accepted(cancelPrayerCast(character, now))
 }
 
 function accepted(events: GameEventPayload[] = []): AgentDecisionResult {

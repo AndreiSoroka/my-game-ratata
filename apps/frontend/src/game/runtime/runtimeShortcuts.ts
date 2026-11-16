@@ -6,7 +6,7 @@ interface ShortcutActions {
 }
 export function handleRuntimeShortcut(event: KeyboardEvent, actions: ShortcutActions): boolean {
     const action =
-        event.code === 'KeyE'
+        event.code === 'KeyF'
             ? (actions.context ?? actions.pickup)
             : event.code === 'KeyI'
               ? actions.inventory

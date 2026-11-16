@@ -12,12 +12,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RatataGame } from '../runtime/ratataGame'
 import ActionChannelStatus from './ActionChannelStatus.vue'
 import ActionHotbar from './ActionHotbar.vue'
-import { combatKeyBlocked, nextTarget, relation } from './combatTargeting'
+import { combatKeyBlocked } from './combatTargeting'
 import PartyPanel from './PartyPanel.vue'
 import SelectedTargetPanel from './SelectedTargetPanel.vue'
 import SpeechBubbles from './SpeechBubbles.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
-import { useGraveSelection } from './useGraveSelection'
+import { useWorldTargetSelection } from './useWorldTargetSelection'
 
 const props = defineProps<{
     game?: RatataGame
@@ -27,42 +27,37 @@ const props = defineProps<{
     blocked: boolean
 }>()
 const emit = defineEmits<{ interact: [id: string]; plant: [] }>()
-const selectedId = ref<string>()
-const { selectedGraveId, grave, selectGrave, clearGrave } = useGraveSelection(
-    props,
-    selectedId,
-    () => cancel(),
-    () => release()
-)
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
 const speech = ref<InstanceType<typeof SpeechBubbles>>()
 const unavailable = computed(() => !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
-const target = computed(() => props.characters.find((actor) => actor.id === selectedId.value))
+const {
+    selectedKey,
+    selectedTarget,
+    selectedId,
+    selectedGraveId,
+    target,
+    grave,
+    selectKey,
+    select,
+    selectGrave,
+    cycle,
+    validateSelection,
+} = useWorldTargetSelection(props, {
+    cancel: () => cancel(),
+    resetGesture: () => hotbar.value?.resetGesture(),
+    interact: (id) => emit('interact', id),
+})
 function send(command: ClientMessage): void {
     props.game?.sendCommand(command)
 }
 function cancel(clear = false): void {
     hotbar.value?.resetGesture()
     send({ type: 'cancel_control' })
-    if (clear) {
-        selectedId.value = undefined
-        clearGrave()
-    }
+    if (clear) selectedKey.value = undefined
 }
 function release(): void {
     hotbar.value?.resetGesture()
     send({ type: 'release_input' })
-}
-function selectTarget(id: string | undefined): void {
-    if (id !== selectedId.value) cancel()
-    selectedId.value = id
-}
-function select(id: string, open = false): void {
-    const character = props.characters.find((actor) => actor.id === id)
-    if (!character || character.tags.includes('offline')) return
-    selectTarget(id)
-    if (open && !character.trainingTarget && relation(character, props.player) !== 'hostile')
-        emit('interact', id)
 }
 function key(event: KeyboardEvent): void {
     if (
@@ -81,24 +76,21 @@ function key(event: KeyboardEvent): void {
         hotbar.value?.resetGesture()
     if (combatKeyBlocked(event, props.blocked)) return
     const digit = /^Digit([1-4])$/.exec(event.code)
-    if (!['KeyT', 'KeyF'].includes(event.code) && !digit) return
+    if (!['KeyQ', 'KeyE'].includes(event.code) && !digit) return
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.repeat) return
     if (unavailable.value) return
     if (digit) {
+        if (!validateSelection()) return
         activateSlot(Number(digit[1]) - 1, event.shiftKey)
         return
     }
     const actions: Record<string, () => void> = {
-        KeyF: () => {
-            selectTarget(props.player.id)
+        KeyQ: () => {
+            selectKey(`character:${props.player.id}`)
         },
-        KeyT: () => {
-            selectTarget(
-                nextTarget(props.characters, props.player, selectedId.value, event.shiftKey)
-            )
-        },
+        KeyE: () => cycle(event.shiftKey),
     }
     actions[event.code]?.()
 }
@@ -109,8 +101,7 @@ useEscapeOwner({
         Boolean(
             props.player.abilities?.casting ||
             props.snapshot.automation?.run?.status === 'running' ||
-            selectedId.value ||
-            selectedGraveId.value ||
+            selectedKey.value ||
             (props.player.control && props.player.control.mode !== 'none')
         ),
     escape: () => {
@@ -154,14 +145,14 @@ watch([() => props.snapshot.adventure?.dialogue, () => props.characters], () => 
 watch(
     () => props.player.id,
     () => {
-        selectedId.value = undefined
+        selectedKey.value = undefined
         speech.value?.clear()
     }
 )
 watch(
     () => props.snapshot.location?.id,
     () => {
-        selectedId.value = undefined
+        selectedKey.value = undefined
         if (props.player.control?.mode !== 'follow') release()
         speech.value?.clear()
     }
@@ -178,41 +169,6 @@ watch(
         if (disrupted) release()
     }
 )
-watch(
-    () => props.characters,
-    () => {
-        if (selectedId.value && !target.value) {
-            selectedId.value = undefined
-            if (props.player.control?.mode !== 'follow') release()
-        }
-        if (
-            target.value &&
-            !target.value.alive &&
-            relation(target.value, props.player) === 'hostile'
-        ) {
-            selectedId.value = undefined
-            release()
-        }
-    }
-)
-watch([target, grave], ([character, selectedGrave]) =>
-    props.game?.setCombatTarget(
-        character
-            ? {
-                  key: `character:${character.id}`,
-                  kind: 'character',
-                  position: character.position,
-                  relationship: relation(character, props.player),
-              }
-            : selectedGrave
-              ? {
-                    key: `grave:${selectedGrave.id}`,
-                    kind: 'object',
-                    position: selectedGrave.position,
-                }
-              : undefined
-    )
-)
 onMounted(() => {
     window.addEventListener('keydown', key, true)
     window.addEventListener('blur', blur)
@@ -222,10 +178,19 @@ onBeforeUnmount(() => {
     window.removeEventListener('keydown', key, true)
     window.removeEventListener('blur', blur)
     document.removeEventListener('visibilitychange', visibility)
-    props.game?.setCombatTarget(undefined)
     release()
 })
-defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel, assignItem })
+defineExpose({
+    selectedKey,
+    selectedId,
+    selectedGraveId,
+    select,
+    selectKey,
+    selectGrave,
+    receive,
+    cancel,
+    assignItem,
+})
 </script>
 <template>
     <PartyPanel
@@ -238,6 +203,11 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
     <SelectedTargetPanel
         :target="target"
         :grave="grave"
+        :object="
+            selectedTarget?.kind !== 'character' && selectedTarget?.kind !== 'grave'
+                ? selectedTarget
+                : undefined
+        "
         :player="player"
         :server-time="snapshot.serverTime"
     />
@@ -245,6 +215,7 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
         :player="player"
         :server-time="snapshot.serverTime"
         @cancel-prayer="send({ type: 'cancel_prayer' })"
+        @cancel-route="cancel(true)"
     />
     <ActionHotbar
         ref="hotbar"
@@ -255,6 +226,13 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
         :can-reach-grave="
             (selected) =>
                 game?.isInteractionVisible(selected.position, undefined, Infinity) ?? false
+        "
+        :object-target="
+            Boolean(
+                selectedTarget &&
+                selectedTarget.kind !== 'character' &&
+                selectedTarget.kind !== 'grave'
+            )
         "
         :characters="characters"
         :can-reach="
@@ -268,7 +246,7 @@ defineExpose({ selectedId, selectedGraveId, select, selectGrave, receive, cancel
         @shot-preview-change="game?.setShotPreview?.($event)"
     />
     <SpeechBubbles ref="speech" :game="game" :snapshot="snapshot" :player="player" />
-    <span class="target-help">T враги · Shift+T союзники · F себя · Дважды 1–4: повтор</span>
+    <span class="target-help">Q себя · E цель · Shift+E назад · F действие</span>
 </template>
 <style scoped>
 .target-help {

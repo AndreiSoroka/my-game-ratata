@@ -27,16 +27,16 @@ describe('quest reward presentation', () => {
             wrapper.unmount()
         }
     })
-    it('supports E confirmation on the focused reward option without held repeats', async () => {
+    it('supports F confirmation on the focused reward option without held repeats', async () => {
         const wrapper = mount(QuestRewardChoice, { props: { modelValue: 'party_equal' } })
         try {
             await wrapper
                 .get('input[value="submitter"]')
-                .trigger('keydown', { code: 'KeyE', repeat: true })
+                .trigger('keydown', { code: 'KeyF', repeat: true })
             expect(wrapper.emitted('update:modelValue')).toBeUndefined()
             await wrapper
                 .get('input[value="submitter"]')
-                .trigger('keydown', { code: 'KeyE', repeat: false })
+                .trigger('keydown', { code: 'KeyF', repeat: false })
             expect(wrapper.emitted('update:modelValue')).toEqual([['submitter']])
         } finally {
             wrapper.unmount()

@@ -101,7 +101,7 @@ describe('conversation and shop navigation', () => {
             expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(false)
             await wrapper
                 .get('.adventure-choices button')
-                .trigger('keydown', { code: 'KeyE', key: 'у' })
+                .trigger('keydown', { code: 'KeyF', key: 'а' })
             await flushPromises()
             expect(wrapper.find('.adventure-choices').exists()).toBe(false)
             expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(true)
@@ -157,7 +157,7 @@ describe('conversation and shop navigation', () => {
         }
     })
 
-    it('reads a sign with one heading and confirms its focused close action with E without repeat', async () => {
+    it('reads a sign with one heading and confirms its focused close action with F without repeat', async () => {
         const sign: AdventureSnapshot = {
             ...adventure,
             dialogue: {
@@ -184,8 +184,8 @@ describe('conversation and shop navigation', () => {
             expect(wrapper.get('.adventure-dialogue__text').text()).toBe(sign.dialogue!.text)
             expect(wrapper.find('.soul-badge').exists()).toBe(false)
             const close = wrapper.get('[data-dialogue-action]')
-            await close.trigger('keydown', { code: 'KeyE', key: 'у' })
-            await close.trigger('keydown', { code: 'KeyE', repeat: true })
+            await close.trigger('keydown', { code: 'KeyF', key: 'а' })
+            await close.trigger('keydown', { code: 'KeyF', repeat: true })
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'dialogue_choice', choiceId: 'leave' }],
             ])

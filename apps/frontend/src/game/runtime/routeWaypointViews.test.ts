@@ -2,6 +2,7 @@ import type { CharacterRouteSnapshot, Vector2 } from '@my-game-ratata/contracts'
 import type { Engine } from 'excalibur'
 import { expect, it, vi } from 'vitest'
 
+import { routeFixture } from '../testing/automationFixture'
 import { RouteWaypointViews } from './routeWaypointViews'
 
 interface ViewActor {
@@ -51,3 +52,42 @@ it('reconciles stable route numbers and saved map markers, then disposes all vie
     views.update(route, saved, 'map-2-2', () => true)
     expect(actors).toHaveLength(3)
 })
+
+it('adds a non-color warning only to the active blocked point and clears it on resumed progress', () => {
+    const actors: ViewActor[] = []
+    const views = new RouteWaypointViews({
+        add: (actor: ViewActor) => actors.push(actor),
+    } as unknown as Engine)
+    const route = routeFixture()
+    const saved = [
+        { id: 'home', number: 1, name: 'Home', locationId: 'map-2-2', position: { x: 90, y: 100 } },
+    ]
+    views.update(route, saved, route.locationId, () => true)
+    expect(drawMarker(actors[0]).mock.calls.map((call) => call[0])).toEqual(['4', '!'])
+    expect(drawMarker(actors[1]).mock.calls.map((call) => call[0])).toEqual(['5'])
+    expect(drawMarker(actors[2]).mock.calls.map((call) => call[0])).toEqual(['N1'])
+    route.waiting = null
+    views.update(route, saved, route.locationId, () => true)
+    expect(drawMarker(actors[0]).mock.calls.map((call) => call[0])).toEqual(['4'])
+    route.points.shift()
+    views.update(route, saved, route.locationId, () => true)
+    expect(actors[0]?.kill).toHaveBeenCalledOnce()
+    views.dispose()
+})
+
+function drawMarker(actor: ViewActor | undefined) {
+    const graphic = actor?.graphics.use.mock.calls.at(-1)?.[0] as {
+        options: { draw: (context: CanvasRenderingContext2D) => void }
+    }
+    const fillText = vi.fn<(text: string, x: number, y: number) => void>()
+    graphic.options.draw({
+        beginPath: vi.fn<CanvasRenderingContext2D['beginPath']>(),
+        arc: vi.fn<CanvasRenderingContext2D['arc']>(),
+        fill: vi.fn<CanvasRenderingContext2D['fill']>(),
+        stroke: vi.fn<CanvasRenderingContext2D['stroke']>(),
+        moveTo: vi.fn<CanvasRenderingContext2D['moveTo']>(),
+        lineTo: vi.fn<CanvasRenderingContext2D['lineTo']>(),
+        fillText,
+    } as unknown as CanvasRenderingContext2D)
+    return fillText
+}

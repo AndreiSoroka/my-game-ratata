@@ -75,7 +75,7 @@ describe('chest stack capacity', () => {
 })
 
 describe('two-sided chest keyboard interaction', () => {
-    it('switches sides with arrows and confirms exactly one put or take with E, without optimistic mutations', async () => {
+    it('switches sides with arrows and confirms exactly one put or take with F, without optimistic mutations', async () => {
         const player = characterFixture('self', { inventory: [bagItem] })
         const wrapper = mount(ChestContainer, {
             props: { chest: { chestId: 'chest', items }, player },
@@ -88,17 +88,17 @@ describe('two-sided chest keyboard interaction', () => {
             await food.trigger('keydown', { code: 'ArrowLeft' })
             const own = wrapper.get('[data-dialog-action="bag:bag-sword"]')
             expect(document.activeElement).toBe(own.element)
-            await own.trigger('keydown', { code: 'KeyE', key: 'у', repeat: true })
+            await own.trigger('keydown', { code: 'KeyF', key: 'а', repeat: true })
             expect(wrapper.emitted('command')).toBeUndefined()
-            await own.trigger('keydown', { code: 'KeyE', key: 'у' })
+            await own.trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'put_chest_item', chestId: 'chest', itemInstanceId: 'bag-sword' },
             ])
             expect(wrapper.findAll('[data-chest-pane="bag"] .chest-items button')).toHaveLength(1)
             await own.trigger('keydown', { code: 'ArrowRight' })
-            await food.trigger('keydown', { code: 'KeyF', key: 'а' })
-            expect(wrapper.emitted('command')).toHaveLength(1)
             await food.trigger('keydown', { code: 'KeyE', key: 'у' })
+            expect(wrapper.emitted('command')).toHaveLength(1)
+            await food.trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'take_chest_item', chestId: 'chest', itemInstanceId: 'food-1' },
             ])
@@ -141,7 +141,7 @@ describe('two-sided chest keyboard interaction', () => {
             await flushPromises()
             const all = wrapper.get<HTMLButtonElement>('[data-dialog-action="all"]')
             all.element.focus()
-            await all.trigger('keydown', { code: 'KeyE' })
+            await all.trigger('keydown', { code: 'KeyF' })
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'take_all_chest_items', chestId: 'chest' }],
             ])
@@ -189,7 +189,7 @@ describe('chest interaction with a full bag', () => {
             own.element.focus()
             await own.trigger('keydown', { code: 'KeyQ' })
             expect(worldKey).not.toHaveBeenCalled()
-            await own.trigger('keydown', { code: 'KeyE' })
+            await own.trigger('keydown', { code: 'KeyF' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'put_chest_item', chestId: 'chest', itemInstanceId: 'bag-0' },
             ])

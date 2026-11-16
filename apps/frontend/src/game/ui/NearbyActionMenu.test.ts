@@ -85,7 +85,7 @@ describe('nearby action menu', () => {
             wrapper.unmount()
         }
     })
-    it('waits for a fresh E confirmation after opening and ignores held-key repeat', async () => {
+    it('waits for a fresh F confirmation after opening and ignores held-key repeat', async () => {
         const wrapper = mount(NearbyActionMenu, {
             props: { open: false, actions },
             attachTo: document.body,
@@ -95,12 +95,12 @@ describe('nearby action menu', () => {
             await flushPromises()
             expect(wrapper.emitted('select')).toBeUndefined()
             const talk = wrapper.get('[data-action-id="talk"]')
-            await talk.trigger('keydown', { code: 'KeyF', key: 'f' })
-            await talk.trigger('keydown', { code: 'KeyF', key: 'а' })
-            expect(wrapper.emitted('select')).toBeUndefined()
-            await talk.trigger('keydown', { code: 'KeyE', key: 'у', repeat: true })
-            expect(wrapper.emitted('select')).toBeUndefined()
+            await talk.trigger('keydown', { code: 'KeyE', key: 'e' })
             await talk.trigger('keydown', { code: 'KeyE', key: 'у' })
+            expect(wrapper.emitted('select')).toBeUndefined()
+            await talk.trigger('keydown', { code: 'KeyF', key: 'а', repeat: true })
+            expect(wrapper.emitted('select')).toBeUndefined()
+            await talk.trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('select')).toEqual([['talk']])
         } finally {
             wrapper.unmount()

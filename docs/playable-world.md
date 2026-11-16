@@ -20,9 +20,11 @@ crowd avoidance never pushes a player or relocates an actor. Slime spawn positio
 prefer authored, walkable natural shorelines, including large lakes, with a valid
 fallback on maps without suitable water.
 
-WASD/arrows move, click empty ground walks to a point, C toggles sneaking, Space dashes, I opens inventory and Enter opens chat. T cycles visible enemies; Shift+T cycles allies, including fallen allies still eligible for rescue; F selects yourself. Clicking a hostile character selects that exact target, while clicking a friendly character opens its reachable actions. Slot 1 starts with basic melee attack; slot 2 contains Shot, Spark or Prayer for the corresponding background and is empty for Vanguard. Press 1–4 once to act; press the same key twice within 300 ms to repeat on the server; press it again to stop. Manual movement, text/menu focus, blur, hidden pages, death and stun release held control. A lost target never silently substitutes its neighbor.
+WASD/arrows move, click empty ground walks to a point, C toggles sneaking, Space dashes, I opens inventory and Enter opens chat. Q selects yourself. E cycles nearby visible characters and interactive objects from nearest to farthest; Shift+E reverses the order. Eligible fallen allies remain selectable for rescue. Clicking a hostile character selects that exact target, while clicking a friendly character opens its reachable actions. Slot 1 starts with basic melee attack; slot 2 contains Shot, Spark or Prayer for the corresponding background and is empty for Vanguard. Press 1–4 once to act; press the same key twice within 300 ms to repeat on the server; press it again to stop. Manual movement, text/menu focus, blur, hidden pages, death and stun release held control. A lost target never silently substitutes its neighbor.
 
-Ordinary HUD button focus still permits gameplay shortcuts, including I; Enter, Space and E confirm the focused button. Actual windows and text fields own their input. Escape performs one operation per press: close the game menu, handle the current chat/window, cancel a ritual or automated action/target, then open the game menu if nothing remains to cancel. Holding Escape does not advance through these steps. The visible menu button also works on touch screens. **Вернуться в игру** resumes input; **Выйти из игры** disconnects and returns to sign-in without abandoning the character, including during the resurrection window. Signing in with the same name resumes the existing living identity. The server world continues while the menu is open.
+Ordinary HUD button focus still permits gameplay shortcuts, including I; Enter, Space and F confirm the focused button. Actual windows and text fields own their input. Escape performs one operation per press: close the game menu, handle the current chat/window, cancel a ritual or automated action/target, then open the game menu if nothing remains to cancel. Holding Escape does not advance through these steps. The visible menu button also works on touch screens. **Вернуться в игру** resumes input; **Выйти из игры** disconnects and returns to sign-in without abandoning the character, including during the resurrection window. Signing in with the same name resumes the existing living identity. The server world continues while the menu is open.
+
+The camera can reveal six map tiles beyond each edge, with a black backdrop and sparse stationary pixel stars. These presentation margins do not enlarge the playable map.
 
 The compact character panel centers an ellipsized nickname on a full-width red ribbon, with small accessible Spark/Echo and speech icons inside its right edge. HP/MP/EN show only filled bars by default, including the character's own resources. Authorized numeric values round to the nearest integer; full names remain available in the heading's accessible name and tooltip. Temporary action notices appear at the top center for five seconds. Crime notices remain contextual; connection errors appear separately. Gold and item condition stay inside the inventory.
 
@@ -62,7 +64,7 @@ minutes of server time. It then restores all HP and starts a fresh ten-minute bi
 interval. Its existing living descendants still count toward the cap of three;
 there is no instant catch-up spawn. A partially damaged grave continues producing.
 
-Select a grave through **E** to inspect its condition/material, attack it or choose
+Select a grave to inspect its condition/material, attack it or choose
 **Упокоить могилу**. Any character with learned Hearth Prayer (`pray`) can contribute; energy, mana and Grave prayers cannot purify graves. Each completed
 three-second attempt costs five mana, including a failed roll. Five successful
 contributions purify a grave; the shared segmented ring shows progress. The neutral
@@ -88,9 +90,9 @@ Only final death moves them into the corpse, before retirement clears the old id
 Nonmortal NPCs transfer possessions immediately on death; respawning restores their
 health and resources but never recreates the bag, equipment or gold they lost.
 
-Approach a body, face it and press **E** to choose **Обыскать**. The shared container
+Approach a body, face it and press **F** to choose **Обыскать**. The shared container
 window shows the body's name, its remaining items and a separate gold action.
-Use arrows or W/S to select and **E/Enter** to take an item or **Взять золото**;
+Use arrows or W/S to select and **F/Enter** to take an item or **Взять золото**;
 **Забрать всё** transfers all items that fit and all available gold. Gold does not
 occupy backpack slots, so it can still be taken with a full bag. Overflow remains in
 the body. **Esc** closes the inspection. Depositing into a corpse is unavailable.
@@ -227,7 +229,7 @@ stone and one wood. It harvests as quickly as an iron axe but has 100 condition
 instead of 1,000, and uses the same equipment, wear and repair rules.
 
 Forest resources are shared objects with stable identities and semantic sizes. One
-click or **E** starts approaching and continuously gathering the selected source.
+click or **F** starts approaching and continuously gathering the selected source.
 The first successful strike gives loot immediately; an axe repeats every two
 seconds (5 energy), a sword every four seconds (10 energy), with their usual wear.
 An adult tree gives eight wood; its final strike also gives two saplings and one
@@ -256,7 +258,7 @@ forest trees and pines do not drop food.
 Assign **Саженец** to any hotbar slot with the existing assignment picker (Shift +
 the slot key), then click or press that slot to select a plot. Its assignment
 remains when the bag is empty. A compact hint follows the plot and camera; arrows
-move the selection, **E / Enter** or clicking confirms, **Esc** cancels. On a phone,
+move the selection, **F / Enter** or clicking confirms, **Esc** cancels. On a phone,
 the first touch selects and the next touch or hint button confirms. The future
 trunk is gray while checking or forbidden and yellow only after the private server
 preview accepts it. Invalid confirmation keeps selection open with a short reason.
@@ -268,7 +270,7 @@ nothing; ten seconds without movement progress stops the intention. Roads, water
 farms, buildings, occupied footprints and narrow passages are excluded. A stump
 must first be cleared with a working axe. Removed sources free collision and soil;
 each new planting gets a new ID. New saplings become adult forest trees after ten
-server minutes; growth waits for a free future trunk. **E** on a growing sapling
+server minutes; growth waits for a free future trunk. **F** on a growing sapling
 shows growth information and a separate **Срубить без добычи** action, using an axe
 or sword with normal chopping costs.
 
@@ -381,7 +383,7 @@ Wells and troughs keep their authored areas. Drinking still requires reach withi
 
 ## Farms and provisions
 
-Each cardinal suburb has a farm with an enterable barn and three shared wheat beds. One bed per farm begins ripe. Approach a bed and use E to sow or harvest. Sowing consumes one actual wheat seed from the backpack and 5 energy; wheat ripens after 45 seconds of server time. Wheat seeds are separate from grain and stack to nine per slot. New players receive no seeds automatically. Each farm has a shared supply chest: when the world session starts it has a 50% chance to contain two to four seeds, with each quantity equally likely. A failed roll leaves it empty. Inspection, travel and reconnecting never refill it. Savva also sells seeds from a finite initial stock of six through ordinary market trades.
+Each cardinal suburb has a farm with an enterable barn and three shared wheat beds. One bed per farm begins ripe. Approach a bed and use F to sow or harvest. Sowing consumes one actual wheat seed from the backpack and 5 energy; wheat ripens after 45 seconds of server time. Wheat seeds are separate from grain and stack to nine per slot. New players receive no seeds automatically. Each farm has a shared supply chest: when the world session starts it has a 50% chance to contain two to four seeds, with each quantity equally likely. A failed roll leaves it empty. Inspection, travel and reconnecting never refill it. Savva also sells seeds from a finite initial stock of six through ordinary market trades.
 
 Harvesting grants 3 grain and leaves the bed bare. It also gives zero seeds with 50% probability, one with 30%, two with 15% or three with 5%. The server fixes this hidden result once per crop, including initially ripe beds; retrying with a full backpack cannot reroll it. Grain and seeds must all fit before the crop is harvested. The bread recipe consumes 3 grain and produces one ordinary food item. These actions use the same character state and validated command path for every controller.
 
@@ -395,7 +397,7 @@ The game menu has a **Без звука** toggle for music, footsteps and all ev
 
 Footsteps come from the hidden authored `Footstep surfaces` Tiled layer. Grass and soil use soft clips, stone uses dry concrete steps and wooden interiors use wood steps, with three variations per material. Slimes retain their own hopping sound. Audible footsteps include other living characters in the current location and fall off quadratically, with a normal walking range of 240 world units. Sneaking is quieter with shorter range; dashing is louder and carries farther. Movement must actually change position; standing against a wall, death, map changes and large snapshot jumps do not produce fake steps. Each playing voice has its own gain and the mixer limits simultaneous steps; hiding the page or stopping the game clears them.
 
-The context action menu follows the focus and activation conventions in [W3C APG Menu Button](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/) and [Menu](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/). The broader idea of one nearby action key is also present in [Stardew Valley controls](https://stardewvalleywiki.com/Controls); Ratata uses E as requested rather than copying that game's bindings.
+The context action menu follows the focus and activation conventions in [W3C APG Menu Button](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/) and [Menu](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/). The broader idea of one nearby action key is also present in [Stardew Valley controls](https://stardewvalleywiki.com/Controls); Ratata uses F for the context action.
 
 ## Stealth and world interactions
 
@@ -403,27 +405,27 @@ Sneaking moves at 45% speed and reduces footstep noise to 18%. Space dashes in t
 
 Hostile mobs hear actual displacement on authored surfaces: grass is quieter than wood or stone. Dashing can attract enemies from beyond normal sight. Sneaking also reduces sight detection range, but does not make a character invisible at close range. A noise or ally alert records a last-known point; an investigating mob does not track an unseen character's current coordinates. Walls damp noise and alert reports expire. Stealth is useful for choosing a route around a pack, not a guarantee when walking directly into it.
 
-Face a nearby chest and press E to inspect the selected container. Its window shows the backpack on the left and shared chest contents on the right. Left/right arrows switch sides, up/down or W/S selects a row, and E confirms the transfer. Escape closes either the chest window or the standalone inventory, including after clicking its background. Transfer an individual item in either direction or use **Забрать всё** to transfer as many items as fit into the backpack. Anything that does not fit remains in the chest. Opening alone leaves the contents inside; striking the chest spills its remaining contents onto the ground. Every transfer uses the original item instance and is resolved once on the server, including when several players inspect the same chest. The window closes when the character leaves reach, changes location, disconnects or dies.
+Face a nearby chest and press F to inspect the selected container. Its window shows the backpack on the left and shared chest contents on the right. Left/right arrows switch sides, up/down or W/S selects a row, and F confirms the transfer. Escape closes either the chest window or the standalone inventory, including after clicking its background. Transfer an individual item in either direction or use **Забрать всё** to transfer as many items as fit into the backpack. Anything that does not fit remains in the chest. Opening alone leaves the contents inside; striking the chest spills its remaining contents onto the ground. Every transfer uses the original item instance and is resolved once on the server, including when several players inspect the same chest. The window closes when the character leaves reach, changes location, disconnects or dies.
 
-Permanent map banners are hidden; a nearby sign shows its name while the living character faces it, or in any direction while standing on its footprint (with a 4px foot margin), without opening a modal, and E reads its authored details. Turning away outside that footprint or walking away hides the reading hint; no permanent discovery label is added. Sign descriptions contain only a short, specific instruction for their place or destination.
+Permanent map banners are hidden; a nearby sign shows its name while the living character faces it, or in any direction while standing on its footprint (with a 4px foot margin), without opening a modal, and F reads its authored details. Turning away outside that footprint or walking away hides the reading hint; no permanent discovery label is added. Sign descriptions contain only a short, specific instruction for their place or destination.
 
-Wells, troughs and marked water edges let a character drink, restoring up to 15 energy with a shared five-second drinking cooldown; drinking does not heal HP. Barrels use the same inventory window and transfer rules as chests. Approach within 28 world units of their solid footprint and press E to inspect, take individual items or **Забрать всё**, or put carried items back. Their authored initial supplies are one wood and one fiber, created once per world session; opening, returning to the location and changing character identities never replenish them. A hit spills only the remaining contents. Barrel art and collision remain in place when empty. Bodies use the shared window too, but accept no deposits. Range, life, action locks and line of sight are validated by the server.
+Wells, troughs and marked water edges let a character drink, restoring up to 15 energy with a shared five-second drinking cooldown; drinking does not heal HP. Barrels use the same inventory window and transfer rules as chests. Approach within 28 world units of their solid footprint and press F to inspect, take individual items or **Забрать всё**, or put carried items back. Their authored initial supplies are one wood and one fiber, created once per world session; opening, returning to the location and changing character identities never replenish them. A hit spills only the remaining contents. Barrel art and collision remain in place when empty. Bodies use the shared window too, but accept no deposits. Range, life, action locks and line of sight are validated by the server.
 
 Action-result notifications disappear after five seconds. Each new adventure or party result has a server receipt, so repeated snapshots never extend the toast and a new action with the same wording can still show it again. Quest, inventory and party state remain available in their windows.
 
-Materials are ordinary backpack item instances: herbs and grain stack to nine per slot; wood, stone, fiber, scrap and saplings occupy one slot per unit. The backpack holds 50 occupied slots, including equipment carried in the bag, food, hearts and material stacks. Gathering and harvesting check the entire carried result fits before spending energy or depleting the source. A full bag still permits container inspection; bulk transfers take only the items that fit and leave the rest inside. Crafting consumes real carried material quantities and checks the finished item fits after ingredient consumption. Crafting summaries are derived from backpack contents, not a separate wallet. Chest, barrel, ground, theft and backpack transfers preserve whole-stack quantities and item condition. E performs a selected target’s sole action directly; its multiple actions use a vertical menu. Dialogue choices are vertical; **Покажи товары** opens a separate shop view, with a button or Escape returning to the conversation.
+Materials are ordinary backpack item instances: herbs and grain stack to nine per slot; wood, stone, fiber, scrap and saplings occupy one slot per unit. The backpack holds 50 occupied slots, including equipment carried in the bag, food, hearts and material stacks. Gathering and harvesting check the entire carried result fits before spending energy or depleting the source. A full bag still permits container inspection; bulk transfers take only the items that fit and leave the rest inside. Crafting consumes real carried material quantities and checks the finished item fits after ingredient consumption. Crafting summaries are derived from backpack contents, not a separate wallet. Chest, barrel, ground, theft and backpack transfers preserve whole-stack quantities and item condition. F performs a selected target’s sole action directly; its multiple actions use a vertical menu. Dialogue choices are vertical; **Покажи товары** opens a separate shop view, with a button or Escape returning to the conversation.
 
 Trees and tall props are complete cached sprites sorted by their ground contact Y; grass and paving remain below them. Generated clearing boundaries remove complete obstructing props rather than cutting individual tiles. Furniture footprints, visible composites and collision data are authored together.
 
 ## Theft and practical stealth
 
-C enables sneaking. Approach a living NPC or player within 28 world units, then use E and choose **Попытаться украсть**. The server validates reach, line of sight, action readiness, 10 energy and capacity. Each paid attempt has an 8-second cooldown; retrying the same target requires 60 seconds. Empty pockets and invalid attempts give no practice. The theft action takes one existing, unequipped item or whole material stack from the victim's inventory; equipped items are not pickpocketed. Stack limits and receiving capacity are checked before the transfer. Named residents start with finite authored pocket contents, independent of shop offers. Nothing is generated on demand by stealing.
+C enables sneaking. Approach a living NPC or player within 28 world units, then use F and choose **Попытаться украсть**. The server validates reach, line of sight, action readiness, 10 energy and capacity. Each paid attempt has an 8-second cooldown; retrying the same target requires 60 seconds. Empty pockets and invalid attempts give no practice. The theft action takes one existing, unequipped item or whole material stack from the victim's inventory; equipped items are not pickpocketed. Stack limits and receiving capacity are checked before the transfer. Named residents start with finite authored pocket contents, independent of shop offers. Nothing is generated on demand by stealing.
 
 An undetected success transfers the same item instance atomically. It grants 70 base Shadow XP. Failed attempts grant no XP; standing with C enabled or retrying rejected commands does not. The target's facing and learned stars affect the roll, with a remaining risk. An undetected failure or success sends no accusation to the victim. Normal character snapshots reveal only the viewer's own bag and exact mastery experience. Other characters' equipment and attained constellation levels remain visible; hidden experience does not reveal an unnoticed attempt.
 
 On detection, combat-capable NPCs defend themselves and noncombatants flee and can call the city guard. A human-controlled victim retains control and receives a private warning. **Позвать стражу** is available for 30 seconds after a witnessed attempt. It requests a temporary response; arbitrary accusations are rejected. Retaliation uses ordinary movement and combat and is limited to the actual participants. Pursuit remembers the last-known point when sight is lost.
 
-A witnessed theft also provides five minutes to file **Пожаловаться на …** via E near a living city guard, within 64 world units and line of sight. Calling for immediate help does not consume this evidence. The formal complaint enters the offender's current identity in Novogorod's blacklist. Leaving the location or disconnecting does not clear the record: city guards attack on encountering the offender, and both city merchants refuse purchases, including through an already open shop. The blacklist has no automatic 30-second expiry. These consequences currently apply to Novogorod; there is no general reputation, fine collection or jail system.
+A witnessed theft also provides five minutes to file **Пожаловаться на …** via F near a living city guard, within 64 world units and line of sight. Calling for immediate help does not consume this evidence. The formal complaint enters the offender's current identity in Novogorod's blacklist. Leaving the location or disconnecting does not clear the record: city guards attack on encountering the offender, and both city merchants refuse purchases, including through an already open shop. The blacklist has no automatic 30-second expiry. These consequences currently apply to Novogorod; there is no general reputation, fine collection or jail system.
 
 Approach **Сестра Вера** in the chapel and choose **Отпустить грехи · 30 золотых**. The shared server rule validates the living cleric, reach, line of sight, action readiness, blacklist and balance before one atomic payment. It clears the city record, outstanding old evidence and related pursuit/retaliation; replaying the command does not charge again. An old complaint cannot immediately restore a forgiven record. Quest rewards remain available to earn the fee while merchants refuse trade. Resurrection preserves the same identity and its record; permanent death ends that identity and a new character begins clean. All records are currently in server memory, so a server restart starts a new world session.
 
@@ -435,9 +437,16 @@ Positive authoritative damage events trigger a short recoil pose, a red flash an
 
 Click empty ground to replace the current walking route. **Shift+click** appends
 another numbered destination, up to 32. Each marker disappears only after actual
-server-confirmed arrival; remaining numbers stay stable. A destination that cannot
-be reached for ten seconds is skipped with a notice. These temporary routes are
-separate from the pathfinder's intermediate cells.
+server-confirmed arrival; remaining numbers stay stable. The server first tries
+the exact click. If it cannot reach it, it chooses the nearest reachable cell
+within two tiles and moves that numbered marker to the accepted destination.
+An impossible new point is rejected with a notice and preserves the old route
+and numbering. Appending validates the next segment without rebuilding the
+current path. If an accepted route becomes blocked, the active marker and HUD
+show a server-owned countdown. Ten seconds without progress cancels the entire
+remaining route with one notice; stun and action locks freeze that budget.
+These temporary routes are separate from the pathfinder's intermediate cells,
+saved N markers, scenario destinations and interaction reach rules.
 
 Press physical **N**, or use the HUD marker button, to remember your current place.
 The game menu's **Метки** window lists personal markers with their location names
@@ -495,7 +504,7 @@ Existing worker, artisan, guard, companion and hostile strategies enter the comm
 
 Прохор and Дарья wander through city street routes using the shared scenario runner. Прохор accepts noncombat work after an introduction; Дарья requires completion of Мира’s hearts-for-the-bell quest. Willingness is authored as typed conditions (`always`, `never`, `met`, `quest_completed`, `all`, `any`), and existing promises, reach, line of sight and availability are checked on assignment. Echo does not mean a player can commandeer it.
 
-A successful conversation stops an NPC and suspends its current scenario step while at least one valid nearby viewer is talking. Closing the last conversation resumes the step. Lost reach or sight, travel, death, disconnect and urgent threats end the corresponding conversation holds. The **Спутники** talk action uses the same dialogue session as E.
+A successful conversation stops an NPC and suspends its current scenario step while at least one valid nearby viewer is talking. Closing the last conversation resumes the step. Lost reach or sight, travel, death, disconnect and urgent threats end the corresponding conversation holds. The **Спутники** talk action uses the same dialogue session as F.
 
 ## External agent MCP
 
@@ -517,9 +526,9 @@ Each assigned slot also has an **×** button labeled **Очистить слот
 
 In the inventory, focus an apple's slot and press Shift+1–4 to bind it directly; Enter is not required. After selecting the apple with Enter or a click, the same shortcuts and numbered assignment buttons also work. The inventory stays open and keeps keyboard focus; assigning a slot does not eat the apple. Close the inventory with Esc, then press the slot's number to eat it.
 
-Use arrows to move between inventory cells and Enter or E to open and confirm item actions. When equipping, consuming or transferring removes the selected item from the bag, keyboard focus returns to the same cell, even if it becomes empty. Continue with the arrows without reopening the inventory. A rejected action keeps its current menu and focus.
+Use arrows to move between inventory cells and Enter or F to open and confirm item actions. When equipping, consuming or transferring removes the selected item from the bag, keyboard focus returns to the same cell, even if it becomes empty. Continue with the arrows without reopening the inventory. A rejected action keeps its current menu and focus.
 
-T cycles visible hostile targets; Shift+T cycles allies and recoverable bodies; F selects yourself. Changing the selected target cancels automatic action repetition. E opens the selected reachable target's actions, or uses the facing interaction when there is no selected target. Any friendly reachable character offers **Следовать**. Friendly targets use a circle and shield, hostile targets a diamond and crossed swords; objects retain gold corners. Manual movement, stun, death, window focus loss and Esc cancel automatic control. Follow can continue across adjacent locations using ordinary movement. Menus consume gameplay keys and release held movement.
+Q selects yourself; E cycles nearby visible characters, recoverable bodies and interactive objects from nearest to farthest, and Shift+E reverses the order. The selection radius is the greater of 12 map tiles and the longest learned ability range plus three tiles; targets must also intersect the camera viewport and pass existing concealment rules. The same limit applies to mouse and party-panel selection. Changing the selected target cancels automatic action repetition. F opens the selected reachable target's actions, or uses the facing interaction when there is no selected target. Any friendly reachable character offers **Следовать**. Friendly targets use a circle and shield, hostile targets a diamond and crossed swords; objects retain gold corners. Manual movement, stun, death, window focus loss and Esc cancel automatic control. Follow can continue across adjacent locations using ordinary movement. Menus consume gameplay keys and release held movement.
 
 The party panel puts the crowned leader first, shows names and health with a thin bar without numeric text, and marks distant, offline or fallen members. Incoming invitations offer acceptance/refusal; pending invitations cannot be sent back to their sender.
 
@@ -588,7 +597,17 @@ window.__ratataTest.stop()
 
 Backend tests cover combat reach, map connectivity, crossings, isolated locations, quest credit, reward duplication, gathering/crafting, progression, resurrection/permadeath, atomic theft, private outcomes and bounded crime reactions. Frontend tests cover controls, theft interactions, hit presentation and movement cleanup. Use `bun run type-check`, `bun run lint`, `bun run test` and headless browser checks after changes.
 
-`bun run test:e2e` starts a fresh app-test world on backend/frontend ports 3500/5500, then runs desktop and mobile grave scenarios in separate fresh processes on 3501/5501, followed by Storybook checks. Existing servers are not reused. `E2E_BACKEND_PORT` and `E2E_FRONTEND_PORT` change the app pair; grave scenarios use the next ports. Grave artifacts and reports are retained separately as `graves-desktop` and `graves-mobile`, so disconnected actors, earlier deaths and encounter age from one viewport cannot alter the other. Run either grave viewport alone with `bun run --cwd apps/frontend test:e2e:graves:desktop` or `test:e2e:graves:mobile`. All gameplay actions use ordinary validated commands; long ritual scenarios wait for the real server deadline.
+`bun run check` is the automatic pre-commit gate: formatting, types, lint, unit/script tests, builds and the standard Chromium game suite. `bun run test:e2e` runs only that headless Chromium suite, starting a fresh app-test world on backend/frontend ports 3500/5500. Plain `playwright test` also defaults to Chromium; other browser projects require an explicit selection.
+
+Additional suites run manually from the repository root:
+
+- `bun run test:e2e:firefox` — standard game scenarios in Firefox.
+- `bun run test:e2e:webkit` — standard game scenarios in WebKit.
+- `bun run test:e2e:graves` — desktop and mobile grave lifecycle scenarios, each in a separate fresh world.
+- `bun run test:e2e:storybook` — Storybook visual checks.
+- `bun run test:e2e:all` — all three browsers, grave lifecycle scenarios and Storybook checks.
+
+App and grave suites do not reuse existing servers. `E2E_BACKEND_PORT` and `E2E_FRONTEND_PORT` change the app pair; grave scenarios use the next ports, 3501/5501 by default. Grave artifacts and reports are retained separately as `graves-desktop` and `graves-mobile`, so disconnected actors, earlier deaths and encounter age from one viewport cannot alter the other. Run either grave viewport alone with `bun run --cwd apps/frontend test:e2e:graves:desktop` or `test:e2e:graves:mobile`. All gameplay actions use ordinary validated commands; long ritual scenarios wait for the real server deadline.
 
 ## References
 

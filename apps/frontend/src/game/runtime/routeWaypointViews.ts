@@ -46,6 +46,7 @@ export class RouteWaypointViews {
                       label: String(point.number),
                       position: point.position,
                       active: index === 0,
+                      blocked: index === 0 && route.waiting === 'blocked',
                       saved: false,
                   }))
                 : []),
@@ -56,6 +57,7 @@ export class RouteWaypointViews {
                     label: `N${String(marker.number)}`,
                     position: marker.position,
                     active: false,
+                    blocked: false,
                     saved: true,
                 })),
         ]
@@ -68,14 +70,16 @@ export class RouteWaypointViews {
         }
         for (const entry of entries) {
             let view = this.views.get(entry.key)
-            const label = `${entry.label}:${String(entry.active)}:${String(entry.saved)}`
+            const label = `${entry.label}:${String(entry.active)}:${String(entry.saved)}:${String(entry.blocked)}`
             if (!view) {
                 view = { actor: new Actor({ anchor: vec(0.5, 1) }), label: '' }
                 this.engine.add(view.actor)
                 this.views.set(entry.key, view)
             }
             if (view.label !== label) {
-                view.actor.graphics.use(markerGraphic(entry.label, entry.active, entry.saved))
+                view.actor.graphics.use(
+                    markerGraphic(entry.label, entry.active, entry.saved, entry.blocked)
+                )
                 view.label = label
             }
             view.actor.pos = vec(entry.position.x, entry.position.y)
@@ -95,7 +99,7 @@ export class RouteWaypointViews {
     }
 }
 
-function markerGraphic(label: string, active: boolean, saved: boolean): Canvas {
+function markerGraphic(label: string, active: boolean, saved: boolean, blocked: boolean): Canvas {
     return new Canvas({
         width: 24,
         height: 26,
@@ -103,7 +107,13 @@ function markerGraphic(label: string, active: boolean, saved: boolean): Canvas {
         smoothing: false,
         draw: (context) => {
             context.fillStyle = saved ? '#213d43ee' : '#302d24ee'
-            context.strokeStyle = saved ? '#97e2da' : active ? '#ffe5a2' : '#c8ba94'
+            context.strokeStyle = saved
+                ? '#97e2da'
+                : blocked
+                  ? '#ff9c80'
+                  : active
+                    ? '#ffe5a2'
+                    : '#c8ba94'
             context.lineWidth = active ? 2 : 1
             context.beginPath()
             context.arc(12, 11, 9, 0, Math.PI * 2)
@@ -120,6 +130,16 @@ function markerGraphic(label: string, active: boolean, saved: boolean): Canvas {
             context.textAlign = 'center'
             context.textBaseline = 'middle'
             context.fillText(label, 12, 11)
+            if (blocked) {
+                context.beginPath()
+                context.arc(19, 4, 4, 0, Math.PI * 2)
+                context.fillStyle = '#45251d'
+                context.fill()
+                context.stroke()
+                context.fillStyle = '#fff2cf'
+                context.font = 'bold 8px sans-serif'
+                context.fillText('!', 19, 4)
+            }
         },
     })
 }

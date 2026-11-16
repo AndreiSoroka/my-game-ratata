@@ -3,7 +3,7 @@ import { ABILITY_DEFINITIONS, type CharacterSnapshot } from '@my-game-ratata/con
 import { computed } from 'vue'
 
 const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
-const emit = defineEmits<{ cancelPrayer: [] }>()
+const emit = defineEmits<{ cancelPrayer: []; cancelRoute: [] }>()
 const prayerName = computed(
     () =>
         ({
@@ -14,6 +14,16 @@ const prayerName = computed(
             harm: 'Карающая молитва',
         })[props.player.abilities?.casting?.mode ?? 'revive']
 )
+const blockedRoute = computed(() => {
+    const control = props.player.control
+    return props.player.alive && control?.mode === 'route' && control.route?.waiting === 'blocked'
+        ? control.route
+        : undefined
+})
+const remainingSeconds = computed(() => {
+    const remaining = blockedRoute.value?.remainingFailureMs
+    return remaining === undefined ? undefined : Math.ceil(Math.max(0, remaining) / 1000)
+})
 </script>
 <template>
     <p v-if="player.cooldowns.stunMsLeft > 0" class="control-status rpg-panel" role="status">
@@ -30,6 +40,19 @@ const prayerName = computed(
         >
             Прервать · Esc
         </button>
+    </div>
+    <div
+        v-else-if="blockedRoute?.points[0]"
+        class="control-status control-status--route rpg-panel"
+        role="status"
+    >
+        Точка {{ blockedRoute.points[0].number }}: путь перекрыт<template
+            v-if="remainingSeconds !== undefined"
+        >
+            · отмена через {{ remainingSeconds }} с</template
+        >
+        · Esc — остановить
+        <button type="button" @click="emit('cancelRoute')">Остановить маршрут</button>
     </div>
 </template>
 <style scoped>
@@ -55,5 +78,11 @@ button {
 button:focus-visible {
     outline: 2px solid #f2cc78;
     outline-offset: 2px;
+}
+.control-status--route {
+    width: max-content;
+    max-width: calc(100% - 32px);
+    box-sizing: border-box;
+    text-align: center;
 }
 </style>

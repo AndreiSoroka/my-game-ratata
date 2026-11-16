@@ -195,6 +195,34 @@ it('preserves an unrelated later action lock when canceling forest work', () => 
     expect(snapshotControl(f.actor).mode).toBe('none')
 })
 
+it('a rejected route preserves active forest work and its current cooldown', () => {
+    const f = fixture()
+    f.start()
+    f.tick(0)
+    for (let y = 0; y < 40; y++) {
+        f.navigation.grid.solid[y * 40 + 20] = true
+    }
+    const before = structuredClone(snapshotControl(f.actor))
+    const lock = f.actor.actionLockUntil
+    const message = { type: 'move_to', target: { x: 560, y: 224 } } as const
+    handleRoomControl(f.actor, message, f.world as GameRoom, 1)
+    applyPlayerMessage({
+        player: f.actor,
+        navigation: f.navigation,
+        message,
+        characters: new Map([[f.actor.id, f.actor]]),
+        connections: new Map(),
+        requestAttack: vi.fn(),
+        sendEvents: vi.fn(),
+        worldInventory: new WorldInventory(f.navigation),
+    })
+    expect(snapshotControl(f.actor)).toEqual(before)
+    expect(f.actor.actionLockUntil).toBe(lock)
+    expect(f.service.workAvailableAt(f.actor)).toBe(2000)
+    f.tick(2000)
+    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
+})
+
 it('rejects a selected source behind a wall without paying costs or starting navigation', () => {
     const f = fixture()
     const energy = f.actor.energy

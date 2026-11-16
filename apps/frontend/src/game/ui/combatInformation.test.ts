@@ -3,7 +3,7 @@ import { expect, it } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
-import { nextTarget, relation } from './combatTargeting'
+import { attackableTarget, relation } from './combatTargeting'
 import SelectedTargetPanel from './SelectedTargetPanel.vue'
 
 it('shows a foreign health bar without numeric text and respects exact health when received', async () => {
@@ -18,15 +18,14 @@ it('shows a foreign health bar without numeric text and respects exact health wh
     expect(view.text()).toContain('9/24')
     view.unmount()
 })
-it('selects the peaceful training construct with T without changing its social relation or showing HP', () => {
+it('keeps the peaceful training construct attackable without changing its social relation or showing HP', () => {
     const player = characterFixture('hero')
     const target = characterFixture('dummy', {
         trainingTarget: { areaId: 'yard' },
         creatureType: 'construct',
     })
     expect(relation(target, player)).toBe('friendly')
-    expect(nextTarget([player, target], player, undefined, false)).toBe(target.id)
-    expect(nextTarget([player, target], player, undefined, true)).toBeUndefined()
+    expect(attackableTarget(target, player)).toBe(true)
     const view = mount(SelectedTargetPanel, { props: { player, target, serverTime: 0 } })
     expect(view.find('progress').exists()).toBe(false)
     expect(view.text()).toContain('Тренировочная цель')

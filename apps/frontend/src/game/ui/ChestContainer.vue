@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
                 </ChestPane>
             </div>
             <p class="chest-hint">
-                ←→ — сторона · ↑↓ / W S — выбор · E / Enter — переложить · Esc — закрыть. Стопки
+                ←→ — сторона · ↑↓ / W S — выбор · F / Enter — переложить · Esc — закрыть. Стопки
                 переносятся целиком. Непоместившиеся останутся
                 {{ isCorpse ? 'в теле' : `в ${containerPlace}` }}.
             </p>

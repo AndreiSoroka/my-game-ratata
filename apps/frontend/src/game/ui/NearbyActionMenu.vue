@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 
+import { isConfirmationKey } from './keyboardOwnership'
 import type { NearbyAction } from './nearbyActions'
 import { useEscapeOwner } from './uiEscapeOwners'
 
@@ -45,8 +46,7 @@ function moveFocus(direction: number): void {
 }
 function menuKey(event: KeyboardEvent): string {
     return (
-        ({ KeyW: 'w', KeyS: 's', KeyE: 'e' } as Record<string, string>)[event.code] ??
-        event.key.toLowerCase()
+        ({ KeyW: 'w', KeyS: 's' } as Record<string, string>)[event.code] ?? event.key.toLowerCase()
     )
 }
 function handleKey(event: KeyboardEvent): void {
@@ -59,7 +59,7 @@ function handleKey(event: KeyboardEvent): void {
     if (key === 'escape') {
         event.preventDefault()
         emit('close')
-    } else if (['enter', ' ', 'e'].includes(key)) {
+    } else if (isConfirmationKey(event)) {
         event.preventDefault()
         if (!event.repeat) activate(activeId.value)
     } else if (['arrowdown', 's', 'arrowup', 'w'].includes(key)) {
@@ -143,7 +143,7 @@ onBeforeUnmount(returnFocus)
             <p v-if="actions.length === 0" role="status">Рядом нет доступных действий.</p>
         </div>
         <p class="nearby-action-panel__hint">
-            ↑↓ / W S — выбор · E / Enter — выполнить · Esc — закрыть
+            ↑↓ / W S — выбор · F / Enter — выполнить · Esc — закрыть
         </p>
     </section>
 </template>

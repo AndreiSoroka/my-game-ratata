@@ -34,7 +34,7 @@ describe('corpse inspection uses the shared container window', () => {
             ).toBeDefined()
             const gold = wrapper.get('[data-dialog-action="chest:gold"]')
             expect(document.activeElement).toBe(gold.element)
-            await gold.trigger('keydown', { code: 'KeyE' })
+            await gold.trigger('keydown', { code: 'KeyF' })
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'take_chest_gold', chestId: 'corpse:hero:1' }],
             ])

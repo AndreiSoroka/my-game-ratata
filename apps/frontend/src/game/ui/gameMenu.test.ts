@@ -272,7 +272,7 @@ it('releases a closed hotbar picker whose Vue template ref became null', async (
 it('clears selection and cancels a ritual before a subsequent Escape opens the menu', async () => {
     const wrapper = await joined()
     try {
-        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF' }))
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ' }))
         await flushPromises()
         expect(wrapper.find('[aria-label="Выбранная цель"]').exists()).toBe(true)
         await pressEscape()

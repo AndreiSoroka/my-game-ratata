@@ -155,7 +155,7 @@ describe('grave selection and hotbar', () => {
     })
 })
 
-describe('E grave menu', () => {
+describe('F grave menu', () => {
     it('forwards selected identity and facts, preserves it when a neighbor approaches, and closes after purification', async () => {
         const player = characterFixture('self', {
             heroClass: 'cleric',

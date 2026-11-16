@@ -239,7 +239,7 @@ async function attachOutcome(
 }
 
 async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
-    const prompt = page.getByRole('button', { name: /^E Могила / })
+    const prompt = page.getByRole('button', { name: /^F Могила / })
     await expect(prompt).toBeVisible()
     if (mobile) {
         const bounds = await prompt.boundingBox()
@@ -251,7 +251,7 @@ async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
         await assertMobileTargetSpace(page)
     } else {
         await page.locator('canvas[data-game-canvas=true]').focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
     }
 }
 async function assertMobileTargetSpace(page: Page): Promise<void> {

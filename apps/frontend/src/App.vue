@@ -231,11 +231,13 @@ async function joinGame(): Promise<void> {
                 />
                 <NearbyInteraction
                     ref="interaction"
+                    :selected-key="gameplay?.selectedKey"
                     :selected-id="gameplay?.selectedId"
                     :selected-grave-id="gameplay?.selectedGraveId"
                     :snapshot="snapshot"
                     :player="localCharacter"
                     :characters="visibleCharacters"
+                    :can-select-target="(key) => game?.canSelectTarget(key) ?? false"
                     :is-position-visible="
                         (position, bounds, range) =>
                             game?.isInteractionVisible(position, bounds, range) ?? false

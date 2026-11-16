@@ -27,7 +27,7 @@ for (const mobile of [false, true]) {
         await expect(menu).toHaveCount(0)
         const attack = page.getByRole('button', { name: /^1: Базовая атака/ })
         await attack.focus()
-        await page.keyboard.press('KeyF')
+        await page.keyboard.press('KeyQ')
         await expect(page.getByLabel('Выбранная цель')).toBeVisible()
         await page.keyboard.press('Escape')
         await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)

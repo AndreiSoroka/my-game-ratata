@@ -30,7 +30,7 @@ const style = computed(() => ({
                 :data-available="available"
                 @click="emit('confirm')"
             >
-                Посадить · E / Enter
+                Посадить · F / Enter
             </button>
             <button type="button" @click="emit('cancel')">Отмена · Esc</button>
         </div>

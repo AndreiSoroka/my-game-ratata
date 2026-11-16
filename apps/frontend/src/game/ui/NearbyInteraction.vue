@@ -19,6 +19,8 @@ const props = defineProps<{
     characters: CharacterSnapshot[]
     selectedId?: string
     selectedGraveId?: string
+    selectedKey?: string
+    canSelectTarget?: (key: string) => boolean
     blocked: boolean
     isPositionVisible?: (position: Vector2, bounds?: WorldObjectBounds, range?: number) => boolean
 }>()
@@ -31,24 +33,28 @@ const emit = defineEmits<{
 const open = ref(false)
 const openedKey = ref<string>()
 const openedActions = ref<{ id: string; signature: string }[]>([])
-const target = computed(() =>
-    props.snapshot && props.player
-        ? nearbyInteractionTarget(
-              props.snapshot,
-              props.player,
-              props.characters,
-              props.isPositionVisible,
-              open.value
-                  ? openedKey.value
-                  : props.selectedGraveId
-                    ? `grave:${props.selectedGraveId}`
-                    : props.selectedId
-                      ? `character:${props.selectedId}`
-                      : undefined,
-              Boolean(props.selectedId || props.selectedGraveId)
-          )
-        : undefined
-)
+const target = computed(() => {
+    const candidate =
+        props.snapshot && props.player
+            ? nearbyInteractionTarget(
+                  props.snapshot,
+                  props.player,
+                  props.characters,
+                  props.isPositionVisible,
+                  open.value
+                      ? openedKey.value
+                      : props.selectedKey
+                        ? props.selectedKey
+                        : props.selectedGraveId
+                          ? `grave:${props.selectedGraveId}`
+                          : props.selectedId
+                            ? `character:${props.selectedId}`
+                            : undefined,
+                  Boolean(props.selectedKey || props.selectedId || props.selectedGraveId)
+              )
+            : undefined
+    return candidate && props.canSelectTarget?.(candidate.key) !== false ? candidate : undefined
+})
 const grave = computed(() =>
     props.snapshot?.graves?.find((entry) => `grave:${entry.id}` === target.value?.key)
 )
@@ -80,6 +86,7 @@ const canOpen = computed(
 function openMenu(): void {
     const selected = target.value
     if (!selected || !props.player || !canOpen.value) return
+    if (props.canSelectTarget?.(selected.key) === false) return
     stopMovement(props.player)
     if (grave.value) emit('selectGrave', grave.value.id)
     if (selected.actions.length === 1 && !selected.actions[0]!.disabled) {
@@ -101,6 +108,7 @@ function isCurrentTarget(): boolean {
         !props.blocked &&
         Boolean(props.player?.alive) &&
         props.snapshot?.location?.id === openedLocation &&
+        props.canSelectTarget?.(openedKey.value ?? '') !== false &&
         target.value?.key === openedKey.value
     )
 }
@@ -131,9 +139,9 @@ watch(
     }
 )
 watch(
-    [target, () => props.blocked],
+    [target, () => props.blocked, () => props.selectedKey],
     () => {
-        const selected = !props.blocked ? target.value : undefined
+        const selected = !props.blocked && !props.selectedKey ? target.value : undefined
         emit(
             'targetChange',
             selected
@@ -160,7 +168,7 @@ defineExpose({ openMenu })
         type="button"
         @click="emit('requestOpen')"
     >
-        <kbd>E</kbd> <strong>{{ target.name }}</strong>
+        <kbd>F</kbd> <strong>{{ target.name }}</strong>
         <span
             v-if="actions.length !== 1 || actions[0]?.label !== target.name"
             class="nearby-prompt__action"

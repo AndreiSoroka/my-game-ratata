@@ -20,8 +20,8 @@ export async function faceGrave(page: Page, id: string): Promise<void> {
     }, id)
 }
 
-/** A nearby guardian corpse may legitimately win E's nearest-facing selection.
- * Approach from another side and confirm the actual prompt before pressing E.
+/** A nearby guardian corpse may legitimately win F's nearest-facing selection.
+ * Approach from another side and confirm the actual prompt before pressing F.
  * Opening that source's menu pins it through the subsequent ritual workflow.
  */
 export async function approachObservedGrave(page: Page, key: string): Promise<void> {
@@ -54,9 +54,9 @@ export async function approachObservedGrave(page: Page, key: string): Promise<vo
             continue
         }
         await faceGrave(page, source!.id)
-        const prompt = page.getByRole('button', { name: /^E Могила / })
+        const prompt = page.getByRole('button', { name: /^F Могила / })
         if (await prompt.isVisible()) return
         attempts.push({ offset, prompt: await page.locator('.nearby-prompt').allTextContents() })
     }
-    throw new Error(`Cannot select observed ${key} through E: ${JSON.stringify(attempts)}`)
+    throw new Error(`Cannot select observed ${key} through F: ${JSON.stringify(attempts)}`)
 }

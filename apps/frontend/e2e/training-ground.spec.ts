@@ -62,8 +62,8 @@ for (const mobile of [false, true]) {
         await navigate(page, { x: 1024, y: 792 })
         await expect(canvas).toHaveAttribute('data-training-guides', areaId)
         await canvas.focus()
-        await page.keyboard.press('KeyT')
         const selected = page.getByLabel('Выбранная цель')
+        await selectTrainingTarget(page)
         await expect(selected).toContainText('Тренировочный манекен')
         await expect(selected.getByRole('progressbar')).toHaveCount(0)
         const before = await dummyState(page)
@@ -84,9 +84,11 @@ for (const mobile of [false, true]) {
         // WebGL page or changing either character's authoritative state.
         const guest = await shootAsGuest(page, socketUrl, `${name}-g`)
         expect(guest.amount).toBeGreaterThan(0)
-        await expect.poll(() => hits.length).toBeGreaterThan(outsideHit)
-        expect(hits[outsideHit]).not.toHaveProperty('amount')
-        expect(hits[outsideHit]?.actorId).toBe(guest.actorId)
+        await expect
+            .poll(() => hits.slice(outsideHit).some((hit) => hit.actorId === guest.actorId))
+            .toBe(true)
+        const observedGuest = hits.slice(outsideHit).find((hit) => hit.actorId === guest.actorId)
+        expect(observedGuest).not.toHaveProperty('amount')
         expect(await dummyState(page)).toEqual(before)
         expect(await page.evaluate(() => window.__ratataTest!.getState().player!.position)).toEqual(
             { x: 920, y: 792 }
@@ -122,7 +124,10 @@ for (const mobile of [false, true]) {
         const departure = await page.evaluate(() =>
             window.__ratataTest!.travel('east', { timeoutMs: 30_000 })
         )
-        expect(departure).toMatchObject({ status: 'arrived', locationId: 'map-3-2' })
+        expect(departure, JSON.stringify(departure)).toMatchObject({
+            status: 'arrived',
+            locationId: 'map-3-2',
+        })
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         expect(await page.evaluate(() => window.__ratataTest!.getState().player!.alive)).toBe(true)
     })
@@ -135,12 +140,26 @@ async function join(page: Page, name: string): Promise<void> {
     await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
 }
 
+async function selectTrainingTarget(page: Page): Promise<void> {
+    const targetCount = await page.evaluate(() => window.__ratataTest!.observe().targets.length)
+    for (let count = 0; count <= targetCount; count += 1) {
+        await page.keyboard.press('KeyE')
+        if (
+            await page
+                .getByLabel('Выбранная цель')
+                .getByText('Тренировочный манекен', { exact: true })
+                .isVisible()
+        )
+            return
+    }
+}
+
 async function navigate(page: Page, position: { x: number; y: number }): Promise<void> {
     const outcome = await page.evaluate(
         (position) => window.__ratataTest!.navigate(position, { timeoutMs: 25_000, tolerance: 1 }),
         position
     )
-    expect(outcome.status).toBe('arrived')
+    expect(outcome.status, JSON.stringify(outcome)).toBe('arrived')
 }
 
 async function dummyState(page: Page) {

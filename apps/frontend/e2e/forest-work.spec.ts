@@ -36,7 +36,7 @@ for (const mobile of [false, true]) {
             await expect(hint).toBeVisible()
             await expect(hint).toHaveCSS('position', 'absolute')
             await expect(hint.getByRole('status')).not.toHaveText('Проверяем участок…')
-            await hint.getByRole('button', { name: 'Посадить · E / Enter' }).click()
+            await hint.getByRole('button', { name: 'Посадить · F / Enter' }).click()
             await expect(hint).toBeVisible()
             expect(
                 await page.evaluate(
@@ -256,7 +256,7 @@ async function plantAndCancel(
     const hint = page.getByRole('region', { name: 'Посадка дерева' })
     await expect(hint).toBeVisible()
     const chosen = await findPlot(page, previews)
-    await hint.getByRole('button', { name: 'Посадить · E / Enter' }).click()
+    await hint.getByRole('button', { name: 'Посадить · F / Enter' }).click()
     await expect
         .poll(() =>
             page.evaluate(() => window.__ratataTest!.getState().player?.control?.action?.kind)
@@ -277,7 +277,7 @@ async function plantAndCancel(
     await expect.poll(() => previews.length).toBeGreaterThan(repeatedPreviewCount)
     await selectPlot(page, chosen, previews)
     await expect(hint).toHaveClass(/available/)
-    await hint.getByRole('button', { name: 'Посадить · E / Enter' }).click()
+    await hint.getByRole('button', { name: 'Посадить · F / Enter' }).click()
     await expect
         .poll(
             () =>

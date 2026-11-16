@@ -36,11 +36,11 @@ for (const scenario of scenarios) {
         await expect(conversation).toBeVisible()
         await expect(conversation.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
         await conversation.getByRole('radio', { name: scenario.storyLabel }).focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
         await expect(conversation.locator(`input[value="${storyMode}"]`)).toBeChecked()
         await expectStationaryWithKey(page, 'KeyD')
         await conversation.getByRole('button', { name: 'Я принесу три слизневых сердца' }).focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
         await expect
             .poll(() =>
                 page.evaluate(() => window.__ratataTest!.getState().snapshot?.adventure?.quest)
@@ -50,7 +50,7 @@ for (const scenario of scenarios) {
         await page.keyboard.press('Escape')
         await expect(conversation).toBeHidden()
         await page.getByRole('button', { name: 'Журнал', exact: true }).focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
         const journal = page.getByRole('region', { name: 'Журнал заданий' })
         await expect(journal).toBeVisible()
         await expect(journal).toContainText(scenario.storyLabel)
@@ -63,16 +63,16 @@ for (const scenario of scenarios) {
         await page.keyboard.press('Escape')
         await expect(journal).toBeHidden()
         await page.getByRole('button', { name: 'Гильдия', exact: true }).focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
         const guild = page.getByRole('dialog', { name: 'Гильдия приключенцев' })
         const hunt = guild
             .locator('.guild-job')
             .filter({ has: page.getByRole('heading', { name: 'Зачистка троп' }) })
         await expect(hunt.getByRole('button', { name: 'Взять', exact: true })).toBeEnabled()
         await hunt.getByRole('radio', { name: scenario.guildLabel }).focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
         await hunt.getByRole('button', { name: 'Взять', exact: true }).focus()
-        await page.keyboard.press('KeyE')
+        await page.keyboard.press('KeyF')
         await expect
             .poll(() =>
                 page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)

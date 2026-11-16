@@ -72,7 +72,7 @@ describe('explicit grave interactions', () => {
         expect(preview.unavailableReason).toBeNull()
         expect(preview.durationMs).toBe(2700)
     })
-    it('removes purified, hidden, unreachable and dead-player targets from E selection', () => {
+    it('removes purified, hidden, unreachable and dead-player targets from F interaction', () => {
         const player = cleric()
         const grave = graveFixture()
         const snapshot = { ...worldFixture([player]), graves: [grave] }

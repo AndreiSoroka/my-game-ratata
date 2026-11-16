@@ -6,12 +6,13 @@ import type {
 
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
-import { enqueueCharacterRoute, hasCharacterRoute } from './characterRoute'
+import { enqueueCharacterRoute } from './characterRoute'
 import { isChestCommand } from './chestCommands'
 import type { NavigationService } from './navigation'
 import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
 import { faceNearestTarget } from './queries'
 import { broadcastChat, type RoomSocket } from './roomMessaging'
+import { routeCommandFeedback } from './routeCommandFeedback'
 import type { WorldInventory } from './worldInventory'
 
 interface PlayerMessageContext {
@@ -20,6 +21,7 @@ interface PlayerMessageContext {
     message: ClientMessage
     navigation: NavigationService
     player: GameCharacter
+    onRouteStart?: () => void
     requestAttack: (
         actor: GameCharacter,
         targetId?: string,
@@ -96,27 +98,25 @@ function applyRouteMessage(
     message: Extract<ClientMessage, { type: 'move_to' }>
 ): void {
     const { player, navigation, sendEvents } = context
-    sendEvents(cancelPrayerCast(player, Date.now()))
-    if (message.append !== true || !hasCharacterRoute(player)) {
-        cancelCharacterControl(player)
+    const now = Date.now()
+    const events: GameEventPayload[] = []
+    const result = enqueueCharacterRoute(
+        player,
+        message.target,
+        message.append ?? false,
+        navigation,
+        now,
+        () => {
+            context.onRouteStart?.()
+            cancelCharacterControl(player)
+        }
+    )
+    if (result.accepted) {
+        events.push(...cancelPrayerCast(player, now))
     }
-    if (
-        !enqueueCharacterRoute(
-            player,
-            message.target,
-            message.append ?? false,
-            navigation,
-            Date.now()
-        )
-    ) {
-        sendEvents([
-            {
-                kind: 'notice',
-                actorId: player.id,
-                audienceIds: [player.id],
-                text: 'Маршрут недоступен или уже содержит 32 точки.',
-            },
-        ])
+    events.push(...routeCommandFeedback(player, result))
+    if (events.length > 0) {
+        sendEvents(events)
     }
 }
 

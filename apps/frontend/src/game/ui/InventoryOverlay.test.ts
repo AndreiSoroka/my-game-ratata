@@ -186,7 +186,7 @@ describe('standalone inventory keyboard ownership', () => {
             wrapper.unmount()
         }
     })
-    it('uses E to select a slot and perform its action, ignoring repeat and blocking world shortcuts', async () => {
+    it('uses F to select a slot and perform its action, ignoring repeat and blocking world shortcuts', async () => {
         const worldKey = vi.fn<(event: KeyboardEvent) => void>()
         window.addEventListener('keydown', worldKey)
         const wrapper = mount(InventoryOverlay, {
@@ -197,13 +197,13 @@ describe('standalone inventory keyboard ownership', () => {
             await flushPromises()
             const slot = wrapper.get<HTMLButtonElement>('.inventory-slot[data-filled="true"]')
             slot.element.focus()
-            await slot.trigger('keydown', { code: 'KeyE', key: 'у' })
+            await slot.trigger('keydown', { code: 'KeyF', key: 'а' })
             await flushPromises()
             const eat = wrapper.get<HTMLButtonElement>('.inventory-actions button')
             expect(document.activeElement).toBe(eat.element)
-            await eat.trigger('keydown', { code: 'KeyE', repeat: true })
+            await eat.trigger('keydown', { code: 'KeyF', repeat: true })
             expect(wrapper.emitted('inventoryAction')).toBeUndefined()
-            await eat.trigger('keydown', { code: 'KeyE' })
+            await eat.trigger('keydown', { code: 'KeyF' })
             expect(wrapper.emitted('inventoryAction')).toEqual([
                 [{ action: 'eat', itemInstanceId: 'food' }],
             ])
