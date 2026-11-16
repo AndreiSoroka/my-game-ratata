@@ -112,7 +112,6 @@ function validateLevel(level: number): void {
         throw new RangeError('Mastery level must be a nonnegative safe integer')
     }
 }
-/** Fast doubling keeps thresholds exact above Number.MAX_SAFE_INTEGER. */
 function fibonacci(index: number): bigint {
     let a = 0n,
         b = 1n
@@ -129,15 +128,52 @@ function fibonacci(index: number): bigint {
     }
     return a
 }
-/** Required XP for the NEXT level; level 0 -> 100, level 1 -> 100. */
+
+/** Integer Newton iteration returns the square root rounded down. */
+function floorSquareRoot(value: bigint): bigint {
+    if (value < 2n) {
+        return value
+    }
+    const bitLength = BigInt(value.toString(2).length)
+    let root = 1n << ((bitLength + 1n) / 2n)
+    let next = (root + value / root) / 2n
+    while (next < root) {
+        root = next
+        next = (root + value / root) / 2n
+    }
+    return root
+}
+
+/** min(100 F_(L+1), 100 (L+1)^1.5), rounded down to micro-XP. */
 export function masteryThreshold(level: number): bigint {
     validateLevel(level)
-    return 100n * MASTERY_XP_SCALE * fibonacci(level + 1)
+    const base = 100n * MASTERY_XP_SCALE
+    // Fibonacci is cheaper through level 8 (2100 XP); the power stays cheaper after it.
+    if (level < 8) {
+        return base * fibonacci(level + 1)
+    }
+    const nextLevel = BigInt(level) + 1n
+    return floorSquareRoot(base * base * nextLevel ** 3n)
 }
+
+const cumulativeMasteryExperience: bigint[] = [0n]
+
 /** Total XP needed to reach the given level from zero. */
 export function masteryTotalExperience(level: number): bigint {
     validateLevel(level)
-    return 100n * MASTERY_XP_SCALE * (fibonacci(level + 2) - 1n)
+    const cached = cumulativeMasteryExperience[level]
+    if (cached !== undefined) {
+        return cached
+    }
+    let total =
+        cumulativeMasteryExperience[cumulativeMasteryExperience.length - 1] ??
+        0n
+    while (cumulativeMasteryExperience.length <= level) {
+        const previous = cumulativeMasteryExperience.length - 1
+        total += masteryThreshold(previous)
+        cumulativeMasteryExperience.push(total)
+    }
+    return total
 }
 export function formatMasteryExperience(micros: bigint): string {
     if (micros < 0n) {

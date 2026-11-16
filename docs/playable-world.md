@@ -122,8 +122,12 @@ changes, reconnects and temporary death preserve it. Layout randomness is privat
 and independent of combat and progression. Unknown grey stars cannot be clicked
 or focused, and their metadata is not projected to the owner.
 
-Thresholds follow Fibonacci: 100, 100, 200, 300, 500, 800… XP. Remainders carry, there
-is no level 10 cap, and every attained level earns one random opening for that
+The cost of reaching level N is `min(100 × Fₙ, 100 × N^1.5)`, with F₁ = F₂ = 1.
+Thresholds begin at 100, 100, 200, 300, 500, 800, 1300, 2100, 2700… XP:
+Fibonacci applies through level 8, then power 1.5 from the 8 → 9 transition.
+Each threshold is floored to one micro-XP; total XP from zero is the sum of thresholds.
+All nine masteries use these shared rules for players and NPCs. Remainders carry,
+there is no level cap, and every attained level earns one random opening for that
 constellation. Levels never pay for stars or directly increase damage/healing.
 Equipment, baseline stats, moods and learned stars determine numerical effects.
 All requirements—parents, level and knowledge—must hold before a random star enters
@@ -423,7 +427,7 @@ A witnessed theft also provides five minutes to file **Пожаловаться 
 
 Approach **Сестра Вера** in the chapel and choose **Отпустить грехи · 30 золотых**. The shared server rule validates the living cleric, reach, line of sight, action readiness, blacklist and balance before one atomic payment. It clears the city record, outstanding old evidence and related pursuit/retaliation; replaying the command does not charge again. An old complaint cannot immediately restore a forgiven record. Quest rewards remain available to earn the fee while merchants refuse trade. Resurrection preserves the same identity and its record; permanent death ends that identity and a new character begins clean. All records are currently in server memory, so a server restart starts a new world session.
 
-Stealth also practices through actual unseen movement near an observer: at least 64 world units across four new cells, with a four-second award interval and a minute before repeated ground counts again. Safe crouching, movement into a wall, following one's own companion or pacing beside allied human players does not train it. Stealth stars reduce sight detection and noise; mastery levels do not directly change them. Successful theft and validated stealth movement award the shared Shadow mastery, using Fibonacci thresholds and constellation conflict. Permanent death resets the identity.
+Stealth also practices through actual unseen movement near an observer: at least 64 world units across four new cells, with a four-second award interval and a minute before repeated ground counts again. Safe crouching, movement into a wall, following one's own companion or pacing beside allied human players does not train it. Stealth stars reduce sight detection and noise; mastery levels do not directly change them. Successful theft and validated stealth movement award the shared Shadow mastery, using the shared minimum of Fibonacci and power-1.5 thresholds and constellation conflict. Permanent death resets the identity.
 
 Positive authoritative damage events trigger a short recoil pose, a red flash and a rising damage number. These are visual feedback only; death takes presentation priority and misses do not show a hit. Building facades sort at their front ground line, so characters standing in front remain visible while characters inside the footprint stay behind the cover until entering.
 

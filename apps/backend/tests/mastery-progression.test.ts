@@ -29,20 +29,53 @@ import { abilityHero } from './abilityTestHelpers'
 const xp = parseMasteryExperience
 
 describe('exact uncapped mastery arithmetic', () => {
-    it('uses Fibonacci thresholds and cumulative totals from zero', () => {
+    it('keeps the Fibonacci opening and switches to the lower power threshold after 2100 XP', () => {
         expect(
-            Array.from({ length: 7 }, (_, level) =>
+            Array.from({ length: 10 }, (_, level) =>
                 formatMasteryExperience(masteryThreshold(level))
             )
-        ).toEqual(['100', '100', '200', '300', '500', '800', '1300'])
+        ).toEqual([
+            '100',
+            '100',
+            '200',
+            '300',
+            '500',
+            '800',
+            '1300',
+            '2100',
+            '2700',
+            '3162.27766',
+        ])
         expect(
-            Array.from({ length: 8 }, (_, level) =>
+            Array.from({ length: 11 }, (_, level) =>
                 formatMasteryExperience(masteryTotalExperience(level))
             )
-        ).toEqual(['0', '100', '200', '400', '700', '1200', '2000', '3300'])
+        ).toEqual([
+            '0',
+            '100',
+            '200',
+            '400',
+            '700',
+            '1200',
+            '2000',
+            '3300',
+            '5400',
+            '8100',
+            '11262.27766',
+        ])
+        expect(masteryTotalExperience(35)).toBe(xp('297307.498302'))
+    })
+    it('floors power thresholds to micro-XP while keeping square targets exact', () => {
+        expect(masteryThreshold(16)).toBe(xp('7009.279563'))
+        expect(masteryThreshold(15)).toBe(xp('6400'))
+        expect(masteryThreshold(24)).toBe(xp('12500'))
+        expect(masteryTotalExperience(17) - masteryTotalExperience(16)).toBe(
+            xp('7009.279563')
+        )
     })
     it('keeps huge thresholds and decimal XP exact through serialization', () => {
-        const large = masteryThreshold(69)
+        const large = masteryThreshold(999_999)
+        expect(large).toBe(xp('100000000000'))
         expect(large).toBeGreaterThan(BigInt(Number.MAX_SAFE_INTEGER))
         expect(xp(formatMasteryExperience(large + 123456n))).toBe(
             large + 123456n
@@ -56,6 +89,7 @@ describe('exact uncapped mastery arithmetic', () => {
         'rejects invalid level %s',
         (level) => {
             expect(() => masteryThreshold(level)).toThrow(RangeError)
+            expect(() => masteryTotalExperience(level)).toThrow(RangeError)
         }
     )
     it('preserves a positive minimum and rejects invalid rewards', () => {
@@ -166,6 +200,123 @@ describe('authoritative mastery awards', () => {
         expect(actor.progression.masteries.prayer_road.level).toBe(12)
         expect(actor.progression.constellations.credits.prayer_road).toBe(12)
     })
+})
+
+describe('authoritative mastery crossover', () => {
+    it.each([-1n, 0n, 1n])(
+        'resolves the fractional power threshold with a %s micro-XP difference',
+        (difference) => {
+            const actor = abilityHero('cleric')
+            actor.abilities.known.add('pray_road')
+            const mastery = actor.progression.masteries.prayer_road
+            mastery.level = 9
+            mastery.experience = xp('3161.27766')
+            actor.progression.constellations.credits.prayer_road = 4
+            actor.progression.rewardReceipts.add('previous-practice')
+            const awards = [
+                {
+                    constellationId: 'prayer_road' as const,
+                    experience: Number(
+                        formatMasteryExperience(xp('1') + difference)
+                    ),
+                },
+            ]
+            const options = { now: 1000, receiptId: 'threshold-practice' }
+            const events = awardMasteries(actor, awards, options)
+            const levelsGained = difference < 0n ? 0 : 1
+            const expected = {
+                level: 9 + levelsGained,
+                experience: difference < 0n ? xp('3162.277659') : difference,
+            }
+            expect(mastery).toEqual(expected)
+            expect(
+                events.filter((event) => event.kind === 'skill_up')
+            ).toHaveLength(levelsGained)
+            expect(actor.progression.constellations.credits.prayer_road).toBe(
+                4 + levelsGained
+            )
+            expect(actor.progression.rewardReceipts).toEqual(
+                new Set(['previous-practice', 'threshold-practice'])
+            )
+            expect(awardMasteries(actor, awards, options)).toEqual([])
+            expect(mastery).toEqual(expected)
+            expect(actor.progression.constellations.credits.prayer_road).toBe(
+                4 + levelsGained
+            )
+        }
+    )
+    it('carries one award across the Fibonacci and power steps without losing micro-XP or credits', () => {
+        const actor = abilityHero('cleric')
+        actor.abilities.known.add('pray_road')
+        actor.progression.masteries.prayer_road.level = 7
+        actor.progression.constellations.credits.prayer_road = 2
+        const events = awardMasteries(
+            actor,
+            [{ constellationId: 'prayer_road', experience: 7962.40266 }],
+            { now: 1000, receiptId: 'cross-both-curves' }
+        )
+        expect(actor.progression.masteries.prayer_road).toEqual({
+            level: 10,
+            experience: xp('0.125'),
+        })
+        expect(
+            events
+                .filter((event) => event.kind === 'skill_up')
+                .map((event) => event.amount)
+        ).toEqual([8, 9, 10])
+        expect(actor.progression.constellations.credits.prayer_road).toBe(5)
+        expect(
+            snapshotProgression(actor, 1000).masteries.find(
+                (entry) => entry.id === 'prayer_road'
+            )
+        ).toMatchObject({
+            level: 10,
+            experience: '0.125',
+            totalExperience: '11262.40266',
+            pendingOpenings: 5,
+        })
+    })
+    it.each(['network_player', 'scripted', 'mob1'] as const)(
+        'uses the same crossover and retained openings for all nine constellations with %s control',
+        (controllerKind) => {
+            for (const constellationId of constellationIds) {
+                const actor = abilityHero('cleric', 'humanoid', controllerKind)
+                for (const node of fullConstellationCatalog.filter(
+                    (node) =>
+                        node.constellationId === constellationId &&
+                        node.acquisition === 'random'
+                )) {
+                    actor.progression.constellations.opened.add(node.id)
+                }
+                const awards = [{ constellationId, experience: 8117.125 }]
+                const options = {
+                    now: 1000,
+                    receiptId: `crossover:${controllerKind}:${constellationId}`,
+                }
+                const events = awardMasteries(actor, awards, options)
+                expect(actor.progression.masteries[constellationId]).toEqual({
+                    level: 9,
+                    experience: xp('17.125'),
+                })
+                expect(
+                    events.filter((event) => event.kind === 'skill_up')
+                ).toHaveLength(9)
+                expect(
+                    actor.progression.constellations.credits[constellationId]
+                ).toBe(9)
+                expect(awardMasteries(actor, awards, options)).toEqual([])
+                expect(
+                    actor.progression.masteries[constellationId].experience
+                ).toBe(xp('17.125'))
+                expect(
+                    actor.progression.constellations.credits[constellationId]
+                ).toBe(9)
+            }
+        }
+    )
+})
+
+describe('authoritative mastery receipts and availability', () => {
     it('uses frozen factors across branches and rejects duplicate action receipts before XP', () => {
         const actor = abilityHero('cleric')
         actor.progression.masteries.life.experience = xp('90')
