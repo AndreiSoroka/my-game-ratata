@@ -14,6 +14,7 @@ import { recordRunicContact } from './constellations'
 import { effectiveAbility } from './effectiveParameters'
 import { castGraveSpell } from './graveSpellCasting'
 import { distance } from './math'
+import { canPerceivePrayerCaster } from './prayerAuras'
 import type { ProgressionContext } from './progressionCommands'
 import {
     confirmCombatResourceSpend,
@@ -88,6 +89,7 @@ export function castSpell(
         now: context.now,
         damageKind: 'arcane',
         respawnDelayMs: context.respawnDelayMsFor?.(target) ?? 15000,
+        ...(context.random === undefined ? {} : { random: context.random }),
     })
     confirmCombatResourceSpend(
         actor,
@@ -158,6 +160,7 @@ function canHit(
     }
     return (
         canAttackCharacter(actor, target, context.now) &&
+        canPerceivePrayerCaster(actor, target, context.now) &&
         distance(actor.position, target.position) <= range &&
         context.navigation.hasLineOfSight(actor.position, target.position)
     )

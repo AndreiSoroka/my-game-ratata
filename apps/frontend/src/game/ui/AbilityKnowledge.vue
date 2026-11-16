@@ -34,7 +34,10 @@ const learnable = computed<LearnAbilityId[]>(() => {
 })
 const known = computed(() =>
     (props.player.abilities?.known ?? []).filter(
-        (id) => !props.constellationId || learnable.value.includes(id as LearnAbilityId)
+        (id) =>
+            !props.constellationId ||
+            learnable.value.includes(id as LearnAbilityId) ||
+            (props.constellationId === 'prayer' && id === 'pray_woven')
     )
 )
 function teacher(ability: LearnAbilityId): CharacterSnapshot | undefined {

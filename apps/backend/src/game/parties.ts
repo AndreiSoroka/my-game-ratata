@@ -7,6 +7,7 @@ import type {
 
 import type { GameCharacter } from './character'
 import { GuildService, type WorkerGuildGateway } from './guild'
+import { resetMartyrStreak } from './martyr'
 import { NoticeStore } from './notices'
 import {
     findGuildContact,
@@ -51,6 +52,13 @@ export class PartyService {
     public rewardMembers(actorId: string): string[] {
         return [...this.groupFor(actorId).members].filter(
             (id) => !shouldRemoveMember(this.characters.get(id))
+        )
+    }
+
+    public sameParty(firstId: string, secondId: string): boolean {
+        const partyId = this.membership.get(firstId)
+        return (
+            partyId !== undefined && partyId === this.membership.get(secondId)
         )
     }
 
@@ -235,6 +243,7 @@ export class PartyService {
                 'Сначала заверши свой личный договор, чтобы не потерять его.'
             )
         }
+        resetMartyrStreak(actor)
         party.members.add(actor.id)
         this.guild.addLateMember(party.id, actor)
         this.membership.set(actor.id, party.id)

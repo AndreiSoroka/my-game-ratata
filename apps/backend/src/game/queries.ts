@@ -9,6 +9,7 @@ import { constellationModifiers } from './constellationModifiers'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
+import { canPerceivePrayerCaster } from './prayerAuras'
 
 export function createSnapshot(
     characters: Iterable<GameCharacter>,
@@ -18,11 +19,19 @@ export function createSnapshot(
     now: number,
     observerId?: string
 ): WorldSnapshot {
+    const candidates = [...characters]
+    const observer = candidates.find((character) => character.id === observerId)
     return {
         chests: [...chests],
-        characters: [...characters].map((character) =>
-            character.snapshot(now, character.id === observerId)
-        ),
+        characters: candidates
+            .filter(
+                (character) =>
+                    observer === undefined ||
+                    canPerceivePrayerCaster(observer, character, now)
+            )
+            .map((character) =>
+                character.snapshot(now, character.id === observerId)
+            ),
         items: [...items],
         serverTime: now,
         tick,
@@ -63,14 +72,16 @@ export function findVisibleTarget(
 export function faceNearestTarget(
     actor: GameCharacter,
     characters: Iterable<GameCharacter>,
-    radius: number
+    radius: number,
+    now = Date.now()
 ): void {
     const target = [...characters]
         .filter(
             (character) =>
                 character.id !== actor.id &&
                 character.alive &&
-                character.trainingTarget === undefined
+                character.trainingTarget === undefined &&
+                canPerceivePrayerCaster(actor, character, now)
         )
         .filter((character) => canTargetByFaction(actor, character))
         .map((character) => ({
@@ -94,6 +105,9 @@ export function visibilityRadius(
     radius: number,
     now: number
 ): number {
+    if (!canPerceivePrayerCaster(observer, target, now)) {
+        return -1
+    }
     if (
         target.movement.mode !== 'sneaking' ||
         target.movement.dashUntil > now ||

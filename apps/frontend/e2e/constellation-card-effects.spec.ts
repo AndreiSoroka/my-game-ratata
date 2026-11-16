@@ -20,27 +20,36 @@ async function expectPrayerBase(list: Locator): Promise<void> {
     await expect(list.filter({ hasText: 'Лечит вас или союзника.' })).toHaveCount(1)
     await expect(list.filter({ hasText: 'Очищает могилы от тёмных сил.' })).toHaveCount(1)
     await expect(list.filter({ hasText: /^Воскрешает павших/i })).toHaveCount(1)
+    await expect(
+        list.filter({ hasText: 'За одну молитву действует на одну выбранную цель.' })
+    ).toHaveCount(1)
 }
 async function assertPrayerListUpdates(page: Page): Promise<void> {
     await inspectCard(page, 'prayer.root', 'Молитва')
     await expectPrayerBase(bullets(page))
-    await expect(bullets(page)).toHaveCount(3)
+    await expect(bullets(page)).toHaveCount(4)
     await expect(bullets(page).filter({ hasText: /нежит/i })).toHaveCount(0)
     await toggleBySpace(page, 'prayer.harm', true)
     await expect(card(page)).not.toContainText(/воскреш|очищает могилы|лечит вас/i)
     await inspectCard(page, 'prayer.root', 'Молитва')
     await expectPrayerBase(bullets(page))
     await expect(bullets(page).filter({ hasText: /урон.*нежит/i })).toHaveCount(1)
-    await expect(bullets(page)).toHaveCount(4)
-    await toggleBySpace(page, 'prayer.harm1', true)
+    await expect(bullets(page)).toHaveCount(5)
     await toggleBySpace(page, 'prayer.gift1', true)
+    for (const id of ['prayer.focus', 'prayer.radius1', 'prayer.radius2', 'prayer.omen1']) {
+        await toggleBySpace(page, id, true)
+    }
+    await expect(page.getByTestId('debug-mastery-level')).toHaveText('6')
+    await toggleBySpace(page, 'prayer.harm1', true)
     await inspectCard(page, 'prayer.root', 'Молитва')
-    await expect(bullets(page).filter({ hasText: /30\s*%/ })).toHaveCount(1)
-    await expect(bullets(page).filter({ hasText: /5\s*%/ })).toHaveCount(1)
+    await expect(bullets(page).filter({ hasText: /^Урон кары увеличен на 130%/ })).toHaveCount(1)
+    await expect(bullets(page).filter({ hasText: /^Лечение усилено на 130%/ })).toHaveCount(1)
     await toggleBySpace(page, 'prayer.harm', false)
     await inspectCard(page, 'prayer.root', 'Молитва')
-    await expect(bullets(page).filter({ hasText: /нежит|30\s*%/i })).toHaveCount(0)
-    await expect(bullets(page).filter({ hasText: /5\s*%/ })).toHaveCount(1)
+    await expect(bullets(page).filter({ hasText: /урон.*нежит|^Урон кары увеличен/i })).toHaveCount(
+        0
+    )
+    await expect(bullets(page).filter({ hasText: /^Лечение усилено на 130%/ })).toHaveCount(1)
     await toggleBySpace(page, 'prayer.revive', false)
     await expect(page.getByTestId('debug-build-feedback')).toHaveCSS('pointer-events', 'none')
     await inspectCard(page, 'prayer.root', 'Молитва')

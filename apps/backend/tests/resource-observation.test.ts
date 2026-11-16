@@ -1,7 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     FARM_SOW_ENERGY,
-    isPrayerAbility,
+    isPrayerAction,
     MOVEMENT_RULES,
     prayerManaCost,
     resourceNeedsRestoration,
@@ -45,7 +45,7 @@ describe('resource projection and affordability', () => {
     it('checks fractional balances at every existing cost boundary without spending', () => {
         const actor = abilityHero()
         for (const [id, definition] of Object.entries(ABILITY_DEFINITIONS)) {
-            if (isPrayerAbility(id)) {
+            if (isPrayerAction(id)) {
                 continue
             }
             const abilityId = id as keyof ReturnType<
@@ -92,6 +92,19 @@ describe('resource projection and affordability', () => {
             expect(resourceChecks(actor)[key]).toBe('energy')
             expect(actor.energy).toBe(cost - 0.001)
         }
+    })
+
+    it('distinguishes the five-mana Mother revival boundary from the twenty-mana Grave boundary', () => {
+        const actor = abilityHero()
+        actor.mana = 4.999
+        expect(resourceChecks(actor).prayers.pray.revive).toBe('mana')
+        actor.mana = 5
+        expect(resourceChecks(actor).prayers.pray.revive).toBe('ready')
+        expect(resourceChecks(actor).prayers.pray_grave.revive).toBe('mana')
+        actor.mana = 19.999
+        expect(resourceChecks(actor).prayers.pray_grave.revive).toBe('mana')
+        actor.mana = 20
+        expect(resourceChecks(actor).prayers.pray_grave.revive).toBe('ready')
     })
 
     it('keeps devotion affordable at zero mana and keeps ordinary weakened attacks legal', () => {

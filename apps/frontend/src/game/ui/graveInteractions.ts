@@ -2,7 +2,8 @@ import {
     type CharacterSnapshot,
     GRAVE_INTERACTION_RANGE,
     gravePurifyCastMs,
-    type PrayerAbilityId,
+    isMotherPrayer,
+    type PrayerActionId,
     type PrayerPreview,
     previewPrayerFromSnapshots,
     snapshotPrayerParameters,
@@ -28,10 +29,10 @@ export function gravePrayerPreview(
     canReach = true,
     characters: readonly CharacterSnapshot[] = [],
     canReachCharacter?: (target: CharacterSnapshot) => boolean,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): PrayerPreview {
     const parameters = snapshotPrayerParameters(player, abilityId)
-    if (abilityId !== 'pray')
+    if (!isMotherPrayer(abilityId))
         return {
             abilityId,
             intent: null,
@@ -43,9 +44,11 @@ export function gravePrayerPreview(
             includesSelf: false,
             unavailableReason: 'Эта молитва не очищает могилы.',
         }
-    const wave = previewPrayerFromSnapshots(player, characters, undefined, {
+    const wave = previewPrayerFromSnapshots(player, characters, grave.id, {
         abilityId,
         canReach: canReachCharacter,
+        graves: [grave],
+        canReachGrave: () => canReach,
     })
     return {
         abilityId,
@@ -53,22 +56,25 @@ export function gravePrayerPreview(
         manaCost: parameters.manaCost,
         radius: snapshotPrayerParameters(player, 'pray').radius,
         durationMs: parameters.durationMs,
-        harmfulTargets: wave.harmfulTargets,
-        includesAllies: wave.includesAllies,
-        includesSelf: wave.includesSelf,
-        unavailableReason: purificationUnavailable(player, grave, canReach),
+        harmfulTargets: abilityId === 'pray_woven' ? wave.harmfulTargets : 0,
+        harmfulTargetIds: abilityId === 'pray_woven' ? wave.harmfulTargetIds : [],
+        includesAllies: abilityId === 'pray_woven' && wave.includesAllies,
+        includesSelf: abilityId === 'pray_woven' && wave.includesSelf,
+        ...(parameters.cost === undefined ? {} : { cost: parameters.cost }),
+        unavailableReason: purificationUnavailable(player, grave, canReach, abilityId),
     }
 }
 
 function purificationUnavailable(
     player: CharacterSnapshot,
     grave: WorldGraveSnapshot,
-    canReach: boolean
+    canReach: boolean,
+    abilityId: PrayerActionId = 'pray'
 ): string | null {
     if (grave.phase === 'purified') return 'Могила уже очищена'
     const requirement = purificationQualification(player)
     if (requirement) return requirement
-    const availability = prayerAvailability(player)
+    const availability = prayerAvailability(player, abilityId)
     if (availability) return availability
     if (
         !canReach ||
@@ -81,11 +87,11 @@ function purificationQualification(player: CharacterSnapshot): string | null {
     if (!player.abilities?.known.includes('pray')) return 'Нужно изучить молитву'
     return null
 }
-function prayerAvailability(player: CharacterSnapshot): string | null {
+function prayerAvailability(player: CharacterSnapshot, abilityId: PrayerActionId): string | null {
     if (!player.alive || player.cooldowns.stunMsLeft > 0 || player.abilities?.casting)
         return 'Сейчас нельзя молиться'
-    if ((player.abilities?.cooldowns.pray ?? 0) > 0) return 'Молитва восстанавливается'
-    if (player.resourceChecks?.prayers.pray.purify_grave !== 'ready')
+    if ((player.abilities?.cooldowns[abilityId] ?? 0) > 0) return 'Молитва восстанавливается'
+    if (player.resourceChecks?.prayers[abilityId]?.purify_grave !== 'ready')
         return 'Недостаточно маны для молитвы'
     return null
 }

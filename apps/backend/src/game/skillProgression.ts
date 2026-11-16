@@ -11,8 +11,9 @@ import {
     masteryThreshold,
     masteryTotalExperience,
     PRAYER_SCHOOL_DEFINITIONS,
-    type PrayerAbilityId,
     prayerAbilityIds,
+    type PrayerActionId,
+    prayerSchoolId,
     profileForPrayer,
     type ProgressionSnapshot,
 } from '@my-game-ratata/contracts'
@@ -74,14 +75,15 @@ export function captureMasteryFactors(
 }
 export function canUseResurrection(
     actor: GameCharacter,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): boolean {
     return (
         actor.abilities.known.has(abilityId) &&
         profileForPrayer(abilityId).reviveTypes.length > 0 &&
         (actor.heroClass === 'cleric' ||
             actor.progression.masteries[
-                PRAYER_SCHOOL_DEFINITIONS[abilityId].constellationId
+                PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)]
+                    .constellationId
             ].level >= 5)
     )
 }
@@ -248,6 +250,7 @@ export function canPerformSkillAction(
         !actor.tags.has('offline') &&
         !actor.tags.has('state.retired') &&
         actor.stunUntil <= now &&
+        actor.abilities.casting === null &&
         !actor.isActionLocked(now)
     )
 }

@@ -1,6 +1,7 @@
 import { HERO_REVIVAL_WINDOW_MS } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { clearResourcePractice } from './resourcePractice'
 
@@ -20,6 +21,7 @@ export function applyCharacterDamage(
     character.hp = Math.max(0, character.hp - amount)
 
     if (character.hp <= 0) {
+        resetMartyrStreak(character)
         clearResourcePractice(character)
         character.deathSequence += 1
         character.alive = false

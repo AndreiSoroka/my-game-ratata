@@ -1,36 +1,27 @@
 import {
     type GameEventPayload,
-    MASTERY_REWARDS,
+    isMotherPrayer,
     PRAYER_SCHOOL_DEFINITIONS,
-    type PrayerAbilityId,
+    type PrayerActionId,
+    prayerSchoolId,
     profileForPrayer,
-    type ResurrectionParameters,
     REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
-import {
-    clearAbilityEffects,
-    createAbilityState,
-    type PrayerCast,
-} from './abilityState'
+import { clearAbilityEffects, createAbilityState } from './abilityState'
 import type { GameCharacter } from './character'
 import { resolveMiracle } from './deities'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
-import { advancePrayerCast } from './prayer'
+import { advancePrayerCast, beginPrayerCast } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
 import { revivalTargetEligible } from './prayerContext'
 import { completePrayer } from './prayerEffects'
-import { applyPrayerGift } from './prayerGifts'
 import { prayerParameters, setPrayerAvailableAt } from './prayerParameters'
 import { characterResurrectionParameters } from './resurrection'
-import {
-    awardMasteries,
-    canUseResurrection,
-    captureMasteryFactors,
-    createProgression,
-} from './skillProgression'
+import { completeReviveWithoutContext } from './resurrectionCompletion'
+import { canUseResurrection, createProgression } from './skillProgression'
 
 export function shouldRetireCharacter(
     character: GameCharacter,
@@ -84,14 +75,29 @@ export function beginRevive(
     target: GameCharacter,
     now: number,
     context?: AbilityContext,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): boolean {
+    context = authoritativeRevivalContext(caster, now, context)
+    if (isMotherPrayer(abilityId) && context === undefined) {
+        return false
+    }
     if (
         caster.abilities.casting !== null ||
         caster.isActionLocked(now) ||
         !canRevive(caster, target, now, context, abilityId)
     ) {
         return false
+    }
+    if (context !== undefined && isMotherPrayer(abilityId)) {
+        const events = beginPrayerCast(
+            caster,
+            { mode: 'revive', targetId: target.id },
+            { ...context, now },
+            abilityId
+        )
+        return events.some(
+            (event) => event.kind === 'cast' && event.phase === 'started'
+        )
     }
     caster.abilities.casting = {
         abilityId,
@@ -105,7 +111,7 @@ export function beginRevive(
             ).durationMs,
         startedAt: now,
         targetId: target.id,
-        patron: PRAYER_SCHOOL_DEFINITIONS[abilityId].deityId,
+        patron: PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)].deityId,
     }
     caster.abilities.lastPrayerAbilityId = abilityId
     caster.lockAction(
@@ -129,6 +135,7 @@ export function advanceRevive(
     random?: () => number,
     context?: AbilityContext
 ): GameEventPayload[] {
+    context = authoritativeRevivalContext(caster, now, context)
     const cast = caster.abilities.casting
     if (cast === null) {
         return []
@@ -147,7 +154,9 @@ export function advanceRevive(
         return []
     }
     caster.abilities.casting = null
-    caster.mana -= REVIVE_MANA_COST
+    if (!isMotherPrayer(cast.abilityId)) {
+        caster.mana -= REVIVE_MANA_COST
+    }
     const randomSource = random ?? context?.random ?? Math.random
     const roll = randomSource()
     const resurrection = characterResurrectionParameters(
@@ -191,71 +200,25 @@ export function advanceRevive(
     )
 }
 
-function completeReviveWithoutContext(
-    caster: GameCharacter,
-    target: GameCharacter,
-    cast: Pick<PrayerCast, 'abilityId' | 'receiptId'>,
+/** Compatibility callers reuse the room's authoritative geometry, never an invented map. */
+function authoritativeRevivalContext(
+    actor: GameCharacter,
     now: number,
-    outcome: ReturnType<typeof resolveMiracle>,
-    resurrection: ResurrectionParameters,
-    random?: () => number
-): GameEventPayload[] {
-    if (!outcome.success) {
-        return [
-            {
-                actorId: caster.id,
-                targetId: target.id,
-                kind: 'notice',
-                text: 'Божество не вернуло душу. Мана потрачена; можно повторить молитву, пока не истекло время.',
-            },
-        ]
+    context?: AbilityContext
+): AbilityContext | undefined {
+    if (context !== undefined) {
+        return { ...context, now }
     }
-    const factors = captureMasteryFactors(caster)
-    const lowHpGift =
-        caster.hp < caster.maxHp * 0.2 &&
-        caster.progression.constellations.hostileWound > 0 &&
-        caster.progression.constellations.lowHpFromHostile
-    const gift = applyPrayerGift(
-        caster,
-        target,
-        { mode: 'revive', targetId: target.id },
-        now,
-        outcome.quality,
-        cast.abilityId,
-        undefined,
-        resurrection,
-        random
-    )
-    return [
-        ...gift.events,
-        ...awardMasteries(
-            caster,
-            gift.meaningful
-                ? [
-                      {
-                          constellationId:
-                              PRAYER_SCHOOL_DEFINITIONS[cast.abilityId]
-                                  .constellationId,
-                          experience: MASTERY_REWARDS.resurrection,
-                      },
-                  ]
-                : [],
-            {
-                now,
-                random,
-                receiptId: cast.receiptId,
-                factors,
-                evidence:
-                    gift.meaningful && cast.abilityId === 'pray'
-                        ? [
-                              'prayer',
-                              'gift',
-                              ...(lowHpGift ? ['low_hp_gift'] : []),
-                          ]
-                        : [],
-            }
-        ),
-    ]
+    const environment = actor.prayerAuraEnvironment
+    const navigation = environment?.navigationFor(actor.locationId)
+    return navigation === undefined || environment === undefined
+        ? undefined
+        : {
+              navigation,
+              now,
+              characters: [...environment.characters()],
+              sameParty: environment.sameParty,
+          }
 }
 
 function canRevive(
@@ -263,7 +226,7 @@ function canRevive(
     target: GameCharacter,
     now: number,
     context: AbilityContext | undefined,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): boolean {
     return (
         (context === undefined ||
@@ -288,13 +251,13 @@ function canRevive(
 function revivalCasterReady(
     caster: GameCharacter,
     now: number,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): boolean {
     return (
         canUseResurrection(caster, abilityId) &&
         caster.alive &&
         !caster.tags.has('offline') &&
         caster.stunUntil <= now &&
-        caster.mana >= REVIVE_MANA_COST
+        caster.mana >= (isMotherPrayer(abilityId) ? 5 : REVIVE_MANA_COST)
     )
 }

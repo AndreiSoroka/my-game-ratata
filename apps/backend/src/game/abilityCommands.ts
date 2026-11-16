@@ -4,9 +4,9 @@ import {
     abilityIds,
     BARRIER_RULES,
     type GameEventPayload,
-    isPrayerAbility,
+    isPrayerAction,
     type LearnAbilityId,
-    type PrayerAbilityId,
+    type PrayerActionId,
     type PrayerIntent,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
@@ -65,7 +65,7 @@ export function parseAbilityCommand(
     if (record['type'] !== 'use_ability') {
         return undefined
     }
-    if (isPrayerAbility(id)) {
+    if (isPrayerAction(id)) {
         const intent = parsePrayerIntent(record['intent'])
         return intent === undefined
             ? undefined
@@ -77,7 +77,7 @@ export function parseAbilityCommand(
     }
     return {
         type: 'use_ability',
-        abilityId: id as Exclude<AbilityId, PrayerAbilityId>,
+        abilityId: id as Exclude<AbilityId, PrayerActionId>,
         ...reference,
     }
 }
@@ -276,7 +276,10 @@ function parseCharacterPrayerIntent(
     if (mode === 'devotion' && targetId === undefined) {
         return { mode }
     }
-    if (mode === 'harm' && (targetId === undefined || validId(targetId))) {
+    if (
+        (mode === 'harm' || mode === 'ward') &&
+        (targetId === undefined || validId(targetId))
+    ) {
         return targetId === undefined ? { mode } : { mode, targetId }
     }
     if ((mode === 'restore' || mode === 'revive') && validId(targetId)) {

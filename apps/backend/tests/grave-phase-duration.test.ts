@@ -36,7 +36,7 @@ describe('ordinary prayer duration in every grave phase', () => {
             })
             expect(f.actor.abilities.casting?.completesAt).toBe(now + duration)
             expect(f.advance(now + duration - 1)).toEqual([])
-            expect(f.actor.mana).toBe(120)
+            expect(f.actor.mana).toBe(115)
             expect(f.advance(now + duration)).toContainEqual(
                 expect.objectContaining({ kind: 'grave_purification_progress' })
             )
@@ -55,7 +55,7 @@ describe('ordinary prayer duration in every grave phase', () => {
         f.service.damage(source.id, 100, now + 1)
         expect(f.advance(now + 2_999)).toEqual([])
         expect(f.actor.abilities.casting?.completesAt).toBe(now + 3_000)
-        expect(f.actor.mana).toBe(120)
+        expect(f.actor.mana).toBe(115)
         expect(f.advance(now + 3_000)).toContainEqual(
             expect.objectContaining({ kind: 'grave_purification_progress' })
         )

@@ -19,7 +19,7 @@ it.each([0.199999, 0.2])(
     'uses the neutral twenty-percent threshold without a second roll: %s',
     (roll) => {
         const f = gravePrayerFixture()
-        const endsAt = 30_000
+        const endsAt = 33_000
         expect(deityMood('hearth', endsAt)).toBe('neutral')
         const random = vi.fn(() => roll)
         const start = { ...f.context(endsAt - 3000), random }
@@ -63,7 +63,7 @@ it('shares progress across interruptions, ruin/restoration and duplicate registr
     f.begin()
     f.actor.setMoveInput({ x: 1, y: 0 })
     f.advance(10_001)
-    expect(f.actor.mana).toBe(120)
+    expect(f.actor.mana).toBe(115)
     f.service.damage(prayerSource.id, 100, 10_002)
     f.service.update(10_002 + GRAVE_RESTORE_MS, f.spawnContext)
     f.service.register(prayerSource, [], 10_003 + GRAVE_RESTORE_MS)
@@ -76,6 +76,10 @@ it('shares progress across interruptions, ruin/restoration and duplicate registr
 it('resolves area gifts and multiple grave steps with one roll and per-result XP', () => {
     const f = gravePrayerFixture()
     f.actor.progression.constellations.opened.add('prayer.area')
+    f.actor.abilities.known.add('pray_woven')
+    for (const id of ['prayer.targets1', 'prayer.targets2']) {
+        f.actor.progression.constellations.opened.add(id)
+    }
     f.actor.hp -= 10
     const ally = abilityHero('vanguard')
     ally.locationId = prayerSource.locationId
@@ -89,10 +93,17 @@ it('resolves area gifts and multiple grave steps with one roll and per-result XP
     )
     const random = vi.fn(() => 0)
     const start = { ...f.context(10_000), random }
-    pray(f.actor, start.now, undefined, start, {
-        mode: 'purify_grave',
-        target: { kind: 'grave', id: prayerSource.id },
-    })
+    pray(
+        f.actor,
+        start.now,
+        undefined,
+        start,
+        {
+            mode: 'purify_grave',
+            target: { kind: 'grave', id: prayerSource.id },
+        },
+        'pray_woven'
+    )
     const events = advanceRevive(f.actor, () => undefined, 13_000, undefined, {
         ...start,
         now: 13_000,
@@ -101,12 +112,12 @@ it('resolves area gifts and multiple grave steps with one roll and per-result XP
     expect(
         events.filter((event) => event.kind === 'grave_purification_progress')
     ).toHaveLength(2)
-    expect(f.actor.mana).toBe(115)
+    expect(f.actor.mana).toBe(100)
     expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(80))
     expect(random).toHaveBeenCalledTimes(1)
 })
 
-it('retains single-target root prayer semantics until area prayer is learned', () => {
+it('keeps the unranked root prayer single-target without mixing in healing', () => {
     const f = gravePrayerFixture()
     f.actor.hp -= 10
     f.begin()
@@ -221,9 +232,11 @@ it('reveals own and other divine knowledge only through their independently lear
     ).toBe(true)
 })
 
-it('cancels a restored pinned recipient before payment, rolls or area effects', () => {
+it('cancels a restored pinned recipient before rolls or Woven effects without refunding the prepaid targets', () => {
     const actor = abilityHero()
     actor.progression.constellations.opened.add('prayer.area')
+    actor.progression.constellations.opened.add('prayer.targets1')
+    actor.abilities.known.add('pray_woven')
     const target = abilityHero('vanguard')
     const neighbor = abilityHero('vanguard')
     target.hp -= 10
@@ -234,7 +247,7 @@ it('cancels a restored pinned recipient before payment, rolls or area effects', 
         actor,
         {
             type: 'use_ability',
-            abilityId: 'pray',
+            abilityId: 'pray_woven',
             intent: { mode: 'restore', targetId: target.id },
         },
         context
@@ -251,7 +264,7 @@ it('cancels a restored pinned recipient before payment, rolls or area effects', 
     ).toMatchObject([
         { kind: 'cast', phase: 'interrupted', targetId: target.id },
     ])
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(110)
     expect(neighbor.hp).toBe(neighbor.maxHp - 10)
     expect(random).not.toHaveBeenCalled()
     expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))

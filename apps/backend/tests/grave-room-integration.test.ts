@@ -136,11 +136,14 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
         f.room.start()
         f.send(command)
         expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
+        expect(f.actor.mana).toBe(f.actor.config.resources.maxMana - 5)
         f.send({ type: 'cancel_prayer' })
+        expect(f.actor.mana).toBe(f.actor.config.resources.maxMana - 5)
         vi.advanceTimersByTime(10100)
         expect(f.grave()?.phase).toBe('active')
         expect(f.actor.mana).toBe(f.actor.config.resources.maxMana)
         f.send(command)
+        expect(f.actor.mana).toBe(f.actor.config.resources.maxMana - 5)
         vi.advanceTimersByTime(GRAVE_PURIFY_CAST_MS - 50)
         expect(f.grave()?.phase).toBe('active')
         const mana = f.actor.mana
@@ -148,7 +151,12 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
         f.room.stop()
         expect(f.grave()?.phase).toBe('active')
         expect(f.grave()?.purification?.completed).toBe(1)
-        expect(f.actor.mana).toBe(mana - 5)
+        expect(f.actor.mana).toBeCloseTo(
+            Math.min(
+                f.actor.config.resources.maxMana,
+                mana + f.actor.config.resources.manaRegenIdle * 0.05
+            )
+        )
     }, 30_000)
 })
 

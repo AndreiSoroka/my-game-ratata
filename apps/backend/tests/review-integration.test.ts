@@ -45,10 +45,9 @@ it.each([
     'far',
     'target-offline',
     'target-retired',
-    'mana',
     'knowledge',
 ] as const)(
-    'revival interrupts on %s without spending mana or practice',
+    'revival interrupts on %s without additional payment or practice',
     (reason) => {
         const { caster, target, context, start, finish } = rescue()
         start()
@@ -72,9 +71,6 @@ it.each([
         if (reason === 'target-retired') {
             target.tags.add('state.retired')
         }
-        if (reason === 'mana') {
-            caster.mana = 19
-        }
         if (reason === 'knowledge') {
             caster.abilities.known.delete('pray')
         }
@@ -89,6 +85,16 @@ it.each([
         expect(finish(4500)).toEqual([])
     }
 )
+
+it('completes an already paid Mother revival after losing the remaining mana', () => {
+    const { caster, target, start, finish } = rescue()
+    start()
+    expect(caster.mana).toBe(115)
+    caster.mana = 0
+    expect(finish()).toContainEqual(expect.objectContaining({ kind: 'revive' }))
+    expect(target.alive).toBe(true)
+    expect(caster.mana).toBe(0)
+})
 
 it.each([0, 0.99])(
     'two rescuers resolve sequentially with the first roll %s and revive only once',
@@ -112,8 +118,8 @@ it.each([0, 0.99])(
             1
         )
         expect(target.alive).toBe(true)
-        expect(caster.mana).toBe(100)
-        expect(second.mana).toBe(firstRoll === 0 ? 120 : 100)
+        expect(caster.mana).toBe(115)
+        expect(second.mana).toBe(115)
         expect(second.progression.masteries.prayer.level).toBe(
             firstRoll === 0 ? 0 : 2
         )
@@ -121,7 +127,7 @@ it.each([0, 0.99])(
 )
 
 it.each(['move_input', 'move_to'] as const)(
-    'ordinary %s freely cancels the pending channel and emits one interruption',
+    'ordinary %s cancels the prepaid channel and emits one interruption',
     (type) => {
         vi.useFakeTimers()
         vi.setSystemTime(1500)
@@ -154,7 +160,7 @@ it.each(['move_input', 'move_to'] as const)(
             )
         ).toHaveLength(1)
         expect(finish()).toEqual([])
-        expect(caster.mana).toBe(120)
+        expect(caster.mana).toBe(115)
         expect(target.alive).toBe(false)
     }
 )
@@ -167,7 +173,7 @@ it('disconnect cleanup cancels resurrection before a reconnect can reuse its cha
     )
     expect(stopCharacterMovement(caster, 1500)).toEqual([])
     expect(finish()).toEqual([])
-    expect(caster.mana).toBe(120)
+    expect(caster.mana).toBe(115)
     expect(target.alive).toBe(false)
 })
 
@@ -197,7 +203,7 @@ it('legacy revive shares prayer cooldown and cannot start until the normal bound
         expect.objectContaining({ kind: 'cast', phase: 'started' })
     )
     expect(caster.abilities.casting?.targetId).toBe(target.id)
-    expect(caster.mana).toBe(120)
+    expect(caster.mana).toBe(115)
 })
 
 it('resurrection of a victim killed only by friendly damage grants no practice', () => {
@@ -230,7 +236,7 @@ it('resurrection of a victim killed only by friendly damage grants no practice',
         { ...context, now: 4000 }
     )
     expect(victim.alive).toBe(true)
-    expect(caster.mana).toBe(100)
+    expect(caster.mana).toBe(115)
     expect(caster.progression.masteries.prayer.experience).toBe(0n)
     expect(caster.progression.masteries.prayer.level).toBe(0)
 })

@@ -39,7 +39,7 @@ it('scripted support priest submits the same paid contextual prayer and respects
     const { world, published, context } = npcWorld([actor, wounded])
     const controller = new ClericController()
     controller.update(actor, world as GameRoom, 1000)
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(115)
     published.push(
         ...advanceRevive(
             actor,
@@ -57,20 +57,41 @@ it('scripted support priest submits the same paid contextual prayer and respects
     controller.update(actor, world as GameRoom, 3999)
     expect(actor.mana).toBe(115)
 })
-it('support policy will not silently burn a friendly bystander and never takes over a human', () => {
+it('chooses a safe basic prayer over mixed harm and never takes over a human', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     actor.hp -= 10
     actor.progression.constellations.opened.add('prayer.harm')
+    actor.abilities.known.add('pray_woven')
+    for (const id of ['prayer.area', 'prayer.targets1']) {
+        actor.progression.constellations.opened.add(id)
+    }
     const undead = abilityHero('vanguard', 'undead')
-    const { world } = npcWorld([actor, undead])
+    const { world, context } = npcWorld([actor, undead])
     const request = vi.spyOn(world, 'requestAbility')
     const controller = new ClericController()
     controller.update(actor, world as GameRoom, 1000)
-    expect(request).not.toHaveBeenCalled()
-    undead.position.x += 100
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+        actor,
+        {
+            type: 'use_ability',
+            abilityId: 'pray',
+            intent: { mode: 'restore', targetId: actor.id },
+        },
+        1000
+    )
+    const hp = undead.hp
+    advanceRevive(
+        actor,
+        () => undefined,
+        4000,
+        () => 0,
+        { ...context, now: 4000 }
+    )
+    expect(undead.hp).toBe(hp)
+    expect(actor.hp).toBeGreaterThan(actor.maxHp - 10)
     actor.soul.controlSource = 'human'
-    controller.update(actor, world as GameRoom, 1000)
-    expect(request).not.toHaveBeenCalled()
+    controller.update(actor, world as GameRoom, 5000)
+    expect(request).toHaveBeenCalledTimes(1)
 })
 it('skeleton policy only chooses a heavy-strike intention and leaves combat mutation to the common port', () => {
     const actor = abilityHero('vanguard', 'undead', 'mob1')

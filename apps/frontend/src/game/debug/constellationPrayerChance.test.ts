@@ -10,7 +10,7 @@ it('describes all prayer nodes with independent readable complete mathematical l
     const prayers = fullConstellationCatalog.filter((node) =>
         node.constellationId.startsWith('prayer')
     )
-    expect(prayers).toHaveLength(29)
+    expect(prayers).toHaveLength(43)
     for (const node of prayers) {
         const result = description(node.id)
         expect(result.summary.length).toBeGreaterThan(0)
@@ -80,7 +80,7 @@ it('keeps school-specific resurrection resources and ordinary modifiers determin
         expect(description(id).formulas[0]).toBe('100')
     expect(description('prayer.last_light').formulas).toContain('H < 0,20 × N')
     expect(description('prayer.last_light').formulas).toContain(
-        '1 + 0,05 × A + 0,05 × D + 0,10 × E'
+        '1 + 1,30 × A + 2,50 × D + 10 × E + 0,15 × F'
     )
     expect(description('prayer.area').formulas).toContain('r < G / 100')
     const first = description('prayer.root')

@@ -21,6 +21,7 @@ import {
     workerContactAllowed,
     type WorkerGuildGateway,
 } from './guildWorkerRequests'
+import { resetMartyrStreak } from './martyr'
 import type { QuestGoldAwarder } from './questRewards'
 export { guildQuests } from './guildRules'
 export type { WorkerGuildGateway } from './guildWorkerRequests'
@@ -283,6 +284,10 @@ export class GuildService {
             return 'Казначейство не подтвердило выплату. Попробуйте ещё раз.'
         }
         job.rewardShares = result.shares
+        const submitter = characters.get(submitterId)
+        if (submitter !== undefined) {
+            resetMartyrStreak(submitter)
+        }
         job.completed = true
         if (job.definition.workRequest !== undefined) {
             this.workers?.complete(job.definition.id, key)

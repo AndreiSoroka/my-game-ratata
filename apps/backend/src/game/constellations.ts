@@ -29,6 +29,9 @@ export function initializeConstellations(actor: GameCharacter): void {
 
 export function syncAbilityConstellations(actor: GameCharacter): void {
     const known = actor.abilities.known
+    if (hasStar(actor, 'prayer.area')) {
+        known.add('pray_woven')
+    }
     for (const [ability, path] of [
         ['pray', 'prayer'],
         ['pray_road', 'prayer_road'],
@@ -120,6 +123,7 @@ export function finishConstellationAction(
         events.push(discoveryNotice(actor, node.name))
     }
     events.push(...discoverLastLight(actor, action))
+    syncAbilityConstellations(actor)
     return events
 }
 

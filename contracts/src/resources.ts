@@ -1,4 +1,4 @@
-import type { AbilityId, PrayerAbilityId, PrayerMode } from './abilities'
+import type { AbilityId, PrayerActionId, PrayerMode } from './abilities'
 import { type ExactHealthSnapshot, healthPercent } from './health'
 
 export type ResourceSnapshot =
@@ -9,8 +9,8 @@ export type ResourceCheck = 'ready' | 'mana' | 'energy'
 
 /** Private affordability hints; commands always validate the current server state. */
 export interface CharacterResourceChecks {
-    abilities: Record<Exclude<AbilityId, PrayerAbilityId>, ResourceCheck>
-    prayers: Record<PrayerAbilityId, Record<PrayerMode, ResourceCheck>>
+    abilities: Record<Exclude<AbilityId, PrayerActionId>, ResourceCheck>
+    prayers: Record<PrayerActionId, Record<PrayerMode, ResourceCheck>>
     dash: ResourceCheck
     sow: ResourceCheck
     steal: ResourceCheck

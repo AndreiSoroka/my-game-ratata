@@ -1,7 +1,8 @@
 import {
     ABILITY_DEFINITIONS,
+    prayerManaCost,
+    prayerSchoolId,
     resolveResurrectionParameters,
-    REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
@@ -18,14 +19,14 @@ export function revivalBuild(
     context: PrayerBuildContext
 ): Pick<PrayerBuildResult, 'effects' | 'metrics'> {
     const parameters = resolveResurrectionParameters(context.ability, activeIds, context.mood)
-    const bonuses = resolveConstellationBonuses(activeIds)
+    const bonuses = resolveConstellationBonuses(activeIds, context.lowHealthEligible)
     const duration = Math.round(
         ABILITY_DEFINITIONS[context.ability].windupMs *
-            (context.ability === 'pray' ? bonuses.prayerDurationMultiplier : 1)
+            (prayerSchoolId(context.ability) === 'pray' ? bonuses.prayerDurationMultiplier : 1)
     )
     const minimum = parameters.minimumResource > 0 ? '; минимум 1 каждого ресурса' : ''
     const metrics = [
-        row('Цена воскрешения', `${REVIVE_MANA_COST} MP`),
+        row('Цена воскрешения', `${prayerManaCost('revive', context.ability)} MP за цель`),
         row('Время воскрешения', `${duration} мс`),
         row(
             'HP после воскрешения',
@@ -36,7 +37,11 @@ export function revivalBuild(
             `${percent(parameters.resourceFraction)} максимума${minimum}`
         ),
     ]
-    const effects = ['Воскрешение: одна подходящая павшая цель.']
+    const effects = [
+        prayerSchoolId(context.ability) === 'pray'
+            ? `Воскрешение: в пределах общего лимита ${String(bonuses.targetLimit)} целей.`
+            : 'Воскрешение: одна подходящая павшая цель.',
+    ]
     if (parameters.angelicChance > 0) {
         metrics.push(
             row(

@@ -6,6 +6,7 @@ import type {
 
 import type { GameCharacter } from './character'
 import { addInventoryItem, type InventoryItemInstance } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
@@ -64,6 +65,7 @@ export function pickupWorldItem(
     ) {
         return []
     }
+    resetMartyrStreak(actor)
     items.delete(item.id)
     return [
         { actorId: actor.id, itemId: item.item.itemId, kind: 'item_pickup' },

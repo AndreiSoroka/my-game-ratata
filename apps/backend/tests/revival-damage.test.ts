@@ -58,7 +58,7 @@ it('positive nonlethal damage interrupts a revival once without spending complet
         false
     )
     expect(finish()).toEqual([])
-    expect(caster.mana).toBe(120)
+    expect(caster.mana).toBe(115)
     expect(caster.progression.masteries.prayer.experience).toBe(0n)
     expect(target.alive).toBe(false)
 })
@@ -77,7 +77,7 @@ it('a barrier preserves the channel while it absorbs the whole hit', () => {
     expect(finish()).toContainEqual(
         expect.objectContaining({ kind: 'revive', targetId: target.id })
     )
-    expect(caster.mana).toBe(100)
+    expect(caster.mana).toBe(115)
 })
 
 it('lethal damage emits one interruption and one death and never completes the abandoned rescue', () => {
@@ -90,6 +90,6 @@ it('lethal damage emits one interruption and one death and never completes the a
         result.events.filter((event) => event.kind === 'death')
     ).toHaveLength(1)
     expect(finish()).toEqual([])
-    expect(caster.mana).toBe(120)
+    expect(caster.mana).toBe(115)
     expect(target.alive).toBe(false)
 })

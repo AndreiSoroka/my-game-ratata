@@ -58,7 +58,7 @@ it('combines the active prayer without changing healing or mixing conditional an
         label: 'MP и EN после воскрешения',
         value: '1% максимума; минимум 1 каждого ресурса',
     })
-    expect(full.build!.metrics).toContainEqual({ label: 'Время воскрешения', value: '2700 мс' })
+    expect(full.build!.metrics).toContainEqual({ label: 'Время воскрешения', value: '1200 мс' })
     expect(calculate('prayer.root', all, 'benevolent').metrics).toContainEqual({
         label: 'Шанс воскрешения',
         value: '95%',
@@ -70,7 +70,7 @@ it('combines the active prayer without changing healing or mixing conditional an
     expect(metric('prayer_grave.revive', 'Ресурсы после воскрешения')).toContain('50% максимума')
 })
 it('keeps level12 individual gates while the ordinary Kara chain costs only its three openings', () => {
-    expect(constellationStarPlan('prayer.harm2', 'cleric').levels.prayer).toBe(3)
+    expect(constellationStarPlan('prayer.harm2', 'cleric').levels.prayer).toBe(12)
     expect(constellationStarPlan('prayer.revive_master', 'cleric').levels.prayer).toBe(12)
     expect(constellationStarPlan('prayer.revive_angelic', 'cleric').levels.prayer).toBe(12)
     expect(constellationStarPlan('prayer.revive_stable', 'cleric').levels.prayer).toBe(3)

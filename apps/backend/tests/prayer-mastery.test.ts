@@ -1,10 +1,15 @@
 import {
     parseMasteryExperience,
     type PrayerAbilityId,
+    type PrayerActionId,
+    type PrayerIntent,
 } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
+import { handleAbilityCommand } from '../src/game/abilityCommands'
+import type { AbilityContext } from '../src/game/abilityContext'
 import { GameCharacter } from '../src/game/character'
+import { advanceRevive } from '../src/game/characterLife'
 import { completePrayer } from '../src/game/prayerEffects'
 import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
 import { captureMasteryFactors } from '../src/game/skillProgression'
@@ -15,17 +20,19 @@ import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 it('awards thirty XP per useful area recipient and none for empty recipients', () => {
     const caster = abilityHero()
     caster.progression.constellations.opened.add('prayer.area')
+    caster.abilities.known.add('pray_woven')
+    for (const id of ['prayer.targets1', 'prayer.targets2']) {
+        caster.progression.constellations.opened.add(id)
+    }
     const targets = Array.from({ length: 5 }, () => abilityHero('vanguard'))
     for (const target of targets.slice(0, 4)) {
         target.hp -= 10
     }
-    const events = completePrayer(
+    const events = castAction(
         caster,
         { mode: 'restore', targetId: targets.at(0)?.id ?? 'missing' },
         abilityContext([caster, ...targets], 30_000),
-        0,
-        1,
-        'area:four'
+        'pray_woven'
     )
     expect(events.filter((event) => event.kind === 'heal')).toHaveLength(4)
     expect(masteryExperience(caster)).toBe(prayerXp(120))
@@ -34,13 +41,21 @@ it('awards thirty XP per useful area recipient and none for empty recipients', (
         experience: prayerXp(20),
     })
     expect(caster.progression.masteries.prayer_road.experience).toBe(0n)
+    expect(caster.mana).toBe(100)
 })
 
 it('freezes one conflict factor before self recovery, then adds every gift, victim and grave contribution', () => {
     const f = gravePrayerFixture()
-    for (const id of ['prayer.area', 'prayer.harm']) {
+    for (const id of [
+        'prayer.area',
+        'prayer.harm',
+        'prayer.targets1',
+        'prayer.targets2',
+        'prayer.targets3',
+    ]) {
         f.actor.progression.constellations.opened.add(id)
     }
+    f.actor.abilities.known.add('pray_woven')
     f.actor.hp -= 10
     f.actor.progression.masteries.life.experience = parseMasteryExperience('80')
     f.actor.progression.constellations.hostileWound = 10
@@ -77,13 +92,11 @@ it('freezes one conflict factor before self recovery, then adds every gift, vict
         )
     }
     expect(captureMasteryFactors(f.actor).prayer).toBe(1)
-    const events = completePrayer(
+    const events = castAction(
         f.actor,
         { mode: 'restore', targetId: ally.id },
         f.context(30_000),
-        0,
-        1,
-        'combined:all'
+        'pray_woven'
     )
     expect(events.filter((event) => event.kind === 'heal')).toHaveLength(2)
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(2)
@@ -97,6 +110,7 @@ it('freezes one conflict factor before self recovery, then adds every gift, vict
     // 2×30 gifts + 2×70 hostile victims + 10 ordinary step + 150 final step.
     // Self recovery raises Life first, but cannot change this prayer's frozen multiplier.
     expect(masteryExperience(f.actor)).toBe(prayerXp(360))
+    expect(f.actor.mana).toBe(90)
 })
 
 it.each([
@@ -122,15 +136,20 @@ it.each([
                 recordUsefulResourceSpend(target, resource, 20)
             }
             const before = target[resource]
-            const events = completePrayer(
-                caster,
-                { mode: 'restore', targetId: target.id },
-                abilityContext([caster, target], 30_000),
-                0,
-                1,
-                `power:${abilityId}:${String(level)}`,
-                abilityId
-            )
+            const context = abilityContext([caster, target], 30_000)
+            const intent = { mode: 'restore', targetId: target.id } as const
+            const events =
+                abilityId === 'pray'
+                    ? castAction(caster, intent, context, abilityId)
+                    : completePrayer(
+                          caster,
+                          intent,
+                          context,
+                          0,
+                          1,
+                          `power:${abilityId}:${String(level)}`,
+                          abilityId
+                      )
             expect(target[resource] - before).toBe(power)
             expect(events).toContainEqual(
                 expect.objectContaining({ kind: 'heal', amount: power })
@@ -138,6 +157,34 @@ it.each([
         }
     }
 )
+
+function castAction(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    context: AbilityContext,
+    abilityId: PrayerActionId
+) {
+    const events = handleAbilityCommand(
+        actor,
+        { type: 'use_ability', abilityId, intent },
+        context
+    )
+    expect(events[0]?.phase).toBe('started')
+    const cast = actor.abilities.casting
+    if (cast === null) {
+        throw new Error('Expected a paid prayer channel')
+    }
+    return [
+        ...events,
+        ...advanceRevive(
+            actor,
+            (id) => context.characters.find((target) => target.id === id),
+            cast.completesAt,
+            context.random,
+            { ...context, now: cast.completesAt }
+        ),
+    ]
+}
 
 it.each(['pray_road', 'pray_lantern'] as const)(
     'does not pay %s twice for a recovered useful deficit',

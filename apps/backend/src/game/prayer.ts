@@ -1,26 +1,42 @@
 import {
-    ABILITY_DEFINITIONS,
     type GameEventPayload,
-    PRAYER_SCHOOL_DEFINITIONS,
-    type PrayerAbilityId,
+    isMotherPrayer,
+    type PrayerActionId,
     type PrayerIntent,
     prayerManaCost,
 } from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
-import type { PrayerCast } from './abilityState'
 import type { GameCharacter } from './character'
 import { beginRevive } from './characterLife'
+import { constellationModifiers } from './constellationModifiers'
 import { resolveMiracle } from './deities'
+import {
+    advanceMotherPrayerTicks,
+    completeMotherPrayer,
+} from './motherPrayerEffects'
+import { hasMotherPrayerAura } from './motherPrayerPlan'
+import {
+    ensurePrayerAuraEnvironment,
+    hasPrayerAdvantage,
+    prayerCheckSample,
+} from './prayerAuras'
 import { cancelPrayerCast, releasePrayerCast } from './prayerCancellation'
+import {
+    beginPrayerCast,
+    canStartPrayer,
+    decorativePrayer,
+    prayerTarget,
+} from './prayerCastStart'
+import {
+    type ActivePrayerCast,
+    prayerChannelValid,
+} from './prayerChannelValidation'
 import { resolvePrayerIntent, validPrayerIntent } from './prayerContext'
 import { completePrayer } from './prayerEffects'
-import {
-    prayerAvailableAt,
-    prayerParameters,
-    setPrayerAvailableAt,
-} from './prayerParameters'
-import { canPerformSkillAction } from './skillProgression'
+import { prayerParameters, setPrayerAvailableAt } from './prayerParameters'
+export { beginPrayerCast } from './prayerCastStart'
+export { validatePrayerChannel } from './prayerChannelValidation'
 
 export function pray(
     actor: GameCharacter,
@@ -28,191 +44,78 @@ export function pray(
     random?: () => number,
     context?: AbilityContext,
     pinnedIntent?: PrayerIntent,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): GameEventPayload[] {
     if (context === undefined) {
         return abilityNotice(actor, 'Выберите цель молитвы.')
     }
+    const actualContext = {
+        ...context,
+        now,
+        ...(random !== undefined ? { random } : {}),
+    }
+    ensurePrayerAuraEnvironment(actor, actualContext)
     const intent =
         pinnedIntent ??
-        resolvePrayerIntent(actor, context, undefined, abilityId)
-    if (
-        !canPerformSkillAction(actor, now) ||
-        !validPrayerIntent(actor, intent, context, abilityId) ||
-        actor.abilities.casting !== null
-    ) {
+        resolvePrayerIntent(actor, actualContext, undefined, abilityId)
+    if (!canStartPrayer(actor, now, abilityId)) {
+        return abilityNotice(
+            actor,
+            'Молитва сейчас недоступна: проверьте состояние и откат.'
+        )
+    }
+    if (isMotherPrayer(abilityId)) {
+        return startMotherPrayer(actor, intent, actualContext, abilityId)
+    }
+    return startOtherPrayer(actor, intent, actualContext, abilityId)
+}
+
+function startMotherPrayer(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    context: AbilityContext,
+    abilityId: PrayerActionId
+): GameEventPayload[] {
+    const cosmetic =
+        intent.mode === 'devotion' &&
+        !hasMotherPrayerAura(actor) &&
+        !constellationModifiers(actor).prayerLastLight
+    return cosmetic
+        ? decorativePrayer(actor, context.now, abilityId)
+        : beginPrayerCast(actor, intent, context, abilityId)
+}
+
+function startOtherPrayer(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    context: AbilityContext,
+    abilityId: PrayerActionId
+): GameEventPayload[] {
+    if (!validPrayerIntent(actor, intent, context, abilityId)) {
         return abilityNotice(
             actor,
             'Молитва сейчас не найдёт подходящего ответа.'
         )
     }
-    if (now < prayerAvailableAt(actor, abilityId)) {
-        return abilityNotice(actor, 'Молитва ещё восстанавливается.')
-    }
-    if (actor.mana < prayerManaCost(intent.mode)) {
+    if (actor.mana < prayerManaCost(intent.mode, abilityId)) {
         return abilityNotice(actor, 'Недостаточно маны для молитвы.')
     }
     if (intent.mode === 'revive') {
-        return startRevivalPrayer(actor, intent, context, abilityId)
+        return startOtherRevival(actor, intent.targetId, context, abilityId)
     }
-    if (intent.mode === 'devotion') {
-        setPrayerAvailableAt(
-            actor,
-            abilityId,
-            now + ABILITY_DEFINITIONS[abilityId].cooldownMs
-        )
-        actor.abilities.lastPrayerAbilityId = abilityId
-        actor.lockAction(now, 400)
-        actor.setAnimation('idle', now, 400)
-        return [
-            {
-                kind: 'cast',
-                actorId: actor.id,
-                abilityId,
-                phase: 'completed',
-            },
-        ]
-    }
-    // Randomness is consumed only by a valid completed attempt.
-    return beginPrayerCast(
-        actor,
-        intent,
-        {
-            ...context,
-            ...(random !== undefined ? { random } : {}),
-        },
-        abilityId
-    )
+    return intent.mode === 'devotion'
+        ? decorativePrayer(actor, context.now, abilityId)
+        : beginPrayerCast(actor, intent, context, abilityId)
 }
 
-export function beginPrayerCast(
+function startOtherRevival(
     actor: GameCharacter,
-    intent: PrayerIntent,
+    targetId: string | undefined,
     context: AbilityContext,
-    abilityId: PrayerAbilityId = 'pray'
-): GameEventPayload[] {
-    if (
-        intent.mode === 'devotion' ||
-        intent.mode === 'revive' ||
-        actor.abilities.casting !== null ||
-        !canPerformSkillAction(actor, context.now) ||
-        !validPrayerIntent(actor, intent, context, abilityId) ||
-        context.now < prayerAvailableAt(actor, abilityId) ||
-        actor.mana < prayerManaCost(intent.mode)
-    ) {
-        return abilityNotice(actor, 'Молитву сейчас нельзя начать.')
-    }
-    const durationMs = prayerParameters(
-        actor,
-        context.navigation.grid.tileWidth,
-        abilityId
-    ).durationMs
-    const now = context.now
-    actor.clearPath()
-    actor.setMoveInput({ x: 0, y: 0 })
-    actor.abilities.casting = {
-        mode: intent.mode === 'purify_grave' ? 'purify_grave' : 'prayer',
-        abilityId,
-        intent: structuredClone(intent),
-        targetId:
-            intent.mode === 'purify_grave'
-                ? intent.target.id
-                : (intent.targetId ?? actor.id),
-        receiptId: `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`,
-        startedAt: now,
-        completesAt: now + durationMs,
-        patron: PRAYER_SCHOOL_DEFINITIONS[abilityId].deityId,
-        origin: { ...actor.position },
-        locationId: actor.locationId,
-        hpAtStart: actor.hp,
-    }
-    actor.abilities.lastPrayerAbilityId = abilityId
-    actor.lockAction(now, durationMs)
-    actor.setAnimation('attack', now, durationMs)
-    return [
-        {
-            kind: 'cast',
-            actorId: actor.id,
-            abilityId,
-            phase: 'started',
-            ...prayerTarget(intent),
-            expiresAt: now + durationMs,
-            durationMs,
-        },
-    ]
-}
-
-export function advancePrayerCast(
-    actor: GameCharacter,
-    now: number,
-    context?: AbilityContext,
-    random?: () => number
-): GameEventPayload[] {
-    const cast = actor.abilities.casting
-    if (cast?.mode !== 'prayer' && cast?.mode !== 'purify_grave') {
-        return []
-    }
-    if (
-        context === undefined ||
-        prayerInterrupted(actor, cast, now) ||
-        !validPrayerIntent(
-            actor,
-            cast.intent,
-            { ...context, now },
-            cast.abilityId
-        )
-    ) {
-        return cancelPrayerCast(actor, now)
-    }
-    if (now < cast.completesAt) {
-        return []
-    }
-    if (actor.mana < prayerManaCost(cast.intent.mode)) {
-        return cancelPrayerCast(actor, now)
-    }
-    // Release before resolving events: a repeated tick cannot resolve this cast again.
-    releasePrayerCast(actor, now)
-    actor.mana -= prayerManaCost(cast.intent.mode)
-    setPrayerAvailableAt(actor, cast.abilityId, now)
-    const randomSource = random ?? context.random ?? Math.random
-    const roll = randomSource()
-    const outcome = resolveMiracle(actor, now, () => roll, cast.patron)
-    return [
-        {
-            kind: 'cast',
-            actorId: actor.id,
-            abilityId: cast.abilityId,
-            phase: 'completed',
-            ...prayerTarget(cast.intent),
-        },
-        ...completePrayer(
-            actor,
-            cast.intent,
-            { ...context, now, random: randomSource },
-            roll,
-            outcome.quality,
-            cast.receiptId,
-            cast.abilityId
-        ),
-    ]
-}
-
-function prayerTarget(intent: PrayerIntent) {
-    return intent.mode === 'purify_grave'
-        ? { target: intent.target }
-        : intent.targetId === undefined
-          ? {}
-          : { targetId: intent.targetId }
-}
-
-function startRevivalPrayer(
-    actor: GameCharacter,
-    intent: PrayerIntent,
-    context: AbilityContext,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId
 ): GameEventPayload[] {
     const target = context.characters.find(
-        (candidate) => candidate.id === intent.targetId
+        (candidate) => candidate.id === targetId
     )
     if (
         target === undefined ||
@@ -229,43 +132,114 @@ function startRevivalPrayer(
             statusId: 'reviving',
             phase: 'started',
             expiresAt:
-                actor.abilities.casting?.completesAt ??
                 context.now +
-                    prayerParameters(
-                        actor,
-                        context.navigation.grid.tileWidth,
-                        abilityId
-                    ).durationMs,
+                prayerParameters(
+                    actor,
+                    context.navigation.grid.tileWidth,
+                    abilityId
+                ).durationMs,
         },
     ]
 }
 
-function prayerInterrupted(
+export function advancePrayerCast(
     actor: GameCharacter,
-    cast: Extract<PrayerCast, { mode: 'prayer' | 'purify_grave' }>,
-    now: number
-): boolean {
-    return (
-        !actor.alive ||
-        actor.tags.has('offline') ||
-        actor.tags.has('state.retired') ||
-        actor.stunUntil > now ||
-        actor.locationId !== cast.locationId ||
-        actor.hp < cast.hpAtStart ||
-        channelMoved(actor, cast)
-    )
+    now: number,
+    context?: AbilityContext,
+    random?: () => number
+): GameEventPayload[] {
+    const cast = actor.abilities.casting
+    if (cast?.mode !== 'prayer' && cast?.mode !== 'purify_grave') {
+        return []
+    }
+    if (context === undefined) {
+        return cancelPrayerCast(actor, now)
+    }
+    const actualContext = {
+        ...context,
+        now,
+        ...(random !== undefined ? { random } : {}),
+    }
+    if (!prayerChannelValid(actor, cast, actualContext)) {
+        return cancelPrayerCast(actor, now)
+    }
+    const ticks = advanceMotherPrayerTicks(actor, cast, actualContext)
+    if (now < cast.completesAt) {
+        return ticks
+    }
+    return [
+        ...ticks,
+        ...(cast.plan === undefined
+            ? finishOtherPrayer(actor, cast, actualContext)
+            : finishMotherPrayer(actor, cast, actualContext)),
+    ]
 }
 
-function channelMoved(
+function finishMotherPrayer(
     actor: GameCharacter,
-    cast: Extract<PrayerCast, { mode: 'prayer' | 'purify_grave' }>
-): boolean {
-    const input = actor.getMoveInput()
-    return (
-        input.x !== 0 ||
-        input.y !== 0 ||
-        actor.hasPath() ||
-        actor.position.x !== cast.origin.x ||
-        actor.position.y !== cast.origin.y
-    )
+    cast: ActivePrayerCast,
+    context: AbilityContext
+): GameEventPayload[] {
+    const plan = cast.plan
+    if (plan === undefined) {
+        return []
+    }
+    plan.resolving = true
+    try {
+        const events = completeMotherPrayer(actor, cast, context)
+        actor.abilities.prayerAurasSuppressed = false
+        setPrayerAvailableAt(
+            actor,
+            cast.abilityId,
+            context.now + (plan.lastLight ? 10000 : 0)
+        )
+        return [
+            {
+                kind: 'cast',
+                actorId: actor.id,
+                abilityId: cast.abilityId,
+                phase: 'completed',
+                ...prayerTarget(cast.intent),
+            },
+            ...events,
+        ]
+    } finally {
+        releasePrayerCast(actor, context.now)
+    }
+}
+
+function finishOtherPrayer(
+    actor: GameCharacter,
+    cast: ActivePrayerCast,
+    context: AbilityContext
+): GameEventPayload[] {
+    const cost = prayerManaCost(cast.intent.mode, cast.abilityId)
+    if (actor.mana < cost) {
+        return cancelPrayerCast(actor, context.now)
+    }
+    const random = context.random ?? Math.random
+    const advantage = hasPrayerAdvantage(actor, context.now)
+    const roll = prayerCheckSample(random, advantage)
+    releasePrayerCast(actor, context.now)
+    actor.mana -= cost
+    setPrayerAvailableAt(actor, cast.abilityId, context.now)
+    const outcome = resolveMiracle(actor, context.now, () => roll, cast.patron)
+    return [
+        {
+            kind: 'cast',
+            actorId: actor.id,
+            abilityId: cast.abilityId,
+            phase: 'completed',
+            ...prayerTarget(cast.intent),
+        },
+        ...completePrayer(
+            actor,
+            cast.intent,
+            { ...context, random: () => prayerCheckSample(random, advantage) },
+            roll,
+            outcome.quality,
+            cast.receiptId,
+            cast.abilityId
+        ),
+    ]
 }

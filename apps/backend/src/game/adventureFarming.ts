@@ -20,6 +20,7 @@ import {
     consumeInventoryItems,
     createItemInstance,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
@@ -152,6 +153,7 @@ function sow(
         'energy',
         actor.drainEnergy(FARM_SOW_ENERGY)
     )
+    resetMartyrStreak(actor)
     plot.phase = 'growing'
     plot.readyAt = now + FARM_GROW_MS
     state.gatherAllowedAt = now + FARM_ACTION_COOLDOWN_MS
@@ -189,6 +191,7 @@ function harvest(
         )
         return []
     }
+    resetMartyrStreak(actor)
     plot.phase = 'bare'
     plot.readyAt = 0
     state.gatherAllowedAt = now + FARM_ACTION_COOLDOWN_MS

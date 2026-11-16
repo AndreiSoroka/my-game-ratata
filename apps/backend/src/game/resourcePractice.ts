@@ -1,4 +1,5 @@
 import type { GameCharacter } from './character'
+import { effectiveMaxMana } from './effectiveResources'
 import { canTargetByFaction } from './factions'
 
 export type PracticeResource = 'mana' | 'energy'
@@ -22,7 +23,7 @@ function missingResource(
 ): number {
     const maximum =
         resource === 'mana'
-            ? actor.config.resources.maxMana
+            ? effectiveMaxMana(actor)
             : actor.config.resources.maxEnergy
     return Math.max(0, maximum - actor[resource])
 }
@@ -51,6 +52,14 @@ function reconcile(
         })
     }
     return actor.resourcePractice[resource]
+}
+
+/** A capacity change consumes neither resources nor recovery practice. */
+export function reconcileResourceCapacity(
+    actor: GameCharacter,
+    resource: PracticeResource
+): void {
+    reconcile(actor, resource, missingResource(actor, resource))
 }
 
 /** Call after payment, then confirm only after its meaningful outcome resolves. */

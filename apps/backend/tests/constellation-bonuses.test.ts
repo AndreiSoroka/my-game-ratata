@@ -35,6 +35,15 @@ const base = {
     prayerGiftMultiplier: 1,
     prayerHarmMultiplier: 1,
     prayerArea: false,
+    targetLimit: 1,
+    prayerConcentrationChance: 0,
+    prayerAbsoluteConcentration: false,
+    prayerWardRank: 0,
+    prayerAuraProtection: false,
+    prayerAuraBlessing: false,
+    prayerAuraDomain: false,
+    prayerMartyr: false,
+    prayerLastLight: false,
     deityInsight: 0,
     otherDeityInsight: 0,
 }
@@ -72,10 +81,10 @@ const bonuses: Array<[string, Partial<typeof base>]> = [
     ['prayer.radius1', { prayerRadiusCells: 1 }],
     ['prayer.radius2', { prayerRadiusCells: 1 }],
     ['prayer.focus', { prayerDurationMultiplier: 0.9 }],
-    ['prayer.gift1', { prayerGiftMultiplier: 1.05 }],
-    ['prayer.gift2', { prayerGiftMultiplier: 1.05 }],
-    ['prayer.harm1', { prayerHarmMultiplier: 1.3 }],
-    ['prayer.harm2', { prayerHarmMultiplier: 1.3 }],
+    ['prayer.gift1', { prayerGiftMultiplier: 2.3 }],
+    ['prayer.gift2', { prayerGiftMultiplier: 3.5 }],
+    ['prayer.harm1', { prayerHarmMultiplier: 2.3 }],
+    ['prayer.harm2', { prayerHarmMultiplier: 4.3 }],
     ['prayer.area', { prayerArea: true }],
 ]
 
@@ -134,8 +143,8 @@ describe('pure constellation bonus extraction preserves the original coefficient
             sneakNoiseMultiplier: 0.7,
             theftChanceBonus: 0.06,
             prayerRadiusCells: 2,
-            prayerGiftMultiplier: 1.1,
-            prayerHarmMultiplier: 1.6,
+            prayerGiftMultiplier: 4.8,
+            prayerHarmMultiplier: 5.6,
             deityInsight: 4,
             otherDeityInsight: 3,
         })
@@ -160,13 +169,18 @@ describe('pure constellation bonus extraction preserves the original coefficient
         ).toEqual(base)
         expect(
             resolveConstellationBonuses(new Set(['prayer.last_light']), true)
-        ).toEqual({ ...base, prayerGiftMultiplier: 1.1 })
+        ).toEqual({
+            ...base,
+            prayerGiftMultiplier: 11,
+            prayerDurationMultiplier: 0.8,
+            prayerLastLight: true,
+        })
         expect(
             resolveConstellationBonuses(
                 new Set(['prayer.last_light', 'prayer.gift1', 'prayer.gift2']),
                 true
             ).prayerGiftMultiplier
-        ).toBeCloseTo(1.2)
+        ).toBeCloseTo(14.8)
     })
 })
 
@@ -197,11 +211,12 @@ describe('authoritative wrapper keeps original hostile low-health predicates', (
             }
             actor.progression.constellations.lowHpFromHostile = hostile
             actor.progression.constellations.hostileWound = wound
-            const expected =
-                learned && hp < 20 && hostile && wound > 0 ? 1.1 : 1
+            const expected = learned && hp < 20 && hostile && wound > 0 ? 11 : 1
             expect(constellationModifiers(actor)).toEqual({
                 ...base,
                 prayerGiftMultiplier: expected,
+                prayerDurationMultiplier: expected > 1 ? 0.8 : 1,
+                prayerLastLight: expected > 1,
             })
         }
     )
@@ -212,7 +227,7 @@ describe('authoritative wrapper keeps original hostile low-health predicates', (
         const clock = vi.spyOn(Date, 'now')
         const first = resolveConstellationBonuses(ids)
         first.prayerHarmMultiplier = 99
-        expect(resolveConstellationBonuses(ids).prayerHarmMultiplier).toBe(1.6)
+        expect(resolveConstellationBonuses(ids).prayerHarmMultiplier).toBe(5.6)
         expect([...ids]).toEqual(before)
         expect(random).not.toHaveBeenCalled()
         expect(clock).not.toHaveBeenCalled()

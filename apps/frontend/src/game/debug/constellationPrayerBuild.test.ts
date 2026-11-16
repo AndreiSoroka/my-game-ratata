@@ -20,16 +20,19 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         expect(kara.metrics).toEqual([{ label: 'Шанс кары', value: '75%' }])
         expect(kara.build!.effects).toEqual(['Наносит урон подходящей нежити в радиусе молитвы.'])
         expect(kara.build!.metrics).toEqual([{ label: 'Урон кары', value: '6 HP до поглощения' }])
-        for (const node of ['prayer.harm1', 'prayer.harm2']) {
+        for (const [node, increase] of [
+            ['prayer.harm1', 130],
+            ['prayer.harm2', 330],
+        ] as const) {
             expect(calculate(full, node).build!.metrics).toEqual([
-                { label: 'Урон кары', value: '+30%' },
+                { label: 'Урон кары', value: `+${increase}%` },
             ])
             expect(calculate(full, node).metrics).toEqual([])
         }
         const root = calculate(full)
         expect(root.metrics).toContainEqual({ label: 'Шанс кары', value: '75%' })
-        expect(metric(root, 'Лечение')).toBe('7 HP')
-        expect(metric(root, 'Урон кары')).toBe('10 HP до поглощения')
+        expect(metric(root, 'Лечение')).toBe('30 HP')
+        expect(metric(root, 'Урон кары')).toBe('28 HP до поглощения')
     })
     it('keeps authored passive contributions readable when not included in the build', () => {
         const active = new Set(['prayer.root', 'prayer.harm'])
@@ -37,13 +40,13 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         active.add('prayer.gift1')
         active.add('prayer.gift2')
         expect(calculate(active, 'prayer.harm')).toEqual(before)
-        expect(metric(calculate(active), 'Лечение')).toBe('7 HP')
+        expect(metric(calculate(active), 'Лечение')).toBe('29 HP')
         const unavailable = calculate(active, 'prayer.harm1')
         expect(unavailable.metrics).toEqual([])
         expect(unavailable.build).toEqual({
             available: false,
             effects: [],
-            metrics: [{ label: 'Урон кары', value: '+30%' }],
+            metrics: [{ label: 'Урон кары', value: '+130%' }],
         })
     })
     it('isolates every prayer passive from every other selected star, including its ancestors', () => {
@@ -67,9 +70,9 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         active.add('prayer.harm')
         expect(metric(calculate(active), 'Урон кары')).toContain('6 HP')
         active.add('prayer.harm1')
-        expect(metric(calculate(active), 'Урон кары')).toContain('8 HP')
+        expect(metric(calculate(active), 'Урон кары')).toContain('14 HP')
         active.add('prayer.harm2')
-        expect(metric(calculate(active), 'Урон кары')).toContain('10 HP')
+        expect(metric(calculate(active), 'Урон кары')).toContain('34 HP')
         expect(calculate(active).metrics.find((row) => row.label === 'Шанс лечения')?.value).toBe(
             '55%'
         )
@@ -83,12 +86,12 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
             const quality = { neutral: 1, benevolent: 1.3, wrathful: 0.65 }[mood]
             const normal = calculate(full, 'prayer.root', mood)
             const last = calculate(full, 'prayer.root', mood, true)
-            expect(metric(normal, 'Лечение')).toContain(`${Math.round(6 * (quality * 1.1))} HP`)
-            expect(metric(last, 'Лечение')).toContain(`${Math.round(6 * (quality * 1.2))} HP`)
-            expect(metric(normal, 'Урон кары')).toContain(`${Math.round(6 * (quality * 1.6))} HP`)
-            expect(metric(last, 'Множитель лечения')).toBe('×1,2')
+            expect(metric(normal, 'Лечение')).toContain(`${Math.round(6 * (quality * 4.95))} HP`)
+            expect(metric(last, 'Лечение')).toContain(`${Math.round(6 * (quality * 14.95))} HP`)
+            expect(metric(normal, 'Урон кары')).toContain(`${Math.round(6 * (quality * 4.6))} HP`)
+            expect(metric(last, 'Множитель лечения')).toBe('×14,95')
             expect(metric(last, 'Радиус')).toBe('5 клеток')
-            expect(metric(last, 'Время молитвы')).toBe('2700 мс')
+            expect(metric(last, 'Время молитвы')).toBe('600 мс')
         }
     )
     it.each([
@@ -110,7 +113,7 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
             rootOnly.add(`${path}.revive`)
             const revival = calculate(rootOnly, `${path}.revive`, 'benevolent', true)
             expect(revival.build!.available).toBe(true)
-            expect(metric(revival, 'Цена воскрешения')).toBe('20 MP')
+            expect(metric(revival, 'Цена воскрешения')).toBe(path === 'prayer' ? '5 MP' : '20 MP')
             expect(metric(revival, 'Ресурсы после воскрешения')).toContain(
                 path === 'prayer' ? '1% максимума' : '50% максимума'
             )

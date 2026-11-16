@@ -14,7 +14,7 @@ it('covers every star and separates mandatory eligibility from random weights', 
         expect(info.conditions.join(' ')).toContain('открытие сохраняется')
     }
     const area = describeConstellationUnlock('prayer.area')
-    expect(area.conditions.join(' ')).toContain('Тёплый дар')
+    expect(area.conditions.join(' ')).toContain('Проводник')
     expect(area.conditions.join(' ')).toContain('Дальний голос')
     expect(area.chanceBoosts.join(' ')).toContain('1 + min(5')
     expect(area.chanceBoosts.join(' ')).toContain('только после выполнения')

@@ -42,9 +42,10 @@ export function prayerRestorationFormula(ability: PrayerAbilityId) {
     )
 }
 export function prayerHealingMultiplierFormula() {
-    return chanceFormula('Множитель лечения', '1 + 0,05 × A + 0,05 × D + 0,10 × E', {
+    return chanceFormula('Множитель лечения', '1 + 1,30 × A + 2,50 × D + 10 × E + 0,15 × F', {
         A: learned('Тёплый дар'),
         D: learned('Щедрый дар'),
+        F: learned('Мученик'),
         E: '1, если изучен «Последний огонёк», до исцеления HP молящегося ниже 20%, порог пересечён из-за вражеского удара и остались учтённые вражеские раны; иначе 0.',
     })
 }
@@ -61,9 +62,10 @@ export function prayerHarmPowerFormula() {
     })
 }
 export function prayerHarmMultiplierFormula() {
-    return chanceFormula('Множитель урона кары', '1 + 0,30 × A + 0,30 × D', {
+    return chanceFormula('Множитель урона кары', 'max(0, 1 + 1,30 × A + 3,30 × D − H)', {
         A: learned('Суровый ответ'),
         D: learned('Гнев небес'),
+        H: learned('Поспешная кара'),
     })
 }
 export function prayerAnswerRollFormula() {
@@ -92,9 +94,18 @@ export function prayerRadiusFormula() {
     })
 }
 export function prayerFocusFormula() {
-    return chanceFormula('Длительность канала молитвы, мс', 'round(3000 × (1 − 0,10 × A))', {
-        A: learned('Сосредоточение'),
-    })
+    return chanceFormula(
+        'Длительность канала молитвы, мс',
+        'round(3000 × max(0,10; 1 − 0,10 × A − 0,20 × C − 0,10 × D − 0,05 × H − 0,20 × E − 0,15 × F))',
+        {
+            A: learned('Сосредоточение'),
+            C: learned('Концентрация'),
+            D: learned('Абсолютная концентрация'),
+            H: learned('Поспешная кара'),
+            E: '1, если действуют условия Последнего огонька; иначе 0.',
+            F: learned('Мученик'),
+        }
+    )
 }
 export function prayerLowHpFormula() {
     return chanceFormula('Порог здоровья «Последнего огонька» до исцеления', 'H < 0,20 × N', {

@@ -16,6 +16,7 @@ import type { CharacterController } from './controllers'
 import { recordMovementNoise } from './hearing'
 import { advanceCharacter } from './movement'
 import type { PartyService } from './parties'
+import { validatePrayerChannel } from './prayer'
 import { rememberPursuitExit } from './pursuitTravel'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
@@ -48,6 +49,7 @@ interface SimulationContext {
 
 export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, room, now } = context
+    room.refreshPrayerAuraEnvironment()
     context.parties.update(characters.values(), now)
     room.workerRequests.reconcile(characters, now)
     room.adventureForWorkers().update(
@@ -73,9 +75,19 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         advanceWorldCharacter(character, context)
     }
     for (const character of characters.values()) {
+        context.onEvents(
+            validatePrayerChannel(
+                character,
+                now,
+                room.abilityContextFor(character, now)
+            )
+        )
+    }
+    for (const character of characters.values()) {
         resolveWorldAttack(character, context)
     }
     context.life.advance(now, (actor, at) => room.abilityContextFor(actor, at))
+    room.refreshPrayerAuraEnvironment()
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))
     for (const [ws, id] of context.connections) {

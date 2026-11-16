@@ -1,7 +1,7 @@
 import {
     type CharacterAutoAction as AnyAutoAction,
     type CharacterControlSnapshot,
-    type PrayerAbilityId,
+    type PrayerActionId,
     profileForPrayer,
 } from '@my-game-ratata/contracts'
 
@@ -30,6 +30,9 @@ export function legalPrayerTarget(
     const abilityId = action.abilityId ?? 'pray'
     if (action.intent.mode === 'purify_grave') {
         return false
+    }
+    if (action.intent.mode === 'ward') {
+        return target.alive && target.creatureType === 'undead'
     }
     if (action.intent.mode === 'harm') {
         return (
@@ -64,7 +67,7 @@ export function untargetedAction(
             return action.intent.targetId === undefined
         }
         if (
-            action.intent.mode === 'harm' &&
+            spatialPrayerMode(action.intent.mode) &&
             action.intent.targetId === undefined
         ) {
             return validPrayerIntent(
@@ -151,7 +154,7 @@ function legalRevivalTarget(
     actor: GameCharacter,
     target: GameCharacter,
     now: number,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): boolean {
     return (
         !target.alive &&
@@ -160,4 +163,8 @@ function legalRevivalTarget(
         target.faction === actor.faction &&
         profileForPrayer(abilityId).reviveTypes.includes(target.creatureType)
     )
+}
+
+function spatialPrayerMode(mode: string): boolean {
+    return mode === 'harm' || mode === 'ward'
 }

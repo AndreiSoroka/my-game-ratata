@@ -4,6 +4,7 @@ import { canFight } from './autoActionTargets'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { effectiveAttackCooldown } from './effectiveParameters'
+import { effectiveMaxMana } from './effectiveResources'
 import { distance } from './math'
 import type { GameRoom } from './room'
 import { approachWorkTarget } from './scenarioApproach'
@@ -70,7 +71,7 @@ function recover(
             ? actor.maxHp
             : step.resource === 'energy'
               ? actor.config.resources.maxEnergy
-              : actor.config.resources.maxMana
+              : effectiveMaxMana(actor)
     if (step.atLeast > maximum) {
         return {
             state: 'blocked',

@@ -11,6 +11,7 @@ import {
     effectiveAttackCooldown,
     effectiveCharacterStats,
 } from './effectiveParameters'
+import { effectiveMaxMana } from './effectiveResources'
 import { snapshotEquipment, snapshotItem } from './inventory'
 import { snapshotMovement } from './movementActions'
 import { snapshotProgression } from './skillProgression'
@@ -83,7 +84,7 @@ export function createCharacterSnapshot(
             mana: {
                 kind: 'exact',
                 current: character.mana,
-                max: character.config.resources.maxMana,
+                max: effectiveMaxMana(character),
             },
         },
         stats: effectiveCharacterStats(character),

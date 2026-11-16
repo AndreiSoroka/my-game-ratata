@@ -21,24 +21,19 @@ for (const width of [320, 390, 1280]) {
             )
             await expect.poll(() => centeringError(graph, hero.root)).toBeLessThan(0.5)
             const initial = await graph.getAttribute('viewBox')
-            const otherId = await graph.evaluate((element) => {
-                const stars = [
-                    ...element.querySelectorAll('[role=button][aria-label="Неизвестно"]'),
-                ]
-                return stars
-                    .find((star) => {
-                        const rect = star.querySelector('.hit')!.getBoundingClientRect()
-                        return (
-                            document
-                                .elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
-                                ?.closest('.constellation-node') === star
-                        )
-                    })
-                    ?.getAttribute('data-node-id')
-            })
-            expect(otherId).toBeTruthy()
-            await graph.locator(`[data-node-id="${otherId}"] .hit`).click()
-            await expect(menu.getByLabel('Выбранная звезда')).toHaveText('Неизвестно')
+            await expectUnknownStarsInert(graph)
+            const root = graph.getByRole('button', { name: hero.root, exact: true })
+            await root.locator('.hit').click()
+            await expect(root).toBeFocused()
+            await expect(graph).not.toHaveAttribute('viewBox', initial!)
+            await expect(menu.getByLabel('Выбранная звезда').getByRole('heading')).toHaveText(
+                hero.root
+            )
+            await root.press('ArrowRight')
+            await expect(menu.getByLabel('Выбранная звезда').getByRole('heading')).not.toHaveText(
+                'Неизвестно'
+            )
+            await expectUnknownStarsInert(graph)
             await menu.getByRole('button', { name: 'Показать весь небосвод' }).click()
             await expect.poll(() => centeringError(graph, hero.root)).toBeLessThan(0.5)
             await expect(graph).toHaveAttribute('viewBox', initial!)
@@ -50,6 +45,17 @@ for (const width of [320, 390, 1280]) {
             })
         })
     }
+}
+
+async function expectUnknownStarsInert(graph: Locator): Promise<void> {
+    const unknown = graph.locator('.constellation-node.closed')
+    await expect(unknown.first()).toBeAttached()
+    await expect(graph.locator('.closed[role]')).toHaveCount(0)
+    await expect(graph.locator('.closed[tabindex]')).toHaveCount(0)
+    await expect(graph.locator('.closed:not([aria-hidden="true"])')).toHaveCount(0)
+    await expect(graph.locator('.closed.selected')).toHaveCount(0)
+    await expect(unknown.first()).toHaveCSS('cursor', 'default')
+    await expect(unknown.first().locator('.hit')).toHaveCSS('pointer-events', 'none')
 }
 
 async function centeringError(graph: Locator, root: string): Promise<number> {

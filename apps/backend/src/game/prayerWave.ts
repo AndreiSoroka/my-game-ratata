@@ -1,7 +1,7 @@
 import {
     type GameEventPayload,
     MASTERY_REWARDS,
-    type PrayerAbilityId,
+    type PrayerActionId,
     profileForPrayer,
 } from '@my-game-ratata/contracts'
 
@@ -17,7 +17,7 @@ export function applyPrayerWave(
     context: AbilityContext,
     roll: number,
     quality: number,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ) {
     if (abilityId !== 'pray') {
         return {

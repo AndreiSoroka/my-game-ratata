@@ -3,7 +3,7 @@ import {
     type AgentDecision,
     type CharacterControlCommand,
     type GameEventPayload,
-    profileForPrayer,
+    isMotherPrayer,
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
@@ -12,8 +12,7 @@ import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { parseControlCommand } from './characterControl'
 import { companionProfiles } from './companionProfiles'
-import { hasStar } from './constellations'
-import { prayerHarmTargets } from './prayerContext'
+import { planMotherPrayer } from './motherPrayerPlan'
 import { canPerformSkillAction } from './skillProgression'
 
 export function isAgentAbility(
@@ -132,26 +131,25 @@ function abilityCanHarm(
     if (message.intent.mode === 'devotion') {
         return false
     }
-    const harmUnlocked =
-        message.abilityId === 'pray' &&
-        hasStar(actor, 'prayer.harm') &&
-        profileForPrayer(message.abilityId).harmTypes.length > 0
-    if (!harmUnlocked) {
+    if (!isMotherPrayer(message.abilityId)) {
         return false
     }
     if (world.charactersFor === undefined) {
-        return true
+        return (
+            message.intent.mode === 'harm' || message.abilityId === 'pray_woven'
+        )
     }
     return (
-        prayerHarmTargets(
+        planMotherPrayer(
             actor,
+            message.intent,
             {
                 characters: world.charactersFor(actor),
                 navigation: world.navigationFor(actor),
                 now,
             },
             message.abilityId
-        ).length > 0
+        )?.targets.some((target) => target.kind === 'harm') ?? false
     )
 }
 function cancelAgentPrayer(

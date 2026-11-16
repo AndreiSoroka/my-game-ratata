@@ -1,15 +1,23 @@
 import {
-    type PrayerAbilityId,
+    isMotherPrayer,
+    type PrayerActionId,
     type PrayerIntent,
     prayerManaCost,
+    type PrayerParametersSnapshot,
     type PrayerPreview,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import { canPurifyGrave } from './gravePrayer'
 import { distance } from './math'
+import {
+    hasMotherPrayerAura,
+    motherPrayerCandidates,
+    planMotherPrayer,
+} from './motherPrayerPlan'
 import { prayerHarmTargets, validPrayerIntent } from './prayerContext'
 import { prayerAvailableAt, prayerParameters } from './prayerParameters'
 import { canPerformSkillAction } from './skillProgression'
@@ -18,7 +26,7 @@ export function resolvePrayerIntent(
     actor: GameCharacter,
     context: AbilityContext,
     selectedTargetId?: string,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): PrayerIntent {
     if (selectedTargetId !== undefined) {
         return (
@@ -29,6 +37,17 @@ export function resolvePrayerIntent(
                 abilityId
             ) ?? { mode: 'devotion' }
         )
+    }
+    if (isMotherPrayer(abilityId)) {
+        const target = motherPrayerCandidates(actor, context, abilityId)[0]
+        return target === undefined
+            ? { mode: 'devotion' }
+            : target.kind === 'purify_grave'
+              ? {
+                    mode: 'purify_grave',
+                    target: { kind: 'grave', id: target.id },
+                }
+              : { mode: target.kind, targetId: target.id }
     }
     const ordered = [...context.characters].sort((a, b) => {
         const delta =
@@ -67,9 +86,9 @@ export function resolvePrayerIntent(
 function nearbyPrayerGrave(
     actor: GameCharacter,
     context: AbilityContext,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ) {
-    if (abilityId !== 'pray') {
+    if (!isMotherPrayer(abilityId)) {
         return undefined
     }
     return (context.graves?.list(actor.locationId) ?? [])
@@ -86,7 +105,7 @@ export function previewPrayer(
     actor: GameCharacter,
     context: AbilityContext,
     selectedTargetId?: string,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): PrayerPreview {
     const intent = resolvePrayerIntent(
         actor,
@@ -103,7 +122,17 @@ export function previewPrayer(
         context.navigation.grid.tileWidth,
         abilityId
     )
-    const manaCost = prayerManaCost(intent.mode)
+    const manaCost = prayerManaCost(intent.mode, abilityId)
+    if (isMotherPrayer(abilityId)) {
+        return previewMother(
+            actor,
+            context,
+            intent,
+            parameters,
+            abilityId,
+            selectedTargetId
+        )
+    }
     return {
         abilityId,
         intent,
@@ -129,7 +158,7 @@ function prayerUnavailable(
     actor: GameCharacter,
     now: number,
     manaCost: number,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): string | null {
     if (!knowsAbility(actor, abilityId)) {
         return 'Молитва не изучена.'
@@ -150,10 +179,19 @@ function selectedPrayerIntent(
     actor: GameCharacter,
     context: AbilityContext,
     targetId: string,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): PrayerIntent | undefined {
-    if (abilityId === 'pray' && canPurifyGrave(actor, targetId, context)) {
+    if (isMotherPrayer(abilityId) && canPurifyGrave(actor, targetId, context)) {
         return { mode: 'purify_grave', target: { kind: 'grave', id: targetId } }
+    }
+    if (isMotherPrayer(abilityId)) {
+        const target = motherPrayerCandidates(actor, context, abilityId).find(
+            (candidate) =>
+                candidate.id === targetId && candidate.kind !== 'purify_grave'
+        )
+        if (target !== undefined && target.kind !== 'purify_grave') {
+            return { mode: target.kind, targetId }
+        }
     }
     for (const mode of ['revive', 'restore'] as const) {
         const intent = { mode, targetId }
@@ -166,4 +204,69 @@ function selectedPrayerIntent(
     )
         ? { mode: 'harm', targetId }
         : undefined
+}
+
+function previewMother(
+    actor: GameCharacter,
+    context: AbilityContext,
+    intent: PrayerIntent,
+    parameters: PrayerParametersSnapshot,
+    abilityId: PrayerActionId,
+    selectedTargetId?: string
+): PrayerPreview {
+    const decorative = isDecorativePreview(actor, intent)
+    const plan = planMotherPrayer(actor, intent, context, abilityId)
+    const harmful =
+        plan?.targets.filter((target) => target.kind === 'harm') ?? []
+    return {
+        abilityId,
+        intent,
+        manaCost: decorative ? 0 : 5,
+        cost: parameters.cost ?? { manaPerTarget: 5 },
+        radius: parameters.radius,
+        durationMs: decorative ? 400 : parameters.durationMs,
+        targetCount: plan?.targets.length ?? 0,
+        harmfulTargets: harmful.length,
+        harmfulTargetIds: harmful.map((target) => target.id),
+        includesSelf: harmful.some((target) => target.id === actor.id),
+        includesAllies: harmful.some(
+            (target) =>
+                context.characters.find(
+                    (character) => character.id === target.id
+                )?.faction === actor.faction
+        ),
+        unavailableReason: motherUnavailable(
+            actor,
+            context,
+            abilityId,
+            selectedTargetId,
+            intent,
+            decorative ? 0 : (plan?.manaCost ?? Number.POSITIVE_INFINITY)
+        ),
+    }
+}
+
+function isDecorativePreview(
+    actor: GameCharacter,
+    intent: PrayerIntent
+): boolean {
+    return (
+        intent.mode === 'devotion' &&
+        !hasMotherPrayerAura(actor) &&
+        !constellationModifiers(actor).prayerLastLight
+    )
+}
+function motherUnavailable(
+    actor: GameCharacter,
+    context: AbilityContext,
+    action: PrayerActionId,
+    selected: string | undefined,
+    intent: PrayerIntent,
+    cost: number
+): string | null {
+    return selected !== undefined &&
+        selected !== actor.id &&
+        intent.mode === 'devotion'
+        ? 'Выбранная цель недоступна для этой молитвы.'
+        : prayerUnavailable(actor, context.now, cost, action)
 }

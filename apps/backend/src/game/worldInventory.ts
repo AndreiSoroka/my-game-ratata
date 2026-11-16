@@ -24,6 +24,7 @@ import {
     removeInventoryItem,
     unequipItem,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
 import { recordVitalityRecovery } from './vitalityPractice'
@@ -107,7 +108,7 @@ export class WorldInventory {
         if (item === undefined) {
             return []
         }
-
+        resetMartyrStreak(player)
         return [
             {
                 actorId: player.id,
@@ -209,6 +210,7 @@ export class WorldInventory {
             return []
         }
 
+        resetMartyrStreak(player)
         removeInventoryItem(player.inventory, itemInstanceId)
         const beforeHp = player.hp
         const restored = heal(player, healHp)
@@ -233,9 +235,11 @@ export class WorldInventory {
             itemInstanceId
         )
 
-        return item === undefined
-            ? []
-            : [{ actorId: player.id, itemId: item.itemId, kind: 'item_equip' }]
+        if (item === undefined) {
+            return []
+        }
+        resetMartyrStreak(player)
+        return [{ actorId: player.id, itemId: item.itemId, kind: 'item_equip' }]
     }
 
     private dropInventoryItem(
@@ -248,6 +252,7 @@ export class WorldInventory {
             return []
         }
 
+        resetMartyrStreak(player)
         this.dropItemNear(item, player.position)
 
         return [

@@ -14,6 +14,7 @@ import { createCharacterSheet } from './characterSheet'
 import { hasStar } from './constellations'
 import type { GraveCombatTarget } from './graveRules'
 import type { NavigationService } from './navigation'
+import { canPerceivePrayerCaster } from './prayerAuras'
 import { prayerParameters, snapshotPrayerParameters } from './prayerParameters'
 import { publicProgression } from './progressionObservation'
 import { visibilityRadius } from './queries'
@@ -178,16 +179,37 @@ export function observeCombatEvent(
     ) {
         return undefined
     }
+    if (!eventCharacterVisible(event.targetId, view)) {
+        return undefined
+    }
     const visible = {
         ...description,
         ...(amount !== undefined && amountVisible(event, view)
             ? { amount }
             : {}),
     }
+    if (!eventCharacterVisible(event.actorId, view)) {
+        delete visible.actorId
+        delete visible.projectile
+    }
     if (event.kind === 'water_drink' && !canReadNumbers(view)) {
         visible.text = 'Пьёт воду.'
     }
     return visible
+}
+
+function eventCharacterVisible(
+    id: string | undefined,
+    view: CombatObserver
+): boolean {
+    if (id === undefined || view.observer === undefined) {
+        return true
+    }
+    const character = view.getCharacter(id)
+    return (
+        character === undefined ||
+        canPerceivePrayerCaster(view.observer, character, view.now)
+    )
 }
 
 export function observeCombatEvents(

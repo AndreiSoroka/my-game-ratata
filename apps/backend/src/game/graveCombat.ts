@@ -138,7 +138,8 @@ export function resolveGraveHit(
             ? resolveAttackDamage(
                   context.actor,
                   attack,
-                  context.random ?? Math.random
+                  context.random ?? Math.random,
+                  context.now
               )
             : {
                   amount: attack.rawDamage,

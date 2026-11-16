@@ -1,8 +1,4 @@
-import {
-    type GameEventPayload,
-    resourceFillPercent,
-    type ResourceSnapshot,
-} from '@my-game-ratata/contracts'
+import { type GameEventPayload, type ResourceSnapshot } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
 import { defendRitual, maintainShot, withdrawRangers } from './grave-defense'
@@ -10,6 +6,7 @@ import {
     attachBrowserDiagnostics,
     attachCombatFailure,
     captureBrowserDiagnostics,
+    capturePrayerManaAtStart,
     capturePurificationTargets,
     captureWorldDamage,
 } from './grave-diagnostics'
@@ -31,6 +28,7 @@ for (const { mobile, direction, viewport } of cases) {
         const diagnostics = captureBrowserDiagnostics([page, ...rangers])
         const worldDamage = captureWorldDamage(page)
         const purificationTargets = capturePurificationTargets(page)
+        const manaAtStart = capturePrayerManaAtStart(page)
         try {
             await Promise.all(
                 rangers.map((ranger) => ranger.setViewportSize({ width: 480, height: 360 }))
@@ -94,7 +92,8 @@ for (const { mobile, direction, viewport } of cases) {
             ).toBe(false)
             const finished = await page.evaluate(() => window.__ratataTest!.getState().player!)
             expect(finished.resources.mana.kind).toBe('percent')
-            expect(resourceFillPercent(finished.resources.mana)).toBeLessThan(100)
+            expect(manaAtStart.length).toBeGreaterThanOrEqual(2)
+            expect(manaAtStart.every((percent) => percent < 100)).toBe(true)
             await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
             await page.screenshot({ path: info.outputPath('grave-purified.png') })
             await attachOutcome(

@@ -17,6 +17,7 @@ import {
     syncAbilityConstellations,
 } from './constellations'
 import { deityDefinitions } from './deities'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import {
     awardMasteries,
@@ -55,6 +56,7 @@ export function learnFireball(
         return []
     }
     const factors = captureMasteryFactors(scholar)
+    resetMartyrStreak(actor)
     actor.abilities.known.add('fireball')
     syncAbilityConstellations(actor)
     return [
@@ -94,6 +96,7 @@ export function studyMagic(
         return []
     }
     const factors = captureMasteryFactors(actor)
+    resetMartyrStreak(actor)
     actor.progression.magicChaptersRead += 1
     return [
         {
@@ -130,6 +133,8 @@ export function teachMagic(
         return []
     }
     const factors = captureMasteryFactors(actor)
+    resetMartyrStreak(actor)
+    resetMartyrStreak(student)
     student.abilities.known.add('fireball')
     syncAbilityConstellations(student)
     return [
@@ -178,6 +183,7 @@ export function chooseDeity(
     if (actor.progression.patron === deityId) {
         return []
     }
+    resetMartyrStreak(actor)
     actor.progression.patron = deityId
     return [
         {
@@ -218,6 +224,7 @@ export function learnAbility(
             'Этот персонаж не обучает выбранной способности.'
         )
     }
+    resetMartyrStreak(actor)
     actor.abilities.known.add(id)
     if (
         isPrayerAbility(id) &&

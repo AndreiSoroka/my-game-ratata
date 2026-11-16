@@ -16,6 +16,7 @@ import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
 import { cityTradeRefusal } from './crimeRules'
 import { repairItem } from './itemDurability'
+import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 
@@ -229,6 +230,7 @@ function repair(
     if (state.gold < total) {
         return rejected('Недостаточно золотых для ремонта.')
     }
+    resetMartyrStreak(actor)
     state.gold -= total
     for (const item of selected) {
         repairItem(item)

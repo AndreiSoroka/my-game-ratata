@@ -1,7 +1,7 @@
 import {
     type GameEventPayload,
     MASTERY_REWARDS,
-    type PrayerAbilityId,
+    type PrayerActionId,
     type PrayerIntent,
 } from '@my-game-ratata/contracts'
 
@@ -18,7 +18,7 @@ export function applyPrayerGraves(
     context: AbilityContext,
     roll: number,
     receiptId: string,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ) {
     const events: GameEventPayload[] = []
     if (abilityId !== 'pray') {

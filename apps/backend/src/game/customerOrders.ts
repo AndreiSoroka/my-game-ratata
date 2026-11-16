@@ -23,6 +23,7 @@ import {
     releaseCustomerOrder,
 } from './craftOrderState'
 import { addInventoryItems, type InventoryItemInstance } from './inventory'
+import { resetMartyrStreak } from './martyr'
 
 /** Customer ownership and the actual reserved item outlive the owner's character record. */
 export class CustomerOrders {
@@ -291,6 +292,7 @@ export class CustomerOrders {
         if (!addInventoryItems(actor.inventory, [order.output])) {
             return reject('Освободи место в рюкзаке. Заказ остаётся у мастера.')
         }
+        resetMartyrStreak(actor)
         wallet.gold -= order.remaining
         delete order.output
         order.status = 'collected'

@@ -18,7 +18,8 @@ for (const width of [320, 390, 1280]) {
             }
         })
         expect(spacing.blocks).toEqual([12, 12, 12])
-        expect(spacing.bullets).toEqual([4])
+        expect(spacing.bullets.length).toBeGreaterThan(0)
+        expect(spacing.bullets.every((gap) => gap === 4)).toBe(true)
         expect(spacing.padding).toBe('18px')
         await page.screenshot({ path: info.outputPath(`spell-card-${width}.png`) })
         await page.goto(

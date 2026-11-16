@@ -1,6 +1,6 @@
 import {
     type CompanionRequest,
-    isPrayerAbility,
+    isPrayerAction,
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
@@ -33,7 +33,7 @@ export function parseMindCommand(record: Record<string, unknown>): ParseResult {
     if (type === 'pray') {
         return record['abilityId'] === undefined
             ? { message: { type } }
-            : isPrayerAbility(record['abilityId'])
+            : isPrayerAction(record['abilityId'])
               ? { message: { type, abilityId: record['abilityId'] } }
               : { error: 'Invalid prayer school.' }
     }

@@ -53,7 +53,10 @@ it('hides harm warnings for a plain prayer even with nearby undead and an inelig
             canReach: () => true,
         })
     ).toBeUndefined()
-    expect(previewPrayerFromSnapshots(player, [undead]).intent).toEqual({ mode: 'harm' })
+    expect(previewPrayerFromSnapshots(player, [undead]).intent).toEqual({
+        mode: 'harm',
+        targetId: 'undead',
+    })
 })
 
 it('uses the shared 48px harm radius and only marks known living reachable allies', () => {
@@ -75,7 +78,7 @@ it('uses the shared 48px harm radius and only marks known living reachable allie
         characterFixture('living', { position: { x: 100, y: 100 } }),
     ]
     const canReach = (target: { id: string }) => target.id !== 'wall'
-    const preview = previewPrayerFromSnapshots(player, characters, player.id, { canReach })
+    const preview = previewPrayerFromSnapshots(player, characters, 'edge', { canReach })
     const result = createPrayerPreviewHighlight(player, characters, preview, {
         active: true,
         canReach,
@@ -84,7 +87,7 @@ it('uses the shared 48px harm radius and only marks known living reachable allie
         abilityId: 'pray',
         origin: { x: 100, y: 100 },
         radius: 48,
-        targetId: player.id,
+        targetId: 'edge',
         warnings: [{ id: 'edge', position: { x: 148, y: 100 }, self: false }],
     })
     expect(result?.origin).not.toBe(player.position)
@@ -97,7 +100,7 @@ it('keeps healing waves tied to the healing school when HUD affiliation changes'
         position: { x: 110, y: 100 },
         creatureType: 'undead',
     })
-    const preview = previewPrayerFromSnapshots(player, [organic, undead], player.id)
+    const preview = previewPrayerFromSnapshots(player, [organic, undead], undead.id)
     const result = createPrayerPreviewHighlight(player, [organic, undead], preview, {
         active: true,
         canReach: () => true,
@@ -143,5 +146,80 @@ it('clears preview for an unassigned/blocked prayer, unavailable cast, low skill
     ).toBeUndefined()
     expect(
         createPrayerPreviewHighlight(characterFixture('new-life'), [], preview, options)
+    ).toBeUndefined()
+})
+
+it('does not highlight Kara around basic healing beside friendly undead', () => {
+    const player = priest()
+    const undead = characterFixture('friendly-undead', {
+        creatureType: 'undead',
+        relationship: 'friendly',
+        position: { x: 110, y: 100 },
+    })
+    const preview = previewPrayerFromSnapshots(player, [undead], player.id)
+    expect(preview.harmfulTargetIds).toEqual([])
+    expect(preview.harmfulTargets).toBe(0)
+    expect(
+        createPrayerPreviewHighlight(player, [undead], preview, {
+            active: true,
+            canReach: () => true,
+        })
+    ).toBeUndefined()
+})
+it('highlights only one or two actual Woven recipients inside the chosen cap', () => {
+    const player = priest()
+    player.health = { kind: 'exact', current: 24, max: 24 }
+    player.abilities!.known.push('pray_woven')
+    player.abilities!.prayers = {
+        pray_woven: {
+            radius: 48,
+            durationMs: 3000,
+            manaCost: 5,
+            area: true,
+            harm: true,
+            targetLimit: 1,
+        },
+    }
+    player.resourceChecks!.prayers.pray_woven = { ...player.resourceChecks!.prayers.pray }
+    const undead = ['first', 'second', 'third'].map((id, index) =>
+        characterFixture(id, {
+            creatureType: 'undead',
+            relationship: 'friendly',
+            position: { x: 110 + index * 5, y: 100 },
+        })
+    )
+    const highlight = () => {
+        const preview = previewPrayerFromSnapshots(player, undead, undead[0]!.id, {
+            abilityId: 'pray_woven',
+        })
+        return {
+            preview,
+            result: createPrayerPreviewHighlight(player, undead, preview, {
+                active: true,
+                canReach: () => true,
+            }),
+        }
+    }
+    expect(highlight().preview.harmfulTargetIds).toEqual(['first'])
+    expect(highlight().result?.warnings.map((target) => target.id)).toEqual(['first'])
+    player.abilities!.prayers.pray_woven!.targetLimit = 2
+    expect(highlight().preview.harmfulTargetIds).toEqual(['first', 'second'])
+    expect(highlight().result?.warnings.map((target) => target.id)).toEqual(['first', 'second'])
+})
+it('uses legacy warning recipients only for a positive actual harm count', () => {
+    const player = priest()
+    const undead = characterFixture('legacy-undead', {
+        creatureType: 'undead',
+        relationship: 'friendly',
+        position: { x: 110, y: 100 },
+    })
+    const preview = previewPrayerFromSnapshots(player, [undead], undead.id)
+    delete preview.harmfulTargetIds
+    const options = { active: true, canReach: () => true }
+    expect(createPrayerPreviewHighlight(player, [undead], preview, options)?.warnings).toHaveLength(
+        1
+    )
+    expect(
+        createPrayerPreviewHighlight(player, [undead], { ...preview, harmfulTargets: 0 }, options)
     ).toBeUndefined()
 })

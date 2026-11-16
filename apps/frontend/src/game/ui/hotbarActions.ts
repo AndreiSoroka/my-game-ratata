@@ -4,8 +4,8 @@ import {
     type CharacterAutoAction,
     type CharacterSnapshot,
     type ClientMessage,
-    isPrayerAbility,
-    type PrayerAbilityId,
+    isPrayerAction,
+    type PrayerActionId,
     type PrayerPreview,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
@@ -52,7 +52,7 @@ export function bindingUnavailable(
     if (binding.kind === 'item')
         return binding.id === 'food' && count === 0 ? 'Нет яблок' : undefined
     if (binding.kind === 'attack') return attackUnavailable(props, cooldown)
-    if (isPrayerAbility(binding.id)) return prayerReason
+    if (isPrayerAction(binding.id)) return prayerReason
     return abilityUnavailable(binding.id, props, cooldown)
 }
 function attackUnavailable(props: HotbarProps, cooldown: number): string | undefined {
@@ -60,7 +60,7 @@ function attackUnavailable(props: HotbarProps, cooldown: number): string | undef
     return cooldown > 0 ? 'Атака восстанавливается' : undefined
 }
 function abilityUnavailable(
-    id: Exclude<import('@my-game-ratata/contracts').AbilityId, PrayerAbilityId>,
+    id: Exclude<import('@my-game-ratata/contracts').AbilityId, PrayerActionId>,
     props: HotbarProps,
     cooldown: number
 ): string | undefined {
@@ -81,7 +81,7 @@ function actionFor(
 ): Exclude<CharacterAutoAction, { kind: 'gather' | 'plant_tree' }> | undefined {
     const target = combatAddress(props)
     if (binding.kind === 'attack') return target ? { kind: 'attack', ...target } : undefined
-    if (isPrayerAbility(binding.id))
+    if (isPrayerAction(binding.id))
         return intent ? { kind: 'prayer', abilityId: binding.id, intent } : undefined
     return { kind: 'ability', abilityId: binding.id, ...(binding.id === 'barrier' ? {} : target) }
 }
@@ -126,7 +126,7 @@ interface ActionState {
     bindings: Ref<(HotbarBinding | null)[]>
     food: ComputedRef<CharacterSnapshot['inventory']>
     known: ComputedRef<NonNullable<CharacterSnapshot['abilities']>['known']>
-    preview: (abilityId: PrayerAbilityId) => PrayerPreview
+    preview: (abilityId: PrayerActionId) => PrayerPreview
 }
 export function createActivator(
     props: HotbarProps,
@@ -207,8 +207,6 @@ function bindingAction(
     preview: ActionState['preview']
 ) {
     const intent =
-        binding.kind === 'ability' && isPrayerAbility(binding.id)
-            ? preview(binding.id).intent
-            : null
+        binding.kind === 'ability' && isPrayerAction(binding.id) ? preview(binding.id).intent : null
     return actionFor(binding, props, intent)
 }

@@ -16,6 +16,7 @@ import {
     countInventoryItem,
     itemQuantity,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import { issueProductionMaterials } from './productionMaterials'
 import { canPerformSkillAction } from './skillProgression'
@@ -139,6 +140,7 @@ export class ProductionWorkOrders {
             ) {
                 return false
             }
+            resetMartyrStreak(actor)
             actor.inventory.splice(actor.inventory.indexOf(produced), 1)
             this.orders.delete(actor.id)
             return true
@@ -155,6 +157,7 @@ export class ProductionWorkOrders {
         ) {
             return false
         }
+        resetMartyrStreak(actor)
         actor.inventory.splice(actor.inventory.indexOf(produced), 1)
         city.history.push({
             at: now,

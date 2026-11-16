@@ -11,6 +11,8 @@ interface PrayerExampleContext {
     mood: DeityMood
     lowHealthEligible: boolean
     tileWidth: number
+    aurasSuppressed: boolean
+    externalAdvantage: boolean
 }
 const props = defineProps<{ nodeId: string; enabledStarIds?: ReadonlySet<string> }>()
 const panels = useConstellationDebugPanels()
@@ -22,6 +24,8 @@ const contexts = reactive(
                 mood: 'neutral',
                 lowHealthEligible: false,
                 tileWidth: 16,
+                aurasSuppressed: false,
+                externalAdvantage: false,
             },
         ])
     ) as Record<PrayerAbilityId, PrayerExampleContext>
@@ -30,7 +34,11 @@ const school = computed(() => prayerCalculatorSchool(props.nodeId))
 const node = computed(() => fullConstellationCatalog.find((entry) => entry.id === props.nodeId))
 const passive = computed(() => node.value?.effectType === 'passive')
 const showMood = computed(
-    () => !passive.value || props.nodeId === 'prayer.harm' || props.nodeId.endsWith('.revive')
+    () =>
+        !passive.value ||
+        props.nodeId === 'prayer.harm' ||
+        props.nodeId.endsWith('.revive') ||
+        props.nodeId === 'prayer.concentration'
 )
 const context = computed(() => (school.value ? contexts[school.value.id] : undefined))
 const scenario = computed(() =>
@@ -103,6 +111,20 @@ const moods: { id: DeityMood; name: string }[] = [
                     data-testid="debug-last-light"
                 />
                 Условия «Последнего огонька» выполнены: мало HP после вражеского ранения</label
+            >
+            <label v-if="school.id === 'pray'" class="last-light-condition"
+                ><input
+                    v-model="context.aurasSuppressed"
+                    type="checkbox"
+                    data-testid="debug-auras-suppressed"
+                />Ауры подавлены</label
+            >
+            <label class="last-light-condition"
+                ><input
+                    v-model="context.externalAdvantage"
+                    type="checkbox"
+                    data-testid="debug-external-advantage"
+                />Преимущество от другого участника группы</label
             >
             <dl
                 v-if="available && metrics.length"

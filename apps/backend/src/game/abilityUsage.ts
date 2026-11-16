@@ -1,8 +1,8 @@
 import {
     type AbilityId,
     type AbilityUsageSnapshot,
-    isPrayerAbility,
-    type PrayerAbilityId,
+    isPrayerAction,
+    type PrayerActionId,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -17,7 +17,7 @@ export function snapshotAbilityUsage(
 ): Partial<Record<AbilityId, AbilityUsageSnapshot>> {
     const parameters: Partial<Record<AbilityId, AbilityUsageSnapshot>> = {}
     for (const id of known) {
-        parameters[id] = isPrayerAbility(id)
+        parameters[id] = isPrayerAction(id)
             ? prayerUsage(actor, id, tileWidth)
             : abilityUsage(actor, id, tileWidth)
     }
@@ -39,7 +39,7 @@ function abilityUsage(
 
 function prayerUsage(
     actor: GameCharacter,
-    abilityId: PrayerAbilityId,
+    abilityId: PrayerActionId,
     tileWidth: number
 ): AbilityUsageSnapshot {
     const prayer = prayerParameters(actor, tileWidth, abilityId)

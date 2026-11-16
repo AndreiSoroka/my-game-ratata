@@ -87,7 +87,7 @@ for (const width of [320, 390, 1280]) {
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/?debug=constellations&class=cleric&seed=revival-branch')
         await expect(page.getByTestId('constellation-debug')).toBeVisible()
-        await expect(page.locator('[data-star-id]')).toHaveCount(82)
+        await expect(page.locator('[data-star-id]')).toHaveCount(96)
         await setBuildPanelsOpen(page, true)
         const positions = await page
             .locator('[data-node-id]')

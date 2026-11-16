@@ -1,4 +1,4 @@
-import type { PrayerAbilityId } from './abilities'
+import { isMotherPrayer, type PrayerActionId } from './abilities'
 import type { DeityMood } from './progression'
 
 export interface ResurrectionParameters {
@@ -26,11 +26,11 @@ export const PRAYER_MOOD_BASE_CHANCE: Readonly<Record<DeityMood, number>> =
 
 /** Pure rule parameters: learning and target eligibility remain server-owned. */
 export function resolveResurrectionParameters(
-    abilityId: PrayerAbilityId,
+    abilityId: PrayerActionId,
     openedIds: ReadonlySet<string>,
     mood: DeityMood
 ): ResurrectionParameters {
-    if (abilityId !== 'pray') {
+    if (!isMotherPrayer(abilityId)) {
         return {
             successChance: PRAYER_MOOD_BASE_CHANCE[mood],
             hpFraction: 0.5,

@@ -18,6 +18,7 @@ import {
     workReady,
 } from './harvestWork'
 import { consumeInventoryItems } from './inventory'
+import { resetMartyrStreak } from './martyr'
 export { STONE_REGROW_MS, TREE_GROW_MS } from './harvestWork'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
@@ -141,6 +142,7 @@ export class HarvestResources {
         if (!consumeInventoryItems(actor.inventory, { sapling: 1 })) {
             return reject(state, 'Нужен саженец в рюкзаке.')
         }
+        resetMartyrStreak(actor)
         const node: AdventureResourceNode = {
             id: `${actor.locationId}:planted:${String(tile.x)}:${String(tile.y)}:${String(++this.nextPlantId)}`,
             kind: 'wood',

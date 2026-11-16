@@ -3,7 +3,7 @@ import {
     type ConstellationId,
     type GameEventPayload,
     MASTERY_REWARDS,
-    type PrayerAbilityId,
+    type PrayerActionId,
     type PrayerIntent,
     profileForPrayer,
     type ResurrectionParameters,
@@ -13,6 +13,8 @@ import type { AbilityContext } from './abilityContext'
 import { consumeHealingProvenance } from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
+import { effectiveMaxMana } from './effectiveResources'
+import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { prayerGiftTargets, prayerResourceMissing } from './prayerContext'
 import {
     consumeResourceRecovery,
@@ -27,7 +29,7 @@ export function applyPrayerGifts(
     context: AbilityContext,
     succeeds: boolean,
     quality: number,
-    abilityId: PrayerAbilityId = 'pray',
+    abilityId: PrayerActionId = 'pray',
     factors?: Record<ConstellationId, number>,
     resurrection?: ResurrectionParameters
 ) {
@@ -73,7 +75,7 @@ function meaningfulGiftAttempt(
     actor: GameCharacter,
     target: GameCharacter,
     intent: PrayerIntent,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): boolean {
     if (target.trainingTarget !== undefined) {
         return false
@@ -94,7 +96,7 @@ export function applyPrayerGift(
     intent: PrayerIntent,
     now: number,
     quality: number,
-    abilityId: PrayerAbilityId = 'pray',
+    abilityId: PrayerActionId = 'pray',
     factors?: Record<ConstellationId, number>,
     resurrection?: ResurrectionParameters,
     random: () => number = Math.random
@@ -144,6 +146,8 @@ export function applyPrayerGift(
             ) >= 1 && meaningful
         target[profile.resource] += amount
     }
+    recordMartyrRecovery(target, actor.id)
+    resetForUsefulGift(actor, target, abilityId, meaningful)
     return {
         meaningful,
         hpRecovery: profile.resource === 'hp',
@@ -166,7 +170,7 @@ function reviveGift(
     target: GameCharacter,
     intent: PrayerIntent,
     now: number,
-    abilityId: PrayerAbilityId,
+    abilityId: PrayerActionId,
     factors?: Record<ConstellationId, number>,
     resurrection?: ResurrectionParameters,
     random: () => number = Math.random
@@ -184,12 +188,15 @@ function reviveGift(
         parameters,
         {
             hp: target.maxHp,
-            mana: target.config.resources.maxMana,
+            mana: effectiveMaxMana(target),
             energy: target.config.resources.maxEnergy,
         },
         angelic
     )
     restoreCharacter(target, now, false, resources)
+    if (meaningful) {
+        resetMartyrStreak(actor)
+    }
     const lifeEvents = recordVitalityRecovery(
         target,
         target.hp - beforeHp,
@@ -197,6 +204,7 @@ function reviveGift(
         target === actor,
         factors
     )
+    recordMartyrRecovery(target, actor.id)
     return {
         meaningful,
         hpRecovery: target.hp > beforeHp,
@@ -209,5 +217,16 @@ function reviveGift(
                 abilityId,
             },
         ],
+    }
+}
+
+function resetForUsefulGift(
+    actor: GameCharacter,
+    target: GameCharacter,
+    abilityId: PrayerActionId,
+    meaningful: boolean
+): void {
+    if (meaningful && (target !== actor || abilityId !== 'pray')) {
+        resetMartyrStreak(actor)
     }
 }

@@ -361,7 +361,7 @@ describe('automatic prayer remains the pinned intention', () => {
                 (event) => event.kind === 'cast' && event.phase === 'started'
             )
         ).toHaveLength(2)
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(110)
         f.completePrayer(7000)
         expect(f.actor.mana).toBe(110)
         expect(f.target.hp).toBe(f.target.maxHp - 10)
@@ -395,7 +395,7 @@ describe('automatic prayer remains the pinned intention', () => {
         })
         f.tick(1000)
         f.tick(2000)
-        expect(f.actor.mana).toBe(120)
+        expect(f.actor.mana).toBe(115)
         expect(f.events.filter((event) => event.kind === 'cast')).toHaveLength(
             1
         )
@@ -409,14 +409,14 @@ describe('automatic prayer remains the pinned intention', () => {
         expect(completed).toContainEqual(
             expect.objectContaining({ kind: 'revive', targetId: f.target.id })
         )
-        expect(f.actor.mana).toBe(100)
+        expect(f.actor.mana).toBe(115)
         expect(f.tick(4001)).toBe(false)
         expect(snapshotControl(f.actor).mode).toBe('none')
     })
 })
 
 it.each(['offline', 'expired', 'other-location'] as const)(
-    'interrupts an automatic revival when the corpse becomes %s without spending mana',
+    'interrupts an automatic revival when the corpse becomes %s without refunding prepaid mana',
     (reason) => {
         const f = fixture()
         f.target.applyDamage(f.target.hp, 100)
@@ -446,7 +446,7 @@ it.each(['offline', 'expired', 'other-location'] as const)(
             expect.objectContaining({ kind: 'cast', phase: 'interrupted' })
         )
         expect(f.actor.abilities.casting).toBeNull()
-        expect(f.actor.mana).toBe(120)
+        expect(f.actor.mana).toBe(115)
         expect(f.target.alive).toBe(false)
         expect(snapshotControl(f.actor).mode).toBe('none')
     }

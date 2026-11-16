@@ -10,17 +10,36 @@ import { resolveCharacterStats } from './characterStats'
 import { combatHitQuality } from './combatHitQuality'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveCharacterStats } from './effectiveParameters'
+import {
+    type PrayerAuraEffects,
+    prayerAuraEffects,
+    prayerStunImmune,
+    rollCharacterCheck,
+} from './prayerAuras'
 import { hasEquippedSword } from './skillProgression'
 export function dodgedAttack(
     target: GameCharacter,
-    random: () => number
+    random: () => number,
+    now = Date.now(),
+    effects: PrayerAuraEffects = prayerAuraEffects(target, now)
 ): boolean {
-    return random() < effectiveCharacterStats(target).dodgeChance
+    return rollCharacterCheck(
+        target,
+        Math.min(
+            0.95,
+            effectiveCharacterStats(target).dodgeChance + effects.dodgeBonus
+        ),
+        random,
+        now,
+        effects.advantage
+    )
 }
 export function resolveAttackDamage(
     actor: GameCharacter,
     attack: PendingAttackHit,
-    random: () => number
+    random: () => number,
+    now = Date.now(),
+    effects: PrayerAuraEffects = prayerAuraEffects(actor, now)
 ): { amount: number; critical: boolean; hitQuality: CombatHitQuality } {
     const stats = resolveCharacterStats(actor.config, actor.equipment)
     const definition =
@@ -29,17 +48,18 @@ export function resolveAttackDamage(
             : ABILITY_DEFINITIONS[attack.abilityId]
     const low = definition?.damage ?? stats.minDamage
     const high = definition?.maxDamage ?? stats.maxDamage
-    const roll = Math.floor(low + random() * (high - low + 1))
+    const roll = effects.minimumDamage
+        ? low
+        : Math.floor(low + random() * (high - low + 1))
     let amount = roll
-    const modifiers = constellationModifiers(actor)
-    const sword = attack.abilityId === undefined && hasEquippedSword(actor)
-    const criticalBonus =
-        attack.abilityId === 'shot'
-            ? modifiers.shotCritBonus
-            : sword
-              ? modifiers.swordCritBonus
-              : 0
-    const critical = random() < Math.min(0.95, stats.critChance + criticalBonus)
+    const critical = attackCritical(
+        actor,
+        attack,
+        stats.critChance,
+        random,
+        now,
+        effects
+    )
     if (critical) {
         amount *= actor.config.combat.critMultiplier
     }
@@ -60,6 +80,33 @@ export function resolveAttackDamage(
         ),
     }
 }
+function attackCritical(
+    actor: GameCharacter,
+    attack: PendingAttackHit,
+    chance: number,
+    random: () => number,
+    now: number,
+    effects: PrayerAuraEffects
+): boolean {
+    const modifiers = constellationModifiers(actor)
+    const sword = attack.abilityId === undefined && hasEquippedSword(actor)
+    const bonus =
+        attack.abilityId === 'shot'
+            ? modifiers.shotCritBonus
+            : sword
+              ? modifiers.swordCritBonus
+              : 0
+    return (
+        !effects.minimumDamage &&
+        rollCharacterCheck(
+            actor,
+            Math.min(0.95, chance + bonus),
+            random,
+            now,
+            effects.advantage
+        )
+    )
+}
 function attackBonus(actor: GameCharacter, attack: PendingAttackHit): number {
     const modifiers = constellationModifiers(actor)
     if (attack.abilityId === 'shot') {
@@ -77,14 +124,19 @@ export function applyAttackStun(
     target: GameCharacter,
     attack: PendingAttackHit,
     now: number,
-    random: () => number
+    random: () => number,
+    advantage = prayerAuraEffects(actor, now).advantage,
+    stunImmune = prayerStunImmune(target, now)
 ): GameEventPayload[] {
-    if (!attack.canStun || !target.alive) {
+    if (!attack.canStun || !target.alive || stunImmune) {
         return []
     }
     const combat = actor.config.combat
     const heavy = attack.abilityId === 'skeleton_strike'
-    if (!heavy && random() >= combat.stunChance) {
+    if (
+        !heavy &&
+        !rollCharacterCheck(actor, combat.stunChance, random, now, advantage)
+    ) {
         return []
     }
     const baseDuration = heavy

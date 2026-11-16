@@ -21,6 +21,7 @@ import {
     craftInventoryItems,
     createItemInstance,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { canPerformSkillAction } from './skillProgression'
@@ -225,6 +226,7 @@ export class CityFarmSupply {
                 'В рюкзаке нет места для семени. Зерно не потрачено.'
             )
         }
+        resetMartyrStreak(actor)
         cycle.outstanding = true
         cycle.advances -= 1
         return {

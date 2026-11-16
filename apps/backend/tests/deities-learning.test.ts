@@ -13,6 +13,7 @@ import { studyMagic } from '../src/game/magicLearning'
 import { NavigationService } from '../src/game/navigation'
 import { handleProgressionCommand } from '../src/game/progressionCommands'
 import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
+import { abilityContext } from './abilityTestHelpers'
 import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 describe('shared deities and meaningful miracles', () => {
@@ -66,7 +67,7 @@ describe('shared deities and meaningful miracles', () => {
         expect(
             command(actor, { type: 'pray' }, [], 1_000, () => 1)
         ).toMatchObject([{ kind: 'cast', phase: 'started' }])
-        expect(actor.mana).toBe(40)
+        expect(actor.mana).toBe(35)
         expect(command(actor, { type: 'pray' }, [], 1_500, () => 0)).toEqual([])
         expect(finishPrayer(actor, 4_000, () => 1)).toMatchObject([
             { kind: 'cast', phase: 'completed' },
@@ -157,7 +158,14 @@ describe('unreliable resurrection', () => {
         const caster = hero('cleric')
         const target = hero()
         target.applyDamage(target.hp, 1_000)
-        expect(beginRevive(caster, target, 2_000)).toBe(true)
+        expect(
+            beginRevive(
+                caster,
+                target,
+                2_000,
+                abilityContext([caster, target], 2_000)
+            )
+        ).toBe(true)
         expect(
             advanceRevive(
                 caster,
@@ -173,12 +181,19 @@ describe('unreliable resurrection', () => {
                 5_000,
                 () => 1
             )
-        ).toMatchObject([{ kind: 'notice' }])
+        ).toContainEqual(expect.objectContaining({ kind: 'notice' }))
         expect(target.alive).toBe(false)
         expect(target.reviveUntil).toBe(61_000)
-        expect(caster.mana).toBe(100)
+        expect(caster.mana).toBe(115)
         expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
-        expect(beginRevive(caster, target, 5_001)).toBe(true)
+        expect(
+            beginRevive(
+                caster,
+                target,
+                5_001,
+                abilityContext([caster, target], 5_001)
+            )
+        ).toBe(true)
         expect(
             advanceRevive(
                 caster,
@@ -188,7 +203,7 @@ describe('unreliable resurrection', () => {
             )
         ).toContainEqual(expect.objectContaining({ kind: 'revive' }))
         expect(target.alive).toBe(true)
-        expect(caster.mana).toBe(80)
+        expect(caster.mana).toBe(110)
         expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
     })
 })

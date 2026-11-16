@@ -1,7 +1,7 @@
 import {
     type CharacterSnapshot,
     type DeityPrayerProfile,
-    type PrayerAbilityId,
+    type PrayerActionId,
     type PrayerPreview,
     profileForPrayer,
     snapshotPrayerParameters,
@@ -9,7 +9,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 export interface PrayerPreviewHighlight {
-    abilityId?: PrayerAbilityId
+    abilityId?: PrayerActionId
     origin: Vector2
     radius: number
     targetId?: string
@@ -48,6 +48,7 @@ export function createPrayerPreviewHighlight(
             .filter(
                 (target) =>
                     target.alive &&
+                    (preview.harmfulTargetIds?.includes(target.id) ?? true) &&
                     nearby(target) &&
                     profile.harmTypes.includes(target.creatureType) &&
                     (target.id === player.id ||
@@ -71,6 +72,7 @@ function activeHarmProfile(
     if (
         !active ||
         !player.alive ||
+        preview.harmfulTargets <= 0 ||
         player.tags.includes('offline') ||
         preview.unavailableReason !== null
     )

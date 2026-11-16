@@ -17,7 +17,9 @@ import {
     type InventoryItemInstance,
     transferInventoryItem,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
+import { canPerceivePrayerCaster } from './prayerAuras'
 import { spendUsefulEnergy } from './resourcePractice'
 import type { GameRoom } from './room'
 import {
@@ -25,6 +27,7 @@ import {
     canPerformSkillAction,
     captureMasteryFactors,
 } from './skillProgression'
+import { rollTheft } from './theftChecks'
 import { privateTheftNotice } from './theftEvents'
 
 interface TheftState {
@@ -114,7 +117,12 @@ export class TheftService {
             THEFT_RULES.cooldownMs -
             constellationModifiers(actor).theftCooldownDiscount
         state.pairs.set(target.id, context.now + THEFT_RULES.pairCooldownMs)
-        let outcome = rollTheft(actor, target, context.random ?? Math.random)
+        let outcome = rollTheft(
+            actor,
+            target,
+            context.random ?? Math.random,
+            context.now
+        )
         if (
             outcome === 'stolen' &&
             transferInventoryItem(
@@ -140,6 +148,7 @@ export class TheftService {
         }
         const events = [privateTheftNotice(actor.id, text, target.id)]
         if (outcome === 'stolen') {
+            resetMartyrStreak(actor)
             events.push(
                 ...awardMasteries(
                     actor,
@@ -237,6 +246,7 @@ function validTarget(
         target.alive &&
         !target.tags.has('offline') &&
         target.locationId === actor.locationId &&
+        canPerceivePrayerCaster(actor, target, context.now) &&
         distance(actor.position, target.position) <= THEFT_RULES.range &&
         context.navigation.hasLineOfSight(actor.position, target.position)
     )
@@ -265,38 +275,4 @@ function stealableItem(
         Object.values(target.equipment).map((item) => item.instanceId)
     )
     return target.inventory.find((item) => !equipped.has(item.instanceId))
-}
-function rollTheft(
-    actor: GameCharacter,
-    target: GameCharacter,
-    random: () => number
-): TheftResult['outcome'] {
-    const front = facingThief(target, actor)
-    const detected = Math.max(0.1, Math.min(0.9, 0.68 + (front ? 0.12 : -0.08)))
-    const success = Math.max(
-        0.05,
-        Math.min(
-            0.9,
-            0.25 +
-                0.04 +
-                0.015 +
-                (front ? 0 : 0.1) +
-                constellationModifiers(actor).theftChanceBonus
-        )
-    )
-    if (random() < detected) {
-        return 'caught'
-    }
-    return random() < success ? 'stolen' : 'failed'
-}
-function facingThief(target: GameCharacter, actor: GameCharacter): boolean {
-    const dx = actor.position.x - target.position.x
-    const dy = actor.position.y - target.position.y
-    const direction = {
-        up: { x: 0, y: -1 },
-        down: { x: 0, y: 1 },
-        left: { x: -1, y: 0 },
-        right: { x: 1, y: 0 },
-    }[target.facing]
-    return dx * direction.x + dy * direction.y > 0
 }

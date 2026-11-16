@@ -1,7 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
-    isPrayerAbility,
-    type PrayerAbilityId,
+    isPrayerAction,
+    type PrayerActionId,
     previewPrayerFromSnapshots,
 } from '@my-game-ratata/contracts'
 import { computed, type ComputedRef, onBeforeUnmount, watch } from 'vue'
@@ -36,7 +36,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const boundPrayers = computed(() => [
         ...new Set(
             bindings.value.flatMap((binding) =>
-                binding?.kind === 'ability' && isPrayerAbility(binding.id) ? [binding.id] : []
+                binding?.kind === 'ability' && isPrayerAction(binding.id) ? [binding.id] : []
             )
         ),
     ])
@@ -44,7 +44,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const selectedPrayer = computed(
         () => preferredPrayer(props.player, boundPrayers.value) ?? boundPrayers.value[0] ?? 'pray'
     )
-    const previewFor = (abilityId: PrayerAbilityId) => prayerPreview(props, abilityId)
+    const previewFor = (abilityId: PrayerActionId) => prayerPreview(props, abilityId)
     const preview = computed(() => previewFor(selectedPrayer.value))
     watchPrayerHighlight(props, emit, prayerAssigned, preview)
     const gestures = createGestures(props, emit, () => bindings.value)
@@ -62,7 +62,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
             binding,
             props,
             count.value,
-            binding?.kind === 'ability' && isPrayerAbility(binding.id)
+            binding?.kind === 'ability' && isPrayerAction(binding.id)
                 ? (previewFor(binding.id).unavailableReason ?? undefined)
                 : undefined,
             cooldown(binding)
@@ -87,7 +87,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         cooldown,
         unavailable,
         tooltip: (binding: HotbarBinding | null) =>
-            binding?.kind === 'ability' && isPrayerAbility(binding.id)
+            binding?.kind === 'ability' && isPrayerAction(binding.id)
                 ? prayerDescription(
                       previewFor(binding.id),
                       props.characters,
@@ -102,7 +102,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         resetGesture: gestures.reset,
     }
 }
-function prayerPreview(props: HotbarProps, abilityId: PrayerAbilityId) {
+function prayerPreview(props: HotbarProps, abilityId: PrayerActionId) {
     return props.grave
         ? gravePrayerPreview(
               props.player,
@@ -164,7 +164,7 @@ function watchGestureChanges(
 function describedPrayer(
     props: HotbarProps,
     preview: ReturnType<typeof previewPrayerFromSnapshots>,
-    abilityId: PrayerAbilityId,
+    abilityId: PrayerActionId,
     count: number
 ): string {
     const text = prayerDescription(preview, props.characters, props.player, props.grave)

@@ -11,6 +11,7 @@ import {
 } from '../src/game/characterLife'
 import { createItemInstance } from '../src/game/inventory'
 import { awardMasteries } from '../src/game/skillProgression'
+import { abilityContext } from './abilityTestHelpers'
 import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 describe('shared hero classes and progression', () => {
@@ -111,8 +112,8 @@ describe('shared cleric revival ability', () => {
         )
         target.inventory.push(createItemInstance('boots'))
         kill(target, 2_000)
-        expect(beginRevive(caster, target, 3_000)).toBe(true)
-        expect(beginRevive(caster, target, 3_500)).toBe(false)
+        expect(beginReviveInFixture(caster, target, 3_000)).toBe(true)
+        expect(beginReviveInFixture(caster, target, 3_500)).toBe(false)
         expect(advanceRevive(caster, () => target, 5_999)).toEqual([])
         expect(target.alive).toBe(false)
         expect(
@@ -133,7 +134,7 @@ describe('shared cleric revival ability', () => {
         expect(target.progression.masteries.prayer.level).toBe(1)
         expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
         expect(target.inventory).toHaveLength(1)
-        expect(caster.mana).toBe(100)
+        expect(caster.mana).toBe(115)
         expect(target.reviveUntil).toBe(0)
         expect(advanceRevive(caster, () => target, 6_100)).toEqual([])
     })
@@ -142,24 +143,24 @@ describe('shared cleric revival ability', () => {
         const target = hero('vanguard')
         const caster = hero('cleric')
         kill(target, 2_000)
-        expect(beginRevive(hero('ranger'), target, 3_000)).toBe(false)
+        expect(beginReviveInFixture(hero('ranger'), target, 3_000)).toBe(false)
         caster.position.x += 49
-        expect(beginRevive(caster, target, 3_000)).toBe(false)
+        expect(beginReviveInFixture(caster, target, 3_000)).toBe(false)
         caster.position = { ...target.position }
         caster.locationId = 'map-0-0'
-        expect(beginRevive(caster, target, 3_000)).toBe(false)
+        expect(beginReviveInFixture(caster, target, 3_000)).toBe(false)
         caster.locationId = target.locationId
-        caster.mana = 19
-        expect(beginRevive(caster, target, 3_000)).toBe(false)
+        caster.mana = 4
+        expect(beginReviveInFixture(caster, target, 3_000)).toBe(false)
         caster.mana = 120
-        expect(beginRevive(caster, target, 62_000)).toBe(false)
+        expect(beginReviveInFixture(caster, target, 62_000)).toBe(false)
     })
 
     it('allows other backgrounds to resurrect after practicing miracles', () => {
         const caster = hero('vanguard')
         const target = hero('ranger')
         kill(target, 2_000)
-        expect(beginRevive(caster, target, 3_000)).toBe(false)
+        expect(beginReviveInFixture(caster, target, 3_000)).toBe(false)
         caster.abilities.known.add('pray')
         awardMasteries(
             caster,
@@ -172,14 +173,14 @@ describe('shared cleric revival ability', () => {
         expect(caster.snapshot(3_000).progression?.resurrectionUnlocked).toBe(
             true
         )
-        expect(beginRevive(caster, target, 3_000)).toBe(true)
+        expect(beginReviveInFixture(caster, target, 3_000)).toBe(true)
     })
 
     it('interrupts the cast if the cleric is stunned before completion', () => {
         const caster = hero('cleric')
         const target = hero('vanguard')
         kill(target, 2_000)
-        beginRevive(caster, target, 3_000)
+        beginReviveInFixture(caster, target, 3_000)
         caster.stunUntil = 7_000
         expect(
             advanceRevive(
@@ -190,7 +191,7 @@ describe('shared cleric revival ability', () => {
             )
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
         expect(target.alive).toBe(false)
-        expect(caster.mana).toBe(120)
+        expect(caster.mana).toBe(115)
     })
 })
 
@@ -208,4 +209,17 @@ function hero(heroClass: HeroClass): GameCharacter {
 function kill(character: GameCharacter, now: number): void {
     character.applyDamage(character.maxHp, now)
     character.queueRespawn(now, 5_000)
+}
+
+function beginReviveInFixture(
+    caster: GameCharacter,
+    target: GameCharacter,
+    now: number
+): boolean {
+    return beginRevive(
+        caster,
+        target,
+        now,
+        abilityContext([caster, target], now)
+    )
 }

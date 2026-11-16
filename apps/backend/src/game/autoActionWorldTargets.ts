@@ -1,6 +1,7 @@
 import {
     type CharacterAutoAction as AnyAutoAction,
     isItemBroken,
+    isMotherPrayer,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
@@ -66,7 +67,7 @@ function legalAutoPurification(
     context: AbilityContext
 ): boolean {
     return (
-        (action.abilityId ?? 'pray') === 'pray' &&
+        isMotherPrayer(action.abilityId ?? 'pray') &&
         action.intent.mode === 'purify_grave' &&
         canApproachGravePurification(actor, action.intent.target.id, context)
     )

@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { resolveConstellationCardEffects } from '../src/game/constellationCardEffects'
 import { fullConstellationCatalog } from '../src/game/constellationNodes'
 
-const base = ['Лечит вас или союзника.', 'Очищает могилы от тёмных сил.']
+const base = [
+    'Лечит вас или союзника.',
+    'Очищает могилы от тёмных сил.',
+    'За одну молитву действует на одну выбранную цель.',
+]
 const revival =
     'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.'
 const harm = 'Наносит урон нежити в радиусе молитвы.'
@@ -47,16 +51,14 @@ describe('earned effects of active constellation cards', () => {
         const effects = requiredEffects('prayer.root')
         expect(effects).toEqual(
             expect.arrayContaining([
-                'Лечит вас и всех подходящих союзников в радиусе молитвы.',
+                'Лечит вас или союзника.',
                 'Очищает могилы от тёмных сил.',
                 revival,
                 harm,
-                'Лечение усилено на 10%.',
-                'Урон кары увеличен на 60%.',
+                'Лечение усилено на 395%.',
+                'Урон кары увеличен на 360%.',
                 'Радиус молитвы увеличен на 2 клетки.',
-                'Молитва совершается на 10% быстрее.',
-                'Одновременно лечит союзников и очищает могилы в радиусе молитвы.',
-                'Пока ваше здоровье ниже 20% из-за вражеских ран, ваша молитва лечит на 10% сильнее.',
+                'Молитва совершается на 60% быстрее.',
             ])
         )
         expect(
@@ -73,7 +75,12 @@ describe('earned effects of active constellation cards', () => {
         expect(effects).toContain(
             'После успешного воскрешения с вероятностью 30% возвращает по 150% здоровья, маны и энергии.'
         )
-        expect(effects).not.toContain('Лечит вас или союзника.')
+        expect(effects).not.toContain(
+            'Одновременно совершает разные чудеса: не более 20 целей за молитву.'
+        )
+        expect(requiredEffects('prayer.area')).toContain(
+            'Одновременно совершает разные чудеса: не более 20 целей за молитву.'
+        )
     })
     it('isolates the four prayer schools and the undead resurrection mode', () => {
         for (const id of ['prayer_road.root', 'prayer_lantern.root']) {
@@ -120,7 +127,7 @@ describe('earned effects of active constellation cards', () => {
             fullConstellationCatalog.filter(
                 (node) => node.effectType === 'active'
             )
-        ).toHaveLength(7)
+        ).toHaveLength(8)
         for (const node of fullConstellationCatalog.filter(
             (entry) => entry.effectType === 'active'
         )) {

@@ -1,10 +1,11 @@
+import { prayerSchoolId } from '@my-game-ratata/contracts'
 import {
     ABILITY_DEFINITIONS,
     type CharacterSnapshot,
     type DeityId,
     type GameEventPayload,
     GRAVE_PURIFY_CAST_MS,
-    isPrayerAbility,
+    isPrayerAction,
     PRAYER_SCHOOL_DEFINITIONS,
     type ProjectilePath,
     snapshotPrayerParameters,
@@ -55,7 +56,7 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
         ...(event.target ? { target: event.target } : {}),
     }
     if (event.kind === 'attack') return [attackCue(event, actor, base)]
-    if (event.kind === 'cast' && isPrayerAbility(event.abilityId))
+    if (event.kind === 'cast' && isPrayerAction(event.abilityId))
         return prayerCastCues(event, actor, base)
     if (event.kind === 'heal' && (event.amount === undefined || event.amount > 0))
         return [{ ...base, kind: 'restore', count: 10 }]
@@ -96,7 +97,7 @@ function impactCues(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (event.kind === 'notice' && isPrayerAbility(event.abilityId))
+    if (event.kind === 'notice' && isPrayerAction(event.abilityId))
         return [
             {
                 ...base,
@@ -122,7 +123,7 @@ function prayerHit(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (!isPrayerAbility(event.abilityId)) return []
+    if (!isPrayerAction(event.abilityId)) return []
     return [
         {
             ...base,
@@ -193,14 +194,14 @@ function healingCaption(event: GameEventPayload): string | undefined {
 }
 function castCaption(event: GameEventPayload): string | undefined {
     if (event.phase === 'interrupted') return 'Прервано'
-    if (event.phase === 'completed' && isPrayerAbility(event.abilityId))
+    if (event.phase === 'completed' && isPrayerAction(event.abilityId))
         return ABILITY_DEFINITIONS[event.abilityId].name
     if (event.phase === 'started' && event.abilityId === 'skeleton_strike') return 'Костяной удар…'
     return undefined
 }
 
 function eventDeity(event: GameEventPayload, actor: CharacterSnapshot): DeityId {
-    return isPrayerAbility(event.abilityId)
-        ? PRAYER_SCHOOL_DEFINITIONS[event.abilityId].deityId
+    return isPrayerAction(event.abilityId)
+        ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
         : (actor.progression?.deity.id ?? 'hearth')
 }

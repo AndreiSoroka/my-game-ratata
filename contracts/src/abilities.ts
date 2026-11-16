@@ -5,6 +5,22 @@ export const prayerAbilityIds = [
     'pray_grave',
 ] as const
 export type PrayerAbilityId = (typeof prayerAbilityIds)[number]
+/** Canonical schools remain independent from standalone cast actions. */
+export type PrayerSchoolId = PrayerAbilityId
+export const prayerActionIds = [...prayerAbilityIds, 'pray_woven'] as const
+export type PrayerActionId = (typeof prayerActionIds)[number]
+export function isPrayerAction(value: unknown): value is PrayerActionId {
+    return (
+        typeof value === 'string' &&
+        prayerActionIds.includes(value as PrayerActionId)
+    )
+}
+export function prayerSchoolId(actionId: PrayerActionId): PrayerSchoolId {
+    return actionId === 'pray_woven' ? 'pray' : actionId
+}
+export function isMotherPrayer(actionId: PrayerActionId): boolean {
+    return prayerSchoolId(actionId) === 'pray'
+}
 export function isPrayerAbility(value: unknown): value is PrayerAbilityId {
     return (
         typeof value === 'string' &&
@@ -12,7 +28,7 @@ export function isPrayerAbility(value: unknown): value is PrayerAbilityId {
     )
 }
 export const abilityIds = [
-    ...prayerAbilityIds,
+    ...prayerActionIds,
     'spark',
     'barrier',
     'shot',
@@ -26,7 +42,7 @@ export type AttackAbilityId = 'spark' | 'shot' | 'skeleton_strike'
 export type BasicAttackKind = 'melee' | 'arrow' | 'spark'
 export type DamageKind = 'physical' | 'arcane' | 'holy' | 'unholy'
 export type PrayerMode =
-    'restore' | 'revive' | 'harm' | 'devotion' | 'purify_grave'
+    'restore' | 'revive' | 'harm' | 'ward' | 'devotion' | 'purify_grave'
 export type PrayerIntent =
     | {
           mode: Exclude<PrayerMode, 'purify_grave'>
@@ -39,15 +55,24 @@ export type PrayerIntent =
           targetId?: never
       }
 export interface PrayerPreview {
-    abilityId?: PrayerAbilityId
+    abilityId?: PrayerActionId
     intent: PrayerIntent | null
     manaCost: number
     harmfulTargets: number
+    /** Actual bounded recipients of Kara, when supplied by a resolved preview. */
+    harmfulTargetIds?: string[]
     includesAllies: boolean
     includesSelf: boolean
     unavailableReason: string | null
     radius?: number
     durationMs?: number
+    cost?: PrayerCostSnapshot
+    targetCount?: number
+}
+/** Percentage prices disclose their rule without revealing the unknown maximum MP. */
+export interface PrayerCostSnapshot {
+    manaPerTarget: number
+    healingManaFraction?: number
 }
 /** Public action parameters; numeric damage knowledge is projected separately. */
 export interface AbilityUsageSnapshot {
@@ -64,25 +89,26 @@ export interface CharacterAbilitiesSnapshot {
     barrier: { remaining?: number; expiresAt: number } | null
     /** Healing alias retained for existing presentation fixtures. */
     prayer?: PrayerParametersSnapshot
-    prayers?: Partial<Record<PrayerAbilityId, PrayerParametersSnapshot>>
-    lastPrayerAbilityId?: PrayerAbilityId
+    prayers?: Partial<Record<PrayerActionId, PrayerParametersSnapshot>>
+    lastPrayerAbilityId?: PrayerActionId
     casting: {
-        abilityId: PrayerAbilityId
+        abilityId: PrayerActionId
         mode?: Exclude<PrayerMode, 'devotion'>
         target?: import('./graves').WorldCombatTarget
         targetId: string
         startedAt: number
         completesAt: number
+        uninterruptible?: boolean
     } | null
 }
 export type AbilityClientMessage =
     | {
           type: 'use_ability'
-          abilityId: Exclude<AbilityId, PrayerAbilityId>
+          abilityId: Exclude<AbilityId, PrayerActionId>
           targetId?: string
           target?: import('./graves').WorldCombatTarget
       }
-    | { type: 'use_ability'; abilityId: PrayerAbilityId; intent: PrayerIntent }
+    | { type: 'use_ability'; abilityId: PrayerActionId; intent: PrayerIntent }
     | { type: 'learn_ability'; abilityId: LearnAbilityId; targetId: string }
     | { type: 'cancel_prayer' }
 export interface PrayerParametersSnapshot {
@@ -91,6 +117,11 @@ export interface PrayerParametersSnapshot {
     manaCost: number
     area: boolean
     harm: boolean
+    targetLimit?: number
+    wardRank?: number
+    hasAuras?: boolean
+    aurasSuppressed?: boolean
+    cost?: PrayerCostSnapshot
 }
 export interface AbilityDefinition {
     name: string
@@ -106,6 +137,14 @@ export interface AbilityDefinition {
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
     pray: {
         name: 'Молитва',
+        mana: 5,
+        energy: 0,
+        cooldownMs: 3000,
+        range: 48,
+        windupMs: 3000,
+    },
+    pray_woven: {
+        name: 'Сплетённая молитва',
         mana: 5,
         energy: 0,
         cooldownMs: 3000,

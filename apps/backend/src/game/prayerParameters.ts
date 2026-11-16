@@ -1,8 +1,9 @@
 import {
     ABILITY_DEFINITIONS,
     type AbilityId,
-    isPrayerAbility,
-    type PrayerAbilityId,
+    isMotherPrayer,
+    isPrayerAction,
+    type PrayerActionId,
     type PrayerParametersSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -13,10 +14,10 @@ import { constellationModifiers, hasStar } from './constellations'
 export function prayerParameters(
     actor: GameCharacter,
     tileWidth = 0,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): PrayerParametersSnapshot {
     const definition = ABILITY_DEFINITIONS[abilityId]
-    if (abilityId !== 'pray') {
+    if (!isMotherPrayer(abilityId)) {
         return {
             radius: definition.range,
             durationMs: definition.windupMs,
@@ -35,28 +36,42 @@ export function prayerParameters(
                 modifiers.prayerDurationMultiplier
         ),
         manaCost: ABILITY_DEFINITIONS.pray.mana,
-        area: modifiers.prayerArea,
+        area: abilityId === 'pray_woven',
+        targetLimit: modifiers.targetLimit,
+        wardRank: modifiers.prayerWardRank,
+        hasAuras:
+            modifiers.prayerWardRank > 0 ||
+            modifiers.prayerAuraProtection ||
+            modifiers.prayerAuraBlessing ||
+            modifiers.prayerAuraDomain,
+        aurasSuppressed: actor.abilities.prayerAurasSuppressed,
+        cost: {
+            manaPerTarget: 5,
+            ...(modifiers.prayerLastLight ? { healingManaFraction: 0.3 } : {}),
+        },
         harm: hasStar(actor, 'prayer.harm'),
     }
 }
 
 export function prayerAvailableAt(
     actor: GameCharacter,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): number {
     return Math.max(
-        abilityId === 'pray' ? actor.progression.prayerAvailableAt : 0,
+        isMotherPrayer(abilityId) ? actor.progression.prayerAvailableAt : 0,
         actor.abilities.availableAt[abilityId] ?? 0
     )
 }
 export function setPrayerAvailableAt(
     actor: GameCharacter,
-    abilityId: PrayerAbilityId,
+    abilityId: PrayerActionId,
     now: number
 ): void {
     actor.abilities.availableAt[abilityId] = now
-    if (abilityId === 'pray') {
+    if (isMotherPrayer(abilityId)) {
         actor.progression.prayerAvailableAt = now
+        actor.abilities.availableAt.pray = now
+        actor.abilities.availableAt.pray_woven = now
     }
 }
 
@@ -64,10 +79,10 @@ export function snapshotPrayerParameters(
     actor: GameCharacter,
     known: readonly AbilityId[],
     tileWidth = 0
-): Partial<Record<PrayerAbilityId, PrayerParametersSnapshot>> {
+): Partial<Record<PrayerActionId, PrayerParametersSnapshot>> {
     return Object.fromEntries(
         known
-            .filter(isPrayerAbility)
+            .filter(isPrayerAction)
             .map((id) => [id, prayerParameters(actor, tileWidth, id)])
     )
 }

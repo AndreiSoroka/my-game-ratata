@@ -1,13 +1,14 @@
 import {
     HERO_REVIVAL_WINDOW_MS,
+    prayerManaCost,
     resolveResurrectionParameters,
     REVIVE_CAST_MS,
-    REVIVE_MANA_COST,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import { prayerMoodQuality } from '../../../../backend/src/game/prayerProbability'
+import { chancePercent, successWithAdvantage } from './constellationChanceMath'
 import type { PrayerBuildContext, PrayerBuildResult } from './constellationPrayerBuild'
 
 const number = (value: number) =>
@@ -22,7 +23,8 @@ export function describePrayerPassive(
     const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)
     if (!node || node.effectType !== 'passive') throw new Error(`Not a prayer passive: ${nodeId}`)
     const bonus = resolveConstellationBonuses(new Set([nodeId]), true)
-    const metrics = passiveMetrics(nodeId, context, bonus)
+    const metrics =
+        advancedPassiveMetrics(nodeId, context) ?? passiveMetrics(nodeId, context, bonus)
     if (metrics) return { effects: [], metrics }
     if (nodeId === 'prayer.harm')
         return {
@@ -41,11 +43,55 @@ export function describePrayerPassive(
                 row('Цели воскрешения', 'Одна выбранная павшая цель'),
                 row('Окно души', `${HERO_REVIVAL_WINDOW_MS / 1000} с`),
                 row('Время воскрешения', `${REVIVE_CAST_MS} мс`),
-                row('Цена воскрешения', `${REVIVE_MANA_COST} MP`),
+                row('Цена воскрешения', `${prayerManaCost('revive', context.ability)} MP`),
                 row('Ресурсы после воскрешения', baseRevivalResources(context)),
             ],
         }
-    throw new Error(`Missing prayer passive result: ${nodeId}`)
+    return { effects: [node.description], metrics: [] }
+}
+function advancedPassiveMetrics(
+    id: string,
+    context: PrayerBuildContext
+): PrayerBuildResult['metrics'] | undefined {
+    if (id === 'prayer.concentration')
+        return [
+            row('Время молитвы', '−20%'),
+            row(
+                'Защита от прерывания ударом',
+                chancePercent(successWithAdvantage(0.5, context.externalAdvantage))
+            ),
+        ]
+    if (id === 'prayer.absolute_concentration')
+        return [row('Время молитвы', '−10%'), row('Защита от прерывания ударом', '100%')]
+    if (id === 'prayer.hasty_harm')
+        return [row('Время молитвы', '−5%'), row('Усиление урона Кары', '−100 п.п.')]
+    if (id.startsWith('prayer.targets'))
+        return [row('Дополнительные цели обеих молитв', `+${[1, 3, 15][Number(id.at(-1)) - 1]}`)]
+    if (id === 'prayer.aura_protection')
+        return [
+            row('Уклонение всех живых в радиусе', '+10 п.п.'),
+            row('Аура', context.aurasSuppressed ? 'Подавлена' : 'Действует, включая врагов'),
+        ]
+    if (id === 'prayer.aura_blessing')
+        return [
+            row('Успех других участников группы', 'Преимущество: два броска, лучший результат'),
+            row('Собственные проверки', 'Без преимущества от своей ауры'),
+            row('Аура', context.aurasSuppressed ? 'Подавлена' : 'Действует'),
+        ]
+    if (id === 'prayer.aura_domain')
+        return [
+            row('Лечение всех живых', '5 × 1 HP: на 100, 200, 300, 400 и 500 мс'),
+            row('Входящий урон нежити', '+50% от любых атакующих'),
+            row('Аура', context.aurasSuppressed ? 'Подавлена' : 'Действует, включая врагов'),
+        ]
+    if (id === 'prayer.martyr')
+        return [
+            row('Базовое максимальное HP', '−30%'),
+            row('Базовая максимальная MP', '−15%'),
+            row('Время молитвы', '−15%'),
+            row('Лечение', '+15%'),
+        ]
+    return undefined
 }
 function passiveMetrics(
     id: string,
@@ -60,7 +106,14 @@ function passiveMetrics(
     if (['prayer.gift1', 'prayer.gift2', 'prayer.last_light'].includes(id)) {
         const metrics = [row('Лечение', `+${number((bonus.prayerGiftMultiplier - 1) * 100)}%`)]
         if (id === 'prayer.last_light')
-            metrics.push(row('Условие', context.lowHealthEligible ? 'Выполнено' : 'Не выполнено'))
+            metrics.push(
+                row('Время молитвы', '−20%'),
+                row('Цена каждого лечения', '30% максимальной MP'),
+                row('Первая цель', 'Всегда вы'),
+                row('Защита от прерывания', 'Только смерть прерывает молитву'),
+                row('Откат', '10 с'),
+                row('Условие', context.lowHealthEligible ? 'Выполнено' : 'Не выполнено')
+            )
         return metrics
     }
     if (['prayer.harm1', 'prayer.harm2'].includes(id))

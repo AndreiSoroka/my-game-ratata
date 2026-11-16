@@ -8,6 +8,7 @@ import {
 import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
 import { consumeInventoryItems } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
 import { stop } from './workerNavigation'
@@ -127,6 +128,9 @@ export class WorkerRequestService {
             })
         ) {
             return 'Принеси один требуемый трофей в своей сумке.'
+        }
+        if (!request.view.proofAccepted) {
+            resetMartyrStreak(actor)
         }
         request.view.proofAccepted = true
         request.view.stage = 'outbound'

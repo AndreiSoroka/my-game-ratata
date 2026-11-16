@@ -38,7 +38,7 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
         expect(
             handleAbilityCommand(caster, prayer(target.id), context)[0]?.phase
         ).toBe('started')
-        expect(caster.mana).toBe(120)
+        expect(caster.mana).toBe(115)
         expect(
             advanceRevive(caster, () => target, 3999, context.random, {
                 ...context,
@@ -63,7 +63,7 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
                 now: 4000,
             })[0]?.phase
         ).toBe('started')
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(110)
         advanceRevive(caster, () => target, 7000, context.random, {
             ...context,
             now: 7000,
@@ -83,13 +83,13 @@ it('keeps a failed miracle probabilistic and paid without granting mastery exper
     expect(caster.mana).toBe(115)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
 })
-it('does not replace a stale pinned gift by another target or expensive revival', () => {
+it('does not replace a stale pinned gift by another target or a revival', () => {
     const caster = abilityHero()
     const target = abilityHero()
     const corpse = abilityHero()
     corpse.applyDamage(corpse.hp, 100)
     const context = abilityContext([caster, target, corpse])
-    expect(previewPrayer(caster, context).manaCost).toBe(20)
+    expect(previewPrayer(caster, context).manaCost).toBe(5)
     const client = previewPrayerFromSnapshots(
         caster.snapshot(1000),
         context.characters.map((c) => c.snapshot(1000))
@@ -103,7 +103,7 @@ it('does not replace a stale pinned gift by another target or expensive revival'
     expect(caster.mana).toBe(120)
     expect(caster.abilities.casting).toBe(null)
 })
-it('uses the unlocked wave on all undead including allies, with one roll and no XP from friendly harm', () => {
+it('uses one Woven roll for selected healing and friendly undead harm without friendly-damage XP', () => {
     const caster = abilityHero()
     caster.hp -= 10
     const allies = [
@@ -115,13 +115,21 @@ it('uses the unlocked wave on all undead including allies, with one roll and no 
     expect(prayerHarmTargets(caster, context)).toEqual([])
 
     caster.progression.constellations.opened.add('prayer.harm')
+    caster.abilities.known.add('pray_woven')
+    for (const id of ['prayer.area', 'prayer.targets1', 'prayer.targets2']) {
+        caster.progression.constellations.opened.add(id)
+    }
     let rolls = 0
     context.random = () => {
         rolls += 1
         return miracleChance(caster, context.now) + 0.01
     }
     const before = allies.map((target) => target.hp)
-    const events = castPrayer(caster, prayer(caster.id), context)
+    const events = castPrayer(
+        caster,
+        { ...prayer(caster.id), abilityId: 'pray_woven' },
+        context
+    )
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(2)
     expect(events.some((event) => event.kind === 'heal')).toBe(false)
     expect(rolls).toBe(1)
@@ -129,6 +137,7 @@ it('uses the unlocked wave on all undead including allies, with one roll and no 
         allies.every((target, index) => target.hp < (before[index] ?? 0))
     ).toBe(true)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
+    expect(caster.mana).toBe(105)
 })
 it('restores only undead through the grave school without inheriting a harmful wave', () => {
     const caster = abilityHero()
@@ -183,7 +192,7 @@ it('prevents friendly damage and healing that damage from training miracles', ()
     expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
     expect(target.abilities.untrainableHpDamage).toBeGreaterThan(0)
 })
-it('channels resurrection, preserves identity, and cancels for changed deity or offline target', () => {
+it('prepays Mother resurrection, preserves identity, and does not refund an offline recipient', () => {
     const caster = abilityHero()
     const target = abilityHero()
     target.applyDamage(target.hp, 100)
@@ -194,7 +203,7 @@ it('channels resurrection, preserves identity, and cancels for changed deity or 
         intent: { mode: 'revive', targetId: target.id },
     } as const
     handleAbilityCommand(caster, message, context)
-    expect(caster.mana).toBe(120)
+    expect(caster.mana).toBe(115)
     expect(caster.snapshot(1000).abilities?.casting?.targetId).toBe(target.id)
     expect(
         advanceRevive(
@@ -214,7 +223,7 @@ it('channels resurrection, preserves identity, and cancels for changed deity or 
             { ...context, now: 4000 }
         )
     ).toContainEqual(expect.objectContaining({ kind: 'revive' }))
-    expect(caster.mana).toBe(100)
+    expect(caster.mana).toBe(115)
     expect(target.alive).toBe(true)
     target.applyDamage(target.hp, 5000)
     handleAbilityCommand(caster, message, { ...context, now: 6000 })
@@ -228,7 +237,7 @@ it('channels resurrection, preserves identity, and cancels for changed deity or 
             { ...context, now: 9000 }
         )
     ).toContainEqual(expect.objectContaining({ phase: 'interrupted' }))
-    expect(caster.mana).toBe(100)
+    expect(caster.mana).toBe(110)
 })
 
 function castPrayer(

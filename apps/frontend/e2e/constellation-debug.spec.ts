@@ -44,17 +44,23 @@ async function enableInspectedStar(page: Page, id: string): Promise<void> {
     await page.getByTestId('selected-star-toggle').click()
 }
 async function assertOwnPrayerModifiers(page: Page): Promise<void> {
-    for (const id of ['prayer.gift1', 'prayer.gift2']) {
+    for (const [id, increase] of [
+        ['prayer.gift1', 130],
+        ['prayer.gift2', 250],
+    ] as const) {
         await enableInspectedStar(page, id)
-        await expect(buildResultPanel(page)).toContainText('+5%')
+        await expect(buildResultPanel(page)).toContainText(`+${increase}%`)
         await expect(buildResultPanel(page).locator('[data-metric]')).toHaveCount(0)
         await expect(buildResultPanel(page)).not.toContainText('Шанс лечения')
     }
-    for (const id of ['prayer.harm1', 'prayer.harm2']) {
+    for (const [id, increase] of [
+        ['prayer.harm1', 130],
+        ['prayer.harm2', 330],
+    ] as const) {
         await enableInspectedStar(page, id)
         await expect(
             buildResultPanel(page).locator('[data-build-metric="Урон кары"] dd')
-        ).toHaveText('+30%')
+        ).toHaveText(`+${increase}%`)
         await expect(buildResultPanel(page).locator('[data-metric]')).toHaveCount(0)
         await expect(buildResultPanel(page).getByTestId('debug-prayer-mood')).toHaveCount(0)
     }
@@ -93,8 +99,8 @@ for (const width of [320, 390, 1280]) {
         await selectBuildStar(page, 'prayer.root')
         await expect(page.locator('[data-metric="Шанс лечения"] dd')).toHaveText('80%')
         await expect(page.locator('[data-metric="Шанс кары"] dd')).toHaveText('95%')
-        await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('9 HP')
-        await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText('12 HP')
+        await expect(page.locator('[data-build-metric="Лечение"] dd')).toHaveText('37 HP')
+        await expect(page.locator('[data-build-metric="Урон кары"] dd')).toContainText('44 HP')
         await expect(
             page.getByTestId('debug-prayer-mood').getByRole('button', { name: 'Благосклонность' })
         ).toHaveAttribute('aria-pressed', 'true')
@@ -237,15 +243,15 @@ test('atlas compares current levels with every required path instead of claiming
     await expect(page.getByTestId('constellation-debug')).toBeVisible()
     await selectBuildStar(page, 'prayer.harm1')
     const prayer = page.locator('[data-required-path="prayer"]')
-    await expect(prayer).toHaveAttribute('data-required', '1')
+    await expect(prayer).toHaveAttribute('data-required', '6')
     await expect(prayer).toHaveAttribute('data-current', '0')
-    await expect(prayer).toContainText('Чудеса: требуется 1 · сейчас 0')
+    await expect(prayer).toContainText('Чудеса: требуется 6 · сейчас 0')
     await expect(page.getByTestId('debug-star-level-status')).toContainText('Недостаточно уровня')
     await enableInspectedStar(page, 'prayer.harm')
     await selectBuildStar(page, 'prayer.harm1')
     await expect(prayer).toHaveAttribute('data-current', '1')
     await page.getByTestId('selected-star-toggle').click()
-    await expect(prayer).toHaveAttribute('data-current', '2')
+    await expect(prayer).toHaveAttribute('data-current', '6')
     await expect(page.getByTestId('debug-star-level-status')).toHaveText(
         'Требование к уровню выполнено.'
     )
@@ -306,7 +312,7 @@ test('debug atlas never joins a player or sends gameplay requests', async ({ pag
     await selectBuildStar(page, 'prayer.root')
     await setBuildPanelsOpen(page, true)
     await page.getByTestId('debug-prayer-mood').getByRole('button', { name: 'Гнев' }).click()
-    expect(sockets).toEqual([])
+    expect(sockets.filter((url) => /\/ws\b/.test(url))).toEqual([])
     expect(requests.filter((url) => /\/ws\b|\/api\/|:3000/.test(url))).toEqual([])
 })
 

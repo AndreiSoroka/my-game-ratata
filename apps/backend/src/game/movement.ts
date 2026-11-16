@@ -12,6 +12,8 @@ import { distance, moveToward, zeroVector } from './math'
 import { cancelMovementMode } from './movementActions'
 import { type MovementNoise, movementNoise } from './movementNoise'
 import type { NavigationService } from './navigation'
+import { prayerAuraEffects } from './prayerAuras'
+import { resolvePrayerMovement } from './prayerFearMovement'
 import { boundedPursuitStep } from './pursuitMovement'
 import { confirmResourceSpend } from './resourcePractice'
 
@@ -42,7 +44,10 @@ export function advanceCharacter(
         cancelMovementMode(character)
         return undefined
     }
-    if (character.isActionLocked(now)) {
+    if (
+        character.isActionLocked(now) &&
+        !prayerAuraEffects(character, now).feared
+    ) {
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
         const events = character.applyRegen(deltaMs, false, true, now)
@@ -57,12 +62,17 @@ function moveCharacter(context: MovementContext): void {
     const { character, deltaMs, now, navigation } = context
     const before = { ...character.position }
     const dashMs = dashTime(character, now, deltaMs)
-    character.position = boundedPursuitStep(
+    const effects = prayerAuraEffects(character, now)
+    const slow = effects.slowMultiplier
+    const step = (movementSpeed(character) * slow * deltaMs) / 1000
+    const next = resolvePrayerMovement(
         character,
-        before,
-        nextPosition(context, dashMs),
+        effects.feared ? before : nextPosition(context, dashMs, slow),
+        step,
+        navigation,
         now
     )
+    character.position = boundedPursuitStep(character, before, next, now)
     const traveled = distance(before, character.position)
     if (dashMs > 0 && traveled > 0) {
         confirmResourceSpend(character.movement.dashResourceSpend)
@@ -111,12 +121,17 @@ function dashTime(
     )
 }
 
-function nextPosition(context: MovementContext, dashMs: number): Vector2 {
+function nextPosition(
+    context: MovementContext,
+    dashMs: number,
+    slow: number
+): Vector2 {
     const { character, deltaMs, navigation } = context
     if (dashMs > 0) {
         const step =
             (effectiveMoveSpeed(character) *
                 MOVEMENT_RULES.dashSpeedMultiplier *
+                slow *
                 dashMs) /
             1000
         return navigation.moveWithCollision(character.position, {
@@ -124,7 +139,7 @@ function nextPosition(context: MovementContext, dashMs: number): Vector2 {
             y: character.movement.dashDirection.y * step,
         })
     }
-    const step = (movementSpeed(character) * deltaMs) / 1000
+    const step = (movementSpeed(character) * slow * deltaMs) / 1000
     const input = character.getMoveInput()
     if (input.x !== 0 || input.y !== 0) {
         return navigation.moveWithCollision(character.position, {

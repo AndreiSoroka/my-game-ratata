@@ -1,7 +1,40 @@
 import { writeFile } from 'node:fs/promises'
 
-import type { ClientMessage, GameEventPayload, ServerMessage } from '@my-game-ratata/contracts'
+import {
+    type ClientMessage,
+    type GameEventPayload,
+    resourceFillPercent,
+    type ServerMessage,
+} from '@my-game-ratata/contracts'
 import type { Page, TestInfo } from '@playwright/test'
+
+/** Observe payment at channel start instead of after regeneration during the ritual. */
+export function capturePrayerManaAtStart(page: Page): number[] {
+    const mana: number[] = []
+    let playerId: string | undefined
+    let startedAt: number | undefined
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', (frame) => {
+            if (typeof frame.payload !== 'string') return
+            const message = JSON.parse(frame.payload) as ServerMessage
+            if (message.type === 'world_init') playerId = message.playerId
+            if (message.type !== 'world_init' && message.type !== 'snapshot') return
+            const player = message.snapshot.characters.find((actor) => actor.id === playerId)
+            const cast = player?.abilities?.casting
+            if (
+                player !== undefined &&
+                cast?.abilityId === 'pray' &&
+                cast.mode === 'purify_grave' &&
+                cast.startedAt !== startedAt
+            ) {
+                startedAt = cast.startedAt
+                mana.push(resourceFillPercent(player.resources.mana))
+            }
+        })
+    })
+    return mana
+}
 
 export function capturePurificationTargets(page: Page): string[] {
     const targets: string[] = []

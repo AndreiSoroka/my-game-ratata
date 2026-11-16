@@ -3,7 +3,8 @@ import type {
     GameEventPayload,
     WorldCombatTarget,
 } from '@my-game-ratata/contracts'
-import { isPrayerAbility, PRAYER_RULES, PRAYER_SCHOOL_DEFINITIONS } from '@my-game-ratata/contracts'
+import { prayerSchoolId } from '@my-game-ratata/contracts'
+import { isPrayerAction, PRAYER_RULES, PRAYER_SCHOOL_DEFINITIONS } from '@my-game-ratata/contracts'
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
@@ -73,7 +74,7 @@ export class CombatEffects {
     private eventTarget(event: GameEventPayload): EffectTarget | undefined {
         if (event.target && event.kind !== 'attack') return this.worldTarget(event.target)
         const casterCaption =
-            event.kind === 'cast' && isPrayerAbility(event.abilityId) && event.phase === 'completed'
+            event.kind === 'cast' && isPrayerAction(event.abilityId) && event.phase === 'completed'
         return this.character(
             event.kind === 'attack' || casterCaption
                 ? (event.actorId ?? '')
@@ -254,8 +255,8 @@ function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefi
         : event.kind === 'heal'
           ? '#a9ea8e'
           : deityColors[
-                isPrayerAbility(event.abilityId)
-                    ? PRAYER_SCHOOL_DEFINITIONS[event.abilityId].deityId
+                isPrayerAction(event.abilityId)
+                    ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
                     : (actor?.progression?.deity.id ?? 'hearth')
             ]
 }

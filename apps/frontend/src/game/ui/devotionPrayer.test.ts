@@ -56,7 +56,7 @@ describe('prayer without an eligible target', () => {
         for (const selected of [healthy.id, 'lost-target']) {
             const preview = previewPrayerFromSnapshots(player, [healthy, wounded], selected)
             expect(preview.intent).toEqual({ mode: 'devotion' })
-            expect(preview.unavailableReason).toBeNull()
+            expect(preview.unavailableReason).toBe('Выбранная цель недоступна для этой молитвы.')
             expect(preview.harmfulTargets).toBe(0)
         }
         expect(previewPrayerFromSnapshots(player, [healthy, wounded]).intent).toEqual({

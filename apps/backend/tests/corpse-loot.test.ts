@@ -31,17 +31,15 @@ function fixture(mortal = true) {
     actor.equipment.weapon = weapon
     const wallet = new AdventureService()
     wallet.grantGoldOnce(actor.id, 37, 'test-reward')
-    const world = new WorldInventory(
-        chestNavigation(),
-        actor.locationId,
-        wallet
-    )
+    const navigation = chestNavigation()
+    const world = new WorldInventory(navigation, actor.locationId, wallet)
     actor.applyDamage(actor.hp, now)
     actor.queueRespawn(now, 15_000)
     const deaths = [{ kind: 'death' as const, targetId: actor.id }]
     const viewer = chestHero('viewer', actor.position)
     return {
         actor,
+        navigation,
         item,
         weapon,
         wallet,
@@ -120,7 +118,13 @@ describe('protected mortal possessions', () => {
             nickname: 'cleric',
             spawnPosition: f.actor.position,
         })
-        expect(beginRevive(caster, f.actor, now + 1_000)).toBe(true)
+        expect(
+            beginRevive(caster, f.actor, now + 1_000, {
+                characters: [caster, f.actor],
+                navigation: f.navigation,
+                now: now + 1_000,
+            })
+        ).toBe(true)
         advanceRevive(
             caster,
             () => f.actor,

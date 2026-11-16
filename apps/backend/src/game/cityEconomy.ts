@@ -1,4 +1,5 @@
 import { CustomerOrders } from './customerOrders'
+import { resetMartyrStreak } from './martyr'
 import { ProductionWorkOrders } from './productionWorkOrders'
 export { artisanRecipes } from './productionWorkOrders'
 import {
@@ -211,6 +212,7 @@ export class CityEconomyService {
                     : 'В рюкзаке недостаточно этого товара.'
             )
         }
+        resetMartyrStreak(actor)
         wallet.gold += buying ? -total : total
         city.revision += 1
         if (!buying) {

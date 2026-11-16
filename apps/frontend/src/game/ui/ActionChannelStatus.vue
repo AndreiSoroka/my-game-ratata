@@ -7,6 +7,7 @@ const emit = defineEmits<{ cancelPrayer: [] }>()
 const prayerName = computed(
     () =>
         ({
+            ward: 'Сдерживание нежити',
             purify_grave: 'Очищение могилы',
             revive: 'Воскрешение',
             restore: ABILITY_DEFINITIONS[props.player.abilities?.casting?.abilityId ?? 'pray'].name,
@@ -22,6 +23,7 @@ const prayerName = computed(
         {{ prayerName }} ·
         {{ (Math.max(0, player.abilities.casting.completesAt - serverTime) / 1000).toFixed(1) }} с
         <button
+            v-if="!player.abilities.casting.uninterruptible"
             type="button"
             @keydown.esc.stop.prevent="emit('cancelPrayer')"
             @click="emit('cancelPrayer')"

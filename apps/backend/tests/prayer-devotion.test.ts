@@ -89,7 +89,7 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
     }
 )
 
-it('pins devotion for an unsuitable selected ally rather than healing or burning neighbors', () => {
+it('marks an unsuitable selected ally unavailable without healing or burning neighbors', () => {
     const actor = abilityHero()
 
     const selected = abilityHero()
@@ -102,7 +102,9 @@ it('pins devotion for an unsuitable selected ally rather than healing or burning
         expect(preview.intent).toEqual(devotion.intent)
         expect(preview.harmfulTargets).toBe(0)
         expect(preview.includesAllies).toBe(false)
-        expect(preview.unavailableReason).toBe(null)
+        expect(preview.unavailableReason).toBe(
+            'Выбранная цель недоступна для этой молитвы.'
+        )
         expect(
             previewPrayerFromSnapshots(
                 ownerSnapshot(actor),
@@ -268,4 +270,22 @@ it('does not make autonomous support priests spend mana on empty prayers', () =>
     ).toEqual([])
     expect(request).not.toHaveBeenCalled()
     expect(actor.mana).toBe(120)
+})
+
+it('keeps a healthy selected self available for cosmetic prayer in server and client previews', () => {
+    const actor = abilityHero()
+    const context = abilityContext([actor])
+    const server = previewPrayer(actor, context, actor.id)
+    const client = previewPrayerFromSnapshots(
+        ownerSnapshot(actor),
+        [],
+        actor.id
+    )
+    expect(server).toMatchObject({
+        intent: { mode: 'devotion' },
+        manaCost: 0,
+        durationMs: 400,
+        unavailableReason: null,
+    })
+    expect(client).toEqual(server)
 })

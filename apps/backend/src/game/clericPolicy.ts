@@ -2,6 +2,7 @@ import {
     type AbilityClientMessage,
     type GameEventPayload,
     prayerAbilityIds,
+    type PrayerActionId,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
@@ -18,7 +19,8 @@ export function supportPrayerDecision(
         now: number
     ) => GameEventPayload[]
 ): GameEventPayload[] {
-    const previews = prayerAbilityIds
+    const actions: PrayerActionId[] = ['pray_woven', ...prayerAbilityIds]
+    const previews = actions
         .filter((id) => actor.abilities.known.has(id))
         .map((id) => previewPrayer(actor, context, undefined, id))
     const useful = previews.filter(

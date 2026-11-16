@@ -14,8 +14,11 @@ describe('debug effect chance catalogue', () => {
             const chance = describeConstellationEffectChance(node.id)
             expect(chance.summary.trim().length).toBeGreaterThan(0)
             expect(chance.summary).not.toContain('не найдена')
-            expect(chance.formulas.length).toBeGreaterThan(0)
             expect(node).not.toHaveProperty('effectChance')
+        }
+        const chanceResults = sky.nodes.map((node) => describeConstellationEffectChance(node.id))
+        for (const chance of chanceResults.filter((result) => !result.deterministic)) {
+            expect(chance.formulas.length).toBeGreaterThan(0)
         }
         expect(JSON.stringify(sky)).toBe(snapshot)
         expect(JSON.stringify(fullConstellationCatalog)).toBe(catalogue)

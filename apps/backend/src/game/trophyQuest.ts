@@ -10,6 +10,7 @@ import {
 import type { AdventureChoiceContext, PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { consumeInventoryItems, countInventoryItem } from './inventory'
+import { resetMartyrStreak } from './martyr'
 
 export function trophyProgress(
     state: PlayerAdventure,
@@ -78,6 +79,7 @@ export function turnInHearts(
     if (result?.ok !== true) {
         return false
     }
+    resetMartyrStreak(actor)
     actor.inventory.splice(0, actor.inventory.length, ...prepared)
     state.rewardKeys.add(adventureQuest.id)
     state.questRewardShares = result.shares

@@ -3,7 +3,7 @@ import {
     type CharacterAutoAction,
     type CharacterSnapshot,
     gravePurifyCastMs,
-    isPrayerAbility,
+    isPrayerAction,
     type PrayerPreview,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
@@ -30,12 +30,13 @@ export function bindingMatchesAction(
     if (!binding || !action || binding.kind === 'item') return false
     if (binding.kind === 'attack') return action.kind === 'attack'
     return action.kind === 'prayer'
-        ? isPrayerAbility(binding.id) && binding.id === (action.abilityId ?? 'pray')
+        ? isPrayerAction(binding.id) && binding.id === (action.abilityId ?? 'pray')
         : action.kind === 'ability' && binding.id === action.abilityId
 }
 
 export const hotbarGlyphs: Record<AbilityId, string> = {
     pray: '✦',
+    pray_woven: '✥',
     pray_road: '➤',
     pray_lantern: '✧',
     pray_grave: '☾',
@@ -55,17 +56,39 @@ export function prayerDescription(
 ): string {
     if (preview.unavailableReason) return preview.unavailableReason
     const intent = preview.intent
-    if (intent?.mode === 'devotion') return `Помолиться · ${preview.manaCost} MP · Без эффекта`
-    if (intent?.mode === 'purify_grave')
-        return `Упокоить могилу · ${preview.manaCost} MP · ${(preview.durationMs ?? gravePurifyCastMs(grave?.phase ?? 'active')) / 1000} с · Esc — прервать`
+    const cost = prayerPrice(preview)
+    const channel = prayerChannelDescription(preview, player, grave)
+    if (channel !== undefined) return channel
     const gift = prayerGift(intent, characters, player)
     return [
-        `${gift} · ${preview.manaCost} MP`,
+        `${gift} · ${cost}`,
         preview.durationMs ? `${preview.durationMs / 1000} с` : '',
         collateralDescription(preview),
     ]
         .filter(Boolean)
         .join(' · ')
+}
+
+function prayerChannelDescription(
+    preview: PrayerPreview,
+    player: CharacterSnapshot,
+    grave?: WorldGraveSnapshot
+): string | undefined {
+    const mode = preview.intent?.mode
+    const cost = prayerPrice(preview)
+    if (mode === 'devotion')
+        return preview.manaCost > 0
+            ? `Ауры молитвы · ${preview.manaCost} MP · ${(preview.durationMs ?? 3000) / 1000} с`
+            : `Помолиться · ${preview.manaCost} MP · Без эффекта`
+    if (mode === 'purify_grave')
+        return `Упокоить могилу · ${cost} · ${(preview.durationMs ?? gravePurifyCastMs(grave?.phase ?? 'active')) / 1000} с${player.abilities?.casting?.uninterruptible ? '' : ' · Esc — прервать'}`
+    return undefined
+}
+
+function prayerPrice(preview: PrayerPreview): string {
+    if (preview.cost?.healingManaFraction)
+        return `${Math.round(preview.cost.healingManaFraction * 100)}% максимальной MP за лечение; ${preview.cost.manaPerTarget} MP за другое чудо`
+    return `${preview.manaCost} MP${preview.abilityId === 'pray_woven' ? ' за цель' : ''}`
 }
 
 function prayerGift(
@@ -75,13 +98,17 @@ function prayerGift(
 ): string {
     const name =
         characters.find((actor) => actor.id === intent?.targetId)?.nickname ?? player.nickname
-    const verb =
-        intent?.mode === 'revive'
-            ? 'Воскресить'
-            : intent?.mode === 'harm'
-              ? 'Карающая волна'
-              : 'Восстановить'
-    return intent?.mode === 'harm' ? verb : `${verb} ${name}`
+    const verbs = {
+        revive: 'Воскресить',
+        harm: 'Карающая волна',
+        ward: 'Сдержать нежить',
+        restore: 'Восстановить',
+        devotion: 'Помолиться',
+        purify_grave: 'Упокоить могилу',
+    }
+    const mode = intent?.mode ?? 'restore'
+    const verb = verbs[mode]
+    return mode === 'harm' || mode === 'ward' ? verb : `${verb} ${name}`
 }
 
 function collateralDescription(preview: PrayerPreview): string {

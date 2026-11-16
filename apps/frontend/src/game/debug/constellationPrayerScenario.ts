@@ -12,7 +12,7 @@ import {
     prayerMoodQuality,
     prayerPurificationChance,
 } from '../../../../backend/src/game/prayerProbability'
-import { chancePercent } from './constellationChanceMath'
+import { chancePercent, successWithAdvantage } from './constellationChanceMath'
 import { calculatePrayerBuild, type PrayerBuildResult } from './constellationPrayerBuild'
 
 export interface PrayerCalculatorSchool {
@@ -24,6 +24,8 @@ export interface PrayerScenarioSettings {
     mood: DeityMood
     lowHealthEligible?: boolean
     tileWidth?: number
+    aurasSuppressed?: boolean
+    externalAdvantage?: boolean
 }
 export interface PrayerScenarioResult {
     school: PrayerCalculatorSchool
@@ -88,6 +90,7 @@ export function calculatePrayerScenario(
     const school = prayerCalculatorSchool(nodeId)
     if (school === undefined) return undefined
     const { mood } = settings
+    const example = exampleSettings(settings)
     const answer = prayerAnswerChance(mood)
     const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)!
     const info = prayerSchoolInfo[school.id]
@@ -96,18 +99,30 @@ export function calculatePrayerScenario(
             ? undefined
             : calculatePrayerBuild(nodeId, activeIds ?? new Set(), {
                   ...info,
-                  ability: school.id,
+                  ability: node.activationAbilityId === 'pray_woven' ? 'pray_woven' : school.id,
                   mood,
-                  lowHealthEligible: settings.lowHealthEligible ?? false,
-                  tileWidth: settings.tileWidth ?? 16,
+                  lowHealthEligible: example.lowHealthEligible,
+                  tileWidth: example.tileWidth,
+                  aurasSuppressed: example.aurasSuppressed,
+                  externalAdvantage: example.externalAdvantage,
               })
     const available = node.effectType === 'passive' || (build?.available ?? true)
-    const metrics = available ? outcomeMetrics(nodeId, school.id, mood, answer, activeIds) : []
+    const metrics = available
+        ? outcomeMetrics(nodeId, school.id, mood, answer, activeIds, example.externalAdvantage)
+        : []
     return {
         school,
         metrics,
         ...(build === undefined ? {} : { build }),
         substitution: `P = ${chancePercent(answer)}; Q = ${number(prayerMoodQuality[mood])}`,
+    }
+}
+function exampleSettings(settings: PrayerScenarioSettings) {
+    return {
+        lowHealthEligible: settings.lowHealthEligible ?? false,
+        tileWidth: settings.tileWidth ?? 16,
+        aurasSuppressed: settings.aurasSuppressed ?? false,
+        externalAdvantage: settings.externalAdvantage ?? false,
     }
 }
 const chanceLabels: Record<PrayerAbilityId, string> = {
@@ -125,57 +140,79 @@ function outcomeMetrics(
     ability: PrayerAbilityId,
     mood: DeityMood,
     answer: number,
-    activeIds?: ReadonlySet<string>
+    activeIds?: ReadonlySet<string>,
+    externalAdvantage = false
 ): PrayerScenarioResult['metrics'] {
-    const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)!
-    if (nodeId.endsWith('.revive'))
-        return [
-            {
-                label: 'Шанс воскрешения',
-                value: chancePercent(
-                    resolveResurrectionParameters(ability, new Set(), mood).successChance
-                ),
-            },
-        ]
-    if (nodeId === 'prayer.revive_angelic')
-        return [{ label: 'Ангельское при успешном воскрешении', value: '30%' }]
-    if (nodeId === 'prayer.harm')
-        return [{ label: 'Шанс кары', value: chancePercent(prayerHarmChance(answer)) }]
-    if (node.effectType === 'passive') return []
-    const metrics = [{ label: chanceLabels[ability], value: chancePercent(answer) }]
+    const chance = (value: number) => chancePercent(successWithAdvantage(value, externalAdvantage))
+    const own = ownOutcomeMetrics(nodeId, ability, mood, answer, chance)
+    if (own !== undefined) return own
+    const metrics = [{ label: chanceLabels[ability], value: chance(answer) }]
     if (ability === 'pray') {
         metrics.push({
             label: 'Шанс очищения могилы',
-            value: `${chancePercent(prayerPurificationChance(answer))} за шаг`,
+            value: `${chance(prayerPurificationChance(answer))} за шаг`,
         })
         if (activeIds?.has('prayer.harm'))
-            metrics.push({ label: 'Шанс кары', value: chancePercent(prayerHarmChance(answer)) })
+            metrics.push({ label: 'Шанс кары', value: chance(prayerHarmChance(answer)) })
     }
     const revive = reviveNodes[ability]
     if (revive && activeIds?.has(revive)) {
         const resurrection = resolveResurrectionParameters(ability, activeIds, mood)
         metrics.push({
             label: 'Шанс воскрешения',
-            value: chancePercent(resurrection.successChance),
+            value: chance(resurrection.successChance),
         })
         if (resurrection.angelicChance > 0)
             metrics.push(
                 {
                     label: 'Ангельское при успешном воскрешении',
-                    value: chancePercent(resurrection.angelicChance),
+                    value: chance(resurrection.angelicChance),
                 },
                 {
                     label: 'Общий шанс Ангельского воскрешения',
-                    value: chancePercent(resurrection.successChance * resurrection.angelicChance),
+                    value: chancePercent(
+                        successWithAdvantage(resurrection.successChance, externalAdvantage) *
+                            successWithAdvantage(resurrection.angelicChance, externalAdvantage)
+                    ),
                 }
             )
     }
     return metrics
 }
+function ownOutcomeMetrics(
+    nodeId: string,
+    ability: PrayerAbilityId,
+    mood: DeityMood,
+    answer: number,
+    chance: (value: number) => string
+): PrayerScenarioResult['metrics'] | undefined {
+    const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)!
+    if (nodeId.endsWith('.revive'))
+        return [
+            {
+                label: 'Шанс воскрешения',
+                value: chance(
+                    resolveResurrectionParameters(ability, new Set(), mood).successChance
+                ),
+            },
+        ]
+    if (nodeId === 'prayer.revive_angelic')
+        return [{ label: 'Ангельское при успешном воскрешении', value: chance(0.3) }]
+    if (nodeId === 'prayer.harm')
+        return [{ label: 'Шанс кары', value: chance(prayerHarmChance(answer)) }]
+    if (nodeId === 'prayer.concentration')
+        return [{ label: 'Защита от прерывания ударом', value: chance(0.5) }]
+    if (node.effectType === 'passive') return []
+    return undefined
+}
 function validateSettings(settings: PrayerScenarioSettings): void {
     if (!moods.includes(settings.mood)) throw new RangeError('Unknown deity mood')
     if (settings.lowHealthEligible !== undefined && typeof settings.lowHealthEligible !== 'boolean')
         throw new RangeError('Low-health eligibility must be a boolean')
+    for (const flag of [settings.aurasSuppressed, settings.externalAdvantage]) {
+        if (flag !== undefined && typeof flag !== 'boolean')
+            throw new RangeError('Aura settings must be booleans')
+    }
     if (
         settings.tileWidth !== undefined &&
         (!Number.isFinite(settings.tileWidth) || settings.tileWidth <= 0)

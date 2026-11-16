@@ -8,6 +8,7 @@ import { interactionApproachPoints } from '@my-game-ratata/contracts'
 import type { PlayerAdventure } from './adventureState'
 import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
@@ -133,6 +134,9 @@ export class WorldObjects {
             recovered,
             actor.config.resources.maxEnergy - actor.energy
         )
+        if (recovered > 0) {
+            resetMartyrStreak(actor)
+        }
         actor.energy += recovered
         this.drinkAllowedAt.set(actor.id, now + 5_000)
         const text = setNotice(

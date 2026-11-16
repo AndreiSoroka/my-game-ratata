@@ -16,15 +16,19 @@ it('shows current planned level and exact next-level actions without a whole-his
     })
     expect(view.get('details').attributes('open')).toBeUndefined()
     expect(view.get('summary').text()).toBe('Развитие созвездия')
-    expect(view.get('[data-testid="debug-mastery-level"]').text()).toBe('3')
-    expect(view.get('[data-testid="debug-mastery-total"]').text()).toBe('400 XP')
-    expect(view.get('[data-testid="debug-mastery-next"]').text()).toBe('10 действий · 0 / 300 XP')
+    expect(view.get('[data-testid="debug-mastery-level"]').text()).toBe('12')
+    expect(view.get('[data-testid="debug-mastery-total"]').text()).toBe('37\u00a0600 XP')
+    expect(view.get('[data-testid="debug-mastery-next"]').text()).toBe(
+        '777 действий · 0 / 23\u00a0300 XP'
+    )
     expect(view.find('[data-testid="debug-mastery-actions"]').exists()).toBe(false)
     expect(view.text()).toContain('База 30 XP · конфликт 0%')
     expect(view.get('[data-testid="debug-mastery-rate"]').text()).toBe('30 XP')
-    expect(view.find('[data-testid="debug-mastery-pending"]').exists()).toBe(false)
+    expect(view.get('[data-testid="debug-mastery-pending"]').text()).toContain('9')
     await view.get('[data-testid="debug-mastery-reward"]').setValue('prayerHarm')
-    expect(view.get('[data-testid="debug-mastery-next"]').text()).toBe('5 действий · 0 / 300 XP')
+    expect(view.get('[data-testid="debug-mastery-next"]').text()).toBe(
+        '333 действий · 0 / 23\u00a0300 XP'
+    )
     view.unmount()
 })
 it('shows conflict as an explicit loss, rounds display to2decimals and limits rewards to learned effects', () => {

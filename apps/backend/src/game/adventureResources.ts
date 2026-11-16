@@ -15,6 +15,7 @@ import {
     adventureRecipes,
     createAdventureResourceNodes,
 } from './adventureResourceData'
+import { resetMartyrStreak } from './martyr'
 export {
     adventureMaterialLabels,
     adventureRecipes,
@@ -178,6 +179,7 @@ export class AdventureResources {
             )
             return []
         }
+        resetMartyrStreak(actor)
         node.remaining -= 1
         state.gatherAllowedAt = now + 800
         setNotice(state, `Собрано: ${adventureMaterialLabels[node.kind]} +1.`)
@@ -271,6 +273,7 @@ export class AdventureResources {
             return []
         }
 
+        resetMartyrStreak(actor)
         this.onCraft?.(actor, recipe.id, output.instanceId)
         setNotice(state, `Готово: ${recipe.label}.`)
         return [

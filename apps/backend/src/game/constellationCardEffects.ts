@@ -45,7 +45,14 @@ function appendActiveEffects(
 ): void {
     switch (ability) {
         case 'pray':
-            appendHealingPrayer(effects, context)
+            appendHealingPrayer(effects, context, false)
+            break
+        case 'pray_woven':
+            effects.push(
+                'Лечит вас или союзника.',
+                'Очищает могилы от тёмных сил.'
+            )
+            appendHealingPrayer(effects, context, true)
             break
         case 'pray_grave':
             if (context.learned.has('prayer_grave.revive')) {
@@ -72,10 +79,19 @@ function appendActiveEffects(
 }
 function appendHealingPrayer(
     effects: string[],
-    { learned, bonuses: b }: Context
+    { learned, bonuses: b }: Context,
+    woven: boolean
 ): void {
-    if (b.prayerArea) {
-        effects[0] = 'Лечит вас и всех подходящих союзников в радиусе молитвы.'
+    if (woven) {
+        effects.push(
+            `Одновременно совершает разные чудеса: не более ${String(b.targetLimit)} целей за молитву.`
+        )
+    } else if (b.targetLimit > 1) {
+        effects.push(
+            `За одну молитву совершает один вид чуда: не более ${String(b.targetLimit)} целей.`
+        )
+    } else {
+        effects.push('За одну молитву действует на одну выбранную цель.')
     }
     if (learned.has('prayer.revive')) {
         effects.push(
@@ -90,11 +106,6 @@ function appendHealingPrayer(
                 `Урон кары увеличен на ${percent(b.prayerHarmMultiplier - 1)}%.`
             )
         }
-    }
-    if (b.prayerArea) {
-        effects.push(
-            'Одновременно лечит союзников и очищает могилы в радиусе молитвы.'
-        )
     }
     if (b.prayerRadiusCells > 0) {
         effects.push(
@@ -112,8 +123,37 @@ function appendHealingPrayer(
         )
     }
     appendDescription(effects, learned, 'prayer.last_light')
+    appendPrayerPassiveCapabilities(effects, learned, b)
     appendDivineKnowledge(effects, b.deityInsight, false)
     appendDivineKnowledge(effects, b.otherDeityInsight, true)
+}
+function appendPrayerPassiveCapabilities(
+    effects: string[],
+    learned: ReadonlySet<string>,
+    b: Bonuses
+): void {
+    if (b.prayerConcentrationChance > 0) {
+        effects.push(
+            b.prayerAbsoluteConcentration
+                ? 'Удары больше не прерывают молитву.'
+                : 'Удар с вероятностью 50% не прерывает молитву.'
+        )
+    }
+    for (let rank = 1; rank <= b.prayerWardRank; rank += 1) {
+        appendDescription(effects, learned, `prayer.ward${String(rank)}`)
+    }
+    for (const id of [
+        'prayer.aura_protection',
+        'prayer.aura_blessing',
+        'prayer.aura_domain',
+    ]) {
+        appendDescription(effects, learned, id)
+    }
+    if (b.prayerMartyr) {
+        effects.push(
+            'Максимальное базовое здоровье уменьшено на 30%, максимальная базовая мана — на 15%.'
+        )
+    }
 }
 function appendRevivalEffects(
     effects: string[],

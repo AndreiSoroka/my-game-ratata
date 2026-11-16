@@ -1,7 +1,6 @@
 import {
     type CharacterControlCommand,
     type ClientMessage,
-    type HeroClass,
     type TheftClientMessage,
 } from '@my-game-ratata/contracts'
 
@@ -15,6 +14,7 @@ import { parseSocketMessage } from './messages'
 import { createRoomScavenger } from './mobScavenging'
 import { loadNavigationService, type NavigationService } from './navigation'
 import { seedNpcPockets } from './npcPockets'
+import { bindPrayerAuraEnvironment } from './prayerAuras'
 import { findVisibleTarget as findVisibleTargetInRoom } from './queries'
 import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
@@ -30,7 +30,7 @@ import { createRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
 import { RoomLife } from './roomLife'
 import { type RoomSocket, sendError } from './roomMessaging'
-import { createRoomPlayer } from './roomPlayer'
+import { createRoomPlayerFactory } from './roomPlayer'
 import { charactersInLocation, connectionsInLocation } from './roomQueries'
 import {
     createRoomScenarioService,
@@ -79,8 +79,13 @@ export class GameRoom {
     private readonly theft = new TheftService()
     public readonly workerRequests = new WorkerRequestService()
     private readonly parties = createRoomParties(this, this.adventure)
+    private readonly prayerAuras = {
+        characters: () => this.characters.values(),
+        navigationFor: (locationId: string) =>
+            this.world.get(locationId).navigation,
+        sameParty: this.parties.sameParty.bind(this.parties),
+    }
     private lastTickAt = Date.now()
-    private nextPlayerIndex = 1
     private timer: ReturnType<typeof setInterval> | undefined
     private tickIndex = 0
 
@@ -96,6 +101,7 @@ export class GameRoom {
         )
         this.life.registerGraves(graves, Date.now())
         seedNpcPockets(this.characters.values())
+        this.refreshPrayerAuraEnvironment()
         registerWandererScenarios(
             this,
             this.scenarios,
@@ -149,6 +155,9 @@ export class GameRoom {
     public getCharacter(id: string): GameCharacter | undefined {
         return this.characters.get(id)
     }
+
+    public readonly refreshPrayerAuraEnvironment = (): void =>
+        bindPrayerAuraEnvironment(this.characters.values(), this.prayerAuras)
 
     public readonly adventureForWorkers = () => this.adventure
     public readonly requestAdventure = createAdventureRequester(
@@ -270,8 +279,13 @@ export class GameRoom {
         nicknames: this.playerIdsByNickname,
         room: this,
         world: () => this.world,
-        createPlayer: (name, key, type, hero) =>
-            this.createPlayerCharacter(name, key, type, hero),
+        createPlayer: createRoomPlayerFactory(
+            this.characters,
+            this.playerIdsByNickname,
+            () => this.navigation,
+            (character) =>
+                bindPrayerAuraEnvironment([character], this.prayerAuras)
+        ),
         tickMs,
     })
 
@@ -310,21 +324,6 @@ export class GameRoom {
             this.world,
             (character, now) =>
                 this.companions.hasActiveLease(character, now, this)
-        )
-    }
-
-    private createPlayerCharacter(
-        nickname: string,
-        nicknameKey: string,
-        archetype: GameCharacter['archetype'],
-        heroClass?: HeroClass
-    ): GameCharacter {
-        return createRoomPlayer(
-            this.characters,
-            this.playerIdsByNickname,
-            this.navigation,
-            this.nextPlayerIndex++,
-            { nickname, nicknameKey, archetype, heroClass }
         )
     }
 }

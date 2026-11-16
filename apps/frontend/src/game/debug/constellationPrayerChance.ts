@@ -32,14 +32,17 @@ export function describePrayerEffectChance(
     const ability = prayerAbilityForConstellation(node.constellationId)
     if (ability === undefined) return undefined
     const description =
-        node.kind === 'root' ? rootChance(ability, activeIds) : describePrayer(node, ability)
+        node.kind === 'root'
+            ? rootChance(ability, activeIds)
+            : describePrayer(node, ability, activeIds)
     if (description === undefined) return undefined
     const { formulaDetails, ...text } = description
     return withChanceFormulas(text, formulaDetails)
 }
 function describePrayer(
     node: ConstellationStar,
-    ability: PrayerAbilityId
+    ability: PrayerAbilityId,
+    activeIds?: ReadonlySet<string>
 ): PrayerDescription | undefined {
     if (node.kind === 'root') return rootChance(ability)
     const revival = describeRevivalChance(node.id, ability)
@@ -49,9 +52,37 @@ function describePrayer(
         return giftChance(node.id)
     if (node.id.startsWith('prayer.radius')) return radiusChance(node.id)
     if (node.id === 'prayer.focus') return focusChance()
-    if (node.id === 'prayer.area') return areaChance()
+    if (node.id === 'prayer.area') return rootChance('pray', activeIds)
+    if (node.id === 'prayer.concentration')
+        return {
+            summary: node.description,
+            formulaDetails: [chanceFormula('Защита от прерывания ударом, %', '50')],
+            examples: [],
+            notes: [
+                'Каждый удар проверяется отдельно. Абсолютная концентрация отменяет эту проверку.',
+            ],
+        }
+    const extension = extensionChance(node)
+    if (extension) return extension
     if (node.id.startsWith('prayer.omen') || node.id.startsWith('prayer.others'))
         return insightChance(node.id)
+    return undefined
+}
+function extensionChance(node: ConstellationStar): PrayerDescription | undefined {
+    if (
+        (node.constellationId === 'prayer' &&
+            ['prayer.absolute_concentration', 'prayer.hasty_harm', 'prayer.martyr'].includes(
+                node.id
+            )) ||
+        /^prayer\.(targets|ward|aura_)/.test(node.id)
+    )
+        return {
+            deterministic: true,
+            summary: node.description,
+            formulaDetails: [],
+            examples: [],
+            notes: [],
+        }
     return undefined
 }
 function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): PrayerDescription {
@@ -68,6 +99,7 @@ function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): 
                 ? [
                       math.prayerHealingMultiplierFormula(),
                       math.prayerPurificationFormula(),
+                      math.prayerPurificationRollFormula(),
                       chanceFormula('Успешных шагов до очищения', String(GRAVE_PURIFY_STEPS)),
                   ]
                 : []),
@@ -86,7 +118,7 @@ function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): 
                       'Пять шагов очищения не обязаны идти подряд; отказ сохраняет уже набранный прогресс. Каждый удачный бросок добавляет один шаг каждой подходящей могиле.',
                   ]
                 : [
-                      'Модификаторы созвездия «Молитва», включая кару и общую молитву, эту школу не усиливают.',
+                      'Модификаторы созвездия «Молитва», включая Кару и Сплетённую молитву, эту школу не усиливают.',
                   ]),
             'Если бросок не прошёл порог ответа, дар не срабатывает. Вероятности относятся к завершённой допустимой молитве; отмена не делает бросок.',
         ],
@@ -158,13 +190,13 @@ function giftChance(id: string): PrayerDescription {
         [
             {
                 label: 'Тёплый дар / оба дара',
-                value: 'Множитель: 1,05 / 1,10; с обоими дарами и активным Последним огоньком — 1,20.',
+                value: 'Множитель: 2,30 / 4,80; с обоими дарами и активным Последним огоньком — 14,80.',
             },
             ...(lastLight
                 ? [
                       {
                           label: 'Нейтральное настроение, Тёплый дар и активный Последний огонёк',
-                          value: 'Сила: round(6 × 1,15) = 7 HP; шанс лечения остаётся 55%.',
+                          value: 'Сила: round(6 × 12,30) = 74 HP; шанс лечения остаётся 55%.',
                       },
                   ]
                 : []),
@@ -203,27 +235,6 @@ function harmChance(id: string): PrayerDescription {
             'Один случайный бросок общий для всей подходящей нежити в радиусе молитвы.',
             'Кара может сработать при отказе лечебного дара: её порог выше порога ответа. Все подходящие цели — нежить в радиусе и прямой видимости; сторона цели не меняет порог.',
             'Собственный эффект Кары имеет базовую силу 6, зависит от настроения божества и может поглощаться Барьером. Полный результат с усилениями показан у Молитвы.',
-        ],
-    }
-}
-function areaChance(): PrayerDescription {
-    return {
-        deterministic: true,
-        summary:
-            'Общая молитва всегда расширяет выбор целей; ответ и шаги очищения остаются вероятностными.',
-        formulaDetails: [
-            chanceFormula('Выбор всех подходящих союзников и могил в радиусе, %', '100'),
-            math.prayerAnswerFormula('pray'),
-            math.prayerAnswerRollFormula(),
-            math.prayerPurificationFormula(),
-            math.prayerPurificationRollFormula(),
-            chanceFormula('Успешных шагов до очищения', String(GRAVE_PURIFY_STEPS)),
-        ],
-        examples: prayerChanceExamples(prayerSchoolInfo.pray.masteryName, 'grave'),
-        notes: [
-            oneRoll,
-            `Очищение требует ${GRAVE_PURIFY_STEPS} накопленных успешных шагов, не обязательно подряд. У каждого союзника лечение ограничено его нехваткой HP.`,
-            'Воскрешение сохраняет одну выбранную цель; кара и без Общей молитвы проверяет всю подходящую нежить в радиусе.',
         ],
     }
 }

@@ -139,8 +139,13 @@ keep multi-target rewards stable. The previous global training-cost multiplier
 and separate Faith/Miracles scales are removed. See
 [Character development](character-development.md) for rewards, examples and controls.
 
-Prayer channels for three seconds and costs five mana on completion. Empty
-and failed requests give no XP. Each useful recipient earns 30 base XP; Kara earns 70
+Mother Prayer uses one miracle type per cast. Guide, Mentor and Leader raise the
+recipient limit of both Mother actions to 2/5/20. Woven Prayer (`pray_woven`) is a
+separate hotbar action of the same school that mixes miracle types within that limit.
+Its three-second channel also handles resurrection. Mother prayers pay five mana
+per chosen recipient at the start, without refunds after interruption. Unaffordable
+optional recipients are skipped; targets and bonuses remain frozen for that cast.
+Empty and failed main requests give no XP. Each useful recipient earns 30 base XP; Kara earns 70
 per hostile victim; grave steps earn 10 each and the final step 150 instead, 190 in all.
 Resurrection earns 200. Resource gifts credit only genuinely useful resource loss,
 never the prayers' own mana cost or repeated repayment of the same loss. Training
@@ -522,7 +527,7 @@ Melee and skeleton strike arcs begin at the same world anchor as the attacker's 
 
 Novogorod's wooden training pen is east of the square, before the smithy (outer tiles x57–71, y43–56, three-tile entrance on the west). Its stationary wood-and-straw construct uses shared character combat: select it with a click or T and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
 
-Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.6.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
+Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.7.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
 
 ## Speech bubbles and dialogue keys
 
@@ -603,6 +608,25 @@ Terrain borders use connected atlas quadrants, including diagonal concave corner
 
 ## Independent prayer schools
 
-Clerics start only with Hearth Prayer. Sister Vera can teach the four separate spells to any background through ordinary nearby interaction: Prayer (`pray`), Prayer of the Wanderer (`pray_road`), Prayer of Clarity (`pray_lantern`) and Prayer of Ash (`pray_grave`). Bind them independently using Shift+1–4. Each uses its own god, Faith and Miracles; changing the primary patron affects the affiliation shown under the resource bars, never a spell’s effect or knowledge. The three new paths currently have their base spells, with an additional undead resurrection node for Ash. Healing passives and grave purification belong only to the original Prayer constellation. Resurrection is still a mode of the matching prayer, without a separate hotbar binding.
+Clerics start only with Hearth Prayer. Sister Vera can teach the four separate spells to any background through ordinary nearby interaction: Prayer (`pray`), Prayer of the Wanderer (`pray_road`), Prayer of Clarity (`pray_lantern`) and Prayer of Ash (`pray_grave`). Bind them independently using Shift+1–4. Each uses its own god and constellation mastery; changing the primary patron affects the affiliation shown under the resource bars, never a spell’s effect or knowledge. The three new paths currently have their base spells, with an additional undead resurrection node for Ash. Healing passives and grave purification belong only to the original Prayer constellation. Resurrection is still a mode of the matching prayer, without a separate hotbar binding.
+
+Mother's seven channel auras include four capacity-limited undead wards and three
+background fields: living dodge +10 pp, party advantage excluding the caster, and
+Divine Domain (Miracles 12). Domain heals all living creatures, including enemies,
+at +1 HP on the first five 100 ms deadlines and makes undead take +50% damage.
+Useful healing gives at most 30 base XP per recipient per cast, shared with the
+main heal. After interruption all Mother auras remain suppressed until a later
+full Mother/Woven channel completes, even if the god refuses.
+
+Last Light freezes an emergency profile: forced self-heal first, +1000% healing,
+20% shorter channel, 30% effective max mana per main healed recipient, and 5 MP
+per other main recipient. Only death interrupts it; a shared 10-second cooldown
+follows completion or death.
+
+Martyr is a free special Prayer star after five consecutive hostile-wound → useful
+ordinary self-prayer cycles before Miracles 3, without another meaningful action.
+It permanently reduces base max HP/MP by 30%/15% and adds 15% Mother healing and
+15% shorter channel. Temporary death preserves the trait but resets its unfinished
+streak. The atlas contains 96 stars and 98 edges.
 
 Character Development has nine constellations on a personal, stable star map centered on the initial class. Unknown cards say only «Неизвестно», and their grey translucent stars cannot be selected or focused. Known cards contain their effect instead of training instructions. See [character development](character-development.md) for school practice, resource recovery and the training-yard radius selection.

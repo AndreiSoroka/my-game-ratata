@@ -70,7 +70,6 @@ it.each([
     'prayer.gift1',
     'prayer.harm1',
     'prayer.harm2',
-    'prayer.area',
     'prayer.omen3',
     'magic.runic_echo',
 ])('omits the entire chance panel for the guaranteed rule %s', (nodeId) => {

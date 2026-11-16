@@ -2,7 +2,7 @@ import {
     type AutoActionWaiting,
     type CharacterAutoAction,
     isItemBroken,
-    prayerManaCost,
+    isMotherPrayer,
 } from '@my-game-ratata/contracts'
 
 type CombatAction = Exclude<
@@ -12,6 +12,7 @@ type CombatAction = Exclude<
 
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
+import { resolvedActionCosts } from './autoActionCosts'
 import {
     availableActor,
     canFight,
@@ -31,9 +32,9 @@ import { canAttackCharacter } from './combatTargets'
 import {
     effectiveAbility,
     effectiveAttackCooldown,
-    effectiveAttackEnergyCost,
 } from './effectiveParameters'
 import { distance } from './math'
+import { planMotherPrayer } from './motherPrayerPlan'
 import { prayerHarmTargets } from './prayerContext'
 import { prayerAvailableAt, prayerParameters } from './prayerParameters'
 
@@ -83,7 +84,7 @@ export function autoActionStatus(
     if (cooldownAt(actor, action) > context.now) {
         return 'cooldown'
     }
-    const costs = actionCosts(actor, action)
+    const costs = resolvedActionCosts(actor, action, context)
     if (actor.mana < costs.mana || actor.energy < costs.energy) {
         return 'resources'
     }
@@ -197,27 +198,6 @@ function cooldownAt(actor: GameCharacter, action: CombatAction): number {
                   )
     )
 }
-function actionCosts(
-    actor: GameCharacter,
-    action: CombatAction
-): { mana: number; energy: number } {
-    if (action.kind === 'prayer') {
-        return { mana: prayerManaCost(action.intent.mode), energy: 0 }
-    }
-    if (action.kind === 'ability') {
-        return effectiveAbility(actor, action.abilityId)
-    }
-    if (actor.config.basicAttackKind === 'arrow') {
-        return effectiveAbility(actor, 'shot')
-    }
-    if (actor.config.basicAttackKind === 'spark') {
-        return effectiveAbility(actor, 'spark')
-    }
-    return {
-        mana: actor.config.resources.attackManaCost,
-        energy: effectiveAttackEnergyCost(actor),
-    }
-}
 function refusesAutoCombat(
     actor: GameCharacter,
     action: CombatAction,
@@ -227,6 +207,16 @@ function refusesAutoCombat(
         return false
     }
     if (action.kind === 'prayer') {
+        if (isMotherPrayer(action.abilityId ?? 'pray')) {
+            return (
+                planMotherPrayer(
+                    actor,
+                    action.intent,
+                    context,
+                    action.abilityId ?? 'pray'
+                )?.targets.some((target) => target.kind === 'harm') ?? false
+            )
+        }
         return (
             action.intent.mode !== 'devotion' &&
             prayerHarmTargets(actor, context, action.abilityId ?? 'pray')

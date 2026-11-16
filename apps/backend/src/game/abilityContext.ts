@@ -13,6 +13,7 @@ export interface AbilityContext {
     navigation: NavigationService
     now: number
     random?: () => number
+    sameParty?: (firstId: string, secondId: string) => boolean
     respawnDelayMsFor?: (target: GameCharacter) => number
     requestAbilityAttack?: (
         actor: GameCharacter,

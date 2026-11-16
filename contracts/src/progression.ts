@@ -27,7 +27,7 @@ export interface ProgressionSnapshot {
 
 export type SkillProgressionSnapshot = ProgressionSnapshot
 export type ProgressionClientMessage =
-    | { type: 'pray'; abilityId?: import('./abilities').PrayerAbilityId }
+    | { type: 'pray'; abilityId?: import('./abilities').PrayerActionId }
     | { type: 'choose_deity'; deityId: DeityId; targetId: string }
     | { type: 'study_magic'; targetId: string }
     | { type: 'teach_magic'; targetId: string }

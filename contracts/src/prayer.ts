@@ -1,21 +1,31 @@
 import {
     ABILITY_DEFINITIONS,
     type DamageKind,
+    isMotherPrayer,
     type PrayerAbilityId,
+    type PrayerActionId,
     type PrayerMode,
+    prayerSchoolId,
 } from './abilities'
-import { type CreatureType, creatureTypes } from './creatures'
+import {
+    type CreatureType,
+    creatureTypes,
+    livingCreatureTypes,
+} from './creatures'
 import { GRAVE_PURIFY_MANA_COST } from './graves'
 import { REVIVE_MANA_COST } from './life'
 import type { DeityId } from './progression'
 
-export function prayerManaCost(mode: PrayerMode): number {
+export function prayerManaCost(
+    mode: PrayerMode,
+    abilityId: PrayerActionId = 'pray'
+): number {
     if (mode === 'devotion') {
         return 0
     }
     return mode === 'purify_grave'
         ? GRAVE_PURIFY_MANA_COST
-        : mode === 'revive'
+        : mode === 'revive' && !isMotherPrayer(abilityId)
           ? REVIVE_MANA_COST
           : ABILITY_DEFINITIONS.pray.mana
 }
@@ -26,9 +36,7 @@ export interface DeityPrayerProfile {
     harmTypes: readonly CreatureType[]
     damageKind: DamageKind
 }
-const organic = creatureTypes.filter(
-    (type) => type !== 'undead' && type !== 'construct'
-)
+const organic = livingCreatureTypes
 export const DEITY_PRAYER_PROFILES: Record<DeityId, DeityPrayerProfile> = {
     hearth: {
         resource: 'hp',
@@ -108,7 +116,7 @@ export const PRAYER_SCHOOL_PROFILES: Record<
     pray_grave: { ...DEITY_PRAYER_PROFILES.grave, harmTypes: [] },
 }
 export function profileForPrayer(
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): DeityPrayerProfile {
-    return PRAYER_SCHOOL_PROFILES[abilityId]
+    return PRAYER_SCHOOL_PROFILES[prayerSchoolId(abilityId)]
 }

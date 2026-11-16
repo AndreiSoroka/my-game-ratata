@@ -32,6 +32,11 @@ describe('individually authored constellation requirements', () => {
     it('removes depth-based gates from every ordinary random star', () => {
         const individual = new Map([
             ['magic.fire_damage', 3],
+            ['prayer.harm1', 6],
+            ['prayer.harm2', 12],
+            ['prayer.ward3', 7],
+            ['prayer.ward4', 12],
+            ['prayer.aura_domain', 12],
             ['prayer.revive_master', 12],
             ['prayer.revive_angelic', 12],
         ])

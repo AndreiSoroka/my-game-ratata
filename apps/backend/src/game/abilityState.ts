@@ -3,22 +3,28 @@ import type {
     CharacterAbilitiesSnapshot,
     CharacterArchetype,
     HeroClass,
-    PrayerAbilityId,
+    PrayerActionId,
     PrayerIntent,
     Vector2,
 } from '@my-game-ratata/contracts'
 
 import { snapshotAbilityUsage } from './abilityUsage'
 import type { GameCharacter } from './character'
+import type {
+    MotherPrayerCastState,
+    MotherPrayerPlan,
+} from './motherPrayerPlan'
 import { prayerParameters, snapshotPrayerParameters } from './prayerParameters'
 
 interface PrayerCastBase {
     targetId: string
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
     receiptId: string
     startedAt: number
     completesAt: number
     patron: GameCharacter['progression']['patron']
+    mother?: MotherPrayerCastState
+    plan?: MotherPrayerPlan
 }
 export type PrayerCast = PrayerCastBase &
     (
@@ -33,7 +39,8 @@ export type PrayerCast = PrayerCastBase &
           }
     )
 export interface CharacterAbilityState {
-    lastPrayerAbilityId: PrayerAbilityId | null
+    lastPrayerAbilityId: PrayerActionId | null
+    prayerAurasSuppressed: boolean
     prayerSequence: number
     known: Set<AbilityId>
     availableAt: Partial<Record<AbilityId, number>>
@@ -66,6 +73,7 @@ export function createAbilityState(
     }
     return {
         lastPrayerAbilityId: null,
+        prayerAurasSuppressed: false,
         prayerSequence: 0,
         known,
         availableAt: {},
@@ -99,6 +107,9 @@ export function snapshotAbilities(
         actor.progression.prayerAvailableAt - now,
         0
     )
+    if (known.includes('pray_woven')) {
+        cooldowns.pray_woven = cooldowns.pray
+    }
     for (const id of ['fireball', 'greater_fireball'] as const) {
         if (known.includes(id)) {
             cooldowns[id] = Math.max(
@@ -143,6 +154,9 @@ function snapshotCast(
               targetId: cast.targetId,
               startedAt: cast.startedAt,
               completesAt: cast.completesAt,
+              ...(cast.mother?.lastLight === true
+                  ? { uninterruptible: true }
+                  : {}),
               ...(cast.mode === 'prayer' || cast.mode === 'purify_grave'
                   ? {
                         mode:

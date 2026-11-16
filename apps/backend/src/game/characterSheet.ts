@@ -14,6 +14,7 @@ import {
     effectiveAbility,
     effectiveCharacterStats,
 } from './effectiveParameters'
+import { effectiveMaxMana } from './effectiveResources'
 
 /** Range bounds are observations, never additional copies of the hidden value. */
 export function observeValue(
@@ -157,7 +158,7 @@ export function createCharacterSheet(
         ),
         mana: resource(
             actor.mana,
-            actor.config.resources.maxMana,
+            effectiveMaxMana(actor),
             knowledgeStep(actor, 'magic.mana', [50, 25, 10, null])
         ),
         energy: resource(

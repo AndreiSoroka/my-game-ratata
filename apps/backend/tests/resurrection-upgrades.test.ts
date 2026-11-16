@@ -19,7 +19,8 @@ function fixture(
     stars: string[] = [],
     withContext = true,
     abilityId: PrayerAbilityId = 'pray',
-    controller: CharacterControllerKind = 'network_player'
+    controller: CharacterControllerKind = 'network_player',
+    startedAt = 31_000
 ) {
     const caster = abilityHero('cleric', 'humanoid', controller)
     const target = abilityHero(
@@ -33,16 +34,16 @@ function fixture(
     for (const id of stars) {
         caster.progression.constellations.opened.add(id)
     }
-    target.applyDamage(target.hp, 30_000)
+    target.applyDamage(target.hp, startedAt - 1000)
     const random = vi.fn(() => 0)
-    const context = abilityContext([caster, target], 31_000, random)
+    const context = abilityContext([caster, target], startedAt, random)
     const initialMana = caster.mana
     expect(
         beginRevive(
             caster,
             target,
-            31_000,
-            withContext ? context : undefined,
+            startedAt,
+            abilityId === 'pray' || withContext ? context : undefined,
             abilityId
         )
     ).toBe(true)
@@ -50,9 +51,9 @@ function fixture(
         advanceRevive(
             caster,
             () => target,
-            34_000,
+            startedAt + 3000,
             random,
-            withContext ? { ...context, now: 34_000 } : undefined
+            withContext ? { ...context, now: startedAt + 3000 } : undefined
         )
     return { caster, target, random, complete, initialMana }
 }
@@ -72,7 +73,7 @@ for (const withContext of [false, true]) {
             expect(f.target.energy).toBe(
                 Math.max(1, f.target.config.resources.maxEnergy * 0.01)
             )
-            expect(f.caster.mana).toBe(f.initialMana - 20)
+            expect(f.caster.mana).toBe(f.initialMana - 5)
             expect(
                 masteryExperience(f.caster) - masteryExperienceAtLevel12()
             ).toBe(prayerXp(200))
@@ -142,7 +143,7 @@ for (const withContext of [false, true]) {
                 f.complete().filter((event) => event.kind === 'revive')
             ).toHaveLength(0)
             expect(f.target.alive).toBe(false)
-            expect(f.caster.mana).toBe(f.initialMana - 20)
+            expect(f.caster.mana).toBe(f.initialMana - 5)
             expect(f.random).toHaveBeenCalledTimes(1)
             expect(masteryExperience(f.caster)).toBe(
                 masteryExperienceAtLevel12()
@@ -150,21 +151,27 @@ for (const withContext of [false, true]) {
         })
     })
     describe(`resurrection boundaries with context=${String(withContext)}`, () => {
-        it('keeps cancellation free with no outcome or Angelic random draws', () => {
+        it('does not refund prepaid Mother mana or draw outcomes after cancellation', () => {
             const f = fixture([higher, experienced, angelic], withContext)
             f.caster.stunUntil = 35_000
             expect(f.complete()).toContainEqual(
                 expect.objectContaining({ kind: 'cast', phase: 'interrupted' })
             )
-            expect(f.caster.mana).toBe(f.initialMana)
+            expect(f.caster.mana).toBe(f.initialMana - 5)
             expect(f.target.alive).toBe(false)
             expect(f.random).not.toHaveBeenCalled()
         })
-        it('keeps the 95 percent boundary strict in benevolent mood', () => {
+        it('keeps the 95 percent boundary strict in the frozen benevolent profile', () => {
             const f = fixture(
                 [higher, experienced, master, stable],
-                withContext
+                withContext,
+                'pray',
+                'network_player',
+                61_000
             )
+            expect(
+                f.caster.abilities.casting?.plan?.resurrection.successChance
+            ).toBe(0.95)
             f.random.mockReturnValue(0.95)
             const context = withContext
                 ? abilityContext([f.caster, f.target], 64_000, f.random)
@@ -198,8 +205,10 @@ for (const withContext of [false, true]) {
                 withContext,
                 'pray_grave'
             )
+            expect(f.caster.mana).toBe(f.initialMana)
             f.random.mockReturnValue(0)
             f.complete()
+            expect(f.caster.mana).toBe(f.initialMana - 20)
             expect(f.target.hp).toBe(Math.ceil(f.target.maxHp * 0.5))
             expect(f.target.mana).toBe(f.target.config.resources.maxMana * 0.5)
             expect(f.target.energy).toBe(

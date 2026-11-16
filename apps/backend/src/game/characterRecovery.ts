@@ -6,6 +6,8 @@ import type {
 import { clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
 import { regen } from './characterState'
+import { effectiveMaxMana } from './effectiveResources'
+import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
 import { clearPursuit } from './pursuitState'
@@ -51,6 +53,7 @@ export function restoreCharacter(
         Math.max(0, character.maxHp - previousHp)
     )
     clearAbilityEffects(character)
+    resetMartyrStreak(character)
     clearResourcePractice(character)
     clearPursuit(character)
     character.alive = true
@@ -81,8 +84,7 @@ export function restoreCharacter(
             untrainableDamage - healed
         )
     }
-    character.mana =
-        restored?.mana ?? character.config.resources.maxMana * fraction
+    character.mana = restored?.mana ?? effectiveMaxMana(character) * fraction
     if (atSpawn) {
         character.locationId = character.spawnLocationId
         character.position = { ...character.spawnPosition }
@@ -105,6 +107,7 @@ export function regenerateCharacter(
         return []
     }
     const resources = character.config.resources
+    const maxMana = effectiveMaxMana(character)
     const beforeEnergy = character.energy
     const beforeMana = character.mana
     character.energy = regen(
@@ -119,7 +122,7 @@ export function regenerateCharacter(
     )
     character.mana = regen(
         character.mana,
-        resources.maxMana,
+        maxMana,
         moving ? resources.manaRegenMove : resources.manaRegenIdle,
         deltaMs
     )
@@ -133,7 +136,7 @@ export function regenerateCharacter(
         character,
         'mana',
         character.mana - beforeMana,
-        resources.maxMana - beforeMana
+        maxMana - beforeMana
     )
     const beforeHp = character.hp
     character.hp = regen(
@@ -144,5 +147,11 @@ export function regenerateCharacter(
             : character.config.hpRegenIdlePerSec,
         deltaMs
     )
-    return recordVitalityRecovery(character, character.hp - beforeHp, now)
+    const events = recordVitalityRecovery(
+        character,
+        character.hp - beforeHp,
+        now
+    )
+    recordMartyrRecovery(character)
+    return events
 }

@@ -61,9 +61,20 @@ describe('manual constellation build dependencies', () => {
     it('requires both immediate parents for area prayer and cross-path stars', () => {
         const gift = new Set(['prayer.root', 'prayer.gift1'])
         expect(enableConstellationStar(gift, 'prayer.area').missingParents).toEqual([
+            'prayer.harm',
+            'prayer.revive',
+            'prayer.omen1',
             'prayer.radius1',
+            'prayer.targets1',
         ])
-        gift.add('prayer.radius1')
+        for (const id of [
+            'prayer.harm',
+            'prayer.revive',
+            'prayer.omen1',
+            'prayer.radius1',
+            'prayer.targets1',
+        ])
+            gift.add(id)
         expect(enableConstellationStar(gift, 'prayer.area').changed).toBe(true)
         expect(enableConstellationStar(gift, 'prayer.last_light').missingParents).toEqual([
             'life.hp1',
@@ -96,12 +107,7 @@ describe('manual constellation build cascades and isolation', () => {
         const all = enableAllConstellationStars()
         const removed = disableConstellationStar(all, 'prayer.gift1')
         expect(removed.disabledIds).toEqual(
-            expect.arrayContaining([
-                'prayer.gift1',
-                'prayer.gift2',
-                'prayer.area',
-                'prayer.last_light',
-            ])
+            expect.arrayContaining(['prayer.gift1', 'prayer.gift2', 'prayer.last_light'])
         )
         expect(removed.enabledIds.has('prayer.radius1')).toBe(true)
         expect(removed.enabledIds.has('life.hp1')).toBe(true)

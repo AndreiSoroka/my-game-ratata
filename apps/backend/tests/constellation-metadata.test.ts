@@ -125,6 +125,7 @@ describe('dynamic active card capabilities', () => {
         expect(card().effects).toEqual([
             'Лечит вас или союзника.',
             'Очищает могилы от тёмных сил.',
+            'За одну молитву действует на одну выбранную цель.',
             'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.',
         ])
         expect(JSON.stringify(card())).not.toContain('кар')
@@ -149,6 +150,7 @@ describe('dynamic active card capabilities', () => {
         expect(card.effects).toEqual([
             'Лечит вас или союзника.',
             'Очищает могилы от тёмных сил.',
+            'За одну молитву действует на одну выбранную цель.',
         ])
         const revive = requiredCard(actor, 'prayer.revive')
         expect(revive.unlocked).toBe(false)
@@ -163,7 +165,7 @@ describe('known prayer school cards', () => {
         const healingNodes = fullConstellationCatalog.filter(
             (node) => node.constellationId === 'prayer'
         )
-        expect(healingNodes).toHaveLength(25)
+        expect(healingNodes).toHaveLength(39)
         for (const node of healingNodes) {
             actor.progression.constellations.opened.add(node.id)
         }
@@ -180,7 +182,7 @@ describe('known prayer school cards', () => {
         })
         expect(root?.effects).toEqual(
             expect.arrayContaining([
-                'Лечит вас и всех подходящих союзников в радиусе молитвы.',
+                'Лечит вас или союзника.',
                 'Очищает могилы от тёмных сил.',
                 'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.',
                 'Наносит урон нежити в радиусе молитвы.',
@@ -215,9 +217,7 @@ describe('known prayer school cards', () => {
             snapshot.nodes.find(
                 (node) => node.id === constellationWireId('prayer.last_light')
             )?.description
-        ).toBe(
-            'Пока ваше здоровье ниже 20% из-за вражеских ран, ваша молитва лечит на 10% сильнее.'
-        )
+        ).toContain('на 1000% сильнее')
     })
 
     it('reveals the separate new roots on learning and only their own explicit abilities', () => {
@@ -269,6 +269,7 @@ it('marks only standalone hotbar bindings active, never enhancement prerequisite
     const expected = new Map([
         ['arrow.root', 'shot'],
         ['prayer.root', 'pray'],
+        ['prayer.area', 'pray_woven'],
         ['prayer_road.root', 'pray_road'],
         ['prayer_lantern.root', 'pray_lantern'],
         ['prayer_grave.root', 'pray_grave'],

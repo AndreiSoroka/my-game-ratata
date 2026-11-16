@@ -1,14 +1,16 @@
 import {
     type GameEventPayload,
     PRAYER_SCHOOL_DEFINITIONS,
-    type PrayerAbilityId,
+    type PrayerActionId,
     type PrayerIntent,
+    prayerSchoolId,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellations'
 import { miracleChance } from './deities'
+import { resetMartyrStreak } from './martyr'
 import { applyPrayerGifts } from './prayerGifts'
 import { applyPrayerGraves } from './prayerGraves'
 import { applyPrayerWave } from './prayerWave'
@@ -23,13 +25,13 @@ export function completePrayer(
     roll: number,
     quality: number,
     receiptId?: string,
-    abilityId: PrayerAbilityId = 'pray'
+    abilityId: PrayerActionId = 'pray'
 ): GameEventPayload[] {
     if (intent.mode === 'devotion') {
         return []
     }
     // Capture modifiers and low-health evidence before any healing or learning.
-    const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
+    const school = PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)]
     const factors = captureMasteryFactors(actor)
     const modifiers = constellationModifiers(actor)
     const resurrection =
@@ -72,6 +74,9 @@ export function completePrayer(
         events.push(unansweredPrayer(actor, abilityId))
     }
     const experience = gift.experience + wave.experience + graves.experience
+    if (experience > 0) {
+        resetMartyrStreak(actor)
+    }
     return [
         ...events,
         ...awardMasteries(actor, prayerReward(abilityId, experience), {
@@ -90,12 +95,13 @@ export function completePrayer(
     ]
 }
 
-function prayerReward(abilityId: PrayerAbilityId, experience: number) {
+function prayerReward(abilityId: PrayerActionId, experience: number) {
     return experience > 0
         ? [
               {
                   constellationId:
-                      PRAYER_SCHOOL_DEFINITIONS[abilityId].constellationId,
+                      PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)]
+                          .constellationId,
                   experience,
               },
           ]
@@ -103,7 +109,7 @@ function prayerReward(abilityId: PrayerAbilityId, experience: number) {
 }
 
 function prayerEvidence(
-    abilityId: PrayerAbilityId,
+    abilityId: PrayerActionId,
     gift: boolean,
     harm: boolean,
     purify: boolean,
@@ -130,7 +136,7 @@ function prayerEvidence(
 
 function wasLowHpGift(
     actor: GameCharacter,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): boolean {
     return (
         abilityId === 'pray' &&
@@ -141,7 +147,7 @@ function wasLowHpGift(
 }
 function unansweredPrayer(
     actor: GameCharacter,
-    abilityId: PrayerAbilityId
+    abilityId: PrayerActionId
 ): GameEventPayload {
     return {
         kind: 'notice',

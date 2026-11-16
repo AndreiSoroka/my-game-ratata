@@ -15,20 +15,24 @@ import {
     resolveAttackDamage,
 } from './combatDamage'
 import { buildAttackZones, isInZones } from './combatGeometry'
-import { attackMasteryReward } from './combatMastery'
+import { rewardCharacterHit } from './combatMastery'
 import { canAttackCharacter } from './combatTargets'
-import { recordRunicContact } from './constellations'
 import { resolveGraveHit } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
 import { wearWeapon } from './itemDurability'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import {
+    canPerceivePrayerCaster,
+    prayerAuraEffects,
+    prayerStunImmune,
+} from './prayerAuras'
+import {
     confirmCombatResourceSpend,
     confirmResourceSpend,
     recordUsefulResourceSpend,
 } from './resourcePractice'
-import { awardMasteries, captureMasteryFactors } from './skillProgression'
+import { captureMasteryFactors } from './skillProgression'
 export { attemptAbilityAttack, attemptAttack } from './combatAttack'
 
 export interface AttackContext {
@@ -96,7 +100,10 @@ function resolveCharacterHit(
 ): GameEventPayload[] {
     const { actor, now } = context
     const random = context.random ?? Math.random
-    if (dodgedAttack(target, random)) {
+    const actorEffects = prayerAuraEffects(actor, now)
+    const targetEffects = prayerAuraEffects(target, now)
+    const stunImmune = prayerStunImmune(target, now)
+    if (dodgedAttack(target, random, now, targetEffects)) {
         return [
             {
                 kind: 'miss',
@@ -108,12 +115,14 @@ function resolveCharacterHit(
         ]
     }
     const factors = captureMasteryFactors(actor)
-    const roll = resolveAttackDamage(actor, attack, random)
+    const roll = resolveAttackDamage(actor, attack, random, now, actorEffects)
     const result = resolveCharacterDamage({
         actor,
         target,
         now,
         amount: roll.amount,
+        random,
+        targetAuraEffects: targetEffects,
         hitQuality: roll.hitQuality,
         damageKind: attack.abilityId === 'spark' ? 'arcane' : 'physical',
         respawnDelayMs: context.respawnDelayMsFor(target),
@@ -141,31 +150,21 @@ function resolveCharacterHit(
         if (result.trainableDamage > 0) {
             recordUsefulResourceSpend(target, 'energy', drained)
         }
-        events.push(...applyAttackStun(actor, target, attack, now, random))
-    }
-    if (result.trainableDamage > 0) {
-        const reward = attackMasteryReward(actor, attack.abilityId)
-        if (reward !== undefined) {
-            if (attack.abilityId === 'spark' || attack.abilityId === 'shot') {
-                events.push(
-                    ...recordRunicContact(
-                        actor,
-                        target.id,
-                        attack.abilityId === 'spark' ? 'spell' : 'shot',
-                        now
-                    )
-                )
-            }
-            events.push(
-                ...awardMasteries(actor, [reward], {
-                    now,
-                    random,
-                    factors,
-                    evidence: reward.evidence,
-                })
+        events.push(
+            ...applyAttackStun(
+                actor,
+                target,
+                attack,
+                now,
+                random,
+                actorEffects.advantage,
+                stunImmune
             )
-        }
+        )
     }
+    events.push(
+        ...rewardCharacterHit(context, attack, target, result, random, factors)
+    )
     events.push(...resolvedWeaponWear(actor, attack, result.impactDamage))
     return events
 }
@@ -236,7 +235,8 @@ export function availableToAttack(actor: GameCharacter, now: number): boolean {
         actor.trainingTarget === undefined &&
         !actor.tags.has('offline') &&
         !actor.tags.has('state.retired') &&
-        actor.stunUntil <= now
+        actor.stunUntil <= now &&
+        !prayerAuraEffects(actor, now).feared
     )
 }
 export function isLegalAttackTarget(
@@ -248,6 +248,8 @@ export function isLegalAttackTarget(
         availableToAttackTarget(target) &&
         actor.locationId === target.locationId &&
         canAttackCharacter(actor, target, context.now) &&
+        (context.targetId === undefined ||
+            canPerceivePrayerCaster(actor, target, context.now)) &&
         (context.navigation?.hasLineOfSight(actor.position, target.position) ??
             true)
     )

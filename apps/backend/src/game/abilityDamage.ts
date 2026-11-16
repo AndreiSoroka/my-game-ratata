@@ -10,6 +10,12 @@ import type { GameCharacter } from './character'
 import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
+import { recordMartyrHostileDamage, resetMartyrStreak } from './martyr'
+import {
+    type PrayerAuraEffects,
+    prayerAuraEffects,
+    prayerDamageInterrupts,
+} from './prayerAuras'
 import { cancelPrayerCast } from './prayerCancellation'
 import { confirmResourceSpend } from './resourcePractice'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
@@ -30,11 +36,19 @@ export interface CharacterDamageInput {
     now: number
     damageKind: DamageKind
     respawnDelayMs: number
+    random?: () => number
+    targetAuraEffects?: PrayerAuraEffects
 }
 export function resolveCharacterDamage(
     input: CharacterDamageInput
 ): DamageResolution {
     const { actor, target, now } = input
+    const auraEffects =
+        input.targetAuraEffects ?? prayerAuraEffects(target, now)
+    input = {
+        ...input,
+        amount: input.amount * auraEffects.damageTakenMultiplier,
+    }
     const result: DamageResolution = {
         impactDamage: 0,
         hpDamage: 0,
@@ -50,12 +64,12 @@ export function resolveCharacterDamage(
         result.events.push(damageEvent(input, input.amount))
         return result
     }
-    const hostile =
-        actor.id !== target.id &&
-        actor.faction !== target.faction &&
-        canTargetByFaction(actor, target, now)
+    const hostile = hostileDamage(input)
     const factors = captureMasteryFactors(target)
     absorbDamage(input, result, hostile, factors)
+    if (hostile && result.absorbed > 0) {
+        resetMartyrStreak(actor)
+    }
     if (
         actor.id !== target.id &&
         !hostile &&
@@ -68,23 +82,50 @@ export function resolveCharacterDamage(
         finishDefenderPractice(input, result, hostile, factors)
         return result
     }
+    applyHpDamage(input, result, hostile, auraEffects.advantage)
+    finishDefenderPractice(input, result, hostile, factors)
+    finishDamageDeath(input, result.events)
+    return result
+}
+
+function hostileDamage({ actor, target, now }: CharacterDamageInput): boolean {
+    return (
+        actor.id !== target.id &&
+        actor.faction !== target.faction &&
+        canTargetByFaction(actor, target, now)
+    )
+}
+
+function applyHpDamage(
+    input: CharacterDamageInput,
+    result: DamageResolution,
+    hostile: boolean,
+    advantage: boolean
+): void {
+    const { actor, target, now } = input
     const tainted = Math.min(
         target.abilities.untrainableHpDamage,
         Math.max(0, target.maxHp - target.hp)
     )
     target.applyDamage(result.hpDamage, now)
     wearHitEquipment(target)
-    result.events.push(...cancelPrayerCast(target, now))
+    if (
+        !target.alive ||
+        prayerDamageInterrupts(target, now, input.random, advantage)
+    ) {
+        result.events.push(...cancelPrayerCast(target, now))
+    }
     target.abilities.untrainableHpDamage = Math.min(
         Math.max(0, target.maxHp - target.hp),
         tainted + (hostile ? 0 : result.hpDamage)
     )
     result.trainableDamage = hostile ? result.hpDamage : 0
+    if (hostile) {
+        recordMartyrHostileDamage(target, result.hpDamage, now)
+        resetMartyrStreak(actor)
+    }
     result.impactDamage = result.hpDamage
     result.events.push(damageEvent(input, result.hpDamage))
-    finishDefenderPractice(input, result, hostile, factors)
-    finishDamageDeath(input, result.events)
-    return result
 }
 function finishDefenderPractice(
     input: CharacterDamageInput,

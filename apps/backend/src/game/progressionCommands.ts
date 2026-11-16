@@ -13,6 +13,7 @@ import {
 } from './magicLearning'
 import type { NavigationService } from './navigation'
 import { pray } from './prayer'
+import { canPerceivePrayerCaster } from './prayerAuras'
 import { canPerformSkillAction } from './skillProgression'
 import { castSpell } from './spellCasting'
 
@@ -35,10 +36,7 @@ export function handleProgressionCommand(
         const target = context.characters.find(
             (candidate) => candidate.id === message.targetId
         )
-        if (
-            target === undefined ||
-            !context.navigation.hasLineOfSight(actor.position, target.position)
-        ) {
+        if (!validInteractionTarget(actor, target, context)) {
             return []
         }
     }
@@ -88,4 +86,16 @@ export function handleProgressionCommand(
         case 'cast_spell':
             return castSpell(actor, message, context)
     }
+}
+
+function validInteractionTarget(
+    actor: GameCharacter,
+    target: GameCharacter | undefined,
+    context: ProgressionContext
+): boolean {
+    return (
+        target !== undefined &&
+        canPerceivePrayerCaster(actor, target, context.now) &&
+        context.navigation.hasLineOfSight(actor.position, target.position)
+    )
 }

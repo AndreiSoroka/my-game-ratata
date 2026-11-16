@@ -11,6 +11,31 @@ interface PlayerOptions {
     heroClass: HeroClass | undefined
 }
 
+export function createRoomPlayerFactory(
+    characters: Map<string, GameCharacter>,
+    nicknames: Map<string, string>,
+    navigation: () => NavigationService,
+    configure: (actor: GameCharacter) => void
+) {
+    let index = 0
+    return (
+        nickname: string,
+        nicknameKey: string,
+        archetype: GameCharacter['archetype'],
+        heroClass: HeroClass | undefined
+    ): GameCharacter => {
+        const character = createRoomPlayer(
+            characters,
+            nicknames,
+            navigation(),
+            ++index,
+            { nickname, nicknameKey, archetype, heroClass }
+        )
+        configure(character)
+        return character
+    }
+}
+
 export function createRoomPlayer(
     characters: Map<string, GameCharacter>,
     nicknames: Map<string, string>,

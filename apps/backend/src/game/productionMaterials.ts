@@ -2,6 +2,7 @@ import type { AdventureRecipe, MarketItemId } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { type CityState, transferQuantity } from './cityEconomyStock'
+import { resetMartyrStreak } from './martyr'
 export function issueProductionMaterials(
     city: CityState,
     actor: GameCharacter,
@@ -23,6 +24,7 @@ export function issueProductionMaterials(
         }
     }
     city.inventory.splice(0, city.inventory.length, ...cityPlan)
+    resetMartyrStreak(actor)
     actor.inventory.splice(0, actor.inventory.length, ...bagPlan)
     return true
 }

@@ -17,6 +17,7 @@ import {
     transferInventoryItem,
     transferInventoryQuantity,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import { cancelMovementMode } from './movementActions'
 import type { NavigationService } from './navigation'
 
@@ -114,6 +115,7 @@ export class ChestContainers {
         if (item === undefined) {
             return chestRefusalNotice(actor.id, 'Предмета больше нет в сумке.')
         }
+        resetMartyrStreak(actor)
         return [
             {
                 actorId: actor.id,
@@ -219,6 +221,7 @@ export class ChestContainers {
         if (item === undefined) {
             return chestRefusalNotice(actor.id, 'В сумке нет свободного места.')
         }
+        resetMartyrStreak(actor)
         return [
             {
                 actorId: actor.id,
@@ -267,6 +270,7 @@ export class ChestContainers {
         ) {
             return []
         }
+        resetMartyrStreak(actor)
         chest.gold = 0
         return chestRefusalNotice(
             actor.id,
@@ -288,6 +292,7 @@ export class ChestContainers {
             if (item === undefined) {
                 continue
             }
+            resetMartyrStreak(actor)
             events.push({
                 actorId: actor.id,
                 chestId: chest.id,

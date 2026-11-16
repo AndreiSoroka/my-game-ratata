@@ -2,8 +2,9 @@ import {
     abilityIds,
     type CharacterResourceChecks,
     FARM_SOW_ENERGY,
-    isPrayerAbility,
-    prayerAbilityIds,
+    isMotherPrayer,
+    isPrayerAction,
+    prayerActionIds,
     prayerManaCost,
     type ResourceCheck,
     resourceFillPercent,
@@ -11,11 +12,14 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import {
     effectiveAbility,
     effectiveDashCost,
     effectiveTheftCost,
 } from './effectiveParameters'
+import { effectiveMaxMana } from './effectiveResources'
+import { hasMotherPrayerAura } from './motherPrayerPlan'
 
 export function observeResource(
     resource: ResourceSnapshot,
@@ -43,21 +47,47 @@ export function resourceChecks(
     return {
         abilities: Object.fromEntries(
             abilityIds
-                .filter((id) => !isPrayerAbility(id))
+                .filter((id) => !isPrayerAction(id))
                 .map((id) => {
                     const ability = effectiveAbility(character, id)
                     return [id, check(ability.mana, ability.energy)]
                 })
         ) as CharacterResourceChecks['abilities'],
         prayers: Object.fromEntries(
-            prayerAbilityIds.map((id) => [
+            prayerActionIds.map((id) => [
                 id,
                 {
-                    devotion: check(prayerManaCost('devotion')),
-                    restore: check(prayerManaCost('restore')),
-                    harm: check(prayerManaCost('harm')),
-                    revive: check(prayerManaCost('revive')),
-                    purify_grave: check(prayerManaCost('purify_grave')),
+                    devotion: check(
+                        isMotherPrayer(id) &&
+                            (hasMotherPrayerAura(character) ||
+                                constellationModifiers(character)
+                                    .prayerLastLight)
+                            ? minimumMotherCost(character)
+                            : 0
+                    ),
+                    restore: check(
+                        isMotherPrayer(id)
+                            ? minimumMotherCost(character)
+                            : prayerManaCost('restore', id)
+                    ),
+                    harm: check(
+                        isMotherPrayer(id)
+                            ? minimumMotherCost(character)
+                            : prayerManaCost('harm', id)
+                    ),
+                    ward: check(
+                        isMotherPrayer(id) ? minimumMotherCost(character) : 5
+                    ),
+                    revive: check(
+                        isMotherPrayer(id)
+                            ? minimumMotherCost(character)
+                            : prayerManaCost('revive', id)
+                    ),
+                    purify_grave: check(
+                        isMotherPrayer(id)
+                            ? minimumMotherCost(character)
+                            : prayerManaCost('purify_grave', id)
+                    ),
                 },
             ])
         ) as CharacterResourceChecks['prayers'],
@@ -65,4 +95,10 @@ export function resourceChecks(
         sow: check(0, FARM_SOW_ENERGY),
         steal: check(0, effectiveTheftCost(character)),
     }
+}
+
+function minimumMotherCost(character: GameCharacter): number {
+    return constellationModifiers(character).prayerLastLight
+        ? effectiveMaxMana(character) * 0.3
+        : 5
 }

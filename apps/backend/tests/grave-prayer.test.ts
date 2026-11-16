@@ -26,12 +26,13 @@ describe('shared probabilistic grave prayer', () => {
             f.actor.progression.patron = patron
             for (let step = 0; step < 5; step++) {
                 const startsAt = now + step * GRAVE_PURIFY_CAST_MS
+                expect(f.actor.mana).toBe(120 - step * 5)
                 expect(f.begin(startsAt)[0]).toMatchObject({
                     kind: 'cast',
                     phase: 'started',
                     durationMs: 3000,
                 })
-                expect(f.actor.mana).toBe(120 - step * 5)
+                expect(f.actor.mana).toBe(120 - (step + 1) * 5)
                 expect(f.advance(startsAt + GRAVE_PURIFY_CAST_MS - 1)).toEqual(
                     []
                 )
@@ -145,12 +146,6 @@ describe('purification interrupts', () => {
             },
         ],
         [
-            'lost mana',
-            (f) => {
-                f.actor.mana = 4
-            },
-        ],
-        [
             'lost sight',
             (f) => {
                 for (let y = 0; y < 20; y++) {
@@ -160,15 +155,14 @@ describe('purification interrupts', () => {
         ],
     ]
     it.each(interruptions)(
-        'cancels %s without payment or practice',
-        (label, interrupt) => {
+        'cancels %s without refund or practice',
+        (_label, interrupt) => {
             const f = gravePrayerFixture()
             f.begin()
+            expect(f.actor.mana).toBe(115)
             interrupt(f)
             const mana = f.actor.mana
-            const checkedAt =
-                label === 'lost mana' ? now + GRAVE_PURIFY_CAST_MS : now + 1
-            expect(f.advance(checkedAt)).toMatchObject([
+            expect(f.advance(now + 1)).toMatchObject([
                 { kind: 'cast', phase: 'interrupted' },
             ])
             expect(f.actor.abilities.casting).toBeNull()
@@ -208,23 +202,27 @@ describe('purification interrupts', () => {
 })
 
 describe('ordinary NPC prayer and atomic completion', () => {
-    it('checks mana at completion and permits a temporary shortfall during the channel', () => {
-        const f = gravePrayerFixture()
-        f.begin()
-        f.actor.mana = 4
-        expect(f.advance(now + 1_000)).toEqual([])
-        expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
-        f.actor.mana = 5
-        expect(f.advance(now + GRAVE_PURIFY_CAST_MS)).toContainEqual({
-            kind: 'grave_purification_progress',
-            abilityId: 'pray',
-            actorId: f.actor.id,
-            target: { kind: 'grave', id: source.id },
-        })
-        expect(f.actor.mana).toBe(0)
-    })
+    it.each([0, 4])(
+        'keeps the prepaid channel when mana falls to %s without charging again',
+        (remaining) => {
+            const f = gravePrayerFixture()
+            f.begin()
+            expect(f.actor.mana).toBe(115)
+            f.actor.mana = remaining
+            expect(f.advance(now + 1_000)).toEqual([])
+            expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
+            expect(f.advance(now + GRAVE_PURIFY_CAST_MS)).toContainEqual({
+                kind: 'grave_purification_progress',
+                abilityId: 'pray',
+                actorId: f.actor.id,
+                target: { kind: 'grave', id: source.id },
+            })
+            expect(f.actor.mana).toBe(remaining)
+            expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(10))
+        }
+    )
 
-    it('lets scripted clerics channel the same ability, preserves the first cast on repeated requests, and charges only the winner', () => {
+    it('charges both scripted casts once, preserves repeated requests, and awards only the atomic final-step winner', () => {
         const f = gravePrayerFixture(true)
         const other = new GameCharacter({
             id: 'other-cleric',
@@ -242,6 +240,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         expect(f.begin(now + 5_000)[0]?.kind).toBe('notice')
         expect(f.actor.abilities.casting).toBe(original)
         beginGravePurification(other, source.id, f.context(now))
+        expect(other.mana).toBe(115)
         for (let step = 0; step < 4; step++) {
             f.service.contributePurification(
                 source.id,
@@ -260,7 +259,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
             )
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
         expect(f.actor.mana).toBe(115)
-        expect(other.mana).toBe(120)
+        expect(other.mana).toBe(115)
         expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(150))
         expect(masteryExperience(other, 'prayer')).toBe(prayerXp(0))
         expect(f.service.get(source.id)?.phase).toBe('purified')
@@ -299,7 +298,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         )
         f.actor.hp = f.actor.maxHp
         expect(f.advance(now + 10_000)).toEqual([])
-        expect(f.actor.mana).toBe(120)
+        expect(f.actor.mana).toBe(115)
         expect(f.service.get(source.id)?.phase).toBe('active')
     })
 })

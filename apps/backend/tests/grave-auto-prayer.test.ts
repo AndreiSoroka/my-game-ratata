@@ -26,9 +26,12 @@ const action: CharacterAutoAction = {
 }
 
 it.each([49, 80])(
-    'walks from %s px without paying, then starts the ordinary nearby ritual',
+    'walks from %s px without paying, then pays once when the nearby ritual starts',
     (range) => {
         const f = gravePrayerFixture()
+        // This rule test isolates the payment; real-room coverage checks regeneration.
+        f.actor.config.resources.manaRegenIdle = 0
+        f.actor.config.resources.manaRegenMove = 0
         f.actor.position = {
             x: source.position.x - range,
             y: source.position.y,
@@ -62,8 +65,10 @@ it.each([49, 80])(
             if (events.every((event) => event.phase !== 'started')) {
                 expect(snapshotControl(f.actor).waiting).toBe('range')
                 expect(events).toEqual([])
+                expect(f.actor.mana).toBe(120)
+            } else {
+                expect(f.actor.mana).toBe(115)
             }
-            expect(f.actor.mana).toBe(120)
             expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(0))
             advanceCharacter({
                 character: f.actor,
@@ -97,7 +102,7 @@ it.each([49, 80])(
                 deltaMs: 50,
             })
             f.advance(at)
-            expect(f.actor.mana).toBe(120)
+            expect(f.actor.mana).toBe(115)
             expect(f.service.get(source.id)?.phase).toBe('active')
         }
         // Controllers run before lifecycle completion at the deadline.

@@ -57,9 +57,9 @@ it('agent ability requests use ordinary costs, cooldowns and pinned prayer targe
         intent: { mode: 'restore', targetId: actor.id },
     } as const
     expect(applyAgentDecision(actor, message, world, 1000).accepted).toBe(true)
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(115)
     expect(applyAgentDecision(actor, message, world, 2000).accepted).toBe(false)
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(115)
     expect(requestAbility).toHaveBeenCalledTimes(1)
     advanceRevive(
         actor,
@@ -103,7 +103,7 @@ it.each(['human', 'unknown', 'dead', 'offline', 'stun'] as const)(
         expect(actor.mana).toBe(100)
     }
 )
-it('a noncombat personality cannot use attack abilities, autoattack or harmful prayer collateral', () => {
+it('a noncombat personality rejects actual attack targets while permitting a safe selected self-heal beside undead', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
     Object.assign(actor, { id: 'npc_princess_1' })
     actor.abilities.known.add('spark')
@@ -117,7 +117,7 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
         {
             type: 'use_ability',
             abilityId: 'pray',
-            intent: { mode: 'restore', targetId: actor.id },
+            intent: { mode: 'harm', targetId: undead.id },
         },
     ]) {
         expect(applyAgentDecision(actor, message, world, 1000).accepted).toBe(
@@ -126,7 +126,6 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
     }
     expect(requestAbility).not.toHaveBeenCalled()
     expect(requestControl).not.toHaveBeenCalled()
-    undead.position.x += 100
     expect(
         applyAgentDecision(
             actor,
@@ -139,6 +138,9 @@ it('a noncombat personality cannot use attack abilities, autoattack or harmful p
             1000
         ).accepted
     ).toBe(true)
+    expect(requestAbility).toHaveBeenCalledOnce()
+    expect(actor.mana).toBe(115)
+    expect(undead.hp).toBe(undead.maxHp)
 })
 it('allows a noncombat personality to devote a harmless prayer beside potential wave victims', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')

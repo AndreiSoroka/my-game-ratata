@@ -28,20 +28,22 @@ import {
     regenerateCharacter,
     tickCharacterTimedState,
 } from './characterRecovery'
+import * as characterResources from './characterResourceActions'
 import { createCharacterSnapshot } from './characterSnapshot'
 import { createCharacterSoul } from './characterSoul'
 import {
     type AttackResourceSpend,
     type PendingAttackHit,
-    spendResource,
 } from './characterState'
 import { initializeConstellations } from './constellations'
-import { effectiveAttackEnergyCost } from './effectiveParameters'
+import { effectiveMaxHp } from './effectiveResources'
 import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
+import { createMartyrState } from './martyr'
 import { normalize, resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
 import { PersonalConstellationSky } from './personalConstellationSky'
+import type { PrayerAuraEnvironment } from './prayerAuras'
 import { createResourcePractice } from './resourcePractice'
 import {
     type CharacterProgression,
@@ -61,7 +63,7 @@ export class GameCharacter {
     public connected: boolean
     public readonly faction: CharacterFactionId
     public readonly id: string
-    public maxHp: number
+    public baseMaxHp: number
     public readonly constellationSky = new PersonalConstellationSky(this)
     public readonly heroClass: HeroClass | undefined
     public readonly mortal: boolean
@@ -70,6 +72,7 @@ export class GameCharacter {
     public progression: CharacterProgression = createProgression()
     public movement = createMovementState()
     public resourcePractice = createResourcePractice()
+    public martyr = createMartyrState()
     public level = 1
     public xp = 0
     public reviveUntil = 0
@@ -86,6 +89,7 @@ export class GameCharacter {
     public deathSequence = 0
     public actionLockUntil = 0
     public interruptWork: (() => void) | undefined
+    public prayerAuraEnvironment: PrayerAuraEnvironment | undefined
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
     public equipment: EquipmentState = {}
@@ -136,7 +140,7 @@ export class GameCharacter {
         this.hp = this.config.combat.maxHp
         this.id = options.id
         this.mana = this.config.resources.maxMana
-        this.maxHp = this.config.combat.maxHp
+        this.baseMaxHp = this.config.combat.maxHp
         this.nickname = options.nickname
         this.position = { ...options.spawnPosition }
         this.reputation = {
@@ -149,7 +153,19 @@ export class GameCharacter {
         initializeConstellations(this)
     }
 
+    public get maxHp(): number {
+        return effectiveMaxHp(this)
+    }
+
+    public set maxHp(base: number) {
+        this.baseMaxHp = base
+    }
+
     public setMoveInput(axis: Vector2): void {
+        if (this.alive && this.abilities.casting?.mother?.lastLight === true) {
+            this.input = zeroVector()
+            return
+        }
         this.input = normalize(axis)
 
         if (this.input.x !== 0 || this.input.y !== 0) {
@@ -162,6 +178,9 @@ export class GameCharacter {
     }
 
     public setPath(path: Vector2[]): void {
+        if (this.alive && this.abilities.casting?.mother?.lastLight === true) {
+            return
+        }
         this.path = path
         this.pathIndex = 0
         this.input = zeroVector()
@@ -286,12 +305,7 @@ export class GameCharacter {
     }
 
     public canSpendAttackResources(): boolean {
-        const resources = this.config.resources
-
-        return (
-            this.energy >= effectiveAttackEnergyCost(this) &&
-            this.mana >= resources.attackManaCost
-        )
+        return characterResources.canSpendAttackResources(this)
     }
 
     public reputationWith(faction: CharacterFactionId): number {
@@ -299,31 +313,11 @@ export class GameCharacter {
     }
 
     public spendAttackResources(): AttackResourceSpend {
-        const resources = this.config.resources
-        const canStun =
-            resources.maxEnergy > 0 &&
-            this.energy >= resources.maxEnergy &&
-            this.canSpendAttackResources()
-        const fullyPowered = this.canSpendAttackResources()
-
-        this.energy = spendResource(
-            this.energy,
-            effectiveAttackEnergyCost(this)
-        )
-        this.mana = spendResource(this.mana, resources.attackManaCost)
-
-        return { canStun, fullyPowered }
+        return characterResources.spendAttackResources(this)
     }
 
     public drainEnergy(amount: number): number {
-        if (amount <= 0) {
-            return 0
-        }
-
-        const before = this.energy
-        this.energy = Math.max(0, this.energy - amount)
-
-        return before - this.energy
+        return characterResources.drainCharacterEnergy(this, amount)
     }
 
     public applyDamage(amount: number, now: number): void {

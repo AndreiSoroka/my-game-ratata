@@ -22,6 +22,7 @@ import {
     createItemInstance,
     type InventoryItemInstance,
 } from './inventory'
+import { resetMartyrStreak } from './martyr'
 export { STONE_REGROW_MS, stumpBounds, TREE_GROW_MS } from './harvestRules'
 
 import { wearItem } from './itemDurability'
@@ -126,6 +127,7 @@ export function resolveGather(
     if (!addInventoryItems(actor.inventory, outputs)) {
         return rejectWork(state, 'В рюкзаке нет места для всей добычи.')
     }
+    resetMartyrStreak(actor)
     recordUsefulResourceSpend(actor, 'energy', actor.drainEnergy(work.energy))
     workAnimation(actor, state, now, work.duration)
     const broken =

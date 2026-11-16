@@ -71,6 +71,10 @@ it('rewards each hostile prayer victim and respects exact range and walls', () =
     const actor = abilityHero()
 
     actor.progression.constellations.opened.add('prayer.harm')
+    actor.abilities.known.add('pray_woven')
+    for (const id of ['prayer.area', 'prayer.targets1', 'prayer.targets2']) {
+        actor.progression.constellations.opened.add(id)
+    }
     const enemies = Array.from({ length: 3 }, () =>
         abilityHero('vanguard', 'undead')
     )
@@ -87,7 +91,11 @@ it('rewards each hostile prayer victim and respects exact range and walls', () =
     context.navigation.grid.solid[6 * 32 + 7] = true
     handleAbilityCommand(
         actor,
-        { type: 'use_ability', abilityId: 'pray', intent: { mode: 'harm' } },
+        {
+            type: 'use_ability',
+            abilityId: 'pray_woven',
+            intent: { mode: 'harm' },
+        },
         context
     )
     const events = advanceRevive(actor, () => undefined, 4000, context.random, {
@@ -96,10 +104,11 @@ it('rewards each hostile prayer victim and respects exact range and walls', () =
     })
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(4)
     expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(210))
+    expect(actor.mana).toBe(100)
     expect(far.hp).toBe(far.maxHp)
     expect(hidden.hp).toBe(hidden.maxHp)
 })
-it('never changes a pinned resurrection recipient or spends completion mana after the deadline', () => {
+it('never changes a pinned resurrection recipient or refunds its prepaid cost after the soul deadline', () => {
     const actor = abilityHero()
     const target = abilityHero()
     target.applyDamage(target.hp, 0)
@@ -111,6 +120,7 @@ it('never changes a pinned resurrection recipient or spends completion mana afte
     } as const
     handleAbilityCommand(actor, command, context)
     expect(actor.abilities.casting?.targetId).toBe(target.id)
+    expect(actor.mana).toBe(115)
     const events = advanceRevive(
         actor,
         () => target,
@@ -121,6 +131,6 @@ it('never changes a pinned resurrection recipient or spends completion mana afte
     expect(events).toContainEqual(
         expect.objectContaining({ kind: 'cast', phase: 'interrupted' })
     )
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(115)
     expect(target.alive).toBe(false)
 })

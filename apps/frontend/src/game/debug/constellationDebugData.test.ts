@@ -50,7 +50,7 @@ describe('standalone constellation debug data', () => {
             expect(snapshot.nodes.find((node) => node.id === edge.to)?.parents).toContain(edge.from)
             expect(edge.via).toEqual(realized.edgeWaypoints[`${edge.from}>${edge.to}`])
         }
-        expect(snapshot.nodes.filter((node) => node.effectType === 'active')).toHaveLength(7)
+        expect(snapshot.nodes.filter((node) => node.effectType === 'active')).toHaveLength(8)
         expect(snapshot.nodes.find((node) => node.id === 'prayer.revive')?.effectType).toBe(
             'passive'
         )
