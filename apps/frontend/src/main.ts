@@ -1,16 +1,21 @@
 import './assets/main.css'
 import './assets/app.css'
 
-import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
-import App from './App.vue'
-import { ensureExcaliburCanvasFlags } from './game/runtime/excaliburFlags'
+async function bootstrap(): Promise<void> {
+    if (new URLSearchParams(window.location.search).get('debug') === 'constellations') {
+        const { default: ConstellationDebug } = await import('./game/debug/ConstellationDebug.vue')
+        createApp(ConstellationDebug).mount('#app')
+        return
+    }
+    const [{ default: App }, { createPinia }, { ensureExcaliburCanvasFlags }] = await Promise.all([
+        import('./App.vue'),
+        import('pinia'),
+        import('./game/runtime/excaliburFlags'),
+    ])
+    ensureExcaliburCanvasFlags()
+    createApp(App).use(createPinia()).mount('#app')
+}
 
-ensureExcaliburCanvasFlags()
-
-const app = createApp(App)
-
-app.use(createPinia())
-
-app.mount('#app')
+void bootstrap()

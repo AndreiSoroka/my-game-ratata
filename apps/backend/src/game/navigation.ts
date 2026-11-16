@@ -2,9 +2,19 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { MapSummary, Vector2 } from '@my-game-ratata/contracts'
+import type {
+    AuthoredContainerDefinition,
+    GroundSurface,
+    MapSummary,
+    TrainingMapData,
+    Vector2,
+    WorldObjectBounds,
+} from '@my-game-ratata/contracts'
+import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import type { AuthoredEncounters } from './encounterData'
 import { clamp } from './math'
+import { buildGrid, type TiledMap } from './navigationGrid'
 import { findPath } from './pathfinding'
 
 export interface TileCoordinate {
@@ -13,6 +23,14 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    containers?: AuthoredContainerDefinition[]
+    encounters?: AuthoredEncounters
+    training?: TrainingMapData
+    /** Immutable terrain/walls, excluding authored harvestable obstacles. */
+    baseSolid?: boolean[]
+    /** Authored safe soil: independent of footstep sound and atlas tiles. */
+    plantable?: boolean[]
+    surfaces?: GroundSurface[]
     height: number
     id: string
     solid: boolean[]
@@ -22,35 +40,14 @@ export interface MapGrid {
     width: number
 }
 
-interface TiledProperty {
-    name: string
-    type: string
-    value: unknown
-}
-
-interface TiledLayer {
-    data?: number[]
-    height: number
-    name: string
-    properties?: TiledProperty[]
-    type: string
-    width: number
-}
-
-interface TiledMap {
-    height: number
-    layers: TiledLayer[]
-    tileheight: number
-    tilewidth: number
-    width: number
-}
-
 export class NavigationService {
     public readonly grid: MapGrid
     public readonly summary: MapSummary
+    private resourceBase: boolean[] | undefined
 
     public constructor(grid: MapGrid) {
         this.grid = grid
+        this.resourceBase = grid.baseSolid?.slice()
         this.summary = {
             height: grid.height,
             id: grid.id,
@@ -61,6 +58,38 @@ export class NavigationService {
             worldHeight: grid.height * grid.tileHeight,
             worldWidth: grid.width * grid.tileWidth,
         }
+    }
+
+    public setResourceObstacles(bounds: readonly WorldObjectBounds[]): void {
+        this.resourceBase ??= this.grid.solid.slice()
+        const solid = this.resourceBase.slice()
+        for (const area of bounds) {
+            for (const index of this.cellsInBounds(area)) {
+                solid[index] = true
+            }
+        }
+        this.grid.solid = solid
+    }
+
+    public cellsInBounds(bounds: WorldObjectBounds): number[] {
+        const cells: number[] = []
+        const { tileWidth, tileHeight, width, height } = this.grid
+        for (
+            let y = Math.floor(bounds.y / tileHeight);
+            y < Math.ceil((bounds.y + bounds.height) / tileHeight);
+            y++
+        ) {
+            for (
+                let x = Math.floor(bounds.x / tileWidth);
+                x < Math.ceil((bounds.x + bounds.width) / tileWidth);
+                x++
+            ) {
+                if (x >= 0 && y >= 0 && x < width && y < height) {
+                    cells.push(y * width + x)
+                }
+            }
+        }
+        return cells
     }
 
     public worldToTile(point: Vector2): TileCoordinate {
@@ -83,14 +112,17 @@ export class NavigationService {
 
     public findPathWorld(from: Vector2, to: Vector2): Vector2[] {
         const start = this.worldToTile(from)
-        const end = this.worldToTile(to)
+        const destination = this.clampWorld(to)
+        const end = this.worldToTile(destination)
         const tiles = findPath(this.grid, start, end)
 
-        if (tiles.length <= 1) {
-            return this.isSolidTile(end) ? [] : [this.clampWorld(to)]
+        if (tiles.length === 0) {
+            return []
         }
-
-        return tiles.slice(1).map((tile) => this.tileToWorld(tile))
+        return [
+            ...tiles.slice(1, -1).map((tile) => this.tileToWorld(tile)),
+            destination,
+        ]
     }
 
     public clampWorld(point: Vector2): Vector2 {
@@ -103,13 +135,37 @@ export class NavigationService {
         }
     }
 
+    public surfaceAt(point: Vector2): GroundSurface {
+        const tile = this.worldToTile(point)
+        return (
+            this.grid.surfaces?.[tile.y * this.grid.width + tile.x] ?? 'grass'
+        )
+    }
+
     public moveWithCollision(position: Vector2, delta: Vector2): Vector2 {
+        const stepSize = Math.min(this.grid.tileWidth, this.grid.tileHeight) / 4
+        const steps = Math.max(
+            1,
+            Math.ceil(Math.hypot(delta.x, delta.y) / stepSize)
+        )
+        const step = { x: delta.x / steps, y: delta.y / steps }
+        let result = { ...position }
+        for (let index = 0; index < steps; index += 1) {
+            result = this.moveStep(result, step)
+        }
+        return result
+    }
+
+    private moveStep(position: Vector2, delta: Vector2): Vector2 {
         const target = this.clampWorld({
             x: position.x + delta.x,
             y: position.y + delta.y,
         })
 
-        if (!this.isSolidTile(this.worldToTile(target))) {
+        if (
+            !this.isSolidTile(this.worldToTile(target)) &&
+            !this.cutsCorner(position, target)
+        ) {
             return target
         }
 
@@ -144,6 +200,13 @@ export class NavigationService {
             { x: tile.x, y: tile.y + 1 },
             { x: tile.x, y: tile.y - 1 },
         ].filter((candidate) => !this.isSolidTile(candidate))
+    }
+
+    private cutsCorner(from: Vector2, to: Vector2): boolean {
+        return (
+            this.isSolidTile(this.worldToTile({ x: from.x, y: to.y })) &&
+            this.isSolidTile(this.worldToTile({ x: to.x, y: from.y }))
+        )
     }
 
     private slideMove(position: Vector2, delta: Vector2): Vector2 {
@@ -181,7 +244,9 @@ export function isSolidTile(grid: MapGrid, tile: TileCoordinate): boolean {
     return grid.solid[tile.y * grid.width + tile.x] === true
 }
 
-export function loadNavigationService(mapId = 'map1'): NavigationService {
+export function loadNavigationService(
+    mapId: string = CENTER_LOCATION_ID
+): NavigationService {
     const mapRoot = resolveMapRoot()
     const raw = fs.readFileSync(path.join(mapRoot, `${mapId}.json`), 'utf-8')
     const map = JSON.parse(raw) as TiledMap
@@ -200,48 +265,4 @@ function resolveMapRoot(): string {
     const repoRoot = path.resolve(currentDir, '../../../..')
 
     return path.join(repoRoot, 'apps/frontend/public/game/map')
-}
-
-function buildGrid(mapId: string, map: TiledMap): MapGrid {
-    const solid = new Array<boolean>(map.width * map.height).fill(false)
-    const solidLayerNames: string[] = []
-
-    for (const layer of map.layers) {
-        if (layer.type !== 'tilelayer' || layer.data === undefined) {
-            continue
-        }
-
-        if (!isSolidLayer(layer)) {
-            continue
-        }
-
-        solidLayerNames.push(layer.name)
-        markSolidTiles(solid, layer.data)
-    }
-
-    return {
-        height: map.height,
-        id: mapId,
-        solid,
-        solidLayerNames,
-        tileHeight: map.tileheight,
-        tileWidth: map.tilewidth,
-        width: map.width,
-    }
-}
-
-function isSolidLayer(layer: TiledLayer): boolean {
-    const solidProperty = layer.properties?.find(
-        (property) => property.name === 'solid'
-    )
-
-    return layer.name === 'Fence' || solidProperty?.value === true
-}
-
-function markSolidTiles(solid: boolean[], tileIds: number[]): void {
-    for (let index = 0; index < tileIds.length; index += 1) {
-        if (tileIds[index] !== 0) {
-            solid[index] = true
-        }
-    }
 }

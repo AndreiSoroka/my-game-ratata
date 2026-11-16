@@ -8,7 +8,7 @@ export function animationFrame(
     animation: ResolvedCharacterAnimation,
     action: CharacterAnimationAction,
     localNow: number,
-    snapshot: CharacterSnapshot
+    snapshot: Pick<CharacterSnapshot, 'animation'>
 ): number {
     const elapsed = Math.max(0, localNow - snapshot.animation.startedAt)
     const frame = Math.floor(elapsed / animation.frameMs)

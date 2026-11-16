@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
-    "packageManager": "bun@1.3.14",
+    "packageManager": "bun@1.4.4",
     "workspaces": [
         "apps/*",
         "contracts"
@@ -28,27 +28,35 @@
         "lint:fix:frontend": "bun run --cwd apps/frontend lint:fix",
         "format": "prettier . --check",
         "format:fix": "prettier . --write",
-        "test": "run-s test:backend test:frontend",
+        "test": "run-s test:backend test:frontend test:agent test:world",
         "test:backend": "bun run --cwd apps/backend test",
         "test:frontend": "bun run --cwd apps/frontend test:unit",
         "test:e2e": "bun run --cwd apps/frontend test:e2e",
+        "test:e2e:firefox": "bun run --cwd apps/frontend test:e2e:app:firefox",
+        "test:e2e:webkit": "bun run --cwd apps/frontend test:e2e:app:webkit",
+        "test:e2e:graves": "bun run --cwd apps/frontend test:e2e:graves",
+        "test:e2e:storybook": "bun run --cwd apps/frontend test:e2e:storybook",
+        "test:e2e:all": "bun run --cwd apps/frontend test:e2e:all",
         "check": "run-s format type-check lint test build test:e2e",
-        "prepare": "husky"
+        "prepare": "husky",
+        "test:agent": "node --test scripts/agent-mcp.test.mjs",
+        "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@types/bun": "1.3.14",
-        "eslint": "^10.6.0",
-        "eslint-plugin-simple-import-sort": "^13.0.0",
-        "globals": "^17.7.0",
+        "@types/bun": "1.4.4",
+        "eslint": "^10.14.0",
+        "eslint-plugin-simple-import-sort": "^14.0.0",
+        "globals": "^17.14.0",
         "husky": "^9.1.7",
-        "npm-run-all2": "^9.0.2",
-        "prettier": "^3.9.1",
-        "typescript": "^6.0.3",
-        "typescript-eslint": "^8.62.0",
-        "vitest": "^4.1.9"
+        "npm-run-all2": "^9.0.4",
+        "prettier": "^3.9.10",
+        "typescript": "npm:@typescript/typescript6@^6.0.2",
+        "typescript-eslint": "^8.72.1",
+        "vitest": "^5.1.0",
+        "@typescript/native": "npm:typescript@^7.0.2"
     },
     "engines": {
-        "bun": ">=1.3.14"
+        "bun": ">=1.4.4"
     }
 }

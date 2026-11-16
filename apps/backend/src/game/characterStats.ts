@@ -1,5 +1,5 @@
 import type { CharacterStatsSnapshot } from '@my-game-ratata/contracts'
-import { ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
+import { isItemBroken, ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
 
 import type { CharacterConfig } from './characterConfig'
 import type { EquipmentState } from './inventory'
@@ -8,15 +8,19 @@ export function resolveCharacterStats(
     config: CharacterConfig,
     equipment: EquipmentState
 ): CharacterStatsSnapshot {
-    const weapon = equipment.weapon
+    const weapon = physicalWeapon(config, equipment)
     const weaponStats =
         weapon === undefined
             ? undefined
             : ITEM_DEFINITIONS[weapon.itemId].weapon
+    const damageMultiplier = config.combat.damageMultiplier ?? 1
     const dodgeBonus = Object.values(equipment).reduce(
         (total, item) =>
             total +
-            (ITEM_DEFINITIONS[item.itemId].statBonuses?.dodgeChance ?? 0),
+            (isItemBroken(item)
+                ? 0
+                : (ITEM_DEFINITIONS[item.itemId].statBonuses?.dodgeChance ??
+                  0)),
         0
     )
 
@@ -27,8 +31,23 @@ export function resolveCharacterStats(
             0,
             Math.min(0.95, config.combat.dodgeChance + dodgeBonus)
         ),
-        maxDamage: weaponStats?.maxDamage ?? config.combat.maxDamage,
-        minDamage: weaponStats?.minDamage ?? config.combat.minDamage,
+        maxDamage: Math.ceil(
+            (weaponStats?.maxDamage ?? config.combat.maxDamage) *
+                damageMultiplier
+        ),
+        minDamage: Math.ceil(
+            (weaponStats?.minDamage ?? config.combat.minDamage) *
+                damageMultiplier
+        ),
         moveSpeed: config.moveSpeed,
     }
+}
+
+function physicalWeapon(config: CharacterConfig, equipment: EquipmentState) {
+    const item = equipment.weapon
+    return config.basicAttackKind === 'melee' &&
+        item !== undefined &&
+        !isItemBroken(item)
+        ? item
+        : undefined
 }

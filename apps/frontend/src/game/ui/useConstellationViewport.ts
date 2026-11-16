@@ -1,0 +1,207 @@
+import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
+import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue'
+
+export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
+    const svg = ref<SVGSVGElement>()
+    const zoom = ref(1)
+    const offset = ref({ x: 0, y: 0 })
+    const dimensions = ref({ width: 700, height: 450 })
+    const bounds = computed(() => snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
+    const baseScale = computed(() =>
+        Math.max(
+            bounds.value.width / dimensions.value.width,
+            bounds.value.height / dimensions.value.height
+        )
+    )
+    const unitScale = computed(() => baseScale.value / zoom.value)
+    const visibleBounds = computed(() =>
+        viewportBounds(bounds.value, dimensions.value, unitScale.value, offset.value)
+    )
+    const viewBox = computed(() => {
+        const view = visibleBounds.value
+        return `${view.x} ${view.y} ${view.width} ${view.height}`
+    })
+    const minimumSpacing = computed(() => snapshot().layout?.minimumNodeSpacing ?? 48)
+    const detailed = computed(() => unitScale.value <= minimumSpacing.value / 52)
+    const maximumZoom = computed(() => Math.max(8, (unitScale.value * zoom.value) / 0.4))
+    const gestures = viewportGestures(
+        svg,
+        zoom,
+        offset,
+        () => maximumZoom.value,
+        () => unitScale.value
+    )
+    function reset(): void {
+        zoom.value = 1
+        offset.value = { x: 0, y: 0 }
+    }
+    function centerOn(point: { x: number; y: number }): void {
+        offset.value = {
+            x: point.x - bounds.value.x - bounds.value.width / 2,
+            y: point.y - bounds.value.y - bounds.value.height / 2,
+        }
+    }
+    function focusPath(node: ConstellationNodeSnapshot): void {
+        const region = snapshot().layout?.regions[node.constellationId]
+        const fitScale = region
+            ? Math.max(
+                  region.width / dimensions.value.width,
+                  region.height / dimensions.value.height
+              )
+            : (unitScale.value * zoom.value) / 2
+        const desiredScale = Math.min(fitScale, minimumSpacing.value / 64)
+        zoom.value = Math.min(maximumZoom.value, (unitScale.value * zoom.value) / desiredScale)
+        centerOn(pathFocus(snapshot(), node, dimensions.value, unitScale.value))
+    }
+    function ensureVisible(node: ConstellationNodeSnapshot): void {
+        const margin = 32 * unitScale.value
+        const { x, y, width, height } = visibleBounds.value
+        if (
+            node.x < x + margin ||
+            node.x > x + width - margin ||
+            node.y < y + margin ||
+            node.y > y + height - margin
+        )
+            centerOn(node)
+    }
+    observeDimensions(svg, dimensions)
+    return {
+        svg,
+        zoom,
+        bounds,
+        viewBox,
+        visibleBounds,
+        unitScale,
+        detailed,
+        reset,
+        focusPath,
+        ensureVisible,
+        ...gestures,
+    }
+}
+
+function viewportGestures(
+    svg: import('vue').Ref<SVGSVGElement | undefined>,
+    zoom: import('vue').Ref<number>,
+    offset: import('vue').Ref<{ x: number; y: number }>,
+    maximumZoom: () => number,
+    unitScale: () => number
+) {
+    const pointers = new Map<number, { x: number; y: number }>()
+    const origins = new Map<number, { x: number; y: number }>()
+    let dragged = false
+    function scale(factor: number): void {
+        const next = Math.max(1, Math.min(maximumZoom(), zoom.value * factor))
+        zoom.value = next
+    }
+    function down(event: PointerEvent): void {
+        if (event.button !== 0) return
+        if (pointers.size === 0) dragged = false
+        else dragged = true
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+        origins.set(event.pointerId, { x: event.clientX, y: event.clientY })
+        if (!(event.target instanceof Element && event.target.closest('.constellation-node')))
+            svg.value?.setPointerCapture?.(event.pointerId)
+    }
+    function move(event: PointerEvent): void {
+        const previous = pointers.get(event.pointerId),
+            rect = svg.value?.getBoundingClientRect()
+        if (!previous || !rect) return
+        const other = [...pointers.entries()].find(([id]) => id !== event.pointerId)?.[1]
+        if (other) {
+            dragged = true
+            const old = Math.hypot(previous.x - other.x, previous.y - other.y)
+            if (old > 0) scale(Math.hypot(event.clientX - other.x, event.clientY - other.y) / old)
+        } else {
+            const dx = event.clientX - previous.x,
+                dy = event.clientY - previous.y
+            const origin = origins.get(event.pointerId)!
+            if (Math.abs(event.clientX - origin.x) + Math.abs(event.clientY - origin.y) > 2) {
+                dragged = true
+                svg.value?.setPointerCapture?.(event.pointerId)
+            }
+            offset.value = {
+                x: offset.value.x - dx * unitScale(),
+                y: offset.value.y - dy * unitScale(),
+            }
+        }
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    }
+    return {
+        scale,
+        down,
+        move,
+        up: (event: PointerEvent) => {
+            if (event.type === 'pointercancel') dragged = true
+            pointers.delete(event.pointerId)
+            origins.delete(event.pointerId)
+        },
+        didDrag: () => dragged,
+    }
+}
+
+function fallbackBounds(nodes: ConstellationNodeSnapshot[]) {
+    const x = Math.min(0, ...nodes.map((node) => node.x)) - 110
+    const y = Math.min(0, ...nodes.map((node) => node.y)) - 80
+    return {
+        x,
+        y,
+        width: Math.max(400, ...nodes.map((node) => node.x + 140)) - x,
+        height: Math.max(260, ...nodes.map((node) => node.y + 90)) - y,
+    }
+}
+function observeDimensions(
+    svg: Ref<SVGSVGElement | undefined>,
+    dimensions: Ref<{ width: number; height: number }>
+): void {
+    let observer: ResizeObserver | undefined
+    onMounted(() => {
+        if (!svg.value || typeof ResizeObserver === 'undefined') return
+        observer = new ResizeObserver((entries) => {
+            const rect = entries[0]?.contentRect
+            if (rect && rect.width > 0 && rect.height > 0)
+                dimensions.value = { width: rect.width, height: rect.height }
+        })
+        observer.observe(svg.value)
+    })
+    onBeforeUnmount(() => observer?.disconnect())
+}
+
+function viewportBounds(
+    bounds: { x: number; y: number; width: number; height: number },
+    dimensions: { width: number; height: number },
+    unitScale: number,
+    offset: { x: number; y: number }
+) {
+    const width = dimensions.width * unitScale,
+        height = dimensions.height * unitScale
+    return {
+        x: bounds.x + bounds.width / 2 + offset.x - width / 2,
+        y: bounds.y + bounds.height / 2 + offset.y - height / 2,
+        width,
+        height,
+    }
+}
+
+function pathFocus(
+    sky: ConstellationSnapshot,
+    root: ConstellationNodeSnapshot,
+    dimensions: { width: number; height: number },
+    scale: number
+) {
+    const nearest = sky.nodes
+        .filter((node) => node.parents.includes(root.id))
+        .sort(
+            (a, b) =>
+                Math.hypot(a.x - root.x, a.y - root.y) - Math.hypot(b.x - root.x, b.y - root.y)
+        )[0]
+    if (!nearest) return root
+    const clampedShift = (difference: number, dimension: number) => {
+        const maximum = Math.max(0, dimension / 2 - 32) * scale
+        return Math.max(-maximum, Math.min(maximum, difference / 2))
+    }
+    return {
+        x: root.x + clampedShift(nearest.x - root.x, dimensions.width),
+        y: root.y + clampedShift(nearest.y - root.y, dimensions.height),
+    }
+}

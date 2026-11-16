@@ -4,6 +4,7 @@ import {
 } from '@my-game-ratata/contracts'
 import type { ServerWebSocket } from 'bun'
 
+import { handleAgentRequest } from './agentBridge'
 import type { GameRoom } from './game/room'
 import type { RoomSocketData } from './game/roomMessaging'
 
@@ -23,11 +24,15 @@ export function createHealthResponse(checkedAt = new Date()): ServiceHealth {
 type FetchHandler = (
     request: Request,
     server?: Bun.Server<RoomSocketData>
-) => Response | undefined
+) => Response | undefined | Promise<Response>
 
 export function createFetchHandler(room?: GameRoom): FetchHandler {
     return (request, server) => {
         const url = new URL(request.url)
+
+        if (url.pathname.startsWith('/agent/')) {
+            return handleAgentRequest(request, room)
+        }
 
         if (url.pathname === '/health') {
             return Response.json(createHealthResponse(), {

@@ -6,6 +6,14 @@ import type {
     InventoryActionKind,
     Vector2,
 } from '@my-game-ratata/contracts'
+import { heroClasses } from '@my-game-ratata/contracts'
+
+import { parseControlCommand } from './characterControl'
+import { isChestCommandType, parseChestCommand } from './chestCommands'
+import { parseCombatReference } from './combatTargetParsing'
+import { parseExtraCommand } from './extraCommands'
+import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
+import { parsePickupCommand } from './worldPickup'
 
 export interface ParseResult {
     error?: string
@@ -45,6 +53,29 @@ export function parseClientMessage(raw: string): ParseResult {
         return { error: 'Message must be an object' }
     }
 
+    if (isAutomationCommand(record['type'])) {
+        const message = parseAutomationCommand(record)
+        return message === undefined
+            ? { error: 'Invalid automation command' }
+            : { message }
+    }
+
+    if (isChestCommandType(record['type'])) {
+        const message = parseChestCommand(record)
+        return message === undefined
+            ? { error: 'Invalid chest command' }
+            : { message }
+    }
+    if (
+        ['auto_action', 'auto_attack', 'follow', 'cancel_control'].includes(
+            String(record['type'])
+        )
+    ) {
+        const message = parseControlCommand(record)
+        return message !== undefined
+            ? { message }
+            : { error: 'Invalid automatic control command' }
+    }
     return parseRecord(record)
 }
 
@@ -57,31 +88,53 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
         case 'move_to':
             return parseMoveTo(record)
         case 'attack':
-            return { message: { type: 'attack' } }
-        case 'pickup_item':
-            return { message: { type: 'pickup_item' } }
+            return parseAttack(record)
+        case 'pickup_item': {
+            const message = parsePickupCommand(record)
+            return message === undefined
+                ? { error: 'Invalid pickup target' }
+                : { message }
+        }
         case 'inventory_action':
             return parseInventoryAction(record)
         case 'equipment_action':
             return parseEquipmentAction(record)
         case 'chat':
             return parseChat(record)
+        case 'abandon_life':
+            return parseAbandonLife(record)
         default:
-            return { error: 'Unknown message type' }
+            return parseExtraCommand(record)
     }
 }
 
+function parseAbandonLife(record: Record<string, unknown>): ParseResult {
+    return Object.keys(record).length === 1
+        ? { message: { type: 'abandon_life' } }
+        : { error: 'Abandon life does not accept a target or owner' }
+}
+
 function parseJoin(record: Record<string, unknown>): ParseResult {
+    if (Object.hasOwn(record, 'creatureType')) {
+        return { error: 'Creature type is assigned by the server' }
+    }
     const nickname = record['nickname']
 
     if (typeof nickname !== 'string' || nickname.trim().length === 0) {
         return { error: 'Nickname is required' }
     }
 
+    const heroClass = heroClasses.find(
+        (candidate) => candidate === record['heroClass']
+    )
+    if (record['heroClass'] !== undefined && heroClass === undefined) {
+        return { error: 'Unknown hero class' }
+    }
     const archetype = parseArchetype(record['archetype'])
     const message = {
         nickname: nickname.trim().slice(0, 24),
         type: 'join',
+        ...(heroClass === undefined ? {} : { heroClass }),
     } satisfies ClientMessage
 
     if (archetype === undefined) {
@@ -108,7 +161,22 @@ function parseMoveTo(record: Record<string, unknown>): ParseResult {
         return { error: 'move_to.target must be a vector' }
     }
 
-    return { message: { target, type: 'move_to' } }
+    if (
+        record['append'] !== undefined &&
+        typeof record['append'] !== 'boolean'
+    ) {
+        return { error: 'move_to.append must be a boolean' }
+    }
+
+    return {
+        message: {
+            target,
+            type: 'move_to',
+            ...(record['append'] === undefined
+                ? {}
+                : { append: record['append'] }),
+        },
+    }
 }
 
 function parseChat(record: Record<string, unknown>): ParseResult {
@@ -233,4 +301,18 @@ function asRecord(input: unknown): Record<string, unknown> | undefined {
     }
 
     return input as Record<string, unknown>
+}
+
+export function parseSocketMessage(raw: unknown): ParseResult {
+    const text = readSocketMessage(raw)
+    return text === undefined
+        ? { error: 'Message must be text or binary JSON' }
+        : parseClientMessage(text)
+}
+
+function parseAttack(record: Record<string, unknown>): ParseResult {
+    const reference = parseCombatReference(record)
+    return reference !== undefined
+        ? { message: { type: 'attack', ...reference } }
+        : { error: 'Invalid attack target' }
 }

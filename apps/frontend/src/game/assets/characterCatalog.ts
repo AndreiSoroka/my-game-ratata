@@ -1,3 +1,5 @@
+import type { CharacterVisualId } from '@my-game-ratata/contracts'
+
 export const characterIds = [
     'player',
     'male_player_2',
@@ -10,7 +12,7 @@ export const characterIds = [
     'skeleton_mace',
     'skeleton_swordless',
     'slime',
-] as const
+] as const satisfies readonly CharacterVisualId[]
 
 export const characterActions = ['idle', 'walk', 'attack', 'damaged', 'death'] as const
 

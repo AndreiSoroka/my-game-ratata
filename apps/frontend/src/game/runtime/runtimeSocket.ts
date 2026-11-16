@@ -1,15 +1,19 @@
 import type {
     ClientMessage,
     GameEventPayload,
+    HeroClass,
+    PlantTreePreview,
     ServerMessage,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
+import { CONTRACT_PROTOCOL_VERSION } from '@my-game-ratata/contracts'
 
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
     onError: (message: string) => void
     onEvent: (event: GameEventPayload) => void
     onSnapshot: (snapshot: WorldSnapshot) => void
+    onPlantingPreview?: (preview: PlantTreePreview) => void
     onStatus: (message: string) => void
     onWorldInit: (playerId: string, snapshot: WorldSnapshot) => void
 }
@@ -22,16 +26,18 @@ export class RuntimeSocket {
         this.handlers = handlers
     }
 
-    public connect(nickname: string): void {
+    public connect(nickname: string, heroClass?: HeroClass): void {
+        if (this.handlers.isStopped()) return
         this.handlers.onStatus('Connecting')
         const socket = new WebSocket(resolveWebSocketUrl())
         this.socket = socket
 
         socket.addEventListener('open', () => {
-            this.send({ nickname, type: 'join' })
+            if (this.handlers.isStopped() || this.socket !== socket) return
+            this.send({ nickname, type: 'join', ...(heroClass === undefined ? {} : { heroClass }) })
         })
         socket.addEventListener('message', (event) => {
-            this.handleSocketMessage(event)
+            if (this.socket === socket) this.handleSocketMessage(event)
         })
         socket.addEventListener('close', () => {
             if (!this.handlers.isStopped()) {
@@ -46,25 +52,41 @@ export class RuntimeSocket {
     }
 
     public close(): void {
-        this.socket?.close()
+        const socket = this.socket
+        this.socket = undefined
+        socket?.close()
     }
 
     public send(message: ClientMessage): void {
-        if (this.socket?.readyState === WebSocket.OPEN) {
+        if (!this.handlers.isStopped() && this.socket?.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify(message))
         }
     }
 
     private handleSocketMessage(event: MessageEvent<string>): void {
+        if (this.handlers.isStopped()) return
         const message = JSON.parse(event.data) as ServerMessage
 
         if (message.type === 'world_init') {
+            if (message.protocolVersion !== CONTRACT_PROTOCOL_VERSION) {
+                this.close()
+                this.handlers.onError(
+                    'Несовместимая версия сервера. Перезапустите сервер и обновите страницу.'
+                )
+                this.handlers.onStatus('Disconnected')
+                return
+            }
             this.handlers.onWorldInit(message.playerId, message.snapshot)
             return
         }
 
         if (message.type === 'snapshot') {
             this.handlers.onSnapshot(message.snapshot)
+            return
+        }
+
+        if (message.type === 'plant_tree_preview') {
+            this.handlers.onPlantingPreview?.(message)
             return
         }
 

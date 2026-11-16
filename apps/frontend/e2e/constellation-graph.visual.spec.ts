@@ -1,0 +1,87 @@
+import { expect, test } from '@playwright/test'
+
+import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
+
+for (const width of [320, 390, 1280]) {
+    test(`full catalogue remains readable and pannable at ${width}px`, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto('/iframe.html?id=interface-character--full-sky&viewMode=story')
+        const graph = page.getByRole('group', { name: 'Созвездия развития' })
+        await expect(graph).toBeVisible()
+        await expect(graph.locator('[role=button]')).toHaveCount(9)
+        await page.screenshot({ path: info.outputPath(`constellation-overview-${width}.png`) })
+        await graph.getByRole('button', { name: 'Молитва', exact: true }).locator('.hit').click()
+        await expect
+            .poll(() => graph.locator('[role=button]').count())
+            .toBe(fullConstellationCatalog.length)
+        const geometry = await graph.evaluate((element) => {
+            const frame = element.getBoundingClientRect()
+            const inside = (rect: DOMRect) =>
+                rect.x >= frame.x &&
+                rect.y >= frame.y &&
+                rect.right <= frame.right &&
+                rect.bottom <= frame.bottom
+            const hits = [...element.querySelectorAll('.hit')]
+                .map((node) => node.getBoundingClientRect())
+                .filter(inside)
+            const labels = [...element.querySelectorAll('.constellation-label')].map((node) =>
+                node.getBoundingClientRect()
+            )
+            const distances = hits.flatMap((a, index) =>
+                hits.slice(index + 1).map((b) => Math.hypot(a.x - b.x, a.y - b.y))
+            )
+            const overlapping = labels.some((a, index) =>
+                labels
+                    .slice(index + 1)
+                    .some((b) => a.x < b.right && a.right > b.x && a.y < b.bottom && a.bottom > b.y)
+            )
+            return {
+                hits: hits.length,
+                minimumHit: Math.min(...hits.map((hit) => hit.width)),
+                minimumDistance: Math.min(...distances),
+                overlapping,
+            }
+        })
+        expect(geometry.hits).toBeGreaterThan(0)
+        expect(geometry.minimumHit).toBeCloseTo(44, 0)
+        expect(geometry.minimumDistance).toBeGreaterThanOrEqual(52)
+        expect(geometry.overlapping).toBe(false)
+        const before = await graph.getAttribute('viewBox')
+        const bounds = await graph.boundingBox()
+        const x = bounds!.x + bounds!.width / 2,
+            y = bounds!.y + bounds!.height - 12
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x - 35, y - 20, { steps: 5 })
+        await page.mouse.up()
+        await expect(graph).not.toHaveAttribute('viewBox', before!)
+        await page.screenshot({ path: info.outputPath(`constellation-detail-${width}.png`) })
+    })
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`unknown player stars stay inert at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto('/iframe.html?id=interface-character--development&viewMode=story')
+        const graph = page.getByRole('group', { name: 'Созвездия развития' })
+        await expect(graph).toBeVisible()
+        const unknown = graph.locator('[data-node-id].closed').first()
+        await expect(unknown).toHaveAttribute('aria-hidden', 'true')
+        expect(await unknown.getAttribute('role')).toBeNull()
+        expect(await unknown.getAttribute('tabindex')).toBeNull()
+        expect(await unknown.evaluate((element) => getComputedStyle(element).cursor)).toBe(
+            'default'
+        )
+        const card = page.getByLabel('Выбранная звезда')
+        const before = await card.innerText()
+        const camera = await graph.getAttribute('viewBox')
+        const box = await unknown.boundingBox()
+        await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
+        await expect.poll(() => card.innerText()).toBe(before)
+        await expect(graph).toHaveAttribute('viewBox', camera!)
+        await graph.getByRole('button', { name: 'Молитва', exact: true }).locator('.hit').click()
+        await expect(graph.locator('.closed[role="button"]')).toHaveCount(0)
+        await expect(graph.locator('.closed[tabindex]')).toHaveCount(0)
+        await expect(graph.locator('.closed.selected')).toHaveCount(0)
+    })
+}

@@ -1,0 +1,155 @@
+.adventure-guild {
+    left: 50%;
+    bottom: 78px;
+    transform: translateX(-50%);
+    width: min(580px, calc(100% - 32px));
+    max-height: calc(100% - 142px);
+    overflow: auto;
+    box-sizing: border-box;
+}
+.guild-intro,
+.guild-muted {
+    color: #b4c0ac;
+    font-size: 12px !important;
+}
+.guild-party,
+.guild-active,
+.guild-board {
+    border-top: 1px solid #526049;
+    padding-top: 12px;
+    margin-top: 16px;
+}
+.guild-section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.guild-section-heading h2 {
+    margin: 0;
+}
+.guild-section-heading button,
+.guild-invitations button,
+.guild-candidate button,
+.guild-reward button,
+.guild-job button {
+    font:
+        12px/1.4 system-ui,
+        sans-serif;
+}
+.guild-members,
+.guild-contributions {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+    font:
+        12px/1.6 system-ui,
+        sans-serif;
+}
+.guild-members li {
+    padding: 8px 0;
+    border-bottom: 1px solid #344432;
+}
+.guild-members strong,
+.guild-members li > span {
+    display: block;
+}
+.guild-members span {
+    color: #9eaf96;
+    font-weight: 400;
+    font-size: 11px;
+}
+.guild-recruit summary {
+    cursor: pointer;
+    color: #dcc597;
+    font:
+        12px/1.5 system-ui,
+        sans-serif;
+}
+.guild-candidate,
+.guild-contributions li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+.guild-invitations article {
+    margin: 12px 0;
+    padding: 10px;
+    border: 1px solid #beab76;
+    background: #353d2a;
+}
+.guild-invitations article > div {
+    display: flex;
+    gap: 6px;
+}
+.guild-eyebrow {
+    color: #a2c192;
+    font-size: 11px;
+}
+.guild-active label,
+.guild-reward {
+    font:
+        12px/1.5 system-ui,
+        sans-serif;
+}
+.guild-active progress {
+    width: 100%;
+    height: 8px;
+    accent-color: #d3bb7c;
+}
+.guild-reward {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #e9cf8d;
+}
+.guild-job {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: space-between;
+    border-top: 1px solid #35452f;
+    padding: 12px 0;
+}
+.guild-job h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+}
+.guild-job p {
+    font-size: 12px;
+}
+.guild-job span {
+    color: #e3c27f;
+    font:
+        11px/1.4 system-ui,
+        sans-serif;
+}
+
+.party-invitation-hint {
+    position: absolute;
+    z-index: 6;
+    left: 16px;
+    top: 146px;
+    max-width: 280px;
+    padding: 12px;
+    background: #1a211cf5;
+    border: 1px solid #bc9c61;
+    border-radius: 4px;
+    font:
+        12px/1.5 system-ui,
+        sans-serif;
+}
+.party-invitation-hint p {
+    margin: 0 0 8px;
+}
+.party-invitation-hint button {
+    padding: 6px 9px;
+}
+@media (max-width: 740px) {
+    .adventure-guild {
+        bottom: 160px;
+        max-height: calc(100% - 220px);
+    }
+}

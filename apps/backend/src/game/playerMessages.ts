@@ -1,9 +1,18 @@
-import type { ClientMessage, GameEventPayload } from '@my-game-ratata/contracts'
+import type {
+    ClientMessage,
+    GameEventPayload,
+    WorldCombatTarget,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
+import { enqueueCharacterRoute } from './characterRoute'
+import { isChestCommand } from './chestCommands'
 import type { NavigationService } from './navigation'
+import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
 import { faceNearestTarget } from './queries'
 import { broadcastChat, type RoomSocket } from './roomMessaging'
+import { routeCommandFeedback } from './routeCommandFeedback'
 import type { WorldInventory } from './worldInventory'
 
 interface PlayerMessageContext {
@@ -12,7 +21,12 @@ interface PlayerMessageContext {
     message: ClientMessage
     navigation: NavigationService
     player: GameCharacter
-    requestAttack: (actor: GameCharacter) => void
+    onRouteStart?: () => void
+    requestAttack: (
+        actor: GameCharacter,
+        targetId?: string,
+        target?: WorldCombatTarget
+    ) => void
     sendEvents: (events: GameEventPayload[]) => void
     worldInventory: WorldInventory
 }
@@ -21,25 +35,35 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     const { message, player } = context
 
     if (message.type === 'move_input') {
-        player.setMoveInput(message.axis)
+        applyMovementInput(context, message)
         return
     }
 
     if (message.type === 'move_to') {
-        player.setPath(
-            context.navigation.findPathWorld(player.position, message.target)
-        )
+        applyRouteMessage(context, message)
         return
     }
 
     if (message.type === 'attack') {
-        faceNearestTarget(player, context.characters.values(), 48)
-        context.requestAttack(player)
+        cancelCharacterControl(player)
+        if (message.targetId === undefined && message.target === undefined) {
+            faceNearestTarget(player, context.characters.values(), 48)
+        }
+        context.requestAttack(player, message.targetId, message.target)
+        return
+    }
+
+    if (isChestCommand(message)) {
+        context.sendEvents(
+            context.worldInventory.containers.handle(player, message)
+        )
         return
     }
 
     if (message.type === 'pickup_item') {
-        context.sendEvents(context.worldInventory.pickupNearestItem(player))
+        context.sendEvents(
+            context.worldInventory.pickupItem(player, message.worldItemId)
+        )
         return
     }
 
@@ -59,7 +83,7 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
         return
     }
 
-    if (message.type === 'chat') {
+    if (message.type === 'chat' && player.soul.canSpeak) {
         broadcastChat(
             context.connections,
             context.characters,
@@ -67,4 +91,45 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
             message.text
         )
     }
+}
+
+function applyRouteMessage(
+    context: PlayerMessageContext,
+    message: Extract<ClientMessage, { type: 'move_to' }>
+): void {
+    const { player, navigation, sendEvents } = context
+    const now = Date.now()
+    const events: GameEventPayload[] = []
+    const result = enqueueCharacterRoute(
+        player,
+        message.target,
+        message.append ?? false,
+        navigation,
+        now,
+        () => {
+            context.onRouteStart?.()
+            cancelCharacterControl(player)
+        }
+    )
+    if (result.accepted) {
+        events.push(...cancelPrayerCast(player, now))
+    }
+    events.push(...routeCommandFeedback(player, result))
+    if (events.length > 0) {
+        sendEvents(events)
+    }
+}
+
+function applyMovementInput(
+    context: PlayerMessageContext,
+    message: Extract<ClientMessage, { type: 'move_input' }>
+): void {
+    const { player } = context
+    context.sendEvents(
+        cancelPrayerForMovement(player, message.axis, Date.now())
+    )
+    if (message.axis.x !== 0 || message.axis.y !== 0) {
+        cancelCharacterControl(player)
+    }
+    player.setMoveInput(message.axis)
 }

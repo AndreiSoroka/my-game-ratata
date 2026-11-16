@@ -1,235 +1,281 @@
-import type { AttackZone, GameEventPayload } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    isItemBroken,
+    ITEM_DEFINITIONS,
+    type Vector2,
+    type WorldCombatTarget,
+} from '@my-game-ratata/contracts'
 
-import { type GameCharacter } from './character'
-import { resolveCharacterStats } from './characterStats'
-import { canTargetByFaction } from './factions'
+import { resolveCharacterDamage } from './abilityDamage'
+import type { GameCharacter } from './character'
+import type { PendingAttackHit } from './characterState'
+import {
+    applyAttackStun,
+    dodgedAttack,
+    resolveAttackDamage,
+} from './combatDamage'
+import { buildAttackZones, isInZones } from './combatGeometry'
+import { rewardCharacterHit } from './combatMastery'
+import { canAttackCharacter } from './combatTargets'
+import { resolveGraveHit } from './graveCombat'
+import type { GraveCombatContext } from './graveRules'
+import { wearWeapon } from './itemDurability'
 import { distance } from './math'
+import type { NavigationService } from './navigation'
+import {
+    canPerceivePrayerCaster,
+    prayerAuraEffects,
+    prayerStunImmune,
+} from './prayerAuras'
+import {
+    confirmCombatResourceSpend,
+    confirmResourceSpend,
+    recordUsefulResourceSpend,
+} from './resourcePractice'
+import { captureMasteryFactors } from './skillProgression'
+export { attemptAbilityAttack, attemptAttack } from './combatAttack'
 
-interface AttackContext {
+export interface AttackContext {
     actor: GameCharacter
+    target?: WorldCombatTarget | undefined
+    graves?: GraveCombatContext | undefined
     now: number
     respawnDelayMsFor: (target: GameCharacter) => number
-    targets: GameCharacter[]
+    targets: readonly GameCharacter[]
     tileSize: number
+    targetId?: string | undefined
+    navigation?: NavigationService
+    random?: () => number
 }
-
-interface HitCandidate {
-    distance: number
-    target: GameCharacter
-}
-
-const exhaustedAttackDamageMultiplier = 1 / 3
-const exhaustedAttackDurationMultiplier = 2
-
-export function attemptAttack(context: AttackContext): GameEventPayload[] {
-    const { actor, now } = context
-
-    if (!canAttack(actor, now)) {
-        return []
-    }
-
-    const resourceSpend = actor.spendAttackResources()
-    const durationMultiplier = resourceSpend.fullyPowered
-        ? 1
-        : exhaustedAttackDurationMultiplier
-    const damageMultiplier = resourceSpend.fullyPowered
-        ? 1
-        : exhaustedAttackDamageMultiplier
-    const lockMs = actor.config.combat.attackLockMs * durationMultiplier
-    const windupMs = actor.config.combat.attackWindupMs * durationMultiplier
-
-    actor.lastAttackAt = now
-    actor.lockAction(now, lockMs)
-    actor.queueAttackHit(now, {
-        canStun: resourceSpend.canStun,
-        damageMultiplier,
-        targetEnergyDrain: targetEnergyDrainFor(actor),
-        windupMs,
-    })
-    actor.setAnimation('attack', now, lockMs)
-    actor.attackZones = buildAttackZones(actor, context.tileSize)
-    actor.attackZoneUntil = now + lockMs
-
-    return [{ actorId: actor.id, kind: 'attack' }]
-}
-
 export function resolvePendingAttackHit(
     context: AttackContext
 ): GameEventPayload[] {
     const { actor, now } = context
-
     const attack = actor.consumePendingAttackHit(now)
-
-    if (attack === undefined) {
+    if (attack === undefined || !availableToAttack(actor, now)) {
         return []
     }
-
-    if (!actor.alive || actor.stunUntil > now) {
+    if (!validPendingWeapon(actor, attack)) {
         return []
     }
-
-    const events: GameEventPayload[] = []
-    const target = findNearestHit(actor, context.targets)
-
-    if (target === undefined) {
-        return events
+    const target =
+        attack.target === undefined
+            ? findHit(context, attack.targetId)
+            : undefined
+    const graveResult = resolveGraveHit(context, attack, target)
+    if (graveResult !== undefined) {
+        if (graveResult.hpDamage > 0) {
+            attack.resourceSpends?.forEach(confirmResourceSpend)
+        }
+        return [
+            ...graveResult.events,
+            ...resolvedWeaponWear(actor, attack, graveResult.hpDamage),
+        ]
     }
-
-    const damage = rollDamage(actor, attack.damageMultiplier)
-    target.applyDamage(damage, now)
-    target.drainEnergy(attack.targetEnergyDrain)
-    maybeApplyStun(actor, target, now, attack.canStun)
-    events.push({
+    return target === undefined
+        ? [missedAttack(actor, attack)]
+        : resolveCharacterHit(context, attack, target)
+}
+function missedAttack(
+    actor: GameCharacter,
+    attack: PendingAttackHit
+): GameEventPayload {
+    return {
+        kind: 'miss',
+        hitQuality: 'miss',
         actorId: actor.id,
-        amount: damage,
-        kind: 'damage',
-        targetId: target.id,
-    })
-
-    if (!target.alive) {
-        target.queueRespawn(now, context.respawnDelayMsFor(target))
-        events.push({ actorId: actor.id, kind: 'death', targetId: target.id })
+        ...(attack.targetId === undefined ? {} : { targetId: attack.targetId }),
+        ...(attack.target === undefined
+            ? {}
+            : { target: { ...attack.target } }),
+        ...(attack.abilityId === undefined
+            ? {}
+            : { abilityId: attack.abilityId }),
     }
-
+}
+function resolveCharacterHit(
+    context: AttackContext,
+    attack: PendingAttackHit,
+    target: GameCharacter
+): GameEventPayload[] {
+    const { actor, now } = context
+    const random = context.random ?? Math.random
+    const actorEffects = prayerAuraEffects(actor, now)
+    const targetEffects = prayerAuraEffects(target, now)
+    const stunImmune = prayerStunImmune(target, now)
+    if (dodgedAttack(target, random, now, targetEffects)) {
+        return [
+            {
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: actor.id,
+                targetId: target.id,
+                text: 'Уклонение',
+            },
+        ]
+    }
+    const factors = captureMasteryFactors(actor)
+    const roll = resolveAttackDamage(actor, attack, random, now, actorEffects)
+    const result = resolveCharacterDamage({
+        actor,
+        target,
+        now,
+        amount: roll.amount,
+        random,
+        targetAuraEffects: targetEffects,
+        hitQuality: roll.hitQuality,
+        damageKind: attack.abilityId === 'spark' ? 'arcane' : 'physical',
+        respawnDelayMs: context.respawnDelayMsFor(target),
+    })
+    confirmCombatResourceSpend(
+        actor,
+        target,
+        result,
+        attack.resourceSpends ?? [],
+        now
+    )
+    const events = result.events.map((event) =>
+        event.kind === 'damage'
+            ? {
+                  ...event,
+                  critical: roll.critical,
+                  ...(attack.abilityId === undefined
+                      ? {}
+                      : { abilityId: attack.abilityId }),
+              }
+            : event
+    )
+    if (result.hpDamage > 0) {
+        const drained = target.drainEnergy(attack.targetEnergyDrain)
+        if (result.trainableDamage > 0) {
+            recordUsefulResourceSpend(target, 'energy', drained)
+        }
+        events.push(
+            ...applyAttackStun(
+                actor,
+                target,
+                attack,
+                now,
+                random,
+                actorEffects.advantage,
+                stunImmune
+            )
+        )
+    }
+    events.push(
+        ...rewardCharacterHit(context, attack, target, result, random, factors)
+    )
+    events.push(...resolvedWeaponWear(actor, attack, result.impactDamage))
     return events
 }
 
-function canAttack(actor: GameCharacter, now: number): boolean {
-    if (!actor.alive || actor.stunUntil > now) {
-        return false
-    }
-
-    if (actor.isActionLocked(now)) {
-        return false
-    }
-
-    if (now - actor.lastAttackAt < actor.config.combat.attackCooldownMs) {
-        return false
-    }
-
-    return true
-}
-
-function buildAttackZones(
-    actor: GameCharacter,
-    tileSize: number
-): AttackZone[] {
-    return actor.config.attackZones.map((zone) => {
-        const rotated = rotateZone(zone, actor.facing)
-        const minX = actor.position.x + rotated.minX * tileSize
-        const minY = actor.position.y + rotated.minY * tileSize
-        const maxX = actor.position.x + rotated.maxX * tileSize
-        const maxY = actor.position.y + rotated.maxY * tileSize
-
-        return {
-            maxX: Math.max(minX, maxX),
-            maxY: Math.max(minY, maxY),
-            minX: Math.min(minX, maxX),
-            minY: Math.min(minY, maxY),
-            ownerId: actor.id,
-        }
-    })
-}
-
-function rotateZone(
-    zone: Omit<AttackZone, 'ownerId'>,
-    facing: GameCharacter['facing']
-): Omit<AttackZone, 'ownerId'> {
-    const points = [
-        rotatePoint(zone.minX, zone.minY, facing),
-        rotatePoint(zone.minX, zone.maxY, facing),
-        rotatePoint(zone.maxX, zone.minY, facing),
-        rotatePoint(zone.maxX, zone.maxY, facing),
-    ]
-
-    return {
-        maxX: Math.max(...points.map((point) => point.x)),
-        maxY: Math.max(...points.map((point) => point.y)),
-        minX: Math.min(...points.map((point) => point.x)),
-        minY: Math.min(...points.map((point) => point.y)),
-    }
-}
-
-function rotatePoint(
-    x: number,
-    y: number,
-    facing: GameCharacter['facing']
-): { x: number; y: number } {
-    switch (facing) {
-        case 'up':
-            return { x, y: -y }
-        case 'left':
-            return { x: -y, y: x }
-        case 'right':
-            return { x: y, y: -x }
-        case 'down':
-            return { x, y }
-    }
-}
-
-function findNearestHit(
-    actor: GameCharacter,
-    targets: GameCharacter[]
-): GameCharacter | undefined {
-    const candidates = targets
-        .filter((target) => target.id !== actor.id && target.alive)
-        .filter((target) => canTargetByFaction(actor, target))
-        .filter((target) => isInZones(target, actor.attackZones))
-        .map<HitCandidate>((target) => ({
-            distance: distance(actor.position, target.position),
-            target,
-        }))
-        .sort((a, b) => a.distance - b.distance)
-
-    return candidates[0]?.target
-}
-
-function isInZones(target: GameCharacter, zones: AttackZone[]): boolean {
-    return zones.some(
-        (zone) =>
-            target.position.x >= zone.minX &&
-            target.position.x <= zone.maxX &&
-            target.position.y >= zone.minY &&
-            target.position.y <= zone.maxY
+function usesWeapon(attack: PendingAttackHit): boolean {
+    return (
+        attack.abilityId === undefined || attack.abilityId === 'skeleton_strike'
     )
 }
 
-function rollDamage(actor: GameCharacter, multiplier = 1): number {
-    const stats = resolveCharacterStats(actor.config, actor.equipment)
-    const low = Math.min(stats.minDamage, stats.maxDamage)
-    const high = Math.max(stats.minDamage, stats.maxDamage)
-    let damage = Math.floor(low + Math.random() * (high - low + 1))
-
-    if (Math.random() < stats.critChance) {
-        damage = Math.round(damage * actor.config.combat.critMultiplier)
+function validPendingWeapon(
+    actor: GameCharacter,
+    attack: PendingAttackHit
+): boolean {
+    if (!usesWeapon(attack)) {
+        return true
     }
-
-    return Math.max(1, Math.round(damage * multiplier))
+    const weapon = actor.equipment.weapon
+    return (
+        attack.weaponInstanceId === weapon?.instanceId &&
+        (weapon === undefined || !isItemBroken(weapon))
+    )
 }
 
-function maybeApplyStun(
+function resolvedWeaponWear(
+    actor: GameCharacter,
+    attack: PendingAttackHit,
+    hpDamage: number
+): GameEventPayload[] {
+    const weapon = actor.equipment.weapon
+    if (
+        weapon === undefined ||
+        !usesWeapon(attack) ||
+        hpDamage <= 0 ||
+        !wearWeapon(actor)
+    ) {
+        return []
+    }
+    return [
+        {
+            kind: 'notice',
+            actorId: actor.id,
+            text: `${ITEM_DEFINITIONS[weapon.itemId].name}: предмет сломан. Нужен ремонт у кузнеца.`,
+        },
+    ]
+}
+export function isTargetInAttackRange(
+    actor: GameCharacter,
+    target: { position: Vector2 },
+    tileSize: number
+): boolean {
+    return isInZones(target, buildAttackZones(actor, tileSize))
+}
+/** A due hit still belongs to the combat tick; a later command must not replace it. */
+export function availableToStartAttack(
+    actor: GameCharacter,
+    now: number
+): boolean {
+    return (
+        availableToAttack(actor, now) &&
+        !actor.isActionLocked(now) &&
+        actor.pendingAttack === undefined
+    )
+}
+export function availableToAttack(actor: GameCharacter, now: number): boolean {
+    return (
+        actor.alive &&
+        actor.trainingTarget === undefined &&
+        !actor.tags.has('offline') &&
+        !actor.tags.has('state.retired') &&
+        actor.stunUntil <= now &&
+        !prayerAuraEffects(actor, now).feared
+    )
+}
+export function isLegalAttackTarget(
     actor: GameCharacter,
     target: GameCharacter,
-    now: number,
-    canStun: boolean
-): void {
-    if (!canStun) {
-        return
-    }
-
-    const { combat } = actor.config
-
-    if (Math.random() >= combat.stunChance) {
-        return
-    }
-
-    const low = Math.min(combat.stunMinDurationMs, combat.stunMaxDurationMs)
-    const high = Math.max(combat.stunMinDurationMs, combat.stunMaxDurationMs)
-    const duration = Math.floor(low + Math.random() * (high - low + 1))
-
-    target.stunUntil = Math.max(target.stunUntil, now + duration)
+    context: AttackContext
+): boolean {
+    return (
+        availableToAttackTarget(target) &&
+        actor.locationId === target.locationId &&
+        canAttackCharacter(actor, target, context.now) &&
+        (context.targetId === undefined ||
+            canPerceivePrayerCaster(actor, target, context.now)) &&
+        (context.navigation?.hasLineOfSight(actor.position, target.position) ??
+            true)
+    )
 }
-
-function targetEnergyDrainFor(actor: GameCharacter): number {
-    return Math.ceil(actor.config.resources.attackEnergyCost / 2)
+function availableToAttackTarget(target: GameCharacter): boolean {
+    return (
+        target.alive &&
+        !target.tags.has('offline') &&
+        !target.tags.has('state.retired')
+    )
+}
+function findHit(
+    context: AttackContext,
+    targetId: string | undefined
+): GameCharacter | undefined {
+    const { actor } = context
+    const candidates = context.targets.filter(
+        (target) =>
+            (targetId === undefined || target.id === targetId) &&
+            isLegalAttackTarget(actor, target, context) &&
+            isInZones(target, actor.attackZones)
+    )
+    candidates.sort(
+        (a, b) =>
+            distance(actor.position, a.position) -
+            distance(actor.position, b.position)
+    )
+    return candidates[0]
 }

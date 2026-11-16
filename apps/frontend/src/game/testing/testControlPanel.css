@@ -1,0 +1,115 @@
+.test-panel {
+    position: fixed;
+    z-index: 20;
+    bottom: 16px;
+    left: 16px;
+    width: min(320px, calc(100vw - 32px));
+    max-height: calc(100dvh - 96px);
+    overflow: auto;
+    color: #e7eee6;
+    background: #131d1bee;
+    border: 1px solid #758b7c;
+    border-radius: 8px;
+    box-shadow: 0 10px 32px #0008;
+    font:
+        12px/1.4 system-ui,
+        sans-serif;
+}
+.test-panel button,
+.test-panel input {
+    min-height: 32px;
+    color: inherit;
+    background: #25332e;
+    border: 1px solid #66796b;
+    border-radius: 4px;
+    font: inherit;
+}
+.test-panel button {
+    padding: 4px 10px;
+    cursor: pointer;
+}
+.test-panel button:focus-visible,
+.test-panel input:focus-visible {
+    outline: 2px solid #e9cb72;
+    outline-offset: 2px;
+}
+.test-panel button:disabled,
+.test-panel fieldset:disabled {
+    opacity: 0.5;
+}
+.test-panel input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 7px;
+}
+.test-panel__toggle {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-weight: 700 !important;
+    border: 0 !important;
+}
+.test-panel__body {
+    padding: 12px;
+}
+.test-panel__state {
+    display: grid;
+    grid-template-columns: 82px 1fr;
+    gap: 4px;
+    margin: 0 0 10px;
+}
+.test-panel__state dt {
+    color: #aab9ae;
+}
+.test-panel__state dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+.test-panel fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.test-panel legend {
+    margin-bottom: 5px;
+    color: #b4c7b9;
+}
+.test-panel__directions {
+    display: flex;
+    gap: 5px;
+    touch-action: none;
+}
+.test-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 9px 0;
+}
+.test-panel__form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 5px;
+    align-items: end;
+}
+.test-panel__form label {
+    min-width: 0;
+}
+.test-panel__chat {
+    display: flex;
+    gap: 5px;
+    margin-top: 9px;
+}
+.test-panel__hint {
+    margin: 9px 0 0;
+    color: #aab9ae;
+    font-size: 11px;
+}
+.test-panel__error {
+    color: #ffb9a8;
+}
+
+.test-panel--collapsed {
+    width: 112px;
+}

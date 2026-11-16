@@ -3,6 +3,7 @@ import type { ServerWebSocket } from 'bun'
 
 import type { GameCharacter } from './character'
 import { resolveChatText } from './chat'
+import { createSpeechEvent } from './speechReceipts'
 
 export interface RoomSocketData {
     socketId: string
@@ -50,6 +51,7 @@ export function broadcastChat(
     actor: GameCharacter,
     text: string
 ): void {
+    const speech = createSpeechEvent(actor, text)
     for (const [ws, playerId] of connections) {
         const observer =
             playerId === undefined ? undefined : characters.get(playerId)
@@ -57,8 +59,7 @@ export function broadcastChat(
 
         send(ws, {
             event: {
-                actorId: actor.id,
-                kind: 'chat',
+                ...speech,
                 text: visibleText,
             },
             serverTime: Date.now(),

@@ -1,51 +1,95 @@
-import type {
-    AttackZone,
-    CharacterAnimationAction,
-    CharacterArchetype,
-    CharacterControllerKind,
-    CharacterFacing,
-    CharacterFactionId,
-    CharacterReputation,
-    CharacterSnapshot,
-    Vector2,
+import {
+    archetypeCreatureTypes,
+    type AttackZone,
+    CENTER_LOCATION_ID,
+    type CharacterAnimationAction,
+    type CharacterArchetype,
+    type CharacterControllerKind,
+    type CharacterFacing,
+    type CharacterFactionId,
+    type CharacterReputation,
+    type CharacterVisualId,
+    type CreatureType,
+    type HeroClass,
+    isCreatureType,
+    type SoulSnapshot,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
-import { type CharacterConfig, getCharacterConfig } from './characterConfig'
+import { createAbilityState } from './abilityState'
+import type { CharacterConfig } from './characterConfig'
+import { applyCharacterDamage } from './characterDamage'
+import {
+    defaultFactionFor,
+    defaultVisualIdFor,
+    type GameCharacterOptions,
+} from './characterIdentity'
+import {
+    regenerateCharacter,
+    tickCharacterTimedState,
+} from './characterRecovery'
+import * as characterResources from './characterResourceActions'
 import { createCharacterSnapshot } from './characterSnapshot'
+import { createCharacterSoul } from './characterSoul'
 import {
     type AttackResourceSpend,
     type PendingAttackHit,
-    regen,
-    spendResource,
 } from './characterState'
+import { initializeConstellations } from './constellations'
+import { effectiveMaxHp } from './effectiveResources'
+import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
+import { createMartyrState } from './martyr'
 import { normalize, resolveFacing, zeroVector } from './math'
-
-interface GameCharacterOptions {
-    archetype: CharacterArchetype
-    controllerKind: CharacterControllerKind
-    faction?: CharacterFactionId
-    id: string
-    nickname: string
-    reputation?: CharacterReputation
-    spawnPosition: Vector2
-}
+import { createMovementState } from './movementActions'
+import { PersonalConstellationSky } from './personalConstellationSky'
+import type { PrayerAuraEnvironment } from './prayerAuras'
+import { createResourcePractice } from './resourcePractice'
+import {
+    type CharacterProgression,
+    createProgression,
+} from './skillProgression'
 
 export class GameCharacter {
+    public readonly trainingTarget: { areaId: string } | undefined
+    /** Earned by server rules only; no client command grants this capability. */
+    public exactCombatNumbers = false
+    public readonly abilities: ReturnType<typeof createAbilityState>
+    public readonly creatureType: CreatureType
     public readonly archetype: CharacterArchetype
     public readonly config: CharacterConfig
     public readonly controllerKind: CharacterControllerKind
+    /** Socket presence is separate from participation in the world simulation. */
+    public connected: boolean
     public readonly faction: CharacterFactionId
     public readonly id: string
-    public readonly maxHp: number
+    public baseMaxHp: number
+    public readonly constellationSky = new PersonalConstellationSky(this)
+    public readonly heroClass: HeroClass | undefined
+    public readonly mortal: boolean
+    public readonly respawnPolicy: 'automatic' | 'none'
+    public readonly soul: SoulSnapshot
+    public progression: CharacterProgression = createProgression()
+    public movement = createMovementState()
+    public resourcePractice = createResourcePractice()
+    public martyr = createMartyrState()
+    public level = 1
+    public xp = 0
+    public reviveUntil = 0
+    public readonly spawnLocationId: string
+    public locationId: string
     public readonly nickname: string
     public readonly reputation: CharacterReputation
     public readonly spawnPosition: Vector2
+    public readonly visualId: CharacterVisualId
     public animationAction: CharacterAnimationAction = 'idle'
     public animationStartedAt = Date.now()
     public animationUntil = 0
     public alive = true
+    public deathSequence = 0
     public actionLockUntil = 0
+    public interruptWork: (() => void) | undefined
+    public prayerAuraEnvironment: PrayerAuraEnvironment | undefined
     public attackZoneUntil = 0
     public attackZones: AttackZone[] = []
     public equipment: EquipmentState = {}
@@ -66,16 +110,37 @@ export class GameCharacter {
     private pathIndex = 0
 
     public constructor(options: GameCharacterOptions) {
+        this.trainingTarget =
+            options.trainingTarget === undefined
+                ? undefined
+                : { ...options.trainingTarget }
+        const creatureType =
+            options.creatureType ?? archetypeCreatureTypes[options.archetype]
+        if (!isCreatureType(creatureType)) {
+            throw new Error('Unknown creature type')
+        }
+        this.creatureType = creatureType
+        this.soul = createCharacterSoul(options)
+        this.locationId = options.locationId ?? CENTER_LOCATION_ID
+        this.spawnLocationId = this.locationId
         this.archetype = options.archetype
-        this.config = getCharacterConfig(options.archetype)
+        this.heroClass =
+            options.heroClass ??
+            (options.archetype === 'human' ? 'vanguard' : undefined)
+        this.mortal =
+            options.mortal ?? options.controllerKind === 'network_player'
+        this.respawnPolicy = options.respawnPolicy ?? 'automatic'
+        this.abilities = createAbilityState(this.heroClass, options.archetype)
+        this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
+        this.connected = options.controllerKind === 'network_player'
         this.faction =
             options.faction ?? defaultFactionFor(options.controllerKind)
         this.energy = this.config.resources.maxEnergy
         this.hp = this.config.combat.maxHp
         this.id = options.id
         this.mana = this.config.resources.maxMana
-        this.maxHp = this.config.combat.maxHp
+        this.baseMaxHp = this.config.combat.maxHp
         this.nickname = options.nickname
         this.position = { ...options.spawnPosition }
         this.reputation = {
@@ -83,9 +148,24 @@ export class GameCharacter {
             ...options.reputation,
         }
         this.spawnPosition = { ...options.spawnPosition }
+        this.visualId =
+            options.visualId ?? defaultVisualIdFor(options.archetype)
+        initializeConstellations(this)
+    }
+
+    public get maxHp(): number {
+        return effectiveMaxHp(this)
+    }
+
+    public set maxHp(base: number) {
+        this.baseMaxHp = base
     }
 
     public setMoveInput(axis: Vector2): void {
+        if (this.alive && this.abilities.casting?.mother?.lastLight === true) {
+            this.input = zeroVector()
+            return
+        }
         this.input = normalize(axis)
 
         if (this.input.x !== 0 || this.input.y !== 0) {
@@ -98,6 +178,9 @@ export class GameCharacter {
     }
 
     public setPath(path: Vector2[]): void {
+        if (this.alive && this.abilities.casting?.mother?.lastLight === true) {
+            return
+        }
         this.path = path
         this.pathIndex = 0
         this.input = zeroVector()
@@ -118,12 +201,7 @@ export class GameCharacter {
 
     public nextPathPoint(): Vector2 | undefined {
         const point = this.path[this.pathIndex]
-
-        if (point === undefined) {
-            return undefined
-        }
-
-        return { ...point }
+        return point === undefined ? undefined : { ...point }
     }
 
     public completePathPoint(): void {
@@ -172,8 +250,21 @@ export class GameCharacter {
         attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number }
     ): void {
         this.pendingAttack = {
+            resourceSpends: attack.resourceSpends,
+            weaponInstanceId:
+                attack.abilityId === undefined ||
+                attack.abilityId === 'skeleton_strike'
+                    ? this.equipment.weapon?.instanceId
+                    : undefined,
+            targetId: attack.targetId,
+            target:
+                attack.target === undefined ? undefined : { ...attack.target },
+            rawDamage: attack.rawDamage,
+            maxRange: attack.maxRange,
+            abilityId: attack.abilityId,
             canStun: attack.canStun,
             damageMultiplier: attack.damageMultiplier,
+            underpowered: attack.underpowered ?? false,
             hitAt: now + attack.windupMs,
             targetEnergyDrain: attack.targetEnergyDrain,
         }
@@ -201,53 +292,20 @@ export class GameCharacter {
     }
 
     public tickTimedState(now: number): void {
-        if (this.attackZoneUntil > 0 && now >= this.attackZoneUntil) {
-            this.attackZones = []
-            this.attackZoneUntil = 0
-        }
-
-        if (!this.alive && this.respawnAt > 0 && now >= this.respawnAt) {
-            this.respawn(now)
-        }
+        tickCharacterTimedState(this, now)
     }
 
-    public applyRegen(deltaMs: number, isMoving: boolean): void {
-        if (!this.alive) {
-            return
-        }
-
-        const resources = this.config.resources
-        const energyRegen = isMoving
-            ? resources.energyRegenMove
-            : resources.energyRegenIdle
-        const manaRegen = isMoving
-            ? resources.manaRegenMove
-            : resources.manaRegenIdle
-
-        this.energy = regen(
-            this.energy,
-            resources.maxEnergy,
-            energyRegen,
-            deltaMs
-        )
-        this.mana = regen(this.mana, resources.maxMana, manaRegen, deltaMs)
-        this.hp = regen(
-            this.hp,
-            this.maxHp,
-            isMoving
-                ? this.config.hpRegenMovePerSec
-                : this.config.hpRegenIdlePerSec,
-            deltaMs
-        )
+    public applyRegen(
+        deltaMs: number,
+        isMoving: boolean,
+        energyAllowed = true,
+        now = 0
+    ) {
+        return regenerateCharacter(this, deltaMs, isMoving, energyAllowed, now)
     }
 
     public canSpendAttackResources(): boolean {
-        const resources = this.config.resources
-
-        return (
-            this.energy >= resources.attackEnergyCost &&
-            this.mana >= resources.attackManaCost
-        )
+        return characterResources.canSpendAttackResources(this)
     }
 
     public reputationWith(faction: CharacterFactionId): number {
@@ -255,81 +313,24 @@ export class GameCharacter {
     }
 
     public spendAttackResources(): AttackResourceSpend {
-        const resources = this.config.resources
-        const canStun =
-            resources.maxEnergy > 0 &&
-            this.energy >= resources.maxEnergy &&
-            this.canSpendAttackResources()
-        const fullyPowered = this.canSpendAttackResources()
-
-        this.energy = spendResource(this.energy, resources.attackEnergyCost)
-        this.mana = spendResource(this.mana, resources.attackManaCost)
-
-        return { canStun, fullyPowered }
+        return characterResources.spendAttackResources(this)
     }
 
     public drainEnergy(amount: number): number {
-        if (amount <= 0) {
-            return 0
-        }
-
-        const before = this.energy
-        this.energy = Math.max(0, this.energy - amount)
-
-        return before - this.energy
+        return characterResources.drainCharacterEnergy(this, amount)
     }
 
     public applyDamage(amount: number, now: number): void {
-        if (!this.alive) {
-            return
-        }
-
-        this.hp = Math.max(0, this.hp - amount)
-
-        if (this.hp <= 0) {
-            this.alive = false
-            this.actionLockUntil = 0
-            this.setAnimation('death', now)
-            this.clearPath()
-            this.clearPendingAttackHit()
-            this.setMoveInput(zeroVector())
-            this.velocity = zeroVector()
-            return
-        }
-
-        this.setAnimation('damaged', now, 300)
+        applyCharacterDamage(this, amount, now)
     }
 
     public queueRespawn(now: number, delayMs: number): void {
         if (this.respawnAt === 0) {
-            this.respawnAt = now + delayMs
+            this.respawnAt = this.mortal ? this.reviveUntil : now + delayMs
         }
     }
 
-    public snapshot(now: number): CharacterSnapshot {
-        return createCharacterSnapshot(this, now)
+    public snapshot(now: number, includePrivate = true) {
+        return createCharacterSnapshot(this, now, includePrivate)
     }
-
-    private respawn(now: number): void {
-        this.alive = true
-        this.actionLockUntil = 0
-        this.attackZones = []
-        this.attackZoneUntil = 0
-        this.animationUntil = 0
-        this.clearPendingAttackHit()
-        this.energy = this.config.resources.maxEnergy
-        this.hp = this.maxHp
-        this.mana = this.config.resources.maxMana
-        this.position = { ...this.spawnPosition }
-        this.respawnAt = 0
-        this.stunUntil = 0
-        this.velocity = zeroVector()
-        this.setAnimation('idle', now)
-    }
-}
-
-function defaultFactionFor(
-    controllerKind: CharacterControllerKind
-): CharacterFactionId {
-    return controllerKind === 'network_player' ? 'peaceful' : 'monsters'
 }

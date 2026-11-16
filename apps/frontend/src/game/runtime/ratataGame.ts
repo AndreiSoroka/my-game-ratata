@@ -1,62 +1,84 @@
 import type {
     ClientMessage,
-    EquipmentActionKind,
-    EquipmentSlotId,
     GameEventPayload,
-    InventoryActionKind,
+    ProjectilePath,
     Vector2,
+    WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
-import { Color, DisplayMode, Engine, PointerButton, PointerScope, vec } from 'excalibur'
+import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import type { Engine, PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 
-import { createCharacterResources } from './characterResources'
-import { chatDuration, type ChatInputState } from './chatInput'
-import { GameAudio } from './gameAudio'
-import { axisFromKeys, movementKeys, preventContextMenu } from './input'
+import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
+import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
+import type { GameAudio } from './gameAudio'
+import { axisFromKeys, movementKeys } from './input'
+import type { TargetHighlight } from './interactionTargetViews'
+import { PlantingPreview } from './plantingPreview'
+import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
+import { characterDisrupted, projectCharacter, projectPosition } from './runtimeCharacterTargets'
 import { RuntimeChatInput } from './runtimeChatInput'
+import { updateRuntimeDebug } from './runtimeDebug'
+import { runtimeEventFeedback } from './runtimeEventFeedback'
+import { installRuntimeInputs } from './runtimeInputLifecycle'
+import { handleRuntimeKeyDown } from './runtimeKeyDown'
+import { loadRuntimeMap } from './runtimeMapLoading'
+import { RuntimeMovementControls } from './runtimeMovementControls'
+import type { RatataGameOptions } from './runtimeOptions'
+import { handleRuntimePointer } from './runtimePointer'
+import { createRuntimePresentation } from './runtimePresentation'
+import {
+    runtimeCanSelect,
+    type RuntimeSelectionContext,
+    runtimeSelectionVisible,
+} from './runtimeSelection'
 import { RuntimeSocket } from './runtimeSocket'
-import { SceneActors } from './sceneActors'
-import { loadRenderedTiledMap } from './tiledMap'
-
-interface RatataGameOptions {
-    container: HTMLElement
-    nickname: string
-    onChatState: (state: ChatInputState) => void
-    onError: (message: string) => void
-    onInventoryToggle: () => void
-    onSnapshot: (snapshot: WorldSnapshot, localPlayerId: string | undefined) => void
-    onStatus: (message: string) => void
-}
+import type { SceneActors } from './sceneActors'
+import { loadRenderedTiledMap, type RenderedTiledMap } from './tiledMap'
 
 export class RatataGame {
-    private readonly options: RatataGameOptions
+    private removeInputs: (() => void) | undefined
     private audio: GameAudio | undefined
     private canvas: HTMLCanvasElement | undefined
     private engine: Engine | undefined
     private localPlayerId: string | undefined
     private sceneActors: SceneActors | undefined
     private snapshot: WorldSnapshot | undefined
+    private connected = false
     private stopped = false
+    private mapId: string = CENTER_LOCATION_ID
+    private loadingMapId: string | undefined
+    private readonly buildingEntrances = new BuildingEntrances()
+    private readonly movementControls = new RuntimeMovementControls((command) => this.send(command))
     private readonly pressedKeys = new Set<string>()
     private readonly chat: RuntimeChatInput
     private readonly socket: RuntimeSocket
     private lastAxis: Vector2 = { x: 0, y: 0 }
+    public selectionTileSize = 16
+    public readonly planting = new PlantingPreview(() => this.releaseInputs())
 
-    public constructor(options: RatataGameOptions) {
-        this.options = options
-        this.chat = new RuntimeChatInput(options.onChatState)
+    public constructor(private readonly options: RatataGameOptions) {
+        this.chat = new RuntimeChatInput(options.onChatState, () => {
+            this.pressedKeys.clear()
+            this.flushMoveInput()
+        })
         this.socket = new RuntimeSocket({
             isStopped: () => this.stopped,
             onError: options.onError,
-            onEvent: (event) => {
-                this.handleServerEvent(event)
+            onEvent: (event) => this.handleServerEvent(event),
+            onSnapshot: (snapshot) => this.applySnapshot(snapshot),
+            onPlantingPreview: (preview) => this.planting.receive(preview),
+            onStatus: (status) => {
+                this.connected = status === 'Connected'
+                if (status !== 'Connected') {
+                    this.sceneActors?.clearDamage()
+                    this.sceneActors?.setInteractionTarget(undefined)
+                    this.sceneActors?.clearWaypoints()
+                }
+                options.onStatus(status)
             },
-            onSnapshot: (snapshot) => {
-                this.applySnapshot(snapshot)
-            },
-            onStatus: options.onStatus,
             onWorldInit: (playerId, snapshot) => {
+                this.connected = true
                 this.localPlayerId = playerId
                 this.applySnapshot(snapshot)
                 this.options.onStatus('Connected')
@@ -67,131 +89,195 @@ export class RatataGame {
     public async start(): Promise<void> {
         this.stopped = false
         this.options.onStatus('Loading')
-        const canvas = this.createCanvas()
-        const resources = createCharacterResources()
-        const map = await loadRenderedTiledMap()
-        const engine = new Engine({
-            backgroundColor: Color.fromHex('#0b0d0c'),
-            canvasElement: canvas,
-            displayMode: DisplayMode.FillContainer,
-            pixelArt: true,
-            pointerScope: PointerScope.Canvas,
-            suppressPlayButton: true,
-        })
+        try {
+            await this.startPresentation()
+        } catch (error) {
+            const cancelled = this.stopped
+            this.stop()
+            if (!cancelled) throw error
+        }
+    }
 
+    private async startPresentation(): Promise<void> {
+        const map = await loadRenderedTiledMap()
+        if (this.stopped) return
+        this.selectionTileSize = map.tileWidth
+        const { canvas, engine, audio, sceneActors, loader } = createRuntimePresentation(
+            this.options.container,
+            map
+        )
         this.canvas = canvas
         this.engine = engine
-        this.audio = new GameAudio(resources.sounds, resources.music.adventureBegins)
-        this.sceneActors = new SceneActors(
-            engine,
-            resources.sheets,
-            resources.itemImages,
-            resources.chestImage
-        )
-        this.sceneActors.addMap(map)
-        this.installInputs(engine, canvas)
-        await engine.start(resources.loader)
+        this.audio = audio
+        this.sceneActors = sceneActors
+        this.planting.initialize(engine)
+        this.buildingEntrances.replace(this.mapId, map.buildings)
+        this.removeInputs = installRuntimeInputs(engine, canvas, {
+            keyDown: this.handleKeyDown,
+            keyUp: this.handleKeyUp,
+            release: this.releaseInputs,
+            pointer: (event) => this.handlePointerDown(event),
+        })
+        await engine.start(loader)
+        if (this.stopped) {
+            this.stop()
+            return
+        }
         this.audio.playMusic()
-        this.socket.connect(this.options.nickname)
+        this.socket.connect(this.options.nickname, this.options.heroClass)
     }
 
     public stop(): void {
         this.stopped = true
-        window.removeEventListener('keydown', this.handleKeyDown)
-        window.removeEventListener('keyup', this.handleKeyUp)
-        this.canvas?.removeEventListener('contextmenu', preventContextMenu)
+        this.removeInputs?.()
+        this.releaseInputs()
         this.socket.close()
         this.audio?.stop()
+        this.sceneActors?.dispose()
+        this.planting.dispose()
+        this.buildingEntrances.clear()
         this.engine?.stop()
         this.canvas?.remove()
 
-        if (import.meta.env.DEV) {
-            delete window.__ratataGameDebug
+        if (import.meta.env.DEV) delete window.__ratataGameDebug
+    }
+
+    public readonly cancelChat = (): void => this.chat.cancel()
+
+    public releaseUiControls(): void {
+        this.releaseInputs()
+    }
+
+    public setInteractionTarget(target: TargetHighlight | undefined): void {
+        this.sceneActors?.setInteractionTarget(this.isMapReady ? target : undefined)
+    }
+
+    public projectPosition(position: Vector2) {
+        return projectPosition(this.engine, this.canvas, position)
+    }
+
+    public setCombatTarget(target: TargetHighlight | undefined): void {
+        this.sceneActors?.setCombatTarget(target)
+    }
+    public setShotPreview(path: ProjectilePath | undefined): void {
+        this.sceneActors?.setShotPreview(this.isMapReady ? path : undefined)
+    }
+    public setPrayerPreview(preview: PrayerPreviewHighlight | undefined): void {
+        this.sceneActors?.setPrayerPreview(this.isMapReady ? preview : undefined)
+    }
+    public projectCharacter(id: string) {
+        return this.isCharacterVisible(id)
+            ? projectCharacter(this.engine, this.canvas, this.snapshot, id)
+            : undefined
+    }
+    public isPositionVisible(position: Vector2): boolean {
+        return this.isMapReady && (this.sceneActors?.isPositionVisible(position) ?? false)
+    }
+
+    public isInteractionVisible(
+        position: Vector2,
+        bounds?: WorldObjectBounds,
+        range = 48
+    ): boolean {
+        if (!this.isMapReady) return false
+        return this.sceneActors?.isInteractionVisible(position, bounds, range) ?? false
+    }
+
+    public isCharacterVisible(id: string): boolean {
+        return this.isMapReady && (this.sceneActors?.isCharacterVisible(id) ?? false)
+    }
+
+    public isSelectionVisible(target: WorldSelectionTarget): boolean {
+        return runtimeSelectionVisible(target, this.selectionContext())
+    }
+
+    public canSelectTarget(key: string): boolean {
+        return runtimeCanSelect(key, this.selectionContext())
+    }
+
+    private selectionContext(): RuntimeSelectionContext {
+        return {
+            snapshot: this.snapshot,
+            playerId: this.localPlayerId,
+            tileSize: this.selectionTileSize,
+            viewport: this.isMapReady ? this.engine?.currentScene.camera.viewport : undefined,
+            characterVisible: (id) => this.isCharacterVisible(id),
+            positionVisible: (point) => this.isPositionVisible(point),
         }
     }
 
-    public sendInventoryAction(action: InventoryActionKind, itemInstanceId: string): void {
-        this.send({
-            action,
-            itemInstanceId,
-            type: 'inventory_action',
-        })
+    private get isMapReady(): boolean {
+        return this.connected && !this.stopped && this.snapshot?.location?.id === this.mapId
     }
 
-    public sendEquipmentAction(action: EquipmentActionKind, slot: EquipmentSlotId): void {
-        this.send({
-            action,
-            slot,
-            type: 'equipment_action',
-        })
+    public getBuildings(): BuildingEntrance[] {
+        return this.stopped ? [] : this.buildingEntrances.read(this.snapshot?.location?.id)
     }
 
-    private createCanvas(): HTMLCanvasElement {
-        const canvas = document.createElement('canvas')
-        canvas.className = 'game-canvas'
-        canvas.dataset.gameCanvas = 'true'
-        canvas.tabIndex = 0
-        this.options.container.append(canvas)
-
-        return canvas
-    }
-
-    private installInputs(engine: Engine, canvas: HTMLCanvasElement): void {
-        window.addEventListener('keydown', this.handleKeyDown)
-        window.addEventListener('keyup', this.handleKeyUp)
-        canvas.addEventListener('contextmenu', preventContextMenu)
-        engine.input.pointers.primary.on('down', (event) => {
-            this.handlePointerDown(event)
-        })
+    public sendCommand(message: ClientMessage): void {
+        if (message.type === 'movement_mode') this.movementControls.acceptMode(message.mode)
+        if (message.type === 'move_input' || message.type === 'move_to') {
+            if (message.type === 'move_input' && message.axis.x === 0 && message.axis.y === 0)
+                this.movementControls.release()
+            this.pressedKeys.clear()
+            this.lastAxis = message.type === 'move_input' ? message.axis : { x: 0, y: 0 }
+        }
+        this.send(message)
     }
 
     private applySnapshot(snapshot: WorldSnapshot): void {
         this.snapshot = snapshot
-        this.sceneActors?.update(snapshot, this.localPlayerId)
+        const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
+        if (this.movementControls.observe(player?.movement, characterDisrupted(player)))
+            this.releaseInputs()
+        const mapId = snapshot.location?.id ?? CENTER_LOCATION_ID
+        if (mapId !== this.mapId) {
+            void this.changeLocation(mapId)
+        } else {
+            this.sceneActors?.update(snapshot, this.localPlayerId)
+        }
         this.options.onSnapshot(snapshot, this.localPlayerId)
-        this.audio?.playMovementSound(snapshot, this.localPlayerId)
-        this.updateDebug()
+        if (mapId === this.mapId) this.audio?.playMovementSound(snapshot, this.localPlayerId)
+        updateRuntimeDebug(this.engine, this.snapshot, this.localPlayerId)
+    }
+
+    private async changeLocation(mapId: string): Promise<void> {
+        if (this.loadingMapId === mapId) return
+        this.loadingMapId = mapId
+        this.sceneActors?.setInteractionTarget(undefined)
+        this.audio?.pauseMovement()
+        this.sceneActors?.clearDamage()
+        await loadRuntimeMap(
+            mapId,
+            () => !this.stopped && this.snapshot?.location?.id === mapId,
+            (map) => this.applyMap(mapId, map),
+            this.options.onError
+        )
+        if (this.loadingMapId === mapId) this.loadingMapId = undefined
+    }
+
+    private applyMap(mapId: string, map: RenderedTiledMap): void {
+        this.selectionTileSize = map.tileWidth
+        this.audio?.setMap(map)
+        this.sceneActors?.addMap(map)
+        this.buildingEntrances.replace(mapId, map.buildings)
+        this.mapId = mapId
+        if (this.snapshot) this.sceneActors?.update(this.snapshot, this.localPlayerId)
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
-        const wasChatActive = this.chat.isActive
-
-        if (
-            this.chat.handleKey(event, (text) => {
-                this.send({ text, type: 'chat' })
-            })
-        ) {
-            if (!wasChatActive && this.chat.isActive) {
-                this.pressedKeys.clear()
+        handleRuntimeKeyDown(event, {
+            chat: this.chat,
+            movement: this.movementControls,
+            send: (command) => this.send(command),
+            move: (code) => {
+                this.pressedKeys.add(code)
                 this.flushMoveInput()
-            }
-
-            return
-        }
-
-        if (event.code === 'Space') {
-            event.preventDefault()
-            this.send({ type: 'attack' })
-            return
-        }
-
-        if (event.code === 'KeyE') {
-            event.preventDefault()
-            this.send({ type: 'pickup_item' })
-            return
-        }
-
-        if (event.code === 'KeyI') {
-            event.preventDefault()
-            this.options.onInventoryToggle()
-            this.audio?.playSound('ui')
-            return
-        }
-
-        if (movementKeys.has(event.code)) {
-            this.pressedKeys.add(event.code)
-            this.flushMoveInput()
-        }
+            },
+            options: this.options,
+            playUi: () => this.audio?.playSound('ui'),
+            stopMovement: () => this.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } }),
+        })
     }
 
     private readonly handleKeyUp = (event: KeyboardEvent): void => {
@@ -201,37 +287,26 @@ export class RatataGame {
         }
     }
 
-    private handlePointerDown(event: ExcaliburPointerEvent): void {
-        if (this.chat.isActive) {
-            return
-        }
-
-        const target = {
-            x: event.worldPos.x,
-            y: event.worldPos.y,
-        }
-
-        if (event.button === PointerButton.Right || this.shouldAttackAt(target)) {
-            this.send({ type: 'attack' })
-            return
-        }
-
-        this.send({ target, type: 'move_to' })
+    private readonly releaseInputs = (): void => {
+        this.send({ type: 'release_input' })
+        this.pressedKeys.clear()
+        this.lastAxis = { x: 0, y: 0 }
+        this.movementControls.release()
     }
 
-    private shouldAttackAt(point: Vector2): boolean {
-        const snapshot = this.snapshot
-
-        if (snapshot === undefined) {
-            return false
-        }
-
-        return snapshot.characters.some(
-            (character) =>
-                character.id !== this.localPlayerId &&
-                character.alive &&
-                Math.hypot(character.position.x - point.x, character.position.y - point.y) <= 24
-        )
+    private handlePointerDown(event: ExcaliburPointerEvent): void {
+        if (this.chat.isActive) return
+        handleRuntimePointer(event, {
+            snapshot: this.snapshot,
+            playerId: this.localPlayerId,
+            visible: (id) => this.canSelectTarget(`character:${id}`),
+            resourceVisible: (node) =>
+                this.canSelectTarget(`resource:${node.id}`) &&
+                this.isInteractionVisible(node.position, node.bounds, Infinity),
+            plant: (point) => this.planting.pick(point),
+            select: (id) => this.options.onCharacterClick?.(id),
+            send: (command) => this.send(command),
+        })
     }
 
     private flushMoveInput(): void {
@@ -245,37 +320,12 @@ export class RatataGame {
         this.send({ axis, type: 'move_input' })
     }
 
-    private send(message: ClientMessage): void {
-        this.socket.send(message)
-    }
+    private readonly send = (message: ClientMessage): void => this.socket.send(message)
 
     private handleServerEvent(event: GameEventPayload): void {
+        this.options.onEvent?.(event)
         this.audio?.playEventSound(event)
-
-        if (event.kind !== 'chat' || event.actorId === undefined || event.text === undefined) {
-            return
-        }
-
-        this.sceneActors?.showChat(event.actorId, event.text, chatDuration(event.text))
-    }
-
-    private updateDebug(): void {
-        if (!import.meta.env.DEV) {
-            return
-        }
-
-        window.__ratataGameDebug = {
-            lastSnapshot: this.snapshot,
-            localPlayerId: this.localPlayerId,
-            worldToPage: (point) => {
-                const pagePoint = this.engine?.screen.worldToPageCoordinates(vec(point.x, point.y))
-
-                if (pagePoint === undefined) {
-                    return undefined
-                }
-
-                return { x: pagePoint.x, y: pagePoint.y }
-            },
-        }
+        if (this.loadingMapId === undefined) this.sceneActors?.showDamage(event)
+        runtimeEventFeedback(event, this.localPlayerId, this.options, this.releaseInputs)
     }
 }

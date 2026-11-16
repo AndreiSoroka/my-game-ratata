@@ -1,39 +1,39 @@
 import {
     type EquipmentSlotId,
     type EquipmentSnapshot,
+    INVENTORY_CAPACITY,
     ITEM_DEFINITIONS,
-    type ItemId,
-    type ItemInstanceSnapshot,
 } from '@my-game-ratata/contracts'
 
-export interface InventoryItemInstance {
-    instanceId: string
-    itemId: ItemId
-}
+import {
+    type InventoryItemInstance,
+    itemQuantity,
+    snapshotItem,
+} from './inventoryItems'
+import { addInventoryItem } from './inventoryStacks'
+
+export {
+    createItemInstance,
+    type InventoryItemInstance,
+    itemQuantity,
+    snapshotItem,
+} from './inventoryItems'
+export {
+    addInventoryItem,
+    addInventoryItems,
+    canAddInventoryItems,
+    consumeInventoryItems,
+    countInventoryItem,
+    craftInventoryItems,
+    type InventoryCosts,
+    transferInventoryItem,
+} from './inventoryStacks'
+export { transferInventoryQuantity } from './inventoryTransfer'
 
 export type EquipmentState = Partial<
     Record<EquipmentSlotId, InventoryItemInstance>
 >
-
-export const inventoryCapacity = 50
-
-let nextItemInstanceIndex = 1
-
-export function createItemInstance(itemId: ItemId): InventoryItemInstance {
-    const instanceId = `${itemId}_${String(nextItemInstanceIndex)}`
-    nextItemInstanceIndex += 1
-
-    return { instanceId, itemId }
-}
-
-export function snapshotItem(
-    item: InventoryItemInstance
-): ItemInstanceSnapshot {
-    return {
-        instanceId: item.instanceId,
-        itemId: item.itemId,
-    }
-}
+export const inventoryCapacity = INVENTORY_CAPACITY
 
 export function snapshotEquipment(
     equipment: EquipmentState
@@ -61,20 +61,10 @@ export function itemFitsSlot(
     item: InventoryItemInstance,
     slot: EquipmentSlotId
 ): boolean {
-    return ITEM_DEFINITIONS[item.itemId].equipmentSlots?.includes(slot) ?? false
-}
-
-export function addInventoryItem(
-    inventory: InventoryItemInstance[],
-    item: InventoryItemInstance
-): boolean {
-    if (inventory.length >= inventoryCapacity) {
-        return false
-    }
-
-    inventory.push(item)
-
-    return true
+    return (
+        itemQuantity(item) === 1 &&
+        (ITEM_DEFINITIONS[item.itemId].equipmentSlots?.includes(slot) ?? false)
+    )
 }
 
 export function removeInventoryItem(
@@ -139,19 +129,13 @@ export function unequipItem(
     equipment: EquipmentState,
     slot: EquipmentSlotId
 ): InventoryItemInstance | undefined {
-    if (inventory.length >= inventoryCapacity) {
-        return undefined
-    }
-
     const item = equipment[slot]
 
-    if (item === undefined) {
+    if (item === undefined || !addInventoryItem(inventory, item)) {
         return undefined
     }
 
     Reflect.deleteProperty(equipment, slot)
-    inventory.push(item)
-
     return item
 }
 

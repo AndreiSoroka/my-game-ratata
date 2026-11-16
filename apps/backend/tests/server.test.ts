@@ -5,7 +5,7 @@ import { createFetchHandler } from '../src/server'
 
 describe('backend health endpoint', () => {
     it('returns the shared contract protocol version', async () => {
-        const response = createFetchHandler()(
+        const response = await createFetchHandler()(
             new Request('http://localhost/health')
         )
         expectResponse(response)
@@ -16,8 +16,8 @@ describe('backend health endpoint', () => {
         )
     })
 
-    it('returns 404 for unknown routes', () => {
-        const response = createFetchHandler()(
+    it('returns 404 for unknown routes', async () => {
+        const response = await createFetchHandler()(
             new Request('http://localhost/missing')
         )
         expectResponse(response)

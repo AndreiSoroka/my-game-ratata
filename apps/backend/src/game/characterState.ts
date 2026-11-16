@@ -1,6 +1,21 @@
+import type {
+    AttackAbilityId,
+    SpellSkillId,
+    WorldCombatTarget,
+} from '@my-game-ratata/contracts'
+
+import type { ResourceSpendReceipt } from './resourcePractice'
 export interface PendingAttackHit {
+    resourceSpends?: ResourceSpendReceipt[] | undefined
+    weaponInstanceId?: string | undefined
+    abilityId?: AttackAbilityId | SpellSkillId | undefined
+    rawDamage?: number | undefined
+    maxRange?: number | undefined
+    target?: WorldCombatTarget | undefined
+    targetId?: string | undefined
     canStun: boolean
     damageMultiplier: number
+    underpowered?: boolean
     hitAt: number
     targetEnergyDrain: number
 }
@@ -16,6 +31,10 @@ export function regen(
     perSecond: number,
     deltaMs: number
 ): number {
+    // An Angelic revival may supply excess resources until they are actually spent.
+    if (current >= max) {
+        return Math.max(0, current)
+    }
     if (max <= 0 || perSecond <= 0) {
         return Math.max(0, Math.min(current, max))
     }

@@ -3,14 +3,28 @@ import type { ItemId, Vector2 } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import { createItemInstance, type InventoryItemInstance } from './inventory'
 
-export function generateChestContents(): InventoryItemInstance[] {
+export function generateChestContents(
+    starter = false,
+    random: () => number = Math.random
+): InventoryItemInstance[] {
+    if (starter) {
+        return [createItemInstance('food')]
+    }
     const contents: InventoryItemInstance[] = []
 
-    maybeAddChestItem(contents, 'simple_sword', 0.9)
-    maybeAddChestItem(contents, 'food', 0.5)
-    maybeAddChestItem(contents, 'boots', 0.3)
+    maybeAddChestItem(contents, 'simple_sword', 0.9, random)
+    maybeAddChestItem(contents, 'food', 0.5, random)
+    maybeAddChestItem(contents, 'boots', 0.3, random)
 
     return contents
+}
+
+export function generateFarmSupplyContents(
+    random: () => number = Math.random
+): InventoryItemInstance[] {
+    return random() < 0.5
+        ? [createItemInstance('wheat_seed', 2 + Math.floor(random() * 3))]
+        : []
 }
 
 export function dropPosition(origin: Vector2, index: number): Vector2 {
@@ -37,7 +51,7 @@ export function isPointInZones(
 }
 
 export function heal(player: GameCharacter, amount: number): number {
-    if (amount <= 0 || !player.alive) {
+    if (amount <= 0 || !player.alive || player.hp >= player.maxHp) {
         return 0
     }
 
@@ -50,9 +64,10 @@ export function heal(player: GameCharacter, amount: number): number {
 function maybeAddChestItem(
     contents: InventoryItemInstance[],
     itemId: ItemId,
-    chance: number
+    chance: number,
+    random: () => number
 ): void {
-    if (Math.random() < chance) {
+    if (random() < chance) {
         contents.push(createItemInstance(itemId))
     }
 }

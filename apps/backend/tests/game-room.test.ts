@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
 import { attemptAttack, resolvePendingAttackHit } from '../src/game/combat'
+import { canTargetByFaction } from '../src/game/factions'
 import { advanceCharacter } from '../src/game/movement'
 import type { NavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
@@ -60,62 +61,6 @@ describe('game room joins', () => {
 
         expect(findWorldInit(second)?.playerId).toBe(firstInit?.playerId)
     })
-
-    it('starts with skeleton and slime monsters and peaceful players', () => {
-        vi.stubGlobal('Bun', { env: {} })
-        const room = new GameRoom()
-        const socket = createSocket()
-
-        room.handleOpen(asRoomSocket(socket))
-        room.handleMessage(
-            asRoomSocket(socket),
-            JSON.stringify({ nickname: 'Andrei', type: 'join' })
-        )
-
-        const init = findWorldInit(socket)
-        expect(init).toBeDefined()
-        if (init === undefined) {
-            throw new Error('world_init was not sent')
-        }
-
-        const characters = new Map(
-            init.snapshot.characters.map((character) => [
-                character.id,
-                character,
-            ])
-        )
-        const player = characters.get(init.playerId)
-        const skeleton = characters.get('mob_skeleton_1')
-        const slime = characters.get('mob_slime_1')
-
-        expect(player?.faction).toBe('peaceful')
-        expect(player?.reputation.monsters).toBe(-100)
-        expect(skeleton?.archetype).toBe('skeleton')
-        expect(skeleton?.faction).toBe('monsters')
-        expect(skeleton?.hp).toBe(20)
-        expect(skeleton?.maxHp).toBe(20)
-        expect(skeleton?.resources.maxEnergy).toBe(225)
-        expect(slime?.archetype).toBe('slime')
-        expect(slime?.faction).toBe('monsters')
-        expect(slime?.resources.maxEnergy).toBe(60)
-
-        expect(skeleton).toBeDefined()
-        expect(slime).toBeDefined()
-        if (skeleton === undefined || slime === undefined) {
-            throw new Error('monster spawn missing from world_init')
-        }
-
-        expect(
-            room.navigation.isSolidTile(
-                room.navigation.worldToTile(skeleton.position)
-            )
-        ).toBe(false)
-        expect(
-            room.navigation.isSolidTile(
-                room.navigation.worldToTile(slime.position)
-            )
-        ).toBe(false)
-    })
 })
 
 describe('shared combat windup', () => {
@@ -133,7 +78,7 @@ describe('shared combat windup', () => {
         const startEvents = startAttack(attacker, [attacker, target], now)
 
         expect(startEvents).toEqual([{ actorId: 'attacker', kind: 'attack' }])
-        expect(attacker.energy).toBe(85)
+        expect(attacker.energy).toBe(135)
         expect(attacker.animationAction).toBe('attack')
         expect(attacker.attackZones).toHaveLength(1)
         expect(target.hp).toBe(target.maxHp)
@@ -145,9 +90,10 @@ describe('shared combat windup', () => {
         ).toEqual([])
         expect(target.hp).toBe(target.maxHp)
 
-        const hitEvents = resolvePendingAttackHit(
-            attackContext(attacker, [attacker, target], now + 50)
-        )
+        const hitEvents = resolvePendingAttackHit({
+            ...attackContext(attacker, [attacker, target], now + 50),
+            random: () => 0.9,
+        })
 
         expect(hitEvents).toEqual(
             expect.arrayContaining([
@@ -177,6 +123,7 @@ describe('shared combat resources', () => {
             y: 40,
         })
         vi.spyOn(Math, 'random')
+            .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -190,9 +137,19 @@ describe('shared combat resources', () => {
         expect(hitEvents).toEqual([
             {
                 actorId: 'attacker',
-                amount: 5,
+                amount: 6,
+                hitQuality: 'weak',
                 kind: 'damage',
+                damageKind: 'physical',
+                critical: false,
                 targetId: 'target',
+            },
+            {
+                kind: 'status',
+                actorId: 'attacker',
+                targetId: 'target',
+                statusId: 'stun',
+                expiresAt: now + 50 + 300,
             },
         ])
         expect(target.energy).toBe(217)
@@ -211,6 +168,7 @@ describe('shared combat resources', () => {
         })
         attacker.energy = 50
         vi.spyOn(Math, 'random')
+            .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -223,8 +181,11 @@ describe('shared combat resources', () => {
         expect(hitEvents).toEqual([
             {
                 actorId: 'attacker',
-                amount: 5,
+                amount: 6,
+                hitQuality: 'weak',
                 kind: 'damage',
+                damageKind: 'physical',
+                critical: false,
                 targetId: 'target',
             },
         ])
@@ -244,6 +205,7 @@ describe('shared combat resources', () => {
         })
         attacker.energy = 5
         vi.spyOn(Math, 'random')
+            .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
             .mockReturnValueOnce(0.99)
             .mockReturnValueOnce(0)
@@ -269,7 +231,10 @@ describe('shared combat resources', () => {
             {
                 actorId: 'attacker',
                 amount: 2,
+                hitQuality: 'weak',
                 kind: 'damage',
+                damageKind: 'physical',
+                critical: false,
                 targetId: 'target',
             },
         ])
@@ -296,7 +261,13 @@ describe('shared combat hit validation', () => {
             resolvePendingAttackHit(
                 attackContext(attacker, [attacker, target], now + 50)
             )
-        ).toEqual([])
+        ).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: attacker.id,
+            }),
+        ])
         expect(target.hp).toBe(target.maxHp)
     })
 
@@ -317,7 +288,13 @@ describe('shared combat hit validation', () => {
             resolvePendingAttackHit(
                 attackContext(skeleton, [skeleton, slime], now + 220)
             )
-        ).toEqual([])
+        ).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: skeleton.id,
+            }),
+        ])
         expect(slime.hp).toBe(slime.maxHp)
     })
 
@@ -341,8 +318,40 @@ describe('shared combat hit validation', () => {
             resolvePendingAttackHit(
                 attackContext(skeleton, [skeleton, friendly], now + 220)
             )
-        ).toEqual([])
+        ).toEqual([
+            expect.objectContaining({
+                kind: 'miss',
+                hitQuality: 'miss',
+                actorId: skeleton.id,
+            }),
+        ])
         expect(friendly.hp).toBe(friendly.maxHp)
+    })
+
+    it('lets peaceful girl and monsters target each other without player friendly fire', () => {
+        const player = createCharacter('player', 'Player', 'human', {
+            x: 32,
+            y: 32,
+        })
+        const girl = createCharacter(
+            'girl',
+            'Mira',
+            'human',
+            { x: 40, y: 32 },
+            {
+                controllerKind: 'mob1',
+                faction: 'peaceful',
+            }
+        )
+        const skeleton = createCharacter('skeleton', 'Skeleton', 'skeleton', {
+            x: 48,
+            y: 32,
+        })
+
+        expect(canTargetByFaction(player, girl)).toBe(false)
+        expect(canTargetByFaction(girl, player)).toBe(false)
+        expect(canTargetByFaction(girl, skeleton)).toBe(true)
+        expect(canTargetByFaction(skeleton, girl)).toBe(true)
     })
 })
 

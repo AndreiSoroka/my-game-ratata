@@ -11,6 +11,7 @@ import { type GameSoundId, gameSoundIds, musicCatalog, soundCatalog } from '../a
 
 export interface CharacterResources {
     chestImage: ImageSource
+    farmImage: ImageSource
     itemImages: Map<ItemId, ImageSource>
     loader: Loader
     music: {
@@ -25,6 +26,7 @@ export function createCharacterResources(): CharacterResources {
     const itemImages = new Map<ItemId, ImageSource>()
     const sheets = new Map<CharacterId, SpriteSheet>()
     const sounds = new Map<GameSoundId, Sound>()
+    const farmImage = new ImageSource('/game/map/assets/KenneyTinyFarm/tilemap_packed.png')
     const chestImage = new ImageSource('/game/map/assets/MysticWoods/objects/chest_01.png')
     const music = {
         adventureBegins: createMusic(),
@@ -49,11 +51,13 @@ export function createCharacterResources(): CharacterResources {
 
     return {
         chestImage,
+        farmImage,
         itemImages,
         loader: new Loader([
             ...images.values(),
             ...itemImages.values(),
             chestImage,
+            farmImage,
             ...sounds.values(),
             music.adventureBegins,
         ]),

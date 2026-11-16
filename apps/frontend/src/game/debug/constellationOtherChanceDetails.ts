@@ -1,0 +1,297 @@
+import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
+import type {
+    ConstellationChanceFormula,
+    ConstellationEffectChance,
+} from './constellationChanceTypes'
+
+interface DeterministicEffect {
+    formulas: ConstellationChanceFormula[]
+    notes?: string[]
+}
+
+const ordinaryAttack =
+    'Попадание по допустимой цели отдельно проверяет уклонение и крит; барьер может поглотить весь рассчитанный урон.'
+const soundSword =
+    'Бонус обычного удара действует только с исправным simple_sword или old_sword; к Искре и Выстрелу он не добавляется.'
+const additiveDamage =
+    'Вместе две звезды дают +20%, а не +21%. Округление урона выполняется после всех множителей.'
+const countDamage = { N: 'Число изученных звёзд усиления этого оружия: 1 или 2.' }
+const round = { round: 'Округление до ближайшего целого.' }
+
+const deterministic: Record<string, DeterministicEffect> = {
+    'blade.damage1': {
+        formulas: [chanceFormula('Множитель урона меча', '1 + 0.10 × N', countDamage)],
+        notes: [soundSword, additiveDamage, ordinaryAttack],
+    },
+    'blade.damage2': {
+        formulas: [chanceFormula('Множитель урона меча', '1 + 0.10 × N', countDamage)],
+        notes: [soundSword, additiveDamage, ordinaryAttack],
+    },
+    'blade.economy': {
+        formulas: [
+            chanceFormula('Расход энергии обычного удара, EN', '0.90 × E', {
+                E: 'Исходная цена обычного удара в энергии.',
+            }),
+        ],
+        notes: [
+            soundSword,
+            'Не отменяет обычные проверки действия и правило ослабленного удара при нехватке ресурсов.',
+        ],
+    },
+    'blade.tempo': {
+        formulas: [
+            chanceFormula('Интервал, блокировка и подготовка удара, мс', '0.90 × T', {
+                T: 'Исходная длительность каждого из этих времён; формула применяется к ним отдельно.',
+            }),
+        ],
+        notes: [soundSword, 'Для ослабленного удара сохраняется дополнительное замедление.'],
+    },
+    'blade.resolve': {
+        formulas: [
+            chanceFormula('Длительность нового оглушения, мс', 'round(0.85 × T)', {
+                T: 'Исходная длительность нового оглушения в миллисекундах.',
+                ...round,
+            }),
+        ],
+        notes: [
+            'Не повышает шанс избежать оглушения и не гарантирует прекращение уже более долгого стана. Меч держать не требуется.',
+        ],
+    },
+    'magic.spark_damage': {
+        formulas: [
+            chanceFormula('Рассчитанный урон Искры', 'max(1, round(R × C × A × 1.10))', {
+                R: 'Целочисленный бросок базового урона Искры.',
+                C: 'Множитель критического урона; без крита равен 1.',
+                A: 'Остальные действующие множители атаки.',
+                ...round,
+            }),
+        ],
+        notes: [ordinaryAttack],
+    },
+    'magic.spark_range': {
+        formulas: [
+            chanceFormula('Дальность Искры, пиксели', 'R + W', {
+                R: 'Исходная дальность Искры в мировых пикселях.',
+                W: 'Ширина клетки текущей карты в мировых пикселях.',
+            }),
+        ],
+        notes: ['Препятствия, направление и границы коридора по-прежнему проверяются сервером.'],
+    },
+    'magic.spark_economy': {
+        formulas: [chanceFormula('Цена Искры, MP', '6 − 1 = 5')],
+        notes: ['Цена энергии не меняется.'],
+    },
+    'magic.barrier_strength': {
+        formulas: [
+            chanceFormula('Начальный запас поглощения', '8 + 2 = 10'),
+            chanceFormula('Поглощение одного попадания', 'min(D, B)', {
+                D: 'Входящий урон до Барьера.',
+                B: 'Оставшийся запас поглощения Барьера.',
+            }),
+        ],
+        notes: [
+            'При положительном остатке и неистёкшем времени отдельного броска поглощения нет. Оно может полностью убрать урон HP.',
+        ],
+    },
+    'magic.barrier_duration': {
+        formulas: [chanceFormula('Длительность Барьера, мс', '5000 + 1000 = 6000')],
+        notes: ['Барьер может закончиться раньше, если запас поглощения исчерпан.'],
+    },
+    'magic.fire_damage': {
+        formulas: [
+            chanceFormula('Рассчитанный урон огненного шара', 'round(B × 1.10)', {
+                B: 'Базовый урон: 8 у Огненного шара или 18 у Большого огненного шара.',
+                ...round,
+            }),
+        ],
+        notes: [
+            'Отдельного броска на этот бонус нет. Огненные шары сейчас не проверяют случайные крит и уклонение, но проверяют цель и Барьер.',
+        ],
+    },
+    'arrow.damage1': {
+        formulas: [chanceFormula('Множитель урона Выстрела', '1 + 0.10 × N', countDamage)],
+        notes: [additiveDamage, ordinaryAttack],
+    },
+    'arrow.damage2': {
+        formulas: [chanceFormula('Множитель урона Выстрела', '1 + 0.10 × N', countDamage)],
+        notes: [additiveDamage, ordinaryAttack],
+    },
+    'arrow.range1': {
+        formulas: [
+            chanceFormula('Дальность Выстрела, пиксели', 'R + N × W', {
+                R: 'Исходная дальность Выстрела в мировых пикселях.',
+                N: 'Число изученных звёзд дальности: 1 или 2.',
+                W: 'Ширина клетки текущей карты в мировых пикселях.',
+            }),
+        ],
+        notes: [
+            'Две звезды дают две клетки. Видимость и геометрия попадания не заменяются случайным броском.',
+        ],
+    },
+    'arrow.range2': {
+        formulas: [
+            chanceFormula('Дальность Выстрела, пиксели', 'R + N × W', {
+                R: 'Исходная дальность Выстрела в мировых пикселях.',
+                N: 'Число изученных звёзд дальности: 1 или 2.',
+                W: 'Ширина клетки текущей карты в мировых пикселях.',
+            }),
+        ],
+        notes: [
+            'Две звезды дают две клетки. Видимость и геометрия попадания не заменяются случайным броском.',
+        ],
+    },
+    'arrow.economy': { formulas: [chanceFormula('Цена Выстрела, EN', '10 − 1 = 9')] },
+    'arrow.tempo': {
+        formulas: [chanceFormula('Кулдаун Выстрела, мс', '550 × 0.90 = 495')],
+        notes: [
+            'Не снимает оглушение, занятость действия или необходимость оплатить следующий выстрел.',
+        ],
+    },
+    'life.move': {
+        formulas: [
+            chanceFormula('Скорость движения', 'V × 1.05 × M', {
+                V: 'Базовая скорость персонажа.',
+                M: 'Множитель текущего режима: обычная ходьба, движение крадучись или рывок.',
+            }),
+        ],
+        notes: [
+            'Применяется также к ходьбе крадучись и рывку; коллизии могут остановить фактическое перемещение.',
+        ],
+    },
+    'life.dash': {
+        formulas: [chanceFormula('Цена рывка, EN', '30 × 0.90 = 27')],
+        notes: ['Обычные длительность, перезарядка и проверка возможности рывка сохраняются.'],
+    },
+    'shadow.speed': {
+        formulas: [
+            chanceFormula('Скорость движения крадучись', 'V × K × 0.45 × 1.10', {
+                V: 'Базовая скорость персонажа.',
+                K: 'Множитель скорости от «Лёгкого шага»: 1.05 при изученной звезде, иначе 1.',
+            }),
+        ],
+        notes: [
+            'Не прибавляет скорость обычной ходьбе или рывку; препятствия по-прежнему останавливают движение.',
+        ],
+    },
+    'shadow.economy': {
+        formulas: [chanceFormula('Цена допустимой попытки кражи, EN', '10 − 1 = 9')],
+        notes: [
+            'Не влияет на броски обнаружения и успеха; отвергнутые до оплаты команды не становятся настоящими попытками.',
+        ],
+    },
+    'shadow.tempo': {
+        formulas: [
+            chanceFormula('Общий кулдаун кражи, мс', '8000 − 1000 = 7000'),
+            chanceFormula('Кулдаун повторной кражи у той же цели, мс', '60000'),
+        ],
+        notes: ['Не меняет шанс обнаружения или получения предмета.'],
+    },
+}
+
+interface KnowledgeEffect {
+    description: string
+    exact?: boolean
+}
+
+const knowledge: Record<string, KnowledgeEffect> = {
+    'blade.insight1': {
+        description:
+            'Свой базовый удар: шаг оценки урона 2, интервала 100 мс, критического шанса 2 п.п.',
+    },
+    'blade.insight2': {
+        description: 'Свой базовый удар: точные урон, интервал и критический шанс.',
+        exact: true,
+    },
+    'arrow.insight1': {
+        description:
+            'Свой Выстрел: шаг оценки урона 2, интервала 100 мс, критического шанса 2 п.п.',
+    },
+    'arrow.insight2': {
+        description: 'Свой Выстрел: точные урон, интервал и критический шанс.',
+        exact: true,
+    },
+    'magic.mana1': {
+        description: 'Собственные текущая и максимальная мана оцениваются с шагом 25.',
+    },
+    'magic.mana2': {
+        description: 'Собственные текущая и максимальная мана оцениваются с шагом 10.',
+    },
+    'magic.mana3': {
+        description: 'Собственные текущая и максимальная мана известны точно.',
+        exact: true,
+    },
+    'magic.insight': {
+        description: 'Точно известны собственные урон, интервал и шанс крита изученных заклинаний.',
+        exact: true,
+    },
+    'life.hp1': {
+        description: 'Свой HP: шаг 25; скорость: шаг 0,5 клетки/с; уклонение: шаг 2 п.п.',
+    },
+    'life.hp2': {
+        description: 'Свой HP: шаг 10; скорость: шаг 0,25 клетки/с; уклонение: шаг 1 п.п.',
+    },
+    'life.hp3': {
+        description: 'Свой HP: шаг 5; скорость: шаг 0,125 клетки/с; уклонение: шаг 0,5 п.п.',
+    },
+    'life.hp4': {
+        description: 'Собственные текущий и максимальный HP, скорость и уклонение известны точно.',
+        exact: true,
+    },
+    'life.energy1': {
+        description: 'Собственные текущая и максимальная энергия оцениваются с шагом 25.',
+    },
+    'life.energy2': {
+        description: 'Собственные текущая и максимальная энергия оцениваются с шагом 10.',
+    },
+    'life.energy3': {
+        description: 'Собственные текущая и максимальная энергия известны точно.',
+        exact: true,
+    },
+}
+
+export function describeDeterministicOtherChance(
+    id: string
+): ConstellationEffectChance | undefined {
+    const accuracy = knowledge[id]
+    if (accuracy !== undefined) return describeKnowledge(accuracy)
+    const effect = deterministic[id]
+    if (effect === undefined) return undefined
+    return withChanceFormulas(
+        {
+            deterministic: true,
+            summary:
+                id.startsWith('blade.') && id !== 'blade.resolve'
+                    ? '100%: изученный бонус применяется при обычном ударе исправным мечом; отдельного броска нет.'
+                    : '100%: изученный бонус применяется при подходящем действии или состоянии; отдельного броска нет.',
+            examples: [],
+            notes: [...(effect.notes ?? [])],
+        },
+        effect.formulas
+    )
+}
+
+function describeKnowledge(accuracy: KnowledgeEffect): ConstellationEffectChance {
+    const formula =
+        accuracy.exact === true
+            ? chanceFormula('Отображаемое точное значение', 'V', {
+                  V: 'Фактический собственный показатель.',
+              })
+            : chanceFormula('Отображаемый диапазон', '[floor(V / S) × S; floor(V / S) × S + S)', {
+                  V: 'Фактический собственный показатель; формула применяется отдельно к каждому показателю.',
+                  S: 'Шаг его оценки, указанный ниже.',
+                  floor: 'Округление вниз до целого; правая граница диапазона не входит в него.',
+              })
+    return withChanceFormulas(
+        {
+            deterministic: true,
+            summary:
+                '100%: изученное знание всегда уточняет собственные показатели; отдельного броска нет.',
+            examples: [],
+            notes: [
+                accuracy.description,
+                'Знание не повышает сам показатель и не раскрывает точные чужие значения. Для точного знания диапазон больше не нужен.',
+            ],
+        },
+        [formula]
+    )
+}

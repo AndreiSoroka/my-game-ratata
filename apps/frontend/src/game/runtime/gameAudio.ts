@@ -2,26 +2,74 @@ import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 import type { Sound } from 'excalibur'
 
 import type { GameSoundId } from '../assets/soundCatalog'
+import { isAudioMuted, subscribeAudioMute } from './audioPreference'
+import { FootstepAudio } from './footstepAudio'
+import { FootstepPlanner } from './footsteps'
+import { type FootstepMap, surfaceAt } from './mapSurfaces'
 
 export class GameAudio {
-    private lastMoveSoundAt = 0
+    private readonly footsteps = new FootstepPlanner()
+    private readonly footstepAudio: FootstepAudio
+    private surfaceMap: FootstepMap | undefined
     private readonly music: Sound
     private readonly sounds: Map<GameSoundId, Sound>
+    private readonly unsubscribeAudio: () => void
+    private musicRequested = false
 
     public constructor(sounds: Map<GameSoundId, Sound>, music: Sound) {
         this.sounds = sounds
         this.music = music
+        this.footstepAudio = new FootstepAudio(sounds)
+        this.unsubscribeAudio = subscribeAudioMute((muted) => {
+            if (muted) this.stopVoices()
+            else if (this.musicRequested) this.playMusic()
+        })
+        document.addEventListener('visibilitychange', this.onVisibilityChange)
     }
 
     public playMusic(): void {
+        this.musicRequested = true
+        if (isAudioMuted()) return
         void Promise.resolve(this.music.play()).catch(() => undefined)
     }
 
     public stop(): void {
+        this.musicRequested = false
+        this.unsubscribeAudio()
+        this.stopVoices()
+        this.surfaceMap = undefined
+        document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    }
+
+    private stopVoices(): void {
         this.music.stop()
+        for (const sound of this.sounds.values()) sound.stop()
+        this.stopFootsteps()
+    }
+
+    public setMap(map: { footsteps: FootstepMap }): void {
+        this.pauseMovement()
+        this.surfaceMap = map.footsteps
+    }
+
+    public pauseMovement(): void {
+        this.stopFootsteps()
+        this.surfaceMap = undefined
+    }
+
+    private readonly onVisibilityChange = (): void => {
+        if (document.hidden) {
+            this.stopFootsteps()
+        }
+    }
+
+    private stopFootsteps(): void {
+        this.footsteps.reset()
+        this.footstepAudio.stop()
     }
 
     public playSound(id: GameSoundId): void {
+        if (isAudioMuted()) return
         const sound = this.sounds.get(id)
 
         if (sound === undefined) {
@@ -36,6 +84,7 @@ export class GameAudio {
             case 'attack':
                 this.playSound('attack')
                 return
+            case 'barrel_search':
             case 'chest_open':
                 this.playSound('chestOpen')
                 return
@@ -45,6 +94,7 @@ export class GameAudio {
             case 'item_drop':
                 this.playSound('drop')
                 return
+            case 'water_drink':
             case 'item_eat':
                 this.playSound('drink')
                 return
@@ -63,19 +113,19 @@ export class GameAudio {
     }
 
     public playMovementSound(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
-        const player = snapshot.characters.find((character) => character.id === localPlayerId)
-        const now = performance.now()
-
-        if (
-            player === undefined ||
-            !player.alive ||
-            Math.hypot(player.velocity.x, player.velocity.y) < 1 ||
-            now - this.lastMoveSoundAt < 460
-        ) {
+        const map = this.surfaceMap
+        if (map === undefined || document.hidden || isAudioMuted()) return
+        const listener = snapshot.characters.find((actor) => actor.id === localPlayerId)
+        if (!listener?.alive) {
+            this.stopFootsteps()
             return
         }
-
-        this.lastMoveSoundAt = now
-        this.playSound('move')
+        const steps = this.footsteps.collect(
+            snapshot.characters,
+            localPlayerId,
+            performance.now(),
+            (point) => surfaceAt(map, point)
+        )
+        for (const step of steps) this.footstepAudio.play(step)
     }
 }
