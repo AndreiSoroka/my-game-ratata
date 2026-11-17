@@ -1,18 +1,33 @@
+import type { SpeechActivityCommand } from '@my-game-ratata/contracts'
+
 import { type ChatInputState, chatMaxLength } from './chatInput'
+import { SpeechActivityEmitter } from './speechActivityEmitter'
 
 export class RuntimeChatInput {
     private active = false
     private draft = ''
     private readonly onState: (state: ChatInputState) => void
     private readonly onBegin?: () => void
+    private readonly activity: SpeechActivityEmitter | undefined
 
-    public constructor(onState: (state: ChatInputState) => void, onBegin?: () => void) {
+    public constructor(
+        onState: (state: ChatInputState) => void,
+        onBegin?: () => void,
+        sendActivity?: (command: SpeechActivityCommand) => void
+    ) {
+        this.activity = sendActivity
+            ? new SpeechActivityEmitter(sendActivity, { channel: 'say' })
+            : undefined
         this.onState = onState
         this.onBegin = onBegin
     }
 
     public get isActive(): boolean {
         return this.active
+    }
+
+    public stopActivity(): void {
+        this.activity?.stop()
     }
 
     public cancel(): void {
@@ -81,6 +96,7 @@ export class RuntimeChatInput {
     }
 
     private emitState(): void {
+        this.activity?.input(this.active && this.draft.trim().length > 0)
         this.onState({
             active: this.active,
             draft: this.draft,

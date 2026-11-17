@@ -1,0 +1,93 @@
+import type { ExchangeSnapshot } from './exchange'
+import type { NpcQuestSocialSnapshot } from './npcQuests'
+
+export type SpeechChannel = 'say' | 'whisper'
+
+export interface SpeechFocus {
+    key: string
+    id: string
+    kind: string
+    name: string
+    position: import('./index').Vector2
+    details: Record<string, unknown>
+}
+
+export interface SpeechActivityCommand {
+    type: 'speech_activity'
+    active: boolean
+    channel: SpeechChannel
+    targetId?: string
+    activityId: string
+}
+
+export interface SpeechActivitySnapshot {
+    actorId: string
+    id: string
+    kind: 'typing' | 'thinking'
+}
+
+export type NpcRequestState =
+    | 'heard'
+    | 'queued'
+    | 'thinking'
+    | 'accepted'
+    | 'declined'
+    | 'started'
+    | 'completed'
+    | 'failed'
+    | 'undelivered'
+    | 'cancelled'
+
+export interface NpcRequestStatus {
+    id: string
+    npcId: string
+    state: NpcRequestState
+    reason?: string
+    at: number
+}
+
+export interface CharacterInteractions {
+    aiDialogue: boolean
+    whisper: boolean
+    exchange: boolean
+}
+
+export type WhisperClientMessage =
+    | { type: 'whisper_open'; targetId: string }
+    | { type: 'whisper'; targetId: string; text: string }
+    | { type: 'whisper_close' }
+
+export interface PrivateSpeechSnapshot {
+    id: string
+    senderId: string
+    text: string
+    at: number
+}
+
+export interface HeardPrivateSpeech extends PrivateSpeechSnapshot {
+    partnerId: string
+    partnerName: string
+    senderName: string
+}
+
+export interface WhisperSnapshot {
+    partnerId: string
+    partnerName: string
+    available: boolean
+    messages: PrivateSpeechSnapshot[]
+}
+
+export interface SocialSnapshot extends NpcQuestSocialSnapshot {
+    privateMessages?: HeardPrivateSpeech[]
+    speechActivity?: SpeechActivitySnapshot[]
+    requestStatuses?: NpcRequestStatus[]
+    exchange?: ExchangeSnapshot | null
+    whisper?: WhisperSnapshot | null
+}
+
+export interface ChatClientMessage {
+    targetId?: string
+    focusKey?: string
+    text: string
+    type: 'chat'
+}

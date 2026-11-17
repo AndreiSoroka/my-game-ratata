@@ -23,6 +23,7 @@ import { applyAgentAttack } from './agentCombat'
 import { parseAgentDecision } from './agentDecisionParsing'
 import { applyAgentInventory, isInventoryDecision } from './agentInventory'
 import { applyAgentRoute } from './agentRoute'
+import { agentSpeech } from './agentSpeech'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
 import { isAdventureCommand } from './extraCommands'
@@ -147,7 +148,7 @@ export function applyAgentDecision(
         case 'attack':
             return applyAgentAttack(character, decision, world, now)
         case 'speak':
-            return agentSpeech(character, decision.text)
+            return agentSpeech(character, decision, world, now)
         case 'wait':
             cancelAgentControl(character, world, now)
             cancelMovementMode(character)
@@ -209,15 +210,6 @@ function agentTheft(
         ? rejected('Theft service unavailable')
         : accepted(world.requestTheft(character, decision, now))
 }
-function agentSpeech(
-    character: GameCharacter,
-    text: string
-): AgentDecisionResult {
-    return character.soul.canSpeak
-        ? accepted([{ actorId: character.id, kind: 'chat', text }])
-        : rejected('This creature cannot speak')
-}
-
 function applySharedDecision(
     actor: GameCharacter,
     decision: AgentDecision,

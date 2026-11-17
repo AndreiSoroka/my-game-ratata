@@ -78,6 +78,11 @@ export function release(
 ): void {
     state.leaderId = null
     state.order = 'idle'
+    state.waitMode = undefined
+    state.waitDeparted = false
+    delete state.waitResumeOrder
+    delete state.waitResumeLeaderId
+    state.controlRevision = (state.controlRevision ?? 0) + 1
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()
     sync(character, state)
@@ -89,6 +94,8 @@ export function sync(character: GameCharacter, state: CompanionRuntime): void {
         lastReply: state.lastReply,
         leaderId: state.leaderId,
         order: state.order,
+        controlRevision: state.controlRevision ?? 0,
+        ...(state.waitMode === undefined ? {} : { waitMode: state.waitMode }),
     }
 }
 

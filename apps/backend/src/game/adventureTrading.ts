@@ -19,6 +19,7 @@ import { repairItem } from './itemDurability'
 import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
+import { availableGold } from './rewardReservations'
 
 export interface AdventureActionResult {
     accepted: boolean
@@ -227,7 +228,7 @@ function repair(
     if (total !== message.expectedTotal) {
         return rejected('Стоимость ремонта изменилась. Проверь предложение.')
     }
-    if (state.gold < total) {
+    if (availableGold(state) < total) {
         return rejected('Недостаточно золотых для ремонта.')
     }
     resetMartyrStreak(actor)

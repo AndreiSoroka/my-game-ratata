@@ -104,11 +104,11 @@ describe('municipally supplied farming uses the ordinary character commands', ()
 
 describe('municipal farm work recovers without bypassing the quota', () => {
     it.each(['missing supplier', 'blocked route'] as const)(
-        'ends an unfinished batch after a %s and delivers surplus grain when access returns',
+        'pauses an unfinished batch after a %s, preserves its quota and delivers surplus grain when access returns',
         (failure) => {
             const test = new FarmerSimulation({ grain: 3, failure })
             test.tick()
-            expect(test.service.farmSupply.remaining(test.worker.id)).toBe(0)
+            expect(test.service.farmSupply.remaining(test.worker.id)).toBe(6)
             for (let step = 0; step < 100; step += 1) {
                 test.tick()
             }
@@ -127,6 +127,7 @@ describe('municipal farm work recovers without bypassing the quota', () => {
                 )
             )
             expect(test.count('grain')).toBe(1)
+            expect(test.service.farmSupply.remaining(test.worker.id)).toBe(6)
             expect(
                 test.records.find(
                     (record) => record.message.type === 'market_trade'

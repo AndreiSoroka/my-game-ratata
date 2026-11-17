@@ -43,6 +43,14 @@ export function clearCharacterRoute(actor: GameCharacter): boolean {
     return routes.delete(actor)
 }
 
+/** Voluntary pauses defer elapsed time without forgiving prior blocked time. */
+export function deferCharacterRoute(actor: GameCharacter, now: number): void {
+    const route = routes.get(actor)
+    if (route !== undefined) {
+        route.lastUpdateAt = now
+    }
+}
+
 export function snapshotCharacterRoute(
     actor: GameCharacter
 ): CharacterControlSnapshot | undefined {

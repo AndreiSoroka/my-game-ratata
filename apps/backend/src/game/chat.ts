@@ -18,7 +18,7 @@ export function resolveChatText(
     return garbleText(text)
 }
 
-function garbleText(text: string): string {
+export function garbleText(text: string): string {
     const alphabet = 'abracadabraratatamur'
     let result = ''
 

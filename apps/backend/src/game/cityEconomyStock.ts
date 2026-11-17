@@ -1,12 +1,13 @@
 import type { MarketItemId } from '@my-game-ratata/contracts'
 
+import { planAssetSettlement } from './assetSettlement'
 import {
-    addInventoryItems,
     countInventoryItem,
     createItemInstance,
     type InventoryItemInstance,
     itemQuantity,
 } from './inventory'
+import { availableInventoryQuantity } from './rewardReservations'
 export const periodMs = 600_000
 export interface CityCommodityDefinition {
     itemId: MarketItemId
@@ -90,15 +91,35 @@ export function transferQuantity(
     ) {
         return false
     }
-    const sourcePlan = source.map((item) => ({ ...item }))
-    const destinationPlan = destination.map((item) => ({ ...item }))
-    const moved = takeQuantity(sourcePlan, itemId, quantity)
-    if (!addInventoryItems(destinationPlan, moved, capacity)) {
-        return false
+    let remaining = quantity
+    const items = []
+    for (const item of source) {
+        const amount =
+            item.itemId === itemId
+                ? Math.min(
+                      remaining,
+                      availableInventoryQuantity(source, item.instanceId)
+                  )
+                : 0
+        if (amount > 0) {
+            items.push({ instanceId: item.instanceId, quantity: amount })
+            remaining -= amount
+        }
     }
-    source.splice(0, source.length, ...sourcePlan)
-    destination.splice(0, destination.length, ...destinationPlan)
-    return true
+    return (
+        remaining === 0 &&
+        planAssetSettlement({
+            items: [
+                {
+                    from: source,
+                    to: destination,
+                    items,
+                    ...(capacity === undefined ? {} : { capacity }),
+                },
+            ],
+            gold: [],
+        })?.commit() === true
+    )
 }
 
 export function takeQuantity(

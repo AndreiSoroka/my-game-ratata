@@ -13,6 +13,7 @@ import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
+import { parseSocialBoundary } from './whisperCommands'
 import { parsePickupCommand } from './worldPickup'
 
 export interface ParseResult {
@@ -51,6 +52,10 @@ export function parseClientMessage(raw: string): ParseResult {
 
     if (record === undefined) {
         return { error: 'Message must be an object' }
+    }
+    const social = parseSocialBoundary(record)
+    if (social !== undefined) {
+        return social
     }
 
     if (isAutomationCommand(record['type'])) {
@@ -186,13 +191,34 @@ function parseChat(record: Record<string, unknown>): ParseResult {
         return { error: 'chat.text must be a string' }
     }
 
-    const trimmed = text.trim().slice(0, 100)
+    const trimmed = text.trim().slice(0, 400)
 
     if (trimmed.length === 0) {
         return { error: 'chat.text is required' }
     }
 
-    return { message: { text: trimmed, type: 'chat' } }
+    const targetId = record['targetId']
+    const focusKey = record['focusKey']
+    if (
+        focusKey !== undefined &&
+        (typeof focusKey !== 'string' || focusKey.length > 180)
+    ) {
+        return { error: 'Invalid speech focus' }
+    }
+    if (
+        targetId !== undefined &&
+        (typeof targetId !== 'string' || targetId.length > 100)
+    ) {
+        return { error: 'Invalid speech target hint' }
+    }
+    return {
+        message: {
+            text: trimmed,
+            type: 'chat',
+            ...(focusKey === undefined ? {} : { focusKey }),
+            ...(targetId === undefined ? {} : { targetId }),
+        },
+    }
 }
 
 function parseInventoryAction(record: Record<string, unknown>): ParseResult {

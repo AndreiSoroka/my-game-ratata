@@ -24,6 +24,7 @@ import {
     send,
     sendError,
 } from './roomMessaging'
+import { createRoomPlayerFactory } from './roomPlayer'
 import type { WorldLocations } from './worldLocations'
 
 interface JoinContext {
@@ -74,6 +75,20 @@ export function createRoomJoiner(
             archetype,
             heroClass
         )
+}
+
+export function createDefaultRoomJoiner(
+    context: Omit<Parameters<typeof createRoomJoiner>[0], 'createPlayer'>
+) {
+    return createRoomJoiner({
+        ...context,
+        createPlayer: createRoomPlayerFactory(
+            context.characters,
+            context.nicknames,
+            () => context.room.navigation,
+            () => context.room.refreshPrayerAuraEnvironment()
+        ),
+    })
 }
 
 export function joinRoom(

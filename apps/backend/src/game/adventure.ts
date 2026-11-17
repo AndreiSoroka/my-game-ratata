@@ -3,17 +3,17 @@ import type {
     AdventureSnapshot,
     AdventureTradeItemId,
     GameEventPayload,
-    QuestRewardMode,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import { createAdventureChoice } from './adventureChoice'
 import {
     executeAdventureCommand,
     resolveAdventureService,
 } from './adventureCommands'
 import { observeAdventureEvents } from './adventureDeaths'
-import { chooseAdventureReply, interactAdventureNpc } from './adventureDialogue'
+import { interactAdventureNpc } from './adventureDialogue'
 import { createAdventureForest } from './adventureForest'
 import type { AdventureResources } from './adventureResources'
 import { createAdventureSessions } from './adventureSessions'
@@ -37,6 +37,7 @@ import { CityEconomyService } from './cityEconomy'
 import { CityFarmSupply } from './cityFarmSupply'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
+import { extendNpcQuestDialogue } from './npcQuestDialogue'
 import type { WorldObjects } from './worldObjects'
 
 export class AdventureService {
@@ -138,6 +139,8 @@ export class AdventureService {
     public readonly trySpendGold = this.walletActions.trySpendGold
     public readonly drainGold = this.walletActions.drainGold
     public readonly creditLootGold = this.walletActions.creditLootGold
+    public readonly walletFor = (actorId: string): PlayerAdventure =>
+        this.stateFor(actorId)
 
     public handle(
         actor: GameCharacter,
@@ -228,39 +231,30 @@ export class AdventureService {
         service?: 'shop' | 'orders' | 'repair',
         text?: string
     ): GameEventPayload[] {
-        return interactAdventureNpc(
+        return extendNpcQuestDialogue(
+            this,
             actor,
-            npcId,
-            locationNPCs,
             this.stateFor(actor.id),
-            now,
-            navigation,
-            service,
-            text
+            interactAdventureNpc(
+                actor,
+                npcId,
+                locationNPCs,
+                this.stateFor(actor.id),
+                now,
+                navigation,
+                service,
+                text
+            ),
+            now
         )
     }
-    public choose(
-        actor: GameCharacter,
-        choiceId: string,
-        locationNPCs: GameCharacter[],
-        navigation?: NavigationService,
-        now = this.now(),
-        rewardMode?: QuestRewardMode
-    ): GameEventPayload[] {
-        return chooseAdventureReply(
-            actor,
-            choiceId,
-            locationNPCs,
-            this.stateFor(actor.id),
-            now,
-            navigation,
-            {
-                ...(rewardMode === undefined ? {} : { rewardMode }),
-                memberIds: this.questRewardMembers(actor.id),
-                award: this.grantQuestGoldOnce,
-            }
-        )
-    }
+    public readonly choose = createAdventureChoice({
+        service: this,
+        stateFor: (id) => this.stateFor(id),
+        now: () => this.now(),
+        members: (id) => this.questRewardMembers(id),
+        award: (request) => this.grantQuestGoldOnce(request),
+    })
 
     public trade(
         actor: GameCharacter,

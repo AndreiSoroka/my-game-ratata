@@ -47,6 +47,12 @@ defineProps<{
                         ? 'Враг · 1–4 действия'
                         : 'Союзник · F действия'
             }}</small>
+            <small
+                v-if="target.workerActivity"
+                class="target-work"
+                aria-label="Занятие работника"
+                >{{ target.workerActivity.text }}</small
+            >
         </template>
         <template v-else-if="object">
             <strong>{{ object.name }}</strong>

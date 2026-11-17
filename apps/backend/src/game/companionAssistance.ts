@@ -5,6 +5,7 @@ import { canRequest, release, sync } from './companionState'
 import { canPerformSkillAction } from './skillProgression'
 
 export interface AssistanceContext {
+    modelConsent?: boolean
     questCompleted(actorId: string, questId: string): boolean
     hasLineOfSight(actor: GameCharacter, npc: GameCharacter): boolean
 }
@@ -42,7 +43,7 @@ export class CompanionAssistance {
         }
         if (
             npc.controllerKind === 'network_player' ||
-            npc.soul.controlSource !== 'script' ||
+            !acceptsAssistanceSource(npc, context) ||
             !npc.soul.canSpeak
         ) {
             return {
@@ -162,5 +163,15 @@ function assistanceAvailable(
         context.hasLineOfSight(actor, npc) &&
         canPerformSkillAction(actor, now) &&
         canPerformSkillAction(npc, now)
+    )
+}
+
+function acceptsAssistanceSource(
+    npc: GameCharacter,
+    context: AssistanceContext
+): boolean {
+    return (
+        npc.soul.controlSource === 'script' ||
+        (context.modelConsent === true && npc.soul.controlSource === 'model')
     )
 }

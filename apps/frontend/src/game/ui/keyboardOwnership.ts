@@ -10,14 +10,18 @@ export function isTextEntry(target: EventTarget | null): boolean {
 export function isOwnedUiTarget(target: EventTarget | null): boolean {
     return (
         target instanceof HTMLElement &&
-        (isTextEntry(target) || target.closest(windowSelector) !== null)
+        (isTextEntry(target) ||
+            target.closest(windowSelector) !== null ||
+            target.closest('[data-game-input-owner]') !== null)
     )
 }
 export function isConfirmationKey(event: KeyboardEvent): boolean {
     return ['Enter', 'Space', 'KeyF'].includes(event.code) || ['Enter', ' '].includes(event.key)
 }
 export function worldKeyboardOwned(): boolean {
-    return document.querySelector(windowSelector) !== null || isTextEntry(document.activeElement)
+    return (
+        document.querySelector(windowSelector) !== null || isOwnedUiTarget(document.activeElement)
+    )
 }
 /** A placement tool may own canvas clicks; other visible windows still block them. */
 export function worldPointerBlocked(): boolean {

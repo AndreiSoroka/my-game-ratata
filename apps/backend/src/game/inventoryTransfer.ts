@@ -6,6 +6,7 @@ import {
     itemQuantity,
 } from './inventoryItems'
 import { addInventoryItems, transferInventoryItem } from './inventoryStacks'
+import { availableInventoryQuantity } from './rewardReservations'
 
 /** Atomically transfers a real portion; failed capacity checks preserve both bags. */
 export function transferInventoryQuantity(
@@ -21,7 +22,7 @@ export function transferInventoryQuantity(
         source === destination ||
         !Number.isSafeInteger(quantity) ||
         quantity < 1 ||
-        quantity > itemQuantity(item)
+        quantity > availableInventoryQuantity(source, instanceId)
     ) {
         return undefined
     }

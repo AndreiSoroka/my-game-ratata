@@ -26,28 +26,7 @@ for (const mobile of [false, true]) {
         )
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(canvas).toBeVisible()
-        for (const slot of [1, 4]) {
-            await canvas.focus()
-            await page.keyboard.press(`Shift+Digit${slot}`)
-            const picker = page.getByRole('dialog', { name: `Назначить слот ${slot}` })
-            await picker.getByRole('button', { name: 'Саженец · 0', exact: true }).click()
-            await page.keyboard.press(`Digit${slot}`)
-            const hint = page.getByRole('region', { name: 'Посадка дерева' })
-            await expect(hint).toBeVisible()
-            await expect(hint).toHaveCSS('position', 'absolute')
-            await expect(hint.getByRole('status')).not.toHaveText('Проверяем участок…')
-            await hint.getByRole('button', { name: 'Посадить · F / Enter' }).click()
-            await expect(hint).toBeVisible()
-            expect(
-                await page.evaluate(
-                    () => window.__ratataTest!.getState().player?.control?.action?.kind
-                )
-            ).not.toBe('plant_tree')
-            await page.keyboard.press('Escape')
-            await expect(hint).toHaveCount(0)
-            await expect(page.locator('.game-menu')).toHaveCount(0)
-            await expect(page.locator('.hotbar-slot').nth(slot - 1)).toContainText('0')
-        }
+        await verifySaplingBindings(page)
         const source = await page.evaluate(() => {
             const state = window.__ratataTest!.getState()
             return state
@@ -71,26 +50,44 @@ for (const mobile of [false, true]) {
             (id) =>
                 window.__ratataTest!.navigate(
                     { targetKey: `resource:${id}` },
-                    { timeoutMs: 20_000 }
+                    { timeoutMs: 20_000, tolerance: 12 }
                 ),
             source!.id
         )
         expect(navigation.status).toBe('arrived')
-        const result = await page.evaluate(
-            (nodeId) =>
-                window.__ratataTest!.act(
-                    {
-                        type: 'auto_action',
-                        action: { kind: 'gather', nodeId, operation: 'harvest' },
-                    },
-                    {
-                        until: { type: 'inventory', itemId: 'brushwood', atLeast: 1 },
-                        timeoutMs: 5_000,
-                    }
-                ),
-            source!.id
-        )
-        expect(result.status).toBe('condition_met')
+        const result = await page.evaluate(async (nodeId) => {
+            const api = window.__ratataTest!
+            const before = {
+                position: api.getState().player!.position,
+                source: api
+                    .getState()
+                    .snapshot!.adventure!.resourceNodes.find((node) => node.id === nodeId),
+                actions: api.observe().targets.find((target) => target.key === `resource:${nodeId}`)
+                    ?.actions,
+            }
+            const action = await api.act(
+                { type: 'auto_action', action: { kind: 'gather', nodeId, operation: 'harvest' } },
+                { until: { type: 'inventory', itemId: 'brushwood', atLeast: 1 }, timeoutMs: 5_000 }
+            )
+            const state = api.getState()
+            return {
+                status: action.status,
+                reason: action.reason,
+                elapsedMs: action.elapsedMs,
+                before,
+                after: {
+                    position: state.player!.position,
+                    control: state.player!.control,
+                    inventory: state.player!.inventory,
+                    source: state.snapshot!.adventure!.resourceNodes.find(
+                        (node) => node.id === nodeId
+                    ),
+                    noticeId: state.snapshot!.adventure!.noticeId,
+                    notice: state.snapshot!.adventure!.notice,
+                },
+            }
+        }, source!.id)
+        expect(result.status, JSON.stringify(result)).toBe('condition_met')
         await expect
             .poll(() =>
                 page.evaluate(
@@ -130,37 +127,7 @@ async function verifyPlantingForChromium(
 }
 
 async function acquireSapling(page: Page): Promise<void> {
-    const gathered = await page.evaluate(async () => {
-        const api = window.__ratataTest!
-        const source = api
-            .getState()
-            .snapshot!.adventure!.resourceNodes.filter(
-                (node) => node.source === 'branches' && node.phase === 'ready'
-            )
-            .sort(
-                (first, second) =>
-                    Math.hypot(
-                        first.position.x - api.getState().player!.position.x,
-                        first.position.y - api.getState().player!.position.y
-                    ) -
-                    Math.hypot(
-                        second.position.x - api.getState().player!.position.x,
-                        second.position.y - api.getState().player!.position.y
-                    )
-            )[0]!
-        const approach = await api.navigate(
-            { targetKey: `resource:${source.id}` },
-            { timeoutMs: 20_000 }
-        )
-        if (approach.status !== 'arrived') return approach.status
-        return (
-            await api.act(
-                { type: 'auto_action', action: { kind: 'gather', nodeId: source.id } },
-                { until: { type: 'inventory', itemId: 'brushwood', atLeast: 2 } }
-            )
-        ).status
-    })
-    expect(gathered).toBe('condition_met')
+    await acquireSecondBrushwood(page)
     const shop = await page.evaluate(() =>
         window
             .__ratataTest!.observe()
@@ -339,4 +306,86 @@ async function selectPlot(
     for (let step = 0; step < Math.abs(dy); step += 1)
         await page.keyboard.press(dy < 0 ? 'ArrowUp' : 'ArrowDown')
     await expect.poll(() => previews.at(-1)?.position).toEqual(position)
+}
+
+async function verifySaplingBindings(page: Page): Promise<void> {
+    const canvas = page.locator('canvas[data-game-canvas=true]')
+    for (const slot of [1, 4]) {
+        await canvas.focus()
+        await page.keyboard.press(`Shift+Digit${slot}`)
+        const picker = page.getByRole('dialog', { name: `Назначить слот ${slot}` })
+        await picker.getByRole('button', { name: 'Саженец · 0', exact: true }).click()
+        await page.keyboard.press(`Digit${slot}`)
+        const hint = page.getByRole('region', { name: 'Посадка дерева' })
+        await expect(hint).toBeVisible()
+        await expect(hint).toHaveCSS('position', 'absolute')
+        await expect(hint.getByRole('status')).not.toHaveText('Проверяем участок…')
+        await hint.getByRole('button', { name: 'Посадить · F / Enter' }).click()
+        await expect(hint).toBeVisible()
+        expect(
+            await page.evaluate(() => window.__ratataTest!.getState().player?.control?.action?.kind)
+        ).not.toBe('plant_tree')
+        await page.keyboard.press('Escape')
+        await expect(hint).toHaveCount(0)
+        await expect(page.locator('.game-menu')).toHaveCount(0)
+        await expect(page.locator('.hotbar-slot').nth(slot - 1)).toContainText('0')
+    }
+}
+
+async function acquireSecondBrushwood(page: Page): Promise<void> {
+    const gathered = await page.evaluate(async () => {
+        const api = window.__ratataTest!
+        const source = api
+            .getState()
+            .snapshot!.adventure!.resourceNodes.filter(
+                (node) => node.source === 'branches' && node.phase === 'ready'
+            )
+            .sort(
+                (first, second) =>
+                    Math.hypot(
+                        first.position.x - api.getState().player!.position.x,
+                        first.position.y - api.getState().player!.position.y
+                    ) -
+                    Math.hypot(
+                        second.position.x - api.getState().player!.position.x,
+                        second.position.y - api.getState().player!.position.y
+                    )
+            )[0]!
+        const approach = await api.navigate(
+            { targetKey: `resource:${source.id}` },
+            { timeoutMs: 20_000, tolerance: 12 }
+        )
+        if (approach.status !== 'arrived')
+            return { status: approach.status, reason: approach.reason, sourceId: source.id }
+        const before = {
+            position: api.getState().player!.position,
+            source: api
+                .getState()
+                .snapshot!.adventure!.resourceNodes.find((node) => node.id === source.id),
+            actions: api.observe().targets.find((target) => target.key === `resource:${source.id}`)
+                ?.actions,
+        }
+        const action = await api.act(
+            { type: 'auto_action', action: { kind: 'gather', nodeId: source.id } },
+            { until: { type: 'inventory', itemId: 'brushwood', atLeast: 2 } }
+        )
+        const state = api.getState()
+        return {
+            status: action.status,
+            reason: action.reason,
+            elapsedMs: action.elapsedMs,
+            before,
+            after: {
+                position: state.player!.position,
+                control: state.player!.control,
+                inventory: state.player!.inventory,
+                source: state.snapshot!.adventure!.resourceNodes.find(
+                    (node) => node.id === source.id
+                ),
+                noticeId: state.snapshot!.adventure!.noticeId,
+                notice: state.snapshot!.adventure!.notice,
+            },
+        }
+    })
+    expect(gathered.status, JSON.stringify(gathered)).toBe('condition_met')
 }

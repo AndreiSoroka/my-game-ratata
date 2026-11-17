@@ -1,23 +1,22 @@
-import type {
-    CharacterRelationship,
-    WorldSnapshot,
-} from '@my-game-ratata/contracts'
+import type { WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import { observeCharacterCombat, observeGraveCombat } from './combatObservation'
-import { snapshotCompanionSoul } from './companionState'
-import { canTargetByFaction } from './factions'
+import { observeGraveCombat } from './combatObservation'
 import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
 import type { RoomLife } from './roomLife'
 import { charactersInLocation } from './roomQueries'
+import { projectRoomCharacter } from './roomSnapshotCharacter'
+import type { RoomSocial } from './roomSocial'
 import type { ScenarioService } from './scenarios'
+import { serverEpoch } from './serverEpoch'
 import type { TheftService } from './theft'
 import type { WorldLocations } from './worldLocations'
 import { centerLocationId } from './worldLocations'
 
-interface SnapshotContext {
+export interface SnapshotContext {
+    social?: RoomSocial
     adventure: AdventureService
     characters: Map<string, GameCharacter>
     parties: PartyService
@@ -72,40 +71,13 @@ export function roomSnapshot(
     )
     return {
         ...snapshot,
+        serverEpoch,
         graves: (context.life?.graves(locationId) ?? []).map((grave) =>
             observeGraveCombat(grave, combatView)
         ),
-        characters: snapshot.characters.map((character) => ({
-            ...observeCharacterCombat(
-                character,
-                context.characters.get(character.id),
-                combatView
-            ),
-            ...(character.soul === undefined
-                ? {}
-                : {
-                      soul: snapshotCompanionSoul(
-                          context.characters.get(character.id),
-                          character.soul,
-                          playerId
-                      ),
-                  }),
-            relationship: relationshipFor(
-                observer,
-                context.characters.get(character.id),
-                playerId,
-                now
-            ),
-            control:
-                character.id === playerId
-                    ? (character.control ?? {
-                          mode: 'none' as const,
-                          targetId: null,
-                      })
-                    : { mode: 'none' as const, targetId: null },
-            inventory: character.id === playerId ? character.inventory : [],
-            theft: context.theft.snapshot(character.id, playerId, now),
-        })),
+        characters: snapshot.characters.map((character) =>
+            projectRoomCharacter(context, character, combatView, playerId)
+        ),
         location: location.description,
         ...(playerId === undefined
             ? {}
@@ -120,23 +92,9 @@ export function roomSnapshot(
                       context.characters.get(playerId)
                   ),
                   party: context.parties.snapshot(playerId),
+                  ...(observer === undefined || context.social === undefined
+                      ? {}
+                      : { social: context.social.snapshot(observer, now) }),
               }),
     }
-}
-
-function relationshipFor(
-    observer: GameCharacter | undefined,
-    target: GameCharacter | undefined,
-    playerId: string | undefined,
-    now: number
-): CharacterRelationship {
-    if (target === undefined) {
-        return 'friendly'
-    }
-    if (target.id === playerId) {
-        return 'self'
-    }
-    return observer !== undefined && canTargetByFaction(observer, target, now)
-        ? 'hostile'
-        : 'friendly'
 }

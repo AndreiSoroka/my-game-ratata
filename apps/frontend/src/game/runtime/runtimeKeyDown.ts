@@ -19,7 +19,19 @@ interface RuntimeKeyContext {
 
 export function handleRuntimeKeyDown(event: KeyboardEvent, actions: RuntimeKeyContext): void {
     if (isGameKeyboardBlocked(event)) return
-    if (actions.chat.handleKey(event, (text) => actions.send({ text, type: 'chat' }))) return
+    if (
+        actions.chat.handleKey(event, (text) => {
+            const targetId = actions.options.getChatTargetId?.()
+            const focusKey = actions.options.getChatFocusKey?.()
+            actions.send({
+                text,
+                type: 'chat',
+                ...(targetId ? { targetId } : {}),
+                ...(focusKey ? { focusKey } : {}),
+            })
+        })
+    )
+        return
     if (actions.movement.keyDown(event)) return
     if (
         handleRuntimeShortcut(event, {

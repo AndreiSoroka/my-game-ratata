@@ -1,0 +1,133 @@
+import type { AgentDecision } from '@my-game-ratata/contracts'
+
+import type { GameCharacter } from '../game/character'
+import type { GameRoom } from '../game/room'
+import type { NpcAiDialogue } from './dialogue'
+import { buildNpcAiObservation } from './observation'
+import type { NpcAiActorState } from './runtimeState'
+export function taskSpeech(
+    dialogue: NpcAiDialogue,
+    state: NpcAiActorState,
+    text: string,
+    now: number
+): void {
+    const task = state.task
+    if (task?.requesterId == null) {
+        return
+    }
+    dialogue.speak(
+        state,
+        {
+            kind: 'message',
+            id: task.id,
+            senderId: task.requesterId,
+            text: '',
+            locationId: state.actor?.locationId ?? '',
+            position: { x: 0, y: 0 },
+            at: now,
+            channel:
+                task.audienceKey?.startsWith('whisper:') === true
+                    ? 'whisper'
+                    : 'say',
+        },
+        text,
+        now
+    )
+}
+export function addressedDecision(
+    state: NpcAiActorState,
+    decision: AgentDecision
+): AgentDecision {
+    const requesterId = state.task?.requesterId
+    return decision.type === 'speak' &&
+        requesterId != null &&
+        state.task?.audienceKey !== 'say'
+        ? { ...decision, targetId: requesterId }
+        : decision
+}
+
+export function rememberNpcReply(state: NpcAiActorState, memory: string): void {
+    const task = state.task
+    if (task === null) {
+        return
+    }
+    state.memory = memory.slice(0, 2000)
+    state.conversations.set(
+        task.audienceKey ?? task.requesterId ?? 'city',
+        state.memory
+    )
+    if (state.conversations.size > 32) {
+        const oldest = state.conversations.keys().next().value
+        if (oldest !== undefined) {
+            state.conversations.delete(oldest)
+        }
+    }
+}
+export function rememberNpcMerchant(
+    room: GameRoom,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    decision: Extract<AgentDecision, { type: 'interact' }>,
+    now: number
+): void {
+    const observation = buildNpcAiObservation(
+        room,
+        actor,
+        state.config.role,
+        now
+    )
+    if (observation.market === undefined) {
+        return
+    }
+    state.facts = state.facts.filter(
+        (fact) =>
+            fact.kind !== 'merchant' || fact.merchantId !== decision.targetId
+    )
+    state.facts.push({
+        kind: 'merchant',
+        merchantId: decision.targetId,
+        observedAt: now,
+        offers: observation.market,
+    })
+    state.facts = state.facts.slice(-4)
+}
+
+export function rememberNpcInspection(
+    state: NpcAiActorState,
+    targetId: string,
+    events: Array<import('@my-game-ratata/contracts').GameEventPayload>,
+    now: number
+): void {
+    const information = events.flatMap((event) =>
+        event.kind === 'chat' &&
+        event.actorId === targetId &&
+        event.targetId === state.actor?.id &&
+        event.text !== undefined
+            ? [event.text]
+            : []
+    )
+    if (information.length === 0) {
+        return
+    }
+    state.facts = state.facts.filter(
+        (fact) => fact.kind !== 'inspection' || fact.targetId !== targetId
+    )
+    state.facts.push({
+        kind: 'inspection',
+        targetId,
+        observedAt: now,
+        information,
+        ...(() => {
+            const workerActivity = events.find(
+                (event) =>
+                    event.actorId === targetId &&
+                    event.targetId === state.actor?.id &&
+                    event.workerActivity !== undefined
+            )?.workerActivity
+            return workerActivity === undefined
+                ? {}
+                : { workerActivity: structuredClone(workerActivity) }
+        })(),
+    })
+    state.facts = state.facts.slice(-8)
+}

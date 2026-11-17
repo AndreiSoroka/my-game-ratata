@@ -1,12 +1,16 @@
 import {
     FARM_PLOTS,
     type MarketItemId,
+    type WorkerActivitySnapshot,
     type WorkerWorkTarget,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
+import { recordWorkerActivity } from './workerActivityState'
+import { executeWorkerAdventure } from './workerCommands'
+import { recordFarmPlotIntent } from './workerFarmActivity'
 import { approach, sourceCost, stop } from './workerNavigation'
 export class WorkerFarm {
     public remaining = 0
@@ -23,12 +27,32 @@ export class WorkerFarm {
         if (!service.farmSupply.beginWork(actor, now)) {
             this.remaining = 0
             stop(actor)
+            recordWorkerActivity(
+                actor,
+                service.farmSupply.workStatus(actor, now) ?? {
+                    reason: 'unavailable',
+                    text: 'Фермерский выход пока недоступен.',
+                    intent: 'wait',
+                },
+                now
+            )
             return
         }
         this.remaining = service.farmSupply.remaining(actor.id)
         const plot = this.selectPlot(actor, room, now)
         if (plot === undefined) {
-            this.finish(actor, room)
+            const exists = FARM_PLOTS.some((entry) =>
+                service
+                    .farmSnapshot(entry.locationId, now)
+                    .some((candidate) => candidate.id === entry.id)
+            )
+            this.finish(actor, room, now, {
+                reason: exists ? 'seeds' : 'plots',
+                text: exists
+                    ? 'Нет зрелого урожая, семян или доступного аванса семян для выбора грядки.'
+                    : 'Настоящих доступных грядок сейчас нет.',
+                intent: 'wait',
+            })
             return
         }
         this.target = {
@@ -44,29 +68,98 @@ export class WorkerFarm {
             this.supply(actor, room, plot.id, now)
             return
         }
+        this.workPlot(actor, room, plot, now)
+    }
+
+    private workPlot(
+        actor: GameCharacter,
+        room: GameRoom,
+        plot: import('@my-game-ratata/contracts').FarmPlotSnapshot,
+        now: number
+    ): void {
+        const service = room.adventureForWorkers()
         if (!approach(actor, room, plot.locationId, plot.position)) {
             if (hasNoRoute(actor)) {
-                this.finish(actor, room)
+                this.finish(actor, room, now, {
+                    reason: 'route',
+                    text: 'К выбранной грядке нет доступного пути.',
+                    intent: 'wait',
+                })
+            }
+            if (actor.hasPath()) {
+                recordFarmPlotIntent(actor, plot, now)
             }
             return
         }
         if (plot.phase === 'growing') {
+            recordWorkerActivity(
+                actor,
+                {
+                    reason: 'plots',
+                    text: `Жду роста посевов на грядке «${plot.name}».`,
+                    intent: 'wait',
+                    worksite: {
+                        kind: 'farm',
+                        sourceId: plot.id,
+                        locationId: plot.locationId,
+                        position: plot.position,
+                    },
+                    until: plot.readyAt,
+                },
+                now
+            )
             return
         }
         if (now < service.workAvailableAt(actor)) {
+            recordWorkerActivity(
+                actor,
+                {
+                    reason: 'break',
+                    text: 'Жду короткую паузу между рабочими действиями.',
+                    intent: 'wait',
+                    worksite: {
+                        kind: 'farm',
+                        sourceId: plot.id,
+                        locationId: plot.locationId,
+                        position: plot.position,
+                    },
+                    until: service.workAvailableAt(actor),
+                },
+                now
+            )
             return
         }
+        recordFarmPlotIntent(actor, plot, now)
         const action = plot.phase === 'bare' ? 'sow' : 'harvest'
-        const result = room.requestAdventure(
+        const result = executeWorkerAdventure(
             actor,
+            room,
             { type: 'farm_action', plotId: plot.id, action },
             now
         )
-        room.publishEvents(result.events)
         this.remaining = service.farmSupply.remaining(actor.id)
-        if (!result.accepted && action === 'harvest') {
-            // Partial batches must still be deliverable if the backpack fills.
-            this.finish(actor, room)
+        if (!result.accepted) {
+            this.failedPlot(actor, room, action, result.error, now)
+        }
+    }
+
+    private failedPlot(
+        actor: GameCharacter,
+        room: GameRoom,
+        action: 'sow' | 'harvest',
+        error: string | null,
+        now: number
+    ): void {
+        const status: WorkerActivitySnapshot = {
+            reason: error?.includes('рюкзак') === true ? 'bag' : 'unavailable',
+            text: error ?? 'Рабочее действие пока не выполнено.',
+            intent: action,
+            ...(this.target === undefined ? {} : { worksite: this.target }),
+        }
+        if (action === 'harvest') {
+            this.finish(actor, room, now, status)
+        } else {
+            recordWorkerActivity(actor, status, now)
         }
     }
 
@@ -100,17 +193,36 @@ export class WorkerFarm {
         const supplier =
             supplierId === undefined ? undefined : room.getCharacter(supplierId)
         if (supplier?.alive !== true) {
-            this.finish(actor, room)
+            this.finish(actor, room, now, {
+                reason: 'supplier',
+                text: 'Городской поставщик семян сейчас недоступен.',
+                intent: 'wait',
+            })
             return
         }
+        recordWorkerActivity(
+            actor,
+            {
+                reason: 'working',
+                text: `Иду к поставщику ${supplier.nickname} за настоящим авансом семян для выбранной грядки.`,
+                intent: 'get_seed',
+                ...(this.target === undefined ? {} : { worksite: this.target }),
+            },
+            now
+        )
         if (!approach(actor, room, supplier.locationId, supplier.position)) {
             if (hasNoRoute(actor)) {
-                this.finish(actor, room)
+                this.finish(actor, room, now, {
+                    reason: 'route',
+                    text: 'К поставщику семян нет доступного пути.',
+                    intent: 'wait',
+                })
             }
             return
         }
-        const result = room.requestAdventure(
+        const result = executeWorkerAdventure(
             actor,
+            room,
             {
                 type: 'farm_supply',
                 npcId: supplier.id,
@@ -119,15 +231,40 @@ export class WorkerFarm {
             },
             now
         )
-        room.publishEvents(result.events)
         if (!result.accepted) {
-            this.finish(actor, room)
+            this.finish(actor, room, now, {
+                reason:
+                    result.error?.includes('рюкзак') === true ? 'bag' : 'seeds',
+                text: result.error ?? 'Поставщик не выдал аванс семян.',
+                intent: 'wait',
+            })
         }
     }
 
-    private finish(actor: GameCharacter, room: GameRoom): void {
-        room.adventureForWorkers().farmSupply.finishWork(actor.id)
-        this.remaining = 0
+    private finish(
+        actor: GameCharacter,
+        room: GameRoom,
+        now: number,
+        reason: WorkerActivitySnapshot
+    ): void {
+        const status = {
+            ...reason,
+            ...(this.target === undefined ? {} : { worksite: this.target }),
+        }
+        const supply = room.adventureForWorkers().farmSupply
+        if (
+            ['route', 'supplier', 'plots', 'unavailable'].includes(
+                reason.reason
+            )
+        ) {
+            supply.pauseWork(actor.id, status, now + 1000)
+            status.until = now + 1000
+        } else {
+            supply.finishWork(actor.id, status)
+        }
+        stop(actor)
+        recordWorkerActivity(actor, status, now)
+        this.remaining = supply.remaining(actor.id)
     }
 }
 

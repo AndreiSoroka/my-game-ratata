@@ -24,6 +24,7 @@ import type { RoomLife } from './roomLife'
 import { type RoomSocket, send } from './roomMessaging'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
+import { pauseWorkerActivity } from './workerActivityState'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
 interface SimulationContext {
@@ -49,6 +50,7 @@ interface SimulationContext {
 
 export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, room, now } = context
+    room.social.update(now, characters.values())
     room.refreshPrayerAuraEnvironment()
     context.parties.update(characters.values(), now)
     room.workerRequests.reconcile(characters, now)
@@ -108,11 +110,22 @@ function advanceControllers(
     const { characters, controllers, room, now } = context
     for (const [id, controller] of controllers) {
         const character = characters.get(id)
+        if (room.social.exchanges.isPaused(id)) {
+            if (character !== undefined) {
+                pauseWorkerActivity(character, 'exchange', now)
+            }
+            room.scenarios.defer(id, now)
+            continue
+        }
         if (character === undefined || reacting.has(id)) {
+            if (character !== undefined) {
+                pauseWorkerActivity(character, 'reaction', now)
+            }
             room.scenarios.defer(id, now)
             continue
         }
         if (context.companions.blocksScenario(character, now, room)) {
+            pauseWorkerActivity(character, 'control', now)
             room.scenarios.defer(id, now)
             advanceCharacterControl(character, room, now)
             continue
@@ -120,12 +133,15 @@ function advanceControllers(
         if (
             room.scenarios.advance(character, room, now, conversations.has(id))
         ) {
+            pauseWorkerActivity(character, 'scenario', now)
             continue
         }
         if (conversations.has(id)) {
+            pauseWorkerActivity(character, 'conversation', now)
             continue
         }
         if (advanceCharacterControl(character, room, now)) {
+            pauseWorkerActivity(character, 'control', now)
             continue
         }
         room.scenarios.advancePolicy(character, controller, room, now)

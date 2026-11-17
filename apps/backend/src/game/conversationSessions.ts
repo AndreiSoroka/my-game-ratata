@@ -32,6 +32,10 @@ export function reconcileConversations(
         }
         const actor = actors.get(actorId)
         const npc = actors.get(dialogue.npcId)
+        if (actor?.controllerKind !== 'network_player') {
+            state.dialogue = null
+            continue
+        }
         if (
             !available(npc) ||
             !conversationAvailable(actor, npc, navigationFor) ||

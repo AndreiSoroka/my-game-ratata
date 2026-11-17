@@ -4,6 +4,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { type EncounterMapObject, readEncounterData } from './encounterData'
+import { readMapBuildings } from './mapBuildings'
 import type { MapGrid } from './navigation'
 import { readNavigationSurfaces } from './navigationSurfaces'
 import { readWorldContainers } from './worldObjectData'
@@ -57,6 +58,7 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
     )?.data
     const encounters = readEncounterData(map, mapId)
     return {
+        buildings: readMapBuildings(map),
         containers: readWorldContainers(map, mapId),
         training: readTrainingMapData(
             map,

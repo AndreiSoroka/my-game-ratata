@@ -1,6 +1,7 @@
 import { HERO_REVIVAL_WINDOW_MS } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { notifyCharacterDeath } from './characterDeathObservers'
 import { resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { clearResourcePractice } from './resourcePractice'
@@ -25,6 +26,7 @@ export function applyCharacterDamage(
         clearResourcePractice(character)
         character.deathSequence += 1
         character.alive = false
+        notifyCharacterDeath(character)
         character.reviveUntil = now + HERO_REVIVAL_WINDOW_MS
         character.actionLockUntil = 0
         character.setAnimation('death', now)

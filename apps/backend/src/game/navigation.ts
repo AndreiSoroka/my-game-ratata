@@ -13,6 +13,7 @@ import type {
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { AuthoredEncounters } from './encounterData'
+import type { MapBuildingDefinition } from './mapBuildings'
 import { clamp } from './math'
 import { buildGrid, type TiledMap } from './navigationGrid'
 import { findPath } from './pathfinding'
@@ -23,6 +24,7 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    buildings?: MapBuildingDefinition[]
     containers?: AuthoredContainerDefinition[]
     encounters?: AuthoredEncounters
     training?: TrainingMapData

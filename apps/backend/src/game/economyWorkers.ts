@@ -1,9 +1,7 @@
 import {
-    type AdventureResourceNode,
     CENTER_LOCATION_ID,
     type MarketItemId,
     quoteMarketTrade,
-    WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -11,20 +9,11 @@ import type { CharacterController } from './controllers'
 import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
-import { WorkerBrushwood } from './workerBrushwood'
-import {
-    deliveryKinds,
-    hasNoRoute,
-    workerDeliveryCount,
-    WorkerFarm,
-} from './workerFarm'
-import {
-    approach,
-    fleeWorker,
-    reachedResource,
-    sourceCost,
-    stop,
-} from './workerNavigation'
+import { recordWorkerActivity } from './workerActivityState'
+import { executeWorkerAdventure } from './workerCommands'
+import { deliveryKinds, workerDeliveryCount, WorkerFarm } from './workerFarm'
+import { WorkerGather } from './workerGather'
+import { approach, fleeWorker } from './workerNavigation'
 import { repairWorker } from './workerRepair'
 import { resourceWorkTarget } from './workerRequestData'
 import { recordWorkerProbeWork } from './workerRequestWork'
@@ -33,14 +22,14 @@ import type { WorkerJob } from './workerSpawns'
 export class EconomyWorkerController implements CharacterController {
     private nextDecisionAt = 0
     private initialized = false
-    private readonly nextWorkAt = new Map<string, number>()
-    private selected: AdventureResourceNode | undefined
     private readonly farming = new WorkerFarm()
-    private readonly brushwood = new WorkerBrushwood()
     private requestIndex = 0
     private plantSearchIndex = 0
 
-    public constructor(private readonly job: WorkerJob) {}
+    private readonly gathering: WorkerGather
+    public constructor(private readonly job: WorkerJob) {
+        this.gathering = new WorkerGather(job)
+    }
 
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
         const service = room.adventureForWorkers()
@@ -67,7 +56,7 @@ export class EconomyWorkerController implements CharacterController {
         if (this.job === 'farmer') {
             this.farming.update(actor, room, now)
         } else {
-            this.gather(actor, room, now)
+            this.gathering.update(actor, room, now)
         }
     }
 
@@ -95,15 +84,30 @@ export class EconomyWorkerController implements CharacterController {
                         carriesWood ||
                         actor.locationId === merchant?.locationId)
             )
-        if (
-            row === undefined ||
-            (this.job === 'farmer' && this.farming.remaining > 0)
-        ) {
+        if (row === undefined || this.waitForBatch(actor, room)) {
             return false
         }
         if (merchant?.alive !== true) {
+            recordWorkerActivity(
+                actor,
+                {
+                    reason: 'supplier',
+                    text: 'Не могу сдать продукцию: городской торговец сейчас недоступен.',
+                    intent: 'deliver',
+                },
+                now
+            )
             return true
         }
+        recordWorkerActivity(
+            actor,
+            {
+                reason: 'working',
+                text: `Доставляю настоящую продукцию торговцу ${merchant.nickname}.`,
+                intent: 'deliver',
+            },
+            now
+        )
         if (!approach(actor, room, merchant.locationId, merchant.position)) {
             return true
         }
@@ -117,8 +121,9 @@ export class EconomyWorkerController implements CharacterController {
             this.nextDecisionAt = now + 5000
             return true
         }
-        const result = room.requestAdventure(
+        executeWorkerAdventure(
             actor,
+            room,
             {
                 type: 'market_trade',
                 npcId: merchant.id,
@@ -130,8 +135,16 @@ export class EconomyWorkerController implements CharacterController {
             },
             now
         )
-        room.publishEvents(result.events)
         return true
+    }
+
+    private waitForBatch(actor: GameCharacter, room: GameRoom): boolean {
+        return (
+            this.job === 'farmer' &&
+            this.farming.remaining > 0 &&
+            room.adventureForWorkers().farmSupply.workSchedule(actor.id)
+                .stop === undefined
+        )
     }
 
     private repair(actor: GameCharacter, room: GameRoom, now: number): boolean {
@@ -143,91 +156,6 @@ export class EconomyWorkerController implements CharacterController {
         }
         this.nextDecisionAt = now + delay
         return true
-    }
-
-    private gather(actor: GameCharacter, room: GameRoom, now: number): void {
-        const kinds: Array<'wood' | 'stone' | 'scrap'> =
-            this.job === 'lumberjack' ? ['wood'] : ['stone', 'scrap']
-        const service = room.adventureForWorkers()
-        if (this.selected === undefined) {
-            const market = service.economy.snapshot(CENTER_LOCATION_ID, now)
-            const wanted = kinds.filter(
-                (kind) =>
-                    now >= (this.nextWorkAt.get(kind) ?? 0) &&
-                    (market?.rows.find((row) => row.itemId === kind)?.stock ??
-                        Infinity) <
-                        (market?.rows.find((row) => row.itemId === kind)
-                            ?.target ?? 0)
-            )
-            if (wanted.length === 0) {
-                this.gatherBrushwood(actor, room, now)
-                return
-            }
-            const candidates = WORLD_LOCATION_DEFINITIONS.flatMap((location) =>
-                service.resourceSnapshot(location.id)
-            )
-                .filter(
-                    (node) =>
-                        wanted.includes(
-                            node.kind as 'wood' | 'stone' | 'scrap'
-                        ) && node.remaining > 0
-                )
-                .sort((a, b) => sourceCost(actor, a) - sourceCost(actor, b))
-            this.selected = candidates[0]
-        }
-        const target = this.selected
-        if (target === undefined) {
-            this.gatherBrushwood(actor, room, now)
-            return
-        }
-        const live = service
-            .resourceSnapshot(target.locationId)
-            .find((node) => node.id === target.id)
-        if (live === undefined || live.remaining <= 0) {
-            this.selected = undefined
-            this.gatherBrushwood(actor, room, now)
-            return
-        }
-        const navigation = room.navigationFor(actor)
-        const reached = reachedResource(actor, live, navigation)
-        if (reached) {
-            stop(actor)
-        } else if (
-            !approach(actor, room, target.locationId, target.position, 8)
-        ) {
-            if (hasNoRoute(actor)) {
-                this.selected = undefined
-                this.gatherBrushwood(actor, room, now)
-            }
-            return
-        }
-        const result = room.requestAdventure(
-            actor,
-            { type: 'gather', nodeId: target.id },
-            now
-        )
-        room.publishEvents(result.events)
-        if (result.accepted) {
-            this.nextWorkAt.set(
-                target.kind,
-                now + (this.job === 'lumberjack' ? 600_000 : 1_200_000)
-            )
-        } else {
-            this.gatherBrushwood(actor, room, now)
-        }
-        this.selected = undefined
-    }
-
-    private gatherBrushwood(
-        actor: GameCharacter,
-        room: GameRoom,
-        now: number
-    ): void {
-        if (this.job === 'lumberjack') {
-            this.brushwood.update(actor, room, now)
-        } else {
-            stop(actor)
-        }
     }
 
     private plant(actor: GameCharacter, room: GameRoom, now: number): boolean {
@@ -247,13 +175,22 @@ export class EconomyWorkerController implements CharacterController {
                 continue
             }
             const position = navigation.tileToWorld(tile)
-            const result = room.requestAdventure(
+            const result = executeWorkerAdventure(
                 actor,
+                room,
                 { type: 'plant_tree', position },
                 now
             )
-            room.publishEvents(result.events)
             if (result.accepted) {
+                recordWorkerActivity(
+                    actor,
+                    {
+                        reason: 'working',
+                        text: 'Посадил настоящий саженец на подходящем участке.',
+                        intent: 'work',
+                    },
+                    now
+                )
                 return true
             }
         }
@@ -275,7 +212,7 @@ export class EconomyWorkerController implements CharacterController {
         const target =
             this.job === 'farmer'
                 ? this.farming.target
-                : resourceWorkTarget(this.selected)
+                : resourceWorkTarget(this.gathering.selected)
         if (
             Object.hasOwn(room, 'workerRequests') &&
             room.workerRequests.updateWorker(
@@ -285,22 +222,45 @@ export class EconomyWorkerController implements CharacterController {
                 now,
                 target,
                 (message) => {
-                    this.selected = undefined
+                    this.gathering.selected = undefined
                     recordWorkerProbeWork(
                         actor,
                         room,
                         message,
                         this.job,
                         now,
-                        this.nextWorkAt
+                        this.gathering.nextWorkAt
                     )
                 }
             )
         ) {
             return true
         }
-        return (
-            !canPerformSkillAction(actor, now) || fleeWorker(actor, room, now)
-        )
+        if (!canPerformSkillAction(actor, now)) {
+            recordWorkerActivity(
+                actor,
+                {
+                    reason: 'unavailable',
+                    text: 'Обычное рабочее действие сейчас недоступно состоянию персонажа.',
+                    intent: 'wait',
+                },
+                now
+            )
+            return true
+        }
+        const fleeing = fleeWorker(actor, room, now)
+        if (fleeing) {
+            recordWorkerActivity(
+                actor,
+                {
+                    reason: 'threat',
+                    text: 'Сейчас вижу опасность и отхожу от неё.',
+                    intent: 'return',
+                    danger: { status: 'observed', observedAt: now },
+                },
+                now
+            )
+        }
+        return fleeing
     }
 }

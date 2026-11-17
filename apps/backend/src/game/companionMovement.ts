@@ -1,4 +1,8 @@
-import type { CompanionOrder, Vector2 } from '@my-game-ratata/contracts'
+import type {
+    CompanionOrder,
+    CompanionWaitMode,
+    Vector2,
+} from '@my-game-ratata/contracts'
 
 import type { CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
@@ -15,6 +19,11 @@ export interface CompanionRuntime {
     metActors: Set<string>
     order: CompanionOrder
     profile: CompanionProfile
+    controlRevision?: number
+    waitMode?: CompanionWaitMode | undefined
+    waitDeparted?: boolean
+    waitResumeOrder?: 'follow' | 'idle'
+    waitResumeLeaderId?: string | null
 }
 
 export function advanceCompanionIntent(
@@ -24,6 +33,9 @@ export function advanceCompanionIntent(
     world: CompanionWorld,
     now: number
 ): void {
+    if (advanceCompanionWait(character, leader, state, world, now)) {
+        return
+    }
     if (leader !== undefined && needsCrossing(character, leader, state)) {
         followToLocation(character, leader, state, world, now)
         return
@@ -51,6 +63,82 @@ export function advanceCompanionIntent(
     }
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()
+}
+
+function advanceCompanionWait(
+    character: GameCharacter,
+    leader: GameCharacter | undefined,
+    state: CompanionRuntime,
+    world: CompanionWorld,
+    now: number
+): boolean {
+    if (state.order !== 'wait') {
+        return false
+    }
+    state.waitDeparted ||= ownerDeparted(leader, state)
+    if (!atWaitAnchor(character, state, world, now)) {
+        return true
+    }
+    const returned = waitOwnerReturned(character, leader, world)
+    if (
+        state.waitMode === 'until_return' &&
+        state.waitDeparted &&
+        state.profile.canFollow &&
+        returned
+    ) {
+        state.order = 'follow'
+        state.waitMode = undefined
+        state.waitDeparted = false
+        delete state.waitResumeOrder
+        delete state.waitResumeLeaderId
+        state.controlRevision = (state.controlRevision ?? 0) + 1
+    } else {
+        character.setMoveInput({ x: 0, y: 0 })
+        character.clearPath()
+        return true
+    }
+    return false
+}
+
+function waitOwnerReturned(
+    character: GameCharacter,
+    leader: GameCharacter | undefined,
+    world: CompanionWorld
+): boolean {
+    return (
+        leader?.locationId === character.locationId &&
+        (leader.controllerKind !== 'network_player' || leader.connected) &&
+        distance(leader.position, character.position) <= 48 &&
+        world
+            .navigationFor(character)
+            .hasLineOfSight(character.position, leader.position)
+    )
+}
+
+function ownerDeparted(
+    leader: GameCharacter | undefined,
+    state: CompanionRuntime
+): boolean {
+    return (
+        leader !== undefined &&
+        (leader.locationId !== state.anchorLocation ||
+            distance(leader.position, state.anchor) > 80)
+    )
+}
+function atWaitAnchor(
+    character: GameCharacter,
+    state: CompanionRuntime,
+    world: CompanionWorld,
+    now: number
+): boolean {
+    if (
+        character.locationId !== state.anchorLocation ||
+        distance(character.position, state.anchor) <= 1
+    ) {
+        return true
+    }
+    planPath(character, state.anchor, state, world, now)
+    return false
 }
 
 function engage(

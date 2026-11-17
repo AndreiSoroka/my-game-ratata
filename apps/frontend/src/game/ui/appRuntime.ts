@@ -25,6 +25,7 @@ interface AppRuntimeOptions {
     openNearbyMenu: (id?: string) => void
     toggleInventory: () => void
     toggleCharacter?: () => void
+    chatHistory?: ReturnType<typeof import('./chatHistory').createChatHistory>
 }
 export async function startAppRuntime(options: AppRuntimeOptions): Promise<void> {
     if (options.nickname.trim().length === 0 || options.isJoining.value) return
@@ -62,11 +63,17 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         },
         onNotice: options.notices.show,
         onContextAction: () => options.openNearbyMenu(options.gameplay()?.selectedId),
+        getChatTargetId: () => options.gameplay()?.selectedId,
+        getChatFocusKey: () => options.gameplay()?.selectedKey,
         onCharacterClick: (id) => options.gameplay()?.select(id, true),
-        onEvent: (event) => options.gameplay()?.receive(event),
+        onEvent: (event) => {
+            options.chatHistory?.event(event)
+            options.gameplay()?.receive(event)
+        },
         onInventoryToggle: options.toggleInventory,
         onCharacterToggle: options.toggleCharacter,
         onSnapshot: (snapshot, playerId) => {
+            options.chatHistory?.observe(snapshot, playerId)
             if (options.localPlayerId.value !== playerId) options.notices.reset()
             options.notices.observe('adventure', snapshot.adventure)
             options.notices.observe('party', snapshot.party)

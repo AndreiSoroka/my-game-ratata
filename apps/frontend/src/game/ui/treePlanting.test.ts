@@ -102,6 +102,26 @@ function setup() {
         pick: (point: Vector2) => pick?.(point),
     }
 }
+it('does not move or cancel planting while chat history owns the key event', async () => {
+    const f = setup()
+    const history = document.createElement('aside')
+    history.setAttribute('data-game-input-owner', '')
+    document.body.append(history)
+    try {
+        f.answer()
+        await f.wrapper.vm.$nextTick()
+        const before = f.latest()
+        for (const code of ['ArrowRight', 'KeyW', 'KeyF'])
+            history.dispatchEvent(
+                new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true })
+            )
+        expect(f.latest()).toEqual(before)
+        expect(f.wrapper.emitted('close')).toBeUndefined()
+    } finally {
+        history.remove()
+        f.wrapper.unmount()
+    }
+})
 it('confirms planting with a fresh physical F, keeping E and held repeats inactive', async () => {
     const { wrapper, answer } = setup()
     try {

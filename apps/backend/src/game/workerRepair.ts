@@ -3,6 +3,8 @@ import { isItemBroken } from '@my-game-ratata/contracts'
 import { repairSnapshot } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { GameRoom } from './room'
+import { recordWorkerActivity } from './workerActivityState'
+import { executeWorkerAdventure } from './workerCommands'
 import { approach } from './workerNavigation'
 
 /** Returns the next ordinary decision delay while maintenance owns the policy. */
@@ -16,6 +18,18 @@ export function repairWorker(
         return undefined
     }
     const smith = room.getCharacter('npc_smith_1')
+    recordWorkerActivity(
+        actor,
+        {
+            reason: 'repair',
+            text:
+                smith?.alive === true
+                    ? 'Иду к кузнецу ремонтировать сломанное снаряжение.'
+                    : 'Снаряжение сломано, а кузнец сейчас недоступен.',
+            intent: 'repair',
+        },
+        now
+    )
     if (
         smith?.alive !== true ||
         !approach(actor, room, smith.locationId, smith.position)
@@ -23,8 +37,9 @@ export function repairWorker(
         return 500
     }
     const quote = repairSnapshot(actor)
-    const result = room.requestAdventure(
+    const result = executeWorkerAdventure(
         actor,
+        room,
         {
             type: 'repair_items',
             npcId: smith.id,
@@ -34,6 +49,5 @@ export function repairWorker(
         },
         now
     )
-    room.publishEvents(result.events)
     return result.accepted ? 500 : 10_000
 }

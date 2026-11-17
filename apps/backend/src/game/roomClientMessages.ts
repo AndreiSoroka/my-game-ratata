@@ -29,16 +29,13 @@ export function handleCharacterMessage(
     player: GameCharacter,
     message: ClientMessage
 ): void {
-    const {
-        room,
-        adventure,
-        theft,
-        characters,
-        parties,
-        companions,
-        world,
-        connections,
-    } = context
+    const { room, characters, world, connections } = context
+    if (room.social.handle(player, message, Date.now())) {
+        return
+    }
+    if (room.social.exchanges.isPaused(player.id)) {
+        return
+    }
     if (handleAutomation(player, message, room)) {
         return
     }
@@ -48,26 +45,25 @@ export function handleCharacterMessage(
     if (handleRoomControl(player, message, room, Date.now())) {
         return
     }
-    const events = handleRoomAction({
-        graves: room.abilityContextFor(player, Date.now()).graves,
-        requestAbilityAttack: room.abilityContextFor(player, Date.now())
-            .requestAbilityAttack,
-        adventure,
-        theft,
-        allCharacters: characters.values(),
-        parties,
-        characters: [
-            ...charactersInLocation(characters, player.locationId).values(),
-        ],
-        companions,
-        inventory: world.get(player.locationId).inventory,
-        message,
-        navigation: room.navigationFor(player),
-        now: Date.now(),
-        player,
-    })
+    if (message.type === 'companion_request' && message.request !== 'talk') {
+        room.notifyNpcAi(player, message, [], Date.now())
+    }
+    const events = roomCharacterAction(context, player, message)
     if (events !== undefined) {
+        if (
+            message.type === 'interact' &&
+            events.some(
+                (event) => event.kind === 'chat' && event.targetId === player.id
+            )
+        ) {
+            room.social.quests.inspect(
+                player.id,
+                message.targetId,
+                `inspect:${player.id}:${String(Date.now())}`
+            )
+        }
         room.publishEvents(events)
+        room.notifyNpcAi(player, message, events, Date.now())
         return
     }
     if (!player.alive) {
@@ -142,4 +138,31 @@ function handleAutomation(
         ])
     }
     return true
+}
+
+function roomCharacterAction(
+    context: ClientContext,
+    player: GameCharacter,
+    message: ClientMessage
+) {
+    const { room, adventure, theft, characters, parties, companions, world } =
+        context
+    return handleRoomAction({
+        graves: room.abilityContextFor(player, Date.now()).graves,
+        requestAbilityAttack: room.abilityContextFor(player, Date.now())
+            .requestAbilityAttack,
+        adventure,
+        theft,
+        allCharacters: characters.values(),
+        parties,
+        characters: [
+            ...charactersInLocation(characters, player.locationId).values(),
+        ],
+        companions,
+        inventory: world.get(player.locationId).inventory,
+        message,
+        navigation: room.navigationFor(player),
+        now: Date.now(),
+        player,
+    })
 }

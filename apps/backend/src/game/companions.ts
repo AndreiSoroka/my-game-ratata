@@ -14,8 +14,8 @@ import {
     type AssistanceContext,
     CompanionAssistance,
 } from './companionAssistance'
+import { applyCompanionOrder } from './companionOrders'
 export type { AssistanceContext, AssistanceResult } from './companionAssistance'
-import { setCharacterControlSource } from './characterSoul'
 import {
     advanceCompanionIntent,
     type CompanionRuntime,
@@ -35,16 +35,66 @@ import {
     setCompanionReplyRecipient,
     sync,
 } from './companionState'
-import { cancelMovementMode } from './movementActions'
-import { prepareConstellationLayout } from './personalConstellationSky'
-import { isAutomationCommand } from './scenarioCommands'
+import { consumeCompanionWait } from './companionWait'
+import { ModelControlLeases } from './modelControlLeases'
 
 export class CompanionService {
     private readonly states = new Map<string, CompanionRuntime>()
-    private readonly leases = new Map<
-        string,
-        { until: number; blocksScenario: boolean }
-    >()
+    private readonly leases = new ModelControlLeases()
+    public readonly claimModelControl = this.leases.claimModelControl.bind(
+        this.leases
+    )
+    public readonly renewModelControl = this.leases.renewModelControl.bind(
+        this.leases
+    )
+    public readonly releaseModelControl = this.leases.releaseModelControl.bind(
+        this.leases
+    )
+    public readonly isModelControlOwner = this.leases.isModelControlOwner.bind(
+        this.leases
+    )
+    public readonly hasActiveLease = this.leases.hasActiveLease.bind(
+        this.leases
+    )
+    public readonly blocksScenario = this.leases.blocksScenario.bind(
+        this.leases
+    )
+    public readonly setModelControlExclusive = this.leases.setExclusive.bind(
+        this.leases
+    )
+    public readonly controlRevision = (character: GameCharacter): number =>
+        this.stateFor(character).controlRevision ?? 0
+    public consumeWaitForAcceptedTask(
+        npc: GameCharacter,
+        owner: GameCharacter,
+        context: AssistanceContext,
+        now: number
+    ): void {
+        consumeCompanionWait(
+            npc,
+            owner,
+            this.stateFor(npc),
+            () => this.assistance.canAssist(owner, npc, context, now).accepted
+        )
+    }
+    public setWaitAnchor(
+        character: GameCharacter,
+        ownerId: string,
+        anchor: {
+            locationId: string
+            position: import('@my-game-ratata/contracts').Vector2
+        }
+    ): void {
+        const state = this.stateFor(character)
+        if (
+            state.order === 'wait' &&
+            state.leaderId === ownerId &&
+            anchor.locationId === character.locationId
+        ) {
+            state.anchor = { ...anchor.position }
+            state.anchorLocation = anchor.locationId
+        }
+    }
 
     private readonly assistance = new CompanionAssistance((npc) =>
         this.stateFor(npc)
@@ -167,15 +217,7 @@ export class CompanionService {
         if (consentError !== null) {
             return this.reply(npc, actor, state, consentError)
         }
-        state.lastPlanAt = now - 300
-        state.leaderId = actor.id
-        state.order =
-            message.request === 'guard' || state.profile.stationary
-                ? 'guard'
-                : message.request
-        state.anchor = { ...npc.position }
-        state.anchorLocation = npc.locationId
-        npc.clearPath()
+        applyCompanionOrder(npc, actor, state, message, now)
         const text = consentReply(state.profile, state.order)
         return this.reply(npc, actor, state, text)
     }
@@ -219,8 +261,16 @@ export class CompanionService {
         character: GameCharacter,
         decision: unknown,
         world: CompanionWorld,
-        now: number
+        now: number,
+        ownerToken?: string
     ): AgentDecisionResult {
+        if (!this.leases.canDecide(character, ownerToken, world, now)) {
+            return {
+                accepted: false,
+                error: 'Character control belongs to another model session',
+                events: [],
+            }
+        }
         const result = applyAgentDecision(character, decision, world, now)
         if (!result.accepted) {
             return result
@@ -229,61 +279,13 @@ export class CompanionService {
         if (parsed?.type === 'speak') {
             const state = this.stateFor(character)
             state.lastReply = parsed.text
-            setCompanionReplyRecipient(character, undefined)
+            setCompanionReplyRecipient(character, parsed.targetId)
             sync(character, state)
         }
-        if (parsed?.type === 'wait') {
-            this.leases.delete(character.id)
-            setCharacterControlSource(character, 'script')
-        } else {
-            prepareConstellationLayout(character)
-            this.leases.set(character.id, {
-                until: now + 5_000,
-                blocksScenario:
-                    parsed?.type !== 'speak' &&
-                    !isAutomationCommand(parsed?.type),
-            })
-            setCharacterControlSource(character, 'model')
+        if (parsed !== undefined) {
+            this.leases.recordDecision(character, parsed, now, ownerToken)
         }
         return result
-    }
-
-    public hasActiveLease(
-        character: GameCharacter,
-        now: number,
-        world?: CompanionWorld
-    ): boolean {
-        const lease = this.leases.get(character.id)
-        if (lease === undefined) {
-            return false
-        }
-        if (
-            lease.until > now &&
-            character.alive &&
-            !character.tags.has('offline')
-        ) {
-            return true
-        }
-        this.leases.delete(character.id)
-        setCharacterControlSource(character, 'script')
-        if (lease.blocksScenario) {
-            world?.requestControl?.(character, { type: 'cancel_control' }, now)
-            cancelMovementMode(character)
-            character.setMoveInput({ x: 0, y: 0 })
-            character.clearPath()
-        }
-        return false
-    }
-
-    public blocksScenario(
-        character: GameCharacter,
-        now: number,
-        world?: CompanionWorld
-    ): boolean {
-        return (
-            this.hasActiveLease(character, now, world) &&
-            this.leases.get(character.id)?.blocksScenario === true
-        )
     }
 
     private readonly reply = replyToCompanion
@@ -300,6 +302,7 @@ export class CompanionService {
                 metActors: new Set<string>(),
                 order: 'idle',
                 profile: companionProfiles[character.id] ?? residentProfile,
+                controlRevision: 0,
             }
             this.states.set(character.id, state)
         }

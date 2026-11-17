@@ -38,3 +38,50 @@ export interface WorkerWorkTarget {
     locationId: string
     position: Vector2
 }
+
+export interface WorkerActivitySnapshot {
+    reason:
+        | 'threat'
+        | 'seeds'
+        | 'plots'
+        | 'stock_sufficient'
+        | 'break'
+        | 'working'
+        | 'request'
+        | 'route'
+        | 'supplier'
+        | 'bag'
+        | 'unavailable'
+        | 'repair'
+        | 'exchange'
+        | 'conversation'
+        | 'control'
+        | 'reaction'
+        | 'scenario'
+    text: string
+    intent?:
+        | 'work'
+        | 'sow'
+        | 'harvest'
+        | 'deliver'
+        | 'get_seed'
+        | 'report'
+        | 'check_work'
+        | 'return'
+        | 'wait'
+        | 'repair'
+    worksite?: WorkerWorkTarget
+    stage?: WorkRequestStage
+    since?: number
+    observedAt?: number
+    danger?: { status: 'observed' | 'reported'; observedAt: number }
+    lastResult?: {
+        receiptId: string
+        at: number
+        accepted: boolean
+        command: string
+        reason: string | null
+    }
+    until?: number
+    requestId?: string
+}

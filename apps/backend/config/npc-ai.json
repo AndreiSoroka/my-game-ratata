@@ -1,0 +1,25 @@
+{
+    "defaults": {
+        "cliPath": "codex",
+        "model": "gpt-6-luna",
+        "reasoningEffort": "medium",
+        "serviceTier": "default",
+        "timeoutMs": 60000
+    },
+    "limits": {
+        "maxCallsPerHour": 120,
+        "maxDecisionsPerTask": 12,
+        "reviewIntervalMs": 60000,
+        "retryDelayMs": 5000
+    },
+    "npcs": [
+        {
+            "actorId": "npc_friendly_girl_1",
+            "role": "city_coordinator"
+        },
+        {
+            "actorId": "npc_magic_slime_1",
+            "role": "companion"
+        }
+    ]
+}

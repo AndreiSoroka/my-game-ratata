@@ -162,6 +162,13 @@ const tools = [
                             properties: {
                                 type: { const: 'speak' },
                                 text: { type: 'string', maxLength: 160 },
+                                targetId: {
+                                    type: 'string',
+                                    minLength: 1,
+                                    maxLength: 100,
+                                    description:
+                                        'Optional nearby visible recipient for a private reply. Omit for public speech.',
+                                },
                             },
                             additionalProperties: false,
                         },

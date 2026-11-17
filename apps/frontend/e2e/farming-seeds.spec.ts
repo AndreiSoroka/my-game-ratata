@@ -125,36 +125,108 @@ async function gatherBrushwood(page: Page): Promise<void> {
     for (let count = 1; count <= 2; count += 1) {
         const result = await page.evaluate(async (count) => {
             const api = window.__ratataTest!
-            const state = api.getState()
-            const source = state
-                .snapshot!.adventure!.resourceNodes.filter(
-                    (node) => node.source === 'branches' && node.phase === 'ready'
+            const skipped: string[] = []
+            const readNode = (id: string) => {
+                const node = api
+                    .getState()
+                    .snapshot!.adventure!.resourceNodes.find((entry) => entry.id === id)
+                return node === undefined
+                    ? null
+                    : {
+                          id: node.id,
+                          phase: node.phase,
+                          remaining: node.remaining,
+                          position: node.position,
+                      }
+            }
+            const facts = () => {
+                const state = api.getState()
+                return {
+                    tick: state.snapshot?.tick,
+                    position: state.player?.position,
+                    control: state.player?.control,
+                    inventorySlots: state.player?.inventory.length,
+                    brushwood: state.player?.inventory
+                        .filter((item) => item.itemId === 'brushwood')
+                        .reduce((sum, item) => sum + (item.quantity ?? 1), 0),
+                    noticeId: state.snapshot?.adventure?.noticeId,
+                    notice: state.snapshot?.adventure?.notice,
+                }
+            }
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+                const state = api.getState()
+                const source = state
+                    .snapshot!.adventure!.resourceNodes.filter(
+                        (node) =>
+                            node.source === 'branches' &&
+                            node.phase === 'ready' &&
+                            node.remaining > 0 &&
+                            !skipped.includes(node.id)
+                    )
+                    .sort(
+                        (first, second) =>
+                            Math.hypot(
+                                first.position.x - state.player!.position.x,
+                                first.position.y - state.player!.position.y
+                            ) -
+                            Math.hypot(
+                                second.position.x - state.player!.position.x,
+                                second.position.y - state.player!.position.y
+                            )
+                    )[0]
+                if (source === undefined)
+                    return {
+                        status: 'unavailable',
+                        reason: 'No fresh brushwood source remains',
+                        skipped,
+                        after: facts(),
+                    }
+                const selected = readNode(source.id)
+                const approach = await api.navigate(
+                    { targetKey: `resource:${source.id}` },
+                    { timeoutMs: 20_000, tolerance: 12 }
                 )
-                .sort(
-                    (first, second) =>
-                        Math.hypot(
-                            first.position.x - state.player!.position.x,
-                            first.position.y - state.player!.position.y
-                        ) -
-                        Math.hypot(
-                            second.position.x - state.player!.position.x,
-                            second.position.y - state.player!.position.y
-                        )
-                )[0]
-            if (source === undefined) throw new Error('No brushwood source remains')
-            const approach = await api.navigate(
-                { targetKey: `resource:${source.id}` },
-                { timeoutMs: 20_000 }
-            )
-            if (approach.status !== 'arrived') return approach.status
-            return (
-                await api.act(
+                const current = readNode(source.id)
+                // Sources are shared and finite. Reselect only when the observed
+                // source was consumed before submitting our gathering command.
+                if (current === null || current.phase !== 'ready' || current.remaining < 1) {
+                    skipped.push(source.id)
+                    continue
+                }
+                if (approach.status !== 'arrived')
+                    return {
+                        status: approach.status,
+                        reason: approach.reason,
+                        selected,
+                        current,
+                        skipped,
+                        after: facts(),
+                    }
+                const before = facts()
+                const action = await api.act(
                     { type: 'auto_action', action: { kind: 'gather', nodeId: source.id } },
                     { until: { type: 'inventory', itemId: 'brushwood', atLeast: count } }
                 )
-            ).status
+                return {
+                    status: action.status,
+                    reason: action.reason,
+                    elapsedMs: action.elapsedMs,
+                    selected,
+                    atCommand: current,
+                    finalSource: readNode(source.id),
+                    skipped,
+                    before,
+                    after: facts(),
+                }
+            }
+            return {
+                status: 'unavailable',
+                reason: 'Three source choices changed before gathering',
+                skipped,
+                after: facts(),
+            }
         }, count)
-        expect(result).toBe('condition_met')
+        expect(result.status, JSON.stringify(result)).toBe('condition_met')
     }
 }
 

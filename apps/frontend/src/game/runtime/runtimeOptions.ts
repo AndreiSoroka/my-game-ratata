@@ -13,6 +13,8 @@ export interface RatataGameOptions {
     onInventoryToggle: () => void
     onCharacterToggle?: () => void
     onContextAction?: () => void
+    getChatTargetId?: () => string | undefined
+    getChatFocusKey?: () => string | undefined
     onNotice?: (message: string) => void
     onDefeat?: () => void
     onSnapshot: (snapshot: WorldSnapshot, localPlayerId: string | undefined) => void

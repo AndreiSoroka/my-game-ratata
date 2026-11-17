@@ -1,4 +1,5 @@
 import type { PlayerAdventure } from './adventureState'
+import { availableGold } from './rewardReservations'
 
 /** A finite authoritative balance shared by every controller. */
 export interface CorpseWallet {
@@ -13,7 +14,11 @@ export function drainWallet(state: PlayerAdventure): number {
 }
 
 export function spendWallet(state: PlayerAdventure, amount: number): boolean {
-    if (!Number.isSafeInteger(amount) || amount <= 0 || state.gold < amount) {
+    if (
+        !Number.isSafeInteger(amount) ||
+        amount <= 0 ||
+        availableGold(state) < amount
+    ) {
         return false
     }
     state.gold -= amount

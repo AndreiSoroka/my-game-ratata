@@ -9,6 +9,15 @@ import {
     type InventoryItemInstance,
     itemQuantity,
 } from './inventoryItems'
+import {
+    validCondition,
+    validInventory,
+    validQuantity,
+} from './inventoryValidation'
+import {
+    availableInventoryQuantity,
+    reservedInventoryQuantity,
+} from './rewardReservations'
 
 export type InventoryCosts = Partial<Record<ItemId, number>>
 
@@ -64,6 +73,13 @@ export function consumeInventoryItems(
     return true
 }
 
+export function canConsumeInventoryItems(
+    inventory: readonly InventoryItemInstance[],
+    costs: InventoryCosts
+): boolean {
+    return planConsumption(inventory, costs) !== undefined
+}
+
 /** Capacity is checked after consumption so crafting can reuse freed slots. */
 export function craftInventoryItems(
     inventory: InventoryItemInstance[],
@@ -86,7 +102,8 @@ export function transferInventoryItem(
     source: InventoryItemInstance[],
     destination: InventoryItemInstance[],
     instanceId: string,
-    capacity = INVENTORY_CAPACITY
+    capacity = INVENTORY_CAPACITY,
+    allowReserved = false
 ): InventoryItemInstance | undefined {
     if (source === destination) {
         return undefined
@@ -95,58 +112,13 @@ export function transferInventoryItem(
     const item = source[index]
     if (
         item === undefined ||
+        (!allowReserved && reservedInventoryQuantity(source, instanceId) > 0) ||
         !addInventoryItems(destination, [item], capacity)
     ) {
         return undefined
     }
     source.splice(index, 1)
     return item
-}
-
-function validQuantity(item: InventoryItemInstance): boolean {
-    const amount = itemQuantity(item)
-    return Number.isSafeInteger(amount) && amount > 0
-}
-
-function validCondition(item: InventoryItemInstance): boolean {
-    if (!Object.hasOwn(ITEM_DEFINITIONS, item.itemId)) {
-        return false
-    }
-    const definition = ITEM_DEFINITIONS[item.itemId]
-    if (
-        item.durability !== undefined &&
-        (definition.maxDurability === undefined ||
-            !Number.isSafeInteger(item.durability) ||
-            item.durability < 0 ||
-            item.durability > definition.maxDurability)
-    ) {
-        return false
-    }
-    return (
-        item.wearDistance === undefined ||
-        (definition.durabilityWear?.walkPixels !== undefined &&
-            Number.isFinite(item.wearDistance) &&
-            item.wearDistance >= 0 &&
-            item.wearDistance < definition.durabilityWear.walkPixels)
-    )
-}
-
-function validInventory(inventory: readonly InventoryItemInstance[]): boolean {
-    const ids = new Set<string>()
-    for (const item of inventory) {
-        const definition = ITEM_DEFINITIONS[item.itemId]
-        if (
-            !Object.hasOwn(ITEM_DEFINITIONS, item.itemId) ||
-            !validQuantity(item) ||
-            !validCondition(item) ||
-            itemQuantity(item) > (definition.maxStack ?? 1) ||
-            ids.has(item.instanceId)
-        ) {
-            return false
-        }
-        ids.add(item.instanceId)
-    }
-    return true
 }
 
 function planAddition(
@@ -235,11 +207,25 @@ function planConsumption(
             !Object.hasOwn(ITEM_DEFINITIONS, itemId) ||
             !Number.isSafeInteger(quantity) ||
             quantity < 0 ||
-            countInventoryItem(plan, itemId) < quantity
+            plan.reduce(
+                (total, item) =>
+                    total +
+                    (item.itemId === itemId
+                        ? Math.max(
+                              0,
+                              itemQuantity(item) -
+                                  reservedInventoryQuantity(
+                                      inventory,
+                                      item.instanceId
+                                  )
+                          )
+                        : 0),
+                0
+            ) < quantity
         ) {
             return undefined
         }
-        consumeFromPlan(plan, itemId, quantity)
+        consumeFromPlan(plan, itemId, quantity, inventory)
     }
     return plan
 }
@@ -247,7 +233,8 @@ function planConsumption(
 function consumeFromPlan(
     plan: InventoryItemInstance[],
     itemId: ItemId,
-    quantity: number
+    quantity: number,
+    original: readonly InventoryItemInstance[]
 ): void {
     let remaining = quantity
     for (let index = 0; index < plan.length && remaining > 0;) {
@@ -259,7 +246,11 @@ function consumeFromPlan(
             index += 1
             continue
         }
-        const taken = Math.min(remaining, itemQuantity(item))
+        const available = Math.min(
+            itemQuantity(item),
+            availableInventoryQuantity(original, item.instanceId)
+        )
+        const taken = Math.min(remaining, available)
         remaining -= taken
         if (taken === itemQuantity(item)) {
             plan.splice(index, 1)

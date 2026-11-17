@@ -12,7 +12,7 @@ import type { Engine, PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
 import type { GameAudio } from './gameAudio'
-import { axisFromKeys, movementKeys } from './input'
+import { movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
 import { PlantingPreview } from './plantingPreview'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
@@ -23,7 +23,7 @@ import { runtimeEventFeedback } from './runtimeEventFeedback'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
 import { handleRuntimeKeyDown } from './runtimeKeyDown'
 import { loadRuntimeMap } from './runtimeMapLoading'
-import { RuntimeMovementControls } from './runtimeMovementControls'
+import { flushRuntimeMoveInput, RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
 import { handleRuntimePointer } from './runtimePointer'
 import { createRuntimePresentation } from './runtimePresentation'
@@ -58,10 +58,14 @@ export class RatataGame {
     public readonly planting = new PlantingPreview(() => this.releaseInputs())
 
     public constructor(private readonly options: RatataGameOptions) {
-        this.chat = new RuntimeChatInput(options.onChatState, () => {
-            this.pressedKeys.clear()
-            this.flushMoveInput()
-        })
+        this.chat = new RuntimeChatInput(
+            options.onChatState,
+            () => {
+                this.pressedKeys.clear()
+                this.flushMoveInput()
+            },
+            (message) => this.send(message)
+        )
         this.socket = new RuntimeSocket({
             isStopped: () => this.stopped,
             onError: options.onError,
@@ -71,6 +75,7 @@ export class RatataGame {
             onStatus: (status) => {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
+                    this.chat.stopActivity()
                     this.sceneActors?.clearDamage()
                     this.sceneActors?.setInteractionTarget(undefined)
                     this.sceneActors?.clearWaypoints()
@@ -128,6 +133,7 @@ export class RatataGame {
     }
 
     public stop(): void {
+        this.chat.stopActivity()
         this.stopped = true
         this.removeInputs?.()
         this.releaseInputs()
@@ -144,17 +150,14 @@ export class RatataGame {
 
     public readonly cancelChat = (): void => this.chat.cancel()
 
-    public releaseUiControls(): void {
-        this.releaseInputs()
-    }
+    public readonly releaseUiControls = (): void => this.releaseInputs()
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {
         this.sceneActors?.setInteractionTarget(this.isMapReady ? target : undefined)
     }
 
-    public projectPosition(position: Vector2) {
-        return projectPosition(this.engine, this.canvas, position)
-    }
+    public readonly projectPosition = (position: Vector2) =>
+        projectPosition(this.engine, this.canvas, position)
 
     public setCombatTarget(target: TargetHighlight | undefined): void {
         this.sceneActors?.setCombatTarget(target)
@@ -228,10 +231,12 @@ export class RatataGame {
     private applySnapshot(snapshot: WorldSnapshot): void {
         this.snapshot = snapshot
         const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
+        if (!player?.alive) this.chat.cancel()
         if (this.movementControls.observe(player?.movement, characterDisrupted(player)))
             this.releaseInputs()
         const mapId = snapshot.location?.id ?? CENTER_LOCATION_ID
         if (mapId !== this.mapId) {
+            this.chat.cancel()
             void this.changeLocation(mapId)
         } else {
             this.sceneActors?.update(snapshot, this.localPlayerId)
@@ -288,6 +293,7 @@ export class RatataGame {
     }
 
     private readonly releaseInputs = (): void => {
+        this.chat.stopActivity()
         this.send({ type: 'release_input' })
         this.pressedKeys.clear()
         this.lastAxis = { x: 0, y: 0 }
@@ -310,14 +316,7 @@ export class RatataGame {
     }
 
     private flushMoveInput(): void {
-        const axis = axisFromKeys(this.pressedKeys)
-
-        if (axis.x === this.lastAxis.x && axis.y === this.lastAxis.y) {
-            return
-        }
-
-        this.lastAxis = axis
-        this.send({ axis, type: 'move_input' })
+        this.lastAxis = flushRuntimeMoveInput(this.pressedKeys, this.lastAxis, this.send)
     }
 
     private readonly send = (message: ClientMessage): void => this.socket.send(message)

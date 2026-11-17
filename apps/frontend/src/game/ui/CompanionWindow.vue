@@ -36,6 +36,7 @@ const orders: Record<CompanionOrder, string> = {
     idle: 'Занят своими делами',
     follow: 'Идёт за спутником',
     guard: 'Охраняет место',
+    wait: 'Ждёт здесь',
     help: 'Помогает в бою',
 }
 const requests: { id: CompanionRequest; label: string }[] = [
@@ -131,7 +132,7 @@ function request(request: CompanionRequest): void {
                     <input
                         id="companion-message"
                         v-model="message"
-                        maxlength="100"
+                        maxlength="400"
                         placeholder="Познакомимся?"
                         autocomplete="off"
                     /><button type="submit" :disabled="!inReach">Поговорить</button>
@@ -140,7 +141,7 @@ function request(request: CompanionRequest): void {
             <p v-else class="companion-intro">
                 Этот житель не говорит. Его намерения можно понять по действиям.
             </p>
-            <div class="companion-requests">
+            <div v-if="!selected.interactions?.aiDialogue" class="companion-requests">
                 <button
                     v-for="action in requests"
                     :key="action.id"

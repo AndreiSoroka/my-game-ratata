@@ -16,6 +16,7 @@ export type GameEventKind =
     | 'attack'
     | 'dash'
     | 'chat'
+    | 'npc_request_status'
     | 'chest_open'
     | 'water_drink'
     | 'barrel_search'
@@ -43,6 +44,11 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    /** Server-authored status earned by a successful private worker inspection. */
+    workerActivity?: import('./workerRequests').WorkerActivitySnapshot
+    requestStatus?: import('./social').NpcRequestStatus
+    speakerName?: string
+    channel?: import('./social').SpeechChannel
     hitQuality?: CombatHitQuality
     /** Server-pinned projectile path for a shot with no selected target. */
     projectile?: ProjectilePath

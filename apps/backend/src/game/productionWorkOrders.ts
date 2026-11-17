@@ -19,6 +19,7 @@ import {
 import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import { issueProductionMaterials } from './productionMaterials'
+import { reservedInventoryQuantity } from './rewardReservations'
 import { canPerformSkillAction } from './skillProgression'
 
 interface WorkOrder {
@@ -125,7 +126,10 @@ export class ProductionWorkOrders {
             return false
         }
         const produced = actor.inventory.find(
-            (item) => item.instanceId === order.outputInstanceId
+            (item) =>
+                item.instanceId === order.outputInstanceId &&
+                reservedInventoryQuantity(actor.inventory, item.instanceId) ===
+                    0
         )
         if (produced === undefined) {
             return false

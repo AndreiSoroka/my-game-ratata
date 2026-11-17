@@ -32,11 +32,15 @@ export function characterActions(
     if (!target) return []
     return [
         ...merchantServiceActions(target),
-        {
-            id: `talk:${target.id}`,
-            label: `Поговорить: ${target.nickname}`,
-            command: { type: 'interact', targetId: target.id },
-        },
+        ...(!target.interactions?.aiDialogue
+            ? [
+                  {
+                      id: `talk:${target.id}`,
+                      label: `Поговорить: ${target.nickname}`,
+                      command: { type: 'interact' as const, targetId: target.id },
+                  },
+              ]
+            : []),
         ...companionActions(target, player),
         ...teacherActions(target, player),
         ...prayerLearningActions(target, player),
@@ -47,7 +51,7 @@ function companionActions(
     player: CharacterSnapshot
 ): InteractionAction[] {
     const companion = target.soul?.companion
-    if (!companion) return []
+    if (!companion || target.interactions?.aiDialogue) return []
     const occupied = companion.leaderId !== null && companion.leaderId !== player.id
     const actions: InteractionAction[] = [
         {
@@ -172,4 +176,35 @@ export function followActions(
             label: `Следовать за ${target.nickname}`,
             command: { type: 'follow', targetId: target.id },
         }))
+}
+
+export function socialActions(
+    characters: CharacterSnapshot[],
+    player: CharacterSnapshot
+): InteractionAction[] {
+    return characters
+        .filter(
+            (target) =>
+                target.id !== player.id && target.alive && interactionDistance(player, target) <= 48
+        )
+        .flatMap((target) => [
+            ...(target.interactions?.whisper
+                ? [
+                      {
+                          id: `whisper:${target.id}`,
+                          label: `Шёпот: ${target.nickname}`,
+                          command: { type: 'whisper_open' as const, targetId: target.id },
+                      },
+                  ]
+                : []),
+            ...(target.interactions?.exchange
+                ? [
+                      {
+                          id: `exchange:${target.id}`,
+                          label: `Обменяться: ${target.nickname}`,
+                          command: { type: 'exchange_invite' as const, targetId: target.id },
+                      },
+                  ]
+                : []),
+        ])
 }

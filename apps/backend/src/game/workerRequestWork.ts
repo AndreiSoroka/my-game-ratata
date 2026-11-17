@@ -2,6 +2,7 @@ import type {
     AdventureClientMessage,
     AdventureResourceNode,
     FarmPlotSnapshot,
+    WorkerActivitySnapshot,
     WorkerWorkTarget,
 } from '@my-game-ratata/contracts'
 
@@ -17,6 +18,8 @@ import { WORKER_REQUEST_RADIUS } from './workerRequestData'
 export interface WorkerStepResult {
     done: boolean
     reason: string | null
+    block?: WorkerActivitySnapshot['reason']
+    until?: number
 }
 export type WorkerCommand = (
     message: AdventureClientMessage
@@ -231,18 +234,33 @@ function farmStep(
             reason: actor.hasPath()
                 ? null
                 : 'К рабочей грядке нет доступного пути.',
+            ...(actor.hasPath() ? {} : { block: 'route' }),
         }
     }
     if (plot.phase === 'growing') {
         return {
             done: false,
             reason: 'Работник ждёт созревания настоящего урожая.',
+            block: 'plots',
+            until: plot.readyAt,
         }
     }
     if (now < room.adventureForWorkers().workAvailableAt(actor)) {
         return {
             done: false,
             reason: 'Работник ждёт окончания обычной рабочей паузы.',
+            block: 'break',
+            until: room.adventureForWorkers().workAvailableAt(actor),
+        }
+    }
+    if (
+        plot.phase === 'bare' &&
+        countInventoryItem(actor.inventory, 'wheat_seed') === 0
+    ) {
+        return {
+            done: false,
+            block: 'seeds',
+            reason: 'Для настоящего посева на проверке нужно семя пшеницы.',
         }
     }
     const result = perform({

@@ -51,12 +51,14 @@ export function interactAdventureNpc(
         state.dialogue.initialView = service
     }
     refreshTradeDialogue(actor, state.dialogue)
-    npc.setMoveInput({ x: 0, y: 0 })
-    npc.clearPath()
-    npc.updateFacing({
-        x: actor.position.x - npc.position.x,
-        y: actor.position.y - npc.position.y,
-    })
+    if (actor.controllerKind === 'network_player') {
+        npc.setMoveInput({ x: 0, y: 0 })
+        npc.clearPath()
+        npc.updateFacing({
+            x: actor.position.x - npc.position.x,
+            y: actor.position.y - npc.position.y,
+        })
+    }
     return sayDialogue(actor, npc, state, state.dialogue.text)
 }
 

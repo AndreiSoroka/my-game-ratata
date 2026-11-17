@@ -164,7 +164,7 @@ export function createWorldInteractions(ctx, location, landmarks) {
                     y,
                     1,
                     1,
-                    'Чистая вода',
+                    tile === 512 + 104 ? 'Колодец' : 'Чистая вода',
                     'Прохладная вода помогает перевести дух.'
                 )
             }

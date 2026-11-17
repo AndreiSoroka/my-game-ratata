@@ -105,6 +105,26 @@ const bubbles = computed(() => {
         ]
     })
 })
+const typing = computed(() => {
+    void frame.value
+    const speaking = new Set(bubbles.value.map((bubble) => bubble.id))
+    return (props.snapshot?.social?.speechActivity ?? []).flatMap((entry) => {
+        if (speaking.has(entry.actorId)) return []
+        const actor = props.snapshot?.characters.find((character) => character.id === entry.actorId)
+        const anchor = props.game?.projectCharacter(entry.actorId)
+        if (!actor?.alive || !anchor) return []
+        return [
+            {
+                ...entry,
+                name: actor.nickname,
+                style: {
+                    left: `${Math.max(14, Math.min(anchor.width - 48, anchor.x - 21))}px`,
+                    top: `${Math.max(8, anchor.y - 42)}px`,
+                },
+            },
+        ]
+    })
+})
 function receive(event: GameEventPayload): void {
     if (event.kind !== 'chat' || !event.actorId || !event.text) return
     if (event.targetId && event.targetId !== props.player.id) return
@@ -134,6 +154,18 @@ defineExpose({ receive, clear })
 </script>
 <template>
     <div class="speech-layer">
+        <div
+            v-for="activity in typing"
+            :key="`${activity.actorId}:${activity.id}`"
+            class="speech-typing"
+            :style="activity.style"
+            :aria-label="`${activity.name} ${activity.kind === 'thinking' ? 'обдумывает ответ' : 'печатает'}`"
+            aria-live="off"
+            role="img"
+        >
+            <span aria-hidden="true">.</span><span aria-hidden="true">.</span
+            ><span aria-hidden="true">.</span>
+        </div>
         <article
             v-for="bubble in bubbles"
             :id="speechBubbleId(bubble.id, bubble.receipt)"
@@ -163,6 +195,48 @@ defineExpose({ receive, clear })
     inset: 0;
     pointer-events: none;
     z-index: 8;
+}
+.speech-typing {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    gap: 1px;
+    width: 42px;
+    height: 26px;
+    background: #f5efe3;
+    color: #263126;
+    border: 2px solid #b09664;
+    box-shadow: 2px 2px #15211880;
+    font: bold 24px/12px monospace;
+}
+.speech-typing span:nth-child(2) {
+    animation: speech-dot-two 1.2s step-end infinite;
+}
+.speech-typing span:nth-child(3) {
+    animation: speech-dot-three 1.2s step-end infinite;
+}
+@keyframes speech-dot-two {
+    0% {
+        visibility: hidden;
+    }
+    33%,
+    100% {
+        visibility: visible;
+    }
+}
+@keyframes speech-dot-three {
+    0% {
+        visibility: hidden;
+    }
+    66%,
+    100% {
+        visibility: visible;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .speech-typing span {
+        animation: none;
+    }
 }
 .speech-bubble {
     position: absolute;

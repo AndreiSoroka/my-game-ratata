@@ -3,6 +3,7 @@ import {
     type AdventureResourceNode,
     CENTER_LOCATION_ID,
     type CharacterArchetype,
+    type WorkerActivitySnapshot,
     type WorkerSettlementProfile,
     type WorkerWorkTarget,
     type WorkRequestSnapshot,
@@ -38,6 +39,31 @@ export interface WorkerIncident {
     claim: WorkerRequestClaim | null
     published: boolean
     returnReady: boolean
+    threatObservedAt?: number
+    activityReason?: WorkerActivitySnapshot['reason']
+    activityIntent?: WorkerActivitySnapshot['intent']
+    activityUntil?: number
+}
+
+export function viewWorkerIncident(
+    request: WorkerIncident | undefined
+): WorkRequestSnapshot | null {
+    return request === undefined ? null : structuredClone(request.view)
+}
+
+export function publishedWorkerViews(
+    requests: Iterable<WorkerIncident>,
+    cityId?: string
+): WorkRequestSnapshot[] {
+    return [...requests]
+        .filter(
+            (request) =>
+                request.published &&
+                openIncident(request) &&
+                request.claim === null &&
+                (cityId === undefined || request.cityId === cityId)
+        )
+        .map((request) => structuredClone(request.view))
 }
 
 export function openIncident(incident: WorkerIncident): boolean {

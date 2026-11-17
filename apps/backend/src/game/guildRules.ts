@@ -6,7 +6,18 @@ import type {
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
+
+export function resetSubmitterMartyr(
+    characters: ReadonlyMap<string, GameCharacter>,
+    id: string
+): void {
+    const submitter = characters.get(id)
+    if (submitter !== undefined) {
+        resetMartyrStreak(submitter)
+    }
+}
 
 export interface GuildJob {
     acceptedBy: string

@@ -113,3 +113,21 @@ export function reject(error: string): MarketResult {
 export function ok(): MarketResult {
     return { accepted: true, error: null }
 }
+
+export function hasActiveCustomerOrder(
+    orders: Iterable<CustomerOrder>,
+    ownerId: string,
+    npcId: string
+): boolean {
+    return [...orders].some(
+        (order) =>
+            order.ownerId === ownerId &&
+            order.npcId === npcId &&
+            activeCustomerOrder(order)
+    )
+}
+
+export function customerOrderFinder(orders: Map<string, CustomerOrder>) {
+    return (ownerId: string, npcId: string): boolean =>
+        hasActiveCustomerOrder(orders.values(), ownerId, npcId)
+}

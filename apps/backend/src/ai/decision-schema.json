@@ -1,0 +1,588 @@
+{
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "decision",
+        "memory",
+        "done",
+        "waitMs",
+        "diagnostics",
+        "speech",
+        "taskAcceptance",
+        "companionOrder",
+        "waitMode"
+    ],
+    "properties": {
+        "decision": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "target"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["move_to"]
+                        },
+                        "target": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["x", "y"],
+                            "properties": {
+                                "x": {
+                                    "type": "number"
+                                },
+                                "y": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["interact"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "choiceId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["dialogue_choice"]
+                        },
+                        "choiceId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "text", "targetId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["speak"]
+                        },
+                        "text": {
+                            "type": "string",
+                            "maxLength": 160,
+                            "minLength": 1
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "text"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["speak"]
+                        },
+                        "text": {
+                            "type": "string",
+                            "maxLength": 160,
+                            "minLength": 1
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["follow"]
+                        },
+                        "targetId": {
+                            "type": ["string", "null"]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["wait", "cancel_control"]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "exchangeId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["exchange_cancel"]
+                        },
+                        "exchangeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "exchangeId", "accept"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["exchange_answer"]
+                        },
+                        "exchangeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "accept": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "exchangeId", "revision"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["exchange_accept"]
+                        },
+                        "exchangeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "revision": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "type",
+                        "exchangeId",
+                        "revision",
+                        "items",
+                        "gold",
+                        "requestId"
+                    ],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["exchange_offer"]
+                        },
+                        "exchangeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "revision": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                        },
+                        "items": {
+                            "type": "array",
+                            "maxItems": 20,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["instanceId", "quantity"],
+                                "properties": {
+                                    "instanceId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                    },
+                                    "quantity": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9
+                                    }
+                                }
+                            }
+                        },
+                        "gold": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                        },
+                        "requestId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId", "draft"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["quest_propose"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "draft": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "title",
+                                "description",
+                                "objectives",
+                                "rewardGold",
+                                "rewardItems",
+                                "funding"
+                            ],
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                },
+                                "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                },
+                                "objectives": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 4,
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "itemId",
+                                                    "quantity",
+                                                    "recipientId"
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": ["deliver"]
+                                                    },
+                                                    "itemId": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 100
+                                                    },
+                                                    "quantity": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "maximum": 99
+                                                    },
+                                                    "recipientId": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 100
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "locationId"
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": ["visit"]
+                                                    },
+                                                    "locationId": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 100
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "locationId",
+                                                    "position"
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": ["visit"]
+                                                    },
+                                                    "locationId": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 100
+                                                    },
+                                                    "position": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": ["x", "y"],
+                                                        "properties": {
+                                                            "x": {
+                                                                "type": "number"
+                                                            },
+                                                            "y": {
+                                                                "type": "number"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "archetype",
+                                                    "quantity",
+                                                    "locationId"
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": ["defeat"]
+                                                    },
+                                                    "archetype": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "human",
+                                                            "skeleton",
+                                                            "slime"
+                                                        ]
+                                                    },
+                                                    "quantity": {
+                                                        "type": "integer",
+                                                        "minimum": 1,
+                                                        "maximum": 20
+                                                    },
+                                                    "locationId": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 100
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "kind",
+                                                    "targetId"
+                                                ],
+                                                "properties": {
+                                                    "kind": {
+                                                        "type": "string",
+                                                        "enum": ["inspect"]
+                                                    },
+                                                    "targetId": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 100
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "rewardGold": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000000
+                                },
+                                "rewardItems": {
+                                    "type": "array",
+                                    "maxItems": 20,
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": ["instanceId", "quantity"],
+                                        "properties": {
+                                            "instanceId": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 100
+                                            },
+                                            "quantity": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9
+                                            }
+                                        }
+                                    }
+                                },
+                                "funding": {
+                                    "type": "string",
+                                    "enum": ["personal", "city"]
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId", "requestId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["worker_quest_propose"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "requestId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetKey"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["guide"]
+                        },
+                        "targetKey": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "exchangeId", "revision", "reason"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["exchange_decline"]
+                        },
+                        "exchangeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "revision": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "reason": {
+                            "type": "string",
+                            "maxLength": 400
+                        }
+                    }
+                }
+            ]
+        },
+        "memory": {
+            "type": "string",
+            "maxLength": 2000
+        },
+        "done": {
+            "type": "boolean"
+        },
+        "waitMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 300000
+        },
+        "diagnostics": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "capability", "detail", "attempted"],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": ["missing_capability", "blocked", "uncertain"]
+                    },
+                    "capability": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "detail": {
+                        "type": "string",
+                        "maxLength": 400
+                    },
+                    "attempted": {
+                        "type": "string",
+                        "maxLength": 400
+                    }
+                }
+            }
+        },
+        "speech": {
+            "type": ["string", "null"],
+            "maxLength": 400
+        },
+        "taskAcceptance": {
+            "type": "string",
+            "enum": ["none", "accept", "replace", "decline"]
+        },
+        "companionOrder": {
+            "type": ["string", "null"],
+            "enum": ["follow", "guard", "help", "dismiss", null, "wait"]
+        },
+        "waitMode": {
+            "type": ["string", "null"],
+            "enum": ["until_request", "until_return", null]
+        }
+    }
+}

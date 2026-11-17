@@ -4,16 +4,14 @@ import './game/ui/gameNotice.css'
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
-import type { ChatInputState } from './game/runtime/chatInput'
 import type { RatataGame } from './game/runtime/ratataGame'
 import TestControlPanel from './game/testing/TestControlPanel.vue'
 import { useGameTestControls } from './game/testing/useGameTestControls'
 import AdventurePanel from './game/ui/AdventurePanel.vue'
 import { startAppRuntime } from './game/ui/appRuntime'
 import AutomationPanels from './game/ui/AutomationPanels.vue'
-import ChatInputOverlay from './game/ui/ChatInputOverlay.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
-import DeathOverlay from './game/ui/DeathOverlay.vue'
+import GameChat from './game/ui/GameChat.vue'
 import GameplayOverlay from './game/ui/GameplayOverlay.vue'
 import GameWindows from './game/ui/GameWindows.vue'
 import { provideHotbarSession } from './game/ui/hotbarSession'
@@ -22,6 +20,7 @@ import JoinGamePanel from './game/ui/JoinGamePanel.vue'
 import NearbyInteraction from './game/ui/NearbyInteraction.vue'
 import { createTransientNotices } from './game/ui/transientNotices'
 import TreePlanting from './game/ui/TreePlanting.vue'
+import { useAppChat } from './game/ui/useAppChat'
 import { useAppSession } from './game/ui/useAppSession'
 import { useAppWindows } from './game/ui/useAppWindows'
 import { useCharacterViews } from './game/ui/useCharacterViews'
@@ -32,13 +31,13 @@ import { useLifeChoice } from './game/ui/useLifeChoice'
 const gameplay = ref<InstanceType<typeof GameplayOverlay>>()
 const interaction = ref<InstanceType<typeof NearbyInteraction>>()
 const adventurePanel = ref<InstanceType<typeof AdventurePanel>>()
+const gameWindows = ref<InstanceType<typeof GameWindows>>()
 const nickname = ref('')
 const heroClass = ref<HeroClass>('vanguard')
 const defeated = ref(false)
 const errorMessage = ref('')
 const gameHost = ref<HTMLElement>()
 const game = ref<RatataGame>()
-const chatInput = ref<ChatInputState>({ active: false, draft: '', maxLength: 100 })
 const isJoining = ref(false)
 const isStarted = ref(false)
 const localPlayerId = ref<string>()
@@ -47,6 +46,7 @@ const status = ref('Ready')
 const notice = ref('')
 const notices = createTransientNotices((text) => (notice.value = text))
 const hotbarSession = provideHotbarSession()
+const { chatHistory, chatInput } = useAppChat(snapshot, localPlayerId)
 
 const { localCharacter, visibleCharacters } = useCharacterViews(snapshot, game, localPlayerId)
 const { abandoning, abandonLife, confirmDeath } = useLifeChoice({
@@ -115,6 +115,7 @@ const windows = useAppWindows({
     gameplay,
     interaction,
     adventure: adventurePanel,
+    social: gameWindows,
     closeInventory,
     closeContainers,
     toggleInventory: toggleInventoryBase,
@@ -163,6 +164,7 @@ async function joinGame(): Promise<void> {
         isStarted,
         status,
         notices,
+        chatHistory,
         confirmDeath: () => {
             hotbarSession.clear()
             confirmDeath()
@@ -243,7 +245,7 @@ async function joinGame(): Promise<void> {
                             game?.isInteractionVisible(position, bounds, range) ?? false
                     "
                     :blocked="worldInputBlocked"
-                    @command="game?.sendCommand($event)"
+                    @command="gameWindows?.command($event)"
                     @request-open="openNearbyMenu"
                     @target-change="game?.setInteractionTarget($event)"
                     @select-grave="gameplay?.selectGrave($event)"
@@ -281,23 +283,21 @@ async function joinGame(): Promise<void> {
                     @close="closeChest"
                     @command="game?.sendCommand($event)"
                 />
-                <ChatInputOverlay v-if="chatInput.active" :state="chatInput" />
+                <GameChat :state="chatInput" :entries="chatHistory.entries.value" />
                 <p v-if="errorMessage" class="game-error">{{ errorMessage }}</p>
-                <DeathOverlay
-                    v-if="defeated || (localCharacter && !localCharacter.alive)"
-                    :character="localCharacter"
-                    :defeated="defeated"
-                    :pending="abandoning"
-                    :connected="status === 'Connected'"
-                    @abandon-life="abandonLife"
-                    @new-life="leaveSession('hero-class')"
-                    @open-menu="gameMenu.show"
-                />
             </div>
             <GameWindows
+                ref="gameWindows"
                 :windows="windows"
                 :player="localCharacter"
                 :characters="visibleCharacters"
+                :snapshot="snapshot"
+                :connected="status === 'Connected'"
+                :defeated="defeated"
+                :abandoning="abandoning"
+                @open="prepareAutomationWindow"
+                @abandon-life="abandonLife"
+                @new-life="leaveSession('hero-class')"
                 @command="game?.sendCommand($event)"
             />
         </section>

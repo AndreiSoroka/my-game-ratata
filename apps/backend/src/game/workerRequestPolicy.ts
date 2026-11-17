@@ -4,7 +4,10 @@ import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
+import { recordWorkerActivity, recordWorkerResult } from './workerActivityState'
+import { parkWorkerAtClerk } from './workerClerkParking'
 import { approach, stop } from './workerNavigation'
+import { recordWorkerIncidentActivity } from './workerRequestActivity'
 import { WORKER_REQUEST_RADIUS, type WorkerIncident } from './workerRequestData'
 
 export type AuthorizedWorkerCommand = (
@@ -22,8 +25,34 @@ export function advanceWorkerIncident(
     perform: AuthorizedWorkerCommand
 ): void {
     if (!canPerformSkillAction(actor, now)) {
+        recordWorkerActivity(
+            actor,
+            {
+                reason: 'unavailable',
+                text: 'Работа временно недоступна из-за состояния персонажа.',
+                intent: 'wait',
+                worksite: incident.target,
+                requestId: incident.view.id,
+                stage: incident.view.stage,
+            },
+            now
+        )
         return
     }
+    delete incident.activityReason
+    delete incident.activityIntent
+    delete incident.activityUntil
+    advanceIncident(incident, actor, room, now, perform)
+    recordWorkerIncidentActivity(actor, incident, now)
+}
+
+function advanceIncident(
+    incident: WorkerIncident,
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number,
+    perform: AuthorizedWorkerCommand
+): void {
     if (
         incident.view.stage === 'outbound' ||
         incident.view.stage === 'working'
@@ -45,10 +74,14 @@ export function advanceWorkerIncident(
             incident.view.reason =
                 'Опасность осталась: работник возвращается за помощью.'
         }
-        returnToClerk(incident, actor, room)
+        returnToClerk(incident, actor, room, now)
         return
     }
-    stop(actor)
+    if (incident.view.stage === 'waiting' || incident.view.stage === 'ready') {
+        returnToClerk(incident, actor, room, now)
+    } else {
+        stop(actor)
+    }
 }
 
 function advanceTrial(
@@ -61,15 +94,18 @@ function advanceTrial(
     if (
         room.findVisibleTarget(actor, WORKER_REQUEST_RADIUS, now) !== undefined
     ) {
+        incident.threatObservedAt = now
+        incident.activityReason = 'threat'
         incident.view.stage = 'returning'
         incident.view.reason =
             'Опасность осталась: работник возвращается за помощью.'
         incident.returnReady = false
         incident.trialPoint = null
-        returnToClerk(incident, actor, room)
+        returnToClerk(incident, actor, room, now)
         return
     }
     const target = incident.target
+    incident.view.reason = null
     if (actor.locationId !== target.locationId) {
         approach(actor, room, target.locationId, target.position)
         incident.view.reason = hasRoute(actor)
@@ -83,9 +119,19 @@ function advanceTrial(
         room,
         target,
         now,
-        (message) => perform(actor, message, room, now)
+        (message) => {
+            const result = perform(actor, message, room, now)
+            recordWorkerResult(actor, message.type, result, now)
+            return result
+        }
     )
     incident.view.reason = result.reason
+    if (result.block !== undefined) {
+        incident.activityReason = result.block
+    }
+    if (result.until !== undefined) {
+        incident.activityUntil = result.until
+    }
     if (result.done) {
         incident.trialPoint = {
             locationId: actor.locationId,
@@ -99,18 +145,34 @@ function advanceTrial(
 function returnToClerk(
     incident: WorkerIncident,
     actor: GameCharacter,
-    room: GameRoom
+    room: GameRoom,
+    now: number
 ): void {
     const clerk = room.getCharacter(incident.clerkId)
     if (clerk?.alive !== true || clerk.tags.has('state.retired')) {
         stop(actor)
+        incident.activityReason = 'supplier'
         incident.view.reason = 'Распорядитель сейчас недоступен.'
         return
     }
-    if (!approach(actor, room, clerk.locationId, clerk.position)) {
-        if (!hasRoute(actor)) {
-            incident.view.reason = 'К распорядителю нет доступного пути.'
+    const outcome = parkWorkerAtClerk(actor, clerk, room, now)
+    if (outcome !== 'arrived') {
+        if (outcome === 'blocked') {
+            incident.activityReason = 'route'
+            incident.view.reason =
+                'Жду доступного отдельного места у распорядителя; путь будет перепроверен.'
+        } else {
+            incident.activityIntent =
+                incident.view.stage === 'reporting' ? 'report' : 'return'
+            incident.view.reason =
+                incident.view.stage === 'ready'
+                    ? 'Рабочая проверка сохранена. Иду к новой позиции распорядителя для сдачи.'
+                    : 'Иду к отдельному месту ожидания у живого распорядителя.'
         }
+        return
+    }
+    if (incident.view.stage === 'waiting' || incident.view.stage === 'ready') {
+        incident.view.reason = null
         return
     }
     incident.published = true

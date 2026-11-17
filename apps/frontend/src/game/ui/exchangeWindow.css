@@ -1,0 +1,202 @@
+.exchange-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 9px;
+    min-height: 0;
+}
+.exchange-sides {
+    flex: 1 1 250px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #65784f #122118;
+}
+.exchange-content [tabindex='0']:focus-visible {
+    outline: 1px solid #d1b66d;
+    outline-offset: -2px;
+}
+.exchange-bag-tools {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 9px;
+    font-size: 10px;
+    color: #a4b697;
+    border-bottom: 1px solid #30442e;
+}
+.exchange-bag-tools span {
+    flex: 1;
+}
+.exchange-bag-tools button {
+    font-size: 10px;
+    padding: 2px 6px;
+    min-height: 24px;
+}
+.exchange-own-items {
+    flex: 1;
+    min-height: 0;
+    list-style: none;
+    padding: 8px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.exchange-bag-empty {
+    padding: 25px 10px;
+    color: #83977a;
+    font-size: 12px;
+    text-align: center;
+}
+.exchange-gold {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+}
+.exchange-gold span {
+    display: block;
+}
+.exchange-gold small {
+    display: inline-block;
+    margin-left: 5px;
+    color: #aab58e;
+    font-size: 10px;
+}
+.exchange-gold input {
+    width: 76px;
+    text-align: right;
+    padding: 4px 6px;
+}
+.exchange-draft-status {
+    flex: 0 0 auto;
+    min-height: 16px;
+    font-size: 10px;
+    color: #a9b99a;
+}
+.exchange-error {
+    color: #e4ae8b;
+}
+.exchange-content > .private-conversation {
+    flex: 0 1 190px;
+    min-height: 125px;
+}
+.exchange-content > .private-conversation .private-conversation__history {
+    max-height: none;
+}
+.exchange-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 7px;
+    padding-top: 9px;
+    border-top: 1px solid #495d3e;
+}
+.exchange-actions button {
+    flex: 1;
+    min-height: 38px;
+    font-weight: 600;
+}
+.exchange-actions .exchange-primary {
+    background: #66562b;
+    border-color: #ad9853;
+    color: #fff0b9;
+}
+.exchange-actions .exchange-confirm {
+    background: #3b5633;
+    border-color: #8fa56a;
+    color: #e8f0ce;
+}
+.exchange-actions .exchange-cancel {
+    flex: 0 0 auto;
+    background: transparent;
+    padding-inline: 16px;
+    color: #acb49b;
+}
+.exchange-invitation,
+.exchange-terminal {
+    flex: 0 0 auto;
+    padding: 8px 11px;
+    border: 1px solid #7c7550;
+    background: #3a3827;
+    border-radius: 5px;
+    color: #e3d2a2;
+    font-size: 12px;
+}
+.exchange-terminal--completed {
+    border-color: #74915b;
+    background: #283d28;
+    color: #d4e5b4;
+}
+@media (max-width: 600px) {
+    .exchange-content {
+        gap: 6px;
+    }
+    .exchange-sides {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1.15fr) minmax(0, 0.85fr);
+        gap: 7px;
+        flex-basis: 330px;
+    }
+    .exchange-content > .private-conversation {
+        flex-basis: 148px;
+        min-height: 112px;
+    }
+    .exchange-actions {
+        gap: 5px;
+        padding-top: 6px;
+    }
+    .exchange-actions button {
+        font-size: 11px;
+        padding-inline: 7px;
+    }
+    .exchange-actions .exchange-cancel {
+        padding-inline: 8px;
+    }
+    .exchange-gold small {
+        display: block;
+        margin-left: 0;
+    }
+    .exchange-draft-status {
+        font-size: 9px;
+    }
+}
+@media (max-height: 650px) and (min-width: 601px) {
+    .exchange-content > .private-conversation {
+        flex-basis: 125px;
+        min-height: 100px;
+    }
+}
+@media (max-height: 650px) and (max-width: 600px) {
+    .exchange-sides {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .exchange-sides > .exchange-offer {
+        flex: 0 0 200px;
+        min-height: 200px;
+    }
+    .exchange-content > .private-conversation {
+        flex: 0 0 104px;
+        min-height: 104px;
+    }
+    .exchange-content > .private-conversation .private-conversation__header {
+        min-height: 24px;
+        padding-block: 1px;
+    }
+    .exchange-content > .private-conversation .private-conversation__history {
+        min-height: 0;
+    }
+    .exchange-sides .exchange-own-items,
+    .exchange-sides .exchange-offer__items {
+        overscroll-behavior-y: auto;
+    }
+}

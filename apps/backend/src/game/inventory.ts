@@ -11,6 +11,7 @@ import {
     snapshotItem,
 } from './inventoryItems'
 import { addInventoryItem } from './inventoryStacks'
+import { reservedInventoryQuantity } from './rewardReservations'
 
 export {
     createItemInstance,
@@ -73,7 +74,7 @@ export function removeInventoryItem(
 ): InventoryItemInstance | undefined {
     const index = inventory.findIndex((item) => item.instanceId === instanceId)
 
-    if (index === -1) {
+    if (index === -1 || reservedInventoryQuantity(inventory, instanceId) > 0) {
         return undefined
     }
 
@@ -88,7 +89,10 @@ export function equipInventoryItem(
     const index = inventory.findIndex((item) => item.instanceId === instanceId)
     const item = inventory[index]
 
-    if (item === undefined) {
+    if (
+        item === undefined ||
+        reservedInventoryQuantity(inventory, instanceId) > 0
+    ) {
         return undefined
     }
 

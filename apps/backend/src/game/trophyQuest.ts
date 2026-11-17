@@ -10,6 +10,7 @@ import {
 import type { AdventureChoiceContext, PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { consumeInventoryItems, countInventoryItem } from './inventory'
+import { canConsumeInventoryItems } from './inventoryStacks'
 import { resetMartyrStreak } from './martyr'
 
 export function trophyProgress(
@@ -57,7 +58,10 @@ export function turnInHearts(
     if (
         state.questStatus !== 'active' ||
         state.rewardKeys.has(adventureQuest.id) ||
-        trophyProgress(state, actor).trophies < adventureQuest.goal
+        trophyProgress(state, actor).trophies < adventureQuest.goal ||
+        !canConsumeInventoryItems(actor.inventory, {
+            slime_heart: adventureQuest.goal,
+        })
     ) {
         return false
     }

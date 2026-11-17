@@ -128,7 +128,9 @@ export class TheftService {
             transferInventoryItem(
                 target.inventory,
                 actor.inventory,
-                item.instanceId
+                item.instanceId,
+                undefined,
+                true
             ) === undefined
         ) {
             outcome = 'failed'

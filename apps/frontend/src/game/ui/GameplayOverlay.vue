@@ -88,7 +88,11 @@ function key(event: KeyboardEvent): void {
     }
     const actions: Record<string, () => void> = {
         KeyQ: () => {
-            selectKey(`character:${props.player.id}`)
+            selectedKey.value =
+                selectedKey.value === `character:${props.player.id}`
+                    ? undefined
+                    : `character:${props.player.id}`
+            hotbar.value?.resetGesture()
         },
         KeyE: () => cycle(event.shiftKey),
     }

@@ -20,6 +20,8 @@ import { createWorkerIncident } from './workerRequestCreation'
 import {
     isWorkerProduction,
     openIncident,
+    publishedWorkerViews,
+    viewWorkerIncident,
     WORKER_SETTLEMENT_PROFILES,
     type WorkerIncident,
 } from './workerRequestData'
@@ -47,20 +49,15 @@ export class WorkerRequestService {
     ) {}
 
     public list(cityId?: string): WorkRequestSnapshot[] {
-        return [...this.requests.values()]
-            .filter(
-                (request) =>
-                    request.published &&
-                    openIncident(request) &&
-                    request.claim === null &&
-                    (cityId === undefined || request.cityId === cityId)
-            )
-            .map((request) => structuredClone(request.view))
+        return publishedWorkerViews(this.requests.values(), cityId)
     }
 
     public snapshot(requestId: string): WorkRequestSnapshot | null {
-        const request = this.requests.get(requestId)
-        return request === undefined ? null : structuredClone(request.view)
+        return viewWorkerIncident(this.requests.get(requestId))
+    }
+
+    public forWorker(actorId: string): WorkRequestSnapshot | null {
+        return viewWorkerIncident(this.byWorker.get(actorId))
     }
 
     public active(groupKey: string): WorkRequestSnapshot | null {
@@ -68,7 +65,7 @@ export class WorkerRequestService {
             (candidate) =>
                 candidate.claim?.key === groupKey && openIncident(candidate)
         )
-        return request === undefined ? null : structuredClone(request.view)
+        return viewWorkerIncident(request)
     }
 
     public accept(

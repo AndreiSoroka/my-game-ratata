@@ -2,9 +2,11 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { garbleText } from './chat'
 import { type CombatObserver, observeCombatEvent } from './combatObservation'
 import type { PartyService } from './parties'
 import { type RoomSocket, send } from './roomMessaging'
+import { canHearSpeech } from './socialSpeech'
 import { stampSpeechEvent } from './speechReceipts'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
@@ -79,11 +81,60 @@ function deliverObservedEvent(
             ...(hasModelLease === undefined ? {} : { hasModelLease }),
         })
         if (visibleEvent !== undefined) {
+            projectPublicSpeech(
+                visibleEvent,
+                event,
+                observer,
+                characters,
+                world,
+                now
+            )
+            if (visibleEvent.kind === 'chat') {
+                const speaker = characters.get(event.actorId ?? '')
+                if (
+                    speaker !== undefined &&
+                    visibleEvent.actorId !== undefined
+                ) {
+                    visibleEvent.speakerName = speaker.nickname
+                }
+            }
             send(socket, {
                 type: 'event',
                 serverTime: now,
                 event: visibleEvent,
             })
         }
+    }
+}
+
+function projectPublicSpeech(
+    visible: GameEventPayload,
+    source: GameEventPayload,
+    observer: GameCharacter | undefined,
+    characters: ReadonlyMap<string, GameCharacter>,
+    world: WorldLocations | undefined,
+    now: number
+): void {
+    if (
+        source.kind !== 'chat' ||
+        source.audienceIds !== undefined ||
+        source.text === undefined ||
+        observer === undefined ||
+        observer.id === source.actorId ||
+        world === undefined
+    ) {
+        return
+    }
+    const speaker = characters.get(source.actorId ?? '')
+    if (
+        speaker !== undefined &&
+        !canHearSpeech(
+            observer,
+            speaker,
+            world.get(observer.locationId).navigation,
+            now
+        )
+    ) {
+        visible.text = garbleText(source.text)
     }
 }

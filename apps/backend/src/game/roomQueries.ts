@@ -1,4 +1,6 @@
 import type { GameCharacter } from './character'
+import type { NavigationService } from './navigation'
+import { findVisibleTarget } from './queries'
 import type { RoomSocket } from './roomMessaging'
 import { centerLocationId } from './worldLocations'
 
@@ -13,6 +15,24 @@ export function charactersInLocation(
                 !character.tags.has('offline')
         )
     )
+}
+
+export function createRoomTargetFinder(
+    characters: () => Map<string, GameCharacter>,
+    navigationFor: (actor: GameCharacter) => NavigationService
+) {
+    return (
+        observer: GameCharacter,
+        radius: number,
+        now = Date.now()
+    ): GameCharacter | undefined =>
+        findVisibleTarget(
+            charactersInLocation(characters(), observer.locationId).values(),
+            navigationFor(observer),
+            observer,
+            radius,
+            now
+        )
 }
 
 export function connectionsInLocation(

@@ -26,6 +26,7 @@ import {
     followActions,
     partyActions,
     reviveActions,
+    socialActions,
 } from './nearbyCharacterActions'
 import { farmAction, pickupActions, resourceActions } from './nearbyMaterialActions'
 import { theftActions } from './theftActions'
@@ -116,6 +117,7 @@ function characterTargets(
                 actions: [
                     ...justiceActions(snapshot, player, one),
                     ...characterActions(one, player),
+                    ...socialActions(one, player),
                     ...theftActions(snapshot, player, one),
                     ...reviveActions(one, player),
                     ...partyActions(one, player, snapshot.party),

@@ -1,7 +1,4 @@
 import {
-    FARM_HARVEST_GRAIN,
-    FARM_WORK_CYCLE_MS,
-    FARM_WORK_GRAIN,
     type FarmPlotSnapshot,
     type FarmSupplyClientMessage,
     type GameEventPayload,
@@ -14,8 +11,9 @@ import type { PlayerAdventure } from './adventureState'
 import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
-import { CITY_FARM_SUPPLIERS } from './cityFarmSupplyData'
+import { assignedFarmCity, CITY_FARM_SUPPLIERS } from './cityFarmSupplyData'
 import { cityTradeRefusal } from './crimeRules'
+import { FarmWorkBudgets } from './farmWorkBudgets'
 import {
     countInventoryItem,
     craftInventoryItems,
@@ -24,126 +22,54 @@ import {
 import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
-import { canPerformSkillAction } from './skillProgression'
-
-interface FarmWorkCycle {
-    remaining: number
-    nextAt: number
-    outstanding: boolean
-    advances: number
-}
 
 /** Municipal conversion/subsidy is separate from the finite retail seed stock. */
 export class CityFarmSupply {
-    private readonly cycles = new Map<string, FarmWorkCycle>()
+    private readonly budgets: FarmWorkBudgets
     private readonly receipts = new Map<
         string,
         Map<string, { signature: string; result: AdventureActionResult }>
     >()
 
     public constructor(
-        private readonly economy: CityEconomyService,
+        economy: CityEconomyService,
         private readonly farms: (
             locationId: string,
             now: number
         ) => FarmPlotSnapshot[]
-    ) {}
-
-    public remaining(actorId: string): number {
-        return this.cycles.get(actorId)?.remaining ?? 0
+    ) {
+        this.budgets = new FarmWorkBudgets(economy)
     }
 
-    public canSupply(actorId: string): boolean {
-        const cycle = this.cycles.get(actorId)
-        return (
-            cycle !== undefined &&
-            cycle.remaining > 0 &&
-            !cycle.outstanding &&
-            cycle.advances > 0
-        )
-    }
-
+    public readonly remaining = (id: string) => this.budgets.remaining(id)
+    public readonly workSchedule = (id: string) => this.budgets.schedule(id)
+    public readonly canSupply = (id: string) => this.budgets.canSupply(id)
+    public readonly reconcile = (actor: GameCharacter) =>
+        this.budgets.reconcile(actor)
+    public readonly beginWork = (actor: GameCharacter, now: number) =>
+        this.budgets.begin(actor, now)
+    public readonly workStatus = (actor: GameCharacter, now: number) =>
+        this.budgets.status(actor, now)
+    public readonly pauseWork = (
+        id: string,
+        reason: import('@my-game-ratata/contracts').WorkerActivitySnapshot,
+        until: number
+    ) => this.budgets.pause(id, reason, until)
+    public readonly finishWork = (
+        id: string,
+        reason?: import('@my-game-ratata/contracts').WorkerActivitySnapshot
+    ) => this.budgets.finish(id, reason)
+    public readonly observe = (events: readonly GameEventPayload[]) =>
+        this.budgets.observe(events)
     public supplierId(actor: GameCharacter): string | undefined {
-        const cityId = assignedCity(actor)
+        const cityId = assignedFarmCity(actor)
         return CITY_FARM_SUPPLIERS.find(
             (supplier) => supplier.cityId === cityId
         )?.npcId
     }
-
-    public reconcile(actor: GameCharacter): void {
-        const cycle = this.cycles.get(actor.id)
-        if (
-            cycle?.outstanding === true &&
-            countInventoryItem(actor.inventory, 'wheat_seed') === 0
-        ) {
-            // A lost advance cannot be replaced until the original work budget renews.
-            cycle.remaining = 0
-        }
-    }
-
-    public beginWork(actor: GameCharacter, now: number): boolean {
-        this.reconcile(actor)
-        const cityId = assignedCity(actor)
-        if (
-            cityId === undefined ||
-            !canPerformSkillAction(actor, now) ||
-            actor.tags.has('state.retired')
-        ) {
-            return false
-        }
-        const previous = this.cycles.get(actor.id)
-        if (previous !== undefined && previous.remaining > 0) {
-            return true
-        }
-        if (previous !== undefined && now < previous.nextAt) {
-            return false
-        }
-        const grain = this.economy
-            .snapshot(cityId, now)
-            ?.rows.find((row) => row.itemId === 'grain')
-        if (grain === undefined || grain.stock >= grain.target) {
-            return false
-        }
-        this.cycles.set(actor.id, {
-            remaining: FARM_WORK_GRAIN,
-            nextAt: now + FARM_WORK_CYCLE_MS,
-            outstanding: false,
-            advances: Math.ceil(FARM_WORK_GRAIN / FARM_HARVEST_GRAIN),
-        })
-        return true
-    }
-
-    public finishWork(actorId: string): void {
-        const cycle = this.cycles.get(actorId)
-        if (cycle !== undefined) {
-            cycle.remaining = 0
-        }
-    }
-
-    public observe(events: readonly GameEventPayload[]): void {
-        for (const event of events) {
-            const cycle =
-                event.actorId === undefined
-                    ? undefined
-                    : this.cycles.get(event.actorId)
-            if (cycle === undefined) {
-                continue
-            }
-            if (event.kind === 'farm_sow') {
-                cycle.outstanding = false
-            }
-            if (event.kind === 'farm_harvest') {
-                cycle.remaining = Math.max(
-                    0,
-                    cycle.remaining - (event.amount ?? 0)
-                )
-            }
-        }
-    }
-
-    public forget(actorId: string): void {
-        this.cycles.delete(actorId)
-        this.receipts.delete(actorId)
+    public forget(id: string): void {
+        this.budgets.forget(id)
+        this.receipts.delete(id)
     }
 
     public handle(
@@ -183,8 +109,8 @@ export class CityFarmSupply {
         now: number
     ): AdventureActionResult {
         this.reconcile(actor)
-        const cityId = assignedCity(actor)
-        const cycle = this.cycles.get(actor.id)
+        const cityId = assignedFarmCity(actor)
+        const cycle = this.budgets.get(actor.id)
         if (
             cityId === undefined ||
             cycle === undefined ||
@@ -271,16 +197,6 @@ export class CityFarmSupply {
             ? undefined
             : 'Выбери свободную грядку городской фермы.'
     }
-}
-
-function assignedCity(actor: GameCharacter): string | undefined {
-    return actor.tags.has('worker.farmer')
-        ? WORLD_LOCATION_DEFINITIONS.find(
-              (location) =>
-                  location.biome === 'city' &&
-                  actor.tags.has(`worker.city.${location.id}`)
-          )?.id
-        : undefined
 }
 
 function isCityFarm(cityId: string, farmId: string): boolean {

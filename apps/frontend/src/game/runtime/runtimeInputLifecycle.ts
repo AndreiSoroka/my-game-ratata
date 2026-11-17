@@ -1,5 +1,6 @@
 import type { Engine, PointerEvent } from 'excalibur'
 
+import { isOwnedUiTarget } from '../ui/keyboardOwnership'
 import { preventContextMenu } from './input'
 import { isEditableTarget } from './runtimeQueries'
 
@@ -18,7 +19,11 @@ export function installRuntimeInputs(
         if (document.hidden) handlers.release()
     }
     const focus = (event: FocusEvent) => {
-        if (isEditableTarget(event.target) || event.target instanceof HTMLButtonElement)
+        if (
+            isEditableTarget(event.target) ||
+            isOwnedUiTarget(event.target) ||
+            event.target instanceof HTMLButtonElement
+        )
             handlers.release()
     }
     window.addEventListener('keydown', handlers.keyDown)

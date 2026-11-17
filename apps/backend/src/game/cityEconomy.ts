@@ -24,6 +24,7 @@ import {
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
+import { marketCapacity, rejected, validateTrade } from './cityMarketRules'
 import {
     addInventoryItems,
     countInventoryItem,
@@ -40,6 +41,31 @@ export interface MarketResult {
 /** Session-owned finite warehouses; snapshots and quotes never mutate stock. */
 export class CityEconomyService {
     private readonly cities = new Map<string, CityState>()
+    public questInventory(cityId: string): InventoryItemInstance[] | undefined {
+        return this.cities.get(cityId)?.inventory
+    }
+
+    public recordQuestDelivery(
+        cityId: string,
+        itemId: import('@my-game-ratata/contracts').ItemId,
+        quantity: number,
+        now: number
+    ): void {
+        const city = this.cities.get(cityId)
+        if (
+            city === undefined ||
+            !CITY_COMMODITIES.some((row) => row.itemId === itemId)
+        ) {
+            return
+        }
+        city.revision += 1
+        city.history.push({
+            at: now,
+            itemId: itemId as import('@my-game-ratata/contracts').MarketItemId,
+            quantity,
+            kind: 'delivery',
+        })
+    }
     public readonly customerOrders = new CustomerOrders(
         (id) => this.cities.get(id),
         (id, now) => this.snapshot(id, now)
@@ -258,35 +284,4 @@ export class CityEconomyService {
     public completeWorkOrder(actor: GameCharacter, now: number): boolean {
         return this.workOrders.complete(actor, now)
     }
-}
-
-function rejected(error: string): MarketResult {
-    return { accepted: false, error }
-}
-
-function validateTrade(
-    wallet: PlayerAdventure,
-    message: Extract<MarketClientMessage, { type: 'market_trade' }>,
-    row: MarketRow
-): number | string {
-    const total = quoteMarketTrade(row, message.side, message.quantity)
-    if (total === null) {
-        return message.side === 'buy'
-            ? 'Товар закончился или количество недоступно.'
-            : 'Город сейчас не покупает столько этого товара.'
-    }
-    if (total !== message.expectedTotal) {
-        return 'Цена изменилась. Проверь новое предложение.'
-    }
-    if (message.side === 'buy' && wallet.gold < total) {
-        return 'Недостаточно золотых для покупки.'
-    }
-    if (message.side === 'sell' && !Number.isSafeInteger(wallet.gold + total)) {
-        return 'Кошелёк не может принять платёж.'
-    }
-    return total
-}
-
-function marketCapacity(side: 'buy' | 'sell'): number | undefined {
-    return side === 'buy' ? undefined : Infinity
 }

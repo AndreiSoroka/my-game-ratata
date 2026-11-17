@@ -6,12 +6,14 @@ import type {
 import { DEFAULT_QUEST_REWARD_MODE } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { ContractSlots } from './contractSlots'
 import { GuildKillCredit } from './guildKillCredit'
 import {
     advanceExploration,
     createGuildParticipants,
     type GuildJob,
     guildQuests,
+    resetSubmitterMartyr,
     rewardEligible,
 } from './guildRules'
 import {
@@ -21,7 +23,6 @@ import {
     workerContactAllowed,
     type WorkerGuildGateway,
 } from './guildWorkerRequests'
-import { resetMartyrStreak } from './martyr'
 import type { QuestGoldAwarder } from './questRewards'
 export { guildQuests } from './guildRules'
 export type { WorkerGuildGateway } from './guildWorkerRequests'
@@ -32,7 +33,10 @@ export class GuildService {
     private readonly killCredit = new GuildKillCredit()
     private nextJob = 1
 
-    public constructor(private readonly workers?: WorkerGuildGateway) {}
+    public constructor(
+        private readonly workers?: WorkerGuildGateway,
+        private readonly slots = new ContractSlots()
+    ) {}
 
     public definitions() {
         return [...guildQuests, ...(this.workers?.list() ?? [])]
@@ -96,7 +100,10 @@ export class GuildService {
     ): string {
         this.snapshot(key)
         const current = this.jobs.get(key)
-        if (current !== undefined && !current.completed) {
+        if (
+            (current !== undefined && !current.completed) ||
+            this.slots.get(key) !== undefined
+        ) {
             return 'Сначала завершите действующий договор.'
         }
         const definition = this.definitions().find(
@@ -135,6 +142,7 @@ export class GuildService {
     }
 
     public moveJob(from: string, to: string): void {
+        this.slots.move(from, to)
         this.workers?.moveGroup(from, to)
         const job = this.jobs.get(from)
         if (job !== undefined) {
@@ -145,7 +153,10 @@ export class GuildService {
 
     public hasActiveJob(key: string): boolean {
         const snapshot = this.snapshot(key)
-        return snapshot !== null && snapshot.status !== 'completed'
+        return (
+            this.slots.get(key) !== undefined ||
+            (snapshot !== null && snapshot.status !== 'completed')
+        )
     }
 
     public refreshGroup(key: string, members: ReadonlySet<string>): void {
@@ -284,10 +295,7 @@ export class GuildService {
             return 'Казначейство не подтвердило выплату. Попробуйте ещё раз.'
         }
         job.rewardShares = result.shares
-        const submitter = characters.get(submitterId)
-        if (submitter !== undefined) {
-            resetMartyrStreak(submitter)
-        }
+        resetSubmitterMartyr(characters, submitterId)
         job.completed = true
         if (job.definition.workRequest !== undefined) {
             this.workers?.complete(job.definition.id, key)

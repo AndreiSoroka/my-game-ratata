@@ -15,6 +15,7 @@ import type { CityState } from './cityEconomyStock'
 import {
     activeCustomerOrder,
     type CustomerOrder,
+    customerOrderFinder,
     ok,
     orderPrice,
     orderRecipe,
@@ -24,11 +25,13 @@ import {
 } from './craftOrderState'
 import { addInventoryItems, type InventoryItemInstance } from './inventory'
 import { resetMartyrStreak } from './martyr'
+import { availableGold } from './rewardReservations'
 
 /** Customer ownership and the actual reserved item outlive the owner's character record. */
 export class CustomerOrders {
     private readonly orders = new Map<string, CustomerOrder>()
     private nextId = 1
+    private readonly hasActive = customerOrderFinder(this.orders)
     public constructor(
         private readonly getCity: (id: string) => CityState | undefined,
         private readonly market: (
@@ -208,14 +211,6 @@ export class CustomerOrders {
         }
         return true
     }
-    private hasActive(ownerId: string, npcId: string): boolean {
-        return [...this.orders.values()].some(
-            (order) =>
-                order.ownerId === ownerId &&
-                order.npcId === npcId &&
-                activeCustomerOrder(order)
-        )
-    }
     private place(
         actor: GameCharacter,
         wallet: PlayerAdventure,
@@ -251,7 +246,7 @@ export class CustomerOrders {
             return reject('Цена изменилась. Проверь новое предложение.')
         }
         const deposit = Math.ceil(fullPrice / 2)
-        if (wallet.gold < deposit) {
+        if (availableGold(wallet) < deposit) {
             return reject('Недостаточно золотых для предоплаты.')
         }
         const order: CustomerOrder = {
@@ -286,7 +281,7 @@ export class CustomerOrders {
         if (order.remaining !== expectedRemaining) {
             return reject('Проверь остаток оплаты заказа.')
         }
-        if (wallet.gold < order.remaining) {
+        if (availableGold(wallet) < order.remaining) {
             return reject('Недостаточно золотых для остатка оплаты.')
         }
         if (!addInventoryItems(actor.inventory, [order.output])) {

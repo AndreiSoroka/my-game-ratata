@@ -78,6 +78,7 @@ export function createWorkerIncident(
         claim: null,
         published: false,
         returnReady: false,
+        threatObservedAt: now,
     }
     return request
 }

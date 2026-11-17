@@ -33,7 +33,7 @@ Starting another navigation supersedes the previous one. Low-level movement and 
 
 `act` and `waitFor` return a status and an observation. The default `act` status `updated` means a later server snapshot was received; it is **not** a success acknowledgement. Use an explicit outcome condition or compare authoritative facts such as quest status, item quantities, HP, receipts or dialogue. Never report a successful purchase, reward or attack just because a command was sent.
 
-Protocol 0.7.0 projects resource information on the server before either browser or agent observation. By default `health` is `{kind: 'percent', percent}` even for the acting identity. `resources.mana` and `resources.energy` are `{kind: 'percent', percent, hasCapacity}`; percentages round down, and zero capacity is distinct from an empty refillable resource. No raw current or maximum values are included. The acting identity also receives a private `characterSheet` with server-authored numeric bands or earned exact values, and a private `progression.constellations` graph containing only known stars and nearest unknown neighbors. Self-health, mana and energy knowledge unlock independently and never reveal foreign pools. Raw `stats` are not transmitted. The acting identity alone receives `resourceChecks` for abilities, per-spell prayer modes, dash, sow and theft, with `ready`, `mana` or `energy` results. These describe resource affordability, not target validity or action success. Damage events carry `hitQuality`; `amount` is normally absent, including private healing and absorption results. Exact damage on a training dummy is visible to an active observer inside its authored training area. The server-only `exactCombatNumbers` capability reveals authorized values as `{kind: 'exact', current, max}`, displayed rounded to integers; the test interface cannot grant it. Check an actual event or resource/durability change when testing dummy hits, since the dummy's health does not decrease.
+Protocol 0.9.0 projects resource information on the server before either browser or agent observation. By default `health` is `{kind: 'percent', percent}` even for the acting identity. `resources.mana` and `resources.energy` are `{kind: 'percent', percent, hasCapacity}`; percentages round down, and zero capacity is distinct from an empty refillable resource. No raw current or maximum values are included. The acting identity also receives a private `characterSheet` with server-authored numeric bands or earned exact values, and a private `progression.constellations` graph containing only known stars and nearest unknown neighbors. Self-health, mana and energy knowledge unlock independently and never reveal foreign pools. Raw `stats` are not transmitted. The acting identity alone receives `resourceChecks` for abilities, per-spell prayer modes, dash, sow and theft, with `ready`, `mana` or `energy` results. These describe resource affordability, not target validity or action success. Damage events carry `hitQuality`; `amount` is normally absent, including private healing and absorption results. Exact damage on a training dummy is visible to an active observer inside its authored training area. The server-only `exactCombatNumbers` capability reveals authorized values as `{kind: 'exact', current, max}`, displayed rounded to integers; the test interface cannot grant it. Check an actual event or resource/durability change when testing dummy hits, since the dummy's health does not decrease.
 
 Both methods accept `{ timeoutMs }`; `act` accepts an additional `until` condition. Waits default to five seconds and accept deadlines from 0 to 60,000 milliseconds. Results have `status`, `reason`, `elapsedMs` and `observation`; statuses are `updated`, `condition_met`, `timeout`, `cancelled` and `unavailable`.
 
@@ -161,6 +161,8 @@ if (result.status !== 'condition_met') throw new Error(result.reason)
 
 [`scripts/agent-mcp.mjs`](../scripts/agent-mcp.mjs) provides the existing token-protected `ratata_observe` and `ratata_act` tools for eligible NPCs. That bridge uses temporary controller leases and respects NPC capabilities and consent. The browser API described here owns an ordinary player connection and can exercise the full player quest flow; it neither takes over a human's character nor changes global Codex settings.
 
+For optional built-in reasoning by Mira and Kaplya, see [NPC reasoning through Codex CLI](npc-ai.md). It runs only with `GAME_AI_ENABLED=1`, uses configurable per-NPC models and earned observations, and records action results and diagnostic feedback. This background controller is independent of both the MCP bridge and the player-testing interface.
+
 ## Forest intentions and previews
 
 `{ type: 'auto_action', action: { kind: 'gather', nodeId, operation: 'harvest' } }`
@@ -196,3 +198,40 @@ maps. Never infer gameplay practice from layout geometry: the private seed and
 layout RNG are independent of combat and progression. Public NPC snapshots do not
 prepare or disclose personal maps. Active nodes describe actual standalone hotbar
 actions; resurrection nodes are passive extensions of their prayer.
+
+## Social commands (protocol 0.9.0)
+
+`chat` accepts optional `targetId` addressee and `focusKey` world-selection hints. The server validates the focus and projects only earned object facts. `whisper_open`, `whisper`
+(`targetId`, `text`) and `whisper_close` use the nearby private channel.
+`exchange_invite`, `exchange_answer`, `exchange_offer`, `exchange_accept` and
+`exchange_cancel` use server exchange IDs/revisions. Read `snapshot.social` for
+private histories, offers, approved quest proposals and stable completion receipts.
+Do not infer a transfer or a quest acceptance from a new snapshot alone.
+
+Exchange proposals with `requestId` use `exchange.own.revision`; the server echoes
+`own.lastRequestId` and optional `own.requestError`, including rejected proposals.
+Legacy external proposals without `requestId` still use the global revision.
+Confirmation always names `exchange.revision` and applies exactly once. A local
+UI draft is not a submitted offer. Empty offers remain negotiation. Models may
+`exchange_decline` terms without closing the session; player cancellation and
+loss of reach/control still cancel normally. Terminal windows can invite the
+same partner into a new exchange with a new ID.
+
+`social.speechActivity` contains only authorized typing/thinking presence, never
+input text. `speech_activity` carries `active`, `channel`, `activityId` and (for
+whisper) `targetId`; stale stops cannot clear a new activity. Public activity uses
+80 units, private activity uses the exact pair within 48 and line of sight. The
+server expires human activity after four seconds without a refresh.
+
+The bottom-left history keeps up to 500 delivered entries for the current living
+identity and server epoch in memory. It preserves garbled speech as received,
+merges only authorized private receipts and never replays missed public speech.
+`npc_request_status` events and private `social.requestStatuses` describe request
+progress without pretending that an out-of-range NPC spoke telepathically.
+
+For peaceful companions, `companionOrder: wait` persists separately from temporary
+model pauses. The default is until a new accepted request; `until_return` is only
+used when explicitly requested. A guide task walks via authored building targets
+and waits for a lagging player. It never moves the player. Worker target panels
+show the last authoritative work intent or reason for waiting; an incident still
+requires the existing claimed-request, trophy, real work trial and payout chain.

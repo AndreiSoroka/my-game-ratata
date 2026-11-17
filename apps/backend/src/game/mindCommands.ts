@@ -14,6 +14,7 @@ const requests: CompanionRequest[] = [
     'help',
     'dismiss',
     'talk',
+    'wait',
 ]
 
 export function parseMindCommand(record: Record<string, unknown>): ParseResult {
@@ -85,15 +86,20 @@ function parseCompanionRequest(record: Record<string, unknown>): ParseResult {
     if (type === 'companion_request' && validId(targetId)) {
         const request = requests.find((value) => value === record['request'])
         const text = record['text']
+        const waitMode = record['waitMode']
         if (
             request !== undefined &&
-            (text === undefined || typeof text === 'string')
+            (text === undefined || typeof text === 'string') &&
+            (waitMode === undefined ||
+                waitMode === 'until_request' ||
+                waitMode === 'until_return')
         ) {
             return {
                 message: {
                     type,
                     targetId,
                     request,
+                    ...(waitMode === undefined ? {} : { waitMode }),
                     ...(typeof text === 'string'
                         ? { text: text.trim().slice(0, 400) }
                         : {}),

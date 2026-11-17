@@ -210,8 +210,12 @@ export class WorldInventory {
             return []
         }
 
+        if (
+            removeInventoryItem(player.inventory, itemInstanceId) === undefined
+        ) {
+            return []
+        }
         resetMartyrStreak(player)
-        removeInventoryItem(player.inventory, itemInstanceId)
         const beforeHp = player.hp
         const restored = heal(player, healHp)
         return [

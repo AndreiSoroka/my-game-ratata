@@ -4,6 +4,8 @@ import type {
     MovementMode,
 } from '@my-game-ratata/contracts'
 
+import { axisFromKeys } from './input'
+
 export class RuntimeMovementControls {
     private sneaking = false
     private disrupted = false
@@ -41,4 +43,14 @@ export class RuntimeMovementControls {
     private updateMode(): void {
         this.send({ type: 'movement_mode', mode: this.sneaking ? 'sneaking' : 'walking' })
     }
+}
+
+export function flushRuntimeMoveInput(
+    keys: Set<string>,
+    previous: import('@my-game-ratata/contracts').Vector2,
+    send: (message: ClientMessage) => void
+): import('@my-game-ratata/contracts').Vector2 {
+    const axis = axisFromKeys(keys)
+    if (axis.x !== previous.x || axis.y !== previous.y) send({ axis, type: 'move_input' })
+    return axis
 }

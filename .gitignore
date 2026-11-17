@@ -9,3 +9,4 @@ playwright-report/
 storybook-static/
 test-results/
 *.tsbuildinfo
+apps/backend/logs/

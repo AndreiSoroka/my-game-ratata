@@ -9,6 +9,26 @@ function keyOn(element: HTMLElement, code: string): KeyboardEvent {
     return event
 }
 describe('HUD and window keyboard ownership', () => {
+    it('gives focused chat history its scroll keys without blocking the unfocused world', () => {
+        const panel = document.createElement('aside')
+        panel.setAttribute('data-game-input-owner', '')
+        const list = document.createElement('ol')
+        list.tabIndex = 0
+        panel.append(list)
+        const canvas = document.createElement('canvas')
+        canvas.tabIndex = 0
+        document.body.append(panel, canvas)
+        try {
+            list.focus()
+            for (const code of ['ArrowUp', 'KeyW', 'KeyQ', 'Enter'])
+                expect(isGameKeyboardBlocked(keyOn(list, code))).toBe(true)
+            canvas.focus()
+            expect(isGameKeyboardBlocked(keyOn(canvas, 'KeyQ'))).toBe(false)
+        } finally {
+            panel.remove()
+            canvas.remove()
+        }
+    })
     it('keeps unrelated game keys available on a focused HUD button, while confirmations belong to it', () => {
         const button = document.createElement('button')
         document.body.append(button)

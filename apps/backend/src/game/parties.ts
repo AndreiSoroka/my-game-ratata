@@ -6,22 +6,28 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { ContractSlots } from './contractSlots'
 import { GuildService, type WorkerGuildGateway } from './guild'
-import { resetMartyrStreak } from './martyr'
 import { NoticeStore } from './notices'
+import { answerPartyInvitation } from './partyAnswers'
 import {
     findGuildContact,
     type GuildCommand,
     handleGuildCommand,
 } from './partyGuildCommands'
 import { inviteToParty } from './partyInvitations'
-import { removePartyMember, resolvePartyGroup } from './partyMembership'
+import {
+    partyContractGroup,
+    partyContractRoster,
+    removePartyMember,
+    resolvePartyGroup,
+    rewardPartyMembers,
+    samePartyMembers,
+} from './partyMembership'
 import {
     available,
-    cancelPartyInvitations,
     createPartySnapshot,
     guildContact,
-    nearbyPlayers,
     type PartyRecord,
     shouldRemoveMember,
     staleInvitation,
@@ -29,6 +35,7 @@ import {
 import type { QuestGoldAwarder } from './questRewards'
 
 export class PartyService {
+    public readonly contractSlots = new ContractSlots()
     private readonly parties = new Map<string, PartyRecord>()
     private readonly membership = new Map<string, string>()
     private readonly invitations = new Map<string, PartyInvitationSnapshot>()
@@ -46,20 +53,31 @@ export class PartyService {
             canContact?: (actor: GameCharacter, npc: GameCharacter) => boolean
         } = {}
     ) {
-        this.guild = new GuildService(options.workers)
+        this.guild = new GuildService(options.workers, this.contractSlots)
+    }
+
+    public contractGroup(actorId: string) {
+        return partyContractGroup(
+            actorId,
+            this.parties,
+            this.membership,
+            this.guild
+        )
+    }
+
+    public contractRoster(instanceId: string) {
+        return partyContractRoster(instanceId, this.parties, this.contractSlots)
     }
 
     public rewardMembers(actorId: string): string[] {
-        return [...this.groupFor(actorId).members].filter(
-            (id) => !shouldRemoveMember(this.characters.get(id))
+        return rewardPartyMembers(
+            this.groupFor(actorId).members,
+            this.characters
         )
     }
 
     public sameParty(firstId: string, secondId: string): boolean {
-        const partyId = this.membership.get(firstId)
-        return (
-            partyId !== undefined && partyId === this.membership.get(secondId)
-        )
+        return samePartyMembers(firstId, secondId, this.membership)
     }
 
     private contactFor(
@@ -214,42 +232,17 @@ export class PartyService {
         accept: boolean,
         now: number
     ): GameEventPayload[] {
-        const invitation = this.invitations.get(invitationId)
-        if (invitation?.toId !== actor.id || invitation.expiresAt <= now) {
-            return this.tell(actor.id, 'Приглашение недоступно или истекло.')
-        }
-        this.invitations.delete(invitationId)
-        if (!accept) {
-            return this.tell(actor.id, 'Ты отказался от приглашения.')
-        }
-        const leader = this.characters.get(invitation.fromId)
-        const party = this.parties.get(
-            this.membership.get(invitation.fromId) ?? ''
+        return this.tell(
+            actor.id,
+            answerPartyInvitation(actor, invitationId, accept, now, {
+                invitations: this.invitations,
+                characters: this.characters,
+                parties: this.parties,
+                membership: this.membership,
+                guild: this.guild,
+                notices: this.notices,
+            })
         )
-        if (
-            !nearbyPlayers(actor, leader) ||
-            party?.leaderId !== invitation.fromId ||
-            party.members.size >= 4 ||
-            this.membership.has(actor.id)
-        ) {
-            return this.tell(
-                actor.id,
-                'Состав группы изменился. Попроси новое приглашение.'
-            )
-        }
-        if (this.guild.hasActiveJob(`solo:${actor.id}`)) {
-            return this.tell(
-                actor.id,
-                'Сначала заверши свой личный договор, чтобы не потерять его.'
-            )
-        }
-        resetMartyrStreak(actor)
-        party.members.add(actor.id)
-        this.guild.addLateMember(party.id, actor)
-        this.membership.set(actor.id, party.id)
-        cancelPartyInvitations(this.invitations, actor.id)
-        this.notices.set(leader.id, `${actor.nickname} присоединился к группе.`)
-        return this.tell(actor.id, 'Ты вступил в группу по собственной воле.')
     }
 
     private guildAction(

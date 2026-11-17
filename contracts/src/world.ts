@@ -6,6 +6,7 @@ export const REGION_NAME = 'Земли Новогорода'
 export type WorldBiome = 'city' | 'outskirts' | 'wilds'
 
 export interface WorldLocationDefinition {
+    municipalQuestGold?: number
     id: string
     name: string
     column: number
@@ -69,6 +70,7 @@ export const WORLD_LOCATION_DEFINITIONS: readonly WorldLocationDefinition[] =
                 column,
                 row,
                 dangerLevel,
+                ...(dangerLevel === 0 ? { municipalQuestGold: 300 } : {}),
                 biome:
                     dangerLevel === 0
                         ? 'city'

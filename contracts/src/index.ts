@@ -1,3 +1,5 @@
+import type { EquipmentSnapshot, ItemInstanceSnapshot } from './inventoryTypes'
+export type * from './inventoryTypes'
 import type {
     AbilityClientMessage,
     BasicAttackKind,
@@ -73,13 +75,23 @@ export * from './graves'
 import type { HealthSnapshot } from './health'
 export * from './health'
 import type { CharacterResourceChecks, ResourceSnapshot } from './resources'
+export * from './exchange'
 export type { PlayerIdentity, WorldPosition } from './identity'
 export * from './materials'
+export * from './npcQuests'
 export * from './pursuit'
 export * from './resources'
 export * from './service'
+export * from './social'
 export * from './training'
 export * from './trees'
+import type { ExchangeClientMessage } from './exchange'
+import type { NpcQuestClientMessage } from './npcQuests'
+import type {
+    CharacterInteractions,
+    SocialSnapshot,
+    WhisperClientMessage,
+} from './social'
 
 export interface Vector2 {
     x: number
@@ -140,17 +152,6 @@ export interface CharacterAnimationSnapshot {
     startedAt: number
 }
 
-export interface ItemInstanceSnapshot {
-    quantity?: number
-    durability?: number
-    instanceId: string
-    itemId: ItemId
-}
-
-export type EquipmentSnapshot = Partial<
-    Record<EquipmentSlotId, ItemInstanceSnapshot>
->
-
 export interface CharacterStatsSnapshot {
     attackCooldownMs: number
     critChance: number
@@ -161,6 +162,8 @@ export interface CharacterStatsSnapshot {
 }
 
 export interface CharacterSnapshot {
+    workerActivity?: import('./workerRequests').WorkerActivitySnapshot
+    interactions?: CharacterInteractions
     trainingTarget?: { areaId: string }
     connected?: boolean
     relationship?: CharacterRelationship
@@ -276,12 +279,13 @@ export interface EquipmentActionClientMessage {
     type: 'equipment_action'
 }
 
-export interface ChatClientMessage {
-    text: string
-    type: 'chat'
-}
+export type ChatClientMessage = import('./social').ChatClientMessage
 
 export type ClientMessage =
+    | import('./social').SpeechActivityCommand
+    | WhisperClientMessage
+    | ExchangeClientMessage
+    | NpcQuestClientMessage
     | PlantTreePreviewCommand
     | AutomationCommand
     | CharacterControlCommand
@@ -305,6 +309,8 @@ export type ClientMessage =
     | PickupItemClientMessage
 
 export interface WorldSnapshot {
+    serverEpoch?: string
+    social?: SocialSnapshot
     automation?: AutomationSnapshot
     graves?: Array<import('./graves').WorldGraveSnapshot>
     chest?: ChestContainerSnapshot | null

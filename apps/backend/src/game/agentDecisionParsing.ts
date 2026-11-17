@@ -10,8 +10,10 @@ import {
     parseInventoryDecision,
 } from './agentInventory'
 import { parseCombatReference } from './combatTargetParsing'
+import { parseExchangeCommand } from './exchangeCommands'
 import { isAdventureCommand, parseExtraCommand } from './extraCommands'
 import { parseClientMessage } from './messages'
+import { parseNpcQuestDecision } from './npcQuestCommands'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { isTheftCommandType } from './theftCommands'
 
@@ -20,7 +22,8 @@ export function parseAgentDecision(input: unknown): AgentDecision | undefined {
         return undefined
     }
     const record = input as Record<string, unknown>
-    const shared = parseSharedDecision(record)
+    const shared =
+        parseSocialAgentDecision(record) ?? parseSharedDecision(record)
     if (shared !== undefined) {
         return shared
     }
@@ -34,7 +37,7 @@ export function parseAgentDecision(input: unknown): AgentDecision | undefined {
         case 'attack':
             return parseAttack(record)
         case 'speak':
-            return parseSpeech(record['text'])
+            return parseSpeech(record['text'], record['targetId'])
         case 'move':
             return parseVector('move', record['axis'])
         case 'move_to':
@@ -74,11 +77,26 @@ function parseAttack(
         : undefined
 }
 
-function parseSpeech(text: unknown): AgentDecision | undefined {
+function parseSpeech(
+    text: unknown,
+    targetId: unknown
+): AgentDecision | undefined {
+    if (
+        targetId !== undefined &&
+        (typeof targetId !== 'string' ||
+            targetId.length === 0 ||
+            targetId.length > 100)
+    ) {
+        return undefined
+    }
     return typeof text === 'string' &&
         text.trim().length > 0 &&
         text.length <= 160
-        ? { text: text.trim(), type: 'speak' }
+        ? {
+              text: text.trim(),
+              type: 'speak',
+              ...(targetId === undefined ? {} : { targetId }),
+          }
         : undefined
 }
 
@@ -128,6 +146,9 @@ function parseTheft(
 function parseSharedDecision(
     record: Record<string, unknown>
 ): AgentDecision | undefined {
+    if (record['type'] === 'guide') {
+        return parseGuide(record['targetKey'])
+    }
     if (isAutomationCommand(record['type'])) {
         return parseAutomationCommand(record)
     }
@@ -135,14 +156,7 @@ function parseSharedDecision(
         record['type'] === 'inventory_action' ||
         record['type'] === 'equipment_action'
     ) {
-        const parsed = parseClientMessage(JSON.stringify(record)).message
-        if (
-            parsed?.type === 'inventory_action' ||
-            parsed?.type === 'equipment_action'
-        ) {
-            return parsed
-        }
-        return undefined
+        return parseInventoryEquipment(record)
     }
     const extra = parseExtraCommand(record)
     if (extra.message !== undefined && isAdventureCommand(extra.message)) {
@@ -155,4 +169,37 @@ function parseSharedDecision(
         return parseInventoryDecision(record)
     }
     return parseAgentCapability(record)
+}
+
+function parseSocialAgentDecision(
+    record: Record<string, unknown>
+): AgentDecision | undefined {
+    if (String(record['type']).startsWith('exchange_')) {
+        return parseExchangeCommand(record)
+    }
+    if (
+        record['type'] === 'quest_propose' ||
+        record['type'] === 'worker_quest_propose'
+    ) {
+        return parseNpcQuestDecision(record)
+    }
+    return undefined
+}
+
+function parseGuide(targetKey: unknown): AgentDecision | undefined {
+    return typeof targetKey === 'string' &&
+        targetKey.length > 0 &&
+        targetKey.length <= 100
+        ? { type: 'guide', targetKey }
+        : undefined
+}
+
+function parseInventoryEquipment(
+    record: Record<string, unknown>
+): AgentDecision | undefined {
+    const parsed = parseClientMessage(JSON.stringify(record)).message
+    return parsed?.type === 'inventory_action' ||
+        parsed?.type === 'equipment_action'
+        ? parsed
+        : undefined
 }

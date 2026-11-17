@@ -8,6 +8,7 @@ import type {
 import { cityResidents } from './cityResidents'
 
 export interface CompanionProfile {
+    dialogueNames?: readonly string[]
     canFight: boolean
     canFollow: boolean
     greeting: string
@@ -54,6 +55,14 @@ export const companionProfiles: Record<string, CompanionProfile> = {
             ]
         )
     ),
+    npc_friendly_girl_1: {
+        ...residentProfile,
+        dialogueNames: ['Мира', 'Mira'],
+        personality:
+            'Мира — хранительница Новогорода. Заботится о запасах города и просьбах работников, помогает жителям найти полезное дело. Может обходить город, но не уходит в походы и не сражается.',
+        greeting:
+            'Я Мира, хранительница Новогорода. Расскажи, что случилось: вместе найдём, чем помочь городу.',
+    },
     npc_princess_1: {
         canFight: false,
         canFollow: true,
@@ -127,6 +136,9 @@ export function consentReply(
     profile: CompanionProfile,
     order: CompanionOrder
 ): string {
+    if (order === 'wait') {
+        return 'Хорошо, подожду здесь, пока ты не попросишь идти дальше.'
+    }
     if (order === 'guard') {
         return 'Согласна остаться здесь. Приводи противника к посту — помогу, если смогу.'
     }

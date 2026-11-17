@@ -21,6 +21,7 @@ interface AppWindowsOptions {
     gameplay: Ref<{ select: (id: string) => boolean | void } | undefined>
     interaction: Ref<{ openMenu: () => void } | undefined>
     adventure: Ref<{ hasOpenWindow: boolean; closeWindows: () => void } | undefined>
+    social?: Ref<{ hasOpenWindow: boolean } | undefined>
     closeInventory: () => void
     closeContainers: () => void
     toggleInventory: () => void
@@ -55,6 +56,7 @@ export function useAppWindows(options: AppWindowsOptions) {
             options.status.value !== 'Connected',
             options.defeated.value,
             options.adventure.value?.hasOpenWindow,
+            options.social?.value?.hasOpenWindow,
             automationPanels.value?.hasOpenWindow,
             options.snapshot.value?.adventure?.dialogue,
         ].some(Boolean)
