@@ -1,6 +1,8 @@
 import type { CharacterSnapshot, Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
 import { Color, DisplayMode, Engine, PointerScope, vec } from 'excalibur'
 
+import { characterOverhead } from './characterPresentationGeometry'
+
 export function characterAt(
     snapshot: WorldSnapshot | undefined,
     playerId: string | undefined,
@@ -20,19 +22,37 @@ export function projectCharacter(
     engine: Engine | undefined,
     canvas: HTMLCanvasElement | undefined,
     snapshot: WorldSnapshot | undefined,
-    id: string
+    id: string,
+    renderedPosition?: Vector2
 ) {
     const character = snapshot?.characters.find((actor) => actor.id === id)
     if (!character || !engine || !canvas) return undefined
-    return projectPosition(
-        engine,
-        canvas,
-        {
-            x: character.position.x,
-            y: character.position.y - 42,
-        },
-        true
-    )
+    const position = renderedPosition ?? character.position
+    const overhead = characterOverhead(character.visualId)
+    const anchor = projectPosition(engine, canvas, { x: position.x, y: position.y - overhead.top })
+    const lower = projectPosition(engine, canvas, {
+        x: position.x,
+        y: position.y + overhead.bottom,
+    })
+    const left = projectPosition(engine, canvas, {
+        x: position.x - overhead.halfWidth,
+        y: position.y,
+    })
+    const right = projectPosition(engine, canvas, {
+        x: position.x + overhead.halfWidth,
+        y: position.y,
+    })
+    if (!anchor || !lower || !left || !right) return undefined
+    if (!presentationOnScreen(anchor, lower, left, right)) return undefined
+    return { ...anchor, lowerY: lower.y }
+}
+function presentationOnScreen(
+    anchor: { x: number; y: number; width: number; height: number },
+    lower: { y: number },
+    left: { x: number },
+    right: { x: number }
+): boolean {
+    return right.x >= 0 && left.x <= anchor.width && lower.y >= 0 && anchor.y <= anchor.height
 }
 export function projectPosition(
     engine: Engine | undefined,

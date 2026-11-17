@@ -15,6 +15,7 @@ import {
     type QuestOfferRecord,
 } from './npcQuestTypes'
 import { validateQuestDraft } from './npcQuestValidation'
+import { validateQuestExcursion } from './questExcursions'
 import type { AssetWallet, RewardReservations } from './rewardReservations'
 
 interface QuestAcceptanceContext {
@@ -73,6 +74,13 @@ export function answerQuestOffer(
         context.offers.delete(actor.id)
         return questResult(true)
     }
+    const excursionError =
+        offer.draft === null
+            ? null
+            : validateQuestExcursion(actor, offer.draft, context.environment)
+    if (excursionError !== null) {
+        return questResult(false, excursionError)
+    }
     const group = context.environment.parties.contractGroup(actor.id)
     if (!offerTermsUnchanged(offer, issuer, context.environment)) {
         return questResult(
@@ -87,28 +95,9 @@ export function answerQuestOffer(
         )
     }
     if (offer.view.workerRequestId !== undefined) {
-        const events = context.environment.parties.handle(
-            actor,
-            {
-                type: 'guild_accept',
-                questId: offer.view.workerRequestId,
-                rewardMode: message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
-            },
-            context.environment.characters(),
-            now
-        )
-        const accepted =
-            context.environment.parties.snapshot(actor.id).activeJob?.id ===
-            offer.view.workerRequestId
-        if (accepted) {
-            context.offers.delete(actor.id)
-        }
-        return {
-            accepted,
-            error: accepted ? null : 'Обращение уже принято или недоступно.',
-            events,
-        }
+        return acceptWorkerOffer(context, actor, issuer, offer, message, now)
     }
+
     return acceptGenerated(
         context,
         actor,
@@ -117,6 +106,43 @@ export function answerQuestOffer(
         message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
         now
     )
+}
+
+function acceptWorkerOffer(
+    context: QuestAcceptanceContext,
+    actor: GameCharacter,
+    issuer: GameCharacter,
+    offer: QuestOfferRecord,
+    message: Extract<NpcQuestClientMessage, { type: 'quest_offer_answer' }>,
+    now: number
+): NpcQuestResult {
+    const events = context.environment.parties.acceptNegotiatedWorker(
+        actor,
+        offer.view.workerRequestId ?? '',
+        {
+            rewardGold: offer.view.rewardGold,
+            rewardItems: offer.view.rewardItems.map((item) => ({
+                instanceId: item.instanceId,
+                quantity: item.quantity ?? 1,
+            })),
+            issuerId: issuer.id,
+            fundingCityId: offer.view.fundingCityId ?? issuer.locationId,
+        },
+        message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
+        context.environment.characters(),
+        now
+    )
+    const accepted =
+        context.environment.parties.snapshot(actor.id).activeJob?.id ===
+        offer.view.workerRequestId
+    if (accepted) {
+        context.offers.delete(actor.id)
+    }
+    return {
+        accepted,
+        error: accepted ? null : 'Обращение уже принято или недоступно.',
+        events,
+    }
 }
 
 function rewardUnchanged(

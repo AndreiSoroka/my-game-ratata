@@ -6,6 +6,7 @@ import type {
     NpcQuestRecord,
     QuestOfferRecord,
 } from './npcQuestTypes'
+import { questOfferAvailable } from './npcQuestTypes'
 
 export function snapshotNpcQuests(
     actorId: string,
@@ -21,13 +22,15 @@ export function snapshotNpcQuests(
     const active = context.jobs.get(
         context.environment.parties.contractSlots.get(group.key) ?? ''
     )
-    const last = [...context.jobs.values()]
-        .reverse()
-        .find((job) => job.acceptedBy === actorId)
-    const job = active ?? last
+    const job =
+        active !== undefined &&
+        !['completed', 'cancelled'].includes(active.view.status)
+            ? active
+            : undefined
     return {
         questOffer: cloneQuestOffer(
-            offer !== undefined && offer.view.expiresAt > now
+            offer !== undefined &&
+                questOfferAvailable(offer, context.environment, now)
                 ? offer
                 : undefined
         ),

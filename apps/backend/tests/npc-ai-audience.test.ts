@@ -220,7 +220,7 @@ it('cannot cancel B’s active exchange from a private model turn for A', async 
     ).toBe('Обмен относится только к текущему собеседнику.')
 })
 
-it('includes its pending offer in the exact partner continuation and excludes it from other and public conversations', async () => {
+it('ends an offer request even with done:false and projects live terms for the current speaker', async () => {
     const f = setup()
     const bob = addBob(f)
     const title = 'Личная просьба Алисе про тайник'
@@ -240,8 +240,15 @@ it('includes its pending offer in the exact partner continuation and excludes it
     const published = required(
         f.room.social.quests.snapshot(f.alice.actor.id, Date.now()).questOffer
     )
+    expect(f.provider.turns).toHaveLength(1)
+    f.alice.send({
+        type: 'whisper',
+        targetId: kaplyaId,
+        text: 'Напомни условия.',
+    })
+    await f.advance()
     const continuation = required(f.provider.turns[1])
-    expect(continuation.context.task?.requesterId).toBe(f.alice.actor.id)
+    expect(continuation.context.task).toBeNull()
     expect(continuation.context.observation.social?.questOffer).toMatchObject({
         id: published.id,
         revision: published.revision,
@@ -258,14 +265,15 @@ it('includes its pending offer in the exact partner continuation and excludes it
     await f.advance()
     const otherConversation = required(f.provider.turns[2])
     expect(otherConversation.context.observation.social?.questOffer).toBeNull()
-    expect(JSON.stringify(otherConversation.context)).not.toContain(title)
+    expect(otherConversation.context.observation.social?.exchange).toBeNull()
     otherConversation.resolve(npcReply(null, { taskAcceptance: 'none' }))
     await f.advance()
     f.alice.send({ type: 'chat', text: 'Привет всем!' })
     await f.advance()
     const publicConversation = required(f.provider.turns[3])
-    expect(publicConversation.context.observation.social).toBeUndefined()
-    expect(JSON.stringify(publicConversation.context)).not.toContain(title)
+    expect(publicConversation.context.observation.social?.questOffer?.id).toBe(
+        published.id
+    )
     expect(
         f.room.social.quests.snapshot(f.alice.actor.id, Date.now()).questOffer
             ?.id

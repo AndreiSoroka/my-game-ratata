@@ -11,7 +11,9 @@ export function npcDecisionAudienceError(
 ): string | undefined {
     if (
         decision.type === 'quest_propose' ||
-        decision.type === 'worker_quest_propose'
+        decision.type === 'worker_quest_propose' ||
+        decision.type === 'quest_offer_revise' ||
+        decision.type === 'quest_turn_in_request'
     ) {
         return decision.targetId === partnerId
             ? undefined

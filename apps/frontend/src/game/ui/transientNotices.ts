@@ -1,6 +1,6 @@
 interface SnapshotNotice {
     notice: string | null
-    noticeId?: number
+    noticeId?: number | string
 }
 
 export interface TransientNotices {

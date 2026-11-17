@@ -7,6 +7,7 @@ import {
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
+import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
 
 const props = defineProps<{
@@ -23,11 +24,10 @@ function place(id: string): string {
 function describe(objective: QuestObjective): string {
     if (objective.kind === 'deliver')
         return `Доставить: ${ITEM_DEFINITIONS[objective.itemId].name} × ${objective.quantity}. Получатель: ${name(objective.recipientId)}.`
-    if (objective.kind === 'visit')
-        return `Посетить: ${place(objective.locationId)}${objective.position ? `, точка (${objective.position.x}, ${objective.position.y})` : ''}.`
+    if (objective.kind === 'visit') return `Посетить: ${place(objective.locationId)}.`
     if (objective.kind === 'defeat')
         return `Победить: ${objective.archetype} × ${objective.quantity}. Место: ${place(objective.locationId)}.`
-    return `Получить сведения через осмотр: ${name(objective.targetId)}.`
+    return `Расспросить по поручению: ${name(objective.targetId)}.`
 }
 </script>
 <template>
@@ -38,14 +38,20 @@ function describe(objective: QuestObjective): string {
     <p>{{ offer.description }}</p>
     <ol class="quest-terms__objectives">
         <li v-for="(objective, index) in offer.objectives" :key="index">
-            {{ offer.objectiveLabels?.[index] ?? describe(objective) }}
-            <span v-if="progress" class="social-status">
-                · {{ progress[index] ?? 0 }} /
-                {{
-                    objective.kind === 'deliver' || objective.kind === 'defeat'
-                        ? objective.quantity
-                        : 1
-                }}</span
+            <ItemIcon
+                v-if="objective.kind === 'deliver'"
+                :item="{ itemId: objective.itemId, quantity: objective.quantity }"
+            />
+            <span
+                >{{ offer.objectiveLabels?.[index] ?? describe(objective) }}
+                <span v-if="progress" class="social-status">
+                    · {{ progress[index] ?? 0 }} /
+                    {{
+                        objective.kind === 'deliver' || objective.kind === 'defeat'
+                            ? objective.quantity
+                            : 1
+                    }}</span
+                ></span
             >
         </li>
     </ol>
@@ -53,11 +59,12 @@ function describe(objective: QuestObjective): string {
     <template v-else>
         <p>
             Награда: {{ offer.rewardGold }} золота{{
-                offer.funding === 'city' ? ' из городского фонда' : ''
+                ['city', 'worker'].includes(offer.funding) ? ' из городского фонда' : ''
             }}.
         </p>
         <ul v-if="offer.rewardItems.length">
-            <li v-for="item in offer.rewardItems" :key="item.instanceId">
+            <li v-for="item in offer.rewardItems" :key="item.instanceId" class="quest-item-reward">
+                <ItemIcon :item="item" />
                 {{ itemStackLabel(item) }}
             </li>
         </ul>
@@ -71,6 +78,15 @@ function describe(objective: QuestObjective): string {
     padding-left: 20px;
 }
 .quest-terms__objectives li {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.quest-item-reward {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 8px;
 }
 </style>

@@ -115,6 +115,26 @@ function characterTargets(
                 position: character.position,
                 range: Math.max(48, THEFT_RULES.reportRange, THEFT_RULES.absolutionRange),
                 actions: [
+                    ...(snapshot.social?.quest?.status === 'active'
+                        ? snapshot.social.quest.objectives.flatMap((objective, objectiveIndex) =>
+                              objective.kind === 'inspect' &&
+                              objective.targetId === character.id &&
+                              interactionDistance(player, character) <= 48 &&
+                              (snapshot.social!.quest!.progress[objectiveIndex] ?? 0) === 0
+                                  ? [
+                                        {
+                                            id: `quest-inquire:${snapshot.social!.quest!.instanceId}:${objectiveIndex}`,
+                                            label: `Расспросить по поручению: ${snapshot.social!.quest!.title}`,
+                                            command: {
+                                                type: 'quest_inquire' as const,
+                                                instanceId: snapshot.social!.quest!.instanceId,
+                                                objectiveIndex,
+                                            },
+                                        },
+                                    ]
+                                  : []
+                          )
+                        : []),
                     ...justiceActions(snapshot, player, one),
                     ...characterActions(one, player),
                     ...socialActions(one, player),

@@ -89,4 +89,31 @@ describe('HUD and window keyboard ownership', () => {
             panel.remove()
         }
     })
+    it('passes only physical WASD through the quest reading view and yields to editors and other dialogs', () => {
+        const panel = document.createElement('section')
+        panel.setAttribute('role', 'dialog')
+        panel.dataset.worldMovement = 'wasd'
+        const button = document.createElement('button')
+        panel.append(button)
+        document.body.append(panel)
+        try {
+            button.focus()
+            for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD'])
+                expect(isGameKeyboardBlocked(keyOn(button, code))).toBe(false)
+            for (const code of ['KeyQ', 'KeyE', 'KeyF', 'ArrowUp', 'Digit1'])
+                expect(isGameKeyboardBlocked(keyOn(button, code))).toBe(true)
+            const input = document.createElement('input')
+            panel.append(input)
+            input.focus()
+            expect(isGameKeyboardBlocked(keyOn(input, 'KeyW'))).toBe(true)
+            input.remove()
+            const modal = document.createElement('section')
+            modal.setAttribute('role', 'dialog')
+            document.body.append(modal)
+            expect(isGameKeyboardBlocked(keyOn(button, 'KeyW'))).toBe(true)
+            modal.remove()
+        } finally {
+            panel.remove()
+        }
+    })
 })

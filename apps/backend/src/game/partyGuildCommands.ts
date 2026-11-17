@@ -2,6 +2,7 @@ import type { PartyClientMessage } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { GuildService } from './guild'
+import type { NegotiatedWorkerReward } from './guildRewards'
 import type { NoticeStore } from './notices'
 import type { QuestGoldAwarder } from './questRewards'
 
@@ -21,6 +22,8 @@ interface GuildCommandContext {
     characters: Map<string, GameCharacter>
     award: QuestGoldAwarder
     now: number
+    issuer?: GameCharacter
+    negotiated?: NegotiatedWorkerReward
 }
 
 export function executeGuildCommand(input: GuildCommandContext): string {
@@ -34,7 +37,9 @@ export function executeGuildCommand(input: GuildCommandContext): string {
                 group.members,
                 characters,
                 message.rewardMode,
-                now
+                now,
+                input.negotiated,
+                input.issuer?.id
             )
         case 'guild_report':
             return guild.report(group.key, message.instanceId, actor, now)
@@ -95,4 +100,57 @@ export function findGuildContact(
             canContact(actor, npc) &&
             guild.contactAllowed(key, actor, npc, now, questId)
     )
+}
+
+interface PartyGuildEnvironment {
+    guild: () => GuildService
+    group: (id: string) => { key: string; members: Set<string> }
+    characters: () => Map<string, GameCharacter>
+    award: () => QuestGoldAwarder
+    leader: (key: string) => string | undefined
+    contact: (
+        actor: GameCharacter,
+        now: number,
+        questId?: string
+    ) => GameCharacter | undefined
+    notices: NoticeStore
+}
+
+export function createPartyGuildAction(environment: PartyGuildEnvironment) {
+    return (
+        actor: GameCharacter,
+        message: GuildCommand,
+        now: number,
+        negotiated?: NegotiatedWorkerReward
+    ): [] => {
+        const group = environment.group(actor.id)
+        const contact =
+            message.type === 'guild_abandon'
+                ? undefined
+                : environment.contact(
+                      actor,
+                      now,
+                      message.type === 'guild_accept'
+                          ? message.questId
+                          : undefined
+                  )
+        return handleGuildCommand({
+            guild: environment.guild(),
+            group,
+            actor,
+            message,
+            characters: environment.characters(),
+            award: environment.award(),
+            now,
+            notices: environment.notices,
+            leaderId: environment.leader(group.key),
+            ...(contact === undefined ? {} : { issuer: contact }),
+            ...(negotiated === undefined ? {} : { negotiated }),
+            contact:
+                message.type === 'guild_abandon' ||
+                (contact !== undefined &&
+                    (negotiated === undefined ||
+                        contact.id === negotiated.issuerId)),
+        })
+    }
 }

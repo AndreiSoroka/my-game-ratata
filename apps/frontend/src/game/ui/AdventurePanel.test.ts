@@ -22,39 +22,39 @@ const escape = () =>
     new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true })
 
 describe('adventure window Escape ownership', () => {
-    it.each([
-        ['Журнал', '.adventure-journal'],
-        ['Ремесло', '.adventure-crafting'],
-    ])('closes %s after background focus loss and restores the canvas', async (label, selector) => {
-        const canvas = document.createElement('canvas')
-        canvas.dataset.gameCanvas = ''
-        canvas.tabIndex = 0
-        document.body.append(canvas)
-        const wrapper = createPanel()
-        try {
-            await wrapper
-                .findAll('.adventure-tools button')
-                .find((button) => button.text() === label)!
-                .trigger('click')
-            expect(wrapper.find(selector).exists()).toBe(true)
-            document.body.tabIndex = -1
-            document.body.focus()
-            const event = escape()
-            document.body.dispatchEvent(event)
-            await flushPromises()
-            expect(event.defaultPrevented).toBe(true)
-            expect(wrapper.find(selector).exists()).toBe(false)
-            expect(document.activeElement).toBe(canvas)
-        } finally {
-            wrapper.unmount()
-            canvas.remove()
-            document.body.removeAttribute('tabindex')
+    it.each([['Ремесло', '.adventure-crafting']])(
+        'closes %s after background focus loss and restores the canvas',
+        async (label, selector) => {
+            const canvas = document.createElement('canvas')
+            canvas.dataset.gameCanvas = ''
+            canvas.tabIndex = 0
+            document.body.append(canvas)
+            const wrapper = createPanel()
+            try {
+                await wrapper
+                    .findAll('.adventure-tools button')
+                    .find((button) => button.text() === label)!
+                    .trigger('click')
+                expect(wrapper.find(selector).exists()).toBe(true)
+                document.body.tabIndex = -1
+                document.body.focus()
+                const event = escape()
+                document.body.dispatchEvent(event)
+                await flushPromises()
+                expect(event.defaultPrevented).toBe(true)
+                expect(wrapper.find(selector).exists()).toBe(false)
+                expect(document.activeElement).toBe(canvas)
+            } finally {
+                wrapper.unmount()
+                canvas.remove()
+                document.body.removeAttribute('tabindex')
+            }
+            const afterUnmount = escape()
+            window.dispatchEvent(afterUnmount)
+            expect(afterUnmount.defaultPrevented).toBe(false)
         }
-        const afterUnmount = escape()
-        window.dispatchEvent(afterUnmount)
-        expect(afterUnmount.defaultPrevented).toBe(false)
-    })
-    it('leaves an unrelated dialog and hidden journal untouched while inventory or conversation owns the UI', async () => {
+    )
+    it('leaves an unrelated dialog and hidden crafting panel untouched while inventory or conversation owns the UI', async () => {
         const wrapper = createPanel()
         const foreign = document.createElement('section')
         foreign.setAttribute('role', 'dialog')
@@ -64,20 +64,20 @@ describe('adventure window Escape ownership', () => {
         try {
             await wrapper
                 .findAll('.adventure-tools button')
-                .find((candidate) => candidate.text() === 'Журнал')!
+                .find((candidate) => candidate.text() === 'Ремесло')!
                 .trigger('click')
             button.focus()
             const foreignEscape = escape()
             button.dispatchEvent(foreignEscape)
             await flushPromises()
             expect(foreignEscape.defaultPrevented).toBe(false)
-            expect(wrapper.find('.adventure-journal').exists()).toBe(true)
+            expect(wrapper.find('.adventure-crafting').exists()).toBe(true)
             await wrapper.setProps({ inventoryOpen: true })
             const inventoryEscape = escape()
             window.dispatchEvent(inventoryEscape)
             expect(inventoryEscape.defaultPrevented).toBe(false)
             await wrapper.setProps({ inventoryOpen: false })
-            expect(wrapper.find('.adventure-journal').exists()).toBe(true)
+            expect(wrapper.find('.adventure-crafting').exists()).toBe(true)
             await wrapper.setProps({
                 adventure: {
                     ...adventureFixture(),

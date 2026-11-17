@@ -243,6 +243,11 @@ export class SceneActors {
         return interactionHasLineOfSight(map, from, position, bounds, range)
     }
 
+    public characterPosition(id: string): Vector2 | undefined {
+        const body = this.bundles.get(id)?.body
+        return body ? { x: body.pos.x, y: body.pos.y } : undefined
+    }
+
     public isCharacterVisible(id: string): boolean {
         return this.bundles.get(id)?.body.graphics.isVisible ?? true
     }

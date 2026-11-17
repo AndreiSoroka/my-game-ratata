@@ -11,12 +11,17 @@ import type { AdventureService } from './adventure'
 import type { AgentDecisionResult } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { ExchangeService } from './exchange'
+import { isNpcQuestClient, isNpcQuestDecision } from './npcQuestCommands'
 import { configureNpcQuestDialogue } from './npcQuestDialogue'
 import { NpcQuestService } from './npcQuests'
 import type { PartyService } from './parties'
 import type { GameRoom } from './room'
 import { RoomCommunication } from './roomCommunication'
+import { RoomQuestDialogues } from './roomQuestDialogues'
+import { decideSocialExchange } from './roomSocialExchange'
 import { handleSocialSpeech } from './roomSocialSpeech'
+import { createSocialWake } from './roomSocialWake'
+import { createWhisperObserver } from './roomWhisperObserver'
 import { TradeNotifications } from './tradeNotifications'
 import { WhisperService } from './whispers'
 import { workerActivity } from './workerActivity'
@@ -25,8 +30,9 @@ export class RoomSocial {
     public readonly whispers: WhisperService
     public readonly exchanges: ExchangeService
     public readonly quests: NpcQuestService
+    private readonly questDialogues: RoomQuestDialogues
     private readonly communication: RoomCommunication
-    private sequence = 0
+    private readonly wake: ReturnType<typeof createSocialWake>
     private readonly tradeViews = new TradeNotifications()
 
     public constructor(
@@ -36,25 +42,12 @@ export class RoomSocial {
         private readonly ai: () => NpcAiCoordinator | undefined,
         actors: () => Iterable<GameCharacter>
     ) {
+        this.wake = createSocialWake(room, ai)
         this.communication = new RoomCommunication(room, ai)
         this.whispers = new WhisperService({
             getCharacter: (id) => room.getCharacter(id),
             navigationFor: (actor) => room.navigationFor(actor),
-            heard: (actor, listener, message) =>
-                this.ai()?.hear(
-                    actor,
-                    {
-                        kind: 'message',
-                        id: message.id,
-                        senderId: actor.id,
-                        text: message.text,
-                        channel: 'whisper',
-                        locationId: actor.locationId,
-                        position: { ...actor.position },
-                        at: message.at,
-                    },
-                    listener.id
-                ),
+            heard: createWhisperObserver(ai, () => this.questDialogues.turnIns),
         })
         this.exchanges = new ExchangeService({
             getCharacter: (id) => room.getCharacter(id),
@@ -80,6 +73,15 @@ export class RoomSocial {
             navigationFor: (actor) => room.navigationFor(actor),
             canIssue: (actor) => this.ai()?.configured(actor.id) === true,
         })
+        this.questDialogues = new RoomQuestDialogues({
+            room,
+            adventure,
+            parties,
+            quests: this.quests,
+            exchanges: this.exchanges,
+            whispers: this.whispers,
+            actors,
+        })
         configureNpcQuestDialogue(
             adventure,
             this.quests,
@@ -93,6 +95,19 @@ export class RoomSocial {
         message: ClientMessage,
         now: number
     ): boolean {
+        if (message.type === 'quest_turn_in_confirm') {
+            const result = this.questDialogues.turnIns.confirm(
+                actor,
+                message.confirmationId,
+                message.accept,
+                now
+            )
+            this.room.publishEvents(result.events)
+            if (!result.accepted) {
+                this.notice(actor, result.error ?? 'Сдача недоступна.')
+            }
+            return true
+        }
         if (this.communication.handle(actor, message, now)) {
             return true
         }
@@ -104,7 +119,15 @@ export class RoomSocial {
                 actor,
                 message,
                 now,
-                (text) => this.notice(actor, text)
+                (text) => this.notice(actor, text),
+                (targetId, text, id) =>
+                    this.questDialogues.heardPublic(
+                        actor,
+                        targetId,
+                        text,
+                        id,
+                        now
+                    )
             )
         ) {
             return true
@@ -116,11 +139,7 @@ export class RoomSocial {
             }
             return true
         }
-        if (
-            message.type === 'quest_offer_answer' ||
-            message.type === 'npc_quest_turn_in' ||
-            message.type === 'npc_quest_abandon'
-        ) {
+        if (isNpcQuestClient(message)) {
             const result = this.quests.handle(actor, message, now)
             this.room.publishEvents(result.events)
             if (!result.accepted) {
@@ -132,11 +151,7 @@ export class RoomSocial {
     }
 
     public isDecision(decision: AgentDecision): boolean {
-        return (
-            isExchange(decision) ||
-            decision.type === 'quest_propose' ||
-            decision.type === 'worker_quest_propose'
-        )
+        return isExchange(decision) || isNpcQuestDecision(decision)
     }
 
     public decide(
@@ -151,37 +166,18 @@ export class RoomSocial {
                 events: [],
             }
         }
-        if (isExchange(decision)) {
-            if (decision.type === 'exchange_cancel') {
-                const exchange = this.exchanges.snapshot(actor.id)
-                if (
-                    exchange?.id === decision.exchangeId &&
-                    exchange.status === 'active'
-                ) {
-                    return {
-                        ...this.exchanges.handle(
-                            actor,
-                            {
-                                type: 'exchange_decline',
-                                exchangeId: exchange.id,
-                                revision: exchange.revision,
-                                reason: 'Пока не согласен с условиями. Можно предложить другие.',
-                            },
-                            now
-                        ),
-                        events: [],
-                    }
-                }
-            }
-            return {
-                ...this.exchanges.handle(actor, decision, now),
-                events: [],
-            }
+        if (decision.type === 'quest_turn_in_request') {
+            return this.questDialogues.turnIns.open(
+                actor,
+                decision.targetId,
+                decision.instanceId,
+                now
+            )
         }
-        if (
-            decision.type === 'quest_propose' ||
-            decision.type === 'worker_quest_propose'
-        ) {
+        if (isExchange(decision)) {
+            return decideSocialExchange(this.exchanges, actor, decision, now)
+        }
+        if (isNpcQuestDecision(decision)) {
             return this.quests.handleDecision(actor, decision, now)
         }
         return {
@@ -217,18 +213,33 @@ export class RoomSocial {
 
     public snapshot(actor: GameCharacter, now: number): SocialSnapshot {
         const exchange = this.exchanges.snapshot(actor.id)
+        const questView = this.quests.snapshot(actor.id, now)
+        const questTurnIn = this.questDialogues.turnIns.snapshot(actor, now)
+        const partnerId =
+            questView.questOffer?.issuerId ??
+            questTurnIn?.issuerId ??
+            (exchange !== null &&
+            ['active', 'invited'].includes(exchange.status)
+                ? exchange.partnerId
+                : undefined)
         return {
             exchange,
             privateMessages: this.whispers.heardMessages(actor.id),
             ...this.communication.snapshot(actor, now),
-            whisper: this.whispers.snapshot(actor, now, exchange?.partnerId),
-            ...this.quests.snapshot(actor.id, now),
+            whisper: this.whispers.snapshot(actor, now, partnerId),
+            ...questView,
+            questTurnIn,
         }
+    }
+
+    public conversation(issuerId: string, recipientId: string, now: number) {
+        return this.questDialogues.conversation(issuerId, recipientId, now)
     }
 
     public update(now: number, actors: Iterable<GameCharacter>): void {
         this.exchanges.pause(now)
         this.quests.update(now)
+        this.questDialogues.update(now)
         for (const actor of actors) {
             if (this.ai()?.configured(actor.id) !== true) {
                 continue
@@ -261,33 +272,7 @@ export class RoomSocial {
     public stop(): void {
         this.exchanges.stop()
         this.quests.stop()
-    }
-
-    private wake(
-        targetId: string,
-        senderId: string,
-        text: string,
-        now: number
-    ): void {
-        const actor = this.room.getCharacter(senderId)
-        if (actor === undefined) {
-            return
-        }
-        this.ai()?.hear(
-            actor,
-            {
-                kind: 'message',
-                id: `social:${String(++this.sequence)}`,
-                senderId,
-                text,
-                channel: 'whisper',
-                system: true,
-                locationId: actor.locationId,
-                position: { ...actor.position },
-                at: now,
-            },
-            targetId
-        )
+        this.questDialogues.stop()
     }
 
     private notice(actor: GameCharacter, text: string): void {

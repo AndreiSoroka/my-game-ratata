@@ -41,7 +41,7 @@ export function speakNpcDialogue(
         )
         return
     }
-    if (event.legacy === true) {
+    if (event.legacy === true && state.config.mode !== 'dialogue_only') {
         const result = companions.decide(
             actor,
             { type: 'speak', text, targetId: target.id },
@@ -50,7 +50,7 @@ export function speakNpcDialogue(
             state.token
         )
         room.publishEvents(result.events)
-    } else if (event.channel === 'whisper') {
+    } else if (event.channel === 'whisper' || event.legacy === true) {
         room.social.whispers.send(actor, target, text, now)
     } else {
         room.publishEvents([createSpeechEvent(actor, text.slice(0, 400))])

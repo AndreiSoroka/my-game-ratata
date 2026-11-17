@@ -44,12 +44,20 @@ export interface GuildParticipantSnapshot {
 }
 
 export interface GuildQuestSnapshot extends GuildQuestDefinition {
+    issuerId?: string
+    issuerName?: string
+    rewardItems?: Array<import('./inventoryTypes').ItemInstanceSnapshot>
+    itemRecipient?: 'submitter'
+    fundingCityId?: string
+    rewardStatus?: 'reserved' | 'missing'
+    rewardNotice?: string | null
+    receiptId?: string
     instanceId: string
     rewardMode: QuestRewardMode
     rewardShares?: QuestRewardShare[]
     participants: GuildParticipantSnapshot[]
     progress: number
-    status: 'active' | 'ready' | 'completed'
+    status: 'active' | 'ready' | 'completed' | 'cancelled' | 'reward_missing'
 }
 
 export interface PartySnapshot {

@@ -1,6 +1,8 @@
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
+import { CharacterMemory } from './characterMemory'
+import { memoryForCharacter } from './characterMinds'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import type { NpcAiSessionActions } from './session'
 export function prepareNpcActor(
@@ -14,6 +16,10 @@ export function prepareNpcActor(
     if (actor !== state.actor) {
         sessions.cancel(state, now)
         state.actor = actor
+        state.mind =
+            actor === undefined
+                ? new CharacterMemory(state.config.actorId)
+                : memoryForCharacter(actor)
         state.memory = ''
         state.conversations.clear()
         state.facts = []
@@ -35,10 +41,7 @@ export function prepareNpcActor(
     ) {
         sessions.cancel(state, now)
     }
-    if (
-        state.token !== undefined &&
-        !companions.renewModelControl(actor, state.token, now)
-    ) {
+    if (leaseExpired(companions, state, actor, now)) {
         sessions.cancel(state, now)
     }
     if (idleLease(state)) {
@@ -65,5 +68,18 @@ function idleLease(state: NpcAiActorState): boolean {
         state.dialogue === undefined &&
         state.controller === undefined &&
         state.inbox.length === 0
+    )
+}
+
+function leaseExpired(
+    companions: CompanionService,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    now: number
+): boolean {
+    return (
+        state.config.mode !== 'dialogue_only' &&
+        state.token !== undefined &&
+        !companions.renewModelControl(actor, state.token, now)
     )
 }

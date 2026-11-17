@@ -40,7 +40,9 @@ it('passes an earned selected well as topic, independently from the selected con
         text: 'Это что?',
         focus: { name: 'Колодец' },
     })
-    expect(provider.turns[0]?.context.observation.social).toBeUndefined()
+    expect(
+        provider.turns[0]?.context.observation.social?.whisper?.partnerId
+    ).toBe(f.alice.actor.id)
     expect(
         buildNpcAiObservation(
             f.room,

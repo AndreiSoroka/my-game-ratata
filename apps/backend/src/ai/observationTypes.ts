@@ -52,6 +52,10 @@ export interface NpcAiTarget {
 }
 
 export interface NpcAiObservation {
+    contracts?: import('./contractProjection').KnownContracts
+    itemDefinitions?: Partial<
+        Record<import('@my-game-ratata/contracts').ItemId, { name: string }>
+    >
     social?: import('@my-game-ratata/contracts').SocialSnapshot
     tick: number
     serverTime: number

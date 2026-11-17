@@ -1,14 +1,23 @@
+import { boundedNpcContext } from './dialogueContext'
 import type { NpcAiActorState } from './runtimeState'
+import {
+    inputSource,
+    reserveInputCall,
+    resolveTurnInformation,
+    type TurnInformation,
+} from './turnInformation'
 import type { NpcAiContext, NpcAiProvider } from './types'
 
-/** Abort is also observed here so a faulty provider cannot retain the queue forever. */
+/** One lookup may augment the original turn; neither lookup nor provider can execute game actions. */
 export async function invokeNpcAiTurn(
     state: NpcAiActorState,
     context: NpcAiContext,
     provider: NpcAiProvider,
-    current: () => boolean
+    current: () => boolean,
+    information: TurnInformation = {}
 ): Promise<void> {
     const generation = state.generation
+    const sourceId = inputSource(state, context)
     const events = state.dialogue === undefined ? state.events.splice(0) : []
     const controller = new AbortController()
     state.controller = controller
@@ -21,18 +30,27 @@ export async function invokeNpcAiTurn(
         onAbort = () => reject(new Error('Model turn cancelled or timed out'))
         controller.signal.addEventListener('abort', onAbort, { once: true })
     })
-    try {
-        const reply = await Promise.race([
+    const decide = (input: NpcAiContext) =>
+        Promise.race([
             Promise.resolve().then(() => {
                 controller.signal.throwIfAborted()
+                reserveInputCall(state, sourceId)
                 return provider.decide(
-                    context,
+                    boundedNpcContext(input),
                     state.config.settings,
                     controller.signal
                 )
             }),
             aborted,
         ])
+    try {
+        const reply = await resolveTurnInformation(
+            state,
+            context,
+            information,
+            decide,
+            aborted
+        )
         if (
             current() &&
             state.generation === generation &&

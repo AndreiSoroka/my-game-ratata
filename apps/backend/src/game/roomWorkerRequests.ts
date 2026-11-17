@@ -27,6 +27,7 @@ export function createWorkerGuildGateway(
         checkTurnIn: (id, key, now) =>
             service.checkTurnIn(id, key, room(), now),
         complete: (id, key) => service.complete(id, key),
+        settle: (id, key, payment) => service.completeWith(id, key, payment),
         abandon: (id, key, now) => service.abandon(id, key, now),
         moveGroup: (from, to) => service.moveGroup(from, to),
         releaseGroup: (key, now) => service.releaseGroup(key, now),
@@ -93,6 +94,10 @@ export function createRoomParties(
     adventure: AdventureService
 ): PartyService {
     return new PartyService(adventure.grantQuestGoldOnce, {
+        questRewards: {
+            funding: adventure.questFunding,
+            walletFor: adventure.walletFor,
+        },
         workers: createWorkerGuildGateway(room.workerRequests, () => room),
         canContact: (actor, npc) => canContactGuild(actor, npc, room),
     })

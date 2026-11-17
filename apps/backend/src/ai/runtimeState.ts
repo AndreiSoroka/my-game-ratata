@@ -3,6 +3,8 @@ import { canRequest } from '../game/companionState'
 import type { GameRoom } from '../game/room'
 import { canPerformSkillAction } from '../game/skillProgression'
 import type { PendingNpcAiAction } from './actions'
+import { CharacterMemory } from './characterMemory'
+import { memoryForCharacter } from './characterMinds'
 import type { NpcAiGuide } from './guide'
 import type {
     NpcAiActorConfig,
@@ -13,6 +15,8 @@ import type {
 } from './types'
 
 export interface NpcAiActorState {
+    modelCallsByInput: Map<string, number>
+    mind: CharacterMemory
     inbox: Array<Extract<NpcAiEvent, { kind: 'message' }>>
     dialogue: Extract<NpcAiEvent, { kind: 'message' }> | undefined
     config: NpcAiActorConfig
@@ -48,6 +52,11 @@ export function createNpcAiState(
     actor: GameCharacter | undefined
 ): NpcAiActorState {
     return {
+        modelCallsByInput: new Map(),
+        mind:
+            actor === undefined
+                ? new CharacterMemory(config.actorId)
+                : memoryForCharacter(actor),
         inbox: [],
         dialogue: undefined,
         config,

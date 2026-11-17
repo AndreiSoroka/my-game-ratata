@@ -3,6 +3,7 @@ import './socialWindows.css'
 
 import { nextTick, onMounted, ref } from 'vue'
 
+import CloseIcon from './CloseIcon.vue'
 import { isConfirmationKey } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
 
@@ -71,8 +72,13 @@ onMounted(async () => {
         >
             <header class="social-window__header">
                 <h2>{{ title }}</h2>
-                <button type="button" :aria-label="`Закрыть: ${title}`" @click="emit('close')">
-                    ×
+                <button
+                    type="button"
+                    class="social-window__close"
+                    :aria-label="`Закрыть: ${title}`"
+                    @click="emit('close')"
+                >
+                    <CloseIcon />
                 </button>
             </header>
             <slot />

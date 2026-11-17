@@ -10,7 +10,9 @@
         "speech",
         "taskAcceptance",
         "companionOrder",
-        "waitMode"
+        "waitMode",
+        "informationRequest",
+        "personMemoryUpdate"
     ],
     "properties": {
         "decision": {
@@ -526,6 +528,122 @@
                             "maxLength": 400
                         }
                     }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["exchange_invite"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId", "instanceId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["quest_turn_in_request"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "instanceId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "type",
+                        "targetId",
+                        "offerId",
+                        "revision",
+                        "rewardGold",
+                        "rewardItems"
+                    ],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["quest_offer_revise"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "offerId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "revision": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "rewardGold": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 300
+                        },
+                        "rewardItems": {
+                            "type": "array",
+                            "maxItems": 10,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["instanceId", "quantity"],
+                                "properties": {
+                                    "instanceId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 150
+                                    },
+                                    "quantity": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 100
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "instanceId", "objectiveIndex"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["quest_inquire"]
+                        },
+                        "instanceId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "objectiveIndex": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                        }
+                    }
                 }
             ]
         },
@@ -583,6 +701,73 @@
         "waitMode": {
             "type": ["string", "null"],
             "enum": ["until_request", "until_return", null]
+        },
+        "informationRequest": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "personId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["deep_memory"]
+                        },
+                        "personId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        }
+                    }
+                }
+            ]
+        },
+        "personMemoryUpdate": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "personId",
+                        "throughMessageId",
+                        "text",
+                        "sourceMessageIds"
+                    ],
+                    "properties": {
+                        "personId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "throughMessageId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                        },
+                        "sourceMessageIds": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 40,
+                            "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 150
+                            }
+                        }
+                    }
+                }
+            ]
         }
     }
 }

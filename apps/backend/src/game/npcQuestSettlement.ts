@@ -1,13 +1,11 @@
 import type { QuestRewardShare } from '@my-game-ratata/contracts'
 
-import {
-    type AssetSettlementRequest,
-    planAssetSettlement,
-} from './assetSettlement'
+import { type AssetSettlementRequest } from './assetSettlement'
 import type { GameCharacter } from './character'
 import { rewardEligible } from './guildRules'
 import { itemQuantity } from './inventory'
 import type { NpcQuestEnvironment, NpcQuestRecord } from './npcQuestTypes'
+import { promisedItemsUnchanged } from './promisedReward'
 import { planQuestReward } from './questRewards'
 import {
     type AssetWallet,
@@ -22,6 +20,9 @@ export function settleNpcQuest(
     environment: NpcQuestEnvironment,
     now: number
 ): QuestRewardShare[] | undefined {
+    if (!promisedItemsUnchanged(issuer.inventory, job.view.rewardItems)) {
+        return undefined
+    }
     const request = settlementRequest(
         job,
         submitter,
@@ -32,11 +33,25 @@ export function settleNpcQuest(
     if (request === undefined) {
         return undefined
     }
-    const plan = planAssetSettlement(request.assets)
-    if (plan?.commit() !== true) {
+    const roster = environment.parties.contractRoster(
+        job.view.instanceId
+    ).members
+    const result = environment.adventure.grantQuestGoldOnce(
+        {
+            receiptId: job.view.instanceId,
+            totalGold: job.view.rewardGold,
+            mode: job.view.rewardMode,
+            submitterId: submitter.id,
+            memberIds: [...roster].filter((id) =>
+                rewardEligible(id, roster, environment.getCharacter(id))
+            ),
+        },
+        { assets: request.assets }
+    )
+    if (!result.ok) {
         return undefined
     }
-    for (const objective of job.draft.objectives) {
+    for (const objective of result.alreadyPaid ? [] : job.draft.objectives) {
         if (
             objective.kind === 'deliver' &&
             objective.recipientId.startsWith('city:')
@@ -49,7 +64,7 @@ export function settleNpcQuest(
             )
         }
     }
-    return request.shares
+    return result.shares
 }
 
 function settlementRequest(

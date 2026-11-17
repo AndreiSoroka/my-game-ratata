@@ -50,18 +50,6 @@ export function handleCharacterMessage(
     }
     const events = roomCharacterAction(context, player, message)
     if (events !== undefined) {
-        if (
-            message.type === 'interact' &&
-            events.some(
-                (event) => event.kind === 'chat' && event.targetId === player.id
-            )
-        ) {
-            room.social.quests.inspect(
-                player.id,
-                message.targetId,
-                `inspect:${player.id}:${String(Date.now())}`
-            )
-        }
         room.publishEvents(events)
         room.notifyNpcAi(player, message, events, Date.now())
         return

@@ -43,12 +43,19 @@ export function parseNpcAiConfig(input: unknown, enabled = false): NpcAiConfig {
     const npcs: NpcAiActorConfig[] = rawNpcs.map((raw: unknown) => {
         const npc = object(raw, 'npc')
         const role = npc['role']
-        if (role !== 'city_coordinator' && role !== 'companion') {
-            throw invalid('npc.role must be city_coordinator or companion')
+        if (
+            role !== 'city_coordinator' &&
+            role !== 'companion' &&
+            role !== 'advisor'
+        ) {
+            throw invalid(
+                'npc.role must be city_coordinator, companion or advisor'
+            )
         }
         return {
             actorId: text(npc['actorId'], 'npc.actorId', 100),
             role,
+            ...configuredMode(npc, role),
             settings: settings(npc['settings'], defaults),
         }
     })
@@ -171,4 +178,22 @@ function isReasoningEffort(
     input: unknown
 ): input is NpcAiModelSettings['reasoningEffort'] {
     return typeof input === 'string' && reasoningEfforts.has(input)
+}
+
+function configuredMode(
+    npc: Record<string, unknown>,
+    role: NpcAiActorConfig['role']
+): Pick<NpcAiActorConfig, 'mode'> {
+    const mode = npc['mode']
+    if (
+        mode !== undefined &&
+        mode !== 'controller' &&
+        mode !== 'dialogue_only'
+    ) {
+        throw invalid('npc.mode must be controller or dialogue_only')
+    }
+    if (role === 'advisor') {
+        return { mode: 'dialogue_only' }
+    }
+    return mode === undefined ? {} : { mode }
 }

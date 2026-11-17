@@ -1,4 +1,6 @@
 import type {
+    AgentDecision,
+    ClientMessage,
     NpcQuestClientMessage,
     NpcQuestDecision,
 } from '@my-game-ratata/contracts'
@@ -9,9 +11,15 @@ import { parseQuestDraft } from './npcQuestValidation'
 function record(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
-
 function id(value: unknown): value is string {
     return typeof value === 'string' && value.length > 0 && value.length <= 150
+}
+function integer(value: unknown, min: number, max: number): boolean {
+    return (
+        Number.isSafeInteger(value) &&
+        Number(value) >= min &&
+        Number(value) <= max
+    )
 }
 
 export function parseNpcQuestCommand(
@@ -20,59 +28,178 @@ export function parseNpcQuestCommand(
     if (!record(value)) {
         return undefined
     }
-    if (
-        (value['type'] === 'npc_quest_turn_in' ||
-            value['type'] === 'npc_quest_abandon') &&
-        id(value['instanceId'])
-    ) {
-        return { type: value['type'], instanceId: value['instanceId'] }
+    switch (value['type']) {
+        case 'quest_turn_in_confirm':
+            return parseConfirmation(value)
+        case 'quest_inquire':
+            return parseInquiry(value)
+        case 'npc_quest_turn_in':
+        case 'npc_quest_abandon':
+            return id(value['instanceId'])
+                ? { type: value['type'], instanceId: value['instanceId'] }
+                : undefined
+        default:
+            return parseOfferAnswer(value)
     }
-    return parseOfferAnswer(value)
 }
-
+function parseConfirmation(
+    value: Record<string, unknown>
+): NpcQuestClientMessage | undefined {
+    return id(value['confirmationId']) && typeof value['accept'] === 'boolean'
+        ? {
+              type: 'quest_turn_in_confirm',
+              confirmationId: value['confirmationId'],
+              accept: value['accept'],
+          }
+        : undefined
+}
+function parseInquiry(
+    value: Record<string, unknown>
+): Extract<NpcQuestClientMessage, { type: 'quest_inquire' }> | undefined {
+    return id(value['instanceId']) && integer(value['objectiveIndex'], 0, 3)
+        ? {
+              type: 'quest_inquire',
+              instanceId: value['instanceId'],
+              objectiveIndex: Number(value['objectiveIndex']),
+          }
+        : undefined
+}
 function parseOfferAnswer(
     value: Record<string, unknown>
 ): NpcQuestClientMessage | undefined {
     if (
-        value['type'] === 'quest_offer_answer' &&
-        id(value['offerId']) &&
-        Number.isSafeInteger(value['revision']) &&
-        Number(value['revision']) > 0 &&
-        typeof value['accept'] === 'boolean' &&
-        (value['rewardMode'] === undefined ||
-            isQuestRewardMode(value['rewardMode']))
+        value['type'] !== 'quest_offer_answer' ||
+        !id(value['offerId']) ||
+        !integer(value['revision'], 1, Number.MAX_SAFE_INTEGER) ||
+        typeof value['accept'] !== 'boolean' ||
+        (value['rewardMode'] !== undefined &&
+            !isQuestRewardMode(value['rewardMode']))
     ) {
-        return {
-            type: value['type'],
-            offerId: value['offerId'],
-            revision: Number(value['revision']),
-            accept: value['accept'],
-            ...(isQuestRewardMode(value['rewardMode'])
-                ? { rewardMode: value['rewardMode'] }
-                : {}),
-        }
+        return undefined
     }
-    return undefined
+    return {
+        type: 'quest_offer_answer',
+        offerId: value['offerId'],
+        revision: Number(value['revision']),
+        accept: value['accept'],
+        ...(isQuestRewardMode(value['rewardMode'])
+            ? { rewardMode: value['rewardMode'] }
+            : {}),
+    }
 }
 
 export function parseNpcQuestDecision(
     value: unknown
 ): NpcQuestDecision | undefined {
-    if (!record(value) || !id(value['targetId'])) {
+    if (!record(value)) {
         return undefined
     }
-    if (value['type'] === 'worker_quest_propose' && id(value['requestId'])) {
-        return {
-            type: value['type'],
-            targetId: value['targetId'],
-            requestId: value['requestId'],
+    if (value['type'] === 'quest_inquire') {
+        return parseInquiry(value)
+    }
+    const targetId = value['targetId']
+    if (!id(targetId)) {
+        return undefined
+    }
+    switch (value['type']) {
+        case 'quest_turn_in_request':
+            return id(value['instanceId'])
+                ? {
+                      type: value['type'],
+                      targetId,
+                      instanceId: value['instanceId'],
+                  }
+                : undefined
+        case 'quest_offer_revise':
+            return parseRevision(value, targetId)
+        case 'worker_quest_propose':
+            return id(value['requestId'])
+                ? {
+                      type: value['type'],
+                      targetId,
+                      requestId: value['requestId'],
+                  }
+                : undefined
+        case 'quest_propose': {
+            const draft = parseQuestDraft(value['draft'])
+            return draft === undefined
+                ? undefined
+                : { type: value['type'], targetId, draft }
         }
+        default:
+            return undefined
     }
-    if (value['type'] === 'quest_propose') {
-        const draft = parseQuestDraft(value['draft'])
-        return draft === undefined
-            ? undefined
-            : { type: value['type'], targetId: value['targetId'], draft }
+}
+
+function parseRevision(
+    value: Record<string, unknown>,
+    targetId: string
+): NpcQuestDecision | undefined {
+    const items = parseRewards(value['rewardItems'])
+    if (
+        !id(value['offerId']) ||
+        !integer(value['revision'], 1, Number.MAX_SAFE_INTEGER) ||
+        !integer(value['rewardGold'], 0, 300) ||
+        items === undefined
+    ) {
+        return undefined
     }
-    return undefined
+    return {
+        type: 'quest_offer_revise',
+        targetId,
+        offerId: value['offerId'],
+        revision: Number(value['revision']),
+        rewardGold: Number(value['rewardGold']),
+        rewardItems: items,
+    }
+}
+function parseRewards(
+    value: unknown
+): Array<{ instanceId: string; quantity: number }> | undefined {
+    if (!Array.isArray(value) || value.length > 10) {
+        return undefined
+    }
+    const items: Array<{ instanceId: string; quantity: number }> = []
+    const entries: unknown[] = value
+    for (const item of entries) {
+        if (
+            !record(item) ||
+            !id(item['instanceId']) ||
+            !integer(item['quantity'], 1, 100)
+        ) {
+            return undefined
+        }
+        items.push({
+            instanceId: item['instanceId'],
+            quantity: Number(item['quantity']),
+        })
+    }
+    return new Set(items.map((item) => item.instanceId)).size === items.length
+        ? items
+        : undefined
+}
+
+export function isNpcQuestClient(
+    message: ClientMessage
+): message is Exclude<
+    NpcQuestClientMessage,
+    { type: 'quest_turn_in_confirm' }
+> {
+    return [
+        'quest_offer_answer',
+        'npc_quest_turn_in',
+        'npc_quest_abandon',
+        'quest_inquire',
+    ].includes(message.type)
+}
+export function isNpcQuestDecision(
+    decision: AgentDecision
+): decision is NpcQuestDecision {
+    return [
+        'quest_propose',
+        'worker_quest_propose',
+        'quest_offer_revise',
+        'quest_turn_in_request',
+        'quest_inquire',
+    ].includes(decision.type)
 }

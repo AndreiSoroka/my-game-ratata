@@ -28,6 +28,12 @@ export interface WorkerGuildGateway {
         now: number
     ) => string | null
     complete: (requestId: string, groupKey: string) => boolean
+    /** Executes payment only while the incident can commit its terminal transition. */
+    settle?: (
+        requestId: string,
+        groupKey: string,
+        payment: () => boolean
+    ) => boolean
     abandon: (requestId: string, groupKey: string, now: number) => string | null
     moveGroup: (from: string, to: string) => void
     releaseGroup: (groupKey: string, now: number) => void

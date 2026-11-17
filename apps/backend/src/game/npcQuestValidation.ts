@@ -56,7 +56,11 @@ function objective(value: unknown): value is QuestObjective {
         case 'deliver':
             return delivery(value)
         case 'inspect':
-            return boundedString(value['targetId'], 120)
+            return (
+                boundedString(value['targetId'], 120) &&
+                (value['question'] === undefined ||
+                    boundedString(value['question'], 300))
+            )
         case 'defeat':
             return (
                 ['slime', 'skeleton'].includes(String(value['archetype'])) &&
@@ -130,6 +134,12 @@ export function validateQuestDraft(
     ) {
         return 'У меня нет полномочий распоряжаться городским фондом.'
     }
+    if (
+        (draft.rewardGold > 0 || draft.rewardItems.length > 0) &&
+        draft.objectives.every((entry) => entry.kind === 'visit')
+    ) {
+        return 'Оплачиваемое поручение требует полезного действия: разговора по делу, доставки или победы, а не одного посещения.'
+    }
     for (const entry of draft.objectives) {
         const error = validateObjective(issuer, entry, environment)
         if (error !== null) {
@@ -154,7 +164,9 @@ function validateObjective(
     if (entry.kind === 'inspect') {
         const target = environment.getCharacter(entry.targetId)
         return target?.alive === true &&
-            target.controllerKind !== 'network_player'
+            target.controllerKind !== 'network_player' &&
+            target.id !== issuer.id &&
+            target.soul.canSpeak
             ? null
             : 'Собеседник для получения сведений недоступен.'
     }

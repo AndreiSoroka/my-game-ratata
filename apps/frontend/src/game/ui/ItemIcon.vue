@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { ItemInstanceSnapshot } from '@my-game-ratata/contracts'
+import type { ItemId } from '@my-game-ratata/contracts'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { itemStackLabel } from './itemLabels'
 
-defineProps<{ item: ItemInstanceSnapshot; showQuantity?: boolean }>()
+defineProps<{ item: { itemId: ItemId; quantity?: number }; showQuantity?: boolean }>()
 </script>
 <template>
     <span class="rpg-item-icon" :title="itemStackLabel(item)">

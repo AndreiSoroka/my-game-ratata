@@ -1,10 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
-for (const width of [320, 390, 1280]) {
+for (const viewport of [
+    { width: 320, height: 480 },
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+]) {
+    const { width } = viewport
+
     test(`character menu keeps keyboard ownership and selected tab at ${width}px`, async ({
         page,
     }, info) => {
-        await page.setViewportSize({ width, height: 844 })
+        await page.setViewportSize(viewport)
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
         await page.evaluate(
@@ -54,6 +60,13 @@ for (const width of [320, 390, 1280]) {
             'aria-selected',
             'true'
         )
+        await menu.getByRole('tab', { name: 'Квесты', exact: true }).click()
+        await expect(menu.getByRole('region', { name: 'Активные квесты' })).toContainText(
+            'Активных квестов нет'
+        )
+        await expect(menu).not.toHaveAttribute('aria-modal', 'true')
+        await expectReadingMovement(page)
+        await menu.getByRole('tab', { name: 'Развитие', exact: true }).click()
         await page.keyboard.press('Escape')
         await expect(menu).toHaveCount(0)
         await page.getByRole('button', { name: 'Знания', exact: true }).click()
@@ -66,4 +79,26 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole('button', { name: 'Персонаж · P', exact: true }).click()
         await expect(menu).toBeVisible()
     })
+}
+
+async function expectReadingMovement(page: Page): Promise<void> {
+    let moved = false
+    for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD']) {
+        const start = await page.evaluate(() => ({
+            position: window.__ratataTest!.getState().player!.position,
+            tick: window.__ratataTest!.getState().snapshot!.tick,
+        }))
+        await page.keyboard.down(code)
+        await page.evaluate(
+            (tick) => window.__ratataTest!.waitFor({ type: 'tick', after: tick + 5 }),
+            start.tick
+        )
+        await page.keyboard.up(code)
+        const end = await page.evaluate(() => window.__ratataTest!.getState().player!.position)
+        if (Math.hypot(end.x - start.position.x, end.y - start.position.y) > 2) {
+            moved = true
+            break
+        }
+    }
+    expect(moved).toBe(true)
 }

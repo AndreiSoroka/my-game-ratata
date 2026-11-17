@@ -2,11 +2,12 @@
 import './socialWindows.css'
 
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
+import { activeQuests } from './activeQuests'
 import ExchangeWindow from './ExchangeWindow.vue'
-import NpcQuestWindow from './NpcQuestWindow.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
+import QuestTurnInWindow from './QuestTurnInWindow.vue'
 import WhisperWindow from './WhisperWindow.vue'
 
 const props = defineProps<{
@@ -15,36 +16,45 @@ const props = defineProps<{
     characters: CharacterSnapshot[]
     connected: boolean
 }>()
-const emit = defineEmits<{ command: [message: ClientMessage]; open: [] }>()
+const emit = defineEmits<{ command: [message: ClientMessage]; open: []; quests: [] }>()
 const whisperTarget = ref<string>()
 const exchangeId = ref<string>()
 const hiddenExchangeId = ref<string>()
-const questOpen = ref(false)
+const hints = ref<HTMLElement>()
 const social = computed(() => props.snapshot.social)
 const whisper = computed(() => social.value?.whisper)
 const exchange = computed(() => social.value?.exchange)
 const available = computed(() => props.player.alive && props.connected)
+const questCount = computed(() => activeQuests(props.snapshot).length)
+const turnInVisible = computed(() => available.value && Boolean(social.value?.questTurnIn))
+const questOfferVisible = computed(
+    () => available.value && !turnInVisible.value && Boolean(social.value?.questOffer)
+)
 const exchangeVisible = computed(
     () =>
         available.value &&
+        !turnInVisible.value &&
+        !questOfferVisible.value &&
         exchange.value &&
+        exchange.value.status !== 'completed' &&
         hiddenExchangeId.value !== exchange.value.id &&
         (exchangeId.value === exchange.value.id || !exchange.value.incoming)
 )
 const whisperVisible = computed(
     () =>
         available.value &&
+        !turnInVisible.value &&
+        !questOfferVisible.value &&
         !exchangeVisible.value &&
         Boolean(whisper.value) &&
         whisper.value?.partnerId === whisperTarget.value
 )
-const questOfferVisible = computed(() => available.value && Boolean(social.value?.questOffer))
 const hasOpenWindow = computed(() =>
     Boolean(
         exchangeVisible.value ||
         whisperVisible.value ||
         questOfferVisible.value ||
-        (questOpen.value && social.value?.quest)
+        turnInVisible.value
     )
 )
 function prepare(): void {
@@ -84,64 +94,133 @@ function closeExchange(): void {
         emit('command', { type: 'exchange_cancel', exchangeId: current.id })
     restoreFocus()
 }
-function showQuest(): void {
-    questOpen.value = true
-    prepare()
-}
-function closeQuest(): void {
-    questOpen.value = false
-    restoreFocus()
-}
 watch(
     () => props.player.id,
     () => {
         whisperTarget.value = undefined
         exchangeId.value = undefined
         hiddenExchangeId.value = undefined
-        questOpen.value = false
     }
 )
-watch(questOfferVisible, (visible) => {
-    if (visible) prepare()
-})
-watch(available, (value) => {
-    if (!value) {
+watch(
+    () => `${exchange.value?.id ?? ''}:${exchange.value?.status ?? ''}`,
+    () => {
+        if (exchange.value?.status !== 'completed') return
+        hiddenExchangeId.value = exchange.value.id
+        exchangeId.value = undefined
         whisperTarget.value = undefined
-        questOpen.value = false
+        restoreFocus()
+    },
+    { immediate: true }
+)
+watch(questOfferVisible, (visible) => {
+    if (visible) {
+        prepare()
+        const issuerId = social.value?.questOffer?.issuerId
+        if (issuerId && whisper.value?.partnerId !== issuerId)
+            emit('command', { type: 'whisper_open', targetId: issuerId })
     }
+})
+watch(
+    () => social.value?.questTurnIn?.id,
+    (id) => {
+        if (id && available.value) {
+            whisperTarget.value = undefined
+            prepare()
+        } else restoreFocus()
+    }
+)
+watch(available, (value) => {
+    if (!value) whisperTarget.value = undefined
+})
+let resize: ResizeObserver | undefined
+let container: HTMLElement | undefined
+watch(
+    hints,
+    (element) => {
+        resize?.disconnect()
+        container?.style.removeProperty('--ratata-social-hints-height')
+        container = element?.closest<HTMLElement>('.game-screen') ?? undefined
+        const measure = (): void => {
+            if (container && element)
+                container.style.setProperty(
+                    '--ratata-social-hints-height',
+                    `${Math.ceil(element.getBoundingClientRect().height)}px`
+                )
+        }
+        measure()
+        if (element && typeof ResizeObserver !== 'undefined') {
+            resize = new ResizeObserver(measure)
+            resize.observe(element)
+        }
+    },
+    { flush: 'post' }
+)
+onBeforeUnmount(() => {
+    resize?.disconnect()
+    container?.style.removeProperty('--ratata-social-hints-height')
 })
 defineExpose({ command, hasOpenWindow })
 </script>
 <template>
-    <div v-if="available" class="social-hints" aria-label="Личные разговоры и договоры">
+    <div v-if="available" ref="hints" class="social-hints" aria-label="Личные разговоры и квесты">
         <button
-            v-if="whisper && !whisperVisible && !exchangeVisible"
+            v-if="
+                whisper &&
+                !whisperVisible &&
+                !exchangeVisible &&
+                !questOfferVisible &&
+                !turnInVisible
+            "
             type="button"
             @click="showWhisper"
         >
             Шёпот: {{ whisper.partnerName }}{{ whisper.messages.length ? ' · новые реплики' : '' }}
         </button>
         <button
-            v-if="exchange && !exchangeVisible && ['invited', 'active'].includes(exchange.status)"
+            v-if="
+                exchange &&
+                !exchangeVisible &&
+                !questOfferVisible &&
+                !turnInVisible &&
+                ['invited', 'active'].includes(exchange.status)
+            "
             type="button"
             @click="showExchange"
         >
             {{ exchange.partnerName }}:
             {{ exchange.status === 'invited' ? 'приглашение к обмену' : 'обмен' }}
         </button>
-        <button v-if="social?.quest && !questOpen" type="button" @click="showQuest">
-            Договор: {{ social.quest.title }}
-        </button>
+        <button type="button" @click="emit('quests')">Квесты · {{ questCount }}</button>
     </div>
-    <WhisperWindow
-        v-if="whisperVisible && whisper"
-        :conversation="whisper"
+    <QuestTurnInWindow
+        v-if="turnInVisible && social?.questTurnIn"
+        :key="social.questTurnIn.id"
+        :prompt="social.questTurnIn"
+        :server-time="snapshot.serverTime"
+        @command="command"
+    />
+    <QuestOfferWindow
+        v-else-if="questOfferVisible && social?.questOffer"
+        :key="social.questOffer.id"
+        :offer="social.questOffer"
+        :characters="characters"
+        :server-time="snapshot.serverTime"
         :player-id="player.id"
-        @close="closeWhisper"
+        :conversation="whisper"
+        :occupied="
+            Boolean(
+                snapshot.party?.activeJob &&
+                ['active', 'ready', 'reward_missing'].includes(snapshot.party.activeJob.status)
+            ) ||
+            Boolean(
+                social.quest && ['active', 'ready', 'reward_missing'].includes(social.quest.status)
+            )
+        "
         @command="command"
     />
     <ExchangeWindow
-        v-if="exchangeVisible && exchange"
+        v-else-if="exchangeVisible && exchange"
         :exchange="exchange"
         :player="player"
         :gold="snapshot.adventure?.gold ?? 0"
@@ -149,25 +228,11 @@ defineExpose({ command, hasOpenWindow })
         @close="closeExchange"
         @command="command"
     />
-    <NpcQuestWindow
-        v-if="questOpen && social?.quest && available"
-        :quest="social.quest"
-        :characters="characters"
-        @close="closeQuest"
-        @command="command"
-    />
-    <QuestOfferWindow
-        v-if="questOfferVisible && social?.questOffer"
-        :key="`${social.questOffer.id}:${social.questOffer.revision}`"
-        :offer="social.questOffer"
-        :characters="characters"
-        :server-time="snapshot.serverTime"
-        :occupied="
-            Boolean(snapshot.party?.activeJob && snapshot.party.activeJob.status !== 'completed') ||
-            Boolean(
-                social.quest && ['active', 'ready', 'reward_missing'].includes(social.quest.status)
-            )
-        "
+    <WhisperWindow
+        v-else-if="whisperVisible && whisper"
+        :conversation="whisper"
+        :player-id="player.id"
+        @close="closeWhisper"
         @command="command"
     />
 </template>

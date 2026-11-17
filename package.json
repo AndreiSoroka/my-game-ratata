@@ -40,7 +40,9 @@
         "check": "run-s format type-check lint test build test:e2e",
         "prepare": "husky",
         "test:agent": "node --test scripts/agent-mcp.test.mjs",
-        "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs"
+        "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs",
+        "knowledge:prepare": "node scripts/knowledge-prepare.mjs",
+        "knowledge:smoke": "node scripts/knowledge-smoke.mjs"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",

@@ -3,7 +3,7 @@ import type { ClientMessage } from '@my-game-ratata/contracts'
 import type { NpcAiCoordinator } from '../ai/coordinator'
 import type { GameCharacter } from './character'
 import type { GameRoom } from './room'
-import { speechAvailable } from './socialSpeech'
+import { canHearSpeech, speechAvailable } from './socialSpeech'
 import { projectSpeechFocus } from './speechFocus'
 import { createSpeechEvent } from './speechReceipts'
 import type { WhisperService } from './whispers'
@@ -15,29 +15,11 @@ export function handleSocialSpeech(
     actor: GameCharacter,
     message: ClientMessage,
     now: number,
-    notice: (text: string) => void
+    notice: (text: string) => void,
+    onSpeech?: (targetId: string | undefined, text: string, id: string) => void
 ): boolean {
     if (message.type === 'chat') {
-        if (speechAvailable(actor) && actor.soul.canSpeak) {
-            const event = createSpeechEvent(actor, message.text)
-            const focus = projectSpeechFocus(room, actor, message.focusKey, now)
-            room.publishEvents([event])
-            ai?.hear(
-                actor,
-                {
-                    kind: 'message',
-                    id: `say:${actor.id}:${String(event.speechId)}`,
-                    senderId: actor.id,
-                    text: message.text,
-                    channel: 'say',
-                    ...(focus === undefined ? {} : { focus }),
-                    locationId: actor.locationId,
-                    position: { ...actor.position },
-                    at: now,
-                },
-                message.targetId
-            )
-        }
+        sayPublic(room, ai, actor, message, now, onSpeech)
         return true
     }
     if (
@@ -53,6 +35,51 @@ export function handleSocialSpeech(
         return true
     }
     return handleAiCompanionRequest(ai, actor, message, now, notice)
+}
+
+function sayPublic(
+    room: GameRoom,
+    ai: NpcAiCoordinator | undefined,
+    actor: GameCharacter,
+    message: Extract<ClientMessage, { type: 'chat' }>,
+    now: number,
+    onSpeech?: (targetId: string | undefined, text: string, id: string) => void
+): void {
+    if (!speechAvailable(actor) || !actor.soul.canSpeak) {
+        return
+    }
+
+    const event = createSpeechEvent(actor, message.text)
+    const focus = projectSpeechFocus(room, actor, message.focusKey, now)
+    room.publishEvents([event])
+    const hinted = room.getCharacter(
+        message.targetId ?? (focus?.kind === 'character' ? focus.id : '')
+    )
+    const targetId =
+        hinted !== undefined &&
+        canHearSpeech(hinted, actor, room.navigationFor(actor), now)
+            ? hinted.id
+            : undefined
+    onSpeech?.(
+        targetId,
+        message.text,
+        `say:${actor.id}:${String(event.speechId)}`
+    )
+    ai?.hear(
+        actor,
+        {
+            kind: 'message',
+            id: `say:${actor.id}:${String(event.speechId)}`,
+            senderId: actor.id,
+            text: message.text,
+            channel: 'say',
+            ...(focus === undefined ? {} : { focus }),
+            locationId: actor.locationId,
+            position: { ...actor.position },
+            at: now,
+        },
+        targetId
+    )
 }
 
 function handleAiCompanionRequest(

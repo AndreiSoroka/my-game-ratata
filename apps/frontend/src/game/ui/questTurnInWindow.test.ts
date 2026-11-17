@@ -1,0 +1,52 @@
+import type { QuestTurnInPromptSnapshot } from '@my-game-ratata/contracts'
+import { mount } from '@vue/test-utils'
+import { expect, it } from 'vitest'
+
+import QuestTurnInWindow from './QuestTurnInWindow.vue'
+
+const prompt: QuestTurnInPromptSnapshot = {
+    id: 'confirm-1',
+    instanceId: 'contract-1',
+    source: 'npc',
+    issuerId: 'mira',
+    issuerName: 'Мира',
+    title: 'Доставить кость',
+    description: 'Принесите трофей.',
+    objectives: [],
+    objectiveLabels: ['Кость получена'],
+    rewardGold: 15,
+    rewardItems: [{ instanceId: 'apple-1', itemId: 'food' }],
+    rewardMode: 'party_equal',
+    revision: 2,
+    expiresAt: 30_000,
+}
+it('requires an explicit button, confirms the server prompt once and blocks repeated activation', async () => {
+    const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: 1000 } })
+    try {
+        expect(view.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
+        expect(view.get('img').attributes('alt')).toBe('Apple')
+        await view.get('[role="dialog"]').trigger('keydown', { code: 'Enter' })
+        expect(view.emitted('command')).toBeUndefined()
+        const take = view.findAll('button').find((button) => button.text() === 'Сдать')!
+        await take.trigger('click')
+        await take.trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'quest_turn_in_confirm', confirmationId: 'confirm-1', accept: true }],
+        ])
+    } finally {
+        view.unmount()
+    }
+})
+it('disables an expired prompt and closes through the same explicit confirmation protocol', async () => {
+    const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: prompt.expiresAt } })
+    try {
+        const take = view.findAll('button').find((button) => button.text() === 'Сдать')!
+        expect(take.attributes('disabled')).toBeDefined()
+        await view.get('[aria-label="Закрыть: Сдать поручение"]').trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'quest_turn_in_confirm', confirmationId: 'confirm-1', accept: false }],
+        ])
+    } finally {
+        view.unmount()
+    }
+})

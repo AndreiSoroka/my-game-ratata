@@ -1,5 +1,6 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
+import { rememberPublishedSpeech } from '../ai/memoryObservation'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import { garbleText } from './chat'
@@ -56,6 +57,24 @@ export function publishRoomEvents(
             hasModelLease
         )
     }
+    if (world !== undefined) {
+        rememberRoomSpeech([...events, ...partyEvents], characters, world)
+    }
+}
+function rememberRoomSpeech(
+    events: GameEventPayload[],
+    characters: Map<string, GameCharacter>,
+    world: WorldLocations
+): void {
+    rememberPublishedSpeech(
+        {
+            getCharacter: (id) => characters.get(id),
+            navigationFor: (actor) => world.get(actor.locationId).navigation,
+        },
+        events,
+        characters.values(),
+        Date.now()
+    )
 }
 function deliverObservedEvent(
     event: GameEventPayload,

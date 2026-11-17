@@ -240,7 +240,7 @@ describe('NPC runtime private memory and diagnostic feedback', () => {
         ).toBe(false)
     })
 
-    it('keeps each requester’s private conversation memory out of another requester’s model turn', async () => {
+    it('retains heard whispers in one NPC mind while keeping current requester task notes separate', async () => {
         const contexts: NpcAiContext[] = []
         const f = setup((context) => {
             contexts.push(context)
@@ -260,9 +260,10 @@ describe('NPC runtime private memory and diagnostic feedback', () => {
         })
         await f.advance()
         expect(contexts[1]?.memory).toBe('')
-        expect(JSON.stringify(contexts[1])).not.toContain(
-            'Личное поручение Алисы.'
+        expect(contexts[1]?.conversation?.conversationId).toBe(
+            contexts[0]?.conversation?.conversationId
         )
+        expect(contexts[1]?.conversation?.person?.id).toBe(bob.actor.id)
         f.talk('Ты помнишь меня?')
         await f.advance()
         expect(contexts[2]?.memory).toBe('Private Alice memory')

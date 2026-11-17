@@ -20,6 +20,11 @@
         {
             "actorId": "npc_magic_slime_1",
             "role": "companion"
+        },
+        {
+            "actorId": "npc_cleric_1",
+            "role": "advisor",
+            "mode": "dialogue_only"
         }
     ]
 }

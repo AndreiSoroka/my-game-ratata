@@ -104,3 +104,22 @@ export function beginAcceptedNpcTask(
         })
     }
 }
+
+export function abortDialogueTrade(
+    room: import('../game/room').GameRoom,
+    state: NpcAiActorState,
+    now: number
+): void {
+    const actor = state.actor
+    if (actor === undefined) {
+        return
+    }
+    const exchange = room.social.exchanges.snapshot(actor.id)
+    if (exchange !== null) {
+        room.social.exchanges.handle(
+            actor,
+            { type: 'exchange_cancel', exchangeId: exchange.id },
+            now
+        )
+    }
+}

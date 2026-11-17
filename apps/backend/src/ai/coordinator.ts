@@ -11,7 +11,13 @@ import { reconcileNpcAction } from './actionResolution'
 import { prepareNpcActor } from './actorLifecycle'
 import { reviewNpcAiCity } from './cityReview'
 import { NpcAiDiagnostics } from './diagnostics'
-import { receiveNpcSpeech } from './dialogueReception'
+import { legacyNpcRequest, receiveNpcSpeech } from './dialogueReception'
+import {
+    npcReplyActivities,
+    rememberHeardSpeech,
+    rememberVisiblePeople,
+} from './memoryObservation'
+import { buildNpcAiObservation } from './observation'
 import { reportNpcRequestStatus } from './requestStatus'
 import {
     canAddressNpcAi,
@@ -30,6 +36,7 @@ export class NpcAiCoordinator {
     private readonly scheduler: NpcAiScheduler
     private active = false
     private sequence = 0
+    private nextObservation = 0
 
     public constructor(
         private readonly room: GameRoom,
@@ -75,7 +82,7 @@ export class NpcAiCoordinator {
         for (const state of this.states.values()) {
             this.sessions.cancel(state, this.clock())
         }
-        void this.diagnostics.flush()
+        this.scheduler.stop()
     }
 
     public talk(
@@ -99,17 +106,7 @@ export class NpcAiCoordinator {
         }
         this.hear(
             requester,
-            {
-                kind: 'message',
-                id: this.id('request'),
-                senderId: requester.id,
-                text,
-                locationId: requester.locationId,
-                position: { ...requester.position },
-                at: now,
-                channel: 'whisper',
-                legacy: true,
-            },
+            legacyNpcRequest(requester, text, this.id('request'), now),
             actor.id
         )
         return true
@@ -124,6 +121,7 @@ export class NpcAiCoordinator {
         return (
             state?.actor !== undefined &&
             state.token !== undefined &&
+            state.config.mode !== 'dialogue_only' &&
             this.companions.isModelControlOwner(state.actor, state.token, now)
         )
     }
@@ -150,6 +148,7 @@ export class NpcAiCoordinator {
         event: Extract<import('./types').NpcAiEvent, { kind: 'message' }>,
         targetId?: string
     ): void {
+        rememberHeardSpeech(this.room, this.states, requester, event, targetId)
         receiveNpcSpeech(
             this.room,
             this.states,
@@ -185,28 +184,8 @@ export class NpcAiCoordinator {
         this.sessions.cancel(state, now)
     }
 
-    public replyActivities(): Array<{
-        actorId: string
-        senderId: string
-        channel: 'say' | 'whisper'
-        id: string
-    }> {
-        return [...this.states.values()].flatMap((state) =>
-            [state.dialogue, ...state.inbox].flatMap((event) =>
-                event === undefined ||
-                event.system === true ||
-                !npcAiActorAvailable(state.actor)
-                    ? []
-                    : [
-                          {
-                              actorId: state.config.actorId,
-                              senderId: event.senderId,
-                              channel: event.channel ?? 'say',
-                              id: event.id,
-                          },
-                      ]
-            )
-        )
+    public replyActivities() {
+        return npcReplyActivities(this.states.values())
     }
 
     public beforeTick(now: number): void {
@@ -276,9 +255,27 @@ export class NpcAiCoordinator {
         if (!this.active) {
             return
         }
+        const observe = now >= this.nextObservation
+        if (observe) {
+            this.nextObservation = now + 250
+        }
         for (const state of this.states.values()) {
             if (!npcAiActorAvailable(state.actor)) {
                 continue
+            }
+            if (observe) {
+                const observation = buildNpcAiObservation(
+                    this.room,
+                    state.actor,
+                    state.config.role,
+                    now
+                )
+                rememberVisiblePeople(
+                    state,
+                    observation.targets,
+                    observation.locationId,
+                    now
+                )
             }
             reconcileNpcAction(
                 this.room,

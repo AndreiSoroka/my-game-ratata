@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import type { CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import CharacterDevelopment from './CharacterDevelopment.vue'
+import CharacterQuests from './CharacterQuests.vue'
 import CharacterStats from './CharacterStats.vue'
-import { isTextEntry } from './keyboardOwnership'
+import CloseIcon from './CloseIcon.vue'
+import { isConfirmationKey, isTextEntry, permitsWorldMovement } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
+import type { CharacterTab } from './useCharacterWindow'
 
-defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
-const tab = defineModel<'stats' | 'development'>('tab', { default: 'stats' })
+defineProps<{
+    player: CharacterSnapshot
+    characters: CharacterSnapshot[]
+    snapshot?: WorldSnapshot
+}>()
+const tab = defineModel<CharacterTab>('tab', { default: 'stats' })
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
 const panel = ref<HTMLElement>()
 useEscapeOwner({ active: () => true, escape: () => emit('close'), element: panel, priority: 120 })
@@ -36,20 +43,22 @@ function toggleKey(event: KeyboardEvent): void {
 function tabKey(event: KeyboardEvent): void {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.code)) return
     event.preventDefault()
+    const tabs: CharacterTab[] = ['stats', 'development', 'quests']
+    const index = tabs.indexOf(tab.value)
     tab.value =
-        event.code === 'Home'
-            ? 'stats'
-            : event.code === 'End'
-              ? 'development'
-              : tab.value === 'stats'
-                ? 'development'
-                : 'stats'
+        tabs[
+            event.code === 'Home'
+                ? 0
+                : event.code === 'End'
+                  ? tabs.length - 1
+                  : (index + (event.code === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+        ]!
     void nextTick(() =>
         panel.value?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus()
     )
 }
 function panelKey(event: KeyboardEvent): void {
-    if (event.code !== 'Tab') return
+    if (tab.value === 'quests' || event.code !== 'Tab') return
     const elements = Array.from(
         panel.value?.querySelectorAll<HTMLElement>(
             'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]'
@@ -60,6 +69,16 @@ function panelKey(event: KeyboardEvent): void {
     event.preventDefault()
     elements[(index + direction + elements.length) % elements.length]?.focus()
 }
+function panelEvent(event: KeyboardEvent): void {
+    if (
+        event.repeat &&
+        isConfirmationKey(event) &&
+        event.target instanceof HTMLElement &&
+        event.target.closest('button')
+    )
+        event.preventDefault()
+    if (!permitsWorldMovement(event)) event.stopPropagation()
+}
 onMounted(async () => {
     window.addEventListener('keydown', toggleKey, true)
     await nextTick()
@@ -69,17 +88,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
 </script>
 
 <template>
-    <div class="character-backdrop" @pointerdown.self.prevent.stop>
+    <div
+        class="character-backdrop"
+        :class="{ 'character-backdrop--reading': tab === 'quests' }"
+        @pointerdown.self.prevent.stop
+    >
         <section
             ref="panel"
             class="character-window rpg-panel"
             role="dialog"
-            aria-modal="true"
+            :aria-modal="tab !== 'quests' || undefined"
+            :data-world-movement="tab === 'quests' ? 'wasd' : undefined"
             aria-label="Персонаж"
             tabindex="-1"
             @keydown.capture="panelKey"
-            @keydown.stop
-            @keyup.stop
+            @keydown="panelEvent"
+            @keyup="panelEvent"
         >
             <header class="character-header">
                 <div>
@@ -92,7 +116,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                     aria-label="Закрыть персонажа"
                     @click="emit('close')"
                 >
-                    ×
+                    <CloseIcon />
                 </button>
             </header>
             <div
@@ -123,6 +147,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                 >
                     Развитие
                 </button>
+                <button
+                    id="character-quests-tab"
+                    type="button"
+                    role="tab"
+                    :aria-selected="tab === 'quests'"
+                    aria-controls="character-quests-panel"
+                    :tabindex="tab === 'quests' ? 0 : -1"
+                    @click="tab = 'quests'"
+                >
+                    Квесты
+                </button>
             </div>
             <div class="character-content">
                 <div
@@ -134,7 +169,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                     <CharacterStats :player="player" />
                 </div>
                 <div
-                    v-else
+                    v-else-if="tab === 'development'"
                     id="character-development-panel"
                     role="tabpanel"
                     aria-labelledby="character-development-tab"
@@ -145,123 +180,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                         @command="emit('command', $event)"
                     />
                 </div>
+                <div
+                    v-else
+                    id="character-quests-panel"
+                    role="tabpanel"
+                    aria-labelledby="character-quests-tab"
+                >
+                    <CharacterQuests
+                        :snapshot="snapshot"
+                        :player="player"
+                        :characters="characters"
+                        @command="emit('command', $event)"
+                    />
+                </div>
             </div>
-            <footer>Мир продолжает жить · P или Esc — вернуться</footer>
+            <footer>
+                Мир продолжает жить · <template v-if="tab === 'quests'">WASD — идти · </template>P
+                или Esc — вернуться
+            </footer>
         </section>
     </div>
 </template>
 
-<style scoped>
-.character-backdrop {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: #071016c9;
-    z-index: 95;
-}
-.character-window {
-    display: flex;
-    flex-direction: column;
-    width: min(1100px, 100%);
-    max-height: calc(100dvh - 40px);
-    min-height: min(660px, calc(100dvh - 40px));
-    box-sizing: border-box;
-    border: 1px solid #bba06b;
-    background: #0d1b24;
-    color: #eee6d2;
-    font:
-        14px/1.5 system-ui,
-        sans-serif;
-    box-shadow: 0 20px 100px #0009;
-}
-.character-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid #53616a;
-}
-.character-eyebrow {
-    color: #a5b3bc;
-    font-size: 10px;
-    letter-spacing: 3px;
-}
-h2 {
-    margin: 3px 0 0;
-    font-size: 22px;
-    color: #f1d69a;
-}
-button {
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-}
-button:focus-visible {
-    outline: 2px solid #f0d287;
-    outline-offset: 3px;
-}
-.character-close {
-    width: 44px;
-    height: 44px;
-    font-size: 28px;
-    border: 1px solid #52616a;
-    background: #1b2a34;
-}
-.character-tabs {
-    display: flex;
-    padding: 0 24px;
-    gap: 24px;
-    border-bottom: 1px solid #53616a;
-}
-.character-tabs button {
-    padding: 14px 0 12px;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: #9dabb4;
-}
-.character-tabs button[aria-selected='true'] {
-    color: #f1d69a;
-    border-bottom-color: #e9c77d;
-}
-.character-content {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    padding: 22px 24px;
-    scrollbar-color: #7b876e #11202a;
-}
-footer {
-    padding: 10px 24px;
-    border-top: 1px solid #344752;
-    color: #8c9ea8;
-    font-size: 11px;
-}
-@media (max-width: 600px) {
-    .character-backdrop {
-        padding: 8px;
-    }
-    .character-window {
-        max-height: calc(100dvh - 16px);
-        min-height: calc(100dvh - 16px);
-    }
-    .character-header {
-        padding: 14px;
-    }
-    .character-tabs {
-        padding: 0 14px;
-        gap: 18px;
-    }
-    .character-content {
-        padding: 16px 12px;
-    }
-    h2 {
-        font-size: 19px;
-    }
-    footer {
-        padding: 8px 14px;
-    }
-}
-</style>
+<style scoped src="./characterWindow.css"></style>

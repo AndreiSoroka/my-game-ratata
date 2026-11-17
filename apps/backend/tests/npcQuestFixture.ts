@@ -22,6 +22,7 @@ export function npcQuestFixture() {
     const friend = create('friend')
     const issuer = create('npc_friendly_girl_1', true)
     const merchant = create('npc_merchant_1', true)
+    merchant.position = { x: 400, y: 80 }
     const characters = new Map(
         [player, friend, issuer, merchant].map((actor) => [actor.id, actor])
     )

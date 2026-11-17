@@ -17,6 +17,19 @@ export function releaseWorkerClaim(incident: WorkerIncident): void {
     incident.view.reason = 'Обращение снова доступно для принятия.'
 }
 
+export function completeWorkerRequest(
+    incident: WorkerIncident | undefined,
+    payment: () => boolean
+): boolean {
+    if (incident?.view.stage !== 'ready' || !payment()) {
+        return false
+    }
+    incident.view.stage = 'completed'
+    incident.view.reason = null
+    incident.claim = null
+    return true
+}
+
 export function reconcileWorkerIncident(
     incident: WorkerIncident,
     characters: ReadonlyMap<string, GameCharacter>,
@@ -41,6 +54,28 @@ export function reconcileWorkerIncident(
         incident.view.reason = null
     }
     reconcileClaim(incident, characters, now)
+}
+
+function claimedBy(incident: WorkerIncident, groupKey: string): boolean {
+    return incident.claim?.key === groupKey
+}
+
+/** Explicit cancellation must not alter other groups' orphan deadlines. */
+export function releaseWorkerGroup(
+    incidents: Iterable<WorkerIncident>,
+    characters: ReadonlyMap<string, GameCharacter>,
+    groupKey: string,
+    now: number
+): void {
+    for (const incident of incidents) {
+        if (!claimedBy(incident, groupKey)) {
+            continue
+        }
+        reconcileWorkerIncident(incident, characters, now)
+        if (claimedBy(incident, groupKey)) {
+            releaseWorkerClaim(incident)
+        }
+    }
 }
 
 function reconcileClaim(

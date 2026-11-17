@@ -23,6 +23,7 @@ import type { NavigationService } from '../game/navigation'
 import { visibilityRadius } from '../game/queries'
 import { environmentTargets } from './observationEnvironment'
 import {
+    characterSocialDetails,
     filterNpcAiDialogue,
     filterNpcAiTargets,
     npcAiCapabilities,
@@ -41,7 +42,6 @@ export type {
 import type { NpcAiRole } from './types'
 
 const observationRadius = 240
-const maxNearbyTargets = 32
 /** A model receives the actor's earned projection, never the debugging snapshot. */
 export function buildNpcAiObservation(
     world: NpcAiWorld,
@@ -62,7 +62,7 @@ export function buildNpcAiObservation(
         ...environmentTargets(snapshot, actor, navigation, visible),
     ]
         .sort(compareTargets)
-        .slice(0, maxNearbyTargets)
+        .slice(0, 32)
     const dialogue = filterNpcAiDialogue(
         actor,
         role,
@@ -150,6 +150,7 @@ function characterTarget(
             alive: target.alive,
             health: target.health,
             relationship: target.relationship,
+            ...characterSocialDetails(actor, target),
             creatureType: target.creatureType,
             canSpeak: target.soul?.canSpeak ?? false,
         },

@@ -68,7 +68,8 @@ export function removePartyMember(
     parties: Map<string, PartyRecord>,
     membership: Map<string, string>,
     guild: GuildService,
-    invitations: Map<string, PartyInvitationSnapshot>
+    invitations: Map<string, PartyInvitationSnapshot>,
+    now = 0
 ): void {
     const party = parties.get(membership.get(playerId) ?? '')
     if (party !== undefined) {
@@ -76,6 +77,7 @@ export function removePartyMember(
         guild.removeMember(party.id, playerId)
         guild.refreshGroup(party.id, party.members)
         if (party.members.size === 0) {
+            guild.release(party.id, now)
             parties.delete(party.id)
         } else if (party.leaderId === playerId) {
             party.leaderId = [...party.members][0] ?? ''

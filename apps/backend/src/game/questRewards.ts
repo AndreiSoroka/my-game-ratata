@@ -5,19 +5,28 @@ import type {
 } from '@my-game-ratata/contracts'
 import { isQuestRewardMode } from '@my-game-ratata/contracts'
 
+import type { AssetSettlementRequest } from './assetSettlement'
+
+/** Backend-only transfers: clients never select a wallet or another actor's bag. */
+export interface FundedQuestSettlement {
+    assets: AssetSettlementRequest
+}
+
 export type QuestGoldAwarder = (
-    request: QuestRewardRequest
+    request: QuestRewardRequest,
+    settlement?: FundedQuestSettlement
 ) => QuestRewardResult
 
 /** The submitter receives the first leftover coin, then stable character IDs. */
 export function planQuestReward(
-    request: QuestRewardRequest
+    request: QuestRewardRequest,
+    allowZero = false
 ): QuestRewardShare[] | undefined {
     if (
         request.receiptId.length === 0 ||
         request.submitterId.length === 0 ||
         !Number.isSafeInteger(request.totalGold) ||
-        request.totalGold <= 0 ||
+        (allowZero ? request.totalGold < 0 : request.totalGold <= 0) ||
         !isQuestRewardMode(request.mode) ||
         request.memberIds.some((id) => id.length === 0)
     ) {

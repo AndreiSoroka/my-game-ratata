@@ -10,3 +10,6 @@ storybook-static/
 test-results/
 *.tsbuildinfo
 apps/backend/logs/
+
+# Local embedding model artifacts
+.cache/ratata-models/

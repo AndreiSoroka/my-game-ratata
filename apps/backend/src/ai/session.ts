@@ -45,6 +45,15 @@ export class NpcAiSessionActions {
         if (state.token === undefined) {
             return
         }
+        if (state.config.mode === 'dialogue_only') {
+            reply = {
+                ...reply,
+                decision: null,
+                taskAcceptance: 'none',
+                companionOrder: null,
+                done: true,
+            }
+        }
         publishNpcAiFeedback(this, this.diagnostics, state, reply, now)
         const conversational = state.dialogue !== undefined
         if (this.dialogue.respond(state, actor, reply, now)) {
@@ -208,7 +217,11 @@ export class NpcAiSessionActions {
         ) {
             return
         }
-        if (state.actor !== undefined && state.token !== undefined) {
+        if (
+            state.config.mode !== 'dialogue_only' &&
+            state.actor !== undefined &&
+            state.token !== undefined
+        ) {
             this.companions.releaseModelControl(
                 state.actor,
                 state.token,

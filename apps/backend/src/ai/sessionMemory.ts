@@ -56,12 +56,6 @@ export function rememberNpcReply(state: NpcAiActorState, memory: string): void {
         task.audienceKey ?? task.requesterId ?? 'city',
         state.memory
     )
-    if (state.conversations.size > 32) {
-        const oldest = state.conversations.keys().next().value
-        if (oldest !== undefined) {
-            state.conversations.delete(oldest)
-        }
-    }
 }
 export function rememberNpcMerchant(
     room: GameRoom,

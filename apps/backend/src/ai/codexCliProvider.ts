@@ -13,7 +13,11 @@ import { codexNpcArguments, parseCodexResult } from './codexCliProtocol'
 export type { NpcAiProcess, NpcAiSpawn } from './codexCliProcess'
 export { codexNpcArguments, parseNpcAiReply } from './codexCliProtocol'
 import decisionSchema from './decision-schema.json'
-import { npcAiInstructions, npcSocialInstructions } from './npcInstructions'
+import {
+    npcAiInstructions,
+    npcMemoryInstructions,
+    npcSocialInstructions,
+} from './npcInstructions'
 import type {
     NpcAiContext,
     NpcAiModelSettings,
@@ -74,7 +78,11 @@ export class CodexCliProvider implements NpcAiProvider {
             await Promise.all([
                 writeFile(
                     instructionsPath,
-                    npcAiInstructions + '\n' + npcSocialInstructions
+                    npcAiInstructions +
+                        '\n' +
+                        npcSocialInstructions +
+                        '\n' +
+                        npcMemoryInstructions
                 ),
                 writeFile(schemaPath, JSON.stringify(decisionSchema)),
             ])

@@ -1,0 +1,227 @@
+import type {
+    NpcQuestSnapshot,
+    QuestHistoryEntry,
+} from '@my-game-ratata/contracts'
+
+import type { AdventureService } from './adventure'
+import { adventureNpcRoles } from './adventureContent'
+import type { GameCharacter } from './character'
+import type { ExchangeService } from './exchange'
+import type { NpcQuestService } from './npcQuests'
+import type { PartyService } from './parties'
+import { conversationContracts } from './questConversation'
+import { QuestTurnInService } from './questTurnIn'
+import type { GameRoom } from './room'
+import { canHearSpeech } from './socialSpeech'
+import { createSpeechEvent } from './speechReceipts'
+import type { WhisperService } from './whispers'
+
+interface DialogueEnvironment {
+    room: GameRoom
+    adventure: AdventureService
+    parties: PartyService
+    quests: NpcQuestService
+    exchanges: ExchangeService
+    whispers: WhisperService
+    actors: () => Iterable<GameCharacter>
+}
+
+export class RoomQuestDialogues {
+    public readonly turnIns: QuestTurnInService
+    private readonly seenCompletions = new Set<string>()
+    public constructor(private readonly environment: DialogueEnvironment) {
+        this.turnIns = new QuestTurnInService({
+            ...environment,
+            getCharacter: (id) => environment.room.getCharacter(id),
+            characters: environment.actors,
+            navigationFor: (actor) => environment.room.navigationFor(actor),
+        })
+    }
+
+    public stop(): void {
+        this.turnIns.stop()
+        this.environment.parties.stop()
+    }
+
+    public conversation(issuerId: string, recipientId: string, now: number) {
+        const offer = this.environment.quests.snapshot(
+            recipientId,
+            now
+        ).questOffer
+        const issuerQuests = this.contracts(issuerId, recipientId, now)
+        return {
+            questOffer: offer?.issuerId === issuerId ? offer : null,
+            issuerQuests,
+            questHistory: this.environment.quests.journal.conversation(
+                issuerId,
+                recipientId
+            ),
+        }
+    }
+
+    public heardPublic(
+        actor: GameCharacter,
+        targetId: string | undefined,
+        text: string,
+        id: string,
+        now: number
+    ): void {
+        const contacts = [...this.environment.actors()].filter(
+            (candidate) =>
+                candidate.id !== actor.id &&
+                candidate.controllerKind !== 'network_player' &&
+                (targetId === undefined || candidate.id === targetId) &&
+                canHearSpeech(
+                    candidate,
+                    actor,
+                    this.environment.room.navigationFor(actor),
+                    now,
+                    48
+                )
+        )
+        const relevant = contacts.filter(
+            (candidate) =>
+                this.contracts(candidate.id, actor.id, now).length > 0
+        )
+        const selected =
+            targetId !== undefined
+                ? contacts
+                : relevant.length === 1
+                  ? relevant
+                  : []
+        for (const issuer of selected) {
+            this.turnIns.heard(actor, issuer, text, id, now)
+        }
+    }
+
+    public update(now: number): void {
+        for (const player of this.environment.actors()) {
+            if (player.controllerKind !== 'network_player') {
+                continue
+            }
+            for (const issuerId of this.knownIssuers(player.id)) {
+                const issuer = this.environment.room.getCharacter(issuerId)
+                if (issuer === undefined) {
+                    continue
+                }
+                for (const job of this.contracts(issuer.id, player.id, now)) {
+                    this.record(player, issuer, job, now)
+                    this.thank(player, issuer, job, now)
+                }
+            }
+        }
+    }
+
+    private contracts(
+        issuerId: string,
+        recipientId: string,
+        now: number
+    ): NpcQuestSnapshot[] {
+        return conversationContracts(
+            {
+                ...this.environment,
+                getCharacter: (id) => this.environment.room.getCharacter(id),
+            },
+            issuerId,
+            recipientId,
+            now
+        )
+    }
+
+    private knownIssuers(playerId: string): Set<string> {
+        const ids = new Set(this.environment.quests.journal.issuerIds(playerId))
+        for (const job of this.environment.parties.questHistory('', playerId)) {
+            const issuerId = job.issuerId ?? job.workRequest?.clerkId
+            if (issuerId !== undefined) {
+                ids.add(issuerId)
+            }
+        }
+        for (const [id, role] of Object.entries(adventureNpcRoles)) {
+            if (role.quest) {
+                ids.add(id)
+            }
+        }
+        return ids
+    }
+
+    private record(
+        player: GameCharacter,
+        issuer: GameCharacter,
+        job: NpcQuestSnapshot,
+        now: number
+    ): void {
+        const source: QuestHistoryEntry['source'] = job.instanceId.startsWith(
+            'story:'
+        )
+            ? 'story'
+            : this.environment.parties
+                    .questHistory(issuer.id, player.id)
+                    .some((entry) => entry.instanceId === job.instanceId)
+              ? 'guild'
+              : 'npc'
+        this.environment.quests.journal.record({
+            id: job.id,
+            instanceId: job.instanceId,
+            source,
+            issuerId: issuer.id,
+            recipientId: player.id,
+            title: job.title,
+            status: job.status,
+            at: now,
+            rewardGold: job.rewardGold,
+            revision: job.revision,
+            ...(job.receiptId === undefined
+                ? {}
+                : { receiptId: job.receiptId }),
+            contactId: issuer.id,
+            contactName: issuer.nickname,
+            locationId: issuer.locationId,
+            nextAction: nextAction(job, issuer),
+        })
+    }
+
+    private thank(
+        player: GameCharacter,
+        issuer: GameCharacter,
+        job: NpcQuestSnapshot,
+        now: number
+    ): void {
+        const receipt = job.receiptId
+        if (job.status !== 'completed' || receipt === undefined) {
+            return
+        }
+        const key = `${receipt}:${player.id}`
+        if (this.seenCompletions.has(key)) {
+            return
+        }
+        this.seenCompletions.add(key)
+        const text =
+            'Спасибо за помощь! Поручение выполнено, награда передана. Хочешь ещё поручение?'
+        if (
+            !this.environment.whispers.send(issuer, player, text, now) &&
+            canHearSpeech(
+                player,
+                issuer,
+                this.environment.room.navigationFor(player),
+                now
+            )
+        ) {
+            this.environment.room.publishEvents([
+                createSpeechEvent(issuer, text, {
+                    targetId: player.id,
+                    audienceIds: [player.id],
+                }),
+            ])
+        }
+    }
+}
+
+function nextAction(job: NpcQuestSnapshot, issuer: GameCharacter): string {
+    if (job.status === 'completed') {
+        return 'Договор сдан, награда передана.'
+    }
+    if (job.status === 'ready') {
+        return `Вернуться к ${issuer.nickname} и сказать «квест готов».`
+    }
+    return job.notice ?? 'Выполнить условия договора.'
+}

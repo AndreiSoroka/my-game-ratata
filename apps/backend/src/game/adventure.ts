@@ -38,9 +38,11 @@ import { CityFarmSupply } from './cityFarmSupply'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
 import { extendNpcQuestDialogue } from './npcQuestDialogue'
+import { QuestFunding } from './questFunding'
 import type { WorldObjects } from './worldObjects'
 
 export class AdventureService {
+    public readonly questFunding = new QuestFunding()
     private readonly players = new Map<string, PlayerAdventure>()
     private readonly observedDeaths = new WeakMap<GameCharacter, number>()
     private readonly resources: AdventureResources

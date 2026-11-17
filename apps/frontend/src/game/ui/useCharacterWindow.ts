@@ -1,6 +1,8 @@
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
+
+export type CharacterTab = 'stats' | 'development' | 'quests'
 
 export function useCharacterWindow(options: {
     available: () => boolean
@@ -9,7 +11,7 @@ export function useCharacterWindow(options: {
     prepare: () => void
 }) {
     const characterOpen = ref(false)
-    const characterTab = ref<'stats' | 'development'>('stats')
+    const characterTab = ref<CharacterTab>('stats')
     watch(options.identity, () => {
         characterTab.value = 'stats'
         characterOpen.value = false
@@ -22,6 +24,7 @@ export function useCharacterWindow(options: {
         characterOpen.value = true
     }
     function closeCharacter(): void {
+        options.game()?.releaseUiControls()
         characterOpen.value = false
         void nextTick(() =>
             (
@@ -36,11 +39,17 @@ export function useCharacterWindow(options: {
     }
     return {
         characterOpen,
+        characterModal: computed(() => characterOpen.value && characterTab.value !== 'quests'),
         characterTab,
         openCharacter,
         closeCharacter,
         openDevelopment,
-        setCharacterTab: (value: 'stats' | 'development') => {
+        openQuests: () => {
+            characterTab.value = 'quests'
+            openCharacter()
+        },
+        setCharacterTab: (value: CharacterTab) => {
+            options.game()?.releaseUiControls()
             characterTab.value = value
         },
         toggleCharacter: () => (characterOpen.value ? closeCharacter() : openCharacter()),

@@ -1,7 +1,10 @@
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
+import { CharacterKnowledge } from './characterKnowledge'
+import { projectContracts } from './contractProjection'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { npcDialogueContext } from './dialogueContext'
+import { prepareKnowledgeCatalog } from './knowledgeCatalog'
 import { reportNpcRequestStatus } from './requestStatus'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import type { NpcAiSessionActions } from './session'
@@ -9,6 +12,7 @@ import { invokeNpcAiTurn } from './turn'
 import type { NpcAiConfig, NpcAiProvider } from './types'
 
 export class NpcAiScheduler {
+    private readonly knowledge = new CharacterKnowledge()
     private readonly calls: number[] = []
     private readonly backgroundCalls: number[] = []
     private busy = false
@@ -25,7 +29,12 @@ export class NpcAiScheduler {
         private readonly states: Map<string, NpcAiActorState>,
         private readonly current: () => boolean,
         private readonly nextId: (kind: string) => string
-    ) {}
+    ) {
+        prepareKnowledgeCatalog(
+            room,
+            config.npcs.map((npc) => npc.actorId)
+        )
+    }
 
     public schedule(): void {
         if (this.scheduled || this.busy || !this.current()) {
@@ -70,6 +79,12 @@ export class NpcAiScheduler {
         if (!this.withinLimits(state, now)) {
             return
         }
+        if (
+            state.token === undefined &&
+            state.config.mode === 'dialogue_only'
+        ) {
+            state.token = this.nextId('dialogue')
+        }
         if (state.token === undefined) {
             const token = this.nextId(`lease-${String(++state.generation)}`)
             if (
@@ -110,12 +125,87 @@ export class NpcAiScheduler {
             'thinking',
             now
         )
-        void invokeNpcAiTurn(state, context, this.provider, () =>
-            this.current()
+        this.launch(state, state.actor, context)
+    }
+
+    private launch(
+        state: NpcAiActorState,
+        actor: import('../game/character').GameCharacter,
+        context: import('./types').NpcAiContext
+    ): void {
+        const memory = state.mind
+        const query = state.dialogue?.text ?? state.task?.request ?? ''
+        void invokeNpcAiTurn(
+            state,
+            context,
+            this.provider,
+            () => this.current(),
+            {
+                prepare: async () => ({
+                    ...context,
+                    knowledge: await this.knowledge.retrieve(
+                        actor,
+                        this.room.navigationFor(actor),
+                        memory,
+                        query
+                    ),
+                }),
+                lookup: async (personId) => {
+                    const result = await this.knowledge.deep(
+                        memory,
+                        personId,
+                        query
+                    )
+                    return result.status === 'found'
+                        ? {
+                              ...result,
+                              contracts: projectContracts(
+                                  this.room.social.conversation(
+                                      actor.id,
+                                      personId,
+                                      this.clock()
+                                  ),
+                                  query
+                              ),
+                          }
+                        : result
+                },
+                reserveCall: () => {
+                    const at = this.clock()
+                    this.trimCalls(at)
+                    const background =
+                        state.dialogue === undefined &&
+                        state.task?.requesterId == null
+                    if (
+                        this.calls.length >=
+                            this.config.limits.maxCallsPerHour ||
+                        (background &&
+                            this.backgroundCalls.length >=
+                                Math.floor(
+                                    (this.config.limits.maxCallsPerHour * 2) / 3
+                                ))
+                    ) {
+                        return false
+                    }
+                    this.calls.push(at)
+                    if (
+                        state.dialogue === undefined &&
+                        state.task?.requesterId == null
+                    ) {
+                        this.backgroundCalls.push(at)
+                    }
+                    return true
+                },
+            }
         ).finally(() => {
             this.busy = false
             this.schedule()
         })
+    }
+
+    public stop(): void {
+        this.knowledge.stop()
+        void this.diagnostics.flush()
     }
 
     private withinLimits(state: NpcAiActorState, now: number): boolean {

@@ -40,24 +40,11 @@ export function recordNpcAiFeedback(
     return comment
 }
 export function publishNpcAiFeedback(
-    session: Pick<NpcAiSessionActions, 'say' | 'dialogue'>,
+    _session: Pick<NpcAiSessionActions, 'say' | 'dialogue'>,
     diagnostics: NpcAiDiagnostics,
     state: NpcAiActorState,
     reply: NpcAiReply,
     now: number
 ): void {
-    const comment = recordNpcAiFeedback(
-        state,
-        diagnostics,
-        reply.diagnostics ?? [],
-        now
-    )
-    if (comment === undefined) {
-        return
-    }
-    if (state.dialogue !== undefined) {
-        session.dialogue.speak(state, state.dialogue, comment, now)
-    } else if (state.task?.requesterId != null) {
-        session.say(state, state.task.requesterId, comment, now)
-    }
+    recordNpcAiFeedback(state, diagnostics, reply.diagnostics ?? [], now)
 }

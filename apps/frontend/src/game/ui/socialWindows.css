@@ -125,7 +125,9 @@
     position: absolute;
     z-index: 12;
     right: 12px;
-    top: 120px;
+    top: var(--ratata-player-status-bottom, 240px);
+    max-height: max(90px, calc(100dvh - var(--ratata-player-status-bottom, 240px) - 110px));
+    overflow-y: auto;
     display: grid;
     gap: 8px;
     max-width: min(340px, calc(100% - 24px));
@@ -136,6 +138,7 @@
     border: 1px solid #97865b;
     padding: 8px 12px;
     text-align: left;
+    overflow-wrap: anywhere;
     cursor: pointer;
 }
 @media (max-width: 740px) {
@@ -152,7 +155,7 @@
         font-size: 13px;
     }
     .social-hints {
-        top: 86px;
+        width: min(210px, calc(100% - 24px));
     }
     .social-surface--exchange {
         inset: 8px;
@@ -169,4 +172,18 @@
     .social-window--exchange .social-window__header h2 {
         font-size: 16px;
     }
+}
+
+.social-window .social-window__close {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    line-height: 1;
+}
+.social-window__close svg {
+    display: block;
 }

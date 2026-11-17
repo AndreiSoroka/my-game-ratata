@@ -4,60 +4,52 @@ import {
     type NpcQuestDecision,
     type NpcQuestSocialSnapshot,
     type QuestDraft,
-    WORLD_LOCATION_DEFINITIONS,
+    type QuestHistoryEntry,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { answerQuestOffer } from './npcQuestAcceptance'
+import { inquireNpcQuest } from './npcQuestInquiry'
+import { recordNpcQuest, recordQuestOffer } from './npcQuestJournal'
 import { NpcQuestLifecycle } from './npcQuestLifecycle'
-import { createQuestOffer, createWorkerQuestOffer } from './npcQuestOffers'
+import {
+    NpcQuestOfferOperations,
+    questRewardWallet,
+} from './npcQuestOfferOperations'
 import { inspectQuest, observeQuestDeath } from './npcQuestProgress'
-import { settleNpcQuest } from './npcQuestSettlement'
 import { snapshotNpcQuests } from './npcQuestSnapshots'
+import { turnInNpcQuest } from './npcQuestTurnIn'
 import {
     type NpcQuestEnvironment,
     type NpcQuestRecord,
-    questContact,
+    type NpcQuestResult,
+    questOfferAvailable,
     type QuestOfferRecord,
 } from './npcQuestTypes'
-import {
-    type AssetWallet,
-    availableGold,
-    availableInventoryQuantity,
-    RewardReservations,
-} from './rewardReservations'
+import { QuestJournal } from './questJournal'
 
-export interface NpcQuestResult {
-    accepted: boolean
-    error: string | null
-    events: GameEventPayload[]
-}
+export type { NpcQuestResult } from './npcQuestTypes'
 
 /** Model prose proposes; only validated commands and resolved events change a contract. */
 export class NpcQuestService {
     private readonly offers = new Map<string, QuestOfferRecord>()
     private readonly jobs = new Map<string, NpcQuestRecord>()
-    private readonly reservations = new RewardReservations()
-    private readonly funds = new Map<string, AssetWallet>(
-        WORLD_LOCATION_DEFINITIONS.filter(
-            (location) => location.biome === 'city'
-        ).map((location) => [
-            location.id,
-            { gold: location.municipalQuestGold ?? 300 },
-        ])
-    )
-    private nextId = 1
+    public readonly journal = new QuestJournal()
+    private readonly reservations: import('./rewardReservations').RewardReservations
 
+    private readonly offerOperations: NpcQuestOfferOperations
     private readonly lifecycle: NpcQuestLifecycle
     public constructor(private readonly environment: NpcQuestEnvironment) {
+        this.offerOperations = new NpcQuestOfferOperations({
+            environment,
+            offers: this.offers,
+            journal: this.journal,
+        })
+        this.reservations = environment.adventure.questFunding.reservations
         this.lifecycle = new NpcQuestLifecycle(environment, this.reservations)
     }
 
-    public readonly decide = (
-        issuer: GameCharacter,
-        decision: NpcQuestDecision,
-        now: number
-    ) => this.handleDecision(issuer, decision, now)
+    public readonly decide = this.handleDecision.bind(this)
 
     public stop(): void {
         for (const job of this.jobs.values()) {
@@ -71,14 +63,36 @@ export class NpcQuestService {
         decision: NpcQuestDecision,
         now: number
     ): NpcQuestResult {
-        return decision.type === 'quest_propose'
-            ? this.propose(issuer, decision.targetId, decision.draft, now)
-            : this.workerPropose(
-                  issuer,
-                  decision.targetId,
-                  decision.requestId,
-                  now
-              )
+        switch (decision.type) {
+            case 'quest_propose':
+                return this.propose(
+                    issuer,
+                    decision.targetId,
+                    decision.draft,
+                    now
+                )
+            case 'worker_quest_propose':
+                return this.workerPropose(
+                    issuer,
+                    decision.targetId,
+                    decision.requestId,
+                    now
+                )
+            case 'quest_offer_revise':
+                return this.offerOperations.revise(issuer, decision, now)
+            case 'quest_inquire':
+                return this.inquire(
+                    issuer,
+                    decision.instanceId,
+                    decision.objectiveIndex,
+                    now
+                )
+            default:
+                return this.result(
+                    false,
+                    'Это действие требует окна подтверждения разговора.'
+                )
+        }
     }
 
     public propose(
@@ -87,57 +101,20 @@ export class NpcQuestService {
         draft: QuestDraft,
         now: number
     ): NpcQuestResult {
-        const offer = createQuestOffer(
-            issuer,
-            targetId,
-            draft,
-            this.environment,
-            this.newId('offer'),
-            now
-        )
-        if (typeof offer === 'string') {
-            return this.result(false, offer)
-        }
-        const wallet = this.rewardWallet(offer, issuer)
-        if (
-            wallet === undefined ||
-            availableGold(wallet) < draft.rewardGold ||
-            draft.rewardItems.some(
-                (item) =>
-                    availableInventoryQuantity(
-                        issuer.inventory,
-                        item.instanceId
-                    ) < item.quantity
-            )
-        ) {
-            return this.result(
-                false,
-                'У меня сейчас нет свободной награды для такого обещания.'
-            )
-        }
-        this.offers.set(targetId, offer)
-        return this.result(true)
+        return this.offerOperations.propose(issuer, targetId, draft, now)
     }
-
     public workerPropose(
         issuer: GameCharacter,
         targetId: string,
         requestId: string,
         now: number
     ): NpcQuestResult {
-        const offer = createWorkerQuestOffer(
+        return this.offerOperations.workerPropose(
             issuer,
             targetId,
             requestId,
-            this.environment,
-            this.newId('worker-offer'),
             now
         )
-        if (typeof offer === 'string') {
-            return this.result(false, offer)
-        }
-        this.offers.set(targetId, offer)
-        return this.result(true)
     }
 
     public handle(
@@ -146,21 +123,20 @@ export class NpcQuestService {
         now: number
     ): NpcQuestResult {
         if (message.type === 'quest_offer_answer') {
-            return answerQuestOffer(
-                {
-                    environment: this.environment,
-                    offers: this.offers,
-                    jobs: this.jobs,
-                    reservations: this.reservations,
-                    rewardWallet: (offer, issuer) =>
-                        this.rewardWallet(offer, issuer),
-                    newId: (prefix) => this.newId(prefix),
-                    cancel: (job, notice) => this.lifecycle.cancel(job, notice),
-                    refresh: (job) => this.lifecycle.refresh(job),
-                },
+            return this.answer(actor, message, now)
+        }
+        if (message.type === 'quest_inquire') {
+            return this.inquire(
                 actor,
-                message,
+                message.instanceId,
+                message.objectiveIndex,
                 now
+            )
+        }
+        if (message.type === 'quest_turn_in_confirm') {
+            return this.result(
+                false,
+                'Подтверждение доступно только через серверное окно сдачи.'
             )
         }
         const job = this.jobs.get(message.instanceId)
@@ -178,9 +154,55 @@ export class NpcQuestService {
         }
         if (message.type === 'npc_quest_abandon') {
             this.lifecycle.cancel(job, 'Договор оставлен. Награда освобождена.')
+            this.recordJob(job, now)
             return this.result(true)
         }
-        return this.turnIn(actor, job, now)
+        return turnInNpcQuest(
+            {
+                environment: this.environment,
+                lifecycle: this.lifecycle,
+                record: (entry, time) => this.recordJob(entry, time),
+            },
+            actor,
+            job,
+            now
+        )
+    }
+
+    private answer(
+        actor: GameCharacter,
+        message: Extract<NpcQuestClientMessage, { type: 'quest_offer_answer' }>,
+        now: number
+    ): NpcQuestResult {
+        const offer = this.offers.get(actor.id)
+        const outcome = answerQuestOffer(
+            {
+                environment: this.environment,
+                offers: this.offers,
+                jobs: this.jobs,
+                reservations: this.reservations,
+                rewardWallet: (entry, issuer) =>
+                    questRewardWallet(this.environment, entry, issuer),
+                newId: (prefix) =>
+                    this.environment.adventure.questFunding.newId(
+                        `npc-${prefix}`
+                    ),
+                cancel: (job, notice) => this.lifecycle.cancel(job, notice),
+                refresh: (job) => this.lifecycle.refresh(job),
+            },
+            actor,
+            message,
+            now
+        )
+        if (outcome.accepted && offer !== undefined) {
+            if (!message.accept) {
+                this.recordOffer(offer, 'declined', now)
+            }
+            for (const job of this.jobs.values()) {
+                this.recordJob(job, now)
+            }
+        }
+        return outcome
     }
 
     public snapshot(actorId: string, now = Date.now()): NpcQuestSocialSnapshot {
@@ -193,17 +215,18 @@ export class NpcQuestService {
 
     public update(now: number): void {
         for (const [id, offer] of this.offers) {
-            const issuer = this.environment.getCharacter(offer.view.issuerId)
-            if (
-                offer.view.expiresAt <= now ||
-                issuer?.alive !== true ||
-                issuer.deathSequence !== offer.issuerDeath
-            ) {
+            if (!questOfferAvailable(offer, this.environment, now)) {
+                this.recordOffer(
+                    offer,
+                    offer.view.expiresAt <= now ? 'expired' : 'cancelled',
+                    now
+                )
                 this.offers.delete(id)
             }
         }
         for (const job of this.jobs.values()) {
             this.lifecycle.refresh(job)
+            this.recordJob(job, now)
         }
     }
 
@@ -231,8 +254,7 @@ export class NpcQuestService {
     }
 
     public cityFund(cityId: string): number {
-        const wallet = this.funds.get(cityId)
-        return wallet === undefined ? 0 : availableGold(wallet)
+        return this.environment.adventure.questFunding.availableGold(cityId)
     }
 
     public conversation(issuerId: string, recipientId: string) {
@@ -240,70 +262,46 @@ export class NpcQuestService {
             .filter(
                 (job) =>
                     job.view.issuerId === issuerId &&
-                    job.acceptedBy === recipientId
+                    (job.acceptedBy === recipientId ||
+                        job.submittedBy === recipientId ||
+                        job.baseline.has(recipientId) ||
+                        this.environment.parties
+                            .contractRoster(job.view.instanceId)
+                            .members.has(recipientId))
             )
             .map((job) => structuredClone(job.view))
     }
 
-    private turnIn(
+    public inquire(
         actor: GameCharacter,
-        job: NpcQuestRecord,
+        instanceId: string,
+        objectiveIndex: number,
         now: number
     ): NpcQuestResult {
-        if (job.view.status === 'completed') {
-            return this.result(true)
-        }
-        this.lifecycle.refresh(job)
-        const issuer = this.environment.getCharacter(job.view.issuerId)
-        if (
-            job.view.status !== 'ready' ||
-            !questContact(actor, issuer, this.environment, now)
-        ) {
-            return this.result(
-                false,
-                job.view.notice ??
-                    'Условия ещё не выполнены или заказчик далеко.'
-            )
-        }
-        const wallet = this.rewardWallet({ view: job.view }, issuer)
-        const shares =
-            wallet === undefined
-                ? undefined
-                : settleNpcQuest(
-                      job,
-                      actor,
-                      issuer,
-                      wallet,
-                      this.environment,
-                      now
-                  )
-        if (shares === undefined) {
-            return this.result(
-                false,
-                'Передача не состоялась: проверьте вещи, вместимость и награду.'
-            )
-        }
-        job.view.status = 'completed'
-        job.submittedBy = actor.id
-        job.view.rewardShares = shares
-        job.view.receiptId = job.view.instanceId
-        job.view.notice = 'Договор выполнен. Имущество и награда переданы.'
-        this.lifecycle.release(job)
-        return this.result(true)
+        return inquireNpcQuest(
+            {
+                environment: this.environment,
+                jobs: this.jobs,
+                refresh: (job) => this.lifecycle.refresh(job),
+                record: (job, time) => this.recordJob(job, time),
+            },
+            actor,
+            instanceId,
+            objectiveIndex,
+            now
+        )
+    }
+    private recordOffer(
+        offer: QuestOfferRecord,
+        status: QuestHistoryEntry['status'],
+        now: number
+    ): void {
+        recordQuestOffer(this.journal, offer, status, now)
+    }
+    private recordJob(job: NpcQuestRecord, now: number): void {
+        recordNpcQuest(this.journal, job, this.environment, now)
     }
 
-    private rewardWallet(
-        offer: Pick<QuestOfferRecord, 'view'>,
-        issuer: GameCharacter
-    ): AssetWallet | undefined {
-        return offer.view.funding === 'city'
-            ? this.funds.get(offer.view.fundingCityId ?? issuer.locationId)
-            : this.environment.adventure.walletFor(issuer.id)
-    }
-
-    private newId(prefix: string): string {
-        return `npc-${prefix}-${String(this.nextId++)}`
-    }
     private result(
         accepted: boolean,
         error: string | null = null

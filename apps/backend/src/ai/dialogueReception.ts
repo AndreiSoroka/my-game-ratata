@@ -52,9 +52,7 @@ function hearingCandidates(
     return [...states.values()].filter(
         (state) =>
             state.actor !== undefined &&
-            (event.channel !== 'whisper' ||
-                targetId === undefined ||
-                state.actor.id === targetId) &&
+            (event.channel !== 'whisper' || state.actor.id === targetId) &&
             canHearSpeech(
                 state.actor,
                 requester,
@@ -197,5 +195,24 @@ function dropOldest(
             'Очередь переполнена; сообщение не обработано.',
             dropped
         )
+    }
+}
+
+export function legacyNpcRequest(
+    requester: GameCharacter,
+    text: string,
+    id: string,
+    now: number
+): Heard {
+    return {
+        kind: 'message',
+        id,
+        senderId: requester.id,
+        text,
+        locationId: requester.locationId,
+        position: { ...requester.position },
+        at: now,
+        channel: 'whisper',
+        legacy: true,
     }
 }

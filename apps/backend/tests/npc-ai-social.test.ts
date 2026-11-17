@@ -144,7 +144,7 @@ it('answers small talk during a real route without spending its task decision bu
     await f.advance()
 })
 
-it('keeps whisper text and memory out of public response prompts', async () => {
+it('lets one NPC remember its own whispers in public dialogue while command scope follows the speaker', async () => {
     const f = setup()
     f.alice.send({
         type: 'whisper',
@@ -170,8 +170,12 @@ it('keeps whisper text and memory out of public response prompts', async () => {
     const publicContext = required(f.provider.turns[1]).context
     expect(publicContext.task).toBeNull()
     expect(publicContext.memory).toBe('')
-    expect(publicContext.observation.social).toBeUndefined()
-    expect(JSON.stringify(publicContext)).not.toContain('тайник под мостом')
+    expect(publicContext.observation.social?.whisper?.partnerId).toBe(
+        f.alice.actor.id
+    )
+    expect(JSON.stringify(publicContext.conversation)).toContain(
+        'тайник под мостом'
+    )
     required(f.provider.turns[1]).resolve(
         npcReply(null, { memory: 'Публичная беседа.', taskAcceptance: 'none' })
     )

@@ -89,12 +89,20 @@ const bubbles = computed(() => {
         const width = Math.min(360, anchor.width - 24)
         const x = Math.max(12, Math.min(anchor.width - width - 12, anchor.x - width / 2))
         const height = heights.value.get(speechBubbleId(entry.id, entry.receipt)) ?? 0
-        const y = Math.max(12, Math.min(anchor.height - height - 12, anchor.y - height - 20))
+        const below = anchor.y - height - 12 < 12 && 'lowerY' in anchor
+        const y = Math.max(
+            12,
+            Math.min(
+                anchor.height - height - 12,
+                below ? anchor.lowerY + 12 : anchor.y - height - 12
+            )
+        )
         return [
             {
                 ...entry,
                 name: character.nickname,
                 active: entry.id === conversation?.npcId,
+                below,
                 style: {
                     left: `${x}px`,
                     top: `${y}px`,
@@ -119,7 +127,7 @@ const typing = computed(() => {
                 name: actor.nickname,
                 style: {
                     left: `${Math.max(14, Math.min(anchor.width - 48, anchor.x - 21))}px`,
-                    top: `${Math.max(8, anchor.y - 42)}px`,
+                    top: `${Math.max(8, Math.min(anchor.height - 34, anchor.y - 34 >= 8 ? anchor.y - 34 : 'lowerY' in anchor ? anchor.lowerY + 8 : 8))}px`,
                 },
             },
         ]
@@ -163,8 +171,8 @@ defineExpose({ receive, clear })
             aria-live="off"
             role="img"
         >
-            <span aria-hidden="true">.</span><span aria-hidden="true">.</span
-            ><span aria-hidden="true">.</span>
+            <span aria-hidden="true"></span><span aria-hidden="true"></span
+            ><span aria-hidden="true"></span>
         </div>
         <article
             v-for="bubble in bubbles"
@@ -172,6 +180,7 @@ defineExpose({ receive, clear })
             :key="speechBubbleId(bubble.id, bubble.receipt)"
             :ref="(element) => bindBubble(speechBubbleId(bubble.id, bubble.receipt), element)"
             class="speech-bubble"
+            :class="{ 'speech-bubble--below': bubble.below }"
             :style="bubble.style"
             :aria-label="bubble.name"
             :aria-live="bubble.active ? 'polite' : 'off'"
@@ -189,97 +198,4 @@ defineExpose({ receive, clear })
         </article>
     </div>
 </template>
-<style scoped>
-.speech-layer {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 8;
-}
-.speech-typing {
-    position: absolute;
-    display: flex;
-    justify-content: center;
-    gap: 1px;
-    width: 42px;
-    height: 26px;
-    background: #f5efe3;
-    color: #263126;
-    border: 2px solid #b09664;
-    box-shadow: 2px 2px #15211880;
-    font: bold 24px/12px monospace;
-}
-.speech-typing span:nth-child(2) {
-    animation: speech-dot-two 1.2s step-end infinite;
-}
-.speech-typing span:nth-child(3) {
-    animation: speech-dot-three 1.2s step-end infinite;
-}
-@keyframes speech-dot-two {
-    0% {
-        visibility: hidden;
-    }
-    33%,
-    100% {
-        visibility: visible;
-    }
-}
-@keyframes speech-dot-three {
-    0% {
-        visibility: hidden;
-    }
-    66%,
-    100% {
-        visibility: visible;
-    }
-}
-@media (prefers-reduced-motion: reduce) {
-    .speech-typing span {
-        animation: none;
-    }
-}
-.speech-bubble {
-    position: absolute;
-    background: var(--rpg-speech, #f5efe3);
-    color: #263126;
-    border: 2px solid var(--rpg-brass, #b09664);
-    border-radius: 0;
-    padding: 11px 13px;
-    box-sizing: border-box;
-    box-shadow: 3px 3px 0 #15211880;
-    pointer-events: auto;
-    font:
-        14px/1.5 system-ui,
-        sans-serif;
-}
-.speech-bubble::after {
-    content: '';
-    position: absolute;
-    left: calc(var(--speech-tail) - 7px);
-    bottom: -10px;
-    width: 14px;
-    height: 14px;
-    background: var(--rpg-speech, #f5efe3);
-    border-right: 2px solid var(--rpg-brass, #b09664);
-    border-bottom: 2px solid var(--rpg-brass, #b09664);
-    transform: rotate(45deg);
-}
-strong {
-    display: block;
-    color: #655431;
-    font:
-        14px/1.2 'Pixelify Sans',
-        system-ui;
-    margin-bottom: 3px;
-}
-.speech-text {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    max-height: min(28vh, 220px);
-    overflow: auto;
-}
-.speech-text:focus-visible {
-    outline: 2px solid #7c693c;
-    outline-offset: 3px;
-}
-</style>
+<style scoped src="./speechBubbles.css"></style>

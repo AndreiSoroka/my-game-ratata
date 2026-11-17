@@ -70,7 +70,6 @@ export class NpcAiExecution {
         if (result.accepted && decision.type === 'interact') {
             rememberNpcMerchant(this.room, state, actor, decision, now)
             rememberNpcInspection(state, decision.targetId, result.events, now)
-            this.room.social.quests.inspect(actor.id, decision.targetId, id)
         }
         enqueueNpcAiEvent(state, resolvedNpcEvent(id, decision, result, now))
         if (reply.done && result.accepted) {

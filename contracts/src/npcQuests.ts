@@ -15,7 +15,7 @@ export type QuestObjective =
           quantity: number
           locationId: string
       }
-    | { kind: 'inspect'; targetId: string }
+    | { kind: 'inspect'; targetId: string; question?: string }
 
 /** Untrusted narrative and references, never executable game rules. */
 export interface QuestDraft {
@@ -65,12 +65,71 @@ export type NpcQuestClientMessage =
       }
     | { type: 'npc_quest_turn_in'; instanceId: string }
     | { type: 'npc_quest_abandon'; instanceId: string }
+    | { type: 'quest_inquire'; instanceId: string; objectiveIndex: number }
+    | { type: 'quest_turn_in_confirm'; confirmationId: string; accept: boolean }
 
 export type NpcQuestDecision =
     | { type: 'quest_propose'; targetId: string; draft: QuestDraft }
     | { type: 'worker_quest_propose'; targetId: string; requestId: string }
+    | { type: 'quest_turn_in_request'; targetId: string; instanceId: string }
+    | {
+          type: 'quest_offer_revise'
+          targetId: string
+          offerId: string
+          revision: number
+          rewardGold: number
+          rewardItems: Array<{ instanceId: string; quantity: number }>
+      }
+    | { type: 'quest_inquire'; instanceId: string; objectiveIndex: number }
+
+export interface QuestTurnInPromptSnapshot {
+    id: string
+    instanceId: string
+    source: 'npc' | 'guild' | 'story'
+    issuerId: string
+    issuerName: string
+    title: string
+    description: string
+    objectives: QuestObjective[]
+    objectiveLabels: string[]
+    rewardGold: number
+    rewardItems: ItemInstanceSnapshot[]
+    rewardMode: QuestRewardMode
+    expiresAt: number
+    revision: number
+    action?: 'report' | 'turn_in'
+}
+
+export interface QuestHistoryEntry {
+    id: string
+    instanceId?: string
+    source: 'npc' | 'guild' | 'story'
+    issuerId: string
+    recipientId: string
+    title: string
+    status:
+        | 'offered'
+        | 'revised'
+        | 'declined'
+        | 'expired'
+        | 'active'
+        | 'ready'
+        | 'completed'
+        | 'cancelled'
+        | 'reward_missing'
+    at: number
+    revision?: number
+    rewardGold: number
+    receiptId?: string
+    nextAction?: string
+    contactId?: string
+    contactName?: string
+    locationId?: string
+}
 
 export interface NpcQuestSocialSnapshot {
+    questTurnIn?: QuestTurnInPromptSnapshot | null
+    questHistory?: QuestHistoryEntry[]
     issuerQuests?: NpcQuestSnapshot[]
     questOffer?: QuestOfferSnapshot | null
     quest?: NpcQuestSnapshot | null

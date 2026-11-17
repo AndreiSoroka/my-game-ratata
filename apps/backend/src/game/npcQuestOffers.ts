@@ -12,6 +12,11 @@ import { snapshotItem } from './inventory'
 import type { NpcQuestEnvironment, QuestOfferRecord } from './npcQuestTypes'
 import { questContact } from './npcQuestTypes'
 import { validateQuestDraft } from './npcQuestValidation'
+import {
+    namedQuestPlace,
+    questCompass,
+    validateQuestExcursion,
+} from './questExcursions'
 
 export function createQuestOffer(
     issuer: GameCharacter,
@@ -32,7 +37,9 @@ export function createQuestOffer(
     ) {
         return 'Не удаётся предложить задание этому собеседнику.'
     }
-    const error = validateQuestDraft(issuer, draft, environment)
+    const error =
+        validateQuestDraft(issuer, draft, environment) ??
+        validateQuestExcursion(target, draft, environment)
     if (error !== null) {
         return error
     }
@@ -60,7 +67,7 @@ export function createQuestOffer(
             description: draft.description,
             objectives: structuredClone(draft.objectives),
             objectiveLabels: draft.objectives.map((objective) =>
-                objectiveLabel(objective, environment)
+                objectiveLabel(objective, environment, issuer)
             ),
             rewardGold: draft.rewardGold,
             rewardItems: rewards.filter((item) => item !== undefined),
@@ -115,12 +122,13 @@ export function createWorkerQuestOffer(
             description: `${request.workerName}: ${request.enemyName} мешает работе в ${request.locationName}. Принесите один трофей, сообщите о расчистке, дождитесь проверочного рабочего рейса и возвращения работника.`,
             objectives: [objective],
             objectiveLabels: [
-                objectiveLabel(objective, environment),
+                objectiveLabel(objective, environment, issuer),
                 'Дождаться реальной проверки работы и возвращения работника',
             ],
             rewardGold: 30,
             rewardItems: [],
             funding: 'worker',
+            fundingCityId: request.cityId,
             rewardMode: DEFAULT_QUEST_REWARD_MODE,
             itemRecipient: 'submitter',
             expiresAt: now + 120_000,
@@ -131,15 +139,18 @@ export function createWorkerQuestOffer(
 
 function objectiveLabel(
     objective: QuestObjective,
-    environment: NpcQuestEnvironment
+    environment: NpcQuestEnvironment,
+    issuer: GameCharacter
 ): string {
     switch (objective.kind) {
         case 'deliver':
             return `Передать ${ITEM_DEFINITIONS[objective.itemId].name} × ${String(objective.quantity)}: ${recipientName(objective.recipientId, environment)}`
         case 'visit':
-            return `Посетить: ${locationName(objective.locationId)}${objective.position === undefined ? '' : ` (${String(objective.position.x)}, ${String(objective.position.y)})`}`
-        case 'inspect':
-            return `Получить сведения у: ${recipientName(objective.targetId, environment)}`
+            return `Посетить: ${namedQuestPlace(objective.locationId, objective.position, environment)}${objective.position !== undefined && objective.locationId === issuer.locationId ? ` — ${questCompass(issuer.position, objective.position)} от заказчика` : ''}`
+        case 'inspect': {
+            const target = environment.getCharacter(objective.targetId)
+            return `Расспросить по поручению: ${recipientName(objective.targetId, environment)}${target !== undefined ? ` — ${namedQuestPlace(target.locationId, target.position, environment)}${target.locationId === issuer.locationId ? `, ${questCompass(issuer.position, target.position)} от заказчика` : ''}` : ''}${objective.question !== undefined ? `. ${objective.question}` : ''}. Вернуться с отчётом к ${issuer.nickname}.`
+        }
         case 'defeat':
             return `Победить ${objective.archetype === 'slime' ? 'враждебных слизней' : 'скелетов'} × ${String(objective.quantity)}: ${locationName(objective.locationId)}`
     }

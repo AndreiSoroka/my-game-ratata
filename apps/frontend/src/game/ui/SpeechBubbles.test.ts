@@ -155,7 +155,7 @@ it('anchors measured short and long replies above the speaker, clamps the viewpo
     try {
         await wrapper.vm.$nextTick()
         const bubble = wrapper.get('.speech-bubble').element as HTMLElement
-        expect(bubble.style.top).toBe('316px')
+        expect(bubble.style.top).toBe('324px')
         expect(bubble.style.left).toBe('20px')
         expect(bubble.style.width).toBe('360px')
         expect(bubble.style.getPropertyValue('--speech-tail')).toBe('180px')
@@ -174,7 +174,7 @@ it('anchors measured short and long replies above the speaker, clamps the viewpo
             { observe, unobserve, disconnect }
         )
         await wrapper.vm.$nextTick()
-        expect(bubble.style.top).toBe('140px')
+        expect(bubble.style.top).toBe('148px')
         projectCharacter.mockReturnValue({ x: 5, y: 30, width: 320, height: 500 })
         await wrapper.setProps({ snapshot: { ...snapshot, tick: 2 } })
         expect(bubble.style.top).toBe('12px')

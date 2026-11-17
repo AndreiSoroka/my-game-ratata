@@ -123,7 +123,7 @@ const windows = useAppWindows({
 })
 const {
     gameMenu,
-    characterOpen,
+    characterModal,
     automationPanels,
     worldInputBlocked,
     openNearbyMenu,
@@ -188,7 +188,7 @@ async function joinGame(): Promise<void> {
 
         <section v-else class="game-screen" aria-label="Ratata game">
             <div
-                :inert="gameMenu.open.value || characterOpen || undefined"
+                :inert="gameMenu.open.value || characterModal || undefined"
                 style="display: contents"
             >
                 <InventoryHud

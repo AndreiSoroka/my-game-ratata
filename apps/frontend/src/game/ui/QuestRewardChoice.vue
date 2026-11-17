@@ -21,15 +21,41 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
 <template>
     <fieldset class="quest-reward-choice" :disabled="disabled">
         <legend>Распределение награды</legend>
-        <label v-for="option in options" :key="option.value">
+        <label
+            v-for="option in options"
+            :key="option.value"
+            :class="{ selected: mode === option.value }"
+        >
             <input
                 v-model="mode"
                 type="radio"
                 :name="name"
                 :value="option.value"
+                :aria-label="option.label"
                 @keydown="confirm($event, option.value)"
             />
-            <span>{{ option.label }}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle
+                    :cx="option.value === 'submitter' ? 12 : 8"
+                    cy="7"
+                    r="3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                />
+                <path
+                    :d="
+                        option.value === 'submitter'
+                            ? 'M6 21v-4a6 6 0 0 1 12 0v4'
+                            : 'M2 21v-4a6 6 0 0 1 12 0v4M17 4a3 3 0 0 1 0 6M17 12a6 6 0 0 1 5 5v4'
+                    "
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                />
+            </svg>
+            <span>{{ option.value === 'submitter' ? 'Сдающему' : 'Поровну отряду' }}</span>
+            <span class="sr-only">{{ option.label }}</span>
         </label>
         <small>Выбор фиксируется при принятии задания.</small>
     </fieldset>
@@ -37,8 +63,9 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
 
 <style scoped>
 .quest-reward-choice {
-    display: grid;
-    gap: 7px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     min-width: 0;
     margin: 12px 0;
     padding: 10px 12px;
@@ -52,16 +79,50 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
     padding: 0 4px;
 }
 .quest-reward-choice label {
+    position: relative;
     display: flex;
+    flex: 1 1 170px;
     gap: 8px;
     align-items: center;
+    justify-content: center;
     cursor: pointer;
+    border: 1px solid #63735b;
+    padding: 10px 12px;
+    border-radius: 4px;
+    background: #22382d;
 }
 .quest-reward-choice input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
     margin: 0;
-    accent-color: #d3bb7c;
+}
+.quest-reward-choice label.selected {
+    border-color: #dfc36f;
+    background: #3c4c30;
+}
+.quest-reward-choice label:focus-within {
+    outline: 2px solid #dfc36f;
+    outline-offset: 2px;
+}
+.quest-reward-choice:disabled label {
+    opacity: 0.5;
+    cursor: default;
 }
 .quest-reward-choice small {
+    flex-basis: 100%;
     color: #b4c0ac;
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 </style>

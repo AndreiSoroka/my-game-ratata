@@ -2,6 +2,7 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, Label, Rectangle, vec } from 'excalibur'
 
 import { healthBarPercent } from '../ui/healthPresentation'
+import { characterOverhead } from './characterPresentationGeometry'
 
 export interface CharacterBundle {
     snapshot?: CharacterSnapshot
@@ -66,12 +67,13 @@ export function updateBundleHealth(
 }
 
 export function positionBundle(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {
+    const overhead = characterOverhead(snapshot.visualId)
     bundle.body.pos = vec(snapshot.position.x, snapshot.position.y)
     bundle.body.z = snapshot.position.y
-    bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - 44)
+    bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - overhead.label)
     bundle.label.z = bundle.body.z + 3
     for (const bar of [bundle.hpBack, bundle.hpFill]) {
-        bar.pos = vec(snapshot.position.x - 16, snapshot.position.y - 32)
+        bar.pos = vec(snapshot.position.x - 16, snapshot.position.y - overhead.health)
         bar.z = bundle.body.z + 2
     }
 }

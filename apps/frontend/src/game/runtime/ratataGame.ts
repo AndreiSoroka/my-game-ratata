@@ -169,9 +169,9 @@ export class RatataGame {
         this.sceneActors?.setPrayerPreview(this.isMapReady ? preview : undefined)
     }
     public projectCharacter(id: string) {
-        return this.isCharacterVisible(id)
-            ? projectCharacter(this.engine, this.canvas, this.snapshot, id)
-            : undefined
+        if (!this.isCharacterVisible(id)) return undefined
+        const position = this.sceneActors?.characterPosition(id)
+        return projectCharacter(this.engine, this.canvas, this.snapshot, id, position)
     }
     public isPositionVisible(position: Vector2): boolean {
         return this.isMapReady && (this.sceneActors?.isPositionVisible(position) ?? false)

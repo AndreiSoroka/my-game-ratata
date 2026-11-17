@@ -3,6 +3,7 @@ import type { ClientMessage, GuildQuestSnapshot } from '@my-game-ratata/contract
 import { computed, useId } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import ItemIcon from './ItemIcon.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 
 const props = defineProps<{
@@ -10,6 +11,7 @@ const props = defineProps<{
     playerId?: string
     canAct?: boolean
     canAbandon?: boolean
+    actions?: 'all' | 'abandon'
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const progressId = useId()
@@ -26,13 +28,17 @@ const stageLabels = {
     cancelled: 'Обращение отменено',
 }
 const status = computed(() =>
-    request.value
-        ? stageLabels[request.value.stage]
-        : {
-              active: 'Выполняется',
-              ready: 'Можно получить награду',
-              completed: 'Завершено',
-          }[props.job.status]
+    props.job.status === 'reward_missing'
+        ? 'Обещанная награда недоступна'
+        : request.value
+          ? stageLabels[request.value.stage]
+          : {
+                active: 'Выполняется',
+                ready: 'Можно получить награду',
+                completed: 'Завершено',
+                cancelled: 'Отменено',
+                reward_missing: 'Обещанная награда недоступна',
+            }[props.job.status]
 )
 const progressLabel = computed(() =>
     props.job.id === 'survey_frontier'
@@ -53,6 +59,10 @@ const progressLabel = computed(() =>
                 <div>
                     <dt>Заказчик</dt>
                     <dd>{{ request.workerName }}</dd>
+                </div>
+                <div>
+                    <dt>Отчёт и награда</dt>
+                    <dd>{{ job.issuerName ?? 'Городской распорядитель' }}</dd>
                 </div>
                 <div>
                     <dt>Участок</dt>
@@ -103,12 +113,20 @@ const progressLabel = computed(() =>
             :player-id="playerId"
             :completed="job.status === 'completed'"
         />
+        <ul v-if="job.rewardItems?.length" class="quest-reward-items">
+            <li v-for="item in job.rewardItems" :key="item.instanceId">
+                <ItemIcon :item="item" /><span>{{ item.quantity ?? 1 }} шт. · сдающему</span>
+            </li>
+        </ul>
+        <p v-if="job.rewardNotice" class="quest-card-reason" role="status">
+            {{ job.rewardNotice }}
+        </p>
         <div
             v-if="job.status !== 'completed' && request?.stage !== 'cancelled'"
             class="guild-reward quest-card-actions"
         >
             <button
-                v-if="request?.stage === 'waiting'"
+                v-if="actions !== 'abandon' && request?.stage === 'waiting'"
                 type="button"
                 :disabled="!canAct"
                 @click="emit('command', { type: 'guild_report', instanceId: job.instanceId })"
@@ -118,7 +136,7 @@ const progressLabel = computed(() =>
                 }}
             </button>
             <button
-                v-if="job.status === 'ready'"
+                v-if="actions !== 'abandon' && job.status === 'ready'"
                 type="button"
                 :disabled="!canAct"
                 @click="emit('command', { type: 'guild_turn_in', instanceId: job.instanceId })"
@@ -126,12 +144,12 @@ const progressLabel = computed(() =>
                 Сдать контракт
             </button>
             <button
-                v-if="request"
+                v-if="request || actions === 'abandon'"
                 type="button"
                 :disabled="!canAbandon"
                 @click="emit('command', { type: 'guild_abandon', instanceId: job.instanceId })"
             >
-                Отказаться от обращения
+                {{ request ? 'Отказаться от обращения' : 'Отказаться от договора' }}
             </button>
         </div>
     </article>
@@ -212,5 +230,15 @@ const progressLabel = computed(() =>
 }
 .quest-card-actions button {
     font: inherit;
+}
+.quest-reward-items {
+    padding: 0;
+    list-style: none;
+}
+.quest-reward-items li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
 }
 </style>

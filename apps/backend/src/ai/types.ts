@@ -7,7 +7,7 @@ import type {
 
 import type { NpcAiObservation } from './observation'
 
-export type NpcAiRole = 'city_coordinator' | 'companion'
+export type NpcAiRole = 'city_coordinator' | 'companion' | 'advisor'
 
 export interface NpcAiModelSettings {
     cliPath: string
@@ -33,6 +33,7 @@ export interface NpcAiActorConfig {
     actorId: string
     role: NpcAiRole
     settings: NpcAiModelSettings
+    mode?: 'controller' | 'dialogue_only'
 }
 
 export interface NpcAiTask {
@@ -97,9 +98,16 @@ export interface NpcAiContext {
     memory: string
     facts: NpcAiFact[]
     observation: NpcAiObservation
+    conversation?: ReturnType<
+        import('./characterMemory').CharacterMemory['context']
+    >
+    knowledge?: import('./characterKnowledge').KnowledgeResult
+    informationResults?: import('./characterMemory').DeepMemoryResult
 }
 
 export interface NpcAiReply {
+    informationRequest?: { type: 'deep_memory'; personId: string } | null
+    personMemoryUpdate?: import('./characterMemory').PersonMemoryUpdate | null
     speech?: string | null
     taskAcceptance?: 'none' | 'accept' | 'replace' | 'decline'
     companionOrder?: 'follow' | 'guard' | 'help' | 'dismiss' | 'wait' | null

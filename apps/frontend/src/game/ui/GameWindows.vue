@@ -32,7 +32,7 @@ defineExpose({
 
 <template>
     <div
-        :inert="windows.gameMenu.open.value || windows.characterOpen.value || undefined"
+        :inert="windows.gameMenu.open.value || windows.characterModal.value || undefined"
         style="display: contents"
     >
         <SocialPanels
@@ -43,6 +43,7 @@ defineExpose({
             :characters="characters"
             :connected="connected"
             @open="emit('open')"
+            @quests="windows.openQuests"
             @command="emit('command', $event)"
         />
         <DeathOverlay
@@ -61,6 +62,7 @@ defineExpose({
         :tab="windows.characterTab.value"
         @update:tab="windows.setCharacterTab"
         :player="player"
+        :snapshot="snapshot"
         :characters="characters"
         @close="windows.closeCharacter"
         @command="emit('command', $event)"

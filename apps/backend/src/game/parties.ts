@@ -7,14 +7,15 @@ import type {
 
 import type { GameCharacter } from './character'
 import { ContractSlots } from './contractSlots'
-import { GuildService, type WorkerGuildGateway } from './guild'
+import {
+    type GuildRewardEnvironment,
+    GuildService,
+    type NegotiatedWorkerReward,
+    type WorkerGuildGateway,
+} from './guild'
 import { NoticeStore } from './notices'
 import { answerPartyInvitation } from './partyAnswers'
-import {
-    findGuildContact,
-    type GuildCommand,
-    handleGuildCommand,
-} from './partyGuildCommands'
+import { createPartyGuildAction, findGuildContact } from './partyGuildCommands'
 import { inviteToParty } from './partyInvitations'
 import {
     partyContractGroup,
@@ -50,10 +51,44 @@ export class PartyService {
         private awardGold: QuestGoldAwarder = () => ({ ok: false, shares: [] }),
         private readonly options: {
             workers?: WorkerGuildGateway
+            questRewards?: GuildRewardEnvironment
             canContact?: (actor: GameCharacter, npc: GameCharacter) => boolean
         } = {}
     ) {
-        this.guild = new GuildService(options.workers, this.contractSlots)
+        this.guild = new GuildService(
+            options.workers,
+            this.contractSlots,
+            options.questRewards
+        )
+    }
+
+    public readonly stop = () => this.guild.stop()
+
+    public readonly questHistory = (issuerId: string, recipientId: string) =>
+        this.guild.conversation(issuerId, recipientId)
+
+    /** Trusted server entry point; reward terms are never accepted from a client. */
+    public acceptNegotiatedWorker(
+        actor: GameCharacter,
+        requestId: string,
+        terms: NegotiatedWorkerReward,
+        rewardMode: import('@my-game-ratata/contracts').QuestRewardMode,
+        characters: Iterable<GameCharacter>,
+        now: number
+    ): GameEventPayload[] {
+        this.update(characters, now)
+        if (!available(actor)) {
+            return this.tell(
+                actor.id,
+                'Живой искатель приключений должен быть в игре.'
+            )
+        }
+        return this.guildAction(
+            actor,
+            { type: 'guild_accept', questId: requestId, rewardMode },
+            now,
+            terms
+        )
     }
 
     public contractGroup(actorId: string) {
@@ -198,6 +233,7 @@ export class PartyService {
         for (const event of events) {
             if (event.kind === 'permadeath' && event.actorId !== undefined) {
                 this.remove(event.actorId)
+                this.guild.release(`solo:${event.actorId}`, this.currentNow)
                 this.notices.delete(event.actorId)
             }
         }
@@ -245,33 +281,15 @@ export class PartyService {
         )
     }
 
-    private guildAction(
-        actor: GameCharacter,
-        message: GuildCommand,
-        now: number
-    ): GameEventPayload[] {
-        const group = this.groupFor(actor.id)
-        return handleGuildCommand({
-            guild: this.guild,
-            group,
-            actor,
-            message,
-            characters: this.characters,
-            award: this.awardGold,
-            now,
-            notices: this.notices,
-            leaderId: this.parties.get(group.key)?.leaderId,
-            contact:
-                message.type === 'guild_abandon' ||
-                this.contactFor(
-                    actor,
-                    now,
-                    message.type === 'guild_accept'
-                        ? message.questId
-                        : undefined
-                ) !== undefined,
-        })
-    }
+    private readonly guildAction = createPartyGuildAction({
+        guild: () => this.guild,
+        group: (id) => this.groupFor(id),
+        characters: () => this.characters,
+        award: () => this.awardGold,
+        leader: (key) => this.parties.get(key)?.leaderId,
+        contact: (actor, now, questId) => this.contactFor(actor, now, questId),
+        notices: this.notices,
+    })
 
     private groupFor(playerId: string): { key: string; members: Set<string> } {
         return resolvePartyGroup(playerId, this.parties, this.membership)
@@ -283,7 +301,8 @@ export class PartyService {
             this.parties,
             this.membership,
             this.guild,
-            this.invitations
+            this.invitations,
+            this.currentNow
         )
     }
 

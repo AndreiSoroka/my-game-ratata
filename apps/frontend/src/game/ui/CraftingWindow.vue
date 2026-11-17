@@ -6,6 +6,8 @@ import type {
     ClientMessage,
 } from '@my-game-ratata/contracts'
 
+import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
+
 const props = defineProps<{ adventure: AdventureSnapshot; alive: boolean }>()
 defineEmits<{ close: []; command: [message: ClientMessage] }>()
 const materials: { id: AdventureMaterial; label: string }[] = [
@@ -61,5 +63,12 @@ function canCraft(recipe: AdventureRecipe): boolean {
                 Создать
             </button>
         </article>
+        <section v-if="adventure.craftOrders?.length" aria-label="Заказы ремесленникам">
+            <h3>Заказы ремесленникам</h3>
+            <p v-for="order in adventure.craftOrders" :key="order.id">
+                <strong>{{ order.label }} — {{ craftOrderStatusLabels[order.status] }}</strong
+                ><br /><small>{{ craftOrderPaymentText(order) }}</small>
+            </p>
+        </section>
     </section>
 </template>

@@ -1,4 +1,5 @@
 import type {
+    GameEventPayload,
     NpcQuestSnapshot,
     QuestDraft,
     QuestOfferSnapshot,
@@ -70,4 +71,26 @@ export function questContact(
 
 export function movementFingerprint(actor: GameCharacter): string {
     return `${actor.locationId}:${String(actor.position.x)}:${String(actor.position.y)}`
+}
+
+export function questOfferAvailable(
+    offer: QuestOfferRecord,
+    environment: NpcQuestEnvironment,
+    now: number
+): boolean {
+    const issuer = environment.getCharacter(offer.view.issuerId)
+    const recipient = environment.getCharacter(offer.targetId)
+    return (
+        issuer !== undefined &&
+        recipient !== undefined &&
+        offer.view.expiresAt > now &&
+        issuer.deathSequence === offer.issuerDeath &&
+        questContact(recipient, issuer, environment, now)
+    )
+}
+
+export interface NpcQuestResult {
+    accepted: boolean
+    error: string | null
+    events: GameEventPayload[]
 }

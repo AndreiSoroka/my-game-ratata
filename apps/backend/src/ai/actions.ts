@@ -25,6 +25,10 @@ export function npcAiDecisionError(
     decision: AgentDecision,
     navigation?: NavigationService
 ): string | undefined {
+    const advisorError = advisorDecisionError(role, decision)
+    if (advisorError !== undefined) {
+        return advisorError
+    }
     if (
         role === 'city_coordinator' &&
         actor.locationId !== CENTER_LOCATION_ID
@@ -106,4 +110,14 @@ function movementError(
     return decision.append === true
         ? 'Wait for the current movement receipt before starting another route'
         : npcAiNavigationError(actor, decision.target, navigation)
+}
+
+function advisorDecisionError(
+    role: NpcAiRole,
+    decision: AgentDecision
+): string | undefined {
+    return role === 'advisor' &&
+        !['speak', 'wait', 'cancel_control'].includes(decision.type)
+        ? 'This advisor may answer from knowledge, but does not replace its scripted controller'
+        : undefined
 }

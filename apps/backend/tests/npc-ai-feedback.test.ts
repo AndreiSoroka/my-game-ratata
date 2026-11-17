@@ -31,7 +31,7 @@ function setup() {
     return { ...fixture, provider }
 }
 
-it('comments on a missing mechanic and physically attempts an ordinary alternative in the same turn', async () => {
+it('logs a missing mechanic and physically attempts an alternative without speaking diagnostics', async () => {
     const f = setup()
     f.talk('Обойди врагов, если можешь.')
     await f.advance()
@@ -60,8 +60,8 @@ it('comments on a missing mechanic and physically attempts an ordinary alternati
     expect(
         Math.hypot(f.actor.position.x - before.x, f.actor.position.y - before.y)
     ).toBeGreaterThan(0)
-    expect(f.speech()).toContainEqual(
-        expect.objectContaining({ text: detail, targetId: f.alice.actor.id })
+    expect(f.speech()).not.toContainEqual(
+        expect.objectContaining({ text: detail })
     )
     await f.advance(3_000)
     await f.diagnostics.flush()

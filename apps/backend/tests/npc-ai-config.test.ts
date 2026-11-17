@@ -9,10 +9,11 @@ import { loadNpcAiConfig, parseNpcAiConfig } from '../src/ai/config'
 const actors = [
     { actorId: 'npc_friendly_girl_1', role: 'city_coordinator' },
     { actorId: 'npc_magic_slime_1', role: 'companion' },
+    { actorId: 'npc_cleric_1', role: 'advisor' },
 ]
 
 describe('NPC AI configuration', () => {
-    it('is opt-in and gives the two authored NPCs explicit economical defaults', async () => {
+    it('is opt-in and gives the authored NPCs explicit economical defaults', async () => {
         const disabled = await loadNpcAiConfig({})
         expect(disabled.enabled).toBe(false)
         expect(disabled.defaults).toEqual({

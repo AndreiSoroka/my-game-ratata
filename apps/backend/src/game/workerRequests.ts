@@ -13,8 +13,10 @@ import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
 import { stop } from './workerNavigation'
 import {
+    completeWorkerRequest,
     reconcileWorkerIncident,
     releaseWorkerClaim,
+    releaseWorkerGroup,
 } from './workerRequestClaims'
 import { createWorkerIncident } from './workerRequestCreation'
 import {
@@ -171,14 +173,15 @@ export class WorkerRequestService {
     }
 
     public complete(requestId: string, groupKey: string): boolean {
-        const request = this.claimed(requestId, groupKey)
-        if (request?.view.stage !== 'ready') {
-            return false
-        }
-        request.view.stage = 'completed'
-        request.view.reason = null
-        request.claim = null
-        return true
+        return this.completeWith(requestId, groupKey, () => true)
+    }
+
+    public completeWith(
+        requestId: string,
+        groupKey: string,
+        payment: () => boolean
+    ): boolean {
+        return completeWorkerRequest(this.claimed(requestId, groupKey), payment)
     }
 
     public abandon(
@@ -215,12 +218,12 @@ export class WorkerRequestService {
     }
 
     public releaseGroup(groupKey: string, now: number): void {
-        this.reconcile(this.characters, now)
-        for (const request of this.requests.values()) {
-            if (request.claim?.key === groupKey) {
-                releaseWorkerClaim(request)
-            }
-        }
+        releaseWorkerGroup(
+            this.requests.values(),
+            this.characters,
+            groupKey,
+            now
+        )
     }
 
     public reconcile(

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 import {
     captureExchange,
@@ -110,9 +110,30 @@ for (const layout of [
             await captureExchange(first, layout.name)
             await second.getByRole('button', { name: 'Подтвердить', exact: true }).click()
             await expectGiftSettlement(first, second, giftId)
+            await expect(first.getByRole('dialog', { name: /^Обмен:/ })).toHaveCount(0)
+            await expect(second.getByRole('dialog', { name: /^Обмен:/ })).toHaveCount(0)
+            await expect(first.getByRole('dialog', { name: /^Шёпот:/ })).toHaveCount(0)
+            await assertHudLayout(first)
+            await first.getByRole('button', { name: /^Шёпот:/ }).click()
+            await expect(first.getByRole('dialog', { name: /^Шёпот:/ })).toContainText(
+                'Это подарок'
+            )
             expect(firstId).not.toBe(secondId)
         } finally {
             await context.close()
         }
     })
+}
+
+async function assertHudLayout(page: Page): Promise<void> {
+    const viewport = page.viewportSize()!
+    const status = await page.getByLabel('Player status', { exact: true }).boundingBox()
+    const hints = await page.locator('.social-hints').boundingBox()
+    expect(hints!.y).toBeGreaterThanOrEqual(status!.y + status!.height)
+    expect(hints!.x).toBeGreaterThanOrEqual(0)
+    expect(hints!.x + hints!.width).toBeLessThanOrEqual(viewport.width)
+    expect(hints!.y + hints!.height).toBeLessThanOrEqual(viewport.height)
+    const target = await page.getByLabel('Выбранная цель', { exact: true }).boundingBox()
+    if (viewport.width <= 740 && target)
+        expect(target.y).toBeGreaterThanOrEqual(hints!.y + hints!.height)
 }

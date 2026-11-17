@@ -49,14 +49,12 @@ for (const scenario of scenarios) {
         await expect(conversation.getByRole('radio')).toHaveCount(0)
         await page.keyboard.press('Escape')
         await expect(conversation).toBeHidden()
-        await page.getByRole('button', { name: 'Журнал', exact: true }).focus()
-        await page.keyboard.press('KeyF')
-        const journal = page.getByRole('region', { name: 'Журнал заданий' })
+        await page.getByRole('button', { name: /^Квесты ·/ }).click()
+        const journal = page.getByRole('region', { name: 'Активные квесты' })
         await expect(journal).toBeVisible()
         await expect(journal).toContainText(scenario.storyLabel)
         await expect(journal.getByRole('radio')).toHaveCount(0)
-        await expectStationaryWithKey(page, 'KeyD')
-        await assertFitsViewport(journal)
+        await assertFitsViewport(page.getByRole('dialog', { name: 'Персонаж', exact: true }))
         await page.screenshot({
             path: info.outputPath(`story-rewards-${scenario.name}.png`),
         })

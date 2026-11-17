@@ -31,6 +31,23 @@ export function worldPointerBlocked(): boolean {
         isTextEntry(document.activeElement)
     )
 }
+/** A reading panel may explicitly pass physical movement through without granting other game keys. */
+export function permitsWorldMovement(event: KeyboardEvent): boolean {
+    if (
+        !['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code) ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        isTextEntry(event.target) ||
+        isTextEntry(document.activeElement)
+    )
+        return false
+    const windows = Array.from(document.querySelectorAll<HTMLElement>(windowSelector))
+    return windows.length > 0 && windows.every((window) => window.dataset.worldMovement === 'wasd')
+}
+
 /** A HUD button owns confirmation, but its focus does not disable unrelated game shortcuts. */
 export function gameKeyBlocked(event: KeyboardEvent): boolean {
     if (
@@ -41,6 +58,7 @@ export function gameKeyBlocked(event: KeyboardEvent): boolean {
         event.altKey
     )
         return true
+    if (permitsWorldMovement(event)) return false
     if (worldKeyboardOwned() || isOwnedUiTarget(event.target)) return true
     const focus = event.target instanceof HTMLElement ? event.target : document.activeElement
     return (

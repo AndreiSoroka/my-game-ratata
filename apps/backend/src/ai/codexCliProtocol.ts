@@ -1,4 +1,5 @@
 import { parseAgentDecision } from '../game/agentDecisionParsing'
+import { parseInformation } from './memoryProtocol'
 import { parseSocialReply } from './socialReplyParsing'
 import type { NpcAiDiagnostic, NpcAiModelSettings, NpcAiReply } from './types'
 
@@ -73,6 +74,7 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
         decision,
         ...fields,
         ...social,
+        ...parseInformation(input),
         ...(diagnostics === undefined ? {} : { diagnostics }),
     }
 }
@@ -146,6 +148,8 @@ const replyFields = new Set([
     'taskAcceptance',
     'companionOrder',
     'waitMode',
+    'informationRequest',
+    'personMemoryUpdate',
 ])
 
 const allowedDecisionTypes = new Set([
@@ -157,6 +161,7 @@ const allowedDecisionTypes = new Set([
     'follow',
     'wait',
     'cancel_control',
+    'exchange_invite',
     'exchange_answer',
     'exchange_offer',
     'exchange_accept',
@@ -164,6 +169,9 @@ const allowedDecisionTypes = new Set([
     'exchange_decline',
     'quest_propose',
     'worker_quest_propose',
+    'quest_offer_revise',
+    'quest_turn_in_request',
+    'quest_inquire',
 ])
 
 export function parseCodexResult(

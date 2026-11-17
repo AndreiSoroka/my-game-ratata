@@ -10,7 +10,6 @@ import type {
 import { computed, nextTick, ref } from 'vue'
 
 import AdventureDialogue from './AdventureDialogue.vue'
-import AdventureJournal from './AdventureJournal.vue'
 import CompanionWindow from './CompanionWindow.vue'
 import CraftingWindow from './CraftingWindow.vue'
 import GuildWindow from './GuildWindow.vue'
@@ -28,7 +27,7 @@ const props = defineProps<{
     serverTime: number
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage]; closeInventory: []; character: [] }>()
-type AdventureWindow = 'journal' | 'crafting' | 'companions' | 'guild'
+type AdventureWindow = 'crafting' | 'companions' | 'guild'
 const activeWindow = ref<AdventureWindow | null>(null)
 const windowRoot = ref<HTMLElement>()
 const showWindow = computed(() => !props.inventoryOpen && !props.adventure.dialogue)
@@ -107,13 +106,6 @@ defineExpose({
                 Гильдия{{ incomingInvitations.length ? ` · ${incomingInvitations.length}` : '' }}
             </button>
             <span class="adventure-gold" aria-label="Золото">◈ {{ adventure.gold }}</span>
-            <button
-                type="button"
-                :aria-expanded="activeWindow === 'journal'"
-                @click="toggleWindow('journal')"
-            >
-                Журнал
-            </button>
         </div>
 
         <TheftAlert
@@ -148,16 +140,6 @@ defineExpose({
         <CraftingWindow
             v-if="activeWindow === 'crafting' && showWindow"
             :adventure="adventure"
-            :alive="player.alive"
-            @close="activeWindow = null"
-            @command="emit('command', $event)"
-        />
-
-        <AdventureJournal
-            v-if="activeWindow === 'journal' && showWindow"
-            :adventure="adventure"
-            :party="party"
-            :player-id="player.id"
             :alive="player.alive"
             @close="activeWindow = null"
             @command="emit('command', $event)"

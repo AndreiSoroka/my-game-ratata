@@ -1,4 +1,7 @@
-import type { AdventureDialogue } from '@my-game-ratata/contracts'
+import type {
+    AdventureDialogue,
+    CharacterSnapshot,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
 import { npcAiDecisionError } from './actions'
@@ -6,6 +9,8 @@ import type { NpcAiObservation, NpcAiTarget } from './observationTypes'
 import type { NpcAiRole } from './types'
 
 const roleConstraints: Record<NpcAiRole, string> = {
+    advisor:
+        'Answer questions from own learned knowledge. Dialogue only: never control movement, combat or property.',
     city_coordinator:
         'Coordinate city help through validated quest proposals, finite municipal quest funding and existing worker requests. Cannot mint goods or refill funds.',
     companion:
@@ -57,7 +62,14 @@ export function npcAiCapabilities(
                 'wait',
                 'cancel_control',
                 'quest_propose',
-                'worker_quest_propose',
+                ...(role === 'advisor'
+                    ? []
+                    : [
+                          'worker_quest_propose',
+                          'quest_offer_revise',
+                          'quest_turn_in_request',
+                          'quest_inquire',
+                      ]),
                 ...targets.flatMap((target) =>
                     target.commands.map((command) => command.type)
                 ),
@@ -87,6 +99,15 @@ export function updateNpcAiSocialCapabilities(
     capabilities.intentions = capabilities.intentions.filter(
         (type) => !type.startsWith('exchange_')
     )
+    if (
+        observation.targets.some(
+            (target) =>
+                target.kind === 'character' &&
+                target.details['exchangeAvailable'] === true
+        )
+    ) {
+        capabilities.intentions.push('exchange_invite')
+    }
     const exchange = observation.social?.exchange
     if (exchange?.status === 'invited' && exchange.incoming) {
         capabilities.intentions.push('exchange_answer')
@@ -97,5 +118,15 @@ export function updateNpcAiSocialCapabilities(
             'exchange_accept',
             'exchange_decline'
         )
+    }
+}
+
+export function characterSocialDetails(
+    actor: GameCharacter,
+    target: CharacterSnapshot
+) {
+    return {
+        reputationWithMe: target.reputation[actor.faction] ?? 0,
+        exchangeAvailable: target.interactions?.exchange === true,
     }
 }

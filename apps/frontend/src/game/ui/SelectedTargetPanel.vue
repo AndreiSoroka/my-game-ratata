@@ -89,7 +89,14 @@ progress {
 }
 @media (max-width: 740px) {
     .target-panel {
-        top: max(212px, var(--ratata-player-status-bottom, 240px));
+        top: max(
+            212px,
+            var(--ratata-player-status-bottom, 240px),
+            calc(
+                var(--ratata-player-status-bottom, 240px) + var(--ratata-social-hints-height, 0px) +
+                    8px
+            )
+        );
         width: 210px;
     }
 }

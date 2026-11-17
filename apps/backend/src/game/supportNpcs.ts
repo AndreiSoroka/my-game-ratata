@@ -167,3 +167,12 @@ function safeSpawn(
     }
     throw new Error('Map has no walkable support NPC spawn')
 }
+
+/** Authored public service homes, not live actor positions. */
+export function supportNpcHomeDefinitions() {
+    return definitions.map(({ id, nickname, tile }) => ({
+        id,
+        name: nickname,
+        tile: { ...tile },
+    }))
+}

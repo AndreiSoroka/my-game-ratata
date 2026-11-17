@@ -1,6 +1,6 @@
 # NPC reasoning through Codex CLI
 
-Mira and Kaplya can optionally use the locally installed Codex CLI to choose
+Mira, Kaplya and Sister Vera can optionally use the locally installed Codex CLI to choose
 ordinary character intentions. The backend owns the event queue, controller lease,
 action results and session memory; a model call never blocks the simulation tick.
 Every resulting action still uses `GameCharacter` and the shared authoritative
@@ -123,8 +123,25 @@ item rewards go to the person turning in. Only authoritative post-acceptance
 movement, kills and successful inspections advance those objectives; deliveries
 may use previously owned items. Delivery, reward items and money settle atomically.
 
+One pending offer cannot replace another. An occupied group contract slot prevents
+new offers; another request is needed after resolution. Whisper inside the offer
+can negotiate real gold and the issuer's own unequipped items. Accepted terms have
+an exact revision. Paid reconnaissance requires a meaningful inquiry and at least
+16 tiles of reachable path when offered and accepted; opening ordinary dialogue
+does not count as an inquiry.
+
+Accepted unfinished quests appear only in the character window's **Квесты** tab.
+WASD remains available while reading that tab. Say **«квест готов»** near the actual
+issuer to open the server-owned confirmation, review the terms and click **Сдать**.
+A spoken “yes” or an ordinary trade never submits a quest. Worker trophies start
+the existing safety-check trip; final payment still requires the worker's verified
+return. Completed quests disappear from the active list, remain in the issuer's
+history, and produce one thanks and an invitation to ask for another task.
+
 Mira's municipal fund defaults to 300 gold per city session in authored world data.
 It is separate from her wallet and cannot be looted or replenished by the model.
+All worker rewards, including the ordinary 30 gold, reserve and debit this same
+finite city fund. Their promised reward items come from the clerk's actual bag.
 Personal rewards use the issuer's actual wallet and unequipped items. Accepting
 reserves the reward against voluntary use; theft can still remove a promised
 item. A missing reward requires new approved terms rather than invented
@@ -187,10 +204,11 @@ and scripts after checking the server evidence. Feedback does not edit code,
 create new tools or override game rules automatically. The model is instructed to
 try bounded lawful alternatives and report honest failure if none remains.
 
-The first new diagnostic in a turn can also be spoken privately to a nearby
-requester while the NPC attempts its chosen action. Speech still checks reach and
-visibility. Successful alternatives receive server-authored action receipts in
-the log, so a claimed attempt can be compared with its actual outcome.
+Diagnostics stay in the server log. Only the reply's ordinary speech reaches the
+conversation, preventing a second technical explanation from being spoken ahead
+of the character's answer. Speech still checks reach and visibility. Successful
+alternatives receive server-authored action receipts in the log, so a claimed
+attempt can be compared with its actual outcome.
 
 ## Verification
 
@@ -233,3 +251,91 @@ Workers keep reachable separate waiting places around the current clerk and
 follow a moving Mira through ordinary navigation. Their inspection and selected
 target status use the actual work intent, incident stage, worksite and last action
 receipt. AI inspection closes only its own dialogue and cannot hold the worker.
+
+## Character memory and local knowledge retrieval
+
+Each NPC has its own server-owned `conversationId`. It covers everyone that NPC
+actually heard, including its own speech and private whispers. A different NPC
+never reads this store. NPC-to-NPC communication creates a new attributed hearing
+record only when ordinary location, distance and line-of-sight rules permit it;
+recording hearing does not enqueue a model reply to every overheard sentence.
+
+People are keyed by server character identity, not nickname. Summaries are retained
+for more than 100 interlocutors without the former 32-person eviction. Logout and
+resurrection keep the same identity; replacing a permanently dead identity creates
+a new mind. All conversation history and quest state remain in server memory and
+are lost when the world restarts. There is no database or provider-session resume.
+
+The normal context carries a current-person summary, recent messages, relevant
+memories and authoritative contract facts. A model may request deeper recall with
+JSON rather than a CLI tool:
+
+```json
+{
+    "informationRequest": {
+        "type": "deep_memory",
+        "personId": "known-character-id"
+    },
+    "decision": null,
+    "speech": null,
+    "taskAcceptance": "none",
+    "companionOrder": null
+}
+```
+
+There is one lookup and at most two model invocations per input. Both invocations
+consume the normal hourly call budget and share the original timeout and
+cancellation generation. `informationResults` supplies the summary and relevant
+chronological excerpts with source IDs. An unknown identity returns `not_known`
+without checking whether some hidden live character exists. Model tools, files,
+MCP, shell and external web access remain disabled.
+
+A final reply may contain `personMemoryUpdate` with `personId`,
+`throughMessageId`, `sourceMessageIds` and up to 2,000 characters of conversational
+summary. Only the current person's own recorded messages can support an update;
+watermarks must move forward. Such summaries are fallible recollections of speech,
+never proof of quest acceptance, movement, property transfer or payout. The server
+contract ledger always takes precedence. Raw archives cap at 64 MiB per NPC;
+compacted dialogue is labelled as such and retains a per-person source summary.
+Raw foreign whisper transcripts are not added to another client's snapshot. An
+NPC may nevertheless choose to recount something it heard according to personality.
+
+Knowledge grants start with world geography and local authored landmarks. Mira
+knows city business. Sister Vera has a dialogue-only advisor configuration: her
+ordinary cleric controller still handles aid and resurrection. Theology is general;
+details of constellation stars come only from the speaking character's currently
+unlocked stars. Reading or explaining a passage grants no ability, teaching right,
+access to another person's private sky or unseen deity mood.
+
+### Preparing local embeddings
+
+Use Node 24 or newer alongside Bun 1.4.4. Install workspace dependencies normally,
+then run once from the repository root:
+
+```sh
+bun run knowledge:prepare
+```
+
+This downloads the fixed `761b726` revision of
+`Xenova/multilingual-e5-small` into ignored `.cache/ratata-models/`. A manifest records
+checksums. `GAME_EMBEDDING_MODELS` can select another local model directory, and
+`GAME_EMBEDDING_NODE` can select the Node executable. Neither is an inference API
+key. The worker checks local hashes and disables all remote model loading during
+play. CPU ONNX inference runs in one managed Node subprocess, outside the Bun game
+tick, using q8 weights, mean pooling, normalized 384-dimensional vectors and the
+model's `query:` / `passage:` prefixes.
+
+Knowledge and owner-memory retrieval combine vector similarity with name/text
+matches. Only granted passages are ranked; personal star grants are rechecked
+after asynchronous retrieval. The bounded indexing queue defers excess work while
+lexical search continues. Missing Node, missing/corrupt model files and worker
+failure report a diagnostic and preserve structured and lexical answers. The normal
+64 KiB model-context limit remains; optional retrieval excerpts are pruned first.
+
+`bun run build:backend` copies the separate Node worker entry and model settings to
+`dist/backend`. Keep installed backend workspace dependencies and the prepared
+model directory with the deployment. Model weights are not bundled into JavaScript.
+Unit tests inject deterministic embeddings; they never download or load native
+models. Run `bun run knowledge:smoke` for real local Russian retrieval, vector dimensions
+and normalization checks. It uses the worker JSON-line protocol and reports only
+summary metrics, without printing full vectors.

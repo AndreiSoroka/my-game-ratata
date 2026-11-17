@@ -47,7 +47,14 @@ export function parseSocialBoundary(
     if (type.startsWith('exchange_')) {
         return parsed(parseExchangeCommand(record))
     }
-    if (type.startsWith('npc_quest_') || type === 'quest_offer_answer') {
+    if (
+        type.startsWith('npc_quest_') ||
+        [
+            'quest_offer_answer',
+            'quest_turn_in_confirm',
+            'quest_inquire',
+        ].includes(type)
+    ) {
         return parsed(parseNpcQuestCommand(record))
     }
     return undefined

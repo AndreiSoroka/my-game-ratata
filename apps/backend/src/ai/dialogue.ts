@@ -3,9 +3,14 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { npcDecisionAudienceError } from './decisionAudience'
 import type { NpcAiDiagnostics } from './diagnostics'
-import { rememberConversation } from './dialogueMemory'
+import {
+    finishOfferRequest,
+    rememberConversation,
+    rememberDialogueReply,
+} from './dialogueMemory'
 import { applyNpcCompanionOrder, consumeNpcWait } from './dialogueOrders'
 import {
+    abortDialogueTrade,
     beginAcceptedNpcTask,
     dialogueKey,
     dialogueReplyConsumed,
@@ -34,18 +39,7 @@ export class NpcAiDialogue {
     }
 
     public abortTrade(state: NpcAiActorState, now: number): void {
-        const actor = state.actor
-        if (actor === undefined) {
-            return
-        }
-        const exchange = this.room.social.exchanges.snapshot(actor.id)
-        if (exchange !== null) {
-            this.room.social.exchanges.handle(
-                actor,
-                { type: 'exchange_cancel', exchangeId: exchange.id },
-                now
-            )
-        }
+        abortDialogueTrade(this.room, state, now)
     }
 
     public respond(
@@ -58,9 +52,8 @@ export class NpcAiDialogue {
         if (event === undefined) {
             return false
         }
+        rememberDialogueReply(state, event, reply)
         state.dialogue = undefined
-        const key = dialogueKey(event)
-        rememberConversation(state, key, reply.memory.slice(0, 2000))
         return this.replyToMessage(state, actor, event, reply, now)
     }
 
@@ -170,9 +163,15 @@ export class NpcAiDialogue {
                 event.senderId
             )
             const result =
-                error === undefined
-                    ? this.room.social.decide(actor, reply.decision, now)
-                    : { accepted: false, error, events: [] }
+                state.config.mode === 'dialogue_only'
+                    ? {
+                          accepted: false,
+                          error: 'Я могу объяснить известное мне, но не принимаю такое действие.',
+                          events: [],
+                      }
+                    : error === undefined
+                      ? this.room.social.decide(actor, reply.decision, now)
+                      : { accepted: false, error, events: [] }
             recordDialogueAction(
                 this.diagnostics,
                 state,
@@ -182,6 +181,7 @@ export class NpcAiDialogue {
                 now
             )
             this.room.publishEvents(result.events)
+            finishOfferRequest(state, event, reply.decision, result.accepted)
             if (!result.accepted) {
                 reportNpcRequestStatus(
                     this.room,

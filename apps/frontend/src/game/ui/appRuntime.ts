@@ -77,6 +77,12 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
             if (options.localPlayerId.value !== playerId) options.notices.reset()
             options.notices.observe('adventure', snapshot.adventure)
             options.notices.observe('party', snapshot.party)
+            const exchange = snapshot.social?.exchange
+            if (exchange?.status === 'completed' && exchange.receiptId)
+                options.notices.observe('exchange', {
+                    notice: 'Обмен завершён.',
+                    noticeId: exchange.receiptId,
+                })
             options.snapshot.value = snapshot
             options.localPlayerId.value = playerId
             options.isJoining.value = false

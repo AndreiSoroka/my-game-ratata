@@ -83,7 +83,7 @@ it('uses the existing group slot and reserves a finite municipal budget once', (
     expect(f.parties.snapshot(f.player.id).activeJob?.id).toBe('slime_hunt')
     expect(
         f.service.propose(f.issuer, f.player.id, f.draft(), 60).accepted
-    ).toBe(true)
+    ).toBe(false)
     const offer = f.service.snapshot(f.player.id, 60).questOffer
     expect(
         f.service.handle(
@@ -176,7 +176,10 @@ it('cancels on issuer death before ordinary loot and never puts the city fund in
     )
     expect(f.service.cityFund(f.issuer.locationId)).toBe(290)
     f.issuer.applyDamage(f.issuer.hp, 30)
-    expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe('cancelled')
+    expect(f.service.snapshot(f.player.id, 30).quest).toBeNull()
+    expect(f.service.conversation(f.issuer.id, f.player.id)[0]?.status).toBe(
+        'cancelled'
+    )
     expect(
         availableInventoryQuantity(f.issuer.inventory, food.instanceId)
     ).toBe(1)
@@ -216,4 +219,47 @@ it('requires renewed consent when the promised item condition changes before acc
     ).toBe(false)
     expect(f.service.cityFund(f.issuer.locationId)).toBe(300)
     expect(f.service.snapshot(f.player.id, 20).quest).toBeNull()
+})
+
+it('does not substitute a damaged promised instance returned after theft', () => {
+    const f = npcQuestFixture()
+    const sword = createItemInstance('simple_sword')
+    f.issuer.inventory = [sword]
+    const id = f.accept(
+        f.draft({
+            rewardItems: [{ instanceId: sword.instanceId, quantity: 1 }],
+        })
+    )
+    f.service.inspect(f.player.id, f.merchant.id, 'inspection:completed')
+    expect(
+        transferInventoryItem(
+            f.issuer.inventory,
+            f.friend.inventory,
+            sword.instanceId,
+            undefined,
+            true
+        )
+    ).toBeDefined()
+    const stolen = f.friend.inventory.find(
+        (item) => item.instanceId === sword.instanceId
+    )
+    if (stolen === undefined) {
+        throw new Error('Expected stolen reward')
+    }
+    stolen.durability = 1
+    expect(
+        transferInventoryItem(
+            f.friend.inventory,
+            f.issuer.inventory,
+            sword.instanceId
+        )
+    ).toBeDefined()
+    f.service.update(30)
+    expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe(
+        'reward_missing'
+    )
+    expect(f.turnIn(id).accepted).toBe(false)
+    expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
+    expect(f.issuer.inventory[0]?.instanceId).toBe(sword.instanceId)
+    expect(f.player.inventory).toHaveLength(0)
 })

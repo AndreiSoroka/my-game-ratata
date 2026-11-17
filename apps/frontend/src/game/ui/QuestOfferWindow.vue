@@ -4,9 +4,12 @@ import type {
     ClientMessage,
     QuestOfferSnapshot,
     QuestRewardMode,
+    WhisperSnapshot,
 } from '@my-game-ratata/contracts'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
+import PrivateConversation from './PrivateConversation.vue'
+import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestTerms from './QuestTerms.vue'
 import SocialWindow from './SocialWindow.vue'
 
@@ -15,9 +18,22 @@ const props = defineProps<{
     characters: CharacterSnapshot[]
     serverTime: number
     occupied: boolean
+    playerId?: string
+    conversation?: WhisperSnapshot | null
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const rewardMode = ref<QuestRewardMode>(props.offer.rewardMode)
+const initialRevision = ref(props.offer.revision)
+watch(
+    () => props.offer.id,
+    () => {
+        rewardMode.value = props.offer.rewardMode
+        initialRevision.value = props.offer.revision
+    }
+)
+function whisper(text: string): void {
+    emit('command', { type: 'whisper', targetId: props.offer.issuerId, text })
+}
 function answer(accept: boolean): void {
     emit('command', {
         type: 'quest_offer_answer',
@@ -31,18 +47,22 @@ function answer(accept: boolean): void {
 <template>
     <SocialWindow title="Предложение поручения" modal @close="answer(false)">
         <QuestTerms :offer="offer" :characters="characters" />
-        <label v-if="offer.rewardGold > 0"
-            >Распределение золота
-            <select v-model="rewardMode" aria-label="Распределение награды">
-                <option value="submitter">Сдающему</option>
-                <option value="party_equal">Поровну текущему отряду при сдаче</option>
-            </select>
-        </label>
+        <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
+            Заказчик изменил награду. Проверьте текущие условия перед принятием.
+        </p>
+        <QuestRewardChoice v-if="offer.rewardGold > 0" v-model="rewardMode" />
         <p class="social-muted">
             Режим фиксируется при принятии. Одновременно можно выполнять один договор.
         </p>
         <p v-if="occupied" class="social-status">Сначала завершите или отмените текущий договор.</p>
         <p v-if="serverTime >= offer.expiresAt" class="social-status">Предложение устарело.</p>
+        <PrivateConversation
+            v-if="conversation?.partnerId === offer.issuerId"
+            :conversation="conversation"
+            :player-id="playerId ?? ''"
+            @send="whisper"
+            @command="emit('command', $event)"
+        />
         <div class="social-window__actions">
             <button
                 type="button"

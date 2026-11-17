@@ -1,0 +1,105 @@
+.speech-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 8;
+}
+.speech-typing {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    width: 42px;
+    height: 26px;
+    background: #f5efe3;
+    color: #263126;
+    border: 2px solid #b09664;
+    box-shadow: 2px 2px #15211880;
+}
+.speech-typing span {
+    width: 4px;
+    height: 4px;
+    flex: 0 0 4px;
+    background: currentColor;
+}
+.speech-typing span:nth-child(2) {
+    animation: speech-dot-two 1.2s step-end infinite;
+}
+.speech-typing span:nth-child(3) {
+    animation: speech-dot-three 1.2s step-end infinite;
+}
+@keyframes speech-dot-two {
+    0% {
+        opacity: 0.2;
+    }
+    33%,
+    100% {
+        opacity: 1;
+    }
+}
+@keyframes speech-dot-three {
+    0% {
+        opacity: 0.2;
+    }
+    66%,
+    100% {
+        opacity: 1;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .speech-typing span {
+        animation: none;
+    }
+}
+.speech-bubble {
+    position: absolute;
+    background: var(--rpg-speech, #f5efe3);
+    color: #263126;
+    border: 2px solid var(--rpg-brass, #b09664);
+    border-radius: 0;
+    padding: 11px 13px;
+    box-sizing: border-box;
+    box-shadow: 3px 3px 0 #15211880;
+    pointer-events: auto;
+    font:
+        14px/1.5 system-ui,
+        sans-serif;
+}
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--speech-tail) - 7px);
+    bottom: -10px;
+    width: 14px;
+    height: 14px;
+    background: var(--rpg-speech, #f5efe3);
+    border-right: 2px solid var(--rpg-brass, #b09664);
+    border-bottom: 2px solid var(--rpg-brass, #b09664);
+    transform: rotate(45deg);
+}
+.speech-bubble--below::after {
+    top: -10px;
+    bottom: auto;
+    transform: rotate(225deg);
+}
+strong {
+    display: block;
+    color: #655431;
+    font:
+        14px/1.2 'Pixelify Sans',
+        system-ui;
+    margin-bottom: 3px;
+}
+.speech-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: min(28vh, 220px);
+    overflow: auto;
+}
+.speech-text:focus-visible {
+    outline: 2px solid #7c693c;
+    outline-offset: 3px;
+}

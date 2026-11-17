@@ -6,6 +6,7 @@ import type {
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { GuildRewardPromise } from './guildRewards'
 import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 
@@ -20,6 +21,12 @@ export function resetSubmitterMartyr(
 }
 
 export interface GuildJob {
+    issuerId?: string
+    issuerName?: string
+    reward?: GuildRewardPromise
+    closeDeathListener?: () => void
+    cancelled?: boolean
+    rewardNotice?: string | null
     acceptedBy: string
     completed: boolean
     definition: GuildQuestDefinition
@@ -37,6 +44,39 @@ export interface GuildJob {
     >
     progress: number
     visited: Set<string>
+}
+
+export function addGuildParticipant(
+    job: GuildJob | undefined,
+    character: GameCharacter
+): void {
+    if (job === undefined || job.completed || job.cancelled === true) {
+        return
+    }
+    const existing = job.participants.get(character.id)
+    if (existing !== undefined) {
+        existing.eligible = true
+        return
+    }
+    job.participants.set(character.id, {
+        nickname: character.nickname,
+        contribution: 0,
+        eligible: true,
+        visited: new Set(),
+    })
+}
+
+export function removeGuildParticipant(
+    job: GuildJob | undefined,
+    playerId: string
+): void {
+    if (job === undefined || job.completed || job.cancelled === true) {
+        return
+    }
+    const participant = job.participants.get(playerId)
+    if (participant !== undefined) {
+        participant.eligible = false
+    }
 }
 
 export const guildQuests: GuildQuestDefinition[] = [

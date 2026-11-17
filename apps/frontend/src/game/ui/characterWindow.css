@@ -1,0 +1,122 @@
+.character-backdrop {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: #071016c9;
+    z-index: 95;
+}
+.character-window {
+    display: flex;
+    flex-direction: column;
+    width: min(1100px, 100%);
+    max-height: calc(100dvh - 40px);
+    min-height: min(660px, calc(100dvh - 40px));
+    box-sizing: border-box;
+    border: 1px solid #bba06b;
+    background: #0d1b24;
+    color: #eee6d2;
+    font:
+        14px/1.5 system-ui,
+        sans-serif;
+    box-shadow: 0 20px 100px #0009;
+}
+.character-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #53616a;
+}
+.character-eyebrow {
+    color: #a5b3bc;
+    font-size: 10px;
+    letter-spacing: 3px;
+}
+h2 {
+    margin: 3px 0 0;
+    font-size: 22px;
+    color: #f1d69a;
+}
+button {
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+button:focus-visible {
+    outline: 2px solid #f0d287;
+    outline-offset: 3px;
+}
+.character-backdrop--reading {
+    background: transparent;
+    pointer-events: none;
+}
+.character-backdrop--reading .character-window {
+    pointer-events: auto;
+}
+.character-close {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+    border: 1px solid #52616a;
+    background: #1b2a34;
+}
+.character-tabs {
+    display: flex;
+    padding: 0 24px;
+    gap: 24px;
+    border-bottom: 1px solid #53616a;
+}
+.character-tabs button {
+    padding: 14px 0 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: #9dabb4;
+}
+.character-tabs button[aria-selected='true'] {
+    color: #f1d69a;
+    border-bottom-color: #e9c77d;
+}
+.character-content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 22px 24px;
+    scrollbar-color: #7b876e #11202a;
+}
+footer {
+    padding: 10px 24px;
+    border-top: 1px solid #344752;
+    color: #8c9ea8;
+    font-size: 11px;
+}
+@media (max-width: 600px) {
+    .character-backdrop {
+        padding: 8px;
+    }
+    .character-window {
+        max-height: calc(100dvh - 16px);
+        min-height: calc(100dvh - 16px);
+    }
+    .character-header {
+        padding: 14px;
+    }
+    .character-tabs {
+        padding: 0 14px;
+        gap: 18px;
+    }
+    .character-content {
+        padding: 16px 12px;
+    }
+    h2 {
+        font-size: 19px;
+    }
+    footer {
+        padding: 8px 14px;
+    }
+}

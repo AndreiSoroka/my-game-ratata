@@ -15,14 +15,30 @@ it('records information only after acceptance and makes repeated turn-in idempot
     expect(f.adventure.walletFor(f.player.id).gold).toBe(10)
     expect(f.turnIn(id).accepted).toBe(true)
     expect(f.adventure.walletFor(f.player.id).gold).toBe(10)
-    expect(f.service.snapshot(f.player.id, 30).quest?.receiptId).toBe(id)
+    expect(f.service.snapshot(f.player.id, 30).quest).toBeNull()
+    expect(f.service.conversation(f.issuer.id, f.player.id)[0]?.receiptId).toBe(
+        id
+    )
 })
 
-it('requires authoritative movement after accepting a visit objective', () => {
+it('rejects paid visits without a useful action but keeps unpaid movement objectives', () => {
     const f = npcQuestFixture()
+    expect(
+        f.service.propose(
+            f.issuer,
+            f.player.id,
+            f.draft({
+                objectives: [
+                    { kind: 'visit', locationId: f.player.locationId },
+                ],
+            }),
+            9
+        ).accepted
+    ).toBe(false)
     f.accept(
         f.draft({
             objectives: [{ kind: 'visit', locationId: f.player.locationId }],
+            rewardGold: 0,
         })
     )
     f.service.update(21)
