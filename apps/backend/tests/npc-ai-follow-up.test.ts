@@ -50,7 +50,7 @@ it('keeps ordinary following moving while a conversational model reply is pendin
     ).toBeGreaterThan(1)
 })
 
-it('rejects a physical reply without explicit consent and reports the actual request', async () => {
+it('corrects once then rejects a repeated physical reply without consent and reports the actual request', async () => {
     const f = setup()
     f.alice.send({
         type: 'chat',
@@ -67,11 +67,22 @@ it('rejects a physical reply without explicit consent and reports the actual req
     )
     await f.advance()
     expect(f.actor.position).toEqual(before)
+    expect(f.provider.turns[1]?.context.replyCorrection?.code).toBe(
+        'task_consent_required'
+    )
+    f.provider.turns[1]?.resolve(
+        npcReply(
+            { type: 'move_to', target: { x: before.x + 32, y: before.y } },
+            { taskAcceptance: 'none', done: false }
+        )
+    )
+    await f.advance()
+    expect(f.actor.position).toEqual(before)
     await f.diagnostics.flush()
     expect(f.entries()).toContainEqual(
         expect.objectContaining({
             category: 'action_rejected',
-            reason: 'task_not_accepted',
+            reason: 'task_consent_required',
             request: 'Подойди к гильдии.',
         })
     )

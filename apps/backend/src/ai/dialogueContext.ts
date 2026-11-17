@@ -4,9 +4,11 @@ import type { GameCharacter } from '../game/character'
 import type { GameRoom } from '../game/room'
 import { projectContracts } from './contractProjection'
 import { dialogueKey, type NpcAiDialogue } from './dialogue'
+import { npcSpeechContext } from './npcSpeechInstructions'
 import { buildNpcAiObservation, type NpcAiObservation } from './observation'
 import { updateNpcAiSocialCapabilities } from './observationPolicy'
 import type { NpcAiActorState } from './runtimeState'
+import { npcTaskConsent } from './taskConsent'
 import type { NpcAiContext, NpcAiEvent } from './types'
 
 export function npcDialogueContext(
@@ -26,6 +28,7 @@ export function npcDialogueContext(
     const dialogue = state.dialogue
     const key = dialogue === undefined ? 'city' : dialogueKey(dialogue)
     const taskContext = hasTaskContext(state, key)
+    const speechStyle = npcSpeechContext(actor)
     filterSocialContext(room, observation, state, actor, now)
     observation.itemDefinitions = observedItemDefinitions(observation)
     updateNpcAiSocialCapabilities(observation)
@@ -39,7 +42,9 @@ export function npcDialogueContext(
         actorId: actor.id,
         role: state.config.role,
         personality: actor.soul.personality,
+        ...(speechStyle === undefined ? {} : { speechStyle }),
         task: taskContext ? state.task : null,
+        taskConsent: npcTaskConsent(room, state),
         events: contextEvents(state, dialogueService),
         memory: dialogueMemory(state, key),
         facts: taskContext ? state.facts : [],

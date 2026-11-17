@@ -7,6 +7,7 @@ import type { NpcAiDiagnostics } from './diagnostics'
 import { reconcileNpcGuide } from './guide'
 import { reportNpcRequestStatus } from './requestStatus'
 import { enqueueNpcAiEvent, type NpcAiActorState } from './runtimeState'
+import { rememberNpcScouting } from './scouting'
 import type { NpcAiSessionActions } from './session'
 
 export function reconcileNpcAction(
@@ -22,7 +23,14 @@ export function reconcileNpcAction(
         return
     }
     if (state.guide !== undefined) {
-        reconcileGuideAction(room, companions, diagnostics, state, now)
+        reconcileGuideAction(
+            room,
+            companions,
+            sessions,
+            diagnostics,
+            state,
+            now
+        )
         return
     }
     const pending = state.pending
@@ -34,6 +42,9 @@ export function reconcileNpcAction(
         return
     }
     state.pending = undefined
+    if (result.status === 'completed') {
+        rememberNpcScouting(room, state, actor, result.id, now)
+    }
     if (result.status !== 'completed') {
         companions.decide(
             actor,
@@ -66,6 +77,7 @@ export function reconcileNpcAction(
 function reconcileGuideAction(
     room: GameRoom,
     companions: CompanionService,
+    sessions: NpcAiSessionActions,
     diagnostics: NpcAiDiagnostics,
     state: NpcAiActorState,
     now: number
@@ -101,6 +113,10 @@ function reconcileGuideAction(
             at: now,
         })
         if (result.status !== 'completed') {
+            if (terminalGuideFailure(result.reason)) {
+                sessions.finishWithNotice(state, result.reason, now)
+                return
+            }
             reportNpcRequestStatus(
                 room,
                 diagnostics,
@@ -109,7 +125,30 @@ function reconcileGuideAction(
                 now,
                 result.reason
             )
+        } else {
+            completeGuide(room, state, actor, result.id, now)
         }
         enqueueNpcAiEvent(state, result)
     }
+}
+
+function completeGuide(
+    room: GameRoom,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    receiptId: string,
+    now: number
+): void {
+    if (state.task !== null) {
+        state.task.concluding = true
+        rememberNpcScouting(room, state, actor, receiptId, now)
+    }
+}
+
+function terminalGuideFailure(reason: string): boolean {
+    return (
+        reason === 'Собеседник не вернулся к проводнику.' ||
+        reason ===
+            'Сопровождение прервано: истекло время или изменилась локация.'
+    )
 }

@@ -121,7 +121,7 @@ it('waits for authoritative retirement before opening background selection and c
         expect(runtime.stop).toHaveBeenCalledOnce()
         expect(wrapper.find('.death-overlay').exists()).toBe(false)
         expect(document.activeElement).toBe(wrapper.get('#hero-class').element)
-        await wrapper.get('#hero-class').setValue('ranger')
+        await wrapper.get('input[name="hero-class"][value="ranger"]').setValue()
         await wrapper.get('form').trigger('submit')
         await flushPromises()
         expect(runtime.classes).toEqual(['vanguard', 'ranger'])

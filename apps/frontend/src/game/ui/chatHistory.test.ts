@@ -94,3 +94,47 @@ it('labels a delivered private scripted reply as personal without replaying expl
         text: 'Жду проверки участка.',
     })
 })
+
+it('names the original errand in task statuses while keeping ordinary replies concise', () => {
+    const history = createChatHistory()
+    history.observe(worldFixture([]), 'self')
+    history.event({
+        kind: 'npc_request_status',
+        speakerName: 'Капля',
+        requestStatus: {
+            id: 'request-1',
+            npcId: 'kaplya',
+            state: 'started',
+            request: 'покажи гильдию',
+            at: 1,
+        },
+    })
+    expect(history.entries.value[0]?.text).toBe('Выполняет поручение: «покажи гильдию»')
+    history.event({
+        kind: 'npc_request_status',
+        speakerName: 'Капля',
+        requestStatus: {
+            id: 'request-1',
+            npcId: 'kaplya',
+            state: 'failed',
+            request: 'покажи гильдию',
+            reason: 'Собеседник не вернулся.',
+            at: 2,
+        },
+    })
+    expect(history.entries.value).toHaveLength(1)
+    expect(history.entries.value[0]?.text).toBe(
+        'Не удалось выполнить: «покажи гильдию». Собеседник не вернулся.'
+    )
+    history.event({
+        kind: 'npc_request_status',
+        requestStatus: {
+            id: 'request-2',
+            npcId: 'kaplya',
+            state: 'completed',
+            request: 'привет',
+            at: 3,
+        },
+    })
+    expect(history.entries.value.at(-1)?.text).toBe('Запрос завершён')
+})

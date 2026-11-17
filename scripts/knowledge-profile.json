@@ -1,0 +1,23 @@
+{
+    "implementationVersion": 1,
+    "modelId": "Xenova/multilingual-e5-small",
+    "modelRevision": "761b726",
+    "dimensions": 384,
+    "maxPassageTokens": 384,
+    "dtype": "q8",
+    "device": "cpu",
+    "pooling": "mean",
+    "normalize": true,
+    "padding": true,
+    "truncation": true,
+    "passagePrefix": "passage: ",
+    "queryPrefix": "query: ",
+    "modelFiles": [
+        "config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "special_tokens_map.json",
+        "onnx/model_quantized.onnx"
+    ],
+    "maxPassageCharacters": 1800
+}

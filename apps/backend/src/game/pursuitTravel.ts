@@ -7,7 +7,12 @@ import {
 import type { GameCharacter } from './character'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { pursuits, type PursuitState, returnFromPursuit } from './pursuitState'
+import {
+    pursuits,
+    type PursuitState,
+    returnFromPursuit,
+    territories,
+} from './pursuitState'
 
 /** Called at the real exit while observers still occupy the source map. */
 export function rememberPursuitExit(
@@ -53,7 +58,7 @@ export function canPursuitTravel(
 ): boolean {
     const state = pursuits.get(actor)
     if (state === undefined) {
-        return true
+        return !territories.has(actor)
     }
     if (state.phase === 'return') {
         return (

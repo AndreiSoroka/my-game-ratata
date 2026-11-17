@@ -25,9 +25,9 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('Tab')
         await expect(button).toBeFocused()
         await page.keyboard.press('Enter')
-        await expect(page.getByLabel('Прошлое героя')).toBeVisible()
-        await expect(page.getByLabel('Прошлое героя')).toBeFocused()
-        await page.getByLabel('Прошлое героя').selectOption('ranger')
+        await expect(page.getByRole('group', { name: 'Прошлое героя' })).toBeVisible()
+        await expect(page.getByRole('radio', { name: 'Клирик', exact: true })).toBeFocused()
+        await page.getByRole('radio', { name: 'Следопыт', exact: true }).check()
         await page.getByRole('button', { name: 'Enter', exact: true }).click()
         await expect
             .poll(() => page.evaluate(() => window.__ratataTest!.getState().player?.heroClass))

@@ -1,395 +1,144 @@
-# Ash Border: playable world
+# Ash Border: playing and operating the prototype
 
-The first scenario is authored AI-generated content: 25 deterministic maps in the Lands of Novogorod and a stateful quest. By default no external language model or paid API is called at runtime. Optional [NPC reasoning through Codex CLI](npc-ai.md) can be enabled separately for Mira and Kaplya. The generation boundary is separate from simulation: `scripts/generate-world.mjs` builds Tiled maps, `adventureContent.ts` defines the initial story, and authoritative server events update the story state. Model-controlled characters issue ordinary intentions through the same validated game rules.
+This document covers controls, windows, visual feedback and local operation. The
+[world knowledge corpus](../knowledge/README.md) contains the canonical short
+in-world descriptions of implemented mechanics, their audiences and verification
+sources. NPC dialogue retrieves those articles without keyboard or interface
+instructions. [Character development](character-development.md) covers its windows
+and debug atlas; [NPC reasoning](npc-ai.md) describes optional model configuration.
+
+The Lands of Novogorod are authored, deterministic generated content. Generation
+is separate from the authoritative simulation: `scripts/generate-world.mjs`
+builds Tiled maps, and the server resolves ordinary character intentions. No
+external language model or paid API is called by default. Current world state
+lives in server memory; restarting the backend begins a new world session.
 
 ## Play
 
-Choose a name and one of four starting backgrounds. A background provides initial advantages; it does not lock future skills. Start without gold or equipment. Gather nearby herbs, fiber and scrap or harvest ripe grain; sell supplies in town to afford a tool, or craft food and boots. Barrels also contain finite communal wood. Buy an axe or pickaxe from Ignat in the smithy before gathering trees or stone. Enter the guild building and talk to Mira in Novogorod to accept the bell quest. Hostile scripted slimes leave one real slime-heart item inside a shared corpse when defeated, even before the quest is accepted. Search corpses and take three hearts into your backpack and bring them to Mira; delivery consumes those three item instances and pays the reward once. Hearts stored in a chest or dropped on the ground do not count until carried again. Kill statistics are separate from the delivery objective. Restore the bell after the delivery. Savva sells supplies in his shop south of the square. Resource deposits are shared and exhaustible.
-
-Vanguard fights in melee with 150 energy and a 20% damage advantage; Ranger starts with the ranged Shot; Arcanist starts with Spark and Barrier; Cleric starts with Prayer and resurrection knowledge. Every background's basic attack is a short melee strike using equipped weapon condition, without a mana cost. Skeletons share the same model and use a paid Bone Strike that can stun for 0.8 seconds. Everyone can learn swordsmanship, miracles and fire magic. All use `GameCharacter`, common combat, movement, resources, cooldowns and progression. Their configuration and controller are the differences.
-
-Ranger's ordinary attack is a melee weapon strike or punch, separate from **Выстрел**.
-Shot remains the default first slot. Without a selected target it fires straight
-along the current facing, spending the same energy and cooldown. A forward hit can
-damage a visible enemy; empty shots do not award practice. Automatic untargeted
-shots keep that forward intention rather than selecting a different enemy.
-
-Mobs yield and step sideways with ordinary collision-resolved movement when allies
-overlap or share their next waypoint. They retain their own paths and attack rules;
-crowd avoidance never pushes a player or relocates an actor. Slime spawn positions
-prefer authored, walkable natural shorelines, including large lakes, with a valid
-fallback on maps without suitable water.
-
-WASD/arrows move, click empty ground walks to a point, C toggles sneaking, Space dashes, I opens inventory and Enter opens chat. Q selects yourself. E cycles nearby visible characters and interactive objects from nearest to farthest; Shift+E reverses the order. Eligible fallen allies remain selectable for rescue. Clicking a hostile character selects that exact target, while clicking a friendly character opens its reachable actions. Slot 1 starts with basic melee attack; slot 2 contains Shot, Spark or Prayer for the corresponding background and is empty for Vanguard. Press 1–4 once to act; press the same key twice within 300 ms to repeat on the server; press it again to stop. Manual movement, text/menu focus, blur, hidden pages, death and stun release held control. A lost target never silently substitutes its neighbor.
-
-Ordinary HUD button focus still permits gameplay shortcuts, including I; Enter, Space and F confirm the focused button. Actual windows and text fields own their input. Escape performs one operation per press: close the game menu, handle the current chat/window, cancel a ritual or automated action/target, then open the game menu if nothing remains to cancel. Holding Escape does not advance through these steps. The visible menu button also works on touch screens. **Вернуться в игру** resumes input; **Выйти из игры** disconnects and returns to sign-in without abandoning the character, including during the resurrection window. Signing in with the same name resumes the existing living identity. The server world continues while the menu is open.
-
-The camera can reveal six map tiles beyond each edge, with a black backdrop and sparse stationary pixel stars. These presentation margins do not enlarge the playable map.
-
-The compact character panel centers an ellipsized nickname on a full-width red ribbon, with small accessible Spark/Echo and speech icons inside its right edge. HP/MP/EN show only filled bars by default, including the character's own resources. Authorized numeric values round to the nearest integer; full names remain available in the heading's accessible name and tooltip. Temporary action notices appear at the top center for five seconds. Crime notices remain contextual; connection errors appear separately. Gold and item condition stay inside the inventory.
-
-A fallen hero has 60 seconds to be resurrected. A living character who knows the matching Hearth or Grave prayer and is a cleric or has that school’s Miracles level 5, within the spell’s effective radius, channels for 3 seconds and spends 20 mana. Death, distance, location, stun and deadline are checked again at completion. Sister Vera lives in the chapel; a rescuer must still reach the fallen character before the deadline. Resurrection retains identity and belongings. At expiry all carried items, equipment and gold transfer into a shared corpse before the hero is removed. Skill knowledge and personal quest state end with that identity; starting again creates a new server identity even with the same nickname. Ordinary NPCs leave a corpse immediately and retain their shared-model respawn policy, without restoring the possessions they dropped.
-
-During the rescue window, **Начать сначала** voluntarily ends that identity and
-opens character/background selection immediately after the server confirms final
-death. Resurrection is then unavailable; possessions and gold remain in the shared
-corpse. The new character does not inherit the old inventory, skills or orders.
-
-Final player death also leaves a persistent grave at the death location, separate
-from the loot container. Its first skeleton appears after thirty seconds of server
-time; later births occur at most once per ten minutes. Authored wilderness graves
-use the same ten-minute rule, with initial skeletons counted toward their source.
-Each grave permits at most three living descendants, including those that travel
-away. A full source skips its deadline rather than saving instant replacements.
-Dead grave skeletons never revive themselves; a later birth is a new ordinary mob.
-Blocked or occupied spawn ground delays the birth. Grave markers survive emptying
-the corpse, and death graves can exist in the city although its initial encounters
-remain empty.
-
-Each source assigns one stable guardian from its existing living descendants. It patrols within 64 pixels, stops a distant home-map chase beyond 160 pixels and returns to the grave. Destruction keeps that duty; purification releases it. A dead guardian is replaced by an existing descendant, never by an extra birth.
-
-Autonomous pursuers can follow an already hunted target through an actually observed exit for five seconds. They may visit one adjacent map, for at most ten seconds after their own crossing or 160 pixels from entry, then physically return within 24 pixels of home. A lost target, denied crossing or expired attack right also starts the return. Fresh sightings and damage do not extend this episode; a second foreign crossing is forbidden, including during a dash. Returning characters retain normal contact defense. Guards can briefly leave town to pursue a valid offender; absolution ends the right immediately. Monsters cannot enter the city, and city-born grave descendants remain there so they can always return home.
-
-## Breaking and purifying graves
-
-Every skeleton-producing grave, authored or created by final death, has 100 HP and
-the stone material profile. Bare hands deal 10% damage, swords and axes 25%, a
-pickaxe 100%, arrows 5%, and Spark/fireballs 25%. Mitigation follows the ordinary
-damage roll and retains hundredths; weak arrow hits are not rounded up to one HP.
-Costs, windup, range, line of sight and weapon wear remain shared combat rules.
-Damage to a grave grants no combat practice, loot or kill reward.
-
-At zero HP the marker becomes rubble and stops producing skeletons for thirty
-minutes of server time. It then restores all HP and starts a fresh ten-minute birth
-interval. Its existing living descendants still count toward the cap of three;
-there is no instant catch-up spawn. A partially damaged grave continues producing.
-
-Select a grave to inspect its condition/material, attack it or choose
-**Упокоить могилу**. Any character with learned Hearth Prayer (`pray`) can contribute; energy, mana and Grave prayers cannot purify graves. Each completed
-three-second attempt costs five mana, including a failed roll. Five successful
-contributions purify a grave; the shared segmented ring shows progress. The neutral
-initial success chance is 20%, scaled by mood and faith. Automatic prayer retains
-its chosen grave, waits for mana and repeats until purification or target loss.
-Movement, HP damage, stun, death, disconnect, lost reach/sight or cancellation
-interrupt without payment. Progress survives interruptions, travel and destruction
-or restoration of the grave during this world session. An unlocked area prayer can
-restore allies and contribute to multiple reachable graves with one cost and roll.
-
-Purification works on intact graves or rubble and permanently disables their source
-for this world session. The marker disappears, including authored gravestones after
-travel or reconnection. Existing skeletons and the independent corpse/loot remain.
-Sources retain a disabled identity so they cannot be registered again, while dead
-descendants still receive normal cleanup. These states currently live in server
-memory; restarting the server resets the world.
-
-## Corpses and carried loot
-
-A mortal hero's backpack, equipped items and gold remain protected throughout the
-60-second resurrection window. Successful revival keeps them on the same character.
-Only final death moves them into the corpse, before retirement clears the old identity.
-Nonmortal NPCs transfer possessions immediately on death; respawning restores their
-health and resources but never recreates the bag, equipment or gold they lost.
-
-Approach a body, face it and press **F** to choose **Обыскать**. The shared container
-window shows the body's name, its remaining items and a separate gold action.
-Use arrows or W/S to select and **F/Enter** to take an item or **Взять золото**;
-**Забрать всё** transfers all items that fit and all available gold. Gold does not
-occupy backpack slots, so it can still be taken with a full bag. Overflow remains in
-the body. **Esc** closes the inspection. Depositing into a corpse is unavailable.
-
-Transfers move existing item instances atomically: two viewers cannot claim the
-same item or gold twice. Contents are sent only to validated nearby viewers; each
-transfer rechecks reach, line of sight, location, life and readiness. Lost reach,
-travel, death or disconnect closes the viewing session. Bodies remain independently
-of the character's disappearance or respawn until empty or the world session ends.
-They have stable identities derived from the character and genuine death sequence.
-
-Idle hostile creatures can walk to visible loose items or corpses and use the same
-pickup/container rules. Combat and investigating threats take priority. Carried loot
-is finite and transfers again when that creature dies; NPC equipment is never restored
-by respawn. A skeleton drops its actual equipped sword, without an extra random sword.
-Hostile nonhuman-controlled slimes supply one biological heart per genuine death,
-inside their corpse; this renewable trophy is independent of quest acceptance.
-
-All inventory, gold, corpse receipts and containers currently live in server memory.
-Restarting the server begins a new world session; durable persistence is not implemented.
-
-## Knowledge through use
-
-Open **Персонаж** from the menu or **P** for **Характеристики** and **Развитие**.
-Nine independent constellation masteries start at 0: Blade, Magic, Prayer, Arrow, Life,
-Shadow, Road, Clarity and Ash. Prayer mastery is named **Чудеса**. Each living identity
-has a stable personal star map centered on its initial class; discoveries, patron
-changes, reconnects and temporary death preserve it. Layout randomness is private
-and independent of combat and progression. Unknown grey stars cannot be clicked
-or focused, and their metadata is not projected to the owner.
-
-The cost of reaching level N is `min(100 × Fₙ, 100 × N^1.5)`, with F₁ = F₂ = 1.
-Thresholds begin at 100, 100, 200, 300, 500, 800, 1300, 2100, 2700… XP:
-Fibonacci applies through level 8, then power 1.5 from the 8 → 9 transition.
-Each threshold is floored to one micro-XP; total XP from zero is the sum of thresholds.
-All nine masteries use these shared rules for players and NPCs. Remainders carry,
-there is no level cap, and every attained level earns one random opening for that
-constellation. Levels never pay for stars or directly increase damage/healing.
-Equipment, baseline stats, moods and learned stars determine numerical effects.
-All requirements—parents, level and knowledge—must hold before a random star enters
-the pool. Generation-based level gates are removed; only individually authored level requirements apply. Empty pools bank openings;
-newly satisfied conditions resolve all eligible pending openings. Special event
-stars remain free and cannot be substituted by a random discovery.
-
-Constellation conflict reduces earned XP from all nine branches, including Life.
-For own level L, total level T, and summed positive lag D, the multiplier is
-`((L+2)/(T+2))^(2/3) * sqrt((L+2)/(L+2+D))`. One developed path has no penalty;
-two paths at 10 give 20.03 of 30 XP. Frozen per-action factors and integer micro-XP
-keep multi-target rewards stable. The previous global training-cost multiplier
-and separate Faith/Miracles scales are removed. See
-[Character development](character-development.md) for rewards, examples and controls.
-
-Mother Prayer uses one miracle type per cast. Guide, Mentor and Leader raise the
-recipient limit of both Mother actions to 2/5/20. Woven Prayer (`pray_woven`) is a
-separate hotbar action of the same school that mixes miracle types within that limit.
-Its three-second channel also handles resurrection. Mother prayers pay five mana
-per chosen recipient at the start, without refunds after interruption. Unaffordable
-optional recipients are skipped; targets and bonuses remain frozen for that cast.
-Empty and failed main requests give no XP. Each useful recipient earns 30 base XP; Kara earns 70
-per hostile victim; grave steps earn 10 each and the final step 150 instead, 190 in all.
-Resurrection earns 200. Resource gifts credit only genuinely useful resource loss,
-never the prayers' own mana cost or repeated repayment of the same loss. Training
-objects, artificial friendly injuries and empty applications remain untrainable.
-The four prayers keep separate constellations and bonuses remain school-specific.
-Mood controls the baseline success chances 80/55/25%; no level bonus applies.
-
-Clerics start with Prayer and its passive Resurrection at mastery 0. Other classes
-need the appropriate learned prayer and mastery 5; Ash revives undead, Mother
-revives living species. Active stars represent assignable actions; enhancements
-are labelled «Пассивный навык». A normal player click only reads a known star.
-
-Fireball is learned from a living friendly scholar within 64 world units with Magic 3.
-It costs 12 mana, range 160, cooldown 1 second. Greater Fireball requires Magic 10 and known
-Fireball; it costs 24 mana, range 192, cooldown 2 seconds. Knowledge is stored independently
-from mastery. Three finite chapters and successful teaching give 50 Magic XP; repeated
-known chapters or lessons give none. Only the actual teacher earns teaching XP.
-
-The standalone [debug atlas](http://localhost:4173/?debug=constellations) uses the
-same mastery math and requirements without sending gameplay commands. Clicking
-reads; Space toggles the chosen star, with explicit switches for touch use. Levels
-are derived from the selected plan and gates. The summary shows conflict, useful
-XP and actions to the next level; formulas and unlock conditions start collapsed.
-The plan shows unassigned openings explicitly instead of assuming unknown bonuses.
-
-## Guild contracts and parties
-
-The guild is one optional activity alongside residents' personal quests. At Mira or Savva, take a slime hunt, skeleton hunt or frontier survey. Solo characters can take contracts. Players can also invite up to three other nearby players (240 world units, same location); invitations expire after 30 seconds. The leader accepts and turns in the group's contract within 64 world units of a guild representative. The window shows each member's presence, location and contribution. Before accepting any quest, including Mira's personal story, choose **Вся награда сдающему** or **Поровну группе** (the default). This choice is fixed for that quest. The displayed gold is one total budget: hunts/survey pay 30/40/35 gold, not that amount per person. Equal distribution uses the current party at turn-in, including late joiners without personal contribution; members who left receive nothing. Whole coins are divided evenly, with leftover coins assigned one each starting with the submitter and then stable character IDs. Receiving a share of another person's quest does not complete your own story. The journal shows active story and guild quests, their fixed reward mode and actual paid shares. Companions join by consent through their separate requests, and qualifying nearby companion kills count toward their leader's contribution.
-
-The current region is a 5×5 grid with Novogorod at `map-2-2`. Each location is 96×80 tiles (1536×1280 world units). The city has streets, walls, gates, a market/guild square, residential buildings, a temple and workshops. All eleven city buildings have walkable doors and furnished interiors. Their roofs disappear while the local player is inside; residents behind closed roofs are not drawn through them. Walls and furniture use the authoritative collision grid. Mira is in the guild, Savva in his shop, Vera in the chapel, Aren in the library, and Lea and Bran in the tavern. Six additional residents occupy the workshop, smithy and homes; Ignat provides equipment sales and repair, while other residents retain their own service roles and greetings.
-
-Danger is the number of cardinal location crossings from the city: 0 in Novogorod, 1 in its closest suburbs, up to 4 in the corners. The city has no authored hostile encounters. Other locations have 3–6 enemies in groups. Health multipliers by danger are 2.2/2.8/3.4/4.0 and damage multipliers are 1.8/2.2/2.6/3.0 against the base archetype. Prepare a party of 2–4 with weapons, food and healing; even the closest outskirts are deliberately punishing alone. Player stats do not change with party size. Enemies keep fighting a directly visible opponent after leaving their spawn area. Indirect ally alerts and heard noises retain bounded lifetimes, investigation ranges and a home leash; alerts do not relay indefinitely or reveal an unseen opponent's live position. Retreating and avoiding combat remain possible. A deterministic test exercises the actual combat simulation: a lone unprepared or sword-equipped fighter loses to the starting pack, while four sword-equipped allies win. This establishes the intended direction, not a guarantee for every encounter or skill level. Location changes preserve the character and use the same movement and collision rules. The minimap shows all 25 locations, the city and their danger levels. Novogorod has a shared supply/demand market; additional cities and trade routes remain future direction.
-
-City art uses Kenney Tiny Town 1.1; the four outskirts farms use Tiny Farm 1.0, both under CC0. Its source and bundled license are recorded in `docs/asset-credits.md`. Run `node scripts/generate-world.mjs` to regenerate the deterministic maps, or append `--location map-2-2` for the central city alone; `map1.json` is regenerated with its central-city source.
-
-The training pen east of the square uses the original Mystic Woods wooden fence. Its outer tiles are x57–71, y43–56, with a three-tile west entrance at y48–50. The `Training grounds` map layer authors the 208×192 interior and dummy position with stable area/target IDs. Navigation and presentation read that shared metadata, independently of fence atlas tiles. The interior is reserved against planting and generated branches; city service routes are computed after placing the fence.
-
-## Equipment condition and repair
-
-Swords, tools and boots have condition attached to their item instance. The backpack
-shows remaining condition and marks broken equipment. Dropping, trading, theft,
-chest storage, resurrection and corpse loot preserve its condition; changing owners
-never repairs an item. Broken items remain in the bag or equipment slot and can be
-repaired. An equipped broken weapon cannot attack; unequip it to fight unarmed.
-Broken boots stop granting their dodge bonus.
-
-Both swords have 200 condition and lose one point per successful weapon hit.
-An axe or pickaxe has 1,000 condition, loses one point per proper harvest and five
-per successful combat hit. Chopping with a sword costs 20 condition per wood, so a
-new sword lasts ten harvests while a proper axe lasts a thousand. Rejected actions,
-misses and full-bag gathering refusals do not wear tools. Magic does not wear a
-carried sword that was not used for the attack.
-
-Boots have 1,000 condition. They lose one point per 960 world units actually walked
-and one per hit that damages HP. Standing still, pushing against a wall, map
-relocation and fully absorbed hits do not wear them. Partial walking wear stays on
-the item through equipment changes and transfers. These rules apply equally to
-players and NPCs; there is no extra death penalty to condition.
-
-Talk to **Кузнец Игнат** and choose **Почини моё снаряжение** to repair a damaged
-item or the displayed selection. Repair costs gold, not materials, and restores full
-condition without reducing its maximum. The full repair price is 5 gold for an old
-sword, 10 for a simple sword or tool, and 8 for boots; partial repairs cost the
-proportional amount rounded up. The server rechecks ownership, condition, quote,
-gold, reach, line of sight and access to the living smith before charging.
-
-## Trees and stone
-
-The inventory shows **Золото** even at zero, and **Прочность** as a percentage,
-exact points and a bar for equipped, selected or keyboard-focused equipment.
-These values come from server snapshots; broken equipment says it needs repair.
-
-Ignat also sells and makes a **Каменный топор** for 10 gold. Its recipe uses two
-stone and one wood. It harvests as quickly as an iron axe but has 100 condition
-instead of 1,000, and uses the same equipment, wear and repair rules.
-
-Forest resources are shared objects with stable identities and semantic sizes. One
-click or **F** starts approaching and continuously gathering the selected source.
-The first successful strike gives loot immediately; an axe repeats every two
-seconds (5 energy), a sword every four seconds (10 energy), with their usual wear.
-An adult tree gives eight wood; its final strike also gives two saplings and one
-brushwood and leaves a stump. A small tree, including the seven small city pines,
-gives two wood and final brushwood, then disappears. The complete strike's output
-must fit in the bag before any costs or source changes. Becoming a stump ends
-harvesting; clearing it is a separate axe action that gives one wood.
-
-Bushes give one brushwood per strike, twice: hands take 800 ms and 1 energy; an axe
-400 ms, 1 energy and 1 condition; a sword 600 ms, 2 energy and 1 condition. Dry
-branches give one brushwood with an 800 ms interval and no tool or energy cost.
-Bushes and branches do not regenerate in the current server session. Brushwood is
-an ordinary item stacked to nine, used by the city for kindling and heating.
-
-Manual movement, **Esc**, another command, equipment changes, actual damage,
-stunning, death, disconnect and travel stop automatic work. Insufficient energy,
-space, broken tools or lost access also stop it. Cancellation keeps all earned
-items and the server cooldown, immediately releases work movement, and never
-selects another source or resumes by itself.
-
-Apple trees retain their authored fruit profile. Each successful wood strike,
-including the final one, can drop a real apple onto nearby ground (20% chance),
-which must be picked up normally. Rejected work cannot roll for apples. Ordinary
-forest trees and pines do not drop food.
-
-Assign **Саженец** to any hotbar slot with the existing assignment picker (Shift +
-the slot key), then click or press that slot to select a plot. Its assignment
-remains when the bag is empty. A compact hint follows the plot and camera; arrows
-move the selection, **F / Enter** or clicking confirms, **Esc** cancels. On a phone,
-the first touch selects and the next touch or hint button confirms. The future
-trunk is gray while checking or forbidden and yellow only after the private server
-preview accepts it. Invalid confirmation keeps selection open with a short reason.
-
-Confirmation starts ordinary pathfinding to a free point beside the plot. Before
-planting the server rechecks ground, paths, occupancy, energy and inventory, then
-atomically consumes one sapling and 5 energy. Cancellation before planting costs
-nothing; ten seconds without movement progress stops the intention. Roads, water,
-farms, buildings, occupied footprints and narrow passages are excluded. A stump
-must first be cleared with a working axe. Removed sources free collision and soil;
-each new planting gets a new ID. New saplings become adult forest trees after ten
-server minutes; growth waits for a free future trunk. **F** on a growing sapling
-shows growth information and a separate **Срубить без добычи** action, using an axe
-or sword with normal chopping costs.
-
-Equip a pickaxe to mine marked stone formations. A harvest costs 5 energy, one
-condition and a two-second interval. Each formation contains eight stone and becomes
-depleted when empty; it restores after twenty minutes, subject to a free footprint.
-Tree and stone collision changes are authoritative and update navigation as well as
-the displayed world. Resource state belongs to the current server session.
-
-## City supply and demand
-
-Savva and Mira use Novogorod's same finite warehouse; Ignat sells its equipment.
-Axes, pickaxes and simple swords cost 25 gold, boots 18. Resource and food prices
-change with actual stock. Trade moves existing items between the bag and warehouse;
-opening a shop, reconnecting or respawning never restocks it. Equipment resale is
-not offered. Food remains the existing consumable healing 10 HP; there is no hunger
-or spoilage system.
-
-At the guild, ask Mira **Что нужно городу?** for current stock, ordinary target,
-reserve capacity, consumption per ten minutes, recent deliveries and consumption,
-and current buying/selling prices. Brushwood starts at 6, has normal target 12 and capacity 24, and consumes one real
-unit per ten minutes. Its base price is one gold; severe shortage raises the city
-buying price to two. Wood's normal target is 12, reserve capacity 24,
-and consumption two units per ten minutes. Stone, scrap and fiber consume one each;
-herbs and grain two each; food four each. Consumption removes real warehouse goods,
-never takes stock below zero and does not accumulate a debt while empty.
-
-The city pays more during shortages and reduces its offer as the warehouse fills.
-At the ordinary target it offers one gold per unit; at the reserve limit it stops
-buying that resource. Its sale price uses the same stock boundary plus a spread, so
-immediately reversing a transaction loses gold. A bulk quote sums each unit's price
-as stock changes. The server rejects a changed quote instead of silently charging a
-different total. Repeating a request cannot transfer goods or charge twice. A city
-crime record blocks trading and repair until absolution clears it.
-
-Each city's warehouse and consumption settings are separate data; only Novogorod
-exists in the playable region. Initial stock is authored once at world startup.
-Current storage remains in memory, so a server restart resets stock, condition and
-resource state along with the world; this is not durable persistence.
-
-Three scripted workers use the ordinary character rules: Danila harvests wood,
-Gordey gathers stone and scrap, and Agafya works the existing shared wheat plots.
-They walk to sources, carry actual items, return to Savva to sell and visit Ignat
-for paid repairs. Work is paced according to shortages; a timer does not add goods
-to the warehouse. Threats interrupt work and workers can die. Initial tools and
-small purses are authored once, not recreated after loss. Danila can plant carried
-saplings through the same placement checks as a player. Lumberjacks sell wood
-before carried brushwood and skip full market rows. When ordinary wood work is
-unavailable and brushwood stock is below 12, one independent supplemental gather
-per ten-minute work period may use a ready visible bush or branches within 160
-pixels in the current location, with a reachable approach. Side brushwood from
-chopping does not use that budget. Brushwood travels with wood or sells when the
-worker is already in town; it never triggers a separate long trip.
-
-## Workers asking for help
-
-An outdoor worker who sees a hostile creature retains its worksite and the first observed threat, stops production and walks to the settlement clerk through ordinary location exits. Novogorod workers report to Mira. Each worker publishes a separate 30-gold request only after arriving, then visibly waits nearby. One player or party claims the request through the guild board; it occupies the usual active-contract slot.
-
-Bring one matching trophy to the clerk and choose **Сообщить о расчистке**: a skeleton requires one `bone`, a slime one `slime_heart`. The item must be in the submitter's bag; an older or another player's trophy is valid. Hostile scripted skeletons now leave one bone in their shared corpse in addition to actual equipment. One death creates its trophy once. The request consumes a trophy only on its first report; retries keep that proof.
-
-The worker walks back to the same worksite, performs one accepted ordinary work action (sow/harvest, wood gathering, or stone/scrap gathering), and returns to Mira. The trip does not require a market sale or the full routine production batch. New danger interrupts the attempt and sends the worker back. Missing seeds, broken tools, occupied bag slots or exhausted sources are reported as work obstacles; they do not grant progress.
-
-After a successful trip, return to the clerk and claim the reward manually. The server rechecks living hostiles within 160 world pixels and line of sight at the original incident and tested work point. Renewed danger requires another trial without another trophy. Paying closes the incident and releases the worker to ordinary production exactly once. Stocks continue to deplete while workers wait; no separate shortage timer creates or removes goods.
-
-Requests pause while their worker awaits resurrection and cancel without reward after permanent death. A leader can explicitly abandon a claim. When every current assignee is disconnected, the claim becomes public after five minutes, retaining its previously submitted proof. World and quest state remain in memory for the current server session.
-
-Ignat, Mila and Elisey replenish equipment or food only from existing warehouse
-ingredients. They take inputs into their own inventories, use ordinary crafting
-and deliver the created item. A completed job is followed by a thirty-second work
-interval; absent ingredients stop production. There are no automatic imports,
-infinite merchant goods or off-screen delivery rewards.
-
-## Artisan purchases and orders
-
-Ignat, Mila and Elisey offer direct **Купить** and **Заказать** actions; Ignat also
-offers **Ремонт**. Their shared workshop definitions determine the catalogue and
-server permissions. Mila sells boots and Elisey sells food. Savva resells warehouse
-goods but does not accept production orders.
-
-Buy available goods immediately. If a workshop item is out of stock, order one
-with half its frozen full price paid now, rounded up, and the remainder on pickup
-(25 gold means 13 now and 12 later). The confirmation shows both payments and the
-non-refundable deposit. Each living identity may have one unfinished order per
-workshop. Statuses show missing materials, the production queue and readiness.
-
-Fulfillable paid orders precede public replenishment in arrival order, after any
-already-started job. Production still uses real ingredients and the thirty-second
-work interval. The actual crafted instance is reserved outside public stock and
-consumption; collection checks the original owner, balance, bag space and access
-to the living artisan atomically. Lost materials or an unavailable artisan delay
-work without replacing missing possessions.
-
-Travel, reconnection and resurrection retain orders. Permanent death starts one
-ten-minute reservation deadline; a new identity cannot inherit the order. Unstarted
-work loses priority. A ready result becomes public at the deadline, including a
-result completed later. Voluntary cancellation keeps the deposit and releases a
-ready result, or makes an already-started result public when finished. Released
-goods may exceed the warehouse procurement limit without disappearing. Orders,
-like the rest of this world, remain in memory and reset on server restart.
-
-## Drinking from ponds
-
-Natural ponds of up to 64 connected water cells have one interaction target for
-their entire actual shoreline. Selection outlines the pond contour, and server
-reach, client selection and agent navigation share the same precise geometry.
-Dry corners inside a bounding rectangle do not count as water. The generator
-setting controls the threshold; larger natural lakes offer no drinking action.
-Wells and troughs keep their authored areas. Drinking still requires reach within
-48 world units, a clear approach and the five-second cooldown.
-
-## Farms and provisions
-
-Each cardinal suburb has a farm with an enterable barn and three shared wheat beds. One bed per farm begins ripe. Approach a bed and use F to sow or harvest. Sowing consumes one actual wheat seed from the backpack and 5 energy; wheat ripens after 45 seconds of server time. Wheat seeds are separate from grain and stack to nine per slot. New players receive no seeds automatically. Each farm has a shared supply chest: when the world session starts it has a 50% chance to contain two to four seeds, with each quantity equally likely. A failed roll leaves it empty. Inspection, travel and reconnecting never refill it. Savva also sells seeds from a finite initial stock of six through ordinary market trades.
-
-Harvesting grants 3 grain and leaves the bed bare. It also gives zero seeds with 50% probability, one with 30%, two with 15% or three with 5%. The server fixes this hidden result once per crop, including initially ripe beds; retrying with a full backpack cannot reroll it. Grain and seeds must all fit before the crop is harvested. The bread recipe consumes 3 grain and produces one ordinary food item. These actions use the same character state and validated command path for every controller.
-
-Agafya keeps harvested seeds for planting. Without seeds she reserves one grain for city supply and sells the rest. At the city supplier, an assigned farmer can exchange one real carried grain for one seed; without grain the city subsidizes one seed for the next sowing. This municipal source is separate from retail seed stock. The server records the work cycle and outstanding supply: repeated requests cannot grant more seeds, a successful ordinary sow permits the next supply, and a lost seed postpones a new work attempt until the existing ten-minute cycle. Each six-grain work batch permits at most two seed advances. City supply does not waive the seed or energy cost of sowing.
-
-The twelve plots belong to the world session: two players cannot harvest the same crop twice, commands cannot shorten growth, and remote/dead/offline characters cannot work the field. Labor has an 800 ms cooldown. The authoritative snapshot supplies phase and readyAt; the client displays time and crop art without awarding resources. Restarting the in-memory server resets crops along with the rest of the world.
+Choose a name and a starting background. For the first activities, see
+[gathering and tools](../knowledge/forestry/chopping.md),
+[trade](../knowledge/economy/trade.md) and
+[Mira's bell quest](../knowledge/quests/bell.md). Backgrounds supply starting
+strengths and knowledge; later learning follows the shared character rules.
+
+WASD/arrows move; clicking empty ground walks to a point. **C** toggles sneaking,
+**Space** dashes, **I** opens inventory, **P** opens the character window and
+**Enter** opens chat. Movement shortcuts use physical key positions, including
+with a non-Latin keyboard layout. The minimap shows the current region and its
+location danger. Buildings have walkable doors; entering hides their roof.
+
+Ordinary HUD button focus still permits gameplay shortcuts, including I; Enter,
+Space and F confirm the focused button. Actual windows and text fields own their
+input. Escape performs one operation per press: close the game menu, handle the
+current chat/window, cancel a ritual or automated action/target, then open the
+menu if nothing remains to cancel. Holding Escape does not advance through these
+steps. The visible menu button also works on touch screens.
+**Вернуться в игру** resumes input; **Выйти из игры** returns to sign-in without
+abandoning the living identity, including during rescue. Signing in with the same
+name resumes that identity. The world continues while the menu is open.
+
+The camera can reveal six tiles beyond each map edge, with a black backdrop and
+stationary pixel stars; this does not enlarge the playable map. The compact
+character panel has an ellipsized nickname, accessible Spark/Echo and speech
+icons, and resource bars. Full names remain available in accessible headings and
+tooltips. Temporary action notices appear at the top center for five seconds;
+repeated snapshots do not extend them. Lasting quest, inventory and party facts
+remain in their windows. Gold and item condition are shown in the inventory.
+
+## Finding the game rules
+
+- [World travel](../knowledge/world/travel.md), [movement](../knowledge/world/movement.md) and [danger](../knowledge/world/danger.md).
+- [Resources](../knowledge/body/resources.md), [bags](../knowledge/inventory/bag.md), [containers](../knowledge/inventory/containers.md) and [repair](../knowledge/equipment/repair.md).
+- [Trees](../knowledge/forestry/chopping.md), [planting](../knowledge/forestry/planting.md), [brushwood](../knowledge/forestry/brushwood.md), [stone](../knowledge/mining/stone.md) and [farming](../knowledge/farming/wheat.md).
+- [Crafting](../knowledge/crafting/making.md), [orders](../knowledge/crafting/orders.md), [trade](../knowledge/economy/trade.md) and [worker requests](../knowledge/work/requests.md).
+- [Combat](../knowledge/combat/attacks.md), [ranged attacks](../knowledge/combat/ranged.md), [magic](../knowledge/combat/magic.md) and [training](../knowledge/combat/training.md).
+- [Learning](../knowledge/development/learning.md), [practice](../knowledge/development/practice.md) and [constellations](../knowledge/development/stars.md).
+- [Prayer schools](../knowledge/faith/schools.md), [rescue](../knowledge/life/death-rescue.md), [resurrection](../knowledge/life/resurrection.md), [graves](../knowledge/life/graves.md) and [purification](../knowledge/life/purification.md).
+- [Conversation](../knowledge/social/conversation.md), [exchange](../knowledge/social/exchange.md), [companions](../knowledge/social/companions.md), [parties](../knowledge/social/party.md) and [contracts](../knowledge/quests/contracts.md).
+- [Theft](../knowledge/law/theft.md), [city justice](../knowledge/law/justice.md) and [absolution](../knowledge/law/absolution.md).
+
+## Inventory, containers and interaction menus
+
+**Q** selects yourself. **E** cycles nearby visible characters and objects from
+nearest to farthest; **Shift+E** reverses. **F** performs the selected target's
+sole action directly or opens that target's choices. Without a selection, it uses
+the nearby interaction in the facing direction. Menus consume gameplay keys and
+release held movement. Arrows or W/S select a row, F/Enter/Space activates and
+Esc closes the owning window. The key that opens a menu does not activate its
+first row; holding confirmation does not repeat it.
+
+Face a chest or barrel and press F to inspect it. The backpack is on the left and
+shared contents on the right. Left/right arrows switch sides; up/down or W/S
+selects a row; F confirms the transfer. Use **Забрать всё** for the available bulk
+transfer. The full bag does not prevent inspection. Escape closes the chest or
+standalone inventory even after a background click. Lost reach, travel, death or
+disconnect closes an inspection. For a body choose **Обыскать**; its window also
+offers **Взять золото** and accepts no deposits.
+
+The inventory shows **Золото**, including zero, and **Прочность** as percentage,
+points and a bar for equipped, selected or keyboard-focused equipment. Broken
+items are marked as needing repair. Item action and focus shortcuts are described
+below with the hotbar.
+
+Nearby signs show their name while faced, or while standing on their footprint.
+Press F to read the authored details. Turning or moving away hides the hint.
+Wells, troughs and eligible small pond shorelines offer a drinking action; the
+selection outlines the actual water interaction area.
+
+## Gathering, planting and farming controls
+
+Equip a suitable tool in the inventory, then click a resource or select it and
+press F to start approaching and automatic work. Manual movement, Esc, another
+command, equipment changes, damage, stun, death, disconnect or travel stop that
+work. It also stops when the tool, energy, space or access is insufficient.
+Cancellation never substitutes another source or resumes by itself. A stump has
+its own clearing action. Approach a farm bed and press F to sow or harvest.
+
+Assign **Саженец** to any hotbar slot with Shift plus the slot key, then click or
+press that slot to select a plot. The binding remains when the bag is empty.
+Arrows move the selection, F/Enter or clicking confirms, and Esc cancels. On a
+phone the first touch selects; the next touch or hint button confirms. The future
+trunk is gray while checking or forbidden and yellow only after the authoritative
+preview accepts it. Invalid confirmation keeps selection open with a short
+reason. Confirmation starts ordinary walking to the plot. F on a growing sapling
+shows growth information and **Срубить без добычи**. Exact outputs and timings
+belong to the relevant professional knowledge articles.
+
+## Trading, contracts and rescue windows
+
+Friendly character interactions open their reachable choices. **Покажи товары**
+opens a separate shop; the return button or Escape goes back to dialogue. Artisans
+have **Купить** and **Заказать**; Ignat also has **Ремонт**. An order confirmation
+shows its deposit and remaining payment, and its status shows material shortage,
+queue or readiness. See [orders](../knowledge/crafting/orders.md) and
+[Ignat](../knowledge/settlements/novogorod/ignat.md) for the underlying rules.
+
+Before accepting a quest choose **Вся награда сдающему** or **Поровну группе**
+(the default). The journal shows active quests, their fixed reward mode and paid
+shares; the party window shows presence and contribution. Submission uses the
+current quest's confirmation window. Worker requests have **Сообщить о расчистке**
+and a later reward claim after the worker's return; the [request article](../knowledge/work/requests.md)
+explains the stages.
+
+A selected grave offers inspection, attack and **Упокоить могилу**. Its segmented
+ring shows shared purification progress. Bind known prayers separately with
+Shift+1–4; resurrection is a mode of the appropriate prayer, without a separate
+hotbar action. The preview shows earned information, targets and actual costs.
+
+During rescue, **Начать сначала** voluntarily ends the current identity and opens
+character selection after final death is confirmed. It does not transfer the old
+identity's inventory, skills or orders to the new one. Read the [rescue](../knowledge/life/death-rescue.md)
+and [death](../knowledge/inventory/corpses.md) articles before choosing.
+
+## Law and city actions
+
+Use **C** to sneak, approach a living character and choose **Попытаться украсть**
+through F. A witnessed attempt can make **Позвать стражу** available to the victim.
+Near a city guard, eligible evidence provides **Пожаловаться на …**. These are
+different actions: an urgent call and a formal complaint. Near Sister Vera, choose
+**Отпустить грехи** to inspect the available absolution action and its price.
+The [theft](../knowledge/law/theft.md), [justice](../knowledge/law/justice.md) and
+[absolution](../knowledge/law/absolution.md) articles describe their consequences.
 
 ## Movement sounds and keyboard interaction
 
@@ -398,40 +147,6 @@ The game menu has a **Без звука** toggle for music, footsteps and all ev
 Footsteps come from the hidden authored `Footstep surfaces` Tiled layer. Grass and soil use soft clips, stone uses dry concrete steps and wooden interiors use wood steps, with three variations per material. Slimes retain their own hopping sound. Audible footsteps include other living characters in the current location and fall off quadratically, with a normal walking range of 240 world units. Sneaking is quieter with shorter range; dashing is louder and carries farther. Movement must actually change position; standing against a wall, death, map changes and large snapshot jumps do not produce fake steps. Each playing voice has its own gain and the mixer limits simultaneous steps; hiding the page or stopping the game clears them.
 
 The context action menu follows the focus and activation conventions in [W3C APG Menu Button](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/) and [Menu](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/). The broader idea of one nearby action key is also present in [Stardew Valley controls](https://stardewvalleywiki.com/Controls); Ratata uses F for the context action.
-
-## Stealth and world interactions
-
-Sneaking moves at 45% speed and reduces footstep noise to 18%. Space dashes in the movement/facing direction at 160% speed for 600 ms, costs 30 energy and has a 2.5-second cooldown. Dashes obey swept collision and do not grant invulnerability. These are shared server rules for all characters and agent commands, not local speed multipliers. There is no separate sprint mode or Shift acceleration. Space requests the dash; a private temporary notice explains insufficient energy, an unfinished cooldown or an action lock. Hostile skeletons and slimes can close a visible pursuit gap with the same paid dash. They reserve energy for an attack, verify a clear collision corridor, and do not dash blindly toward sounds or through walls.
-
-Hostile mobs hear actual displacement on authored surfaces: grass is quieter than wood or stone. Dashing can attract enemies from beyond normal sight. Sneaking also reduces sight detection range, but does not make a character invisible at close range. A noise or ally alert records a last-known point; an investigating mob does not track an unseen character's current coordinates. Walls damp noise and alert reports expire. Stealth is useful for choosing a route around a pack, not a guarantee when walking directly into it.
-
-Face a nearby chest and press F to inspect the selected container. Its window shows the backpack on the left and shared chest contents on the right. Left/right arrows switch sides, up/down or W/S selects a row, and F confirms the transfer. Escape closes either the chest window or the standalone inventory, including after clicking its background. Transfer an individual item in either direction or use **Забрать всё** to transfer as many items as fit into the backpack. Anything that does not fit remains in the chest. Opening alone leaves the contents inside; striking the chest spills its remaining contents onto the ground. Every transfer uses the original item instance and is resolved once on the server, including when several players inspect the same chest. The window closes when the character leaves reach, changes location, disconnects or dies.
-
-Permanent map banners are hidden; a nearby sign shows its name while the living character faces it, or in any direction while standing on its footprint (with a 4px foot margin), without opening a modal, and F reads its authored details. Turning away outside that footprint or walking away hides the reading hint; no permanent discovery label is added. Sign descriptions contain only a short, specific instruction for their place or destination.
-
-Wells, troughs and marked water edges let a character drink, restoring up to 15 energy with a shared five-second drinking cooldown; drinking does not heal HP. Barrels use the same inventory window and transfer rules as chests. Approach within 28 world units of their solid footprint and press F to inspect, take individual items or **Забрать всё**, or put carried items back. Their authored initial supplies are one wood and one fiber, created once per world session; opening, returning to the location and changing character identities never replenish them. A hit spills only the remaining contents. Barrel art and collision remain in place when empty. Bodies use the shared window too, but accept no deposits. Range, life, action locks and line of sight are validated by the server.
-
-Action-result notifications disappear after five seconds. Each new adventure or party result has a server receipt, so repeated snapshots never extend the toast and a new action with the same wording can still show it again. Quest, inventory and party state remain available in their windows.
-
-Materials are ordinary backpack item instances: herbs and grain stack to nine per slot; wood, stone, fiber, scrap and saplings occupy one slot per unit. The backpack holds 50 occupied slots, including equipment carried in the bag, food, hearts and material stacks. Gathering and harvesting check the entire carried result fits before spending energy or depleting the source. A full bag still permits container inspection; bulk transfers take only the items that fit and leave the rest inside. Crafting consumes real carried material quantities and checks the finished item fits after ingredient consumption. Crafting summaries are derived from backpack contents, not a separate wallet. Chest, barrel, ground, theft and backpack transfers preserve whole-stack quantities and item condition. F performs a selected target’s sole action directly; its multiple actions use a vertical menu. Dialogue choices are vertical; **Покажи товары** opens a separate shop view, with a button or Escape returning to the conversation.
-
-Trees and tall props are complete cached sprites sorted by their ground contact Y; grass and paving remain below them. Generated clearing boundaries remove complete obstructing props rather than cutting individual tiles. Furniture footprints, visible composites and collision data are authored together.
-
-## Theft and practical stealth
-
-C enables sneaking. Approach a living NPC or player within 28 world units, then use F and choose **Попытаться украсть**. The server validates reach, line of sight, action readiness, 10 energy and capacity. Each paid attempt has an 8-second cooldown; retrying the same target requires 60 seconds. Empty pockets and invalid attempts give no practice. The theft action takes one existing, unequipped item or whole material stack from the victim's inventory; equipped items are not pickpocketed. Stack limits and receiving capacity are checked before the transfer. Named residents start with finite authored pocket contents, independent of shop offers. Nothing is generated on demand by stealing.
-
-An undetected success transfers the same item instance atomically. It grants 70 base Shadow XP. Failed attempts grant no XP; standing with C enabled or retrying rejected commands does not. The target's facing and learned stars affect the roll, with a remaining risk. An undetected failure or success sends no accusation to the victim. Normal character snapshots reveal only the viewer's own bag and exact mastery experience. Other characters' equipment and attained constellation levels remain visible; hidden experience does not reveal an unnoticed attempt.
-
-On detection, combat-capable NPCs defend themselves and noncombatants flee and can call the city guard. A human-controlled victim retains control and receives a private warning. **Позвать стражу** is available for 30 seconds after a witnessed attempt. It requests a temporary response; arbitrary accusations are rejected. Retaliation uses ordinary movement and combat and is limited to the actual participants. Pursuit remembers the last-known point when sight is lost.
-
-A witnessed theft also provides five minutes to file **Пожаловаться на …** via F near a living city guard, within 64 world units and line of sight. Calling for immediate help does not consume this evidence. The formal complaint enters the offender's current identity in Novogorod's blacklist. Leaving the location or disconnecting does not clear the record: city guards attack on encountering the offender, and both city merchants refuse purchases, including through an already open shop. The blacklist has no automatic 30-second expiry. These consequences currently apply to Novogorod; there is no general reputation, fine collection or jail system.
-
-Approach **Сестра Вера** in the chapel and choose **Отпустить грехи · 30 золотых**. The shared server rule validates the living cleric, reach, line of sight, action readiness, blacklist and balance before one atomic payment. It clears the city record, outstanding old evidence and related pursuit/retaliation; replaying the command does not charge again. An old complaint cannot immediately restore a forgiven record. Quest rewards remain available to earn the fee while merchants refuse trade. Resurrection preserves the same identity and its record; permanent death ends that identity and a new character begins clean. All records are currently in server memory, so a server restart starts a new world session.
-
-Stealth also practices through actual unseen movement near an observer: at least 64 world units across four new cells, with a four-second award interval and a minute before repeated ground counts again. Safe crouching, movement into a wall, following one's own companion or pacing beside allied human players does not train it. Stealth stars reduce sight detection and noise; mastery levels do not directly change them. Successful theft and validated stealth movement award the shared Shadow mastery, using the shared minimum of Fibonacci and power-1.5 thresholds and constellation conflict. Permanent death resets the identity.
-
-Positive authoritative damage events trigger a short recoil pose, a red flash and a rising damage number. These are visual feedback only; death takes presentation priority and misses do not show a hit. Building facades sort at their front ground line, so characters standing in front remain visible while characters inside the footprint stay behind the cover until entering.
 
 ## Routes, markers and scenarios
 
@@ -496,7 +211,7 @@ An Искра means a currently connected human or an accepted model-control lea
 
 Disconnecting removes the human connection, not the character. The same identity stays visible, vulnerable and able to continue its running scenario as an Эхо; manual held input and private conversation/container sessions close. Rejoining with the same nickname on the same running server restores the same identity and its Искра. Permanent death creates a new identity, and a backend restart resets the in-memory world. Party online status follows the actual connection.
 
-Open **Спутники** near city residents. The panel shows their nature, actual control source, speech capability, personality, current agreement and last reply. You make requests within 64 world units; characters may refuse. The princess can travel after an introduction and refuses combat. The veteran can accompany and fight. The guard protects his post and declines travel. Speech does not require movement or combat, and talking does not force someone to follow.
+The world-facing rules are described in [companionship](../knowledge/social/companions.md) and [routine work](../knowledge/work/routines.md). Open **Спутники** near city residents. The panel shows their nature, actual control source, speech capability, personality, current agreement and last reply. You make requests within 64 world units; characters may refuse. The princess can travel after an introduction and refuses combat. The veteran can accompany and fight. The guard protects his post and declines travel. Speech does not require movement or combat, and talking does not force someone to follow.
 
 By default, running personalities use local authored rules. The UI reports **Сценарий** and **Эхо** for that controller. It reports **Модель** and **Искра** during an accepted model-control lease. The external agent bridge retains its five-second lease; expiry or an explicit wait returns the actor to its scripted scenario as an Эхо without changing its identity or inventory.
 
@@ -522,7 +237,7 @@ The tools are `ratata_observe` (optional `locationId`) and `ratata_act` (`actorI
 
 The four 48px action slots reset for each new character identity. Slot 1 starts with basic melee attack for every background. Slot 2 starts with Shot for Ranger, Spark for Arcanist or Prayer for Cleric; Vanguard leaves it empty. Slots 3–4 start empty. Use Shift+1–4 to choose basic attack, a known ability, an apple, or clear a slot. One press acts immediately. A second press within 300 ms enables server repetition without an extra immediate cast; another press stops it. Held keys do not repeat. Only one slot repeats at a time, even if the same ability is bound twice. A food double press consumes one apple and never enables repetition. The active slot has an outline and ↻ marker, plus written status showing whether the server is approaching, casting, or waiting for cooldowns or resources. Switching repetition off prevents future applications; an already-started cast follows the normal interruption rules. Each prayer repeats its selected spell, original target and intent, stops after healing or resurrection is complete, and never switches to an unrelated ally or farms practice through plain devotion. Apples bind by item type, consume a real inventory instance and retain their icon at zero quantity. Cooldowns and resource requirements are checked again by the server. A bound prayer shows its exact target, cost and possible allied/self victims before pressing its key; its harmful 48px wave is outlined in the world, with warning markers on visible affected allies and yourself.
 
-Without a selected target, Shot and Spark fire in the facing direction. Spark uses its own 80×32 pixel corridor, normal windup/cooldown and 6 mana plus 5 energy. The server picks the nearest permitted character or grave in that corridor and checks obstacles. An empty cast still costs resources and shows the effect but grants no practice. The world guide and cast effect use that same geometry; basic melee attack remains independent of Spark.
+Without a selected target, Shot and Spark fire in the facing direction. Their world guides and effects use authoritative hit geometry; basic melee attack is a separate action. See [ranged attacks](../knowledge/combat/ranged.md) and [magic](../knowledge/combat/magic.md) for the rules.
 
 Each assigned slot also has an **×** button labeled **Очистить слот N**, reachable with Tab and activated with Enter or Space. Clearing removes only that slot's binding, keeps every item in the inventory and returns keyboard focus to the now-empty slot.
 
@@ -540,7 +255,7 @@ Cached Canvas graphics and bounded Excalibur ParticleEmitter bursts share a cons
 
 Melee and skeleton strike arcs begin at the same world anchor as the attacker's hit zones, without the torso offset used by spell effects. They point toward the authoritative target, falling back to facing for an untargeted swing. Their initial position and heading stay fixed for that swing; reduced motion keeps the same direction. The curved swing remains ordinary combat feedback. Yellow hit rectangles, directional Shot/Spark corridors and harmful prayer geometry appear only to a living connected observer inside a map-authored training yard, clipped to its interior. Leaving, dying, disconnecting or changing maps clears them.
 
-Novogorod's wooden training pen is east of the square, before the smithy (outer tiles x57–71, y43–56, three-tile entrance on the west). Its stationary wood-and-straw construct uses shared character combat: select it with a click or T and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
+Novogorod's wooden training pen is east of the square, before the smithy (outer tiles x57–71, y43–56, three-tile entrance on the west). Its stationary wood-and-straw construct uses shared character combat: select it with a click or E and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
 
 Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.9.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
 
@@ -630,28 +345,3 @@ Design direction, rather than implemented features:
 - Future cities can use the separate warehouse and consumption model now implemented for Novogorod, producing reasons to travel, trade, escort caravans and take personal contracts. Markets and routes belong to world data. The 25 existing locations form a test region; additional cities and intercity transport are not implemented.
 
 Terrain borders use connected atlas quadrants, including diagonal concave corners at road junctions and pond shores. Final generation removes isolated pond fragments smaller than a coherent 3×3 area before creating water interactions and collision metadata.
-
-## Independent prayer schools
-
-Clerics start only with Hearth Prayer. Sister Vera can teach the four separate spells to any background through ordinary nearby interaction: Prayer (`pray`), Prayer of the Wanderer (`pray_road`), Prayer of Clarity (`pray_lantern`) and Prayer of Ash (`pray_grave`). Bind them independently using Shift+1–4. Each uses its own god and constellation mastery; changing the primary patron affects the affiliation shown under the resource bars, never a spell’s effect or knowledge. The three new paths currently have their base spells, with an additional undead resurrection node for Ash. Healing passives and grave purification belong only to the original Prayer constellation. Resurrection is still a mode of the matching prayer, without a separate hotbar binding.
-
-Mother's seven channel auras include four capacity-limited undead wards and three
-background fields: living dodge +10 pp, party advantage excluding the caster, and
-Divine Domain (Miracles 12). Domain heals all living creatures, including enemies,
-at +1 HP on the first five 100 ms deadlines and makes undead take +50% damage.
-Useful healing gives at most 30 base XP per recipient per cast, shared with the
-main heal. After interruption all Mother auras remain suppressed until a later
-full Mother/Woven channel completes, even if the god refuses.
-
-Last Light freezes an emergency profile: forced self-heal first, +1000% healing,
-20% shorter channel, 30% effective max mana per main healed recipient, and 5 MP
-per other main recipient. Only death interrupts it; a shared 10-second cooldown
-follows completion or death.
-
-Martyr is a free special Prayer star after five consecutive hostile-wound → useful
-ordinary self-prayer cycles before Miracles 3, without another meaningful action.
-It permanently reduces base max HP/MP by 30%/15% and adds 15% Mother healing and
-15% shorter channel. Temporary death preserves the trait but resets its unfinished
-streak. The atlas contains 96 stars and 98 edges.
-
-Character Development has nine constellations on a personal, stable star map centered on the initial class. Unknown cards say only «Неизвестно», and their grey translucent stars cannot be selected or focused. Known cards contain their effect instead of training instructions. See [character development](character-development.md) for school practice, resource recovery and the training-yard radius selection.

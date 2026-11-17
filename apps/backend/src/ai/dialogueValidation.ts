@@ -5,6 +5,7 @@ import type { NpcAiDiagnostics } from './diagnostics'
 import { recordDialogueAction, speechRadius } from './dialogueResult'
 import { reportNpcRequestStatus } from './requestStatus'
 import type { NpcAiActorState } from './runtimeState'
+import { npcReplyNeedsTask } from './taskConsent'
 import type { NpcAiEvent, NpcAiReply } from './types'
 
 type Heard = Extract<NpcAiEvent, { kind: 'message' }>
@@ -48,7 +49,7 @@ export function validateNpcDialogueReply(
         )
         return undefined
     }
-    if (!wantsTask && unacceptedPhysicalReply(room, reply)) {
+    if (!wantsTask && npcReplyNeedsTask(reply)) {
         if (reply.decision !== null) {
             recordDialogueAction(
                 diagnostics,
@@ -65,21 +66,11 @@ export function validateNpcDialogueReply(
             state,
             'failed',
             now,
-            'Действие не начато: поручение не принято.',
+            'Сейчас не получилось начать поручение.',
             event
         )
-        speak(
-            'Я услышала просьбу, но не приняла поручение и не начала действие.'
-        )
+        speak('Сейчас не получилось начать поручение.')
         return undefined
     }
     return requester
-}
-function unacceptedPhysicalReply(room: GameRoom, reply: NpcAiReply): boolean {
-    return (
-        reply.companionOrder != null ||
-        (reply.decision !== null &&
-            !room.social.isDecision(reply.decision) &&
-            reply.decision.type !== 'speak')
-    )
 }

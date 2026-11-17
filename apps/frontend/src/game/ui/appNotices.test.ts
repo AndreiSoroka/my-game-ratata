@@ -5,6 +5,7 @@ import { nextTick } from 'vue'
 
 import App from '../../App.vue'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
+import { developmentCharacterFixture } from '../testing/developmentFixture'
 
 const runtime = vi.hoisted(() => ({
     snapshot: undefined as ((snapshot: WorldSnapshot, playerId: string) => void) | undefined,
@@ -71,6 +72,50 @@ describe('action notice integration', () => {
             )
             await nextTick()
             expect(wrapper.get('.game-notice').text()).toContain('В бочке')
+        } finally {
+            wrapper.unmount()
+        }
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('uses the same five-second toast for private sky discoveries without extending it on snapshots', async () => {
+        const wrapper = mount(App)
+        try {
+            await wrapper.get('#nickname').setValue('StarHero')
+            await wrapper.get('form').trigger('submit')
+            await flushPromises()
+            vi.useFakeTimers()
+            const player = developmentCharacterFixture()
+            const initial = worldFixture([player])
+            runtime.snapshot?.(initial, player.id)
+            await nextTick()
+            expect(wrapper.find('.game-notice').exists()).toBe(false)
+            const learned = structuredClone(player)
+            learned.progression!.constellations!.nodes.push({
+                id: 'node-new',
+                constellationId: 'prayer',
+                x: 0,
+                y: 0,
+                parents: ['node-root'],
+                unlocked: true,
+                kind: 'passive',
+                name: 'Тёплый дар',
+            })
+            const changed = worldFixture([learned])
+            runtime.snapshot?.(changed, player.id)
+            await nextTick()
+            expect(wrapper.findAll('.game-notice')).toHaveLength(1)
+            expect(wrapper.get('.game-notice').text()).toBe('Открыта звезда: «Тёплый дар».')
+            for (let frame = 0; frame < 5; frame++) {
+                vi.advanceTimersByTime(1_000)
+                runtime.snapshot?.(changed, player.id)
+                await nextTick()
+            }
+            expect(wrapper.find('.game-notice').exists()).toBe(false)
+            runtime.snapshot?.(initial, player.id)
+            runtime.snapshot?.(changed, player.id)
+            await nextTick()
+            expect(wrapper.find('.game-notice').exists()).toBe(false)
         } finally {
             wrapper.unmount()
         }

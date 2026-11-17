@@ -108,7 +108,11 @@ export class RoomLife {
                 )
             },
             afterRetire: (actor: GameCharacter, at: number) =>
-                this.deathSpawns.schedule(actor, at),
+                this.deathSpawns.schedule(
+                    actor,
+                    at,
+                    this.world().get(actor.locationId).navigation
+                ),
         }
     }
 }

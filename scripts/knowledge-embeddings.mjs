@@ -10,6 +10,8 @@ import {
     modelId,
     modelRevision,
     modelRoot,
+    maxPassageTokens,
+    profile,
 } from './knowledge-model.mjs'
 
 if (Number(process.versions.node.split('.')[0]) < 24)
@@ -36,15 +38,15 @@ const packageBase = new URL(
     import.meta.url
 )
 const require = createRequire(packageBase)
-const { env, pipeline } = await import(
+const { env, pipeline, mean_pooling } = await import(
     pathToFileURL(require.resolve('@huggingface/transformers')).href
 )
 env.allowRemoteModels = false
 env.allowLocalModels = true
 env.localModelPath = `${modelRoot}/`
 const extractor = await pipeline('feature-extraction', modelId, {
-    dtype: 'q8',
-    device: 'cpu',
+    dtype: profile.dtype,
+    device: profile.device,
 })
 const input = createInterface({ input: process.stdin, crlfDelay: Infinity })
 for await (const line of input) {
@@ -53,22 +55,42 @@ for await (const line of input) {
         request = JSON.parse(line)
         if (
             !Array.isArray(request.texts) ||
+            (request.op !== undefined && request.op !== 'tokenize') ||
             request.texts.length > 32 ||
             request.texts.some(
                 (text) => typeof text !== 'string' || text.length > 8000
             )
         )
             throw new Error('Invalid embedding input')
-        const prefix = request.query ? 'query: ' : 'passage: '
-        const output = await extractor(
-            request.texts.map((text) => `${prefix}${text}`),
-            {
-                pooling: 'mean',
-                normalize: true,
-                truncation: true,
-                max_length: 384,
-            }
-        )
+        const prefix = request.query
+            ? profile.queryPrefix
+            : profile.passagePrefix
+        const texts = request.texts.map((text) => `${prefix}${text}`)
+        if (request.op === 'tokenize') {
+            const encoded = extractor.tokenizer(texts, {
+                padding: false,
+                truncation: false,
+                return_tensor: false,
+            })
+            process.stdout.write(
+                `${JSON.stringify({ id: request.id, tokenCounts: encoded.input_ids.map((ids) => ids.length) })}\n`
+            )
+            continue
+        }
+        // The pipeline ignores max_length options; tokenize explicitly so the
+        // worker's documented budget applies to the actual model input.
+        const inputs = extractor.tokenizer(texts, {
+            padding: profile.padding,
+            truncation: profile.truncation,
+            max_length: maxPassageTokens,
+        })
+        const outputs = await extractor.model(inputs)
+        const hidden =
+            outputs.last_hidden_state ??
+            outputs.logits ??
+            outputs.token_embeddings
+        const pooled = mean_pooling(hidden, inputs.attention_mask)
+        const output = profile.normalize ? pooled.normalize(2, -1) : pooled
         process.stdout.write(
             `${JSON.stringify({ id: request.id, vectors: output.tolist() })}\n`
         )

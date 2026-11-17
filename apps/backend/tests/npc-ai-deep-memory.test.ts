@@ -103,12 +103,8 @@ it('rejects a lookup mixed with speaking or acting and does not reserve another 
         () => true,
         { reserveCall: reserve }
     )
-    expect(reserve).not.toHaveBeenCalled()
-    expect(
-        state.ready !== undefined && 'error' in state.ready
-            ? state.ready.error
-            : ''
-    ).toContain('cannot also')
+    expect(reserve).toHaveBeenCalledTimes(1)
+    expect(state.ready).toEqual({ invalidReply: 'information_request_mixed' })
 })
 it('refuses a second lookup and exhausted global call budget', async () => {
     for (const allowed of [false, true]) {
@@ -140,8 +136,8 @@ it('parses only bounded application memory requests, without enabling CLI tools'
             reply({
                 informationRequest: { type: 'deep_memory', personId: 'person' },
             })
-        ).informationRequest?.personId
-    ).toBe('person')
+        ).informationRequest
+    ).toEqual({ type: 'deep_memory', personId: 'person' })
     expect(() =>
         parseNpcAiReply({
             ...reply(),

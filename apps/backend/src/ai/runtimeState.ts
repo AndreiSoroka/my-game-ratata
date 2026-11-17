@@ -12,6 +12,7 @@ import type {
     NpcAiFact,
     NpcAiReply,
     NpcAiTask,
+    NpcReplyIssue,
 } from './types'
 
 export interface NpcAiActorState {
@@ -36,6 +37,7 @@ export interface NpcAiActorState {
     ready:
         | { reply: NpcAiReply }
         | { error: string; events: NpcAiEvent[] }
+        | { invalidReply: NpcReplyIssue }
         | undefined
     retry: number
     nextAt: number

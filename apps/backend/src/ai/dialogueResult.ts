@@ -3,7 +3,6 @@ import type { AgentDecision } from '@my-game-ratata/contracts'
 import type { AgentDecisionResult } from '../game/agentDecisions'
 import type { GameCharacter } from '../game/character'
 import type { NpcAiDiagnostics } from './diagnostics'
-import { rememberConversation } from './dialogueMemory'
 import type { NpcAiActorState } from './runtimeState'
 import type { NpcAiEvent, NpcAiReply } from './types'
 type Heard = Extract<NpcAiEvent, { kind: 'message' }>
@@ -26,15 +25,6 @@ export function recordDialogueAction(
         reason,
         at: now,
     })
-    if (!result.accepted) {
-        const key =
-            event.channel === 'whisper' ? `whisper:${event.senderId}` : 'say'
-        rememberConversation(
-            state,
-            key,
-            `Сервер отклонил действие ${decision.type}: ${reason}. Оно не выполнено; не утверждай обратное.`
-        )
-    }
 }
 export function dialogueKey(event: Heard): string {
     return event.channel === 'whisper' ? `whisper:${event.senderId}` : 'say'

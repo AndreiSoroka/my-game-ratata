@@ -1,5 +1,6 @@
 import { boundedNpcContext } from './dialogueContext'
 import type { NpcAiActorState } from './runtimeState'
+import { NpcReplyRejected } from './taskConsent'
 import {
     inputSource,
     reserveInputCall,
@@ -60,13 +61,7 @@ export async function invokeNpcAiTurn(
         }
     } catch (error) {
         if (current() && state.generation === generation) {
-            state.ready = {
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : 'Model invocation failed',
-                events,
-            }
+            state.ready = failedTurn(error, events)
         }
     } finally {
         clearTimeout(timeout)
@@ -77,4 +72,19 @@ export async function invokeNpcAiTurn(
             state.controller = undefined
         }
     }
+}
+
+function failedTurn(
+    error: unknown,
+    events: Array<import('./types').NpcAiEvent>
+): NonNullable<NpcAiActorState['ready']> {
+    return error instanceof NpcReplyRejected
+        ? { invalidReply: error.code }
+        : {
+              error:
+                  error instanceof Error
+                      ? error.message
+                      : 'Model invocation failed',
+              events,
+          }
 }

@@ -3,16 +3,11 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { npcDecisionAudienceError } from './decisionAudience'
 import type { NpcAiDiagnostics } from './diagnostics'
-import {
-    finishOfferRequest,
-    rememberConversation,
-    rememberDialogueReply,
-} from './dialogueMemory'
+import { finishOfferRequest, rememberDialogueReply } from './dialogueMemory'
 import { applyNpcCompanionOrder, consumeNpcWait } from './dialogueOrders'
 import {
     abortDialogueTrade,
     beginAcceptedNpcTask,
-    dialogueKey,
     dialogueReplyConsumed,
     recordDialogueAction,
     replySpeech,
@@ -52,7 +47,6 @@ export class NpcAiDialogue {
         if (event === undefined) {
             return false
         }
-        rememberDialogueReply(state, event, reply)
         state.dialogue = undefined
         return this.replyToMessage(state, actor, event, reply, now)
     }
@@ -83,11 +77,6 @@ export class NpcAiDialogue {
             wantsTask &&
             !this.accept(state, actor, requester, event, reply, now)
         ) {
-            rememberConversation(
-                state,
-                dialogueKey(event),
-                'Сервер отклонил принятие поручения: оно уже принято другим NPC либо недоступно. Я его не принимала.'
-            )
             this.speak(
                 state,
                 event,
@@ -136,6 +125,7 @@ export class NpcAiDialogue {
             return true
         }
         const text = replySpeech(reply)
+        rememberDialogueReply(state, event, reply)
         if (text !== null) {
             this.speak(state, event, text, now)
         }
@@ -170,7 +160,14 @@ export class NpcAiDialogue {
                           events: [],
                       }
                     : error === undefined
-                      ? this.room.social.decide(actor, reply.decision, now)
+                      ? this.room.social.decide(
+                            actor,
+                            reply.decision,
+                            now,
+                            event.system === true
+                                ? {}
+                                : { freshDialogueTargetId: event.senderId }
+                        )
                       : { accepted: false, error, events: [] }
             recordDialogueAction(
                 this.diagnostics,

@@ -3,10 +3,11 @@ import { existsSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export interface EmbeddingProvider {
-    embed(texts: string[], query?: boolean): Promise<number[][]>
-    stop?(): void
-}
+import { localVectorCache } from './embeddingProfile'
+import type { EmbeddingProvider } from './embeddingTypes'
+import type { PersistentVectorCache } from './persistentVectorCache'
+export type { EmbeddingProvider } from './embeddingTypes'
+export { SemanticIndex } from './semanticIndex'
 function embeddingWorkerPath(): string | undefined {
     if (!import.meta.url.startsWith('file:')) {
         return undefined
@@ -36,10 +37,19 @@ export class LocalEmbeddings implements EmbeddingProvider {
         }
     >()
     private failed = false
+    private cache: PersistentVectorCache | undefined
+    private cacheInitialized = false
     public constructor(
         private readonly diagnostic: (message: string) => void = (message) =>
             console.warn('NPC knowledge:', message)
     ) {}
+    public persistentCache(): PersistentVectorCache | undefined {
+        if (!this.cacheInitialized) {
+            this.cacheInitialized = true
+            this.cache = localVectorCache(this.diagnostic)
+        }
+        return this.cache
+    }
     public async embed(texts: string[], query = false): Promise<number[][]> {
         if (
             process.env['VITEST'] === 'true' &&
@@ -165,122 +175,5 @@ export class LocalEmbeddings implements EmbeddingProvider {
         this.child?.kill()
         this.child = undefined
         this.fail('Embedding worker stopped')
-    }
-}
-
-export class SemanticIndex {
-    private readonly vectors = new Map<string, number[]>()
-    private readonly queued = new Map<string, string>()
-    private readonly texts = new Map<string, string>()
-    private processing: Promise<void> | undefined
-    public constructor(
-        private readonly provider: EmbeddingProvider,
-        private readonly diagnostic: (message: string) => void = () => undefined
-    ) {}
-    public remember(key: string, text: string): void {
-        if (this.texts.get(key) === text && this.vectors.has(key)) {
-            return
-        }
-        if (this.texts.get(key) === text && this.queued.has(key)) {
-            this.kick()
-            return
-        }
-        if (!this.texts.has(key) && this.texts.size >= 8192) {
-            const oldest = this.texts.keys().next().value
-            if (oldest !== undefined) {
-                this.forget(oldest)
-            }
-        }
-        this.texts.set(key, text)
-        if (this.queued.size >= 128) {
-            this.diagnostic(
-                'Embedding index queue is full; indexing deferred and text remains searchable'
-            )
-            return
-        }
-        this.queued.set(key, text)
-        this.kick()
-    }
-    private kick(): void {
-        this.processing ??= Promise.resolve()
-            .then(() => this.process())
-            .finally(() => {
-                this.processing = undefined
-            })
-    }
-    private async process(): Promise<void> {
-        while (this.queued.size > 0) {
-            const batch = [...this.queued].slice(0, 16)
-            for (const [key] of batch) {
-                this.queued.delete(key)
-            }
-            try {
-                const vectors = await this.provider.embed(
-                    batch.map(([, text]) => text.slice(0, 1800))
-                )
-                batch.forEach(([key, text], i) => {
-                    if (
-                        this.texts.get(key) === text &&
-                        vectors[i] !== undefined
-                    ) {
-                        this.vectors.set(key, vectors[i])
-                    }
-                })
-            } catch (error) {
-                this.diagnostic(
-                    error instanceof Error ? error.message : 'Indexing deferred'
-                )
-                return
-            }
-        }
-    }
-    public async rank(
-        query: string,
-        allowed: readonly string[]
-    ): Promise<Map<string, number>> {
-        try {
-            await this.processing
-            const [vector] = await this.provider.embed([query], true)
-            if (vector === undefined) {
-                return new Map()
-            }
-            return new Map(
-                allowed.flatMap((key) => {
-                    const entry = this.vectors.get(key)
-                    return entry?.length !== vector.length
-                        ? []
-                        : [
-                              [
-                                  key,
-                                  entry.reduce(
-                                      (sum, value, i) =>
-                                          sum + value * (vector[i] ?? 0),
-                                      0
-                                  ),
-                              ],
-                          ]
-                })
-            )
-        } catch {
-            return new Map()
-        }
-    }
-    public idle(): Promise<void> {
-        return this.processing ?? Promise.resolve()
-    }
-    public forgetExcept(prefix: string, valid: ReadonlySet<string>): void {
-        for (const key of this.texts.keys()) {
-            if (key.startsWith(prefix) && !valid.has(key)) {
-                this.forget(key)
-            }
-        }
-    }
-    private forget(key: string): void {
-        this.texts.delete(key)
-        this.vectors.delete(key)
-        this.queued.delete(key)
-    }
-    public stop(): void {
-        this.provider.stop?.()
     }
 }

@@ -73,10 +73,12 @@ it('physically visits the merchant, learns earned stock, returns and privately r
     expect(new Set(receipts.map((event) => event.id)).size).toBe(
         receipts.length
     )
-    const learned = recorded.contexts.find(
-        (context) => context.facts.length > 0
+    const learned = recorded.contexts.find((context) =>
+        context.facts.some((fact) => fact.kind === 'merchant')
     )
-    expect(learned?.facts[0]).toMatchObject({
+    expect(
+        learned?.facts.find((fact) => fact.kind === 'merchant')
+    ).toMatchObject({
         kind: 'merchant',
         merchantId: 'npc_merchant_1',
     })

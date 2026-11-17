@@ -1,10 +1,11 @@
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { CharacterKnowledge } from './characterKnowledge'
-import { projectContracts } from './contractProjection'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { npcDialogueContext } from './dialogueContext'
 import { prepareKnowledgeCatalog } from './knowledgeCatalog'
+import { npcKnowledgeInformation } from './knowledgeInformation'
+import { characterKnowledgeScope } from './knowledgeScope'
 import { reportNpcRequestStatus } from './requestStatus'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import type { NpcAiSessionActions } from './session'
@@ -133,74 +134,60 @@ export class NpcAiScheduler {
         actor: import('../game/character').GameCharacter,
         context: import('./types').NpcAiContext
     ): void {
-        const memory = state.mind
-        const query = state.dialogue?.text ?? state.task?.request ?? ''
         void invokeNpcAiTurn(
             state,
-            context,
+            {
+                ...context,
+                knowledgeScope: characterKnowledgeScope(
+                    actor,
+                    this.informationCallAvailable(state, this.clock())
+                ),
+            },
             this.provider,
             () => this.current(),
             {
-                prepare: async () => ({
-                    ...context,
-                    knowledge: await this.knowledge.retrieve(
-                        actor,
-                        this.room.navigationFor(actor),
-                        memory,
-                        query
-                    ),
+                ...npcKnowledgeInformation({
+                    state,
+                    actor,
+                    room: this.room,
+                    companions: this.companions,
+                    knowledge: this.knowledge,
+                    current: this.current,
+                    clock: this.clock,
                 }),
-                lookup: async (personId) => {
-                    const result = await this.knowledge.deep(
-                        memory,
-                        personId,
-                        query
-                    )
-                    return result.status === 'found'
-                        ? {
-                              ...result,
-                              contracts: projectContracts(
-                                  this.room.social.conversation(
-                                      actor.id,
-                                      personId,
-                                      this.clock()
-                                  ),
-                                  query
-                              ),
-                          }
-                        : result
-                },
-                reserveCall: () => {
-                    const at = this.clock()
-                    this.trimCalls(at)
-                    const background =
-                        state.dialogue === undefined &&
-                        state.task?.requesterId == null
-                    if (
-                        this.calls.length >=
-                            this.config.limits.maxCallsPerHour ||
-                        (background &&
-                            this.backgroundCalls.length >=
-                                Math.floor(
-                                    (this.config.limits.maxCallsPerHour * 2) / 3
-                                ))
-                    ) {
-                        return false
-                    }
-                    this.calls.push(at)
-                    if (
-                        state.dialogue === undefined &&
-                        state.task?.requesterId == null
-                    ) {
-                        this.backgroundCalls.push(at)
-                    }
-                    return true
-                },
+                reserveCall: () => this.reserveInformationCall(state),
             }
         ).finally(() => {
             this.busy = false
             this.schedule()
         })
+    }
+
+    private informationCallAvailable(
+        state: NpcAiActorState,
+        at: number
+    ): boolean {
+        this.trimCalls(at)
+        const background =
+            state.dialogue === undefined && state.task?.requesterId == null
+        return (
+            this.calls.length < this.config.limits.maxCallsPerHour &&
+            (!background ||
+                this.backgroundCalls.length <
+                    Math.floor((this.config.limits.maxCallsPerHour * 2) / 3))
+        )
+    }
+
+    private reserveInformationCall(state: NpcAiActorState): boolean {
+        const at = this.clock()
+        if (!this.informationCallAvailable(state, at)) {
+            return false
+        }
+        this.calls.push(at)
+        if (state.dialogue === undefined && state.task?.requesterId == null) {
+            this.backgroundCalls.push(at)
+        }
+        return true
     }
 
     public stop(): void {

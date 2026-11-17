@@ -44,6 +44,8 @@ export interface NpcAiTask {
     request: string
     steps: number
     lastKnownRequester?: { locationId: string; position: Vector2 }
+    /** A completed guide permits one closing reply, never another physical step. */
+    concluding?: boolean
 }
 
 export type NpcAiEvent =
@@ -76,6 +78,19 @@ export type NpcAiEvent =
 
 export type NpcAiFact =
     | {
+          kind: 'scouting'
+          locationId: string
+          position: Vector2
+          observedAt: number
+          visible: Array<{
+              id: string
+              name: string
+              kind: string
+              position: Vector2
+          }>
+          scope: 'visible_only'
+      }
+    | {
           kind: 'merchant'
           merchantId: string
           observedAt: number
@@ -101,12 +116,40 @@ export interface NpcAiContext {
     conversation?: ReturnType<
         import('./characterMemory').CharacterMemory['context']
     >
-    knowledge?: import('./characterKnowledge').KnowledgeResult
+    knowledgeScope?: import('./knowledgeScope').NpcKnowledgeScope
+    knowledge?: import('./characterKnowledge').KnowledgeResult & {
+        query?: string
+    }
     informationResults?: import('./characterMemory').DeepMemoryResult
+    taskConsent?: NpcTaskConsent
+    speechStyle?: import('./npcSpeechInstructions').NpcSpeechContext
+    replyCorrection?: {
+        code: NpcReplyIssue
+        decision: AgentDecision | null
+        taskAcceptance: NonNullable<NpcAiReply['taskAcceptance']>
+        companionOrder: NpcAiReply['companionOrder']
+        informationRequest?: NpcInformationRequest | null
+    }
 }
 
+export interface NpcTaskConsent {
+    state: 'idle' | 'own_task' | 'busy'
+    allowed: Array<NonNullable<NpcAiReply['taskAcceptance']>>
+}
+
+export type NpcReplyIssue =
+    | 'information_request_mixed'
+    | 'task_consent_required'
+    | 'task_replace_required'
+    | 'task_unavailable'
+    | 'task_concluded'
+
+export type NpcInformationRequest =
+    | { type: 'deep_memory'; personId: string }
+    | { type: 'knowledge_search'; query: string }
+
 export interface NpcAiReply {
-    informationRequest?: { type: 'deep_memory'; personId: string } | null
+    informationRequest?: NpcInformationRequest | null
     personMemoryUpdate?: import('./characterMemory').PersonMemoryUpdate | null
     speech?: string | null
     taskAcceptance?: 'none' | 'accept' | 'replace' | 'decline'

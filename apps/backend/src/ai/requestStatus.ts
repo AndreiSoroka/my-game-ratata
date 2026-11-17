@@ -23,6 +23,7 @@ export function reportNpcRequestStatus(
         id: task.id,
         npcId: state.config.actorId,
         state: status,
+        request: ('text' in task ? task.text : task.request).slice(0, 400),
         ...(reason === undefined ? {} : { reason }),
         at: now,
     })

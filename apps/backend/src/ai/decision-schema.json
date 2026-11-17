@@ -256,7 +256,7 @@
                 {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["type", "targetId", "draft"],
+                    "required": ["type", "targetId", "draft", "replaceOffer"],
                     "properties": {
                         "type": {
                             "type": "string",
@@ -465,13 +465,42 @@
                                     "enum": ["personal", "city"]
                                 }
                             }
+                        },
+                        "replaceOffer": {
+                            "anyOf": [
+                                {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["offerId", "revision"],
+                                    "properties": {
+                                        "offerId": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 150
+                                        },
+                                        "revision": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
                         }
                     }
                 },
                 {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["type", "targetId", "requestId"],
+                    "required": [
+                        "type",
+                        "targetId",
+                        "requestId",
+                        "replaceOffer"
+                    ],
                     "properties": {
                         "type": {
                             "type": "string",
@@ -486,6 +515,30 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 100
+                        },
+                        "replaceOffer": {
+                            "anyOf": [
+                                {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["offerId", "revision"],
+                                    "properties": {
+                                        "offerId": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 150
+                                        },
+                                        "revision": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
                         }
                     }
                 },
@@ -720,6 +773,23 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 150
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "query"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["knowledge_search"]
+                        },
+                        "query": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 300,
+                            "pattern": "\\S"
                         }
                     }
                 }

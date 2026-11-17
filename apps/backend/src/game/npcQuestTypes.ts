@@ -24,6 +24,11 @@ export interface NpcQuestEnvironment {
     canIssue?: (actor: GameCharacter) => boolean
 }
 
+/** Server-owned execution context; never parsed from a model decision. */
+export interface NpcQuestDecisionContext {
+    freshDialogueTargetId?: string
+}
+
 export interface QuestOfferRecord {
     view: QuestOfferSnapshot
     draft: QuestDraft | null
@@ -41,6 +46,16 @@ export interface NpcQuestRecord {
     baseline: Map<string, string>
     receipts: Set<string>
     closeDeathListener?: () => void
+}
+
+export function terminalReceiptOwner(
+    job: NpcQuestRecord,
+    actorId: string
+): boolean {
+    return (
+        ['completed', 'cancelled'].includes(job.view.status) &&
+        (job.acceptedBy === actorId || job.submittedBy === actorId)
+    )
 }
 
 export function questActorAvailable(

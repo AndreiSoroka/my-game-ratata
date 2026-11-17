@@ -4,6 +4,7 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { NpcAiDialogue } from './dialogue'
+import { replySpeech } from './dialogueResult'
 import { reportNpcRequestStatus } from './requestStatus'
 import {
     enqueueNpcAiEvent,
@@ -14,7 +15,12 @@ import { NpcAiExecution } from './sessionExecution'
 import { failNpcTurn } from './sessionFailure'
 import { publishNpcAiFeedback } from './sessionFeedback'
 import { rememberNpcReply, taskSpeech } from './sessionMemory'
-import type { NpcAiConfig, NpcAiEvent, NpcAiReply } from './types'
+import type {
+    NpcAiConfig,
+    NpcAiEvent,
+    NpcAiReply,
+    NpcReplyIssue,
+} from './types'
 
 export class NpcAiSessionActions {
     public readonly dialogue: NpcAiDialogue
@@ -67,6 +73,14 @@ export class NpcAiSessionActions {
         }
         rememberNpcReply(state, reply.memory)
         state.retry = 0
+        if (!conversational && state.task.concluding === true) {
+            const text = replySpeech(reply)
+            if (text !== null) {
+                taskSpeech(this.dialogue, state, text, now)
+            }
+            this.finish(state, now, reply.waitMs)
+            return
+        }
         if (!conversational && reply.speech != null) {
             taskSpeech(this.dialogue, state, reply.speech, now)
         }
@@ -117,6 +131,49 @@ export class NpcAiSessionActions {
             events,
             now
         )
+    }
+
+    public rejectReply(
+        state: NpcAiActorState,
+        issue: NpcReplyIssue,
+        now: number
+    ): void {
+        const event = state.dialogue
+        const text = 'Сейчас не получилось начать поручение.'
+        const task =
+            event === undefined
+                ? state.task
+                : { id: event.id, request: event.text }
+        this.diagnostics.record({
+            actorId: state.config.actorId,
+            taskId: task?.id ?? '',
+            request: task?.request ?? '',
+            category: 'action_rejected',
+            reason: issue,
+            at: now,
+        })
+        reportNpcRequestStatus(
+            this.room,
+            this.diagnostics,
+            state,
+            'failed',
+            now,
+            text,
+            event
+        )
+        if (event !== undefined) {
+            this.dialogue.speak(state, event, text, now)
+            state.dialogue = undefined
+            state.retry = 0
+            if (state.task === null) {
+                this.release(state, now)
+            }
+        } else {
+            if (state.task?.requesterId != null) {
+                taskSpeech(this.dialogue, state, text, now)
+            }
+            this.finish(state, now, this.config.limits.reviewIntervalMs, false)
+        }
     }
 
     public say(

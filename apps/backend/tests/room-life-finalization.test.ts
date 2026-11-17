@@ -113,6 +113,69 @@ describe('shared finalization and corpse ownership', () => {
     })
 })
 
+it('insets an edge grave while preserving the corpse, possessions and delayed birth at finalization', () => {
+    const f = roomLifeFixture()
+    const deathPosition = { x: 168, y: 8 }
+    const item = createItemInstance('herbs', 4)
+    const weapon = createItemInstance('simple_sword')
+    f.hero.position = { ...deathPosition }
+    f.hero.inventory.push(item)
+    f.hero.equipment.weapon = weapon
+    f.hero.applyDamage(f.hero.hp, now)
+    const inventory = f.world.get(f.hero.locationId).inventory
+
+    f.advance(now + 60_000)
+    expect(f.life.graves(f.hero.locationId)).toMatchObject([
+        {
+            id: `final:${f.hero.id}`,
+            position: { x: 168, y: 40 },
+        },
+    ])
+    const corpse = inventory
+        .snapshotChests()
+        .find((chest) => chest.kind === 'corpse')
+    expect(corpse).toMatchObject({
+        id: `corpse:${f.hero.id}:1`,
+        itemCount: 2,
+        position: deathPosition,
+    })
+    expect(f.hero.position).toEqual(deathPosition)
+    expect(f.life.abandon(f.hero, now + 60_001)).toBe(false)
+    f.advance(now + 89_999)
+    expect(f.characters.size).toBe(0)
+    f.advance(now + 90_000)
+    f.advance(now + 90_001)
+    expect(f.characters.size).toBe(1)
+    expect([...f.characters.values()][0]).toMatchObject({
+        archetype: 'skeleton',
+        locationId: f.hero.locationId,
+    })
+    expect(f.life.graves(f.hero.locationId)).toHaveLength(1)
+    expect(
+        f.events.filter((event) => event.kind === 'permadeath')
+    ).toHaveLength(1)
+    expect(
+        inventory.snapshotChests().filter((chest) => chest.kind === 'corpse')
+    ).toEqual([corpse])
+
+    const viewer = new GameCharacter({
+        id: 'edge-viewer',
+        nickname: 'edge-viewer',
+        archetype: 'human',
+        controllerKind: 'network_player',
+        locationId: f.hero.locationId,
+        spawnPosition: deathPosition,
+    })
+    inventory.openChestById(viewer, `corpse:${f.hero.id}:1`, now + 90_002)
+    inventory.containers.handle(
+        viewer,
+        { type: 'take_all_chest_items', chestId: `corpse:${f.hero.id}:1` },
+        now + 90_003
+    )
+    expect(viewer.inventory).toEqual([item, weapon])
+    expect(f.gold.get(viewer.id)).toBe(37)
+})
+
 describe('revival and finalization validation', () => {
     it('successful revival preserves identity and never creates a grave or delayed skeleton', () => {
         const f = roomLifeFixture()

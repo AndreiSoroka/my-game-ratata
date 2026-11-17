@@ -26,14 +26,7 @@ describe('Martyr useful hostile wound and Mother self-healing sequence', () => {
             expect(cycle(actor, `cast-${String(index)}`)).toEqual([])
         }
         const events = cycle(actor, 'cast-4')
-        expect(events).toEqual([
-            {
-                kind: 'notice',
-                actorId: actor.id,
-                audienceIds: [actor.id],
-                text: 'Открыта звезда: Мученик.',
-            },
-        ])
+        expect(events).toEqual([])
         expect(
             actor.progression.constellations.opened.has('prayer.martyr')
         ).toBe(true)

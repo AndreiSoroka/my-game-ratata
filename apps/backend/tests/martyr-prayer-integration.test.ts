@@ -78,7 +78,7 @@ describe('Martyr through actual shared damage and ordinary Mother commands', () 
                 (event) => event.text === 'Открыта звезда: Мученик.'
             ).length
         }
-        expect(notices).toBe(1)
+        expect(notices).toBe(0)
         expect(
             f.actor.progression.constellations.opened.has('prayer.martyr')
         ).toBe(true)

@@ -83,7 +83,7 @@ for (const mobile of [false, true]) {
         await expect(page.getByLabel('Nickname')).toBeVisible()
         expect(await page.evaluate(() => window.__ratataTest!.getState().connected)).toBe(false)
         await page.getByLabel('Nickname').fill(saved.nickname)
-        await page.getByLabel('Прошлое героя', { exact: true }).selectOption('ranger')
+        await page.getByRole('radio', { name: 'Следопыт', exact: true }).check()
         await page.getByRole('button', { name: 'Enter', exact: true }).click()
         await expect
             .poll(() => page.evaluate(() => window.__ratataTest!.getState().connected))

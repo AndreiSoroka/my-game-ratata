@@ -2,6 +2,8 @@
 import type { HeroClass } from '@my-game-ratata/contracts'
 import { GRID_SIZE, REGION_NAME } from '@my-game-ratata/contracts'
 
+import HeroClassIcon from './HeroClassIcon.vue'
+
 const nickname = defineModel<string>('nickname', { required: true })
 const heroClass = defineModel<HeroClass>('heroClass', { required: true })
 defineProps<{ canJoin: boolean; errorMessage: string }>()
@@ -61,16 +63,28 @@ const classes: { id: HeroClass; label: string; description: string }[] = [
                 />
                 <button :disabled="!canJoin" type="submit">Enter</button>
             </div>
-            <label for="hero-class" class="class-label">Прошлое героя</label>
-            <select id="hero-class" v-model="heroClass" class="class-select">
-                <option v-for="option in classes" :key="option.id" :value="option.id">
-                    {{ option.label }}
-                </option>
-            </select>
-            <p class="class-description">
+            <fieldset class="class-choices" aria-describedby="class-description class-hint">
+                <legend>Прошлое героя</legend>
+                <div class="class-grid">
+                    <label v-for="option in classes" :key="option.id" class="class-card">
+                        <input
+                            :id="heroClass === option.id ? 'hero-class' : `hero-class-${option.id}`"
+                            v-model="heroClass"
+                            type="radio"
+                            name="hero-class"
+                            :value="option.id"
+                        />
+                        <span class="class-card__content">
+                            <HeroClassIcon :hero-class="option.id" />
+                            <span>{{ option.label }}</span>
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
+            <p id="class-description" class="class-description" aria-live="polite">
                 {{ classes.find((option) => option.id === heroClass)?.description }}
             </p>
-            <p class="class-hint">
+            <p id="class-hint" class="class-hint">
                 Прошлое даёт первые преимущества. Любой герой может освоить меч, чудеса и магию
                 через обучение и практику. Новая жизнь начинается без золота.
             </p>
@@ -164,18 +178,73 @@ const classes: { id: HeroClass; label: string; description: string }[] = [
     }
 }
 
-.class-label {
-    display: block;
-    margin-top: 20px;
+.class-choices {
+    min-width: 0;
+    margin: 20px 0 0;
+    padding: 0;
+    border: 0;
 }
-.class-select {
+.class-choices legend {
+    margin-bottom: 10px;
+    color: #e3cd9d;
+}
+.class-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+.class-card {
+    position: relative;
+    cursor: pointer;
+}
+.class-card input {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
     width: 100%;
-    color: #f0e4bf;
-    background: #1b231d;
-    border: 1px solid #938462;
-    border-radius: 4px;
-    padding: 10px;
-    font: inherit;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.class-card__content {
+    display: flex;
+    min-height: 86px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 2px;
+    box-sizing: border-box;
+    border: 1px solid #647265;
+    border-radius: 6px;
+    background: #17211c;
+    color: #bec9ba;
+    font:
+        12px/1.4 system-ui,
+        sans-serif;
+}
+.class-card__content svg {
+    width: 34px;
+    height: 34px;
+}
+.class-card:hover .class-card__content {
+    border-color: #b6a073;
+}
+.class-card input:checked + .class-card__content {
+    border-color: #e2bd75;
+    background: #2c3020;
+    color: #ffe0a1;
+    box-shadow: inset 0 0 0 1px #e2bd75;
+}
+.class-card input:focus-visible + .class-card__content {
+    outline: 2px solid #f4e3b5;
+    outline-offset: 3px;
+}
+@media (max-width: 820px) {
+    .class-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 .class-description {
     margin: 10px 0;

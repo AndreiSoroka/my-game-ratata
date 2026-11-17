@@ -40,6 +40,16 @@ const jobs: Array<{
     },
 ]
 
+/** Authored settlement/work roles, independent from current travel or controller. */
+export function workerHomeDefinitions() {
+    return jobs.map(({ id, job, name }) => ({
+        id,
+        job,
+        name,
+        cityId: CENTER_LOCATION_ID,
+    }))
+}
+
 export function createEconomyWorkers(
     navigation: NavigationService
 ): SpawnedCharacter[] {

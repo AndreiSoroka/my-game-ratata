@@ -3,6 +3,7 @@ import { nextTick, type Ref, toRaw } from 'vue'
 
 import type { ChatInputState } from '../runtime/chatInput'
 import { RatataGame } from '../runtime/ratataGame'
+import { createConstellationNotices } from './constellationNotices'
 import type GameplayOverlay from './GameplayOverlay.vue'
 import type { createTransientNotices } from './transientNotices'
 
@@ -49,6 +50,8 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
 }
 
 function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): RatataGame {
+    const constellations = createConstellationNotices()
+    let noticeSession = ''
     return new RatataGame({
         container,
         nickname: options.nickname.trim(),
@@ -74,7 +77,11 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         onCharacterToggle: options.toggleCharacter,
         onSnapshot: (snapshot, playerId) => {
             options.chatHistory?.observe(snapshot, playerId)
-            if (options.localPlayerId.value !== playerId) options.notices.reset()
+            const session = JSON.stringify([snapshot.serverEpoch ?? '', playerId])
+            if (session !== noticeSession) {
+                noticeSession = session
+                options.notices.reset()
+            }
             options.notices.observe('adventure', snapshot.adventure)
             options.notices.observe('party', snapshot.party)
             const exchange = snapshot.social?.exchange
@@ -83,6 +90,7 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
                     notice: 'Обмен завершён.',
                     noticeId: exchange.receiptId,
                 })
+            options.notices.observe('constellations', constellations.observe(snapshot, playerId))
             options.snapshot.value = snapshot
             options.localPlayerId.value = playerId
             options.isJoining.value = false

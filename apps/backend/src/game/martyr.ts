@@ -89,14 +89,7 @@ export function recordMartyrPrayer(
         return []
     }
     unlockMartyr(actor)
-    return [
-        {
-            kind: 'notice',
-            actorId: actor.id,
-            audienceIds: [actor.id],
-            text: 'Открыта звезда: Мученик.',
-        },
-    ]
+    return []
 }
 
 function acceptPrayer(

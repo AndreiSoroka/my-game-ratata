@@ -141,7 +141,7 @@ export function requestNpcAi(
 }
 
 export function merchantErrandDecision(context: NpcAiContext): NpcAiReply {
-    if (context.facts.length > 0) {
+    if (context.facts.some((fact) => fact.kind === 'merchant')) {
         const requester = context.observation.targets.find(
             (target) => target.id === context.task?.requesterId
         )

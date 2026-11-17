@@ -1,3 +1,4 @@
+import { knowledgeCorpus } from './ai/knowledgeCorpus'
 import { GameRoom } from './game/room'
 import { createFetchHandler, createWebSocketHandlers } from './server'
 
@@ -9,13 +10,16 @@ if (!Number.isInteger(port) || port <= 0) {
     throw new Error(`Invalid PORT value: ${rawPort ?? String(defaultPort)}`)
 }
 
+knowledgeCorpus()
 const aiConfig = await loadNpcAiConfig()
-const room = new GameRoom(
-    undefined,
-    aiConfig.enabled
+const room = new GameRoom(undefined, {
+    ...(Bun.env['GAME_NPC_SPEECH_SEED'] === undefined
+        ? {}
+        : { npcSpeechSeed: Bun.env['GAME_NPC_SPEECH_SEED'] }),
+    ...(aiConfig.enabled
         ? { ai: { config: aiConfig, provider: new CodexCliProvider() } }
-        : {}
-)
+        : {}),
+})
 room.start()
 
 const server = Bun.serve({

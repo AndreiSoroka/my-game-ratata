@@ -189,6 +189,7 @@ export class CharacterMemory {
                 .slice(0, 8)
                 .map(({ id, name, lastAt }) => ({ id, name, lastAt })),
             recent: this.messages
+                .filter((entry) => entry.source !== 'seen')
                 .slice(-20)
                 .map((entry) => ({ ...entry, text: entry.text.slice(0, 600) })),
             relevant: this.search(query, 6),

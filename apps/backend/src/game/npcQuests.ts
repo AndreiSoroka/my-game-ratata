@@ -4,7 +4,7 @@ import {
     type NpcQuestDecision,
     type NpcQuestSocialSnapshot,
     type QuestDraft,
-    type QuestHistoryEntry,
+    type QuestOfferReplacement,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -20,11 +20,13 @@ import { inspectQuest, observeQuestDeath } from './npcQuestProgress'
 import { snapshotNpcQuests } from './npcQuestSnapshots'
 import { turnInNpcQuest } from './npcQuestTurnIn'
 import {
+    type NpcQuestDecisionContext,
     type NpcQuestEnvironment,
     type NpcQuestRecord,
     type NpcQuestResult,
     questOfferAvailable,
     type QuestOfferRecord,
+    terminalReceiptOwner,
 } from './npcQuestTypes'
 import { QuestJournal } from './questJournal'
 
@@ -61,22 +63,17 @@ export class NpcQuestService {
     public handleDecision(
         issuer: GameCharacter,
         decision: NpcQuestDecision,
-        now: number
+        now: number,
+        context: NpcQuestDecisionContext = {}
     ): NpcQuestResult {
         switch (decision.type) {
             case 'quest_propose':
-                return this.propose(
-                    issuer,
-                    decision.targetId,
-                    decision.draft,
-                    now
-                )
             case 'worker_quest_propose':
-                return this.workerPropose(
+                return this.offerOperations.decide(
                     issuer,
-                    decision.targetId,
-                    decision.requestId,
-                    now
+                    decision,
+                    now,
+                    context
                 )
             case 'quest_offer_revise':
                 return this.offerOperations.revise(issuer, decision, now)
@@ -99,21 +96,34 @@ export class NpcQuestService {
         issuer: GameCharacter,
         targetId: string,
         draft: QuestDraft,
-        now: number
+        now: number,
+        replaceOffer?: QuestOfferReplacement,
+        context: NpcQuestDecisionContext = {}
     ): NpcQuestResult {
-        return this.offerOperations.propose(issuer, targetId, draft, now)
+        return this.offerOperations.propose(
+            issuer,
+            targetId,
+            draft,
+            now,
+            replaceOffer,
+            context
+        )
     }
     public workerPropose(
         issuer: GameCharacter,
         targetId: string,
         requestId: string,
-        now: number
+        now: number,
+        replaceOffer?: QuestOfferReplacement,
+        context: NpcQuestDecisionContext = {}
     ): NpcQuestResult {
         return this.offerOperations.workerPropose(
             issuer,
             targetId,
             requestId,
-            now
+            now,
+            replaceOffer,
+            context
         )
     }
 
@@ -196,7 +206,7 @@ export class NpcQuestService {
         )
         if (outcome.accepted && offer !== undefined) {
             if (!message.accept) {
-                this.recordOffer(offer, 'declined', now)
+                recordQuestOffer(this.journal, offer, 'declined', now)
             }
             for (const job of this.jobs.values()) {
                 this.recordJob(job, now)
@@ -216,7 +226,8 @@ export class NpcQuestService {
     public update(now: number): void {
         for (const [id, offer] of this.offers) {
             if (!questOfferAvailable(offer, this.environment, now)) {
-                this.recordOffer(
+                recordQuestOffer(
+                    this.journal,
                     offer,
                     offer.view.expiresAt <= now ? 'expired' : 'cancelled',
                     now
@@ -291,13 +302,6 @@ export class NpcQuestService {
             now
         )
     }
-    private recordOffer(
-        offer: QuestOfferRecord,
-        status: QuestHistoryEntry['status'],
-        now: number
-    ): void {
-        recordQuestOffer(this.journal, offer, status, now)
-    }
     private recordJob(job: NpcQuestRecord, now: number): void {
         recordNpcQuest(this.journal, job, this.environment, now)
     }
@@ -308,11 +312,4 @@ export class NpcQuestService {
     ): NpcQuestResult {
         return { accepted, error, events: [] }
     }
-}
-
-function terminalReceiptOwner(job: NpcQuestRecord, actorId: string): boolean {
-    return (
-        ['completed', 'cancelled'].includes(job.view.status) &&
-        (job.acceptedBy === actorId || job.submittedBy === actorId)
-    )
 }

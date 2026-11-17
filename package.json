@@ -42,7 +42,12 @@
         "test:agent": "node --test scripts/agent-mcp.test.mjs",
         "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs",
         "knowledge:prepare": "node scripts/knowledge-prepare.mjs",
-        "knowledge:smoke": "node scripts/knowledge-smoke.mjs"
+        "knowledge:smoke": "node scripts/knowledge-smoke.mjs",
+        "knowledge:check": "bun scripts/knowledge-check.ts",
+        "knowledge:dialogue": "bun scripts/knowledge-dialogue-check.ts",
+        "npc:style:dialogue": "bun scripts/npc-style-dialogue-check.ts",
+        "npc:scout:dialogue": "bun scripts/npc-scout-dialogue-check.ts",
+        "npc:offers:dialogue": "bun scripts/npc-offer-dialogue-check.ts"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",

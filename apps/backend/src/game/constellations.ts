@@ -91,7 +91,7 @@ export function finishConstellationAction(
     for (const signal of action.evidence ?? []) {
         state.evidence[signal] = (state.evidence[signal] ?? 0) + 1
     }
-    const events = discoverLastLight(actor, action)
+    discoverLastLight(actor, action)
     syncAbilityConstellations(actor)
     const requirementContext = {
         opened: state.opened,
@@ -120,11 +120,10 @@ export function finishConstellationAction(
                 ([key]) => evidencePath(key) !== node.constellationId
             )
         )
-        events.push(discoveryNotice(actor, node.name))
     }
-    events.push(...discoverLastLight(actor, action))
+    discoverLastLight(actor, action)
     syncAbilityConstellations(actor)
-    return events
+    return []
 }
 
 function canResolveDiscoveries(actor: GameCharacter): boolean {
@@ -226,17 +225,16 @@ function chooseStar(
 function discoverLastLight(
     actor: GameCharacter,
     action: ConstellationAction
-): GameEventPayload[] {
+): void {
     if (
         hasStar(actor, 'prayer.last_light') ||
         !hasStar(actor, 'prayer.gift1') ||
         !hasStar(actor, 'life.hp1') ||
         action.evidence?.includes('low_hp_gift') !== true
     ) {
-        return []
+        return
     }
     actor.progression.constellations.opened.add('prayer.last_light')
-    return [discoveryNotice(actor, 'Последний огонёк')]
 }
 
 export function recordRunicContact(
@@ -268,7 +266,7 @@ export function recordRunicContact(
         return []
     }
     state.opened.add('magic.runic_echo')
-    return [discoveryNotice(actor, 'Руническое эхо')]
+    return []
 }
 
 export function consumeRunicShot(actor: GameCharacter, now: number): number {
@@ -279,13 +277,4 @@ export function consumeRunicShot(actor: GameCharacter, now: number): number {
             : 1
     state.runicShotUntil = 0
     return multiplier
-}
-
-function discoveryNotice(actor: GameCharacter, name: string): GameEventPayload {
-    return {
-        kind: 'notice',
-        actorId: actor.id,
-        audienceIds: [actor.id],
-        text: `Открыта звезда: ${name}.`,
-    }
 }

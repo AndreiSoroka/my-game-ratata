@@ -14,6 +14,7 @@ import { ExchangeService } from './exchange'
 import { isNpcQuestClient, isNpcQuestDecision } from './npcQuestCommands'
 import { configureNpcQuestDialogue } from './npcQuestDialogue'
 import { NpcQuestService } from './npcQuests'
+import type { NpcQuestDecisionContext } from './npcQuestTypes'
 import type { PartyService } from './parties'
 import type { GameRoom } from './room'
 import { RoomCommunication } from './roomCommunication'
@@ -157,7 +158,8 @@ export class RoomSocial {
     public decide(
         actor: GameCharacter,
         decision: AgentDecision,
-        now: number
+        now: number,
+        context: NpcQuestDecisionContext = {}
     ): AgentDecisionResult {
         if (this.ai()?.canControl(actor.id, now) !== true) {
             return {
@@ -178,7 +180,7 @@ export class RoomSocial {
             return decideSocialExchange(this.exchanges, actor, decision, now)
         }
         if (isNpcQuestDecision(decision)) {
-            return this.quests.handleDecision(actor, decision, now)
+            return this.quests.handleDecision(actor, decision, now, context)
         }
         return {
             accepted: false,

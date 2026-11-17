@@ -1,5 +1,5 @@
 import type { PersonMemoryUpdate } from './characterMemory'
-import type { NpcAiReply } from './types'
+import type { NpcAiReply, NpcInformationRequest } from './types'
 
 function record(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -43,21 +43,28 @@ export function parseInformation(
     > = {}
     const request = input['informationRequest']
     if (request != null) {
-        if (
-            !record(request) ||
-            request['type'] !== 'deep_memory' ||
-            !id(request['personId']) ||
-            Object.keys(request).length !== 2
-        ) {
-            throw new Error('Invalid information request')
-        }
-        result.informationRequest = {
-            type: 'deep_memory',
-            personId: request['personId'],
-        }
+        result.informationRequest = informationRequest(request)
     }
     if (input['personMemoryUpdate'] != null) {
         result.personMemoryUpdate = personUpdate(input['personMemoryUpdate'])
     }
     return result
+}
+
+function informationRequest(value: unknown): NpcInformationRequest {
+    if (!record(value) || Object.keys(value).length !== 2) {
+        throw new Error('Invalid information request')
+    }
+    if (value['type'] === 'deep_memory' && id(value['personId'])) {
+        return { type: 'deep_memory', personId: value['personId'] }
+    }
+    if (
+        value['type'] === 'knowledge_search' &&
+        typeof value['query'] === 'string' &&
+        value['query'].length <= 300 &&
+        value['query'].trim().length > 0
+    ) {
+        return { type: 'knowledge_search', query: value['query'].trim() }
+    }
+    throw new Error('Invalid information request')
 }

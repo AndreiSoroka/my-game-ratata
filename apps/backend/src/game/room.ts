@@ -115,7 +115,8 @@ export class GameRoom {
             this.navigation,
             this.characters,
             this.controllers,
-            this.companions
+            this.companions,
+            options.npcSpeechSeed
         )
         this.life.registerGraves(graves, Date.now())
         seedNpcPockets(this.characters.values())

@@ -43,6 +43,8 @@ export interface NpcRequestStatus {
     npcId: string
     state: NpcRequestState
     reason?: string
+    /** Original request, projected only to its author. */
+    request?: string
     at: number
 }
 

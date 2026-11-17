@@ -42,6 +42,7 @@ import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { createMartyrState } from './martyr'
 import { normalize, resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import type { NpcSpeechProfile } from './npcSpeechProfiles'
 import { PersonalConstellationSky } from './personalConstellationSky'
 import type { PrayerAuraEnvironment } from './prayerAuras'
 import { createResourcePractice } from './resourcePractice'
@@ -51,6 +52,8 @@ import {
 } from './skillProgression'
 
 export class GameCharacter {
+    /** Server-owned presentation data is absent from public soul snapshots. */
+    public readonly npcSpeechProfile?: NpcSpeechProfile
     public readonly trainingTarget: { areaId: string } | undefined
     /** Earned by server rules only; no client command grants this capability. */
     public exactCombatNumbers = false

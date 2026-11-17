@@ -25,6 +25,14 @@ const requestLabels: Record<NpcRequestStatus['state'], string> = {
     cancelled: 'Поручение отменено',
 }
 
+function requestText(value: NpcRequestStatus): string {
+    const label = requestLabels[value.state]
+    const named = ['accepted', 'declined', 'started', 'failed', 'cancelled'].includes(value.state)
+    const request = named && value.request ? `: «${value.request}»` : ''
+    const reason = value.reason ? `${request ? '. ' : ': '}${value.reason}` : ''
+    return `${label}${request}${reason}`
+}
+
 /** Only delivered observer projections enter this buffer; history never replays world effects. */
 class ChatHistory {
     public readonly entries = ref<ChatHistoryEntry[]>([])
@@ -67,9 +75,7 @@ class ChatHistory {
                 name ??
                 this.snapshot?.characters.find((actor) => actor.id === value.npcId)?.nickname ??
                 'Персонаж',
-            text: value.reason
-                ? `${requestLabels[value.state]}: ${value.reason}`
-                : requestLabels[value.state],
+            text: requestText(value),
             at: value.at,
         })
     }

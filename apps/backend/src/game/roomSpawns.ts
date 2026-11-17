@@ -5,6 +5,10 @@ import { PolicyController } from './companionControllers'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import type { NavigationService } from './navigation'
+import {
+    initializeNpcSpeechProfiles,
+    resolveNpcSpeechSeed,
+} from './npcSpeechProfiles'
 import { createFriendlyGirl } from './spawns'
 import { createSupportNpcs } from './supportNpcs'
 import { createTrainingTargets } from './trainingTargets'
@@ -22,8 +26,10 @@ export function spawnRoomCharacters(
     navigation: NavigationService,
     characters: Map<string, GameCharacter>,
     controllers: Map<string, CharacterController>,
-    companions: CompanionService
+    companions: CompanionService,
+    npcSpeechSeed?: string
 ): GraveRegistration[] {
+    const speechSeed = resolveNpcSpeechSeed(npcSpeechSeed)
     const graves: GraveRegistration[] = []
     for (const [locationId, location] of world.locations) {
         const suffix = locationId === centerLocationId ? '' : `_${locationId}`
@@ -70,5 +76,6 @@ export function spawnRoomCharacters(
             new PolicyController(companions, controller)
         )
     }
+    initializeNpcSpeechProfiles(characters.values(), speechSeed)
     return graves
 }

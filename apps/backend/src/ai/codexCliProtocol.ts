@@ -60,7 +60,7 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
     const decision =
         input['decision'] === null
             ? null
-            : parseAgentDecision(input['decision'])
+            : parseAgentDecision(normalizeProviderDecision(input['decision']))
     if (
         decision === undefined ||
         (decision !== null && !allowedDecisionTypes.has(decision.type))
@@ -77,6 +77,22 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
         ...parseInformation(input),
         ...(diagnostics === undefined ? {} : { diagnostics }),
     }
+}
+
+/** Strict model schemas represent an absent optional replacement as null. */
+function normalizeProviderDecision(input: unknown): unknown {
+    if (
+        !isObject(input) ||
+        !['quest_propose', 'worker_quest_propose'].includes(
+            String(input['type'])
+        ) ||
+        input['replaceOffer'] !== null
+    ) {
+        return input
+    }
+    const normalized = { ...input }
+    delete normalized['replaceOffer']
+    return normalized
 }
 
 function parseReplyFields(input: Record<string, unknown>): {

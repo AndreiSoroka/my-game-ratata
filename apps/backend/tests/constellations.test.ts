@@ -99,7 +99,7 @@ describe('server-owned constellation discovery', () => {
         actor.abilities.known.add('fireball')
         expect(
             finishConstellationAction(actor, { ...action, now: 2000 })
-        ).toHaveLength(1)
+        ).toEqual([])
         expect(hasStar(actor, 'magic.fire_damage')).toBe(true)
     })
 
@@ -146,9 +146,7 @@ describe('cross-constellation discoveries', () => {
         recordRunicContact(actor, 'enemy-1', 'spell', 1000)
         expect(recordRunicContact(actor, 'enemy-2', 'shot', 2000)).toEqual([])
         expect(recordRunicContact(actor, 'enemy-1', 'shot', 6001)).toEqual([])
-        expect(recordRunicContact(actor, 'enemy-1', 'shot', 6000)).toHaveLength(
-            1
-        )
+        expect(recordRunicContact(actor, 'enemy-1', 'shot', 6000)).toEqual([])
         expect(hasStar(actor, 'magic.runic_echo')).toBe(true)
         expect(consumeRunicShot(actor, 6000)).toBe(1)
         recordRunicContact(actor, 'enemy-1', 'spell', 7000)
@@ -175,7 +173,7 @@ describe('cross-constellation discoveries', () => {
                 now: 2000,
                 evidence: ['gift', 'low_hp_gift'],
             })
-        ).toHaveLength(1)
+        ).toEqual([])
         expect(hasStar(actor, 'prayer.last_light')).toBe(true)
         expect(actor.progression.constellations.credits.prayer).toBe(0)
     })

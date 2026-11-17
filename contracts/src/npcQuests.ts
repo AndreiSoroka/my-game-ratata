@@ -68,9 +68,24 @@ export type NpcQuestClientMessage =
     | { type: 'quest_inquire'; instanceId: string; objectiveIndex: number }
     | { type: 'quest_turn_in_confirm'; confirmationId: string; accept: boolean }
 
+export interface QuestOfferReplacement {
+    offerId: string
+    revision: number
+}
+
 export type NpcQuestDecision =
-    | { type: 'quest_propose'; targetId: string; draft: QuestDraft }
-    | { type: 'worker_quest_propose'; targetId: string; requestId: string }
+    | {
+          type: 'quest_propose'
+          targetId: string
+          draft: QuestDraft
+          replaceOffer?: QuestOfferReplacement
+      }
+    | {
+          type: 'worker_quest_propose'
+          targetId: string
+          requestId: string
+          replaceOffer?: QuestOfferReplacement
+      }
     | { type: 'quest_turn_in_request'; targetId: string; instanceId: string }
     | {
           type: 'quest_offer_revise'

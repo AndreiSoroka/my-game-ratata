@@ -12,6 +12,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { GraveGuardians } from './graveGuardians'
+import { finalGravePosition } from './gravePlacement'
 import type { GraveCombatTarget, GraveDamageResult } from './graveRules'
 import {
     type GraveSource,
@@ -134,20 +135,29 @@ export class GraveSpawns {
         })
     }
 
-    public schedule(character: GameCharacter, now: number): void {
+    public schedule(
+        character: GameCharacter,
+        now: number,
+        navigation: NavigationService
+    ): void {
         if (
             character.controllerKind !== 'network_player' ||
             !character.mortal ||
             !character.tags.has('state.retired') ||
-            character.alive
+            character.alive ||
+            this.sources.has(`final:${character.id}`)
         ) {
+            return
+        }
+        const position = finalGravePosition(character.position, navigation)
+        if (position === undefined) {
             return
         }
         this.register(
             {
                 id: `final:${character.id}`,
                 locationId: character.locationId,
-                position: { ...character.position },
+                position,
             },
             [],
             now,

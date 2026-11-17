@@ -1,11 +1,13 @@
 import type { GameCharacter } from '../game/character'
 import type { NavigationService } from '../game/navigation'
 import type { CharacterMemory } from './characterMemory'
+import { characterKnowledge, type KnowledgeEntry } from './knowledgeCatalog'
 import {
-    characterKnowledge,
-    type KnowledgeEntry,
-    landmarkText,
-} from './knowledgeCatalog'
+    type KnowledgePassage,
+    knowledgeSearchText,
+    lexicalKnowledgeScore as lexical,
+    selectKnowledgePassages,
+} from './knowledgeSelection'
 import {
     type EmbeddingProvider,
     LocalEmbeddings,
@@ -13,10 +15,11 @@ import {
 } from './localEmbeddings'
 export type { KnowledgeEntry } from './knowledgeCatalog'
 export { characterKnowledge } from './knowledgeCatalog'
+export type { KnowledgePassage } from './knowledgeSelection'
 
 export interface KnowledgeResult {
     groups: string[]
-    entries: KnowledgeEntry[]
+    entries: KnowledgePassage[]
     memories: Array<{
         id: string
         text: string
@@ -26,13 +29,11 @@ export interface KnowledgeResult {
     }>
 }
 
-function lexical(query: string, text: string): number {
-    const normalized = text.toLocaleLowerCase()
-    return (query.toLocaleLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).reduce(
-        (sum, token) => sum + Number(normalized.includes(token)),
-        0
-    )
-}
+type KnowledgeCatalog = (
+    actor: GameCharacter,
+    navigation: NavigationService
+) => readonly KnowledgeEntry[]
+
 export class CharacterKnowledge {
     private readonly index: SemanticIndex
     private readonly tracked = new WeakSet<CharacterMemory>()
@@ -40,7 +41,8 @@ export class CharacterKnowledge {
     private stopped = false
     public constructor(
         provider: EmbeddingProvider = new LocalEmbeddings(),
-        diagnostic: (message: string) => void = reportKnowledgeDiagnostic
+        diagnostic: (message: string) => void = reportKnowledgeDiagnostic,
+        private readonly catalog: KnowledgeCatalog = characterKnowledge
     ) {
         this.index = new SemanticIndex(provider, diagnostic)
     }
@@ -50,11 +52,18 @@ export class CharacterKnowledge {
         memory: CharacterMemory,
         query: string
     ): Promise<KnowledgeResult> {
+        if (this.isStopped() || query.trim().length === 0) {
+            return { groups: [], entries: [], memories: [] }
+        }
         this.track(memory)
-        const entries = characterKnowledge(actor, navigation)
+        const entries = this.catalog(actor, navigation)
         const recent = memory.entries().slice(-128)
         for (const entry of entries) {
-            this.index.remember(entry.id, entry.text)
+            this.index.remember(
+                entry.id,
+                knowledgeSearchText(entry),
+                entry.source.startsWith('authored:')
+            )
         }
         for (const entry of recent) {
             this.index.remember(
@@ -68,26 +77,19 @@ export class CharacterKnowledge {
                 (entry) => `memory:${memory.conversationId}:${entry.id}`
             ),
         ]
-        const scores =
-            query.trim().length > 0
-                ? await this.index.rank(query, keys)
-                : new Map<string, number>()
+        const scores = await this.index.rank(query, keys)
+        if (this.isStopped()) {
+            return { groups: [], entries: [], memories: [] }
+        }
         // Reproject after asynchronous retrieval: progression/identity can have changed.
-        const stillAllowed = new Set(
-            characterKnowledge(actor, navigation).map((entry) => entry.id)
-        )
-        const ranked = entries
-            .filter((entry) => stillAllowed.has(entry.id))
-            .map((entry) => ({
-                entry,
-                score: lexical(query, entry.text) + (scores.get(entry.id) ?? 0),
-            }))
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 6)
-            .map(({ entry }) => ({
-                ...entry,
-                text: landmarkText(entry, actor, navigation).slice(0, 800),
-            }))
+        const selected = selectKnowledgePassages({
+            initial: entries,
+            current: this.catalog(actor, navigation),
+            scores,
+            query,
+            actor,
+            navigation,
+        })
         const memories = recent
             .map((entry) => ({
                 entry,
@@ -112,8 +114,8 @@ export class CharacterKnowledge {
                 senderId: entry.senderId,
             }))
         return {
-            groups: [...new Set(ranked.map((entry) => entry.group))],
-            entries: ranked,
+            groups: [...new Set(selected.map((entry) => entry.group))],
+            entries: selected,
             memories,
         }
     }
@@ -204,6 +206,9 @@ export class CharacterKnowledge {
             await this.index.idle()
             await new Promise<void>((resolve) => setTimeout(resolve, 0))
         }
+    }
+    private isStopped(): boolean {
+        return this.stopped
     }
     public stop(): void {
         this.stopped = true

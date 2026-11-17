@@ -13,3 +13,6 @@ apps/backend/logs/
 
 # Local embedding model artifacts
 .cache/ratata-models/
+
+# Local derived knowledge vectors
+.cache/ratata-knowledge/

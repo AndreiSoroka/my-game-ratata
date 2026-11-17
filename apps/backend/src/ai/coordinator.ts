@@ -244,7 +244,9 @@ export class NpcAiCoordinator {
             state.inbox = inbox
             return
         }
-        if ('error' in ready) {
+        if ('invalidReply' in ready) {
+            this.sessions.rejectReply(state, ready.invalidReply, now)
+        } else if ('error' in ready) {
             this.sessions.failure(state, ready.error, ready.events, now)
         } else {
             this.sessions.applyReply(state, actor, ready.reply, now)

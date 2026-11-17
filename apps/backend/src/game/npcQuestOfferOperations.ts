@@ -1,14 +1,19 @@
-import type { NpcQuestDecision, QuestDraft } from '@my-game-ratata/contracts'
+import type {
+    NpcQuestDecision,
+    QuestDraft,
+    QuestOfferReplacement,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { snapshotItem } from './inventory'
 import { recordQuestOffer } from './npcQuestJournal'
+import { questProposalGuard } from './npcQuestOfferGuard'
 import { createQuestOffer, createWorkerQuestOffer } from './npcQuestOffers'
 import type { NpcQuestResult } from './npcQuests'
 import {
+    type NpcQuestDecisionContext,
     type NpcQuestEnvironment,
     questContact,
-    questOfferAvailable,
     type QuestOfferRecord,
 } from './npcQuestTypes'
 import type { QuestJournal } from './questJournal'
@@ -44,13 +49,51 @@ export function questRewardWallet(
 export class NpcQuestOfferOperations {
     public constructor(private readonly context: OfferContext) {}
 
+    public decide(
+        issuer: GameCharacter,
+        decision: Extract<
+            NpcQuestDecision,
+            { type: 'quest_propose' | 'worker_quest_propose' }
+        >,
+        now: number,
+        context: NpcQuestDecisionContext
+    ): NpcQuestResult {
+        return decision.type === 'quest_propose'
+            ? this.propose(
+                  issuer,
+                  decision.targetId,
+                  decision.draft,
+                  now,
+                  decision.replaceOffer,
+                  context
+              )
+            : this.workerPropose(
+                  issuer,
+                  decision.targetId,
+                  decision.requestId,
+                  now,
+                  decision.replaceOffer,
+                  context
+              )
+    }
+
     public propose(
         issuer: GameCharacter,
         targetId: string,
         draft: QuestDraft,
-        now: number
+        now: number,
+        replaceOffer: QuestOfferReplacement | undefined,
+        context: NpcQuestDecisionContext
     ): NpcQuestResult {
-        const guard = this.guard(issuer, targetId, now, draft)
+        const guard = questProposalGuard(
+            this.context,
+            issuer,
+            targetId,
+            now,
+            draft,
+            replaceOffer,
+            context
+        )
         if (guard !== undefined) {
             return guard
         }
@@ -69,9 +112,19 @@ export class NpcQuestOfferOperations {
         issuer: GameCharacter,
         targetId: string,
         requestId: string,
-        now: number
+        now: number,
+        replaceOffer: QuestOfferReplacement | undefined,
+        context: NpcQuestDecisionContext
     ): NpcQuestResult {
-        const guard = this.guard(issuer, targetId, now, requestId)
+        const guard = questProposalGuard(
+            this.context,
+            issuer,
+            targetId,
+            now,
+            requestId,
+            replaceOffer,
+            context
+        )
         if (guard !== undefined) {
             return guard
         }
@@ -167,45 +220,18 @@ export class NpcQuestOfferOperations {
                 'У меня сейчас нет свободной награды для такого обещания.'
             )
         }
+        const previous = this.context.offers.get(targetId)
+        if (previous !== undefined) {
+            recordQuestOffer(
+                this.context.journal,
+                previous,
+                previous.view.expiresAt <= now ? 'expired' : 'cancelled',
+                now
+            )
+        }
         this.context.offers.set(targetId, offer)
         recordQuestOffer(this.context.journal, offer, 'offered', now)
         return result(true)
-    }
-
-    private guard(
-        issuer: GameCharacter,
-        targetId: string,
-        now: number,
-        source: QuestDraft | string
-    ): NpcQuestResult | undefined {
-        const current = this.context.offers.get(targetId)
-        if (
-            current !== undefined &&
-            questOfferAvailable(current, this.context.environment, now)
-        ) {
-            const same =
-                current.view.issuerId === issuer.id &&
-                (typeof source === 'string'
-                    ? current.view.workerRequestId === source
-                    : JSON.stringify(current.draft) === JSON.stringify(source))
-            return result(
-                same,
-                same
-                    ? null
-                    : 'У собеседника уже есть предложение. Дождитесь его решения; новое не заменяет прежнее.'
-            )
-        }
-        if (current !== undefined) {
-            recordQuestOffer(this.context.journal, current, 'expired', now)
-            this.context.offers.delete(targetId)
-        }
-        if (this.context.environment.parties.contractGroup(targetId).occupied) {
-            return result(
-                false,
-                'У собеседника уже есть действующий договор. Напомните его условия вместо нового предложения.'
-            )
-        }
-        return undefined
     }
 
     private currentRevision(

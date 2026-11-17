@@ -67,7 +67,10 @@ export function answerQuestOffer(
 ): NpcQuestResult {
     const available = availableOffer(context, actor, message, now)
     if (available === undefined) {
-        return questResult(false, 'Предложение устарело. Попросите новое.')
+        return questResult(
+            false,
+            'Предложение устарело или заменено. Проверьте актуальные условия.'
+        )
     }
     const [offer, issuer] = available
     if (!message.accept) {

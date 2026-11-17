@@ -6,6 +6,7 @@ import {
 
 import { type GameCharacter } from './character'
 import { GameCharacter as Character } from './character'
+import { companionSoul } from './companionProfiles'
 import {
     type CharacterController,
     Mob1Controller,
@@ -99,6 +100,7 @@ export function createFriendlyGirl(
         faction: 'peaceful',
         id: `npc_friendly_girl_1${idSuffix}`,
         nickname: 'Mira',
+        soul: companionSoul('npc_friendly_girl_1'),
         spawnPosition: spawnPosition(
             navigation,
             { x: 4, y: 2 },

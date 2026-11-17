@@ -120,7 +120,7 @@ function sourceMaterial(source: string): AdventureResourceNode['kind'] {
           ? 'stone'
           : 'brushwood'
 }
-function capacityFor(source: string, size: unknown): number {
+export function capacityFor(source: string, size: unknown): number {
     switch (source) {
         case 'tree':
             return size === 'small' ? 2 : 8

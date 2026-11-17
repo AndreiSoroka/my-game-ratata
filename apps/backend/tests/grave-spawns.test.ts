@@ -19,12 +19,12 @@ describe('final player identity graves', () => {
         const f = graveFixture()
         const hero = graveHero()
         hero.applyDamage(hero.hp, now)
-        f.service.schedule(hero, now)
+        f.service.schedule(hero, now, f.navigation)
         f.service.update(now + 30_000, f.context)
         expect(f.created).toHaveLength(0)
         retireCharacter(hero)
-        f.service.schedule(hero, now + 60_000)
-        f.service.schedule(hero, now + 70_000)
+        f.service.schedule(hero, now + 60_000, f.navigation)
+        f.service.schedule(hero, now + 70_000, f.navigation)
         expect(f.service.snapshot(hero.locationId)).toMatchObject([
             {
                 id: `final:${hero.id}`,
@@ -46,7 +46,7 @@ describe('final player identity graves', () => {
             controllerKind: 'mob1',
             respawnPolicy: 'none',
         })
-        f.service.schedule(hero, now + 100_000)
+        f.service.schedule(hero, now + 100_000, f.navigation)
         f.service.update(now + 100_000, f.context)
         expect(f.created).toHaveLength(1)
         expect(f.service.snapshot(CENTER_LOCATION_ID)).toEqual([])
@@ -67,8 +67,8 @@ describe('final player identity graves', () => {
         })
         npc.applyDamage(npc.hp, now)
         retireCharacter(npc)
-        f.service.schedule(npc, now)
-        f.service.schedule(hero, now)
+        f.service.schedule(npc, now, f.navigation)
+        f.service.schedule(hero, now, f.navigation)
         f.service.update(now + 30_000, f.context)
         expect(f.created).toHaveLength(1)
         expect(f.created[0]?.character.locationId).toBe(CENTER_LOCATION_ID)
@@ -153,7 +153,7 @@ describe('safe shared skeleton placement', () => {
         const hero = graveHero('fallen', CENTER_LOCATION_ID)
         hero.applyDamage(hero.hp, now)
         retireCharacter(hero)
-        f.service.schedule(hero, now)
+        f.service.schedule(hero, now, f.navigation)
         f.navigation.grid.solid.fill(true)
         f.service.update(now + 30_000, f.context)
         expect(f.created).toHaveLength(0)

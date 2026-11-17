@@ -117,6 +117,73 @@ it('patrols within 64px and defends without chasing beyond 160px on its home map
     expect(pursuits.get(f.actor)?.phase).toBe('return')
 })
 
+it.each([
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+    { x: 0, y: -1 },
+    { x: 0, y: 1 },
+])(
+    'keeps an idle guardian on its home map at the $x,$y border',
+    (direction) => {
+        const f = pursuitFixture({ direction })
+        const navigation = f.room.navigationFor(f.actor)
+        const { worldWidth, worldHeight } = navigation.summary
+        const home = {
+            x: direction.x < 0 ? 24 : direction.x > 0 ? worldWidth - 24 : 248,
+            y: direction.y < 0 ? 24 : direction.y > 0 ? worldHeight - 24 : 248,
+        }
+        f.actor.position = { ...home }
+        f.target.tags.add('offline')
+        const service = new GraveSpawns()
+        service.register(
+            { id: 'edge', locationId: f.actor.locationId, position: home },
+            [f.actor.id],
+            0
+        )
+        service.assignGuardians(new Map([[f.actor.id, f.actor]]))
+        for (let step = 0; step < 3_000; step++) {
+            f.step()
+            expect(f.actor.locationId).toBe(f.actor.spawnLocationId)
+            expect(
+                Math.hypot(
+                    f.actor.position.x - home.x,
+                    f.actor.position.y - home.y
+                )
+            ).toBeLessThanOrEqual(PURSUIT_RULES.guardianPatrolRadius)
+        }
+        expect(pursuits.has(f.actor)).toBe(false)
+    }
+)
+
+it('lets a released guardian cross the border after its grave is purified', () => {
+    const f = pursuitFixture()
+    f.target.tags.add('offline')
+    const service = new GraveSpawns()
+    service.register(
+        {
+            id: 'released',
+            locationId: f.actor.locationId,
+            position: { ...f.actor.position },
+        },
+        [f.actor.id],
+        0
+    )
+    service.assignGuardians(new Map([[f.actor.id, f.actor]]))
+    expect(service.purify('released', f.now())).toBe(true)
+    expect(territories.has(f.actor)).toBe(false)
+    f.actor.setMoveInput(f.direction)
+    for (
+        let step = 0;
+        step < 80 && f.actor.locationId === f.actor.spawnLocationId;
+        step++
+    ) {
+        f.step(() => undefined)
+    }
+    expect(f.actor.locationId).toBe('map-2-1')
+    expect(f.actor.alive).toBe(true)
+    expect(pursuits.has(f.actor)).toBe(false)
+})
+
 it('allows a guardian near the border one bounded neighboring-map pursuit and returns it to the grave', () => {
     const f = pursuitFixture()
     const service = new GraveSpawns()

@@ -3,6 +3,7 @@ import type {
     ClientMessage,
     NpcQuestClientMessage,
     NpcQuestDecision,
+    QuestOfferReplacement,
 } from '@my-game-ratata/contracts'
 import { isQuestRewardMode } from '@my-game-ratata/contracts'
 
@@ -113,21 +114,64 @@ export function parseNpcQuestDecision(
         case 'quest_offer_revise':
             return parseRevision(value, targetId)
         case 'worker_quest_propose':
-            return id(value['requestId'])
-                ? {
-                      type: value['type'],
-                      targetId,
-                      requestId: value['requestId'],
-                  }
-                : undefined
-        case 'quest_propose': {
-            const draft = parseQuestDraft(value['draft'])
-            return draft === undefined
-                ? undefined
-                : { type: value['type'], targetId, draft }
-        }
+            return parseWorkerProposal(value, targetId)
+        case 'quest_propose':
+            return parseDraftProposal(value, targetId)
         default:
             return undefined
+    }
+}
+
+function parseWorkerProposal(
+    value: Record<string, unknown>,
+    targetId: string
+): NpcQuestDecision | undefined {
+    const replaceOffer = parseReplacement(value['replaceOffer'])
+    return id(value['requestId']) && replaceOffer !== null
+        ? {
+              type: 'worker_quest_propose',
+              targetId,
+              requestId: value['requestId'],
+              ...(replaceOffer === undefined ? {} : { replaceOffer }),
+          }
+        : undefined
+}
+
+function parseDraftProposal(
+    value: Record<string, unknown>,
+    targetId: string
+): NpcQuestDecision | undefined {
+    const draft = parseQuestDraft(value['draft'])
+    const replaceOffer = parseReplacement(value['replaceOffer'])
+    return draft === undefined || replaceOffer === null
+        ? undefined
+        : {
+              type: 'quest_propose',
+              targetId,
+              draft,
+              ...(replaceOffer === undefined ? {} : { replaceOffer }),
+          }
+}
+
+function parseReplacement(
+    value: unknown
+): QuestOfferReplacement | null | undefined {
+    if (value === undefined) {
+        return undefined
+    }
+    if (
+        !record(value) ||
+        Object.keys(value).some(
+            (key) => !['offerId', 'revision'].includes(key)
+        ) ||
+        !id(value['offerId']) ||
+        !integer(value['revision'], 1, Number.MAX_SAFE_INTEGER)
+    ) {
+        return null
+    }
+    return {
+        offerId: value['offerId'],
+        revision: Number(value['revision']),
     }
 }
 
