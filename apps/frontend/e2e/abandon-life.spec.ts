@@ -28,7 +28,7 @@ for (const mobile of [false, true]) {
         await expect(page.getByRole('group', { name: 'Прошлое героя' })).toBeVisible()
         await expect(page.getByRole('radio', { name: 'Клирик', exact: true })).toBeFocused()
         await page.getByRole('radio', { name: 'Следопыт', exact: true }).check()
-        await page.getByRole('button', { name: 'Enter', exact: true }).click()
+        await page.getByRole('button', { name: 'Войти', exact: true }).click()
         await expect
             .poll(() => page.evaluate(() => window.__ratataTest!.getState().player?.heroClass))
             .toBe('ranger')

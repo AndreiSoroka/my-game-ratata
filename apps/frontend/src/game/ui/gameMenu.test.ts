@@ -132,6 +132,43 @@ it('can leave a pending startup through Escape or the visible menu button before
         wrapper.unmount()
     }
 })
+it.each(['error', 'cancel'] as const)(
+    'keeps an unconfirmed generated name create-only after startup %s',
+    async (outcome) => {
+        let complete!: () => void
+        runtime.pendingStart = new Promise<void>((resolve) => {
+            complete = resolve
+        })
+        const wrapper = mount(App, {
+            attachTo: document.body,
+            global: {
+                stubs: { SpeechBubbles: true, AdventurePanel: true, NearbyInteraction: true },
+            },
+        })
+        try {
+            const proposed = wrapper.get<HTMLInputElement>('#nickname').element.value
+            await wrapper.get('form').trigger('submit')
+            await flushPromises()
+            expect(runtime.options?.createOnly).toBe(true)
+            if (outcome === 'error') runtime.options?.onError('Connection failed')
+            else {
+                await pressEscape()
+                await wrapper.get('[data-dialog-action="leave"]').trigger('click')
+            }
+            await flushPromises()
+            expect(wrapper.get<HTMLInputElement>('#nickname').element.value).toBe(proposed)
+            await wrapper.get('form').trigger('submit')
+            await flushPromises()
+            expect(runtime.options?.nickname).toBe(proposed)
+            expect(runtime.options?.createOnly).toBe(true)
+            complete()
+            await flushPromises()
+        } finally {
+            complete()
+            wrapper.unmount()
+        }
+    }
+)
 it('opens a local menu, traps its confirmation and exits through cleanup without retiring the character', async () => {
     const wrapper = await joined()
     try {

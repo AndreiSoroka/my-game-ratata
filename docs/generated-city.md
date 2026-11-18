@@ -62,7 +62,7 @@ GAME_WORLD_SEED=novogorod-example node scripts/generate-world.mjs --location map
 
 ## Загрузка карт клиентом
 
-Протокол `0.11.0` передаёт `MapSummary.asset = { url, revision }` в `world_init`
+Протокол `0.12.0` передаёт `MapSummary.asset = { url, revision }` в `world_init`
 и снимках локации. Backend отдаёт свою карту через
 `/world/maps/:serverEpoch/:locationId.json`; старый epoch получает 404.
 Версия содержимого используется как ETag, карта неизменна в пределах epoch.

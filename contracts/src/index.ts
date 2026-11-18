@@ -80,7 +80,12 @@ import type { HealthSnapshot } from './health'
 export * from './health'
 import type { CharacterResourceChecks, ResourceSnapshot } from './resources'
 export * from './exchange'
-export type { PlayerIdentity, WorldPosition } from './identity'
+import type { JoinClientMessage } from './identity'
+export type {
+    JoinClientMessage,
+    PlayerIdentity,
+    WorldPosition,
+} from './identity'
 export * from './materials'
 export * from './npcQuests'
 export * from './pursuit'
@@ -238,13 +243,6 @@ export interface MapSummary {
     width: number
     worldHeight: number
     worldWidth: number
-}
-
-export interface JoinClientMessage {
-    heroClass?: HeroClass
-    archetype?: CharacterArchetype
-    nickname: string
-    type: 'join'
 }
 
 export interface MoveInputClientMessage {

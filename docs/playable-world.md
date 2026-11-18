@@ -27,6 +27,19 @@ and position. For the first activities, see
 [Mira's bell quest](../knowledge/quests/bell.md). Backgrounds supply starting
 strengths and knowledge; later learning follows the shared character rules.
 
+The login form starts with a local fantasy name. «Сгенерировать другое имя» replaces it without
+submitting; you can also edit «Имя героя» and press «Войти». Half the proposals are short names and
+half include a gender-neutral byname. Full names fit the 24-character limit without truncation.
+The page language selects a separate Russian or English pool; the page currently uses Russian.
+Name selection sends no requests. Its [source and BSD notice](../apps/frontend/src/game/names/README.md)
+are included with the frontend build.
+
+A generated proposal sends `join.createOnly: true`: the server rejects an existing normalized name,
+including a disconnected character. An error or cancelled connection keeps the proposal and that
+flag. Manual edits and a confirmed server join clear it; leaving and rejoining under an accepted
+name restores the same identity. Returning to the form retains its name during the app session.
+The form and input request [`autocomplete="off"`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete).
+
 WASD/arrows move; clicking empty ground walks to a point. **C** toggles sneaking,
 **Space** dashes, **I** opens inventory, **P** opens the character window and
 **Enter** opens chat. Movement shortcuts use physical key positions, including
@@ -284,7 +297,7 @@ Melee and skeleton strike arcs begin at the same world anchor as the attacker's 
 
 Novogorod's wooden training pen is placed with the current city layout and connected to the streets; use its observed building landmark rather than fixed coordinates. It retains its three-tile entrance on the west. Its stationary wood-and-straw construct uses shared character combat: select it with a click or E and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
 
-Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.11.0 retains HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
+Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.12.0 retains HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
 
 ## Speech bubbles and dialogue keys
 

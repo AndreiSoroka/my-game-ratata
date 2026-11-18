@@ -5,6 +5,7 @@ import type { ChatInputState } from './chatInput'
 export interface RatataGameOptions {
     container: HTMLElement
     nickname: string
+    createOnly?: boolean
     heroClass?: HeroClass
     onCharacterClick?: (id: string) => void
     onEvent?: (event: GameEventPayload) => void

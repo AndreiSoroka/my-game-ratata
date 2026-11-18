@@ -9,11 +9,12 @@ import {
 
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import HeroClassIcon from './HeroClassIcon.vue'
+import RefreshIcon from './RefreshIcon.vue'
 
 const nickname = defineModel<string>('nickname', { required: true })
 const heroClass = defineModel<HeroClass>('heroClass', { required: true })
 defineProps<{ canJoin: boolean; errorMessage: string }>()
-defineEmits<{ join: [] }>()
+defineEmits<{ join: []; 'nickname-edited': []; 'regenerate-name': [] }>()
 const classes = heroClasses.map((id) => ({
     id,
     label: HERO_BACKGROUND_DEFINITIONS[id].name,
@@ -37,20 +38,36 @@ const classes = heroClasses.map((id) => ({
                 знакомые дела. Собирайте свои сценарии и договаривайтесь о помощи.
             </p>
         </div>
-        <form class="join-panel" @submit.prevent="$emit('join')">
+        <form class="join-panel" autocomplete="off" @submit.prevent="$emit('join')">
             <h1 id="join-title">Ratata</h1>
-            <label for="nickname">Nickname</label>
+            <label for="nickname">Имя героя</label>
             <div class="join-row">
                 <input
                     id="nickname"
                     v-model="nickname"
-                    autocomplete="nickname"
+                    autocomplete="off"
                     maxlength="24"
                     minlength="1"
                     required
                     type="text"
+                    @input="$emit('nickname-edited')"
                 />
-                <button :disabled="!canJoin" type="submit">Enter</button>
+                <button
+                    class="join-regenerate"
+                    type="button"
+                    aria-label="Сгенерировать другое имя"
+                    title="Сгенерировать другое имя"
+                    @click="$emit('regenerate-name')"
+                >
+                    <RefreshIcon />
+                </button>
+                <button
+                    class="join-submit"
+                    :disabled="!canJoin || nickname.trim().length === 0"
+                    type="submit"
+                >
+                    Войти
+                </button>
             </div>
             <fieldset class="class-choices" aria-describedby="class-description class-hint">
                 <legend>Прошлое героя</legend>
@@ -82,7 +99,7 @@ const classes = heroClasses.map((id) => ({
                 Прошлое даёт первые преимущества. Любой герой может освоить меч, чудеса и магию
                 через обучение и практику. Новая жизнь начинается без золота.
             </p>
-            <p v-if="errorMessage" class="join-error">{{ errorMessage }}</p>
+            <p v-if="errorMessage" class="join-error" role="alert">{{ errorMessage }}</p>
         </form>
     </section>
 </template>
@@ -104,6 +121,30 @@ const classes = heroClasses.map((id) => ({
     background: #0f1614f2;
     border-color: #9f89635e;
     backdrop-filter: blur(8px);
+}
+.join-row {
+    grid-template-columns: minmax(0, 1fr) 44px auto;
+}
+.join-regenerate {
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+.join-regenerate svg {
+    width: 22px;
+    height: 22px;
+}
+.join-row button:focus-visible {
+    outline: 2px solid #f4e3b5;
+    outline-offset: 3px;
+}
+@media (max-width: 480px) {
+    .join-row {
+        grid-template-columns: minmax(0, 1fr) 44px;
+    }
+    .join-submit {
+        grid-column: 1 / -1;
+    }
 }
 .join-lore {
     justify-self: start;

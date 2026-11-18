@@ -48,7 +48,7 @@ describe('game room joins', () => {
 
         expect(second.sent).toContainEqual({
             code: 'name_taken',
-            message: 'Nickname is already in use',
+            message: 'Это имя уже занято. Сгенерируйте другое или введите своё',
             type: 'error',
         })
         expect(findWorldInit(second)).toBeUndefined()

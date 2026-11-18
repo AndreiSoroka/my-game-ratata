@@ -28,7 +28,7 @@ export class RuntimeSocket {
         this.handlers = handlers
     }
 
-    public connect(nickname: string, heroClass?: HeroClass): void {
+    public connect(nickname: string, heroClass?: HeroClass, createOnly = false): void {
         if (this.handlers.isStopped()) return
         this.close()
         this.handlers.onStatus('Connecting')
@@ -38,7 +38,12 @@ export class RuntimeSocket {
 
         socket.addEventListener('open', () => {
             if (this.handlers.isStopped() || this.socket !== socket) return
-            this.send({ nickname, type: 'join', ...(heroClass === undefined ? {} : { heroClass }) })
+            this.send({
+                nickname,
+                type: 'join',
+                ...(heroClass === undefined ? {} : { heroClass }),
+                ...(createOnly ? { createOnly: true } : {}),
+            })
         })
         socket.addEventListener('message', (event) => {
             if (this.socket === socket) this.handleSocketMessage(event)

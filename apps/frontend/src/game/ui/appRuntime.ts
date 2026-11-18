@@ -11,6 +11,8 @@ interface AppRuntimeOptions {
     game: Ref<RatataGame | undefined>
     container: () => HTMLElement | undefined
     nickname: string
+    createOnly?: boolean
+    onJoinAccepted?: () => void
     heroClass: HeroClass
     gameplay: () => InstanceType<typeof GameplayOverlay> | undefined
     chatInput: Ref<ChatInputState>
@@ -53,9 +55,11 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
 function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): RatataGame {
     const constellations = createConstellationNotices()
     let noticeSession = ''
+    let accepted = false
     return new RatataGame({
         container,
         nickname: options.nickname.trim(),
+        ...(options.createOnly === true ? { createOnly: true } : {}),
         heroClass: options.heroClass,
         onDefeat: () => {
             options.hotbarSession?.clear()
@@ -83,6 +87,10 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         onInventoryToggle: options.toggleInventory,
         onCharacterToggle: options.toggleCharacter,
         onSnapshot: (snapshot, playerId) => {
+            if (!accepted && snapshot.characters.some((character) => character.id === playerId)) {
+                accepted = true
+                options.onJoinAccepted?.()
+            }
             options.chatHistory?.observe(snapshot, playerId)
             const session = JSON.stringify([snapshot.serverEpoch ?? '', playerId])
             if (session !== noticeSession) {

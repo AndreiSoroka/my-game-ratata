@@ -1,11 +1,16 @@
 import { expect, type Page, test } from '@playwright/test'
 
-test('requires a nickname before entering the game', async ({ page }) => {
+test('suggests a hero name and still requires one after the suggestion is cleared', async ({
+    page,
+}) => {
     await page.goto('/')
 
     await expect(page.locator('h1')).toHaveText('Ratata')
-    await expect(page.getByLabel('Nickname')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Enter' })).toBeDisabled()
+    await expect(page.getByLabel('Имя героя')).toBeVisible()
+    await expect(page.getByLabel('Имя героя')).not.toHaveValue('')
+    await expect(page.getByRole('button', { name: 'Войти' })).toBeEnabled()
+    await page.getByLabel('Имя героя').fill('')
+    await expect(page.getByRole('button', { name: 'Войти' })).toBeDisabled()
 })
 
 test('rejects duplicate active nickname without black screen on retry', async ({
@@ -29,18 +34,25 @@ test('rejects duplicate active nickname without black screen on retry', async ({
     await expect(first.locator('canvas[data-game-canvas=true]')).toBeVisible()
 
     await second.goto('/')
-    await second.getByLabel('Nickname').fill(nickname)
-    await second.getByRole('button', { name: 'Enter' }).click()
-    await expect(second.getByText('Nickname is already in use')).toBeVisible()
-    await expect(second.getByLabel('Nickname')).toBeVisible()
+    await second.getByLabel('Имя героя').fill(nickname)
+    await second.getByRole('button', { name: 'Войти' }).click()
+    await expect(
+        second.getByText('Это имя уже занято. Сгенерируйте другое или введите своё')
+    ).toBeVisible()
+    await expect(second.getByLabel('Имя героя')).toBeVisible()
 
-    await second.getByRole('button', { name: 'Enter' }).click()
-    await expect(second.getByText('Nickname is already in use')).toBeVisible()
-    await expect(second.getByLabel('Nickname')).toBeVisible()
+    await second.getByRole('button', { name: 'Войти' }).click()
+    await expect(
+        second.getByText('Это имя уже занято. Сгенерируйте другое или введите своё')
+    ).toBeVisible()
+    await expect(second.getByLabel('Имя героя')).toBeVisible()
     await expect(second.locator('canvas[data-game-canvas=true]')).toHaveCount(0)
 
-    await second.getByLabel('Nickname').fill(`${nickname}-2`)
-    await second.getByRole('button', { name: 'Enter' }).click()
+    await second.getByLabel('Имя героя').fill(`${nickname}-2`)
+    await expect(
+        second.getByText('Это имя уже занято. Сгенерируйте другое или введите своё')
+    ).toHaveCount(0)
+    await second.getByRole('button', { name: 'Войти' }).click()
     await expect(second.locator('canvas[data-game-canvas=true]')).toBeVisible()
     await expect(second.getByRole('region', { name: 'Player status' })).toBeVisible()
     expect(consoleErrors.join('\n')).not.toContain(
@@ -53,7 +65,7 @@ test('rejects duplicate active nickname without black screen on retry', async ({
 
 async function joinAs(page: Page, nickname: string): Promise<void> {
     await page.goto('/')
-    await page.getByLabel('Nickname').fill(nickname)
-    await page.getByRole('button', { name: 'Enter' }).click()
+    await page.getByLabel('Имя героя').fill(nickname)
+    await page.getByRole('button', { name: 'Войти' }).click()
     await expect(page.getByRole('region', { name: 'Player status' })).toBeVisible()
 }

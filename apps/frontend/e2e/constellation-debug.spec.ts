@@ -319,5 +319,5 @@ test('debug atlas never joins a player or sends gameplay requests', async ({ pag
 test('ordinary entry remains the player sign-in page', async ({ page }) => {
     await page.goto('/?test=1')
     await expect(page.getByTestId('constellation-debug')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Enter', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Войти', exact: true })).toBeVisible()
 })

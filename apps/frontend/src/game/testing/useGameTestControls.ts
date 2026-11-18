@@ -16,7 +16,7 @@ interface TestControls {
     localCharacter: Ref<CharacterSnapshot | undefined>
     isStarted: Ref<boolean>
     heroClass: Ref<HeroClass>
-    nickname: Ref<string>
+    setNickname: (name: string) => void
     game: Ref<RatataGame | undefined>
     joinGame: () => Promise<void>
     setInventory: (open: boolean) => void
@@ -53,7 +53,7 @@ export function useGameTestControls(state: TestControls) {
                       if (name.trim().length === 0 || name.trim().length > 24)
                           throw new Error('Nickname must contain 1–24 characters')
                       state.heroClass.value = selectedClass ?? state.heroClass.value
-                      state.nickname.value = name.trim()
+                      state.setNickname(name.trim())
                       await state.joinGame()
                   },
                   send: (command) => state.game.value?.sendCommand(command),

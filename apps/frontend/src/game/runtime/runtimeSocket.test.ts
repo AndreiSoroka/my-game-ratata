@@ -7,6 +7,41 @@ afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
 })
+it.each([undefined, false, true])(
+    'sends createOnly only for an explicitly generated proposal (%s)',
+    (createOnly) => {
+        const sockets: EventTarget[] = []
+        const send = vi.fn<(data: string) => void>()
+        class TestSocket extends EventTarget {
+            public static readonly OPEN = 1
+            public readonly readyState = 1
+            public send = send
+            public close(): void {}
+            public constructor() {
+                super()
+                sockets.push(this)
+            }
+        }
+        vi.stubGlobal('WebSocket', TestSocket)
+        const runtime = new RuntimeSocket({
+            isStopped: () => false,
+            onError: vi.fn<() => void>(),
+            onEvent: vi.fn<() => void>(),
+            onSnapshot: vi.fn<() => void>(),
+            onStatus: vi.fn<() => void>(),
+            onWorldInit: vi.fn<() => void>(),
+        })
+        runtime.connect('Hero', 'ranger', createOnly)
+        sockets[0]!.dispatchEvent(new Event('open'))
+        expect(send).toHaveBeenCalledOnce()
+        expect(JSON.parse(send.mock.calls[0]![0])).toEqual({
+            type: 'join',
+            nickname: 'Hero',
+            heroClass: 'ranger',
+            ...(createOnly === true ? { createOnly: true } : {}),
+        })
+    }
+)
 it.each(['0.1.0', '0.2.0'])(
     'rejects protocol %s before delivering legacy resource snapshots to presentation',
     (protocolVersion) => {

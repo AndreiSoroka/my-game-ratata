@@ -106,7 +106,7 @@ export class RatataGame {
     public start(): Promise<void> {
         this.stopped = false
         this.options.onStatus('Connecting')
-        this.socket.connect(this.options.nickname, this.options.heroClass)
+        this.socket.connect(this.options.nickname, this.options.heroClass, this.options.createOnly)
         return Promise.resolve()
     }
 

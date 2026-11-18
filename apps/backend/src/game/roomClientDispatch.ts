@@ -31,7 +31,8 @@ interface DispatchContext extends ClientContext {
         ws: RoomSocket,
         nickname: string,
         archetype: CharacterArchetype,
-        heroClass: HeroClass | undefined
+        heroClass: HeroClass | undefined,
+        createOnly?: boolean
     ): void
     abandon(actor: GameCharacter): void
 }
@@ -45,7 +46,8 @@ export function dispatchRoomClientMessage(
             ws,
             message.nickname,
             message.archetype ?? 'human',
-            message.heroClass
+            message.heroClass,
+            message.createOnly
         )
         return
     }

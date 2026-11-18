@@ -55,7 +55,8 @@ export function createRoomJoiner(
         ws: RoomSocket,
         nickname: string,
         archetype: GameCharacter['archetype'],
-        heroClass?: HeroClass
+        heroClass?: HeroClass,
+        createOnly?: boolean
     ): void =>
         joinRoom(
             {
@@ -73,7 +74,8 @@ export function createRoomJoiner(
             ws,
             nickname,
             archetype,
-            heroClass
+            heroClass,
+            createOnly
         )
 }
 
@@ -96,15 +98,28 @@ export function joinRoom(
     ws: RoomSocket,
     nickname: string,
     archetype: GameCharacter['archetype'],
-    heroClass: HeroClass | undefined
+    heroClass: HeroClass | undefined,
+    createOnly?: boolean
 ): void {
     const nicknameKey = normalizeNickname(nickname)
+    if (createOnlyNameTaken(context.characters, nicknameKey, createOnly)) {
+        sendError(
+            ws,
+            'name_taken',
+            'Это имя уже занято. Сгенерируйте другое или введите своё'
+        )
+        return
+    }
     const existingPlayerId = context.nicknames.get(nicknameKey)
     if (
         existingPlayerId !== undefined &&
         isPlayerConnected(context.connections, existingPlayerId, ws)
     ) {
-        sendError(ws, 'name_taken', 'Nickname is already in use')
+        sendError(
+            ws,
+            'name_taken',
+            'Это имя уже занято. Сгенерируйте другое или введите своё'
+        )
         return
     }
     const existingId = context.connections.get(ws)
@@ -150,6 +165,19 @@ export function joinRoom(
         actorId: character.id,
         kind: 'join',
     })
+}
+
+function createOnlyNameTaken(
+    characters: ReadonlyMap<string, GameCharacter>,
+    nicknameKey: string,
+    createOnly: boolean | undefined
+): boolean {
+    return (
+        createOnly === true &&
+        [...characters.values()].some(
+            (character) => normalizeNickname(character.nickname) === nicknameKey
+        )
+    )
 }
 
 function isPlayerConnected(

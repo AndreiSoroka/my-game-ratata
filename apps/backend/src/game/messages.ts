@@ -128,6 +128,13 @@ function parseJoin(record: Record<string, unknown>): ParseResult {
     if (typeof nickname !== 'string' || nickname.trim().length === 0) {
         return { error: 'Nickname is required' }
     }
+    const createOnly = record['createOnly']
+    if (
+        Object.hasOwn(record, 'createOnly') &&
+        typeof createOnly !== 'boolean'
+    ) {
+        return { error: 'join.createOnly must be a boolean' }
+    }
 
     const heroClass = heroClasses.find(
         (candidate) => candidate === record['heroClass']
@@ -137,8 +144,9 @@ function parseJoin(record: Record<string, unknown>): ParseResult {
     }
     const archetype = parseArchetype(record['archetype'])
     const message = {
-        nickname: nickname.trim().slice(0, 24),
+        nickname: nickname.trim().normalize('NFC').slice(0, 24),
         type: 'join',
+        ...(typeof createOnly === 'boolean' ? { createOnly } : {}),
         ...(heroClass === undefined ? {} : { heroClass }),
     } satisfies ClientMessage
 

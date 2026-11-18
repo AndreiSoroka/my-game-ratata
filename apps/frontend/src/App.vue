@@ -4,6 +4,7 @@ import './game/ui/gameNotice.css'
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
+import { useHeroName } from './game/names/useHeroName'
 import type { RatataGame } from './game/runtime/ratataGame'
 import TestControlPanel from './game/testing/TestControlPanel.vue'
 import { useGameTestControls } from './game/testing/useGameTestControls'
@@ -33,10 +34,11 @@ const gameplay = ref<InstanceType<typeof GameplayOverlay>>()
 const interaction = ref<InstanceType<typeof NearbyInteraction>>()
 const adventurePanel = ref<InstanceType<typeof AdventurePanel>>()
 const gameWindows = ref<InstanceType<typeof GameWindows>>()
-const nickname = ref('')
+const errorMessage = ref('')
+const heroName = useHeroName(undefined, () => (errorMessage.value = ''))
+const { nickname } = heroName
 const heroClass = ref<HeroClass>('vanguard')
 const defeated = ref(false)
-const errorMessage = ref('')
 const gameHost = ref<HTMLElement>()
 const game = ref<RatataGame>()
 const isJoining = ref(false)
@@ -97,7 +99,7 @@ const { testState, testInterface } = useGameTestControls({
     localCharacter,
     isStarted,
     heroClass,
-    nickname,
+    setNickname: heroName.setManually,
     game,
     joinGame,
     setInventory,
@@ -132,38 +134,34 @@ const {
     prepareAutomationWindow,
     closeOtherContainers,
 } = windows
+const runtimeState = {
+    game,
+    chatInput,
+    errorMessage,
+    snapshot,
+    localPlayerId,
+    isJoining,
+    isStarted,
+    status,
+}
 const { leaveSession, cleanupFailedJoin } = useAppSession({
     ...windows,
+    ...runtimeState,
     notices,
     hotbarSession,
     testInterface,
     defeated,
-    errorMessage,
-    isJoining,
-    localPlayerId,
-    game,
-    snapshot,
     inventoryOpen,
     planting,
-    chatInput,
-    isStarted,
-    status,
 })
 
 async function joinGame(): Promise<void> {
     await startAppRuntime({
-        game,
+        ...runtimeState,
         container: () => gameHost.value,
-        nickname: nickname.value,
+        ...heroName.attempt(),
         heroClass: heroClass.value,
         gameplay: () => gameplay.value,
-        chatInput,
-        errorMessage,
-        snapshot,
-        localPlayerId,
-        isJoining,
-        isStarted,
-        status,
         notices,
         chatHistory,
         confirmDeath,
@@ -183,6 +181,8 @@ async function joinGame(): Promise<void> {
             :can-join="nickname.trim().length > 0 && !isJoining"
             :error-message="errorMessage"
             @join="joinGame"
+            @nickname-edited="heroName.edited"
+            @regenerate-name="heroName.regenerate"
         />
 
         <section v-else class="game-screen" aria-label="Ratata game">
