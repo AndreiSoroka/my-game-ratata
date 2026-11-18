@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { agentConnected } from './agentAvailability'
 import { observeGame } from './agentObservation'
 import { createAgentWaiter } from './agentWait'
 import { adventureFixture, characterFixture, worldFixture } from './characterFixture'
@@ -105,5 +106,33 @@ describe('AI outcome observation', () => {
             'Invalid'
         )
         expect(vi.getTimerCount()).toBe(0)
+    })
+})
+
+describe('waiting while map assets load', () => {
+    it('waits for presentation readiness after a confirmed transfer, without losing the session', async () => {
+        const { waiter, state, snapshot } = setup()
+        const completed = vi.fn<() => void>()
+        const result = waiter.waitFor({ type: 'tick', after: snapshot.tick })
+        void result.then(completed)
+        state.status = 'Loading map'
+        state.connected = agentConnected(state.status)
+        state.mapReady = false
+        snapshot.tick += 1
+        await vi.advanceTimersByTimeAsync(500)
+        expect(completed).not.toHaveBeenCalled()
+        state.mapReady = true
+        state.status = 'Connected'
+        await vi.advanceTimersByTimeAsync(50)
+        expect((await result).status).toBe('condition_met')
+    })
+
+    it('times out rather than claiming arrival when map loading remains unavailable', async () => {
+        const { waiter, state, snapshot } = setup()
+        const result = waiter.waitFor({ type: 'tick', after: snapshot.tick }, { timeoutMs: 200 })
+        state.mapReady = false
+        snapshot.tick += 1
+        await vi.advanceTimersByTimeAsync(200)
+        expect((await result).status).toBe('timeout')
     })
 })

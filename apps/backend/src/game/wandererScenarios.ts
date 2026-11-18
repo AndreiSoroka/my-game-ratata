@@ -13,14 +13,26 @@ export function createWandererScenario(
     character: GameCharacter,
     navigation: NavigationService
 ): ScenarioDefinition | undefined {
-    const route = cityResidents.find(
+    const profile = cityResidents.find(
         (resident) => resident.id === character.id
-    )?.idleRouteTiles
+    )
+    const route = profile?.idleRouteTiles
     if (route === undefined) {
         return undefined
     }
-    const points = route
-        .map((tile) => walkableNear(navigation, navigation.tileToWorld(tile)))
+    const authored = navigation.grid.cityAnchors
+    const destinations =
+        authored === undefined
+            ? route.map((tile) => navigation.tileToWorld(tile))
+            : (profile?.idleRouteAnchors ?? []).map((id) => {
+                  const point = authored[id]
+                  if (point === undefined) {
+                      throw new Error(`Missing city route anchor: ${id}`)
+                  }
+                  return point
+              })
+    const points = destinations
+        .map((point) => walkableNear(navigation, point))
         .filter(
             (point) =>
                 navigation.findPathWorld(character.spawnPosition, point)

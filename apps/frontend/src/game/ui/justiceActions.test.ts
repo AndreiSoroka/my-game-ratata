@@ -15,6 +15,7 @@ const city: WorldLocation = {
     biome: 'city',
     regionName: 'Земли Новогорода',
     map: {
+        asset: { url: '/game/map/map1.json', revision: 'fixture' },
         id: 'map-2-2',
         width: 96,
         height: 80,

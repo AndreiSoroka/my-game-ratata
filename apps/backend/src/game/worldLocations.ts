@@ -13,6 +13,7 @@ import { loadNavigationService, NavigationService } from './navigation'
 import { returnFromPursuit } from './pursuitState'
 import { canPursuitTravel, recordPursuitEntry } from './pursuitTravel'
 import { WorldInventory } from './worldInventory'
+import type { WorldMaps } from './worldMaps'
 
 export const centerLocationId = CENTER_LOCATION_ID
 export const dragonBoundaryMessage = 'А там дальше живут драконы'
@@ -26,19 +27,27 @@ export interface LocationState {
 }
 
 export class WorldLocations {
+    public readonly serverEpoch: string | undefined
     public readonly locations = new Map<string, LocationState>()
     private readonly blockedEdges = new Map<string, string>()
 
-    public constructor(center: NavigationService, wallet?: CorpseWallet) {
+    public constructor(
+        center: NavigationService,
+        wallet?: CorpseWallet,
+        private readonly maps?: WorldMaps
+    ) {
+        this.serverEpoch = maps?.epoch
         for (const definition of WORLD_LOCATION_DEFINITIONS) {
             const { id } = definition
             const navigation =
                 id === CENTER_LOCATION_ID
                     ? center
-                    : center.grid.id === 'map1' ||
-                        center.grid.id === CENTER_LOCATION_ID
-                      ? loadNavigationService(id)
-                      : new NavigationService({ ...center.grid, id })
+                    : maps !== undefined
+                      ? maps.navigation(id)
+                      : center.grid.id === 'map1' ||
+                          center.grid.id === CENTER_LOCATION_ID
+                        ? loadNavigationService(id)
+                        : new NavigationService({ ...center.grid, id })
             this.locations.set(id, {
                 description: {
                     ...definition,
@@ -59,6 +68,10 @@ export class WorldLocations {
             throw new Error(`Unknown location: ${id}`)
         }
         return location
+    }
+
+    public mapAsset(epoch: string, locationId: string) {
+        return this.maps?.asset(epoch, locationId)
     }
 
     public closeChestViews(actorId: string): void {

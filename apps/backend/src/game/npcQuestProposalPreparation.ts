@@ -1,5 +1,6 @@
 import type { NpcQuestDecision } from '@my-game-ratata/contracts'
 
+import { resolveAuthoredQuestDraft } from './authoredQuestOffers'
 import type { GameCharacter } from './character'
 import { questOfferAssetError } from './npcQuestOfferAssets'
 import { questProposalGuard } from './npcQuestOfferGuard'
@@ -29,6 +30,18 @@ export function prepareQuestProposal(
     execution: NpcQuestDecisionContext,
     id = 'quest-preview'
 ): QuestOfferRecord | NpcQuestResult {
+    if (decision.type === 'quest_propose') {
+        const draft = resolveAuthoredQuestDraft(
+            issuer,
+            decision.targetId,
+            decision.draft,
+            context.environment
+        )
+        if (typeof draft === 'string') {
+            return rejected(draft)
+        }
+        decision = { ...decision, draft }
+    }
     const guard = questProposalGuard(
         context,
         issuer,

@@ -7,6 +7,7 @@ import type { ServerWebSocket } from 'bun'
 import { handleAgentRequest } from './agentBridge'
 import type { GameRoom } from './game/room'
 import type { RoomSocketData } from './game/roomMessaging'
+import { worldMapResponse } from './worldMapResponse'
 
 const jsonHeaders = {
     'content-type': 'application/json; charset=utf-8',
@@ -29,6 +30,10 @@ type FetchHandler = (
 export function createFetchHandler(room?: GameRoom): FetchHandler {
     return (request, server) => {
         const url = new URL(request.url)
+
+        if (url.pathname.startsWith('/world/maps/')) {
+            return worldMapResponse(request, room)
+        }
 
         if (url.pathname.startsWith('/agent/')) {
             return handleAgentRequest(request, room)

@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type {
     AuthoredContainerDefinition,
@@ -14,7 +13,9 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { AuthoredEncounters } from './encounterData'
 import type { MapBuildingDefinition } from './mapBuildings'
+import { resolveMapRoot } from './mapFiles'
 import type { MapLandmarkDefinition } from './mapLandmarks'
+export { resolveMapRoot } from './mapFiles'
 import { clamp } from './math'
 import { buildGrid, type TiledMap } from './navigationGrid'
 import { findPath } from './pathfinding'
@@ -25,6 +26,9 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    asset?: MapSummary['asset']
+    cityAnchors?: Readonly<Record<string, Vector2>>
+    cityAreas?: Readonly<Record<string, WorldObjectBounds>>
     landmarks?: MapLandmarkDefinition[]
     buildings?: MapBuildingDefinition[]
     containers?: AuthoredContainerDefinition[]
@@ -53,6 +57,10 @@ export class NavigationService {
         this.grid = grid
         this.resourceBase = grid.baseSolid?.slice()
         this.summary = {
+            asset: grid.asset ?? {
+                url: `/game/map/${grid.id}.json`,
+                revision: 'static',
+            },
             height: grid.height,
             id: grid.id,
             solidLayerNames: grid.solidLayerNames,
@@ -256,17 +264,4 @@ export function loadNavigationService(
     const map = JSON.parse(raw) as TiledMap
 
     return new NavigationService(buildGrid(mapId, map))
-}
-
-function resolveMapRoot(): string {
-    const envRoot = Bun.env['GAME_MAP_ROOT']
-
-    if (envRoot !== undefined && envRoot.trim().length > 0) {
-        return path.resolve(envRoot)
-    }
-
-    const currentDir = path.dirname(fileURLToPath(import.meta.url))
-    const repoRoot = path.resolve(currentDir, '../../../..')
-
-    return path.join(repoRoot, 'apps/frontend/public/game/map')
 }

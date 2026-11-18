@@ -3,6 +3,22 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 
 const serials = new WeakMap<GameCharacter, number>()
+const addressedSpeech = new WeakMap<GameEventPayload, string>()
+
+/** Server-only attribution preserves the ordinary public audience. */
+export function attributeNpcSpeech(
+    event: GameEventPayload,
+    partnerId: string
+): GameEventPayload {
+    addressedSpeech.set(event, partnerId)
+    return event
+}
+
+export function addressedSpeechPartner(
+    event: GameEventPayload
+): string | undefined {
+    return addressedSpeech.get(event) ?? event.targetId
+}
 
 export function nextSpeechId(speaker: GameCharacter): number {
     const receipt = (serials.get(speaker) ?? 0) + 1

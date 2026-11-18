@@ -29,11 +29,13 @@ Use browser evaluation for these calls. Split a playthrough into bounded steps a
 
 `navigate` accepts `timeoutMs` and `tolerance`; `travel` accepts `timeoutMs`. Navigation returns `status`, `reason`, `locationId`, `position` and `elapsedMs`. Status is `arrived`, `blocked`, `timeout`, `cancelled`, `unavailable`, `target_lost` or `location_changed`. A path ending does not itself count as arrival. Inspect the result and current observation before acting; a target may disappear or become unreachable.
 
+`getState().connected` describes the live server session, while `mapReady` describes whether the current map has finished loading. Travel and outcome waits remain pending during map loading, retain their original deadline and still stop on death, disconnection or identity changes. `join()` also waits for the first map; a temporary map-loading failure can be retried without creating another character.
+
 Starting another navigation supersedes the previous one. Low-level movement and `stop()` also cancel navigation. Browser blur, hiding the page and disposing the interface release held movement. Automation cannot keep acting through death or a lost connection.
 
 `act` and `waitFor` return a status and an observation. The default `act` status `updated` means a later server snapshot was received; it is **not** a success acknowledgement. Use an explicit outcome condition or compare authoritative facts such as quest status, item quantities, HP, receipts or dialogue. Never report a successful purchase, reward or attack just because a command was sent.
 
-Protocol 0.9.0 projects resource information on the server before either browser or agent observation. By default `health` is `{kind: 'percent', percent}` even for the acting identity. `resources.mana` and `resources.energy` are `{kind: 'percent', percent, hasCapacity}`; percentages round down, and zero capacity is distinct from an empty refillable resource. No raw current or maximum values are included. The acting identity also receives a private `characterSheet` with server-authored numeric bands or earned exact values, and a private `progression.constellations` graph containing only known stars and nearest unknown neighbors. Self-health, mana and energy knowledge unlock independently and never reveal foreign pools. Raw `stats` are not transmitted. The acting identity alone receives `resourceChecks` for abilities, per-spell prayer modes, dash, sow and theft, with `ready`, `mana` or `energy` results. These describe resource affordability, not target validity or action success. Damage events carry `hitQuality`; `amount` is normally absent, including private healing and absorption results. Exact damage on a training dummy is visible to an active observer inside its authored training area. The server-only `exactCombatNumbers` capability reveals authorized values as `{kind: 'exact', current, max}`, displayed rounded to integers; the test interface cannot grant it. Check an actual event or resource/durability change when testing dummy hits, since the dummy's health does not decrease.
+Protocol 0.10.0 projects resource information on the server before either browser or agent observation. By default `health` is `{kind: 'percent', percent}` even for the acting identity. `resources.mana` and `resources.energy` are `{kind: 'percent', percent, hasCapacity}`; percentages round down, and zero capacity is distinct from an empty refillable resource. No raw current or maximum values are included. The acting identity also receives a private `characterSheet` with server-authored numeric bands or earned exact values, and a private `progression.constellations` graph containing only known stars and nearest unknown neighbors. Self-health, mana and energy knowledge unlock independently and never reveal foreign pools. Raw `stats` are not transmitted. The acting identity alone receives `resourceChecks` for abilities, per-spell prayer modes, dash, sow and theft, with `ready`, `mana` or `energy` results. These describe resource affordability, not target validity or action success. Damage events carry `hitQuality`; `amount` is normally absent, including private healing and absorption results. Exact damage on a training dummy is visible to an active observer inside its authored training area. The server-only `exactCombatNumbers` capability reveals authorized values as `{kind: 'exact', current, max}`, displayed rounded to integers; the test interface cannot grant it. Check an actual event or resource/durability change when testing dummy hits, since the dummy's health does not decrease.
 
 Both methods accept `{ timeoutMs }`; `act` accepts an additional `until` condition. Waits default to five seconds and accept deadlines from 0 to 60,000 milliseconds. Results have `status`, `reason`, `elapsedMs` and `observation`; statuses are `updated`, `condition_met`, `timeout`, `cancelled` and `unavailable`.
 
@@ -41,7 +43,7 @@ Both methods accept `{ timeoutMs }`; `act` accepts an additional `until` conditi
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `{ type: 'tick', after: number }`        | A newer server tick has arrived.                                                                         |
 | `{ type: 'location', locationId }`       | The player is in this location.                                                                          |
-| `{ type: 'quest', status }`              | Quest status is `available`, `active`, `ready` or `completed`.                                           |
+| `{ type: 'quest', status }`              | Quest status is `available`, `active`, `ready`, `completed` or `cancelled`.                              |
 | `{ type: 'dialogue', npcId }`            | This NPC's dialogue is open; use `null` for no open dialogue.                                            |
 | `{ type: 'inventory', itemId, atLeast }` | The player's actual bag contains this many units, including stack quantities.                            |
 | `{ type: 'chest', chestId }`             | This private container view is open; use `null` for no open container.                                   |
@@ -105,7 +107,7 @@ Wheat sowing uses `{ type: 'farm_action', plotId, action: 'sow' }` and consumes 
 
 `{ type: 'farm_supply', npcId, plotId, requestId }` requests municipal seed supply for a server-assigned city farmer near the supplier. It exchanges one carried grain for one seed, or subsidizes one seed when no grain is carried. It does not authorize an ordinary player or bypass sowing rules. Request receipts and the server-owned work cycle prevent duplicate supply; missing retail stock does not block municipal supply.
 
-Exits come from the current location dimensions and the shared world configuration. Use `observe().exits` before `travel`; crossing the outer boundary is not a valid journey. Arrival in another location is confirmed from the received location ID.
+Exits come from the current location dimensions and the shared world configuration. Use `observe().exits` before `travel`; crossing the outer boundary is not a valid journey. Arrival in another location is confirmed from the received location ID after its map is ready.
 
 ```js
 const exit = window.__ratataTest.observe().exits[0]
@@ -199,7 +201,7 @@ layout RNG are independent of combat and progression. Public NPC snapshots do no
 prepare or disclose personal maps. Active nodes describe actual standalone hotbar
 actions; resurrection nodes are passive extensions of their prayer.
 
-## Social commands (protocol 0.9.0)
+## Social commands (protocol 0.10.0)
 
 `chat` accepts optional `targetId` addressee and `focusKey` world-selection hints. The server validates the focus and projects only earned object facts. `whisper_open`, `whisper`
 (`targetId`, `text`) and `whisper_close` use the nearby private channel.

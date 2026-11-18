@@ -17,6 +17,7 @@ import GameWindows from './game/ui/GameWindows.vue'
 import { provideHotbarSession } from './game/ui/hotbarSession'
 import InventoryHud from './game/ui/InventoryHud.vue'
 import JoinGamePanel from './game/ui/JoinGamePanel.vue'
+import MapLoadError from './game/ui/MapLoadError.vue'
 import NearbyInteraction from './game/ui/NearbyInteraction.vue'
 import { createTransientNotices } from './game/ui/transientNotices'
 import TreePlanting from './game/ui/TreePlanting.vue'
@@ -165,10 +166,8 @@ async function joinGame(): Promise<void> {
         status,
         notices,
         chatHistory,
-        confirmDeath: () => {
-            hotbarSession.clear()
-            confirmDeath()
-        },
+        confirmDeath,
+        hotbarSession,
         cleanupFailedJoin,
         ...windows,
     })
@@ -284,7 +283,7 @@ async function joinGame(): Promise<void> {
                     @command="game?.sendCommand($event)"
                 />
                 <GameChat :state="chatInput" :entries="chatHistory.entries.value" />
-                <p v-if="errorMessage" class="game-error">{{ errorMessage }}</p>
+                <MapLoadError :game="game" :message="errorMessage" :status="status" />
             </div>
             <GameWindows
                 ref="gameWindows"

@@ -71,7 +71,7 @@ export function roomSnapshot(
     )
     return {
         ...snapshot,
-        serverEpoch,
+        serverEpoch: context.world.serverEpoch ?? serverEpoch,
         graves: (context.life?.graves(locationId) ?? []).map((grave) =>
             observeGraveCombat(grave, combatView)
         ),

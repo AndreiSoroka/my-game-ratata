@@ -7,6 +7,9 @@ import type {
 import type { TileCoordinate } from './navigation'
 
 interface CityResident {
+    anchorId?: string
+    spawnOffset?: { x: number; y: number }
+    idleRouteAnchors?: readonly string[]
     id: string
     nickname: string
     tile: TileCoordinate
@@ -22,6 +25,14 @@ export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_wanderer_1',
+        anchorId: 'service.inn',
+        spawnOffset: { x: -16, y: 0 },
+        idleRouteAnchors: [
+            'service.inn',
+            'resource.fiber',
+            'service.guild',
+            'service.herbalist',
+        ],
         nickname: 'Бродяга Прохор',
         tile: { x: 39, y: 48 },
         visualId: 'male_player_2',
@@ -40,6 +51,14 @@ export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_wanderer_2',
+        anchorId: 'service.inn',
+        spawnOffset: { x: -16, y: 16 },
+        idleRouteAnchors: [
+            'service.inn',
+            'resource.herbs',
+            'service.shop',
+            'service.library',
+        ],
         nickname: 'Бродяжка Дарья',
         tile: { x: 36, y: 53 },
         visualId: 'female_player',
@@ -61,6 +80,7 @@ export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_weaver_1',
+        anchorId: 'service.workshop',
         nickname: 'Мастерица Мила',
         tile: { x: 21, y: 31 },
         visualId: 'female_player',
@@ -72,6 +92,7 @@ export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_smith_1',
+        anchorId: 'service.smithy',
         nickname: 'Кузнец Игнат',
         tile: { x: 77, y: 50 },
         visualId: 'male_player_2',
@@ -83,28 +104,31 @@ export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_herbalist_1',
+        anchorId: 'service.herbalist',
         nickname: 'Травница Злата',
         tile: { x: 56, y: 60 },
         visualId: 'female_mage',
         greeting:
-            'Я Злата. Травы растут рядом с площадью, а сад — на юго-западе. В походе еда и помощь клерика важнее тяжёлого кошелька.',
+            'Я Злата. Травы ищи у площади, а лекарский сад — рядом с моим домом. В походе еда и помощь клерика важнее тяжёлого кошелька.',
         personality:
             'Заботливая травница бережёт жителей и предпочитает свой тихий дом.',
     },
     {
         creatureType: 'humanoid',
         id: 'npc_baker_1',
+        anchorId: 'service.baker',
         nickname: 'Пекарь Елисей',
         tile: { x: 26, y: 18 },
         visualId: 'male_player_2',
         greeting:
-            'Елисей. После ночной дороги хорошо вернуться в тёплый дом. Запасы продаёт Савва: его лавка к югу от площади.',
+            'Елисей. После ночной дороги хорошо вернуться в тёплый дом. Запасы можно купить в городской лавке Саввы, когда торговля открыта.',
         personality:
             'Приветливый пекарь любит домашний покой и слушает истории путешественников.',
     },
     {
         creatureType: 'humanoid',
         id: 'npc_cartographer_1',
+        anchorId: 'service.cartographer',
         nickname: 'Картограф Нестор',
         tile: { x: 77, y: 29 },
         visualId: 'male_mage',
@@ -116,6 +140,7 @@ export const cityResidents: CityResident[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_tailor_1',
+        anchorId: 'service.weaver',
         nickname: 'Ткач Тихон',
         tile: { x: 66, y: 18 },
         visualId: 'male_player_2',

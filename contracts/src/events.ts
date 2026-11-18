@@ -6,6 +6,7 @@ export type CombatHitQuality =
     'miss' | 'weak' | 'normal' | 'strong' | 'critical'
 
 export type GameEventKind =
+    | 'bell_activate'
     | 'resource_gather'
     | 'tree_plant'
     | 'heal'
@@ -44,6 +45,9 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    objectId?: string
+    eventId?: string
+    position?: import('./index').Vector2
     /** Server-authored status earned by a successful private worker inspection. */
     workerActivity?: import('./workerRequests').WorkerActivitySnapshot
     requestStatus?: import('./social').NpcRequestStatus

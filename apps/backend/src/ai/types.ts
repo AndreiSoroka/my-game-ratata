@@ -110,6 +110,7 @@ export type NpcAiFact =
       }
 
 export interface NpcAiContext {
+    cityStory?: import('./npcCityStoryContext').NpcCityStoryContext
     socialOpportunity?: import('./npcInitiative').NpcGreetingOpportunity
     commandCapabilities?: {
         canFollow: boolean

@@ -102,6 +102,12 @@ export function questOfferAvailable(
     return (
         issuer !== undefined &&
         recipient !== undefined &&
+        (offer.view.authoredQuestId === undefined ||
+            environment.adventure.storyOfferError(
+                issuer,
+                offer.targetId,
+                offer.view.authoredQuestId
+            ) === undefined) &&
         offer.view.expiresAt > now &&
         issuer.deathSequence === offer.issuerDeath &&
         questContact(recipient, issuer, environment, now)

@@ -13,6 +13,7 @@ import {
     NetworkPlayerController,
 } from './controllers'
 import { createItemInstance, equipDirect } from './inventory'
+import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService, TileCoordinate } from './navigation'
 
 export interface SpawnedCharacter {
@@ -102,11 +103,13 @@ export function createFriendlyGirl(
         id: `npc_friendly_girl_1${idSuffix}`,
         nickname: 'Mira',
         soul: companionSoul('npc_friendly_girl_1'),
-        spawnPosition: spawnPosition(
-            navigation,
-            { x: 4, y: 2 },
-            { x: 40, y: 28 }
-        ),
+        spawnPosition:
+            navigation.grid.cityAnchors === undefined
+                ? spawnPosition(navigation, { x: 4, y: 2 }, { x: 40, y: 28 })
+                : citySpawnPosition(navigation, 'service.guild', {
+                      x: 40,
+                      y: 28,
+                  }),
         visualId: 'female_player',
     })
 
@@ -120,6 +123,27 @@ export function playerSpawn(
     navigation: NavigationService,
     index: number
 ): Vector2 {
+    const graves = Object.keys(navigation.grid.cityAnchors ?? {})
+        .filter((key) => /^spawn\.grave-[0-9]+$/u.test(key))
+        .sort()
+    if (navigation.grid.cityAnchors !== undefined) {
+        const anchor = graves[(index - 1) % graves.length]
+        if (anchor === undefined) {
+            throw new Error('Generated city has no grave spawn points')
+        }
+        const point = citySpawnPosition(navigation, anchor, { x: 1, y: 1 })
+        const cemetery = navigation.grid.cityAreas?.['cemetery']
+        if (
+            cemetery === undefined ||
+            point.x < cemetery.x ||
+            point.y < cemetery.y ||
+            point.x >= cemetery.x + cemetery.width ||
+            point.y >= cemetery.y + cemetery.height
+        ) {
+            throw new Error('New identity must awaken on cemetery ground')
+        }
+        return point
+    }
     const spawnTiles: TileCoordinate[] = [
         { x: 1, y: 1 },
         { x: 1, y: 8 },

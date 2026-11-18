@@ -8,13 +8,15 @@ import type { QuestTurnInService } from './questTurnIn'
 /** WhisperService invokes this only after validating the ordinary speaking pair. */
 export function createWhisperObserver(
     ai: () => NpcAiCoordinator | undefined,
-    turnIns: () => QuestTurnInService
+    turnIns: () => QuestTurnInService,
+    onDelivered?: (actor: GameCharacter, listener: GameCharacter) => void
 ) {
     return (
         actor: GameCharacter,
         listener: GameCharacter,
         message: PrivateSpeechSnapshot
     ): void => {
+        onDelivered?.(actor, listener)
         for (const owner of [actor, listener]) {
             if (owner.controllerKind !== 'network_player') {
                 memoryForCharacter(owner).remember({

@@ -7,27 +7,24 @@ import type {
 import type { GameCharacter } from './character'
 import { snapshotItem } from './inventory'
 import { recordQuestOffer } from './npcQuestJournal'
-import { questRewardWallet } from './npcQuestOfferAssets'
 export { questRewardWallet } from './npcQuestOfferAssets'
 import {
     prepareQuestProposal,
     type QuestProposalDecision,
 } from './npcQuestProposalPreparation'
+import { prepareQuestRevision, type QuestRevision } from './npcQuestRevision'
 import type { NpcQuestResult } from './npcQuests'
 import {
     type NpcQuestDecisionContext,
     type NpcQuestEnvironment,
-    questContact,
     type QuestOfferRecord,
 } from './npcQuestTypes'
 import type { QuestJournal } from './questJournal'
-import { availableGold, availableInventoryQuantity } from './rewardReservations'
 
 const result = (
     accepted: boolean,
     error: string | null = null
 ): NpcQuestResult => ({ accepted, error, events: [] })
-type Revision = Extract<NpcQuestDecision, { type: 'quest_offer_revise' }>
 interface OfferContext {
     environment: NpcQuestEnvironment
     offers: Map<string, QuestOfferRecord>
@@ -139,30 +136,12 @@ export class NpcQuestOfferOperations {
 
     public revise(
         issuer: GameCharacter,
-        decision: Revision,
+        decision: QuestRevision,
         now: number
     ): NpcQuestResult {
-        const offer = this.currentRevision(issuer, decision, now)
-        if (offer === undefined) {
-            return result(false, 'Предложение или собеседник уже недоступны.')
-        }
-        if (!validSelection(decision)) {
-            return result(false, 'Некорректная награда.')
-        }
-        const wallet = questRewardWallet(
-            this.context.environment,
-            offer,
-            issuer
-        )
-        if (
-            wallet === undefined ||
-            availableGold(wallet) < decision.rewardGold ||
-            !availableSelection(issuer, decision.rewardItems)
-        ) {
-            return result(
-                false,
-                'У заказчика нет свободной награды для этих условий.'
-            )
+        const offer = prepareQuestRevision(this.context, issuer, decision, now)
+        if (typeof offer === 'string') {
+            return result(false, offer)
         }
         const rewards = decision.rewardItems.flatMap((selected) => {
             const item = issuer.inventory.find(
@@ -209,27 +188,13 @@ export class NpcQuestOfferOperations {
         return result(true)
     }
 
-    private currentRevision(
+    public previewRevision(
         issuer: GameCharacter,
-        decision: Revision,
+        decision: QuestRevision,
         now: number
-    ): QuestOfferRecord | undefined {
-        const offer = this.context.offers.get(decision.targetId)
-        const target = this.context.environment.getCharacter(decision.targetId)
-        if (offer === undefined || target === undefined) {
-            return undefined
-        }
-        if (
-            offer.view.id !== decision.offerId ||
-            offer.view.issuerId !== issuer.id ||
-            offer.view.revision !== decision.revision ||
-            offer.view.expiresAt <= now ||
-            issuer.deathSequence !== offer.issuerDeath ||
-            !questContact(target, issuer, this.context.environment, now)
-        ) {
-            return undefined
-        }
-        return offer
+    ): string | undefined {
+        const offer = prepareQuestRevision(this.context, issuer, decision, now)
+        return typeof offer === 'string' ? offer : undefined
     }
 
     private newId(prefix: string): string {
@@ -237,30 +202,6 @@ export class NpcQuestOfferOperations {
             `npc-${prefix}`
         )
     }
-}
-
-function validSelection(decision: Revision): boolean {
-    return (
-        Number.isSafeInteger(decision.rewardGold) &&
-        decision.rewardGold >= 0 &&
-        decision.rewardGold <= 300 &&
-        decision.rewardItems.length <= 10 &&
-        new Set(decision.rewardItems.map((item) => item.instanceId)).size ===
-            decision.rewardItems.length
-    )
-}
-function availableSelection(
-    issuer: GameCharacter,
-    selection: Revision['rewardItems']
-): boolean {
-    return selection.every(
-        (item) =>
-            Number.isSafeInteger(item.quantity) &&
-            item.quantity > 0 &&
-            item.quantity <= 100 &&
-            availableInventoryQuantity(issuer.inventory, item.instanceId) >=
-                item.quantity
-    )
 }
 
 function rewardFingerprint(

@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "bun --watch src/index.ts",
         "start": "bun src/index.ts",
-        "build": "bun build src/index.ts --target=bun --outdir ../../dist/backend && node ../../scripts/knowledge-build.mjs",
+        "build": "bun build src/index.ts --target=bun --outdir ../../dist/backend && node ../../scripts/knowledge-build.mjs && node ../../scripts/world-map-build.mjs",
         "type-check": "tsc -p tsconfig.json --noEmit",
         "test": "vitest run --config vitest.config.ts",
         "test:watch": "vitest --config vitest.config.ts",

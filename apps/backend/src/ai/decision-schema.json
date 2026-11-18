@@ -268,203 +268,235 @@
                             "maxLength": 100
                         },
                         "draft": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "required": [
-                                "title",
-                                "description",
-                                "objectives",
-                                "rewardGold",
-                                "rewardItems",
-                                "funding"
-                            ],
-                            "properties": {
-                                "title": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 100
-                                },
-                                "description": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 1000
-                                },
-                                "objectives": {
-                                    "type": "array",
-                                    "minItems": 1,
-                                    "maxItems": 4,
-                                    "items": {
-                                        "anyOf": [
-                                            {
-                                                "type": "object",
-                                                "additionalProperties": false,
-                                                "required": [
-                                                    "kind",
-                                                    "itemId",
-                                                    "quantity",
-                                                    "recipientId"
-                                                ],
-                                                "properties": {
-                                                    "kind": {
-                                                        "type": "string",
-                                                        "enum": ["deliver"]
-                                                    },
-                                                    "itemId": {
-                                                        "type": "string",
-                                                        "minLength": 1,
-                                                        "maxLength": 100
-                                                    },
-                                                    "quantity": {
-                                                        "type": "integer",
-                                                        "minimum": 1,
-                                                        "maximum": 99
-                                                    },
-                                                    "recipientId": {
-                                                        "type": "string",
-                                                        "minLength": 1,
-                                                        "maxLength": 100
-                                                    }
-                                                }
-                                            },
-                                            {
-                                                "type": "object",
-                                                "additionalProperties": false,
-                                                "required": [
-                                                    "kind",
-                                                    "locationId"
-                                                ],
-                                                "properties": {
-                                                    "kind": {
-                                                        "type": "string",
-                                                        "enum": ["visit"]
-                                                    },
-                                                    "locationId": {
-                                                        "type": "string",
-                                                        "minLength": 1,
-                                                        "maxLength": 100
-                                                    }
-                                                }
-                                            },
-                                            {
-                                                "type": "object",
-                                                "additionalProperties": false,
-                                                "required": [
-                                                    "kind",
-                                                    "locationId",
-                                                    "position"
-                                                ],
-                                                "properties": {
-                                                    "kind": {
-                                                        "type": "string",
-                                                        "enum": ["visit"]
-                                                    },
-                                                    "locationId": {
-                                                        "type": "string",
-                                                        "minLength": 1,
-                                                        "maxLength": 100
-                                                    },
-                                                    "position": {
+                            "anyOf": [
+                                {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "title",
+                                        "description",
+                                        "objectives",
+                                        "rewardGold",
+                                        "rewardItems",
+                                        "funding"
+                                    ],
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 100
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 1000
+                                        },
+                                        "objectives": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 4,
+                                            "items": {
+                                                "anyOf": [
+                                                    {
                                                         "type": "object",
                                                         "additionalProperties": false,
-                                                        "required": ["x", "y"],
+                                                        "required": [
+                                                            "kind",
+                                                            "itemId",
+                                                            "quantity",
+                                                            "recipientId"
+                                                        ],
                                                         "properties": {
-                                                            "x": {
-                                                                "type": "number"
+                                                            "kind": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "deliver"
+                                                                ]
                                                             },
-                                                            "y": {
-                                                                "type": "number"
+                                                            "itemId": {
+                                                                "type": "string",
+                                                                "minLength": 1,
+                                                                "maxLength": 100
+                                                            },
+                                                            "quantity": {
+                                                                "type": "integer",
+                                                                "minimum": 1,
+                                                                "maximum": 99
+                                                            },
+                                                            "recipientId": {
+                                                                "type": "string",
+                                                                "minLength": 1,
+                                                                "maxLength": 100
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "kind",
+                                                            "locationId"
+                                                        ],
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "visit"
+                                                                ]
+                                                            },
+                                                            "locationId": {
+                                                                "type": "string",
+                                                                "minLength": 1,
+                                                                "maxLength": 100
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "kind",
+                                                            "locationId",
+                                                            "position"
+                                                        ],
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "visit"
+                                                                ]
+                                                            },
+                                                            "locationId": {
+                                                                "type": "string",
+                                                                "minLength": 1,
+                                                                "maxLength": 100
+                                                            },
+                                                            "position": {
+                                                                "type": "object",
+                                                                "additionalProperties": false,
+                                                                "required": [
+                                                                    "x",
+                                                                    "y"
+                                                                ],
+                                                                "properties": {
+                                                                    "x": {
+                                                                        "type": "number"
+                                                                    },
+                                                                    "y": {
+                                                                        "type": "number"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "kind",
+                                                            "archetype",
+                                                            "quantity",
+                                                            "locationId"
+                                                        ],
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "defeat"
+                                                                ]
+                                                            },
+                                                            "archetype": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "human",
+                                                                    "skeleton",
+                                                                    "slime"
+                                                                ]
+                                                            },
+                                                            "quantity": {
+                                                                "type": "integer",
+                                                                "minimum": 1,
+                                                                "maximum": 20
+                                                            },
+                                                            "locationId": {
+                                                                "type": "string",
+                                                                "minLength": 1,
+                                                                "maxLength": 100
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "kind",
+                                                            "targetId"
+                                                        ],
+                                                        "properties": {
+                                                            "kind": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "inspect"
+                                                                ]
+                                                            },
+                                                            "targetId": {
+                                                                "type": "string",
+                                                                "minLength": 1,
+                                                                "maxLength": 100
                                                             }
                                                         }
                                                     }
-                                                }
-                                            },
-                                            {
+                                                ]
+                                            }
+                                        },
+                                        "rewardGold": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 1000000
+                                        },
+                                        "rewardItems": {
+                                            "type": "array",
+                                            "maxItems": 20,
+                                            "items": {
                                                 "type": "object",
                                                 "additionalProperties": false,
                                                 "required": [
-                                                    "kind",
-                                                    "archetype",
-                                                    "quantity",
-                                                    "locationId"
+                                                    "instanceId",
+                                                    "quantity"
                                                 ],
                                                 "properties": {
-                                                    "kind": {
+                                                    "instanceId": {
                                                         "type": "string",
-                                                        "enum": ["defeat"]
-                                                    },
-                                                    "archetype": {
-                                                        "type": "string",
-                                                        "enum": [
-                                                            "human",
-                                                            "skeleton",
-                                                            "slime"
-                                                        ]
+                                                        "minLength": 1,
+                                                        "maxLength": 100
                                                     },
                                                     "quantity": {
                                                         "type": "integer",
                                                         "minimum": 1,
-                                                        "maximum": 20
-                                                    },
-                                                    "locationId": {
-                                                        "type": "string",
-                                                        "minLength": 1,
-                                                        "maxLength": 100
-                                                    }
-                                                }
-                                            },
-                                            {
-                                                "type": "object",
-                                                "additionalProperties": false,
-                                                "required": [
-                                                    "kind",
-                                                    "targetId"
-                                                ],
-                                                "properties": {
-                                                    "kind": {
-                                                        "type": "string",
-                                                        "enum": ["inspect"]
-                                                    },
-                                                    "targetId": {
-                                                        "type": "string",
-                                                        "minLength": 1,
-                                                        "maxLength": 100
+                                                        "maximum": 9
                                                     }
                                                 }
                                             }
-                                        ]
-                                    }
-                                },
-                                "rewardGold": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 1000000
-                                },
-                                "rewardItems": {
-                                    "type": "array",
-                                    "maxItems": 20,
-                                    "items": {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "required": ["instanceId", "quantity"],
-                                        "properties": {
-                                            "instanceId": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "maxLength": 100
-                                            },
-                                            "quantity": {
-                                                "type": "integer",
-                                                "minimum": 1,
-                                                "maximum": 9
-                                            }
+                                        },
+                                        "funding": {
+                                            "type": "string",
+                                            "enum": ["personal", "city"]
                                         }
                                     }
                                 },
-                                "funding": {
-                                    "type": "string",
-                                    "enum": ["personal", "city"]
+                                {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["authoredId"],
+                                    "properties": {
+                                        "authoredId": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 120
+                                        }
+                                    }
                                 }
-                            }
+                            ]
                         },
                         "replaceOffer": {
                             "anyOf": [

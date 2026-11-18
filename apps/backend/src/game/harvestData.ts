@@ -1,12 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import {
     type AdventureResourceNode,
     WORLD_LOCATION_DEFINITIONS,
     type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
+
+import { resolveMapRoot } from './mapFiles'
 
 interface HarvestMap {
     layers: Array<{
@@ -23,12 +24,7 @@ interface HarvestMap {
 const sourceCache = new Map<string, AdventureResourceNode[]>()
 
 export function loadHarvestSources(): AdventureResourceNode[] {
-    const root =
-        process.env['GAME_MAP_ROOT'] ??
-        path.resolve(
-            path.dirname(fileURLToPath(import.meta.url)),
-            '../../../../apps/frontend/public/game/map'
-        )
+    const root = resolveMapRoot()
     const cached = sourceCache.get(root)
     if (cached !== undefined) {
         return cached

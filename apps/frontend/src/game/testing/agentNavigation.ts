@@ -1,5 +1,6 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 
+import { agentAvailable, agentMapReady } from './agentAvailability'
 import { stopAgentMovement } from './agentMovementStop'
 import {
     type AgentDestination,
@@ -112,7 +113,7 @@ class AgentNavigator {
         this.cancel()
         const state = this.port.getState()
         const startedAt = Date.now()
-        if (!available(state)) {
+        if (!agentAvailable(state) || !agentMapReady(state) || !state.location) {
             return Promise.resolve(this.result('unavailable', 'Player is not available', startedAt))
         }
         const goal = this.goal(state, destination, options.tolerance)
@@ -156,10 +157,11 @@ class AgentNavigator {
         const journey = this.active
         if (!journey) return
         const state = this.port.getState()
-        if (!available(state) || state.player!.id !== journey.identity) {
+        if (!agentAvailable(state) || !state.location || state.player!.id !== journey.identity) {
             this.finish('unavailable', 'Player disconnected, died or changed identity')
             return
         }
+        if (this.waitForMap(state, journey)) return
         if (state.location!.id !== journey.locationId) {
             this.finish(
                 state.location!.id === journey.travel?.locationId ? 'arrived' : 'location_changed',
@@ -178,6 +180,13 @@ class AgentNavigator {
         }
         this.advance(state, journey, goal)
         if (this.active === journey) this.timer = setTimeout(() => this.poll(), 100)
+    }
+
+    private waitForMap(state: RatataTestState, journey: Journey): boolean {
+        if (agentMapReady(state)) return false
+        if (Date.now() >= journey.deadline) this.finish('timeout', 'Map loading deadline elapsed')
+        else this.timer = setTimeout(() => this.poll(), 100)
+        return true
     }
 
     private advance(state: RatataTestState, journey: Journey, goal: NavigationGoal): void {
@@ -288,14 +297,4 @@ class AgentNavigator {
             'targetKey' in destination ? this.observe(state).targets : []
         )
     }
-}
-
-function available(state: RatataTestState): boolean {
-    return Boolean(
-        state.connected &&
-        !state.defeated &&
-        state.location &&
-        state.player?.alive &&
-        !state.player.tags.includes('offline')
-    )
 }

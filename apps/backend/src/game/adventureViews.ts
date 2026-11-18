@@ -14,6 +14,7 @@ import type { PlayerAdventure } from './adventureState'
 import { type AdventureActionResult, repairSnapshot } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
+import type { CityWorldState } from './cityWorldState'
 import { materialSnapshot } from './materialInventory'
 import type { NavigationService } from './navigation'
 import { trophyDialogue, trophyProgress } from './trophyQuest'
@@ -27,6 +28,7 @@ export function adventureSnapshot(context: {
     economy: CityEconomyService
     resources: AdventureResources
     worldObjects: WorldObjects
+    cities: CityWorldState
     now: number
 }): AdventureSnapshot {
     const {
@@ -37,6 +39,7 @@ export function adventureSnapshot(context: {
         economy,
         resources,
         worldObjects,
+        cities,
         now,
     } = context
     const progress = trophyProgress(
@@ -58,7 +61,9 @@ export function adventureSnapshot(context: {
                   state.dialogue.npcId,
                   now
               )
+    const cityState = cities.snapshot(locationId)
     return structuredClone({
+        ...(cityState === undefined ? {} : { cityState }),
         craftOrders: economy.customerOrders.snapshot(playerId),
         ...(workshop === undefined ? {} : { workshop }),
         ...(market === undefined ? {} : { market }),
@@ -72,17 +77,7 @@ export function adventureSnapshot(context: {
         resourceNodes: resources.snapshot(locationId),
         notice: state.notice,
         noticeId: state.noticeId,
-        quest: {
-            ...adventureQuest,
-            ...(state.questRewardMode === null
-                ? {}
-                : { rewardMode: state.questRewardMode }),
-            ...(state.questRewardShares === null
-                ? {}
-                : { rewardShares: state.questRewardShares }),
-            kills: state.kills,
-            status: progress.questStatus,
-        },
+        quest: storyQuestSnapshot(state, progress, cities),
         shop: adventureShop.map((offer) => ({
             ...offer,
             price:
@@ -126,5 +121,33 @@ export function resolvedAdventureAction(
         accepted,
         error: accepted ? null : (state.notice ?? 'Действие не выполнено.'),
         events,
+    }
+}
+
+function storyQuestSnapshot(
+    state: PlayerAdventure,
+    progress: import('./adventureContent').AdventureProgress,
+    cities: CityWorldState
+): import('@my-game-ratata/contracts').AdventureQuestSnapshot {
+    const definition = cities.byQuest(adventureQuest.id)
+    return {
+        ...adventureQuest,
+        ...(definition === undefined
+            ? {}
+            : {
+                  description: definition.description,
+                  accepted: state.questAccepted === true,
+                  ...(state.questCancelledReason === undefined
+                      ? {}
+                      : { notice: state.questCancelledReason }),
+              }),
+        ...(state.questRewardMode === null
+            ? {}
+            : { rewardMode: state.questRewardMode }),
+        ...(state.questRewardShares === null
+            ? {}
+            : { rewardShares: state.questRewardShares }),
+        kills: state.kills,
+        status: progress.questStatus,
     }
 }

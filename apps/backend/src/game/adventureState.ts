@@ -1,6 +1,7 @@
 import type {
     AdventureDialogue,
     AdventureQuestStatus,
+    CityBellState,
     QuestRewardMode,
     QuestRewardShare,
 } from '@my-game-ratata/contracts'
@@ -12,6 +13,10 @@ import type { QuestGoldAwarder } from './questRewards'
 import { turnInHearts } from './trophyQuest'
 
 export interface PlayerAdventure {
+    cityBellState?: CityBellState
+    cityTradeBlockedReason?: string
+    questAccepted?: boolean
+    questCancelledReason?: string
     questRewardMode: QuestRewardMode | null
     questRewardShares: QuestRewardShare[] | null
     kills: number
@@ -26,6 +31,7 @@ export interface PlayerAdventure {
 }
 
 export interface AdventureChoiceContext {
+    cityStory?: import('./cityStoryQuests').CityStoryQuests
     rewardMode?: QuestRewardMode
     memberIds?: readonly string[]
     award?: QuestGoldAwarder
@@ -55,7 +61,12 @@ export function applyAdventureChoice(
 ): void {
     setNotice(state, null)
 
+    if (context.cityStory?.choose(state, choiceId, actor, context) === true) {
+        return
+    }
+
     if (choiceId === 'accept_quest' && state.questStatus === 'available') {
+        state.questAccepted = true
         state.questRewardMode = context.rewardMode ?? DEFAULT_QUEST_REWARD_MODE
         state.questStatus = 'active'
         setNotice(state, 'Задание принято. Собери три слизневых сердца.')

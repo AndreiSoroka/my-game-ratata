@@ -1,5 +1,8 @@
+import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+
 import { knowledgeCorpus } from './ai/knowledgeCorpus'
 import { GameRoom } from './game/room'
+import { WorldMaps } from './game/worldMaps'
 import { createFetchHandler, createWebSocketHandlers } from './server'
 
 const defaultPort = 3000
@@ -12,7 +15,14 @@ if (!Number.isInteger(port) || port <= 0) {
 
 knowledgeCorpus()
 const aiConfig = await loadNpcAiConfig()
-const room = new GameRoom(undefined, {
+const worldMaps = new WorldMaps({
+    ...(Bun.env['GAME_WORLD_SEED'] === undefined
+        ? {}
+        : { seed: Bun.env['GAME_WORLD_SEED'] }),
+})
+const room = new GameRoom(worldMaps.navigation(CENTER_LOCATION_ID), {
+    worldMaps,
+    worldSeed: worldMaps.seed,
     ...(Bun.env['GAME_NPC_IDENTITY_SEED'] === undefined
         ? {}
         : { npcIdentitySeed: Bun.env['GAME_NPC_IDENTITY_SEED'] }),

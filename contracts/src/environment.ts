@@ -2,7 +2,7 @@ import type { Vector2 } from './index'
 
 export * from './environmentGeometry'
 
-export type WorldObjectKind = 'sign' | 'barrel' | 'water'
+export type WorldObjectKind = 'sign' | 'barrel' | 'water' | 'bell'
 
 export interface WorldObjectBounds {
     x: number
@@ -12,6 +12,7 @@ export interface WorldObjectBounds {
 }
 
 export interface WorldObjectSnapshot {
+    bell?: { state: import('./cityState').CityBellState; activationId?: string }
     id: string
     kind: WorldObjectKind
     name: string

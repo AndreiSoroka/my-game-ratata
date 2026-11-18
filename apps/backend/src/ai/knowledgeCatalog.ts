@@ -1,27 +1,20 @@
 import {
     CENTER_LOCATION_ID,
     getWorldLocationDefinition,
-    ITEM_DEFINITIONS,
     REGION_NAME,
-    WORKSHOP_DEFINITIONS,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
 import { companionProfiles } from '../game/companionProfiles'
 import { snapshotConstellations } from '../game/constellationSnapshot'
-import {
-    containsBuildingPoint,
-    type MapBuildingDefinition,
-} from '../game/mapBuildings'
 import type { NavigationService } from '../game/navigation'
 import { prepareConstellationLayout } from '../game/personalConstellationSky'
-import { supportNpcHomeDefinitions } from '../game/supportNpcs'
 import {
     characterKnowledgeAudiences,
     hasKnowledgeAudience,
-    knowledgeResidenceIds,
 } from './knowledgeAudiences'
+import { homeCityKnowledge } from './knowledgeCity'
 import { type KnowledgeArticle, knowledgeCorpus } from './knowledgeCorpus'
 
 export interface KnowledgeEntry {
@@ -35,10 +28,14 @@ export interface KnowledgeEntry {
     aliases?: readonly string[]
     extends?: string
 }
+export interface CharacterKnowledgeContext {
+    residentExists?: (id: string) => boolean
+}
 /** Knowledge grants describe learned information, never controller privileges or powers. */
 export function characterKnowledge(
     actor: GameCharacter,
-    navigation: NavigationService
+    navigation: NavigationService,
+    context: CharacterKnowledgeContext = {}
 ): KnowledgeEntry[] {
     const audiences = characterKnowledgeAudiences(actor)
     const entries: KnowledgeEntry[] = [
@@ -60,7 +57,7 @@ export function characterKnowledge(
             locationId: location.id,
             text: `${location.name}, ${REGION_NAME}. ${regionDirection(location)} относительно Новогорода. ${location.dangerLevel === 0 ? 'Город под защитой.' : location.dangerLevel < 3 ? 'За городскими стенами встречаются опасные существа.' : 'Далёкие земли особенно опасны.'}`,
         })),
-        ...homeCityKnowledge(actor, navigation),
+        ...homeCityKnowledge(actor, navigation, context),
     ]
     const profile = companionProfiles[actor.id]
     if (profile !== undefined && actor.npcIdentityProfile === undefined) {
@@ -165,117 +162,6 @@ export function landmarkText(
         : `${entry.text} ${knowledgeDirection(point.x - actor.position.x, point.y - actor.position.y)} от текущего места.`
 }
 
-const cityLandmarks = new WeakMap<NavigationService, KnowledgeEntry[]>()
-const retainedHomeKnowledge = new WeakMap<GameCharacter, KnowledgeEntry[]>()
-function homeCityKnowledge(
-    actor: GameCharacter,
-    navigation: NavigationService
-): KnowledgeEntry[] {
-    const homes = knowledgeResidenceIds(actor).filter(
-        (id) => getWorldLocationDefinition(id)?.biome === 'city'
-    )
-    if (homes.length === 0) {
-        retainedHomeKnowledge.delete(actor)
-        return []
-    }
-    const home = homes.find((id) => id === actor.locationId)
-    if (home === undefined) {
-        return structuredClone(retainedHomeEntries(actor, homes))
-    }
-    if (!cityLandmarks.has(navigation)) {
-        const buildings = navigation.grid.buildings ?? []
-        const name = getWorldLocationDefinition(home)?.name ?? home
-        const landmarks: KnowledgeEntry[] = buildings.map((building) => ({
-            id: `building:${home}:${building.id}`,
-            group: 'city.local',
-            source: 'authored:map',
-            buildingId: building.id,
-            locationId: home,
-            text: `${building.name}, ${name}. Используй настоящий вход здания.`,
-        }))
-        landmarks.push(
-            ...(navigation.grid.landmarks ?? [])
-                .filter((landmark) => landmark.kind === 'gate')
-                .map((landmark) => ({
-                    id: `landmark:${home}:${landmark.id}`,
-                    group: 'city.local',
-                    source: 'authored:map',
-                    landmarkId: landmark.id,
-                    locationId: home,
-                    text: `${landmark.name}, ${name}. Через эти ворота дорога ведёт в ${getWorldLocationDefinition(landmark.destinationLocationId ?? '')?.name ?? 'соседние земли'}.`,
-                    aliases: [
-                        landmark.name,
-                        'городские ворота',
-                        'выход из города',
-                    ],
-                }))
-        )
-        if (home === CENTER_LOCATION_ID) {
-            landmarks.push(
-                ...serviceHomeKnowledge(navigation, home, name, buildings)
-            )
-        }
-        cityLandmarks.set(navigation, landmarks)
-    }
-    retainedHomeKnowledge.set(actor, [
-        ...retainedHomeEntries(actor, homes).filter(
-            (entry) => entry.locationId !== home
-        ),
-        ...(cityLandmarks.get(navigation) ?? []),
-    ])
-    return structuredClone(retainedHomeKnowledge.get(actor) ?? [])
-}
-
-function retainedHomeEntries(
-    actor: GameCharacter,
-    homes: readonly string[]
-): KnowledgeEntry[] {
-    return (retainedHomeKnowledge.get(actor) ?? []).filter(
-        (entry) =>
-            entry.locationId !== undefined && homes.includes(entry.locationId)
-    )
-}
-
-function serviceHomeKnowledge(
-    navigation: NavigationService,
-    home: string,
-    name: string,
-    buildings: readonly MapBuildingDefinition[]
-): KnowledgeEntry[] {
-    return supportNpcHomeDefinitions().flatMap((profile) => {
-        const point = navigation.tileToWorld(profile.tile)
-        const building = buildings.find((candidate) =>
-            containsBuildingPoint(candidate.bounds, point)
-        )
-        const homeEntry: KnowledgeEntry = {
-            id: `service-home:${profile.id}`,
-            group: 'city.local',
-            source: 'authored:npc-home',
-            locationId: home,
-            ...(building === undefined ? {} : { buildingId: building.id }),
-            text: `${profile.name} — житель ${name}${building === undefined ? '' : `, обычно в здании «${building.name}»`}. Это известное место службы, не проверенное текущее положение.`,
-        }
-        const workshop = WORKSHOP_DEFINITIONS.find(
-            ({ npcId }) => npcId === profile.id
-        )
-        return workshop === undefined
-            ? [homeEntry]
-            : [
-                  homeEntry,
-                  {
-                      id: `service-catalog:${profile.id}`,
-                      group: 'city.local',
-                      source: 'authored:workshop',
-                      locationId: home,
-                      ...(building === undefined
-                          ? {}
-                          : { buildingId: building.id }),
-                      text: `${profile.name} изготавливает и продаёт: ${workshop.items.map((itemId) => ITEM_DEFINITIONS[itemId].name).join(', ')}. Отсутствующее изделие можно заказать.${workshop.repair ? ' Здесь также чинят снаряжение.' : ''} Наличие товара и цену нужно узнавать у мастера.`,
-                  },
-              ]
-    })
-}
-
 export function prepareKnowledgeCatalog(
     room: Pick<
         import('../game/room').GameRoom,
@@ -286,7 +172,17 @@ export function prepareKnowledgeCatalog(
     for (const id of actorIds) {
         const actor = room.getCharacter(id)
         if (actor !== undefined) {
-            characterKnowledge(actor, room.navigationFor(actor))
+            characterKnowledge(
+                actor,
+                room.navigationFor(actor),
+                roomKnowledgeContext(room)
+            )
         }
     }
+}
+
+export function roomKnowledgeContext(
+    room: Pick<import('../game/room').GameRoom, 'getCharacter'>
+): CharacterKnowledgeContext {
+    return { residentExists: (id) => room.getCharacter(id) !== undefined }
 }

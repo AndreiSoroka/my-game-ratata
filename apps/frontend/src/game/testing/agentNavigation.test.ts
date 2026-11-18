@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { agentConnected } from './agentAvailability'
 import { createAgentNavigator } from './agentNavigation'
 import { observeGame } from './agentObservation'
 import { characterFixture, worldFixture } from './characterFixture'
@@ -37,6 +38,7 @@ function setup() {
             rows: GRID_SIZE,
             regionName: REGION_NAME,
             map: {
+                asset: { url: '/game/map/map1.json', revision: 'fixture' },
                 id: CENTER_LOCATION_ID,
                 width: 20,
                 height: 20,
@@ -210,5 +212,52 @@ describe('observed target navigation and travel', () => {
         }
         expect(await navigator.travel('north')).toMatchObject({ status: 'unavailable' })
         expect(send).not.toHaveBeenCalled()
+    })
+})
+
+describe('asynchronous map presentation during travel', () => {
+    it('waits for the destination map without mistaking an alive session for disconnection', async () => {
+        const { navigator, player, state, send, tick } = setup()
+        const completed = vi.fn<() => void>()
+        const result = navigator.travel('east')
+        void result.then(completed)
+        player.position = { x: 624, y: 336 }
+        await tick()
+        state.location = {
+            ...state.location!,
+            ...WORLD_LOCATION_DEFINITIONS.find((entry) => entry.column === 3 && entry.row === 2)!,
+        }
+        player.position = { x: 40, y: 336 }
+        state.status = 'Loading map'
+        state.connected = agentConnected(state.status)
+        state.mapReady = false
+        send.mockClear()
+        await tick(500)
+        expect(completed).not.toHaveBeenCalled()
+        expect(send).not.toHaveBeenCalled()
+        state.mapReady = true
+        state.status = 'Connected'
+        await tick()
+        expect(await result).toMatchObject({ status: 'arrived', locationId: state.location.id })
+        expect(completed).toHaveBeenCalledOnce()
+    })
+
+    it('keeps the original deadline while waiting for map assets', async () => {
+        const { navigator, state, tick } = setup()
+        const result = navigator.travel('east', { timeoutMs: 500 })
+        state.mapReady = false
+        await tick(500)
+        expect(await result).toMatchObject({ status: 'timeout', elapsedMs: 500 })
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('still rejects a new identity while the destination map loads', async () => {
+        const { navigator, state, tick } = setup()
+        const result = navigator.travel('east')
+        state.mapReady = false
+        state.player = characterFixture('replacement')
+        await tick()
+        expect(await result).toMatchObject({ status: 'unavailable' })
+        expect(vi.getTimerCount()).toBe(0)
     })
 })

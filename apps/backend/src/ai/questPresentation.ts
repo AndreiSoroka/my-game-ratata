@@ -98,7 +98,7 @@ export function npcQuestPresentationProblem(
     now: number
 ): NpcReplyProblem | undefined {
     if (!isQuestPresentation(reply.decision)) {
-        return undefined
+        return questRevisionProblem(room, actor, reply.decision, now)
     }
     const decision = reply.decision
     const context = npcQuestExecutionContext(state, reply)
@@ -195,4 +195,19 @@ export function completeBackgroundQuestPresentation(
 
 function unavailable(code: string, detail: string): NpcReplyProblem {
     return { code: 'command_unavailable', reason: { code, detail } }
+}
+
+function questRevisionProblem(
+    room: GameRoom,
+    actor: GameCharacter,
+    decision: AgentDecision | null,
+    now: number
+): NpcReplyProblem | undefined {
+    if (decision?.type !== 'quest_offer_revise') {
+        return undefined
+    }
+    const error = room.social.quests.previewDecision(actor, decision, now)
+    return error === undefined
+        ? undefined
+        : unavailable('quest_revision', error)
 }

@@ -1,29 +1,21 @@
 import type {
     AdventureClientMessage,
     AdventureSnapshot,
-    AdventureTradeItemId,
     GameEventPayload,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import { createAdventureChoice } from './adventureChoice'
-import {
-    executeAdventureCommand,
-    resolveAdventureService,
-} from './adventureCommands'
 import { observeAdventureEvents } from './adventureDeaths'
-import { interactAdventureNpc } from './adventureDialogue'
 import { createAdventureForest } from './adventureForest'
+import { createAdventureInteractions } from './adventureInteractionServices'
+import { createAdventureRequests } from './adventureRequestServices'
 import type { AdventureResources } from './adventureResources'
 import { createAdventureSessions } from './adventureSessions'
 import { type PlayerAdventure } from './adventureState'
-import {
-    type AdventureActionResult,
-    AdventureTrading,
-    refreshTradeDialogue,
-} from './adventureTrading'
-import { adventureSnapshot, resolvedAdventureAction } from './adventureViews'
+import { AdventureTrading } from './adventureTrading'
+import { adventureSnapshot } from './adventureViews'
 import {
     createAdventureWalletActions,
     getAdventureState,
@@ -35,9 +27,11 @@ import {
 import type { GameCharacter } from './character'
 import { CityEconomyService } from './cityEconomy'
 import { CityFarmSupply } from './cityFarmSupply'
+import { observeCityIntroductions } from './citySpeechObservation'
+import { CityStoryQuests } from './cityStoryQuests'
+import { CityWorldState } from './cityWorldState'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
-import { extendNpcQuestDialogue } from './npcQuestDialogue'
 import { QuestFunding } from './questFunding'
 import type { WorldObjects } from './worldObjects'
 
@@ -45,8 +39,17 @@ export class AdventureService {
     public readonly questFunding = new QuestFunding()
     private readonly players = new Map<string, PlayerAdventure>()
     private readonly observedDeaths = new WeakMap<GameCharacter, number>()
-    private readonly resources: AdventureResources
-    private readonly worldObjects: WorldObjects
+    private resources: AdventureResources
+    private worldObjects: WorldObjects
+    private worldDataInitialized = false
+    public readonly cities = new CityWorldState()
+    private readonly cityStories = new CityStoryQuests(
+        this.cities,
+        this.players,
+        this.questFunding,
+        (...args) => this.grantQuestGoldOnce(...args),
+        (id) => this.stateFor(id)
+    )
     private readonly now: () => number
     public readonly economy: CityEconomyService
     public readonly farmSupply: CityFarmSupply
@@ -75,18 +78,24 @@ export class AdventureService {
         this.questRewardMembers = resolve
     }
 
-    public constructor(options: AdventureServiceOptions = {}) {
+    public constructor(private readonly options: AdventureServiceOptions = {}) {
         ;[this.resources, this.worldObjects] = createAdventureEnvironment(
             options,
-            () => this.economy
+            () => this.economy,
+            this.cities
         )
         this.now = options.now ?? Date.now
         this.economy = new CityEconomyService(this.now())
         this.farmSupply = new CityFarmSupply(this.economy, (locationId, now) =>
             this.farmSnapshot(locationId, now)
         )
-        this.trading = new AdventureTrading(this.economy)
-        this.orderCommands = new CraftOrderCommands(this.economy.customerOrders)
+        this.trading = new AdventureTrading(this.economy, (actor) =>
+            this.cities.tradeRefusal(actor.locationId)
+        )
+        this.orderCommands = new CraftOrderCommands(
+            this.economy.customerOrders,
+            (actor) => this.cities.tradeRefusal(actor.locationId)
+        )
     }
 
     public update(
@@ -132,6 +141,7 @@ export class AdventureService {
             resources: this.resources,
             worldObjects: this.worldObjects,
             now: this.now(),
+            cities: this.cities,
         })
     }
 
@@ -144,35 +154,17 @@ export class AdventureService {
     public readonly walletFor = (actorId: string): PlayerAdventure =>
         this.stateFor(actorId)
 
-    public handle(
-        actor: GameCharacter,
-        message: AdventureClientMessage,
-        locationNPCs: GameCharacter[],
-        navigation?: NavigationService,
-        now = this.now()
-    ): GameEventPayload[] {
-        if (!this.workPermission(actor, message)) {
-            this.reportWorkProblem(
-                actor,
-                'Работа приостановлена до завершения обращения за помощью.'
-            )
-            return []
-        }
-        return executeAdventureCommand(
-            {
-                ...this.commandServices(),
-                service: this,
-                resources: this.resources,
-                worldObjects: this.worldObjects,
-                state: this.stateFor(actor.id),
-            },
-            actor,
-            message,
-            locationNPCs,
-            navigation,
-            now
-        )
-    }
+    private readonly requests = createAdventureRequests({
+        service: this,
+        services: () => this.commandServices(),
+        resources: () => this.resources,
+        objects: () => this.worldObjects,
+        stateFor: (id) => this.stateFor(id),
+        now: () => this.now(),
+        permission: (actor, message) => this.workPermission(actor, message),
+    })
+    public readonly handle = this.requests.handle
+    public readonly handleResult = this.requests.handleResult
 
     private commandServices() {
         return {
@@ -182,107 +174,38 @@ export class AdventureService {
         }
     }
 
-    public handleResult(
-        actor: GameCharacter,
-        message: AdventureClientMessage,
-        characters: GameCharacter[],
-        navigation: NavigationService | undefined,
-        now: number
-    ): AdventureActionResult {
-        if (!this.workPermission(actor, message)) {
-            const error =
-                'Работа приостановлена до завершения обращения за помощью.'
-            this.reportWorkProblem(actor, error)
-            return { accepted: false, error, events: [] }
-        }
-        if (message.type === 'world_interact') {
-            const result = this.worldObjects.open(actor, message.objectId, now)
-            if (result !== undefined) {
-                return result
-            }
-        }
-        const result = resolveAdventureService(
-            this.commandServices(),
-            actor,
-            this.stateFor(actor.id),
-            message,
-            characters,
-            navigation,
-            now
-        )
-        if (result !== undefined) {
-            return result
-        }
-        return resolvedAdventureAction(
-            this,
-            this.stateFor(actor.id),
-            actor,
-            message,
-            characters,
-            navigation,
-            now
-        )
-    }
+    private readonly interactions = createAdventureInteractions({
+        service: this,
+        stateFor: (id) => this.stateFor(id),
+        trading: () => this.trading,
+        cities: this.cities,
+        now: () => this.now(),
+    })
+    public readonly interact = this.interactions.interact
+    public readonly trade = this.interactions.trade
+    public readonly refreshTradeAccess = this.interactions.refresh
 
-    public interact(
-        actor: GameCharacter,
-        npcId: string,
-        locationNPCs: GameCharacter[],
-        navigation?: NavigationService,
-        now = this.now(),
-        service?: 'shop' | 'orders' | 'repair',
-        text?: string
-    ): GameEventPayload[] {
-        return extendNpcQuestDialogue(
-            this,
-            actor,
-            this.stateFor(actor.id),
-            interactAdventureNpc(
-                actor,
-                npcId,
-                locationNPCs,
-                this.stateFor(actor.id),
-                now,
-                navigation,
-                service,
-                text
-            ),
-            now
-        )
-    }
     public readonly choose = createAdventureChoice({
         service: this,
         stateFor: (id) => this.stateFor(id),
         now: () => this.now(),
         members: (id) => this.questRewardMembers(id),
+        cityStory: this.cityStories,
         award: (request) => this.grantQuestGoldOnce(request),
     })
 
-    public trade(
-        actor: GameCharacter,
-        itemId: AdventureTradeItemId,
-        locationNPCs: GameCharacter[],
-        navigation?: NavigationService,
-        now = this.now()
-    ): GameEventPayload[] {
-        return this.trading.legacy(
-            actor,
-            this.stateFor(actor.id),
-            itemId,
-            locationNPCs,
-            navigation,
-            now
-        )
-    }
-
-    public refreshTradeAccess(actor: GameCharacter): void {
-        refreshTradeDialogue(actor, this.stateFor(actor.id).dialogue)
-    }
-
     public observe(
         events: GameEventPayload[],
-        findCharacter: (id: string) => GameCharacter | undefined
+        findCharacter: (id: string) => GameCharacter | undefined,
+        navigationFor?: (actor: GameCharacter) => NavigationService
     ): GameEventPayload[] {
+        observeCityIntroductions(
+            this.cities,
+            events,
+            findCharacter,
+            navigationFor,
+            this.now()
+        )
         return observeAdventureEvents(
             events,
             findCharacter,
@@ -299,6 +222,57 @@ export class AdventureService {
         )
     }
 
-    private readonly stateFor = (playerId: string): PlayerAdventure =>
-        getAdventureState(this.players, playerId)
+    private readonly stateFor = (playerId: string): PlayerAdventure => {
+        const state = getAdventureState(this.players, playerId)
+        this.cityStories.synchronize(state)
+        return state
+    }
+
+    public initializeWorldData(
+        options: Partial<AdventureServiceOptions>
+    ): void {
+        if (this.worldDataInitialized || this.players.size > 0) {
+            throw new Error('World adventure data is already in use')
+        }
+        ;[this.resources, this.worldObjects] = createAdventureEnvironment(
+            { ...this.options, ...options },
+            () => this.economy,
+            this.cities
+        )
+        this.worldDataInitialized = true
+    }
+
+    public initializeCities(options: {
+        seed: string
+        initialBellState?: import('@my-game-ratata/contracts').CityBellState
+    }): void {
+        if (this.players.size > 0) {
+            throw new Error('City state is already in use')
+        }
+        this.cityStories.initialize(options.seed, options.initialBellState)
+    }
+
+    public readonly authoredStoryDraft = (questId: string) =>
+        this.cityStories.draft(questId)
+    public readonly storyOfferError = (
+        issuer: GameCharacter,
+        targetId: string,
+        questId: string
+    ) => this.cityStories.available(issuer, targetId, questId)
+    public acceptStoryOffer(
+        actor: GameCharacter,
+        questId: string,
+        rewardMode: import('@my-game-ratata/contracts').QuestRewardMode
+    ): boolean {
+        const definition = this.cities.byQuest(questId)
+        return (
+            definition !== undefined &&
+            this.cityStories.accept(
+                this.stateFor(actor.id),
+                actor,
+                definition,
+                { rewardMode }
+            )
+        )
+    }
 }

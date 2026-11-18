@@ -155,3 +155,21 @@ describe('test controls', () => {
         expect(send).not.toHaveBeenCalled()
     })
 })
+
+describe('joining before asynchronous presentation is ready', () => {
+    it('waits for the first map after the server session has been established', async () => {
+        vi.useFakeTimers()
+        const { api, state } = setup(false)
+        state.mapReady = false
+        const completed = vi.fn<() => void>()
+        const joining = api.join('self')
+        void joining.then(completed)
+        await vi.advanceTimersByTimeAsync(500)
+        expect(state.connected).toBe(true)
+        expect(completed).not.toHaveBeenCalled()
+        state.mapReady = true
+        await vi.advanceTimersByTimeAsync(50)
+        await joining
+        expect(completed).toHaveBeenCalledOnce()
+    })
+})

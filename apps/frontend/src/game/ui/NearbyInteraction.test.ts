@@ -137,6 +137,7 @@ describe('interaction menu invalidation', () => {
                         dangerLevel: 1,
                         regionName: 'Земли Новогорода',
                         map: {
+                            asset: { url: '/game/map/map1.json', revision: 'fixture' },
                             id: 'map-1-2',
                             width: 96,
                             height: 80,

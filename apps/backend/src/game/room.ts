@@ -29,12 +29,12 @@ import * as roomScenarios from './roomScenarios'
 import { advanceRoomSimulation } from './roomSimulation'
 import { createRoomSnapshotter } from './roomSnapshot'
 import { RoomSocial } from './roomSocial'
-import { spawnRoomCharacters } from './roomSpawns'
 import { createRoomTheftRequester } from './roomTheft'
 import { configureRoomQuests, createRoomParties } from './roomWorkerRequests'
+import { createRoomWorld, initializeRoomCharacters } from './roomWorldSetup'
 import { TheftService } from './theft'
 import { WorkerRequestService } from './workerRequests'
-import { WorldLocations } from './worldLocations'
+import { type WorldLocations } from './worldLocations'
 
 const tickMs = 50
 
@@ -90,17 +90,18 @@ export class GameRoom {
         public readonly navigation = loadNavigationService(),
         options: roomAi.GameRoomOptions = {}
     ) {
-        this.world = new WorldLocations(navigation, this.adventure)
+        this.world = createRoomWorld(navigation, this.adventure, options)
         configureRoomQuests(this, this.adventure, this.parties, this.characters)
-        const graves = spawnRoomCharacters(
-            this.world,
-            this.navigation,
-            this.characters,
-            this.controllers,
-            this.companions,
-            options.npcSpeechSeed,
-            options.npcIdentitySeed
-        )
+        const graves = initializeRoomCharacters({
+            world: this.world,
+            navigation: this.navigation,
+            characters: this.characters,
+            controllers: this.controllers,
+            companions: this.companions,
+            adventure: this.adventure,
+            options,
+            onRegistered: this.refreshPrayerAuraEnvironment,
+        })
         this.life.registerGraves(graves, Date.now())
         seedNpcPockets(this.characters.values())
         this.refreshPrayerAuraEnvironment()
@@ -156,6 +157,9 @@ export class GameRoom {
 
     public readonly hasLocation = (locationId: string): boolean =>
         this.world.locations.has(locationId)
+
+    public readonly worldMapAsset = (epoch: string, locationId: string) =>
+        this.world.mapAsset(epoch, locationId)
 
     public readonly getCharacter = (id: string) => this.characters.get(id)
 

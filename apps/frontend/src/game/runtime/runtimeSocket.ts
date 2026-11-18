@@ -2,6 +2,7 @@ import type {
     ClientMessage,
     GameEventPayload,
     HeroClass,
+    MapSummary,
     PlantTreePreview,
     ServerMessage,
     WorldSnapshot,
@@ -15,12 +16,13 @@ interface RuntimeSocketHandlers {
     onSnapshot: (snapshot: WorldSnapshot) => void
     onPlantingPreview?: (preview: PlantTreePreview) => void
     onStatus: (message: string) => void
-    onWorldInit: (playerId: string, snapshot: WorldSnapshot) => void
+    onWorldInit: (playerId: string, snapshot: WorldSnapshot, map: MapSummary) => void
 }
 
 export class RuntimeSocket {
     private readonly handlers: RuntimeSocketHandlers
     private socket: WebSocket | undefined
+    private initialized = false
 
     public constructor(handlers: RuntimeSocketHandlers) {
         this.handlers = handlers
@@ -28,8 +30,10 @@ export class RuntimeSocket {
 
     public connect(nickname: string, heroClass?: HeroClass): void {
         if (this.handlers.isStopped()) return
+        this.close()
         this.handlers.onStatus('Connecting')
         const socket = new WebSocket(resolveWebSocketUrl())
+        this.initialized = false
         this.socket = socket
 
         socket.addEventListener('open', () => {
@@ -40,12 +44,14 @@ export class RuntimeSocket {
             if (this.socket === socket) this.handleSocketMessage(event)
         })
         socket.addEventListener('close', () => {
-            if (!this.handlers.isStopped()) {
+            if (!this.handlers.isStopped() && this.socket === socket) {
+                this.socket = undefined
+                this.initialized = false
                 this.handlers.onStatus('Disconnected')
             }
         })
         socket.addEventListener('error', () => {
-            if (!this.handlers.isStopped()) {
+            if (!this.handlers.isStopped() && this.socket === socket) {
                 this.handlers.onError('Connection failed')
             }
         })
@@ -76,9 +82,12 @@ export class RuntimeSocket {
                 this.handlers.onStatus('Disconnected')
                 return
             }
-            this.handlers.onWorldInit(message.playerId, message.snapshot)
+            this.initialized = true
+            this.handlers.onWorldInit(message.playerId, message.snapshot, message.map)
             return
         }
+
+        if (!this.initialized && message.type !== 'error') return
 
         if (message.type === 'snapshot') {
             this.handlers.onSnapshot(message.snapshot)
@@ -111,4 +120,12 @@ function resolveWebSocketUrl(): string {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 
     return `${protocol}//${window.location.hostname}:3000/ws`
+}
+
+/** Dynamic map JSON is served by the game server; tilesets stay on the frontend. */
+export function resolveWorldMapUrl(asset: string): string {
+    if (asset.startsWith('/game/map/')) return new URL(asset, window.location.origin).href
+    const backend = new URL(resolveWebSocketUrl())
+    backend.protocol = backend.protocol === 'wss:' ? 'https:' : 'http:'
+    return new URL(asset, backend.origin).href
 }

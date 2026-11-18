@@ -11,6 +11,7 @@ import type {
 import { Actor, BoundingBox, Engine, type ImageSource, type SpriteSheet, vec } from 'excalibur'
 
 import type { CharacterId } from '../assets/characterCatalog'
+import { type BellImages, BellViews } from './bellViews'
 import { BuildingViews } from './buildingViews'
 import { CharacterGraphics } from './characterGraphics'
 import {
@@ -43,6 +44,7 @@ export class SceneActors {
     private readonly bundles = new Map<string, CharacterBundle>()
     private gravePositions = new Map<string, Vector2>()
     private readonly buildingViews: BuildingViews
+    private readonly bells: BellViews
     private readonly depthProps: DepthPropViews
     private readonly corpseViews: CorpseViews
     private readonly worldActors: WorldSceneActors
@@ -68,9 +70,11 @@ export class SceneActors {
         sheets: Map<CharacterId, SpriteSheet>,
         itemImages: Map<ItemId, ImageSource>,
         chestImage: ImageSource,
-        farmImage: ImageSource
+        farmImage: ImageSource,
+        bellImages: BellImages
     ) {
         this.mapView = new SceneMapView(engine)
+        this.bells = new BellViews(engine, bellImages)
         this.characterGraphics = new CharacterGraphics(sheets)
         this.guides = new TrainingGuides(engine)
         this.combatTarget = new InteractionTargetViews(engine)
@@ -108,6 +112,7 @@ export class SceneActors {
         this.statusViews.clear()
     }
     public dispose(): void {
+        this.bells.clear()
         this.mapView.dispose()
         this.guides.dispose()
         this.corpseViews.dispose()
@@ -123,11 +128,13 @@ export class SceneActors {
         this.gravePositions.clear()
     }
     public showDamage(event: GameEventPayload): void {
+        this.bells.receive(event)
         this.combatEffects.receive(event)
         this.damageFeedback.show(event, event.targetId === this.localPlayerId)
     }
 
     public addMap(map: RenderedTiledMap): void {
+        this.bells.clear()
         this.clearDamage()
         this.corpseViews.dispose()
         this.depthProps.dispose()
@@ -159,6 +166,7 @@ export class SceneActors {
             this.isPositionVisible(position)
         )
         this.buildingViews.update(player?.position)
+        this.bells.updateSnapshot(snapshot, (bell) => this.isPositionVisible(bell.position))
         this.signReading.update(snapshot.adventure?.worldObjects ?? [], player, (position) =>
             this.isPositionVisible(position)
         )
@@ -195,6 +203,10 @@ export class SceneActors {
             player
         )
         this.followLocalPlayer(localPlayerId)
+    }
+
+    public buildingCoverStates(): { id: string; visible: boolean }[] {
+        return this.buildingViews.coverStates()
     }
 
     private updateResourceViews(snapshot: WorldSnapshot): void {

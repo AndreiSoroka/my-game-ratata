@@ -7,6 +7,7 @@ import {
     type QuestOfferSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { resolveAuthoredQuestDraft } from './authoredQuestOffers'
 import type { GameCharacter } from './character'
 import { snapshotItem } from './inventory'
 import type { NpcQuestEnvironment, QuestOfferRecord } from './npcQuestTypes'
@@ -19,6 +20,32 @@ import {
 } from './questExcursions'
 
 export function createQuestOffer(
+    issuer: GameCharacter,
+    targetId: string,
+    draft: QuestDraft,
+    environment: NpcQuestEnvironment,
+    id: string,
+    now: number
+): QuestOfferRecord | string {
+    const authored = resolveAuthoredQuestDraft(
+        issuer,
+        targetId,
+        draft,
+        environment
+    )
+    return typeof authored === 'string'
+        ? authored
+        : createPreparedQuestOffer(
+              issuer,
+              targetId,
+              authored,
+              environment,
+              id,
+              now
+          )
+}
+
+function createPreparedQuestOffer(
     issuer: GameCharacter,
     targetId: string,
     draft: QuestDraft,
@@ -59,6 +86,7 @@ export function createQuestOffer(
         targetId,
         issuerDeath: issuer.deathSequence,
         view: {
+            ...authoredQuestMetadata(draft),
             id,
             revision: 1,
             issuerId: issuer.id,
@@ -170,4 +198,12 @@ export function cloneQuestOffer(
     record: QuestOfferRecord | undefined
 ): QuestOfferSnapshot | null {
     return record === undefined ? null : structuredClone(record.view)
+}
+
+function authoredQuestMetadata(
+    draft: QuestDraft
+): Pick<QuestOfferSnapshot, 'authoredQuestId'> {
+    return draft.authoredId === undefined
+        ? {}
+        : { authoredQuestId: draft.authoredId }
 }

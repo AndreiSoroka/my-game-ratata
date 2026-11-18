@@ -50,10 +50,10 @@ describe('physical quest deliveries', () => {
             expect(wrapper.text()).toContain('Мира получила 3 сердца')
             expect(wrapper.text()).toContain('Общая награда: 40 золотых')
             expect(wrapper.text()).toContain('Получено вами: 20 золотых')
-            expect(wrapper.text()).toContain('Восстановить колокол памяти')
+            expect(wrapper.text()).toContain('подойти к нему внутри часовни и пробудить')
             await wrapper.setProps({ adventure: { ...adventure, wardRestored: true } })
             expect(wrapper.text()).not.toContain('Последний шаг')
-            expect(wrapper.text()).toContain('Пограничный колокол вновь защищает долину')
+            expect(wrapper.text()).toContain('Городские мастерские и торговля работают')
         } finally {
             wrapper.unmount()
         }
@@ -103,6 +103,32 @@ describe('physical quest deliveries', () => {
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'guild_abandon', instanceId: 'guild-contract-1' }],
             ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
+})
+
+describe('city-wide completed orders', () => {
+    it('closes a competing city order without claiming a personal payout or consuming the bag', () => {
+        const adventure = adventureFixture()
+        adventure.quest = {
+            ...adventure.quest,
+            status: 'cancelled',
+            accepted: true,
+            notice: 'Городской заказ уже выполнен. Вещи не израсходованы, награда не начислена.',
+        }
+        adventure.trophies = 3
+        adventure.cityState = { locationId: 'map-2-2', bellState: 'prepared' }
+        const wrapper = mount(AdventureJournal, { props: { adventure } })
+        try {
+            expect(wrapper.text()).toContain('Городской заказ уже выполнен')
+            expect(wrapper.text()).toContain('награда не начислена')
+            expect(wrapper.text()).toContain('внутри часовни')
+            expect(wrapper.find('progress').exists()).toBe(false)
+            expect(wrapper.find('.journal-hearts').exists()).toBe(false)
+            expect(wrapper.text()).not.toContain('Награда выдана')
+            expect(wrapper.text()).not.toContain('Общая награда')
         } finally {
             wrapper.unmount()
         }

@@ -14,6 +14,7 @@ export function createAdventureChoice(context: {
     now: () => number
     members: (id: string) => readonly string[]
     award: QuestGoldAwarder
+    cityStory?: import('./cityStoryQuests').CityStoryQuests
 }) {
     return (
         actor: GameCharacter,
@@ -43,6 +44,9 @@ export function createAdventureChoice(context: {
                     ...(rewardMode === undefined ? {} : { rewardMode }),
                     memberIds: context.members(actor.id),
                     award: context.award,
+                    ...(context.cityStory === undefined
+                        ? {}
+                        : { cityStory: context.cityStory }),
                 }
             )
         )

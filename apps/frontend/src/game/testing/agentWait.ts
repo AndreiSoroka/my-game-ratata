@@ -1,5 +1,6 @@
 import type { AdventureQuestStatus, ItemId } from '@my-game-ratata/contracts'
 
+import { agentAvailable, agentMapReady } from './agentAvailability'
 import type { AgentObservation } from './agentObservation'
 import type { RatataTestState } from './testInterface'
 
@@ -48,7 +49,9 @@ function validCondition(condition: AgentCondition): boolean {
         case 'inventory':
             return validInventoryCondition(condition)
         case 'quest':
-            return ['available', 'active', 'ready', 'completed'].includes(condition.status)
+            return ['available', 'active', 'ready', 'completed', 'cancelled'].includes(
+                condition.status
+            )
         case 'location':
             return typeof condition.locationId === 'string'
         case 'dialogue':
@@ -148,13 +151,17 @@ export function createAgentWaiter(options: {
             const poll = () => {
                 const state = options.getState()
                 if (disposed) return cancel()
-                if (!available(state) || state.localPlayerId !== identity) {
+                if (!agentAvailable(state) || state.localPlayerId !== identity) {
                     return finish(
                         'unavailable',
                         'Player disconnected, died, retired or identity changed'
                     )
                 }
-                if (hasNewSnapshot(state, afterTick) && matchesAgentCondition(state, condition)) {
+                if (
+                    agentMapReady(state) &&
+                    hasNewSnapshot(state, afterTick) &&
+                    matchesAgentCondition(state, condition)
+                ) {
                     return finish(
                         matchedStatus,
                         matchedStatus === 'updated'
@@ -181,15 +188,6 @@ export function createAgentWaiter(options: {
             cancel()
         },
     }
-}
-
-function available(state: RatataTestState): boolean {
-    return Boolean(
-        state.connected &&
-        !state.defeated &&
-        state.player?.alive &&
-        !state.player.tags.includes('offline')
-    )
 }
 
 function hasNewSnapshot(state: RatataTestState, afterTick?: number): boolean {

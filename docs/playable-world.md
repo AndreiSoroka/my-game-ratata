@@ -7,15 +7,21 @@ sources. NPC dialogue retrieves those articles without keyboard or interface
 instructions. [Character development](character-development.md) covers its windows
 and debug atlas; [NPC reasoning](npc-ai.md) describes optional model configuration.
 
-The Lands of Novogorod are authored, deterministic generated content. Generation
-is separate from the authoritative simulation: `scripts/generate-world.mjs`
-builds Tiled maps, and the server resolves ordinary character intentions. No
-external language model or paid API is called by default. Current world state
-lives in server memory; restarting the backend begins a new world session.
+The Lands of Novogorod contain 25 locations. At backend startup Novogorod receives
+a new seeded layout; the other 24 maps retain their authored geometry. The pure
+`scripts/generate-map.mjs` generator supplies both runtime geometry and the
+optional `scripts/generate-world.mjs` file export. Navigation, residents,
+resources, interactions and covers use that same map. The server resolves ordinary
+character intentions. No external language model or paid API is called by default.
+Current world state lives in server memory; restarting the backend begins a new
+world session. See [generated city and Bell](generated-city.md) for seed, map
+loading, fortifications and shared story rules.
 
 ## Play
 
-Choose a name and a starting background. For the first activities, see
+Choose a name and a starting background. A new identity awakens on the peaceful
+cemetery ground beside the chapel; reconnecting preserves the existing identity
+and position. For the first activities, see
 [gathering and tools](../knowledge/forestry/chopping.md),
 [trade](../knowledge/economy/trade.md) and
 [Mira's bell quest](../knowledge/quests/bell.md). Backgrounds supply starting
@@ -107,11 +113,22 @@ belong to the relevant professional knowledge articles.
 ## Trading, contracts and rescue windows
 
 Friendly character interactions open their reachable choices. **Покажи товары**
-opens a separate shop; the return button or Escape goes back to dialogue. Artisans
+opens a separate shop; the return button or Escape goes back to dialogue. Until
+the city Bell is active, purchases, sales, repairs and artisan order placement or
+collection are unavailable, including through old windows. Conversation, quests,
+Sister Vera, self-crafting and ordinary work remain available. Artisans
 have **Купить** and **Заказать**; Ignat also has **Ремонт**. An order confirmation
 shows its deposit and remaining payment, and its status shows material shortage,
 queue or readiness. See [orders](../knowledge/crafting/orders.md) and
 [Ignat](../knowledge/settlements/novogorod/ignat.md) for the underlying rules.
+
+Mira can offer the shared city order while the Bell is silent. One first successful
+submission consumes 3 carried slime hearts, pays the single 40-gold budget and
+prepares the Bell; competing accepted copies close without consuming their items
+or paying again. Then physically approach the Bell **inside the chapel** and use
+its activation interaction. Active startup worlds need no hearts and already
+contain Kaplya. [The Bell article](../knowledge/quests/bell.md) describes the
+in-world explanation.
 
 Before accepting a quest choose **Вся награда сдающему** or **Поровну группе**
 (the default). The journal shows active quests, their fixed reward mode and paid
@@ -255,9 +272,9 @@ Cached Canvas graphics and bounded Excalibur ParticleEmitter bursts share a cons
 
 Melee and skeleton strike arcs begin at the same world anchor as the attacker's hit zones, without the torso offset used by spell effects. They point toward the authoritative target, falling back to facing for an untargeted swing. Their initial position and heading stay fixed for that swing; reduced motion keeps the same direction. The curved swing remains ordinary combat feedback. Yellow hit rectangles, directional Shot/Spark corridors and harmful prayer geometry appear only to a living connected observer inside a map-authored training yard, clipped to its interior. Leaving, dying, disconnecting or changing maps clears them.
 
-Novogorod's wooden training pen is east of the square, before the smithy (outer tiles x57–71, y43–56, three-tile entrance on the west). Its stationary wood-and-straw construct uses shared character combat: select it with a click or E and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
+Novogorod's wooden training pen is placed with the current city layout and connected to the streets; use its observed building landmark rather than fixed coordinates. It retains its three-tile entrance on the west. Its stationary wood-and-straw construct uses shared character combat: select it with a click or E and use ordinary attacks or auto-attacks. Hits measure calculated damage without reducing HP, stunning, granting practice or generating rewards; weapon durability, energy and mana costs still apply. Prayers do not damage wood. Attacks from outside use the same reach and line-of-sight checks, but do not grant the yard's numeric feedback.
 
-Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.9.0 sends HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
+Combat feedback uses server-assigned grey «Промах»/«Слабый удар», light yellow «Удар», orange «Добротный удар» and red «Критический удар». Criticals take priority over weakened energy and raw-roll thirds. Exact damage on the dummy is visible from inside its yard; other combat hides amounts. Protocol 0.10.0 retains HP/MP/EN as rounded-down integer percentages without current or maximum amounts unless the observer has the server-only `exactCombatNumbers` capability. This applies to the observer's own character too. Hidden healing, absorption, barrier reserves and recovery notices do not reveal amounts. Private `resourceChecks` tell the acting identity whether an action has enough resources; commands still revalidate their actual costs. Zero-capacity resources are distinguished from empty refillable bars. Private character sheets show approximate bands; Life and Magic stars independently earn precise self-resource knowledge. Raw combat stats and hidden graph state are not sent to other observers. The local character's overhead HP bar stays hidden.
 
 ## Speech bubbles and dialogue keys
 
@@ -271,11 +288,18 @@ From dialogue choices, **PageUp/PageDown** focuses and scrolls the speech text. 
 bun install --frozen-lockfile
 bun run build
 GAME_MAP_ROOT="$PWD/apps/frontend/public/game/map" bun dist/backend/index.js
+# Add GAME_WORLD_SEED=novogorod-example to reproduce a city layout.
 # in another terminal:
 bun run --cwd apps/frontend preview
 ```
 
-The built client runs at http://localhost:4173 and connects to the backend on port 3000. Alternatively use `bun run dev:backend` and `bun run dev:frontend`. World state currently lives in server memory; restarting the backend begins a new world session.
+The built client runs at http://localhost:4173 and connects to the backend on port 3000. Alternatively use `bun run dev:backend` and `bun run dev:frontend`. Set
+`GAME_WORLD_SEED` on the backend to reproduce a city; otherwise startup chooses a
+random seed. Maps are served from `/world/maps/:serverEpoch/:locationId.json`.
+The client receives `world_init` before loading the current map; a new epoch
+reloads it even at the same location. Static tilesets and images remain under
+`/game/map`. If loading fails, use **Повторить загрузку карты**. World state,
+contracts, Bell state and characters remain in memory and reset on restart.
 
 ## Agent test interface
 

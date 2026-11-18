@@ -10,6 +10,7 @@ export interface RatataGameOptions {
     onEvent?: (event: GameEventPayload) => void
     onChatState: (state: ChatInputState) => void
     onError: (message: string) => void
+    onMapError?: (message: string | null) => void
     onInventoryToggle: () => void
     onCharacterToggle?: () => void
     onContextAction?: () => void

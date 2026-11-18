@@ -39,7 +39,13 @@ export function publishRoomEvents(
             }),
         ]
     }
-    adventure.observe(events, (id) => characters.get(id))
+    adventure.observe(
+        events,
+        (id) => characters.get(id),
+        world === undefined
+            ? undefined
+            : (actor) => world.get(actor.locationId).navigation
+    )
     const partyEvents = parties.observe(events, (id) => characters.get(id))
     for (const event of [...events, ...partyEvents]) {
         stampSpeechEvent(event, characters.get(event.actorId ?? ''))

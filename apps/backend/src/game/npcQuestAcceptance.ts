@@ -97,18 +97,52 @@ export function answerQuestOffer(
             'Лидер должен сначала завершить действующий договор.'
         )
     }
-    if (offer.view.workerRequestId !== undefined) {
-        return acceptWorkerOffer(context, actor, issuer, offer, message, now)
-    }
-
-    return acceptGenerated(
-        context,
-        actor,
-        issuer,
-        offer,
-        message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
-        now
+    return (
+        acceptSpecialOffer(context, actor, issuer, offer, message, now) ??
+        acceptGenerated(
+            context,
+            actor,
+            issuer,
+            offer,
+            message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
+            now
+        )
     )
+}
+
+function acceptSpecialOffer(
+    context: QuestAcceptanceContext,
+    actor: GameCharacter,
+    issuer: GameCharacter,
+    offer: QuestOfferRecord,
+    message: Extract<NpcQuestClientMessage, { type: 'quest_offer_answer' }>,
+    now: number
+): NpcQuestResult | undefined {
+    if (offer.view.authoredQuestId !== undefined) {
+        const error = context.environment.adventure.storyOfferError(
+            issuer,
+            actor.id,
+            offer.view.authoredQuestId
+        )
+        if (error !== undefined) {
+            return questResult(false, error)
+        }
+        const accepted = context.environment.adventure.acceptStoryOffer(
+            actor,
+            offer.view.authoredQuestId,
+            message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE
+        )
+        if (accepted) {
+            context.offers.delete(actor.id)
+        }
+        return questResult(
+            accepted,
+            accepted ? null : 'Городской заказ уже недоступен.'
+        )
+    }
+    return offer.view.workerRequestId === undefined
+        ? undefined
+        : acceptWorkerOffer(context, actor, issuer, offer, message, now)
 }
 
 function acceptWorkerOffer(

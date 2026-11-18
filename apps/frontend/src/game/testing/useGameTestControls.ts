@@ -2,6 +2,7 @@ import type { CharacterSnapshot, HeroClass, WorldSnapshot } from '@my-game-ratat
 import { computed, type Ref } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
+import { agentConnected } from './agentAvailability'
 import { installTestInterface, type RatataTestState } from './testInterface'
 
 interface TestControls {
@@ -22,7 +23,8 @@ interface TestControls {
 }
 export function useGameTestControls(state: TestControls) {
     const testState = computed<RatataTestState>(() => ({
-        connected: state.status.value === 'Connected',
+        connected: agentConnected(state.status.value),
+        mapReady: state.status.value === 'Connected',
         defeated: state.defeated.value,
         error: state.errorMessage.value,
         inventoryOpen: state.inventoryOpen.value,

@@ -26,6 +26,9 @@ export function trophyProgress(
                 ? 'ready'
                 : state.questStatus,
         wardRestored: state.wardRestored,
+        ...(state.cityBellState === undefined
+            ? {}
+            : { bellState: state.cityBellState }),
     }
 }
 

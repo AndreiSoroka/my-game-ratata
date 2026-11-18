@@ -1,6 +1,6 @@
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
-import { CharacterKnowledge } from './characterKnowledge'
+import type { CharacterKnowledge } from './characterKnowledge'
 import { npcCommandProblem } from './commandValidation'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { npcDialogueContext } from './dialogueContext'
@@ -8,6 +8,7 @@ import { prepareKnowledgeCatalog } from './knowledgeCatalog'
 import { npcKnowledgeInformation } from './knowledgeInformation'
 import { characterKnowledgeScope } from './knowledgeScope'
 import { reportNpcRequestStatus } from './requestStatus'
+import { createRoomKnowledge } from './roomKnowledge'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import { continuationAvailable } from './schedulerPolicy'
 import type { NpcAiSessionActions } from './session'
@@ -15,7 +16,7 @@ import { invokeNpcAiTurn } from './turn'
 import type { NpcAiConfig, NpcAiProvider } from './types'
 
 export class NpcAiScheduler {
-    private readonly knowledge = new CharacterKnowledge()
+    private readonly knowledge: CharacterKnowledge
     private readonly calls: number[] = []
     private readonly backgroundCalls: number[] = []
     private busy = false
@@ -33,6 +34,7 @@ export class NpcAiScheduler {
         private readonly current: () => boolean,
         private readonly nextId: (kind: string) => string
     ) {
+        this.knowledge = createRoomKnowledge(room)
         prepareKnowledgeCatalog(
             room,
             config.npcs.map((npc) => npc.actorId)
@@ -239,17 +241,10 @@ export class NpcAiScheduler {
     }
 
     private trimCalls(now: number): void {
-        while (
-            this.calls[0] !== undefined &&
-            this.calls[0] <= now - 3_600_000
-        ) {
-            this.calls.shift()
-        }
-        while (
-            this.backgroundCalls[0] !== undefined &&
-            this.backgroundCalls[0] <= now - 3_600_000
-        ) {
-            this.backgroundCalls.shift()
+        for (const calls of [this.calls, this.backgroundCalls]) {
+            while (calls[0] !== undefined && calls[0] <= now - 3_600_000) {
+                calls.shift()
+            }
         }
     }
 

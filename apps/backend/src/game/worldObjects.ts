@@ -8,6 +8,7 @@ import { interactionApproachPoints } from '@my-game-ratata/contracts'
 import type { PlayerAdventure } from './adventureState'
 import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
+import type { CityWorldState } from './cityWorldState'
 import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -25,7 +26,8 @@ export class WorldObjects {
             actor: GameCharacter,
             id: string,
             now: number
-        ) => AdventureActionResult
+        ) => AdventureActionResult,
+        private readonly cities?: CityWorldState
     ) {}
 
     public forgetActor(actorId: string): void {
@@ -75,6 +77,7 @@ export class WorldObjects {
                     y: object.bounds.y + object.bounds.height / 2,
                 },
                 depleted: false,
+                ...this.bellSnapshot(object),
             }))
     }
 
@@ -112,7 +115,55 @@ export class WorldObjects {
             }
             return []
         }
+        if (object.kind === 'bell') {
+            return this.ringBell(actor, state, object)
+        }
         return this.drink(actor, state, now)
+    }
+
+    private bellSnapshot(
+        object: WorldObjectDefinition
+    ): Pick<WorldObjectSnapshot, 'bell'> {
+        if (object.kind !== 'bell') {
+            return {}
+        }
+        const city = this.cities?.snapshot(object.locationId)
+        const activationId = city?.activationId
+        return {
+            bell: {
+                state: city?.bellState ?? 'silent',
+                ...(activationId === undefined ? {} : { activationId }),
+            },
+        }
+    }
+
+    private ringBell(
+        actor: GameCharacter,
+        state: PlayerAdventure,
+        object: WorldObjectDefinition
+    ): GameEventPayload[] {
+        const definition = this.cities?.byBell(object.id)
+        const city = this.cities?.snapshot(object.locationId)
+        if (definition?.cityId !== actor.locationId || city === undefined) {
+            setNotice(state, 'Этот колокол сейчас недоступен.')
+            return []
+        }
+        if (city.bellState !== 'prepared') {
+            setNotice(
+                state,
+                city.bellState === 'active'
+                    ? 'Колокол памяти уже звучит.'
+                    : 'Колокол пока молчит. Сначала нужно выполнить общий городской заказ Миры.'
+            )
+            return []
+        }
+        const events =
+            this.cities?.activate(object.locationId, actor.id, {
+                x: object.bounds.x + object.bounds.width / 2,
+                y: object.bounds.y + object.bounds.height / 2,
+            }) ?? []
+        setNotice(state, events[0]?.text ?? 'Колокол уже активирован.')
+        return events
     }
 
     private drink(

@@ -18,7 +18,12 @@ export class CraftOrderCommands {
         string,
         Map<string, { signature: string; result: AdventureActionResult }>
     >()
-    public constructor(private readonly orders: CustomerOrders) {}
+    public constructor(
+        private readonly orders: CustomerOrders,
+        private readonly cityRefusal: (
+            actor: GameCharacter
+        ) => string | undefined = () => undefined
+    ) {}
     public handle(
         actor: GameCharacter,
         wallet: PlayerAdventure,
@@ -59,7 +64,10 @@ export class CraftOrderCommands {
         navigation: NavigationService | undefined,
         now: number
     ): AdventureActionResult {
-        const refusal = cityTradeRefusal(actor)
+        const refusal =
+            (message.type === 'craft_order_cancel'
+                ? undefined
+                : this.cityRefusal(actor)) ?? cityTradeRefusal(actor)
         if (refusal !== undefined) {
             return rejected(refusal)
         }

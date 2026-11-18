@@ -13,6 +13,7 @@ import { codexNpcArguments, parseCodexResult } from './codexCliProtocol'
 export type { NpcAiProcess, NpcAiSpawn } from './codexCliProcess'
 export { codexNpcArguments, parseNpcAiReply } from './codexCliProtocol'
 import decisionSchema from './decision-schema.json'
+import { npcCityStoryInstructions } from './npcCityStoryContext'
 import { npcErrandInstructions } from './npcErrandInstructions'
 import { npcIdentityInstructions } from './npcIdentityInstructions'
 import {
@@ -28,6 +29,17 @@ import type {
     NpcAiProvider,
     NpcAiReply,
 } from './types'
+
+const systemInstructions = [
+    npcAiInstructions,
+    npcSocialInstructions,
+    npcMemoryInstructions,
+    npcErrandInstructions,
+    npcSpeechInstructions,
+    npcIdentityInstructions,
+    npcQuestInvitationInstructions,
+    npcCityStoryInstructions,
+].join('\n')
 
 export interface NpcAiTelemetry {
     actorId: string
@@ -80,22 +92,7 @@ export class CodexCliProvider implements NpcAiProvider {
             const instructionsPath = join(directory, 'instructions.txt')
             const schemaPath = join(directory, 'decision-schema.json')
             await Promise.all([
-                writeFile(
-                    instructionsPath,
-                    npcAiInstructions +
-                        '\n' +
-                        npcSocialInstructions +
-                        '\n' +
-                        npcMemoryInstructions +
-                        '\n' +
-                        npcErrandInstructions +
-                        '\n' +
-                        npcSpeechInstructions +
-                        '\n' +
-                        npcIdentityInstructions +
-                        '\n' +
-                        npcQuestInvitationInstructions
-                ),
+                writeFile(instructionsPath, systemInstructions),
                 writeFile(schemaPath, JSON.stringify(decisionSchema)),
             ])
             signal.throwIfAborted()

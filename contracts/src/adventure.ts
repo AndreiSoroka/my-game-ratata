@@ -5,6 +5,7 @@ import type {
 } from './environment'
 export type * from './environment'
 
+import type { CityStateSnapshot } from './cityState'
 import type { CraftOrderClientMessage } from './craftOrders'
 import type { MarketClientMessage } from './economy'
 import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
@@ -46,9 +47,11 @@ export type AdventureClientMessage =
     | { type: 'craft'; recipeId: AdventureRecipeId }
 
 export type AdventureQuestStatus =
-    'available' | 'active' | 'ready' | 'completed'
+    'available' | 'active' | 'ready' | 'completed' | 'cancelled'
 
 export interface AdventureQuestSnapshot {
+    accepted?: boolean
+    notice?: string
     rewardMode?: QuestRewardMode
     rewardShares?: QuestRewardShare[]
     requiredItemId?: ItemId
@@ -89,6 +92,7 @@ export interface AdventureShopOffer {
 }
 
 export interface AdventureSnapshot {
+    cityState?: CityStateSnapshot
     workshop?: import('./craftOrders').WorkshopSnapshot
     craftOrders?: Array<import('./craftOrders').CraftOrderSnapshot>
     market?: import('./economy').MarketSnapshot

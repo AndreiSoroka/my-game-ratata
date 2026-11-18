@@ -15,6 +15,7 @@ function fixture(): RatataTestState {
         rows: 5,
         regionName: 'Test',
         map: {
+            asset: { url: '/game/map/map1.json', revision: 'fixture' },
             id: 'map-2-2',
             width: 96,
             height: 80,

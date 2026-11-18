@@ -59,7 +59,14 @@ function fixture(position: Vector2, facing: CharacterSnapshot['facing'] = 'right
             columns: 5,
             rows: 5,
             regionName: 'Test',
-            map: { id: 'map-2-2', ...map, worldWidth: 256, worldHeight: 256, solidLayerNames: [] },
+            map: {
+                asset: { url: '/game/map/map1.json', revision: 'fixture' },
+                id: 'map-2-2',
+                ...map,
+                worldWidth: 256,
+                worldHeight: 256,
+                solidLayerNames: [],
+            },
         },
     }
     return { player, snapshot, state, map, visible }

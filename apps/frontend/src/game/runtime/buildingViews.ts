@@ -50,6 +50,13 @@ export class BuildingViews {
         )
     }
 
+    public coverStates(): { id: string; visible: boolean }[] {
+        return this.views.map((view) => ({
+            id: view.building.id,
+            visible: view.roof.graphics.isVisible,
+        }))
+    }
+
     private createView(building: MapBuilding): BuildingView {
         const z = building.y + building.height - 1
         const roof = new Actor({

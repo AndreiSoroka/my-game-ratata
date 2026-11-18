@@ -1,4 +1,4 @@
-import type { ClientMessage } from '@my-game-ratata/contracts'
+import type { ClientMessage, MapSummary, WorldSnapshot } from '@my-game-ratata/contracts'
 import { PointerButton, type PointerEvent, PointerType } from 'excalibur'
 import { beforeEach, expect, it, vi } from 'vitest'
 
@@ -12,6 +12,12 @@ const calls = vi.hoisted(() => ({
     stop: vi.fn<() => void>(),
     present: vi.fn<() => void>(),
     connect: vi.fn<() => void>(),
+    socketHandlers: undefined as
+        | {
+              onWorldInit: (id: string, snapshot: WorldSnapshot, map: MapSummary) => void
+              onSnapshot: (snapshot: WorldSnapshot) => void
+          }
+        | undefined,
     music: vi.fn<() => void>(),
     dispose: vi.fn<() => void>(),
     inputs: vi.fn<() => void>(),
@@ -37,8 +43,20 @@ vi.mock('./runtimePresentation', () => ({
             canvas,
             loader: {},
             engine: { start: calls.start, stop: calls.stop },
-            audio: { playMusic: calls.music, stop: vi.fn<() => void>() },
-            sceneActors: { dispose: calls.dispose },
+            audio: {
+                playMusic: calls.music,
+                stop: vi.fn<() => void>(),
+                pauseMovement: vi.fn<() => void>(),
+                setMap: vi.fn<(...args: unknown[]) => void>(),
+                playMovementSound: vi.fn<(...args: unknown[]) => void>(),
+            },
+            sceneActors: {
+                dispose: calls.dispose,
+                update: vi.fn<(...args: unknown[]) => void>(),
+                addMap: vi.fn<(...args: unknown[]) => void>(),
+                setInteractionTarget: vi.fn<(...args: unknown[]) => void>(),
+                clearDamage: vi.fn<(...args: unknown[]) => void>(),
+            },
         }
     },
 }))
@@ -60,7 +78,11 @@ vi.mock('./plantingPreview', () => ({
     },
 }))
 vi.mock('./runtimeSocket', () => ({
+    resolveWorldMapUrl: (url: string) => url,
     RuntimeSocket: class {
+        public constructor(handlers: typeof calls.socketHandlers) {
+            calls.socketHandlers = handlers
+        }
         public connect = calls.connect
         public send = calls.send
         public close(): void {
@@ -70,7 +92,7 @@ vi.mock('./runtimeSocket', () => ({
 }))
 beforeEach(() => {
     vi.clearAllMocks()
-    calls.load.mockResolvedValue({ buildings: [] } as unknown as RenderedTiledMap)
+    calls.load.mockResolvedValue({ buildings: [], tileWidth: 16 } as unknown as RenderedTiledMap)
     calls.start.mockResolvedValue()
 })
 
@@ -87,20 +109,22 @@ function setup() {
     const container = document.createElement('div')
     const onError = vi.fn<(message: string) => void>()
     const onChatState = vi.fn<RatataGameOptions['onChatState']>()
+    const onMapError = vi.fn<(message: string | null) => void>()
     const game = new RatataGame({
         container,
         nickname: 'Cancelled startup',
         onError,
+        onMapError,
         onChatState,
         onInventoryToggle: vi.fn<RatataGameOptions['onInventoryToggle']>(),
         onSnapshot: vi.fn<RatataGameOptions['onSnapshot']>(),
         onStatus: vi.fn<RatataGameOptions['onStatus']>(),
     })
-    return { game, container, onError, onChatState }
+    return { game, container, onError, onMapError, onChatState }
 }
 it('starts the current scene, controls, music and socket once', async () => {
     const { game, container } = setup()
-    await game.start()
+    await startWorld(game)
     expect(calls.present).toHaveBeenCalledOnce()
     expect(calls.inputs).toHaveBeenCalledOnce()
     expect(calls.music).toHaveBeenCalledOnce()
@@ -111,7 +135,7 @@ it('starts the current scene, controls, music and socket once', async () => {
 })
 it('sends fresh movement when the same direction is pressed after a UI input release', async () => {
     const { game } = setup()
-    await game.start()
+    await startWorld(game)
     try {
         calls.handlers?.keyDown(new KeyboardEvent('keydown', { code: 'KeyD' }))
         game.releaseUiControls()
@@ -134,7 +158,7 @@ it.each([
     async (pointer) => {
         const { game, container, onChatState } = setup()
         document.body.append(container)
-        await game.start()
+        await startWorld(game)
         try {
             const canvas = container.querySelector('canvas')!
             canvas.focus()
@@ -180,7 +204,7 @@ it.each([
 it('keeps a private editor or modal in control when the world is clicked during public typing', async () => {
     const { game, container, onChatState } = setup()
     document.body.append(container)
-    await game.start()
+    await startWorld(game)
     const dialog = document.createElement('section')
     dialog.setAttribute('role', 'dialog')
     const input = document.createElement('input')
@@ -205,57 +229,112 @@ it('keeps a private editor or modal in control when the world is clicked during 
         container.remove()
     }
 })
-it('never creates a scene, input listeners or connection after stopping during map loading', async () => {
+it('connects before requesting a map and ignores any map after stopping', async () => {
     const map = deferred<RenderedTiledMap>()
     calls.load.mockReturnValue(map.promise)
     const { game, container } = setup()
-    const startup = game.start()
+    await game.start()
+    expect(calls.connect).toHaveBeenCalledOnce()
+    expect(calls.load).not.toHaveBeenCalled()
+    initialize()
+    expect(calls.load).toHaveBeenCalledWith(
+        '/game/map',
+        'map-2-2.json',
+        expect.stringContaining('/world/maps/a/map-2-2.json?revision=a')
+    )
     game.stop()
     map.resolve({ buildings: [] } as unknown as RenderedTiledMap)
-    await startup
+    await Promise.resolve()
     expect(container.children).toHaveLength(0)
     expect(calls.present).not.toHaveBeenCalled()
-    expect(calls.inputs).not.toHaveBeenCalled()
-    expect(calls.connect).not.toHaveBeenCalled()
 })
-it('stops an engine that completes loading late without starting music or joining', async () => {
+it('stops an engine that completes loading late without starting music', async () => {
     const loaded = deferred<void>()
     calls.start.mockReturnValue(loaded.promise)
     const { game, container } = setup()
-    const startup = game.start()
+    await game.start()
+    initialize()
     await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
     game.stop()
     expect(calls.removeInputs).toHaveBeenCalledOnce()
     loaded.resolve()
-    await startup
-    expect(calls.stop).toHaveBeenCalledTimes(2)
-    expect(calls.dispose).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(calls.stop).toHaveBeenCalledTimes(2))
     expect(container.children).toHaveLength(0)
     expect(calls.music).not.toHaveBeenCalled()
-    expect(calls.connect).not.toHaveBeenCalled()
+    expect(calls.connect).toHaveBeenCalledOnce()
 })
-it('ignores a rejected map promise after cancellation but still reports active startup failures', async () => {
+it('keeps current map failures retryable while suppressing cancelled failures', async () => {
     const map = deferred<RenderedTiledMap>()
     calls.load.mockReturnValue(map.promise)
-    const { game } = setup()
-    const startup = game.start()
-    game.stop()
+    const old = setup()
+    await old.game.start()
+    initialize()
+    old.game.stop()
     map.reject(new Error('Late old map failure'))
-    await expect(startup).resolves.toBeUndefined()
-    calls.load.mockRejectedValue(new Error('Current map failed'))
+    await Promise.resolve()
+    expect(old.onMapError).not.toHaveBeenCalledWith('Late old map failure')
+    calls.load.mockRejectedValueOnce(new Error('Current map failed'))
     const fresh = setup()
-    await expect(fresh.game.start()).rejects.toThrow('Current map failed')
+    await fresh.game.start()
+    initialize()
+    await vi.waitFor(() => expect(fresh.onMapError).toHaveBeenCalledWith('Current map failed'))
+    expect(fresh.onError).not.toHaveBeenCalled()
+    calls.load.mockResolvedValue({ buildings: [], tileWidth: 16 } as unknown as RenderedTiledMap)
+    fresh.game.retryMap()
+    await vi.waitFor(() => expect(calls.music).toHaveBeenCalledOnce())
+    fresh.game.stop()
 })
 it('suppresses an engine loading failure after it has already been stopped', async () => {
     const loaded = deferred<void>()
     calls.start.mockReturnValue(loaded.promise)
-    const { game, container } = setup()
-    const startup = game.start()
+    const { game, container, onMapError } = setup()
+    await game.start()
+    initialize()
     await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
     game.stop()
     loaded.reject(new Error('Late engine failure'))
-    await expect(startup).resolves.toBeUndefined()
+    await Promise.resolve()
     expect(container.children).toHaveLength(0)
     expect(calls.music).not.toHaveBeenCalled()
-    expect(calls.connect).not.toHaveBeenCalled()
+    expect(onMapError).not.toHaveBeenCalledWith('Late engine failure')
 })
+it('reloads the same location after a new server epoch and ignores an obsolete initial map', async () => {
+    const old = deferred<RenderedTiledMap>()
+    const current = { buildings: [], tileWidth: 24 } as unknown as RenderedTiledMap
+    calls.load.mockReturnValueOnce(old.promise).mockResolvedValueOnce(current)
+    const { game } = setup()
+    await game.start()
+    initialize('old')
+    initialize('new')
+    await vi.waitFor(() => expect(calls.music).toHaveBeenCalledOnce())
+    old.resolve({ buildings: [], tileWidth: 8 } as unknown as RenderedTiledMap)
+    await Promise.resolve()
+    expect(calls.present).toHaveBeenCalledOnce()
+    expect(game.selectionTileSize).toBe(24)
+    game.stop()
+})
+
+function initialize(epoch = 'a'): void {
+    const map: MapSummary = {
+        id: 'map-2-2',
+        asset: { url: `/world/maps/${epoch}/map-2-2.json`, revision: epoch },
+        width: 96,
+        height: 80,
+        tileWidth: 16,
+        tileHeight: 16,
+        worldWidth: 1536,
+        worldHeight: 1280,
+        solidLayerNames: ['Collision'],
+    }
+    const snapshot = {
+        serverEpoch: epoch,
+        characters: [],
+        location: { id: map.id, map },
+    } as unknown as WorldSnapshot
+    calls.socketHandlers?.onWorldInit('hero', snapshot, map)
+}
+async function startWorld(game: RatataGame): Promise<void> {
+    await game.start()
+    initialize()
+    await vi.waitFor(() => expect(calls.music).toHaveBeenCalledOnce())
+}

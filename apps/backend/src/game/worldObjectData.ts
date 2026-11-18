@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type {
     AuthoredContainerDefinition,
@@ -9,6 +8,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import { readAuthoredContainer } from './containerData'
+import { resolveMapRoot } from './mapFiles'
 import { readInteractionAreas } from './worldObjectGeometry'
 
 export interface WorldObjectDefinition {
@@ -38,12 +38,7 @@ export function loadWorldObjects(locationId: string): WorldObjectDefinition[] {
     if (existing !== undefined) {
         return existing
     }
-    const root =
-        process.env['GAME_MAP_ROOT'] ??
-        path.resolve(
-            path.dirname(fileURLToPath(import.meta.url)),
-            '../../../../apps/frontend/public/game/map'
-        )
+    const root = resolveMapRoot()
     const map = JSON.parse(
         fs.readFileSync(path.join(root, `${locationId}.json`), 'utf8')
     ) as ObjectMap
@@ -65,7 +60,8 @@ export function readWorldObjects(
         if (
             object.type !== 'sign' &&
             object.type !== 'barrel' &&
-            object.type !== 'water'
+            object.type !== 'water' &&
+            object.type !== 'bell'
         ) {
             return []
         }

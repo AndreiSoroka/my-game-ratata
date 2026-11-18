@@ -34,6 +34,7 @@ import type {
     CorpseAppearance,
 } from './chests'
 export * from './chests'
+export type * from './cityState'
 export * from './craftOrders'
 export * from './economy'
 export * from './farmSupply'
@@ -228,6 +229,7 @@ export interface WorldChestSnapshot {
 }
 
 export interface MapSummary {
+    asset: { url: string; revision: string }
     height: number
     id: string
     solidLayerNames: string[]

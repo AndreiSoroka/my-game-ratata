@@ -6,6 +6,7 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { agentMapReady } from './agentAvailability'
 import { stopAgentMovement } from './agentMovementStop'
 import { createAgentNavigator } from './agentNavigation'
 import { type AgentObservation, type ObservationOptions, observeGame } from './agentObservation'
@@ -22,6 +23,7 @@ export type TestCommand = Exclude<ClientMessage, { type: 'join' }>
 
 export interface RatataTestState {
     connected: boolean
+    mapReady?: boolean
     defeated: boolean
     error: string
     inventoryOpen: boolean
@@ -237,7 +239,7 @@ async function waitForConnection(
     while (Date.now() < deadline) {
         if (disposed()) throw new Error('Test interface has been disposed')
         const state = getState()
-        if (state.connected) {
+        if (state.connected && agentMapReady(state)) {
             return
         }
         if (state.error.length > 0) {

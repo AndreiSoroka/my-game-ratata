@@ -36,6 +36,7 @@ function snapshotIn(locationId: string): WorldSnapshot {
             rows: GRID_SIZE,
             regionName: REGION_NAME,
             map: {
+                asset: { url: '/game/map/map1.json', revision: 'fixture' },
                 id: locationId,
                 width: 96,
                 height: 80,

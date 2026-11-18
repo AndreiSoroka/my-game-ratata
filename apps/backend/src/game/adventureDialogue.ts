@@ -50,7 +50,7 @@ export function interactAdventureNpc(
     if (service !== undefined) {
         state.dialogue.initialView = service
     }
-    refreshTradeDialogue(actor, state.dialogue)
+    refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
     if (actor.controllerKind === 'network_player') {
         npc.setMoveInput({ x: 0, y: 0 })
         npc.clearPath()
@@ -108,7 +108,7 @@ export function chooseAdventureReply(
         trophyProgress(state, actor),
         text
     )
-    refreshTradeDialogue(actor, state.dialogue)
+    refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
     return sayDialogue(actor, npc, state, state.dialogue.text)
 }
 

@@ -1,13 +1,18 @@
 import type { ClientMessage, GameEventPayload } from '@my-game-ratata/contracts'
+import type { CityBellState } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
+import type { WorldMaps } from '../game/worldMaps'
 import { NpcAiCoordinator } from './coordinator'
 import type { NpcAiDiagnostics } from './diagnostics'
 import type { NpcAiConfig, NpcAiProvider } from './types'
 
 export interface GameRoomOptions {
+    worldMaps?: WorldMaps
+    worldSeed?: string
+    initialBellState?: CityBellState
     npcIdentitySeed?: string
     npcSpeechSeed?: string
     ai?: {

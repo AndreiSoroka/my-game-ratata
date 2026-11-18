@@ -23,6 +23,8 @@ const heart = computed(
     () => itemAssetCatalog[props.adventure.quest.requiredItemId ?? 'slime_heart']
 )
 const completed = computed(() => props.adventure.quest.status === 'completed')
+const cancelled = computed(() => props.adventure.quest.status === 'cancelled')
+const terminal = computed(() => completed.value || cancelled.value)
 const canAbandon = computed(
     () =>
         props.alive &&
@@ -34,6 +36,7 @@ const statuses: Record<AdventureQuestStatus, string> = {
     active: 'Соберите сердца',
     available: 'Новая история',
     completed: 'Сердца переданы',
+    cancelled: 'Городской заказ закрыт',
     ready: 'Сердца собраны — вернитесь к Мире',
 }
 </script>
@@ -44,11 +47,11 @@ const statuses: Record<AdventureQuestStatus, string> = {
             <button type="button" aria-label="Закрыть журнал" @click="emit('close')">×</button>
         </header>
         <p class="adventure-eyebrow">
-            {{ adventure.wardRestored ? 'Завершено' : statuses[adventure.quest.status] }}
+            {{ adventure.wardRestored ? 'Город пробуждён' : statuses[adventure.quest.status] }}
         </p>
         <h2>{{ adventure.quest.title }}</h2>
         <p>{{ adventure.quest.description }}</p>
-        <div class="journal-hearts">
+        <div v-if="!cancelled" class="journal-hearts">
             <img :src="heart.src" :alt="heart.label" />
             <label :for="completed ? undefined : progressId"
                 >Слизневые сердца в рюкзаке:
@@ -59,13 +62,13 @@ const statuses: Record<AdventureQuestStatus, string> = {
             </label>
         </div>
         <progress
-            v-if="!completed"
+            v-if="!terminal"
             :id="progressId"
             class="journal-progress"
             :value="adventure.trophies"
             :max="adventure.quest.goal"
         />
-        <template v-if="!completed">
+        <template v-if="!terminal">
             <ol class="journal-steps">
                 <li>Найдите враждебных слизней за пределами Новогорода.</li>
                 <li>
@@ -74,7 +77,7 @@ const statuses: Record<AdventureQuestStatus, string> = {
                 </li>
                 <li>
                     Принесите {{ adventure.quest.goal }} сердца Мире в здание гильдии Новогорода и
-                    выберите «Отдать три сердца» в разговоре.
+                    сдайте их по городскому заказу.
                 </li>
             </ol>
             <p class="adventure-subtle">В счётчик входят только сердца в вашем рюкзаке.</p>
@@ -82,19 +85,27 @@ const statuses: Record<AdventureQuestStatus, string> = {
                 Поговорите с Мирой, чтобы принять задание. Сердца можно собрать заранее.
             </p>
         </template>
-        <p v-else class="adventure-success">
+        <p v-else-if="completed" class="adventure-success">
             Мира получила {{ adventure.quest.goal }} сердца. Награда выдана.
         </p>
-        <p v-if="adventure.quest.status !== 'available'" class="adventure-subtle journal-statistic">
+        <p v-else class="adventure-subtle">{{ adventure.quest.notice }}</p>
+        <p
+            v-if="!cancelled && adventure.quest.status !== 'available'"
+            class="adventure-subtle journal-statistic"
+        >
             Личных побед над слизнями после принятия задания: {{ adventure.quest.kills }}.
         </p>
         <p v-if="adventure.wardRestored" class="adventure-success">
-            Пограничный колокол вновь защищает долину.
+            Колокол памяти пробуждён. Городские мастерские и торговля работают.
         </p>
-        <p v-else-if="completed" class="adventure-subtle">
-            Последний шаг: поговорите с Мирой и выберите «Восстановить колокол памяти».
+        <p
+            v-else-if="adventure.cityState?.bellState === 'prepared' || completed"
+            class="adventure-subtle"
+        >
+            Колокол подготовлен. Последний шаг — подойти к нему внутри часовни и пробудить.
         </p>
         <QuestRewardSummary
+            v-if="!cancelled"
             :total="adventure.quest.rewardGold"
             :mode="adventure.quest.rewardMode"
             :shares="adventure.quest.rewardShares"

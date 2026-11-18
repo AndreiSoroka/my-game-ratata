@@ -5,6 +5,7 @@ import type { GameRoom } from '../game/room'
 import { projectContracts } from './contractProjection'
 import { dialogueKey, type NpcAiDialogue } from './dialogue'
 import { dialogueConversationKey, taskConversationKey } from './dialogueMemory'
+import { npcCityStoryContext } from './npcCityStoryContext'
 import { npcIdentityContext } from './npcIdentityInstructions'
 import { greetingOpportunity } from './npcInitiative'
 import { npcSpeechContext } from './npcSpeechInstructions'
@@ -56,6 +57,7 @@ export function npcDialogueContext(
         personality: actor.soul.personality,
         ...(socialOpportunity === undefined ? {} : { socialOpportunity }),
         ...personalContext(actor, state),
+        ...npcCityStoryContext(room, actor, currentPerson(state)),
         task: taskContext ? state.task : null,
         taskConsent: npcTaskConsent(room, state),
         ...(commandCapabilities === undefined ? {} : { commandCapabilities }),

@@ -15,6 +15,7 @@ function location(id: string): WorldLocation {
         rows: 5,
         regionName: 'Test region',
         map: {
+            asset: { url: '/game/map/map1.json', revision: 'fixture' },
             id,
             width: 20,
             height: 12,

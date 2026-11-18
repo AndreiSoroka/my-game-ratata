@@ -101,6 +101,9 @@ export class NpcQuestService {
         now: number,
         context: NpcQuestDecisionContext = {}
     ): string | undefined {
+        if (decision.type === 'quest_offer_revise') {
+            return this.offerOperations.previewRevision(issuer, decision, now)
+        }
         if (decision.type === 'quest_invitation_answer') {
             return this.invitations.previewAnswer(
                 issuer,

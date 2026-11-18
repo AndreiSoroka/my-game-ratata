@@ -7,6 +7,7 @@ import {
 import { GameCharacter } from './character'
 import { EconomyWorkerController } from './economyWorkers'
 import { createItemInstance, equipDirect } from './inventory'
+import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService } from './navigation'
 import type { SpawnedCharacter } from './spawns'
 import { walkableNear } from './workerNavigation'
@@ -53,7 +54,7 @@ export function workerHomeDefinitions() {
 export function createEconomyWorkers(
     navigation: NavigationService
 ): SpawnedCharacter[] {
-    return jobs.map((definition) => {
+    return jobs.map((definition, index) => {
         const desired = navigation.tileToWorld(definition.tile)
         const character = new GameCharacter({
             id: definition.id,
@@ -63,7 +64,15 @@ export function createEconomyWorkers(
             faction: 'peaceful',
             mortal: true,
             locationId: CENTER_LOCATION_ID,
-            spawnPosition: walkableNear(navigation, desired),
+            spawnPosition:
+                navigation.grid.cityAnchors === undefined
+                    ? walkableNear(navigation, desired)
+                    : citySpawnPosition(
+                          navigation,
+                          'service.workshop',
+                          definition.tile,
+                          { x: (index - 1) * navigation.grid.tileWidth, y: 0 }
+                      ),
             visualId:
                 definition.job === 'farmer' ? 'female_player' : 'male_player_2',
             soul: {

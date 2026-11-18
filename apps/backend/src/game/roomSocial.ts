@@ -48,7 +48,12 @@ export class RoomSocial {
         this.whispers = new WhisperService({
             getCharacter: (id) => room.getCharacter(id),
             navigationFor: (actor) => room.navigationFor(actor),
-            heard: createWhisperObserver(ai, () => this.questDialogues.turnIns),
+            heard: createWhisperObserver(
+                ai,
+                () => this.questDialogues.turnIns,
+                (actor, listener) =>
+                    adventure.cities.observeSpeech(actor.id, listener.id)
+            ),
         })
         this.exchanges = new ExchangeService({
             getCharacter: (id) => room.getCharacter(id),

@@ -8,6 +8,9 @@ declare global {
             lastSnapshot: WorldSnapshot | undefined
             localPlayerId: string | undefined
             worldToPage: (point: { x: number; y: number }) => { x: number; y: number } | undefined
+            buildingCovers?: () => { id: string; visible: boolean }[]
+            setCameraZoom?: (zoom: number) => boolean
+            captureFrame?: () => Promise<string | undefined>
         }
     }
 }

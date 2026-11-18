@@ -78,6 +78,10 @@ function objective(value: unknown): value is QuestObjective {
 }
 
 export function parseQuestDraft(value: unknown): QuestDraft | undefined {
+    const authored = parseAuthoredDraft(value)
+    if (authored.handled) {
+        return authored.draft
+    }
     if (
         !record(value) ||
         !boundedString(value['title'], 100) ||
@@ -228,4 +232,31 @@ function questPointReachable(
             navigation.findPathWorld(navigation.clampWorld(point), destination)
                 .length > 0
     )
+}
+
+function parseAuthoredDraft(value: unknown): {
+    handled: boolean
+    draft?: QuestDraft
+} {
+    if (!record(value) || value['authoredId'] === undefined) {
+        return { handled: false }
+    }
+    if (!boundedString(value['authoredId'], 120)) {
+        return { handled: true }
+    }
+    if (Object.keys(value).length !== 1) {
+        return { handled: false }
+    }
+    return {
+        handled: true,
+        draft: {
+            authoredId: value['authoredId'],
+            title: 'Авторский заказ',
+            description: 'Условия определяет сервер.',
+            objectives: [],
+            rewardGold: 0,
+            rewardItems: [],
+            funding: 'city',
+        },
+    }
 }

@@ -3,6 +3,7 @@ import type {
     AdventureDialogueChoice,
     AdventureQuestStatus,
     AdventureShopOffer,
+    CityBellState,
     MarketItemId,
 } from '@my-game-ratata/contracts'
 import { WORKSHOP_DEFINITIONS, workshopFor } from '@my-game-ratata/contracts'
@@ -54,6 +55,7 @@ export function npcMarketItemAllowed(
 }
 
 export interface AdventureProgress {
+    bellState?: CityBellState
     trophies: number
     kills: number
     questStatus: AdventureQuestStatus
@@ -123,7 +125,7 @@ function questDialogueChoices(
                 },
             ]
         case 'completed':
-            return progress.wardRestored
+            return progress.wardRestored || progress.bellState !== undefined
                 ? []
                 : [
                       {
@@ -131,6 +133,8 @@ function questDialogueChoices(
                           label: 'Восстановить колокол памяти',
                       },
                   ]
+        case 'cancelled':
+            return []
     }
 }
 
@@ -155,6 +159,10 @@ function dialogueText(
             return 'Три сердца! В них ещё тлеет искра памяти. Отдай их мне, получи награду — и вместе восстановим колокол.'
         case 'completed':
             return 'Награда твоя. Я вплела сердца в новую печать. Осталось прикоснуться к колоколу памяти: пусть он снова вернёт дорогам имена.'
+        case 'cancelled':
+            return progress.bellState === 'prepared'
+                ? 'Общий городской заказ уже выполнен. Колокол подготовлен внутри часовни: осталось подойти и активировать его.'
+                : 'Общий городской заказ уже закрыт. Сердца больше не требуются.'
     }
 }
 

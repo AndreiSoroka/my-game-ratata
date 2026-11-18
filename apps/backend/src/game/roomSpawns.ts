@@ -1,7 +1,7 @@
 import type { GraveSourceDefinition } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { PolicyController } from './companionControllers'
+import type { CityWorldState } from './cityWorldState'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import type { NavigationService } from './navigation'
@@ -13,6 +13,7 @@ import {
     initializeNpcSpeechProfiles,
     resolveNpcSpeechSeed,
 } from './npcSpeechProfiles'
+import { registerRoomCharacter } from './roomCharacterRegistration'
 import { createFriendlyGirl } from './spawns'
 import { createSupportNpcs } from './supportNpcs'
 import { createTrainingTargets } from './trainingTargets'
@@ -32,7 +33,8 @@ export function spawnRoomCharacters(
     controllers: Map<string, CharacterController>,
     companions: CompanionService,
     npcSpeechSeed?: string,
-    npcIdentitySeed?: string
+    npcIdentitySeed?: string,
+    cities?: CityWorldState
 ): GraveRegistration[] {
     const speechSeed = resolveNpcSpeechSeed(npcSpeechSeed)
     const identitySeed = resolveNpcIdentitySeed(npcIdentitySeed)
@@ -58,28 +60,32 @@ export function spawnRoomCharacters(
                 : []),
             ...enemies,
         ]) {
-            character.locationId = locationId
-            characters.set(character.id, character)
-            controllers.set(
-                character.id,
-                new PolicyController(companions, controller)
+            registerRoomCharacter(
+                { character, controller },
+                { characters, controllers, companions },
+                locationId
             )
         }
         for (const { character, controller } of createTrainingTargets(
             location.navigation
         )) {
-            characters.set(character.id, character)
-            controllers.set(character.id, controller)
+            registerRoomCharacter(
+                { character, controller },
+                { characters, controllers, companions },
+                character.locationId,
+                false
+            )
         }
     }
     for (const { character, controller } of [
-        ...createSupportNpcs(navigation, companions),
+        ...createSupportNpcs(navigation, companions, {
+            cityState: (id) => cities?.snapshot(id)?.bellState,
+        }),
         ...createEconomyWorkers(navigation),
     ]) {
-        characters.set(character.id, character)
-        controllers.set(
-            character.id,
-            new PolicyController(companions, controller)
+        registerRoomCharacter(
+            { character, controller },
+            { characters, controllers, companions }
         )
     }
     initializeNpcSpeechProfiles(characters.values(), speechSeed)

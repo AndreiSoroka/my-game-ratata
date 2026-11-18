@@ -19,7 +19,7 @@ import type { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
 import type { WorldObjects } from './worldObjects'
 
-interface AdventureCommandServices {
+export interface AdventureCommandServices {
     trading: AdventureTrading
     orderCommands: CraftOrderCommands
     farmSupply: CityFarmSupply

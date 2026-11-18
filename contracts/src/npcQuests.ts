@@ -19,6 +19,8 @@ export type QuestObjective =
 
 /** Untrusted narrative and references, never executable game rules. */
 export interface QuestDraft {
+    /** Stable server-authored terms; all narrative terms are canonicalized on the server. */
+    authoredId?: string
     title: string
     description: string
     objectives: QuestObjective[]
@@ -28,6 +30,7 @@ export interface QuestDraft {
 }
 
 export interface QuestOfferSnapshot {
+    authoredQuestId?: string
     introduction?: string
     fundingCityId?: string
     objectiveLabels?: string[]

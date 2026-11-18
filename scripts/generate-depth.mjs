@@ -71,7 +71,9 @@ export function createDepthProps(ctx, locationId) {
                 {
                     name: 'propId',
                     type: 'string',
-                    value: `${locationId}:prop:${prop.x}:${prop.y}`,
+                    value:
+                        prop.semanticId ??
+                        `${locationId}:prop:${prop.x}:${prop.y}`,
                 },
                 {
                     name: 'baseY',

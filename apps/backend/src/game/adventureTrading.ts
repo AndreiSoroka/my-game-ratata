@@ -28,12 +28,15 @@ export interface AdventureActionResult {
 }
 export function refreshTradeDialogue(
     actor: GameCharacter,
-    dialogue: AdventureDialogue | null
+    dialogue: AdventureDialogue | null,
+    cityReason?: string
 ): void {
     if (dialogue === null) {
         return
     }
-    const reason = dialogue.canTrade ? cityTradeRefusal(actor) : undefined
+    const reason = dialogue.canTrade
+        ? (cityReason ?? cityTradeRefusal(actor))
+        : undefined
     if (reason === undefined) {
         delete dialogue.tradeBlockedReason
     } else {
@@ -79,7 +82,12 @@ export class AdventureTrading {
         string,
         Map<string, { signature: string; result: AdventureActionResult }>
     >()
-    public constructor(private readonly economy: CityEconomyService) {}
+    public constructor(
+        private readonly economy: CityEconomyService,
+        private readonly cityRefusal: (
+            actor: GameCharacter
+        ) => string | undefined = () => undefined
+    ) {}
     private nextLegacyTrade = 1
     public legacy(
         actor: GameCharacter,
@@ -162,7 +170,7 @@ export class AdventureTrading {
         navigation: NavigationService | undefined,
         now: number
     ): AdventureActionResult {
-        const refusal = cityTradeRefusal(actor)
+        const refusal = this.cityRefusal(actor) ?? cityTradeRefusal(actor)
         if (refusal !== undefined) {
             return rejected(refusal)
         }

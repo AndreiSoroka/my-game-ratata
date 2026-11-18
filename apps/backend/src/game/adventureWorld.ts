@@ -4,6 +4,7 @@ import { AdventureResources } from './adventureResources'
 import type { AdventureActionResult } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
+import type { CityWorldState } from './cityWorldState'
 import { executeContainerCommand } from './containerCommands'
 import type { HarvestDrops } from './harvestWork'
 import type { InventoryItemInstance } from './inventory'
@@ -26,7 +27,8 @@ export interface AdventureServiceOptions {
 
 export function createAdventureEnvironment(
     options: AdventureServiceOptions,
-    economy: () => CityEconomyService
+    economy: () => CityEconomyService,
+    cities?: CityWorldState
 ): [AdventureResources, WorldObjects] {
     return [
         new AdventureResources(
@@ -36,7 +38,7 @@ export function createAdventureEnvironment(
             options.harvestDrops,
             options.farmRandom
         ),
-        new WorldObjects(options.worldObjects, options.openContainer),
+        new WorldObjects(options.worldObjects, options.openContainer, cities),
     ]
 }
 

@@ -22,6 +22,7 @@ interface AppRuntimeOptions {
     status: Ref<string>
     notices: ReturnType<typeof createTransientNotices>
     confirmDeath: () => void
+    hotbarSession?: { clear: () => void }
     cleanupFailedJoin: () => void
     openNearbyMenu: (id?: string) => void
     toggleInventory: () => void
@@ -56,13 +57,19 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         container,
         nickname: options.nickname.trim(),
         heroClass: options.heroClass,
-        onDefeat: options.confirmDeath,
+        onDefeat: () => {
+            options.hotbarSession?.clear()
+            options.confirmDeath()
+        },
         onChatState: (state) => {
             options.chatInput.value = state
         },
         onError: (message) => {
             options.errorMessage.value = message
             options.cleanupFailedJoin()
+        },
+        onMapError: (message) => {
+            options.errorMessage.value = message ?? ''
         },
         onNotice: options.notices.show,
         onContextAction: () => options.openNearbyMenu(options.gameplay()?.selectedId),

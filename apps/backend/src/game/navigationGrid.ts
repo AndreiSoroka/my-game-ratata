@@ -5,6 +5,7 @@ import {
 
 import { type EncounterMapObject, readEncounterData } from './encounterData'
 import { readMapBuildings } from './mapBuildings'
+import { readCityAnchors, readCityAreas } from './mapCityAnchors'
 import { readMapLandmarks } from './mapLandmarks'
 import type { MapGrid } from './navigation'
 import { readNavigationSurfaces } from './navigationSurfaces'
@@ -59,6 +60,7 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
     )?.data
     const encounters = readEncounterData(map, mapId)
     return {
+        ...cityMetadata(map),
         buildings: readMapBuildings(map),
         landmarks: readMapLandmarks(
             map,
@@ -82,6 +84,17 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
         tileHeight: map.tileheight,
         tileWidth: map.tilewidth,
         width: map.width,
+    }
+}
+
+function cityMetadata(
+    map: TiledMap
+): Pick<MapGrid, 'cityAnchors' | 'cityAreas'> {
+    const cityAnchors = readCityAnchors(map)
+    const cityAreas = readCityAreas(map)
+    return {
+        ...(cityAnchors === undefined ? {} : { cityAnchors }),
+        ...(cityAreas === undefined ? {} : { cityAreas }),
     }
 }
 

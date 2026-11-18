@@ -23,6 +23,13 @@ export function questOfferAssetError(
     issuer: GameCharacter,
     offer: QuestOfferRecord
 ): string | undefined {
+    if (offer.view.authoredQuestId !== undefined) {
+        return environment.adventure.storyOfferError(
+            issuer,
+            offer.targetId,
+            offer.view.authoredQuestId
+        )
+    }
     const wallet = questRewardWallet(environment, offer, issuer)
     return wallet === undefined ||
         availableGold(wallet) < offer.view.rewardGold ||

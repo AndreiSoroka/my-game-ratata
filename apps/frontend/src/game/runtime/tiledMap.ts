@@ -78,10 +78,11 @@ export interface HarvestGraphics {
 
 export async function loadRenderedTiledMap(
     baseUrl = '/game/map',
-    mapName = `${CENTER_LOCATION_ID}.json`
+    mapName = `${CENTER_LOCATION_ID}.json`,
+    assetUrl?: string
 ): Promise<RenderedTiledMap> {
     const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-    const mapUrl = new URL(`${normalizedBase}${mapName}`, window.location.origin)
+    const mapUrl = new URL(assetUrl ?? `${normalizedBase}${mapName}`, window.location.origin)
     const map = await fetchJson<TiledMap>(mapUrl)
     const tilesets = await Promise.all(
         map.tilesets.map((tileset) => loadTileset(normalizedBase, tileset))

@@ -8,8 +8,10 @@ import {
 } from '../assets/characterCatalog'
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { type GameSoundId, gameSoundIds, musicCatalog, soundCatalog } from '../assets/soundCatalog'
+import type { BellImages } from './bellViews'
 
 export interface CharacterResources {
+    bellImages: BellImages
     chestImage: ImageSource
     farmImage: ImageSource
     itemImages: Map<ItemId, ImageSource>
@@ -28,6 +30,18 @@ export function createCharacterResources(): CharacterResources {
     const sounds = new Map<GameSoundId, Sound>()
     const farmImage = new ImageSource('/game/map/assets/KenneyTinyFarm/tilemap_packed.png')
     const chestImage = new ImageSource('/game/map/assets/MysticWoods/objects/chest_01.png')
+    const bellImages: BellImages = {
+        states: {
+            silent: new ImageSource('/game/assets/world/memory-bell/silent.png'),
+            prepared: new ImageSource('/game/assets/world/memory-bell/prepared.png'),
+            active: new ImageSource('/game/assets/world/memory-bell/active.png'),
+        },
+        swing: Array.from(
+            { length: 4 },
+            (_, index) =>
+                new ImageSource(`/game/assets/world/memory-bell/swing-${String(index)}.png`)
+        ),
+    }
     const music = {
         adventureBegins: createMusic(),
     }
@@ -50,6 +64,7 @@ export function createCharacterResources(): CharacterResources {
     }
 
     return {
+        bellImages,
         chestImage,
         farmImage,
         itemImages,
@@ -58,6 +73,8 @@ export function createCharacterResources(): CharacterResources {
             ...itemImages.values(),
             chestImage,
             farmImage,
+            ...Object.values(bellImages.states),
+            ...bellImages.swing,
             ...sounds.values(),
             music.adventureBegins,
         ]),

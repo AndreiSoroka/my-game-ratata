@@ -111,7 +111,10 @@ function storyContract(
         recipient.locationId,
         recipient
     ).quest
-    if (quest.status === 'available') {
+    if (
+        quest.status === 'available' ||
+        (quest.status === 'cancelled' && quest.accepted !== true)
+    ) {
         return undefined
     }
     const instanceId = `story:${recipient.id}:${quest.id}`
@@ -147,7 +150,7 @@ function storyContract(
         expiresAt: 0,
         progress: [complete ? quest.goal : Math.min(quantity, quest.goal)],
         status: quest.status,
-        notice: complete ? 'Награда уже передана.' : null,
+        notice: complete ? 'Награда уже передана.' : (quest.notice ?? null),
         ...(complete ? { receiptId: instanceId } : {}),
     }
 }
