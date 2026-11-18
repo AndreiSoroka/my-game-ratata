@@ -15,7 +15,7 @@ describe('personal planar skies', () => {
         expect(
             fullConstellationCatalog.flatMap((node) => node.parents)
         ).toHaveLength(147)
-        expect(skyComponents(fullConstellationCatalog)).toHaveLength(6)
+        expect(skyComponents(fullConstellationCatalog)).toHaveLength(9)
         for (let seed = 0; seed < 256; seed += 1) {
             for (const center of centers) {
                 const sky = generateConstellationLayout(

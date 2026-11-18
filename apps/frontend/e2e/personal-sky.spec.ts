@@ -1,5 +1,5 @@
 import type { HeroClass } from '@my-game-ratata/contracts'
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, test } from '@playwright/test'
 
 const classes: HeroClass[] = ['vanguard', 'arcanist', 'cleric', 'ranger']
 for (const width of [390, 1280]) {
@@ -27,6 +27,7 @@ for (const width of [390, 1280]) {
             const menu = page.getByRole('dialog', { name: 'Персонаж', exact: true })
             await menu.getByRole('tab', { name: 'Развитие' }).click()
             const graph = menu.getByRole('group', { name: 'Созвездия развития' })
+            await assertReceivedRoutes(graph)
             await expect(menu.getByLabel('Выбранная звезда').getByRole('heading')).toHaveText(
                 initial.center.name!
             )
@@ -41,6 +42,14 @@ for (const width of [390, 1280]) {
                     })
                 )
                 .toBeLessThan(0.001)
+            await page.screenshot({
+                path: info.outputPath(`personal-sky-${heroClass}-${width}.png`),
+            })
+            await graph.locator(`[data-node-id="${initial.center.id}"] .hit`).click()
+            await assertCurrentPathFits(graph, initial.center.id)
+            await page.screenshot({
+                path: info.outputPath(`personal-sky-${heroClass}-${width}-focused.png`),
+            })
             await page.keyboard.press('Escape')
             await page.reload()
             await page.waitForFunction(() => Boolean(window.__ratataTest))
@@ -55,4 +64,56 @@ for (const width of [390, 1280]) {
             expect(restored).toEqual({ identity: initial.identity, layout: initial.layout })
         })
     }
+}
+
+/** The production window must render exactly the authorized socket graph, including closed edges. */
+async function assertReceivedRoutes(graph: Locator): Promise<void> {
+    const projection = await graph.evaluate((element) => {
+        const sky = window.__ratataTest!.getState().player!.progression!.constellations!
+        const byId = new Map(sky.nodes.map((node) => [node.id, node]))
+        return {
+            expected: sky.edges.map((edge) => ({
+                points: [byId.get(edge.from)!, ...(edge.via ?? []), byId.get(edge.to)!]
+                    .map((point) => `${point.x},${point.y}`)
+                    .join(' '),
+                crossLink: edge.crossLink === true,
+            })),
+            rendered: [...element.querySelectorAll('polyline')].map((line) => ({
+                points: line.getAttribute('points'),
+                crossLink: line.classList.contains('constellation-edge--cross-link'),
+            })),
+            opaque: sky.nodes.every((node) => !node.id.includes('.')),
+        }
+    })
+    expect(projection.rendered).toEqual(projection.expected)
+    expect(projection.opaque).toBe(true)
+}
+
+async function assertCurrentPathFits(graph: Locator, rootId: string): Promise<void> {
+    const focus = await graph.evaluate((element, rootId) => {
+        const sky = window.__ratataTest!.getState().player!.progression!.constellations!
+        const path = sky.nodes.find((node) => node.id === rootId)!.constellationId
+        const nodes = sky.nodes.filter((node) => node.constellationId === path)
+        const ids = new Set(nodes.map((node) => node.id))
+        const points = [
+            ...nodes,
+            ...sky.edges
+                .filter((edge) => ids.has(edge.from) && ids.has(edge.to))
+                .flatMap((edge) => edge.via ?? []),
+        ]
+        const box = (element as SVGSVGElement).viewBox.baseVal
+        const margin = (20 * box.width) / element.getBoundingClientRect().width
+        return {
+            count: nodes.length,
+            inside: points.every(
+                (point) =>
+                    point.x >= box.x + margin &&
+                    point.x <= box.x + box.width - margin &&
+                    point.y >= box.y + margin &&
+                    point.y <= box.y + box.height - margin
+            ),
+        }
+    }, rootId)
+    expect(focus.count).toBeGreaterThan(1)
+    expect(focus.inside).toBe(true)
 }

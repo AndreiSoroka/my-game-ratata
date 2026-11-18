@@ -137,13 +137,13 @@ function starLabel(
     rect: ConstellationRegion,
     scale: number
 ): StarLabel {
+    const path = sky.paths.find((entry) => entry.id === node.constellationId)
+    const name = node.parents.length === 0 ? (path?.name ?? node.name) : node.name
     return {
         ...rect,
         id: node.id,
-        text: node.unlocked && node.name ? node.name : 'Неизвестно',
+        text: node.unlocked && name ? name : 'Неизвестно',
         fontSize: (node.parents.length === 0 ? 12 : 11) * scale,
-        color: node.unlocked
-            ? (sky.paths.find((path) => path.id === node.constellationId)?.color ?? '#dce6dd')
-            : '#8b969e',
+        color: node.unlocked ? (path?.color ?? '#dce6dd') : '#8b969e',
     }
 }

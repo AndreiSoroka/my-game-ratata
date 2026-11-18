@@ -95,6 +95,9 @@ export function constellationFixture(
                     from: constellationWireId(from),
                     to: constellationWireId(node.id),
                     via: personal.edgeWaypoints[`${from}>${node.id}`],
+                    ...(personal.crossLinks.includes(`${from}>${node.id}`)
+                        ? { crossLink: true }
+                        : {}),
                 }))
         ),
     }

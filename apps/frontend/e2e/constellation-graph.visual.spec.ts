@@ -12,7 +12,7 @@ for (const width of [320, 390, 1280]) {
         await page.screenshot({ path: info.outputPath(`constellation-overview-${width}.png`) })
         await graph.getByRole('button', { name: 'Молитва', exact: true }).locator('.hit').click()
         await expect
-            .poll(() => graph.locator('[role=button]').count())
+            .poll(() => graph.locator('[data-node-id]').count())
             .toBe(fullConstellationCatalog.length)
         const geometry = await graph.evaluate((element) => {
             const frame = element.getBoundingClientRect()
@@ -21,7 +21,7 @@ for (const width of [320, 390, 1280]) {
                 rect.y >= frame.y &&
                 rect.right <= frame.right &&
                 rect.bottom <= frame.bottom
-            const hits = [...element.querySelectorAll('.hit')]
+            const hits = [...element.querySelectorAll('[role=button] .hit')]
                 .map((node) => node.getBoundingClientRect())
                 .filter(inside)
             const labels = [...element.querySelectorAll('.constellation-label')].map((node) =>

@@ -19,6 +19,7 @@ import type {
     RealizedConstellationLayout,
     SkyComponent,
 } from './constellationLayoutTypes'
+import { routeLocalConstellationLinks } from './constellationLocalRoutes'
 import { describeComponent, packComponents } from './constellationPacking'
 import { constellationRandom } from './constellationRandom'
 
@@ -109,7 +110,13 @@ function candidatePositions(
         }
         transformed.push(describeComponent(positions))
     }
-    return packComponents(transformed, centerNodeId, random, fallback)
+    return packComponents(
+        transformed,
+        centerNodeId,
+        random,
+        fallback,
+        components.flatMap((component) => component.edges)
+    )
 }
 
 function roundedPositions(
@@ -146,30 +153,34 @@ function realizedLayout(
             ),
         ])
     ) as Record<ConstellationId, ConstellationRegion>
-    const radius =
-        Math.ceil(
-            (Math.max(
-                ...Object.values(positions).flatMap((point) => [
-                    Math.abs(point.x),
-                    Math.abs(point.y),
-                ])
-            ) +
-                140) /
-                100
-        ) * 100
+    const edges = constellationTopologyEdges(topology)
+    const fields = regionIds.map((id) => ({
+        ids: topology
+            .filter((node) => node.constellationId === id)
+            .map((node) => node.id),
+        bounds: regions[id],
+    }))
+    const local = routeLocalConstellationLinks(
+        positions,
+        edges,
+        fields.map((field) => field.ids)
+    )
+    const edgeWaypoints = {
+        ...routeConstellationCrossLinks(
+            positions,
+            edges.filter(
+                (edge) => local[`${edge.from}>${edge.to}`] === undefined
+            ),
+            fields
+        ),
+        ...local,
+    }
     const layout: ConstellationLayoutSnapshot = {
         centerNodeId,
-        bounds: {
-            x: -radius,
-            y: -radius,
-            width: radius * 2,
-            height: radius * 2,
-        },
+        bounds: skyBounds(positions, edgeWaypoints),
         minimumNodeSpacing: minimumSpacing(positions),
         regions,
     }
-    const edges = constellationTopologyEdges(topology)
-    const edgeWaypoints = routeConstellationCrossLinks(positions, edges)
     const problem = constellationGeometryProblem(
         positions,
         edges.map((edge) => ({
@@ -215,4 +226,27 @@ function regionBounds(points: SkyPoint[]): ConstellationRegion {
         width,
         height,
     }
+}
+
+/** Routed prerequisites are part of the sky too; overview must never clip their bends. */
+function skyBounds(
+    positions: Readonly<Record<string, SkyPoint>>,
+    routes: Readonly<Record<string, SkyPoint[]>>
+) {
+    const points = [
+        ...Object.values(positions),
+        ...Object.values(routes).flat(),
+    ]
+    const radius =
+        Math.ceil(
+            (Math.max(
+                ...points.flatMap((point) => [
+                    Math.abs(point.x),
+                    Math.abs(point.y),
+                ])
+            ) +
+                140) /
+                100
+        ) * 100
+    return { x: -radius, y: -radius, width: radius * 2, height: radius * 2 }
 }

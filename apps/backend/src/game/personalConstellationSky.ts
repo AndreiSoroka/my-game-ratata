@@ -83,7 +83,7 @@ export function readCachedConstellationLayout(
 
 function catalogVersion(): string {
     return (
-        'blade-and-results-v2|' +
+        'readable-connected-skies-v3|' +
         fullConstellationCatalog
             .map((node) => `${node.id}:${node.parents.join(',')}`)
             .join('|')

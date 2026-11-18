@@ -10,16 +10,14 @@ import { constellationTemplatePositions } from './constellationTemplates'
 export function skyComponents(
     nodes: readonly ConstellationTopologyNode[]
 ): SkyComponent[] {
-    const adjacent = new Map(nodes.map((node) => [node.id, [] as string[]]))
     const edges = constellationTopologyEdges(nodes)
+    const known = new Set(nodes.map((node) => node.id))
     for (const edge of edges) {
-        if (!adjacent.has(edge.from) || !adjacent.has(edge.to)) {
+        if (!known.has(edge.from) || !known.has(edge.to)) {
             throw new Error(
                 `Unknown personal constellation edge: ${edge.from}>${edge.to}`
             )
         }
-        adjacent.get(edge.from)?.push(edge.to)
-        adjacent.get(edge.to)?.push(edge.from)
     }
     const primary = primaryAdjacency(nodes, edges)
     const seen = new Set<string>()
@@ -28,7 +26,7 @@ export function skyComponents(
         if (seen.has(node.id)) {
             continue
         }
-        const ids = connectedSide(node.id, adjacent)
+        const ids = connectedSide(node.id, primary)
         ids.forEach((id) => seen.add(id))
         const positions: Record<string, SkyPoint> = {}
         for (const id of ids) {
@@ -51,7 +49,7 @@ export function skyComponents(
                 ),
         })
     }
-    if (seen.size !== nodes.length || adjacent.size !== nodes.length) {
+    if (seen.size !== nodes.length || known.size !== nodes.length) {
         throw new Error('Duplicate personal constellation nodes')
     }
     return result

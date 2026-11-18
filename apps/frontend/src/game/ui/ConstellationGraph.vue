@@ -22,6 +22,7 @@ const {
     detailed,
     reset,
     focusPath,
+    focusStar,
     ensureVisible,
     scale,
     down,
@@ -87,7 +88,8 @@ function focusNode(id: string): void {
     const node = nodeById.value.get(id)
     if (!node || !canInteract(node)) return
     emit('select', node.id)
-    focusPath(node)
+    if (node.parents.length === 0) focusPath(node)
+    else focusStar(node)
 }
 defineExpose({ focusNode })
 function choose(node: ConstellationNodeSnapshot, pointer = true): void {

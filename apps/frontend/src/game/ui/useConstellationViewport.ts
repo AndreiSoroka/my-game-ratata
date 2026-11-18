@@ -1,6 +1,8 @@
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue'
 
+import { constellationViewportFocus } from './constellationViewportFocus'
+
 export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
     const svg = ref<SVGSVGElement>()
     const zoom = ref(1)
@@ -41,18 +43,15 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
             y: point.y - bounds.value.y - bounds.value.height / 2,
         }
     }
-    function focusPath(node: ConstellationNodeSnapshot): void {
-        const region = snapshot().layout?.regions[node.constellationId]
-        const fitScale = region
-            ? Math.max(
-                  region.width / dimensions.value.width,
-                  region.height / dimensions.value.height
-              )
-            : (unitScale.value * zoom.value) / 2
-        const desiredScale = Math.min(fitScale, minimumSpacing.value / 64)
-        zoom.value = Math.min(maximumZoom.value, (unitScale.value * zoom.value) / desiredScale)
-        centerOn(pathFocus(snapshot(), node, dimensions.value, unitScale.value))
-    }
+    const { focusPath, focusStar } = constellationViewportFocus({
+        snapshot,
+        dimensions,
+        minimumSpacing,
+        baseScale,
+        zoom,
+        maximumZoom,
+        centerOn,
+    })
     function ensureVisible(node: ConstellationNodeSnapshot): void {
         const margin = 32 * unitScale.value
         const { x, y, width, height } = visibleBounds.value
@@ -75,6 +74,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         detailed,
         reset,
         focusPath,
+        focusStar,
         ensureVisible,
         ...gestures,
     }
@@ -180,28 +180,5 @@ function viewportBounds(
         y: bounds.y + bounds.height / 2 + offset.y - height / 2,
         width,
         height,
-    }
-}
-
-function pathFocus(
-    sky: ConstellationSnapshot,
-    root: ConstellationNodeSnapshot,
-    dimensions: { width: number; height: number },
-    scale: number
-) {
-    const nearest = sky.nodes
-        .filter((node) => node.parents.includes(root.id))
-        .sort(
-            (a, b) =>
-                Math.hypot(a.x - root.x, a.y - root.y) - Math.hypot(b.x - root.x, b.y - root.y)
-        )[0]
-    if (!nearest) return root
-    const clampedShift = (difference: number, dimension: number) => {
-        const maximum = Math.max(0, dimension / 2 - 32) * scale
-        return Math.max(-maximum, Math.min(maximum, difference / 2))
-    }
-    return {
-        x: root.x + clampedShift(nearest.x - root.x, dimensions.width),
-        y: root.y + clampedShift(nearest.y - root.y, dimensions.height),
     }
 }

@@ -1,5 +1,9 @@
-import type { SkyPoint } from './constellationGeometry'
+import type { SkyEdge, SkyPoint } from './constellationGeometry'
 import type { PlacedSkyComponent } from './constellationLayoutTypes'
+import {
+    chooseConstellationPlacement,
+    type SkyPackingContext,
+} from './constellationPlacement'
 
 export function describeComponent(
     positions: Record<string, SkyPoint>
@@ -16,6 +20,16 @@ export function describeComponent(
     return {
         ids: Object.keys(positions),
         positions,
+        bounds: {
+            x: Math.min(...values.map((p) => p.x)),
+            y: Math.min(...values.map((p) => p.y)),
+            width:
+                Math.max(...values.map((p) => p.x)) -
+                Math.min(...values.map((p) => p.x)),
+            height:
+                Math.max(...values.map((p) => p.y)) -
+                Math.min(...values.map((p) => p.y)),
+        },
         circle: {
             x,
             y,
@@ -34,6 +48,11 @@ export function translateComponent(
 ): PlacedSkyComponent {
     return {
         ...component,
+        bounds: {
+            ...component.bounds,
+            x: component.bounds.x + x,
+            y: component.bounds.y + y,
+        },
         circle: {
             ...component.circle,
             x: component.circle.x + x,
@@ -48,11 +67,13 @@ export function translateComponent(
     }
 }
 
+/** Place prerequisite neighbors before unrelated schools; score routes as well as footprints. */
 export function packComponents(
     components: PlacedSkyComponent[],
     centerNodeId: string,
     random: () => number,
-    certified = false
+    certified = false,
+    links: readonly SkyEdge[] = []
 ): Record<string, SkyPoint> | undefined {
     const center = components.find((component) =>
         component.ids.includes(centerNodeId)
@@ -61,32 +82,45 @@ export function packComponents(
     if (center === undefined || origin === undefined) {
         throw new Error('Starting constellation root is missing')
     }
-    const initial = translateComponent(center, -origin.x, -origin.y)
-    const rest = components
+    const placed = [translateComponent(center, -origin.x, -origin.y)]
+    const owners = new Map(
+        components.flatMap((component, index) =>
+            component.ids.map((id) => [id, index] as const)
+        )
+    )
+    const bridges = links.filter(
+        (edge) => owners.get(edge.from) !== owners.get(edge.to)
+    )
+    const remaining = components
         .filter((component) => component !== center)
         .map((component) => ({ component, order: random() }))
-        .sort((a, b) => a.order - b.order)
-        .map(({ component }) => component)
-    const maximum = Math.max(
-        ...components.map((component) => component.circle.radius)
-    )
-    const radius = Math.max(
-        2 * maximum + 220,
-        Math.hypot(initial.circle.x, initial.circle.y) +
-            initial.circle.radius +
-            maximum +
-            220
-    )
     const phase = random() * Math.PI * 2
-    const placed = [initial]
-    for (const [index, component] of rest.entries()) {
-        const candidate = certified
-            ? ringPosition(component, radius, phase + (index * Math.PI) / 3)
-            : randomPosition(component, placed, radius, random)
-        if (candidate === undefined) {
+    while (remaining.length > 0) {
+        const context: SkyPackingContext = {
+            placed,
+            links: bridges,
+            phase,
+            certified,
+        }
+        remaining.sort((a, b) => {
+            const connections =
+                connectionCount(b.component, context) -
+                connectionCount(a.component, context)
+            if (connections !== 0) {
+                return connections
+            }
+            const count = b.component.ids.length - a.component.ids.length
+            return count === 0 ? a.order - b.order : count
+        })
+        const next = remaining.shift()?.component
+        if (next === undefined) {
+            break
+        }
+        const translation = chooseConstellationPlacement(next, context)
+        if (translation === undefined) {
             return undefined
         }
-        placed.push(candidate)
+        placed.push(translateComponent(next, translation.x, translation.y))
     }
     return Object.assign(
         {},
@@ -94,42 +128,15 @@ export function packComponents(
     ) as Record<string, SkyPoint>
 }
 
-function ringPosition(
+function connectionCount(
     component: PlacedSkyComponent,
-    radius: number,
-    angle: number
-): PlacedSkyComponent {
-    return translateComponent(
-        component,
-        Math.cos(angle) * radius - component.circle.x,
-        Math.sin(angle) * radius - component.circle.y
-    )
-}
-function randomPosition(
-    component: PlacedSkyComponent,
-    placed: PlacedSkyComponent[],
-    radius: number,
-    random: () => number
-): PlacedSkyComponent | undefined {
-    for (let attempt = 0; attempt < 32; attempt += 1) {
-        const angle = random() * Math.PI * 2
-        const candidate = ringPosition(
-            component,
-            radius * (0.65 + random() * 0.65),
-            angle
-        )
-        if (
-            placed.every(
-                (other) =>
-                    Math.hypot(
-                        candidate.circle.x - other.circle.x,
-                        candidate.circle.y - other.circle.y
-                    ) >=
-                    candidate.circle.radius + other.circle.radius + 160
-            )
-        ) {
-            return candidate
-        }
-    }
-    return undefined
+    context: SkyPackingContext
+): number {
+    const own = new Set(component.ids)
+    const existing = new Set(context.placed.flatMap((other) => other.ids))
+    return context.links.filter(
+        (edge) =>
+            (own.has(edge.from) && existing.has(edge.to)) ||
+            (own.has(edge.to) && existing.has(edge.from))
+    ).length
 }

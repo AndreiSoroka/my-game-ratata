@@ -58,6 +58,17 @@ export const FullSky: Story = {
         }),
 }
 
+function fullDevelopment(heroClass: HeroClass): HTMLElement {
+    const player = developmentCharacterFixture(heroClass)
+    player.progression!.constellations = constellationFixture(true, heroClass)
+    const host = renderVueStory(CharacterWindow, { player, characters: [], tab: 'development' })
+    host.style.minHeight = '100dvh'
+    return host
+}
+
+export const FullBladeDevelopment: Story = { render: () => fullDevelopment('vanguard') }
+export const FullMotherDevelopment: Story = { render: () => fullDevelopment('cleric') }
+
 export const VanguardDevelopment: Story = { render: () => windowStory('development', 'vanguard') }
 export const ArcanistDevelopment: Story = { render: () => windowStory('development', 'arcanist') }
 export const RangerDevelopment: Story = { render: () => windowStory('development', 'ranger') }

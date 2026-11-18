@@ -32,4 +32,5 @@ export interface PlacedSkyComponent {
     ids: string[]
     positions: Record<string, SkyPoint>
     circle: { x: number; y: number; radius: number }
+    bounds: { x: number; y: number; width: number; height: number }
 }

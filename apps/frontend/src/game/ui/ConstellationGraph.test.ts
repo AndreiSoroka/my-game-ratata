@@ -29,6 +29,8 @@ it('dims disabled known build stars without hiding their names or descriptions',
     })
     await view.get(`[data-node-id="${root}"]`).trigger('click')
     const star = view.get(`[data-node-id="${child}"]`)
+    view.vm.focusNode(child)
+    await nextTick()
     expect(star.attributes('aria-label')).toBe('Дальний голос')
     expect(star.attributes('aria-pressed')).toBe('false')
     expect(star.classes()).toContain('inactive')
@@ -218,21 +220,32 @@ it('preserves selected stars on reveal, then clears selection for a new identity
     view.unmount()
 })
 
-it('keeps the selected root in view when its nearest branch cannot fit beside it', async () => {
+it('fits the complete received path and its local route instead of zooming by another path spacing', async () => {
     const sky = constellationFixture(true)
     const root = { ...sky.nodes.find((node) => node.id === sky.layout!.centerNodeId)!, x: 0, y: 0 }
     const child = { ...sky.nodes.find((node) => node.parents.includes(root.id))!, x: 2000, y: 0 }
     sky.nodes = [root, child]
-    sky.edges = [{ from: root.id, to: child.id }]
+    const bend = { x: 1000, y: 600 }
+    sky.edges = [{ from: root.id, to: child.id, via: [bend] }]
     sky.layout!.minimumNodeSpacing = 80
     const view = mount(ConstellationGraph, { props: { constellation: sky } })
     await view.get(`[data-node-id="${root.id}"]`).trigger('click')
     const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
     const scale = width! / 700
-    expect(root.x - x!).toBeGreaterThanOrEqual(31 * scale)
-    expect(x! + width! - root.x).toBeGreaterThanOrEqual(31 * scale)
-    expect(root.y - y!).toBeGreaterThanOrEqual(31 * scale)
-    expect(y! + height! - root.y).toBeGreaterThanOrEqual(31 * scale)
+    expect(x! + width! / 2).toBeCloseTo(1000)
+    expect(y! + height! / 2).toBeCloseTo(300)
+    for (const point of [root, child, bend]) {
+        expect(point.x - x!).toBeGreaterThanOrEqual(35 * scale)
+        expect(x! + width! - point.x).toBeGreaterThanOrEqual(35 * scale)
+        expect(point.y - y!).toBeGreaterThanOrEqual(35 * scale)
+        expect(y! + height! - point.y).toBeGreaterThanOrEqual(35 * scale)
+    }
+    const focused = view.get('svg').attributes('viewBox')
+    await view.setProps({
+        constellation: { ...sky, layout: { ...sky.layout!, minimumNodeSpacing: 1 } },
+    })
+    await view.get(`[data-node-id="${root.id}"]`).trigger('click')
+    expect(view.get('svg').attributes('viewBox')).toBe(focused)
     view.unmount()
 })
 
