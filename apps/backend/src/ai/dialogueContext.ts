@@ -4,6 +4,9 @@ import type { GameCharacter } from '../game/character'
 import type { GameRoom } from '../game/room'
 import { projectContracts } from './contractProjection'
 import { dialogueKey, type NpcAiDialogue } from './dialogue'
+import { dialogueConversationKey, taskConversationKey } from './dialogueMemory'
+import { npcIdentityContext } from './npcIdentityInstructions'
+import { greetingOpportunity } from './npcInitiative'
 import { npcSpeechContext } from './npcSpeechInstructions'
 import { buildNpcAiObservation, type NpcAiObservation } from './observation'
 import { updateNpcAiSocialCapabilities } from './observationPolicy'
@@ -26,10 +29,19 @@ export function npcDialogueContext(
     )
     refreshRequester(state, observation)
     const dialogue = state.dialogue
-    const key = dialogue === undefined ? 'city' : dialogueKey(dialogue)
-    const taskContext = hasTaskContext(state, key)
-    const speechStyle = npcSpeechContext(actor)
+    const key =
+        dialogue === undefined
+            ? taskConversationKey(state.task)
+            : dialogueConversationKey(dialogue)
+    const taskContext = hasTaskContext(state)
+    const commandCapabilities = dialogueService.commandCapabilities(state, now)
+    const socialOpportunity =
+        state.task?.background === 'greeting' &&
+        state.task.targetId !== undefined
+            ? greetingOpportunity(state.mind, state.task.targetId, now)
+            : undefined
     filterSocialContext(room, observation, state, actor, now)
+    proactiveQuestRecipients(room, observation, state, actor, now)
     observation.itemDefinitions = observedItemDefinitions(observation)
     updateNpcAiSocialCapabilities(observation)
     if (
@@ -42,9 +54,11 @@ export function npcDialogueContext(
         actorId: actor.id,
         role: state.config.role,
         personality: actor.soul.personality,
-        ...(speechStyle === undefined ? {} : { speechStyle }),
+        ...(socialOpportunity === undefined ? {} : { socialOpportunity }),
+        ...personalContext(actor, state),
         task: taskContext ? state.task : null,
         taskConsent: npcTaskConsent(room, state),
+        ...(commandCapabilities === undefined ? {} : { commandCapabilities }),
         events: contextEvents(state, dialogueService),
         memory: dialogueMemory(state, key),
         facts: taskContext ? state.facts : [],
@@ -54,6 +68,21 @@ export function npcDialogueContext(
             currentQuery(state)
         ),
     })
+}
+function personalContext(
+    actor: GameCharacter,
+    state: NpcAiActorState
+): Pick<NpcAiContext, 'selfIdentity' | 'speechStyle'> {
+    const speechStyle = npcSpeechContext(actor)
+    const selfIdentity = npcIdentityContext(actor, {
+        actorId: actor.id,
+        turnId: state.dialogue?.id ?? state.task?.id ?? actor.id,
+        step: state.task?.steps ?? 0,
+    })
+    return {
+        ...(speechStyle === undefined ? {} : { speechStyle }),
+        ...(selfIdentity === undefined ? {} : { selfIdentity }),
+    }
 }
 function contextEvents(
     state: NpcAiActorState,
@@ -81,6 +110,11 @@ function filterSocialContext(
     const exchange = observation.social?.exchange
     const offer = room.social.quests.snapshot(partnerId, now).questOffer
     observation.social = {
+        questInvitation: room.social.quests.invitationFor(
+            actor.id,
+            partnerId,
+            now
+        ),
         questOffer: offer?.issuerId === actor.id ? offer : null,
         whisper: room.social.whispers.snapshot(actor, now, partnerId),
         exchange: exchange?.partnerId === partnerId ? exchange : null,
@@ -91,13 +125,33 @@ function filterSocialContext(
         currentQuery(state)
     )
 }
+function proactiveQuestRecipients(
+    room: GameRoom,
+    observation: NpcAiObservation,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    now: number
+): void {
+    if (state.dialogue !== undefined) {
+        return
+    }
+    for (const target of observation.targets) {
+        if (
+            target.kind === 'character' &&
+            target.details['canReceiveQuest'] === true
+        ) {
+            target.details['canReceiveProactiveQuestInvitation'] =
+                room.social.quests.canInvite(actor.id, target.id, now)
+        }
+    }
+}
 function conversationPartner(state: NpcAiActorState): string | undefined {
     if (state.dialogue !== undefined) {
         return state.dialogue.ambiguous === true
             ? undefined
             : state.dialogue.senderId
     }
-    return state.task?.requesterId ?? undefined
+    return currentPerson(state)
 }
 function observedItemDefinitions(
     observation: NpcAiObservation
@@ -176,16 +230,26 @@ function refreshRequester(
         }
     }
 }
-function hasTaskContext(state: NpcAiActorState, key: string): boolean {
-    return state.dialogue === undefined || key === state.task?.audienceKey
+function hasTaskContext(state: NpcAiActorState): boolean {
+    return (
+        state.dialogue === undefined ||
+        (dialogueKey(state.dialogue) === state.task?.audienceKey &&
+            state.task.requesterId === state.dialogue.senderId)
+    )
 }
 function dialogueMemory(state: NpcAiActorState, key: string): string {
-    return state.dialogue === undefined
+    return state.dialogue === undefined && state.task?.background !== 'greeting'
         ? state.memory
         : (state.conversations.get(key) ?? '')
 }
 function currentPerson(state: NpcAiActorState): string | undefined {
-    return state.dialogue?.senderId ?? state.task?.requesterId ?? undefined
+    return (
+        state.dialogue?.senderId ??
+        state.task?.requesterId ??
+        (state.task?.background === 'greeting'
+            ? state.task.targetId
+            : undefined)
+    )
 }
 function currentQuery(state: NpcAiActorState): string {
     return state.dialogue?.text ?? state.task?.request ?? ''

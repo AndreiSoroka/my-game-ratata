@@ -123,3 +123,15 @@ export function resolveScenarioMarkers(
     }
     return copy
 }
+
+export function scenarioLibraryFor(
+    libraries: Map<string, ScenarioLibrary>,
+    id: string
+): ScenarioLibrary {
+    let library = libraries.get(id)
+    if (library === undefined) {
+        library = createScenarioLibrary()
+        libraries.set(id, library)
+    }
+    return library
+}

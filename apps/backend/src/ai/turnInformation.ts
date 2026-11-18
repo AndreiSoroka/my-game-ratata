@@ -11,11 +11,18 @@ import type {
 } from './types'
 
 export interface TurnInformation {
+    validateReply?: (reply: NpcAiReply) => NpcReplyProblem | undefined
+    commitReply?: (reply: NpcAiReply) => Promise<NpcReplyProblem | undefined>
+    refreshContext?: () => NpcAiContext
     reserveCall?: () => boolean
     current?: () => boolean
     lookup?: (personId: string) => Promise<DeepMemoryResult>
     search?: (query: string) => Promise<KnowledgeResult>
     scope?: () => NpcKnowledgeScope
+}
+export interface NpcReplyProblem {
+    code: NpcReplyIssue
+    reason?: { code: string; detail: string }
 }
 function lookupOnly(reply: NpcAiReply): boolean {
     const task = reply.taskAcceptance ?? 'none'
@@ -38,7 +45,7 @@ export async function resolveTurnInformation(
     delete input.knowledge
     delete input.informationResults
     assertCurrent(information)
-    const reply = await decide(input)
+    const reply = canonicalNpcReply(input, await decide(input))
     assertCurrent(information)
     const request = reply.informationRequest
     if (request == null) {
@@ -64,60 +71,74 @@ export async function resolveTurnInformation(
     ])
     assertCurrent(information)
     const scope = information.scope?.() ?? input.knowledgeScope
-    const final = await decide({
-        ...input,
-        ...result,
-        ...(scope === undefined
-            ? {}
-            : {
-                  knowledgeScope: {
-                      ...scope,
-                      canSearch: false,
-                      lookupsRemaining: 0,
-                  },
-              }),
-    })
+    const final = canonicalNpcReply(
+        input,
+        await decide({
+            ...input,
+            ...result,
+            ...(scope === undefined
+                ? {}
+                : {
+                      knowledgeScope: {
+                          ...scope,
+                          canSearch: false,
+                          lookupsRemaining: 0,
+                      },
+                  }),
+        })
+    )
     assertCurrent(information)
     if (final.informationRequest != null) {
         throw new Error('One information lookup is allowed per request')
     }
-    const issue = npcReplyIssue(input, final)
+    const issue = replyProblem(input, final, information)
     if (issue !== undefined) {
-        throw new NpcReplyRejected(issue)
+        throw new NpcReplyRejected(issue.code)
     }
     return final
 }
 
-async function correctReply(
+export async function correctReply(
     input: NpcAiContext,
     reply: NpcAiReply,
     information: TurnInformation,
     decide: (input: NpcAiContext) => Promise<NpcAiReply>,
-    forcedIssue?: NpcReplyIssue
+    forcedIssue?: NpcReplyIssue | NpcReplyProblem
 ): Promise<NpcAiReply> {
-    const issue = forcedIssue ?? npcReplyIssue(input, reply)
+    const issue =
+        typeof forcedIssue === 'string'
+            ? { code: forcedIssue }
+            : (forcedIssue ?? replyProblem(input, reply, information))
     if (issue === undefined) {
         return reply
     }
-    if (information.reserveCall?.() !== true) {
-        throw new NpcReplyRejected(issue)
-    }
     assertCurrent(information)
+    if (information.reserveCall?.() !== true) {
+        throw new NpcReplyRejected(issue.code)
+    }
     let corrected: NpcAiReply
     try {
-        corrected = await decide(
-            correctionInput(input, reply, issue, information)
+        corrected = canonicalNpcReply(
+            input,
+            await decide(
+                correctionInput(
+                    information.refreshContext?.() ?? input,
+                    reply,
+                    issue,
+                    information
+                )
+            )
         )
     } catch {
-        throw new NpcReplyRejected(issue)
+        throw new NpcReplyRejected(issue.code)
     }
     assertCurrent(information)
-    const nextIssue = npcReplyIssue(input, corrected)
+    const nextIssue = refreshedReplyProblem(input, corrected, information)
     if (corrected.informationRequest != null) {
-        throw new NpcReplyRejected(issue)
+        throw new NpcReplyRejected(issue.code)
     }
     if (nextIssue !== undefined) {
-        throw new NpcReplyRejected(nextIssue)
+        throw new NpcReplyRejected(nextIssue.code)
     }
     return corrected
 }
@@ -125,14 +146,18 @@ async function correctReply(
 function correctionInput(
     input: NpcAiContext,
     reply: NpcAiReply,
-    issue: NpcReplyIssue,
+    issue: NpcReplyProblem,
     information: TurnInformation
 ): NpcAiContext {
     const scope = information.scope?.() ?? input.knowledgeScope
     return {
         ...input,
         replyCorrection: {
-            code: issue,
+            draftSpeech:
+                reply.speech ??
+                (reply.decision?.type === 'speak' ? reply.decision.text : null),
+            code: issue.code,
+            ...(issue.reason === undefined ? {} : { reason: issue.reason }),
             decision: reply.decision,
             taskAcceptance: reply.taskAcceptance ?? 'none',
             companionOrder: reply.companionOrder,
@@ -150,6 +175,43 @@ function correctionInput(
                   },
               }),
     }
+}
+
+function replyProblem(
+    input: NpcAiContext,
+    reply: NpcAiReply,
+    information: TurnInformation
+): NpcReplyProblem | undefined {
+    const code = npcReplyIssue(input, reply)
+    return code === undefined ? information.validateReply?.(reply) : { code }
+}
+
+function refreshedReplyProblem(
+    input: NpcAiContext,
+    reply: NpcAiReply,
+    information: TurnInformation
+): NpcReplyProblem | undefined {
+    return replyProblem(
+        information.refreshContext?.() ?? input,
+        reply,
+        information
+    )
+}
+
+/** A matching redundant low-level follow must not bypass or duplicate the consentful order. */
+export function canonicalNpcReply(
+    input: NpcAiContext,
+    reply: NpcAiReply
+): NpcAiReply {
+    const speaker = input.events.find((event) => event.kind === 'message')
+    const partnerId =
+        speaker?.kind === 'message' ? speaker.senderId : input.task?.requesterId
+    return reply.companionOrder === 'follow' &&
+        reply.decision?.type === 'follow' &&
+        partnerId != null &&
+        reply.decision.targetId === partnerId
+        ? { ...reply, decision: null }
+        : reply
 }
 
 function assertCurrent(information: TurnInformation): void {

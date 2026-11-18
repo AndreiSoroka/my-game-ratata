@@ -144,6 +144,15 @@ it('rejects a quest offer addressed to B while the model is responding to A’s 
         )
     )
     await f.advance()
+    const correction = required(f.provider.turns.at(-1))
+    expect(correction.context.replyCorrection?.reason?.code).toBe('audience')
+    correction.resolve(
+        npcReply(null, {
+            taskAcceptance: 'none',
+            speech: 'Эту просьбу обсудим только с тобой.',
+        })
+    )
+    await f.advance()
     expect(propose).not.toHaveBeenCalled()
     expect(
         f.room.social.quests.snapshot(bob.actor.id, Date.now()).questOffer
@@ -155,7 +164,7 @@ it('rejects a quest offer addressed to B while the model is responding to A’s 
         f.room.social.whispers
             .snapshot(f.alice.actor, Date.now())
             ?.messages.at(-1)?.text
-    ).toBe('Предложение относится только к текущему собеседнику.')
+    ).toBe('Эту просьбу обсудим только с тобой.')
     expect(
         bob.sent.some(
             (message) =>
@@ -211,13 +220,22 @@ it('cannot cancel B’s active exchange from a private model turn for A', async 
         )
     )
     await f.advance()
+    const correction = required(f.provider.turns.at(-1))
+    expect(correction.context.replyCorrection?.reason?.code).toBe('audience')
+    correction.resolve(
+        npcReply(null, {
+            taskAcceptance: 'none',
+            speech: 'Чужой обмен я не буду менять.',
+        })
+    )
+    await f.advance()
     expect(handle).not.toHaveBeenCalled()
     expect(f.room.social.exchanges.snapshot(f.actor.id)).toEqual(before)
     expect(
         f.room.social.whispers
             .snapshot(f.alice.actor, Date.now())
             ?.messages.at(-1)?.text
-    ).toBe('Обмен относится только к текущему собеседнику.')
+    ).toBe('Чужой обмен я не буду менять.')
 })
 
 it('ends an offer request even with done:false and projects live terms for the current speaker', async () => {
@@ -233,7 +251,11 @@ it('ends an offer request even with done:false and projects live terms for the c
                 targetId: f.alice.actor.id,
                 draft: { ...draft(), title },
             },
-            { taskAcceptance: 'accept', done: false }
+            {
+                taskAcceptance: 'accept',
+                done: false,
+                speech: 'Вот условия личного поручения.',
+            }
         )
     )
     await f.advance()

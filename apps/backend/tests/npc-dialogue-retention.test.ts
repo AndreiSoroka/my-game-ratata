@@ -6,6 +6,7 @@ it('keeps the princess exchange after more than twenty movement observations', (
     const memory = new CharacterMemory('kaplya')
     memory.remember({
         id: 'question',
+        conversationPartnerId: 'kaplya',
         senderId: 'player',
         senderName: 'Андрей',
         text: 'Кто эта принцесса в таверне?',
@@ -16,6 +17,7 @@ it('keeps the princess exchange after more than twenty movement observations', (
     })
     memory.remember({
         id: 'answer',
+        conversationPartnerId: 'player',
         senderId: 'kaplya',
         senderName: 'Капля',
         text: 'Принцесса Лея. Я не проверял, там ли она сейчас.',
@@ -38,6 +40,7 @@ it('keeps the princess exchange after more than twenty movement observations', (
     }
     memory.remember({
         id: 'check',
+        conversationPartnerId: 'kaplya',
         senderId: 'player',
         senderName: 'Андрей',
         text: 'проверь',

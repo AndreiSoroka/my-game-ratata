@@ -1,4 +1,20 @@
 import type { NpcAiActorState } from './runtimeState'
+import type { NpcAiEvent, NpcAiTask } from './types'
+
+export function dialogueConversationKey(
+    event: Extract<NpcAiEvent, { kind: 'message' }>
+): string {
+    return `${event.channel === 'whisper' ? 'whisper' : 'say'}:${event.senderId}`
+}
+
+export function taskConversationKey(task: NpcAiTask | null): string {
+    const personId =
+        task?.requesterId ??
+        (task?.background === 'greeting' ? task.targetId : undefined)
+    return personId == null
+        ? 'city'
+        : `${task?.audienceKey?.startsWith('whisper:') === true ? 'whisper' : 'say'}:${personId}`
+}
 
 export function rememberConversation(
     state: NpcAiActorState,
@@ -17,9 +33,11 @@ export function rememberDialogueReply(
     if (reply.personMemoryUpdate != null) {
         state.mind.updatePerson(reply.personMemoryUpdate, event.senderId)
     }
-    const key =
-        event.channel === 'whisper' ? `whisper:${event.senderId}` : 'say'
-    rememberConversation(state, key, reply.memory.slice(0, 2000))
+    rememberConversation(
+        state,
+        dialogueConversationKey(event),
+        reply.memory.slice(0, 2000)
+    )
 }
 export function finishOfferRequest(
     state: NpcAiActorState,
@@ -29,7 +47,11 @@ export function finishOfferRequest(
 ): void {
     if (
         accepted &&
-        ['quest_propose', 'worker_quest_propose'].includes(decision.type) &&
+        [
+            'quest_propose',
+            'worker_quest_propose',
+            'quest_invitation_answer',
+        ].includes(decision.type) &&
         state.task?.sourceId === event.id
     ) {
         state.task = null

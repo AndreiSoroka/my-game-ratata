@@ -14,6 +14,7 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { AuthoredEncounters } from './encounterData'
 import type { MapBuildingDefinition } from './mapBuildings'
+import type { MapLandmarkDefinition } from './mapLandmarks'
 import { clamp } from './math'
 import { buildGrid, type TiledMap } from './navigationGrid'
 import { findPath } from './pathfinding'
@@ -24,6 +25,7 @@ export interface TileCoordinate {
 }
 
 export interface MapGrid {
+    landmarks?: MapLandmarkDefinition[]
     buildings?: MapBuildingDefinition[]
     containers?: AuthoredContainerDefinition[]
     encounters?: AuthoredEncounters

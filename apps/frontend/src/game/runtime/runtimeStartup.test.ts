@@ -1,4 +1,5 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
+import { PointerButton, type PointerEvent, PointerType } from 'excalibur'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 import { RatataGame } from './ratataGame'
@@ -17,13 +18,20 @@ const calls = vi.hoisted(() => ({
     removeInputs: vi.fn<() => void>(),
     send: vi.fn<(command: ClientMessage) => void>(),
     handlers: undefined as
-        { keyDown: (event: KeyboardEvent) => void; release: () => void } | undefined,
+        | {
+              keyDown: (event: KeyboardEvent) => void
+              release: () => void
+              pointer: (event: PointerEvent) => void
+          }
+        | undefined,
 }))
 vi.mock('./tiledMap', () => ({ loadRenderedTiledMap: calls.load }))
 vi.mock('./runtimePresentation', () => ({
     createRuntimePresentation: (container: HTMLElement) => {
         calls.present()
         const canvas = document.createElement('canvas')
+        canvas.dataset.gameCanvas = 'true'
+        canvas.tabIndex = 0
         container.append(canvas)
         return {
             canvas,
@@ -78,16 +86,17 @@ function deferred<T>() {
 function setup() {
     const container = document.createElement('div')
     const onError = vi.fn<(message: string) => void>()
+    const onChatState = vi.fn<RatataGameOptions['onChatState']>()
     const game = new RatataGame({
         container,
         nickname: 'Cancelled startup',
         onError,
-        onChatState: vi.fn<RatataGameOptions['onChatState']>(),
+        onChatState,
         onInventoryToggle: vi.fn<RatataGameOptions['onInventoryToggle']>(),
         onSnapshot: vi.fn<RatataGameOptions['onSnapshot']>(),
         onStatus: vi.fn<RatataGameOptions['onStatus']>(),
     })
-    return { game, container, onError }
+    return { game, container, onError, onChatState }
 }
 it('starts the current scene, controls, music and socket once', async () => {
     const { game, container } = setup()
@@ -115,6 +124,85 @@ it('sends fresh movement when the same direction is pressed after a UI input rel
         expect(calls.send).toHaveBeenCalledWith({ type: 'release_input' })
     } finally {
         game.stop()
+    }
+})
+it.each([
+    { button: PointerButton.Left, pointerType: PointerType.Mouse },
+    { button: PointerButton.Unknown, pointerType: PointerType.Touch },
+])(
+    'uses the first world click only to suspend typing and restores the draft on the next Enter: $pointerType',
+    async (pointer) => {
+        const { game, container, onChatState } = setup()
+        document.body.append(container)
+        await game.start()
+        try {
+            const canvas = container.querySelector('canvas')!
+            canvas.focus()
+            calls.handlers?.keyDown(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }))
+            calls.handlers?.keyDown(new KeyboardEvent('keydown', { key: 'я', code: 'KeyZ' }))
+            calls.send.mockClear()
+            calls.handlers?.pointer({
+                ...pointer,
+                worldPos: { x: 100, y: 150 },
+            } as unknown as PointerEvent)
+            expect(onChatState).toHaveBeenLastCalledWith({
+                active: false,
+                draft: 'я',
+                maxLength: 400,
+            })
+            expect(
+                calls.send.mock.calls
+                    .flat()
+                    .some((command) =>
+                        ['chat', 'move_to', 'auto_action', 'attack'].includes(command.type)
+                    )
+            ).toBe(false)
+            expect(document.activeElement).toBe(canvas)
+            calls.handlers?.keyDown(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }))
+            expect(onChatState).toHaveBeenLastCalledWith({
+                active: true,
+                draft: 'я',
+                maxLength: 400,
+            })
+            game.cancelChat()
+            expect(onChatState).toHaveBeenLastCalledWith({
+                active: false,
+                draft: '',
+                maxLength: 400,
+            })
+            expect(document.activeElement).toBe(canvas)
+        } finally {
+            game.stop()
+            container.remove()
+        }
+    }
+)
+it('keeps a private editor or modal in control when the world is clicked during public typing', async () => {
+    const { game, container, onChatState } = setup()
+    document.body.append(container)
+    await game.start()
+    const dialog = document.createElement('section')
+    dialog.setAttribute('role', 'dialog')
+    const input = document.createElement('input')
+    dialog.append(input)
+    try {
+        container.querySelector('canvas')!.focus()
+        calls.handlers?.keyDown(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }))
+        document.body.append(dialog)
+        input.focus()
+        calls.send.mockClear()
+        calls.handlers?.pointer({
+            button: PointerButton.Left,
+            worldPos: { x: 100, y: 150 },
+        } as unknown as PointerEvent)
+        expect(onChatState).toHaveBeenLastCalledWith({ active: true, draft: '', maxLength: 400 })
+        expect(calls.send).not.toHaveBeenCalled()
+        game.cancelChat()
+        expect(document.activeElement).toBe(input)
+    } finally {
+        dialog.remove()
+        game.stop()
+        container.remove()
     }
 })
 it('never creates a scene, input listeners or connection after stopping during map loading', async () => {

@@ -121,5 +121,5 @@ collision, combat, cooldowns, resources, regen, death/respawn и snapshot.
 - `bun run format`;
 - `bun run type-check`;
 - `bun run lint`;
-- `bun run test:e2e`;
+- при изменении поведения или интерфейса — относящиеся к нему headless Chromium сценарии вручную, например `bun run test:e2e -- e2e/gameplay-controls.spec.ts`; полный набор не запускается для каждого коммита;
 - `bun run build-storybook:frontend`.

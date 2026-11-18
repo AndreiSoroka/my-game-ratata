@@ -1,11 +1,16 @@
 import type { PlantTreePreview } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
+// Finite shared sources can require a second approach around an entire building.
+const resourceNavigationTimeoutMs = 40_000
+// Two resource approaches, the shop/merchant/return legs and the planting checks.
+const forestScenarioTimeoutMs = 240_000
+
 for (const mobile of [false, true]) {
     test(`selects planting from any slot with zero saplings and collects a pinned forest source (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,
     }, info) => {
-        test.setTimeout(150_000)
+        test.setTimeout(forestScenarioTimeoutMs)
         const previews: PlantTreePreview[] = []
         page.on('websocket', (socket) =>
             socket.on('framereceived', (frame) => {
@@ -26,6 +31,7 @@ for (const mobile of [false, true]) {
         )
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(canvas).toBeVisible()
+        await collapseTestControls(page)
         await verifySaplingBindings(page)
         const source = await page.evaluate(() => {
             const state = window.__ratataTest!.getState()
@@ -46,15 +52,8 @@ for (const mobile of [false, true]) {
                 )[0]
         })
         expect(source).toBeDefined()
-        const navigation = await page.evaluate(
-            (id) =>
-                window.__ratataTest!.navigate(
-                    { targetKey: `resource:${id}` },
-                    { timeoutMs: 20_000, tolerance: 12 }
-                ),
-            source!.id
-        )
-        expect(navigation.status).toBe('arrived')
+        const navigation = await approachForestSource(page, source!.id)
+        expect(navigation.status, JSON.stringify(navigation)).toBe('arrived')
         const result = await page.evaluate(async (nodeId) => {
             const api = window.__ratataTest!
             const before = {
@@ -124,6 +123,14 @@ async function verifyPlantingForChromium(
     )
     expect(back.status).toBe('arrived')
     await plantAndCancel(page, 4, previews)
+}
+
+async function collapseTestControls(page: Page): Promise<void> {
+    const toggle = page
+        .getByRole('complementary', { name: 'Game test controls' })
+        .getByRole('button', { name: /Test controls/ })
+    if ((await toggle.getAttribute('aria-expanded')) === 'true') await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 }
 
 async function acquireSapling(page: Page): Promise<void> {
@@ -333,9 +340,9 @@ async function verifySaplingBindings(page: Page): Promise<void> {
 }
 
 async function acquireSecondBrushwood(page: Page): Promise<void> {
-    const gathered = await page.evaluate(async () => {
+    const source = await page.evaluate(() => {
         const api = window.__ratataTest!
-        const source = api
+        return api
             .getState()
             .snapshot!.adventure!.resourceNodes.filter(
                 (node) => node.source === 'branches' && node.phase === 'ready'
@@ -350,23 +357,23 @@ async function acquireSecondBrushwood(page: Page): Promise<void> {
                         second.position.x - api.getState().player!.position.x,
                         second.position.y - api.getState().player!.position.y
                     )
-            )[0]!
-        const approach = await api.navigate(
-            { targetKey: `resource:${source.id}` },
-            { timeoutMs: 20_000, tolerance: 12 }
-        )
-        if (approach.status !== 'arrived')
-            return { status: approach.status, reason: approach.reason, sourceId: source.id }
+            )[0]
+    })
+    expect(source).toBeDefined()
+    const approach = await approachForestSource(page, source!.id)
+    expect(approach.status, JSON.stringify(approach)).toBe('arrived')
+    const gathered = await page.evaluate(async (sourceId) => {
+        const api = window.__ratataTest!
         const before = {
             position: api.getState().player!.position,
             source: api
                 .getState()
-                .snapshot!.adventure!.resourceNodes.find((node) => node.id === source.id),
-            actions: api.observe().targets.find((target) => target.key === `resource:${source.id}`)
+                .snapshot!.adventure!.resourceNodes.find((node) => node.id === sourceId),
+            actions: api.observe().targets.find((target) => target.key === `resource:${sourceId}`)
                 ?.actions,
         }
         const action = await api.act(
-            { type: 'auto_action', action: { kind: 'gather', nodeId: source.id } },
+            { type: 'auto_action', action: { kind: 'gather', nodeId: sourceId } },
             { until: { type: 'inventory', itemId: 'brushwood', atLeast: 2 } }
         )
         const state = api.getState()
@@ -380,12 +387,48 @@ async function acquireSecondBrushwood(page: Page): Promise<void> {
                 control: state.player!.control,
                 inventory: state.player!.inventory,
                 source: state.snapshot!.adventure!.resourceNodes.find(
-                    (node) => node.id === source.id
+                    (node) => node.id === sourceId
                 ),
                 noticeId: state.snapshot!.adventure!.noticeId,
                 notice: state.snapshot!.adventure!.notice,
             },
         }
-    })
+    }, source!.id)
     expect(gathered.status, JSON.stringify(gathered)).toBe('condition_met')
+}
+
+async function approachForestSource(page: Page, sourceId: string) {
+    return page.evaluate(
+        async ({ sourceId, timeoutMs }) => {
+            const api = window.__ratataTest!
+            const start = api.getState().player!.position
+            const samples: unknown[] = []
+            const timer = setInterval(() => {
+                const player = api.getState().player
+                samples.push({
+                    position: player?.position,
+                    nextPoint: player?.path[0],
+                    destination: player?.path.at(-1),
+                    remainingPoints: player?.path.length,
+                    control: player?.control,
+                })
+            }, 4_000)
+            try {
+                return {
+                    ...(await api.navigate(
+                        { targetKey: `resource:${sourceId}` },
+                        { timeoutMs, tolerance: 12 }
+                    )),
+                    start,
+                    samples,
+                    source: api
+                        .getState()
+                        .snapshot?.adventure?.resourceNodes.find((node) => node.id === sourceId),
+                }
+            } finally {
+                clearInterval(timer)
+            }
+        },
+        { sourceId, timeoutMs: resourceNavigationTimeoutMs }
+    )
 }

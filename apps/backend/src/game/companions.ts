@@ -14,18 +14,21 @@ import {
     type AssistanceContext,
     CompanionAssistance,
 } from './companionAssistance'
+import {
+    applyModelCompanionCommand,
+    checkCompanionCommand,
+    type CompanionCommandCheck,
+    createCompanionRuntime,
+    scriptedCompanionDenial,
+    scriptedCompanionGreeting,
+} from './companionCommand'
 import { applyCompanionOrder } from './companionOrders'
 export type { AssistanceContext, AssistanceResult } from './companionAssistance'
 import {
     advanceCompanionIntent,
     type CompanionRuntime,
 } from './companionMovement'
-import {
-    companionProfiles,
-    consentReply,
-    refusalFor,
-    residentProfile,
-} from './companionProfiles'
+import { consentReply } from './companionProfiles'
 import {
     availableLeader,
     canRequest,
@@ -105,11 +108,45 @@ export class CompanionService {
     public readonly hasConsent = this.assistance.hasConsent
     public readonly capabilities = this.assistance.capabilities
 
+    public checkOrder(
+        actor: GameCharacter,
+        npc: GameCharacter | undefined,
+        message: CompanionClientMessage,
+        now: number,
+        context?: AssistanceContext
+    ): CompanionCommandCheck {
+        return checkCompanionCommand(
+            actor,
+            npc,
+            npc === undefined ? undefined : this.stateFor(npc),
+            message,
+            this.assistance,
+            now,
+            context
+        )
+    }
+
+    /** AI execution does not generate a scripted answer or overwrite lastReply. */
+    public applyModelOrder(
+        actor: GameCharacter,
+        npc: GameCharacter,
+        message: CompanionClientMessage,
+        now: number,
+        context: AssistanceContext
+    ): CompanionCommandCheck {
+        return applyModelCompanionCommand(
+            actor,
+            npc,
+            this.stateFor(npc),
+            message,
+            this.assistance,
+            now,
+            context
+        )
+    }
+
     public dialogueText(actor: GameCharacter, npc: GameCharacter): string {
-        const state = this.stateFor(npc)
-        return state.metActors.has(actor.id)
-            ? `Помню тебя, ${actor.nickname}. ${state.leaderId === actor.id ? 'Я рядом по собственной воле.' : state.profile.greeting}`
-            : state.profile.greeting
+        return scriptedCompanionGreeting(actor, this.stateFor(npc))
     }
 
     public rememberMeeting(
@@ -168,23 +205,16 @@ export class CompanionService {
         now: number,
         assistance?: AssistanceContext
     ): GameEventPayload[] {
-        if (state.leaderId !== null && state.leaderId !== actor.id) {
-            return this.reply(
-                npc,
-                actor,
-                state,
-                'Я уже дала слово другому спутнику. Решать за него тебе не позволю.'
+        const result = this.checkOrder(actor, npc, message, now, assistance)
+        if (!result.accepted) {
+            const text = scriptedCompanionDenial(
+                state.profile,
+                message.request,
+                result.reason
             )
+            return this.reply(npc, actor, state, text)
         }
         if (message.request === 'dismiss') {
-            if (state.leaderId !== actor.id) {
-                return this.reply(
-                    npc,
-                    actor,
-                    state,
-                    'Наши дороги пока не были связаны.'
-                )
-            }
             release(npc, state)
             return this.reply(
                 npc,
@@ -193,33 +223,16 @@ export class CompanionService {
                 'Хорошо. Дальше каждый выбирает свою дорогу. Береги себя.'
             )
         }
-        const refusal = refusalFor(state.profile, message.request)
-        if (refusal !== undefined) {
-            return this.reply(npc, actor, state, refusal)
-        }
-        if (state.profile.needsIntroduction && !state.metActors.has(actor.id)) {
-            return this.reply(
-                npc,
-                actor,
-                state,
-                'Я не пойду с незнакомцем. Сначала поговорим, а потом решу сама.'
-            )
-        }
         if (message.request === 'talk') {
             return []
         }
-        const consentError = this.assistance.requestError(
-            actor,
-            npc,
-            assistance,
-            now
-        )
-        if (consentError !== null) {
-            return this.reply(npc, actor, state, consentError)
-        }
         applyCompanionOrder(npc, actor, state, message, now)
-        const text = consentReply(state.profile, state.order)
-        return this.reply(npc, actor, state, text)
+        return this.reply(
+            npc,
+            actor,
+            state,
+            consentReply(state.profile, state.order)
+        )
     }
 
     public update(
@@ -293,17 +306,7 @@ export class CompanionService {
     private stateFor(character: GameCharacter): CompanionRuntime {
         let state = this.states.get(character.id)
         if (state === undefined) {
-            state = {
-                anchor: { ...character.position },
-                anchorLocation: character.locationId,
-                lastPlanAt: 0,
-                lastReply: null,
-                leaderId: null,
-                metActors: new Set<string>(),
-                order: 'idle',
-                profile: companionProfiles[character.id] ?? residentProfile,
-                controlRevision: 0,
-            }
+            state = createCompanionRuntime(character)
             this.states.set(character.id, state)
         }
         return state

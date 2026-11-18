@@ -180,6 +180,7 @@ function parseSocialAgentDecision(
     if (
         record['type'] === 'quest_propose' ||
         record['type'] === 'worker_quest_propose' ||
+        record['type'] === 'quest_invitation_answer' ||
         record['type'] === 'quest_offer_revise' ||
         record['type'] === 'quest_turn_in_request' ||
         record['type'] === 'quest_inquire'

@@ -37,3 +37,23 @@ export function snapshotNpcQuests(
         quest: job === undefined ? null : structuredClone(job.view),
     }
 }
+
+export function conversationNpcQuests(
+    jobs: Iterable<NpcQuestRecord>,
+    environment: NpcQuestEnvironment,
+    issuerId: string,
+    recipientId: string
+) {
+    return [...jobs]
+        .filter(
+            (job) =>
+                job.view.issuerId === issuerId &&
+                (job.acceptedBy === recipientId ||
+                    job.submittedBy === recipientId ||
+                    job.baseline.has(recipientId) ||
+                    environment.parties
+                        .contractRoster(job.view.instanceId)
+                        .members.has(recipientId))
+        )
+        .map((job) => structuredClone(job.view))
+}

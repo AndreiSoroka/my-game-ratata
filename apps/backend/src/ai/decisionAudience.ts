@@ -10,10 +10,14 @@ export function npcDecisionAudienceError(
     partnerId: string
 ): string | undefined {
     if (
-        decision.type === 'quest_propose' ||
-        decision.type === 'worker_quest_propose' ||
-        decision.type === 'quest_offer_revise' ||
-        decision.type === 'quest_turn_in_request'
+        [
+            'quest_propose',
+            'worker_quest_propose',
+            'quest_invitation_answer',
+            'quest_offer_revise',
+            'quest_turn_in_request',
+        ].includes(decision.type) &&
+        'targetId' in decision
     ) {
         return decision.targetId === partnerId
             ? undefined

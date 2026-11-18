@@ -6,6 +6,12 @@ action results and session memory; a model call never blocks the simulation tick
 Every resulting action still uses `GameCharacter` and the shared authoritative
 movement, collision, conversation and life-cycle rules.
 
+Mira, Kaplya and Vera receive a server-owned role and one authored backstory when
+the world is created. Their own selected identity is supplied directly on every
+model turn, separately from speech style and searchable world articles. See
+[NPC identities and backstories](npc-identities.md) for selection seeds, privacy,
+identity after death and the optional real-model dialogue check.
+
 ## Run locally
 
 Use Bun 1.4.4 and an installed Codex CLI supporting non-interactive JSON Schema
@@ -111,7 +117,7 @@ processes; death, identity replacement and cancellation invalidate late replies.
   answers. Errands own movement temporarily; existing following between locations
   remains available after consent.
 - Both use the same `GameCharacter` rules. No generated prose creates property,
-  progress, damage, consent or rewards. New AI errands stay inside the city.
+  progress, damage, consent or rewards. Movement scope is a role capability: companions can travel across the region, while the city coordinator stays in the city.
 
 ## Quest proposals and rewards
 
@@ -239,10 +245,16 @@ accepted route continues while the CLI prepares a conversational response. An
 explicitly accepted `wait` order persists after the call ends. By default the
 companion stays until asked again; explicit “until I return” arms a return rule
 only after its owner actually leaves. “Show me the guild” can use a guide intent
-against the authored building entrance; arrival still requires real navigation.
+against a known building, gate or location key; arrival still requires real navigation.
+Regional guides select known adjacent lands, walk to a reachable exit, cross through
+ordinary travel, and wait for the requester after each crossing. They use observed
+positions rather than hidden player coordinates. An expected crossing preserves the
+task; arrival, final obstruction and timeout terminate it once. Ordinary `follow`
+uses the shared companion controller rather than repeated model waypoints.
 
-Dead NPCs abort queued/in-flight work and stop using AI. Revival requires a new
-player request before AI resumes; old tasks and delayed results are discarded.
+Dead NPCs abort queued/in-flight work and stop using AI. Revival never resumes an
+old task or delayed result; a fresh player request or a newly eligible proactive
+opportunity may start a new turn.
 The 120-call hourly budget reserves an interactive portion: at most 80 background
 calls at the default limit. Blocked fresh requests receive an immediate private
 status. Nearby typing/thinking dots represent pending replies, not an active
@@ -271,7 +283,7 @@ recording hearing does not enqueue a model reply to every overheard sentence.
 People are keyed by server character identity, not nickname. Summaries are retained
 for more than 100 interlocutors without the former 32-person eviction. Logout and
 resurrection keep the same identity; replacing a permanently dead identity creates
-a new mind. All conversation history and quest state remain in server memory and
+a new mind for that new character. Other NPCs archive the previous identity’s conversations without assigning them to its namesake; see [memory and initiative](npc-memory.md). All conversation history and quest state remain in server memory and
 are lost when the world restarts. There is no database or provider-session resume.
 
 The normal context carries a current-person summary, recent messages, relevant
@@ -310,8 +322,8 @@ spoken nor remembered, and exhausted correction is terminal rather than queued a
 a provider retry. `taskConsent` communicates allowed acceptance values across public
 and private channels without revealing another speaker or task.
 
-Recent conversational context contains the last 20 spoken records, excluding movement
-observations. A peaceful inspection uses ordinary movement and earns fresh, bounded
+Recent conversational context contains the last 20 addressed spoken records for the actual interlocutor, excluding movement
+observations. Public speech remains public; its server-only addressee attribution does not open a whisper. A peaceful inspection uses ordinary movement and earns fresh, bounded
 `scouting` facts after arrival: visible targets, position, location and observation time.
 Building interiors remain hidden until the actor enters. Return/report uses the
 requester's last earned position; unseen absence is never proof of global absence.
@@ -333,6 +345,7 @@ Manual checks, excluded from automatic suites:
 bun run npc:style:dialogue
 bun run npc:scout:dialogue
 bun run npc:offers:dialogue --wait-ms=180000
+bun run npc:navigation:dialogue
 ```
 
 The style check applies no decisions. The scout check starts an isolated world,
@@ -488,3 +501,34 @@ Player queries, conversation archives and current personal star discoveries are 
 stored in this file. A new search query still needs its own embedding. The cache
 persists derived computations only; character minds, contracts, possessions and the
 world itself remain in process memory.
+
+## Shared initiative and autonomous activities
+
+See [устные приглашения к поручениям](npc-quest-invitations.md) for the two-step
+proposal flow, direct player requests, concise greetings and authored grammatical
+self-reference. An autonomous invitation does not open the quest modal or accept
+a contract on the player's behalf.
+
+All configured AI characters use one coordinator, scheduler, command validator and
+`GameCharacter` simulation. Personality, movement scope, speech, consent, combat
+and knowledge remain separate data; no activity controller branches on a particular
+character ID. The same command check supplies model capabilities and validates
+execution. Forbidden drafts can use the shared second invocation for a generated
+refusal. No scripted refusal or acceptance is spoken on behalf of an AI character;
+when correction/model availability is exhausted, only the private UI status changes.
+Scripted controllers retain their authored responses.
+
+With `proactive` enabled (the default), a visible connected human may receive a
+model-written greeting on the first conversation or after ten minutes without an
+addressed exchange. Delivery, not merely observation, advances the pair’s clock.
+Greetings are background work, yield to incoming requests, and do not create tasks
+on the player’s behalf.
+
+After five continuous free minutes with a connected human on the same map, an AI
+controller may choose a short peaceful activity in its current location. A retained
+follow/wait/guard promise, scenario, conversation, exchange or action prevents this.
+The server presence condition exposes no unseen player data. Episodes last at most
+three model decisions or 120 seconds, and reset the five-minute idle interval when
+finished. A new player request or disappearance of the last local player interrupts
+only this background episode. Rest is a valid choice; ordinary action validation,
+call budgets, timeouts and cancellation still apply.

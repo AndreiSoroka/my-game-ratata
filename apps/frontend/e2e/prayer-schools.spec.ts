@@ -1,7 +1,8 @@
 import { ABILITY_DEFINITIONS, type PrayerAbilityId } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
-const schools: PrayerAbilityId[] = ['pray_road', 'pray_lantern', 'pray_grave', 'pray']
+const schools: PrayerAbilityId[] = ['pray_road', 'pray']
+const unavailableSchools: PrayerAbilityId[] = ['pray_lantern', 'pray_grave']
 interface PrayerControls {
     cycle: string
     interact: string
@@ -9,10 +10,11 @@ interface PrayerControls {
 }
 
 for (const width of [390, 1280]) {
-    test(`learns and binds four independent prayers through the teacher (${width}px)`, async ({
+    test(`learns Vera's two independent prayers and refuses unknown schools (${width}px)`, async ({
         page,
     }, info) => {
         test.setTimeout(120_000)
+        const rejectedLessons = observeRejectedLessons(page)
         await page.setViewportSize({ width, height: 844 })
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
@@ -53,6 +55,7 @@ for (const width of [390, 1280]) {
         expect(navigation.status).toBe('arrived')
         const controls = await prayerControls(page)
         await selectAlly(page, teacher.nickname, controls)
+        await assertUnavailableLessons(page, teacher.id, controls, rejectedLessons)
         for (const abilityId of schools) {
             await page.keyboard.press(controls.interact)
             const lesson = page.getByRole('menuitem', {
@@ -74,6 +77,8 @@ for (const width of [390, 1280]) {
         const player = await page.evaluate(() => window.__ratataTest!.getState().player!)
         expect(player.progression!.deity.id).toBe('road')
         expect(Object.keys(player.abilities!.prayers!)).toEqual(expect.arrayContaining(schools))
+        for (const abilityId of unavailableSchools)
+            expect(player.abilities!.known).not.toContain(abilityId)
         await page.keyboard.press(controls.self)
         for (const [index, abilityId] of schools.entries()) {
             await page.keyboard.press(`Shift+Digit${index + 1}`)
@@ -114,7 +119,7 @@ for (const width of [390, 1280]) {
             (await page.evaluate(() => window.__ratataTest!.getState().player!)).progression!.deity
                 .id
         ).toBe('road')
-        await page.screenshot({ path: info.outputPath(`four-prayers-${width}.png`) })
+        await page.screenshot({ path: info.outputPath(`vera-two-prayers-${width}.png`) })
     })
 }
 
@@ -158,4 +163,51 @@ async function enterChapel(page: Page): Promise<void> {
             )
         )
         .toBe(true)
+}
+
+function observeRejectedLessons(page: Page): string[] {
+    const notices: string[] = []
+    page.on('websocket', (socket) => {
+        socket.on('framereceived', ({ payload }) => {
+            const text = typeof payload === 'string' ? payload : payload.toString('utf8')
+            if (text.includes('Этот персонаж не обучает выбранной способности.')) notices.push(text)
+        })
+    })
+    return notices
+}
+
+async function assertUnavailableLessons(
+    page: Page,
+    teacherId: string,
+    controls: PrayerControls,
+    rejectedLessons: string[]
+): Promise<void> {
+    await page.keyboard.press(controls.interact)
+    for (const abilityId of unavailableSchools) {
+        await expect(
+            page.getByRole('menuitem', {
+                name: `Изучить: ${ABILITY_DEFINITIONS[abilityId].name}`,
+                exact: true,
+            })
+        ).toHaveCount(0)
+    }
+    await page.keyboard.press('Escape')
+    for (const [index, abilityId] of unavailableSchools.entries()) {
+        await page.evaluate(
+            ({ id, targetId }) =>
+                window.__ratataTest!.send({
+                    type: 'learn_ability',
+                    abilityId: id,
+                    targetId,
+                }),
+            { id: abilityId, targetId: teacherId }
+        )
+        await expect.poll(() => rejectedLessons.length).toBe(index + 1)
+        expect(
+            await page.evaluate(
+                (id) => window.__ratataTest!.getState().player!.abilities!.known.includes(id),
+                abilityId
+            )
+        ).toBe(false)
+    }
 }

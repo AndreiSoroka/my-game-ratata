@@ -424,7 +424,7 @@
         {
             "id": "faith.mother",
             "file": "faith/mother.md",
-            "audiences": ["doctrine:prayer", "knows:pray"],
+            "audiences": ["knows:pray"],
             "aliases": [
                 "молитва Матери",
                 "исцеление",
@@ -439,24 +439,19 @@
             "checks": [
                 "apps/backend/tests/mother-prayer-casts.test.ts",
                 "apps/backend/tests/mother-prayer-homogeneous.test.ts",
-                "apps/backend/tests/mother-prayer-plan.test.ts"
+                "apps/backend/tests/mother-prayer-plan.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
         },
         {
             "id": "faith.resourceGifts",
             "file": "faith/resource-gifts.md",
-            "audiences": [
-                "doctrine:prayer",
-                "knows:pray_road",
-                "knows:pray_lantern",
-                "knows:pray_grave"
-            ],
+            "audiences": ["doctrine:prayer"],
             "aliases": [
-                "молитва странника",
-                "молитва ясности",
-                "молитва праха",
-                "восстановить ману"
+                "ресурсные дары",
+                "пустой дар",
+                "практика ресурсных молитв"
             ],
             "sources": [
                 "contracts/src/prayer.ts",
@@ -466,7 +461,8 @@
             "checks": [
                 "apps/backend/tests/prayer-schools.test.ts",
                 "apps/backend/tests/resource-practice.test.ts",
-                "apps/backend/tests/prayer-boundaries.test.ts"
+                "apps/backend/tests/prayer-boundaries.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
         },
@@ -484,11 +480,14 @@
             "sources": [
                 "contracts/src/prayer.ts",
                 "apps/backend/src/game/deities.ts",
-                "apps/backend/src/game/progressionCommands.ts"
+                "apps/backend/src/game/progressionCommands.ts",
+                "apps/backend/src/game/prayerCastStart.ts",
+                "apps/backend/src/game/prayerParameters.ts"
             ],
             "checks": [
                 "apps/backend/tests/prayer-schools.test.ts",
-                "apps/backend/tests/deities-learning.test.ts"
+                "apps/backend/tests/deities-learning.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
         },
@@ -956,11 +955,13 @@
             "aliases": ["Капля", "что ты любишь", "почему не сражаешься"],
             "sources": [
                 "apps/backend/src/game/companionProfiles.ts",
-                "apps/backend/src/game/supportNpcs.ts"
+                "apps/backend/src/game/supportNpcs.ts",
+                "apps/backend/src/game/npcIdentityCatalog.ts"
             ],
             "checks": [
                 "apps/backend/tests/companions.test.ts",
-                "apps/backend/tests/companion-reply-privacy.test.ts"
+                "apps/backend/tests/companion-reply-privacy.test.ts",
+                "apps/backend/tests/npc-identity-context.test.ts"
             ],
             "facts": {}
         },
@@ -1120,12 +1121,14 @@
                 "apps/backend/src/game/companionProfiles.ts",
                 "apps/backend/src/game/guild.ts",
                 "apps/backend/src/game/adventureContent.ts",
-                "apps/backend/src/game/workerRequests.ts"
+                "apps/backend/src/game/workerRequests.ts",
+                "apps/backend/src/game/npcIdentityCatalog.ts"
             ],
             "checks": [
                 "apps/backend/tests/worker-guild-contracts.test.ts",
                 "apps/backend/tests/npc-ai-coordinator.test.ts",
-                "apps/backend/tests/npc-quests.test.ts"
+                "apps/backend/tests/npc-quests.test.ts",
+                "apps/backend/tests/npc-identity-context.test.ts"
             ],
             "facts": {}
         },
@@ -1161,12 +1164,15 @@
                 "apps/backend/src/game/supportNpcs.ts",
                 "apps/backend/src/game/magicLearning.ts",
                 "apps/backend/src/game/clericController.ts",
-                "apps/backend/src/game/cityJustice.ts"
+                "apps/backend/src/game/cityJustice.ts",
+                "apps/backend/src/game/npcIdentityCatalog.ts"
             ],
             "checks": [
                 "apps/backend/tests/deities-learning.test.ts",
                 "apps/backend/tests/resurrection-rules.test.ts",
-                "apps/backend/tests/city-justice.test.ts"
+                "apps/backend/tests/city-justice.test.ts",
+                "apps/backend/tests/npc-identity-context.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
         },
@@ -1373,6 +1379,69 @@
             "checks": [
                 "apps/backend/tests/world-locations.test.ts",
                 "apps/backend/tests/navigation-boundary.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "faith.road",
+            "file": "faith/road.md",
+            "audiences": ["knows:pray_road"],
+            "aliases": [
+                "молитва Путника",
+                "молитва странника",
+                "восстановить силы"
+            ],
+            "extends": "faith.resourceGifts",
+            "sources": [
+                "contracts/src/prayer.ts",
+                "apps/backend/src/game/prayer.ts",
+                "apps/backend/src/game/prayerGifts.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/prayer-schools.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "faith.lantern",
+            "file": "faith/lantern.md",
+            "audiences": ["knows:pray_lantern"],
+            "aliases": [
+                "молитва Архивариуса",
+                "молитва ясности",
+                "восстановить ману"
+            ],
+            "extends": "faith.resourceGifts",
+            "sources": [
+                "contracts/src/prayer.ts",
+                "apps/backend/src/game/prayer.ts",
+                "apps/backend/src/game/prayerGifts.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/prayer-schools.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "faith.grave",
+            "file": "faith/grave.md",
+            "audiences": ["knows:pray_grave"],
+            "aliases": [
+                "молитва Праха",
+                "здоровье нежити",
+                "вернуть павшую нежить"
+            ],
+            "extends": "faith.resourceGifts",
+            "sources": [
+                "contracts/src/prayer.ts",
+                "apps/backend/src/game/prayer.ts",
+                "apps/backend/src/game/prayerGifts.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/prayer-schools.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
         }

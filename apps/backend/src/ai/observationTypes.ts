@@ -36,6 +36,7 @@ export interface NpcAiTarget {
     kind:
         | 'character'
         | 'building'
+        | 'landmark'
         | 'item'
         | 'chest'
         | 'world'
@@ -52,11 +53,15 @@ export interface NpcAiTarget {
 }
 
 export interface NpcAiObservation {
+    knownPlaces?: Array<import('./guideTargets').NpcKnownPlace>
     contracts?: import('./contractProjection').KnownContracts
     itemDefinitions?: Partial<
         Record<import('@my-game-ratata/contracts').ItemId, { name: string }>
     >
-    social?: import('@my-game-ratata/contracts').SocialSnapshot
+    social?: import('@my-game-ratata/contracts').SocialSnapshot & {
+        questInvitation?:
+            import('@my-game-ratata/contracts').QuestInvitationSnapshot | null
+    }
     tick: number
     serverTime: number
     locationId: string

@@ -37,7 +37,7 @@ export function npcAiDecisionError(
     }
     switch (decision.type) {
         case 'move_to':
-            return movementError(actor, decision, navigation)
+            return movementError(actor, role, decision, navigation)
         case 'interact':
         case 'guide':
         case 'speak':
@@ -101,10 +101,11 @@ function receipt(
 
 function movementError(
     actor: GameCharacter,
+    role: NpcAiRole,
     decision: Extract<AgentDecision, { type: 'move_to' }>,
     navigation?: NavigationService
 ): string | undefined {
-    if (actor.locationId !== CENTER_LOCATION_ID) {
+    if (role !== 'companion' && actor.locationId !== CENTER_LOCATION_ID) {
         return 'New AI errands are limited to the city; ordinary companion following remains available'
     }
     return decision.append === true

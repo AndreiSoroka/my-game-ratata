@@ -6,6 +6,10 @@ import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import type { NavigationService } from './navigation'
 import {
+    initializeNpcIdentityProfiles,
+    resolveNpcIdentitySeed,
+} from './npcIdentityProfiles'
+import {
     initializeNpcSpeechProfiles,
     resolveNpcSpeechSeed,
 } from './npcSpeechProfiles'
@@ -27,9 +31,11 @@ export function spawnRoomCharacters(
     characters: Map<string, GameCharacter>,
     controllers: Map<string, CharacterController>,
     companions: CompanionService,
-    npcSpeechSeed?: string
+    npcSpeechSeed?: string,
+    npcIdentitySeed?: string
 ): GraveRegistration[] {
     const speechSeed = resolveNpcSpeechSeed(npcSpeechSeed)
+    const identitySeed = resolveNpcIdentitySeed(npcIdentitySeed)
     const graves: GraveRegistration[] = []
     for (const [locationId, location] of world.locations) {
         const suffix = locationId === centerLocationId ? '' : `_${locationId}`
@@ -77,5 +83,6 @@ export function spawnRoomCharacters(
         )
     }
     initializeNpcSpeechProfiles(characters.values(), speechSeed)
+    initializeNpcIdentityProfiles(characters.values(), identitySeed)
     return graves
 }

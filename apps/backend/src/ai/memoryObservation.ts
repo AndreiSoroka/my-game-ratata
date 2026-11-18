@@ -4,6 +4,7 @@ import type { GameCharacter } from '../game/character'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech } from '../game/socialSpeech'
 import { memoryForCharacter } from './characterMinds'
+import { addressedSpeechPartner } from './memorySpeechAttribution'
 import type { NpcAiActorState } from './runtimeState'
 import type { NpcAiEvent } from './types'
 
@@ -113,6 +114,7 @@ function eventMemory(
     speechId: number,
     at: number
 ): import('./characterMemory').MemoryMessage {
+    const partnerId = addressedSpeechPartner(event)
     return {
         id: `speech:${speaker.id}:${String(speechId)}`,
         senderId: speaker.id,
@@ -120,6 +122,9 @@ function eventMemory(
         ...(event.targetId === undefined
             ? {}
             : { recipientId: event.targetId }),
+        ...(partnerId === undefined
+            ? {}
+            : { conversationPartnerId: partnerId }),
         text,
         channel:
             event.targetId !== undefined || event.audienceIds !== undefined
@@ -128,6 +133,20 @@ function eventMemory(
         source: 'heard',
         at,
         locationId: speaker.locationId,
+    }
+}
+
+/** Called only after resolving an actual addressee; ambient hearing never resets this clock. */
+export function rememberNpcAddressedSpeech(
+    state: NpcAiActorState,
+    event: Heard
+): void {
+    if (event.system !== true && event.ambiguous !== true) {
+        state.mind.recordAddressedSpeech(
+            event.id.replace(/^say:/, 'speech:'),
+            event.senderId,
+            event.at
+        )
     }
 }
 

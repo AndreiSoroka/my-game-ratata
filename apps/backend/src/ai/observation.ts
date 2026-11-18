@@ -21,7 +21,9 @@ import {
 import { distance } from '../game/math'
 import type { NavigationService } from '../game/navigation'
 import { visibilityRadius } from '../game/queries'
+import { knownGuidePlaces } from './guideTargets'
 import { environmentTargets } from './observationEnvironment'
+import { buildingTargets, landmarkTargets } from './observationPlaces'
 import {
     characterSocialDetails,
     filterNpcAiDialogue,
@@ -71,12 +73,14 @@ export function buildNpcAiObservation(
     const targets = filterNpcAiTargets(actor, role, [
         ...nearby,
         ...buildingTargets(buildings, actor),
+        ...landmarkTargets(actor, navigation),
     ])
     const observedMerchant =
         dialogue !== null &&
         adventureNpcRoles[dialogue.npcId]?.trade === true &&
         characters.some((entry) => entry.id === dialogue.npcId)
     const observation: NpcAiObservation = {
+        knownPlaces: knownGuidePlaces(actor, navigation),
         tick: snapshot.tick,
         serverTime: now,
         locationId: actor.locationId,
@@ -155,32 +159,6 @@ function characterTarget(
             canSpeak: target.soul?.canSpeak ?? false,
         },
     }
-}
-
-function buildingTargets(
-    buildings: readonly MapBuildingDefinition[],
-    actor: GameCharacter
-): NpcAiTarget[] {
-    return buildings.map((building) => ({
-        key: `building:${building.id}`,
-        kind: 'building',
-        id: building.id,
-        name: building.name,
-        position: { ...building.entry },
-        distance: distance(actor.position, building.entry),
-        interactionRange: 0,
-        commands: [
-            moveTo(building.entry),
-            moveTo(building.interior),
-            { type: 'guide', targetKey: `building:${building.id}` },
-        ],
-        details: {
-            entry: { ...building.entry },
-            interior: { ...building.interior },
-            bounds: { ...building.bounds },
-            entered: containsBuildingPoint(building.bounds, actor.position),
-        },
-    }))
 }
 
 function currentDialogue(

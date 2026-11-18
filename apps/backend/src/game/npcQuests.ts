@@ -9,7 +9,9 @@ import {
 
 import type { GameCharacter } from './character'
 import { answerQuestOffer } from './npcQuestAcceptance'
+import { handleNpcQuestClient } from './npcQuestClientActions'
 import { inquireNpcQuest } from './npcQuestInquiry'
+import { NpcQuestInvitations } from './npcQuestInvitations'
 import { recordNpcQuest, recordQuestOffer } from './npcQuestJournal'
 import { NpcQuestLifecycle } from './npcQuestLifecycle'
 import {
@@ -17,8 +19,7 @@ import {
     questRewardWallet,
 } from './npcQuestOfferOperations'
 import { inspectQuest, observeQuestDeath } from './npcQuestProgress'
-import { snapshotNpcQuests } from './npcQuestSnapshots'
-import { turnInNpcQuest } from './npcQuestTurnIn'
+import { conversationNpcQuests, snapshotNpcQuests } from './npcQuestSnapshots'
 import {
     type NpcQuestDecisionContext,
     type NpcQuestEnvironment,
@@ -26,7 +27,6 @@ import {
     type NpcQuestResult,
     questOfferAvailable,
     type QuestOfferRecord,
-    terminalReceiptOwner,
 } from './npcQuestTypes'
 import { QuestJournal } from './questJournal'
 
@@ -39,6 +39,7 @@ export class NpcQuestService {
     public readonly journal = new QuestJournal()
     private readonly reservations: import('./rewardReservations').RewardReservations
 
+    private readonly invitations: NpcQuestInvitations
     private readonly offerOperations: NpcQuestOfferOperations
     private readonly lifecycle: NpcQuestLifecycle
     public constructor(private readonly environment: NpcQuestEnvironment) {
@@ -47,6 +48,10 @@ export class NpcQuestService {
             offers: this.offers,
             journal: this.journal,
         })
+        this.invitations = new NpcQuestInvitations(
+            environment,
+            this.offerOperations
+        )
         this.reservations = environment.adventure.questFunding.reservations
         this.lifecycle = new NpcQuestLifecycle(environment, this.reservations)
     }
@@ -58,6 +63,7 @@ export class NpcQuestService {
             this.lifecycle.cancel(job, 'Мир остановлен. Договор отменён.')
         }
         this.offers.clear()
+        this.invitations.stop()
     }
 
     public handleDecision(
@@ -69,12 +75,9 @@ export class NpcQuestService {
         switch (decision.type) {
             case 'quest_propose':
             case 'worker_quest_propose':
-                return this.offerOperations.decide(
-                    issuer,
-                    decision,
-                    now,
-                    context
-                )
+                return this.invitations.present(issuer, decision, now, context)
+            case 'quest_invitation_answer':
+                return this.invitations.answer(issuer, decision, now, context)
             case 'quest_offer_revise':
                 return this.offerOperations.revise(issuer, decision, now)
             case 'quest_inquire':
@@ -90,6 +93,38 @@ export class NpcQuestService {
                     'Это действие требует окна подтверждения разговора.'
                 )
         }
+    }
+
+    public previewDecision(
+        issuer: GameCharacter,
+        decision: NpcQuestDecision,
+        now: number,
+        context: NpcQuestDecisionContext = {}
+    ): string | undefined {
+        if (decision.type === 'quest_invitation_answer') {
+            return this.invitations.previewAnswer(
+                issuer,
+                decision,
+                now,
+                context
+            )
+        }
+        return decision.type === 'quest_propose' ||
+            decision.type === 'worker_quest_propose'
+            ? this.invitations.previewProposal(issuer, decision, now, context)
+            : undefined
+    }
+
+    public invitationFor(issuerId: string, targetId: string, now = Date.now()) {
+        return this.invitations.invitationFor(issuerId, targetId, now)
+    }
+
+    public canInvite(
+        issuerId: string,
+        targetId: string,
+        now = Date.now()
+    ): boolean {
+        return this.invitations.canInvite(issuerId, targetId, now)
     }
 
     public propose(
@@ -132,49 +167,19 @@ export class NpcQuestService {
         message: NpcQuestClientMessage,
         now: number
     ): NpcQuestResult {
-        if (message.type === 'quest_offer_answer') {
-            return this.answer(actor, message, now)
-        }
-        if (message.type === 'quest_inquire') {
-            return this.inquire(
-                actor,
-                message.instanceId,
-                message.objectiveIndex,
-                now
-            )
-        }
-        if (message.type === 'quest_turn_in_confirm') {
-            return this.result(
-                false,
-                'Подтверждение доступно только через серверное окно сдачи.'
-            )
-        }
-        const job = this.jobs.get(message.instanceId)
-        const group = this.environment.parties.contractGroup(actor.id)
-        if (group.leaderId !== actor.id) {
-            return this.result(false, 'Договор принимает и сдаёт лидер группы.')
-        }
-        if (
-            job === undefined ||
-            (this.environment.parties.contractSlots.get(group.key) !==
-                message.instanceId &&
-                !terminalReceiptOwner(job, actor.id))
-        ) {
-            return this.result(false, 'Этот договор вам недоступен.')
-        }
-        if (message.type === 'npc_quest_abandon') {
-            this.lifecycle.cancel(job, 'Договор оставлен. Награда освобождена.')
-            this.recordJob(job, now)
-            return this.result(true)
-        }
-        return turnInNpcQuest(
+        return handleNpcQuestClient(
             {
                 environment: this.environment,
+                jobs: this.jobs,
                 lifecycle: this.lifecycle,
                 record: (entry, time) => this.recordJob(entry, time),
+                answer: (person, input, time) =>
+                    this.answer(person, input, time),
+                inquire: (person, id, index, time) =>
+                    this.inquire(person, id, index, time),
             },
             actor,
-            job,
+            message,
             now
         )
     }
@@ -224,6 +229,7 @@ export class NpcQuestService {
     }
 
     public update(now: number): void {
+        this.invitations.update(now)
         for (const [id, offer] of this.offers) {
             if (!questOfferAvailable(offer, this.environment, now)) {
                 recordQuestOffer(
@@ -269,18 +275,12 @@ export class NpcQuestService {
     }
 
     public conversation(issuerId: string, recipientId: string) {
-        return [...this.jobs.values()]
-            .filter(
-                (job) =>
-                    job.view.issuerId === issuerId &&
-                    (job.acceptedBy === recipientId ||
-                        job.submittedBy === recipientId ||
-                        job.baseline.has(recipientId) ||
-                        this.environment.parties
-                            .contractRoster(job.view.instanceId)
-                            .members.has(recipientId))
-            )
-            .map((job) => structuredClone(job.view))
+        return conversationNpcQuests(
+            this.jobs.values(),
+            this.environment,
+            issuerId,
+            recipientId
+        )
     }
 
     public inquire(

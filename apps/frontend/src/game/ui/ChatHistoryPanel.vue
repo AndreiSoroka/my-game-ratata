@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 
 import type { ChatHistoryEntry } from './chatHistory'
+import { isTextEntry, permitsWorldMovement } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = defineProps<{ entries: ChatHistoryEntry[]; typing: boolean }>()
@@ -35,6 +36,15 @@ function latest(): void {
     atBottom.value = true
     unread.value = 0
 }
+function key(event: KeyboardEvent): void {
+    const target = event.target
+    const draftKey =
+        props.typing &&
+        target instanceof HTMLElement &&
+        target.closest('button') === null &&
+        !isTextEntry(target)
+    if (!draftKey && !permitsWorldMovement(event)) event.stopPropagation()
+}
 watch(
     () => props.entries.at(-1)?.id,
     async () => {
@@ -55,9 +65,11 @@ watch(filter, async () => {
         :class="{ 'chat-history--typing': typing, 'chat-history--collapsed': collapsed }"
         aria-label="История чата"
         data-game-input-owner
+        data-world-movement="wasd"
+        data-public-chat-reader
         tabindex="-1"
-        @keydown.stop
-        @keyup.stop
+        @keydown="key"
+        @keyup="key"
         @pointerdown.stop
     >
         <header>

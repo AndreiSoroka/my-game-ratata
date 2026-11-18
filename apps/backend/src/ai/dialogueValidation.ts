@@ -24,8 +24,7 @@ export function validateNpcDialogueReply(
     event: Heard,
     reply: NpcAiReply,
     wantsTask: boolean,
-    now: number,
-    speak: (text: string) => void
+    now: number
 ): GameCharacter | undefined {
     const requester = room.getCharacter(event.senderId)
     if (
@@ -69,7 +68,6 @@ export function validateNpcDialogueReply(
             'Сейчас не получилось начать поручение.',
             event
         )
-        speak('Сейчас не получилось начать поручение.')
         return undefined
     }
     return requester

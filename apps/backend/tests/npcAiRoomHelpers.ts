@@ -53,6 +53,7 @@ export function openNpcAiRoom(
 ) {
     const config = parseNpcAiConfig(
         {
+            proactive: false,
             npcs: roles.map((role) => ({
                 actorId:
                     role === 'companion'

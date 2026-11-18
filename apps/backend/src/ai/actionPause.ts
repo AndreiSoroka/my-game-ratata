@@ -16,6 +16,12 @@ export function npcActionPaused(
         }
         if (state.guide !== undefined) {
             state.guide.deadline += now - state.tradePausedAt
+            if (state.guide.legDeadline !== undefined) {
+                state.guide.legDeadline += now - state.tradePausedAt
+            }
+            if (state.guide.crossingGraceUntil !== undefined) {
+                state.guide.crossingGraceUntil += now - state.tradePausedAt
+            }
             if (state.guide.waitingSince !== undefined) {
                 state.guide.waitingSince += now - state.tradePausedAt
             }

@@ -131,9 +131,20 @@ it('names the original errand in task statuses while keeping ordinary replies co
         requestStatus: {
             id: 'request-2',
             npcId: 'kaplya',
+            state: 'thinking',
+            request: 'иди за мной',
+            at: 3,
+        },
+    })
+    expect(history.entries.value.at(-1)?.text).toBe('Обдумывает ответ: «иди за мной»')
+    history.event({
+        kind: 'npc_request_status',
+        requestStatus: {
+            id: 'request-2',
+            npcId: 'kaplya',
             state: 'completed',
             request: 'привет',
-            at: 3,
+            at: 4,
         },
     })
     expect(history.entries.value.at(-1)?.text).toBe('Запрос завершён')

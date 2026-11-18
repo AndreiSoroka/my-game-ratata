@@ -100,9 +100,7 @@ it('ends a repeatedly inconsistent input once and never queues a third model att
         f.entries().filter((entry) => entry['category'] === 'provider_error')
     ).toEqual([])
     expect(f.actor.hasPath()).toBe(false)
-    expect(f.speech().map((event) => event.text)).toEqual([
-        'Сейчас не получилось начать поручение.',
-    ])
+    expect(f.speech().map((event) => event.text)).toEqual([])
     expect(
         f
             .entries()

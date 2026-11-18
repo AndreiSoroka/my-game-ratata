@@ -25,6 +25,31 @@ export interface AttackResourceSpend {
     fullyPowered: boolean
 }
 
+export function createPendingAttackHit(
+    now: number,
+    attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number },
+    weaponInstanceId: string | undefined
+): PendingAttackHit {
+    return {
+        resourceSpends: attack.resourceSpends,
+        weaponInstanceId:
+            attack.abilityId === undefined ||
+            attack.abilityId === 'skeleton_strike'
+                ? weaponInstanceId
+                : undefined,
+        targetId: attack.targetId,
+        target: attack.target === undefined ? undefined : { ...attack.target },
+        rawDamage: attack.rawDamage,
+        maxRange: attack.maxRange,
+        abilityId: attack.abilityId,
+        canStun: attack.canStun,
+        damageMultiplier: attack.damageMultiplier,
+        underpowered: attack.underpowered ?? false,
+        hitAt: now + attack.windupMs,
+        targetEnergyDrain: attack.targetEnergyDrain,
+    }
+}
+
 export function regen(
     current: number,
     max: number,

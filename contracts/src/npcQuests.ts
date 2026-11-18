@@ -28,6 +28,7 @@ export interface QuestDraft {
 }
 
 export interface QuestOfferSnapshot {
+    introduction?: string
     fundingCityId?: string
     objectiveLabels?: string[]
     id: string
@@ -43,6 +44,18 @@ export interface QuestOfferSnapshot {
     rewardMode: QuestRewardMode
     itemRecipient: 'submitter'
     expiresAt: number
+    workerRequestId?: string
+}
+
+/** Private reasoning context for the issuer, never a player-facing offer or contract. */
+export interface QuestInvitationSnapshot {
+    id: string
+    issuerId: string
+    targetId: string
+    createdAt: number
+    expiresAt: number
+    title: string
+    description: string
     workerRequestId?: string
 }
 
@@ -74,6 +87,12 @@ export interface QuestOfferReplacement {
 }
 
 export type NpcQuestDecision =
+    | {
+          type: 'quest_invitation_answer'
+          targetId: string
+          invitationId: string
+          show: boolean
+      }
     | {
           type: 'quest_propose'
           targetId: string

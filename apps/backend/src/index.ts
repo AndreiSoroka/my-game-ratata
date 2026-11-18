@@ -13,6 +13,9 @@ if (!Number.isInteger(port) || port <= 0) {
 knowledgeCorpus()
 const aiConfig = await loadNpcAiConfig()
 const room = new GameRoom(undefined, {
+    ...(Bun.env['GAME_NPC_IDENTITY_SEED'] === undefined
+        ? {}
+        : { npcIdentitySeed: Bun.env['GAME_NPC_IDENTITY_SEED'] }),
     ...(Bun.env['GAME_NPC_SPEECH_SEED'] === undefined
         ? {}
         : { npcSpeechSeed: Bun.env['GAME_NPC_SPEECH_SEED'] }),

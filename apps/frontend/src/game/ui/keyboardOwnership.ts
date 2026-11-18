@@ -35,33 +35,75 @@ export function worldPointerBlocked(): boolean {
 export function permitsWorldMovement(event: KeyboardEvent): boolean {
     if (
         !['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code) ||
-        event.defaultPrevented ||
-        event.isComposing ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
+        reservedKey(event) ||
         isTextEntry(event.target) ||
         isTextEntry(document.activeElement)
     )
         return false
     const windows = Array.from(document.querySelectorAll<HTMLElement>(windowSelector))
-    return windows.length > 0 && windows.every((window) => window.dataset.worldMovement === 'wasd')
+    const reader = [event.target, document.activeElement].some(
+        (target) =>
+            target instanceof HTMLElement && target.closest('[data-world-movement="wasd"]') !== null
+    )
+    return (
+        (reader || windows.length > 0) &&
+        windows.every((window) => window.dataset.worldMovement === 'wasd')
+    )
+}
+
+/** The custom public draft may retain focus in its read-only history, never in another editor. */
+export function publicChatOwnsKey(event: KeyboardEvent): boolean {
+    if (
+        reservedKey(event) ||
+        isTextEntry(event.target) ||
+        isTextEntry(document.activeElement) ||
+        document.querySelector(windowSelector) !== null
+    )
+        return false
+    const target = event.target instanceof HTMLElement ? event.target : document.activeElement
+    if (!(target instanceof HTMLElement)) return true
+    if (target.closest('button')) return false
+    const reader = target.closest('[data-public-chat-reader]')
+    if (
+        reader &&
+        [
+            'ArrowUp',
+            'ArrowDown',
+            'ArrowLeft',
+            'ArrowRight',
+            'PageUp',
+            'PageDown',
+            'Home',
+            'End',
+        ].includes(event.code)
+    )
+        return false
+    return !isOwnedUiTarget(target) || reader !== null
+}
+
+/** Explicitly leaving public typing returns to the world without taking a foreign window's focus. */
+export function focusWorldInput(): void {
+    if (document.querySelector(windowSelector) || isTextEntry(document.activeElement)) return
+    document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
 }
 
 /** A HUD button owns confirmation, but its focus does not disable unrelated game shortcuts. */
 export function gameKeyBlocked(event: KeyboardEvent): boolean {
-    if (
-        event.defaultPrevented ||
-        event.isComposing ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey
-    )
-        return true
+    if (reservedKey(event)) return true
     if (permitsWorldMovement(event)) return false
     if (worldKeyboardOwned() || isOwnedUiTarget(event.target)) return true
     const focus = event.target instanceof HTMLElement ? event.target : document.activeElement
     return (
         focus instanceof HTMLElement && focus.closest('button') !== null && isConfirmationKey(event)
+    )
+}
+
+function reservedKey(event: KeyboardEvent): boolean {
+    return (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
     )
 }

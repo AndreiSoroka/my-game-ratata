@@ -5,6 +5,7 @@ import { companionProfiles } from '../game/companionProfiles'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech } from '../game/socialSpeech'
 import type { NpcAiDiagnostics } from './diagnostics'
+import { rememberNpcAddressedSpeech } from './memoryObservation'
 import { buildNpcAiObservation } from './observation'
 import { reportNpcRequestStatus } from './requestStatus'
 import type { NpcAiActorState } from './runtimeState'
@@ -115,6 +116,7 @@ function queueSpeech(
         state.awaitingFreshRequest = false
     }
     const heard: Heard = { ...event, ambiguous }
+    rememberNpcAddressedSpeech(state, heard)
     if (state.actor !== undefined) {
         heard.actorPosition = { ...state.actor.position }
         heard.actorLocationId = state.actor.locationId

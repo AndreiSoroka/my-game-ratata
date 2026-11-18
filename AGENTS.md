@@ -4,7 +4,9 @@
 
 - Run Playwright tests and automation in headless mode by default.
 - Use a visible browser only when the user explicitly asks to open, show, or visually inspect the UI in the in-app browser.
-- The browser portion of automatic checks (`bun run check`, including the pre-commit hook) runs only the standard headless Chromium game suite. Formatting, types, lint, unit/script tests and builds remain automatic. Firefox, WebKit, grave lifecycle and Storybook checks remain available for manual runs through `test:e2e:firefox`, `test:e2e:webkit`, `test:e2e:graves`, `test:e2e:storybook` or `test:e2e:all`; do not add them back to automatic checks without the user's request.
+- Automatic checks (`bun run check`, including the pre-commit hook) run formatting, types, lint, unit/script tests and builds. Browser E2E tests are manual and are not part of every commit.
+- When gameplay or UI behavior changes, run the affected headless Chromium scenarios, for example `bun run test:e2e -- e2e/social-exchange.spec.ts`. Choose scenarios for the changed functionality; documentation or formatting changes do not require browser runs.
+- The full standard headless Chromium suite remains available through `bun run test:e2e`; `bun run check:full` combines the automatic checks with that full suite when explicitly requested. Firefox, WebKit, grave lifecycle and Storybook checks remain manual through `test:e2e:firefox`, `test:e2e:webkit`, `test:e2e:graves`, `test:e2e:storybook` or `test:e2e:all`. Do not add browser suites back to automatic checks without the user's request.
 
 ## Storybook
 

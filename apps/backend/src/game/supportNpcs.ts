@@ -3,7 +3,7 @@ import {
     type CharacterVisualId,
     type CreatureType,
     type HeroClass,
-    prayerAbilityIds,
+    type PrayerAbilityId,
 } from '@my-game-ratata/contracts'
 
 import { ArtisanController } from './artisanController'
@@ -18,9 +18,12 @@ import { syncAbilityConstellations } from './constellations'
 import { NetworkPlayerController } from './controllers'
 import { createItemInstance, equipDirect } from './inventory'
 import type { NavigationService, TileCoordinate } from './navigation'
+import type { NpcIdentityKey } from './npcIdentityCatalog'
 import type { SpawnedCharacter } from './spawns'
 
 interface SupportDefinition {
+    knownPrayers?: readonly PrayerAbilityId[]
+    npcIdentityKey?: NpcIdentityKey
     archetype?: CharacterArchetype
     heroClass?: HeroClass
     id: string
@@ -42,8 +45,10 @@ const definitions: SupportDefinition[] = [
     {
         creatureType: 'humanoid',
         id: 'npc_cleric_1',
+        npcIdentityKey: 'vera',
         nickname: 'Сестра Вера',
         heroClass: 'cleric',
+        knownPrayers: ['pray', 'pray_road'],
         visualId: 'female_mage',
         tile: { x: 55, y: 27 },
     },
@@ -79,6 +84,7 @@ const definitions: SupportDefinition[] = [
     {
         creatureType: 'ooze',
         id: 'npc_magic_slime_1',
+        npcIdentityKey: 'kaplya',
         nickname: 'Капля',
         archetype: 'slime',
         visualId: 'slime',
@@ -93,6 +99,7 @@ export function createSupportNpcs(
     return definitions.map((definition) => {
         const profile = companionProfiles[definition.id]
         const character = new GameCharacter({
+            npcIdentityKey: definition.npcIdentityKey,
             archetype: definition.archetype ?? 'human',
             creatureType: definition.creatureType,
             controllerKind: 'scripted',
@@ -112,11 +119,8 @@ export function createSupportNpcs(
         }
         if (definition.id === 'npc_cleric_1') {
             character.tags.add('cleric')
-            for (const id of prayerAbilityIds) {
-                character.abilities.known.add(id)
-            }
-            syncAbilityConstellations(character)
         }
+        initializeKnownPrayers(character, definition.knownPrayers)
         if (definition.id === 'npc_scholar_1') {
             character.tags.add('scholar')
         }
@@ -143,6 +147,19 @@ export function createSupportNpcs(
                         : new CompanionController(companions),
         }
     })
+}
+
+function initializeKnownPrayers(
+    character: GameCharacter,
+    prayers: readonly PrayerAbilityId[] = []
+): void {
+    if (prayers.length === 0) {
+        return
+    }
+    for (const id of prayers) {
+        character.abilities.known.add(id)
+    }
+    syncAbilityConstellations(character)
 }
 
 function safeSpawn(

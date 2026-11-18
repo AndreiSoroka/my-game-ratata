@@ -1,13 +1,16 @@
 import type { AdventureResourceNode, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
-import type { PointerEvent } from 'excalibur'
+import { PointerButton, type PointerEvent } from 'excalibur'
 import { describe, expect, it, vi } from 'vitest'
 
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
 import { handleRuntimePointer } from './runtimePointer'
 
-vi.mock('excalibur', () => ({ PointerButton: { Right: 2 } }))
+vi.mock('excalibur', () => ({
+    PointerButton: { Left: 'Left', Right: 'Right' },
+    PointerType: { Touch: 'Touch' },
+}))
 
-function pointer(shiftKey = false, button = 0): PointerEvent {
+function pointer(shiftKey = false, button = PointerButton.Left): PointerEvent {
     return {
         button,
         worldPos: { x: 100, y: 150 },
@@ -39,7 +42,7 @@ describe('click route modifiers', () => {
         const context = setup()
         handleRuntimePointer(pointer(), context)
         expect(context.send.mock.calls).toEqual([[{ type: 'move_to', target: { x: 100, y: 150 } }]])
-        handleRuntimePointer(pointer(true, 2), context)
+        handleRuntimePointer(pointer(true, PointerButton.Right), context)
         expect(context.send).toHaveBeenCalledTimes(1)
     })
     it('retains planting ownership even while Shift is held', () => {

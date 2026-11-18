@@ -5,6 +5,7 @@ import {
 
 import { type EncounterMapObject, readEncounterData } from './encounterData'
 import { readMapBuildings } from './mapBuildings'
+import { readMapLandmarks } from './mapLandmarks'
 import type { MapGrid } from './navigation'
 import { readNavigationSurfaces } from './navigationSurfaces'
 import { readWorldContainers } from './worldObjectData'
@@ -59,6 +60,10 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
     const encounters = readEncounterData(map, mapId)
     return {
         buildings: readMapBuildings(map),
+        landmarks: readMapLandmarks(
+            map,
+            mapId === 'map1' ? CENTER_LOCATION_ID : mapId
+        ),
         containers: readWorldContainers(map, mapId),
         training: readTrainingMapData(
             map,

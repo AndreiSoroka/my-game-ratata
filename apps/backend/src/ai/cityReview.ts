@@ -12,7 +12,7 @@ export function reviewNpcAiCity(
     nextId: (kind: string) => string
 ): void {
     state.inspectAt = now + 1_000
-    if (state.awaitingFreshRequest) {
+    if (cityReviewBusy(state)) {
         return
     }
     const fingerprint = npcAiCityFingerprint(
@@ -31,7 +31,7 @@ export function reviewNpcAiCity(
         id: nextId('city'),
         requesterId: null,
         request:
-            'Разовый городской обзор: оцени реальные нужды и выбери полезный следующий шаг. Предлагай существующие обращения или проверяемые задания живым игрокам, а не работникам. Не создавай ресурсы или награды. Учитывай уже полученные сведения осмотра; не осматривай одного работника повторно без изменений. Закончи обзор, если сейчас больше нечего сделать.',
+            'Разовый городской обзор: оцени реальные нужды и выбери полезный следующий шаг. Можно устно пригласить доступного живого игрока обсудить существующее обращение или проверяемое задание: задай короткий вопрос и дождись его ответа, не открывай окно самостоятельно. Не предлагай работу работникам и адресатам, для которых инициатива сейчас недоступна. Не создавай ресурсы или награды. Учитывай уже полученные сведения осмотра; не осматривай одного работника повторно без изменений. Закончи обзор, если сейчас больше нечего сделать.',
         steps: 0,
     }
     enqueueNpcAiEvent(state, {
@@ -45,5 +45,16 @@ export function reviewNpcAiCity(
 export function npcAiCityFingerprint(city: unknown): string {
     return JSON.stringify({ city }, (key, value: unknown) =>
         key === 'observedAt' || key === 'since' ? undefined : value
+    )
+}
+
+function cityReviewBusy(state: NpcAiActorState): boolean {
+    return (
+        state.awaitingFreshRequest ||
+        state.inbox.length > 0 ||
+        state.dialogue !== undefined ||
+        state.controller !== undefined ||
+        state.ready !== undefined ||
+        state.finalizing !== undefined
     )
 }

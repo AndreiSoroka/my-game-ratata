@@ -697,6 +697,30 @@
                             "maximum": 3
                         }
                     }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId", "invitationId", "show"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["quest_invitation_answer"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "invitationId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 150
+                        },
+                        "show": {
+                            "type": "boolean"
+                        }
+                    }
                 }
             ]
         },

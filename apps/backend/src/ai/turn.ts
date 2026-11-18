@@ -2,12 +2,13 @@ import { boundedNpcContext } from './dialogueContext'
 import type { NpcAiActorState } from './runtimeState'
 import { NpcReplyRejected } from './taskConsent'
 import {
+    correctReply,
     inputSource,
     reserveInputCall,
     resolveTurnInformation,
     type TurnInformation,
 } from './turnInformation'
-import type { NpcAiContext, NpcAiProvider } from './types'
+import type { NpcAiContext, NpcAiProvider, NpcAiReply } from './types'
 
 /** One lookup may augment the original turn; neither lookup nor provider can execute game actions. */
 export async function invokeNpcAiTurn(
@@ -18,6 +19,8 @@ export async function invokeNpcAiTurn(
     information: TurnInformation = {}
 ): Promise<void> {
     const generation = state.generation
+    const memory = state.mind
+    const retirementRevision = memory.retirementRevision
     const sourceId = inputSource(state, context)
     const events = state.dialogue === undefined ? state.events.splice(0) : []
     const controller = new AbortController()
@@ -31,34 +34,45 @@ export async function invokeNpcAiTurn(
         onAbort = () => reject(new Error('Model turn cancelled or timed out'))
         controller.signal.addEventListener('abort', onAbort, { once: true })
     })
-    const decide = (input: NpcAiContext) =>
-        Promise.race([
-            Promise.resolve().then(() => {
-                controller.signal.throwIfAborted()
-                reserveInputCall(state, sourceId)
-                return provider.decide(
-                    boundedNpcContext(input),
-                    state.config.settings,
-                    controller.signal
-                )
-            }),
-            aborted,
-        ])
+    const decide = turnDecider(
+        state,
+        sourceId,
+        provider,
+        controller.signal,
+        aborted
+    )
+    const turnInformation: TurnInformation = {
+        ...information,
+        reserveCall: () =>
+            (state.modelCallsByInput.get(sourceId) ?? 0) < 2 &&
+            information.reserveCall?.() === true,
+    }
     try {
         const reply = await resolveTurnInformation(
             state,
             context,
-            information,
+            turnInformation,
             decide,
             aborted
         )
         if (
-            current() &&
-            state.generation === generation &&
-            !controller.signal.aborted
+            state.mind !== memory ||
+            memory.retirementRevision !== retirementRevision
         ) {
-            state.ready = { reply }
+            throw new NpcReplyRejected('memory_changed')
         }
+        if (
+            await commitTurnReply(
+                context,
+                reply,
+                turnInformation,
+                decide,
+                aborted
+            )
+        ) {
+            return
+        }
+        storeReply(state, reply, controller.signal, generation, current)
     } catch (error) {
         if (current() && state.generation === generation) {
             state.ready = failedTurn(error, events)
@@ -70,6 +84,7 @@ export async function invokeNpcAiTurn(
         }
         if (state.controller === controller) {
             state.controller = undefined
+            state.finalizing = undefined
         }
     }
 }
@@ -87,4 +102,68 @@ function failedTurn(
                       : 'Model invocation failed',
               events,
           }
+}
+
+function turnDecider(
+    state: NpcAiActorState,
+    sourceId: string,
+    provider: NpcAiProvider,
+    signal: AbortSignal,
+    aborted: Promise<never>
+) {
+    return (input: NpcAiContext) =>
+        Promise.race([
+            Promise.resolve().then(() => {
+                signal.throwIfAborted()
+                reserveInputCall(state, sourceId)
+                return provider.decide(
+                    boundedNpcContext(input),
+                    state.config.settings,
+                    signal
+                )
+            }),
+            aborted,
+        ])
+}
+
+async function commitTurnReply(
+    context: NpcAiContext,
+    reply: NpcAiReply,
+    information: TurnInformation,
+    decide: (context: NpcAiContext) => Promise<NpcAiReply>,
+    aborted: Promise<never>
+): Promise<boolean> {
+    if (information.commitReply === undefined) {
+        return false
+    }
+    let problem = await Promise.race([information.commitReply(reply), aborted])
+    if (problem !== undefined) {
+        const corrected = await correctReply(
+            context,
+            reply,
+            information,
+            decide,
+            problem
+        )
+        problem = await Promise.race([
+            information.commitReply(corrected),
+            aborted,
+        ])
+        if (problem !== undefined) {
+            throw new NpcReplyRejected(problem.code)
+        }
+    }
+    return true
+}
+
+function storeReply(
+    state: NpcAiActorState,
+    reply: NpcAiReply,
+    signal: AbortSignal,
+    generation: number,
+    current: () => boolean
+): void {
+    if (current() && state.generation === generation && !signal.aborted) {
+        state.ready = { reply }
+    }
 }

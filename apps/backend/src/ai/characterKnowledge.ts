@@ -57,7 +57,7 @@ export class CharacterKnowledge {
         }
         this.track(memory)
         const entries = this.catalog(actor, navigation)
-        const recent = memory.entries().slice(-128)
+        const recent = memory.activeEntries().slice(-128)
         for (const entry of entries) {
             this.index.remember(
                 entry.id,
@@ -90,7 +90,11 @@ export class CharacterKnowledge {
             actor,
             navigation,
         })
+        const currentMemories = new Map(
+            memory.activeEntries().map((entry) => [entry.id, entry.text])
+        )
         const memories = recent
+            .filter((entry) => currentMemories.get(entry.id) === entry.text)
             .map((entry) => ({
                 entry,
                 score:
@@ -148,7 +152,15 @@ export class CharacterKnowledge {
                 (entry) => `memory:${memory.conversationId}:${entry.id}`
             )
         )
+        const currentEntries = new Map(
+            memory.entries().map((entry) => [entry.id, entry.text])
+        )
+        const fresh = memory.deep(personId, query)
+        if (fresh.status === 'not_known') {
+            return fresh
+        }
         const relevant = entries
+            .filter((entry) => currentEntries.get(entry.id) === entry.text)
             .map((entry) => ({
                 entry,
                 score:
@@ -162,7 +174,7 @@ export class CharacterKnowledge {
             .map(({ entry }) => ({ ...entry, text: entry.text.slice(0, 600) }))
         const messages = [
             ...new Map(
-                [...(result.messages ?? []), ...relevant].map((entry) => [
+                [...(fresh.messages ?? []), ...relevant].map((entry) => [
                     entry.id,
                     entry,
                 ])
@@ -171,7 +183,7 @@ export class CharacterKnowledge {
         while (Buffer.byteLength(JSON.stringify(messages)) > 10 * 1024) {
             messages.shift()
         }
-        return { ...result, messages }
+        return { ...fresh, messages }
     }
     private track(memory: CharacterMemory): void {
         const prefix = `memory:${memory.conversationId}:`

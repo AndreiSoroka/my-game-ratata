@@ -2,6 +2,7 @@ import { recordProp } from './generate-depth.mjs'
 import { pavingGid } from './generate-ground.mjs'
 import { addInteriorBuilding } from './generate-interiors.mjs'
 import { addTrainingGround } from './generate-training.mjs'
+import { worldLocationNeighbor } from '../contracts/src/world.ts'
 
 const town = 512
 
@@ -56,7 +57,7 @@ export function addNovogorod(ctx, location) {
     for (let y = 35; y <= 53; y += 1)
         for (let x = 37; x <= 58; x += 1) ground(x, y)
 
-    function landmark(name, kind, x, y) {
+    function landmark(name, kind, x, y, direction) {
         landmarks.push({
             id: landmarks.length + 1,
             name,
@@ -68,7 +69,26 @@ export function addNovogorod(ctx, location) {
             height: 0,
             rotation: 0,
             visible: true,
-            properties: [{ name: 'kind', type: 'string', value: kind }],
+            properties: [
+                { name: 'kind', type: 'string', value: kind },
+                ...(direction
+                    ? [
+                          {
+                              name: 'direction',
+                              type: 'string',
+                              value: direction,
+                          },
+                          {
+                              name: 'destinationLocationId',
+                              type: 'string',
+                              value: worldLocationNeighbor(
+                                  location.id,
+                                  direction
+                              )?.id,
+                          },
+                      ]
+                    : []),
+            ],
         })
     }
     function building(definition) {
@@ -376,10 +396,10 @@ export function addNovogorod(ctx, location) {
     landmark('Кузница', 'smithy', 77, 56)
     landmark('Торговые ряды', 'market', 54, 48)
     landmark('Лекарский сад', 'garden', 22, 64)
-    landmark('Северные ворота', 'gate', 48, 14)
-    landmark('Южные ворота', 'gate', 48, 67)
-    landmark('Западные ворота', 'gate', 12, 40)
-    landmark('Восточные ворота', 'gate', 84, 40)
+    landmark('Северные ворота', 'gate', 48, 14, 'north')
+    landmark('Южные ворота', 'gate', 48, 67, 'south')
+    landmark('Западные ворота', 'gate', 12, 40, 'west')
+    landmark('Восточные ворота', 'gate', 84, 40, 'east')
     landmark('Площадь Новогорода', 'plaza', 48, 35)
     landmark('Тренировочный загон', 'training', 56, 47)
     landmarks.at(-1).properties.push({

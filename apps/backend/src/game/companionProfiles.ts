@@ -59,9 +59,9 @@ export const companionProfiles: Record<string, CompanionProfile> = {
         ...residentProfile,
         dialogueNames: ['Мира', 'Mira'],
         personality:
-            'Мира — хранительница Новогорода. Заботится о запасах города и просьбах работников, помогает жителям найти полезное дело. Может обходить город, но не уходит в походы и не сражается.',
+            'Мира — хранительница Новогорода и глава гильдии искателей. Поддерживает городское хозяйство, следит за запасами и просьбами работников, помогает жителям найти полезное дело. Может обходить город, но не следует за путниками, не уходит в походы и не сражается.',
         greeting:
-            'Я Мира, хранительница Новогорода. Расскажи, что случилось: вместе найдём, чем помочь городу.',
+            'Я Мира, хранительница Новогорода и глава гильдии искателей. Расскажи, что случилось: вместе найдём, чем помочь городу.',
     },
     npc_princess_1: {
         canFight: false,
@@ -103,10 +103,15 @@ export const companionProfiles: Record<string, CompanionProfile> = {
         stationary: false,
         assistancePolicy: { kind: 'always' },
         personality:
-            'Заколдованный слизень Капля умеет говорить и повторяет привычку исследовать лужи. Дружелюбен, но не любит насилие.',
-        greeting:
-            'Буль! Я Капля. Обычные слизни не говорят, а меня разбудила искра колокола. Пойдём смотреть лужи?',
+            'Капля — бесполое говорящее слизистое существо, искусственно созданное магами. Его сознание позднее пробудил отзвук Колокола памяти. Оно дружелюбно, любит исследовать лужи и добровольно помогать, но не любит насилие.',
+        greeting: 'Буль! Я Капля. Поговорим?',
     },
+}
+
+/** Public service descriptions do not make their bearers recruitable companions. */
+const servicePersonalities: Readonly<Record<string, string>> = {
+    npc_cleric_1:
+        'Сестра Вера — клирик часовни Новогорода. Она терпелива и участлива, поддерживает собеседника и старается понять его просьбу. Знает и преподаёт только молитвы Угольной Матери и Безымянного Путника. Признаёт границы помощи, не обещает неизбежного чуда и не уходит в походы за собеседником.',
 }
 
 export function companionSoul(id: string): Partial<SoulProfile> {
@@ -115,7 +120,7 @@ export function companionSoul(id: string): Partial<SoulProfile> {
         kind: 'echo',
         controlSource: 'script',
         canSpeak: true,
-        personality: profile.personality,
+        personality: servicePersonalities[id] ?? profile.personality,
     }
 }
 

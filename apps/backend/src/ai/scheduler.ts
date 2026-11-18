@@ -1,6 +1,7 @@
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { CharacterKnowledge } from './characterKnowledge'
+import { npcCommandProblem } from './commandValidation'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { npcDialogueContext } from './dialogueContext'
 import { prepareKnowledgeCatalog } from './knowledgeCatalog'
@@ -8,6 +9,7 @@ import { npcKnowledgeInformation } from './knowledgeInformation'
 import { characterKnowledgeScope } from './knowledgeScope'
 import { reportNpcRequestStatus } from './requestStatus'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
+import { continuationAvailable } from './schedulerPolicy'
 import type { NpcAiSessionActions } from './session'
 import { invokeNpcAiTurn } from './turn'
 import type { NpcAiConfig, NpcAiProvider } from './types'
@@ -50,10 +52,7 @@ export class NpcAiScheduler {
             const now = this.clock()
             const states = [...this.states.values()].filter(
                 (state) =>
-                    ((state.task !== null &&
-                        state.events.length > 0 &&
-                        state.guide === undefined &&
-                        state.pending === undefined) ||
+                    (continuationAvailable(this.room, state) ||
                         state.inbox.length > 0) &&
                     state.ready === undefined &&
                     state.controller === undefined &&
@@ -156,6 +155,30 @@ export class NpcAiScheduler {
                     clock: this.clock,
                 }),
                 reserveCall: () => this.reserveInformationCall(state),
+                validateReply: (reply) =>
+                    npcCommandProblem(
+                        this.room,
+                        this.companions,
+                        state,
+                        reply,
+                        this.clock()
+                    ),
+                refreshContext: () =>
+                    npcDialogueContext(
+                        this.room,
+                        this.sessions.dialogue,
+                        state,
+                        actor,
+                        this.clock()
+                    ),
+                commitReply: (reply) =>
+                    new Promise((resolve) => {
+                        state.finalizing = {
+                            reply,
+                            resolve,
+                            retirementRevision: state.mind.retirementRevision,
+                        }
+                    }),
             }
         ).finally(() => {
             this.busy = false

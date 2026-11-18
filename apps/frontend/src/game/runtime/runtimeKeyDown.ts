@@ -1,5 +1,6 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
 
+import { publicChatOwnsKey } from '../ui/keyboardOwnership'
 import { movementKeys } from './input'
 import type { RuntimeChatInput } from './runtimeChatInput'
 import { isGameKeyboardBlocked } from './runtimeKeyboardFocus'
@@ -18,20 +19,12 @@ interface RuntimeKeyContext {
 }
 
 export function handleRuntimeKeyDown(event: KeyboardEvent, actions: RuntimeKeyContext): void {
-    if (isGameKeyboardBlocked(event)) return
-    if (
-        actions.chat.handleKey(event, (text) => {
-            const targetId = actions.options.getChatTargetId?.()
-            const focusKey = actions.options.getChatFocusKey?.()
-            actions.send({
-                text,
-                type: 'chat',
-                ...(targetId ? { targetId } : {}),
-                ...(focusKey ? { focusKey } : {}),
-            })
-        })
-    )
+    if (actions.chat.isActive) {
+        if (publicChatOwnsKey(event)) handleChat(event, actions)
         return
+    }
+    if (isGameKeyboardBlocked(event)) return
+    if (publicChatOwnsKey(event) && handleChat(event, actions)) return
     if (actions.movement.keyDown(event)) return
     if (
         handleRuntimeShortcut(event, {
@@ -54,4 +47,17 @@ export function handleRuntimeKeyDown(event: KeyboardEvent, actions: RuntimeKeyCo
         actions.send({ type: 'cancel_control' })
         actions.move(event.code)
     }
+}
+
+function handleChat(event: KeyboardEvent, actions: RuntimeKeyContext): boolean {
+    return actions.chat.handleKey(event, (text) => {
+        const targetId = actions.options.getChatTargetId?.()
+        const focusKey = actions.options.getChatFocusKey?.()
+        actions.send({
+            text,
+            type: 'chat',
+            ...(targetId ? { targetId } : {}),
+            ...(focusKey ? { focusKey } : {}),
+        })
+    })
 }

@@ -27,7 +27,9 @@ const requestLabels: Record<NpcRequestStatus['state'], string> = {
 
 function requestText(value: NpcRequestStatus): string {
     const label = requestLabels[value.state]
-    const named = ['accepted', 'declined', 'started', 'failed', 'cancelled'].includes(value.state)
+    const named = ['thinking', 'accepted', 'declined', 'started', 'failed', 'cancelled'].includes(
+        value.state
+    )
     const request = named && value.request ? `: «${value.request}»` : ''
     const reason = value.reason ? `${request ? '. ' : ': '}${value.reason}` : ''
     return `${label}${request}${reason}`

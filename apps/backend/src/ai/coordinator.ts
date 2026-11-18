@@ -4,21 +4,17 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
-import { snapshotCharacterRoute } from '../game/characterRoute'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { reconcileNpcAction } from './actionResolution'
-import { prepareNpcActor } from './actorLifecycle'
 import { reviewNpcAiCity } from './cityReview'
+import { rememberAndGreet } from './coordinatorSocial'
+import { NpcAiTicks } from './coordinatorTicks'
 import { NpcAiDiagnostics } from './diagnostics'
 import { legacyNpcRequest, receiveNpcSpeech } from './dialogueReception'
-import {
-    npcReplyActivities,
-    rememberHeardSpeech,
-    rememberVisiblePeople,
-} from './memoryObservation'
+import { npcReplyActivities, rememberHeardSpeech } from './memoryObservation'
+import { reviewNpcIdleActivity } from './npcAutonomy'
 import { buildNpcAiObservation } from './observation'
-import { reportNpcRequestStatus } from './requestStatus'
 import {
     canAddressNpcAi,
     createNpcAiState,
@@ -33,6 +29,7 @@ import type { NpcAiConfig, NpcAiProvider } from './types'
 export class NpcAiCoordinator {
     private readonly states = new Map<string, NpcAiActorState>()
     private readonly sessions: NpcAiSessionActions
+    private readonly ticks: NpcAiTicks
     private readonly scheduler: NpcAiScheduler
     private active = false
     private sequence = 0
@@ -52,6 +49,12 @@ export class NpcAiCoordinator {
             config,
             diagnostics,
             (kind) => this.id(kind)
+        )
+        this.ticks = new NpcAiTicks(
+            room,
+            companions,
+            this.sessions,
+            diagnostics
         )
         for (const npc of config.npcs) {
             this.states.set(
@@ -114,6 +117,26 @@ export class NpcAiCoordinator {
 
     public configured(id: string): boolean {
         return this.config.enabled && this.states.has(id)
+    }
+
+    public archivePerson(id: string, now: number): void {
+        for (const state of this.states.values()) {
+            if (
+                state.dialogue?.senderId === id ||
+                state.task?.requesterId === id ||
+                state.task?.targetId === id
+            ) {
+                const inbox = state.inbox.filter(
+                    (event) => event.senderId !== id
+                )
+                this.sessions.cancel(state, now)
+                state.inbox = inbox
+            } else {
+                state.inbox = state.inbox.filter(
+                    (event) => event.senderId !== id
+                )
+            }
+        }
     }
 
     public canControl(id: string, now: number): boolean {
@@ -192,64 +215,16 @@ export class NpcAiCoordinator {
         if (!this.active) {
             return
         }
+        const incoming = [...this.states.values()].some((state) =>
+            state.inbox.some((event) => event.system !== true)
+        )
+        if (incoming) {
+            for (const state of this.states.values()) {
+                this.ticks.yieldBackground(state, now)
+            }
+        }
         for (const state of this.states.values()) {
-            const actor = prepareNpcActor(
-                this.room,
-                this.companions,
-                this.sessions,
-                state,
-                now
-            )
-            if (actor === undefined) {
-                continue
-            }
-            if (state.pending !== undefined) {
-                const point =
-                    snapshotCharacterRoute(actor)?.route?.points.at(
-                        -1
-                    )?.position
-                if (point !== undefined) {
-                    state.pending.destination = { ...point }
-                }
-            }
-            const ready = state.ready
-            state.ready = undefined
-            if (ready === undefined) {
-                continue
-            }
-            this.applyReady(state, actor, ready, now)
-        }
-    }
-
-    private applyReady(
-        state: NpcAiActorState,
-        actor: GameCharacter,
-        ready: NonNullable<NpcAiActorState['ready']>,
-        now: number
-    ): void {
-        if (
-            state.turnControlRevision !== undefined &&
-            state.turnControlRevision !== this.companions.controlRevision(actor)
-        ) {
-            reportNpcRequestStatus(
-                this.room,
-                this.diagnostics,
-                state,
-                'cancelled',
-                now,
-                'Управление спутником изменилось во время ответа.'
-            )
-            const inbox = state.inbox
-            this.sessions.cancel(state, now)
-            state.inbox = inbox
-            return
-        }
-        if ('invalidReply' in ready) {
-            this.sessions.rejectReply(state, ready.invalidReply, now)
-        } else if ('error' in ready) {
-            this.sessions.failure(state, ready.error, ready.events, now)
-        } else {
-            this.sessions.applyReply(state, actor, ready.reply, now)
+            this.ticks.before(state, now)
         }
     }
 
@@ -272,11 +247,13 @@ export class NpcAiCoordinator {
                     state.config.role,
                     now
                 )
-                rememberVisiblePeople(
+                rememberAndGreet(
+                    this.room,
                     state,
-                    observation.targets,
-                    observation.locationId,
-                    now
+                    observation,
+                    now,
+                    this.config.proactive !== false,
+                    (kind) => this.id(kind)
                 )
             }
             reconcileNpcAction(
@@ -299,6 +276,11 @@ export class NpcAiCoordinator {
                     this.room,
                     this.config.limits.reviewIntervalMs,
                     (kind) => this.id(kind)
+                )
+            }
+            if (this.config.proactive !== false) {
+                reviewNpcIdleActivity(this.room, state, now, (kind) =>
+                    this.id(kind)
                 )
             }
         }

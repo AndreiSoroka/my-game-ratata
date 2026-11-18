@@ -1,8 +1,4 @@
-import type {
-    CompanionWaitMode,
-    GameEventPayload,
-    Vector2,
-} from '@my-game-ratata/contracts'
+import type { CompanionWaitMode, Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
@@ -17,8 +13,7 @@ export function applyNpcCompanionOrder(
     order: NonNullable<NpcAiReply['companionOrder']>,
     now: number,
     waitMode?: CompanionWaitMode,
-    heardAnchor?: { locationId: string; position: Vector2 },
-    modelSpeech?: string | null
+    heardAnchor?: { locationId: string; position: Vector2 }
 ): boolean {
     if (
         order === 'wait' &&
@@ -27,63 +22,23 @@ export function applyNpcCompanionOrder(
     ) {
         return false
     }
-    companions.rememberMeeting(requester, actor)
-    const events = companions.handle(
+    const result = companions.applyModelOrder(
         requester,
+        actor,
         {
             type: 'companion_request',
             targetId: actor.id,
             request: order,
             ...(waitMode === undefined ? {} : { waitMode }),
         },
-        [actor, requester],
         now,
-        {
-            modelConsent: true,
-            questCompleted: (id, questId) =>
-                room.adventureForWorkers().hasCompletedQuest(id, questId),
-            hasLineOfSight: (left, right) =>
-                room
-                    .navigationFor(left)
-                    .hasLineOfSight(left.position, right.position),
-        }
+        npcAssistanceContext(room)
     )
-    const accepted =
-        order === 'dismiss'
-            ? actor.soul.companion?.leaderId == null
-            : actor.soul.companion?.leaderId === requester.id &&
-              actor.soul.companion.order === order
-    room.publishEvents(
-        companionReplyEvents(
-            events,
-            actor.id,
-            requester.id,
-            accepted,
-            modelSpeech
-        )
-    )
+    const accepted = result.accepted
     if (accepted && order === 'wait' && heardAnchor !== undefined) {
         companions.setWaitAnchor(actor, requester.id, heardAnchor)
     }
     return accepted
-}
-
-function companionReplyEvents(
-    events: GameEventPayload[],
-    actorId: string,
-    requesterId: string,
-    accepted: boolean,
-    modelSpeech: string | null | undefined
-): GameEventPayload[] {
-    if (!accepted || modelSpeech == null || modelSpeech.trim().length === 0) {
-        return events
-    }
-    return events.filter(
-        (event) =>
-            event.kind !== 'chat' ||
-            event.actorId !== actorId ||
-            event.targetId !== requesterId
-    )
 }
 
 export function consumeNpcWait(
@@ -107,4 +62,17 @@ export function consumeNpcWait(
         },
         now
     )
+}
+
+export function npcAssistanceContext(room: GameRoom) {
+    return {
+        modelConsent: true,
+        conversation: true,
+        questCompleted: (id: string, questId: string) =>
+            room.adventureForWorkers().hasCompletedQuest(id, questId),
+        hasLineOfSight: (left: GameCharacter, right: GameCharacter) =>
+            room
+                .navigationFor(left)
+                .hasLineOfSight(left.position, right.position),
+    }
 }

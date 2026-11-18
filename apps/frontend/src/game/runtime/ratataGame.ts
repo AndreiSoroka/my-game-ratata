@@ -9,6 +9,7 @@ import type {
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import type { Engine, PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 
+import { focusWorldInput } from '../ui/keyboardOwnership'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
 import type { GameAudio } from './gameAudio'
@@ -25,7 +26,7 @@ import { handleRuntimeKeyDown } from './runtimeKeyDown'
 import { loadRuntimeMap } from './runtimeMapLoading'
 import { flushRuntimeMoveInput, RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
-import { handleRuntimePointer } from './runtimePointer'
+import { consumeRuntimePointerFocus, handleRuntimePointer } from './runtimePointer'
 import { createRuntimePresentation } from './runtimePresentation'
 import {
     runtimeCanSelect,
@@ -60,11 +61,9 @@ export class RatataGame {
     public constructor(private readonly options: RatataGameOptions) {
         this.chat = new RuntimeChatInput(
             options.onChatState,
-            () => {
-                this.pressedKeys.clear()
-                this.flushMoveInput()
-            },
-            (message) => this.send(message)
+            this.releaseInputs,
+            (message) => this.send(message),
+            focusWorldInput
         )
         this.socket = new RuntimeSocket({
             isStopped: () => this.stopped,
@@ -301,7 +300,7 @@ export class RatataGame {
     }
 
     private handlePointerDown(event: ExcaliburPointerEvent): void {
-        if (this.chat.isActive) return
+        if (consumeRuntimePointerFocus(event, this.chat)) return
         handleRuntimePointer(event, {
             snapshot: this.snapshot,
             playerId: this.localPlayerId,

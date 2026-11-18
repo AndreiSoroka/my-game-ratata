@@ -94,10 +94,23 @@ it('requires explicit model consent for following and retains the peaceful refus
     )
     await f.advance()
     expect(f.actor.soul.companion?.leaderId).toBeNull()
+    expect(f.provider.turns).toHaveLength(2)
+    expect(f.provider.turns[1]?.context.replyCorrection).toMatchObject({
+        code: 'command_unavailable',
+        reason: { code: 'cannot_fight' },
+        companionOrder: 'help',
+    })
+    const refusal = 'Я мирный слизень, сражаться не стану.'
+    f.provider.turns[1]?.resolve(
+        npcReply(null, { taskAcceptance: 'decline', speech: refusal })
+    )
+    await f.advance()
+    expect(f.actor.soul.companion?.leaderId).toBeNull()
+    expect(f.speech().filter((event) => event.text === refusal)).toHaveLength(1)
     f.talk('Пойдём вместе?')
     await f.advance()
     expect(f.actor.soul.companion?.leaderId).toBeNull()
-    f.provider.turns[1]?.resolve(
+    f.provider.turns[2]?.resolve(
         npcReply(null, {
             speech: 'Буль, пойдём.',
             taskAcceptance: 'accept',

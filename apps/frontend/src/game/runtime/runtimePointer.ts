@@ -4,10 +4,11 @@ import type {
     Vector2,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import { PointerButton, type PointerEvent } from 'excalibur'
+import { PointerButton, type PointerEvent, PointerType } from 'excalibur'
 
-import { worldPointerBlocked } from '../ui/keyboardOwnership'
+import { focusWorldInput, worldPointerBlocked } from '../ui/keyboardOwnership'
 import { characterAt } from './runtimeCharacterTargets'
+import type { RuntimeChatInput } from './runtimeChatInput'
 interface PointerContext {
     snapshot: WorldSnapshot | undefined
     playerId: string | undefined
@@ -17,6 +18,20 @@ interface PointerContext {
     select: (id: string) => void
     send: (command: ClientMessage) => void
 }
+
+/** The first world click leaves typing without also selecting or acting in the world. */
+export function consumeRuntimePointerFocus(event: PointerEvent, chat: RuntimeChatInput): boolean {
+    if (worldPointerBlocked()) return true
+    if (event.button !== PointerButton.Left && event.pointerType !== PointerType.Touch)
+        return chat.isActive
+    if (chat.isActive) {
+        chat.suspend()
+        return true
+    }
+    focusWorldInput()
+    return false
+}
+
 export function handleRuntimePointer(event: PointerEvent, context: PointerContext): void {
     if (event.button === PointerButton.Right || worldPointerBlocked()) return
     const target = { x: event.worldPos.x, y: event.worldPos.y }

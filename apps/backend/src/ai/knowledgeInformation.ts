@@ -23,6 +23,7 @@ export function npcKnowledgeInformation(
 ): Pick<TurnInformation, 'current' | 'lookup' | 'search' | 'scope'> {
     const { state, actor, room, knowledge } = turn
     const mind = state.mind
+    const retirementRevision = mind.retirementRevision
     const generation = state.generation
     const token = state.token
     const query = state.dialogue?.text ?? state.task?.request ?? ''
@@ -35,6 +36,7 @@ export function npcKnowledgeInformation(
         state.generation === generation &&
         state.actor === actor &&
         state.mind === mind &&
+        mind.retirementRevision === retirementRevision &&
         state.token === token &&
         room.getCharacter(actor.id) === actor &&
         npcAiActorAvailable(actor) &&

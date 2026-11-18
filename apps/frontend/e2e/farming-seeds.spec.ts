@@ -335,18 +335,40 @@ async function inspectFarmChest(page: Page): Promise<void> {
 }
 
 async function dropSeed(page: Page): Promise<string | undefined> {
-    return page.evaluate(async () => {
+    const before = await page.evaluate(async () => {
         const api = window.__ratataTest!
-        const before = new Set(api.getState().snapshot!.items.map((item) => item.id))
+        const before = api.getState().snapshot!.items.map((item) => item.id)
         const seed = api.getState().player!.inventory.find((item) => item.itemId === 'wheat_seed')!
         await api.act({
             type: 'inventory_action',
             action: 'drop',
             itemInstanceId: seed.instanceId,
         })
-        return api
-            .getState()
-            .snapshot!.items.find((item) => item.itemId === 'wheat_seed' && !before.has(item.id))
-            ?.id
+        return before
     })
+    let droppedId: string | undefined
+    await expect
+        .poll(
+            async () => {
+                const observed = await page.evaluate((before) => {
+                    const state = window.__ratataTest!.getState()
+                    const previous = new Set(before)
+                    return {
+                        seeds: state.player!.inventory.reduce(
+                            (sum, item) =>
+                                sum + (item.itemId === 'wheat_seed' ? (item.quantity ?? 1) : 0),
+                            0
+                        ),
+                        droppedId: state.snapshot!.items.find(
+                            (item) => item.itemId === 'wheat_seed' && !previous.has(item.id)
+                        )?.id,
+                    }
+                }, before)
+                droppedId = observed.droppedId
+                return observed
+            },
+            { timeout: 5_000 }
+        )
+        .toEqual({ seeds: 0, droppedId: expect.any(String) })
+    return droppedId
 }

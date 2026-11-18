@@ -11293,7 +11293,17 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
-                        { "name": "kind", "type": "string", "value": "gate" }
+                        { "name": "kind", "type": "string", "value": "gate" },
+                        {
+                            "name": "direction",
+                            "type": "string",
+                            "value": "north"
+                        },
+                        {
+                            "name": "destinationLocationId",
+                            "type": "string",
+                            "value": "map-2-1"
+                        }
                     ]
                 },
                 {
@@ -11308,7 +11318,17 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
-                        { "name": "kind", "type": "string", "value": "gate" }
+                        { "name": "kind", "type": "string", "value": "gate" },
+                        {
+                            "name": "direction",
+                            "type": "string",
+                            "value": "south"
+                        },
+                        {
+                            "name": "destinationLocationId",
+                            "type": "string",
+                            "value": "map-2-3"
+                        }
                     ]
                 },
                 {
@@ -11323,7 +11343,17 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
-                        { "name": "kind", "type": "string", "value": "gate" }
+                        { "name": "kind", "type": "string", "value": "gate" },
+                        {
+                            "name": "direction",
+                            "type": "string",
+                            "value": "west"
+                        },
+                        {
+                            "name": "destinationLocationId",
+                            "type": "string",
+                            "value": "map-1-2"
+                        }
                     ]
                 },
                 {
@@ -11338,7 +11368,17 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
-                        { "name": "kind", "type": "string", "value": "gate" }
+                        { "name": "kind", "type": "string", "value": "gate" },
+                        {
+                            "name": "direction",
+                            "type": "string",
+                            "value": "east"
+                        },
+                        {
+                            "name": "destinationLocationId",
+                            "type": "string",
+                            "value": "map-3-2"
+                        }
                     ]
                 },
                 {

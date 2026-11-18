@@ -185,6 +185,7 @@ const allowedDecisionTypes = new Set([
     'exchange_decline',
     'quest_propose',
     'worker_quest_propose',
+    'quest_invitation_answer',
     'quest_offer_revise',
     'quest_turn_in_request',
     'quest_inquire',

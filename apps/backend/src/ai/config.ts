@@ -34,6 +34,12 @@ export async function loadNpcAiConfig(
 
 export function parseNpcAiConfig(input: unknown, enabled = false): NpcAiConfig {
     const record = object(input, 'root')
+    if (
+        record['proactive'] !== undefined &&
+        typeof record['proactive'] !== 'boolean'
+    ) {
+        throw invalid('proactive must be a boolean')
+    }
     const defaults = settings(record['defaults'], defaultNpcAiSettings)
     const limits = object(record['limits'] ?? {}, 'limits')
     const rawNpcs = record['npcs']
@@ -64,6 +70,7 @@ export function parseNpcAiConfig(input: unknown, enabled = false): NpcAiConfig {
     }
     return {
         enabled,
+        proactive: record['proactive'] !== false,
         defaults,
         limits: {
             maxCallsPerHour: integer(

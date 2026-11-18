@@ -7,8 +7,12 @@ import type {
 import type { GameCharacter } from './character'
 import { snapshotItem } from './inventory'
 import { recordQuestOffer } from './npcQuestJournal'
-import { questProposalGuard } from './npcQuestOfferGuard'
-import { createQuestOffer, createWorkerQuestOffer } from './npcQuestOffers'
+import { questRewardWallet } from './npcQuestOfferAssets'
+export { questRewardWallet } from './npcQuestOfferAssets'
+import {
+    prepareQuestProposal,
+    type QuestProposalDecision,
+} from './npcQuestProposalPreparation'
 import type { NpcQuestResult } from './npcQuests'
 import {
     type NpcQuestDecisionContext,
@@ -17,11 +21,7 @@ import {
     type QuestOfferRecord,
 } from './npcQuestTypes'
 import type { QuestJournal } from './questJournal'
-import {
-    type AssetWallet,
-    availableGold,
-    availableInventoryQuantity,
-} from './rewardReservations'
+import { availableGold, availableInventoryQuantity } from './rewardReservations'
 
 const result = (
     accepted: boolean,
@@ -32,18 +32,6 @@ interface OfferContext {
     environment: NpcQuestEnvironment
     offers: Map<string, QuestOfferRecord>
     journal: QuestJournal
-}
-
-export function questRewardWallet(
-    environment: NpcQuestEnvironment,
-    offer: Pick<QuestOfferRecord, 'view'>,
-    issuer: GameCharacter
-): AssetWallet | undefined {
-    return offer.view.funding === 'city' || offer.view.funding === 'worker'
-        ? environment.adventure.questFunding.wallet(
-              offer.view.fundingCityId ?? issuer.locationId
-          )
-        : environment.adventure.walletFor(issuer.id)
 }
 
 export class NpcQuestOfferOperations {
@@ -58,23 +46,53 @@ export class NpcQuestOfferOperations {
         now: number,
         context: NpcQuestDecisionContext
     ): NpcQuestResult {
-        return decision.type === 'quest_propose'
-            ? this.propose(
-                  issuer,
-                  decision.targetId,
-                  decision.draft,
-                  now,
-                  decision.replaceOffer,
-                  context
-              )
-            : this.workerPropose(
-                  issuer,
-                  decision.targetId,
-                  decision.requestId,
-                  now,
-                  decision.replaceOffer,
-                  context
-              )
+        const prepared = prepareQuestProposal(
+            this.context,
+            issuer,
+            decision,
+            now,
+            context
+        )
+        if (!('view' in prepared)) {
+            return prepared
+        }
+        prepared.view.id = this.newId(
+            decision.type === 'quest_propose' ? 'offer' : 'worker-offer'
+        )
+        return this.publish(decision.targetId, prepared, now)
+    }
+
+    public preview(
+        issuer: GameCharacter,
+        decision: QuestProposalDecision,
+        now: number,
+        context: NpcQuestDecisionContext
+    ): string | undefined {
+        const prepared = prepareQuestProposal(
+            this.context,
+            issuer,
+            decision,
+            now,
+            context
+        )
+        return 'view' in prepared || prepared.accepted
+            ? undefined
+            : (prepared.error ?? 'Предложение недоступно.')
+    }
+
+    public prepare(
+        issuer: GameCharacter,
+        decision: QuestProposalDecision,
+        now: number,
+        context: NpcQuestDecisionContext
+    ) {
+        return prepareQuestProposal(
+            this.context,
+            issuer,
+            decision,
+            now,
+            context
+        )
     }
 
     public propose(
@@ -85,27 +103,17 @@ export class NpcQuestOfferOperations {
         replaceOffer: QuestOfferReplacement | undefined,
         context: NpcQuestDecisionContext
     ): NpcQuestResult {
-        const guard = questProposalGuard(
-            this.context,
+        return this.decide(
             issuer,
-            targetId,
+            {
+                type: 'quest_propose',
+                targetId,
+                draft,
+                ...(replaceOffer === undefined ? {} : { replaceOffer }),
+            },
             now,
-            draft,
-            replaceOffer,
             context
         )
-        if (guard !== undefined) {
-            return guard
-        }
-        const offer = createQuestOffer(
-            issuer,
-            targetId,
-            draft,
-            this.context.environment,
-            this.newId('offer'),
-            now
-        )
-        return this.publish(issuer, targetId, offer, now)
     }
 
     public workerPropose(
@@ -116,27 +124,17 @@ export class NpcQuestOfferOperations {
         replaceOffer: QuestOfferReplacement | undefined,
         context: NpcQuestDecisionContext
     ): NpcQuestResult {
-        const guard = questProposalGuard(
-            this.context,
+        return this.decide(
             issuer,
-            targetId,
+            {
+                type: 'worker_quest_propose',
+                targetId,
+                requestId,
+                ...(replaceOffer === undefined ? {} : { replaceOffer }),
+            },
             now,
-            requestId,
-            replaceOffer,
             context
         )
-        if (guard !== undefined) {
-            return guard
-        }
-        const offer = createWorkerQuestOffer(
-            issuer,
-            targetId,
-            requestId,
-            this.context.environment,
-            this.newId('worker-offer'),
-            now
-        )
-        return this.publish(issuer, targetId, offer, now)
     }
 
     public revise(
@@ -193,33 +191,10 @@ export class NpcQuestOfferOperations {
     }
 
     private publish(
-        issuer: GameCharacter,
         targetId: string,
-        offer: QuestOfferRecord | string,
+        offer: QuestOfferRecord,
         now: number
     ): NpcQuestResult {
-        if (typeof offer === 'string') {
-            return result(false, offer)
-        }
-        const wallet = questRewardWallet(
-            this.context.environment,
-            offer,
-            issuer
-        )
-        const selection = offer.view.rewardItems.map((item) => ({
-            instanceId: item.instanceId,
-            quantity: item.quantity ?? 1,
-        }))
-        if (
-            wallet === undefined ||
-            availableGold(wallet) < offer.view.rewardGold ||
-            !availableSelection(issuer, selection)
-        ) {
-            return result(
-                false,
-                'У меня сейчас нет свободной награды для такого обещания.'
-            )
-        }
         const previous = this.context.offers.get(targetId)
         if (previous !== undefined) {
             recordQuestOffer(

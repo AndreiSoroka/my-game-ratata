@@ -13,7 +13,8 @@ export class RuntimeChatInput {
     public constructor(
         onState: (state: ChatInputState) => void,
         onBegin?: () => void,
-        sendActivity?: (command: SpeechActivityCommand) => void
+        sendActivity?: (command: SpeechActivityCommand) => void,
+        private readonly onEnd?: () => void
     ) {
         this.activity = sendActivity
             ? new SpeechActivityEmitter(sendActivity, { channel: 'say' })
@@ -34,9 +35,17 @@ export class RuntimeChatInput {
         this.end()
     }
 
+    public suspend(): void {
+        if (!this.active) return
+        this.active = false
+        this.emitState()
+        this.onEnd?.()
+    }
+
     public handleKey(event: KeyboardEvent, sendChat: (text: string) => void): boolean {
         if (event.key === 'Enter') {
             event.preventDefault()
+            if (event.repeat) return true
 
             if (this.active) {
                 this.submit(sendChat)
@@ -74,7 +83,6 @@ export class RuntimeChatInput {
 
     private begin(): void {
         this.active = true
-        this.draft = ''
         this.onBegin?.()
         this.emitState()
     }
@@ -90,9 +98,11 @@ export class RuntimeChatInput {
     }
 
     private end(): void {
+        const wasActive = this.active
         this.active = false
         this.draft = ''
         this.emitState()
+        if (wasActive) this.onEnd?.()
     }
 
     private emitState(): void {

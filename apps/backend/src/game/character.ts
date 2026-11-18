@@ -33,6 +33,7 @@ import { createCharacterSnapshot } from './characterSnapshot'
 import { createCharacterSoul } from './characterSoul'
 import {
     type AttackResourceSpend,
+    createPendingAttackHit,
     type PendingAttackHit,
 } from './characterState'
 import { initializeConstellations } from './constellations'
@@ -42,6 +43,11 @@ import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { createMartyrState } from './martyr'
 import { normalize, resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import type { NpcIdentityKey } from './npcIdentityCatalog'
+import {
+    bindNpcIdentityKey,
+    type NpcIdentityProfile,
+} from './npcIdentityProfiles'
 import type { NpcSpeechProfile } from './npcSpeechProfiles'
 import { PersonalConstellationSky } from './personalConstellationSky'
 import type { PrayerAuraEnvironment } from './prayerAuras'
@@ -52,6 +58,8 @@ import {
 } from './skillProgression'
 
 export class GameCharacter {
+    public readonly npcIdentityKey?: NpcIdentityKey
+    public readonly npcIdentityProfile?: NpcIdentityProfile
     /** Server-owned presentation data is absent from public soul snapshots. */
     public readonly npcSpeechProfile?: NpcSpeechProfile
     public readonly trainingTarget: { areaId: string } | undefined
@@ -153,6 +161,7 @@ export class GameCharacter {
         this.spawnPosition = { ...options.spawnPosition }
         this.visualId =
             options.visualId ?? defaultVisualIdFor(options.archetype)
+        bindNpcIdentityKey(this, options.npcIdentityKey)
         initializeConstellations(this)
     }
 
@@ -252,25 +261,11 @@ export class GameCharacter {
         now: number,
         attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number }
     ): void {
-        this.pendingAttack = {
-            resourceSpends: attack.resourceSpends,
-            weaponInstanceId:
-                attack.abilityId === undefined ||
-                attack.abilityId === 'skeleton_strike'
-                    ? this.equipment.weapon?.instanceId
-                    : undefined,
-            targetId: attack.targetId,
-            target:
-                attack.target === undefined ? undefined : { ...attack.target },
-            rawDamage: attack.rawDamage,
-            maxRange: attack.maxRange,
-            abilityId: attack.abilityId,
-            canStun: attack.canStun,
-            damageMultiplier: attack.damageMultiplier,
-            underpowered: attack.underpowered ?? false,
-            hitAt: now + attack.windupMs,
-            targetEnergyDrain: attack.targetEnergyDrain,
-        }
+        this.pendingAttack = createPendingAttackHit(
+            now,
+            attack,
+            this.equipment.weapon?.instanceId
+        )
     }
 
     public isAttackHitDue(now: number): boolean {

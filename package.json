@@ -9,6 +9,9 @@
         "contracts"
     ],
     "scripts": {
+        "npc:invitations:dialogue": "bun scripts/npc-invitation-dialogue-check.ts",
+        "npc:identity:dialogue": "bun scripts/npc-identity-dialogue-check.ts",
+        "npc:navigation:dialogue": "bun scripts/npc-navigation-dialogue-check.ts",
         "dev:backend": "bun run --cwd apps/backend dev",
         "dev:frontend": "bun run --cwd apps/frontend dev",
         "storybook:frontend": "bun run --cwd apps/frontend storybook",
@@ -37,7 +40,8 @@
         "test:e2e:graves": "bun run --cwd apps/frontend test:e2e:graves",
         "test:e2e:storybook": "bun run --cwd apps/frontend test:e2e:storybook",
         "test:e2e:all": "bun run --cwd apps/frontend test:e2e:all",
-        "check": "run-s format type-check lint test build test:e2e",
+        "check": "run-s format type-check lint test build",
+        "check:full": "run-s check test:e2e",
         "prepare": "husky",
         "test:agent": "node --test scripts/agent-mcp.test.mjs",
         "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs",

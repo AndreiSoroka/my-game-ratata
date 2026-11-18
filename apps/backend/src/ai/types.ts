@@ -18,6 +18,8 @@ export interface NpcAiModelSettings {
 }
 
 export interface NpcAiConfig {
+    /** Disable proactive turns for controlled fixtures or dialogue-only integrations. */
+    proactive?: boolean
     enabled: boolean
     defaults: NpcAiModelSettings
     limits: {
@@ -37,6 +39,9 @@ export interface NpcAiActorConfig {
 }
 
 export interface NpcAiTask {
+    background?: 'greeting' | 'self_activity'
+    targetId?: string
+    deadline?: number
     audienceKey?: string
     sourceId?: string
     id: string
@@ -105,6 +110,21 @@ export type NpcAiFact =
       }
 
 export interface NpcAiContext {
+    socialOpportunity?: import('./npcInitiative').NpcGreetingOpportunity
+    commandCapabilities?: {
+        canFollow: boolean
+        canFight: boolean
+        movementScope: 'city' | 'region' | 'none'
+        orders: Partial<
+            Record<
+                NonNullable<NpcAiReply['companionOrder']>,
+                {
+                    allowed: boolean
+                    reason?: import('../game/companionCommand').CompanionDenial
+                }
+            >
+        >
+    }
     actorId: string
     role: NpcAiRole
     personality: string
@@ -123,8 +143,12 @@ export interface NpcAiContext {
     informationResults?: import('./characterMemory').DeepMemoryResult
     taskConsent?: NpcTaskConsent
     speechStyle?: import('./npcSpeechInstructions').NpcSpeechContext
+    selfIdentity?: import('./npcIdentityInstructions').NpcSelfIdentityContext
     replyCorrection?: {
+        /** Internal rejected draft, never delivered speech or a memory record. */
+        draftSpeech?: string | null
         code: NpcReplyIssue
+        reason?: { code: string; detail: string }
         decision: AgentDecision | null
         taskAcceptance: NonNullable<NpcAiReply['taskAcceptance']>
         companionOrder: NpcAiReply['companionOrder']
@@ -143,6 +167,8 @@ export type NpcReplyIssue =
     | 'task_replace_required'
     | 'task_unavailable'
     | 'task_concluded'
+    | 'command_unavailable'
+    | 'memory_changed'
 
 export type NpcInformationRequest =
     | { type: 'deep_memory'; personId: string }

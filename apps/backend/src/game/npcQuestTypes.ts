@@ -27,6 +27,10 @@ export interface NpcQuestEnvironment {
 /** Server-owned execution context; never parsed from a model decision. */
 export interface NpcQuestDecisionContext {
     freshDialogueTargetId?: string
+    freshDialogueMessageId?: string
+    freshDialogueAt?: number
+    autonomous?: boolean
+    introduction?: string
 }
 
 export interface QuestOfferRecord {

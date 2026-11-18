@@ -31,6 +31,7 @@ export interface KnowledgeEntry {
     source: string
     locationId?: string
     buildingId?: string
+    landmarkId?: string
     aliases?: readonly string[]
     extends?: string
 }
@@ -62,7 +63,7 @@ export function characterKnowledge(
         ...homeCityKnowledge(actor, navigation),
     ]
     const profile = companionProfiles[actor.id]
-    if (profile !== undefined) {
+    if (profile !== undefined && actor.npcIdentityProfile === undefined) {
         entries.push({
             id: `person:${actor.id}`,
             group: 'world.common',
@@ -96,7 +97,7 @@ function articleEntry(article: KnowledgeArticle): KnowledgeEntry {
         ...(article.extends === undefined ? {} : { extends: article.extends }),
     }
 }
-function direction(dx: number, dy: number): string {
+export function knowledgeDirection(dx: number, dy: number): string {
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
         return 'Здесь'
     }
@@ -138,7 +139,10 @@ function regionDirection(
     const center = getWorldLocationDefinition(CENTER_LOCATION_ID)
     return center === undefined
         ? 'Известное место'
-        : direction(location.column - center.column, location.row - center.row)
+        : knowledgeDirection(
+              location.column - center.column,
+              location.row - center.row
+          )
 }
 export function landmarkText(
     entry: KnowledgeEntry,
@@ -151,9 +155,14 @@ export function landmarkText(
     const building = (navigation.grid.buildings ?? []).find(
         (candidate) => candidate.id === entry.buildingId
     )
-    return building === undefined
+    const point =
+        building?.entry ??
+        navigation.grid.landmarks?.find(
+            (candidate) => candidate.id === entry.landmarkId
+        )?.position
+    return point === undefined
         ? entry.text
-        : `${entry.text} ${direction(building.entry.x - actor.position.x, building.entry.y - actor.position.y)} от текущего места.`
+        : `${entry.text} ${knowledgeDirection(point.x - actor.position.x, point.y - actor.position.y)} от текущего места.`
 }
 
 const cityLandmarks = new WeakMap<NavigationService, KnowledgeEntry[]>()
@@ -184,6 +193,23 @@ function homeCityKnowledge(
             locationId: home,
             text: `${building.name}, ${name}. Используй настоящий вход здания.`,
         }))
+        landmarks.push(
+            ...(navigation.grid.landmarks ?? [])
+                .filter((landmark) => landmark.kind === 'gate')
+                .map((landmark) => ({
+                    id: `landmark:${home}:${landmark.id}`,
+                    group: 'city.local',
+                    source: 'authored:map',
+                    landmarkId: landmark.id,
+                    locationId: home,
+                    text: `${landmark.name}, ${name}. Через эти ворота дорога ведёт в ${getWorldLocationDefinition(landmark.destinationLocationId ?? '')?.name ?? 'соседние земли'}.`,
+                    aliases: [
+                        landmark.name,
+                        'городские ворота',
+                        'выход из города',
+                    ],
+                }))
+        )
         if (home === CENTER_LOCATION_ID) {
             landmarks.push(
                 ...serviceHomeKnowledge(navigation, home, name, buildings)

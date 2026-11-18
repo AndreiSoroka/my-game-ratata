@@ -69,3 +69,11 @@ export function controlIntent(
 ): boolean {
     return setCharacterControl(actor, message, room, now)
 }
+
+export function createRoomControlRequester(room: GameRoom) {
+    return (
+        actor: GameCharacter,
+        message: CharacterControlCommand,
+        now: number
+    ): boolean => controlIntent(actor, message, room, now)
+}

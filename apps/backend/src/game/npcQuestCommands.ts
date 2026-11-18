@@ -103,6 +103,16 @@ export function parseNpcQuestDecision(
         return undefined
     }
     switch (value['type']) {
+        case 'quest_invitation_answer':
+            return id(value['invitationId']) &&
+                typeof value['show'] === 'boolean'
+                ? {
+                      type: value['type'],
+                      targetId,
+                      invitationId: value['invitationId'],
+                      show: value['show'],
+                  }
+                : undefined
         case 'quest_turn_in_request':
             return id(value['instanceId'])
                 ? {
@@ -241,6 +251,7 @@ export function isNpcQuestDecision(
 ): decision is NpcQuestDecision {
     return [
         'quest_propose',
+        'quest_invitation_answer',
         'worker_quest_propose',
         'quest_offer_revise',
         'quest_turn_in_request',

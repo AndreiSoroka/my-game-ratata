@@ -49,6 +49,7 @@ export function npcRuntimeFixture(
     })
     const config = parseNpcAiConfig(
         {
+            proactive: false,
             defaults: { timeoutMs: limits.timeoutMs ?? 10_000 },
             limits: {
                 maxDecisionsPerTask: limits.maxDecisionsPerTask ?? 12,

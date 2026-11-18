@@ -1,12 +1,16 @@
-import { expect, type Page, test } from '@playwright/test'
+import { type Browser, type Page, test, type TestInfo } from '@playwright/test'
 
 import {
     captureExchange,
     expectGiftSettlement,
     gatherGift,
     joinSocial,
+    socialExpect,
     socialMenu,
 } from './social-helpers'
+
+const expect = socialExpect
+test.use({ trace: 'retain-on-failure' })
 
 for (const layout of [
     { name: 'desktop', width: 1280, height: 800, axis: 'x' as const },
@@ -18,13 +22,18 @@ for (const layout of [
     }, info) => {
         test.setTimeout(100_000)
         const viewport = { width: layout.width, height: layout.height }
-        const context = await browser.newContext({ viewport })
-        const first = await context.newPage()
-        const second = await context.newPage()
+        const { context, first, second, exchangeFrames } = await openTradePages(browser, viewport)
+        let giftId: string | undefined
         try {
-            const firstId = await joinSocial(first, `gift-a-${info.project.name}-${layout.name}`)
-            const giftId = await gatherGift(first)
-            const secondId = await joinSocial(second, `gift-b-${info.project.name}-${layout.name}`)
+            const firstId = await joinSocial(
+                first,
+                `g-a-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
+            )
+            giftId = await gatherGift(first)
+            const secondId = await joinSocial(
+                second,
+                `g-b-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
+            )
             const point = await first.evaluate(
                 () => window.__ratataTest!.getState().player!.position
             )
@@ -68,20 +77,7 @@ for (const layout of [
             await second.getByRole('button', { name: 'Начать обмен', exact: true }).click()
             const trade = first.getByRole('dialog', { name: /^Обмен:/ })
             await expect(trade.getByLabel('Ваши вещи для обмена')).toBeVisible()
-            await trade.locator(`#exchange-${giftId}`).fill('1')
-            await expect(
-                trade.getByRole('button', { name: 'Предложить', exact: true })
-            ).toBeEnabled()
-            await trade.getByRole('button', { name: 'Предложить', exact: true }).click()
-            await expect
-                .poll(() =>
-                    first.evaluate(
-                        () =>
-                            window.__ratataTest!.getState().snapshot!.social?.exchange?.own.items
-                                .length
-                    )
-                )
-                .toBe(1)
+            await proposeGift(first, giftId, exchangeFrames)
             await trade.getByPlaceholder('Сообщение собеседнику').fill('Это подарок')
             await first.keyboard.press('Enter')
             await expect
@@ -119,10 +115,147 @@ for (const layout of [
                 'Это подарок'
             )
             expect(firstId).not.toBe(secondId)
+        } catch (error) {
+            await attachExchangeFailure(info, exchangeFrames, first, second, giftId)
+            throw error
         } finally {
             await context.close()
         }
     })
+}
+
+interface ExchangeFrame {
+    page: string
+    at: number
+    command: Record<string, unknown>
+}
+
+async function proposeGift(page: Page, giftId: string, frames: ExchangeFrame[]): Promise<void> {
+    const trade = page.getByRole('dialog', { name: /^Обмен:/ })
+    await trade.locator(`#exchange-${giftId}`).fill('1')
+    await expect(trade.getByRole('button', { name: 'Предложить', exact: true })).toBeEnabled()
+    const before = frames.length
+    await trade.getByRole('button', { name: 'Предложить', exact: true }).click()
+    const proposal = () =>
+        frames
+            .slice(before)
+            .findLast(
+                (frame) => frame.page === 'first' && frame.command['type'] === 'exchange_offer'
+            )?.command
+    await expect.poll(() => proposal()?.['requestId']).toEqual(expect.any(String))
+    const requestId = proposal()?.['requestId']
+    if (typeof requestId !== 'string') throw new Error('No exchange proposal request ID')
+    expect(proposal()?.['items']).toEqual([{ instanceId: giftId, quantity: 1 }])
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const own = window.__ratataTest!.getState().snapshot!.social?.exchange?.own
+                return {
+                    requestId: own?.lastRequestId,
+                    requestError: own?.requestError ?? null,
+                    itemCount: own?.items.length,
+                    items: own?.items.map((item) => ({
+                        instanceId: item.instanceId,
+                        quantity: item.quantity ?? 1,
+                    })),
+                }
+            })
+        )
+        .toEqual({
+            requestId,
+            requestError: null,
+            itemCount: 1,
+            items: [{ instanceId: giftId, quantity: 1 }],
+        })
+}
+
+async function openTradePages(browser: Browser, viewport: { width: number; height: number }) {
+    const context = await browser.newContext({ viewport })
+    const first = await context.newPage()
+    const second = await context.newPage()
+    const exchangeFrames: ExchangeFrame[] = []
+    captureExchangeFrames(first, 'first', exchangeFrames)
+    captureExchangeFrames(second, 'second', exchangeFrames)
+    return { context, first, second, exchangeFrames }
+}
+
+async function attachExchangeFailure(
+    info: TestInfo,
+    exchangeFrames: ExchangeFrame[],
+    first: Page,
+    second: Page,
+    giftId?: string
+): Promise<void> {
+    const snapshots = await Promise.allSettled([
+        exchangeFailureState(first, giftId),
+        exchangeFailureState(second, giftId),
+    ])
+    await info
+        .attach('exchange-failure.json', {
+            body: Buffer.from(JSON.stringify({ exchangeFrames, snapshots }, null, 2)),
+            contentType: 'application/json',
+        })
+        .catch(() => undefined)
+}
+
+function captureExchangeFrames(page: Page, owner: string, frames: ExchangeFrame[]): void {
+    page.on('websocket', (socket) =>
+        socket.on('framesent', ({ payload }) => {
+            let parsed: unknown
+            try {
+                parsed = JSON.parse(String(payload))
+            } catch {
+                return
+            }
+            if (
+                typeof parsed !== 'object' ||
+                parsed === null ||
+                !('type' in parsed) ||
+                typeof parsed.type !== 'string' ||
+                !parsed.type.startsWith('exchange_')
+            )
+                return
+            const message = parsed as Record<string, unknown>
+            const fields = [
+                'type',
+                'exchangeId',
+                'targetId',
+                'revision',
+                'requestId',
+                'items',
+                'gold',
+                'accept',
+                'reason',
+            ]
+            frames.push({
+                page: owner,
+                at: Date.now(),
+                command: Object.fromEntries(fields.map((field) => [field, message[field]])),
+            })
+        })
+    )
+}
+
+async function exchangeFailureState(page: Page, giftId?: string) {
+    return page.evaluate((instanceId) => {
+        const state = window.__ratataTest?.getState()
+        const exchange = state?.snapshot?.social?.exchange ?? null
+        const quantity = instanceId ? document.getElementById(`exchange-${instanceId}`) : null
+        return {
+            connected: state?.connected,
+            exchange,
+            position: state?.player?.position,
+            gift: state?.player?.inventory
+                .filter((item) => item.instanceId === instanceId)
+                .map((item) => ({
+                    instanceId: item.instanceId,
+                    itemId: item.itemId,
+                    quantity: item.quantity ?? 1,
+                })),
+            selectedQuantity: quantity instanceof HTMLInputElement ? quantity.value : null,
+            draftStatus: document.querySelector('.exchange-draft-status')?.textContent?.trim(),
+        }
+    }, giftId)
 }
 
 async function assertHudLayout(page: Page): Promise<void> {

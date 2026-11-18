@@ -4,6 +4,15 @@ export const GRID_SIZE = 5
 export const CENTER_LOCATION_ID = 'map-2-2'
 export const REGION_NAME = 'Земли Новогорода'
 export type WorldBiome = 'city' | 'outskirts' | 'wilds'
+export type WorldDirection = 'north' | 'east' | 'south' | 'west'
+export const WORLD_DIRECTIONS: Readonly<
+    Record<WorldDirection, { x: number; y: number }>
+> = {
+    north: { x: 0, y: -1 },
+    east: { x: 1, y: 0 },
+    south: { x: 0, y: 1 },
+    west: { x: -1, y: 0 },
+}
 
 export interface WorldLocationDefinition {
     municipalQuestGold?: number
@@ -89,6 +98,21 @@ export function getWorldLocationDefinition(
     id: string
 ): WorldLocationDefinition | undefined {
     return WORLD_LOCATION_DEFINITIONS.find((location) => location.id === id)
+}
+
+export function worldLocationNeighbor(
+    id: string,
+    direction: WorldDirection
+): WorldLocationDefinition | undefined {
+    const current = getWorldLocationDefinition(id)
+    const offset = WORLD_DIRECTIONS[direction]
+    return current === undefined
+        ? undefined
+        : WORLD_LOCATION_DEFINITIONS.find(
+              (location) =>
+                  location.column === current.column + offset.x &&
+                  location.row === current.row + offset.y
+          )
 }
 
 export interface EncounterDifficulty {

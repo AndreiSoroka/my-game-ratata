@@ -8,6 +8,7 @@ import type { NpcAiDiagnostics } from './diagnostics'
 import type { NpcAiConfig, NpcAiProvider } from './types'
 
 export interface GameRoomOptions {
+    npcIdentitySeed?: string
     npcSpeechSeed?: string
     ai?: {
         config: NpcAiConfig

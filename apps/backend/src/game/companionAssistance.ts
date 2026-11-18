@@ -6,6 +6,8 @@ import { canPerformSkillAction } from './skillProgression'
 
 export interface AssistanceContext {
     modelConsent?: boolean
+    /** A server-validated current conversation, never supplied by a client. */
+    conversation?: boolean
     questCompleted(actorId: string, questId: string): boolean
     hasLineOfSight(actor: GameCharacter, npc: GameCharacter): boolean
 }
@@ -60,7 +62,9 @@ export class CompanionAssistance {
         }
         if (
             !evaluateAssistancePolicy(state.profile.assistancePolicy, {
-                met: state.metActors.has(actor.id),
+                met:
+                    state.metActors.has(actor.id) ||
+                    context.conversation === true,
                 questCompleted: (questId) =>
                     context.questCompleted(actor.id, questId),
             })

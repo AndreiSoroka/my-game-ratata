@@ -2,9 +2,44 @@ import { readFileSync } from 'node:fs'
 
 import { expect, it } from 'vitest'
 
-import { parseNpcAiReply } from '../src/ai/codexCliProtocol'
+import { parseCodexResult, parseNpcAiReply } from '../src/ai/codexCliProtocol'
 import { parseNpcQuestDecision } from '../src/game/npcQuestCommands'
 import { npcQuestFixture } from './npcQuestFixture'
+
+it.each([true, false])(
+    'accepts the actual CLI invitation answer protocol: show=%s',
+    (show) => {
+        const decision = {
+            type: 'quest_invitation_answer',
+            targetId: 'player-1',
+            invitationId: 'invite-1',
+            show,
+        }
+        const reply = {
+            decision,
+            speech: 'Обсудим дело.',
+            taskAcceptance: 'none',
+            companionOrder: null,
+            memory: '',
+            done: true,
+            waitMs: 0,
+        }
+        const stdout = [
+            JSON.stringify({
+                type: 'item.completed',
+                item: { type: 'agent_message', text: JSON.stringify(reply) },
+            }),
+            JSON.stringify({ type: 'turn.completed', usage: {} }),
+        ].join('\n')
+        expect(parseCodexResult(stdout).reply.decision).toEqual(decision)
+        expect(() =>
+            parseNpcAiReply({
+                ...reply,
+                decision: { ...decision, show: 'yes' },
+            })
+        ).toThrow('Invalid NPC AI reply')
+    }
+)
 
 it.each(['quest_propose', 'worker_quest_propose'] as const)(
     'normalizes a strict-provider nullable replacement for %s without relaxing network parsing',

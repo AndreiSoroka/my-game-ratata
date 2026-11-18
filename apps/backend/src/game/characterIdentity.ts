@@ -10,7 +10,10 @@ import type {
     Vector2,
 } from '@my-game-ratata/contracts'
 
+import type { NpcIdentityKey } from './npcIdentityCatalog'
+
 export interface GameCharacterOptions {
+    npcIdentityKey?: NpcIdentityKey | undefined
     trainingTarget?: { areaId: string }
     respawnPolicy?: 'automatic' | 'none'
     creatureType?: CreatureType

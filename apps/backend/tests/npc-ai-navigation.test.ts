@@ -136,7 +136,7 @@ it('keeps Mira physically inside the city when a model asks her to walk across a
         expect.objectContaining({
             actorId: miraId,
             category: 'action_rejected',
-            reason: 'City-only AI routes cannot touch location travel edges',
+            reason: 'command_unavailable',
         })
     )
 }, 15_000)

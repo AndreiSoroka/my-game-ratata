@@ -93,6 +93,7 @@ export function createFriendlyGirl(
     idSuffix = ''
 ): SpawnedCharacter {
     const girl = new Character({
+        npcIdentityKey: 'mira',
         archetype: 'human',
         creatureType: 'humanoid',
         controllerKind: 'scripted',

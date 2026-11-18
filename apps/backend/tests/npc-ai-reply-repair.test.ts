@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest'
 import { defaultNpcAiSettings } from '../src/ai/config'
 import { createNpcAiState } from '../src/ai/runtimeState'
 import { invokeNpcAiTurn } from '../src/ai/turn'
+import { canonicalNpcReply, correctReply } from '../src/ai/turnInformation'
 import type { NpcAiContext, NpcAiReply } from '../src/ai/types'
 
 const move = { type: 'move_to', target: { x: 100, y: 100 } } as const
@@ -294,4 +295,39 @@ it('keeps a timed out correction terminal within the original deadline', async (
     } finally {
         vi.useRealTimers()
     }
+})
+
+it('canonicalizes only a redundant follow targeting the actual consenting partner', () => {
+    const { context } = fixture()
+    const matching = reply({
+        taskAcceptance: 'accept',
+        companionOrder: 'follow',
+        decision: { type: 'follow', targetId: 'player' },
+    })
+    expect(canonicalNpcReply(context, matching)).toEqual({
+        ...matching,
+        decision: null,
+    })
+    const foreign = {
+        ...matching,
+        decision: { type: 'follow' as const, targetId: 'another-player' },
+    }
+    expect(canonicalNpcReply(context, foreign)).toBe(foreign)
+})
+
+it('does not reserve a correction call after cancellation', async () => {
+    const { context } = fixture()
+    const reserveCall = vi.fn(() => true)
+    const decide = vi.fn(() => Promise.resolve(reply()))
+    await expect(
+        correctReply(
+            context,
+            reply(),
+            { current: () => false, reserveCall },
+            decide,
+            'command_unavailable'
+        )
+    ).rejects.toThrow('cancelled')
+    expect(reserveCall).not.toHaveBeenCalled()
+    expect(decide).not.toHaveBeenCalled()
 })

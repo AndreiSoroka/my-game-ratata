@@ -16,6 +16,17 @@ import type {
 } from './types'
 
 export interface NpcAiActorState {
+    idleSince?: number | undefined
+    finalizing?:
+        | {
+              reply: NpcAiReply
+              retirementRevision: number
+              resolve: (
+                  problem:
+                      import('./turnInformation').NpcReplyProblem | undefined
+              ) => void
+          }
+        | undefined
     modelCallsByInput: Map<string, number>
     mind: CharacterMemory
     inbox: Array<Extract<NpcAiEvent, { kind: 'message' }>>

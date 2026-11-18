@@ -89,9 +89,20 @@ it('claims one ambiguous source before publishing acceptance and refuses a secon
         speeches.filter((text) => text === 'Буль, схожу. Жди здесь.')
     ).toHaveLength(1)
     expect(speeches).not.toContain('Мира тоже приняла поручение.')
-    expect(speeches).toContain(
+    expect(speeches).not.toContain(
         'Это поручение уже принято или сейчас недоступно.'
     )
+    expect(mira.hasPath()).toBe(false)
+    expect(mira.soul.companion?.leaderId ?? null).toBeNull()
+    expect(
+        f.alice.sent.some(
+            (message) =>
+                message.type === 'event' &&
+                message.event.kind === 'npc_request_status' &&
+                message.event.requestStatus?.npcId === mira.id &&
+                message.event.requestStatus.state === 'declined'
+        )
+    ).toBe(true)
 })
 
 it('answers small talk during a real route without spending its task decision budget or cancelling it', async () => {

@@ -30,12 +30,6 @@ export function failNpcTurn(
         if (state.retry > 1) {
             state.inbox.shift()
             state.retry = 0
-            session.dialogue.speak(
-                state,
-                event,
-                'Сейчас не получается обдумать поручение. Попробуй обратиться ко мне позже.',
-                now
-            )
             session.dialogue.abortTrade(state, now)
         }
         state.nextAt = now + config.limits.retryDelayMs

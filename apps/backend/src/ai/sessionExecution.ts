@@ -7,6 +7,7 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { npcAiDecisionError } from './actions'
 import { npcDecisionAudienceError } from './decisionAudience'
+import { npcDecisionExchangeError } from './decisionExchange'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { beginNpcGuide } from './guide'
 import { reportNpcRequestStatus } from './requestStatus'
@@ -38,11 +39,19 @@ export class NpcAiExecution {
         now: number
     ): void {
         const decision = addressedDecision(state, rawDecision)
-        if (decision.type === 'guide') {
+        const exchangeError = npcDecisionExchangeError(
+            this.room,
+            actor,
+            decision
+        )
+        if (decision.type === 'guide' && exchangeError === undefined) {
             this.guide(state, actor, decision, now)
             return
         }
-        const result = this.decide(state, actor, decision, now)
+        const result =
+            exchangeError === undefined
+                ? this.decide(state, actor, decision, now)
+                : { accepted: false, error: exchangeError, events: [] }
         this.room.publishEvents(result.events)
         const id = this.id('action')
         if (result.accepted && decision.type === 'move_to') {
@@ -135,13 +144,6 @@ export class NpcAiExecution {
         }
         if (this.room.social.isDecision(decision)) {
             return this.room.social.decide(actor, decision, now)
-        }
-        if (this.room.social.exchanges.isPaused(actor.id)) {
-            return {
-                accepted: false,
-                error: 'Сначала заверши обмен.',
-                events: [],
-            }
         }
         const error = npcAiDecisionError(
             actor,

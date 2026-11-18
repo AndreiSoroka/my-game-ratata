@@ -98,6 +98,15 @@ describe('NPC runtime cancellation and deadlines', () => {
                             'не получается обдумать поручение'
                         ) === true
                 )
+        ).toBe(false)
+        expect(
+            f.alice.sent.some(
+                (message) =>
+                    message.type === 'event' &&
+                    message.event.kind === 'npc_request_status' &&
+                    message.event.requestStatus?.state === 'failed' &&
+                    message.event.requestStatus.npcId === f.actor.id
+            )
         ).toBe(true)
         await f.diagnostics.flush()
         expect(

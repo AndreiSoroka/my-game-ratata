@@ -14,11 +14,13 @@ export type { NpcAiProcess, NpcAiSpawn } from './codexCliProcess'
 export { codexNpcArguments, parseNpcAiReply } from './codexCliProtocol'
 import decisionSchema from './decision-schema.json'
 import { npcErrandInstructions } from './npcErrandInstructions'
+import { npcIdentityInstructions } from './npcIdentityInstructions'
 import {
     npcAiInstructions,
     npcMemoryInstructions,
     npcSocialInstructions,
 } from './npcInstructions'
+import { npcQuestInvitationInstructions } from './npcQuestInvitationInstructions'
 import { npcSpeechInstructions } from './npcSpeechInstructions'
 import type {
     NpcAiContext,
@@ -88,7 +90,11 @@ export class CodexCliProvider implements NpcAiProvider {
                         '\n' +
                         npcErrandInstructions +
                         '\n' +
-                        npcSpeechInstructions
+                        npcSpeechInstructions +
+                        '\n' +
+                        npcIdentityInstructions +
+                        '\n' +
+                        npcQuestInvitationInstructions
                 ),
                 writeFile(schemaPath, JSON.stringify(decisionSchema)),
             ])

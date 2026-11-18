@@ -1,13 +1,7 @@
-import {
-    type CharacterControlCommand,
-    type ClientMessage,
-} from '@my-game-ratata/contracts'
+import { type ClientMessage } from '@my-game-ratata/contracts'
 
-import {
-    createNpcAiCoordinator,
-    createNpcAiRequestReceiver,
-    type GameRoomOptions,
-} from '../ai/roomAi'
+import { archiveRoomConversations } from '../ai/memoryLifecycle'
+import * as roomAi from '../ai/roomAi'
 export type { GameRoomOptions } from '../ai/roomAi'
 import { AdventureService } from './adventure'
 import { adventureWorldOptions } from './adventureWorld'
@@ -22,27 +16,16 @@ import { bindPrayerAuraEnvironment } from './prayerAuras'
 import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
-import {
-    dispatchRawRoomMessage,
-    dispatchRoomClientMessage,
-} from './roomClientDispatch'
-import { controlIntent } from './roomControl'
-import {
-    createAdventureRequester,
-    createInventoryRequester,
-} from './roomEconomy'
+import * as roomClientDispatch from './roomClientDispatch'
+import { createRoomControlRequester } from './roomControl'
+import * as roomEconomy from './roomEconomy'
 import { publishRoomEvents } from './roomEvents'
 import { createDefaultRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
 import { RoomLife } from './roomLife'
 import { type RoomSocket } from './roomMessaging'
-import { connectionsInLocation, createRoomTargetFinder } from './roomQueries'
-import {
-    createRoomScenarioService,
-    createScenarioEnvironment,
-    createScenarioRequester,
-    registerWandererScenarios,
-} from './roomScenarios'
+import * as roomQueries from './roomQueries'
+import * as roomScenarios from './roomScenarios'
 import { advanceRoomSimulation } from './roomSimulation'
 import { createRoomSnapshotter } from './roomSnapshot'
 import { RoomSocial } from './roomSocial'
@@ -65,15 +48,14 @@ export class GameRoom {
         adventureWorldOptions(() => this.world)
     )
     private readonly companions = new CompanionService()
-    public readonly scenarios = createRoomScenarioService(
+    public readonly scenarios = roomScenarios.createRoomScenarioService(
         this,
         this.companions,
         () => this.characters.values(),
         this.adventure
     )
-    public readonly scenarioEnvironment = createScenarioEnvironment(
-        () => this.world
-    )
+    public readonly scenarioEnvironment =
+        roomScenarios.createScenarioEnvironment(() => this.world)
     private readonly life = new RoomLife(
         this.characters,
         this.connections,
@@ -102,11 +84,11 @@ export class GameRoom {
     private lastTickAt = Date.now()
     private timer: ReturnType<typeof setInterval> | undefined
     private tickIndex = 0
-    private readonly npcAi: ReturnType<typeof createNpcAiCoordinator>
+    private readonly npcAi: ReturnType<typeof roomAi.createNpcAiCoordinator>
 
     public constructor(
         public readonly navigation = loadNavigationService(),
-        options: GameRoomOptions = {}
+        options: roomAi.GameRoomOptions = {}
     ) {
         this.world = new WorldLocations(navigation, this.adventure)
         configureRoomQuests(this, this.adventure, this.parties, this.characters)
@@ -116,17 +98,22 @@ export class GameRoom {
             this.characters,
             this.controllers,
             this.companions,
-            options.npcSpeechSeed
+            options.npcSpeechSeed,
+            options.npcIdentitySeed
         )
         this.life.registerGraves(graves, Date.now())
         seedNpcPockets(this.characters.values())
         this.refreshPrayerAuraEnvironment()
-        registerWandererScenarios(
+        roomScenarios.registerWandererScenarios(
             this,
             this.scenarios,
             this.characters.values()
         )
-        this.npcAi = createNpcAiCoordinator(this, this.companions, options)
+        this.npcAi = roomAi.createNpcAiCoordinator(
+            this,
+            this.companions,
+            options
+        )
     }
 
     public start(): void {
@@ -152,7 +139,7 @@ export class GameRoom {
     }
 
     public handleMessage(ws: RoomSocket, raw: unknown): void {
-        dispatchRawRoomMessage(ws, raw, (message) =>
+        roomClientDispatch.dispatchRawRoomMessage(ws, raw, (message) =>
             this.handleClientMessage(ws, message)
         )
     }
@@ -162,8 +149,8 @@ export class GameRoom {
             this.connections,
             this.characters,
             ws,
-            (id) => this.world.closeChestViews(id),
-            (id) => this.adventure.closeConversations(id)
+            this.world.closeChestViews.bind(this.world),
+            this.adventure.closeConversations.bind(this.adventure)
         )
     }
 
@@ -172,24 +159,33 @@ export class GameRoom {
 
     public readonly getCharacter = (id: string) => this.characters.get(id)
 
+    public readonly hasConnectedPlayerInLocation = (
+        locationId: string
+    ): boolean =>
+        roomQueries.hasConnectedPlayerInLocation(
+            this.characters.values(),
+            locationId
+        )
+
     public readonly refreshPrayerAuraEnvironment = (): void =>
         bindPrayerAuraEnvironment(this.characters.values(), this.prayerAuras)
 
     public readonly adventureForWorkers = () => this.adventure
-    public readonly requestAdventure = createAdventureRequester(
+    public readonly requestAdventure = roomEconomy.createAdventureRequester(
         () => this.adventure,
         () => [...this.characters.values()],
         (actor) => this.navigationFor(actor)
     )
-    public readonly requestInventoryAction = createInventoryRequester(
-        () => this.world
-    )
+    public readonly requestInventoryAction =
+        roomEconomy.createInventoryRequester(() => this.world)
 
     public decideForAgent(actorId: string, decision: unknown) {
         return decideForRoomAgent(this, this.companions, actorId, decision)
     }
 
-    public readonly notifyNpcAi = createNpcAiRequestReceiver(() => this.npcAi)
+    public readonly notifyNpcAi = roomAi.createNpcAiRequestReceiver(
+        () => this.npcAi
+    )
 
     public readonly requestTheft = createRoomTheftRequester(
         this.theft,
@@ -212,9 +208,13 @@ export class GameRoom {
     }
 
     private readonly connectionsIn = (locationId: string) =>
-        connectionsInLocation(this.connections, this.characters, locationId)
+        roomQueries.connectionsInLocation(
+            this.connections,
+            this.characters,
+            locationId
+        )
 
-    public readonly findVisibleTarget = createRoomTargetFinder(
+    public readonly findVisibleTarget = roomQueries.createRoomTargetFinder(
         () => this.characters,
         (actor) => this.navigationFor(actor)
     )
@@ -229,15 +229,9 @@ export class GameRoom {
     public readonly requestAbility = this.combat.requestAbility
     public readonly charactersFor = this.combat.charactersFor
     public readonly abilityContextFor = this.combat.contextFor
-    public requestControl(
-        actor: GameCharacter,
-        message: CharacterControlCommand,
-        now: number
-    ): boolean {
-        return controlIntent(actor, message, this, now)
-    }
+    public readonly requestControl = createRoomControlRequester(this)
 
-    public readonly requestAutomation = createScenarioRequester(
+    public readonly requestAutomation = roomScenarios.createScenarioRequester(
         this,
         this.scenarios
     )
@@ -257,7 +251,7 @@ export class GameRoom {
     )
 
     private handleClientMessage(ws: RoomSocket, message: ClientMessage): void {
-        dispatchRoomClientMessage(
+        roomClientDispatch.dispatchRoomClientMessage(
             {
                 room: this,
                 adventure: this.adventure,
@@ -313,6 +307,9 @@ export class GameRoom {
     }
 
     public publishEvents(events: ReturnType<typeof attemptAttack>): void {
+        archiveRoomConversations(events, this.characters.values(), (id, now) =>
+            this.npcAi?.archivePerson(id, now)
+        )
         this.social.observe(events)
         publishRoomEvents(
             events,

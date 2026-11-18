@@ -112,6 +112,7 @@ it('retains the waiting instruction after conversation, a declined task and a re
     const f = setup()
     await acceptOrder(f, 'wait')
     const revision = f.actor.soul.companion?.controlRevision
+    const refusal = 'В бой не пойду, останусь ждать тебя здесь.'
     for (const reply of [
         npcReply(null, { taskAcceptance: 'none', speech: 'Всё хорошо.' }),
         npcReply(null, {
@@ -128,20 +129,33 @@ it('retains the waiting instruction after conversation, a declined task and a re
         await f.advance()
         f.provider.turns.at(-1)?.resolve(reply)
         await f.advance()
+        if (reply.companionOrder === 'help') {
+            expect(
+                f.provider.turns.at(-1)?.context.replyCorrection
+            ).toMatchObject({
+                code: 'command_unavailable',
+                reason: { code: 'cannot_fight' },
+                companionOrder: 'help',
+            })
+            expect(
+                f.speech().some((event) => event.text === 'Я помогу в бою.')
+            ).toBe(false)
+            expect(f.actor.soul.companion?.controlRevision).toBe(revision)
+            f.provider.turns.at(-1)?.resolve(
+                npcReply(null, {
+                    taskAcceptance: 'decline',
+                    speech: refusal,
+                })
+            )
+            await f.advance()
+        }
         expect(f.actor.soul.companion).toMatchObject({
             order: 'wait',
             waitMode: 'until_request',
             controlRevision: revision,
         })
     }
-    expect(
-        f
-            .speech()
-            .some(
-                (event) =>
-                    event.text?.includes('Я не стану сражаться.') === true
-            )
-    ).toBe(true)
+    expect(f.speech().some((event) => event.text === refusal)).toBe(true)
     expect(f.speech().some((event) => event.text === 'Я помогу в бою.')).toBe(
         false
     )
@@ -172,12 +186,15 @@ it.each(['follow', 'wait'] as const)(
     }
 )
 
-it('keeps the canonical accepted acknowledgement when the model provides no speech', async () => {
+it('does not invent an acknowledgement when the model provides no speech', async () => {
     const f = setup()
     const before = f.speech().length
     await acceptOrder(f, 'follow')
-    expect(f.speech().slice(before)).toHaveLength(1)
-    expect(f.speech().at(-1)?.text).toContain('Пойду с тобой')
+    expect(f.speech().slice(before)).toHaveLength(0)
+    expect(f.actor.soul.companion).toMatchObject({
+        order: 'follow',
+        leaderId: f.alice.actor.id,
+    })
 })
 
 it('also avoids a duplicate acknowledgement when the model uses a legacy speak decision', async () => {

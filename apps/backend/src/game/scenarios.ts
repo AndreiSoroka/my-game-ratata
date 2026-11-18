@@ -9,11 +9,12 @@ import { cancelCharacterControl } from './characterControl'
 import type { CharacterController } from './controllers'
 import type { GameRoom } from './room'
 import { scenarioHelpers } from './scenarioHelpers'
+import { releaseScenarioInput } from './scenarioInput'
 import {
-    createScenarioLibrary,
     editScenarioLibrary,
     resolveScenarioMarkers,
     type ScenarioLibrary,
+    scenarioLibraryFor,
 } from './scenarioLibrary'
 import { ScenarioPolicies } from './scenarioPolicies'
 import { ScenarioReports } from './scenarioReports'
@@ -101,6 +102,11 @@ export class ScenarioService {
     }
     public running(actorId: string): boolean {
         return this.runs.get(actorId)?.snapshot.status === 'running'
+    }
+    public busy(actorId: string): boolean {
+        return ['running', 'paused'].includes(
+            this.runs.get(actorId)?.snapshot.status ?? ''
+        )
     }
     public advance(
         actor: GameCharacter,
@@ -285,18 +291,9 @@ export class ScenarioService {
         }
     }
     private releaseInput(actor: GameCharacter): null {
-        if (!this.running(actor.id)) {
-            cancelCharacterControl(actor)
-        }
-        actor.setMoveInput({ x: 0, y: 0 })
-        return null
+        return releaseScenarioInput(actor, this.running(actor.id))
     }
     private library(id: string): ScenarioLibrary {
-        let library = this.libraries.get(id)
-        if (library === undefined) {
-            library = createScenarioLibrary()
-            this.libraries.set(id, library)
-        }
-        return library
+        return scenarioLibraryFor(this.libraries, id)
     }
 }

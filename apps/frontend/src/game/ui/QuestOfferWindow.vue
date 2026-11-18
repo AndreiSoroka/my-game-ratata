@@ -46,6 +46,7 @@ function answer(accept: boolean): void {
 </script>
 <template>
     <SocialWindow title="Предложение поручения" modal @close="answer(false)">
+        <p v-if="offer.introduction" class="quest-offer__introduction">{{ offer.introduction }}</p>
         <QuestTerms :offer="offer" :characters="characters" />
         <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
             Заказчик изменил награду. Проверьте текущие условия перед принятием.

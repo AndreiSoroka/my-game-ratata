@@ -133,7 +133,7 @@ it('queues another listener without exposing the private answer or conversation 
     ).toBe(false)
 }, 15_000)
 
-it('retries provider failure once, releases control and gives the requester a private fallback', async () => {
+it('retries provider failure once, releases control and reports a private UI failure without NPC speech', async () => {
     const recorded = recordedNpcAiProvider(() => {
         throw new Error('Unavailable test provider')
     })
@@ -156,6 +156,16 @@ it('retries provider failure once, releases control and gives the requester a pr
                 message.type === 'event' &&
                 message.event.text ===
                     'Сейчас не получается обдумать поручение. Попробуй обратиться ко мне позже.'
+        )
+    ).toBe(false)
+    expect(
+        player.sent.some(
+            (message) =>
+                message.type === 'event' &&
+                message.event.kind === 'npc_request_status' &&
+                message.event.requestStatus?.state === 'failed' &&
+                message.event.requestStatus.npcId === kaplya.id &&
+                message.event.requestStatus.request === 'Поговорим?'
         )
     ).toBe(true)
     expect(diagnostics.some((line) => line.includes('provider_error'))).toBe(

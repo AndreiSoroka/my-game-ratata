@@ -3,6 +3,8 @@ import type { AgentDecision } from '@my-game-ratata/contracts'
 import type { GameCharacter } from '../game/character'
 import type { GameRoom } from '../game/room'
 import type { NpcAiDialogue } from './dialogue'
+import { taskConversationKey } from './dialogueMemory'
+import { replySpeech } from './dialogueResult'
 import { buildNpcAiObservation } from './observation'
 import type { NpcAiActorState } from './runtimeState'
 export function taskSpeech(
@@ -34,6 +36,17 @@ export function taskSpeech(
         now
     )
 }
+export function concludingTaskSpeech(
+    dialogue: NpcAiDialogue,
+    state: NpcAiActorState,
+    reply: import('./types').NpcAiReply,
+    now: number
+): void {
+    const text = replySpeech(reply)
+    if (text !== null) {
+        taskSpeech(dialogue, state, text, now)
+    }
+}
 export function addressedDecision(
     state: NpcAiActorState,
     decision: AgentDecision
@@ -53,7 +66,9 @@ export function rememberNpcReply(state: NpcAiActorState, memory: string): void {
     }
     state.memory = memory.slice(0, 2000)
     state.conversations.set(
-        task.audienceKey ?? task.requesterId ?? 'city',
+        task.background === 'self_activity'
+            ? 'self'
+            : taskConversationKey(task),
         state.memory
     )
 }

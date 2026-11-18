@@ -4,7 +4,7 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { NpcAiDialogue } from './dialogue'
-import { replySpeech } from './dialogueResult'
+import { completeNpcBackgroundPresentation } from './questPresentation'
 import { reportNpcRequestStatus } from './requestStatus'
 import {
     enqueueNpcAiEvent,
@@ -14,7 +14,11 @@ import {
 import { NpcAiExecution } from './sessionExecution'
 import { failNpcTurn } from './sessionFailure'
 import { publishNpcAiFeedback } from './sessionFeedback'
-import { rememberNpcReply, taskSpeech } from './sessionMemory'
+import {
+    concludingTaskSpeech,
+    rememberNpcReply,
+    taskSpeech,
+} from './sessionMemory'
 import type {
     NpcAiConfig,
     NpcAiEvent,
@@ -71,13 +75,23 @@ export class NpcAiSessionActions {
         if (state.task === null) {
             return
         }
+        if (
+            completeNpcBackgroundPresentation(
+                this.room,
+                this.diagnostics,
+                state,
+                actor,
+                reply,
+                now,
+                (accepted) => this.finish(state, now, reply.waitMs, accepted)
+            )
+        ) {
+            return
+        }
         rememberNpcReply(state, reply.memory)
         state.retry = 0
         if (!conversational && state.task.concluding === true) {
-            const text = replySpeech(reply)
-            if (text !== null) {
-                taskSpeech(this.dialogue, state, text, now)
-            }
+            concludingTaskSpeech(this.dialogue, state, reply, now)
             this.finish(state, now, reply.waitMs)
             return
         }
@@ -162,7 +176,6 @@ export class NpcAiSessionActions {
             event
         )
         if (event !== undefined) {
-            this.dialogue.speak(state, event, text, now)
             state.dialogue = undefined
             state.retry = 0
             if (state.task === null) {
@@ -213,9 +226,6 @@ export class NpcAiSessionActions {
             now,
             text
         )
-        if (state.task?.requesterId != null) {
-            this.say(state, state.task.requesterId, text, now)
-        }
         this.finish(state, now, this.config.limits.reviewIntervalMs, false)
     }
 
@@ -245,6 +255,11 @@ export class NpcAiSessionActions {
     }
 
     public cancel(state: NpcAiActorState, now: number): void {
+        state.finalizing?.resolve({
+            code: 'command_unavailable',
+            reason: { code: 'cancelled', detail: 'Поручение отменено.' },
+        })
+        state.finalizing = undefined
         reportNpcRequestStatus(
             this.room,
             this.diagnostics,

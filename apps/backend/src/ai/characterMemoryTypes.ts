@@ -3,6 +3,8 @@ export interface MemoryMessage {
     senderId: string
     senderName: string
     recipientId?: string
+    /** Actual addressed pair, also for public speech; it does not make speech private. */
+    conversationPartnerId?: string
     text: string
     channel: 'say' | 'whisper'
     source: 'heard' | 'seen' | 'authoritative'
@@ -23,6 +25,9 @@ export interface PersonMemory {
     through: number
     lastAt: number
     compacted: boolean
+    status?: 'active' | 'archived'
+    retiredAt?: number
+    lastConversationAt?: number
     lastStatement?: { text: string; sourceId: string; at: number }
     lastSeen?: {
         at: number
@@ -39,4 +44,5 @@ export interface DeepMemoryResult {
     sourceMessageIds?: string[]
     compacted?: boolean
     hasMore?: boolean
+    identityStatus?: 'active' | 'archived'
 }

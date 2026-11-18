@@ -12,6 +12,7 @@ describe('HUD and window keyboard ownership', () => {
     it('gives focused chat history its scroll keys without blocking the unfocused world', () => {
         const panel = document.createElement('aside')
         panel.setAttribute('data-game-input-owner', '')
+        panel.dataset.worldMovement = 'wasd'
         const list = document.createElement('ol')
         list.tabIndex = 0
         panel.append(list)
@@ -20,8 +21,10 @@ describe('HUD and window keyboard ownership', () => {
         document.body.append(panel, canvas)
         try {
             list.focus()
-            for (const code of ['ArrowUp', 'KeyW', 'KeyQ', 'Enter'])
+            for (const code of ['ArrowUp', 'KeyQ', 'Enter'])
                 expect(isGameKeyboardBlocked(keyOn(list, code))).toBe(true)
+            for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD'])
+                expect(isGameKeyboardBlocked(keyOn(list, code))).toBe(false)
             canvas.focus()
             expect(isGameKeyboardBlocked(keyOn(canvas, 'KeyQ'))).toBe(false)
         } finally {
@@ -116,4 +119,24 @@ describe('HUD and window keyboard ownership', () => {
             panel.remove()
         }
     })
+})
+
+it('keeps unmarked panels and foreign dialogs in control over a read-only history', () => {
+    const panel = document.createElement('aside')
+    panel.setAttribute('data-game-input-owner', '')
+    panel.tabIndex = 0
+    document.body.append(panel)
+    const dialog = document.createElement('section')
+    dialog.setAttribute('role', 'dialog')
+    try {
+        panel.focus()
+        expect(isGameKeyboardBlocked(keyOn(panel, 'KeyW'))).toBe(true)
+        panel.dataset.worldMovement = 'wasd'
+        expect(isGameKeyboardBlocked(keyOn(panel, 'KeyW'))).toBe(false)
+        document.body.append(dialog)
+        expect(isGameKeyboardBlocked(keyOn(panel, 'KeyW'))).toBe(true)
+    } finally {
+        panel.remove()
+        dialog.remove()
+    }
 })

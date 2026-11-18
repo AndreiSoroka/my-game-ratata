@@ -4,6 +4,21 @@ import { findVisibleTarget } from './queries'
 import type { RoomSocket } from './roomMessaging'
 import { centerLocationId } from './worldLocations'
 
+export function hasConnectedPlayerInLocation(
+    characters: Iterable<GameCharacter>,
+    locationId: string
+): boolean {
+    return [...characters].some(
+        (actor) =>
+            actor.controllerKind === 'network_player' &&
+            actor.connected &&
+            actor.alive &&
+            actor.locationId === locationId &&
+            !actor.tags.has('offline') &&
+            !actor.tags.has('state.retired')
+    )
+}
+
 export function charactersInLocation(
     characters: Map<string, GameCharacter>,
     locationId: string

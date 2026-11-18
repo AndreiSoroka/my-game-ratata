@@ -1,6 +1,7 @@
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
+import { npcCommandCapabilities } from './commandValidation'
 import { npcDecisionAudienceError } from './decisionAudience'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { finishOfferRequest, rememberDialogueReply } from './dialogueMemory'
@@ -14,6 +15,7 @@ import {
 } from './dialogueResult'
 import { speakNpcDialogue } from './dialogueSpeech'
 import { acceptsNpcTask, validateNpcDialogueReply } from './dialogueValidation'
+import { npcQuestExecutionContext } from './questPresentation'
 import { reportNpcRequestStatus } from './requestStatus'
 export { dialogueKey } from './dialogueResult'
 import { type NpcAiActorState, npcAiBusyFor } from './runtimeState'
@@ -31,6 +33,10 @@ export class NpcAiDialogue {
 
     public claimedBy(id: string): string | undefined {
         return this.claims.get(id)
+    }
+
+    public commandCapabilities(state: NpcAiActorState, now: number) {
+        return npcCommandCapabilities(this.room, this.companions, state, now)
     }
 
     public abortTrade(state: NpcAiActorState, now: number): void {
@@ -67,8 +73,7 @@ export class NpcAiDialogue {
             event,
             reply,
             wantsTask,
-            now,
-            (text) => this.speak(state, event, text, now)
+            now
         )
         if (requester === undefined) {
             return true
@@ -77,12 +82,6 @@ export class NpcAiDialogue {
             wantsTask &&
             !this.accept(state, actor, requester, event, reply, now)
         ) {
-            this.speak(
-                state,
-                event,
-                'Это поручение уже принято или сейчас недоступно.',
-                now
-            )
             reportNpcRequestStatus(
                 this.room,
                 this.diagnostics,
@@ -164,9 +163,7 @@ export class NpcAiDialogue {
                             actor,
                             reply.decision,
                             now,
-                            event.system === true
-                                ? {}
-                                : { freshDialogueTargetId: event.senderId }
+                            npcQuestExecutionContext(state, reply, event)
                         )
                       : { accepted: false, error, events: [] }
             recordDialogueAction(
@@ -188,12 +185,6 @@ export class NpcAiDialogue {
                     now,
                     result.error ?? 'Действие отклонено.',
                     event
-                )
-                this.speak(
-                    state,
-                    event,
-                    result.error ?? 'Не удалось выполнить действие.',
-                    now
                 )
                 return false
             }
@@ -228,8 +219,7 @@ export class NpcAiDialogue {
                     : {
                           locationId: event.actorLocationId,
                           position: event.actorPosition,
-                      },
-                replySpeech(reply)
+                      }
             )
         ) {
             return false

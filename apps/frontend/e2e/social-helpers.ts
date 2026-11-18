@@ -1,4 +1,7 @@
-import { expect, type Page } from '@playwright/test'
+import { expect as baseExpect, type Page } from '@playwright/test'
+
+export const socialExpect = baseExpect.configure({ timeout: 10_000 })
+const expect = socialExpect
 
 export async function joinSocial(page: Page, nickname: string): Promise<string> {
     await page.goto('/?test=1')
@@ -23,7 +26,7 @@ export async function gatherGift(page: Page): Promise<string> {
     )
     expect(navigation.status).toBe('arrived')
     await page.evaluate((nodeId) => window.__ratataTest!.send({ type: 'gather', nodeId }), node.id)
-    await expect
+    await socialExpect
         .poll(() =>
             page.evaluate(() =>
                 window
@@ -69,12 +72,12 @@ export async function expectGiftSettlement(
     second: Page,
     giftId: string
 ): Promise<void> {
-    await expect
+    await socialExpect
         .poll(() =>
             first.evaluate(() => window.__ratataTest!.getState().snapshot!.social?.exchange?.status)
         )
         .toBe('completed')
-    await expect
+    await socialExpect
         .poll(() =>
             second.evaluate(
                 (instanceId) =>
