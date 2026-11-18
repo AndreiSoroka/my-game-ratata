@@ -10,12 +10,16 @@ const states = [
     { story: 'scripted-echo', width: 320 },
     { story: 'authorized-numbers', width: 1280 },
     { story: 'authorized-numbers', width: 320 },
+    ...[1280, 390, 320].flatMap((width) =>
+        ['faith-known', 'faith-omen', 'wanted'].map((story) => ({ story, width }))
+    ),
 ].map((state) => ({
     ...state,
     numbers: state.story === 'authorized-numbers' ? ['18/30', '40/40', '102/150'] : [],
+    extended: ['faith-known', 'faith-omen', 'wanted'].includes(state.story),
 }))
 
-for (const { story, width, numbers } of states) {
+for (const { story, width, numbers, extended } of states) {
     test(`production player status ${story} at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
         await page.goto(`/iframe.html?id=interface-player-status--${story}&viewMode=story`)
@@ -23,19 +27,53 @@ for (const { story, width, numbers } of states) {
         await expect(panel).toBeVisible()
         await page.evaluate(async () => {
             await document.fonts.ready
+            await Promise.all(Array.from(document.images, (image) => image.decode()))
         })
         await expect(panel.locator('[role="img"]')).toHaveCount(2)
         await expect(panel.locator('.ratata-ui-resource')).toHaveCount(3)
         await expect(panel).not.toContainText('Connected')
-        await expect(panel.locator('.ratata-ui-status__header > .game-frame')).toHaveCount(1)
+        await expect(panel.locator(':scope > .game-frame--parchment')).toHaveCount(1)
+        await expect(panel.locator('.ratata-ui-status__header.game-ribbon')).toHaveCount(1)
         await expect(panel.locator('.ratata-ui-status__header [role="img"]')).toHaveCount(2)
-        await expect(panel.locator('.ratata-ui-resource__text')).toHaveText(numbers)
-        await assertPanelGeometry(page)
-        await expect(panel).toHaveScreenshot(`player-status-${story}-${width}.png`)
+        await expect(panel.locator('.game-resource-bar__text')).toHaveText(numbers)
+        await assertPanelGeometry(page, extended)
+        await expect(panel).toHaveScreenshot(`player-status-${story}-${width}.png`, {
+            maxDiffPixels: 0,
+        })
     })
 }
 
-async function assertPanelGeometry(page: Page): Promise<void> {
+test('extended HUD republishes its occupied height after a viewport resize', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 844 })
+    await page.goto('/iframe.html?id=interface-player-status--wanted&viewMode=story')
+    const panel = page.getByRole('region', { name: 'Player status' })
+    await expect(panel.getByLabel('Покровитель и развитие')).toBeVisible()
+    await expect(panel.getByLabel('Кража и розыск')).toContainText('В чёрном списке Новогорода')
+    await expectPublishedHeight(page)
+    await page.setViewportSize({ width: 320, height: 844 })
+    await expectPublishedHeight(page)
+    await expect(panel).toHaveCSS('color', 'rgb(93, 100, 112)')
+    await expect(panel.getByLabel('Покровитель и развитие')).toHaveCSS('color', 'rgb(120, 96, 57)')
+    await assertPanelGeometry(page, true)
+})
+
+async function expectPublishedHeight(page: Page): Promise<void> {
+    await expect
+        .poll(() =>
+            page.getByRole('region', { name: 'Player status' }).evaluate((panel) => {
+                const host = panel.closest<HTMLElement>('.game-screen')!
+                const published = Number.parseFloat(
+                    host.style.getPropertyValue('--ratata-player-status-bottom')
+                )
+                const actual =
+                    panel.getBoundingClientRect().bottom - host.getBoundingClientRect().top + 8
+                return Math.abs(published - actual) < 0.1
+            })
+        )
+        .toBe(true)
+}
+
+async function assertPanelGeometry(page: Page, extended: boolean): Promise<void> {
     const sizes = await page.getByRole('region', { name: 'Player status' }).evaluate((panel) => {
         const bounds = panel.getBoundingClientRect()
         const elements = Array.from(
@@ -58,9 +96,10 @@ async function assertPanelGeometry(page: Page): Promise<void> {
             centeredNickname:
                 Math.abs((title.left + title.right) / 2 - (ribbon.left + ribbon.right) / 2) < 1,
             distinctNameAndIcons: title.right <= icons.left,
-            compact: bounds.height <= (window.innerWidth <= 740 ? 130 : 180),
+            height: bounds.height,
+            compactLimit: window.innerWidth <= 740 ? 130 : 180,
             accurateFills: tracks.every((track) => {
-                const fill = track.querySelector<HTMLElement>('.ratata-ui-resource__value')!
+                const fill = track.querySelector<HTMLElement>('.game-resource-bar__fill')!
                 const percent = Number.parseFloat(fill.style.width)
                 return (
                     Math.abs(
@@ -85,7 +124,7 @@ async function assertPanelGeometry(page: Page): Promise<void> {
     expect(sizes.ribbonContainsIcons).toBe(true)
     expect(sizes.centeredNickname).toBe(true)
     expect(sizes.distinctNameAndIcons).toBe(true)
-    expect(sizes.compact).toBe(true)
+    expect(sizes.height).toBeLessThanOrEqual(extended ? 500 : sizes.compactLimit)
     expect(sizes.accurateFills).toBe(true)
     expect(sizes.contained).toBe(true)
 }

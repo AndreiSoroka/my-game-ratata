@@ -50,3 +50,15 @@ The 2026-11-13 party panel and action slots use original CSS and SVG/text symbol
 Ordinary and skeleton melee arcs are also project-authored Canvas geometry. Their neutral shape points right and each rendered effect rotates toward its attack direction; the focused melee stories show all four directions.
 
 Ivory speech bubbles, their pixel borders and tails are project-authored CSS. They reuse the existing Pixelify Sans headings and system text; no dialogue bitmap or external asset was added.
+
+## Kenney Fantasy UI Borders
+
+The light menu button borders use **Fantasy UI Borders 1.0**, created and distributed by **Kenney**.
+
+- Official source: https://kenney.nl/assets/fantasy-ui-borders
+- License: [Creative Commons Zero 1.0 (CC0)](https://creativecommons.org/publicdomain/zero/1.0/)
+- Downloaded: 2026-11-19
+- Original PNG and vector assets: `apps/frontend/public/game/map/assets/KenneyFantasyUiBorders/`
+- Original license and project source record are preserved as `License.txt` and `SOURCE.txt` alongside the assets.
+
+The pack is copied unchanged, including its native-size and double-size PNG exports, SVG source and reference previews. The opt-in fantasy button skin uses the transparent-center `PNG/Default/Border/panel-border-026.png` frame with interlocking square corner details; CSS stretches its straight edges while preserving the corners.

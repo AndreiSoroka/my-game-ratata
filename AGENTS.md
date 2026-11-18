@@ -15,7 +15,8 @@
 
 ## Shared game interface
 
-- Build new and updated UI with the production components in `apps/frontend/src/game/ui/primitives`: `GameButton`, `GameInput`, `GameSelect`, `GameTextarea`, `GameFrame` and `GameItemSlot`. See that directory's `README.md` and the focused `Interface/Primitives` Storybook stories.
+- Build new and updated UI with the production components in `apps/frontend/src/game/ui/primitives`: `GameButton`, `GameInput`, `GameSelect`, `GameTextarea`, `GameFrame`, `GameItemSlot`, `GameRibbon` and `GameResourceBar`. See that directory's `README.md` and the focused Storybook stories.
+- Preserve intentional component skins. The player HUD uses the opt-in Kenney parchment frame, red ribbon and metallic resource bars; keep its original appearance when reusing or extending the shared components.
 - Keep colors, decorative asset sources and control states in `primitives/gameUi.css`. Parent styles own layout, sizing and scrolling, not a second button/field/frame skin. Preserve semantic resource colors and specialized world/SVG graphics.
 - Keep native dialog surfaces and their DOM refs. Add `GameFrame` as an aria-hidden decorative child of a `game-frame-host`; reuse `GameItemSlot` for item frames and interactive slots. Do not nest buttons or replace normal keyboard/command handling with presentation behavior.
 - Cover new variants and visible states with the manual headless Storybook screenshot suite. Do not add browser suites to automatic checks or pre-commit.

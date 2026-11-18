@@ -4,7 +4,7 @@
 }
 
 .ratata-ui-panel {
-    color: var(--game-ui-text);
+    color: var(--game-panel-text, var(--game-ui-text));
     font-family: var(--ratata-font-family);
     letter-spacing: 0;
 }
@@ -55,44 +55,8 @@
 }
 
 .ratata-ui-resource__label {
-    color: var(--game-ui-muted);
+    color: var(--game-panel-muted, var(--game-ui-muted));
     font-size: 22px;
     font-weight: 800;
     text-align: right;
-}
-
-.ratata-ui-resource__track {
-    position: relative;
-    display: block;
-    height: 32px;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.ratata-ui-resource__value {
-    position: absolute;
-    min-width: 4px;
-}
-
-.ratata-ui-resource__value--hp {
-    background: #d8464f;
-}
-
-.ratata-ui-resource__value--mana {
-    background: #3c72df;
-}
-
-.ratata-ui-resource__value--energy {
-    background: #e6b84d;
-}
-
-.ratata-ui-resource__text {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    color: #f7fbff;
-    font-size: 22px;
-    font-weight: 800;
-    text-shadow: 0 1px 0 #000000;
 }

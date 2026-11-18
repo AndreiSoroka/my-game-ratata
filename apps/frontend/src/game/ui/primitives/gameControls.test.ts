@@ -8,24 +8,27 @@ import GameItemSlot from './GameItemSlot.vue'
 import GameSelect from './GameSelect.vue'
 import GameTextarea from './GameTextarea.vue'
 
-it('forwards button attributes and exactly one native event, and respects disabled', async () => {
-    const wrapper = mount(GameButton, {
-        props: { variant: 'primary' },
-        attrs: { 'aria-label': 'Предложить', 'data-dialog-action': '', disabled: true },
-        slots: { default: 'Предложить' },
-    })
-    expect(wrapper.element.tagName).toBe('BUTTON')
-    expect(wrapper.attributes('type')).toBe('button')
-    expect(wrapper.attributes('aria-label')).toBe('Предложить')
-    await wrapper.trigger('click')
-    expect(wrapper.emitted('click')).toBeUndefined()
-    await wrapper.setProps({ disabled: false, type: 'submit' })
-    await wrapper.trigger('click')
-    expect(wrapper.emitted('click')).toHaveLength(1)
-    expect(wrapper.emitted('click')![0]![0]).toBeInstanceOf(MouseEvent)
-    expect(wrapper.attributes('type')).toBe('submit')
-    wrapper.unmount()
-})
+it.each(['default', 'fantasy'] as const)(
+    '%s button skin preserves native events and disabled',
+    async (skin) => {
+        const wrapper = mount(GameButton, {
+            props: { variant: 'primary', skin },
+            attrs: { 'aria-label': 'Предложить', 'data-dialog-action': '', disabled: true },
+            slots: { default: 'Предложить' },
+        })
+        expect(wrapper.element.tagName).toBe('BUTTON')
+        expect(wrapper.attributes('type')).toBe('button')
+        expect(wrapper.attributes('aria-label')).toBe('Предложить')
+        await wrapper.trigger('click')
+        expect(wrapper.emitted('click')).toBeUndefined()
+        await wrapper.setProps({ disabled: false, type: 'submit' })
+        await wrapper.trigger('click')
+        expect(wrapper.emitted('click')).toHaveLength(1)
+        expect(wrapper.emitted('click')![0]![0]).toBeInstanceOf(MouseEvent)
+        expect(wrapper.attributes('type')).toBe('submit')
+        wrapper.unmount()
+    }
+)
 
 it('keeps controlled value edits and native input/blur events intact', async () => {
     const onInput = vi.fn<(event: Event) => void>()

@@ -5,8 +5,9 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
 import FaithStatus from './FaithStatus.vue'
-import { healthBarPercent, healthText } from './healthPresentation'
 import GameFrame from './primitives/GameFrame.vue'
+import GameResourceBar from './primitives/GameResourceBar.vue'
+import GameRibbon from './primitives/GameRibbon.vue'
 import SoulBadge from './SoulBadge.vue'
 import TheftStatus from './TheftStatus.vue'
 import { useStatusPanelBounds } from './useStatusPanelBounds'
@@ -38,10 +39,6 @@ function resourceLabel(kind: ResourceKind): string {
     return kind === 'energy' ? 'EN' : kind === 'mana' ? 'MP' : 'HP'
 }
 
-function resourceClass(kind: ResourceKind): string {
-    return `ratata-ui-resource__value--${kind}`
-}
-
 function resourceAria(kind: ResourceKind): string {
     return kind === 'energy' ? 'Energy' : kind === 'mana' ? 'Mana' : 'Health'
 }
@@ -53,42 +50,24 @@ function resourceAria(kind: ResourceKind): string {
         class="ratata-ui-panel ratata-ui-status player-status game-frame-host"
         aria-label="Player status"
     >
-        <GameFrame variant="panel" />
-        <div class="ratata-ui-status__header game-frame-host">
-            <GameFrame variant="inset" />
+        <GameFrame skin="parchment" />
+        <GameRibbon class="ratata-ui-status__header">
             <h2 class="ratata-ui-status__name" :title="character.nickname">
                 {{ character.nickname }}
             </h2>
             <SoulBadge :soul="character.soul" compact />
-        </div>
+        </GameRibbon>
         <div class="ratata-ui-status__bars">
             <div v-for="resource in resources" :key="resource.kind" class="ratata-ui-resource">
                 <span class="ratata-ui-resource__label">
                     {{ resourceLabel(resource.kind) }}
                 </span>
-                <span
-                    class="ratata-ui-resource__track game-frame-host"
-                    role="progressbar"
+                <GameResourceBar
+                    class="ratata-ui-resource__track"
+                    :value="resource.value"
+                    :kind="resource.kind"
                     :aria-label="resourceAria(resource.kind)"
-                    :aria-valuenow="healthBarPercent(resource.value)"
-                    :aria-valuetext="healthText(resource.value) || undefined"
-                    :aria-valuemin="0"
-                    :aria-valuemax="100"
-                >
-                    <GameFrame variant="inset" />
-                    <span
-                        class="ratata-ui-resource__value"
-                        :class="resourceClass(resource.kind)"
-                        :style="{ width: `${healthBarPercent(resource.value)}%` }"
-                    ></span>
-                    <span
-                        v-if="resource.value.kind === 'exact'"
-                        class="ratata-ui-resource__text"
-                        aria-hidden="true"
-                    >
-                        {{ healthText(resource.value) }}
-                    </span>
-                </span>
+                />
             </div>
         </div>
         <FaithStatus :character="character" />
@@ -98,6 +77,14 @@ function resourceAria(kind: ResourceKind): string {
 
 <style scoped>
 .player-status {
+    --game-frame-border-width: 10px;
+    --game-frame-image-width: 14px;
+    --game-ribbon-height: 32px;
+    --game-ribbon-cap-width: 16px;
+    --game-resource-height: 28px;
+    --game-resource-border-width: 6px;
+    --game-resource-image-width: 6px;
+    --game-resource-font-size: 12px;
     position: absolute;
     display: grid;
     border: 10px solid transparent;
@@ -151,19 +138,11 @@ function resourceAria(kind: ResourceKind): string {
     gap: 7px;
 }
 
-.player-status .ratata-ui-resource__label,
-.player-status .ratata-ui-resource__text {
+.player-status .ratata-ui-resource__label {
     font-size: 12px;
 }
 
 .player-status .ratata-ui-resource__track {
-    border: 6px solid transparent;
-    height: 28px;
-    min-width: 0;
-}
-
-.player-status .ratata-ui-resource__value {
-    inset: 0 auto 0 0;
     min-width: 0;
 }
 
@@ -184,6 +163,12 @@ function resourceAria(kind: ResourceKind): string {
 }
 @media (max-width: 740px) {
     .player-status {
+        --game-frame-border-width: 8px;
+        --game-ribbon-height: 24px;
+        --game-ribbon-cap-width: 12px;
+        --game-resource-height: 17px;
+        --game-resource-border-width: 3px;
+        --game-resource-font-size: 9px;
         top: 76px;
         right: 12px;
         width: 150px;
@@ -213,12 +198,7 @@ function resourceAria(kind: ResourceKind): string {
         grid-template-columns: 16px minmax(0, 1fr);
         gap: 4px;
     }
-    .player-status .ratata-ui-resource__track {
-        height: 17px;
-        border-width: 3px;
-    }
-    .player-status .ratata-ui-resource__label,
-    .player-status .ratata-ui-resource__text {
+    .player-status .ratata-ui-resource__label {
         font-size: 9px;
     }
 }

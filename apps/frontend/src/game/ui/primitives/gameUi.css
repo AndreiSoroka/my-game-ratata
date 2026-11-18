@@ -13,9 +13,23 @@
     --game-ui-control-font: var(--ratata-font-family, 'Pixelify Sans', system-ui, sans-serif);
     --game-ui-frame-ornate: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thin outline/tile_0009.png');
     --game-ui-frame-simple: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thin outline/tile_0008.png');
+    --game-ui-frame-parchment: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0013.png');
+    --game-ui-ribbon-left: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0043.png');
+    --game-ui-ribbon-middle: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0044.png');
+    --game-ui-ribbon-right: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0045.png');
+    --game-ui-resource-frame: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Small tiles/Thick outline/tile_0026.png');
     --game-ui-field-outline: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"%3E%3Cpath fill="%23a59c66" fill-rule="evenodd" d="M2 0h12v1h1v1h1v12h-1v1h-1v1H2v-1H1v-1H0V2h1V1h1zm1 1v1H2v1H1v10h1v1h1v1h10v-1h1v-1h1V3h-1V2h-1V1z"/%3E%3C/svg%3E');
     --game-ui-field-error-outline: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"%3E%3Cpath fill="%23e4a07e" fill-rule="evenodd" d="M2 0h12v1h1v1h1v12h-1v1h-1v1H2v-1H1v-1H0V2h1V1h1zm1 1v1H2v1H1v10h1v1h1v1h10v-1h1v-1h1V3h-1V2h-1V1z"/%3E%3C/svg%3E');
     --game-ui-brass-filter: grayscale(1) sepia(1) saturate(0.65) brightness(0.95);
+    --game-ui-fantasy-text: #fff4d6;
+    --game-ui-fantasy-edge: #5a3b22;
+    --game-ui-fantasy-focus: #6b421d;
+    --game-ui-fantasy-frame: url('/game/map/assets/KenneyFantasyUiBorders/PNG/Default/Border/panel-border-026.png');
+    --game-ui-fantasy-cream-filter: brightness(0) invert(80%) sepia(72%) brightness(94.6%);
+    --game-ui-fantasy-gold-filter: brightness(0) invert(77%) sepia(100%) hue-rotate(12deg)
+        brightness(101%);
+    --game-ui-fantasy-copper-filter: brightness(0) saturate(100%) invert(86%) sepia(27%)
+        saturate(638%) hue-rotate(322deg) brightness(102%) contrast(99%);
 }
 
 :where(.game-frame-host) {
@@ -84,6 +98,132 @@
     border-image-source: var(--game-ui-frame-simple);
     border-image-width: 5px;
     filter: grayscale(1) brightness(0.38);
+}
+
+.game-frame-host:has(> .game-frame--parchment) {
+    --game-panel-text: #5d6470;
+    --game-panel-muted: #8b7284;
+    --game-panel-divider: #a3916244;
+    --game-panel-warning: #9e3e2c;
+    color: var(--game-panel-text);
+}
+
+.game-frame--parchment::before {
+    content: none;
+}
+
+.game-frame--parchment::after {
+    inset: calc(-1 * var(--game-frame-border-width, 10px));
+    box-sizing: border-box;
+    image-rendering: pixelated;
+    background: #f3ddba;
+    border: var(--game-frame-border-width, 10px) solid transparent;
+    border-image: var(--game-ui-frame-parchment) 10 fill /
+        var(--game-frame-image-width, var(--game-frame-border-width, 10px)) / 0 stretch;
+    box-shadow: none;
+}
+
+.game-frame-host.game-fantasy-surface {
+    --game-panel-text: #5d5037;
+    --game-panel-heading: #554a34;
+    --game-panel-muted: #7e7258;
+    --game-panel-divider: #a3916255;
+    --game-panel-warning: #9e3e2c;
+}
+
+.game-ribbon {
+    position: relative;
+    box-sizing: border-box;
+    z-index: 1;
+    display: inline-grid;
+    min-width: 0;
+    min-height: var(--game-ribbon-height, 32px);
+    height: var(--game-ribbon-height, 32px);
+    padding: 0 var(--game-ribbon-cap-width, 16px);
+    place-items: center;
+    color: #fff4dc;
+    font-family: var(--game-ui-control-font);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 #8e3f38;
+    image-rendering: pixelated;
+    background-image: var(--game-ui-ribbon-middle);
+    background-repeat: repeat-x;
+    background-size: var(--game-ribbon-height, 32px) var(--game-ribbon-height, 32px);
+    background-position: center calc(50% - 2px);
+}
+
+.game-ribbon::before,
+.game-ribbon::after {
+    position: absolute;
+    top: 50%;
+    width: var(--game-ribbon-cap-width, 16px);
+    height: var(--game-ribbon-height, 32px);
+    pointer-events: none;
+    content: '';
+    image-rendering: pixelated;
+    background-repeat: no-repeat;
+    background-size: var(--game-ribbon-cap-width, 16px) var(--game-ribbon-height, 32px);
+    background-position: center calc(50% - 2px);
+    transform: translateY(-50%);
+}
+
+.game-ribbon::before {
+    left: 0;
+    background-image: var(--game-ui-ribbon-left);
+}
+
+.game-ribbon::after {
+    right: 0;
+    background-image: var(--game-ui-ribbon-right);
+}
+
+.game-resource-bar {
+    position: relative;
+    box-sizing: border-box;
+    display: block;
+    min-width: 0;
+    height: var(--game-resource-height, 28px);
+    overflow: hidden;
+    image-rendering: pixelated;
+    background: #8fa6b8;
+    border: var(--game-resource-border-width, 6px) solid transparent;
+    border-image: var(--game-ui-resource-frame) 5 fill /
+        var(--game-resource-image-width, var(--game-resource-border-width, 6px)) / 0 stretch;
+}
+
+.game-resource-bar__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: block;
+    min-width: 0;
+}
+
+.game-resource-bar--hp .game-resource-bar__fill {
+    background: #d8464f;
+}
+
+.game-resource-bar--mana .game-resource-bar__fill {
+    background: #3c72df;
+}
+
+.game-resource-bar--energy .game-resource-bar__fill {
+    background: #e6b84d;
+}
+
+.game-resource-bar__text {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #f7fbff;
+    font-size: var(--game-resource-font-size, 12px);
+    font-weight: 800;
+    line-height: 1;
+    text-shadow: 0 1px 0 #000;
 }
 
 :where(.game-frame-host[tabindex='-1']):focus {
@@ -214,6 +354,109 @@
 .game-textarea:focus-visible {
     outline: 2px solid var(--game-ui-focus);
     outline-offset: 2px;
+}
+
+.game-button--fantasy.game-button {
+    --fantasy-button-top: #9a6e3b;
+    --fantasy-button-bottom: #855d30;
+    --fantasy-button-hover-top: #a57740;
+    --fantasy-button-hover-bottom: #906635;
+    --fantasy-button-border-filter: var(--game-ui-fantasy-cream-filter);
+    min-width: 0;
+    min-height: 40px;
+    padding: 10px 20px;
+    overflow-wrap: anywhere;
+    color: var(--game-ui-fantasy-text);
+    text-shadow: 0 1px #4b301e;
+    background: linear-gradient(var(--fantasy-button-top), var(--fantasy-button-bottom));
+    box-shadow:
+        inset 0 0 0 1px var(--game-ui-fantasy-edge),
+        0 2px 0 #5a3b2240;
+}
+
+.game-button--fantasy::before {
+    inset: 4px;
+    border-width: 12px;
+    border-image: var(--game-ui-fantasy-frame) 16 / 12px / 0 stretch;
+    filter: var(--fantasy-button-border-filter);
+}
+
+.game-button--fantasy.game-button--primary {
+    --fantasy-button-top: #b78132;
+    --fantasy-button-bottom: #996323;
+    --fantasy-button-hover-top: #c08c3b;
+    --fantasy-button-hover-bottom: #a56f2a;
+    --fantasy-button-border-filter: var(--game-ui-fantasy-gold-filter);
+}
+
+.game-button--fantasy.game-button--success {
+    --fantasy-button-top: #52663c;
+    --fantasy-button-bottom: #3c512d;
+    --fantasy-button-hover-top: #5c7045;
+    --fantasy-button-hover-bottom: #465c34;
+}
+
+.game-button--fantasy.game-button--danger {
+    --fantasy-button-top: #a16146;
+    --fantasy-button-bottom: #8c5038;
+    --fantasy-button-hover-top: #ad6b4d;
+    --fantasy-button-hover-bottom: #995940;
+    --fantasy-button-border-filter: var(--game-ui-fantasy-copper-filter);
+}
+
+.game-button--fantasy.game-button--slot {
+    --fantasy-button-top: #755631;
+    --fantasy-button-bottom: #5e4027;
+}
+
+.game-button--fantasy.game-button--compact {
+    min-height: 30px;
+    padding: 6px 14px;
+}
+
+.game-button--fantasy.game-button--compact::before,
+.game-button--fantasy.game-button--icon::before {
+    inset: 3px;
+    border-image-width: 8px;
+}
+
+.game-button--fantasy.game-button--icon {
+    width: 40px;
+    padding: 8px;
+}
+
+.game-button--fantasy.game-button--compact.game-button--icon {
+    width: 30px;
+    padding: 4px;
+}
+
+.game-button--fantasy.game-button:not(:disabled):not([aria-disabled='true']):hover {
+    color: #fff9e8;
+    background-image: linear-gradient(
+        var(--fantasy-button-hover-top),
+        var(--fantasy-button-hover-bottom)
+    );
+}
+
+.game-button--fantasy.game-button[aria-pressed='true'],
+.game-button--fantasy.game-button[aria-selected='true'],
+.game-button--fantasy.game-button[aria-checked='true'],
+.game-button--fantasy.game-button[aria-current]:not([aria-current='false']):not([aria-current='']),
+.game-button--fantasy.game-button.active {
+    color: #fff9e8;
+    background-image: linear-gradient(var(--fantasy-button-bottom), var(--fantasy-button-top));
+    box-shadow:
+        inset 0 0 0 2px #e4c27b,
+        0 2px 0 #5a3b2240;
+}
+
+.game-button--fantasy.game-button:not(:disabled):not([aria-disabled='true']):active {
+    background-image: linear-gradient(var(--fantasy-button-bottom), var(--fantasy-button-top));
+    box-shadow: inset 0 3px 5px #3e251b99;
+}
+
+.game-button--fantasy:focus-visible {
+    outline-color: var(--game-ui-fantasy-focus);
 }
 
 .game-input,
