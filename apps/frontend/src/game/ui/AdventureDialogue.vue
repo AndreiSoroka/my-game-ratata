@@ -11,6 +11,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 import CityDemandReport from './CityDemandReport.vue'
 import CityMarket from './CityMarket.vue'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import RepairWorkshop from './RepairWorkshop.vue'
@@ -129,7 +131,7 @@ watch(
         ref="panel"
         @keydown.stop="handleKeys"
         @keyup.stop
-        class="adventure-dialogue adventure-window"
+        class="adventure-dialogue adventure-window game-frame-host"
         :class="{ 'adventure-dialogue--sign': isSign }"
         role="dialog"
         aria-modal="false"
@@ -140,16 +142,17 @@ watch(
         "
         :aria-label="`${isSign ? 'Табличка' : 'Разговор'}: ${adventure.dialogue.npcName}`"
     >
+        <GameFrame variant="window" />
         <header class="adventure-window__header">
             <h2 v-if="isSign">{{ adventure.dialogue.npcName }}</h2>
             <span v-else>{{ adventure.dialogue.npcName }}</span>
-            <button
-                type="button"
+            <GameButton
+                icon
                 :aria-label="isSign ? 'Закрыть табличку' : 'Закончить разговор'"
                 @click="emit('command', { choiceId: 'close', type: 'dialogue_choice' })"
             >
                 ×
-            </button>
+            </GameButton>
         </header>
         <SoulBadge
             v-if="!isSign"
@@ -179,15 +182,14 @@ watch(
                 :total="adventure.quest.rewardGold"
                 :mode="adventure.quest.rewardMode"
             />
-            <button
+            <GameButton
                 v-for="choice in adventure.dialogue.choices"
                 :key="choice.id"
-                type="button"
                 data-dialogue-action
                 @click="choose(choice.id)"
             >
                 {{ choice.label }}
-            </button>
+            </GameButton>
         </div>
         <div
             v-if="view === 'shop' && adventure.dialogue.canTrade"
@@ -208,11 +210,10 @@ watch(
             <h3 v-if="!adventure.market">
                 В дорогу <span>У вас {{ adventure.gold }} золотых</span>
             </h3>
-            <button
+            <GameButton
                 v-for="offer in adventure.market ? [] : adventure.shop"
                 :key="offer.itemId"
                 data-dialogue-action
-                type="button"
                 :disabled="
                     Boolean(adventure.dialogue.tradeBlockedReason) || adventure.gold < offer.price
                 "
@@ -220,10 +221,10 @@ watch(
             >
                 <span>{{ offer.label }}</span
                 ><strong>{{ offer.price }} ◈</strong>
-            </button>
-            <button type="button" data-dialogue-action @click="backToConversation">
+            </GameButton>
+            <GameButton data-dialogue-action @click="backToConversation">
                 ← Вернуться к разговору
-            </button>
+            </GameButton>
         </div>
         <RepairWorkshop
             v-if="view === 'repair' && adventure.repairs"
@@ -248,13 +249,12 @@ watch(
             :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
             @command="emit('command', $event)"
         />
-        <button
+        <GameButton
             v-if="view === 'repair' || view === 'demand' || view === 'orders'"
-            type="button"
             data-dialogue-action
             @click="backToConversation"
         >
             ← Вернуться к разговору
-        </button>
+        </GameButton>
     </section>
 </template>

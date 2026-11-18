@@ -3,11 +3,13 @@ import { type ExchangeOfferSnapshot, ITEM_DEFINITIONS } from '@my-game-ratata/co
 
 import ExchangeConsentIcon from './ExchangeConsentIcon.vue'
 import ItemIcon from './ItemIcon.vue'
+import GameFrame from './primitives/GameFrame.vue'
 
 defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>()
 </script>
 <template>
-    <section class="exchange-offer" :aria-label="title">
+    <section class="exchange-offer game-frame-host" :aria-label="title">
+        <GameFrame variant="panel" />
         <header class="exchange-offer__header">
             <h3>{{ title }}</h3>
             <span v-if="!terminal" class="exchange-offer__state">{{
@@ -20,7 +22,12 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
         </p>
         <slot>
             <ul class="exchange-offer__items" tabindex="0" :aria-label="`Предметы: ${title}`">
-                <li v-for="item in offer.items" :key="item.instanceId" class="exchange-offer__item">
+                <li
+                    v-for="item in offer.items"
+                    :key="item.instanceId"
+                    class="exchange-offer__item game-frame-host"
+                >
+                    <GameFrame variant="inset" />
                     <ItemIcon :item="item" show-quantity />
                     <div>
                         <strong>{{ ITEM_DEFINITIONS[item.itemId].name }}</strong>
@@ -39,7 +46,9 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
                         >
                     </div>
                 </li>
-                <li v-if="!offer.items.length" class="exchange-offer__empty">Пока пусто</li>
+                <li v-if="!offer.items.length" class="exchange-offer__empty game-frame-host">
+                    <GameFrame variant="inset" />Пока пусто
+                </li>
             </ul>
         </slot>
         <footer class="exchange-offer__gold">
@@ -51,13 +60,12 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
 </template>
 <style scoped>
 .exchange-offer {
+    position: relative;
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    background: #12231c;
-    border: 1px solid #506249;
-    border-radius: 7px;
+    border: 1px solid transparent;
     overflow: hidden;
 }
 .exchange-offer__header {
@@ -107,9 +115,8 @@ h3 {
     gap: 9px;
     align-items: center;
     padding: 8px;
-    background: #1c2e23;
-    border: 1px solid #3e523a;
-    border-radius: 5px;
+    position: relative;
+    border: 1px solid transparent;
 }
 .exchange-offer__item strong,
 .exchange-offer__item small {
@@ -129,8 +136,8 @@ h3 {
     color: #82947b;
     min-height: 70px;
     font-size: 12px;
-    border: 1px dashed #40513b;
-    border-radius: 4px;
+    position: relative;
+    border: 1px solid transparent;
 }
 .exchange-offer__gold {
     display: flex;

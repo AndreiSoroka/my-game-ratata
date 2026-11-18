@@ -5,6 +5,9 @@ import {
     quoteMarketTrade,
 } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
+
+import GameButton from './primitives/GameButton.vue'
+import GameInput from './primitives/GameInput.vue'
 const props = defineProps<{
     market: MarketSnapshot
     npcId: string
@@ -34,25 +37,15 @@ function trade(row: MarketSnapshot['rows'][number]): void {
 <template>
     <section class="city-market" aria-label="Городской рынок">
         <div class="market-controls">
-            <button
-                type="button"
-                data-dialogue-action
-                :aria-pressed="side === 'buy'"
-                @click="side = 'buy'"
-            >
+            <GameButton data-dialogue-action :aria-pressed="side === 'buy'" @click="side = 'buy'">
                 Купить
-            </button>
-            <button
-                type="button"
-                data-dialogue-action
-                :aria-pressed="side === 'sell'"
-                @click="side = 'sell'"
-            >
+            </GameButton>
+            <GameButton data-dialogue-action :aria-pressed="side === 'sell'" @click="side = 'sell'">
                 Продать
-            </button>
+            </GameButton>
             <label
                 >Количество
-                <input v-model.number="quantity" type="number" min="1" max="100" step="1"
+                <GameInput v-model.number="quantity" type="number" min="1" max="100" step="1"
             /></label>
         </div>
         <p>У вас {{ gold }} золотых · {{ market.cityName }}</p>
@@ -60,8 +53,8 @@ function trade(row: MarketSnapshot['rows'][number]): void {
             <span
                 >{{ row.label }}<small>На складе {{ row.stock }} / {{ row.capacity }}</small></span
             >
-            <button
-                type="button"
+            <GameButton
+                variant="primary"
                 data-dialogue-action
                 :disabled="
                     blocked || total(row) === null || (side === 'buy' && gold < (total(row) ?? 0))
@@ -75,7 +68,7 @@ function trade(row: MarketSnapshot['rows'][number]): void {
                             : 'Не покупают'
                         : `${side === 'buy' ? 'Купить' : 'Продать'} ${quantity} · ${total(row)} ◈`
                 }}
-            </button>
+            </GameButton>
         </div>
     </section>
 </template>

@@ -2,6 +2,9 @@
 import { ABILITY_DEFINITIONS, type CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+
 const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
 const emit = defineEmits<{ cancelPrayer: []; cancelRoute: [] }>()
 const prayerName = computed(
@@ -26,33 +29,43 @@ const remainingSeconds = computed(() => {
 })
 </script>
 <template>
-    <p v-if="player.cooldowns.stunMsLeft > 0" class="control-status rpg-panel" role="status">
+    <p
+        v-if="player.cooldowns.stunMsLeft > 0"
+        class="control-status rpg-panel game-frame-host"
+        role="status"
+    >
+        <GameFrame variant="panel" />
         СТАН · {{ (player.cooldowns.stunMsLeft / 1000).toFixed(1) }} с
     </p>
-    <div v-else-if="player.abilities?.casting" class="control-status rpg-panel" role="status">
+    <div
+        v-else-if="player.abilities?.casting"
+        class="control-status rpg-panel game-frame-host"
+        role="status"
+    >
+        <GameFrame variant="panel" />
         {{ prayerName }} ·
         {{ (Math.max(0, player.abilities.casting.completesAt - serverTime) / 1000).toFixed(1) }} с
-        <button
+        <GameButton
             v-if="!player.abilities.casting.uninterruptible"
-            type="button"
             @keydown.esc.stop.prevent="emit('cancelPrayer')"
             @click="emit('cancelPrayer')"
         >
             Прервать · Esc
-        </button>
+        </GameButton>
     </div>
     <div
         v-else-if="blockedRoute?.points[0]"
-        class="control-status control-status--route rpg-panel"
+        class="control-status control-status--route rpg-panel game-frame-host"
         role="status"
     >
+        <GameFrame variant="panel" />
         Точка {{ blockedRoute.points[0].number }}: путь перекрыт<template
             v-if="remainingSeconds !== undefined"
         >
             · отмена через {{ remainingSeconds }} с</template
         >
         · Esc — остановить
-        <button type="button" @click="emit('cancelRoute')">Остановить маршрут</button>
+        <GameButton @click="emit('cancelRoute')">Остановить маршрут</GameButton>
     </div>
 </template>
 <style scoped>
@@ -69,15 +82,8 @@ button {
     display: block;
     margin: 8px auto 0;
     padding: 6px 12px;
-    border: 1px solid #bca575;
-    background: #35433b;
-    color: inherit;
-    font: inherit;
+    border: 1px solid transparent;
     cursor: pointer;
-}
-button:focus-visible {
-    outline: 2px solid #f2cc78;
-    outline-offset: 2px;
 }
 .control-status--route {
     width: max-content;

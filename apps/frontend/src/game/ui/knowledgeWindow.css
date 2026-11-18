@@ -29,12 +29,8 @@
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
-    color: #f6ebd4;
-    background: #101a14;
-    border: 1px solid #657252;
-    border-radius: 3px;
+    border: 1px solid transparent;
     padding: 9px;
-    font: inherit;
 }
 .knowledge-skill {
     border-top: 1px solid #526049;
@@ -107,9 +103,6 @@
 }
 .knowledge-action button {
     flex-shrink: 0;
-    font:
-        12px/1.4 system-ui,
-        sans-serif;
 }
 .knowledge-action small {
     color: #a9b5a1;

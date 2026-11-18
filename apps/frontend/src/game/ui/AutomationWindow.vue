@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { activateFocusedButton } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
 
@@ -31,18 +33,19 @@ onMounted(async () => {
 <template>
     <section
         ref="panel"
-        class="automation-window rpg-panel"
+        class="automation-window rpg-panel game-frame-host"
         role="dialog"
         :aria-label="title"
         tabindex="-1"
         @keydown.stop="key"
         @keyup.stop
     >
+        <GameFrame variant="window" />
         <header class="automation-window__header">
             <h2>{{ title }}</h2>
-            <button type="button" :aria-label="`Закрыть: ${title}`" @click="emit('close')">
+            <GameButton icon :aria-label="`Закрыть: ${title}`" @click="emit('close')">
                 ×
-            </button>
+            </GameButton>
         </header>
         <slot />
     </section>
@@ -80,10 +83,7 @@ h2 {
 button {
     min-width: 36px;
     min-height: 36px;
-    border: 1px solid var(--rpg-brass);
-    background: #35433b;
-    color: inherit;
-    font: inherit;
+    border: 1px solid transparent;
     cursor: pointer;
 }
 @media (max-width: 600px) {

@@ -6,6 +6,7 @@ import { computed, ref } from 'vue'
 
 import FaithStatus from './FaithStatus.vue'
 import { healthBarPercent, healthText } from './healthPresentation'
+import GameFrame from './primitives/GameFrame.vue'
 import SoulBadge from './SoulBadge.vue'
 import TheftStatus from './TheftStatus.vue'
 import { useStatusPanelBounds } from './useStatusPanelBounds'
@@ -49,10 +50,12 @@ function resourceAria(kind: ResourceKind): string {
 <template>
     <section
         ref="panel"
-        class="ratata-ui-panel ratata-ui-status ratata-kenney-window player-status"
+        class="ratata-ui-panel ratata-ui-status player-status game-frame-host"
         aria-label="Player status"
     >
-        <div class="ratata-ui-status__header ratata-kenney-title ratata-kenney-title--compact">
+        <GameFrame variant="panel" />
+        <div class="ratata-ui-status__header game-frame-host">
+            <GameFrame variant="inset" />
             <h2 class="ratata-ui-status__name" :title="character.nickname">
                 {{ character.nickname }}
             </h2>
@@ -64,7 +67,7 @@ function resourceAria(kind: ResourceKind): string {
                     {{ resourceLabel(resource.kind) }}
                 </span>
                 <span
-                    class="ratata-ui-resource__track ratata-kenney-bar"
+                    class="ratata-ui-resource__track game-frame-host"
                     role="progressbar"
                     :aria-label="resourceAria(resource.kind)"
                     :aria-valuenow="healthBarPercent(resource.value)"
@@ -72,14 +75,15 @@ function resourceAria(kind: ResourceKind): string {
                     :aria-valuemin="0"
                     :aria-valuemax="100"
                 >
+                    <GameFrame variant="inset" />
                     <span
-                        class="ratata-ui-resource__value ratata-kenney-bar__fill"
+                        class="ratata-ui-resource__value"
                         :class="resourceClass(resource.kind)"
                         :style="{ width: `${healthBarPercent(resource.value)}%` }"
                     ></span>
                     <span
                         v-if="resource.value.kind === 'exact'"
-                        class="ratata-ui-resource__text ratata-kenney-bar__text"
+                        class="ratata-ui-resource__text"
                         aria-hidden="true"
                     >
                         {{ healthText(resource.value) }}
@@ -95,6 +99,8 @@ function resourceAria(kind: ResourceKind): string {
 <style scoped>
 .player-status {
     position: absolute;
+    display: grid;
+    border: 10px solid transparent;
     grid-template-columns: minmax(0, 1fr);
     top: 58px;
     right: 14px;
@@ -120,25 +126,6 @@ function resourceAria(kind: ResourceKind): string {
     line-height: 1;
     white-space: nowrap;
     font-size: 15px;
-    text-shadow: 0 1px 0 #8e3f38;
-    background-image: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0044.png');
-    background-size: 32px 32px;
-    background-position: center calc(50% - 2px);
-}
-
-.player-status .ratata-ui-status__header::before,
-.player-status .ratata-ui-status__header::after {
-    height: 32px;
-    background-size: 16px 32px;
-    background-position: center calc(50% - 2px);
-}
-
-.player-status .ratata-ui-status__header::before {
-    background-image: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0043.png');
-}
-
-.player-status .ratata-ui-status__header::after {
-    background-image: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0045.png');
 }
 
 .player-status .ratata-ui-status__name {
@@ -170,11 +157,13 @@ function resourceAria(kind: ResourceKind): string {
 }
 
 .player-status .ratata-ui-resource__track {
+    border: 6px solid transparent;
     height: 28px;
     min-width: 0;
 }
 
 .player-status .ratata-ui-resource__value {
+    inset: 0 auto 0 0;
     min-width: 0;
 }
 
@@ -210,13 +199,6 @@ function resourceAria(kind: ResourceKind): string {
         gap: 4px;
         padding: 0 12px;
         font-size: 12px;
-        background-size: 24px 24px;
-    }
-    .player-status .ratata-ui-status__header::before,
-    .player-status .ratata-ui-status__header::after {
-        width: 12px;
-        height: 24px;
-        background-size: 12px 24px;
     }
     .player-status .ratata-ui-status__name {
         font-size: 12px;

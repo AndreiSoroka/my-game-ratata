@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 
 import { isConfirmationKey } from './keyboardOwnership'
 import type { NearbyAction } from './nearbyActions'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = defineProps<{
@@ -106,30 +108,25 @@ onBeforeUnmount(returnFocus)
     <section
         v-if="open"
         ref="panel"
-        class="nearby-action-panel adventure-window"
+        class="nearby-action-panel adventure-window game-frame-host"
         :aria-labelledby="labelId"
         @keydown.stop="handleKey"
         @keyup.stop
         @pointerdown.stop
         @click.stop
     >
+        <GameFrame variant="window" />
         <header class="nearby-action-panel__header">
             <h2 :id="labelId">{{ contextLabel ?? 'Действия рядом' }}</h2>
-            <button
-                type="button"
-                tabindex="-1"
-                aria-label="Закрыть действия"
-                @click="emit('close')"
-            >
+            <GameButton icon tabindex="-1" aria-label="Закрыть действия" @click="emit('close')">
                 ×
-            </button>
+            </GameButton>
         </header>
         <slot />
         <div ref="menu" role="menu" :aria-labelledby="labelId" tabindex="-1">
-            <button
+            <GameButton
                 v-for="action in actions"
                 :key="action.id"
-                type="button"
                 role="menuitem"
                 :data-action-id="action.id"
                 :tabindex="action.id === activeId && !action.disabled ? 0 : -1"
@@ -139,7 +136,7 @@ onBeforeUnmount(returnFocus)
                 @click="activate(action.id)"
             >
                 {{ action.label }}
-            </button>
+            </GameButton>
             <p v-if="actions.length === 0" role="status">Рядом нет доступных действий.</p>
         </div>
         <p class="nearby-action-panel__hint">
@@ -159,12 +156,7 @@ onBeforeUnmount(returnFocus)
     overflow: auto;
     transform: translate(-50%, -50%);
     padding: 1rem;
-    color: #f4e7ce;
-    background: #252d2a;
-    border: 2px solid #bca575;
-    box-shadow:
-        0 5px 0 #111b19,
-        0 12px 30px #0008;
+    border: 2px solid transparent;
     pointer-events: auto;
 }
 .nearby-action-panel__header {
@@ -179,8 +171,6 @@ h2 {
     font-size: 1rem;
 }
 button {
-    color: inherit;
-    font: inherit;
     cursor: pointer;
 }
 [role='menu'] {
@@ -189,13 +179,8 @@ button {
 }
 [role='menuitem'] {
     padding: 0.7rem;
-    border: 1px solid #6f7d68;
-    background: #35433b;
+    border: 1px solid transparent;
     text-align: left;
-}
-button:focus-visible {
-    outline: 3px solid #f2cc78;
-    outline-offset: 2px;
 }
 [role='menuitem']:disabled {
     opacity: 0.5;

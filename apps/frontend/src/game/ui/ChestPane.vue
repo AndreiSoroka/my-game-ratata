@@ -3,6 +3,9 @@ import type { ItemInstanceSnapshot } from '@my-game-ratata/contracts'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { itemStackLabel } from './itemLabels'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameItemSlot from './primitives/GameItemSlot.vue'
 
 defineProps<{
     side: 'bag' | 'chest'
@@ -16,12 +19,18 @@ defineProps<{
 const emit = defineEmits<{ select: [instanceId: string] }>()
 </script>
 <template>
-    <section class="chest-pane" :data-chest-pane="side" tabindex="-1" :aria-label="title">
+    <section
+        class="chest-pane game-frame-host"
+        :data-chest-pane="side"
+        tabindex="-1"
+        :aria-label="title"
+    >
+        <GameFrame variant="panel" />
         <h3>
             {{ title }} <span>{{ items.length }}</span>
         </h3>
         <div class="chest-items">
-            <button
+            <GameButton
                 v-for="item in items"
                 :key="item.instanceId"
                 :data-dialog-action="`${side}:${item.instanceId}`"
@@ -30,17 +39,12 @@ const emit = defineEmits<{ select: [instanceId: string] }>()
                 :title="itemStackLabel(item)"
                 @click="emit('select', item.instanceId)"
             >
-                <div class="chest-item-icon">
-                    <img :src="itemAssetCatalog[item.itemId].src" alt="" /><b
-                        v-if="(item.quantity ?? 1) > 1"
-                        class="chest-item-quantity"
-                        aria-hidden="true"
-                        >{{ item.quantity }}</b
-                    >
-                </div>
+                <GameItemSlot class="chest-item-icon" :quantity="item.quantity">
+                    <img :src="itemAssetCatalog[item.itemId].src" alt="" />
+                </GameItemSlot>
                 <span>{{ itemStackLabel(item) }}</span
                 ><small>{{ actionLabel }}</small>
-            </button>
+            </GameButton>
             <p v-if="!items.length" class="chest-empty" role="status">{{ emptyText }}</p>
         </div>
         <slot></slot>

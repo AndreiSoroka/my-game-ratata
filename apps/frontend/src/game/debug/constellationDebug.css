@@ -38,11 +38,7 @@ button {
     box-sizing: border-box;
     min-width: 0;
     min-height: 44px;
-    border: 1px solid #55717d;
-    border-radius: 0;
-    background: #102733;
-    color: #eee6d2;
-    font: inherit;
+    border: 1px solid transparent;
 }
 input,
 select {
@@ -53,18 +49,9 @@ button {
     padding: 10px 14px;
     cursor: pointer;
 }
-button:hover {
-    background: #1a3a48;
-}
 button:disabled {
     opacity: 0.5;
     cursor: default;
-}
-button:focus-visible,
-input:focus-visible,
-select:focus-visible {
-    outline: 2px solid #ffe0a1;
-    outline-offset: 2px;
 }
 .debug-workspace {
     display: grid;
@@ -95,8 +82,7 @@ select:focus-visible {
     flex: 1 1 0;
     flex-direction: column;
     min-height: 180px;
-    border: 1px solid #405d6a;
-    background: #0d202b;
+    border: 1px solid transparent;
 }
 .debug-filters {
     display: grid;
@@ -121,10 +107,6 @@ select:focus-visible {
     gap: 3px;
     width: 100%;
     text-align: left;
-}
-.debug-star-list button[aria-pressed='true'] {
-    border-color: #e9c77d;
-    background: #213b43;
 }
 .debug-star-list strong {
     font-size: 13px;
@@ -189,9 +171,8 @@ a:focus-visible {
 .debug-map-link {
     display: block;
     padding: 8px 12px;
-    border: 1px solid #425f6d;
+    border: 1px solid transparent;
     border-bottom: 0;
-    background: #10232d;
     font-size: 12px;
 }
 
@@ -211,12 +192,6 @@ a:focus-visible {
     align-content: center;
     padding: 0;
     font-size: 20px;
-    color: #a5b6c0;
-}
-.debug-star-toggle[aria-checked='true'] {
-    border-color: #e9c77d;
-    color: #f0d89c;
-    background: #213b43;
 }
 
 .debug-card-nav {

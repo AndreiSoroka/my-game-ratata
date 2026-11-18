@@ -1,11 +1,12 @@
 .constellation-map {
+    --game-frame-fill: transparent;
     position: relative;
     min-width: 0;
     overflow: hidden;
-    border: 1px solid #3a5663;
     background:
         radial-gradient(ellipse at 20% 25%, #183e4a80, transparent 55%),
         radial-gradient(ellipse at 75% 80%, #40312566, transparent 55%), #08151f;
+    border: 1px solid transparent;
 }
 .constellation-map__sky {
     display: block;
@@ -29,14 +30,9 @@
 .constellation-map__tools button {
     width: 36px;
     height: 36px;
-    border: 1px solid #68818b;
-    background: #102832e8;
-    color: #e8d4a8;
+    border: 1px solid transparent;
     font-size: 20px;
     cursor: pointer;
-}
-.constellation-map__tools button:focus-visible {
-    outline: 2px solid #ffe0a1;
 }
 .constellation-label {
     pointer-events: none;

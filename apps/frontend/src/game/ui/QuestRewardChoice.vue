@@ -2,6 +2,9 @@
 import type { QuestRewardMode } from '@my-game-ratata/contracts'
 import { useId } from 'vue'
 
+import GameFrame from './primitives/GameFrame.vue'
+import GameInput from './primitives/GameInput.vue'
+
 const mode = defineModel<QuestRewardMode>({ required: true })
 defineProps<{ disabled?: boolean }>()
 const name = useId()
@@ -19,14 +22,17 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
 </script>
 
 <template>
-    <fieldset class="quest-reward-choice" :disabled="disabled">
+    <fieldset class="quest-reward-choice game-frame-host" :disabled="disabled">
         <legend>Распределение награды</legend>
+        <GameFrame variant="inset" />
         <label
             v-for="option in options"
             :key="option.value"
+            class="quest-reward-option game-frame-host"
             :class="{ selected: mode === option.value }"
         >
-            <input
+            <GameFrame variant="inset" />
+            <GameInput
                 v-model="mode"
                 type="radio"
                 :name="name"
@@ -69,7 +75,7 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
     min-width: 0;
     margin: 12px 0;
     padding: 10px 12px;
-    border: 1px solid #526049;
+    border: 1px solid transparent;
     font:
         12px/1.5 system-ui,
         sans-serif;
@@ -78,7 +84,7 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
     color: #e9cf8d;
     padding: 0 4px;
 }
-.quest-reward-choice label {
+.quest-reward-option {
     position: relative;
     display: flex;
     flex: 1 1 170px;
@@ -86,10 +92,8 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border: 1px solid #63735b;
+    border: 1px solid transparent;
     padding: 10px 12px;
-    border-radius: 4px;
-    background: #22382d;
 }
 .quest-reward-choice input {
     position: absolute;
@@ -100,7 +104,7 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
 }
 .quest-reward-choice label.selected {
     border-color: #dfc36f;
-    background: #3c4c30;
+    --game-frame-fill: #3c4c30;
 }
 .quest-reward-choice label:focus-within {
     outline: 2px solid #dfc36f;

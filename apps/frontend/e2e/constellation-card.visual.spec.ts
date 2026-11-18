@@ -7,7 +7,9 @@ for (const width of [320, 390, 1280]) {
         const card = page.getByLabel('Выбранная звезда')
         await expect(card).toContainText('Активное заклинание')
         const spacing = await card.evaluate((element) => {
-            const blocks = [...element.children].map((child) => child.getBoundingClientRect())
+            const blocks = [...element.children]
+                .filter((child) => child.getAttribute('aria-hidden') !== 'true')
+                .map((child) => child.getBoundingClientRect())
             const bullets = [...element.querySelectorAll('li')].map((child) =>
                 child.getBoundingClientRect()
             )

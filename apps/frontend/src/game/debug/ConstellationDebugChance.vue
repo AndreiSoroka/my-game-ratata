@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import GameFrame from '../ui/primitives/GameFrame.vue'
 import ConstellationChanceFormulas from './ConstellationChanceFormulas.vue'
 import { describeConstellationEffectChance } from './constellationEffectChance'
 import ConstellationPrayerCalculator from './ConstellationPrayerCalculator.vue'
@@ -16,11 +17,13 @@ const longNotes = computed(
         <ConstellationPrayerCalculator :node-id="nodeId" :enabled-star-ids="enabledStarIds" />
         <details
             v-if="!chance.deterministic && chance.formulas.length"
-            class="debug-effect-chance"
+            class="debug-effect-chance game-frame-host"
             data-testid="debug-effect-chance"
             aria-label="Шанс срабатывания эффекта"
         >
-            <summary @keydown.stop @keyup.stop>Шанс срабатывания эффекта</summary>
+            <summary @keydown.stop @keyup.stop>
+                <GameFrame variant="panel" />Шанс срабатывания эффекта
+            </summary>
             <p data-testid="debug-effect-chance-summary">{{ chance.summary }}</p>
             <ConstellationChanceFormulas
                 :details="chance.formulaDetails"
@@ -56,9 +59,8 @@ const longNotes = computed(
 .debug-effect-chance {
     display: block;
     padding: 16px;
-    border: 1px solid #425f6d;
+    border: 1px solid transparent;
     border-top: 0;
-    background: #10232d;
     color: #eee6d2;
     font:
         12px/1.55 system-ui,

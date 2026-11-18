@@ -7,7 +7,12 @@ for (const width of [1280, 390]) {
         const status = page.getByRole('status')
         await expect(status).toContainText('Точка 4: путь перекрыт')
         await expect(status).toContainText('отмена через 8 с')
-        await expect(status).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(status.locator(':scope > .game-frame')).toHaveCount(1)
+        const fill = await status.locator(':scope > .game-frame').evaluate((frame) => {
+            const style = getComputedStyle(frame, '::after')
+            return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || style.backgroundImage !== 'none'
+        })
+        expect(fill).toBe(true)
         await page.evaluate(() => document.fonts.ready)
         const cancel = status.getByRole('button', { name: 'Остановить маршрут' })
         await expect(cancel).toBeVisible()
@@ -24,6 +29,7 @@ for (const width of [1280, 390]) {
         expect(buttonBox!.x + buttonBox!.width).toBeLessThanOrEqual(box!.x + box!.width)
         await cancel.focus()
         await expect(cancel).toBeFocused()
+        await expect(status).toHaveScreenshot(`blocked-route-${width}.png`)
         await page.screenshot({ path: info.outputPath(`blocked-route-${width}.png`) })
         await page.screenshot({
             path: `/tmp/ratata-route-status-${width === 390 ? 'mobile' : 'desktop'}.png`,

@@ -13,6 +13,8 @@ import AdventureDialogue from './AdventureDialogue.vue'
 import CompanionWindow from './CompanionWindow.vue'
 import CraftingWindow from './CraftingWindow.vue'
 import GuildWindow from './GuildWindow.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import TheftAlert from './TheftAlert.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
@@ -72,7 +74,8 @@ defineExpose({
         @keyup.space.stop
         @focusin="emit('command', { type: 'release_input' })"
     >
-        <div class="adventure-tools" aria-label="Приключение">
+        <div class="adventure-tools game-frame-host" aria-label="Приключение">
+            <GameFrame variant="panel" />
             <span class="adventure-level" title="Сумма уровней созвездий"
                 >Ступени
                 {{
@@ -82,29 +85,26 @@ defineExpose({
                     ) ?? 0
                 }}</span
             >
-            <button
-                type="button"
+            <GameButton
                 :aria-expanded="activeWindow === 'crafting'"
                 @click="toggleWindow('crafting')"
             >
                 Ремесло
-            </button>
-            <button type="button" @click="emit('character')">Знания</button>
-            <button
-                type="button"
+            </GameButton>
+            <GameButton @click="emit('character')">Знания</GameButton>
+            <GameButton
                 :aria-expanded="activeWindow === 'companions'"
                 @click="toggleWindow('companions')"
             >
                 Спутники
-            </button>
-            <button
+            </GameButton>
+            <GameButton
                 v-if="party"
-                type="button"
                 :aria-expanded="activeWindow === 'guild'"
                 @click="toggleWindow('guild')"
             >
                 Гильдия{{ incomingInvitations.length ? ` · ${incomingInvitations.length}` : '' }}
-            </button>
+            </GameButton>
             <span class="adventure-gold" aria-label="Золото">◈ {{ adventure.gold }}</span>
         </div>
 
@@ -124,11 +124,12 @@ defineExpose({
         />
         <div
             v-if="incomingInvitations.length && !activeWindow && showWindow"
-            class="party-invitation-hint"
+            class="party-invitation-hint game-frame-host"
             role="status"
         >
+            <GameFrame variant="panel" />
             <p>{{ incomingInvitations[0]?.fromName }} приглашает в отряд.</p>
-            <button type="button" @click="toggleWindow('guild')">Посмотреть приглашение</button>
+            <GameButton @click="toggleWindow('guild')">Посмотреть приглашение</GameButton>
         </div>
         <CompanionWindow
             v-if="activeWindow === 'companions' && showWindow"

@@ -7,6 +7,8 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 
 const props = defineProps<{ adventure: AdventureSnapshot; alive: boolean }>()
 defineEmits<{ close: []; command: [message: ClientMessage] }>()
@@ -36,10 +38,14 @@ function canCraft(recipe: AdventureRecipe): boolean {
 </script>
 
 <template>
-    <section class="adventure-crafting adventure-window" aria-label="Материалы и ремесло">
+    <section
+        class="adventure-crafting adventure-window game-frame-host"
+        aria-label="Материалы и ремесло"
+    >
+        <GameFrame variant="window" />
         <header class="adventure-window__header">
             <span>ПОЛЕВОЕ РЕМЕСЛО</span>
-            <button type="button" aria-label="Закрыть ремесло" @click="$emit('close')">×</button>
+            <GameButton icon aria-label="Закрыть ремесло" @click="$emit('close')">×</GameButton>
         </header>
         <dl class="crafting-materials">
             <template v-for="material in materials" :key="material.id">
@@ -55,13 +61,12 @@ function canCraft(recipe: AdventureRecipe): boolean {
                 <strong>{{ recipe.label }}</strong>
                 <p>{{ costLabel(recipe) }}</p>
             </div>
-            <button
-                type="button"
+            <GameButton
                 :disabled="!canCraft(recipe)"
                 @click="$emit('command', { recipeId: recipe.id, type: 'craft' })"
             >
                 Создать
-            </button>
+            </GameButton>
         </article>
         <section v-if="adventure.craftOrders?.length" aria-label="Заказы ремесленникам">
             <h3>Заказы ремесленникам</h3>

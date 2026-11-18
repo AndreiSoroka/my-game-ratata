@@ -17,11 +17,8 @@
 
 .join-panel {
     width: min(420px, 100%);
-    border: 1px solid rgba(238, 247, 238, 0.18);
-    border-radius: 8px;
-    background: rgba(15, 18, 17, 0.92);
+    border: 1px solid transparent;
     padding: 24px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
 .join-panel h1 {
@@ -49,22 +46,14 @@
 .join-row input,
 .join-row button {
     min-height: 42px;
-    border-radius: 6px;
-    font: inherit;
 }
 
 .join-row input {
     min-width: 0;
-    border: 1px solid rgba(238, 247, 238, 0.24);
-    background: #202621;
-    color: #ffffff;
     padding: 0 12px;
 }
 
 .join-row button {
-    border: 0;
-    background: #d8b85f;
-    color: #17130a;
     cursor: pointer;
     font-weight: 800;
     padding: 0 18px;
@@ -100,7 +89,6 @@
     justify-content: space-between;
     gap: 16px;
     border-bottom: 1px solid rgba(238, 247, 238, 0.14);
-    background: rgba(11, 13, 12, 0.9);
     padding: 10px 14px;
 }
 
@@ -139,8 +127,6 @@
     bottom: 14px;
     z-index: 3;
     max-width: min(420px, calc(100vw - 28px));
-    border-radius: 6px;
-    background: rgba(40, 10, 8, 0.92);
     padding: 10px 12px;
 }
 
@@ -157,21 +143,10 @@
 .bottom-actions__button {
     min-width: 116px;
     min-height: 40px;
-    border: 1px solid rgba(238, 247, 238, 0.22);
-    border-radius: 6px;
-    background: rgba(16, 21, 29, 0.92);
-    color: #eef7ee;
     cursor: pointer;
-    font: inherit;
     font-size: 13px;
     font-weight: 800;
     padding: 0 14px;
-}
-
-.bottom-actions__button--active {
-    border-color: #d8b85f;
-    color: #17130a;
-    background: #d8b85f;
 }
 
 @media (max-width: 740px) {

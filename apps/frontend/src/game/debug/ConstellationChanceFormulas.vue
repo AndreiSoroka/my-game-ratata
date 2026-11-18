@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import GameFrame from '../ui/primitives/GameFrame.vue'
 import type { ConstellationChanceFormula } from './constellationChanceTypes'
 
 const props = defineProps<{ details?: ConstellationChanceFormula[]; legacy: string[] }>()
@@ -17,7 +18,13 @@ const formulas = computed(() =>
         data-testid="debug-effect-chance-formulas"
         aria-label="Формулы шанса"
     >
-        <li v-for="(formula, index) in formulas" :key="index" data-testid="debug-effect-formula">
+        <li
+            v-for="(formula, index) in formulas"
+            :key="index"
+            class="formula-card game-frame-host"
+            data-testid="debug-effect-formula"
+        >
+            <GameFrame variant="inset" />
             <h3>{{ formula.label }}</h3>
             <code>{{ formula.expression }}</code>
             <dl
@@ -42,13 +49,12 @@ const formulas = computed(() =>
     padding: 0;
     list-style: none;
 }
-li {
+.formula-card {
     display: grid;
     gap: 10px;
     min-width: 0;
     padding: 12px;
-    border: 1px solid #34505e;
-    background: #0a1c27;
+    border: 1px solid transparent;
 }
 h3,
 p,

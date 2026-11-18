@@ -8,6 +8,7 @@ import { computed } from 'vue'
 
 import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
+import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{ item: ItemInstanceSnapshot; hasNearbyChest: boolean }>()
 const emit = defineEmits<{
     inventoryAction: [payload: { action: InventoryActionKind; itemInstanceId: string }]
@@ -23,23 +24,35 @@ function act(action: InventoryActionKind): void {
     <div class="inventory-actions">
         <strong>{{ itemStackLabel(item) }}</strong>
         <ItemCondition :item="item" />
-        <button v-if="item.itemId === 'sapling'" type="button" @click="emit('plant')">
+        <GameButton v-if="item.itemId === 'sapling'" type="button" @click="emit('plant')">
             Посадить дерево
-        </button>
+        </GameButton>
         <small v-if="(definition.maxStack ?? 1) > 1"
             >До {{ definition.maxStack }} в одном слоте</small
         >
         <p v-if="definition.description" class="inventory-item-description">
             {{ definition.description }}
         </p>
-        <button v-if="definition.healHp !== undefined" type="button" @click="act('eat')">
+        <GameButton
+            variant="success"
+            v-if="definition.healHp !== undefined"
+            type="button"
+            @click="act('eat')"
+        >
             Eat
-        </button>
-        <button v-if="definition.equipmentSlots !== undefined" type="button" @click="act('equip')">
+        </GameButton>
+        <GameButton
+            variant="primary"
+            v-if="definition.equipmentSlots !== undefined"
+            type="button"
+            @click="act('equip')"
+        >
             Equip
-        </button>
-        <button type="button" @click="act('drop')">Drop</button>
-        <button v-if="hasNearbyChest" type="button" @click="act('stash')">Put in chest</button>
+        </GameButton>
+        <GameButton variant="danger" type="button" @click="act('drop')">Drop</GameButton>
+        <GameButton v-if="hasNearbyChest" type="button" @click="act('stash')"
+            >Put in chest</GameButton
+        >
         <template v-if="item.itemId === 'food' || item.itemId === 'sapling'">
             <p class="inventory-hotbar-help">Быстрый доступ · Shift+1–4</p>
             <div
@@ -47,7 +60,7 @@ function act(action: InventoryActionKind): void {
                 role="group"
                 :aria-label="`Назначить ${item.itemId === 'sapling' ? 'саженец' : 'яблоко'} в быстрый слот`"
             >
-                <button
+                <GameButton
                     v-for="slot in 4"
                     :key="slot"
                     type="button"
@@ -55,7 +68,7 @@ function act(action: InventoryActionKind): void {
                     @click="emit('assignHotbar', slot - 1)"
                 >
                     {{ slot }}
-                </button>
+                </GameButton>
             </div>
         </template>
     </div>

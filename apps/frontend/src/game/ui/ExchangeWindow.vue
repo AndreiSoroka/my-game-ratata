@@ -10,6 +10,8 @@ import type {
 import { computed } from 'vue'
 
 import ExchangeOfferPane from './ExchangeOfferPane.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import PrivateConversation from './PrivateConversation.vue'
 import SocialWindow from './SocialWindow.vue'
 import TradeGoldEditor from './TradeGoldEditor.vue'
@@ -47,15 +49,21 @@ function whisper(text: string): void {
         @close="emit('close')"
     >
         <div class="exchange-content">
-            <div v-if="exchange.status === 'invited'" class="exchange-invitation" role="status">
+            <div
+                v-if="exchange.status === 'invited'"
+                class="exchange-invitation game-frame-host"
+                role="status"
+            >
+                <GameFrame variant="inset" />
                 {{ exchange.incoming ? 'Вас приглашают обменяться' : 'Ждём согласия собеседника' }}
             </div>
             <div
                 v-if="terminal"
-                class="exchange-terminal"
+                class="exchange-terminal game-frame-host"
                 :class="{ 'exchange-terminal--completed': exchange.status === 'completed' }"
                 role="status"
             >
+                <GameFrame variant="inset" />
                 {{ terminalText }}
             </div>
             <div class="exchange-sides" tabindex="0" aria-label="Условия обмена">
@@ -63,8 +71,8 @@ function whisper(text: string): void {
                     <template v-if="draft.editing.value">
                         <div class="exchange-bag-tools">
                             <span>Из вашей сумки</span>
-                            <button type="button" @click="draft.all">Все вещи</button>
-                            <button type="button" @click="draft.clear">Убрать вещи</button>
+                            <GameButton type="button" @click="draft.all">Все вещи</GameButton>
+                            <GameButton type="button" @click="draft.clear">Убрать вещи</GameButton>
                         </div>
                         <ul
                             class="exchange-own-items"
@@ -127,19 +135,21 @@ function whisper(text: string): void {
             <footer class="exchange-actions">
                 <template v-if="active">
                     <template v-if="!draft.editing.value">
-                        <button
+                        <GameButton
                             type="button"
                             class="exchange-primary"
+                            variant="primary"
                             :disabled="Boolean(draft.withdrawing.value || draft.confirming.value)"
                             @click="draft.edit"
                         >
                             Изменить предложение
-                        </button>
+                        </GameButton>
                     </template>
                     <template v-else>
-                        <button
+                        <GameButton
                             type="button"
                             class="exchange-primary"
+                            variant="primary"
                             :disabled="
                                 !draft.dirty.value ||
                                 !draft.valid.value ||
@@ -148,10 +158,11 @@ function whisper(text: string): void {
                             @click="draft.propose"
                         >
                             Предложить
-                        </button>
-                        <button
+                        </GameButton>
+                        <GameButton
                             type="button"
                             class="exchange-confirm"
+                            variant="success"
                             :disabled="!draft.canConfirm.value"
                             @click="draft.confirm"
                         >
@@ -160,22 +171,28 @@ function whisper(text: string): void {
                                     ? 'Подтверждено'
                                     : 'Подтвердить'
                             }}
-                        </button>
+                        </GameButton>
                     </template>
-                    <button type="button" class="exchange-cancel" @click="emit('close')">
+                    <GameButton type="button" class="exchange-cancel" @click="emit('close')">
                         Отменить
-                    </button>
+                    </GameButton>
                 </template>
                 <template v-else-if="exchange.status === 'invited' && exchange.incoming">
-                    <button type="button" class="exchange-primary" @click="answer(true)">
-                        Начать обмен
-                    </button>
-                    <button type="button" @click="answer(false)">Отказаться</button>
-                </template>
-                <template v-else-if="terminal">
-                    <button
+                    <GameButton
                         type="button"
                         class="exchange-primary"
+                        variant="primary"
+                        @click="answer(true)"
+                    >
+                        Начать обмен
+                    </GameButton>
+                    <GameButton type="button" @click="answer(false)">Отказаться</GameButton>
+                </template>
+                <template v-else-if="terminal">
+                    <GameButton
+                        type="button"
+                        class="exchange-primary"
+                        variant="primary"
                         :disabled="conversation?.available === false"
                         @click="
                             emit('command', {
@@ -185,10 +202,10 @@ function whisper(text: string): void {
                         "
                     >
                         Новый обмен
-                    </button>
-                    <button type="button" @click="emit('close')">Закрыть</button>
+                    </GameButton>
+                    <GameButton type="button" @click="emit('close')">Закрыть</GameButton>
                 </template>
-                <button v-else type="button" @click="emit('close')">Отменить</button>
+                <GameButton v-else type="button" @click="emit('close')">Отменить</GameButton>
             </footer>
         </div>
     </SocialWindow>

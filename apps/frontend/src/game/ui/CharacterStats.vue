@@ -9,6 +9,7 @@ import {
 } from './characterSheetPresentation'
 import { healthBarPercent } from './healthPresentation'
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
+import GameFrame from './primitives/GameFrame.vue'
 
 const props = defineProps<{ player: CharacterSnapshot }>()
 const sheet = computed(() => props.player.characterSheet)
@@ -61,7 +62,9 @@ const resources = computed(() =>
                     v-for="resource in resources"
                     :key="resource.id"
                     :data-resource="resource.id"
+                    class="character-resource game-frame-host"
                 >
+                    <GameFrame variant="inset" />
                     <h3>{{ resource.name }}</h3>
                     <strong>{{ observedResourceText(resource.observation) }}</strong>
                     <progress
@@ -79,7 +82,12 @@ const resources = computed(() =>
                 <dd>{{ observedText(sheet.dodgeChance, 100) }}%</dd>
             </dl>
             <section class="character-attacks" aria-label="Атаки персонажа">
-                <article v-for="attack in sheet.attacks" :key="attack.id" class="character-attack">
+                <article
+                    v-for="attack in sheet.attacks"
+                    :key="attack.id"
+                    class="character-attack game-frame-host"
+                >
+                    <GameFrame variant="inset" />
                     <h3>{{ attack.name }}</h3>
                     <dl class="character-properties">
                         <dt>Урон</dt>
@@ -108,10 +116,9 @@ const resources = computed(() =>
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
 }
-.character-resources article,
+.character-resource,
 .character-attack {
-    border: 1px solid #50616a;
-    background: #12242bc9;
+    border: 1px solid transparent;
     padding: 16px;
 }
 h3 {

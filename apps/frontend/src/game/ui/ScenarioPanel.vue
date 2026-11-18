@@ -11,6 +11,10 @@ import { computed, ref } from 'vue'
 
 import AutomationNumberField from './AutomationNumberField.vue'
 import AutomationWindow from './AutomationWindow.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameInput from './primitives/GameInput.vue'
+import GameSelect from './primitives/GameSelect.vue'
 import {
     cloneScenario,
     moveScenarioStep,
@@ -102,7 +106,7 @@ function repeat(event: Event): void {
             <div class="automation-row">
                 <label>
                     Сохранённый сценарий
-                    <select
+                    <GameSelect
                         :value="selectedId"
                         @change="select(($event.target as HTMLSelectElement).value)"
                     >
@@ -114,27 +118,23 @@ function repeat(event: Event): void {
                         >
                             {{ scenario.name }}
                         </option>
-                    </select>
+                    </GameSelect>
                 </label>
-                <button
-                    type="button"
-                    :disabled="automation.scenarios.length >= 16"
-                    @click="select('')"
-                >
+                <GameButton :disabled="automation.scenarios.length >= 16" @click="select('')">
                     Создать
-                </button>
-                <button type="button" :disabled="!saved || !available" @click="remove">
+                </GameButton>
+                <GameButton variant="danger" :disabled="!saved || !available" @click="remove">
                     Удалить сценарий
-                </button>
+                </GameButton>
             </div>
             <label>
                 Название сценария
-                <input v-model="draft.name" maxlength="80" />
+                <GameInput v-model="draft.name" maxlength="80" />
             </label>
             <div class="automation-row">
                 <label>
                     Повторение
-                    <select
+                    <GameSelect
                         :value="
                             draft.repeat === null
                                 ? 'forever'
@@ -147,7 +147,7 @@ function repeat(event: Event): void {
                         <option value="once">Один раз</option>
                         <option value="count">Несколько раз</option>
                         <option value="forever">Без конца</option>
-                    </select>
+                    </GameSelect>
                 </label>
                 <AutomationNumberField
                     v-if="draft.repeat !== null && draft.repeat !== 1"
@@ -158,11 +158,11 @@ function repeat(event: Event): void {
                 />
                 <label>
                     Если рядом враг
-                    <select v-model="draft.threat">
+                    <GameSelect v-model="draft.threat">
                         <option value="flee">Отступить</option>
                         <option value="attack">Вступить в бой</option>
                         <option value="continue">Продолжать сценарий</option>
-                    </select>
+                    </GameSelect>
                 </label>
             </div>
             <p class="automation-muted">
@@ -170,32 +170,37 @@ function repeat(event: Event): void {
                 добраться до метки. Редактирование не меняет уже запущенную копию.
             </p>
             <ol class="automation-list scenario-steps" aria-label="Шаги сценария">
-                <li v-for="(step, index) in draft.steps" :key="step.id" class="automation-card">
+                <li
+                    v-for="(step, index) in draft.steps"
+                    :key="step.id"
+                    class="automation-card game-frame-host"
+                >
+                    <GameFrame variant="panel" />
                     <div class="automation-row">
                         <h3>Шаг {{ index + 1 }}</h3>
-                        <button
-                            type="button"
+                        <GameButton
+                            icon
                             :disabled="index === 0"
                             :aria-label="`Поднять шаг ${index + 1}`"
                             @click="draft.steps = moveScenarioStep(draft.steps, index, -1)"
                         >
                             ↑
-                        </button>
-                        <button
-                            type="button"
+                        </GameButton>
+                        <GameButton
+                            icon
                             :disabled="index === draft.steps.length - 1"
                             :aria-label="`Опустить шаг ${index + 1}`"
                             @click="draft.steps = moveScenarioStep(draft.steps, index, 1)"
                         >
                             ↓
-                        </button>
-                        <button
-                            type="button"
+                        </GameButton>
+                        <GameButton
+                            variant="danger"
                             :aria-label="`Удалить шаг ${index + 1}`"
                             @click="draft.steps.splice(index, 1)"
                         >
                             Удалить
-                        </button>
+                        </GameButton>
                     </div>
                     <ScenarioStepFields
                         :model-value="step"
@@ -208,7 +213,7 @@ function repeat(event: Event): void {
             <div class="automation-row">
                 <label>
                     Новый шаг
-                    <select v-model="addKind">
+                    <GameSelect v-model="addKind">
                         <option
                             v-for="(label, kind) in scenarioStepLabels"
                             :key="kind"
@@ -216,18 +221,18 @@ function repeat(event: Event): void {
                         >
                             {{ label }}
                         </option>
-                    </select>
+                    </GameSelect>
                 </label>
-                <button type="button" :disabled="draft.steps.length >= 64" @click="add">
+                <GameButton :disabled="draft.steps.length >= 64" @click="add">
                     Добавить шаг
-                </button>
-                <button type="button" :disabled="!canSave || !dirty" @click="save">
+                </GameButton>
+                <GameButton variant="primary" :disabled="!canSave || !dirty" @click="save">
                     Сохранить
-                </button>
+                </GameButton>
             </div>
             <label>
                 Кто выполняет
-                <select v-model="targetId">
+                <GameSelect v-model="targetId">
                     <option value="">Мой персонаж</option>
                     <option
                         v-for="helper in automation.helpers"
@@ -236,7 +241,7 @@ function repeat(event: Event): void {
                     >
                         {{ helper.name }}{{ helper.eligible ? '' : ' · пока не поможет' }}
                     </option>
-                </select>
+                </GameSelect>
             </label>
             <p v-if="selectedHelper?.reason" class="automation-muted">
                 {{ selectedHelper.reason }}
@@ -246,13 +251,13 @@ function repeat(event: Event): void {
                 {{ selectedHelper.canFollow ? 'Может путешествовать' : 'Остаётся у своего поста' }}
             </p>
             <p v-if="dirty" class="automation-muted">Сохраните изменения перед запуском.</p>
-            <button
-                type="button"
+            <GameButton
+                variant="primary"
                 :disabled="!available || !saved || dirty || !eligible"
                 @click="start"
             >
                 Запустить
-            </button>
+            </GameButton>
             <ScenarioRunStatus
                 v-if="run"
                 :run="run"

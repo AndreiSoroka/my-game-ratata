@@ -6,6 +6,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { activeQuests } from './activeQuests'
 import ExchangeWindow from './ExchangeWindow.vue'
+import GameButton from './primitives/GameButton.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import QuestTurnInWindow from './QuestTurnInWindow.vue'
 import WhisperWindow from './WhisperWindow.vue'
@@ -164,7 +165,8 @@ defineExpose({ command, hasOpenWindow })
 </script>
 <template>
     <div v-if="available" ref="hints" class="social-hints" aria-label="Личные разговоры и квесты">
-        <button
+        <GameButton
+            variant="success"
             v-if="
                 whisper &&
                 !whisperVisible &&
@@ -172,12 +174,12 @@ defineExpose({ command, hasOpenWindow })
                 !questOfferVisible &&
                 !turnInVisible
             "
-            type="button"
             @click="showWhisper"
         >
             Шёпот: {{ whisper.partnerName }}{{ whisper.messages.length ? ' · новые реплики' : '' }}
-        </button>
-        <button
+        </GameButton>
+        <GameButton
+            variant="success"
             v-if="
                 exchange &&
                 !exchangeVisible &&
@@ -185,13 +187,12 @@ defineExpose({ command, hasOpenWindow })
                 !turnInVisible &&
                 ['invited', 'active'].includes(exchange.status)
             "
-            type="button"
             @click="showExchange"
         >
             {{ exchange.partnerName }}:
             {{ exchange.status === 'invited' ? 'приглашение к обмену' : 'обмен' }}
-        </button>
-        <button type="button" @click="emit('quests')">Квесты · {{ questCount }}</button>
+        </GameButton>
+        <GameButton @click="emit('quests')">Квесты · {{ questCount }}</GameButton>
     </div>
     <QuestTurnInWindow
         v-if="turnInVisible && social?.questTurnIn"

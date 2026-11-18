@@ -17,6 +17,6 @@ it('keeps a closed card to one word without type, effects or description', () =>
     const node = constellationFixture().nodes.find((node) => !node.unlocked)!
     const view = mount(ConstellationStarCard, { props: { node } })
     expect(view.text()).toBe('Неизвестно')
-    expect(view.findAll('aside > *')).toHaveLength(1)
+    expect(view.findAll('aside > :not([aria-hidden="true"])')).toHaveLength(1)
     view.unmount()
 })

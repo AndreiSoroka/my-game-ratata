@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 const props = defineProps<{
     anchor: { x: number; y: number; width: number; height: number }
     available: boolean
@@ -14,25 +17,21 @@ const style = computed(() => ({
 </script>
 <template>
     <section
-        class="planting-hint rpg-panel"
+        class="planting-hint rpg-panel game-frame-host"
         :class="{ available }"
         :style="style"
         role="region"
         aria-label="Посадка дерева"
         data-world-pointer-owner
     >
+        <GameFrame variant="panel" />
         <strong>{{ approaching ? 'Посадка дерева' : 'Выберите участок' }}</strong>
         <p role="status">{{ status }}</p>
         <div>
-            <button
-                v-if="!approaching"
-                type="button"
-                :data-available="available"
-                @click="emit('confirm')"
-            >
+            <GameButton v-if="!approaching" :data-available="available" @click="emit('confirm')">
                 Посадить · F / Enter
-            </button>
-            <button type="button" @click="emit('cancel')">Отмена · Esc</button>
+            </GameButton>
+            <GameButton @click="emit('cancel')">Отмена · Esc</GameButton>
         </div>
         <small v-if="!approaching">Стрелки · Касание выбирает, повторное — сажает</small>
     </section>
@@ -45,7 +44,6 @@ const style = computed(() => ({
     width: min(264px, calc(100% - 16px));
     box-sizing: border-box;
     font: 11px/1.4 system-ui;
-    border-color: #92969b;
     pointer-events: auto;
 }
 .planting-hint.available {
@@ -65,6 +63,5 @@ div {
 }
 button {
     padding: 4px 6px;
-    font: inherit;
 }
 </style>

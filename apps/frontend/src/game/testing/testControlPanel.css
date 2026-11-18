@@ -7,10 +7,7 @@
     max-height: calc(100dvh - 96px);
     overflow: auto;
     color: #e7eee6;
-    background: #131d1bee;
-    border: 1px solid #758b7c;
-    border-radius: 8px;
-    box-shadow: 0 10px 32px #0008;
+    border: 1px solid transparent;
     font:
         12px/1.4 system-ui,
         sans-serif;
@@ -18,20 +15,11 @@
 .test-panel button,
 .test-panel input {
     min-height: 32px;
-    color: inherit;
-    background: #25332e;
-    border: 1px solid #66796b;
-    border-radius: 4px;
-    font: inherit;
+    border: 1px solid transparent;
 }
 .test-panel button {
     padding: 4px 10px;
     cursor: pointer;
-}
-.test-panel button:focus-visible,
-.test-panel input:focus-visible {
-    outline: 2px solid #e9cb72;
-    outline-offset: 2px;
 }
 .test-panel button:disabled,
 .test-panel fieldset:disabled {
@@ -48,7 +36,6 @@
     justify-content: space-between;
     width: 100%;
     font-weight: 700 !important;
-    border: 0 !important;
 }
 .test-panel__body {
     padding: 12px;

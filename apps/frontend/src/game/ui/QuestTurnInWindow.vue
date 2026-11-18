@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
+import GameButton from './primitives/GameButton.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import SocialWindow from './SocialWindow.vue'
 
@@ -60,8 +61,8 @@ function answer(accept: boolean): void {
             Подтверждение устарело. Попросите заказчика проверить договор снова.
         </p>
         <div class="social-window__actions">
-            <button
-                type="button"
+            <GameButton
+                variant="success"
                 :disabled="pending || serverTime >= prompt.expiresAt"
                 @click="answer(true)"
             >
@@ -72,10 +73,10 @@ function answer(accept: boolean): void {
                           ? 'Передать трофей и доложить'
                           : 'Сдать'
                 }}
-            </button>
-            <button type="button" :disabled="pending" @click="answer(false)">
+            </GameButton>
+            <GameButton :disabled="pending" @click="answer(false)">
                 Вернуться к разговору
-            </button>
+            </GameButton>
         </div>
     </SocialWindow>
 </template>

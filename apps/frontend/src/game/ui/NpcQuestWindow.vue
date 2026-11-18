@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CharacterSnapshot, ClientMessage, NpcQuestSnapshot } from '@my-game-ratata/contracts'
 
+import GameButton from './primitives/GameButton.vue'
 import QuestTerms from './QuestTerms.vue'
 import SocialWindow from './SocialWindow.vue'
 
@@ -34,17 +35,17 @@ function turnIn(): void {
             class="social-window__actions"
             v-if="['active', 'ready', 'reward_missing'].includes(quest.status)"
         >
-            <button type="button" :disabled="quest.status !== 'ready'" @click="turnIn">
+            <GameButton variant="success" :disabled="quest.status !== 'ready'" @click="turnIn">
                 Сдать заказчику
-            </button>
-            <button
-                type="button"
+            </GameButton>
+            <GameButton
+                variant="danger"
                 @click="
                     emit('command', { type: 'npc_quest_abandon', instanceId: quest.instanceId })
                 "
             >
                 Отменить договор
-            </button>
+            </GameButton>
         </div>
     </SocialWindow>
 </template>

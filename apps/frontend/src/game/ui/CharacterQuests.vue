@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue'
 import { activeQuests, questStatusLabel } from './activeQuests'
 import GuildQuestCard from './GuildQuestCard.vue'
 import ItemIcon from './ItemIcon.vue'
+import GameButton from './primitives/GameButton.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import QuestTerms from './QuestTerms.vue'
 
@@ -32,16 +33,15 @@ const leader = computed(
         <p v-if="!entries.length" class="quests-empty">Активных квестов нет.</p>
         <template v-else>
             <nav class="quest-list" aria-label="Список активных квестов">
-                <button
+                <GameButton
                     v-for="entry in entries"
                     :key="entry.key"
-                    type="button"
                     :aria-current="selected?.key === entry.key ? 'true' : undefined"
                     @click="selectedKey = entry.key"
                 >
                     <strong>{{ entry.quest.title }}</strong>
                     <small>{{ questStatusLabel(entry.quest.status) }}</small>
-                </button>
+                </GameButton>
             </nav>
             <article v-if="selected" class="quest-detail" aria-label="Подробности квеста">
                 <template v-if="selected.source === 'npc'">
@@ -59,8 +59,8 @@ const leader = computed(
                     <p class="quest-help">
                         Вернитесь к {{ selected.quest.issuerName }} и скажите «квест готов».
                     </p>
-                    <button
-                        type="button"
+                    <GameButton
+                        variant="danger"
                         :disabled="!leader || !player.alive"
                         @click="
                             emit('command', {
@@ -70,7 +70,7 @@ const leader = computed(
                         "
                     >
                         Отменить договор
-                    </button>
+                    </GameButton>
                 </template>
                 <template v-else-if="selected.source === 'guild'">
                     <GuildQuestCard
@@ -128,17 +128,10 @@ const leader = computed(
     gap: 8px;
 }
 .quest-list button {
-    color: inherit;
-    font: inherit;
     text-align: left;
-    background: #152b34;
-    border: 1px solid #52616a;
+    border: 1px solid transparent;
     padding: 12px;
     overflow-wrap: anywhere;
-}
-.quest-list button[aria-current='true'] {
-    border-color: #ecd08d;
-    background: #293b40;
 }
 .quest-list strong,
 .quest-list small {
@@ -161,11 +154,8 @@ const leader = computed(
     padding: 0;
 }
 .quest-detail button {
-    color: inherit;
-    font: inherit;
     padding: 8px 12px;
-    background: #273941;
-    border: 1px solid #718078;
+    border: 1px solid transparent;
 }
 .quest-detail button:disabled {
     opacity: 0.5;

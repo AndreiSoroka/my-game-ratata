@@ -5,6 +5,8 @@ import { nextTick, onMounted, ref } from 'vue'
 
 import CloseIcon from './CloseIcon.vue'
 import { isConfirmationKey } from './keyboardOwnership'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = defineProps<{ title: string; modal?: boolean; layout?: 'exchange' }>()
@@ -61,7 +63,7 @@ onMounted(async () => {
     >
         <section
             ref="panel"
-            class="social-window"
+            class="social-window game-frame-host"
             :class="{ 'social-window--exchange': layout === 'exchange' }"
             role="dialog"
             :aria-modal="modal || undefined"
@@ -70,16 +72,18 @@ onMounted(async () => {
             @keydown.stop="key"
             @keyup.stop
         >
+            <GameFrame variant="window" />
             <header class="social-window__header">
                 <h2>{{ title }}</h2>
-                <button
+                <GameButton
                     type="button"
                     class="social-window__close"
+                    icon
                     :aria-label="`Закрыть: ${title}`"
                     @click="emit('close')"
                 >
                     <CloseIcon />
-                </button>
+                </GameButton>
             </header>
             <slot />
         </section>

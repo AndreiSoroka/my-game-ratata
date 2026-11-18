@@ -11,6 +11,8 @@ import type {
 import { computed, ref } from 'vue'
 
 import GuildQuestCard from './GuildQuestCard.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import QuestRewardChoice from './QuestRewardChoice.vue'
 
 const props = defineProps<{
@@ -67,25 +69,30 @@ function canTake(job: GuildQuestDefinition): boolean {
 </script>
 <template>
     <section
-        class="adventure-window adventure-guild"
+        class="adventure-window adventure-guild game-frame-host"
         role="dialog"
         aria-modal="false"
         aria-label="Гильдия приключенцев"
     >
+        <GameFrame variant="window" />
         <header class="adventure-window__header">
             <span>ГИЛЬДИЯ ПРИКЛЮЧЕНЦЕВ</span
-            ><button type="button" aria-label="Закрыть гильдию" @click="emit('close')">×</button>
+            ><GameButton icon aria-label="Закрыть гильдию" @click="emit('close')">×</GameButton>
         </header>
         <p class="guild-intro">
             Найдите попутчиков, возьмите контракт и внесите свой вклад. Отряд вмещает до четырёх
             путешественников.
         </p>
         <section v-if="incoming.length" class="guild-invitations" aria-label="Приглашения в отряд">
-            <article v-for="invitation in incoming" :key="invitation.id">
+            <article
+                v-for="invitation in incoming"
+                :key="invitation.id"
+                class="guild-invitation game-frame-host"
+            >
+                <GameFrame variant="panel" />
                 <p>{{ invitation.fromName }} приглашает в отряд.</p>
                 <div>
-                    <button
-                        type="button"
+                    <GameButton
                         @click="
                             emit('command', {
                                 type: 'party_answer',
@@ -94,9 +101,8 @@ function canTake(job: GuildQuestDefinition): boolean {
                             })
                         "
                     >
-                        Принять</button
-                    ><button
-                        type="button"
+                        Принять</GameButton
+                    ><GameButton
                         @click="
                             emit('command', {
                                 type: 'party_answer',
@@ -106,20 +112,16 @@ function canTake(job: GuildQuestDefinition): boolean {
                         "
                     >
                         Отказаться
-                    </button>
+                    </GameButton>
                 </div>
             </article>
         </section>
         <section class="guild-party" aria-label="Ваш отряд">
             <div class="guild-section-heading">
                 <h2>Ваш отряд · {{ party.members.length || 1 }}/4</h2>
-                <button
-                    v-if="party.partyId"
-                    type="button"
-                    @click="emit('command', { type: 'party_leave' })"
-                >
+                <GameButton v-if="party.partyId" @click="emit('command', { type: 'party_leave' })">
                     Покинуть
-                </button>
+                </GameButton>
             </div>
             <p v-if="!party.partyId" class="guild-muted">
                 Вы путешествуете самостоятельно. Контракт можно взять и одному.
@@ -145,8 +147,7 @@ function canTake(job: GuildQuestDefinition): boolean {
                 <summary>Пригласить путешественника</summary>
                 <div v-for="candidate in candidates" :key="candidate.id" class="guild-candidate">
                     <span>{{ candidate.nickname }}</span
-                    ><button
-                        type="button"
+                    ><GameButton
                         :disabled="
                             !player.alive ||
                             party.members.length >= 4 ||
@@ -155,7 +156,7 @@ function canTake(job: GuildQuestDefinition): boolean {
                         @click="emit('command', { type: 'party_invite', targetId: candidate.id })"
                     >
                         Пригласить
-                    </button>
+                    </GameButton>
                 </div>
                 <p v-if="!candidates.length" class="guild-muted">
                     Других игроков поблизости пока нет. Спутников-жителей зовите через «Спутники».
@@ -204,8 +205,8 @@ function canTake(job: GuildQuestDefinition): boolean {
                         @update:model-value="selectedRewards[job.id] = $event"
                     />
                 </div>
-                <button
-                    type="button"
+                <GameButton
+                    variant="success"
                     :disabled="
                         !canTake(job) ||
                         (party.activeJob !== null && party.activeJob.status !== 'completed')
@@ -213,7 +214,7 @@ function canTake(job: GuildQuestDefinition): boolean {
                     @click="accept(job)"
                 >
                     Взять
-                </button>
+                </GameButton>
             </article>
         </section>
     </section>

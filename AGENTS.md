@@ -13,6 +13,13 @@
 - Storybook stories should showcase clean, focused components and states, not a one-off pile of unrelated UI inside every story.
 - Extract reusable HTML/CSS/Vue primitives or render helpers first, then compose larger examples such as HUD groups, windows, inventory panels, or quest dialogs from those primitives.
 
+## Shared game interface
+
+- Build new and updated UI with the production components in `apps/frontend/src/game/ui/primitives`: `GameButton`, `GameInput`, `GameSelect`, `GameTextarea`, `GameFrame` and `GameItemSlot`. See that directory's `README.md` and the focused `Interface/Primitives` Storybook stories.
+- Keep colors, decorative asset sources and control states in `primitives/gameUi.css`. Parent styles own layout, sizing and scrolling, not a second button/field/frame skin. Preserve semantic resource colors and specialized world/SVG graphics.
+- Keep native dialog surfaces and their DOM refs. Add `GameFrame` as an aria-hidden decorative child of a `game-frame-host`; reuse `GameItemSlot` for item frames and interactive slots. Do not nest buttons or replace normal keyboard/command handling with presentation behavior.
+- Cover new variants and visible states with the manual headless Storybook screenshot suite. Do not add browser suites to automatic checks or pre-commit.
+
 ## Skills
 
 - Character sprite creation rules live in `skills/персонажи/README.md`.

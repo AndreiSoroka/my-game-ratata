@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import GameButton from './primitives/GameButton.vue'
+import GameInput from './primitives/GameInput.vue'
 const props = defineProps<{ selected: number; available: number }>()
 const emit = defineEmits<{ change: [quantity: number] }>()
 function change(value: number): void {
@@ -14,15 +16,16 @@ function change(value: number): void {
             >◈ Золото <small>свободно {{ available }}</small></span
         >
         <div class="trade-gold-editor__controls">
-            <button
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="selected <= 0"
                 aria-label="Меньше золота"
                 @click="change(selected - 1)"
             >
                 −
-            </button>
-            <input
+            </GameButton>
+            <GameInput
                 :value="selected"
                 type="number"
                 min="0"
@@ -31,32 +34,35 @@ function change(value: number): void {
                 aria-label="Предложить золото"
                 @input="change(Number(($event.target as HTMLInputElement).value))"
             />
-            <button
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="selected >= available"
                 aria-label="Больше золота"
                 @click="change(selected + 1)"
             >
                 +
-            </button>
+            </GameButton>
         </div>
         <div class="trade-gold-editor__shortcuts">
-            <button
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="selected === available"
                 aria-label="Всё золото"
                 @click="change(available)"
             >
                 Всё
-            </button>
-            <button
+            </GameButton>
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="selected <= 0"
                 aria-label="Убрать золото"
                 @click="change(0)"
             >
                 ×
-            </button>
+            </GameButton>
         </div>
     </div>
 </template>

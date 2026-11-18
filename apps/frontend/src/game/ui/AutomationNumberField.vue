@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
+import GameInput from './primitives/GameInput.vue'
+
 const props = defineProps<{ modelValue: number; label: string; min: number; max: number }>()
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
 const draft = ref(String(props.modelValue))
@@ -29,7 +31,7 @@ function commit(): void {
 <template>
     <label>
         {{ label }}
-        <input
+        <GameInput
             type="number"
             :value="draft"
             :min="min"

@@ -13,6 +13,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RatataGame } from '../runtime/ratataGame'
 import { gameKeyBlocked } from './keyboardOwnership'
 import MarkerPanel from './MarkerPanel.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import ScenarioPanel from './ScenarioPanel.vue'
 import ScenarioRunStatus from './ScenarioRunStatus.vue'
 import { scenarioVisibleTargets } from './scenarioTargets'
@@ -92,8 +93,9 @@ defineExpose({ open, close, create, hasOpenWindow: computed(() => activeWindow.v
 <template>
     <div
         v-if="activeRuns.length && !activeWindow"
-        class="automation-mini automation-form rpg-panel"
+        class="automation-mini automation-form rpg-panel game-frame-host"
     >
+        <GameFrame variant="panel" />
         <ScenarioRunStatus
             v-for="run in activeRuns"
             :key="run.actorId"

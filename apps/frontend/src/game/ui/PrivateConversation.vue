@@ -2,6 +2,9 @@
 import type { ClientMessage, WhisperSnapshot } from '@my-game-ratata/contracts'
 import { nextTick, onMounted, ref, watch } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameInput from './primitives/GameInput.vue'
 import { usePrivateTyping } from './usePrivateTyping'
 
 const props = defineProps<{ conversation: WhisperSnapshot; playerId: string }>()
@@ -64,17 +67,18 @@ watch(
 onMounted(bottom)
 </script>
 <template>
-    <section class="private-conversation" aria-label="Приватный разговор">
+    <section class="private-conversation game-frame-host" aria-label="Приватный разговор">
+        <GameFrame variant="panel" />
         <header class="private-conversation__header">
             <span title="Реплики слышите только вы и собеседник">Шёпот</span>
-            <button
+            <GameButton
                 v-if="unread"
                 type="button"
                 class="private-conversation__unread"
                 @click="bottom"
             >
                 Новые сообщения ↓
-            </button>
+            </GameButton>
             <small v-if="!conversation.available">Собеседник недоступен</small>
         </header>
         <ol
@@ -107,7 +111,7 @@ onMounted(bottom)
         >
             <label class="private-conversation__label">
                 <span class="sr-only">Сказать шёпотом</span>
-                <input
+                <GameInput
                     v-model="text"
                     maxlength="400"
                     autocomplete="off"
@@ -117,26 +121,25 @@ onMounted(bottom)
                     @blur="typing.stop"
                 />
             </label>
-            <button
+            <GameButton
                 type="submit"
                 :disabled="!conversation.available || !text.trim()"
                 aria-label="Отправить"
                 title="Отправить · Enter"
             >
                 ↗
-            </button>
+            </GameButton>
         </form>
     </section>
 </template>
 <style scoped>
 .private-conversation {
+    position: relative;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    border: 1px solid #465940;
-    border-radius: 6px;
+    border: 1px solid transparent;
     overflow: hidden;
-    background: #102019;
 }
 .private-conversation__header {
     display: flex;
@@ -203,7 +206,6 @@ onMounted(bottom)
     box-sizing: border-box;
     width: 100%;
     min-height: 34px;
-    background: #101e16;
 }
 .private-conversation__form button {
     flex: 0 0 36px;

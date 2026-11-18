@@ -8,6 +8,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { ref, watch } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
 import PrivateConversation from './PrivateConversation.vue'
 import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestTerms from './QuestTerms.vue'
@@ -65,14 +66,14 @@ function answer(accept: boolean): void {
             @command="emit('command', $event)"
         />
         <div class="social-window__actions">
-            <button
-                type="button"
+            <GameButton
+                variant="success"
                 :disabled="occupied || serverTime >= offer.expiresAt"
                 @click="answer(true)"
             >
                 Взять
-            </button>
-            <button type="button" @click="answer(false)">Отказаться</button>
+            </GameButton>
+            <GameButton @click="answer(false)">Отказаться</GameButton>
         </div>
     </SocialWindow>
 </template>

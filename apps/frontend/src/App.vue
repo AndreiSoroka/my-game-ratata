@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import './game/ui/gameNotice.css'
-
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
@@ -13,6 +11,7 @@ import { startAppRuntime } from './game/ui/appRuntime'
 import AutomationPanels from './game/ui/AutomationPanels.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
 import GameChat from './game/ui/GameChat.vue'
+import GameNotice from './game/ui/GameNotice.vue'
 import GameplayOverlay from './game/ui/GameplayOverlay.vue'
 import GameWindows from './game/ui/GameWindows.vue'
 import { provideHotbarSession } from './game/ui/hotbarSession'
@@ -300,7 +299,7 @@ async function joinGame(): Promise<void> {
                 @command="game?.sendCommand($event)"
             />
         </section>
-        <p v-if="notice" class="game-notice" role="status" aria-live="polite">{{ notice }}</p>
+        <GameNotice v-if="notice" :text="notice" />
         <TestControlPanel v-if="testInterface" :api="testInterface.api" :state="testState" />
     </main>
 </template>

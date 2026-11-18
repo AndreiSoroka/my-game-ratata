@@ -1,0 +1,230 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+
+import { itemAssetCatalog } from '../assets/itemCatalog'
+import GameButton from '../ui/primitives/GameButton.vue'
+import GameFrame from '../ui/primitives/GameFrame.vue'
+import GameInput from '../ui/primitives/GameInput.vue'
+import GameItemSlot from '../ui/primitives/GameItemSlot.vue'
+import GameSelect from '../ui/primitives/GameSelect.vue'
+import GameTextarea from '../ui/primitives/GameTextarea.vue'
+
+defineProps<{ section: 'buttons' | 'fields' | 'frames' | 'slots' }>()
+const variants = ['secondary', 'primary', 'success', 'danger', 'slot'] as const
+const labels = {
+    secondary: 'Закрыть',
+    primary: 'Предложить',
+    success: 'Подтвердить',
+    danger: 'Отменить',
+    slot: '1',
+}
+const message = ref('Можем обменяться?')
+const quantity = ref(2)
+const destination = ref('novogorod')
+const notes = ref('Встретимся у городских ворот.')
+const enabled = ref(true)
+const choice = ref('party')
+</script>
+
+<template>
+    <section class="game-primitives-stage" :aria-label="`Общие компоненты: ${section}`">
+        <template v-if="section === 'buttons'">
+            <h2>Кнопки</h2>
+            <div v-for="variant in variants" :key="variant" class="primitive-example">
+                <h3>{{ variant }}</h3>
+                <div class="primitive-row">
+                    <GameButton :variant="variant" :data-testid="`${variant}-default`">{{
+                        labels[variant]
+                    }}</GameButton>
+                    <GameButton :variant="variant" disabled>{{ labels[variant] }}</GameButton>
+                    <GameButton :variant="variant" aria-pressed="true">{{
+                        labels[variant]
+                    }}</GameButton>
+                </div>
+            </div>
+            <div class="primitive-example primitive-selected">
+                <h3>Выбранные переключатели и текущий пункт</h3>
+                <div class="primitive-row">
+                    <GameButton role="switch" aria-checked="true">Автозапуск</GameButton>
+                    <GameButton aria-current="true">Текущее задание</GameButton>
+                    <GameButton aria-current="false">Другое задание</GameButton>
+                </div>
+            </div>
+            <div class="primitive-example">
+                <h3>Компактные действия</h3>
+                <div class="primitive-row">
+                    <GameButton size="compact">Всё</GameButton>
+                    <GameButton size="compact" icon aria-label="Уменьшить">−</GameButton>
+                    <GameButton size="compact" icon aria-label="Увеличить">+</GameButton>
+                    <GameButton icon aria-label="Закрыть окно">×</GameButton>
+                </div>
+            </div>
+        </template>
+        <template v-else-if="section === 'fields'">
+            <h2>Поля ввода</h2>
+            <div class="primitive-fields">
+                <label>Сообщение<GameInput v-model="message" maxlength="400" /></label>
+                <label
+                    >Количество<GameInput v-model.number="quantity" type="number" min="0" max="9"
+                /></label>
+                <label
+                    >Место<GameSelect v-model="destination"
+                        ><option value="novogorod">Новогород</option>
+                        <option value="forest">Лес</option></GameSelect
+                    ></label
+                >
+                <label>Пустое поле<GameInput placeholder="Сообщение собеседнику" /></label>
+                <label
+                    >Ошибка<GameInput
+                        value="Недоступно"
+                        aria-invalid="true"
+                        aria-describedby="field-error"
+                    /><small id="field-error">Измените значение</small></label
+                >
+                <label>Недоступное поле<GameInput value="Собеседник недоступен" disabled /></label>
+                <label>Заметка<GameTextarea v-model="notes" rows="3" /></label>
+                <label class="primitive-check"
+                    ><GameInput v-model="enabled" type="checkbox" /> Общая награда</label
+                >
+                <div class="primitive-row">
+                    <label class="primitive-check"
+                        ><GameInput v-model="choice" type="radio" value="party" /> Отряд</label
+                    >
+                    <label class="primitive-check"
+                        ><GameInput v-model="choice" type="radio" value="self" /> Только я</label
+                    >
+                </div>
+            </div>
+        </template>
+        <template v-else-if="section === 'frames'">
+            <h2>Рамки</h2>
+            <div class="primitive-frame game-frame-host">
+                <GameFrame variant="window" />
+                <h3>Игровое окно</h3>
+                <div class="primitive-frame game-frame-host">
+                    <GameFrame variant="panel" />
+                    <h3>Ваше предложение</h3>
+                    <p>Внутренняя панель</p>
+                </div>
+                <div class="primitive-frame game-frame-host">
+                    <GameFrame variant="inset" />
+                    <p>Углублённая поверхность</p>
+                </div>
+            </div>
+            <div class="primitive-frame primitive-frame--speech game-frame-host">
+                <GameFrame variant="speech" />
+                <p>Буль, выбирай. Я подожду.</p>
+            </div>
+        </template>
+        <template v-else>
+            <h2>Предметные слоты</h2>
+            <div class="primitive-example">
+                <h3>Обычный, выбранный, пустой, недоступный</h3>
+                <div class="primitive-row">
+                    <GameItemSlot as="button" :quantity="5" aria-label="Яблоко × 5"
+                        ><img :src="itemAssetCatalog.food.src" alt=""
+                    /></GameItemSlot>
+                    <GameItemSlot as="button" selected aria-label="Простой меч"
+                        ><img :src="itemAssetCatalog.simple_sword.src" alt=""
+                    /></GameItemSlot>
+                    <GameItemSlot as="button" empty aria-label="Пустой слот" />
+                    <GameItemSlot as="button" disabled aria-label="Недоступное яблоко"
+                        ><img :src="itemAssetCatalog.food.src" alt=""
+                    /></GameItemSlot>
+                </div>
+            </div>
+            <div class="primitive-example">
+                <h3>Размеры и произвольное содержимое</h3>
+                <div class="primitive-row">
+                    <GameItemSlot class="primitive-slot-small"
+                        ><img :src="itemAssetCatalog.food.src" alt="Яблоко"
+                    /></GameItemSlot>
+                    <GameItemSlot class="primitive-slot-large" :quantity="3"
+                        ><img :src="itemAssetCatalog.grain.src" alt="Пшеница"
+                    /></GameItemSlot>
+                    <GameItemSlot class="primitive-slot-large"
+                        ><span aria-label="Заклинание">✦</span></GameItemSlot
+                    >
+                </div>
+            </div>
+        </template>
+    </section>
+</template>
+
+<style scoped>
+.game-primitives-stage {
+    width: 100%;
+    max-width: 780px;
+    padding: 18px;
+    color: var(--game-ui-text);
+    background: #0e2018;
+    font:
+        14px/1.4 system-ui,
+        sans-serif;
+}
+h2,
+h3 {
+    font-family: var(--game-ui-control-font);
+}
+h2 {
+    margin: 0 0 18px;
+    font-size: 23px;
+}
+h3 {
+    margin: 0 0 9px;
+    font-size: 17px;
+}
+.primitive-example {
+    margin-bottom: 16px;
+}
+.primitive-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+.primitive-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+}
+.primitive-fields label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+.primitive-fields .primitive-check {
+    display: flex;
+    align-items: center;
+}
+.primitive-fields small {
+    color: var(--game-ui-danger);
+}
+.primitive-frame {
+    padding: 17px;
+    margin-bottom: 12px;
+}
+.primitive-frame--speech {
+    color: #253324;
+}
+.game-item-slot img {
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+.primitive-slot-small {
+    --game-item-slot-size: 32px;
+}
+.primitive-slot-large {
+    --game-item-slot-size: 56px;
+}
+@media (max-width: 500px) {
+    .primitive-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .game-primitives-stage {
+        padding: 12px;
+    }
+}
+</style>

@@ -5,6 +5,9 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 import { onBeforeUnmount, ref } from 'vue'
 
 import { healthText } from '../ui/healthPresentation'
+import GameButton from '../ui/primitives/GameButton.vue'
+import GameFrame from '../ui/primitives/GameFrame.vue'
+import GameInput from '../ui/primitives/GameInput.vue'
 import type { RatataTestApi, RatataTestState } from './testInterface'
 
 const props = defineProps<{ api: RatataTestApi; state: RatataTestState }>()
@@ -46,16 +49,22 @@ onBeforeUnmount(() => props.api.stop())
 
 <template>
     <aside
-        class="test-panel"
+        class="test-panel game-frame-host"
         :class="{ 'test-panel--collapsed': !expanded }"
         aria-label="Game test controls"
         @keydown.stop
         @keyup.stop
         @focusin="api.stop()"
     >
-        <button class="test-panel__toggle" :aria-expanded="expanded" @click="togglePanel">
+        <GameFrame variant="panel" />
+        <GameButton
+            size="compact"
+            class="test-panel__toggle"
+            :aria-expanded="expanded"
+            @click="togglePanel"
+        >
             <span>Test controls</span><span>{{ expanded ? '−' : '+' }}</span>
-        </button>
+        </GameButton>
         <div v-if="expanded" class="test-panel__body">
             <dl class="test-panel__state">
                 <dt>Connection</dt>
@@ -78,10 +87,10 @@ onBeforeUnmount(() => props.api.stop())
             <fieldset :disabled="!state.connected">
                 <legend>Hold to move</legend>
                 <div class="test-panel__directions">
-                    <button
+                    <GameButton
+                        size="compact"
                         v-for="direction in directions"
                         :key="direction.label"
-                        type="button"
                         :aria-label="`Move ${direction.label.toLowerCase()}`"
                         @pointerdown.prevent="startMoving($event, direction.axis)"
                         @pointerup="api.stop()"
@@ -93,35 +102,41 @@ onBeforeUnmount(() => props.api.stop())
                         @keyup.enter="api.stop()"
                     >
                         {{ direction.symbol }}
-                    </button>
-                    <button type="button" @click="api.stop()">Stop</button>
+                    </GameButton>
+                    <GameButton size="compact" @click="api.stop()">Stop</GameButton>
                 </div>
                 <div class="test-panel__actions">
-                    <button type="button" @click="api.send({ type: 'attack' })">
+                    <GameButton size="compact" @click="api.send({ type: 'attack' })">
                         Attack / chest
-                    </button>
-                    <button type="button" @click="api.send({ type: 'pickup_item' })">
+                    </GameButton>
+                    <GameButton size="compact" @click="api.send({ type: 'pickup_item' })">
                         Pick up
-                    </button>
-                    <button type="button" @click="api.inventory()">Inventory</button>
+                    </GameButton>
+                    <GameButton size="compact" @click="api.inventory()">Inventory</GameButton>
                 </div>
                 <form class="test-panel__form" @submit.prevent="moveTo">
                     <label
-                        >X<input v-model.number="targetX" type="number" required step="1"
+                        >X<GameInput v-model.number="targetX" type="number" required step="1"
                     /></label>
                     <label
-                        >Y<input v-model.number="targetY" type="number" required step="1"
+                        >Y<GameInput v-model.number="targetY" type="number" required step="1"
                     /></label>
-                    <button type="submit">Walk to</button>
+                    <GameButton variant="primary" size="compact" type="submit">Walk to</GameButton>
                 </form>
                 <form class="test-panel__chat" @submit.prevent="sendChat">
-                    <input
+                    <GameInput
                         v-model="chat"
                         aria-label="Test chat message"
                         maxlength="100"
                         placeholder="Say something…"
                     />
-                    <button type="submit" :disabled="chat.trim().length === 0">Send</button>
+                    <GameButton
+                        variant="primary"
+                        size="compact"
+                        type="submit"
+                        :disabled="chat.trim().length === 0"
+                        >Send</GameButton
+                    >
                 </form>
             </fieldset>
             <p v-if="state.error" class="test-panel__error">{{ state.error }}</p>

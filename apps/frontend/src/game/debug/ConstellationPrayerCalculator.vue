@@ -3,6 +3,9 @@ import { type DeityMood, type PrayerAbilityId, prayerAbilityIds } from '@my-game
 import { computed, reactive } from 'vue'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
+import GameButton from '../ui/primitives/GameButton.vue'
+import GameFrame from '../ui/primitives/GameFrame.vue'
+import GameInput from '../ui/primitives/GameInput.vue'
 import ConstellationPrayerBuild from './ConstellationPrayerBuild.vue'
 import { calculatePrayerScenario, prayerCalculatorSchool } from './constellationPrayerScenario'
 import { useConstellationDebugPanels } from './useConstellationDebugPanels'
@@ -69,7 +72,7 @@ const moods: { id: DeityMood; name: string }[] = [
     <details
         id="debug-build-result"
         v-if="school && context && scenario"
-        class="prayer-calculator"
+        class="prayer-calculator game-frame-host"
         data-testid="debug-prayer-calculator"
         :data-result-node="nodeId"
         :data-result-type="node?.effectType"
@@ -77,7 +80,9 @@ const moods: { id: DeityMood; name: string }[] = [
         :open="panels.result"
         @toggle.self="panels.result = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <summary @keydown.stop @keyup.stop>{{ node?.name }}: результат</summary>
+        <summary @keydown.stop @keyup.stop>
+            <GameFrame variant="panel" />{{ node?.name }}: результат
+        </summary>
         <div class="prayer-content">
             <p class="prayer-school">
                 <strong>{{ school.god }}</strong> · {{ school.masteryName }}
@@ -92,20 +97,20 @@ const moods: { id: DeityMood; name: string }[] = [
                     @keydown.stop
                     @keyup.stop
                 >
-                    <button
+                    <GameButton
+                        size="compact"
                         v-for="mood in moods"
                         :key="mood.id"
-                        type="button"
                         :aria-pressed="context.mood === mood.id"
                         :data-mood="mood.id"
                         @click="context.mood = mood.id"
                     >
                         {{ mood.name }}
-                    </button>
+                    </GameButton>
                 </div>
             </div>
             <label v-if="lastLight" class="last-light-condition"
-                ><input
+                ><GameInput
                     v-model="context.lowHealthEligible"
                     type="checkbox"
                     data-testid="debug-last-light"
@@ -113,14 +118,14 @@ const moods: { id: DeityMood; name: string }[] = [
                 Условия «Последнего огонька» выполнены: мало HP после вражеского ранения</label
             >
             <label v-if="school.id === 'pray'" class="last-light-condition"
-                ><input
+                ><GameInput
                     v-model="context.aurasSuppressed"
                     type="checkbox"
                     data-testid="debug-auras-suppressed"
                 />Ауры подавлены</label
             >
             <label class="last-light-condition"
-                ><input
+                ><GameInput
                     v-model="context.externalAdvantage"
                     type="checkbox"
                     data-testid="debug-external-advantage"
@@ -132,7 +137,13 @@ const moods: { id: DeityMood; name: string }[] = [
                 data-testid="debug-prayer-metrics"
                 aria-live="polite"
             >
-                <div v-for="metric in metrics" :key="metric.label" :data-metric="metric.label">
+                <div
+                    v-for="metric in metrics"
+                    :key="metric.label"
+                    :data-metric="metric.label"
+                    class="prayer-metric game-frame-host"
+                >
+                    <GameFrame variant="inset" />
                     <dt>{{ metric.label }}</dt>
                     <dd>{{ metric.value }}</dd>
                 </div>
@@ -147,8 +158,7 @@ const moods: { id: DeityMood; name: string }[] = [
 </template>
 <style scoped>
 .prayer-calculator {
-    border: 1px solid #577888;
-    background: #112c39;
+    border: 1px solid transparent;
 }
 summary {
     padding: 12px;
@@ -198,16 +208,8 @@ label {
     min-width: 0;
     min-height: 44px;
     box-sizing: border-box;
-    border: 1px solid #66818d;
-    background: #0b202b;
-    color: #eee6d2;
+    border: 1px solid transparent;
     padding: 8px;
-    font: inherit;
-}
-.mood-buttons button[aria-pressed='true'] {
-    border-color: #e5c171;
-    background: #334743;
-    color: #ffe0a1;
 }
 summary:focus-visible,
 button:focus-visible {
@@ -229,11 +231,10 @@ button:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
-.prayer-metrics > div {
+.prayer-metric {
     min-width: 0;
     padding: 8px;
-    border: 1px solid #345565;
-    background: #0b202b;
+    border: 1px solid transparent;
 }
 dt {
     color: #adc3cd;

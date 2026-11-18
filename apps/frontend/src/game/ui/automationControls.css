@@ -25,18 +25,10 @@
     min-height: 36px;
     max-width: 100%;
     padding: 7px 9px;
-    border: 1px solid #95805b;
-    background: #26332c;
-    color: var(--rpg-text);
-    font: inherit;
+    border: 1px solid transparent;
 }
 .automation-form button {
     cursor: pointer;
-}
-.automation-form input:focus-visible,
-.automation-form select:focus-visible {
-    outline: 2px solid var(--rpg-focus);
-    outline-offset: 2px;
 }
 .automation-form p {
     margin: 0;
@@ -50,8 +42,7 @@
     gap: 10px;
     min-width: 0;
     padding: 12px;
-    border: 1px solid #675c43;
-    background: #202b24;
+    border: 1px solid transparent;
 }
 .automation-card h3 {
     margin: 0;

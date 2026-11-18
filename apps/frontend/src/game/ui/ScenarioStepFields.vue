@@ -9,6 +9,7 @@ import {
 import { computed } from 'vue'
 
 import AutomationNumberField from './AutomationNumberField.vue'
+import GameSelect from './primitives/GameSelect.vue'
 import ScenarioDestinationEditor from './ScenarioDestinationEditor.vue'
 import { newScenarioStep, scenarioSearchLabels, scenarioStepLabels } from './scenarioEditor'
 import {
@@ -87,11 +88,11 @@ function chest(event: Event): void {
     <div class="automation-fields">
         <label>
             Действие
-            <select :value="modelValue.kind" @change="kind">
+            <GameSelect :value="modelValue.kind" @change="kind">
                 <option v-for="(label, id) in scenarioStepLabels" :key="id" :value="id">
                     {{ label }}
                 </option>
-            </select>
+            </GameSelect>
         </label>
         <ScenarioDestinationEditor
             v-if="modelValue.kind === 'go'"
@@ -103,32 +104,35 @@ function chest(event: Event): void {
         <template v-else-if="modelValue.kind === 'search'">
             <label>
                 Что искать
-                <select :value="modelValue.target" @change="patch({ target: value($event) })">
+                <GameSelect :value="modelValue.target" @change="patch({ target: value($event) })">
                     <option v-for="(label, id) in scenarioSearchLabels" :key="id" :value="id">
                         {{ label }}
                     </option>
-                </select>
+                </GameSelect>
             </label>
             <p class="automation-muted">Осматривает видимое пространство рядом. Не перемещается.</p>
         </template>
         <template v-else-if="modelValue.kind === 'gather'">
             <label>
                 Ресурс
-                <select :value="modelValue.resource" @change="patch({ resource: value($event) })">
+                <GameSelect
+                    :value="modelValue.resource"
+                    @change="patch({ resource: value($event) })"
+                >
                     <option v-for="(label, id) in resources" :key="id" :value="id">
                         {{ label }}
                     </option>
-                </select>
+                </GameSelect>
             </label>
             <label>
                 Сколько добывать
-                <select
+                <GameSelect
                     :value="modelValue.amount === 'depleted' ? 'depleted' : 'count'"
                     @change="patch({ amount: value($event) === 'depleted' ? 'depleted' : 1 })"
                 >
                     <option value="count">Заданное количество</option>
                     <option value="depleted">До исчерпания источника</option>
-                </select>
+                </GameSelect>
             </label>
             <AutomationNumberField
                 v-if="modelValue.amount !== 'depleted'"
@@ -145,7 +149,7 @@ function chest(event: Event): void {
         <template v-else-if="modelValue.kind === 'deposit'">
             <label>
                 Сундук
-                <select :value="explicitChestKey" @change="chest">
+                <GameSelect :value="explicitChestKey" @change="chest">
                     <option value="">Ближайший видимый</option>
                     <option
                         v-for="target in chests"
@@ -157,18 +161,18 @@ function chest(event: Event): void {
                     <option v-if="missingChest" :value="explicitChestKey" disabled>
                         Выбранный сундук сейчас не виден
                     </option>
-                </select>
+                </GameSelect>
             </label>
             <label>
                 Что переносить
-                <select :value="modelValue.mode" @change="patch({ mode: value($event) })">
+                <GameSelect :value="modelValue.mode" @change="patch({ mode: value($event) })">
                     <option value="acquired">Только полученное за этот запуск</option>
                     <option value="all">Из всего рюкзака</option>
-                </select>
+                </GameSelect>
             </label>
             <label>
                 Тип предмета
-                <select
+                <GameSelect
                     :value="modelValue.itemIds[0] ?? ''"
                     @change="patch({ itemIds: value($event) ? [value($event)] : [] })"
                 >
@@ -176,7 +180,7 @@ function chest(event: Event): void {
                     <option v-for="id in itemIds" :key="id" :value="id">
                         {{ ITEM_DEFINITIONS[id].name }}
                     </option>
-                </select>
+                </GameSelect>
             </label>
         </template>
         <template v-else-if="modelValue.kind === 'wait'">
@@ -191,11 +195,14 @@ function chest(event: Event): void {
         <template v-else-if="modelValue.kind === 'recover'">
             <label>
                 Восстановить
-                <select :value="modelValue.resource" @change="patch({ resource: value($event) })">
+                <GameSelect
+                    :value="modelValue.resource"
+                    @change="patch({ resource: value($event) })"
+                >
                     <option value="energy">Энергию</option>
                     <option value="mana">Ману</option>
                     <option value="hp">Здоровье</option>
-                </select>
+                </GameSelect>
             </label>
             <AutomationNumberField
                 label="Не меньше единиц"
@@ -212,12 +219,12 @@ function chest(event: Event): void {
             "
         >
             Тип предмета
-            <select :value="modelValue.itemId ?? ''" @change="optionalItem">
+            <GameSelect :value="modelValue.itemId ?? ''" @change="optionalItem">
                 <option value="">Любой подходящий</option>
                 <option v-for="id in itemIds" :key="id" :value="id">
                     {{ ITEM_DEFINITIONS[id].name }}
                 </option>
-            </select>
+            </GameSelect>
         </label>
     </div>
 </template>

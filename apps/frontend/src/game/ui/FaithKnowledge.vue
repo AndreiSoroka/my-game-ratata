@@ -7,6 +7,8 @@ import {
     prayerAbilityIds,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
+
+import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const known = computed(() =>
@@ -85,18 +87,17 @@ function choose(deityId: DeityId): void {
         <details class="faith-patrons">
             <summary>Сменить покровителя</summary>
             <div>
-                <button
+                <GameButton
                     v-for="deity in deities.filter((deity) =>
                         known.includes(prayerAbilityForDeity(deity.id))
                     )"
                     :key="deity.id"
-                    type="button"
                     :aria-pressed="patron.id === deity.id"
                     :disabled="!player.alive || !shrine || patron.id === deity.id"
                     @click="choose(deity.id)"
                 >
                     {{ deity.label }}
-                </button>
+                </GameButton>
             </div>
             <small
                 >{{

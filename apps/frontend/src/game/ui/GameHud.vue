@@ -4,6 +4,8 @@ import { computed } from 'vue'
 
 import { characterHudStatus } from './characterHudStatus'
 import PlayerStatusPanel from './PlayerStatusPanel.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { activateFocusedButton } from './uiKeyboard'
 import WorldLocationPanel from './WorldLocationPanel.vue'
 
@@ -28,16 +30,17 @@ const connectionLabel = computed(() =>
 </script>
 
 <template>
-    <div class="hud">
+    <div class="hud game-frame-host">
+        <GameFrame variant="panel" />
         <div>
             <strong>{{ nickname }}</strong>
             <span v-if="status !== 'Connected'" role="status">{{ connectionLabel }}</span>
         </div>
         <div>
             <span>{{ hud.players }} players</span>
-            <button
+            <GameButton
+                icon
                 class="hud-menu-button marker-quick-button"
-                type="button"
                 aria-label="Поставить метку"
                 title="Поставить метку · N"
                 :disabled="status !== 'Connected' || !player?.alive"
@@ -45,17 +48,17 @@ const connectionLabel = computed(() =>
                 @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
             >
                 ⚑
-            </button>
-            <button
+            </GameButton>
+            <GameButton
+                icon
                 class="hud-menu-button"
-                type="button"
                 aria-label="Игровое меню"
                 title="Меню · Esc"
                 @click="emit('openMenu')"
                 @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
             >
                 ☰
-            </button>
+            </GameButton>
             <template v-if="testMode">
                 <span v-for="ally in hud.allies" :key="ally" class="hud-detail">{{ ally }}</span>
                 <span v-for="monster in hud.monsters" :key="monster" class="hud-detail">{{
@@ -70,15 +73,15 @@ const connectionLabel = computed(() =>
     <PlayerStatusPanel v-if="player" :character="player" />
     <slot />
     <div class="bottom-actions" aria-label="Actions">
-        <button
+        <GameButton
             class="bottom-actions__button"
             :class="{ 'bottom-actions__button--active': inventoryOpen }"
-            type="button"
+            :aria-pressed="inventoryOpen"
             @click="emit('toggleInventory')"
             @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
         >
             Inventory
-        </button>
+        </GameButton>
     </div>
 </template>
 
@@ -89,16 +92,8 @@ const connectionLabel = computed(() =>
     min-width: 32px;
     min-height: 28px;
     margin-left: 6px;
-    border: 1px solid #998565;
-    border-radius: 3px;
-    background: #243027;
-    color: #ead8ac;
+    border: 1px solid transparent;
     cursor: pointer;
-    font: 16px system-ui;
-}
-.hud-menu-button:focus-visible {
-    outline: 2px solid #f5d992;
-    outline-offset: 2px;
 }
 .hud-menu-button:disabled {
     opacity: 0.45;

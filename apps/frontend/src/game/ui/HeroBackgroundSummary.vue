@@ -7,6 +7,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameFrame from './primitives/GameFrame.vue'
+
 const props = withDefaults(
     defineProps<{
         heroClass?: HeroClass | null
@@ -37,7 +39,12 @@ const masteryBonus = computed(() => {
 </script>
 
 <template>
-    <section v-if="background" class="background-summary" aria-label="Постоянные бонусы прошлого">
+    <section
+        v-if="background"
+        class="background-summary game-frame-host"
+        aria-label="Постоянные бонусы прошлого"
+    >
+        <GameFrame variant="inset" />
         <p v-if="showTitle" class="background-title">Прошлое: {{ background.name }}</p>
         <p>{{ resourceBonuses.length ? resourceBonuses.join(' · ') : 'Без прибавки ресурсов' }}</p>
         <p>{{ masteryBonus }}</p>
@@ -52,8 +59,7 @@ const masteryBonus = computed(() => {
 .background-summary {
     margin: 0 0 16px;
     padding: 12px;
-    border: 1px solid #52634b;
-    background: #18251bc2;
+    border: 1px solid transparent;
     color: #dce4ca;
     font:
         12px/1.6 system-ui,

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { ClientMessage, RepairSnapshot } from '@my-game-ratata/contracts'
+
+import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{ repairs: RepairSnapshot; gold: number; blocked?: boolean }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 function repair(instanceIds: string[], expectedTotal: number): void {
@@ -25,18 +27,18 @@ function repair(instanceIds: string[], expectedTotal: number): void {
                     }}{{ item.equipped ? ' · надето' : '' }}</small
                 ></span
             >
-            <button
-                type="button"
+            <GameButton
+                variant="primary"
                 data-dialogue-action
                 :disabled="blocked || gold < item.price"
                 @click="repair([item.instanceId], item.price)"
             >
                 Починить · {{ item.price }} ◈
-            </button>
+            </GameButton>
         </div>
-        <button
+        <GameButton
+            variant="primary"
             v-if="repairs.items.length"
-            type="button"
             data-dialogue-action
             :disabled="blocked || gold < repairs.total"
             @click="
@@ -47,7 +49,7 @@ function repair(instanceIds: string[], expectedTotal: number): void {
             "
         >
             Починить всё · {{ repairs.total }} ◈
-        </button>
+        </GameButton>
     </section>
 </template>
 <style scoped>

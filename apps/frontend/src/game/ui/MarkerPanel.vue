@@ -5,6 +5,9 @@ import { getWorldLocationDefinition, type MarkerDefinition } from '@my-game-rata
 import { ref, watch } from 'vue'
 
 import AutomationWindow from './AutomationWindow.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameInput from './primitives/GameInput.vue'
 
 const props = defineProps<{ markers: MarkerDefinition[]; available: boolean }>()
 const emit = defineEmits<{
@@ -42,20 +45,29 @@ function rename(markerId: string): void {
             <form class="automation-row" @submit.prevent="create">
                 <label>
                     Название новой метки
-                    <input v-model="name" maxlength="80" placeholder="Следующий номер" />
+                    <GameInput v-model="name" maxlength="80" placeholder="Следующий номер" />
                 </label>
-                <button type="submit" :disabled="!available || markers.length >= 64">
+                <GameButton
+                    variant="primary"
+                    type="submit"
+                    :disabled="!available || markers.length >= 64"
+                >
                     Поставить здесь
-                </button>
+                </GameButton>
             </form>
             <p v-if="!markers.length" class="automation-muted">Метки пока не поставлены.</p>
             <ol v-else class="automation-list marker-list">
-                <li v-for="marker in markers" :key="marker.id" class="automation-card">
+                <li
+                    v-for="marker in markers"
+                    :key="marker.id"
+                    class="automation-card game-frame-host"
+                >
+                    <GameFrame variant="panel" />
                     <div class="automation-row">
                         <strong class="marker-number">{{ marker.number }}</strong>
                         <label>
                             Название метки {{ marker.number }}
-                            <input v-model="names[marker.id]" maxlength="80" />
+                            <GameInput v-model="names[marker.id]" maxlength="80" />
                         </label>
                     </div>
                     <p class="automation-muted">
@@ -65,22 +77,21 @@ function rename(markerId: string): void {
                         · {{ Math.round(marker.position.x) }}, {{ Math.round(marker.position.y) }}
                     </p>
                     <div class="automation-row">
-                        <button
-                            type="button"
+                        <GameButton
                             :disabled="!available || !names[marker.id]?.trim()"
                             :aria-label="`Переименовать метку ${marker.number}`"
                             @click="rename(marker.id)"
                         >
                             Переименовать
-                        </button>
-                        <button
-                            type="button"
+                        </GameButton>
+                        <GameButton
+                            variant="danger"
                             :disabled="!available"
                             :aria-label="`Удалить метку ${marker.number}`"
                             @click="emit('delete', marker.id)"
                         >
                             Удалить
-                        </button>
+                        </GameButton>
                     </div>
                 </li>
             </ol>

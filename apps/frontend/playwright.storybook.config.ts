@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 
 import { defineConfig, devices } from '@playwright/test'
 
@@ -8,6 +9,9 @@ export default defineConfig({
     timeout: 30 * 1000,
     expect: {
         timeout: 10 * 1000,
+        toHaveScreenshot: {
+            stylePath: fileURLToPath(new URL('./e2e/visual-screenshot.css', import.meta.url)),
+        },
     },
     forbidOnly: Boolean(process.env.CI),
     outputDir: 'test-results/storybook',

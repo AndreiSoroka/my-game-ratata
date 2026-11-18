@@ -9,6 +9,9 @@ import {
 
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import HeroClassIcon from './HeroClassIcon.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameInput from './primitives/GameInput.vue'
 import RefreshIcon from './RefreshIcon.vue'
 
 const nickname = defineModel<string>('nickname', { required: true })
@@ -38,11 +41,12 @@ const classes = heroClasses.map((id) => ({
                 знакомые дела. Собирайте свои сценарии и договаривайтесь о помощи.
             </p>
         </div>
-        <form class="join-panel" autocomplete="off" @submit.prevent="$emit('join')">
+        <form class="join-panel game-frame-host" autocomplete="off" @submit.prevent="$emit('join')">
+            <GameFrame variant="window" />
             <h1 id="join-title">Ratata</h1>
             <label for="nickname">Имя героя</label>
             <div class="join-row">
-                <input
+                <GameInput
                     id="nickname"
                     v-model="nickname"
                     autocomplete="off"
@@ -52,35 +56,40 @@ const classes = heroClasses.map((id) => ({
                     type="text"
                     @input="$emit('nickname-edited')"
                 />
-                <button
+                <GameButton
+                    icon
                     class="join-regenerate"
-                    type="button"
                     aria-label="Сгенерировать другое имя"
                     title="Сгенерировать другое имя"
                     @click="$emit('regenerate-name')"
                 >
                     <RefreshIcon />
-                </button>
-                <button
+                </GameButton>
+                <GameButton
+                    variant="primary"
                     class="join-submit"
                     :disabled="!canJoin || nickname.trim().length === 0"
                     type="submit"
                 >
                     Войти
-                </button>
+                </GameButton>
             </div>
             <fieldset class="class-choices" aria-describedby="class-description class-hint">
                 <legend>Прошлое героя</legend>
                 <div class="class-grid">
                     <label v-for="option in classes" :key="option.id" class="class-card">
-                        <input
+                        <GameInput
                             :id="heroClass === option.id ? 'hero-class' : `hero-class-${option.id}`"
                             v-model="heroClass"
                             type="radio"
                             name="hero-class"
                             :value="option.id"
                         />
-                        <span class="class-card__content">
+                        <span
+                            class="class-card__content game-frame-host"
+                            :class="{ 'class-card__content--selected': heroClass === option.id }"
+                        >
+                            <GameFrame variant="inset" />
                             <HeroClassIcon :hero-class="option.id" />
                             <span>{{ option.label }}</span>
                         </span>
@@ -118,8 +127,6 @@ const classes = heroClasses.map((id) => ({
 .join-panel {
     width: 100%;
     box-sizing: border-box;
-    background: #0f1614f2;
-    border-color: #9f89635e;
     backdrop-filter: blur(8px);
 }
 .join-row {
@@ -133,10 +140,6 @@ const classes = heroClasses.map((id) => ({
 .join-regenerate svg {
     width: 22px;
     height: 22px;
-}
-.join-row button:focus-visible {
-    outline: 2px solid #f4e3b5;
-    outline-offset: 3px;
 }
 @media (max-width: 480px) {
     .join-row {
@@ -251,9 +254,7 @@ const classes = heroClasses.map((id) => ({
     gap: 8px;
     padding: 8px 2px;
     box-sizing: border-box;
-    border: 1px solid #647265;
-    border-radius: 6px;
-    background: #17211c;
+    border: 1px solid transparent;
     color: #bec9ba;
     font:
         12px/1.4 system-ui,
@@ -264,16 +265,15 @@ const classes = heroClasses.map((id) => ({
     height: 34px;
 }
 .class-card:hover .class-card__content {
-    border-color: #b6a073;
+    --game-frame-fill: var(--game-ui-surface-raised);
 }
-.class-card input:checked + .class-card__content {
-    border-color: #e2bd75;
-    background: #2c3020;
-    color: #ffe0a1;
-    box-shadow: inset 0 0 0 1px #e2bd75;
+.class-card__content--selected {
+    --game-frame-fill: var(--game-ui-surface-raised);
+    color: var(--game-ui-gold);
+    box-shadow: inset 0 0 0 1px var(--game-ui-gold);
 }
 .class-card input:focus-visible + .class-card__content {
-    outline: 2px solid #f4e3b5;
+    outline: 2px solid var(--game-ui-focus);
     outline-offset: 3px;
 }
 @media (max-width: 820px) {

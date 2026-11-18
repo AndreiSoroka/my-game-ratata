@@ -6,6 +6,8 @@ import ConstellationBackground from './ConstellationBackground.vue'
 import { constellationLabels } from './constellationLabels'
 import { nextConstellationNode } from './constellationNavigation'
 import ConstellationStar from './ConstellationStar.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useConstellationViewport } from './useConstellationViewport'
 
 const props = defineProps<{
@@ -153,11 +155,12 @@ function cameraKey(event: KeyboardEvent): void {
 </script>
 
 <template>
-    <div class="constellation-map">
+    <div class="constellation-map game-frame-host">
+        <GameFrame variant="inset" />
         <div class="constellation-map__tools" aria-label="Масштаб небосвода">
-            <button type="button" aria-label="Приблизить небосвод" @click="scale(1.25)">+</button>
-            <button type="button" aria-label="Отдалить небосвод" @click="scale(0.8)">−</button>
-            <button type="button" aria-label="Показать весь небосвод" @click="resetSky">⌖</button>
+            <GameButton icon aria-label="Приблизить небосвод" @click="scale(1.25)">+</GameButton>
+            <GameButton icon aria-label="Отдалить небосвод" @click="scale(0.8)">−</GameButton>
+            <GameButton icon aria-label="Показать весь небосвод" @click="resetSky">⌖</GameButton>
         </div>
         <svg
             ref="svg"

@@ -3,6 +3,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import type { ChatHistoryEntry } from './chatHistory'
 import { isTextEntry, permitsWorldMovement } from './keyboardOwnership'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = defineProps<{ entries: ChatHistoryEntry[]; typing: boolean }>()
@@ -61,7 +63,7 @@ watch(filter, async () => {
 </script>
 <template>
     <aside
-        class="chat-history rpg-panel"
+        class="chat-history rpg-panel game-frame-host"
         :class="{ 'chat-history--typing': typing, 'chat-history--collapsed': collapsed }"
         aria-label="История чата"
         data-game-input-owner
@@ -72,30 +74,29 @@ watch(filter, async () => {
         @keyup="key"
         @pointerdown.stop
     >
+        <GameFrame variant="panel" />
         <header>
             <nav aria-label="Каналы чата">
-                <button
+                <GameButton
                     v-for="tab in [
                         ['all', 'Все'],
                         ['say', 'Рядом'],
                         ['whisper', 'Личные'],
                     ] as const"
                     :key="tab[0]"
-                    type="button"
                     :aria-pressed="filter === tab[0]"
                     @click="filter = tab[0]"
                 >
                     {{ tab[1] }}
-                </button>
+                </GameButton>
             </nav>
-            <button
-                type="button"
+            <GameButton
                 :aria-expanded="!collapsed"
                 :aria-label="collapsed ? 'Развернуть историю чата' : 'Свернуть историю чата'"
                 @click="collapsed = !collapsed"
             >
                 {{ collapsed ? '+' : '−' }}
-            </button>
+            </GameButton>
         </header>
         <ol
             v-show="!collapsed"
@@ -114,9 +115,9 @@ watch(filter, async () => {
                 Здесь появятся услышанные реплики.
             </li>
         </ol>
-        <button v-if="unread && !collapsed" type="button" class="chat-history__new" @click="latest">
+        <GameButton v-if="unread && !collapsed" class="chat-history__new" @click="latest">
             Новые сообщения · {{ unread }} ↓
-        </button>
+        </GameButton>
     </aside>
 </template>
 <style scoped>
@@ -126,7 +127,6 @@ watch(filter, async () => {
     left: 12px;
     z-index: 5;
     width: min(370px, calc(100vw - 24px));
-    background: #17291dec;
     color: var(--rpg-text);
     font: 12px/1.4 system-ui;
     box-sizing: border-box;
@@ -146,17 +146,9 @@ header {
     border-bottom: 1px solid #687251;
 }
 button {
-    font: inherit;
-    color: var(--rpg-text);
-    background: #2d3e2e;
-    border: 1px solid #697653;
+    border: 1px solid transparent;
     padding: 3px 8px;
     cursor: pointer;
-}
-button[aria-pressed='true'] {
-    color: #ffe19c;
-    border-color: #d2b875;
-    background: #41553b;
 }
 ol {
     max-height: min(24vh, 210px);

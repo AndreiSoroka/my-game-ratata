@@ -1,0 +1,4 @@
+/* Development tooling is outside the game UI and must not cover screenshot subjects. */
+#__vue-devtools-container__ {
+    visibility: hidden !important;
+}

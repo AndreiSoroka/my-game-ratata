@@ -2,6 +2,9 @@
 import { type CharacterSnapshot, type ClientMessage, THEFT_RULES } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+
 const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const accusations = computed(
@@ -14,24 +17,24 @@ const accusations = computed(
 <template>
     <aside
         v-if="accusations.length"
-        class="theft-alert"
+        class="theft-alert game-frame-host"
         role="region"
         aria-label="Замечена попытка кражи"
     >
+        <GameFrame variant="panel" />
         <strong role="alert">Вы заметили попытку кражи</strong>
         <div v-for="accusation in accusations" :key="accusation.thiefId">
             <p>
                 {{ accusation.thiefName }} · доказательство:
                 {{ Math.ceil((accusation.expiresAt - serverTime) / 1000) }} с
             </p>
-            <button
+            <GameButton
                 v-if="accusation.canCallGuards"
-                type="button"
                 :disabled="!player.alive"
                 @click="emit('command', { type: 'call_guards', targetId: accusation.thiefId })"
             >
                 Позвать стражу сейчас
-            </button>
+            </GameButton>
         </div>
         <small
             >Для официальной жалобы подойдите к стражнику в городе и нажмите F. Экстренный зов
@@ -52,9 +55,7 @@ const accusations = computed(
     overflow: auto;
     padding: 12px;
     color: #f8e3c2;
-    background: #31271ef5;
-    border: 1px solid #c6945b;
-    border-radius: 4px;
+    border: 1px solid transparent;
     font:
         13px/1.5 system-ui,
         sans-serif;

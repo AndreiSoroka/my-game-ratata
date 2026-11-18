@@ -1,40 +1,52 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
-import { renderEquipmentStory } from '../ui/renderEquipmentStory'
-import { type ChestState, renderChestStory, renderInventoryStory } from '../ui/renderInventoryStory'
-import { renderItemCatalogStory } from '../ui/renderItemCatalogStory'
+import { characterFixture } from '../testing/characterFixture'
+import InventoryOverlay from '../ui/InventoryOverlay.vue'
+import ChestSpritePreview from './ChestSpritePreview.vue'
+import ItemCatalogPreview from './ItemCatalog.vue'
+import { renderVueStory } from './renderVueStory'
 
-const meta = {
-    argTypes: {
-        state: {
-            control: 'radio',
-            options: ['closed', 'open'],
-        },
-    },
-    title: 'Interface/Inventory',
-} satisfies Meta<ChestArgs>
+const meta = { title: 'Interface/Inventory' } satisfies Meta
 
 export default meta
-type ChestArgs = {
-    state: ChestState
+type Story = StoryObj
+
+function inventoryStory(equipped = false): HTMLElement {
+    const host = renderVueStory(InventoryOverlay, {
+        character: characterFixture('self', {
+            inventory: [
+                { instanceId: 'apple', itemId: 'food', quantity: 5 },
+                { instanceId: 'grain', itemId: 'grain', quantity: 3 },
+                { instanceId: 'herbs', itemId: 'herbs', quantity: 9 },
+                { instanceId: 'sword', itemId: 'simple_sword', durability: 160 },
+            ],
+            equipment: equipped
+                ? { weapon: { instanceId: 'axe', itemId: 'axe', durability: 700 } }
+                : {},
+        }),
+        chests: [],
+        gold: 12,
+    })
+    host.style.cssText = 'position:relative;min-height:100dvh;background:#354137'
+    return host
 }
-type Story = StoryObj<ChestArgs>
 
 export const UserInventory: Story = {
-    render: () => renderInventoryStory(),
+    render: () => inventoryStory(),
 }
 
 export const ItemCatalog: Story = {
-    render: () => renderItemCatalogStory(),
+    render: () => renderVueStory(ItemCatalogPreview, {}),
 }
 
 export const Equipment: Story = {
-    render: () => renderEquipmentStory(),
+    render: () => inventoryStory(true),
 }
 
 export const Chest: Story = {
     args: {
         state: 'closed',
     },
-    render: (args) => renderChestStory(args.state),
+    argTypes: { state: { control: 'radio', options: ['closed', 'open'] } },
+    render: (args) => renderVueStory(ChestSpritePreview, { state: args['state'] }),
 }

@@ -9,15 +9,13 @@
     max-width: calc(100vw - 28px);
     max-height: calc(100dvh - 130px);
     overflow: auto;
-    color: #edf4ff;
+    color: var(--game-ui-text, #f6ebd4);
     font-family: var(--ratata-font-family);
 }
 
 .inventory-overlay__equipment,
 .inventory-overlay__inventory {
-    border: 2px solid #566273;
-    background: rgba(12, 16, 22, 0.94);
-    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.26);
+    border: 2px solid transparent;
 }
 
 .inventory-overlay__equipment,
@@ -46,9 +44,6 @@
     height: 26px;
     padding: 0;
     place-items: center;
-    color: #f5efe3;
-    background: #1a202a;
-    border: 1px solid #566273;
 }
 
 .equipment-slots {
@@ -63,9 +58,6 @@
     align-items: center;
     min-height: 48px;
     padding: 4px 6px;
-    color: #d9e3ee;
-    background: #0b1018;
-    border: 1px solid #59677a;
 }
 
 .equipment-slot__label {
@@ -79,8 +71,6 @@
     width: 38px;
     height: 38px;
     place-items: center;
-    background: #070b11;
-    border: 1px solid #323d4d;
 }
 
 .inventory-grid {
@@ -92,8 +82,8 @@
 .inventory-gold {
     margin: 0 0 12px;
     padding: 9px 10px;
-    border: 1px solid #8f793c;
-    background: #24251b;
+    border: 1px solid transparent;
+
     color: #ffe293;
     font:
         700 16px/1.4 system-ui,
@@ -106,7 +96,8 @@
     margin-top: 12px;
 }
 
-.inventory-slot {
+.inventory-grid .inventory-slot {
+    height: auto;
     position: relative;
     display: grid;
     width: 100%;
@@ -114,13 +105,6 @@
     min-height: 24px;
     padding: 0;
     place-items: center;
-    background: #0b1018;
-    border: 1px solid #59677a;
-}
-
-.inventory-slot--selected {
-    border-color: #e6b84d;
-    box-shadow: inset 0 0 0 2px #5b4420;
 }
 
 .item-icon {
@@ -146,12 +130,9 @@
 .inventory-actions button {
     min-height: 28px;
     padding: 0 8px;
-    color: #f5efe3;
-    font: inherit;
+
     font-size: 12px;
     font-weight: 800;
-    background: #242c37;
-    border: 1px solid #68778c;
 }
 
 .inventory-hotbar-help {
@@ -170,8 +151,6 @@
 
 .inventory-hotbar-slots button {
     min-height: 36px;
-    border-color: #b09664;
-    background: #1a211c;
 }
 
 .inventory-hotbar-slots button:focus-visible {
@@ -217,4 +196,10 @@
         700 10px/1.2 system-ui,
         sans-serif;
     text-align: center;
+}
+
+.inventory-overlay__equipment,
+.inventory-overlay__inventory,
+.inventory-gold {
+    position: relative;
 }

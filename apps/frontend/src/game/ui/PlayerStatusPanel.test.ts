@@ -12,10 +12,8 @@ describe('production player status', () => {
         })
         expect(wrapper.get('h2').text()).toBe(LONG_PLAYER_NAME)
         expect(wrapper.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
-        expect(wrapper.get('.ratata-ui-status__header').classes()).toContain(
-            'ratata-kenney-title--compact'
-        )
-        expect(wrapper.find('.ratata-kenney-title .soul-badge').exists()).toBe(true)
+        expect(wrapper.find('.ratata-ui-status__header .game-frame--inset').exists()).toBe(true)
+        expect(wrapper.find('.ratata-ui-status__header .soul-badge').exists()).toBe(true)
         expect(
             wrapper.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))
         ).toEqual(['Искра', 'Есть речь'])

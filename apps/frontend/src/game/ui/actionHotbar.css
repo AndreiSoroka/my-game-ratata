@@ -23,10 +23,7 @@
     width: 20px;
     height: 20px;
     padding: 0;
-    border: 1px solid var(--rpg-brass);
-    background: var(--rpg-panel);
-    color: var(--rpg-text);
-    font: 16px/1 system-ui;
+
     cursor: pointer;
 }
 .hotbar-clear:focus-visible,
@@ -38,9 +35,7 @@
     width: 48px;
     height: 48px;
     position: relative;
-    border: 1px solid var(--rpg-brass);
-    background: #26372a;
-    color: var(--rpg-text);
+
     cursor: pointer;
 }
 .hotbar-item {
@@ -117,9 +112,7 @@ small {
     width: 100%;
     text-align: left;
     position: relative;
-    background: #26372a;
-    color: var(--rpg-text);
-    border: 1px solid var(--rpg-brass);
+
     padding: 10px;
     margin: 4px 0;
 }

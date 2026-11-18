@@ -4,6 +4,7 @@ import type { CharacterSnapshot, WorldGraveSnapshot } from '@my-game-ratata/cont
 import { relation } from './combatTargeting'
 import GraveDetails from './GraveDetails.vue'
 import { healthBarPercent, healthText } from './healthPresentation'
+import GameFrame from './primitives/GameFrame.vue'
 import type { WorldSelectionTarget } from './worldTargetSelection'
 
 defineProps<{
@@ -17,9 +18,10 @@ defineProps<{
 <template>
     <aside
         v-if="target || grave || object"
-        class="target-panel rpg-panel"
+        class="target-panel rpg-panel game-frame-host"
         aria-label="Выбранная цель"
     >
+        <GameFrame variant="panel" />
         <GraveDetails
             v-if="grave"
             :grave="grave"

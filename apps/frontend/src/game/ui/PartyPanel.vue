@@ -2,6 +2,9 @@
 import type { PartySnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+
 const props = defineProps<{
     party: PartySnapshot
     selectedId?: string
@@ -15,14 +18,18 @@ const members = computed(() =>
 )
 </script>
 <template>
-    <aside v-if="party.partyId" class="party-panel rpg-panel" aria-label="Мой отряд">
+    <aside
+        v-if="party.partyId"
+        class="party-panel rpg-panel game-frame-host"
+        aria-label="Мой отряд"
+    >
+        <GameFrame variant="panel" />
         <h2>
             Отряд <span>{{ members.length }}/4</span>
         </h2>
-        <button
+        <GameButton
             v-for="member in members"
             :key="member.id"
-            type="button"
             class="party-member"
             :aria-pressed="selectedId === member.id"
             @click="emit('select', member.id)"
@@ -47,7 +54,7 @@ const members = computed(() =>
             <small v-else-if="currentLocationId && member.locationId !== currentLocationId"
                 >Другая локация</small
             >
-        </button>
+        </GameButton>
     </aside>
 </template>
 <style scoped>
@@ -70,9 +77,7 @@ h2 {
     width: 100%;
     display: block;
     text-align: left;
-    background: var(--rpg-panel);
-    color: var(--rpg-text);
-    border: 1px solid var(--rpg-brass);
+    border: 1px solid transparent;
     padding: 7px;
     margin-top: 5px;
     cursor: pointer;

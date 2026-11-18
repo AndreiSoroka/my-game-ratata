@@ -6,6 +6,10 @@ import { resolveConstellationCardEffects } from '../../../../backend/src/game/co
 import { observedConstellationCardEffects } from '../../../../backend/src/game/constellationResultDisclosure'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
+import GameButton from '../ui/primitives/GameButton.vue'
+import GameFrame from '../ui/primitives/GameFrame.vue'
+import GameInput from '../ui/primitives/GameInput.vue'
+import GameSelect from '../ui/primitives/GameSelect.vue'
 import ConstellationBuildFeedback from './ConstellationBuildFeedback.vue'
 import ConstellationBuildStatus from './ConstellationBuildStatus.vue'
 import ConstellationBuildSummary from './ConstellationBuildSummary.vue'
@@ -69,11 +73,8 @@ function selectNode(id: string): void {
 watch(selectedId, () => {
     if (detailsPanel.value) detailsPanel.value.scrollTop = 0
 })
-function selectStar(id: string): void {
-    graph.value?.focusNode(id)
-}
 function inspectParent(id: string): void {
-    selectStar(id)
+    graph.value?.focusNode(id)
     document.getElementById('debug-sky')?.scrollIntoView?.({ block: 'start' })
 }
 async function showSummary(): Promise<void> {
@@ -114,7 +115,7 @@ function listKey(event: KeyboardEvent): void {
         <form class="debug-settings" @submit.prevent="applySeed">
             <label
                 >Класс для карты
-                <select
+                <GameSelect
                     data-testid="debug-class"
                     :value="settings.heroClass"
                     @change="changeClass(($event.target as HTMLSelectElement).value as HeroClass)"
@@ -122,11 +123,11 @@ function listKey(event: KeyboardEvent): void {
                     <option v-for="hero in debugHeroClasses" :key="hero.id" :value="hero.id">
                         {{ hero.name }}
                     </option>
-                </select>
+                </GameSelect>
             </label>
             <label
                 >Seed карты
-                <input
+                <GameInput
                     v-model="draftSeed"
                     data-testid="debug-seed"
                     type="text"
@@ -136,12 +137,18 @@ function listKey(event: KeyboardEvent): void {
                     spellcheck="false"
                 />
             </label>
-            <button data-testid="debug-apply" type="submit" :disabled="!draftSeed.trim()">
+            <GameButton
+                variant="primary"
+                size="compact"
+                data-testid="debug-apply"
+                type="submit"
+                :disabled="!draftSeed.trim()"
+            >
                 Применить seed
-            </button>
-            <button data-testid="debug-regenerate" type="button" @click="newMap">
+            </GameButton>
+            <GameButton size="compact" data-testid="debug-regenerate" @click="newMap">
                 Новая карта
-            </button>
+            </GameButton>
         </form>
         <ConstellationBuildToolbar
             :count="enabledStarIds.size"
@@ -151,7 +158,7 @@ function listKey(event: KeyboardEvent): void {
             @reset="reset"
         />
         <label class="debug-build-help">
-            <input
+            <GameInput
                 v-model="characterKnowledge"
                 type="checkbox"
                 data-testid="debug-character-knowledge"
@@ -180,15 +187,16 @@ function listKey(event: KeyboardEvent): void {
                     aria-label="Описание выбранной звезды"
                 >
                     <nav class="debug-card-nav" aria-label="Действия карточки">
-                        <a class="debug-map-link" href="#debug-sky">Показать на карте</a
-                        ><button
+                        <a class="debug-map-link game-frame-host" href="#debug-sky"
+                            ><GameFrame variant="inset" />Показать на карте</a
+                        ><GameButton
+                            size="compact"
                             class="debug-summary-link"
-                            type="button"
                             data-testid="debug-show-summary"
                             @click="showSummary"
                         >
                             Сводка
-                        </button>
+                        </GameButton>
                     </nav>
                     <ConstellationBuildStatus
                         :name="selected.name ?? selected.id"
@@ -218,11 +226,12 @@ function listKey(event: KeyboardEvent): void {
                         :hero-class="settings.heroClass"
                     />
                 </div>
-                <section class="debug-catalog">
+                <section class="debug-catalog game-frame-host">
+                    <GameFrame variant="panel" />
                     <div class="debug-filters">
                         <label
                             >Искать звезду
-                            <input
+                            <GameInput
                                 v-model="query"
                                 data-testid="debug-search"
                                 type="search"
@@ -231,7 +240,7 @@ function listKey(event: KeyboardEvent): void {
                         </label>
                         <label
                             >Созвездие
-                            <select v-model="path" data-testid="debug-path">
+                            <GameSelect v-model="path" data-testid="debug-path">
                                 <option value="">Все созвездия</option>
                                 <option
                                     v-for="entry in sky.paths"
@@ -240,7 +249,7 @@ function listKey(event: KeyboardEvent): void {
                                 >
                                     {{ entry.name }}
                                 </option>
-                            </select>
+                            </GameSelect>
                         </label>
                     </div>
                     <ul
@@ -252,19 +261,19 @@ function listKey(event: KeyboardEvent): void {
                         @keydown="listKey"
                     >
                         <li v-for="node in filtered" :key="node.id" class="debug-star-row">
-                            <button
-                                type="button"
+                            <GameButton
+                                size="compact"
                                 :data-star-id="node.id"
                                 :aria-pressed="selectedId === node.id"
                                 aria-controls="debug-star-details"
-                                @click="selectStar(node.id)"
+                                @click="graph?.focusNode(node.id)"
                                 @keydown="listToggle($event, node.id)"
                             >
                                 <strong>{{ node.name }}</strong>
                                 <span>{{ pathNames.get(node.constellationId) }}</span>
-                            </button>
-                            <button
-                                type="button"
+                            </GameButton>
+                            <GameButton
+                                size="compact"
                                 role="switch"
                                 class="debug-star-toggle"
                                 :data-star-toggle="node.id"
@@ -273,7 +282,7 @@ function listKey(event: KeyboardEvent): void {
                                 @click="toggle(node.id)"
                             >
                                 {{ enabledStarIds.has(node.id) ? '✓' : '+' }}
-                            </button>
+                            </GameButton>
                         </li>
                     </ul>
                     <p v-else class="debug-empty" role="status">Звёзды не найдены.</p>

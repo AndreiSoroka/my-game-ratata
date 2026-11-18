@@ -10,6 +10,8 @@ import { computed, useId } from 'vue'
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
 import GuildQuestCard from './GuildQuestCard.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 const props = defineProps<{
     adventure: AdventureSnapshot
@@ -41,10 +43,11 @@ const statuses: Record<AdventureQuestStatus, string> = {
 }
 </script>
 <template>
-    <section class="adventure-journal adventure-window" aria-label="Журнал заданий">
+    <section class="adventure-journal adventure-window game-frame-host" aria-label="Журнал заданий">
+        <GameFrame variant="window" />
         <header class="adventure-window__header">
             <span>ЖУРНАЛ ПУТЕШЕСТВЕННИКА</span>
-            <button type="button" aria-label="Закрыть журнал" @click="emit('close')">×</button>
+            <GameButton icon aria-label="Закрыть журнал" @click="emit('close')">×</GameButton>
         </header>
         <p class="adventure-eyebrow">
             {{ adventure.wardRestored ? 'Город пробуждён' : statuses[adventure.quest.status] }}

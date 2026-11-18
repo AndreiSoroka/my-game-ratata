@@ -2,6 +2,7 @@
 import { type HeroClass } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameFrame from '../ui/primitives/GameFrame.vue'
 import { describeConstellationUnlock } from './constellationDebugUnlock'
 import { constellationRequirementProgress } from './constellationRequirementProgress'
 
@@ -19,10 +20,11 @@ const levelSatisfied = computed(() => requirements.value?.every((entry) => entry
 <template>
     <div class="debug-unlock-wrap">
         <section
-            class="debug-minimum"
+            class="debug-minimum game-frame-host"
             data-testid="debug-star-minimum"
             aria-label="Требования к уровню"
         >
+            <GameFrame variant="inset" />
             <template v-if="requirements">
                 <ul class="level-requirements">
                     <li
@@ -56,11 +58,11 @@ const levelSatisfied = computed(() => requirements.value?.every((entry) => entry
             <p v-else>Требования к звезде неизвестны.</p>
         </section>
         <details
-            class="debug-unlock"
+            class="debug-unlock game-frame-host"
             data-testid="debug-unlock-conditions"
             aria-label="Условия открытия"
         >
-            <summary>Условия открытия</summary>
+            <summary><GameFrame variant="panel" />Условия открытия</summary>
             <ul v-if="details.conditions.length">
                 <li v-for="condition in details.conditions" :key="condition">{{ condition }}</li>
             </ul>
@@ -81,9 +83,8 @@ const levelSatisfied = computed(() => requirements.value?.every((entry) => entry
 <style scoped>
 .debug-unlock {
     padding: 16px;
-    border: 1px solid #425f6d;
+    border: 1px solid transparent;
     border-top: 0;
-    background: #10232d;
     font-size: 12px;
     line-height: 1.55;
 }
@@ -113,9 +114,8 @@ section > section {
 }
 .debug-minimum {
     padding: 10px 14px;
-    border: 1px solid #425f6d;
+    border: 1px solid transparent;
     border-top: 0;
-    background: #10232d;
     color: #e8d6aa;
     font-size: 12px;
 }

@@ -14,6 +14,9 @@ import { abilityUsage } from './abilityUsage'
 import { dialogActionKeys } from './dialogActionKeys'
 import { objectTargetUnavailable } from './hotbarActions'
 import { type HotbarBinding as Binding, hotbarGlyphs as glyphs } from './hotbarBindings'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameItemSlot from './primitives/GameItemSlot.vue'
 import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
 import { useHotbarActions } from './useHotbarActions'
@@ -103,15 +106,19 @@ defineExpose({ activate, edit, assignItem, resetGesture })
 <template>
     <div
         ref="bar"
-        class="hotbar rpg-panel"
+        class="hotbar rpg-panel game-frame-host"
         aria-label="Быстрые действия"
         @keydown="activateFocusedButton($event, bar)"
         @keyup="stopButtonConfirmation($event, bar)"
     >
+        <GameFrame variant="panel" />
         <div v-for="(binding, index) in bindings" :key="index" class="hotbar-cell">
-            <button
+            <GameItemSlot
+                as="button"
                 type="button"
                 class="hotbar-slot"
+                :empty="!binding"
+                :selected="active(binding, index)"
                 :class="{ active: active(binding, index) }"
                 :aria-pressed="active(binding, index)"
                 :aria-disabled="
@@ -146,8 +153,8 @@ defineExpose({ activate, edit, assignItem, resetGesture })
                 <b v-if="cooldown(binding) > 0" class="hotbar-cooldown">{{
                     (cooldown(binding) / 1000).toFixed(1)
                 }}</b>
-            </button>
-            <button
+            </GameItemSlot>
+            <GameButton
                 v-if="binding"
                 type="button"
                 class="hotbar-clear"
@@ -156,7 +163,7 @@ defineExpose({ activate, edit, assignItem, resetGesture })
                 @click.stop="clearSlot(index)"
             >
                 ×
-            </button>
+            </GameButton>
         </div>
         <p>1–4 · Дважды: повтор · Shift: назначить</p>
         <p v-if="player.control?.mode === 'action'" class="hotbar-waiting" role="status">
@@ -169,39 +176,41 @@ defineExpose({ activate, edit, assignItem, resetGesture })
     >
         <p
             v-if="player.combat?.defensiveStance"
-            class="hotbar-context__line rpg-panel"
+            class="hotbar-context__line rpg-panel game-frame-host"
             role="status"
         >
-            Глухая оборона · Движение, атаки и колдовство недоступны
+            <GameFrame variant="panel" />Глухая оборона · Движение, атаки и колдовство недоступны
         </p>
         <p
             v-if="player.combat?.combo?.stacks"
-            class="hotbar-context__line rpg-panel"
+            class="hotbar-context__line rpg-panel game-frame-host"
             role="status"
             aria-label="Серия ударов"
         >
-            Серия ударов: {{ player.combat.combo.stacks }} / {{ player.combat.combo.limit }}
+            <GameFrame variant="panel" />Серия ударов: {{ player.combat.combo.stacks }} /
+            {{ player.combat.combo.limit }}
         </p>
         <p
             v-if="prayerAssigned && !player.combat?.defensiveStance"
-            class="prayer-preview rpg-panel"
+            class="prayer-preview rpg-panel game-frame-host"
             role="status"
         >
-            {{ prayerTooltip() }}
+            <GameFrame variant="panel" />{{ prayerTooltip() }}
         </p>
     </div>
     <section
         v-if="editing !== undefined"
         ref="picker"
-        class="hotbar-picker rpg-panel"
+        class="hotbar-picker rpg-panel game-frame-host"
         role="dialog"
         aria-modal="true"
         :aria-label="`Назначить слот ${editing + 1}`"
         @keydown.stop="dialogActionKeys($event, picker, close)"
         @keyup.stop
     >
+        <GameFrame variant="window" />
         <h2>Слот {{ editing + 1 }}</h2>
-        <button
+        <GameButton
             v-for="ability in known"
             :key="ability"
             data-dialog-action
@@ -213,18 +222,24 @@ defineExpose({ activate, edit, assignItem, resetGesture })
                 >{{ abilityUsage(player, ability).mana }} MP ·
                 {{ abilityUsage(player, ability).energy }} EN</small
             >
-        </button>
-        <button data-dialog-action type="button" @click="assign({ kind: 'attack' })">
+        </GameButton>
+        <GameButton data-dialog-action type="button" @click="assign({ kind: 'attack' })">
             ⚔ {{ label({ kind: 'attack' }) }}
-        </button>
-        <button data-dialog-action type="button" @click="assign({ kind: 'item', id: 'food' })">
+        </GameButton>
+        <GameButton data-dialog-action type="button" @click="assign({ kind: 'item', id: 'food' })">
             Яблоко · {{ count }}
-        </button>
-        <button data-dialog-action type="button" @click="assign({ kind: 'item', id: 'sapling' })">
+        </GameButton>
+        <GameButton
+            data-dialog-action
+            type="button"
+            @click="assign({ kind: 'item', id: 'sapling' })"
+        >
             Саженец · {{ saplings }}
-        </button>
-        <button data-dialog-action type="button" @click="assign(null)">Очистить слот</button>
-        <button data-dialog-action type="button" @click="close">Закрыть · Esc</button>
+        </GameButton>
+        <GameButton data-dialog-action type="button" @click="assign(null)"
+            >Очистить слот</GameButton
+        >
+        <GameButton data-dialog-action type="button" @click="close">Закрыть · Esc</GameButton>
     </section>
 </template>
 <style scoped src="./actionHotbar.css"></style>

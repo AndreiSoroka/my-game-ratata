@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ScenarioRunSnapshot } from '@my-game-ratata/contracts'
 
+import GameButton from './primitives/GameButton.vue'
+
 defineProps<{
     run: ScenarioRunSnapshot
     compact?: boolean
@@ -45,11 +47,9 @@ const interruptions = { enemy: 'Рядом враг', conversation: 'Разго�
             v-if="canControl && (run.status === 'running' || run.status === 'paused')"
             class="automation-row"
         >
-            <button v-if="run.status === 'running'" type="button" @click="emit('pause')">
-                Пауза
-            </button>
-            <button v-else type="button" @click="emit('resume')">Продолжить</button>
-            <button type="button" @click="emit('stop')">Остановить</button>
+            <GameButton v-if="run.status === 'running'" @click="emit('pause')"> Пауза </GameButton>
+            <GameButton v-else @click="emit('resume')">Продолжить</GameButton>
+            <GameButton @click="emit('stop')">Остановить</GameButton>
         </div>
         <ol v-if="!compact" class="scenario-results">
             <li v-for="(result, index) in run.results" :key="result.stepId">

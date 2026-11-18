@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChatInputState } from '../runtime/chatInput'
+import GameFrame from './primitives/GameFrame.vue'
 
 defineProps<{
     state: ChatInputState
@@ -7,7 +8,8 @@ defineProps<{
 </script>
 
 <template>
-    <div class="chat-input" role="status" aria-live="polite">
+    <div class="chat-input game-frame-host" role="status" aria-live="polite">
+        <GameFrame variant="inset" />
         <span>&gt;</span>
         <span class="chat-input__draft">{{ state.draft }}</span>
         <span class="chat-input__count"> {{ state.draft.length }}/{{ state.maxLength }} </span>
@@ -27,10 +29,7 @@ defineProps<{
     align-items: center;
     max-width: 720px;
     padding: 9px 12px;
-    color: #f7fbff;
-    background: rgba(12, 15, 20, 0.94);
-    border: 1px solid #59677a;
-    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.24);
+    border: 1px solid transparent;
 }
 
 .chat-input__draft {

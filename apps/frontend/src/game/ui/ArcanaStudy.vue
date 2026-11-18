@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
+
+import GameButton from './primitives/GameButton.vue'
+import GameSelect from './primitives/GameSelect.vue'
 const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const selectedId = ref('')
@@ -41,13 +44,12 @@ function teach(): void {
 <template>
     <div class="arcana-study">
         <div class="knowledge-action">
-            <button
-                type="button"
+            <GameButton
                 :disabled="!player.alive || !teacher || chaptersRead >= chaptersTotal"
                 @click="study"
             >
                 Читать главу · {{ chaptersRead }}/{{ chaptersTotal }}
-            </button>
+            </GameButton>
             <small>{{
                 chaptersRead >= chaptersTotal
                     ? 'Все главы изучены. Передайте знания другому.'
@@ -58,7 +60,7 @@ function teach(): void {
         </div>
         <div v-if="canTeach" class="knowledge-target">
             <label for="magic-student">Ученик рядом</label>
-            <select
+            <GameSelect
                 id="magic-student"
                 :value="student?.id ?? ''"
                 @change="selectedId = ($event.target as HTMLSelectElement).value"
@@ -67,15 +69,11 @@ function teach(): void {
                 <option v-for="candidate in students" :key="candidate.id" :value="candidate.id">
                     {{ candidate.nickname }}
                 </option>
-            </select>
+            </GameSelect>
         </div>
         <div v-if="canTeach" class="knowledge-action">
-            <button
-                type="button"
-                :disabled="!player.alive || !student || !studentReady"
-                @click="teach"
-            >
-                Научить огненному шару</button
+            <GameButton :disabled="!player.alive || !student || !studentReady" @click="teach">
+                Научить огненному шару</GameButton
             ><small>{{
                 student && !studentReady
                     ? 'Ученику требуется Магия 3.'

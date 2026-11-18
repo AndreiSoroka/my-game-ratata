@@ -12,6 +12,7 @@ import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import GraveDetails from './GraveDetails.vue'
 import NearbyActionMenu from './NearbyActionMenu.vue'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
+import GameButton from './primitives/GameButton.vue'
 
 const props = defineProps<{
     snapshot: WorldSnapshot | undefined
@@ -162,10 +163,9 @@ onBeforeUnmount(() => emit('targetChange', undefined))
 defineExpose({ openMenu })
 </script>
 <template>
-    <button
+    <GameButton
         v-if="target && actions.length && !blocked && !open"
         class="nearby-prompt"
-        type="button"
         @click="emit('requestOpen')"
     >
         <kbd>F</kbd> <strong>{{ target.name }}</strong>
@@ -174,7 +174,7 @@ defineExpose({ openMenu })
             class="nearby-prompt__action"
             >{{ actions.length === 1 ? actions[0]?.label : 'Выбрать действие' }}</span
         >
-    </button>
+    </GameButton>
     <NearbyActionMenu
         :open="open"
         :actions="actions"
@@ -199,13 +199,7 @@ defineExpose({ openMenu })
     padding: 10px 13px;
     max-width: calc(100% - 32px);
     text-align: left;
-    background: #18241bea;
-    color: #ebd6a5;
-    border: 1px solid #99885b;
-    border-radius: 4px;
-    font:
-        12px/1.5 system-ui,
-        sans-serif;
+    border: 1px solid transparent;
     cursor: pointer;
 }
 .nearby-prompt strong {

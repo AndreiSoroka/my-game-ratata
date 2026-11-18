@@ -14,6 +14,8 @@ import {
 import { computed, ref } from 'vue'
 
 import { displayMasteryExperience } from '../ui/masteryPresentation'
+import GameFrame from '../ui/primitives/GameFrame.vue'
+import GameSelect from '../ui/primitives/GameSelect.vue'
 import { constellationBuildLevels, paidConstellationStars } from './constellationMasteryPlan'
 import { useConstellationDebugPanels } from './useConstellationDebugPanels'
 
@@ -64,13 +66,13 @@ const percent = (value: number) =>
 </script>
 <template>
     <details
-        class="mastery-summary"
+        class="mastery-summary game-frame-host"
         data-testid="debug-mastery-summary"
         aria-label="Развитие выбранного созвездия"
         :open="panels.mastery"
         @toggle.self="panels.mastery = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <summary @keydown.stop @keyup.stop>Развитие созвездия</summary>
+        <summary @keydown.stop @keyup.stop><GameFrame variant="panel" />Развитие созвездия</summary>
         <div class="mastery-content">
             <h2>
                 {{ MASTERY_NAMES[path] }} · нужен уровень
@@ -89,7 +91,7 @@ const percent = (value: number) =>
             </p>
             <label
                 >Действие для расчёта
-                <select
+                <GameSelect
                     :value="reward.id"
                     data-testid="debug-mastery-reward"
                     @change="selectedRewards[path] = ($event.target as HTMLSelectElement).value"
@@ -97,7 +99,7 @@ const percent = (value: number) =>
                     <option v-for="entry in rewards" :key="entry.id" :value="entry.id">
                         {{ entry.label }} · {{ entry.experience }} XP
                     </option>
-                </select>
+                </GameSelect>
             </label>
             <dl>
                 <div>
@@ -125,9 +127,8 @@ const percent = (value: number) =>
 </template>
 <style scoped>
 .mastery-summary {
-    border: 1px solid #425f6d;
+    border: 1px solid transparent;
     border-top: 0;
-    background: #10232d;
     font-size: 12px;
     line-height: 1.5;
 }
@@ -172,14 +173,7 @@ select {
     min-width: 0;
     min-height: 44px;
     padding: 8px;
-    border: 1px solid #66818d;
-    background: #0b202b;
-    color: #eee6d2;
-    font: inherit;
-}
-select:focus-visible {
-    outline: 2px solid #ffe0a1;
-    outline-offset: 2px;
+    border: 1px solid transparent;
 }
 dl {
     display: grid;

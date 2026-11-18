@@ -12,15 +12,7 @@
     border-bottom: 1px solid #526049;
 }
 .companion-roster button {
-    font:
-        11px/1.4 system-ui,
-        sans-serif;
     padding: 7px 9px;
-}
-.companion-roster button[aria-pressed='true'] {
-    border-color: #eed290;
-    background: #48503b;
-    color: #ffe5a9;
 }
 .companion-heading {
     display: flex;
@@ -47,8 +39,7 @@
     grid-template-columns: auto 1fr;
     gap: 8px 20px;
     padding: 12px;
-    background: #111a14;
-    border: 1px solid #3d4c36;
+    border: 1px solid transparent;
     font:
         12px/1.5 system-ui,
         sans-serif;
@@ -93,11 +84,6 @@
     flex-direction: column;
     gap: 6px;
     margin-top: 12px;
-}
-.companion-requests button {
-    font:
-        12px/1.4 system-ui,
-        sans-serif;
 }
 .companion-distance {
     color: #e6c28b;

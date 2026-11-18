@@ -2,6 +2,8 @@
 import type { ConstellationNodeSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import GameButton from '../ui/primitives/GameButton.vue'
+import GameFrame from '../ui/primitives/GameFrame.vue'
 import type { BuildCascade, BuildFeedback, BuildNoticePause } from './useConstellationBuild'
 
 const props = defineProps<{
@@ -39,7 +41,7 @@ watch(
     <section
         v-if="feedback || cascade"
         ref="notice"
-        class="build-feedback"
+        class="build-feedback game-frame-host"
         :class="{ 'build-feedback--info': !feedback }"
         aria-live="polite"
         aria-atomic="true"
@@ -49,6 +51,7 @@ watch(
         @focusin="emit('pause', 'focus')"
         @focusout="focusOut"
     >
+        <GameFrame variant="panel" />
         <div
             v-if="feedback"
             :key="feedback.id"
@@ -57,15 +60,15 @@ watch(
             data-testid="debug-build-blocked"
         >
             <p>{{ feedback.text }}</p>
-            <button
+            <GameButton
+                size="compact"
                 v-for="id in feedback.missingParents"
                 :key="id"
-                type="button"
                 :data-find-parent="id"
                 @click="emit('inspect', id)"
             >
                 Показать «{{ nodes.find((node) => node.id === id)?.name ?? id }}»
-            </button>
+            </GameButton>
         </div>
         <div v-else-if="cascade" :key="cascade.id" role="status" data-testid="debug-build-cascade">
             <strong>Отключено звёзд: {{ cascade.ids.length }}</strong>
@@ -87,9 +90,7 @@ watch(
     box-sizing: border-box;
     width: min(360px, calc(100vw - 32px));
     padding: 12px 16px;
-    border: 1px solid #b8945d;
-    background: #302a1c;
-    box-shadow: 0 4px 20px #0008;
+    border: 1px solid transparent;
     color: #f4dfae;
     font-size: 12px;
     line-height: 1.5;
@@ -109,16 +110,9 @@ strong + p {
 }
 button {
     min-height: 44px;
-    border: 1px solid #b8945d;
-    background: #24251d;
-    color: #f4dfae;
+    border: 1px solid transparent;
     padding: 8px 10px;
     text-align: left;
-    font: inherit;
     cursor: pointer;
-}
-button:focus-visible {
-    outline: 2px solid #ffe0a1;
-    outline-offset: 2px;
 }
 </style>

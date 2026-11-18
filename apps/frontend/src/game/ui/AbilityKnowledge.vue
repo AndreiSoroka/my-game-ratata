@@ -12,6 +12,7 @@ import {
 import { computed } from 'vue'
 
 import { abilityUsage } from './abilityUsage'
+import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{
     player: CharacterSnapshot
     characters: CharacterSnapshot[]
@@ -79,8 +80,8 @@ function learn(abilityId: LearnAbilityId): void {
             )"
             :key="id"
         >
-            <button type="button" :disabled="!player.alive || !teacher(id)" @click="learn(id)">
-                Изучить: {{ ABILITY_DEFINITIONS[id].name }}</button
+            <GameButton :disabled="!player.alive || !teacher(id)" @click="learn(id)">
+                Изучить: {{ ABILITY_DEFINITIONS[id].name }}</GameButton
             ><small
                 >{{
                     id === 'pray'

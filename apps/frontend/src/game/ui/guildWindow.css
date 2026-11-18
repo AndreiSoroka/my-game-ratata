@@ -28,15 +28,6 @@
 .guild-section-heading h2 {
     margin: 0;
 }
-.guild-section-heading button,
-.guild-invitations button,
-.guild-candidate button,
-.guild-reward button,
-.guild-job button {
-    font:
-        12px/1.4 system-ui,
-        sans-serif;
-}
 .guild-members,
 .guild-contributions {
     list-style: none;
@@ -74,11 +65,10 @@
     gap: 12px;
     margin-top: 8px;
 }
-.guild-invitations article {
+.guild-invitation {
     margin: 12px 0;
     padding: 10px;
-    border: 1px solid #beab76;
-    background: #353d2a;
+    border: 1px solid transparent;
 }
 .guild-invitations article > div {
     display: flex;
@@ -127,16 +117,14 @@
         sans-serif;
 }
 
-.party-invitation-hint {
+.party-invitation-hint.game-frame-host {
     position: absolute;
     z-index: 6;
     left: 16px;
     top: 146px;
     max-width: 280px;
     padding: 12px;
-    background: #1a211cf5;
-    border: 1px solid #bc9c61;
-    border-radius: 4px;
+    border: 1px solid transparent;
     font:
         12px/1.5 system-ui,
         sans-serif;

@@ -7,6 +7,8 @@ import CharacterQuests from './CharacterQuests.vue'
 import CharacterStats from './CharacterStats.vue'
 import CloseIcon from './CloseIcon.vue'
 import { isConfirmationKey, isTextEntry, permitsWorldMovement } from './keyboardOwnership'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import type { CharacterTab } from './useCharacterWindow'
 
@@ -95,7 +97,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
     >
         <section
             ref="panel"
-            class="character-window rpg-panel"
+            class="character-window rpg-panel game-frame-host"
             role="dialog"
             :aria-modal="tab !== 'quests' || undefined"
             :data-world-movement="tab === 'quests' ? 'wasd' : undefined"
@@ -105,19 +107,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
             @keydown="panelEvent"
             @keyup="panelEvent"
         >
+            <GameFrame variant="window" />
             <header class="character-header">
                 <div>
                     <span class="character-eyebrow">ПЕРСОНАЖ</span>
                     <h2>{{ player.nickname }}</h2>
                 </div>
-                <button
-                    type="button"
+                <GameButton
+                    icon
                     class="character-close"
                     aria-label="Закрыть персонажа"
                     @click="emit('close')"
                 >
                     <CloseIcon />
-                </button>
+                </GameButton>
             </header>
             <div
                 class="character-tabs"
@@ -125,9 +128,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                 aria-label="Разделы персонажа"
                 @keydown="tabKey"
             >
-                <button
+                <GameButton
                     id="character-stats-tab"
-                    type="button"
                     role="tab"
                     :aria-selected="tab === 'stats'"
                     aria-controls="character-stats-panel"
@@ -135,10 +137,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                     @click="tab = 'stats'"
                 >
                     Характеристики
-                </button>
-                <button
+                </GameButton>
+                <GameButton
                     id="character-development-tab"
-                    type="button"
                     role="tab"
                     :aria-selected="tab === 'development'"
                     aria-controls="character-development-panel"
@@ -146,10 +147,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                     @click="tab = 'development'"
                 >
                     Развитие
-                </button>
-                <button
+                </GameButton>
+                <GameButton
                     id="character-quests-tab"
-                    type="button"
                     role="tab"
                     :aria-selected="tab === 'quests'"
                     aria-controls="character-quests-panel"
@@ -157,7 +157,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                     @click="tab = 'quests'"
                 >
                     Квесты
-                </button>
+                </GameButton>
             </div>
             <div class="character-content">
                 <div

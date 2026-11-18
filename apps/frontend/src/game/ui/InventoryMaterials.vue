@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { AdventureMaterials } from '@my-game-ratata/contracts'
 
+import GameFrame from './primitives/GameFrame.vue'
+
 defineProps<{ materials: AdventureMaterials }>()
 const labels = {
     herbs: 'Травы',
@@ -17,7 +19,12 @@ const labels = {
     <section class="inventory-materials" aria-label="Собранные материалы">
         <h3>Материалы</h3>
         <dl>
-            <div v-for="(label, kind) in labels" :key="kind">
+            <div
+                v-for="(label, kind) in labels"
+                :key="kind"
+                class="inventory-material-row game-frame-host"
+            >
+                <GameFrame variant="inset" />
                 <dt>{{ label }}</dt>
                 <dd>{{ materials[kind] }}</dd>
             </div>
@@ -46,7 +53,6 @@ dl div {
     justify-content: space-between;
     gap: 8px;
     padding: 7px 8px;
-    background: #1b2630;
     font:
         12px/1.4 system-ui,
         sans-serif;

@@ -9,6 +9,8 @@ import {
 import { computed, ref } from 'vue'
 
 import { craftOrderPaymentText, craftOrderStatusLabels as statuses } from './craftOrderLabels'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 const props = defineProps<{
     workshop: WorkshopSnapshot
     market?: MarketSnapshot
@@ -78,7 +80,13 @@ function claim(orderId: string, expectedRemaining: number): void {
         <p class="workshop-orders__terms">
             Предоплата 50%. Остальное — при получении. Аванс не возвращается.
         </p>
-        <div v-if="selected" class="order-confirm" role="group" aria-label="Подтверждение заказа">
+        <div
+            v-if="selected"
+            class="order-confirm game-frame-host"
+            role="group"
+            aria-label="Подтверждение заказа"
+        >
+            <GameFrame variant="panel" />
             <strong>{{ selected.label }}</strong>
             <p>
                 Полная цена {{ selected.fullPrice }} ◈ · сейчас {{ selected.deposit }} ◈ · при
@@ -88,81 +96,88 @@ function claim(orderId: string, expectedRemaining: number): void {
                 Заказ ждёт настоящие материалы и получает приоритет изготовления. Аванс не
                 возвращается.
             </p>
-            <button
-                type="button"
+            <GameButton
+                variant="primary"
                 data-dialogue-action
                 :disabled="blocked || !selected.canOrder || gold < selected.deposit"
                 @click="place"
             >
                 Внести предоплату {{ selected.deposit }} ◈
-            </button>
-            <button type="button" data-dialogue-action @click="selectedId = undefined">
-                Назад
-            </button>
+            </GameButton>
+            <GameButton data-dialogue-action @click="selectedId = undefined"> Назад </GameButton>
         </div>
         <template v-else>
             <article
                 v-for="offer in workshop.offers"
                 :key="offer.itemId"
-                class="workshop-order-row"
+                class="workshop-order-row game-frame-host"
             >
+                <GameFrame variant="inset" />
                 <strong>{{ offer.label }}</strong>
                 <small>В наличии: {{ offer.stock }} · полная цена {{ offer.fullPrice }} ◈</small>
-                <button
+                <GameButton
                     v-if="offer.stock > 0"
-                    type="button"
                     data-dialogue-action
                     :disabled="blocked || gold < offer.fullPrice"
                     @click="buy(offer)"
                 >
                     Купить · {{ offer.fullPrice }} ◈
-                </button>
-                <button
+                </GameButton>
+                <GameButton
                     v-else
-                    type="button"
                     data-dialogue-action
                     :disabled="blocked || !offer.canOrder || gold < offer.deposit"
                     @click="selectedId = offer.itemId"
                 >
                     Заказать · аванс {{ offer.deposit }} ◈
-                </button>
+                </GameButton>
             </article>
         </template>
         <h3>Ваши заказы</h3>
         <p v-if="!workshop.orders.length">Заказов пока нет.</p>
-        <article v-for="order in workshop.orders" :key="order.id" class="workshop-order-row">
+        <article
+            v-for="order in workshop.orders"
+            :key="order.id"
+            class="workshop-order-row game-frame-host"
+        >
+            <GameFrame variant="inset" />
             <strong>{{ order.label }}</strong
             ><span>{{ statuses[order.status] }}</span>
             <small>{{ craftOrderPaymentText(order) }}</small>
-            <button
+            <GameButton
+                variant="success"
                 v-if="order.status === 'ready'"
-                type="button"
                 data-dialogue-action
                 :disabled="blocked || gold < order.remaining"
                 @click="claim(order.id, order.remaining)"
             >
                 Получить · доплатить {{ order.remaining }} ◈
-            </button>
-            <button
+            </GameButton>
+            <GameButton
                 v-if="['waiting_materials', 'queued', 'ready'].includes(order.status)"
-                type="button"
                 data-dialogue-action
                 :disabled="blocked"
                 @click="cancelId = order.id"
             >
                 Отменить заказ
-            </button>
+            </GameButton>
         </article>
-        <div v-if="cancelling" class="order-confirm" role="group" aria-label="Отмена заказа">
+        <div
+            v-if="cancelling"
+            class="order-confirm game-frame-host"
+            role="group"
+            aria-label="Отмена заказа"
+        >
+            <GameFrame variant="panel" />
             <p>
                 Отменить «{{ cancelling.label }}»? Аванс {{ cancelling.deposit }} ◈ не возвращается.
             </p>
-            <button type="button" data-dialogue-action :disabled="blocked" @click="cancel">
+            <GameButton variant="danger" data-dialogue-action :disabled="blocked" @click="cancel">
                 Отменить без возврата аванса
-            </button>
-            <button type="button" data-dialogue-action @click="cancelId = undefined">
+            </GameButton>
+            <GameButton data-dialogue-action @click="cancelId = undefined">
                 Сохранить заказ
-            </button>
+            </GameButton>
         </div>
     </section>
 </template>
@@ -183,12 +198,8 @@ function claim(orderId: string, expectedRemaining: number): void {
 .order-confirm {
     display: grid;
     gap: 6px;
-    border: 1px solid #68735c;
+    border: 1px solid transparent;
     padding: 10px;
-}
-.order-confirm {
-    border-color: #d4b767;
-    background: #273125;
 }
 small {
     color: #c9d3bb;

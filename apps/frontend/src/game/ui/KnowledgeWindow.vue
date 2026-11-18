@@ -14,6 +14,9 @@ import { abilityUsage } from './abilityUsage'
 import ArcanaStudy from './ArcanaStudy.vue'
 import FaithKnowledge from './FaithKnowledge.vue'
 import { displayMasteryExperience, masteryProgressPercent } from './masteryPresentation'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameSelect from './primitives/GameSelect.vue'
 
 const props = defineProps<{
     player: CharacterSnapshot
@@ -92,14 +95,17 @@ function learnFireball(): void {
 </script>
 <template>
     <section
-        :class="embedded ? 'embedded-knowledge' : 'adventure-window adventure-knowledge'"
+        :class="
+            embedded ? 'embedded-knowledge' : 'adventure-window adventure-knowledge game-frame-host'
+        "
         :role="embedded ? undefined : 'dialog'"
         :aria-modal="embedded ? undefined : false"
         aria-label="Знания героя"
     >
+        <GameFrame v-if="!embedded" variant="window" />
         <header v-if="!embedded" class="adventure-window__header">
             <span>ЗНАНИЯ · СОЗВЕЗДИЯ</span
-            ><button type="button" aria-label="Закрыть знания" @click="emit('close')">×</button>
+            ><GameButton icon aria-label="Закрыть знания" @click="emit('close')">×</GameButton>
         </header>
         <p v-if="!embedded" class="knowledge-intro">
             Полезные действия дают опыт. Уровни дают открытия звёзд; неиспользованные открытия
@@ -154,13 +160,12 @@ function learnFireball(): void {
                     @command="emit('command', $event)"
                 />
                 <div v-if="!player.abilities?.known.includes('fireball')" class="knowledge-action">
-                    <button
-                        type="button"
+                    <GameButton
                         :disabled="!player.alive || !teacher || magicLevel < 3"
                         @click="learnFireball"
                     >
                         Изучить огненный шар
-                    </button>
+                    </GameButton>
                     <small>{{
                         magicLevel < 3
                             ? 'Требуется Магия 3.'
@@ -171,7 +176,7 @@ function learnFireball(): void {
                 </div>
                 <div v-if="knownSpells.length" class="knowledge-target">
                     <label for="spell-target">Цель заклинаний</label
-                    ><select
+                    ><GameSelect
                         id="spell-target"
                         :value="target?.id ?? ''"
                         @change="targetId = ($event.target as HTMLSelectElement).value"
@@ -180,13 +185,13 @@ function learnFireball(): void {
                         <option v-for="enemy in enemies" :key="enemy.id" :value="enemy.id">
                             {{ enemy.nickname }}
                         </option>
-                    </select>
+                    </GameSelect>
                 </div>
                 <div v-for="id in knownSpells" :key="id" class="knowledge-action">
-                    <button type="button" :disabled="!canCast(id)" @click="cast(id)">
+                    <GameButton :disabled="!canCast(id)" @click="cast(id)">
                         {{ id === 'fireball' ? 'Огненный шар' : 'Большой огненный шар' }} ·
                         {{ abilityUsage(player, id).mana }} MP
-                    </button>
+                    </GameButton>
                 </div>
             </template>
         </article>
@@ -201,18 +206,11 @@ function learnFireball(): void {
 .embedded-knowledge :deep(select) {
     min-height: 36px;
     padding: 7px 12px;
-    border: 1px solid #788775;
-    background: #233a3c;
-    color: #eee6cf;
+    border: 1px solid transparent;
     cursor: pointer;
 }
 .embedded-knowledge :deep(button:disabled) {
     opacity: 0.45;
     cursor: default;
-}
-.embedded-knowledge :deep(button:focus-visible),
-.embedded-knowledge :deep(select:focus-visible) {
-    outline: 2px solid #f0d287;
-    outline-offset: 2px;
 }
 </style>

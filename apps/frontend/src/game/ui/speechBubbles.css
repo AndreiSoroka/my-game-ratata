@@ -14,21 +14,19 @@
     box-sizing: border-box;
     width: 42px;
     height: 26px;
-    background: #f5efe3;
     color: #263126;
-    border: 2px solid #b09664;
-    box-shadow: 2px 2px #15211880;
+    border: 2px solid transparent;
 }
-.speech-typing span {
+.speech-typing__dot {
     width: 4px;
     height: 4px;
     flex: 0 0 4px;
     background: currentColor;
 }
-.speech-typing span:nth-child(2) {
+.speech-typing__dot:nth-last-child(2) {
     animation: speech-dot-two 1.2s step-end infinite;
 }
-.speech-typing span:nth-child(3) {
+.speech-typing__dot:last-child {
     animation: speech-dot-three 1.2s step-end infinite;
 }
 @keyframes speech-dot-two {
@@ -50,19 +48,16 @@
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .speech-typing span {
+    .speech-typing__dot {
         animation: none;
     }
 }
 .speech-bubble {
     position: absolute;
-    background: var(--rpg-speech, #f5efe3);
     color: #263126;
-    border: 2px solid var(--rpg-brass, #b09664);
-    border-radius: 0;
+    border: 2px solid transparent;
     padding: 11px 13px;
     box-sizing: border-box;
-    box-shadow: 3px 3px 0 #15211880;
     pointer-events: auto;
     font:
         14px/1.5 system-ui,

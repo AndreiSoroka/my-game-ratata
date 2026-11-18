@@ -2,6 +2,8 @@
 import type { ConstellationId } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
+import GameFrame from '../ui/primitives/GameFrame.vue'
+import GameInput from '../ui/primitives/GameInput.vue'
 import { describeConstellationBuild } from './constellationBuildSummary'
 import { useConstellationDebugPanels } from './useConstellationDebugPanels'
 
@@ -37,7 +39,7 @@ watch(
     <details
         id="debug-build-result"
         v-if="summary.effectType"
-        class="build-summary"
+        class="build-summary game-frame-host"
         data-testid="debug-build-summary"
         :data-result-node="selectedId"
         :data-result-type="summary.effectType"
@@ -45,7 +47,9 @@ watch(
         :open="panels.result"
         @toggle.self="panels.result = ($event.currentTarget as HTMLDetailsElement).open"
     >
-        <summary @keydown.stop @keyup.stop>{{ summary.name }}: результат</summary>
+        <summary @keydown.stop @keyup.stop>
+            <GameFrame variant="panel" />{{ summary.name }}: результат
+        </summary>
         <div class="build-content">
             <p v-if="!summary.available" data-testid="debug-build-inactive">
                 {{
@@ -55,7 +59,7 @@ watch(
                 }}
             </p>
             <label v-if="canCharge" class="runic-example"
-                ><input v-model="charged" type="checkbox" data-testid="debug-runic-charged" />
+                ><GameInput v-model="charged" type="checkbox" data-testid="debug-runic-charged" />
                 Рунический заряд активен в примере</label
             >
             <dl>
@@ -72,9 +76,8 @@ watch(
 </template>
 <style scoped>
 .build-summary {
-    border: 1px solid #425f6d;
+    border: 1px solid transparent;
     border-top: 0;
-    background: #10232d;
     font-size: 12px;
     line-height: 1.55;
 }

@@ -2,6 +2,8 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, onMounted, ref, useId } from 'vue'
 
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
 
@@ -56,7 +58,8 @@ function key(event: KeyboardEvent): void {
         @keydown.stop="key"
         @keyup.stop
     >
-        <div ref="panel" class="death-overlay__card" tabindex="-1">
+        <div ref="panel" class="death-overlay__card game-frame-host" tabindex="-1">
+            <GameFrame variant="window" />
             <p class="death-overlay__eyebrow">
                 {{ defeated ? 'ИСТОРИЯ ЗАВЕРШЕНА' : 'МЕЖДУ ЖИЗНЬЮ И СМЕРТЬЮ' }}
             </p>
@@ -68,20 +71,22 @@ function key(event: KeyboardEvent): void {
                     Если начать сначала, этого героя уже нельзя будет воскресить. Вещи и золото
                     останутся в его теле. Вы выберете нового героя без прежнего опыта и заданий.
                 </p>
-                <button
-                    type="button"
+                <GameButton
+                    variant="danger"
                     :disabled="pending || !connected"
                     @click="$emit('abandonLife')"
                 >
                     {{ pending ? 'Завершаем жизнь…' : 'Начать сначала' }}
-                </button>
+                </GameButton>
                 <p v-if="!connected" role="status">Нет соединения с сервером.</p>
             </template>
             <template v-else>
                 <p :id="detailId">
                     Следующая жизнь начнётся с новым героем — без прежних вещей, опыта и заданий.
                 </p>
-                <button type="button" @click="$emit('newLife')">Начать новую жизнь</button>
+                <GameButton variant="primary" @click="$emit('newLife')"
+                    >Начать новую жизнь</GameButton
+                >
             </template>
         </div>
     </section>
@@ -104,9 +109,7 @@ function key(event: KeyboardEvent): void {
     width: min(440px, 100%);
     padding: clamp(18px, 5vw, 30px);
     color: #eee2ce;
-    background: #181c22f5;
-    border: 1px solid #998568;
-    border-radius: 8px;
+    border: 1px solid transparent;
     text-align: center;
     box-sizing: border-box;
 }
@@ -140,16 +143,8 @@ function key(event: KeyboardEvent): void {
 .death-overlay button {
     margin-top: 18px;
     padding: 12px 18px;
-    color: #201b10;
-    background: #d3b779;
-    border: 1px solid #f5dbaa;
-    border-radius: 4px;
-    font: inherit;
+    border: 1px solid transparent;
     cursor: pointer;
-}
-.death-overlay button:focus-visible {
-    outline: 3px solid #fff0ba;
-    outline-offset: 4px;
 }
 .death-overlay button:disabled {
     opacity: 0.65;

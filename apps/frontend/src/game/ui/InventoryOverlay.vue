@@ -21,6 +21,9 @@ import InventoryItemDetails from './InventoryItemDetails.vue'
 import { inventoryKey } from './inventoryKeyboard'
 import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameItemSlot from './primitives/GameItemSlot.vue'
 import { useInventoryFocus } from './useInventoryFocus'
 
 const props = defineProps<{
@@ -176,13 +179,14 @@ function unequip(slot: EquipmentSlotId): void {
         @keydown.stop="onKey"
         @keyup.stop
     >
-        <section class="inventory-overlay__equipment" aria-label="Equipment">
+        <section class="inventory-overlay__equipment game-frame-host" aria-label="Equipment">
+            <GameFrame variant="window" />
             <header class="inventory-overlay__header">
                 <h2>Equipped</h2>
             </header>
 
             <div class="equipment-slots">
-                <button
+                <GameButton
                     v-for="slot in equipmentSlots"
                     :key="slot"
                     class="equipment-slot"
@@ -198,7 +202,10 @@ function unequip(slot: EquipmentSlotId): void {
                     <span class="equipment-slot__label">{{
                         slot === 'weapon' ? 'Weapon' : 'Boots'
                     }}</span>
-                    <span class="equipment-slot__socket">
+                    <GameItemSlot
+                        class="equipment-slot__socket"
+                        :empty="!character.equipment[slot]"
+                    >
                         <img
                             v-if="character.equipment[slot]"
                             class="item-icon"
@@ -227,38 +234,44 @@ function unequip(slot: EquipmentSlotId): void {
                             />
                             <path d="m10 17 7 7" stroke="#d4ba76" stroke-width="3" />
                         </svg>
-                    </span>
+                    </GameItemSlot>
                     <ItemCondition
                         v-if="character.equipment[slot]"
                         :item="character.equipment[slot]"
                     />
-                </button>
+                </GameButton>
             </div>
         </section>
 
-        <section class="inventory-overlay__inventory" aria-label="Inventory">
+        <section class="inventory-overlay__inventory game-frame-host" aria-label="Inventory">
+            <GameFrame variant="window" />
             <header class="inventory-overlay__header">
                 <h2>Inventory</h2>
                 <span class="inventory-capacity" aria-label="Занято слотов"
                     >{{ character.inventory.length }} / {{ INVENTORY_CAPACITY }}</span
                 >
-                <button
+                <GameButton
                     class="inventory-overlay__close"
                     type="button"
                     aria-label="Close inventory"
                     @click="emit('close')"
                 >
                     ×
-                </button>
+                </GameButton>
             </header>
 
-            <p class="inventory-gold" aria-label="Золото">Золото: {{ gold ?? '—' }} ◈</p>
+            <p class="inventory-gold game-frame-host" aria-label="Золото">
+                <GameFrame variant="inset" />Золото: {{ gold ?? '—' }} ◈
+            </p>
             <div class="inventory-grid" aria-label="Inventory slots">
-                <button
+                <GameItemSlot
+                    as="button"
                     v-for="(item, index) in inventorySlots"
                     :key="index"
                     class="inventory-slot"
                     :data-filled="Boolean(item)"
+                    :empty="!item"
+                    :selected="Boolean(item) && item?.instanceId === selectedItemId"
                     :data-item-instance-id="item?.instanceId"
                     :class="{
                         'inventory-slot--selected':
@@ -282,7 +295,7 @@ function unequip(slot: EquipmentSlotId): void {
                         aria-hidden="true"
                         >{{ item.quantity }}</span
                     >
-                </button>
+                </GameItemSlot>
             </div>
 
             <div v-if="!selectedItem && inspectedItem" class="inventory-inspection">

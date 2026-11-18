@@ -12,6 +12,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } fro
 
 import ChestPane from './ChestPane.vue'
 import { dialogActionKeys } from './dialogActionKeys'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { focusPanelSurface } from './uiKeyboard'
 
@@ -130,7 +132,7 @@ onBeforeUnmount(() => {
     <div class="chest-backdrop" @pointerdown.self.prevent.stop @click.self.stop>
         <section
             ref="panel"
-            class="chest-window"
+            class="chest-window game-frame-host"
             role="dialog"
             aria-modal="true"
             tabindex="-1"
@@ -141,6 +143,7 @@ onBeforeUnmount(() => {
             @click.stop
             @focusin="trackFocus"
         >
+            <GameFrame variant="window" />
             <header class="chest-header">
                 <div>
                     <h2 :id="titleId">
@@ -154,14 +157,14 @@ onBeforeUnmount(() => {
                         }}
                     </p>
                 </div>
-                <button
+                <GameButton
                     type="button"
                     data-dialog-action="close"
                     :aria-label="isCorpse ? 'Закрыть обыск' : 'Закрыть контейнер'"
                     @click="emit('close')"
                 >
                     ×
-                </button>
+                </GameButton>
             </header>
             <p
                 class="chest-capacity"
@@ -199,15 +202,15 @@ onBeforeUnmount(() => {
                     :empty-text="isCorpse ? 'Вещей не осталось.' : 'Контейнер пуст.'"
                     @select="take"
                 >
-                    <button
+                    <GameButton
                         v-if="hasGold"
                         type="button"
                         data-dialog-action="chest:gold"
                         @click="takeGold"
                     >
                         Взять золото: {{ chest.gold }}
-                    </button>
-                    <button
+                    </GameButton>
+                    <GameButton
                         class="chest-take-all"
                         type="button"
                         data-dialog-action="all"
@@ -215,7 +218,7 @@ onBeforeUnmount(() => {
                         @click="takeAll"
                     >
                         Забрать всё
-                    </button>
+                    </GameButton>
                 </ChestPane>
             </div>
             <p class="chest-hint">

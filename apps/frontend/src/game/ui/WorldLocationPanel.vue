@@ -3,6 +3,8 @@ import type { WorldSnapshot } from '@my-game-ratata/contracts'
 import { getWorldLocationDefinition, worldLocationId } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameFrame from './primitives/GameFrame.vue'
+
 const props = defineProps<{ location: NonNullable<WorldSnapshot['location']> }>()
 const dangerNames = [
     'Безопасно',
@@ -26,7 +28,8 @@ function cellLabel(cell: (typeof cells.value)[number]): string {
 </script>
 
 <template>
-    <section class="world-location" aria-label="World location">
+    <section class="world-location game-frame-host" aria-label="World location">
+        <GameFrame variant="panel" />
         <div class="world-location__summary">
             <span class="world-location__region">{{ location.regionName }}</span>
             <strong :title="location.name">{{ location.name }}</strong>
@@ -89,9 +92,7 @@ function cellLabel(cell: (typeof cells.value)[number]): string {
     max-width: calc(100% - 32px);
     padding: 10px 12px;
     color: #f3e7bf;
-    background: #101815ed;
-    border: 1px solid #586b56;
-    border-radius: 4px;
+    border: 1px solid transparent;
     box-sizing: border-box;
 }
 .world-location__summary {

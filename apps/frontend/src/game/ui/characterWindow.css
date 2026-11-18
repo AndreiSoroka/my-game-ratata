@@ -14,13 +14,11 @@
     max-height: calc(100dvh - 40px);
     min-height: min(660px, calc(100dvh - 40px));
     box-sizing: border-box;
-    border: 1px solid #bba06b;
-    background: #0d1b24;
+    border: 1px solid transparent;
     color: #eee6d2;
     font:
         14px/1.5 system-ui,
         sans-serif;
-    box-shadow: 0 20px 100px #0009;
 }
 .character-header {
     display: flex;
@@ -40,13 +38,7 @@ h2 {
     color: #f1d69a;
 }
 button {
-    color: inherit;
-    font: inherit;
     cursor: pointer;
-}
-button:focus-visible {
-    outline: 2px solid #f0d287;
-    outline-offset: 3px;
 }
 .character-backdrop--reading {
     background: transparent;
@@ -62,8 +54,7 @@ button:focus-visible {
     width: 44px;
     height: 44px;
     font-size: 28px;
-    border: 1px solid #52616a;
-    background: #1b2a34;
+    border: 1px solid transparent;
 }
 .character-tabs {
     display: flex;
@@ -73,13 +64,9 @@ button:focus-visible {
 }
 .character-tabs button {
     padding: 14px 0 12px;
-    border: 0;
     border-bottom: 2px solid transparent;
-    background: transparent;
-    color: #9dabb4;
 }
 .character-tabs button[aria-selected='true'] {
-    color: #f1d69a;
     border-bottom-color: #e9c77d;
 }
 .character-content {

@@ -4,6 +4,8 @@ import { computed, useId } from 'vue'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import ItemIcon from './ItemIcon.vue'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 
 const props = defineProps<{
@@ -50,7 +52,8 @@ const progressLabel = computed(() =>
 </script>
 
 <template>
-    <article class="quest-card guild-active" aria-label="Общий контракт">
+    <article class="quest-card guild-active game-frame-host" aria-label="Общий контракт">
+        <GameFrame variant="panel" />
         <span class="quest-card-status">{{ status }}</span>
         <h2>{{ job.title }}</h2>
         <p>{{ job.description }}</p>
@@ -125,38 +128,36 @@ const progressLabel = computed(() =>
             v-if="job.status !== 'completed' && request?.stage !== 'cancelled'"
             class="guild-reward quest-card-actions"
         >
-            <button
+            <GameButton
                 v-if="actions !== 'abandon' && request?.stage === 'waiting'"
-                type="button"
                 :disabled="!canAct"
                 @click="emit('command', { type: 'guild_report', instanceId: job.instanceId })"
             >
                 {{
                     request.proofAccepted ? 'Повторить пробный рейс' : 'Передать трофей и доложить'
                 }}
-            </button>
-            <button
+            </GameButton>
+            <GameButton
                 v-if="actions !== 'abandon' && job.status === 'ready'"
-                type="button"
                 :disabled="!canAct"
                 @click="emit('command', { type: 'guild_turn_in', instanceId: job.instanceId })"
             >
                 Сдать контракт
-            </button>
-            <button
+            </GameButton>
+            <GameButton
                 v-if="request || actions === 'abandon'"
-                type="button"
                 :disabled="!canAbandon"
                 @click="emit('command', { type: 'guild_abandon', instanceId: job.instanceId })"
             >
                 {{ request ? 'Отказаться от обращения' : 'Отказаться от договора' }}
-            </button>
+            </GameButton>
         </div>
     </article>
 </template>
 
 <style scoped>
 .quest-card {
+    position: relative;
     border-top: 1px solid #526049;
     padding-top: 12px;
     margin-top: 16px;
@@ -227,9 +228,6 @@ const progressLabel = computed(() =>
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 12px;
-}
-.quest-card-actions button {
-    font: inherit;
 }
 .quest-reward-items {
     padding: 0;

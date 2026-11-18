@@ -4,25 +4,14 @@
 }
 .adventure-ui button {
     cursor: pointer;
-    color: inherit;
-    font: inherit;
-    background: #28332b;
-    border: 1px solid #a4946e;
-    border-radius: 3px;
+    border: 1px solid transparent;
     padding: 9px 12px;
-}
-.adventure-ui button:hover {
-    background: #3d4936;
-}
-.adventure-ui button:focus-visible {
-    outline: 2px solid #ffe1a0;
-    outline-offset: 3px;
 }
 .adventure-ui button:disabled {
     opacity: 0.45;
     cursor: default;
 }
-.adventure-tools {
+.adventure-tools.game-frame-host {
     position: absolute;
     z-index: 5;
     right: 16px;
@@ -31,21 +20,16 @@
     align-items: center;
     gap: 12px;
     padding: 5px 6px 5px 13px;
-    background: #151b16e8;
-    border: 1px solid #766c51;
-    border-radius: 5px;
+    border: 1px solid transparent;
 }
 .adventure-gold {
     color: #edd084;
     font-variant-numeric: tabular-nums;
 }
-.adventure-window {
+.adventure-window.game-frame-host {
     position: absolute;
     z-index: 8;
-    background: #1a211cfc;
-    border: 2px solid #b09664;
-    border-radius: 5px;
-    box-shadow: 0 12px 40px #0009;
+    border: 2px solid transparent;
     padding: 16px;
     line-height: 1.5;
 }
@@ -132,7 +116,6 @@
 }
 .adventure-nearby button {
     white-space: nowrap;
-    box-shadow: 0 3px 12px #0007;
 }
 .adventure-nearby kbd {
     margin-left: 8px;
@@ -171,9 +154,6 @@
 }
 .adventure-choices button {
     text-align: left;
-    font:
-        13px/1.4 system-ui,
-        sans-serif;
 }
 .adventure-shop {
     margin-top: 18px;
@@ -196,20 +176,17 @@
     display: flex;
     justify-content: space-between;
     margin-top: 5px;
-    font:
-        13px/1.4 system-ui,
-        sans-serif;
 }
 .adventure-shop strong {
     color: #edcd7c;
 }
 
 @media (max-width: 640px) {
-    .adventure-tools {
+    .adventure-tools.game-frame-host {
         right: 8px;
         bottom: 8px;
     }
-    .adventure-window {
+    .adventure-window.game-frame-host {
         padding: 12px;
     }
     .adventure-window__header {
@@ -275,17 +252,10 @@
     max-width: calc(100% - 32px);
 }
 .adventure-resources button {
-    font:
-        12px/1.4 system-ui,
-        sans-serif;
     padding: 6px 9px;
 }
 .adventure-rescue {
     bottom: 172px;
-}
-.adventure-rescue button {
-    border-color: #b8dba1;
-    color: #d4f0bd;
 }
 .adventure-level {
     font-size: 11px;
@@ -293,7 +263,7 @@
     white-space: nowrap;
 }
 @media (max-width: 640px) {
-    .adventure-tools {
+    .adventure-tools.game-frame-host {
         gap: 6px;
         font-size: 11px;
     }
@@ -305,7 +275,7 @@
     }
 }
 
-.adventure-tools {
+.adventure-tools.game-frame-host {
     gap: 6px;
     font-size: 12px;
 }
@@ -313,7 +283,7 @@
     padding: 8px 10px;
 }
 @media (max-width: 740px) {
-    .adventure-tools {
+    .adventure-tools.game-frame-host {
         right: 8px;
         bottom: 62px;
         max-width: calc(100% - 16px);
@@ -345,7 +315,7 @@
 }
 
 @media (max-width: 740px) {
-    .adventure-tools {
+    .adventure-tools.game-frame-host {
         flex-wrap: wrap;
         justify-content: center;
     }

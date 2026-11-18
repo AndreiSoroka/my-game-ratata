@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot } from '@my-game-ratata/contracts'
 
+import GameFrame from './primitives/GameFrame.vue'
+
 defineProps<{ node: ConstellationNodeSnapshot }>()
 </script>
 
 <template>
-    <aside class="constellation-detail" aria-label="Выбранная звезда" aria-live="polite">
+    <aside
+        class="constellation-detail game-frame-host"
+        aria-label="Выбранная звезда"
+        aria-live="polite"
+    >
+        <GameFrame variant="panel" />
         <template v-if="node.unlocked && node.name">
             <h3>{{ node.name }}</h3>
             <span v-if="node.effectType" class="constellation-detail__type">{{
@@ -26,8 +33,7 @@ defineProps<{ node: ConstellationNodeSnapshot }>()
     gap: 12px;
     min-width: 0;
     padding: 18px;
-    border: 1px solid #4f6470;
-    background: #122631;
+    border: 1px solid transparent;
     color: #eee6d2;
     font:
         14px/1.5 system-ui,

@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { chatDuration } from '../runtime/chatInput'
 import type { RatataGame } from '../runtime/ratataGame'
 import { returnFromSpeech } from './dialogueSpeechKeys'
+import GameFrame from './primitives/GameFrame.vue'
 import { speechBubbleId } from './speechReceipts'
 import { useEscapeOwner } from './uiEscapeOwners'
 const props = defineProps<{
@@ -165,27 +166,30 @@ defineExpose({ receive, clear })
         <div
             v-for="activity in typing"
             :key="`${activity.actorId}:${activity.id}`"
-            class="speech-typing"
+            class="speech-typing game-frame-host"
             :style="activity.style"
             :aria-label="`${activity.name} ${activity.kind === 'thinking' ? 'обдумывает ответ' : 'печатает'}`"
             aria-live="off"
             role="img"
         >
-            <span aria-hidden="true"></span><span aria-hidden="true"></span
-            ><span aria-hidden="true"></span>
+            <GameFrame variant="speech" />
+            <span class="speech-typing__dot" aria-hidden="true"></span
+            ><span class="speech-typing__dot" aria-hidden="true"></span
+            ><span class="speech-typing__dot" aria-hidden="true"></span>
         </div>
         <article
             v-for="bubble in bubbles"
             :id="speechBubbleId(bubble.id, bubble.receipt)"
             :key="speechBubbleId(bubble.id, bubble.receipt)"
             :ref="(element) => bindBubble(speechBubbleId(bubble.id, bubble.receipt), element)"
-            class="speech-bubble"
+            class="speech-bubble game-frame-host"
             :class="{ 'speech-bubble--below': bubble.below }"
             :style="bubble.style"
             :aria-label="bubble.name"
             :aria-live="bubble.active ? 'polite' : 'off'"
             aria-atomic="true"
         >
+            <GameFrame variant="speech" />
             <strong>{{ bubble.name }}</strong>
             <div
                 :tabindex="bubble.active ? 0 : -1"

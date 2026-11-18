@@ -1,27 +1,31 @@
 <script setup lang="ts">
+import GameButton from '../ui/primitives/GameButton.vue'
+import GameFrame from '../ui/primitives/GameFrame.vue'
 defineProps<{ count: number; total: number }>()
 const emit = defineEmits<{ clear: []; all: []; reset: [] }>()
 </script>
 <template>
-    <section class="build-toolbar" aria-label="Сборка персонажа">
+    <section class="build-toolbar game-frame-host" aria-label="Сборка персонажа">
+        <GameFrame variant="panel" />
         <p data-testid="debug-build-count">
             В наборе: <strong>{{ count }}</strong> из {{ total }}
         </p>
         <div>
-            <button type="button" data-testid="debug-build-clear" @click="emit('clear')">
+            <GameButton size="compact" data-testid="debug-build-clear" @click="emit('clear')">
                 Отключить все
-            </button>
-            <button type="button" data-testid="debug-build-all" @click="emit('all')">
+            </GameButton>
+            <GameButton size="compact" data-testid="debug-build-all" @click="emit('all')">
                 Включить все
-            </button>
-            <button type="button" data-testid="debug-build-reset" @click="emit('reset')">
+            </GameButton>
+            <GameButton size="compact" data-testid="debug-build-reset" @click="emit('reset')">
                 Набор класса
-            </button>
+            </GameButton>
         </div>
     </section>
 </template>
 <style scoped>
 .build-toolbar {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) repeat(3, auto);
     align-items: center;
@@ -29,8 +33,7 @@ const emit = defineEmits<{ clear: []; all: []; reset: [] }>()
     justify-content: space-between;
     margin-bottom: 16px;
     padding: 12px;
-    border: 1px solid #405d6a;
-    background: #0d202b;
+    border: 1px solid transparent;
 }
 p {
     margin: 0;
@@ -46,15 +49,8 @@ div {
 button {
     min-height: 44px;
     padding: 8px 12px;
-    border: 1px solid #55717d;
-    background: #102733;
-    color: #eee6d2;
-    font: inherit;
+    border: 1px solid transparent;
     cursor: pointer;
-}
-button:focus-visible {
-    outline: 2px solid #ffe0a1;
-    outline-offset: 2px;
 }
 @media (max-width: 650px) {
     .build-toolbar {

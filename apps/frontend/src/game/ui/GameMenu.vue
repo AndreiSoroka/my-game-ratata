@@ -8,6 +8,8 @@ import {
     subscribeAudioMute,
 } from '../runtime/audioPreference'
 import { dialogActionKeys } from './dialogActionKeys'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 withDefaults(defineProps<{ automationAvailable?: boolean }>(), { automationAvailable: true })
@@ -30,7 +32,7 @@ onMounted(async () => {
     <div class="game-menu-backdrop" @pointerdown.self.prevent.stop @click.self.stop>
         <section
             ref="panel"
-            class="game-menu rpg-panel"
+            class="game-menu rpg-panel game-frame-host"
             role="dialog"
             aria-modal="true"
             aria-label="Игровое меню"
@@ -38,37 +40,34 @@ onMounted(async () => {
             @keydown.stop="dialogActionKeys($event, panel, () => emit('resume'))"
             @keyup.stop
         >
+            <GameFrame variant="window" />
             <h2>Игровое меню</h2>
             <p>Мир продолжает жить, пока открыто меню.</p>
-            <button type="button" data-dialog-action="resume" @click="emit('resume')">
+            <GameButton variant="primary" data-dialog-action="resume" @click="emit('resume')">
                 Вернуться в игру
-            </button>
-            <button
-                type="button"
+            </GameButton>
+            <GameButton
                 data-dialog-action="character"
                 :disabled="!automationAvailable"
                 @click="emit('character')"
             >
                 Персонаж · P
-            </button>
-            <button
-                type="button"
+            </GameButton>
+            <GameButton
                 data-dialog-action="markers"
                 :disabled="!automationAvailable"
                 @click="emit('markers')"
             >
                 Метки
-            </button>
-            <button
-                type="button"
+            </GameButton>
+            <GameButton
                 data-dialog-action="scenarios"
                 :disabled="!automationAvailable"
                 @click="emit('scenarios')"
             >
                 Сценарии
-            </button>
-            <button
-                type="button"
+            </GameButton>
+            <GameButton
                 data-dialog-action="sound"
                 aria-label="Без звука"
                 :aria-pressed="muted"
@@ -76,11 +75,11 @@ onMounted(async () => {
                 @click="setAudioMuted(!muted)"
             >
                 Звук: {{ muted ? 'выключен' : 'включён' }}
-            </button>
+            </GameButton>
             <p v-if="forcedMute">В этом режиме звук отключён.</p>
-            <button type="button" data-dialog-action="leave" @click="emit('leave')">
+            <GameButton variant="danger" data-dialog-action="leave" @click="emit('leave')">
                 Выйти из игры
-            </button>
+            </GameButton>
         </section>
     </div>
 </template>
@@ -117,14 +116,7 @@ p {
 button {
     min-height: 44px;
     padding: 10px 14px;
-    color: inherit;
-    font: inherit;
-    background: #35433b;
-    border: 1px solid #bca575;
+    border: 1px solid transparent;
     cursor: pointer;
-}
-button:focus-visible {
-    outline: 3px solid #f2cc78;
-    outline-offset: 2px;
 }
 </style>

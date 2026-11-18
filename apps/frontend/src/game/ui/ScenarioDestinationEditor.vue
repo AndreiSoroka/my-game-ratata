@@ -6,6 +6,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import GameSelect from './primitives/GameSelect.vue'
 import { scenarioSearchLabels } from './scenarioEditor'
 import {
     scenarioTargetKey,
@@ -82,7 +83,7 @@ function target(event: Event): void {
     <div class="automation-fields">
         <label>
             Куда идти
-            <select :value="selected" @change="change">
+            <GameSelect :value="selected" @change="change">
                 <optgroup v-if="markers.length" label="Метки">
                     <option
                         v-for="marker in markers"
@@ -105,11 +106,11 @@ function target(event: Event): void {
                 <option v-if="modelValue.kind === 'point'" value="point">
                     Записанная точка · {{ modelValue.locationId }}
                 </option>
-            </select>
+            </GameSelect>
         </label>
         <label v-if="modelValue.kind === 'visible'">
             Выбор цели
-            <select :value="explicitKey" @change="target">
+            <GameSelect :value="explicitKey" @change="target">
                 <option value="">Ближайшая подходящая</option>
                 <option
                     v-for="candidate in candidates"
@@ -121,7 +122,7 @@ function target(event: Event): void {
                 <option v-if="missingTarget" :value="explicitKey" disabled>
                     Выбранная цель сейчас не видна
                 </option>
-            </select>
+            </GameSelect>
         </label>
     </div>
 </template>

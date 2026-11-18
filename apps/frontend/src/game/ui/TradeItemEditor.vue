@@ -4,6 +4,9 @@ import { computed } from 'vue'
 
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
+import GameButton from './primitives/GameButton.vue'
+import GameFrame from './primitives/GameFrame.vue'
+import GameInput from './primitives/GameInput.vue'
 
 const props = defineProps<{
     item: ItemInstanceSnapshot
@@ -22,7 +25,11 @@ function change(value: number): void {
 }
 </script>
 <template>
-    <li class="trade-item-editor" :class="{ 'trade-item-editor--selected': selected > 0 }">
+    <li
+        class="trade-item-editor game-frame-host"
+        :class="{ 'trade-item-editor--selected': selected > 0 }"
+    >
+        <GameFrame variant="inset" />
         <ItemIcon :item="item" />
         <div class="trade-item-editor__identity">
             <strong :title="itemStackLabel(item)">{{ label }}</strong>
@@ -34,15 +41,16 @@ function change(value: number): void {
             >
         </div>
         <div class="trade-item-editor__controls" role="group" :aria-label="`В обмен: ${label}`">
-            <button
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="disabled || selected <= 0"
                 :aria-label="`Меньше: ${label}`"
                 @click="change(selected - 1)"
             >
                 −
-            </button>
-            <input
+            </GameButton>
+            <GameInput
                 :id="`exchange-${item.instanceId}`"
                 :value="selected"
                 type="number"
@@ -53,49 +61,50 @@ function change(value: number): void {
                 :aria-label="`Количество: ${itemStackLabel(item)}`"
                 @input="change(Number(($event.target as HTMLInputElement).value))"
             />
-            <button
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="disabled || selected >= available"
                 :aria-label="`Больше: ${label}`"
                 @click="change(selected + 1)"
             >
                 +
-            </button>
+            </GameButton>
         </div>
         <div class="trade-item-editor__shortcuts">
-            <button
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="disabled || selected === available"
                 :aria-label="`Всё: ${label}`"
                 @click="change(available)"
             >
                 Всё
-            </button>
-            <button
+            </GameButton>
+            <GameButton
+                size="compact"
                 type="button"
                 :disabled="disabled || selected <= 0"
                 :aria-label="`Убрать: ${label}`"
                 @click="change(0)"
             >
                 ×
-            </button>
+            </GameButton>
         </div>
     </li>
 </template>
 <style scoped>
 .trade-item-editor {
+    position: relative;
     display: grid;
     grid-template-columns: 40px minmax(0, 1fr) auto;
     align-items: center;
     gap: 6px 9px;
     padding: 9px;
-    background: #192b22;
-    border: 1px solid #354b39;
-    border-radius: 5px;
+    border: 1px solid transparent;
 }
 .trade-item-editor--selected {
-    border-color: #a28c4d;
-    background: #26382a;
+    --game-frame-fill: linear-gradient(135deg, #314029, #1e3020);
 }
 .trade-item-editor__identity {
     min-width: 0;
