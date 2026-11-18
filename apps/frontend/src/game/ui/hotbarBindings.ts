@@ -35,6 +35,11 @@ export function bindingMatchesAction(
 }
 
 export const hotbarGlyphs: Record<AbilityId, string> = {
+    wide_swing: '◔',
+    circular_swing: '◌',
+    lunge: '➜',
+    pommel_strike: '⚒',
+    defensive_stance: '⛨',
     pray: '✦',
     pray_woven: '✥',
     pray_road: '➤',

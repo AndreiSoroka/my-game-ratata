@@ -1,25 +1,27 @@
 import { expect, type Page, test } from '@playwright/test'
 
+import { abandonGuildContract, openObservedWorkerOffer } from './worker-contract-helpers'
+
 const scenarios = [
     {
         name: 'desktop',
         viewport: { width: 1280, height: 800 },
-        storyMode: 'submitter',
-        storyLabel: 'Вся награда сдающему',
+        workerMode: 'submitter',
+        workerLabel: 'Вся награда сдающему',
         guildMode: 'party_equal',
         guildLabel: 'Поровну группе',
     },
     {
         name: 'mobile',
         viewport: { width: 390, height: 844 },
-        storyMode: 'party_equal',
-        storyLabel: 'Поровну группе',
+        workerMode: 'party_equal',
+        workerLabel: 'Поровну группе',
         guildMode: 'submitter',
         guildLabel: 'Вся награда сдающему',
     },
 ]
 for (const scenario of scenarios) {
-    test(`fixes story and guild reward sharing through ordinary UI (${scenario.name})`, async ({
+    test(`fixes worker and guild reward sharing through ordinary UI (${scenario.name})`, async ({
         page,
     }, info) => {
         test.setTimeout(120_000)
@@ -31,35 +33,42 @@ for (const scenario of scenarios) {
             `qr-${info.workerIndex}-${scenario.name[0]}-${Date.now().toString(36)}`
         )
         await approachMira(page)
-        const { storyMode, guildMode } = scenario
-        const conversation = page.getByRole('dialog', { name: 'Разговор: Mira' })
-        await expect(conversation).toBeVisible()
-        await expect(conversation.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
-        await conversation.getByRole('radio', { name: scenario.storyLabel }).focus()
+        const { workerMode, guildMode } = scenario
+        await expect(page.getByRole('dialog', { name: 'Разговор: Mira' })).toBeVisible()
+        await openObservedWorkerOffer(page)
+        const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
+        await expect(offer).toBeVisible()
+        await expect(offer.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
+        await offer.getByRole('radio', { name: scenario.workerLabel }).focus()
         await page.keyboard.press('KeyF')
-        await expect(conversation.locator(`input[value="${storyMode}"]`)).toBeChecked()
+        await expect(offer.locator(`input[value="${workerMode}"]`)).toBeChecked()
         await expectStationaryWithKey(page, 'KeyD')
-        await conversation.getByRole('button', { name: 'Я принесу три слизневых сердца' }).focus()
-        await page.keyboard.press('KeyF')
+        await offer.getByRole('button', { name: 'Взять', exact: true }).focus()
+        await page.keyboard.press('Enter')
         await expect
             .poll(() =>
-                page.evaluate(() => window.__ratataTest!.getState().snapshot?.adventure?.quest)
+                page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)
             )
-            .toMatchObject({ status: 'active', rewardMode: storyMode })
-        await expect(conversation.getByRole('radio')).toHaveCount(0)
-        await page.keyboard.press('Escape')
-        await expect(conversation).toBeHidden()
-        await page.getByRole('button', { name: /^Квесты ·/ }).click()
-        const journal = page.getByRole('region', { name: 'Активные квесты' })
-        await expect(journal).toBeVisible()
-        await expect(journal).toContainText(scenario.storyLabel)
-        await expect(journal.getByRole('radio')).toHaveCount(0)
-        await assertFitsViewport(page.getByRole('dialog', { name: 'Персонаж', exact: true }))
-        await page.screenshot({
-            path: info.outputPath(`story-rewards-${scenario.name}.png`),
-        })
-        await page.keyboard.press('Escape')
-        await expect(journal).toBeHidden()
+            .toMatchObject({ status: 'active', rewardMode: workerMode })
+        await expect(offer).toBeHidden()
+        const workerInstance = await page.evaluate(
+            () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
+        )
+        try {
+            await page.getByRole('button', { name: /^Квесты ·/ }).click()
+            const journal = page.getByRole('region', { name: 'Активные квесты' })
+            await expect(journal).toBeVisible()
+            await expect(journal).toContainText(scenario.workerLabel)
+            await expect(journal.getByRole('radio')).toHaveCount(0)
+            await assertFitsViewport(page.getByRole('dialog', { name: 'Персонаж', exact: true }))
+            await page.screenshot({
+                path: info.outputPath(`worker-rewards-${scenario.name}.png`),
+            })
+            await page.keyboard.press('Escape')
+            await expect(journal).toBeHidden()
+        } finally {
+            await abandonGuildContract(page, workerInstance)
+        }
         await page.getByRole('button', { name: 'Гильдия', exact: true }).focus()
         await page.keyboard.press('KeyF')
         const guild = page.getByRole('dialog', { name: 'Гильдия приключенцев' })
@@ -76,13 +85,20 @@ for (const scenario of scenarios) {
                 page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)
             )
             .toMatchObject({ id: 'slime_hunt', rewardMode: guildMode, status: 'active' })
-        const active = guild.getByRole('article', { name: 'Общий контракт' })
-        await expect(active).toContainText(scenario.guildLabel)
-        await expect(active.getByRole('radio')).toHaveCount(0)
-        await assertFitsViewport(guild)
-        await page.screenshot({
-            path: info.outputPath(`guild-rewards-${scenario.name}.png`),
-        })
+        const guildInstance = await page.evaluate(
+            () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
+        )
+        try {
+            const active = guild.getByRole('article', { name: 'Общий контракт' })
+            await expect(active).toContainText(scenario.guildLabel)
+            await expect(active.getByRole('radio')).toHaveCount(0)
+            await assertFitsViewport(guild)
+            await page.screenshot({
+                path: info.outputPath(`guild-rewards-${scenario.name}.png`),
+            })
+        } finally {
+            await abandonGuildContract(page, guildInstance)
+        }
     })
 }
 

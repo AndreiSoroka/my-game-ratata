@@ -9,6 +9,7 @@ import {
     resolvePendingAttackHit,
 } from '../src/game/combat'
 import { buildAbilityAttackZones, isInZones } from '../src/game/combatGeometry'
+import { constellationModifiers } from '../src/game/constellationModifiers'
 import {
     effectiveAbility,
     effectiveAttackEnergyCost,
@@ -62,9 +63,8 @@ describe('effective shared constellation parameters', () => {
             maxHp: 1000,
             position: { x: 100, y: 112 },
         })
-        actor.equipment.weapon = createItemInstance('old_sword')
+        actor.equipment.weapon = createItemInstance('simple_sword')
         actor.progression.masteries.blade.experience = 85_000_000n
-        const draws = [0.5, 0.5, 0.5, 0.5, 0]
         const context = {
             actor,
             targetId: target.id,
@@ -72,7 +72,7 @@ describe('effective shared constellation parameters', () => {
             now: 1000,
             tileSize: 16,
             respawnDelayMsFor: () => 15000,
-            random: () => draws.shift() ?? 0.5,
+            random: () => 0.3,
         }
         attemptAttack(context)
         const first = resolvePendingAttackHit({ ...context, now: 1050 }).find(
@@ -92,8 +92,10 @@ describe('effective shared constellation parameters', () => {
         expect(actor.energy).toBeCloseTo(
             Math.max(0, before - effectiveAttackEnergyCost(actor))
         )
+        const dodgeChance = effectiveCharacterStats(actor).dodgeChance
         actor.progression.constellations.opened.add('blade.dodge')
-        expect(effectiveCharacterStats(actor).dodgeChance).toBeCloseTo(0.08)
+        expect(effectiveCharacterStats(actor).dodgeChance).toBe(dodgeChance)
+        expect(constellationModifiers(actor).bladeParryChance).toBe(0.1)
     })
 
     it('uses real barrier capacity and duration, and spell power includes mastery once', () => {
@@ -156,15 +158,16 @@ describe('life experience provenance', () => {
                 damageKind: 'physical',
                 respawnDelayMs: 15000,
             })
-        strike(6)
+        const block = actor.maxHp * 0.2
+        strike(block)
         expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
-        actor.hp += 3
-        recordVitalityRecovery(actor, 3, 2000)
+        actor.hp += block / 2
+        recordVitalityRecovery(actor, block / 2, 2000)
         expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
-        actor.hp += 3
-        recordVitalityRecovery(actor, 3, 3000)
+        actor.hp += block / 2
+        recordVitalityRecovery(actor, block / 2, 3000)
         expect(actor.progression.masteries.life.experience).toBe(40_000_000n)
-        strike(25)
+        strike(actor.maxHp - 5)
         expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
         strike(1)
         expect(actor.progression.masteries.life.experience).toBe(20_000_000n)
@@ -185,7 +188,7 @@ describe('life experience provenance', () => {
                 respawnDelayMs: 15000,
             })
         damage(enemy, 1)
-        damage(friend, 24)
+        damage(friend, actor.maxHp - 6)
         damage(enemy, 1)
         expect(actor.hp).toBe(4)
         expect(actor.progression.constellations.lowHpFromHostile).toBe(false)

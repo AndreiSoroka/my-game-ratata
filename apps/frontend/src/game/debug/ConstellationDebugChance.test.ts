@@ -58,7 +58,6 @@ it.each([
 it.each([
     'blade.damage1',
     'blade.critical',
-    'blade.dodge',
     'shadow.luck1',
     'shadow.luck2',
     'blade.root',
@@ -96,4 +95,15 @@ it('keeps probability explanations out of the ordinary spell card', () => {
     expect(view.text()).not.toContain('Повышают шанс открытия')
     expect(view.find('table').exists()).toBe(false)
     view.unmount()
+})
+
+it('shows parrying as a real defensive roll rather than the former guaranteed dodge bonus', () => {
+    const view = mount(ConstellationDebugChance, { props: { nodeId: 'blade.dodge' } })
+    try {
+        expect(view.get('[data-testid="debug-effect-chance"]').text()).toContain('Парирование')
+        expect(view.get('[data-testid="debug-effect-chance"]').text()).toContain('95')
+        expect(describeConstellationEffectChance('blade.dodge').deterministic).not.toBe(true)
+    } finally {
+        view.unmount()
+    }
 })

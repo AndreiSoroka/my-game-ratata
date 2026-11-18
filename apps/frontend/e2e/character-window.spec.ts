@@ -23,6 +23,9 @@ for (const viewport of [
         await expect(menu).toBeVisible()
         await expect(menu.getByRole('tab', { name: 'Характеристики' })).toBeFocused()
         await expect(menu).toContainText('≈')
+        const bonuses = menu.getByRole('region', { name: 'Постоянные бонусы прошлого' })
+        await expect(bonuses).toContainText('Прошлое: Клирик')
+        await expect(bonuses).toContainText('+20% опыта всех молитвенных школ')
         const before = await page.evaluate(() => window.__ratataTest!.getState().player!.position)
         await page.keyboard.press('KeyD')
         await page.keyboard.press('Digit2')
@@ -31,6 +34,7 @@ for (const viewport of [
             'aria-selected',
             'true'
         )
+        await expect(bonuses).toContainText('+20% опыта всех молитвенных школ')
         const graph = menu.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
         await expect

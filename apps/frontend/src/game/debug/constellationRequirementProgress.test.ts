@@ -8,7 +8,7 @@ import { constellationRequirementProgress } from './constellationRequirementProg
 it('compares the inspected minimum with current build levels below, at and above the gate', () => {
     const active = new Set(['prayer.root', 'prayer.revive'])
     expect(constellationRequirementProgress('prayer.harm1', active, 'cleric')).toEqual([
-        { id: 'prayer', name: 'Чудеса', required: 6, current: 0, satisfied: false },
+        { id: 'prayer', name: 'Угольная Мать', required: 6, current: 0, satisfied: false },
     ])
     active.add('prayer.harm')
     expect(constellationRequirementProgress('prayer.harm1', active, 'cleric')?.[0]).toMatchObject({
@@ -27,7 +27,7 @@ it('compares the inspected minimum with current build levels below, at and above
 it('shows each independent mastery requirement of a joint star', () => {
     const active = new Set(['prayer.root', 'prayer.gift1'])
     expect(constellationRequirementProgress('prayer.last_light', active, 'cleric')).toEqual([
-        { id: 'prayer', name: 'Чудеса', required: 1, current: 1, satisfied: true },
+        { id: 'prayer', name: 'Угольная Мать', required: 1, current: 1, satisfied: true },
         { id: 'life', name: 'Жизнь', required: 1, current: 0, satisfied: false },
     ])
     active.add('life.root')
@@ -67,7 +67,9 @@ it('renders required/current levels and makes the insufficient state explicit wi
             heroClass: 'cleric',
         },
     })
-    expect(view.get('[data-required-path="prayer"]').text()).toBe('Чудеса: требуется 6 · сейчас 0')
+    expect(view.get('[data-required-path="prayer"]').text()).toBe(
+        'Угольная Мать: требуется 6 · сейчас 0'
+    )
     expect(view.get('[data-required-path="prayer"]').attributes('data-level-satisfied')).toBe(
         'false'
     )
@@ -77,7 +79,9 @@ it('renders required/current levels and makes the insufficient state explicit wi
     await view.setProps({
         activeIds: new Set(['prayer.root', 'prayer.revive', 'prayer.harm']),
     })
-    expect(view.get('[data-required-path="prayer"]').text()).toBe('Чудеса: требуется 6 · сейчас 1')
+    expect(view.get('[data-required-path="prayer"]').text()).toBe(
+        'Угольная Мать: требуется 6 · сейчас 1'
+    )
     expect(view.get('[data-testid="debug-star-level-status"]').text()).toBe(
         'Недостаточно уровня: звезда пока не может открыться.'
     )

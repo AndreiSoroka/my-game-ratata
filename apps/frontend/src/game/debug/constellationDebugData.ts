@@ -45,7 +45,9 @@ export function buildConstellationDebugSnapshot({
             name: node.name,
             description: node.description,
             effectType: node.effectType,
-            ...(node.effects === undefined ? {} : { effects: [...node.effects] }),
+            ...((node.results?.length ?? 0) + (node.effects?.length ?? 0) === 0
+                ? {}
+                : { effects: [...(node.results ?? []), ...(node.effects ?? [])] }),
             parents: [...node.parents],
         }
     })
@@ -61,6 +63,9 @@ export function buildConstellationDebugSnapshot({
                     from,
                     to: node.id,
                     ...(via === undefined ? {} : { via: via.map((point) => ({ ...point })) }),
+                    ...(realized.crossLinks.includes(`${from}>${node.id}`)
+                        ? { crossLink: true }
+                        : {}),
                 }
             })
         ),

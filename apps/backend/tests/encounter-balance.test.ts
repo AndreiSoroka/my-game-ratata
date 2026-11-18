@@ -47,9 +47,9 @@ describe('group-oriented wilderness challenge', () => {
         expect(party.players.some((player) => player.alive)).toBe(true)
         expect(party.damageEvents).toBeGreaterThan(0)
         for (const player of [...armedSolo.players, ...party.players]) {
-            expect(player.maxHp).toBe(30)
+            expect(player.maxHp).toBe(50)
             expect(player.config.moveSpeed).toBe(90)
-            expect(player.config.resources.maxEnergy).toBe(150)
+            expect(player.config.resources.maxEnergy).toBe(120)
         }
     })
 })

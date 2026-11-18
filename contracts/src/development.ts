@@ -89,5 +89,7 @@ export interface ConstellationSnapshot {
         from: string
         to: string
         via?: Array<{ x: number; y: number }>
+        /** Additional mandatory prerequisite; crossings are visual only, never alternative conditions. */
+        crossLink?: boolean
     }>
 }

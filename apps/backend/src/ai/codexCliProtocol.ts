@@ -1,3 +1,5 @@
+import { isBladeAbility } from '@my-game-ratata/contracts'
+
 import { parseAgentDecision } from '../game/agentDecisionParsing'
 import { parseInformation } from './memoryProtocol'
 import { parseSocialReply } from './socialReplyParsing'
@@ -63,6 +65,8 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
             : parseAgentDecision(normalizeProviderDecision(input['decision']))
     if (
         decision === undefined ||
+        (decision?.type === 'use_ability' &&
+            !isBladeAbility(decision.abilityId)) ||
         (decision !== null && !allowedDecisionTypes.has(decision.type))
     ) {
         throw new Error('Invalid NPC AI reply')
@@ -170,6 +174,7 @@ const replyFields = new Set([
 
 const allowedDecisionTypes = new Set([
     'move_to',
+    'use_ability',
     'guide',
     'interact',
     'dialogue_choice',

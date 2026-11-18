@@ -29,12 +29,17 @@ function abilityUsage(
     id: AbilityId,
     tileWidth: number
 ): AbilityUsageSnapshot {
-    const { mana, energy, cooldownMs, range, windupMs } = effectiveAbility(
-        actor,
-        id,
-        tileWidth
-    )
-    return { mana, energy, cooldownMs, range, windupMs }
+    const { mana, energy, cooldownMs, range, windupMs, cycleMs, movementMs } =
+        effectiveAbility(actor, id, tileWidth)
+    return {
+        mana,
+        energy,
+        cooldownMs,
+        range,
+        windupMs,
+        cycleMs,
+        movementMs,
+    }
 }
 
 function prayerUsage(

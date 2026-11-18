@@ -1,3 +1,10 @@
+import {
+    bladeAbilityDefinitions,
+    bladeAbilityIds,
+    type BladeAttackAbilityId,
+} from './bladeAbilities'
+export * from './bladeAbilities'
+
 export const prayerAbilityIds = [
     'pray',
     'pray_road',
@@ -29,6 +36,7 @@ export function isPrayerAbility(value: unknown): value is PrayerAbilityId {
 }
 export const abilityIds = [
     ...prayerActionIds,
+    ...bladeAbilityIds,
     'spark',
     'barrier',
     'shot',
@@ -38,7 +46,8 @@ export const abilityIds = [
 ] as const
 export type AbilityId = (typeof abilityIds)[number]
 export type LearnAbilityId = PrayerAbilityId | 'spark' | 'barrier' | 'shot'
-export type AttackAbilityId = 'spark' | 'shot' | 'skeleton_strike'
+export type AttackAbilityId =
+    'spark' | 'shot' | 'skeleton_strike' | BladeAttackAbilityId
 export type BasicAttackKind = 'melee' | 'arrow' | 'spark'
 export type DamageKind = 'physical' | 'arcane' | 'holy' | 'unholy'
 export type PrayerMode =
@@ -76,6 +85,9 @@ export interface PrayerCostSnapshot {
 }
 /** Public action parameters; numeric damage knowledge is projected separately. */
 export interface AbilityUsageSnapshot {
+    cycleMs?: number
+    movementMs?: number
+    geometry?: import('./combat').AttackGeometry
     mana: number
     energy: number
     cooldownMs: number
@@ -124,6 +136,8 @@ export interface PrayerParametersSnapshot {
     cost?: PrayerCostSnapshot
 }
 export interface AbilityDefinition {
+    cycleMs?: number
+    movementMs?: number
     name: string
     mana: number
     energy: number
@@ -135,6 +149,7 @@ export interface AbilityDefinition {
     maxDamage?: number
 }
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
+    ...bladeAbilityDefinitions,
     pray: {
         name: 'Молитва',
         mana: 5,

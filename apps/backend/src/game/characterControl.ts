@@ -8,7 +8,9 @@ import {
     allowedMode,
     availableActor as available,
     reachedTarget,
+    visibleTarget,
 } from './autoActionTargets'
+import { prepareComboTarget } from './bladeCombo'
 import type { GameCharacter } from './character'
 import {
     advanceAutoAction,
@@ -24,7 +26,6 @@ import {
 import type { ControlWorld } from './controlWorld'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { visibilityRadius } from './queries'
 
 interface ControlState extends CharacterControlSnapshot {
     lastKnown: Vector2
@@ -103,7 +104,7 @@ function setTargetControl(
         target === undefined ||
         !available(target) ||
         actor.id === target.id ||
-        !visible(actor, target, navigation, now)
+        !visibleTarget(actor, target, { navigation, now })
     ) {
         return false
     }
@@ -116,6 +117,9 @@ function setTargetControl(
         )
     ) {
         return false
+    }
+    if (command.type === 'auto_attack') {
+        prepareComboTarget(actor, command.targetId)
     }
     cancelCharacterControl(actor)
     actor.clearPath()
@@ -174,7 +178,7 @@ function advanceTargetControl(
         return crossKnownExit(actor, state, navigation, now)
     }
     delete state.crossing
-    if (!visible(actor, target, navigation, now)) {
+    if (!visibleTarget(actor, target, { navigation, now })) {
         return pursueLastKnown(actor, state, navigation, now)
     }
     state.lastKnown = { ...target.position }
@@ -289,17 +293,4 @@ function plan(
     }
     state.lastPlanAt = now
     actor.setPath(navigation.findPathWorld(actor.position, point))
-}
-function visible(
-    actor: GameCharacter,
-    target: GameCharacter,
-    navigation: NavigationService,
-    now: number
-): boolean {
-    return (
-        actor.locationId === target.locationId &&
-        distance(actor.position, target.position) <=
-            visibilityRadius(actor, target, sightRange, now) &&
-        navigation.hasLineOfSight(actor.position, target.position)
-    )
 }

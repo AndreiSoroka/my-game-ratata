@@ -82,7 +82,7 @@ small {
     font-size: 9px;
     white-space: nowrap;
 }
-.prayer-preview {
+.hotbar-context {
     pointer-events: none;
     position: absolute;
     z-index: 7;
@@ -90,6 +90,11 @@ small {
     left: 50%;
     transform: translateX(-50%);
     width: min(360px, calc(100% - 32px));
+    display: grid;
+    gap: 6px;
+}
+.prayer-preview,
+.hotbar-context__line {
     padding: 7px 10px;
     margin: 0;
     box-sizing: border-box;

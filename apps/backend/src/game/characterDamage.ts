@@ -2,6 +2,7 @@ import { HERO_REVIVAL_WINDOW_MS } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { notifyCharacterDeath } from './characterDeathObservers'
+import { clearCombatTransient } from './combatState'
 import { resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { clearResourcePractice } from './resourcePractice'
@@ -16,6 +17,7 @@ export function applyCharacterDamage(
     }
 
     if (amount > 0) {
+        delete character.combat.combo
         character.interruptWork?.()
     }
 
@@ -26,6 +28,8 @@ export function applyCharacterDamage(
         clearResourcePractice(character)
         character.deathSequence += 1
         character.alive = false
+        clearCombatTransient(character, now)
+        character.combat.stunImmuneUntil = 0
         notifyCharacterDeath(character)
         character.reviveUntil = now + HERO_REVIVAL_WINDOW_MS
         character.actionLockUntil = 0

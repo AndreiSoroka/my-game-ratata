@@ -145,7 +145,7 @@ it('shows the actual attack family critical chance and mastered spell power', ()
     actor.equipment.weapon = createItemInstance('simple_sword')
     for (const id of [
         'blade.critical',
-        'blade.insight2',
+        'blade.insight3',
         'arrow.insight2',
         'magic.insight',
         'magic.fire_damage',
@@ -157,7 +157,7 @@ it('shows the actual attack family critical chance and mastered spell power', ()
     const attacks = createCharacterSheet(actor, 16).attacks
     expect(
         attacks.find((attack) => attack.id === 'basic_attack')?.critChance
-    ).toEqual({ kind: 'exact', value: actor.config.combat.critChance + 0.03 })
+    ).toEqual({ kind: 'exact', value: actor.config.combat.critChance + 0.05 })
     expect(attacks.find((attack) => attack.id === 'shot')?.critChance).toEqual({
         kind: 'exact',
         value: actor.config.combat.critChance,
@@ -169,4 +169,45 @@ it('shows the actual attack family critical chance and mastered spell power', ()
         },
         critChance: { kind: 'exact', value: 0 },
     })
+})
+
+it('refines Blade attack knowledge at each rank without revealing Life resources', () => {
+    const actor = abilityHero('ranger')
+    actor.equipment.weapon = createItemInstance('simple_sword')
+    actor.progression.constellations.opened.add('blade.critical')
+    for (const [id, chanceWidth, timeWidth] of [
+        ['blade.insight1', 0.02, 100],
+        ['blade.insight2', 0.01, 50],
+    ] as const) {
+        actor.progression.constellations.opened.add(id)
+        const sheet = createCharacterSheet(actor, 16)
+        const attack = sheet.attacks.find(
+            (entry) => entry.id === 'basic_attack'
+        )
+        expect(attack?.critChance.kind).toBe('range')
+        expect(attack?.cooldownMs.kind).toBe('range')
+        if (
+            attack?.critChance.kind === 'range' &&
+            attack.cooldownMs.kind === 'range'
+        ) {
+            expect(
+                attack.critChance.upper - attack.critChance.lower
+            ).toBeCloseTo(chanceWidth)
+            expect(attack.cooldownMs.upper - attack.cooldownMs.lower).toBe(
+                timeWidth
+            )
+        }
+        expect(sheet.health.current.kind).toBe('range')
+        expect(sheet.energy.current.kind).toBe('range')
+    }
+    actor.progression.constellations.opened.add('blade.insight3')
+    const sheet = createCharacterSheet(actor, 16)
+    expect(
+        sheet.attacks.find((entry) => entry.id === 'basic_attack')?.critChance
+    ).toEqual({
+        kind: 'exact',
+        value: actor.config.combat.critChance + 0.05,
+    })
+    expect(sheet.health.current.kind).toBe('range')
+    expect(sheet.energy.current.kind).toBe('range')
 })

@@ -125,7 +125,7 @@ defineExpose({ activate, edit, assignItem, resetGesture })
             >
                 <kbd>{{ index + 1 }}</kbd
                 ><span
-                    v-if="active(binding, index)"
+                    v-if="active(binding, index) && !player.combat?.defensiveStance"
                     class="hotbar-auto"
                     :title="waiting"
                     aria-label="Автоповтор"
@@ -163,9 +163,33 @@ defineExpose({ activate, edit, assignItem, resetGesture })
             {{ waiting }}
         </p>
     </div>
-    <p v-if="prayerAssigned" class="prayer-preview rpg-panel" role="status">
-        {{ prayerTooltip() }}
-    </p>
+    <div
+        v-if="player.combat?.defensiveStance || player.combat?.combo?.stacks || prayerAssigned"
+        class="hotbar-context"
+    >
+        <p
+            v-if="player.combat?.defensiveStance"
+            class="hotbar-context__line rpg-panel"
+            role="status"
+        >
+            Глухая оборона · Движение, атаки и колдовство недоступны
+        </p>
+        <p
+            v-if="player.combat?.combo?.stacks"
+            class="hotbar-context__line rpg-panel"
+            role="status"
+            aria-label="Серия ударов"
+        >
+            Серия ударов: {{ player.combat.combo.stacks }} / {{ player.combat.combo.limit }}
+        </p>
+        <p
+            v-if="prayerAssigned && !player.combat?.defensiveStance"
+            class="prayer-preview rpg-panel"
+            role="status"
+        >
+            {{ prayerTooltip() }}
+        </p>
+    </div>
     <section
         v-if="editing !== undefined"
         ref="picker"
@@ -191,7 +215,7 @@ defineExpose({ activate, edit, assignItem, resetGesture })
             >
         </button>
         <button data-dialog-action type="button" @click="assign({ kind: 'attack' })">
-            ⚔ Базовая атака
+            ⚔ {{ label({ kind: 'attack' }) }}
         </button>
         <button data-dialog-action type="button" @click="assign({ kind: 'item', id: 'food' })">
             Яблоко · {{ count }}

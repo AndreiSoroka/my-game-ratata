@@ -285,17 +285,34 @@ async function findPlot(
     const origin = state.player!.position
     const { tileWidth: width, tileHeight: height } = state.snapshot!.location!.map
     const offsets = [-144, -112, -80, 0, 80, 112, 144]
-    for (const dy of offsets)
-        for (const dx of offsets) {
-            if (Math.hypot(dx, dy) < 100) continue
-            const candidate = {
-                x: Math.floor((origin.x + dx) / width) * width + width / 2,
-                y: Math.floor((origin.y + dy) / height) * height + height / 2,
+    // Earlier cases consume finite shared sources, so the next source can be beside dense buildings.
+    // Keep the small fast search, then inspect a denser surrounding ring through normal previews.
+    const searchOffsets = [offsets, Array.from({ length: 17 }, (_, index) => (index - 8) * 32)]
+    const inspected = new Set<string>()
+    for (const choices of searchOffsets)
+        for (const dy of choices)
+            for (const dx of choices) {
+                if (Math.hypot(dx, dy) < 100) continue
+                const candidate = {
+                    x: Math.floor((origin.x + dx) / width) * width + width / 2,
+                    y: Math.floor((origin.y + dy) / height) * height + height / 2,
+                }
+                const key = `${candidate.x},${candidate.y}`
+                if (inspected.has(key)) continue
+                inspected.add(key)
+                await selectPlot(page, candidate, previews)
+                if (previews.at(-1)!.available) {
+                    if (choices !== offsets)
+                        await test.info().attach('expanded-planting-search', {
+                            body: JSON.stringify({ origin, candidate, inspected: inspected.size }),
+                            contentType: 'application/json',
+                        })
+                    return candidate
+                }
             }
-            await selectPlot(page, candidate, previews)
-            if (previews.at(-1)!.available) return candidate
-        }
-    throw new Error('No valid distant planting plot found')
+    throw new Error(
+        `No valid distant planting plot found: ${JSON.stringify({ origin, inspected: inspected.size, last: previews.at(-1) })}`
+    )
 }
 async function selectPlot(
     page: Page,

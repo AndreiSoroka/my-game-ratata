@@ -2,9 +2,11 @@ import {
     ABILITY_DEFINITIONS,
     type AbilityId,
     type CharacterSheetSnapshot,
+    isBladeAttackAbility,
     type ObservedAttack,
     type ObservedResource,
     type ObservedValue,
+    resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
 
 import { knowsAbility } from './abilityState'
@@ -66,7 +68,10 @@ function resource(
 
 function attackKnowledge(actor: GameCharacter, id: AbilityId | 'basic_attack') {
     if (id === 'basic_attack') {
-        return knowledgeStep(actor, 'blade.insight', [5, 2, null])
+        return knowledgeStep(actor, 'blade.insight', [5, 2, 1, null])
+    }
+    if (isBladeAttackAbility(id)) {
+        return knowledgeStep(actor, 'blade.insight', [5, 2, 1, null])
     }
     if (id === 'shot') {
         return knowledgeStep(actor, 'arrow.insight', [5, 2, null])
@@ -80,7 +85,8 @@ function attackSource(actor: GameCharacter, id: AbilityId | 'basic_attack') {
     const stats = effectiveCharacterStats(actor)
     if (id === 'basic_attack') {
         return {
-            name: 'Удар оружием',
+            name: resolveCombatWeapon(actor.archetype, actor.equipment.weapon)
+                .name,
             low: stats.minDamage,
             high: stats.maxDamage,
             cooldownMs: stats.attackCooldownMs,
@@ -92,15 +98,20 @@ function attackSource(actor: GameCharacter, id: AbilityId | 'basic_attack') {
         id === 'shot' && hasStar(actor, 'arrow.critical') ? 0.03 : 0
     return {
         name: ABILITY_DEFINITIONS[id].name,
-        low: Math.round(ability.damage ?? stats.minDamage),
+        low: Math.round(
+            (ability.damage ?? stats.minDamage) *
+                (ability.damageMultiplier ?? 1)
+        ),
         high: Math.round(
-            ability.maxDamage ?? ability.damage ?? stats.maxDamage
+            (ability.maxDamage ?? ability.damage ?? stats.maxDamage) *
+                (ability.damageMultiplier ?? 1)
         ),
         cooldownMs: ability.cooldownMs,
-        critChance:
-            id === 'fireball' || id === 'greater_fireball'
-                ? 0
-                : Math.min(0.95, actor.config.combat.critChance + critBonus),
+        critChance: isBladeAttackAbility(id)
+            ? stats.critChance
+            : id === 'fireball' || id === 'greater_fireball'
+              ? 0
+              : Math.min(0.95, actor.config.combat.critChance + critBonus),
     }
 }
 
@@ -110,8 +121,10 @@ function observeAttack(
 ): ObservedAttack {
     const source = attackSource(actor, id)
     const step = attackKnowledge(actor, id)
-    const timeStep = step === null ? null : step === 2 ? 100 : 500
-    const chanceStep = step === null ? null : step === 2 ? 0.02 : 0.05
+    const timeStep =
+        step === null ? null : step === 1 ? 50 : step === 2 ? 100 : 500
+    const chanceStep =
+        step === null ? null : step === 1 ? 0.01 : step === 2 ? 0.02 : 0.05
     return {
         id,
         name: source.name,
@@ -149,6 +162,10 @@ export function createCharacterSheet(
         'skeleton_strike',
         'fireball',
         'greater_fireball',
+        'wide_swing',
+        'circular_swing',
+        'lunge',
+        'pommel_strike',
     ] as const
     return {
         health: resource(
@@ -167,7 +184,10 @@ export function createCharacterSheet(
             knowledgeStep(actor, 'life.energy', [50, 25, 10, null])
         ),
         moveSpeed: observeValue(stats.moveSpeed / tileWidth, body.movement),
-        dodgeChance: observeValue(stats.dodgeChance, body.dodge),
+        dodgeChance: observeValue(
+            stats.dodgeChance,
+            hasStar(actor, 'blade.insight3') ? null : body.dodge
+        ),
         attacks: [
             observeAttack(actor, 'basic_attack'),
             ...ids

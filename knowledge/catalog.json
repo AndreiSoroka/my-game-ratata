@@ -27,6 +27,150 @@
             "facts": {}
         },
         {
+            "id": "city.aren",
+            "file": "settlements/novogorod/aren.md",
+            "audiences": ["resident:map-2-2", "doctrine:magic"],
+            "aliases": [
+                "Арен",
+                "библиотека",
+                "кто учит магии",
+                "огненный шар",
+                "книги"
+            ],
+            "sources": [
+                "apps/backend/src/game/supportNpcs.ts",
+                "apps/backend/src/game/magicLearning.ts",
+                "apps/backend/src/game/residentDialogue.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/ability-rules.test.ts",
+                "apps/backend/tests/skill-progression.test.ts",
+                "apps/backend/tests/deities-learning.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "city.artisans",
+            "file": "settlements/novogorod/artisans.md",
+            "audiences": [
+                "resident:map-2-2",
+                "profession:weaver",
+                "profession:baker"
+            ],
+            "aliases": [
+                "Мила",
+                "Елисей",
+                "сапоги",
+                "пекарь",
+                "мастерица",
+                "заказать еду"
+            ],
+            "sources": [
+                "apps/backend/src/game/cityResidents.ts",
+                "contracts/src/craftOrders.ts",
+                "apps/backend/src/game/productionWorkOrders.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/customer-orders-production.test.ts",
+                "apps/backend/tests/production-work-orders.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "city.ignat",
+            "file": "settlements/novogorod/ignat.md",
+            "audiences": ["resident:map-2-2", "profession:smith"],
+            "aliases": [
+                "где купить топор",
+                "кузница",
+                "Игнат",
+                "кирка",
+                "каменный топор",
+                "ремонт"
+            ],
+            "sources": [
+                "apps/backend/src/game/cityResidents.ts",
+                "contracts/src/craftOrders.ts",
+                "apps/backend/src/game/adventureContent.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/customer-orders.test.ts",
+                "apps/backend/tests/item-durability.test.ts",
+                "apps/backend/tests/city-interiors.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "city.mira",
+            "file": "settlements/novogorod/mira.md",
+            "audiences": ["resident:map-2-2"],
+            "aliases": [
+                "Мира",
+                "гильдия",
+                "распорядитель",
+                "чем помочь городу",
+                "работа"
+            ],
+            "sources": [
+                "apps/backend/src/game/companionProfiles.ts",
+                "apps/backend/src/game/guild.ts",
+                "apps/backend/src/game/adventureContent.ts",
+                "apps/backend/src/game/workerRequests.ts",
+                "apps/backend/src/game/npcIdentityCatalog.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/worker-guild-contracts.test.ts",
+                "apps/backend/tests/npc-ai-coordinator.test.ts",
+                "apps/backend/tests/npc-quests.test.ts",
+                "apps/backend/tests/npc-identity-context.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "city.savva",
+            "file": "settlements/novogorod/savva.md",
+            "audiences": ["resident:map-2-2", "profession:merchant"],
+            "aliases": ["Савва", "где продать", "лавка", "припасы", "еда"],
+            "sources": [
+                "apps/backend/src/game/supportNpcs.ts",
+                "apps/backend/src/game/adventureContent.ts",
+                "apps/backend/src/game/cityEconomy.ts",
+                "contracts/src/craftOrders.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/city-economy.test.ts",
+                "apps/backend/tests/customer-orders.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "city.vera",
+            "file": "settlements/novogorod/vera.md",
+            "audiences": ["resident:map-2-2", "doctrine:prayer"],
+            "aliases": [
+                "Сестра Вера",
+                "клерик",
+                "храм",
+                "часовня",
+                "учитель молитв"
+            ],
+            "sources": [
+                "apps/backend/src/game/supportNpcs.ts",
+                "apps/backend/src/game/magicLearning.ts",
+                "apps/backend/src/game/clericController.ts",
+                "apps/backend/src/game/cityJustice.ts",
+                "apps/backend/src/game/npcIdentityCatalog.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/deities-learning.test.ts",
+                "apps/backend/tests/resurrection-rules.test.ts",
+                "apps/backend/tests/city-justice.test.ts",
+                "apps/backend/tests/npc-identity-context.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
+            ],
+            "facts": {}
+        },
+        {
             "id": "combat.attacks",
             "file": "combat/attacks.md",
             "audiences": ["common"],
@@ -39,14 +183,44 @@
                 "урон"
             ],
             "sources": [
+                "contracts/src/weapons.ts",
                 "apps/backend/src/game/combatAttack.ts",
                 "apps/backend/src/game/combatGeometry.ts",
-                "apps/backend/src/game/combatHitQuality.ts"
+                "apps/backend/src/game/combatActions.ts"
             ],
             "checks": [
                 "apps/backend/tests/combat-hit-quality.test.ts",
                 "apps/backend/tests/combat-abilities.test.ts",
-                "apps/backend/tests/ranger-attacks.test.ts"
+                "apps/backend/tests/ranger-attacks.test.ts",
+                "apps/backend/tests/blade-combat-lifecycle.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "combat.blade",
+            "file": "combat/blade.md",
+            "audiences": ["common"],
+            "aliases": [
+                "Клинок",
+                "нож",
+                "меч",
+                "размах",
+                "выпад",
+                "парирование",
+                "глухая оборона",
+                "контрудар"
+            ],
+            "extends": "combat.attacks",
+            "sources": [
+                "contracts/src/weapons.ts",
+                "contracts/src/bladeTechniques.ts",
+                "apps/backend/src/game/bladeTechniques.ts",
+                "apps/backend/src/game/combatDefense.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/blade-catalogue.test.ts",
+                "apps/backend/tests/blade-techniques-combo.test.ts",
+                "apps/backend/tests/blade-reactions.test.ts"
             ],
             "facts": {}
         },
@@ -225,6 +399,43 @@
                 "apps/backend/tests/creature-types.test.ts"
             ],
             "facts": {}
+        },
+        {
+            "id": "development.backgrounds",
+            "file": "development/backgrounds.md",
+            "audiences": ["common"],
+            "aliases": [
+                "прошлое героя",
+                "начальные запасы",
+                "авангард",
+                "следопыт",
+                "лучник",
+                "арканист",
+                "маг",
+                "клирик",
+                "клерик",
+                "бонус опыта"
+            ],
+            "sources": [
+                "contracts/src/backgrounds.ts",
+                "apps/backend/src/game/heroClasses.ts",
+                "apps/backend/src/game/skillProgression.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/background-bonuses.test.ts",
+                "apps/backend/tests/mastery-progression.test.ts"
+            ],
+            "facts": {
+                "background.base.health": 30,
+                "background.base.energy": 100,
+                "background.base.mana": 40,
+                "background.vanguard.health": 20,
+                "background.vanguard.energy": 20,
+                "background.ranger.health": 10,
+                "background.ranger.energy": 20,
+                "background.arcanist.mana": 30,
+                "background.masteryBonusPercent": 20
+            }
         },
         {
             "id": "development.bodyKnowledge",
@@ -422,6 +633,48 @@
             }
         },
         {
+            "id": "faith.grave",
+            "file": "faith/grave.md",
+            "audiences": ["knows:pray_grave"],
+            "aliases": [
+                "молитва Праха",
+                "здоровье нежити",
+                "вернуть павшую нежить"
+            ],
+            "extends": "faith.resourceGifts",
+            "sources": [
+                "contracts/src/prayer.ts",
+                "apps/backend/src/game/prayer.ts",
+                "apps/backend/src/game/prayerGifts.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/prayer-schools.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "faith.lantern",
+            "file": "faith/lantern.md",
+            "audiences": ["knows:pray_lantern"],
+            "aliases": [
+                "молитва Архивариуса",
+                "молитва ясности",
+                "восстановить ману"
+            ],
+            "extends": "faith.resourceGifts",
+            "sources": [
+                "contracts/src/prayer.ts",
+                "apps/backend/src/game/prayer.ts",
+                "apps/backend/src/game/prayerGifts.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/prayer-schools.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
+            ],
+            "facts": {}
+        },
+        {
             "id": "faith.mother",
             "file": "faith/mother.md",
             "audiences": ["knows:pray"],
@@ -434,12 +687,16 @@
             "sources": [
                 "apps/backend/src/game/motherPrayerPlan.ts",
                 "apps/backend/src/game/prayerCastStart.ts",
-                "apps/backend/src/game/prayerCancellation.ts"
+                "apps/backend/src/game/prayerCancellation.ts",
+                "apps/backend/src/game/constellationPrayerLore.ts",
+                "apps/backend/src/game/constellationResultDisclosure.ts"
             ],
             "checks": [
                 "apps/backend/tests/mother-prayer-casts.test.ts",
                 "apps/backend/tests/mother-prayer-homogeneous.test.ts",
                 "apps/backend/tests/mother-prayer-plan.test.ts",
+                "apps/backend/tests/mother-prayer-cards.test.ts",
+                "apps/backend/tests/blade-catalogue.test.ts",
                 "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
@@ -462,6 +719,27 @@
                 "apps/backend/tests/prayer-schools.test.ts",
                 "apps/backend/tests/resource-practice.test.ts",
                 "apps/backend/tests/prayer-boundaries.test.ts",
+                "apps/backend/tests/vera-prayer-knowledge.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "faith.road",
+            "file": "faith/road.md",
+            "audiences": ["knows:pray_road"],
+            "aliases": [
+                "молитва Путника",
+                "молитва странника",
+                "восстановить силы"
+            ],
+            "extends": "faith.resourceGifts",
+            "sources": [
+                "contracts/src/prayer.ts",
+                "apps/backend/src/game/prayer.ts",
+                "apps/backend/src/game/prayerGifts.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/prayer-schools.test.ts",
                 "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
@@ -513,6 +791,28 @@
             "facts": {}
         },
         {
+            "id": "farming.wheat",
+            "file": "farming/wheat.md",
+            "audiences": ["common"],
+            "aliases": [
+                "пшеница",
+                "грядка",
+                "зерно",
+                "семена",
+                "посеять",
+                "урожай"
+            ],
+            "sources": [
+                "apps/backend/src/game/adventureFarming.ts",
+                "contracts/src/farming.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/farming.test.ts",
+                "apps/backend/tests/city-seeds-market.test.ts"
+            ],
+            "facts": {}
+        },
+        {
             "id": "farming.wheat.expert",
             "file": "farming/wheat-expert.md",
             "audiences": ["profession:farmer"],
@@ -542,28 +842,6 @@
             }
         },
         {
-            "id": "farming.wheat",
-            "file": "farming/wheat.md",
-            "audiences": ["common"],
-            "aliases": [
-                "пшеница",
-                "грядка",
-                "зерно",
-                "семена",
-                "посеять",
-                "урожай"
-            ],
-            "sources": [
-                "apps/backend/src/game/adventureFarming.ts",
-                "contracts/src/farming.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/farming.test.ts",
-                "apps/backend/tests/city-seeds-market.test.ts"
-            ],
-            "facts": {}
-        },
-        {
             "id": "forestry.brushwood",
             "file": "forestry/brushwood.md",
             "audiences": ["common"],
@@ -577,6 +855,31 @@
                 "apps/backend/tests/forest-resources.test.ts",
                 "apps/backend/tests/apple-harvesting.test.ts",
                 "apps/backend/tests/brushwood-economy.test.ts"
+            ],
+            "facts": {}
+        },
+        {
+            "id": "forestry.chopping",
+            "file": "forestry/chopping.md",
+            "audiences": ["common"],
+            "aliases": [
+                "срубить дерево",
+                "рубка",
+                "дрова",
+                "топор",
+                "меч",
+                "лес"
+            ],
+            "sources": [
+                "apps/backend/src/game/harvestRules.ts",
+                "apps/backend/src/game/harvestWork.ts",
+                "apps/backend/src/game/forestAutoAction.ts",
+                "contracts/src/inventory.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/harvesting.test.ts",
+                "apps/backend/tests/forest-resources.test.ts",
+                "apps/backend/tests/forest-auto-action.test.ts"
             ],
             "facts": {}
         },
@@ -615,27 +918,19 @@
             }
         },
         {
-            "id": "forestry.chopping",
-            "file": "forestry/chopping.md",
+            "id": "forestry.planting",
+            "file": "forestry/planting.md",
             "audiences": ["common"],
-            "aliases": [
-                "срубить дерево",
-                "рубка",
-                "дрова",
-                "топор",
-                "меч",
-                "лес"
-            ],
+            "aliases": ["посадить дерево", "саженец", "пень", "вырастить лес"],
             "sources": [
-                "apps/backend/src/game/harvestRules.ts",
-                "apps/backend/src/game/harvestWork.ts",
-                "apps/backend/src/game/forestAutoAction.ts",
-                "contracts/src/inventory.ts"
+                "apps/backend/src/game/harvestResources.ts",
+                "apps/backend/src/game/resourcePlacement.ts",
+                "apps/backend/src/game/harvestRules.ts"
             ],
             "checks": [
-                "apps/backend/tests/harvesting.test.ts",
                 "apps/backend/tests/forest-resources.test.ts",
-                "apps/backend/tests/forest-auto-action.test.ts"
+                "apps/backend/tests/forest-commands.test.ts",
+                "apps/backend/tests/forest-auto-edge.test.ts"
             ],
             "facts": {}
         },
@@ -660,23 +955,6 @@
             "facts": {
                 "forestry.growthMs": 600000
             }
-        },
-        {
-            "id": "forestry.planting",
-            "file": "forestry/planting.md",
-            "audiences": ["common"],
-            "aliases": ["посадить дерево", "саженец", "пень", "вырастить лес"],
-            "sources": [
-                "apps/backend/src/game/harvestResources.ts",
-                "apps/backend/src/game/resourcePlacement.ts",
-                "apps/backend/src/game/harvestRules.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/forest-resources.test.ts",
-                "apps/backend/tests/forest-commands.test.ts",
-                "apps/backend/tests/forest-auto-edge.test.ts"
-            ],
-            "facts": {}
         },
         {
             "id": "inventory.bag",
@@ -814,6 +1092,33 @@
             "facts": {}
         },
         {
+            "id": "life.awakening",
+            "file": "life/awakening.md",
+            "audiences": ["common"],
+            "aliases": [
+                "Искра",
+                "пробуждение",
+                "новая жизнь",
+                "новое тело",
+                "поднялся из могилы",
+                "одно имя",
+                "прошлая жизнь"
+            ],
+            "sources": [
+                "apps/backend/src/game/roomPlayer.ts",
+                "apps/backend/src/game/roomIdentity.ts",
+                "apps/backend/src/game/spawns.ts",
+                "apps/backend/src/game/npcIdentityCatalog.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/generated-city-life.test.ts",
+                "apps/backend/tests/city-bell-ai.test.ts",
+                "apps/backend/tests/npc-memory-identity.test.ts",
+                "apps/backend/tests/npc-identity-context.test.ts"
+            ],
+            "facts": {}
+        },
+        {
             "id": "life.deathRescue",
             "file": "life/death-rescue.md",
             "audiences": ["common"],
@@ -910,6 +1215,23 @@
             "facts": {}
         },
         {
+            "id": "mining.stone",
+            "file": "mining/stone.md",
+            "audiences": ["common"],
+            "aliases": ["кирка", "камень", "каменная залежь", "добывать"],
+            "sources": [
+                "apps/backend/src/game/harvestRules.ts",
+                "apps/backend/src/game/harvestWork.ts",
+                "apps/backend/src/game/harvestResources.ts",
+                "contracts/src/inventory.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/harvesting.test.ts",
+                "apps/backend/tests/forest-resources.test.ts"
+            ],
+            "facts": {}
+        },
+        {
             "id": "mining.stone.expert",
             "file": "mining/stone-expert.md",
             "audiences": ["profession:miner"],
@@ -934,23 +1256,6 @@
                 "mining.pickaxe.wear": 1,
                 "mining.regrowthMs": 1200000
             }
-        },
-        {
-            "id": "mining.stone",
-            "file": "mining/stone.md",
-            "audiences": ["common"],
-            "aliases": ["кирка", "камень", "каменная залежь", "добывать"],
-            "sources": [
-                "apps/backend/src/game/harvestRules.ts",
-                "apps/backend/src/game/harvestWork.ts",
-                "apps/backend/src/game/harvestResources.ts",
-                "contracts/src/inventory.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/harvesting.test.ts",
-                "apps/backend/tests/forest-resources.test.ts"
-            ],
-            "facts": {}
         },
         {
             "id": "person.kaplya",
@@ -1036,150 +1341,6 @@
                 "apps/backend/tests/story-reward-sharing.test.ts",
                 "apps/backend/tests/quest-rewards.test.ts",
                 "apps/backend/tests/worker-funded-rewards.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "city.aren",
-            "file": "settlements/novogorod/aren.md",
-            "audiences": ["resident:map-2-2", "doctrine:magic"],
-            "aliases": [
-                "Арен",
-                "библиотека",
-                "кто учит магии",
-                "огненный шар",
-                "книги"
-            ],
-            "sources": [
-                "apps/backend/src/game/supportNpcs.ts",
-                "apps/backend/src/game/magicLearning.ts",
-                "apps/backend/src/game/residentDialogue.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/ability-rules.test.ts",
-                "apps/backend/tests/skill-progression.test.ts",
-                "apps/backend/tests/deities-learning.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "city.artisans",
-            "file": "settlements/novogorod/artisans.md",
-            "audiences": [
-                "resident:map-2-2",
-                "profession:weaver",
-                "profession:baker"
-            ],
-            "aliases": [
-                "Мила",
-                "Елисей",
-                "сапоги",
-                "пекарь",
-                "мастерица",
-                "заказать еду"
-            ],
-            "sources": [
-                "apps/backend/src/game/cityResidents.ts",
-                "contracts/src/craftOrders.ts",
-                "apps/backend/src/game/productionWorkOrders.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/customer-orders-production.test.ts",
-                "apps/backend/tests/production-work-orders.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "city.ignat",
-            "file": "settlements/novogorod/ignat.md",
-            "audiences": ["resident:map-2-2", "profession:smith"],
-            "aliases": [
-                "где купить топор",
-                "кузница",
-                "Игнат",
-                "кирка",
-                "каменный топор",
-                "ремонт"
-            ],
-            "sources": [
-                "apps/backend/src/game/cityResidents.ts",
-                "contracts/src/craftOrders.ts",
-                "apps/backend/src/game/adventureContent.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/customer-orders.test.ts",
-                "apps/backend/tests/item-durability.test.ts",
-                "apps/backend/tests/city-interiors.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "city.mira",
-            "file": "settlements/novogorod/mira.md",
-            "audiences": ["resident:map-2-2"],
-            "aliases": [
-                "Мира",
-                "гильдия",
-                "распорядитель",
-                "чем помочь городу",
-                "работа"
-            ],
-            "sources": [
-                "apps/backend/src/game/companionProfiles.ts",
-                "apps/backend/src/game/guild.ts",
-                "apps/backend/src/game/adventureContent.ts",
-                "apps/backend/src/game/workerRequests.ts",
-                "apps/backend/src/game/npcIdentityCatalog.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/worker-guild-contracts.test.ts",
-                "apps/backend/tests/npc-ai-coordinator.test.ts",
-                "apps/backend/tests/npc-quests.test.ts",
-                "apps/backend/tests/npc-identity-context.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "city.savva",
-            "file": "settlements/novogorod/savva.md",
-            "audiences": ["resident:map-2-2", "profession:merchant"],
-            "aliases": ["Савва", "где продать", "лавка", "припасы", "еда"],
-            "sources": [
-                "apps/backend/src/game/supportNpcs.ts",
-                "apps/backend/src/game/adventureContent.ts",
-                "apps/backend/src/game/cityEconomy.ts",
-                "contracts/src/craftOrders.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/city-economy.test.ts",
-                "apps/backend/tests/customer-orders.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "city.vera",
-            "file": "settlements/novogorod/vera.md",
-            "audiences": ["resident:map-2-2", "doctrine:prayer"],
-            "aliases": [
-                "Сестра Вера",
-                "клерик",
-                "храм",
-                "часовня",
-                "учитель молитв"
-            ],
-            "sources": [
-                "apps/backend/src/game/supportNpcs.ts",
-                "apps/backend/src/game/magicLearning.ts",
-                "apps/backend/src/game/clericController.ts",
-                "apps/backend/src/game/cityJustice.ts",
-                "apps/backend/src/game/npcIdentityCatalog.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/deities-learning.test.ts",
-                "apps/backend/tests/resurrection-rules.test.ts",
-                "apps/backend/tests/city-justice.test.ts",
-                "apps/backend/tests/npc-identity-context.test.ts",
-                "apps/backend/tests/vera-prayer-knowledge.test.ts"
             ],
             "facts": {}
         },
@@ -1339,6 +1500,32 @@
             "facts": {}
         },
         {
+            "id": "world.memoryBell",
+            "file": "world/memory-bell.md",
+            "audiences": ["common"],
+            "aliases": [
+                "Колокол памяти",
+                "город не торгует",
+                "почему не работает кузница",
+                "активировать колокол",
+                "пробуждение Капли"
+            ],
+            "sources": [
+                "apps/backend/src/game/cityWorldState.ts",
+                "apps/backend/src/game/cityStoryDefinitions.ts",
+                "apps/backend/src/game/roomCityActivationSpawns.ts",
+                "apps/backend/src/game/adventureInteractionServices.ts"
+            ],
+            "checks": [
+                "apps/backend/tests/city-bell-story.test.ts",
+                "apps/backend/tests/city-bell-access.test.ts",
+                "apps/backend/tests/city-bell-ai.test.ts",
+                "apps/backend/tests/generated-city-knowledge.test.ts",
+                "apps/backend/tests/world-map-assets.test.ts"
+            ],
+            "facts": {}
+        },
+        {
             "id": "world.movement",
             "file": "world/movement.md",
             "audiences": ["common"],
@@ -1386,122 +1573,6 @@
             "checks": [
                 "apps/backend/tests/world-locations.test.ts",
                 "apps/backend/tests/navigation-boundary.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "faith.road",
-            "file": "faith/road.md",
-            "audiences": ["knows:pray_road"],
-            "aliases": [
-                "молитва Путника",
-                "молитва странника",
-                "восстановить силы"
-            ],
-            "extends": "faith.resourceGifts",
-            "sources": [
-                "contracts/src/prayer.ts",
-                "apps/backend/src/game/prayer.ts",
-                "apps/backend/src/game/prayerGifts.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/prayer-schools.test.ts",
-                "apps/backend/tests/vera-prayer-knowledge.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "faith.lantern",
-            "file": "faith/lantern.md",
-            "audiences": ["knows:pray_lantern"],
-            "aliases": [
-                "молитва Архивариуса",
-                "молитва ясности",
-                "восстановить ману"
-            ],
-            "extends": "faith.resourceGifts",
-            "sources": [
-                "contracts/src/prayer.ts",
-                "apps/backend/src/game/prayer.ts",
-                "apps/backend/src/game/prayerGifts.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/prayer-schools.test.ts",
-                "apps/backend/tests/vera-prayer-knowledge.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "faith.grave",
-            "file": "faith/grave.md",
-            "audiences": ["knows:pray_grave"],
-            "aliases": [
-                "молитва Праха",
-                "здоровье нежити",
-                "вернуть павшую нежить"
-            ],
-            "extends": "faith.resourceGifts",
-            "sources": [
-                "contracts/src/prayer.ts",
-                "apps/backend/src/game/prayer.ts",
-                "apps/backend/src/game/prayerGifts.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/prayer-schools.test.ts",
-                "apps/backend/tests/vera-prayer-knowledge.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "world.memoryBell",
-            "file": "world/memory-bell.md",
-            "audiences": ["common"],
-            "aliases": [
-                "Колокол памяти",
-                "город не торгует",
-                "почему не работает кузница",
-                "активировать колокол",
-                "пробуждение Капли"
-            ],
-            "sources": [
-                "apps/backend/src/game/cityWorldState.ts",
-                "apps/backend/src/game/cityStoryDefinitions.ts",
-                "apps/backend/src/game/roomCityActivationSpawns.ts",
-                "apps/backend/src/game/adventureInteractionServices.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/city-bell-story.test.ts",
-                "apps/backend/tests/city-bell-access.test.ts",
-                "apps/backend/tests/city-bell-ai.test.ts",
-                "apps/backend/tests/generated-city-knowledge.test.ts",
-                "apps/backend/tests/world-map-assets.test.ts"
-            ],
-            "facts": {}
-        },
-        {
-            "id": "life.awakening",
-            "file": "life/awakening.md",
-            "audiences": ["common"],
-            "aliases": [
-                "Искра",
-                "пробуждение",
-                "новая жизнь",
-                "новое тело",
-                "поднялся из могилы",
-                "одно имя",
-                "прошлая жизнь"
-            ],
-            "sources": [
-                "apps/backend/src/game/roomPlayer.ts",
-                "apps/backend/src/game/roomIdentity.ts",
-                "apps/backend/src/game/spawns.ts",
-                "apps/backend/src/game/npcIdentityCatalog.ts"
-            ],
-            "checks": [
-                "apps/backend/tests/generated-city-life.test.ts",
-                "apps/backend/tests/city-bell-ai.test.ts",
-                "apps/backend/tests/npc-memory-identity.test.ts",
-                "apps/backend/tests/npc-identity-context.test.ts"
             ],
             "facts": {}
         }

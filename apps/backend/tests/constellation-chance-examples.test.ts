@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import {
     criticalChance,
-    swordDodgeChance,
     theftEffectChances,
 } from '../../frontend/src/game/debug/constellationChanceMath'
 import type { PendingAttackHit } from '../src/game/characterState'
-import { dodgedAttack, resolveAttackDamage } from '../src/game/combatDamage'
+import { resolveAttackDamage } from '../src/game/combatDamage'
+import { defendContact } from '../src/game/combatDefense'
 import {
     consumeRunicShot,
     recordRunicContact,
@@ -47,23 +47,41 @@ describe('debug chance examples agree with authoritative rules', () => {
         expect(criticalRoll(actor, pending, 0.05)).toBe(false)
     })
 
-    it('includes only sound equipment and a sound sword in the actual dodge probability', () => {
+    it('keeps learned melee dodge and parry separate and ignores broken weapon or armor bonuses', () => {
         const actor = abilityHero('vanguard')
+        const attacker = abilityHero('cleric')
         actor.config.combat.dodgeChance = 0.05
         actor.equipment.boots = createItemInstance('boots')
         actor.equipment.weapon = createItemInstance('old_sword')
         actor.progression.constellations.opened.add('blade.dodge')
-        const threshold = swordDodgeChance(0.05, 0.08, true)
-        expect(dodgedAttack(actor, () => threshold - 1e-8)).toBe(true)
-        expect(dodgedAttack(actor, () => threshold)).toBe(false)
+        const probe = (sample: number) => {
+            actor.energy = 100
+            return defendContact(
+                attacker,
+                actor,
+                { ...pending, delivery: 'melee_physical' },
+                1000,
+                () => sample
+            )
+        }
+        const dodge = 0.05 + 0.08 + 0.05
+        const parry = 0.1
+        expect(probe(dodge - 1e-8).outcome).toBe('dodge')
+        expect(actor.energy).toBe(95)
+        expect(probe(dodge).outcome).toBe('parry')
+        expect(actor.energy).toBe(95)
+        expect(probe(dodge + parry - 1e-8).outcome).toBe('parry')
+        expect(probe(dodge + parry).outcome).toBe('hit')
+        expect(actor.energy).toBe(100)
         actor.equipment.weapon.durability = 0
-        expect(
-            dodgedAttack(actor, () => swordDodgeChance(0.05, 0.08, false))
-        ).toBe(false)
+        expect(probe(0.05 + 0.08 - 1e-8).outcome).toBe('dodge')
+        expect(probe(0.05 + 0.08).outcome).toBe('hit')
         actor.equipment.boots.durability = 0
-        expect(dodgedAttack(actor, () => 0.05)).toBe(false)
+        expect(probe(0.05).outcome).toBe('hit')
     })
+})
 
+describe('debug skill effect examples agree with authoritative rules', () => {
     it.each([
         [1, 1, false, 0],
         [1, 1, true, 0],

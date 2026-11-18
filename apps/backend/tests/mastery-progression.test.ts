@@ -1,4 +1,5 @@
 import {
+    backgroundMasteryMultiplier,
     constellationIds,
     createMasteryLevels,
     formatMasteryExperience,
@@ -27,6 +28,18 @@ import {
 import { abilityHero } from './abilityTestHelpers'
 
 const xp = parseMasteryExperience
+
+function unboostedAward(
+    actor: GameCharacter,
+    constellationId: (typeof constellationIds)[number]
+) {
+    return {
+        constellationId,
+        experience:
+            8117.125 /
+            backgroundMasteryMultiplier(actor.heroClass, constellationId),
+    }
+}
 
 describe('exact uncapped mastery arithmetic', () => {
     it('keeps the Fibonacci opening and switches to the lower power threshold after 2100 XP', () => {
@@ -169,7 +182,7 @@ describe('authoritative mastery awards', () => {
             )
             expect(actor.progression.masteries.prayer).toEqual({
                 level: 1,
-                experience: xp('20'),
+                experience: xp('44'),
             })
             awardMasteries(
                 actor,
@@ -178,7 +191,7 @@ describe('authoritative mastery awards', () => {
             )
             expect(actor.progression.masteries.prayer).toEqual({
                 level: 2,
-                experience: xp('10'),
+                experience: xp('52'),
             })
         }
     )
@@ -190,9 +203,10 @@ describe('authoritative mastery awards', () => {
             [
                 {
                     constellationId: 'prayer_road',
-                    experience: Number(
-                        formatMasteryExperience(masteryTotalExperience(12))
-                    ),
+                    experience:
+                        Number(
+                            formatMasteryExperience(masteryTotalExperience(12))
+                        ) / 1.2,
                 },
             ],
             { now: 1000 }
@@ -216,9 +230,9 @@ describe('authoritative mastery crossover', () => {
             const awards = [
                 {
                     constellationId: 'prayer_road' as const,
-                    experience: Number(
-                        formatMasteryExperience(xp('1') + difference)
-                    ),
+                    experience:
+                        Number(formatMasteryExperience(xp('1') + difference)) /
+                        1.2,
                 },
             ]
             const options = { now: 1000, receiptId: 'threshold-practice' }
@@ -252,7 +266,7 @@ describe('authoritative mastery crossover', () => {
         actor.progression.constellations.credits.prayer_road = 2
         const events = awardMasteries(
             actor,
-            [{ constellationId: 'prayer_road', experience: 7962.40266 }],
+            [{ constellationId: 'prayer_road', experience: 7962.40266 / 1.2 }],
             { now: 1000, receiptId: 'cross-both-curves' }
         )
         expect(actor.progression.masteries.prayer_road).toEqual({
@@ -288,7 +302,7 @@ describe('authoritative mastery crossover', () => {
                 )) {
                     actor.progression.constellations.opened.add(node.id)
                 }
-                const awards = [{ constellationId, experience: 8117.125 }]
+                const awards = [unboostedAward(actor, constellationId)]
                 const options = {
                     now: 1000,
                     receiptId: `crossover:${controllerKind}:${constellationId}`,
@@ -336,9 +350,9 @@ describe('authoritative mastery receipts and availability', () => {
             level: 1,
             experience: xp('10'),
         })
-        expect(actor.progression.masteries.prayer.experience).toBe(xp('60'))
+        expect(actor.progression.masteries.prayer.experience).toBe(xp('72'))
         expect(awardMasteries(actor, awards, options)).toEqual([])
-        expect(actor.progression.masteries.prayer.experience).toBe(xp('60'))
+        expect(actor.progression.masteries.prayer.experience).toBe(xp('72'))
     })
     it('never rewards disconnected, dead, retired or training characters', () => {
         for (const state of ['offline', 'dead', 'retired', 'training']) {
@@ -384,7 +398,7 @@ describe('private mastery observation', () => {
             { now: 1000 }
         )
         const snapshot = snapshotProgression(actor, 1000)
-        expect(JSON.stringify(snapshot)).toContain('"totalExperience":"120"')
+        expect(JSON.stringify(snapshot)).toContain('"totalExperience":"144"')
         const publicView = publicProgression(snapshot)
         expect(
             publicView.masteries.every(
@@ -400,7 +414,7 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(96)
+        expect(fullConstellationCatalog).toHaveLength(131)
         expect(minimumConstellationLevel('prayer.harm')).toBe(1)
         expect(minimumConstellationLevel('prayer.harm1')).toBe(6)
         expect(minimumConstellationLevel('prayer.harm2')).toBe(12)

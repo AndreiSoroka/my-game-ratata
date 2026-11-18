@@ -38,7 +38,7 @@ describe('four explicit hotbar bindings', () => {
             wrapper.vm.assignItem(0, 'food')
             await wrapper.vm.$nextTick()
             expect(wrapper.findAll('.hotbar-slot')[0]!.attributes('aria-label')).toContain(
-                '1: Базовая атака'
+                '1: Удар ножом'
             )
             expect(wrapper.get('.hotbar-slot small').text()).toBe('0')
         } finally {

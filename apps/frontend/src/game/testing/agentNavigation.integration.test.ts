@@ -100,7 +100,8 @@ describe('AI navigation through authoritative player commands', () => {
                 tolerance: 64,
                 timeoutMs: outcome === 'timeout' ? 500 : 10_000,
             })
-            await vi.advanceTimersByTimeAsync(outcome === 'arrival' ? 2_300 : 500)
+            // Shared human movement has no extra Ranger speed: allow reaching the 64px tolerance.
+            await vi.advanceTimersByTimeAsync(outcome === 'arrival' ? 3_000 : 500)
             expect(getState().player!.position.x).toBeGreaterThan(start.x)
             if (outcome === 'cancel') navigator.cancel()
             expect((await journey).status).toBe(

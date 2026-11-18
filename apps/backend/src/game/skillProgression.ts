@@ -1,13 +1,12 @@
 import {
+    backgroundMasteryRewardMicros,
     type ConstellationId,
     constellationIds,
     type DeityId,
     formatMasteryExperience,
     type GameEventPayload,
-    isItemBroken,
     MASTERY_NAMES,
     masteryConflict,
-    masteryRewardMicros,
     masteryThreshold,
     masteryTotalExperience,
     PRAYER_SCHOOL_DEFINITIONS,
@@ -16,6 +15,7 @@ import {
     prayerSchoolId,
     profileForPrayer,
     type ProgressionSnapshot,
+    resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -159,7 +159,12 @@ export function awardMasteries(
     const factors = options.factors ?? captureMasteryFactors(actor)
     const resolved = [...sums].map(([id, amount]) => ({
         id,
-        micros: masteryRewardMicros(amount, factors[id]),
+        micros: backgroundMasteryRewardMicros(
+            amount,
+            factors[id],
+            actor.heroClass,
+            id
+        ),
     }))
     if (options.receiptId !== undefined) {
         actor.progression.rewardReceipts.add(options.receiptId)
@@ -233,12 +238,8 @@ function applyMasteryAward(
     return events
 }
 export function hasEquippedSword(actor: GameCharacter): boolean {
-    const weapon = actor.equipment.weapon
-    return (
-        weapon !== undefined &&
-        !isItemBroken(weapon) &&
-        (weapon.itemId === 'simple_sword' || weapon.itemId === 'old_sword')
-    )
+    const weapon = resolveCombatWeapon(actor.archetype, actor.equipment.weapon)
+    return weapon.bladeCompatible && !weapon.broken
 }
 export function canPerformSkillAction(
     actor: GameCharacter,
@@ -250,6 +251,8 @@ export function canPerformSkillAction(
         !actor.tags.has('offline') &&
         !actor.tags.has('state.retired') &&
         actor.stunUntil <= now &&
+        actor.combat.readyAt <= now &&
+        !actor.combat.defensiveStance &&
         actor.abilities.casting === null &&
         !actor.isActionLocked(now)
     )

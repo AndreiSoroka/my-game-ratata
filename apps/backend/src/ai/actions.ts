@@ -1,6 +1,8 @@
 import type { AgentDecision, Vector2 } from '@my-game-ratata/contracts'
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import { CENTER_LOCATION_ID, isBladeAbility } from '@my-game-ratata/contracts'
 
+import { knowsAbility } from '../game/abilityState'
+import { actorRefusesCombat } from '../game/agentCapabilities'
 import type { GameCharacter } from '../game/character'
 import { snapshotCharacterRoute } from '../game/characterRoute'
 import { distance } from '../game/math'
@@ -29,13 +31,12 @@ export function npcAiDecisionError(
     if (advisorError !== undefined) {
         return advisorError
     }
-    if (
-        role === 'city_coordinator' &&
-        actor.locationId !== CENTER_LOCATION_ID
-    ) {
+    if (outsideCoordinatorCity(actor, role)) {
         return 'The city coordinator must remain in its city'
     }
     switch (decision.type) {
+        case 'use_ability':
+            return bladeAbilityError(actor, decision)
         case 'move_to':
             return movementError(actor, role, decision, navigation)
         case 'interact':
@@ -58,6 +59,31 @@ export function npcAiDecisionError(
         default:
             return 'This role may navigate, inspect services, talk and wait; it cannot change possessions, rewards or other controllers'
     }
+}
+
+function outsideCoordinatorCity(
+    actor: GameCharacter,
+    role: NpcAiRole
+): boolean {
+    return (
+        role === 'city_coordinator' && actor.locationId !== CENTER_LOCATION_ID
+    )
+}
+
+function bladeAbilityError(
+    actor: GameCharacter,
+    decision: Extract<AgentDecision, { type: 'use_ability' }>
+): string | undefined {
+    if (
+        !isBladeAbility(decision.abilityId) ||
+        !knowsAbility(actor, decision.abilityId)
+    ) {
+        return 'This blade technique has not been learned'
+    }
+    return decision.abilityId !== 'defensive_stance' &&
+        actorRefusesCombat(actor)
+        ? 'This character refuses combat'
+        : undefined
 }
 
 export function npcAiActionReceipt(

@@ -35,13 +35,13 @@ it('awards thirty XP per useful area recipient and none for empty recipients', (
         'pray_woven'
     )
     expect(events.filter((event) => event.kind === 'heal')).toHaveLength(4)
-    expect(masteryExperience(caster)).toBe(prayerXp(120))
+    expect(masteryExperience(caster)).toBe(prayerXp(144))
     expect(caster.progression.masteries.prayer).toEqual({
         level: 1,
-        experience: prayerXp(20),
+        experience: prayerXp(44),
     })
     expect(caster.progression.masteries.prayer_road.experience).toBe(0n)
-    expect(caster.mana).toBe(100)
+    expect(caster.mana).toBe(20)
 })
 
 it('freezes one conflict factor before self recovery, then adds every gift, victim and grave contribution', () => {
@@ -109,8 +109,8 @@ it('freezes one conflict factor before self recovery, then adds every gift, vict
     expect(f.actor.progression.masteries.life.level).toBe(1)
     // 2×30 gifts + 2×70 hostile victims + 10 ordinary step + 150 final step.
     // Self recovery raises Life first, but cannot change this prayer's frozen multiplier.
-    expect(masteryExperience(f.actor)).toBe(prayerXp(360))
-    expect(f.actor.mana).toBe(90)
+    expect(masteryExperience(f.actor)).toBe(prayerXp(432))
+    expect(f.actor.mana).toBe(10)
 })
 
 it.each([
@@ -208,7 +208,7 @@ it.each(['pray_road', 'pray_lantern'] as const)(
         )
         const path =
             abilityId === 'pray_road' ? 'prayer_road' : 'prayer_lantern'
-        expect(masteryExperience(caster, path)).toBe(prayerXp(30))
+        expect(masteryExperience(caster, path)).toBe(prayerXp(36))
         target[resource] -= 1
         completePrayer(
             caster,
@@ -219,6 +219,6 @@ it.each(['pray_road', 'pray_lantern'] as const)(
             'resource:artificial',
             abilityId
         )
-        expect(masteryExperience(caster, path)).toBe(prayerXp(30))
+        expect(masteryExperience(caster, path)).toBe(prayerXp(36))
     }
 )

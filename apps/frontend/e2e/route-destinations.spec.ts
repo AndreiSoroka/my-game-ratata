@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-
 import { CENTER_LOCATION_ID, type ClientMessage, type Vector2 } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
@@ -13,24 +11,25 @@ interface Building {
     height: number
     properties?: { name: string; value: unknown }[]
 }
-const authored = JSON.parse(
-    readFileSync(new URL(`../public/game/map/${CENTER_LOCATION_ID}.json`, import.meta.url), 'utf8')
-) as Omit<MapSource, 'layers'> & {
+type CityMap = Omit<MapSource, 'layers'> & {
     layers: (MapSource['layers'][number] & { objects?: Building[] })[]
 }
-const grid = readMapVisibility(authored)
-const guild = authored.layers
-    .find((layer) => layer.name === 'Buildings')!
-    .objects!.find((building) =>
-        building.properties?.some((p) => p.name === 'kind' && p.value === 'guild')
-    )!
-const wall = {
-    x: guild.x + guild.width - grid.tileWidth / 2,
-    y: guild.y + guild.height / 2 + grid.tileHeight / 2,
+function routeFixture(authored: CityMap) {
+    const grid = readMapVisibility(authored)
+    const guild = authored.layers
+        .find((layer) => layer.name === 'Buildings')!
+        .objects!.find((building) =>
+            building.properties?.some((p) => p.name === 'kind' && p.value === 'guild')
+        )!
+    const wall = {
+        x: guild.x + guild.width - grid.tileWidth / 2,
+        y: guild.y + guild.height / 2 + grid.tileHeight / 2,
+    }
+    const staging = { x: wall.x + grid.tileWidth * 3.5, y: wall.y }
+    const first = { x: staging.x, y: staging.y + grid.tileHeight * 9 }
+    const last = { x: staging.x, y: staging.y + grid.tileHeight * 3 }
+    return { grid, wall, staging, first, last }
 }
-const staging = { x: wall.x + grid.tileWidth * 3.5, y: wall.y }
-const first = { x: staging.x, y: staging.y + grid.tileHeight * 9 }
-const last = { x: staging.x, y: staging.y + grid.tileHeight * 3 }
 
 for (const mobile of [false, true]) {
     test(`resolves a house click and walks the accepted queue (${mobile ? 'mobile' : 'desktop'})`, async ({
@@ -51,9 +50,18 @@ for (const mobile of [false, true]) {
         )
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
+        const cityMap = page.waitForResponse((response) => {
+            const path = new URL(response.url()).pathname
+            return path.startsWith('/world/maps/') && path.endsWith(`/${CENTER_LOCATION_ID}.json`)
+        })
         await page.evaluate(
             (name) => window.__ratataTest!.join(name, 'vanguard'),
             `route-${info.project.name[0]}-${Number(mobile)}-${Date.now().toString(36)}`
+        )
+        // Route resolution must use the same generated city that the server
+        // sends, rather than the old static authoring map.
+        const { grid, wall, staging, first, last } = routeFixture(
+            (await (await cityMap).json()) as CityMap
         )
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(canvas).toBeVisible()

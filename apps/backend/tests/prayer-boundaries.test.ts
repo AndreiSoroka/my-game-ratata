@@ -103,8 +103,8 @@ it('rewards each hostile prayer victim and respects exact range and walls', () =
         now: 4000,
     })
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(4)
-    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(210))
-    expect(actor.mana).toBe(100)
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(252))
+    expect(actor.mana).toBe(20)
     expect(far.hp).toBe(far.maxHp)
     expect(hidden.hp).toBe(hidden.maxHp)
 })
@@ -120,7 +120,7 @@ it('never changes a pinned resurrection recipient or refunds its prepaid cost af
     } as const
     handleAbilityCommand(actor, command, context)
     expect(actor.abilities.casting?.targetId).toBe(target.id)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     const events = advanceRevive(
         actor,
         () => target,
@@ -131,6 +131,6 @@ it('never changes a pinned resurrection recipient or refunds its prepaid cost af
     expect(events).toContainEqual(
         expect.objectContaining({ kind: 'cast', phase: 'interrupted' })
     )
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     expect(target.alive).toBe(false)
 })

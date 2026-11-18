@@ -1,12 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
-import {
-    chancePercent,
-    criticalChance,
-    swordDodgeChance,
-    theftEffectChances,
-} from './constellationChanceMath'
+import { chancePercent, criticalChance, theftEffectChances } from './constellationChanceMath'
 import { describeOtherEffectChance } from './constellationOtherChance'
 
 afterEach(() => vi.restoreAllMocks())
@@ -18,12 +13,12 @@ function description(id: string) {
 }
 
 describe('all non-prayer effect explanations', () => {
-    it('covers all fifty-three nodes with formulas without mutating metadata or drawing randomness', () => {
+    it('covers all authored non-prayer nodes with formulas without mutating metadata or drawing randomness', () => {
         const nodes = fullConstellationCatalog.filter(
             (node) => !node.constellationId.startsWith('prayer')
         )
         const before = JSON.stringify(fullConstellationCatalog)
-        expect(nodes).toHaveLength(53)
+        expect(nodes).toHaveLength(85)
         vi.spyOn(Math, 'random').mockImplementation(() => {
             throw new Error('An explanation must not roll gameplay randomness')
         })
@@ -92,23 +87,24 @@ describe('all non-prayer effect explanations', () => {
 })
 
 describe('chance formula boundaries and examples', () => {
-    it('caps critical and dodge bonuses and makes the sword condition explicit', () => {
+    it('caps critical bonuses and makes the shared blade condition explicit', () => {
         expect(criticalChance(0.05, 0.03)).toBeCloseTo(0.08)
         expect(criticalChance(0.94, 0.03)).toBe(0.95)
-        expect(swordDodgeChance(0.05, 0, true)).toBeCloseTo(0.08)
-        expect(swordDodgeChance(0.05, 0, false)).toBe(0.05)
-        expect(swordDodgeChance(0.94, 0.02, true)).toBe(0.95)
         expect(description('blade.critical').formulas).toEqual([
-            'min(95, C + 3)',
-            '(1 − D / 100) × C',
+            'min(95, C + B)',
+            '(1 − min(95, D + P) / 100) × C',
         ])
         expect(description('blade.critical').formulaDetails?.[0]?.variables).toEqual([
             expect.objectContaining({
                 symbol: 'C',
                 description: expect.stringContaining('процентах'),
             }),
+            expect.objectContaining({
+                symbol: 'B',
+                description: expect.stringContaining('5 или 10'),
+            }),
         ])
-        expect(description('blade.critical').notes.join(' ')).toContain('исправным')
+        expect(description('blade.critical').notes.join(' ')).toContain('исправный нож или меч')
         expect(description('arrow.critical').notes.join(' ')).toContain('не получает')
         expect(description('magic.root').formulaDetails?.[1]).toMatchObject({
             label: 'Шанс критического попадания Искры, %',

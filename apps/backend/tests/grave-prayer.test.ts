@@ -26,13 +26,13 @@ describe('shared probabilistic grave prayer', () => {
             f.actor.progression.patron = patron
             for (let step = 0; step < 5; step++) {
                 const startsAt = now + step * GRAVE_PURIFY_CAST_MS
-                expect(f.actor.mana).toBe(120 - step * 5)
+                expect(f.actor.mana).toBe(40 - step * 5)
                 expect(f.begin(startsAt)[0]).toMatchObject({
                     kind: 'cast',
                     phase: 'started',
                     durationMs: 3000,
                 })
-                expect(f.actor.mana).toBe(120 - (step + 1) * 5)
+                expect(f.actor.mana).toBe(40 - (step + 1) * 5)
                 expect(f.advance(startsAt + GRAVE_PURIFY_CAST_MS - 1)).toEqual(
                     []
                 )
@@ -50,15 +50,15 @@ describe('shared probabilistic grave prayer', () => {
                     completed: step + 1,
                     required: 5,
                 })
-                expect(f.actor.mana).toBe(120 - (step + 1) * 5)
+                expect(f.actor.mana).toBe(40 - (step + 1) * 5)
                 expect(masteryExperience(f.actor, 'prayer')).toBe(
-                    prayerXp(step === 4 ? 190 : (step + 1) * 10)
+                    prayerXp((step === 4 ? 190 : (step + 1) * 10) * 1.2)
                 )
                 expect(f.advance(startsAt + GRAVE_PURIFY_CAST_MS)).toEqual([])
             }
             expect(f.service.get(source.id)?.phase).toBe('purified')
             expect(f.begin(now + 20_000)[0]?.kind).toBe('notice')
-            expect(f.actor.mana).toBe(95)
+            expect(f.actor.mana).toBe(15)
         }
     )
 
@@ -159,7 +159,7 @@ describe('purification interrupts', () => {
         (_label, interrupt) => {
             const f = gravePrayerFixture()
             f.begin()
-            expect(f.actor.mana).toBe(115)
+            expect(f.actor.mana).toBe(35)
             interrupt(f)
             const mana = f.actor.mana
             expect(f.advance(now + 1)).toMatchObject([
@@ -207,7 +207,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         (remaining) => {
             const f = gravePrayerFixture()
             f.begin()
-            expect(f.actor.mana).toBe(115)
+            expect(f.actor.mana).toBe(35)
             f.actor.mana = remaining
             expect(f.advance(now + 1_000)).toEqual([])
             expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
@@ -218,7 +218,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
                 target: { kind: 'grave', id: source.id },
             })
             expect(f.actor.mana).toBe(remaining)
-            expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(10))
+            expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(12))
         }
     )
 
@@ -240,7 +240,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         expect(f.begin(now + 5_000)[0]?.kind).toBe('notice')
         expect(f.actor.abilities.casting).toBe(original)
         beginGravePurification(other, source.id, f.context(now))
-        expect(other.mana).toBe(115)
+        expect(other.mana).toBe(35)
         for (let step = 0; step < 4; step++) {
             f.service.contributePurification(
                 source.id,
@@ -258,9 +258,9 @@ describe('ordinary NPC prayer and atomic completion', () => {
                 f.context(now + GRAVE_PURIFY_CAST_MS)
             )
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
-        expect(f.actor.mana).toBe(115)
-        expect(other.mana).toBe(115)
-        expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(150))
+        expect(f.actor.mana).toBe(35)
+        expect(other.mana).toBe(35)
+        expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(180))
         expect(masteryExperience(other, 'prayer')).toBe(prayerXp(0))
         expect(f.service.get(source.id)?.phase).toBe('purified')
     })
@@ -298,7 +298,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         )
         f.actor.hp = f.actor.maxHp
         expect(f.advance(now + 10_000)).toEqual([])
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(35)
         expect(f.service.get(source.id)?.phase).toBe('active')
     })
 })

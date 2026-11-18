@@ -6,6 +6,7 @@ import type {
 import { clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
 import { regen } from './characterState'
+import { refreshCombatState } from './combatState'
 import { effectiveMaxMana } from './effectiveResources'
 import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
@@ -21,6 +22,7 @@ export function tickCharacterTimedState(
     character: GameCharacter,
     now: number
 ): void {
+    refreshCombatState(character, now)
     // Movement/timed-state runs before hit resolution, including ticks later than the deadline.
     if (
         character.pendingAttack === undefined &&
@@ -92,6 +94,7 @@ export function restoreCharacter(
     character.respawnAt = 0
     character.reviveUntil = 0
     character.stunUntil = 0
+    character.combat.stunImmuneUntil = 0
     character.velocity = zeroVector()
     character.setAnimation('idle', now)
 }
@@ -113,7 +116,7 @@ export function regenerateCharacter(
     character.energy = regen(
         character.energy,
         resources.maxEnergy,
-        energyAllowed
+        energyAllowed && !character.combat.defensiveStance
             ? moving
                 ? resources.energyRegenMove
                 : resources.energyRegenIdle

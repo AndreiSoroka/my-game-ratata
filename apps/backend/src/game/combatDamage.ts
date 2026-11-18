@@ -2,14 +2,16 @@ import {
     ABILITY_DEFINITIONS,
     type CombatHitQuality,
     type GameEventPayload,
+    HUMAN_MELEE_RULES,
+    isBladeAttackAbility,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
 import { resolveCharacterStats } from './characterStats'
 import { combatHitQuality } from './combatHitQuality'
+import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
-import { effectiveCharacterStats } from './effectiveParameters'
 import {
     type PrayerAuraEffects,
     prayerAuraEffects,
@@ -17,24 +19,7 @@ import {
     rollCharacterCheck,
 } from './prayerAuras'
 import { hasEquippedSword } from './skillProgression'
-export function dodgedAttack(
-    target: GameCharacter,
-    random: () => number,
-    now = Date.now(),
-    effects: PrayerAuraEffects = prayerAuraEffects(target, now)
-): boolean {
-    return rollCharacterCheck(
-        target,
-        Math.min(
-            0.95,
-            effectiveCharacterStats(target).dodgeChance + effects.dodgeBonus
-        ),
-        random,
-        now,
-        effects.advantage
-    )
-}
-export function resolveAttackDamage(
+export function resolveRawAttackDamage(
     actor: GameCharacter,
     attack: PendingAttackHit,
     random: () => number,
@@ -65,10 +50,10 @@ export function resolveAttackDamage(
     }
     return {
         amount: Math.max(
-            1,
-            Math.round(
-                amount * attack.damageMultiplier * attackBonus(actor, attack)
-            )
+            0,
+            amount *
+                (attack.damageMultiplier * attackBonus(actor, attack) +
+                    (attack.comboBonus ?? 0))
         ),
         critical,
         hitQuality: combatHitQuality(
@@ -80,6 +65,17 @@ export function resolveAttackDamage(
         ),
     }
 }
+/** Compatibility/read-only roll; contact resolution rounds once after target mitigation. */
+export function resolveAttackDamage(
+    actor: GameCharacter,
+    attack: PendingAttackHit,
+    random: () => number,
+    now = Date.now(),
+    effects: PrayerAuraEffects = prayerAuraEffects(actor, now)
+) {
+    const result = resolveRawAttackDamage(actor, attack, random, now, effects)
+    return { ...result, amount: Math.max(1, Math.round(result.amount)) }
+}
 function attackCritical(
     actor: GameCharacter,
     attack: PendingAttackHit,
@@ -89,7 +85,10 @@ function attackCritical(
     effects: PrayerAuraEffects
 ): boolean {
     const modifiers = constellationModifiers(actor)
-    const sword = attack.abilityId === undefined && hasEquippedSword(actor)
+    const sword =
+        (attack.abilityId === undefined ||
+            isBladeAttackAbility(attack.abilityId)) &&
+        hasEquippedSword(actor)
     const bonus =
         attack.abilityId === 'shot'
             ? modifiers.shotCritBonus
@@ -115,7 +114,9 @@ function attackBonus(actor: GameCharacter, attack: PendingAttackHit): number {
     if (attack.abilityId === 'spark') {
         return modifiers.sparkDamageMultiplier
     }
-    return attack.abilityId === undefined && hasEquippedSword(actor)
+    return (attack.abilityId === undefined ||
+        isBladeAttackAbility(attack.abilityId)) &&
+        hasEquippedSword(actor)
         ? modifiers.swordDamageMultiplier
         : 1
 }
@@ -128,28 +129,29 @@ export function applyAttackStun(
     advantage = prayerAuraEffects(actor, now).advantage,
     stunImmune = prayerStunImmune(target, now)
 ): GameEventPayload[] {
-    if (!attack.canStun || !target.alive || stunImmune) {
+    if (stunUnavailable(target, attack, now, stunImmune)) {
         return []
     }
-    const combat = actor.config.combat
     const heavy = attack.abilityId === 'skeleton_strike'
+    const pommel = attack.abilityId === 'pommel_strike'
+    const chance = hasEquippedSword(actor)
+        ? constellationModifiers(actor).bladeStunChance
+        : actor.config.combat.stunChance
     if (
         !heavy &&
-        !rollCharacterCheck(actor, combat.stunChance, random, now, advantage)
+        !pommel &&
+        !rollCharacterCheck(actor, chance, random, now, advantage)
     ) {
         return []
     }
-    const baseDuration = heavy
-        ? 800
-        : Math.floor(
-              combat.stunMinDurationMs +
-                  random() *
-                      (combat.stunMaxDurationMs - combat.stunMinDurationMs + 1)
-          )
+    const baseDuration = attackStunDuration(actor, attack, random)
     const duration = Math.round(
         baseDuration * constellationModifiers(target).stunDurationMultiplier
     )
-    target.stunUntil = Math.max(target.stunUntil, now + duration)
+    target.stunUntil = now + duration
+    target.combat.stunImmuneUntil =
+        target.stunUntil + HUMAN_MELEE_RULES.stunImmunityMs
+    clearCombatTransient(target, now)
     target.clearPath()
     target.setMoveInput({ x: 0, y: 0 })
     target.clearPendingAttackHit()
@@ -162,4 +164,42 @@ export function applyAttackStun(
             expiresAt: target.stunUntil,
         },
     ]
+}
+
+function stunUnavailable(
+    target: GameCharacter,
+    attack: PendingAttackHit,
+    now: number,
+    immune: boolean
+): boolean {
+    return (
+        !attack.canStun ||
+        !target.alive ||
+        target.trainingTarget !== undefined ||
+        immune ||
+        target.stunUntil > now ||
+        target.combat.stunImmuneUntil > now
+    )
+}
+function attackStunDuration(
+    actor: GameCharacter,
+    attack: PendingAttackHit,
+    random: () => number
+): number {
+    if (attack.abilityId === 'pommel_strike') {
+        return attack.stunDurationMs ?? 400
+    }
+    if (attack.abilityId === 'skeleton_strike') {
+        return 800
+    }
+    if (actor.archetype === 'human') {
+        return HUMAN_MELEE_RULES.stunMs
+    }
+    return Math.floor(
+        actor.config.combat.stunMinDurationMs +
+            random() *
+                (actor.config.combat.stunMaxDurationMs -
+                    actor.config.combat.stunMinDurationMs +
+                    1)
+    )
 }

@@ -753,6 +753,52 @@
                             "type": "boolean"
                         }
                     }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "abilityId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["use_ability"]
+                        },
+                        "abilityId": {
+                            "type": "string",
+                            "enum": [
+                                "wide_swing",
+                                "circular_swing",
+                                "lunge",
+                                "pommel_strike",
+                                "defensive_stance"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "abilityId", "targetId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["use_ability"]
+                        },
+                        "abilityId": {
+                            "type": "string",
+                            "enum": [
+                                "wide_swing",
+                                "circular_swing",
+                                "lunge",
+                                "pommel_strike"
+                            ]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
                 }
             ]
         },

@@ -328,7 +328,7 @@ describe('automatic prayer remains the pinned intention', () => {
         expect(f.target.hp).toBe(f.target.maxHp - 1)
         f.completePrayer(4000)
         expect(f.target.hp).toBe(f.target.maxHp)
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(35)
         expect(f.tick(4001)).toBe(false)
         f.tick(5000)
         expect(neighbor.hp).toBe(neighbor.maxHp - 10)
@@ -361,9 +361,9 @@ describe('automatic prayer remains the pinned intention', () => {
                 (event) => event.kind === 'cast' && event.phase === 'started'
             )
         ).toHaveLength(2)
-        expect(f.actor.mana).toBe(110)
+        expect(f.actor.mana).toBe(30)
         f.completePrayer(7000)
-        expect(f.actor.mana).toBe(110)
+        expect(f.actor.mana).toBe(30)
         expect(f.target.hp).toBe(f.target.maxHp - 10)
         expect(
             f.events.filter((event) => event.kind === 'notice')
@@ -395,7 +395,7 @@ describe('automatic prayer remains the pinned intention', () => {
         })
         f.tick(1000)
         f.tick(2000)
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(35)
         expect(f.events.filter((event) => event.kind === 'cast')).toHaveLength(
             1
         )
@@ -409,7 +409,7 @@ describe('automatic prayer remains the pinned intention', () => {
         expect(completed).toContainEqual(
             expect.objectContaining({ kind: 'revive', targetId: f.target.id })
         )
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(35)
         expect(f.tick(4001)).toBe(false)
         expect(snapshotControl(f.actor).mode).toBe('none')
     })
@@ -446,7 +446,7 @@ it.each(['offline', 'expired', 'other-location'] as const)(
             expect.objectContaining({ kind: 'cast', phase: 'interrupted' })
         )
         expect(f.actor.abilities.casting).toBeNull()
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(35)
         expect(f.target.alive).toBe(false)
         expect(snapshotControl(f.actor).mode).toBe('none')
     }

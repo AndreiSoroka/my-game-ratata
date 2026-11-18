@@ -87,6 +87,11 @@ export function describePassiveConstellationBuild(
     node: Readonly<ConstellationStar>
 ): Pick<ConstellationBuildSummary, 'rows' | 'effects'> {
     if (node.effectType !== 'passive') throw new Error(`Not a passive star: ${node.id}`)
+    if (node.constellationId === 'blade' && node.results?.length)
+        return {
+            rows: node.results.map((value, index) => row(`Результат ${index + 1}`, value)),
+            effects: [node.description],
+        }
     if (node.kind === 'root')
         return {
             rows: [row('Дополнительный численный эффект', 'Нет')],

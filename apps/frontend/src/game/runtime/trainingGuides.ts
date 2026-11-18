@@ -1,4 +1,5 @@
 import {
+    type AttackGeometry,
     type AttackZone,
     type CharacterSnapshot,
     type ProjectilePath,
@@ -10,6 +11,7 @@ import {
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
 import { preferredPrayer } from '../ui/prayerSelection'
+import { drawAttackGeometry } from './attackGeometryDrawing'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 
 export function insideTrainingArea(area: TrainingAreaDefinition, position: Vector2): boolean {
@@ -40,6 +42,7 @@ export class TrainingGuides {
     private readonly actor = new Actor({ anchor: vec(0, 0), z: 500 })
     private area: TrainingAreaDefinition | undefined
     private zones: AttackZone[] = []
+    private geometries: AttackGeometry[] = []
     private shot: ProjectilePath | undefined
     private prayer: PrayerPreviewHighlight | undefined
     private learnedPrayer: PrayerPreviewHighlight | undefined
@@ -79,9 +82,11 @@ export class TrainingGuides {
                 this.engine.canvas.dataset.trainingPrayerRadius = String(this.learnedPrayer.radius)
             else delete this.engine.canvas.dataset.trainingPrayerRadius
         }
-        this.zones = characters
-            .filter((c) => c.alive && insideTrainingArea(area, c.position) && visible(c.id))
-            .flatMap((c) => c.attackZones)
+        const seen = characters.filter(
+            (c) => c.alive && insideTrainingArea(area, c.position) && visible(c.id)
+        )
+        this.zones = seen.filter((c) => !c.combat?.action).flatMap((c) => c.attackZones)
+        this.geometries = seen.flatMap((c) => (c.combat?.action ? [c.combat.action.geometry] : []))
         this.actor.graphics.isVisible = true
     }
     public setShot(path: ProjectilePath | undefined): void {
@@ -93,6 +98,7 @@ export class TrainingGuides {
     public clear(): void {
         this.area = undefined
         this.zones = []
+        this.geometries = []
         this.shot = undefined
         this.prayer = undefined
         this.learnedPrayer = undefined
@@ -115,6 +121,7 @@ export class TrainingGuides {
         ctx.translate(-b.x, -b.y)
         ctx.fillStyle = '#ffcf5a59'
         for (const z of this.zones) ctx.fillRect(z.minX, z.minY, z.maxX - z.minX, z.maxY - z.minY)
+        for (const geometry of this.geometries) drawAttackGeometry(ctx, geometry)
         if (this.shot) this.drawShot(ctx, this.shot)
         const prayer = this.learnedPrayer
             ? {

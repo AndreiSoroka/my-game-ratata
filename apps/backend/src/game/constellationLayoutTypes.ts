@@ -15,6 +15,7 @@ export interface RealizedConstellationLayout {
     layout: ConstellationLayoutSnapshot
     positions: Record<string, SkyPoint>
     edgeWaypoints: Record<string, SkyPoint[]>
+    crossLinks: string[]
     diagnostics: { attempts: number; usedFallback: boolean }
 }
 export interface SkyBranch {

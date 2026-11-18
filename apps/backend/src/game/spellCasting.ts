@@ -9,6 +9,7 @@ import {
 import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { availableToStartAttack } from './combat'
+import { startCombatAction, type StartedCombatAction } from './combatActions'
 import { canAttackCharacter } from './combatTargets'
 import { recordRunicContact } from './constellations'
 import { effectiveAbility } from './effectiveParameters'
@@ -76,12 +77,13 @@ export function castSpell(
     actor.mana -= spell.mana
     const resourceSpend = recordResourceSpend(actor, 'mana', spell.mana)
     actor.progression.spellAvailableAt = context.now + spell.cooldown
-    actor.lockAction(context.now, 400)
-    actor.updateFacing({
-        x: target.position.x - actor.position.x,
-        y: target.position.y - actor.position.y,
-    })
-    actor.setAnimation('attack', context.now, 400)
+    const started = beginSpell(
+        actor,
+        target,
+        message.skillId,
+        spell.range,
+        context.now
+    )
     const result = resolveCharacterDamage({
         actor,
         target,
@@ -100,14 +102,18 @@ export function castSpell(
     )
     const events: GameEventPayload[] = [
         {
-            actorId: actor.id,
-            targetId: target.id,
-            kind: 'attack',
+            ...started,
             text: message.skillId,
             abilityId: message.skillId,
             damageKind: 'arcane',
         },
-        ...result.events,
+        ...result.events.map((event) => ({
+            ...event,
+            actionId: started.actionId,
+            attackOrigin: 'ability' as const,
+            delivery: 'magic' as const,
+            abilityId: message.skillId,
+        })),
     ]
     if (result.trainableDamage > 0) {
         events.push(
@@ -163,5 +169,33 @@ function canHit(
         canPerceivePrayerCaster(actor, target, context.now) &&
         distance(actor.position, target.position) <= range &&
         context.navigation.hasLineOfSight(actor.position, target.position)
+    )
+}
+
+function beginSpell(
+    actor: GameCharacter,
+    target: GameCharacter,
+    skillId: SpellSkillId,
+    range: number,
+    now: number
+): StartedCombatAction {
+    actor.updateFacing({
+        x: target.position.x - actor.position.x,
+        y: target.position.y - actor.position.y,
+    })
+    return startCombatAction(
+        actor,
+        now,
+        {
+            targetId: target.id,
+            abilityId: skillId,
+            delivery: 'magic',
+            canStun: false,
+            damageMultiplier: 1,
+            targetEnergyDrain: 0,
+        },
+        { cycleMs: 400, windupMs: 0, movementMs: 400 },
+        { kind: 'circle', center: { ...actor.position }, radius: range },
+        'immediate'
     )
 }

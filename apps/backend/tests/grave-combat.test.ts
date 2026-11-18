@@ -6,7 +6,7 @@ import { createItemInstance } from '../src/game/inventory'
 import { graveCombatFixture } from './graveCombatFixture'
 
 it.each<[ItemId | undefined, number, number]>([
-    [undefined, 0.6, 0],
+    [undefined, 0.75, 0],
     ['old_sword', 1.25, 1],
     ['simple_sword', 2.25, 1],
     ['axe', 1.5, 5],
@@ -37,7 +37,9 @@ it.each<[ItemId | undefined, number, number]>([
                 amount,
                 critical: false,
                 hitQuality:
-                    itemId === 'simple_sword' || itemId === 'stone_axe'
+                    itemId === undefined ||
+                    itemId === 'simple_sword' ||
+                    itemId === 'stone_axe'
                         ? 'normal'
                         : 'strong',
                 damageKind: 'physical',
@@ -212,7 +214,7 @@ it('pins a copied grave reference and emits one world ruin outcome without chara
             target: f.reference,
             amount: 0.01,
             critical: false,
-            hitQuality: 'strong',
+            hitQuality: 'normal',
             damageKind: 'physical',
         },
         { kind: 'grave_ruined', actorId: f.actor.id, target: f.reference },

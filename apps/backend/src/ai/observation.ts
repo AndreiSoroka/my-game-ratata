@@ -100,7 +100,7 @@ export function buildNpcAiObservation(
               }
             : {}),
         ...observeCity(world, actor, role, now, targets),
-        capabilities: npcAiCapabilities(role, targets, dialogue),
+        capabilities: npcAiCapabilities(role, targets, dialogue, actor),
     }
     Object.assign(observation, { social: snapshot.social })
     updateNpcAiSocialCapabilities(observation)

@@ -77,8 +77,10 @@ describe('shared combat windup', () => {
 
         const startEvents = startAttack(attacker, [attacker, target], now)
 
-        expect(startEvents).toEqual([{ actorId: 'attacker', kind: 'attack' }])
-        expect(attacker.energy).toBe(135)
+        expect(startEvents).toEqual([
+            expect.objectContaining({ actorId: 'attacker', kind: 'attack' }),
+        ])
+        expect(attacker.energy).toBe(105)
         expect(attacker.animationAction).toBe('attack')
         expect(attacker.attackZones).toHaveLength(1)
         expect(target.hp).toBe(target.maxHp)
@@ -135,28 +137,28 @@ describe('shared combat resources', () => {
         )
 
         expect(hitEvents).toEqual([
-            {
+            expect.objectContaining({
                 actorId: 'attacker',
-                amount: 6,
+                amount: 2,
                 hitQuality: 'weak',
                 kind: 'damage',
                 damageKind: 'physical',
                 critical: false,
                 targetId: 'target',
-            },
+            }),
             {
                 kind: 'status',
                 actorId: 'attacker',
                 targetId: 'target',
                 statusId: 'stun',
-                expiresAt: now + 50 + 300,
+                expiresAt: now + 50 + 500,
             },
         ])
         expect(target.energy).toBe(217)
-        expect(target.stunUntil).toBe(now + 50 + 300)
+        expect(target.stunUntil).toBe(now + 50 + 500)
     })
 
-    it('keeps sufficient but non-full energy attacks normal, without stun', () => {
+    it('keeps sufficient but non-full energy attacks fully powered and able to stun', () => {
         const now = 1_700
         const attacker = createCharacter('attacker', 'Hero', 'human', {
             x: 32,
@@ -179,20 +181,29 @@ describe('shared combat resources', () => {
         )
 
         expect(hitEvents).toEqual([
-            {
+            expect.objectContaining({
                 actorId: 'attacker',
-                amount: 6,
+                amount: 2,
                 hitQuality: 'weak',
                 kind: 'damage',
                 damageKind: 'physical',
                 critical: false,
                 targetId: 'target',
+            }),
+            {
+                kind: 'status',
+                actorId: 'attacker',
+                targetId: 'target',
+                statusId: 'stun',
+                expiresAt: now + 50 + 500,
             },
         ])
         expect(attacker.energy).toBe(35)
-        expect(target.stunUntil).toBe(0)
+        expect(target.stunUntil).toBe(now + 50 + 500)
     })
+})
 
+describe('exhausted shared combat resources', () => {
     it('makes energy-starved attacks slower, weaker, and unable to stun', () => {
         const now = 1_800
         const attacker = createCharacter('attacker', 'Hero', 'human', {
@@ -228,15 +239,15 @@ describe('shared combat resources', () => {
         )
 
         expect(hitEvents).toEqual([
-            {
+            expect.objectContaining({
                 actorId: 'attacker',
-                amount: 2,
+                amount: 1,
                 hitQuality: 'weak',
                 kind: 'damage',
                 damageKind: 'physical',
                 critical: false,
                 targetId: 'target',
-            },
+            }),
         ])
         expect(target.stunUntil).toBe(0)
     })
@@ -466,7 +477,7 @@ function createCharacter(
         reputation?: CharacterReputation
     } = {}
 ): GameCharacter {
-    return new GameCharacter({
+    const character = new GameCharacter({
         archetype,
         controllerKind:
             options.controllerKind ??
@@ -479,6 +490,9 @@ function createCharacter(
             : { reputation: options.reputation }),
         spawnPosition,
     })
+    // These scenarios exercise the shared base mechanics before learned stars.
+    character.progression.constellations.opened.clear()
+    return character
 }
 
 function startAttack(

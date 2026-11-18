@@ -4,6 +4,7 @@ import {
     ITEM_DEFINITIONS,
     materialDamage,
     type MaterialImpact,
+    resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -111,7 +112,9 @@ function graveImpact(
     }
     const item = actor.equipment.weapon
     if (item === undefined) {
-        return 'unarmed'
+        return resolveCombatWeapon(actor.archetype).kind === 'knife'
+            ? 'weapon'
+            : 'unarmed'
     }
     return ITEM_DEFINITIONS[item.itemId].gathering?.stone === undefined
         ? 'weapon'

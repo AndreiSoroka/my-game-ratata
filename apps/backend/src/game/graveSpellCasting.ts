@@ -4,6 +4,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { startCombatAction } from './combatActions'
 import { legalGraveTarget } from './graveCombat'
 import { distance } from './math'
 import type { ProgressionContext } from './progressionCommands'
@@ -34,13 +35,10 @@ export function castGraveSpell(
     const before = { mana: actor.mana, energy: actor.energy }
     actor.mana -= spell.mana
     actor.progression.spellAvailableAt = context.now + spell.cooldown
-    actor.lockAction(context.now, 400)
-    actor.attackZoneUntil = context.now + 400
     actor.updateFacing({
         x: grave.position.x - actor.position.x,
         y: grave.position.y - actor.position.y,
     })
-    actor.setAnimation('attack', context.now, 400)
     actor.attackZones = [
         {
             ownerId: actor.id,
@@ -50,23 +48,26 @@ export function castGraveSpell(
             maxY: actor.position.y + spell.range,
         },
     ]
-    actor.queueAttackHit(context.now, {
-        resourceSpends: recordPaidResources(actor, before),
-        target,
-        abilityId: message.skillId,
-        rawDamage: spell.damage,
-        maxRange: spell.range,
-        canStun: false,
-        damageMultiplier: 1,
-        targetEnergyDrain: 0,
-        windupMs: 400,
-    })
+    const started = startCombatAction(
+        actor,
+        context.now,
+        {
+            resourceSpends: recordPaidResources(actor, before),
+            target,
+            abilityId: message.skillId,
+            delivery: 'magic',
+            rawDamage: spell.damage,
+            maxRange: spell.range,
+            canStun: false,
+            damageMultiplier: 1,
+            targetEnergyDrain: 0,
+        },
+        { cycleMs: 400, windupMs: 400, movementMs: 400 },
+        { kind: 'rectangles', zones: actor.attackZones }
+    )
     return [
         {
-            kind: 'attack',
-            actorId: actor.id,
-            target: { ...target },
-            abilityId: message.skillId,
+            ...started,
             text: message.skillId,
             damageKind: 'arcane',
         },

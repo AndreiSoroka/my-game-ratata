@@ -14,10 +14,7 @@ export function spendAttackResources(
 ): AttackResourceSpend {
     const resources = actor.config.resources
     const fullyPowered = canSpendAttackResources(actor)
-    const canStun =
-        resources.maxEnergy > 0 &&
-        actor.energy >= resources.maxEnergy &&
-        fullyPowered
+    const canStun = fullyPowered
     actor.energy = spendResource(actor.energy, effectiveAttackEnergyCost(actor))
     actor.mana = spendResource(actor.mana, resources.attackManaCost)
     return { canStun, fullyPowered }

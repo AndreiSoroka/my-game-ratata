@@ -184,7 +184,7 @@ describe('unreliable resurrection', () => {
         ).toContainEqual(expect.objectContaining({ kind: 'notice' }))
         expect(target.alive).toBe(false)
         expect(target.reviveUntil).toBe(61_000)
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(35)
         expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
         expect(
             beginRevive(
@@ -203,8 +203,8 @@ describe('unreliable resurrection', () => {
             )
         ).toContainEqual(expect.objectContaining({ kind: 'revive' }))
         expect(target.alive).toBe(true)
-        expect(caster.mana).toBe(110)
-        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
+        expect(caster.mana).toBe(30)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(240))
     })
 })
 

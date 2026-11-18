@@ -10,7 +10,7 @@ it('describes all prayer nodes with independent readable complete mathematical l
     const prayers = fullConstellationCatalog.filter((node) =>
         node.constellationId.startsWith('prayer')
     )
-    expect(prayers).toHaveLength(43)
+    expect(prayers).toHaveLength(46)
     for (const node of prayers) {
         const result = description(node.id)
         expect(result.summary.length).toBeGreaterThan(0)

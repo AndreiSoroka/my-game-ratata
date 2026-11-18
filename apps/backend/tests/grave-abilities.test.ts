@@ -34,7 +34,7 @@ it.each(['targeted', 'forward'] as const)(
             abilityId: 'shot',
             amount: 0.3,
         })
-        expect(f.actor.energy).toBe(90)
+        expect(f.actor.energy).toBe(110)
         expect(sword.durability).toBe(200)
         expect(f.actor.progression.masteries).toEqual(masteries)
         expect(f.service.get('grave')?.hp).toBe(99.7)
@@ -112,7 +112,7 @@ it('uses arcane stone resistance and normal costs for Spark after its own windup
         amount: 1.25,
         damageKind: 'arcane',
     })
-    expect(f.actor.mana).toBe(94)
+    expect(f.actor.mana).toBe(64)
     expect(f.actor.energy).toBe(95)
     expect(f.actor.progression.masteries).toEqual(masteries)
 })
@@ -134,7 +134,7 @@ it.each(['fireball', 'greater_fireball'] as const)(
             amount: id === 'fireball' ? 2 : 4.5,
             damageKind: 'arcane',
         })
-        expect(f.actor.mana).toBe(id === 'fireball' ? 88 : 76)
+        expect(f.actor.mana).toBe(id === 'fireball' ? 58 : 46)
         expect(f.actor.progression.masteries).toEqual(masteries)
         expect(f.hit(1400)).toEqual([])
     }
@@ -373,7 +373,12 @@ it.each([
         expect(f.ability(first, 1003)[0]?.kind).toBe('attack')
         const pending = structuredClone(f.actor.pendingAttack)
         const zones = structuredClone(f.actor.attackZones)
-        expect(pending).toMatchObject({ target: f.reference, rawDamage })
+        expect(pending).toMatchObject({ target: f.reference })
+        if (rawDamage === undefined) {
+            expect(pending?.rawDamage).toBeUndefined()
+        } else {
+            expect(pending?.rawDamage).toBe(rawDamage)
+        }
         const mana = f.actor.mana,
             energy = f.actor.energy
         expect(

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import {
+    backgroundMasteryMultiplier,
+    backgroundMasteryRewardMicros,
     type ConstellationId,
     formatMasteryExperience,
     type HeroClass,
     MASTERY_NAMES,
     masteryConflict,
-    masteryRewardMicros,
     masteryRewardsForConstellation,
     masteryThreshold,
     masteryTotalExperience,
@@ -43,7 +44,17 @@ const reward = computed(
         rewards.value[0]!
 )
 const conflict = computed(() => masteryConflict(levels.value, props.path))
-const rate = computed(() => masteryRewardMicros(reward.value.experience, conflict.value))
+const backgroundMultiplier = computed(() =>
+    backgroundMasteryMultiplier(props.heroClass, props.path)
+)
+const rate = computed(() =>
+    backgroundMasteryRewardMicros(
+        reward.value.experience,
+        conflict.value,
+        props.heroClass,
+        props.path
+    )
+)
 const threshold = computed(() => masteryThreshold(level.value))
 const repetitions = computed(() => (threshold.value + rate.value - 1n) / rate.value)
 const pending = computed(() => level.value - paidConstellationStars(props.activeIds, props.path))
@@ -91,7 +102,9 @@ const percent = (value: number) =>
             <dl>
                 <div>
                     <dt>
-                        База {{ reward.experience }} XP · конфликт
+                        База {{ reward.experience }} XP · прошлое +{{
+                            Math.round((backgroundMultiplier - 1) * 100)
+                        }}% · конфликт
                         {{ conflict < 1 ? `−${percent(1 - conflict)}` : '0%' }}
                     </dt>
                     <dd data-testid="debug-mastery-rate">{{ xp(rate) }} XP</dd>

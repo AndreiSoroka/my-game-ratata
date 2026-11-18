@@ -3,6 +3,7 @@ import type { HeroClass } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
+import { observedConstellationCardEffects } from '../../../../backend/src/game/constellationResultDisclosure'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
 import ConstellationBuildFeedback from './ConstellationBuildFeedback.vue'
@@ -53,10 +54,13 @@ const graph = ref<InstanceType<typeof ConstellationGraph>>()
 const list = ref<HTMLUListElement>()
 const detailsPanel = ref<HTMLElement>()
 const debugPanels = provideConstellationDebugPanels()
+const characterKnowledge = ref(false)
 const selectedCard = computed(() => {
     const node = selected.value
-    const effects = resolveConstellationCardEffects(node.id, enabledStarIds.value)
-    return { ...node, ...(effects === undefined ? {} : { effects }) }
+    const effects = characterKnowledge.value
+        ? observedConstellationCardEffects(node.id, enabledStarIds.value)
+        : resolveConstellationCardEffects(node.id, enabledStarIds.value)
+    return { ...node, effects: effects ?? [] }
 })
 function selectNode(id: string): void {
     selectedId.value = id
@@ -146,6 +150,14 @@ function listKey(event: KeyboardEvent): void {
             @all="enableAll"
             @reset="reset"
         />
+        <label class="debug-build-help">
+            <input
+                v-model="characterKnowledge"
+                type="checkbox"
+                data-testid="debug-character-knowledge"
+            />
+            Карточка: знания персонажа из выбранного набора звёзд
+        </label>
         <p class="debug-build-help">
             Seed меняет карту. Класс добавляет стартовые звёзды; набор сохраняется.
         </p>

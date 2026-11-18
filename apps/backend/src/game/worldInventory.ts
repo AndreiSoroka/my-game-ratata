@@ -16,6 +16,7 @@ import {
     revealChestContents,
     type WorldChest,
 } from './chestInteraction'
+import { invalidateWeaponAction } from './combatState'
 import type { CorpseWallet } from './corpseWallet'
 import {
     equipInventoryItem,
@@ -104,6 +105,9 @@ export class WorldInventory {
             return []
         }
         const item = unequipItem(player.inventory, player.equipment, slot)
+        if (item !== undefined && slot === 'weapon') {
+            invalidateWeaponAction(player, Date.now())
+        }
 
         if (item === undefined) {
             return []
@@ -241,6 +245,9 @@ export class WorldInventory {
 
         if (item === undefined) {
             return []
+        }
+        if (player.equipment.weapon?.instanceId === item.instanceId) {
+            invalidateWeaponAction(player, Date.now())
         }
         resetMartyrStreak(player)
         return [{ actorId: player.id, itemId: item.itemId, kind: 'item_equip' }]

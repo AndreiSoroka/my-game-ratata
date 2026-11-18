@@ -114,8 +114,8 @@ it('keeps spell effects fixed while the chosen HUD patron changes', () => {
         )
     ).toBe(true)
     expect(living.hp).toBe(livingHp)
-    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(30))
-    expect(masteryExperience(actor, 'prayer_grave')).toBe(prayerXp(30))
+    expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(36))
+    expect(masteryExperience(actor, 'prayer_grave')).toBe(prayerXp(36))
     expect(masteryExperience(actor, 'prayer_road')).toBe(prayerXp(0))
 })
 
@@ -136,10 +136,10 @@ it.each(['pray_road', 'pray_lantern'] as const)(
         ).toBe(true)
         const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
         expect(masteryExperience(actor, school.constellationId)).toBe(
-            prayerXp(30)
+            prayerXp(36)
         )
         expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
-        expect(actor.mana).toBe(115)
+        expect(actor.mana).toBe(35)
     }
 )
 
@@ -378,7 +378,7 @@ it.each(prayerAbilityIds)(
         expect(masteryExperience(actor, school.constellationId)).toBe(
             prayerXp(0)
         )
-        expect(actor.mana).toBe(115)
+        expect(actor.mana).toBe(35)
         expect(random).toHaveBeenCalledTimes(1)
     }
 )

@@ -1,3 +1,4 @@
+export * from './backgrounds'
 import type { EquipmentSnapshot, ItemInstanceSnapshot } from './inventoryTypes'
 export type * from './inventoryTypes'
 import type {
@@ -6,6 +7,8 @@ import type {
     CharacterAbilitiesSnapshot,
 } from './abilities'
 export * from './abilities'
+export * from './combat'
+import type { AttackZone } from './combat'
 export * from './combatAim'
 export * from './development'
 export * from './mastery'
@@ -129,14 +132,6 @@ export type CharacterReputation = Partial<Record<CharacterFactionId, number>>
 export type CharacterAnimationAction =
     'idle' | 'walk' | 'attack' | 'damaged' | 'death'
 
-export interface AttackZone {
-    maxX: number
-    maxY: number
-    minX: number
-    minY: number
-    ownerId: string
-}
-
 export interface CharacterResourcesSnapshot {
     energy: ResourceSnapshot
     mana: ResourceSnapshot
@@ -149,6 +144,10 @@ export interface CharacterCooldownsSnapshot {
 }
 
 export interface CharacterAnimationSnapshot {
+    /** Server-authored action phases; absent on looping or legacy animations. */
+    durationMs?: number
+    hitAt?: number
+    movementAt?: number
     action: CharacterAnimationAction
     startedAt: number
 }
@@ -169,6 +168,7 @@ export interface CharacterSnapshot {
     connected?: boolean
     relationship?: CharacterRelationship
     control?: CharacterControlSnapshot
+    combat?: import('./combat').CharacterCombatSnapshot
     basicAttackKind?: BasicAttackKind
     abilities?: CharacterAbilitiesSnapshot
     creatureType: CreatureType
@@ -326,4 +326,6 @@ export interface WorldSnapshot {
     tick: number
 }
 
+export * from './bladeTechniques'
 export type * from './server'
+export * from './weapons'

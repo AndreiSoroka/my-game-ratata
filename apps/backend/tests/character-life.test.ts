@@ -15,23 +15,21 @@ import { abilityContext } from './abilityTestHelpers'
 import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 describe('shared hero classes and progression', () => {
-    it('changes actual common stats for each class without changing archetype defaults', () => {
+    it('adds only background resources while preserving shared combat and archetype defaults', () => {
         const vanguard = hero('vanguard')
         const ranger = hero('ranger')
         const arcanist = hero('arcanist')
         const cleric = hero('cleric')
-        expect(vanguard.maxHp).toBe(30)
-        expect(ranger.config.moveSpeed).toBeGreaterThan(
-            vanguard.config.moveSpeed
-        )
+        expect(vanguard.maxHp).toBe(50)
+        expect(ranger.config.moveSpeed).toBe(vanguard.config.moveSpeed)
         expect(ranger.config.basicAttackKind).toBe('melee')
         expect(ranger.config.attackZones[0]?.maxY).toBeLessThan(1)
         expect(arcanist.config.resources.attackManaCost).toBe(0)
         expect(arcanist.config.basicAttackKind).toBe('melee')
-        expect(cleric.config.resources.maxMana).toBe(120)
+        expect(cleric.config.resources.maxMana).toBe(40)
         expect(CHARACTER_CONFIG.human.resources.maxMana).toBe(40)
         ranger.config.combat.maxHp = 500
-        expect(vanguard.maxHp).toBe(30)
+        expect(vanguard.maxHp).toBe(50)
         expect(CHARACTER_CONFIG.human.combat.maxHp).toBe(30)
     })
 
@@ -42,8 +40,8 @@ describe('shared hero classes and progression', () => {
             random: () => 0,
         })
         expect(actor.progression.masteries.blade.level).toBe(2)
-        expect(actor.maxHp).toBe(24)
-        expect(actor.config.combat.minDamage).toBe(4)
+        expect(actor.maxHp).toBe(40)
+        expect(actor.config.combat.minDamage).toBe(2)
         expect(actor.snapshot(1_050)).toMatchObject({
             level: 1,
             xp: 0,
@@ -132,9 +130,9 @@ describe('shared cleric revival ability', () => {
         expect(target.alive).toBe(true)
         expect(target.hp).toBe(Math.max(1, Math.ceil(target.maxHp * 0.01)))
         expect(target.progression.masteries.prayer.level).toBe(1)
-        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(240))
         expect(target.inventory).toHaveLength(1)
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(35)
         expect(target.reviveUntil).toBe(0)
         expect(advanceRevive(caster, () => target, 6_100)).toEqual([])
     })
@@ -152,7 +150,7 @@ describe('shared cleric revival ability', () => {
         caster.locationId = target.locationId
         caster.mana = 4
         expect(beginReviveInFixture(caster, target, 3_000)).toBe(false)
-        caster.mana = 120
+        caster.mana = caster.config.resources.maxMana
         expect(beginReviveInFixture(caster, target, 62_000)).toBe(false)
     })
 
@@ -191,7 +189,7 @@ describe('shared cleric revival ability', () => {
             )
         ).toMatchObject([{ kind: 'cast', phase: 'interrupted' }])
         expect(target.alive).toBe(false)
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(35)
     })
 })
 

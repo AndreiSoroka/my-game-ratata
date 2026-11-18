@@ -7,10 +7,8 @@ import { snapshotAbilities } from './abilityState'
 import type { GameCharacter } from './character'
 import { snapshotControl } from './characterControl'
 import { shouldRetireCharacter } from './characterLife'
-import {
-    effectiveAttackCooldown,
-    effectiveCharacterStats,
-} from './effectiveParameters'
+import { constellationModifiers } from './constellationModifiers'
+import { effectiveCharacterStats } from './effectiveParameters'
 import { effectiveMaxMana } from './effectiveResources'
 import { snapshotEquipment, snapshotItem } from './inventory'
 import { snapshotMovement } from './movementActions'
@@ -25,31 +23,19 @@ export function createCharacterSnapshot(
         ...(character.trainingTarget === undefined
             ? {}
             : { trainingTarget: { ...character.trainingTarget } }),
+        combat: snapshotCombat(character, now, includePrivate),
         control: snapshotControl(character),
         creatureType: character.creatureType,
         alive: character.alive,
         basicAttackKind: character.config.basicAttackKind,
         abilities: snapshotAbilities(character, now),
         movement: snapshotMovement(character, now),
-        animation: {
-            action: character.animationAction,
-            startedAt: character.animationStartedAt,
-        },
+        animation: snapshotAnimation(character),
         archetype: character.archetype,
         attackZones: character.attackZones,
         controllerKind: character.controllerKind,
         connected: character.connected,
-        cooldowns: {
-            attackMsLeft: Math.max(
-                0,
-                effectiveAttackCooldown(character) -
-                    (now - character.lastAttackAt)
-            ),
-            respawnMsLeft: character.alive
-                ? 0
-                : Math.max(0, character.respawnAt - now),
-            stunMsLeft: Math.max(0, character.stunUntil - now),
-        },
+        cooldowns: snapshotCooldowns(character, now),
         equipment: snapshotEquipment(character.equipment),
         facing: character.facing,
         faction: character.faction,
@@ -106,4 +92,60 @@ function snapshotTags(character: GameCharacter, now: number): string[] {
     }
 
     return tags
+}
+
+function snapshotCombat(
+    character: GameCharacter,
+    now: number,
+    includePrivate: boolean
+) {
+    const state = character.combat
+    return {
+        defensiveStance: state.defensiveStance,
+        ...(state.action === undefined
+            ? {}
+            : { action: structuredClone(state.action) }),
+        ...(includePrivate &&
+        state.combo !== undefined &&
+        state.combo.expiresAt > now
+            ? {
+                  combo: {
+                      stacks: state.combo.stacks,
+                      limit: constellationModifiers(character).bladeComboLimit,
+                      expiresAt: state.combo.expiresAt,
+                  },
+              }
+            : {}),
+    }
+}
+
+function snapshotAnimation(
+    character: GameCharacter
+): CharacterSnapshot['animation'] {
+    return {
+        action: character.animationAction,
+        startedAt: character.animationStartedAt,
+        ...(character.combat.action === undefined
+            ? {}
+            : {
+                  durationMs:
+                      character.combat.action.readyAt -
+                      character.combat.action.startedAt,
+                  hitAt: character.combat.action.hitAt,
+                  movementAt: character.combat.action.movementAt,
+              }),
+    }
+}
+
+function snapshotCooldowns(
+    character: GameCharacter,
+    now: number
+): CharacterSnapshot['cooldowns'] {
+    return {
+        attackMsLeft: Math.max(0, character.combat.readyAt - now),
+        respawnMsLeft: character.alive
+            ? 0
+            : Math.max(0, character.respawnAt - now),
+        stunMsLeft: Math.max(0, character.stunUntil - now),
+    }
 }

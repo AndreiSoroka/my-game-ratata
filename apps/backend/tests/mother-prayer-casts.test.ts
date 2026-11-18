@@ -53,7 +53,7 @@ describe('frozen Mother prayer target plan', () => {
         ally.hp = 5
         const context = abilityContext([actor, ally])
         expect(cast(actor, context)[0]?.phase).toBe('started')
-        expect(actor.mana).toBe(110)
+        expect(actor.mana).toBe(30)
         expect(actor.abilities.casting?.plan?.targets).toEqual([
             { kind: 'restore', id: actor.id },
             { kind: 'restore', id: ally.id },
@@ -141,10 +141,10 @@ describe('frozen Mother prayer target plan', () => {
             },
             context
         )
-        expect(actor.mana).toBe(115)
+        expect(actor.mana).toBe(35)
         expect(actor.abilities.casting?.completesAt).toBe(3700)
         finish(actor, context)
-        expect(actor.mana).toBe(115)
+        expect(actor.mana).toBe(35)
         expect(corpse.alive).toBe(true)
     })
     it('freezes multipliers and target capacity when an opening occurs during a channel', () => {
@@ -177,14 +177,14 @@ describe('Domain receipts and interrupted aura recovery', () => {
             },
             context
         )
-        expect(actor.mana).toBe(115)
+        expect(actor.mana).toBe(35)
         finish(actor, context, 1500)
         expect(enemy.hp).toBe(10)
-        expect(masteryExperience(actor)).toBe(prayerXp(30))
+        expect(masteryExperience(actor)).toBe(prayerXp(36))
         finish(actor, context, 1500)
         expect(enemy.hp).toBe(10)
         finish(actor, context, 4000)
-        expect(masteryExperience(actor)).toBe(prayerXp(30))
+        expect(masteryExperience(actor)).toBe(prayerXp(36))
     })
     it('shares healing XP between Domain ticks and main healing and keeps channel at full HP', () => {
         const actor = abilityHero()
@@ -196,7 +196,7 @@ describe('Domain receipts and interrupted aura recovery', () => {
         expect(actor.hp).toBe(actor.maxHp)
         expect(actor.abilities.casting).not.toBeNull()
         finish(actor, context, 4000)
-        expect(masteryExperience(actor)).toBe(prayerXp(30))
+        expect(masteryExperience(actor)).toBe(prayerXp(36))
     })
     it('suppresses every aura after interruption until a later full Mother cast finishes', () => {
         const actor = abilityHero()
@@ -226,7 +226,7 @@ describe('Last Light frozen emergency profile', () => {
         const actor = abilityHero()
         woven(actor, 2)
         actor.hp = 3
-        actor.mana = 41
+        actor.mana = 17
         actor.progression.constellations.opened.add('prayer.last_light')
         actor.progression.constellations.lowHpFromHostile = true
         actor.progression.constellations.hostileWound = 23
@@ -253,14 +253,14 @@ describe('Last Light frozen emergency profile', () => {
     it('cannot start if mandatory self healing is unaffordable', () => {
         const actor = abilityHero()
         actor.hp = 3
-        actor.mana = 35
+        actor.mana = 11
         actor.progression.constellations.opened.add('prayer.last_light')
         actor.progression.constellations.lowHpFromHostile = true
         actor.progression.constellations.hostileWound = 23
         const context = abilityContext([actor])
         cast(actor, context)
         expect(actor.abilities.casting).toBeNull()
-        expect(actor.mana).toBe(35)
+        expect(actor.mana).toBe(11)
     })
     it('applies additive bonuses without increasing Domain ticks', () => {
         const actor = abilityHero()

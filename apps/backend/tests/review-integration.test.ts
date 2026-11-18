@@ -89,7 +89,7 @@ it.each([
 it('completes an already paid Mother revival after losing the remaining mana', () => {
     const { caster, target, start, finish } = rescue()
     start()
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
     caster.mana = 0
     expect(finish()).toContainEqual(expect.objectContaining({ kind: 'revive' }))
     expect(target.alive).toBe(true)
@@ -118,8 +118,8 @@ it.each([0, 0.99])(
             1
         )
         expect(target.alive).toBe(true)
-        expect(caster.mana).toBe(115)
-        expect(second.mana).toBe(115)
+        expect(caster.mana).toBe(35)
+        expect(second.mana).toBe(35)
         expect(second.progression.masteries.prayer.level).toBe(
             firstRoll === 0 ? 0 : 2
         )
@@ -160,7 +160,7 @@ it.each(['move_input', 'move_to'] as const)(
             )
         ).toHaveLength(1)
         expect(finish()).toEqual([])
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(35)
         expect(target.alive).toBe(false)
     }
 )
@@ -173,7 +173,7 @@ it('disconnect cleanup cancels resurrection before a reconnect can reuse its cha
     )
     expect(stopCharacterMovement(caster, 1500)).toEqual([])
     expect(finish()).toEqual([])
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
     expect(target.alive).toBe(false)
 })
 
@@ -203,7 +203,7 @@ it('legacy revive shares prayer cooldown and cannot start until the normal bound
         expect.objectContaining({ kind: 'cast', phase: 'started' })
     )
     expect(caster.abilities.casting?.targetId).toBe(target.id)
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
 })
 
 it('resurrection of a victim killed only by friendly damage grants no practice', () => {
@@ -236,7 +236,7 @@ it('resurrection of a victim killed only by friendly damage grants no practice',
         { ...context, now: 4000 }
     )
     expect(victim.alive).toBe(true)
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
     expect(caster.progression.masteries.prayer.experience).toBe(0n)
     expect(caster.progression.masteries.prayer.level).toBe(0)
 })

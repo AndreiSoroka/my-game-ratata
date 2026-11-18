@@ -197,10 +197,19 @@ function cameraKey(event: KeyboardEvent): void {
                             : '#8b969e'
                     "
                     :opacity="edgeEnabled(edge.from, edge.to) ? 0.7 : 0.2"
-                    :stroke-dasharray="edgeEnabled(edge.from, edge.to) ? undefined : '3 4'"
+                    :class="{ 'constellation-edge--cross-link': edge.crossLink }"
+                    :stroke-dasharray="
+                        edge.crossLink
+                            ? '8 4 2 4'
+                            : edgeEnabled(edge.from, edge.to)
+                              ? undefined
+                              : '3 4'
+                    "
                     stroke-width="1.4"
                     vector-effect="non-scaling-stroke"
-                />
+                >
+                    <title v-if="edge.crossLink">Дополнительная обязательная связь</title>
+                </polyline>
             </template>
             <ConstellationStar
                 v-for="node in constellation.nodes"

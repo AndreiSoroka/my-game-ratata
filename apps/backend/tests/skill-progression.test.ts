@@ -42,13 +42,13 @@ describe('shared prayers and learning', () => {
                 events.find((event) => event.kind === 'heal')?.amount ?? 0
             expect(restored).toBeGreaterThan(0)
             expect(actor.progression.masteries.prayer.experience).toBe(
-                30_000_000n
+                36_000_000n
             )
             expect(actor.hp).toBe(actor.maxHp - 15 + restored)
             expect(actor.mana).toBe(startMana - 5)
             expect(command(actor, { type: 'pray' }, [], 6_999)).toEqual([])
             expect(actor.progression.masteries.prayer.experience).toBe(
-                30_000_000n
+                36_000_000n
             )
             command(actor, { type: 'pray' }, [], 7_000)
             advanceRevive(
@@ -64,7 +64,7 @@ describe('shared prayers and learning', () => {
                 }
             )
             expect(actor.progression.masteries.prayer.experience).toBe(
-                60_000_000n
+                72_000_000n
             )
             actor.mana = 4
             expect(command(actor, { type: 'pray' }, [], 10_000)).toMatchObject([

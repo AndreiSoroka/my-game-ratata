@@ -12,5 +12,5 @@ export function describeConstellationEffectChance(
     if (node === undefined) {
         return { summary: 'Звезда не найдена в каталоге.', formulas: [], examples: [], notes: [] }
     }
-    return describePrayerEffectChance(node, activeIds) ?? describeOtherEffectChance(node)
+    return describePrayerEffectChance(node, activeIds) ?? describeOtherEffectChance(node, activeIds)
 }

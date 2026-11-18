@@ -25,7 +25,7 @@ for (const mobile of [false, true]) {
         await expect(page.getByRole('dialog', { name: 'Inventory and equipment' })).toHaveCount(0)
         const menu = page.getByRole('dialog', { name: 'Игровое меню' })
         await expect(menu).toHaveCount(0)
-        const attack = page.getByRole('button', { name: /^1: Базовая атака/ })
+        const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
         await attack.focus()
         await page.keyboard.press('KeyQ')
         await expect(page.getByLabel('Выбранная цель')).toBeVisible()

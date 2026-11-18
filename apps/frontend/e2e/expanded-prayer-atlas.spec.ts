@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
 import {
     buildMetric,
     buildResultPanel,
@@ -14,7 +15,7 @@ for (const width of [320, 390, 1280]) {
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/?debug=constellations&class=cleric&seed=expanded-prayer')
         await expect(page.getByTestId('constellation-debug')).toBeVisible()
-        await expect(page.locator('[data-star-id]')).toHaveCount(96)
+        await expect(page.locator('[data-star-id]')).toHaveCount(fullConstellationCatalog.length)
         await setBuildPanelsOpen(page, true)
         const positions = await page
             .locator('[data-node-id]')

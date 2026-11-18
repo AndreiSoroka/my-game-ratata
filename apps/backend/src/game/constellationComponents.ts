@@ -1,3 +1,4 @@
+import { constellationTopologyEdges } from './constellationEdgeRouting'
 import type { SkyPoint } from './constellationGeometry'
 import type {
     ConstellationTopologyNode,
@@ -10,9 +11,7 @@ export function skyComponents(
     nodes: readonly ConstellationTopologyNode[]
 ): SkyComponent[] {
     const adjacent = new Map(nodes.map((node) => [node.id, [] as string[]]))
-    const edges = nodes.flatMap((node) =>
-        node.parents.map((from) => ({ from, to: node.id }))
-    )
+    const edges = constellationTopologyEdges(nodes)
     for (const edge of edges) {
         if (!adjacent.has(edge.from) || !adjacent.has(edge.to)) {
             throw new Error(
@@ -22,6 +21,7 @@ export function skyComponents(
         adjacent.get(edge.from)?.push(edge.to)
         adjacent.get(edge.to)?.push(edge.from)
     }
+    const primary = primaryAdjacency(nodes, edges)
     const seen = new Set<string>()
     const result: SkyComponent[] = []
     for (const node of nodes) {
@@ -44,13 +44,29 @@ export function skyComponents(
             ids,
             positions,
             edges: edges.filter((edge) => ids.includes(edge.from)),
-            branches: branchCuts(ids, adjacent),
+            branches: ids
+                .filter((id) => id.endsWith('.root'))
+                .flatMap((root) =>
+                    branchCuts(connectedSide(root, primary), primary)
+                ),
         })
     }
     if (seen.size !== nodes.length || adjacent.size !== nodes.length) {
         throw new Error('Duplicate personal constellation nodes')
     }
     return result
+}
+
+function primaryAdjacency(
+    nodes: readonly ConstellationTopologyNode[],
+    edges: ReturnType<typeof constellationTopologyEdges>
+) {
+    const primary = new Map(nodes.map((node) => [node.id, [] as string[]]))
+    for (const edge of edges.filter((entry) => entry.crossLink !== true)) {
+        primary.get(edge.from)?.push(edge.to)
+        primary.get(edge.to)?.push(edge.from)
+    }
+    return primary
 }
 
 function connectedSide(
@@ -121,6 +137,7 @@ export function variedComponent(
         ])
     )
     if (varyBranches) {
+        permuteRootBranches(component.branches, positions, random)
         permuteLeaves(component.branches, positions, random)
         for (const branch of component.branches) {
             const anchor = positions[branch.anchor]
@@ -186,6 +203,60 @@ function permuteLeaves(
             const point = points[index]
             if (point !== undefined) {
                 positions[id] = { ...point }
+            }
+        }
+    }
+}
+
+/** Extra prerequisites do not constrain the visual order of independent primary branches. */
+function permuteRootBranches(
+    branches: readonly SkyBranch[],
+    positions: Record<string, SkyPoint>,
+    random: () => number
+): void {
+    const roots = [
+        ...new Set(
+            branches
+                .filter((branch) => branch.anchor.endsWith('.root'))
+                .map((branch) => branch.anchor)
+        ),
+    ]
+    for (const root of roots) {
+        const center = positions[root]
+        if (center === undefined) {
+            continue
+        }
+        const siblings = branches.filter((branch) => branch.anchor === root)
+        // Dense multi-way hubs retain their certified sectors; compact branch fans can permute.
+        if (siblings.length > 6) {
+            continue
+        }
+        const angles = siblings.map((branch) => {
+            const point = positions[branch.descendants[0] ?? '']
+            if (point === undefined) {
+                throw new Error('Missing primary branch')
+            }
+            return Math.atan2(point.y - center.y, point.x - center.x)
+        })
+        const slots = [...angles]
+        const first = Math.floor(random() * slots.length)
+        const second = Math.floor(random() * slots.length)
+        const selected = slots[first] ?? 0
+        slots[first] = slots[second] ?? 0
+        slots[second] = selected
+        for (const [index, branch] of siblings.entries()) {
+            const angle = (slots[index] ?? 0) - (angles[index] ?? 0)
+            for (const id of branch.descendants) {
+                const point = positions[id]
+                if (point === undefined) {
+                    continue
+                }
+                const x = point.x - center.x,
+                    y = point.y - center.y
+                positions[id] = {
+                    x: center.x + x * Math.cos(angle) - y * Math.sin(angle),
+                    y: center.y + x * Math.sin(angle) + y * Math.cos(angle),
+                }
             }
         }
     }

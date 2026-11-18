@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import { type CharacterSnapshot, resolveCombatWeapon } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 import {
@@ -8,9 +8,13 @@ import {
     observedText,
 } from './characterSheetPresentation'
 import { healthBarPercent } from './healthPresentation'
+import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 
 const props = defineProps<{ player: CharacterSnapshot }>()
 const sheet = computed(() => props.player.characterSheet)
+const weapon = computed(() =>
+    resolveCombatWeapon(props.player.archetype, props.player.equipment.weapon)
+)
 const resources = computed(() =>
     sheet.value
         ? [
@@ -39,6 +43,14 @@ const resources = computed(() =>
 
 <template>
     <section class="character-stats" aria-label="Характеристики персонажа">
+        <HeroBackgroundSummary :hero-class="player.heroClass" />
+        <p
+            v-if="weapon.kind === 'knife'"
+            class="character-explanation"
+            data-testid="backup-knife-description"
+        >
+            {{ weapon.description }}
+        </p>
         <p class="character-explanation">
             Познавайте себя в приключениях: опыт уточняет оценки. Верхняя граница примерного
             диапазона не включается.

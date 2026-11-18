@@ -4,26 +4,28 @@ import {
     abilityIds,
     BARRIER_RULES,
     type GameEventPayload,
+    isBladeAttackAbility,
     isPrayerAction,
     type LearnAbilityId,
     type PrayerActionId,
-    type PrayerIntent,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
 import { knowsAbility } from './abilityState'
+import { toggleDefensiveStance } from './bladeStance'
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
-import {
-    parseCombatReference,
-    parseWorldCombatTarget,
-} from './combatTargetParsing'
+import { parseCombatReference } from './combatTargetParsing'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveAbility } from './effectiveParameters'
 import { learnAbility } from './magicLearning'
 import { pray } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
+import {
+    parsePrayerIntent,
+    validAbilityTargetId as validId,
+} from './prayerIntentParsing'
 import { recordResourceSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 import { castSpell } from './spellCasting'
@@ -104,6 +106,9 @@ export function handleAbilityCommand(
     if (!knowsAbility(actor, id)) {
         return abilityNotice(actor, 'Способность ещё не изучена.')
     }
+    if (id === 'defensive_stance') {
+        return toggleDefensiveStance(actor, context.now)
+    }
     if (!canPerformSkillAction(actor, context.now)) {
         return abilityNotice(actor, 'Персонаж не может действовать сейчас.')
     }
@@ -131,7 +136,7 @@ function executeAbility(
     if (id === 'barrier') {
         return castBarrier(actor, context.now)
     }
-    if (id === 'shot' || id === 'spark') {
+    if (freeAimAttack(id)) {
         return executeAttackAbility(
             actor,
             message.targetId,
@@ -188,7 +193,12 @@ function executeAttackAbility(
     if (actor.mana < definition.mana || actor.energy < definition.energy) {
         return abilityNotice(actor, 'Недостаточно сил для способности.')
     }
-    if (id !== 'shot' && id !== 'spark' && id !== 'skeleton_strike') {
+    if (
+        id !== 'shot' &&
+        id !== 'spark' &&
+        id !== 'skeleton_strike' &&
+        !isBladeAttackAbility(id)
+    ) {
         return []
     }
     const events =
@@ -249,51 +259,7 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
         },
     ]
 }
-function parsePrayerIntent(input: unknown): PrayerIntent | undefined {
-    if (!isRecord(input)) {
-        return undefined
-    }
-    const record = input
-    const mode = record['mode']
-    const targetId = record['targetId']
-    if (mode === 'purify_grave') {
-        const target = parseWorldCombatTarget(record['target'])
-        return target !== undefined && targetId === undefined
-            ? { mode, target }
-            : undefined
-    }
-    if (record['target'] !== undefined) {
-        return undefined
-    }
-    return parseCharacterPrayerIntent(record)
-}
 
-function parseCharacterPrayerIntent(
-    record: Record<string, unknown>
-): PrayerIntent | undefined {
-    const mode = record['mode']
-    const targetId = record['targetId']
-    if (mode === 'devotion' && targetId === undefined) {
-        return { mode }
-    }
-    if (
-        (mode === 'harm' || mode === 'ward') &&
-        (targetId === undefined || validId(targetId))
-    ) {
-        return targetId === undefined ? { mode } : { mode, targetId }
-    }
-    if ((mode === 'restore' || mode === 'revive') && validId(targetId)) {
-        return { mode, targetId }
-    }
-    return undefined
-}
-function validId(value: unknown): value is string {
-    return (
-        typeof value === 'string' &&
-        value.trim().length > 0 &&
-        value.length <= 100
-    )
-}
-function isRecord(input: unknown): input is Record<string, unknown> {
-    return input !== null && typeof input === 'object' && !Array.isArray(input)
+function freeAimAttack(id: AbilityId): boolean {
+    return id === 'shot' || id === 'spark' || isBladeAttackAbility(id)
 }

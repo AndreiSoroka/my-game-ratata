@@ -19,7 +19,7 @@ export const MASTERY_NAMES: Readonly<Record<ConstellationId, string>> =
     Object.freeze({
         blade: 'Клинок',
         magic: 'Магия',
-        prayer: 'Чудеса',
+        prayer: 'Угольная Мать',
         arrow: 'Стрела',
         life: 'Жизнь',
         shadow: 'Тень',

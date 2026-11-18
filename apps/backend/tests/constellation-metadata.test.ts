@@ -121,6 +121,7 @@ describe('earned constellation metadata', () => {
 describe('dynamic active card capabilities', () => {
     it('publishes only earned extra capabilities in the active card, including automatic cleric resurrection', () => {
         const actor = abilityHero('cleric')
+        actor.progression.constellations.opened.add('prayer.insight3')
         const card = () => requiredCard(actor, 'prayer.root')
         expect(card().effects).toEqual([
             'Лечит вас или союзника.',
@@ -145,6 +146,7 @@ describe('dynamic active card capabilities', () => {
         const actor = abilityHero('vanguard')
         actor.abilities.known.add('pray')
         syncAbilityConstellations(actor)
+        actor.progression.constellations.opened.add('prayer.insight3')
         const card = requiredCard(actor, 'prayer.root')
         expect(card.unlocked).toBe(true)
         expect(card.effects).toEqual([
@@ -165,7 +167,7 @@ describe('known prayer school cards', () => {
         const healingNodes = fullConstellationCatalog.filter(
             (node) => node.constellationId === 'prayer'
         )
-        expect(healingNodes).toHaveLength(39)
+        expect(healingNodes).toHaveLength(42)
         for (const node of healingNodes) {
             actor.progression.constellations.opened.add(node.id)
         }
@@ -195,7 +197,7 @@ describe('known prayer school cards', () => {
             unlocked: true,
             effectType: 'passive',
             description:
-                'Позволяет поднимать павших товарищей, душа которых не успела уйти в мир иной.',
+                'Молитва зовёт обратно павшего товарища, пока его душа ещё не ушла в иной мир.',
         })
         for (const node of healingNodes.filter(
             (node) => node.kind === 'passive' || node.kind === 'joint'
@@ -214,9 +216,12 @@ describe('known prayer school cards', () => {
             )
         }
         expect(
-            snapshot.nodes.find(
-                (node) => node.id === constellationWireId('prayer.last_light')
-            )?.description
+            snapshot.nodes
+                .find(
+                    (node) =>
+                        node.id === constellationWireId('prayer.last_light')
+                )
+                ?.effects?.join(' ')
         ).toContain('на 1000% сильнее')
     })
 
@@ -267,6 +272,11 @@ describe('known prayer school cards', () => {
 
 it('marks only standalone hotbar bindings active, never enhancement prerequisites or prayer modes', () => {
     const expected = new Map([
+        ['blade.wide_swing', 'wide_swing'],
+        ['blade.circular_swing', 'circular_swing'],
+        ['blade.lunge', 'lunge'],
+        ['blade.pommel_strike', 'pommel_strike'],
+        ['blade.defensive_stance', 'defensive_stance'],
         ['arrow.root', 'shot'],
         ['prayer.root', 'pray'],
         ['prayer.area', 'pray_woven'],

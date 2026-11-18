@@ -15,6 +15,7 @@ export class PersonalConstellationSky {
     readonly #seed = randomBytes(16).toString('hex')
     readonly #background: { readonly heroClass: HeroClass | undefined }
     #layout: CachedConstellationLayout | undefined
+    #catalogVersion: string | undefined
 
     public constructor(background: {
         readonly heroClass: HeroClass | undefined
@@ -23,6 +24,11 @@ export class PersonalConstellationSky {
     }
 
     public prepare(): CachedConstellationLayout {
+        const version = catalogVersion()
+        if (this.#catalogVersion !== version) {
+            this.#layout = undefined
+            this.#catalogVersion = version
+        }
         this.#layout ??= freezeLayout(
             generateConstellationLayout(
                 fullConstellationCatalog,
@@ -73,4 +79,13 @@ export function readCachedConstellationLayout(
     actor: GameCharacter
 ): CachedConstellationLayout | undefined {
     return actor.constellationSky.read()
+}
+
+function catalogVersion(): string {
+    return (
+        'blade-and-results-v2|' +
+        fullConstellationCatalog
+            .map((node) => `${node.id}:${node.parents.join(',')}`)
+            .join('|')
+    )
 }

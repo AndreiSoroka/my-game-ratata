@@ -1,7 +1,11 @@
 import {
     ABILITY_DEFINITIONS,
+    type AbilityDefinition,
     type AbilityId,
+    type BladeTechniqueParameters,
+    isBladeAbility,
     MOVEMENT_RULES,
+    resolveBladeTechnique,
     THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
@@ -15,8 +19,23 @@ export function effectiveAbility(
     actor: GameCharacter,
     id: AbilityId,
     cellSize = 0
-) {
+): AbilityDefinition &
+    Partial<BladeTechniqueParameters> & {
+        cycleMs: number
+        movementMs: number
+    } {
     const definition = { ...ABILITY_DEFINITIONS[id] }
+    if (isBladeAbility(id)) {
+        return {
+            ...definition,
+            ...resolveBladeTechnique(
+                id,
+                constellationModifiers(actor),
+                effectiveAttackEnergyCost(actor),
+                ordinaryAttackRadius(actor, cellSize)
+            ),
+        }
+    }
     const modifiers = constellationModifiers(actor)
     if (id === 'shot') {
         definition.range += modifiers.shotRangeCells * cellSize
@@ -32,7 +51,11 @@ export function effectiveAbility(
     if (id === 'fireball' || id === 'greater_fireball') {
         scaleDamage(definition, modifiers.fireDamageMultiplier)
     }
-    return definition
+    return {
+        ...definition,
+        cycleMs: Math.max(definition.windupMs, 200),
+        movementMs: Math.max(definition.windupMs, 200),
+    }
 }
 
 function scaleDamage(
@@ -81,11 +104,12 @@ export function effectiveAttackCooldown(actor: GameCharacter): number {
 }
 
 export function effectiveAttackEnergyCost(actor: GameCharacter): number {
-    return (
+    return Math.ceil(
         actor.config.resources.attackEnergyCost *
-        (hasEquippedSword(actor)
-            ? constellationModifiers(actor).swordEnergyMultiplier
-            : 1)
+            (hasEquippedSword(actor)
+                ? constellationModifiers(actor).swordEnergyMultiplier
+                : 1) -
+            1e-10
     )
 }
 
@@ -106,4 +130,42 @@ export function effectiveTheftCost(actor: GameCharacter): number {
         THEFT_RULES.energyCost -
         constellationModifiers(actor).theftEnergyDiscount
     )
+}
+
+export function ordinaryAttackRadius(
+    actor: GameCharacter,
+    tileSize: number
+): number {
+    return Math.max(
+        0,
+        ...actor.config.attackZones.map(
+            (zone) =>
+                Math.hypot(
+                    Math.max(Math.abs(zone.minX), Math.abs(zone.maxX)),
+                    Math.max(Math.abs(zone.minY), Math.abs(zone.maxY))
+                ) * tileSize
+        )
+    )
+}
+
+export function effectiveAttackPhases(
+    actor: GameCharacter,
+    underpowered = false
+) {
+    const tempo = hasEquippedSword(actor)
+        ? constellationModifiers(actor).swordTempoMultiplier
+        : 1
+    const scale = underpowered ? 2 : 1
+    const windupMs = Math.round(
+        actor.config.combat.attackWindupMs * tempo * scale
+    )
+    return {
+        cycleMs: Math.round(effectiveAttackCooldown(actor) * scale),
+        windupMs,
+        movementMs:
+            hasEquippedSword(actor) &&
+            constellationModifiers(actor).bladeFluidStance
+                ? windupMs
+                : Math.round(actor.config.combat.attackLockMs * tempo * scale),
+    }
 }

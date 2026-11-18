@@ -21,6 +21,8 @@ describe('public effective ability usage', () => {
             cooldownMs: 495,
             range: 88,
             windupMs: 50,
+            cycleMs: 200,
+            movementMs: 200,
         })
         expect(usage.spark).toEqual({
             mana: 5,
@@ -28,6 +30,8 @@ describe('public effective ability usage', () => {
             cooldownMs: 800,
             range: 104,
             windupMs: 200,
+            cycleMs: 200,
+            movementMs: 200,
         })
         expect(usage.pray).toEqual({
             mana: 5,
@@ -56,8 +60,10 @@ describe('public effective ability usage', () => {
         for (const values of Object.values(usage)) {
             expect(Object.keys(values).sort()).toEqual([
                 'cooldownMs',
+                ...('cycleMs' in values ? ['cycleMs'] : []),
                 'energy',
                 'mana',
+                ...('movementMs' in values ? ['movementMs'] : []),
                 'range',
                 'windupMs',
             ])
@@ -115,6 +121,8 @@ describe('public effective ability usage', () => {
                 cooldownMs: 1000,
                 range: 160,
                 windupMs: 400,
+                cycleMs: 400,
+                movementMs: 400,
             },
         })
         expect(snapshot.parameters?.greater_fireball).toBeUndefined()

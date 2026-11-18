@@ -74,7 +74,7 @@ function extensionChance(node: ConstellationStar): PrayerDescription | undefined
             ['prayer.absolute_concentration', 'prayer.hasty_harm', 'prayer.martyr'].includes(
                 node.id
             )) ||
-        /^prayer\.(targets|ward|aura_)/.test(node.id)
+        /^prayer\.(targets|ward|aura_|insight)/.test(node.id)
     )
         return {
             deterministic: true,

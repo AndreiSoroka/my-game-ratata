@@ -57,9 +57,9 @@ it('agent ability requests use ordinary costs, cooldowns and pinned prayer targe
         intent: { mode: 'restore', targetId: actor.id },
     } as const
     expect(applyAgentDecision(actor, message, world, 1000).accepted).toBe(true)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     expect(applyAgentDecision(actor, message, world, 2000).accepted).toBe(false)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     expect(requestAbility).toHaveBeenCalledTimes(1)
     advanceRevive(
         actor,
@@ -68,7 +68,7 @@ it('agent ability requests use ordinary costs, cooldowns and pinned prayer targe
         () => 0,
         { ...context, now: 4000 }
     )
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
 })
 it.each(['human', 'unknown', 'dead', 'offline', 'stun'] as const)(
     'agent does not bypass %s capability restrictions',
@@ -100,7 +100,7 @@ it.each(['human', 'unknown', 'dead', 'offline', 'stun'] as const)(
             ).accepted
         ).toBe(false)
         expect(requestAbility).not.toHaveBeenCalled()
-        expect(actor.mana).toBe(100)
+        expect(actor.mana).toBe(70)
     }
 )
 it('a noncombat personality rejects actual attack targets while permitting a safe selected self-heal beside undead', () => {
@@ -139,7 +139,7 @@ it('a noncombat personality rejects actual attack targets while permitting a saf
         ).accepted
     ).toBe(true)
     expect(requestAbility).toHaveBeenCalledOnce()
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     expect(undead.hp).toBe(undead.maxHp)
 })
 it('allows a noncombat personality to devote a harmless prayer beside potential wave victims', () => {
@@ -169,7 +169,7 @@ it('allows a noncombat personality to devote a harmless prayer beside potential 
         },
     ])
     expect(undead.hp).toBe(undead.maxHp)
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(40)
     expect(actor.progression.masteries.prayer.experience).toBe(0n)
 })
 it('shared control rejection propagates and wait, manual move and lease expiry cancel ongoing control', () => {
@@ -255,10 +255,10 @@ it('agent automatic actions use the same authoritative controller and costs as p
     } as const
     expect(parseAgentDecision(decision)).toEqual(decision)
     expect(applyAgentDecision(actor, decision, world, 1000).accepted).toBe(true)
-    expect(actor.mana).toBe(100)
+    expect(actor.mana).toBe(70)
     expect(snapshotControl(actor).action).toEqual(decision.action)
     advanceCharacterControl(actor, controls, 1000)
-    expect(actor.mana).toBe(88)
+    expect(actor.mana).toBe(58)
     expect(publishEvents).toHaveBeenCalledOnce()
     expect(
         applyAgentDecision(
@@ -270,7 +270,7 @@ it('agent automatic actions use the same authoritative controller and costs as p
     ).toBe(true)
     expect(snapshotControl(actor).mode).toBe('none')
     advanceCharacterControl(actor, controls, 20000)
-    expect(actor.mana).toBe(88)
+    expect(actor.mana).toBe(58)
     expect(
         parseAgentDecision({
             type: 'auto_action',

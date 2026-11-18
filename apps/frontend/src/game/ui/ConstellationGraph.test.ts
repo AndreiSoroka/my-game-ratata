@@ -260,3 +260,19 @@ it('focuses an externally requested leaf without changing the catalogue or accep
     expect(node.y).toBeLessThan(y! + height!)
     view.unmount()
 })
+
+it('marks extra mandatory links without dropping their geometry or changing ownership', () => {
+    const sky = constellationFixture(true)
+    const edge = sky.edges[0]!
+    edge.crossLink = true
+    const view = mount(ConstellationGraph, { props: { constellation: sky } })
+    try {
+        expect(view.findAll('polyline')).toHaveLength(sky.edges.length)
+        const link = view.get('.constellation-edge--cross-link')
+        expect(link.attributes('stroke-dasharray')).toBe('8 4 2 4')
+        expect(link.get('title').text()).toBe('Дополнительная обязательная связь')
+        expect(view.emitted('activate')).toBeUndefined()
+    } finally {
+        view.unmount()
+    }
+})

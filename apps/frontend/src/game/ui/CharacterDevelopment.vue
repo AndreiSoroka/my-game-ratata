@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 
 import ConstellationGraph from './ConstellationGraph.vue'
 import ConstellationStarCard from './ConstellationStarCard.vue'
+import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import KnowledgeWindow from './KnowledgeWindow.vue'
 
 const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
@@ -27,6 +28,7 @@ watch(
 
 <template>
     <section class="character-development" aria-label="Развитие персонажа">
+        <HeroBackgroundSummary :hero-class="player.heroClass" />
         <template v-if="sky">
             <div class="development-layout">
                 <ConstellationGraph

@@ -4,7 +4,6 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { resolveConstellationCardEffects } from './constellationCardEffects'
 import {
     constellationPaths,
     type ConstellationStar,
@@ -13,6 +12,7 @@ import {
     constellationWireId,
     fullConstellationCatalog,
 } from './constellationNodes'
+import { observedConstellationCardEffects } from './constellationResultDisclosure'
 import { hasStar } from './constellations'
 import {
     type CachedConstellationLayout,
@@ -77,6 +77,9 @@ function observedEdge(
     return {
         from: constellationWireId(from),
         to: constellationWireId(to),
+        ...(sky.crossLinks.includes(`${from}>${to}`)
+            ? { crossLink: true }
+            : {}),
         ...(via === undefined
             ? {}
             : { via: via.map((point) => ({ ...point })) }),
@@ -96,7 +99,7 @@ function observeNode(
     }
     const learned = learnedIds.has(node.id)
     const effects = learned
-        ? resolveConstellationCardEffects(node.id, learnedIds)
+        ? observedConstellationCardEffects(node.id, learnedIds)
         : undefined
     return {
         id: constellationWireId(node.id),

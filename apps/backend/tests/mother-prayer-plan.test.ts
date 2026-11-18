@@ -140,7 +140,7 @@ describe('read-only frozen Mother profiles', () => {
         actor.progression.constellations.lowHpFromHostile = true
         actor.progression.constellations.opened.add('prayer.martyr')
         actor.progression.constellations.opened.add('prayer.last_light')
-        actor.mana = 30.6
+        actor.mana = 10.2
         const context = abilityContext([actor], 1000)
         const plan = planMotherPrayer(
             actor,
@@ -149,9 +149,9 @@ describe('read-only frozen Mother profiles', () => {
             'pray'
         )
         expect(plan?.lastLight).toBe(true)
-        expect(plan?.manaCost).toBeCloseTo(30.6)
+        expect(plan?.manaCost).toBeCloseTo(10.2)
         expect(plan?.targets).toEqual([{ kind: 'restore', id: actor.id }])
-        expect(actor.mana).toBe(30.6)
+        expect(actor.mana).toBe(10.2)
         actor.mana -= 0.01
         expect(
             planMotherPrayer(

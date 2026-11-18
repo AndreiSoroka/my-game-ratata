@@ -16,6 +16,8 @@ export interface ConstellationStar {
     kind: NonNullable<ConstellationNodeSnapshot['kind']>
     effectType: 'active' | 'passive'
     effects?: string[]
+    /** Ordered authored mechanical results; disclosed according to earned insight. */
+    results?: string[]
     /** Ability required before this enhancement can be discovered. */
     ability?: AbilityId
     /** Standalone hotbar action represented by an active node. */

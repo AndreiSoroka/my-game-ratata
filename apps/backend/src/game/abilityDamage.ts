@@ -29,6 +29,7 @@ export interface DamageResolution {
     events: GameEventPayload[]
 }
 export interface CharacterDamageInput {
+    roundFinal?: boolean
     hitQuality?: CombatHitQuality
     actor: GameCharacter
     target: GameCharacter
@@ -45,9 +46,13 @@ export function resolveCharacterDamage(
     const { actor, target, now } = input
     const auraEffects =
         input.targetAuraEffects ?? prayerAuraEffects(target, now)
+    const amount = input.amount * auraEffects.damageTakenMultiplier
     input = {
         ...input,
-        amount: input.amount * auraEffects.damageTakenMultiplier,
+        amount:
+            input.roundFinal === true
+                ? Math.max(1, Math.round(amount))
+                : amount,
     }
     const result: DamageResolution = {
         impactDamage: 0,

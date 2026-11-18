@@ -75,7 +75,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         gestures,
         unavailable
     )
-    const active = (binding: HotbarBinding | null, index: number) => gestures.active(index, binding)
+    const active = activeBindingCheck(props, gestures)
     const waiting = computed(() => controlWaitingLabel(props.player.control?.waiting))
     return {
         bindings,
@@ -84,7 +84,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         saplings,
         known,
         prayerAssigned,
-        label: bindingLabel,
+        label: (binding: HotbarBinding | null) => bindingLabel(binding, props.player),
         cooldown,
         unavailable,
         tooltip: (binding: HotbarBinding | null) =>
@@ -184,4 +184,11 @@ function describedPrayer(
     return abilityId === 'pray' && count < 2
         ? text
         : `${ABILITY_DEFINITIONS[abilityId].name}: ${text}`
+}
+
+function activeBindingCheck(props: HotbarProps, gestures: ReturnType<typeof createGestures>) {
+    return (binding: HotbarBinding | null, index: number) =>
+        binding?.kind === 'ability' && binding.id === 'defensive_stance'
+            ? props.player.combat?.defensiveStance === true
+            : gestures.active(index, binding)
 }

@@ -1,5 +1,6 @@
 import {
     type GameEventPayload,
+    isBladeAttackAbility,
     MASTERY_REWARDS,
 } from '@my-game-ratata/contracts'
 
@@ -68,7 +69,9 @@ export function attackMasteryReward(
             evidence: ['marksmanship'],
         }
     }
-    return (abilityId === undefined || abilityId === 'skeleton_strike') &&
+    return (abilityId === undefined ||
+        abilityId === 'skeleton_strike' ||
+        isBladeAttackAbility(abilityId)) &&
         hasEquippedSword(actor)
         ? {
               constellationId: 'blade' as const,

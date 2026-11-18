@@ -1,4 +1,20 @@
+import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
+
+interface CityMap {
+    tilewidth: number
+    layers: {
+        name: string
+        objects?: {
+            type?: string
+            x: number
+            y: number
+            width: number
+            height: number
+            properties?: { name: string; value: unknown }[]
+        }[]
+    }[]
+}
 
 for (const mobile of [false, true]) {
     test(`returns from chat reading and typing to movement (${mobile ? 'mobile' : 'desktop'})`, async ({
@@ -9,6 +25,10 @@ for (const mobile of [false, true]) {
         )
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
+        const cityMap = page.waitForResponse((response) => {
+            const path = new URL(response.url()).pathname
+            return path.startsWith('/world/maps/') && path.endsWith(`/${CENTER_LOCATION_ID}.json`)
+        })
         await page.evaluate(
             (name) => window.__ratataTest!.join(name),
             `chat-focus-${info.workerIndex}-${mobile}`
@@ -16,6 +36,7 @@ for (const mobile of [false, true]) {
         await expect
             .poll(() => page.evaluate(() => window.__ratataTest!.getState().connected))
             .toBe(true)
+        await stageOnPlaza(page, (await (await cityMap).json()) as CityMap)
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
         const canvas = page.locator('canvas[data-game-canvas]')
         const history = page.getByRole('list', { name: 'Услышанные реплики' })
@@ -96,6 +117,25 @@ for (const mobile of [false, true]) {
         expect(await position(page)).toEqual(modalAt)
         await page.keyboard.press('Escape')
     })
+}
+
+async function stageOnPlaza(page: Page, map: CityMap): Promise<void> {
+    const plaza = map.layers
+        .find((layer) => layer.name === 'City anchors')
+        ?.objects?.find(
+            (object) =>
+                object.type === 'city_area' &&
+                object.properties?.some(
+                    (property) => property.name === 'anchorId' && property.value === 'plaza'
+                )
+        )
+    if (plaza === undefined) throw new Error('Generated city has no authored plaza')
+    // Repeated rightward probes need open ground, independent of the grave spawn index.
+    const arrived = await page.evaluate(
+        (point) => window.__ratataTest!.navigate(point, { timeoutMs: 20_000, tolerance: 1 }),
+        { x: plaza.x + map.tilewidth * 2, y: plaza.y + plaza.height * 0.6 }
+    )
+    expect(arrived.status, arrived.reason).toBe('arrived')
 }
 
 async function position(page: Page) {

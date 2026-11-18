@@ -104,8 +104,8 @@ describe('real prayer fields during resolved effects', () => {
             })
         )
         expect(target.hp).toBe(hp - 9)
-        expect(actor.mana).toBe(115)
-        expect(masteryExperience(actor)).toBe(prayerXp(70))
+        expect(actor.mana).toBe(35)
+        expect(masteryExperience(actor)).toBe(prayerXp(84))
     })
 
     it('lets the protection field give a living enemy the same real dodge check', () => {
@@ -211,13 +211,16 @@ describe('real party prayer checks', () => {
         // Success uses two samples once, then Angelic uses two samples per soul.
         // Later random star allocations are not included in these first six samples.
         expect(random.mock.calls.length).toBeGreaterThanOrEqual(6)
-        expect(actor.mana).toBe(110)
+        expect(actor.mana).toBe(30)
     })
 })
 
 describe('channel target perception revalidation', () => {
     it('interrupts an undead caster when its explicitly pinned recipient becomes unseen during the channel', () => {
         const caster = abilityHero('cleric', 'undead')
+        // The authored undead body has no innate mana; this fixture is a caster.
+        caster.config.resources.maxMana = 40
+        caster.mana = 40
         const recipient = abilityHero()
         recipient.hp -= 10
         for (const id of ['prayer.ward1', 'prayer.ward2', 'prayer.ward3']) {
@@ -235,7 +238,7 @@ describe('channel target perception revalidation', () => {
             expect.objectContaining({ phase: 'interrupted' })
         )
         expect(caster.abilities.casting).toBeNull()
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(35)
         expect(masteryExperience(caster)).toBe(prayerXp(0))
     })
 
@@ -351,6 +354,8 @@ describe('pending personal protection and fractional damage', () => {
 
 it('blocks a channelled Kara when Ward4 makes a trapped undead unable to attack anyone', () => {
     const actor = abilityHero('cleric', 'undead')
+    actor.config.resources.maxMana = 40
+    actor.mana = 40
     const source = abilityHero()
     const target = abilityHero('vanguard', 'undead')
     Object.assign(target, { faction: 'monsters' })

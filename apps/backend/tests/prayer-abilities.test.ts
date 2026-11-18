@@ -33,12 +33,12 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
                 (event) => event.kind === 'heal'
             )
         ).toBe(false)
-        expect(caster.mana).toBe(120)
+        expect(caster.mana).toBe(40)
         target.hp -= 25
         expect(
             handleAbilityCommand(caster, prayer(target.id), context)[0]?.phase
         ).toBe('started')
-        expect(caster.mana).toBe(115)
+        expect(caster.mana).toBe(35)
         expect(
             advanceRevive(caster, () => target, 3999, context.random, {
                 ...context,
@@ -54,8 +54,8 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
         ).toContainEqual(
             expect.objectContaining({ kind: 'heal', targetId: target.id })
         )
-        expect(caster.mana).toBe(115)
-        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(30))
+        expect(caster.mana).toBe(35)
+        expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(36))
         // The next attempt starts immediately at the completion boundary.
         expect(
             handleAbilityCommand(caster, prayer(target.id), {
@@ -63,12 +63,12 @@ it.each(['network_player', 'scripted', 'mob1'] as const)(
                 now: 4000,
             })[0]?.phase
         ).toBe('started')
-        expect(caster.mana).toBe(110)
+        expect(caster.mana).toBe(30)
         advanceRevive(caster, () => target, 7000, context.random, {
             ...context,
             now: 7000,
         })
-        expect(caster.mana).toBe(110)
+        expect(caster.mana).toBe(30)
     }
 )
 it('keeps a failed miracle probabilistic and paid without granting mastery experience', () => {
@@ -80,7 +80,7 @@ it('keeps a failed miracle probabilistic and paid without granting mastery exper
         abilityContext([caster], 1000, () => 1)
     )
     expect(events.some((event) => event.kind === 'heal')).toBe(false)
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
 })
 it('does not replace a stale pinned gift by another target or a revival', () => {
@@ -100,7 +100,7 @@ it('does not replace a stale pinned gift by another target or a revival', () => 
             (event) => event.kind === 'cast'
         )
     ).toBe(false)
-    expect(caster.mana).toBe(120)
+    expect(caster.mana).toBe(40)
     expect(caster.abilities.casting).toBe(null)
 })
 it('uses one Woven roll for selected healing and friendly undead harm without friendly-damage XP', () => {
@@ -137,7 +137,7 @@ it('uses one Woven roll for selected healing and friendly undead harm without fr
         allies.every((target, index) => target.hp < (before[index] ?? 0))
     ).toBe(true)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
-    expect(caster.mana).toBe(105)
+    expect(caster.mana).toBe(25)
 })
 it('restores only undead through the grave school without inheriting a harmful wave', () => {
     const caster = abilityHero()
@@ -203,7 +203,7 @@ it('prepays Mother resurrection, preserves identity, and does not refund an offl
         intent: { mode: 'revive', targetId: target.id },
     } as const
     handleAbilityCommand(caster, message, context)
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
     expect(caster.snapshot(1000).abilities?.casting?.targetId).toBe(target.id)
     expect(
         advanceRevive(
@@ -223,7 +223,7 @@ it('prepays Mother resurrection, preserves identity, and does not refund an offl
             { ...context, now: 4000 }
         )
     ).toContainEqual(expect.objectContaining({ kind: 'revive' }))
-    expect(caster.mana).toBe(115)
+    expect(caster.mana).toBe(35)
     expect(target.alive).toBe(true)
     target.applyDamage(target.hp, 5000)
     handleAbilityCommand(caster, message, { ...context, now: 6000 })
@@ -237,7 +237,7 @@ it('prepays Mother resurrection, preserves identity, and does not refund an offl
             { ...context, now: 9000 }
         )
     ).toContainEqual(expect.objectContaining({ phase: 'interrupted' }))
-    expect(caster.mana).toBe(110)
+    expect(caster.mana).toBe(30)
 })
 
 function castPrayer(

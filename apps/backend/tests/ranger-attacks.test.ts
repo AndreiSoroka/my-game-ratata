@@ -81,10 +81,26 @@ it('fires toward current facing without selecting a nearer enemy behind the rang
     grantRetaliation(f.actor, behind, 60000)
     f.characters.push(behind)
     const events = f.shot()
-    expect(events[0]).toEqual({
+    const { actionId, ...event } = events[0] ?? {}
+    expect(typeof actionId).toBe('string')
+    expect(event).toEqual({
         kind: 'attack',
         actorId: f.actor.id,
         abilityId: 'shot',
+        attackOrigin: 'ability',
+        delivery: 'ranged_physical',
+        attackGeometry: {
+            kind: 'rectangles',
+            zones: [
+                {
+                    minX: 100,
+                    minY: 88.8,
+                    maxX: 164,
+                    maxY: 111.2,
+                    ownerId: f.actor.id,
+                },
+            ],
+        },
         projectile: {
             origin: { x: 100, y: 100 },
             endpoint: { x: 164, y: 100 },

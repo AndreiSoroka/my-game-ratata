@@ -8,6 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { clearCombatTransient } from './combatState'
 import type { CorpseWallet } from './corpseWallet'
 import { loadNavigationService, NavigationService } from './navigation'
 import { returnFromPursuit } from './pursuitState'
@@ -151,6 +152,7 @@ export class WorldLocations {
         recordPursuitEntry(character, now)
         character.clearPath()
         character.clearPendingAttackHit()
+        clearCombatTransient(character, now)
         character.attackZones = []
         character.attackZoneUntil = 0
         character.velocity = { x: 0, y: 0 }

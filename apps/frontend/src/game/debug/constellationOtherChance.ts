@@ -1,19 +1,13 @@
 import type { ConstellationStar } from '../../../../backend/src/game/constellationCatalog'
+import { describeBladeEffectChance } from './constellationBladeChance'
 import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
-import {
-    chancePercent,
-    criticalChance,
-    swordDodgeChance,
-    theftEffectChances,
-} from './constellationChanceMath'
+import { chancePercent, criticalChance, theftEffectChances } from './constellationChanceMath'
 import type { ConstellationEffectChance } from './constellationChanceTypes'
 import { describeDeterministicOtherChance } from './constellationOtherChanceDetails'
 import { describeOtherRootChance } from './constellationOtherChanceRoots'
 
 const specialDescriptions: Record<string, () => ConstellationEffectChance> = {
-    'blade.critical': () => describeCritical('blade.critical'),
-    'arrow.critical': () => describeCritical('arrow.critical'),
-    'blade.dodge': describeDodge,
+    'arrow.critical': describeArrowCritical,
     'shadow.root': () => describeTheft('shadow.root'),
     'shadow.luck1': () => describeTheft('shadow.luck1'),
     'shadow.luck2': () => describeTheft('shadow.luck2'),
@@ -30,18 +24,22 @@ const baseCritical =
 const clamp = 'Ограничение результата нижней и верхней границами — первыми двумя аргументами.'
 
 /** Explanations of resolved effects, deliberately separate from acquiring a star. */
-export function describeOtherEffectChance(node: ConstellationStar): ConstellationEffectChance {
+export function describeOtherEffectChance(
+    node: ConstellationStar,
+    active?: ReadonlySet<string>
+): ConstellationEffectChance {
+    const blade = describeBladeEffectChance(node, active)
+    if (blade !== undefined) return blade
     const deterministic = describeDeterministicOtherChance(node.id)
     if (deterministic !== undefined) return deterministic
     const special = specialDescriptions[node.id]
     if (special !== undefined) return special()
-    if (['blade.root', 'magic.root', 'arrow.root', 'life.root'].includes(node.id))
+    if (['magic.root', 'arrow.root', 'life.root'].includes(node.id))
         return describeOtherRootChance(node.id)
     throw new Error(`Не описана вероятность эффекта звезды: ${node.id}`)
 }
 
-function describeCritical(id: string): ConstellationEffectChance {
-    const sword = id === 'blade.critical'
+function describeArrowCritical(): ConstellationEffectChance {
     return withChanceFormulas(
         {
             deterministic: true,
@@ -62,9 +60,7 @@ function describeCritical(id: string): ConstellationEffectChance {
                 },
             ],
             notes: [
-                sword
-                    ? 'Для этого бонуса нужен обычный удар исправным simple_sword или old_sword. Он не повышает крит Искры или Выстрела.'
-                    : 'Этот бонус действует только на Выстрел и не получает дополнительно бонус крита меча.',
+                'Этот бонус действует только на Выстрел и не получает дополнительно бонус крита клинка.',
                 'Геометрия и доступность цели проверяются заранее. Барьер может поглотить даже критическое попадание целиком.',
             ],
         },
@@ -74,46 +70,6 @@ function describeCritical(id: string): ConstellationEffectChance {
                 D: targetDodge,
                 C: 'Итоговый шанс крита после бонуса и ограничения, в процентах.',
             }),
-        ]
-    )
-}
-
-function describeDodge(): ConstellationEffectChance {
-    const variables = {
-        D: 'Базовое уклонение персонажа в процентах.',
-        E: 'Сумма бонусов исправных надетых предметов в процентных пунктах.',
-        clamp,
-    }
-    return withChanceFormulas(
-        {
-            deterministic: true,
-            summary:
-                'При исправном мече +3 п.п. добавляются всегда; само уклонение проверяется случайным броском.',
-            examples: [
-                {
-                    label: 'При базовом уклонении 5%, без бонусов экипировки, с мечом',
-                    value: chancePercent(swordDodgeChance(0.05, 0, true)),
-                },
-                {
-                    label: 'При тех же 5%, но без исправного меча',
-                    value: chancePercent(swordDodgeChance(0.05, 0, false)),
-                },
-                {
-                    label: 'При базовых 94% и +2 п.п. от экипировки, с мечом',
-                    value: chancePercent(swordDodgeChance(0.94, 0.02, true)),
-                },
-            ],
-            notes: [
-                'Бросок уклонения есть у обычных атак, Искры и Выстрела. Прямое применение Огненного шара сейчас этот бросок не вызывает.',
-            ],
-        },
-        [
-            chanceFormula(
-                'Уклонение с исправным мечом, %',
-                'min(95, clamp(0, 95, D + E) + 3)',
-                variables
-            ),
-            chanceFormula('Уклонение без исправного меча, %', 'clamp(0, 95, D + E)', variables),
         ]
     )
 }

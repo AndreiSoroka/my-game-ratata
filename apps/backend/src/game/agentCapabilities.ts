@@ -61,7 +61,10 @@ export function applyAgentAbility(
     if (message.type === 'cancel_prayer') {
         return cancelAgentPrayer(actor, message, world, now)
     }
-    if (!canPerformSkillAction(actor, now)) {
+    if (
+        !canPerformSkillAction(actor, now) &&
+        !canLeaveGuard(actor, message, now)
+    ) {
         return rejected(
             'Ability unavailable while dead, offline, stunned or busy'
         )
@@ -116,13 +119,34 @@ export function applyAgentControl(
         ? { accepted: true, error: null, events: [] }
         : rejected('Control target is unavailable or the actor cannot act')
 }
+function canLeaveGuard(
+    actor: GameCharacter,
+    message: AbilityClientMessage,
+    now: number
+): boolean {
+    return (
+        message.type === 'use_ability' &&
+        message.abilityId === 'defensive_stance' &&
+        actor.trainingTarget === undefined &&
+        actor.combat.defensiveStance &&
+        actor.alive &&
+        actor.stunUntil <= now &&
+        !actor.tags.has('offline') &&
+        !actor.tags.has('state.retired')
+    )
+}
+
 function abilityCanHarm(
     actor: GameCharacter,
     message: AbilityClientMessage,
     world: CompanionWorld,
     now: number
 ): boolean {
-    if (message.type !== 'use_ability' || message.abilityId === 'barrier') {
+    if (
+        message.type !== 'use_ability' ||
+        message.abilityId === 'barrier' ||
+        message.abilityId === 'defensive_stance'
+    ) {
         return false
     }
     if (!('intent' in message)) {

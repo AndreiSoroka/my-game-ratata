@@ -8,6 +8,9 @@ import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 function rescue(friendlyDamage: number) {
     const caster = abilityHero()
+    // Fund the complete provenance sequence independently of background resources.
+    caster.config.resources.maxMana = 100
+    caster.mana = 100
     const ally = abilityHero()
     const victim = abilityHero()
     const enemy = abilityHero('vanguard', 'undead', 'mob1')
@@ -69,7 +72,7 @@ it('healing after a friendly-caused death and revival cannot grant mastery exper
     expect(victim.alive).toBe(true)
     expect(victim.abilities.untrainableHpDamage).toBe(victim.maxHp - victim.hp)
     expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(0))
-    for (const now of [4001, 7001, 10001, 13001, 16001, 19001, 22001]) {
+    for (const now of [4001, 7001, 10001, 13001, 16001, 19001, 22001, 25001]) {
         heal(now)
     }
     expect(victim.hp).toBe(victim.maxHp)
@@ -81,14 +84,14 @@ it('ordinary combat resurrection and healing remain meaningful practice', () => 
     const { caster, victim, heal } = rescue(0)
     expect(victim.alive).toBe(true)
     expect(victim.abilities.untrainableHpDamage).toBe(0)
-    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
+    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(240))
     heal(4001)
-    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(230))
+    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(276))
 })
 
 it('resurrection consumes the healed portion of mixed damage provenance and retains only unhealed friendly wounds', () => {
     const { caster, victim } = rescue(20)
     expect(victim.hp).toBe(1)
     expect(victim.abilities.untrainableHpDamage).toBe(19)
-    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(200))
+    expect(masteryExperience(caster, 'prayer')).toBe(prayerXp(240))
 })

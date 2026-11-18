@@ -1,5 +1,8 @@
 import type { ConstellationId } from '@my-game-ratata/contracts'
 
+import { bladeBasicStars } from './constellationBladeBasics'
+import { bladeJointStars } from './constellationBladeJoints'
+import { bladeTechniqueStars } from './constellationBladeTechniques'
 import { combatStars } from './constellationCombatStars'
 import type { ConstellationStar } from './constellationDefinition'
 import { otherStars } from './constellationOtherStars'
@@ -11,7 +14,7 @@ export const constellationPaths = [
         id: 'blade',
         name: 'Клинок',
         description:
-            'Вы владеете ближним оружием и оттачиваете мастерство ударов.',
+            'Ступни находят опору, а клинок становится продолжением руки. Лишние движения уходят: в удар ложится вес всего тела, дыхание остаётся ровным, а чужой замах встречает готовую защиту.',
         color: '#edaa78',
     },
     {
@@ -23,7 +26,7 @@ export const constellationPaths = [
     },
     {
         id: 'prayer',
-        name: 'Молитва',
+        name: 'Угольная Мать',
         description:
             'Вы можете помолиться за живых или мёртвых. Есть шанс, что божество ответит на ваши просьбы.',
         color: '#eddb9b',
@@ -76,6 +79,9 @@ export const constellationPaths = [
 }>
 
 export const constellationStars: ConstellationStar[] = [
+    ...bladeBasicStars,
+    ...bladeTechniqueStars,
+    ...bladeJointStars,
     ...combatStars,
     ...otherStars,
 ]

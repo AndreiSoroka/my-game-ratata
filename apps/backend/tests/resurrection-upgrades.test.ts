@@ -76,7 +76,7 @@ for (const withContext of [false, true]) {
             expect(f.caster.mana).toBe(f.initialMana - 5)
             expect(
                 masteryExperience(f.caster) - masteryExperienceAtLevel12()
-            ).toBe(prayerXp(200))
+            ).toBe(prayerXp(240))
             expect(f.random).toHaveBeenCalledTimes(1)
             expect(f.complete()).toEqual([])
             expect(f.random).toHaveBeenCalledTimes(1)

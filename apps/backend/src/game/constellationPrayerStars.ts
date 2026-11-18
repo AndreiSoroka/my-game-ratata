@@ -2,6 +2,42 @@ import { type ConstellationStar, star } from './constellationDefinition'
 
 /** All Mother improvements share one school; only Woven Prayer is another action. */
 export const prayerStars: ConstellationStar[] = [
+    {
+        ...star(
+            'prayer',
+            'insight1',
+            'Чувство веры',
+            'В знакомом чуде вы начинаете различать смысл происходящего.'
+        ),
+        results: [
+            'Раскрывает первую строку результата изученных звёзд Угольной Матери.',
+        ],
+    },
+    {
+        ...star(
+            'prayer',
+            'insight2',
+            'Понимание чуда',
+            'Ощущение ответа складывается в более ясную картину.',
+            ['insight1']
+        ),
+        results: [
+            'Раскрывает первые две строки результата изученных звёзд Угольной Матери.',
+        ],
+    },
+    {
+        ...star(
+            'prayer',
+            'insight3',
+            'Знание завета',
+            'Вам понятны пределы и последствия знакомого обращения к Матери.',
+            ['insight2']
+        ),
+        results: [
+            'Раскрывает все строки результата изученных звёзд Угольной Матери.',
+            'Знамения по-прежнему отдельно определяют знание настроения и ответа богини.',
+        ],
+    },
     star(
         'prayer',
         'radius1',

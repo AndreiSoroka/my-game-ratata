@@ -29,6 +29,7 @@ export function initializeConstellations(actor: GameCharacter): void {
 
 export function syncAbilityConstellations(actor: GameCharacter): void {
     const known = actor.abilities.known
+    syncBladeAbilities(actor)
     if (hasStar(actor, 'prayer.area')) {
         known.add('pray_woven')
     }
@@ -64,6 +65,21 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
                 actor.progression.masteries[path].level >= 5)
         ) {
             actor.progression.constellations.opened.add(`${path}.revive`)
+        }
+    }
+}
+
+function syncBladeAbilities(actor: GameCharacter): void {
+    const known = actor.abilities.known
+    for (const id of [
+        'wide_swing',
+        'circular_swing',
+        'lunge',
+        'pommel_strike',
+        'defensive_stance',
+    ] as const) {
+        if (hasStar(actor, `blade.${id}`)) {
+            known.add(id)
         }
     }
 }

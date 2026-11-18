@@ -1,10 +1,14 @@
 import {
+    BACKGROUND_MASTERY_MULTIPLIER,
     CENTER_LOCATION_ID,
     FARM_GROW_MS,
     FARM_HARVEST_GRAIN,
     FARM_HARVEST_SEED_DROPS,
     FARM_SOW_ENERGY,
     FARM_SOW_SEEDS,
+    HERO_BACKGROUND_DEFINITIONS,
+    heroClasses,
+    HUMAN_BASE_RESOURCES,
     ITEM_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
@@ -25,6 +29,7 @@ export function knowledgeFactValues(): Readonly<Record<string, number>> {
         throw new Error('Missing authoritative gathering definitions')
     }
     return {
+        ...backgroundFacts(),
         ...treeYieldFacts('adult'),
         ...treeYieldFacts('small'),
         'forestry.axe.energy': axe.energy,
@@ -129,4 +134,26 @@ function treeYieldFacts(size: 'adult' | 'small'): Record<string, number> {
             totals.get(item) ?? 0,
         ])
     )
+}
+
+function backgroundFacts(): Record<string, number> {
+    const resources = ['health', 'energy', 'mana'] as const
+    const entries: Array<[string, number]> = resources.map((resource) => [
+        `background.base.${resource}`,
+        HUMAN_BASE_RESOURCES[resource],
+    ])
+    for (const id of heroClasses) {
+        for (const resource of resources) {
+            const value =
+                HERO_BACKGROUND_DEFINITIONS[id].resourceBonus[resource]
+            if (value > 0) {
+                entries.push([`background.${id}.${resource}`, value])
+            }
+        }
+    }
+    entries.push([
+        'background.masteryBonusPercent',
+        Math.round((BACKGROUND_MASTERY_MULTIPLIER - 1) * 100),
+    ])
+    return Object.fromEntries(entries)
 }

@@ -1,7 +1,8 @@
-import { ABILITY_DEFINITIONS, type AbilityId } from '@my-game-ratata/contracts'
+import { ABILITY_DEFINITIONS, type AbilityId, isBladeAbility } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
+import { describeBladeActionBuild } from './constellationBladeBuild'
 import { constellationDistance } from './constellationDistance'
 import { describePassiveConstellationBuild } from './constellationPassiveBuild'
 
@@ -53,6 +54,7 @@ function activeResult(
     bonuses: Bonuses,
     options: ConstellationBuildOptions
 ): ConstellationBuildSummary {
+    if (isBladeAbility(ability)) return describeBladeActionBuild(ability, bonuses)
     if (ability === 'shot') return shot(activeIds, bonuses, options)
     if (ability === 'fireball' || ability === 'greater_fireball')
         return fireball(ability, activeIds, bonuses, options)

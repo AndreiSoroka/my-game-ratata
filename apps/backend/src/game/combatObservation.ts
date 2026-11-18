@@ -37,6 +37,10 @@ export function observeCharacterCombat(
     delete description.resourceChecks
     delete description.characterSheet
     delete description.stats
+    if (view.observer?.id !== snapshot.id && description.combat !== undefined) {
+        description.combat = { ...description.combat }
+        delete description.combat.combo
+    }
     if (
         view.observer?.id !== snapshot.id &&
         description.progression !== undefined

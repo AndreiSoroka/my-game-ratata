@@ -65,6 +65,9 @@ describe('ordinary Mother target ranks without Woven knowledge', () => {
         'rank %s applies to both action parameter limits and heals at most %s recipients',
         (rank, limit) => {
             const actor = abilityHero()
+            // Isolate the target cap from the starting mana budget.
+            actor.config.resources.maxMana = 120
+            actor.mana = 120
             ranks(actor, rank)
             const allies = wounded(limit + 2)
             const selected = allies.at(-1)
@@ -88,7 +91,7 @@ describe('ordinary Mother target ranks without Woven knowledge', () => {
                 plan?.targets.every((target) => target.kind === 'restore')
             ).toBe(true)
             expect(plan?.targets[0]?.id).toBe(selected.id)
-            expect(actor.mana).toBe(120 - 5 * limit)
+            expect(actor.mana).toBe(actor.config.resources.maxMana - 5 * limit)
             const events = finish(actor, context).filter(
                 (event) => event.kind === 'heal'
             )
@@ -264,7 +267,7 @@ describe('homogeneous allocation, payment and frozen recipients', () => {
         expect(
             plan?.targets.every((target) => target.kind === 'purify_grave')
         ).toBe(true)
-        expect(f.actor.mana).toBe(110)
+        expect(f.actor.mana).toBe(30)
         const events = finish(f.actor, context)
         expect(
             events.filter(
@@ -343,8 +346,8 @@ describe('Last Light ordinary homogeneity and Woven exception', () => {
                 { kind: 'restore', id: f.actor.id },
                 { kind: 'restore', id: f.ally.id },
             ])
-            expect(plan?.manaCost).toBe(72)
-            expect(f.actor.mana).toBe(48)
+            expect(plan?.manaCost).toBe(24)
+            expect(f.actor.mana).toBe(16)
             const events = finish(f.actor, f.context)
             expect(
                 events.filter((event) => event.kind === 'heal')
@@ -372,8 +375,8 @@ describe('Last Light ordinary homogeneity and Woven exception', () => {
             { kind: 'restore', id: f.actor.id },
             { kind: 'harm', id: f.enemy.id },
         ])
-        expect(plan?.manaCost).toBe(41)
-        expect(f.actor.mana).toBe(79)
+        expect(plan?.manaCost).toBe(17)
+        expect(f.actor.mana).toBe(23)
         const events = finish(f.actor, f.context)
         expect(events.filter((event) => event.kind === 'heal')).toHaveLength(1)
         expect(events.filter((event) => event.kind === 'damage')).toHaveLength(
@@ -384,7 +387,7 @@ describe('Last Light ordinary homogeneity and Woven exception', () => {
 
     it('does not use leftover cheap harm slots in ordinary prayer and refuses an unaffordable self-heal', () => {
         const f = emergency()
-        f.actor.mana = 41
+        f.actor.mana = 17
         const intent = { mode: 'harm', targetId: f.enemy.id } as const
         expect(
             planMotherPrayer(f.actor, intent, f.context, 'pray')?.targets
@@ -392,7 +395,7 @@ describe('Last Light ordinary homogeneity and Woven exception', () => {
         expect(
             planMotherPrayer(f.actor, intent, f.context, 'pray_woven')?.targets
         ).toHaveLength(2)
-        f.actor.mana = 35
+        f.actor.mana = 11
         const events = handleAbilityCommand(
             f.actor,
             { type: 'use_ability', abilityId: 'pray', intent },
@@ -400,6 +403,6 @@ describe('Last Light ordinary homogeneity and Woven exception', () => {
         )
         expect(events.some((event) => event.phase === 'started')).toBe(false)
         expect(f.actor.abilities.casting).toBeNull()
-        expect(f.actor.mana).toBe(35)
+        expect(f.actor.mana).toBe(11)
     })
 })

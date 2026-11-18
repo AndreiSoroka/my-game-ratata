@@ -10,7 +10,7 @@ import type { GameCharacter } from './character'
 import { effectiveAbility } from './effectiveParameters'
 
 export function buildAttackZones(
-    actor: GameCharacter,
+    actor: Pick<GameCharacter, 'config' | 'position' | 'facing' | 'id'>,
     tileSize: number
 ): AttackZone[] {
     return actor.config.attackZones.map((zone) => {
@@ -99,4 +99,25 @@ export function buildAbilityAttackZones(
             maxY: actor.position.y + rotated.maxY,
         },
     ]
+}
+
+/** Inclusive exact contact geometry. A square proxy is never used for a sector or circle. */
+export function isInAttackGeometry(
+    point: Vector2,
+    geometry: import('@my-game-ratata/contracts').AttackGeometry
+): boolean {
+    if (geometry.kind === 'rectangles') {
+        return isInZones({ position: point }, geometry.zones)
+    }
+    const dx = point.x - geometry.center.x,
+        dy = point.y - geometry.center.y
+    const length = Math.hypot(dx, dy)
+    if (length > geometry.radius + 1e-8) {
+        return false
+    }
+    if (geometry.kind === 'circle' || length < 1e-8) {
+        return true
+    }
+    const dot = (dx * geometry.direction.x + dy * geometry.direction.y) / length
+    return dot + 1e-8 >= Math.cos((geometry.angleDegrees * Math.PI) / 360)
 }

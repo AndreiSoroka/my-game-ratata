@@ -1,5 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
+import { abandonGuildContract, openObservedWorkerOffer } from './worker-contract-helpers'
+
 test.describe('AI player interface', () => {
     test.setTimeout(120_000)
 
@@ -66,49 +68,60 @@ test.describe('AI player interface', () => {
             }, miraKey)
             expect(conversation.status).toBe('condition_met')
 
-            const accepted = await page.evaluate(async () => {
-                const api = window.__ratataTest!
-                const action = api
-                    .observe()
-                    .dialogueChoices.find(
-                        (candidate) =>
-                            candidate.command.type === 'dialogue_choice' &&
-                            candidate.command.choiceId === 'accept_quest'
-                    )
-                if (!action) throw new Error('The observed dialogue does not offer a quest')
-                return api.act(action.command, { until: { type: 'quest', status: 'active' } })
-            })
-            expect(accepted).toMatchObject({
-                status: 'condition_met',
-                observation: { adventure: { quest: { status: 'active' } } },
-            })
-
-            const closed = await page.evaluate(() =>
-                window.__ratataTest!.act(
-                    { type: 'dialogue_choice', choiceId: 'close' },
-                    { until: { type: 'dialogue', npcId: null } }
+            // The standard generated city has an active Bell. Its live worker
+            // contracts remain available through the same observed dialogue.
+            const instanceId = await acceptObservedWorkerContract(page)
+            try {
+                const departed = await page.evaluate(() =>
+                    window.__ratataTest!.travel('south', { timeoutMs: 30_000 })
                 )
-            )
-            expect(closed.status).toBe('condition_met')
-
-            const departed = await page.evaluate(() =>
-                window.__ratataTest!.travel('south', { timeoutMs: 30_000 })
-            )
-            expect(departed).toMatchObject({
-                status: 'arrived',
-                locationId: initial.nextLocationId,
-            })
-            const returned = await page.evaluate(() =>
-                window.__ratataTest!.travel('north', { timeoutMs: 30_000 })
-            )
-            expect(returned).toMatchObject({ status: 'arrived', locationId: initial.locationId })
-            const final = await page.evaluate(() => window.__ratataTest!.observe())
-            expect(final.player?.id).toBe(initial.playerId)
-            expect(final.adventure?.quest.status).toBe('active')
-            expect(final.player?.alive).toBe(true)
+                expect(departed).toMatchObject({
+                    status: 'arrived',
+                    locationId: initial.nextLocationId,
+                })
+                const returned = await page.evaluate(() =>
+                    window.__ratataTest!.travel('north', { timeoutMs: 30_000 })
+                )
+                expect(returned).toMatchObject({
+                    status: 'arrived',
+                    locationId: initial.locationId,
+                })
+                const final = await page.evaluate(() => window.__ratataTest!.getState())
+                expect(final.player?.id).toBe(initial.playerId)
+                expect(final.snapshot?.party?.activeJob).toMatchObject({
+                    instanceId,
+                    status: 'active',
+                })
+                expect(final.player?.alive).toBe(true)
+            } finally {
+                // Release the real incident so the next viewport can inspect it.
+                await abandonGuildContract(page, instanceId)
+            }
         })
     }
 })
+
+async function acceptObservedWorkerContract(page: Page): Promise<string> {
+    await openObservedWorkerOffer(page)
+    await page.evaluate(() => {
+        const api = window.__ratataTest!
+        const offer = api.getState().snapshot!.social!.questOffer!
+        api.send({
+            type: 'quest_offer_answer',
+            offerId: offer.id,
+            revision: offer.revision,
+            accept: true,
+        })
+    })
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob?.status)
+        )
+        .toBe('active')
+    return page.evaluate(
+        () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
+    )
+}
 
 async function expectTarget(page: Page, kind: string, name: string): Promise<void> {
     await expect

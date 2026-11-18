@@ -22,6 +22,11 @@ export function describePrayerPassive(
 ): Omit<PrayerBuildResult, 'available'> {
     const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)
     if (!node || node.effectType !== 'passive') throw new Error(`Not a prayer passive: ${nodeId}`)
+    if (nodeId.startsWith('prayer.insight') && node.results?.length)
+        return {
+            effects: [node.description],
+            metrics: node.results.map((value, index) => row(`Результат ${index + 1}`, value)),
+        }
     const bonus = resolveConstellationBonuses(new Set([nodeId]), true)
     const metrics =
         advancedPassiveMetrics(nodeId, context) ?? passiveMetrics(nodeId, context, bonus)

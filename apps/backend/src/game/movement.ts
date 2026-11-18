@@ -5,6 +5,8 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { combatMovementTime, lungeDisplacement } from './combatMovement'
+import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMoveSpeed } from './effectiveParameters'
 import { wearWalkingEquipment } from './itemDurability'
@@ -35,39 +37,66 @@ export function advanceCharacter(
     if (!wasAlive && character.alive) {
         return { actorId: character.id, kind: 'respawn' }
     }
-    if (
-        !character.alive ||
-        character.tags.has('offline') ||
-        character.stunUntil > now
-    ) {
+    if (cannotMove(character, now)) {
         character.velocity = zeroVector()
         cancelMovementMode(character)
         return undefined
     }
-    if (
-        character.isActionLocked(now) &&
-        !prayerAuraEffects(character, now).feared
-    ) {
+    const feared = prayerAuraEffects(character, now).feared
+    if (feared) {
+        clearCombatTransient(character, now)
+        character.clearPendingAttackHit()
+    }
+    if (character.combat.defensiveStance) {
+        character.velocity = zeroVector()
+        character.movement.dashUntil = 0
+        context.onEvents?.(character.applyRegen(deltaMs, false, false, now))
+        return undefined
+    }
+    const forced = lungeDisplacement(character, now, deltaMs)
+    if (forced !== undefined) {
+        moveCharacter(context, deltaMs, forced)
+        return undefined
+    }
+    if (character.isActionLocked(now) && !feared) {
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
         const events = character.applyRegen(deltaMs, false, true, now)
         context.onEvents?.(events)
         return undefined
     }
-    moveCharacter(context)
+    moveCharacter(
+        context,
+        feared ? deltaMs : combatMovementTime(character, now, deltaMs)
+    )
     return undefined
 }
+function cannotMove(character: GameCharacter, now: number): boolean {
+    return (
+        !character.alive ||
+        character.tags.has('offline') ||
+        character.stunUntil > now
+    )
+}
 
-function moveCharacter(context: MovementContext): void {
+function moveCharacter(
+    context: MovementContext,
+    movementMs = context.deltaMs,
+    forced?: Vector2
+): void {
     const { character, deltaMs, now, navigation } = context
     const before = { ...character.position }
     const dashMs = dashTime(character, now, deltaMs)
     const effects = prayerAuraEffects(character, now)
     const slow = effects.slowMultiplier
-    const step = (movementSpeed(character) * slow * deltaMs) / 1000
+    const step = (movementSpeed(character) * slow * movementMs) / 1000
     const next = resolvePrayerMovement(
         character,
-        effects.feared ? before : nextPosition(context, dashMs, slow),
+        effects.feared
+            ? before
+            : forced === undefined
+              ? nextPosition({ ...context, deltaMs: movementMs }, dashMs, slow)
+              : navigation.moveWithCollision(before, forced),
         step,
         navigation,
         now

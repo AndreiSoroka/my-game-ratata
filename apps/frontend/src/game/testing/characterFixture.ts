@@ -35,6 +35,11 @@ export function characterFixture(
         },
         resourceChecks: {
             abilities: {
+                wide_swing: 'ready',
+                circular_swing: 'ready',
+                lunge: 'ready',
+                pommel_strike: 'ready',
+                defensive_stance: 'ready',
                 spark: 'ready',
                 barrier: 'ready',
                 shot: 'ready',

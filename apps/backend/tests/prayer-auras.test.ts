@@ -4,11 +4,8 @@ import { resolveCharacterDamage } from '../src/game/abilityDamage'
 import type { GameCharacter } from '../src/game/character'
 import type { PendingAttackHit } from '../src/game/characterState'
 import { attemptAttack } from '../src/game/combat'
-import {
-    applyAttackStun,
-    dodgedAttack,
-    resolveAttackDamage,
-} from '../src/game/combatDamage'
+import { applyAttackStun, resolveAttackDamage } from '../src/game/combatDamage'
+import { defendContact } from '../src/game/combatDefense'
 import { observeCombatEvent } from '../src/game/combatObservation'
 import { advanceCharacter } from '../src/game/movement'
 import {
@@ -130,9 +127,15 @@ describe('shared continuous prayer effects', () => {
         living.config.combat.dodgeChance = 0.94
         let draws = 0
         const rolls = [0.99, 0.94]
-        expect(dodgedAttack(living, () => rolls[draws++] ?? 0.99, 1000)).toBe(
-            true
-        )
+        expect(
+            defendContact(
+                source,
+                living,
+                attack,
+                1000,
+                () => rolls[draws++] ?? 0.99
+            ).outcome
+        ).toBe('dodge')
         expect(draws).toBe(2)
         living.config.combat.minDamage = 2
         living.config.combat.maxDamage = 8

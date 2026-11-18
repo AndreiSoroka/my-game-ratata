@@ -36,9 +36,9 @@ it.each([0.199999, 0.2])(
             { ...start, now: endsAt }
         )
         expect(random).toHaveBeenCalledTimes(1)
-        expect(f.actor.mana).toBe(115)
+        expect(f.actor.mana).toBe(35)
         expect(masteryExperience(f.actor, 'prayer')).toBe(
-            prayerXp(roll < 0.2 ? 10 : 0)
+            prayerXp(roll < 0.2 ? 12 : 0)
         )
         expect(f.service.get(prayerSource.id)?.purification?.completed).toBe(
             roll < 0.2 ? 1 : 0
@@ -63,7 +63,7 @@ it('shares progress across interruptions, ruin/restoration and duplicate registr
     f.begin()
     f.actor.setMoveInput({ x: 1, y: 0 })
     f.advance(10_001)
-    expect(f.actor.mana).toBe(115)
+    expect(f.actor.mana).toBe(35)
     f.service.damage(prayerSource.id, 100, 10_002)
     f.service.update(10_002 + GRAVE_RESTORE_MS, f.spawnContext)
     f.service.register(prayerSource, [], 10_003 + GRAVE_RESTORE_MS)
@@ -112,8 +112,8 @@ it('resolves area gifts and multiple grave steps with one roll and per-result XP
     expect(
         events.filter((event) => event.kind === 'grave_purification_progress')
     ).toHaveLength(2)
-    expect(f.actor.mana).toBe(100)
-    expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(80))
+    expect(f.actor.mana).toBe(20)
+    expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(96))
     expect(random).toHaveBeenCalledTimes(1)
 })
 
@@ -174,7 +174,7 @@ it('uses authored cell size for prayer reach and fixes duration when a channel s
             { ...context, now: 3700 }
         ).some((event) => event.kind === 'heal')
     ).toBe(true)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
 })
 
 it('learns harmful prayer from its star instead of a mastery level', () => {
@@ -264,7 +264,7 @@ it('cancels a restored pinned recipient before rolls or Woven effects without re
     ).toMatchObject([
         { kind: 'cast', phase: 'interrupted', targetId: target.id },
     ])
-    expect(actor.mana).toBe(110)
+    expect(actor.mana).toBe(30)
     expect(neighbor.hp).toBe(neighbor.maxHp - 10)
     expect(random).not.toHaveBeenCalled()
     expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))

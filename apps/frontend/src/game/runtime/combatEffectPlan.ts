@@ -143,14 +143,21 @@ export function eventCaption(event: GameEventPayload): string | undefined {
         heal: () => healingCaption(event),
         absorb: () => (event.amount === undefined ? 'Барьер' : positiveAmount(event, 'Барьер −')),
         miss: () => 'Промах',
+        parry: () => 'Парирование',
         revive: () => 'Возрождение',
-        status: () => (event.statusId === 'stun' ? 'СТАН' : undefined),
+        status: () => statusCaption(event),
         cast: () => castCaption(event),
         world_damage: () =>
             event.amount !== undefined && event.amount <= 0 ? undefined : combatHitLabel(event),
         attack: () => (event.abilityId === 'skeleton_strike' ? 'Костяной удар…' : undefined),
     }
     return captions[event.kind]?.()
+}
+function statusCaption(event: GameEventPayload): string | undefined {
+    if (event.statusId === 'stun') return 'СТАН'
+    return event.statusId === 'defensive_stance' && event.expiresAt === undefined
+        ? 'Оборона'
+        : undefined
 }
 function positiveAmount(event: GameEventPayload, prefix: string): string | undefined {
     return event.amount && event.amount > 0 ? `${prefix}${event.amount}` : undefined
@@ -181,6 +188,7 @@ function attackCue(
 }
 
 function attackDuration(event: GameEventPayload, kind: EffectShape): number {
+    if (event.durationMs !== undefined) return event.durationMs
     if (event.abilityId) return ABILITY_DEFINITIONS[event.abilityId].windupMs
     if (kind === 'arrow') return ABILITY_DEFINITIONS.shot.windupMs
     if (kind === 'spark') return ABILITY_DEFINITIONS.spark.windupMs

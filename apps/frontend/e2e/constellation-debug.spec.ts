@@ -245,7 +245,7 @@ test('atlas compares current levels with every required path instead of claiming
     const prayer = page.locator('[data-required-path="prayer"]')
     await expect(prayer).toHaveAttribute('data-required', '6')
     await expect(prayer).toHaveAttribute('data-current', '0')
-    await expect(prayer).toContainText('Чудеса: требуется 6 · сейчас 0')
+    await expect(prayer).toContainText('Угольная Мать: требуется 6 · сейчас 0')
     await expect(page.getByTestId('debug-star-level-status')).toContainText('Недостаточно уровня')
     await enableInspectedStar(page, 'prayer.harm')
     await selectBuildStar(page, 'prayer.harm1')

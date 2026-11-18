@@ -1,5 +1,9 @@
-import { resolveResurrectionParameters } from '@my-game-ratata/contracts'
+import {
+    isBladeAbility,
+    resolveResurrectionParameters,
+} from '@my-game-ratata/contracts'
 
+import { bladeTechniqueCardResults } from './constellationBladeEffects'
 import { resolveConstellationBonuses } from './constellationBonuses'
 import { fullConstellationCatalog } from './constellationNodes'
 import { prayerAnswerChance } from './prayerProbability'
@@ -28,9 +32,16 @@ export function resolveConstellationCardEffects(
         return undefined
     }
     if (node.effectType !== 'active') {
-        return node.effects === undefined ? undefined : [...node.effects]
+        const results = [...(node.results ?? []), ...(node.effects ?? [])]
+        return results.length === 0 ? undefined : results
     }
-    const effects = [...(node.effects ?? [])]
+    if (isBladeAbility(node.activationAbilityId)) {
+        return bladeTechniqueCardResults(
+            node.activationAbilityId,
+            resolveConstellationBonuses(learnedIds)
+        )
+    }
+    const effects = [...(node.results ?? []), ...(node.effects ?? [])]
     const context: Context = {
         learned: learnedIds,
         bonuses: resolveConstellationBonuses(learnedIds),
@@ -260,6 +271,6 @@ function appendDescription(
 ): void {
     const description = nodes.get(id)?.description
     if (learned.has(id) && description !== undefined) {
-        effects.push(description)
+        effects.push(...(nodes.get(id)?.results ?? [description]))
     }
 }

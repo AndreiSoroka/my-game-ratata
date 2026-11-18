@@ -58,7 +58,7 @@ it('finishes the shared short prayer and resumes scripted movement when the mode
         actorId: f.actor.id,
         target: { kind: 'grave', id: source.id },
     })
-    expect(f.actor.mana).toBe(115)
+    expect(f.actor.mana).toBe(35)
     policy.update(f.actor, room, now + 5_000)
     expect(fallbackCalls).toBe(1)
     expect(f.actor.getMoveInput()).toEqual({ x: 1, y: 0 })

@@ -26,12 +26,15 @@ describe('server-owned constellation discovery', () => {
     it.each(['network_player', 'scripted', 'mob1'] as const)(
         'resolves every eligible opening and banks the rest for %s',
         (controllerKind) => {
-            const actor = hero('vanguard', controllerKind)
+            const actor = hero('ranger', controllerKind)
+            for (const id of ['blade.root', 'life.hp2', 'life.energy2']) {
+                actor.progression.constellations.opened.add(id)
+            }
             const award = [
                 {
                     constellationId: 'blade' as const,
                     experience: Number(
-                        formatMasteryExperience(masteryTotalExperience(12))
+                        formatMasteryExperience(masteryTotalExperience(44))
                     ),
                 },
             ]
@@ -41,7 +44,7 @@ describe('server-owned constellation discovery', () => {
                 receiptId: 'resolved-1',
             }
             awardMasteries(actor, award, options)
-            expect(actor.progression.masteries.blade.level).toBe(12)
+            expect(actor.progression.masteries.blade.level).toBe(44)
             expect(
                 constellationStars
                     .filter((star) => star.constellationId === 'blade')

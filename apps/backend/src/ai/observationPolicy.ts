@@ -2,6 +2,7 @@ import type {
     AdventureDialogue,
     CharacterSnapshot,
 } from '@my-game-ratata/contracts'
+import { isBladeAbility } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
 import { npcAiDecisionError } from './actions'
@@ -53,7 +54,8 @@ export function filterNpcAiDialogue(
 export function npcAiCapabilities(
     role: NpcAiRole,
     targets: readonly NpcAiTarget[],
-    dialogue: AdventureDialogue | null
+    dialogue: AdventureDialogue | null,
+    actor?: GameCharacter
 ): NonNullable<NpcAiObservation['capabilities']> {
     return {
         intentions: [
@@ -61,6 +63,9 @@ export function npcAiCapabilities(
                 'speak',
                 'wait',
                 'cancel_control',
+                ...(actor !== undefined && hasBladeIntention(actor, role)
+                    ? ['use_ability']
+                    : []),
                 'quest_propose',
                 ...(role === 'advisor'
                     ? []
@@ -91,6 +96,17 @@ export function npcAiCapabilities(
             conditionalDangerTriggers: false,
         },
     }
+}
+
+function hasBladeIntention(actor: GameCharacter, role: NpcAiRole): boolean {
+    return [...actor.abilities.known].some(
+        (abilityId) =>
+            isBladeAbility(abilityId) &&
+            npcAiDecisionError(actor, role, {
+                type: 'use_ability',
+                abilityId,
+            }) === undefined
+    )
 }
 
 export function updateNpcAiSocialCapabilities(

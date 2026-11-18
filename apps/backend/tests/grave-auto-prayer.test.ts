@@ -65,9 +65,9 @@ it.each([49, 80])(
             if (events.every((event) => event.phase !== 'started')) {
                 expect(snapshotControl(f.actor).waiting).toBe('range')
                 expect(events).toEqual([])
-                expect(f.actor.mana).toBe(120)
+                expect(f.actor.mana).toBe(40)
             } else {
-                expect(f.actor.mana).toBe(115)
+                expect(f.actor.mana).toBe(35)
             }
             expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(0))
             advanceCharacter({
@@ -102,7 +102,7 @@ it.each([49, 80])(
                 deltaMs: 50,
             })
             f.advance(at)
-            expect(f.actor.mana).toBe(115)
+            expect(f.actor.mana).toBe(35)
             expect(f.service.get(source.id)?.phase).toBe('active')
         }
         // Controllers run before lifecycle completion at the deadline.
@@ -114,8 +114,8 @@ it.each([49, 80])(
             actorId: f.actor.id,
             target: { kind: 'grave', id: source.id },
         })
-        expect(f.actor.mana).toBe(115)
-        expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(10))
+        expect(f.actor.mana).toBe(35)
+        expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(12))
         let completedAt = cast.completesAt
         for (let step = 1; step < 5; step++) {
             advanceCharacterControl(f.actor, world, completedAt)
@@ -130,7 +130,7 @@ it.each([49, 80])(
             completedAt = nextCast.completesAt
         }
         expect(f.service.get(source.id)?.phase).toBe('purified')
-        expect(f.actor.mana).toBe(95)
+        expect(f.actor.mana).toBe(15)
         advanceCharacterControl(f.actor, world, completedAt + 1)
         expect(snapshotControl(f.actor).mode).toBe('none')
     }
@@ -153,6 +153,6 @@ it('does not approach an unseen, distant, purified or ineligible target', () => 
     f.actor.abilities.known.add('pray')
     f.service.purify(source.id, now)
     expect(autoActionStatus(f.actor, action, f.context(now))).toBe('stop')
-    expect(f.actor.mana).toBe(120)
+    expect(f.actor.mana).toBe(40)
     expect(masteryExperience(f.actor, 'prayer')).toBe(prayerXp(0))
 })

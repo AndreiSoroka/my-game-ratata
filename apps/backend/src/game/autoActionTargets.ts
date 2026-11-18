@@ -97,7 +97,7 @@ export function untargetedAction(
 export function visibleTarget(
     actor: GameCharacter,
     target: GameCharacter | undefined,
-    context: AbilityContext
+    context: Pick<AbilityContext, 'navigation' | 'now'>
 ): target is GameCharacter {
     if (
         target === undefined ||

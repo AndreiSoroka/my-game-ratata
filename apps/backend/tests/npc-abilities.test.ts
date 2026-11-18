@@ -39,7 +39,7 @@ it('scripted support priest submits the same paid contextual prayer and respects
     const { world, published, context } = npcWorld([actor, wounded])
     const controller = new ClericController()
     controller.update(actor, world as GameRoom, 1000)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     published.push(
         ...advanceRevive(
             actor,
@@ -49,13 +49,13 @@ it('scripted support priest submits the same paid contextual prayer and respects
             { ...context, now: 4000 }
         )
     )
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
     expect(wounded.hp).toBeGreaterThan(wounded.maxHp - 12)
     expect(published).toContainEqual(
         expect.objectContaining({ kind: 'heal', targetId: wounded.id })
     )
     controller.update(actor, world as GameRoom, 3999)
-    expect(actor.mana).toBe(115)
+    expect(actor.mana).toBe(35)
 })
 it('chooses a safe basic prayer over mixed harm and never takes over a human', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')

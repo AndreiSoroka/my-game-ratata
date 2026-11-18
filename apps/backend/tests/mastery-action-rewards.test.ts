@@ -69,9 +69,9 @@ describe('meaningful non-prayer mastery awards', () => {
             const { actor, attack } = encounter(kind)
             attemptAbilityAttack(attack, 'spark')
             resolvePendingAttackHit({ ...attack, now: 1200 })
-            expect(total(actor, 'magic')).toBe(parseMasteryExperience('25'))
+            expect(total(actor, 'magic')).toBe(parseMasteryExperience('30'))
             resolvePendingAttackHit({ ...attack, now: 1201 })
-            expect(total(actor, 'magic')).toBe(parseMasteryExperience('25'))
+            expect(total(actor, 'magic')).toBe(parseMasteryExperience('30'))
         }
     )
 })
@@ -81,7 +81,7 @@ describe('practice evidence keeps discovery weights', () => {
         const { actor, attack } = encounter()
         attemptAbilityAttack(attack, 'spark')
         resolvePendingAttackHit({ ...attack, now: 1200 })
-        expect(total(actor, 'magic')).toBe(parseMasteryExperience('25'))
+        expect(total(actor, 'magic')).toBe(parseMasteryExperience('30'))
         expect(actor.progression.constellations.evidence['arcana']).toBe(1)
         const neutral = abilityHero('arcanist')
         for (const candidate of [actor, neutral]) {
@@ -106,7 +106,7 @@ describe('practice evidence keeps discovery weights', () => {
 
 describe('weapon and spell mastery rewards', () => {
     it.each([
-        ['blade', 15],
+        ['blade', 18],
         ['arrow', 20],
     ] as const)('awards %s only for a real paid hit', (path, reward) => {
         const { actor, target, attack } = encounter(
@@ -125,8 +125,8 @@ describe('weapon and spell mastery rewards', () => {
         expect(total(actor, path)).toBe(parseMasteryExperience(String(reward)))
     })
     it.each([
-        ['fireball', 40],
-        ['greater_fireball', 70],
+        ['fireball', 48],
+        ['greater_fireball', 84],
     ] as const)(
         'awards %s mastery from useful hostile damage',
         (id, reward) => {
@@ -236,7 +236,7 @@ describe('mastery rewards preserve action boundaries', () => {
             context
         )
         expect(actor.progression.masteries.magic.experience).toBe(
-            masteryRewardMicros(40, factors.magic)
+            masteryRewardMicros(48, factors.magic)
         )
     })
 })
@@ -253,10 +253,10 @@ describe('new knowledge rewards', () => {
         student.progression.masteries.magic.level = 3
         learnFireball(student, teacher, 1100)
         expect(student.abilities.known.has('fireball')).toBe(true)
-        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('50'))
+        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('60'))
         expect(student.progression.masteries.magic.experience).toBe(0n)
         expect(learnFireball(student, teacher, 1200)).toEqual([])
-        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('50'))
+        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('60'))
     })
     it('releases a banked Magic opening immediately when newly learned Fireball fulfils its last condition', () => {
         const student = abilityHero('arcanist')
@@ -277,7 +277,7 @@ describe('new knowledge rewards', () => {
         ).toBe(true)
         expect(student.progression.constellations.credits.magic).toBe(0)
         expect(student.progression.masteries.magic.experience).toBe(0n)
-        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('50'))
+        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('60'))
     })
     it('pays a player teacher once and preserves free knowledge for the student', () => {
         const teacher = abilityHero('arcanist')
@@ -285,10 +285,10 @@ describe('new knowledge rewards', () => {
         teacher.abilities.known.add('fireball')
         student.progression.masteries.magic.level = 3
         teachMagic(teacher, student, 1000)
-        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('50'))
+        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('60'))
         expect(student.progression.masteries.magic.experience).toBe(0n)
         expect(teachMagic(teacher, student, 1100)).toEqual([])
-        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('50'))
+        expect(total(teacher, 'magic')).toBe(parseMasteryExperience('60'))
     })
     it('pays only the three real new chapters', () => {
         const student = abilityHero('arcanist')
@@ -297,8 +297,8 @@ describe('new knowledge rewards', () => {
         for (const now of [1000, 1100, 1200]) {
             studyMagic(student, teacher, now)
         }
-        expect(total(student, 'magic')).toBe(parseMasteryExperience('150'))
+        expect(total(student, 'magic')).toBe(parseMasteryExperience('180'))
         expect(studyMagic(student, teacher, 1300)).toEqual([])
-        expect(total(student, 'magic')).toBe(parseMasteryExperience('150'))
+        expect(total(student, 'magic')).toBe(parseMasteryExperience('180'))
     })
 })

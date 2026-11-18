@@ -36,6 +36,8 @@ import {
     createPendingAttackHit,
     type PendingAttackHit,
 } from './characterState'
+import { movementInputLocked } from './combatMovement'
+import { createCombatState } from './combatState'
 import { initializeConstellations } from './constellations'
 import { effectiveMaxHp } from './effectiveResources'
 import { createCharacterConfig } from './heroClasses'
@@ -82,6 +84,7 @@ export class GameCharacter {
     public readonly soul: SoulSnapshot
     public progression: CharacterProgression = createProgression()
     public movement = createMovementState()
+    public combat = createCombatState()
     public resourcePractice = createResourcePractice()
     public martyr = createMartyrState()
     public level = 1
@@ -174,7 +177,7 @@ export class GameCharacter {
     }
 
     public setMoveInput(axis: Vector2): void {
-        if (this.alive && this.abilities.casting?.mother?.lastLight === true) {
+        if (movementInputLocked(this)) {
             this.input = zeroVector()
             return
         }
@@ -190,7 +193,7 @@ export class GameCharacter {
     }
 
     public setPath(path: Vector2[]): void {
-        if (this.alive && this.abilities.casting?.mother?.lastLight === true) {
+        if (movementInputLocked(this)) {
             return
         }
         this.path = path

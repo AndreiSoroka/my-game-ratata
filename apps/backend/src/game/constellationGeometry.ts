@@ -6,6 +6,7 @@ export interface SkyEdge {
     from: string
     to: string
     via?: readonly SkyPoint[]
+    crossLink?: boolean
 }
 const epsilon = 1e-7
 
@@ -91,6 +92,8 @@ function edgeIntersectionProblem(
             if (
                 next !== undefined &&
                 nextPoints !== undefined &&
+                edge.crossLink !== true &&
+                next.crossLink !== true &&
                 pathsIntersect(
                     points,
                     nextPoints,

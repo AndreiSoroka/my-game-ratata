@@ -42,7 +42,8 @@ describe('standalone constellation debug data', () => {
                 effectType: authored?.effectType,
                 parents: authored?.parents,
             })
-            expect(node.effects).toEqual(authored?.effects)
+            const authoredEffects = [...(authored?.results ?? []), ...(authored?.effects ?? [])]
+            expect(node.effects).toEqual(authoredEffects.length === 0 ? undefined : authoredEffects)
             expect(Number.isFinite(node.x) && Number.isFinite(node.y)).toBe(true)
         }
         for (const edge of snapshot.edges) {
@@ -50,7 +51,7 @@ describe('standalone constellation debug data', () => {
             expect(snapshot.nodes.find((node) => node.id === edge.to)?.parents).toContain(edge.from)
             expect(edge.via).toEqual(realized.edgeWaypoints[`${edge.from}>${edge.to}`])
         }
-        expect(snapshot.nodes.filter((node) => node.effectType === 'active')).toHaveLength(8)
+        expect(snapshot.nodes.filter((node) => node.effectType === 'active')).toHaveLength(13)
         expect(snapshot.nodes.find((node) => node.id === 'prayer.revive')?.effectType).toBe(
             'passive'
         )

@@ -17,7 +17,7 @@ export function useSavedHotbarBindings(player: () => CharacterSnapshot) {
     const saved = inject(sessionKey, undefined)
     const identity = computed(() => {
         const actor = player()
-        return JSON.stringify([actor.id, actor.nickname, actor.heroClass, actor.visualId])
+        return hotbarIdentityKey(actor)
     })
     const load = () => copy(saved?.get(identity.value) ?? defaultHotbarBindings(player()))
     const bindings = ref<Bindings>(load())
@@ -41,4 +41,8 @@ export function useSavedHotbarBindings(player: () => CharacterSnapshot) {
 
 function copy(bindings: Bindings): Bindings {
     return bindings.map((binding) => (binding === null ? null : { ...binding }))
+}
+
+export function hotbarIdentityKey(actor: CharacterSnapshot): string {
+    return JSON.stringify([actor.id, actor.nickname, actor.heroClass, actor.visualId])
 }

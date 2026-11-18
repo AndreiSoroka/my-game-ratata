@@ -65,6 +65,12 @@ describe('published target ranks of both Mother prayer actions', () => {
         expect(prayerParameters(actor, 24, 'pray').targetLimit).toBe(20)
         expect(actor.abilities.known.has('pray_woven')).toBe(false)
         prepareConstellationLayout(actor)
+        expect(
+            snapshotConstellations(actor).nodes.find(
+                (node) => node.id === constellationWireId('prayer.root')
+            )?.effects
+        ).toBeUndefined()
+        actor.progression.constellations.opened.add('prayer.insight3')
         const snapshot = snapshotConstellations(actor)
         const ordinary = snapshot.nodes.find(
             (node) => node.id === constellationWireId('prayer.root')

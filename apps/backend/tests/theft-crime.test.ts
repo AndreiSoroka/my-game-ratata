@@ -74,7 +74,14 @@ describe('noticed theft and personal retaliation', () => {
         expect(service.update(room, characters, 1_000).has(veteran.id)).toBe(
             true
         )
-        expect(events).toContainEqual({ kind: 'attack', actorId: veteran.id })
+        expect(events).toContainEqual(
+            expect.objectContaining({
+                kind: 'attack',
+                actorId: veteran.id,
+                attackOrigin: 'basic',
+                delivery: 'melee_physical',
+            })
+        )
         expect(actor.hp).toBe(actor.maxHp)
         expect(veteran.faction).toBe('peaceful')
         const hits = resolvePendingAttackHit({

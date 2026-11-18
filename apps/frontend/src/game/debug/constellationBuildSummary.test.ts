@@ -1,3 +1,4 @@
+import { bladeAbilityIds } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
@@ -33,7 +34,9 @@ describe('each passive owns only its authored effect', () => {
         }
     })
     it('shows one contribution for sequential upgrades rather than their accumulated value', () => {
-        expect(values('blade.damage2')).toEqual({ 'Усиление урона мечом': '+10%' })
+        expect(values('blade.damage2')).toEqual({
+            'Результат 1': 'Урон клинка увеличен ещё на 15%.',
+        })
         expect(values('arrow.damage2')).toEqual({ 'Усиление урона Выстрела': '+10%' })
         expect(values('arrow.range2')).toEqual({ 'Добавка к дальности Выстрела': '+1 клетка' })
         expect(values('shadow.noise2')).toEqual({ 'Шум движения крадучись': '−15%' })
@@ -56,7 +59,8 @@ describe('each passive owns only its authored effect', () => {
         ])
         expect(charged).toEqual(before)
         expect(values('magic.root')).toEqual({ 'Дополнительный численный эффект': 'Нет' })
-        expect(values('blade.root')).toEqual({ 'Дополнительный численный эффект': 'Нет' })
+        expect(Object.values(values('blade.root'))).toContain('Урон клинка увеличен на 10%.')
+        expect(Object.keys(values('blade.root'))).toHaveLength(5)
     })
 })
 
@@ -66,7 +70,7 @@ describe('standalone actions own only their complete applicable build', () => {
             nonPrayer
                 .filter((node) => node.effectType === 'active')
                 .map((node) => node.activationAbilityId)
-        ).toEqual(['shot', 'fireball', 'greater_fireball'])
+        ).toEqual(['shot', ...bladeAbilityIds, 'fireball', 'greater_fireball'])
         for (const node of nonPrayer.filter((entry) => entry.effectType === 'active')) {
             const result = describeConstellationBuild(node.id, all)
             expect(result.effectType).toBe('active')

@@ -6,6 +6,10 @@ import type {
 
 import { skyComponents, variedComponent } from './constellationComponents'
 import {
+    constellationTopologyEdges,
+    routeConstellationCrossLinks,
+} from './constellationEdgeRouting'
+import {
     constellationGeometryProblem,
     distanceSquared,
     type SkyPoint,
@@ -51,8 +55,8 @@ export function generateConstellationLayout(
         if (positions === undefined) {
             continue
         }
-        const edges = topology.flatMap((node) =>
-            node.parents.map((from) => ({ from, to: node.id }))
+        const edges = constellationTopologyEdges(topology).filter(
+            (edge) => edge.crossLink !== true
         )
         const rounded = roundedPositions(positions)
         if (constellationGeometryProblem(rounded, edges) === undefined) {
@@ -75,8 +79,8 @@ export function generateConstellationLayout(
         throw new Error('Certified constellation packing failed')
     }
     const positions = roundedPositions(fallback)
-    const edges = topology.flatMap((node) =>
-        node.parents.map((from) => ({ from, to: node.id }))
+    const edges = constellationTopologyEdges(topology).filter(
+        (edge) => edge.crossLink !== true
     )
     const problem = constellationGeometryProblem(positions, edges)
     if (problem !== undefined) {
@@ -96,8 +100,10 @@ function candidatePositions(
         const positions = variedComponent(component, random, !fallback)
         if (
             !fallback &&
-            constellationGeometryProblem(positions, component.edges) !==
-                undefined
+            constellationGeometryProblem(
+                positions,
+                component.edges.filter((edge) => edge.crossLink !== true)
+            ) !== undefined
         ) {
             return undefined
         }
@@ -162,10 +168,25 @@ function realizedLayout(
         minimumNodeSpacing: minimumSpacing(positions),
         regions,
     }
+    const edges = constellationTopologyEdges(topology)
+    const edgeWaypoints = routeConstellationCrossLinks(positions, edges)
+    const problem = constellationGeometryProblem(
+        positions,
+        edges.map((edge) => ({
+            ...edge,
+            via: edgeWaypoints[`${edge.from}>${edge.to}`] ?? [],
+        }))
+    )
+    if (problem !== undefined) {
+        throw new Error(`Invalid routed constellation sky: ${problem}`)
+    }
     return {
         layout,
         positions,
-        edgeWaypoints: {},
+        crossLinks: edges
+            .filter((edge) => edge.crossLink === true)
+            .map((edge) => `${edge.from}>${edge.to}`),
+        edgeWaypoints,
         diagnostics: { attempts, usedFallback },
     }
 }

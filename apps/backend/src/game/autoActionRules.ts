@@ -29,10 +29,7 @@ import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
 import { canAttackCharacter } from './combatTargets'
-import {
-    effectiveAbility,
-    effectiveAttackCooldown,
-} from './effectiveParameters'
+import { effectiveAbility } from './effectiveParameters'
 import { distance } from './math'
 import { planMotherPrayer } from './motherPrayerPlan'
 import { prayerHarmTargets } from './prayerContext'
@@ -175,27 +172,27 @@ function reached(
 }
 function cooldownAt(actor: GameCharacter, action: CombatAction): number {
     if (action.kind === 'attack') {
-        return actor.lastAttackAt + effectiveAttackCooldown(actor)
+        return actor.combat.readyAt
     }
     if (action.kind === 'prayer') {
-        return prayerAvailableAt(actor, action.abilityId ?? 'pray')
+        return Math.max(
+            actor.combat.readyAt,
+            prayerAvailableAt(actor, action.abilityId ?? 'pray')
+        )
     }
 
     if (
         action.abilityId === 'fireball' ||
         action.abilityId === 'greater_fireball'
     ) {
-        return actor.progression.spellAvailableAt
+        return Math.max(
+            actor.combat.readyAt,
+            actor.progression.spellAvailableAt
+        )
     }
     return Math.max(
-        actor.abilities.availableAt[action.abilityId] ?? 0,
-        action.abilityId === 'barrier'
-            ? 0
-            : actor.lastAttackAt +
-                  Math.min(
-                      effectiveAttackCooldown(actor),
-                      effectiveAbility(actor, action.abilityId).cooldownMs
-                  )
+        actor.combat.readyAt,
+        actor.abilities.availableAt[action.abilityId] ?? 0
     )
 }
 function refusesAutoCombat(

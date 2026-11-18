@@ -211,7 +211,14 @@ describe('guards enforce the city list through sight and common combat', () => {
         actor.tags.delete('offline')
         actor.position.x = 140
         expect(service.update(room, characters, 1_400).has(guard.id)).toBe(true)
-        expect(events).toContainEqual({ kind: 'attack', actorId: guard.id })
+        expect(events).toContainEqual(
+            expect.objectContaining({
+                kind: 'attack',
+                actorId: guard.id,
+                attackOrigin: 'basic',
+                delivery: 'melee_physical',
+            })
+        )
         const hp = actor.hp
         resolvePendingAttackHit({
             actor: guard,

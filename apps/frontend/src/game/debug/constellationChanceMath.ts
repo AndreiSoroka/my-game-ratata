@@ -10,10 +10,6 @@ export function criticalChance(base: number, bonus = 0): number {
     return Math.min(0.95, base + bonus)
 }
 
-export function swordDodgeChance(base: number, equipment: number, soundSword: boolean): number {
-    return Math.min(0.95, Math.max(0, Math.min(0.95, base + equipment)) + (soundSword ? 0.03 : 0))
-}
-
 /** Explanatory examples only: the authoritative service still owns the actual two rolls. */
 export function theftEffectChances(front: boolean, bonus: number) {
     const detected = Math.max(0.1, Math.min(0.9, 0.68 + (front ? 0.12 : -0.08)))

@@ -127,7 +127,7 @@ describe('earned effects of active constellation cards', () => {
             fullConstellationCatalog.filter(
                 (node) => node.effectType === 'active'
             )
-        ).toHaveLength(8)
+        ).toHaveLength(13)
         for (const node of fullConstellationCatalog.filter(
             (entry) => entry.effectType === 'active'
         )) {
@@ -145,7 +145,9 @@ describe('passive card data and catalogue isolation', () => {
             (entry) => entry.effectType === 'passive'
         )) {
             expect(resolveConstellationCardEffects(node.id, all)).toEqual(
-                node.effects
+                [...(node.results ?? []), ...(node.effects ?? [])].length === 0
+                    ? undefined
+                    : [...(node.results ?? []), ...(node.effects ?? [])]
             )
         }
         expect(

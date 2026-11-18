@@ -1,4 +1,11 @@
-import type { GameEventPayload, ServerMessage } from '@my-game-ratata/contracts'
+import {
+    CENTER_LOCATION_ID,
+    type GameEventPayload,
+    type HeroClass,
+    readTrainingMapData,
+    type ServerMessage,
+    type Vector2,
+} from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
 const areaId = 'map-2-2:training:yard-1'
@@ -8,15 +15,10 @@ test('shows the learned prayer radius in the authored training interior without 
     page,
 }, info) => {
     test.setTimeout(60_000)
-    await page.goto('/?test=1')
-    await page.waitForFunction(() => Boolean(window.__ratataTest))
-    await page.evaluate(
-        (name) => window.__ratataTest!.join(name, 'cleric'),
-        `prayer-yard-${info.project.name}`
-    )
+    const yard = await join(page, `prayer-yard-${info.project.name}`, 'cleric')
     const canvas = page.locator('canvas[data-game-canvas=true]')
     await expect(canvas).not.toHaveAttribute('data-training-prayer-radius')
-    await navigate(page, { x: 1024, y: 792 })
+    await navigate(page, yard.inside)
     const prayer = await page.evaluate(
         () => window.__ratataTest!.getState().player!.abilities!.prayer!
     )
@@ -24,7 +26,7 @@ test('shows the learned prayer radius in the authored training interior without 
     await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
     await expect(canvas).toHaveAttribute('data-training-prayer-radius', String(prayer.radius))
     await page.screenshot({ path: info.outputPath('training-prayer-radius.png') })
-    await navigate(page, { x: 920, y: 792 })
+    await navigate(page, yard.outside)
     await expect(canvas).not.toHaveAttribute('data-training-prayer-radius')
 })
 
@@ -56,10 +58,10 @@ for (const mobile of [false, true]) {
             mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
         )
         const name = `yard-${info.project.name}-${mobile}`
-        await join(page, name)
+        const yard = await join(page, name)
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(canvas).not.toHaveAttribute('data-training-guides')
-        await navigate(page, { x: 1024, y: 792 })
+        await navigate(page, yard.inside)
         await expect(canvas).toHaveAttribute('data-training-guides', areaId)
         await canvas.focus()
         const selected = page.getByLabel('Выбранная цель')
@@ -76,13 +78,13 @@ for (const mobile of [false, true]) {
         await page.screenshot({ path: info.outputPath('training-inside.png') })
         await page.screenshot({ path: `/tmp/ratata-training-${mobile ? 'mobile' : 'desktop'}.png` })
 
-        await navigate(page, { x: 920, y: 792 })
+        await navigate(page, yard.outside)
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         const outsideHit = hits.length
         // A second ranger connects and walks through the same validated socket
         // commands. Its shot is observed from outside without opening another
         // WebGL page or changing either character's authoritative state.
-        const guest = await shootAsGuest(page, socketUrl, `${name}-g`)
+        const guest = await shootAsGuest(page, socketUrl, `${name}-g`, yard.inside)
         expect(guest.amount).toBeGreaterThan(0)
         await expect
             .poll(() => hits.slice(outsideHit).some((hit) => hit.actorId === guest.actorId))
@@ -91,7 +93,7 @@ for (const mobile of [false, true]) {
         expect(observedGuest).not.toHaveProperty('amount')
         expect(await dummyState(page)).toEqual(before)
         expect(await page.evaluate(() => window.__ratataTest!.getState().player!.position)).toEqual(
-            { x: 920, y: 792 }
+            yard.outside
         )
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         await page.screenshot({ path: info.outputPath('training-outside.png') })
@@ -133,11 +135,28 @@ for (const mobile of [false, true]) {
     })
 }
 
-async function join(page: Page, name: string): Promise<void> {
+async function join(page: Page, name: string, heroClass: HeroClass = 'ranger') {
     await page.goto('/?test=1')
     await page.waitForFunction(() => Boolean(window.__ratataTest))
-    await page.evaluate((name) => window.__ratataTest!.join(name, 'ranger'), name)
+    const cityMap = page.waitForResponse((response) => {
+        const path = new URL(response.url()).pathname
+        return path.startsWith('/world/maps/') && path.endsWith(`/${CENTER_LOCATION_ID}.json`)
+    })
+    await page.evaluate(({ name, heroClass }) => window.__ratataTest!.join(name, heroClass), {
+        name,
+        heroClass,
+    })
     await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
+    const map = (await (await cityMap).json()) as Parameters<typeof readTrainingMapData>[0]
+    const training = readTrainingMapData(map, CENTER_LOCATION_ID)
+    const area = training.areas.find((candidate) => candidate.id === areaId)!
+    const dummy = training.targets.find((candidate) => candidate.id === dummyId)!
+    // The generated yard keeps its authored west entrance aligned with the
+    // dummy; stay inside Shot range and just outside its interior respectively.
+    return {
+        inside: { x: dummy.position.x - map.tilewidth * 3.5, y: dummy.position.y },
+        outside: { x: area.bounds.x - map.tilewidth / 2, y: dummy.position.y },
+    }
 }
 
 async function selectTrainingTarget(page: Page): Promise<void> {
@@ -171,9 +190,9 @@ async function dummyState(page: Page) {
     }, dummyId)
 }
 
-async function shootAsGuest(page: Page, url: string, name: string) {
+async function shootAsGuest(page: Page, url: string, name: string, inside: Vector2) {
     return page.evaluate(
-        ({ url, name, dummyId }) =>
+        ({ url, name, dummyId, inside }) =>
             new Promise<{
                 amount: number | undefined
                 actorId: string
@@ -198,9 +217,7 @@ async function shootAsGuest(page: Page, url: string, name: string) {
                     const message = JSON.parse(String(data)) as ServerMessage
                     if (message.type === 'world_init') {
                         actorId = message.playerId
-                        socket.send(
-                            JSON.stringify({ type: 'move_to', target: { x: 1024, y: 792 } })
-                        )
+                        socket.send(JSON.stringify({ type: 'move_to', target: inside }))
                     }
                     if (message.type === 'snapshot') {
                         const actor = message.snapshot.characters.find(
@@ -209,7 +226,7 @@ async function shootAsGuest(page: Page, url: string, name: string) {
                         if (
                             !fired &&
                             actor &&
-                            Math.hypot(actor.position.x - 1024, actor.position.y - 792) < 1
+                            Math.hypot(actor.position.x - inside.x, actor.position.y - inside.y) < 1
                         ) {
                             fired = true
                             socket.send(
@@ -234,6 +251,6 @@ async function shootAsGuest(page: Page, url: string, name: string) {
                     }
                 })
             }),
-        { url, name, dummyId }
+        { url, name, dummyId, inside }
     )
 }

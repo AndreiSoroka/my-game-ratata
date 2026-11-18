@@ -166,7 +166,7 @@ export async function assertBuildWorkflow(
     await expect(page.getByTestId('debug-mastery-total')).toHaveText('19\u00a0067,49 XP')
     await expect(page.getByTestId('debug-mastery-pending')).toContainText('9')
     await expect(page.getByTestId('debug-mastery-next')).toHaveText(
-        '157 действий · 0 / 4\u00a0687,22 XP'
+        '131 действий · 0 / 4\u00a0687,22 XP'
     )
     await selectBuildStar(page, 'prayer.root')
     await expect(buildMetric(page, 'Множитель кары')).toHaveText('×5,6')

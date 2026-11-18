@@ -95,10 +95,26 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
     const f = setup()
     f.target.position.x = 95
     const skills = structuredClone(f.actor.progression.masteries)
-    expect(f.spark()[0]).toEqual({
+    const { actionId, ...event } = f.spark()[0] ?? {}
+    expect(typeof actionId).toBe('string')
+    expect(event).toEqual({
         kind: 'attack',
         actorId: f.actor.id,
         abilityId: 'spark',
+        attackOrigin: 'ability',
+        delivery: 'magic',
+        attackGeometry: {
+            kind: 'rectangles',
+            zones: [
+                {
+                    minX: 100,
+                    minY: 84,
+                    maxX: 180,
+                    maxY: 116,
+                    ownerId: f.actor.id,
+                },
+            ],
+        },
         projectile: {
             origin: { x: 100, y: 100 },
             endpoint: { x: 180, y: 100 },
@@ -106,7 +122,7 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
         },
     })
     expect(f.actor.facing).toBe('right')
-    expect(f.actor.mana).toBe(94)
+    expect(f.actor.mana).toBe(64)
     expect(f.actor.energy).toBe(95)
     expect(resolvePendingAttackHit(f.attack(1199))).toEqual([])
     expect(resolvePendingAttackHit(f.attack(1200))).toEqual([

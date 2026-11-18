@@ -11,6 +11,7 @@ import {
     INVENTORY_CAPACITY,
     type InventoryActionKind,
     type ItemInstanceSnapshot,
+    resolveCombatWeapon,
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -52,6 +53,9 @@ const focusSurface = useInventoryFocus(panel, () => emit('close'))
 const selectedItemId = ref<string>()
 const focusedItemId = ref<string>()
 const assignedSlot = ref<number>()
+const fallbackWeapon = computed(() =>
+    resolveCombatWeapon(props.character.archetype, props.character.equipment.weapon)
+)
 const equipmentSlots: EquipmentSlotId[] = ['weapon', 'boots']
 const inventorySlots = computed(() =>
     Array.from({ length: INVENTORY_CAPACITY }, (_, index) => props.character.inventory[index])
@@ -183,6 +187,12 @@ function unequip(slot: EquipmentSlotId): void {
                     :key="slot"
                     class="equipment-slot"
                     type="button"
+                    :title="
+                        slot === 'weapon'
+                            ? (fallbackWeapon.description ?? fallbackWeapon.name)
+                            : undefined
+                    "
+                    :aria-description="slot === 'weapon' ? fallbackWeapon.description : undefined"
                     @click="unequip(slot)"
                 >
                     <span class="equipment-slot__label">{{
@@ -195,6 +205,28 @@ function unequip(slot: EquipmentSlotId): void {
                             :src="itemAssetCatalog[character.equipment[slot].itemId].src"
                             :alt="itemName(character.equipment[slot])"
                         />
+                        <svg
+                            v-else-if="slot === 'weapon' && fallbackWeapon.kind === 'knife'"
+                            viewBox="0 0 32 32"
+                            width="32"
+                            height="32"
+                            role="img"
+                            aria-label="Походный нож"
+                        >
+                            <path
+                                d="M25 3 27 5 16 21 12 17Z"
+                                fill="#c7d3d3"
+                                stroke="#4f686b"
+                                stroke-width="2"
+                            />
+                            <path
+                                d="m12 17 4 4-8 8-4-4Z"
+                                fill="#91643e"
+                                stroke="#352a22"
+                                stroke-width="2"
+                            />
+                            <path d="m10 17 7 7" stroke="#d4ba76" stroke-width="3" />
+                        </svg>
                     </span>
                     <ItemCondition
                         v-if="character.equipment[slot]"

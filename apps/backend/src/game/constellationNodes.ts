@@ -5,6 +5,7 @@ import {
     type ConstellationStar,
     constellationStars,
 } from './constellationCatalog'
+import { withPrayerLore } from './constellationPrayerLore'
 import { revivalStars } from './constellationRevivalStars'
 
 const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
@@ -15,6 +16,7 @@ const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
     prayer_grave: 'pray_grave',
 }
 const rootNames: Partial<Record<ConstellationId, string>> = {
+    prayer: 'Молитва',
     prayer_road: 'Молитва странника',
     prayer_lantern: 'Молитва ясности',
     prayer_grave: 'Молитва праха',
@@ -36,6 +38,17 @@ const roots: ConstellationStar[] = constellationPaths.map((path) => {
         ...(ability === undefined
             ? {}
             : { ability, activationAbilityId: ability }),
+        ...(path.id === 'blade'
+            ? {
+                  results: [
+                      'Урон клинка увеличен на 10%.',
+                      'Время обычного удара сокращено на 5%.',
+                      'Стоимость обычного удара уменьшена на 5%.',
+                      'Уклонение от ближних физических атак увеличено на 5 процентных пунктов.',
+                      'Полученное оглушение короче на 5%.',
+                  ],
+              }
+            : {}),
         ...(path.id === 'prayer'
             ? {
                   effects: [
@@ -143,11 +156,16 @@ const authoredNodes = [
     ...revivalStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
-    Object.freeze(authoredNodes.map((node) => freezeStar({ ...node })))
+    Object.freeze(
+        authoredNodes.map((node) => freezeStar(withPrayerLore({ ...node })))
+    )
 
 function freezeStar(node: ConstellationStar): Readonly<ConstellationStar> {
     Object.freeze(node.parents)
     Object.freeze(node.evidence)
+    if (node.results !== undefined) {
+        Object.freeze(node.results)
+    }
     if (node.effects !== undefined) {
         Object.freeze(node.effects)
     }

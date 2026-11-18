@@ -46,11 +46,23 @@ export function characterFrame(
     return {
         action,
         row,
-        frame: animationFrame(playable, action, now, { animation: { action, startedAt } }),
+        frame: animationFrame(playable, action, now, {
+            animation: frameTiming(snapshot, action, startedAt),
+        }),
         flipHorizontal: snapshot.facing === 'left',
     }
 }
 
 function isNativeHumanDeath(definition: CharacterDefinition, action: string): boolean {
     return action === 'death' && nativeHumanIds.has(definition.id)
+}
+
+function frameTiming(
+    snapshot: Pick<CharacterSnapshot, 'animation'>,
+    action: CharacterSnapshot['animation']['action'],
+    startedAt: number
+) {
+    return action === 'attack'
+        ? { ...snapshot.animation, action, startedAt }
+        : { action, startedAt }
 }

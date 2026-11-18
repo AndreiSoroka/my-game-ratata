@@ -1,0 +1,53 @@
+import type { SkyPoint } from './constellationGeometry'
+
+/** Certified primary branches; additional mandatory AND links are routed independently. */
+export const bladeTemplatePositions: Record<string, SkyPoint> =
+    Object.fromEntries(
+        Object.entries({
+            root: [0, 0],
+            damage1: [-600, -500],
+            damage2: [-1200, -1000],
+            stun1: [-800, -1300],
+            stun2: [-1000, -1800],
+            stun3: [-1400, -2300],
+            pommel_strike: [-500, -1800],
+            pommel_stun: [-500, -2300],
+            pommel_break: [-700, -2800],
+            economy: [-600, 500],
+            economy2: [-1000, 200],
+            wide_swing: [-1100, 700],
+            wide_arc: [-1500, 900],
+            wide_flow: [-1900, 1100],
+            circular_swing: [-1500, 1400],
+            circle_ring: [-1700, 1800],
+            circle_axis: [-1900, 2200],
+            tempo: [100, -700],
+            tempo2: [200, -1200],
+            combo1: [500, -1600],
+            combo2: [900, -1900],
+            combo3: [1200, -2300],
+            critical: [-100, -1100],
+            critical2: [-300, -1600],
+            ideal_position: [500, -1000],
+            fluid_stance: [1000, -1300],
+            lunge: [700, -600],
+            long_lunge: [1200, -700],
+            lunge_recovery: [1600, -800],
+            dodge: [700, 0],
+            dodge2: [1200, -100],
+            counterattack: [1100, 400],
+            defensive_stance: [600, 600],
+            guard_strong: [900, 1100],
+            arrow_deflect: [1400, 1400],
+            long_frontier: [700, 1600],
+            resolve: [100, 800],
+            resolve2: [0, 1300],
+            steel_sinew: [-100, 1800],
+            insight1: [-500, -100],
+            insight2: [-1000, -200],
+            insight3: [-1500, -300],
+        }).map(([id, [x = 0, y = 0]]) => [
+            `blade.${id}`,
+            { x: x * 0.5 + 4800, y: y * 0.5 },
+        ])
+    )

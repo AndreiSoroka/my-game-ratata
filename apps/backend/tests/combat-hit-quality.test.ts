@@ -5,7 +5,9 @@ import type { PendingAttackHit } from '../src/game/characterState'
 import { attemptAttack, resolvePendingAttackHit } from '../src/game/combat'
 import { resolveAttackDamage } from '../src/game/combatDamage'
 import { combatHitQuality } from '../src/game/combatHitQuality'
+import { createItemInstance } from '../src/game/inventory'
 import { abilityHero } from './abilityTestHelpers'
+import { bladeDuel } from './bladeCombatFixture'
 import { trainingCombatFixture } from './trainingCombatFixture'
 
 describe('authoritative hit quality', () => {
@@ -33,8 +35,7 @@ describe('authoritative hit quality', () => {
 
     it('does not infer energy shortage from an unrelated final damage multiplier', () => {
         const actor = abilityHero('cleric')
-        actor.config.combat.minDamage = 10
-        actor.config.combat.maxDamage = 10
+        actor.equipment.weapon = createItemInstance('simple_sword')
         const attack: PendingAttackHit = {
             canStun: false,
             damageMultiplier: 0.5,
@@ -57,8 +58,7 @@ describe('authoritative hit quality', () => {
     it('keeps raw-roll quality independent from lethal HP clipping and barrier absorption', () => {
         const actor = abilityHero('cleric')
         actor.config.combat.damageMultiplier = 1
-        actor.config.combat.minDamage = 5
-        actor.config.combat.maxDamage = 14
+        actor.equipment.weapon = createItemInstance('simple_sword')
         const attack: PendingAttackHit = {
             canStun: false,
             damageMultiplier: 1,
@@ -69,7 +69,7 @@ describe('authoritative hit quality', () => {
         const random = () => [0.99, 0.9][index++] ?? 0.9
         const roll = resolveAttackDamage(actor, attack, random)
         expect(roll).toEqual({
-            amount: 14,
+            amount: 11,
             critical: false,
             hitQuality: 'strong',
         })
@@ -104,7 +104,9 @@ describe('authoritative hit quality', () => {
             })
         )
     })
+})
 
+describe('resolved hit and miss quality', () => {
     it('emits one miss for a completed empty swing, and none for a rejected command', () => {
         const f = trainingCombatFixture()
         f.dummy.position.y = 300
@@ -113,22 +115,31 @@ describe('authoritative hit quality', () => {
         const context = { ...f.attack(), targets: [], targetId: undefined }
         expect(attemptAttack(context)).toHaveLength(1)
         expect(resolvePendingAttackHit({ ...context, now: 1050 })).toEqual([
-            { kind: 'miss', actorId: f.actor.id, hitQuality: 'miss' },
+            expect.objectContaining({
+                kind: 'miss',
+                actorId: f.actor.id,
+                hitQuality: 'miss',
+                attackOrigin: 'basic',
+            }),
         ])
         expect(resolvePendingAttackHit({ ...context, now: 1051 })).toEqual([])
     })
 
     it('marks an ordinary dodge as a miss without cost-free damage or weapon wear', () => {
-        const f = trainingCombatFixture()
-        f.dummy.config.combat.dodgeChance = 1
-        expect(f.start()).toHaveLength(1)
+        const f = bladeDuel()
+        f.actor.equipment.weapon = createItemInstance('simple_sword')
+        const durability = f.actor.equipment.weapon.durability
+        f.target.config.combat.dodgeChance = 1
+        expect(attemptAttack(f.attack)).toHaveLength(1)
         const events = resolvePendingAttackHit({
-            ...f.attack(1050),
+            ...f.at(1050),
             random: () => 0,
         })
         expect(events).toEqual([
             expect.objectContaining({ kind: 'miss', hitQuality: 'miss' }),
         ])
-        expect(f.dummy.hp).toBe(f.dummy.maxHp)
+        expect(f.target.hp).toBe(1000)
+        expect(f.target.energy).toBe(95)
+        expect(f.actor.equipment.weapon.durability).toBe(durability)
     })
 })

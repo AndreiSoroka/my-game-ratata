@@ -71,7 +71,7 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
         ])
         expect(populated.characters.map((target) => target.hp)).toEqual(health)
         expect(corpse.alive).toBe(false)
-        expect(actor.mana).toBe(120)
+        expect(actor.mana).toBe(40)
         expect(actor.energy).toBe(actor.config.resources.maxEnergy)
         expect(actor.animationAction).toBe('idle')
         expect(actor.animationUntil).toBe(1400)
@@ -119,17 +119,17 @@ it('uses the same devotion through legacy prayers and keeps the three-second coo
     const actor = abilityHero()
     const context = abilityContext([actor])
     expect(pray(actor, 1000, context.random, context)[0]?.kind).toBe('cast')
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(40)
     expect(
         handleAbilityCommand(actor, devotion, { ...context, now: 3999 })[0]
             ?.kind
     ).toBe('notice')
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(40)
     expect(
         handleAbilityCommand(actor, devotion, { ...context, now: 4000 })[0]
             ?.kind
     ).toBe('cast')
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(40)
     expect(masteryExperience(actor, 'prayer')).toBe(prayerXp(0))
 })
 
@@ -269,7 +269,7 @@ it('does not make autonomous support priests spend mana on empty prayers', () =>
         supportPrayerDecision(actor, abilityContext([actor]), request)
     ).toEqual([])
     expect(request).not.toHaveBeenCalled()
-    expect(actor.mana).toBe(120)
+    expect(actor.mana).toBe(40)
 })
 
 it('keeps a healthy selected self available for cosmetic prayer in server and client previews', () => {

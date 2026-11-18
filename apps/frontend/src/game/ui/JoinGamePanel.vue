@@ -1,35 +1,24 @@
 <script setup lang="ts">
 import type { HeroClass } from '@my-game-ratata/contracts'
-import { GRID_SIZE, REGION_NAME } from '@my-game-ratata/contracts'
+import {
+    GRID_SIZE,
+    HERO_BACKGROUND_DEFINITIONS,
+    heroClasses,
+    REGION_NAME,
+} from '@my-game-ratata/contracts'
 
+import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import HeroClassIcon from './HeroClassIcon.vue'
 
 const nickname = defineModel<string>('nickname', { required: true })
 const heroClass = defineModel<HeroClass>('heroClass', { required: true })
 defineProps<{ canJoin: boolean; errorMessage: string }>()
 defineEmits<{ join: [] }>()
-const classes: { id: HeroClass; label: string; description: string }[] = [
-    {
-        id: 'vanguard',
-        label: 'Авангард',
-        description: 'Опыт передовой: стойкость и уверенный ближний бой.',
-    },
-    {
-        id: 'ranger',
-        label: 'Следопыт',
-        description: 'Опыт странствий: подвижность и привычка держать дистанцию.',
-    },
-    {
-        id: 'arcanist',
-        label: 'Арканист',
-        description: 'Опыт изучения чар: большой запас маны и тяга к тайнам.',
-    },
-    {
-        id: 'cleric',
-        label: 'Клирик',
-        description: 'Опыт служения: чудеса и спасение павших союзников.',
-    },
-]
+const classes = heroClasses.map((id) => ({
+    id,
+    label: HERO_BACKGROUND_DEFINITIONS[id].name,
+    description: HERO_BACKGROUND_DEFINITIONS[id].description,
+}))
 </script>
 
 <template>
@@ -84,6 +73,11 @@ const classes: { id: HeroClass; label: string; description: string }[] = [
             <p id="class-description" class="class-description" aria-live="polite">
                 {{ classes.find((option) => option.id === heroClass)?.description }}
             </p>
+            <HeroBackgroundSummary
+                :hero-class="heroClass"
+                :show-title="false"
+                show-starting-resources
+            />
             <p id="class-hint" class="class-hint">
                 Прошлое даёт первые преимущества. Любой герой может освоить меч, чудеса и магию
                 через обучение и практику. Новая жизнь начинается без золота.

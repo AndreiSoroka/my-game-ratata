@@ -13,6 +13,7 @@ export type GameEventKind =
     | 'absorb'
     | 'cast'
     | 'status'
+    | 'parry'
     | 'miss'
     | 'attack'
     | 'dash'
@@ -45,6 +46,10 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    actionId?: string
+    attackOrigin?: import('./combat').AttackOrigin
+    delivery?: import('./combat').AttackDelivery
+    attackGeometry?: import('./combat').AttackGeometry
     objectId?: string
     eventId?: string
     position?: import('./index').Vector2
@@ -61,7 +66,7 @@ export interface GameEventPayload {
     abilityId?: AbilityId
     damageKind?: DamageKind
     critical?: boolean
-    statusId?: 'stun' | 'barrier' | 'reviving'
+    statusId?: 'stun' | 'barrier' | 'reviving' | 'defensive_stance'
     expiresAt?: number
     /** Fixed authoritative action duration, including phase-dependent rituals. */
     durationMs?: number

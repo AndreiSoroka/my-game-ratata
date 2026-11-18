@@ -1,7 +1,9 @@
-import type {
-    AttackZone,
-    BasicAttackKind,
-    CharacterArchetype,
+import {
+    type AttackZone,
+    type BasicAttackKind,
+    type CharacterArchetype,
+    HUMAN_BASE_RESOURCES,
+    HUMAN_MELEE_RULES,
 } from '@my-game-ratata/contracts'
 
 export interface CharacterCombatStats {
@@ -33,6 +35,7 @@ export interface CharacterResourceStats {
 }
 
 export interface CharacterConfig {
+    archetype?: CharacterArchetype
     basicAttackKind: BasicAttackKind
     attackZones: Array<Omit<AttackZone, 'ownerId'>>
     combat: CharacterCombatStats
@@ -44,38 +47,40 @@ export interface CharacterConfig {
 
 export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
     human: {
+        archetype: 'human',
         basicAttackKind: 'melee',
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 0.9 }],
         combat: {
-            attackCooldownMs: 400,
-            attackLockMs: 450,
-            attackWindupMs: 50,
-            critChance: 0.15,
-            critMultiplier: 1.6,
-            dodgeChance: 0.05,
-            maxDamage: 9,
-            maxHp: 30,
-            minDamage: 5,
+            attackCooldownMs: HUMAN_MELEE_RULES.cycleMs,
+            attackLockMs: HUMAN_MELEE_RULES.movementMs,
+            attackWindupMs: HUMAN_MELEE_RULES.hitMs,
+            critChance: HUMAN_MELEE_RULES.critChance,
+            critMultiplier: HUMAN_MELEE_RULES.critMultiplier,
+            dodgeChance: HUMAN_MELEE_RULES.dodgeChance,
+            maxDamage: 4,
+            maxHp: HUMAN_BASE_RESOURCES.health,
+            minDamage: 2,
             rangeScale: 1,
-            stunChance: 0.1,
-            stunMaxDurationMs: 700,
-            stunMinDurationMs: 300,
+            stunChance: HUMAN_MELEE_RULES.stunChance,
+            stunMaxDurationMs: HUMAN_MELEE_RULES.stunMs,
+            stunMinDurationMs: HUMAN_MELEE_RULES.stunMs,
         },
         hpRegenIdlePerSec: 0.8,
         hpRegenMovePerSec: 0.35,
         moveSpeed: 90,
         resources: {
-            attackEnergyCost: 15,
+            attackEnergyCost: HUMAN_MELEE_RULES.energy,
             attackManaCost: 0,
             energyRegenIdle: 6,
             energyRegenMove: 3,
             manaRegenIdle: 4,
             manaRegenMove: 2,
-            maxEnergy: 100,
-            maxMana: 40,
+            maxEnergy: HUMAN_BASE_RESOURCES.energy,
+            maxMana: HUMAN_BASE_RESOURCES.mana,
         },
     },
     skeleton: {
+        archetype: 'skeleton',
         basicAttackKind: 'melee',
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 1.2 }],
         combat: {
@@ -108,6 +113,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
         },
     },
     slime: {
+        archetype: 'slime',
         basicAttackKind: 'melee',
         attackZones: [{ minX: -1, minY: 0, maxX: 1, maxY: 1.2 }],
         combat: {

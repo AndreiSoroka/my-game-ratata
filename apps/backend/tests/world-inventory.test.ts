@@ -102,8 +102,8 @@ describe('world inventory chests', () => {
         ])
         expect(player.equipment.weapon?.itemId).toBe('simple_sword')
         expect(createCharacterSnapshot(player, 0).stats).toMatchObject({
-            maxDamage: 14,
-            minDamage: 9,
+            maxDamage: 12,
+            minDamage: 8,
         })
     })
 })

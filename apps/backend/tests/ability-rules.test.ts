@@ -11,7 +11,7 @@ import { learnFireball } from '../src/game/magicLearning'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
 
 it('grants only the starting capabilities for each background', () => {
-    expect(abilityHero('vanguard').config.resources.maxEnergy).toBe(150)
+    expect(abilityHero('vanguard').config.resources.maxEnergy).toBe(120)
     expect(abilityHero('vanguard').abilities.known.size).toBe(0)
     expect(abilityHero('cleric').config.resources.attackManaCost).toBe(0)
     expect([...abilityHero('cleric').abilities.known]).toEqual(['pray'])
@@ -33,7 +33,7 @@ it('absorbs once with the common damage path, trains only real hostile absorptio
         { type: 'use_ability', abilityId: 'barrier' },
         abilityContext([actor])
     )
-    expect(actor.mana).toBe(88)
+    expect(actor.mana).toBe(58)
     const first = resolveCharacterDamage({
         actor: enemy,
         target: actor,
@@ -44,7 +44,7 @@ it('absorbs once with the common damage path, trains only real hostile absorptio
     })
     expect(first.hpDamage).toBe(0)
     expect(first.absorbed).toBe(3)
-    expect(actor.progression.masteries.magic.experience).toBe(20_000_000n)
+    expect(actor.progression.masteries.magic.experience).toBe(24_000_000n)
     const next = resolveCharacterDamage({
         actor: enemy,
         target: actor,
@@ -55,7 +55,7 @@ it('absorbs once with the common damage path, trains only real hostile absorptio
     })
     expect(next.absorbed).toBe(5)
     expect(next.hpDamage).toBe(4)
-    expect(actor.progression.masteries.magic.experience).toBe(20_000_000n)
+    expect(actor.progression.masteries.magic.experience).toBe(24_000_000n)
     const kill = () =>
         resolveCharacterDamage({
             actor: enemy,
@@ -87,7 +87,7 @@ it('keeps expired barrier and rejected attacks from spending or granting practic
         { type: 'use_ability', abilityId: 'barrier' },
         { ...context, now: 6000 }
     )
-    expect(actor.mana).toBe(88)
+    expect(actor.mana).toBe(58)
     expect(
         resolveCharacterDamage({
             actor,
@@ -110,7 +110,7 @@ it('keeps expired barrier and rejected attacks from spending or granting practic
     )
     expect(calls).toEqual(['missing'])
     expect(actor.abilities.availableAt.spark).toBeUndefined()
-    expect(actor.mana).toBe(88)
+    expect(actor.mana).toBe(58)
 })
 it('allows later learning through ordinary nearby teachers and gates fireball at Magic three', () => {
     const actor = abilityHero('vanguard')

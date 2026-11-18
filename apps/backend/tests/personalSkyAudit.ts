@@ -8,6 +8,7 @@ interface AuditEdge {
     from: string
     to: string
     vertices: SkyPoint[]
+    crossLink: boolean
 }
 const tolerance = 0.00001
 
@@ -31,6 +32,7 @@ export function auditPersonalSky(
         node.parents.map((from): AuditEdge => ({
             from,
             to: node.id,
+            crossLink: sky.crossLinks.includes(`${from}>${node.id}`),
             vertices: [
                 point(sky, from),
                 ...(sky.edgeWaypoints[`${from}>${node.id}`] ?? []),
@@ -62,7 +64,11 @@ export function auditPersonalSky(
             const allowed = [edge.from, edge.to]
                 .filter((id) => id === other.from || id === other.to)
                 .map((id) => point(sky, id))
-            if (conflictingPaths(edge.vertices, other.vertices, allowed)) {
+            if (
+                !edge.crossLink &&
+                !other.crossLink &&
+                conflictingPaths(edge.vertices, other.vertices, allowed)
+            ) {
                 return `Edge intersection ${edge.from}>${edge.to}/${other.from}>${other.to}`
             }
         }

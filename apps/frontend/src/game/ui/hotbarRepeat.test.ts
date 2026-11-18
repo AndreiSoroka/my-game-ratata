@@ -22,7 +22,7 @@ it.each<[HeroClass, string]>([
     const player = characterFixture('self', { heroClass })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
-        expect(wrapper.get('.hotbar-slot').attributes('aria-label')).toContain('Базовая атака')
+        expect(wrapper.get('.hotbar-slot').attributes('aria-label')).toContain('Удар ножом')
         expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('aria-label')).toContain(label)
     } finally {
         wrapper.unmount()
@@ -179,7 +179,7 @@ it('consumes food once per double-press gesture and allows rebinding the basic a
         await wrapper.vm.edit(1)
         await wrapper
             .findAll('.hotbar-picker button')
-            .find((button) => button.text().includes('Базовая атака'))!
+            .find((button) => button.text().includes('Удар ножом'))!
             .trigger('click')
         wrapper.vm.activate(1)
         expect(wrapper.emitted('command')?.at(-1)).toEqual([{ type: 'attack', targetId: enemy.id }])

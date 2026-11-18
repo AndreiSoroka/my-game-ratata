@@ -1,3 +1,5 @@
+import { resolveBladeBonuses } from './constellationBladeBonuses'
+
 /** Pure bonuses shared by authoritative characters and isolated atlas builds. */
 export function resolveConstellationBonuses(
     activeIds: ReadonlySet<string>,
@@ -13,13 +15,7 @@ export function resolveConstellationBonuses(
         return 0
     }
     return {
-        swordDamageMultiplier:
-            1 + 0.1 * (learned('blade.damage1') + learned('blade.damage2')),
-        swordEnergyMultiplier: 1 - 0.1 * learned('blade.economy'),
-        swordTempoMultiplier: 1 - 0.1 * learned('blade.tempo'),
-        swordCritBonus: 0.03 * learned('blade.critical'),
-        swordDodgeBonus: 0.03 * learned('blade.dodge'),
-        stunDurationMultiplier: 1 - 0.15 * learned('blade.resolve'),
+        ...resolveBladeBonuses(activeIds),
         shotDamageMultiplier:
             1 + 0.1 * (learned('arrow.damage1') + learned('arrow.damage2')),
         shotRangeCells: learned('arrow.range1') + learned('arrow.range2'),

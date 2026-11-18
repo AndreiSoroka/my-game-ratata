@@ -42,29 +42,36 @@ for (const mobile of [false, true]) {
         await page.evaluate(async ({ name }) => window.__ratataTest!.join(name, 'cleric'), {
             name: `speech-${info.project.name}-${mobile}`,
         })
-        await page.evaluate(() => {
-            const guard = window
-                .__ratataTest!.getState()
-                .snapshot!.characters.find((actor) => actor.id === 'npc_guard_1')!
-            window.__ratataTest!.send({
-                type: 'move_to',
-                target: { x: guard.position.x, y: guard.position.y + 24 },
-            })
-        })
+        // The generated guard post can be inside the guild. Enter by its real doorway first.
+        const guildKey = await page.evaluate(
+            () =>
+                window
+                    .__ratataTest!.observe()
+                    .targets.find(
+                        (target) =>
+                            target.kind === 'building' && target.name === 'Гильдия искателей'
+                    )!.key
+        )
+        const entered = await page.evaluate(
+            (targetKey) => window.__ratataTest!.navigate({ targetKey }),
+            guildKey
+        )
+        expect(entered.status, entered.reason).toBe('arrived')
         await expect
             .poll(() =>
-                page.evaluate(() => {
-                    const state = window.__ratataTest!.getState()
-                    const guard = state.snapshot!.characters.find(
-                        (actor) => actor.id === 'npc_guard_1'
-                    )!
-                    return Math.hypot(
-                        state.player!.position.x - guard.position.x,
-                        state.player!.position.y - guard.position.y
-                    )
-                })
+                page.evaluate(() =>
+                    window
+                        .__ratataTest!.observe()
+                        .targets.some((target) => target.id === 'npc_guard_1')
+                )
             )
-            .toBeLessThan(40)
+            .toBe(true)
+        const approached = await page.evaluate(() => {
+            const api = window.__ratataTest!
+            const guard = api.observe().targets.find((target) => target.id === 'npc_guard_1')!
+            return api.navigate({ targetKey: guard.key }, { tolerance: 32 })
+        })
+        expect(approached.status, approached.reason).toBe('arrived')
         const guardName = await page.evaluate(
             () =>
                 window

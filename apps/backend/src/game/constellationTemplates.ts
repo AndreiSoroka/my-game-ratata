@@ -1,17 +1,9 @@
+import { bladeTemplatePositions } from './constellationBladeTemplate'
 import type { SkyPoint } from './constellationGeometry'
 
 /** Irregular, certified planar component shapes. Related constellations already include their joint. */
 export const constellationTemplatePositions = freezeTemplate({
-    'blade.root': { x: 0, y: 0 },
-    'blade.damage1': { x: -230, y: -240 },
-    'blade.damage2': { x: -450, y: -370 },
-    'blade.economy': { x: 70, y: -330 },
-    'blade.tempo': { x: 350, y: -120 },
-    'blade.critical': { x: 290, y: 210 },
-    'blade.dodge': { x: 30, y: 400 },
-    'blade.resolve': { x: -280, y: 300 },
-    'blade.insight1': { x: -390, y: -40 },
-    'blade.insight2': { x: -610, y: 60 },
+    ...bladeTemplatePositions,
     'magic.root': { x: 0, y: 0 },
     'magic.spark_damage': { x: 330, y: 60 },
     'magic.spark_range': { x: 280, y: -270 },
@@ -37,6 +29,9 @@ export const constellationTemplatePositions = freezeTemplate({
     'arrow.insight2': { x: 1890, y: 800 },
     'magic.runic_echo': { x: 930, y: 65 },
     'prayer.root': { x: 0, y: 0 },
+    'prayer.insight1': { x: 700, y: 300 },
+    'prayer.insight2': { x: 1000, y: 450 },
+    'prayer.insight3': { x: 1300, y: 600 },
     'prayer.martyr': { x: 700, y: -400 },
     'prayer.aura_domain': { x: 160, y: -1600 },
     'prayer.aura_blessing': { x: -800, y: -1800 },

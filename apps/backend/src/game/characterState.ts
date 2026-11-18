@@ -1,11 +1,21 @@
 import type {
     AttackAbilityId,
+    AttackDelivery,
+    AttackGeometry,
+    AttackOrigin,
     SpellSkillId,
     WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import type { ResourceSpendReceipt } from './resourcePractice'
 export interface PendingAttackHit {
+    actionId?: string
+    origin?: AttackOrigin
+    delivery?: AttackDelivery
+    geometry?: AttackGeometry
+    weaponAttack?: boolean
+    comboBonus?: number
+    stunDurationMs?: number
     resourceSpends?: ResourceSpendReceipt[] | undefined
     weaponInstanceId?: string | undefined
     abilityId?: AttackAbilityId | SpellSkillId | undefined
@@ -30,23 +40,18 @@ export function createPendingAttackHit(
     attack: Omit<PendingAttackHit, 'hitAt'> & { windupMs: number },
     weaponInstanceId: string | undefined
 ): PendingAttackHit {
+    const { windupMs, ...fields } = attack
     return {
-        resourceSpends: attack.resourceSpends,
+        ...fields,
         weaponInstanceId:
+            attack.weaponAttack === true ||
             attack.abilityId === undefined ||
             attack.abilityId === 'skeleton_strike'
                 ? weaponInstanceId
                 : undefined,
-        targetId: attack.targetId,
         target: attack.target === undefined ? undefined : { ...attack.target },
-        rawDamage: attack.rawDamage,
-        maxRange: attack.maxRange,
-        abilityId: attack.abilityId,
-        canStun: attack.canStun,
-        damageMultiplier: attack.damageMultiplier,
         underpowered: attack.underpowered ?? false,
-        hitAt: now + attack.windupMs,
-        targetEnergyDrain: attack.targetEnergyDrain,
+        hitAt: now + windupMs,
     }
 }
 
