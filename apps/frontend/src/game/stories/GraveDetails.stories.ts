@@ -4,7 +4,7 @@ import { graveFixture } from '../testing/graveFixture'
 import GraveDetails from '../ui/GraveDetails.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Grave' } satisfies Meta
+const meta = { title: 'Shared/Grave' } satisfies Meta
 export default meta
 type Story = StoryObj
 

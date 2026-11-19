@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import KenneyHudPrimitivesStory from './KenneyHudPrimitivesStory.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Kenney HUD primitives' } satisfies Meta
+const meta = { title: 'Shared/Kenney HUD primitives' } satisfies Meta
 export default meta
 type Story = StoryObj
 

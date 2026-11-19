@@ -4,7 +4,7 @@ for (const width of [1280, 390, 320]) {
     for (const state of ['barrel', 'empty-barrel']) {
         test(`production ${state} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=interface-containers--${state}&viewMode=story`)
+            await page.goto(`/iframe.html?id=shared-containers--${state}&viewMode=story`)
             const window = page.getByRole('dialog', { name: 'Рюкзак и бочка' })
             await expect(window).toBeVisible()
             await page.evaluate(async () => {

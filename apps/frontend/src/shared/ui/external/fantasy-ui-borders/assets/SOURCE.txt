@@ -1,0 +1,17 @@
+Fantasy UI Borders 1.0 by Kenney
+Official source: https://kenney.nl/assets/fantasy-ui-borders
+License: Creative Commons Zero 1.0 (CC0)
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+Downloaded: 2026-11-19
+Original archive: kenney_fantasy-ui-borders.zip
+Archive SHA-256: 59532da3bd61195a425585455b40baa6cbf1eda8227c42adcef31a535a737769
+
+The official archive contents are preserved unchanged, including PNG, Vector,
+License.txt, Preview.png and Sample.png. SOURCE.txt is a project source record.
+Default PNGs are native size; Double PNGs are the original 2x exports.
+
+Canonical project directory:
+apps/frontend/src/shared/ui/external/fantasy-ui-borders/assets/
+
+The public KenneyFantasyUiBorders directory retains only the unmodified
+panel-border-026.png and license as a compatibility subset for existing URL users.

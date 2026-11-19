@@ -53,12 +53,14 @@ Ivory speech bubbles, their pixel borders and tails are project-authored CSS. Th
 
 ## Kenney Fantasy UI Borders
 
-The light menu button borders use **Fantasy UI Borders 1.0**, created and distributed by **Kenney**.
+The shared buttons and the light game menu frames use **Fantasy UI Borders 1.0**, created and distributed by **Kenney**.
 
 - Official source: https://kenney.nl/assets/fantasy-ui-borders
 - License: [Creative Commons Zero 1.0 (CC0)](https://creativecommons.org/publicdomain/zero/1.0/)
 - Downloaded: 2026-11-19
-- Canonical original PNG and vector assets: `apps/frontend/src/shared/ui/base/fantasy-ui-borders/assets/`
+- Canonical original PNG and vector assets: `apps/frontend/src/shared/ui/external/fantasy-ui-borders/assets/`
 - Original license and project source record are preserved as `License.txt` and `SOURCE.txt` alongside the assets.
 
 The complete pack is preserved unchanged inside the shared UI module, including its native-size and double-size PNG exports, SVG source and reference previews. New shared UI components import these local assets. The legacy public directory `apps/frontend/public/game/map/assets/KenneyFantasyUiBorders/` retains only the unchanged `PNG/Default/Border/panel-border-026.png`, original `License.txt` and a compatibility `SOURCE.txt`, preserving the existing URL used by the opt-in `GameButton` fantasy skin. That skin stretches the frame's straight edges while preserving its interlocking square corners.
+
+`UiButton` composes `FantasyBorder` with a native button and the shared light palette. `MenuPanel` combines the simple outer frame `015`, stepped inner frame `014` and square-ornament button frame `026`. The frame spacing is 10 CSS pixels. Colors, gradients and press shadows are project-authored styling; the source images remain unchanged.

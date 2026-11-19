@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+
+import { type MenuItem, MenuPanel, type MenuPanelHandle } from '@/entities/menu'
+import { menuKeyboardInput } from '@/shared/lib/input'
 
 import {
     isAudioMuted,
@@ -7,24 +10,70 @@ import {
     setAudioMuted,
     subscribeAudioMute,
 } from '../runtime/audioPreference'
-import { dialogActionKeys } from './dialogActionKeys'
-import GameButton from './primitives/GameButton.vue'
-import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
-withDefaults(defineProps<{ automationAvailable?: boolean }>(), { automationAvailable: true })
+const props = withDefaults(defineProps<{ automationAvailable?: boolean }>(), {
+    automationAvailable: true,
+})
 const emit = defineEmits<{ resume: []; leave: []; character: []; markers: []; scenarios: [] }>()
 const panel = ref<HTMLElement>()
+const menu = ref<MenuPanelHandle>()
 const muted = ref(isAudioMuted())
 const forcedMute = isAudioMuteForced()
+const items = computed<readonly MenuItem[]>(() => [
+    { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },
+    { id: 'character', label: 'Персонаж', key: 'P', disabled: !props.automationAvailable },
+    { id: 'markers', label: 'Метки', disabled: !props.automationAvailable },
+    { id: 'scenarios', label: 'Сценарии', disabled: !props.automationAvailable },
+    {
+        id: 'sound',
+        label: `Звук: ${muted.value ? 'выключен' : 'включён'}`,
+        ariaLabel: 'Без звука',
+        pressed: muted.value,
+        disabled: forcedMute,
+    },
+    { id: 'leave', label: 'Выйти из игры', variant: 'danger', dividerBefore: true },
+])
+function activate(id: string): void {
+    if (id === 'sound') {
+        if (!forcedMute) setAudioMuted(!muted.value)
+        return
+    }
+    switch (id) {
+        case 'resume':
+            emit('resume')
+            break
+        case 'leave':
+            emit('leave')
+            break
+        case 'character':
+            emit('character')
+            break
+        case 'markers':
+            emit('markers')
+            break
+        case 'scenarios':
+            emit('scenarios')
+            break
+    }
+}
 const unsubscribeAudio = subscribeAudioMute((value) => {
     muted.value = value
 })
 onBeforeUnmount(unsubscribeAudio)
 useEscapeOwner({ active: () => true, escape: () => emit('resume'), element: panel, priority: 200 })
+function keydown(event: KeyboardEvent): void {
+    if (event.defaultPrevented) return
+    if (event.code === 'Escape' || event.key === 'Escape') {
+        event.preventDefault()
+        if (!event.repeat) emit('resume')
+        return
+    }
+    menuKeyboardInput(event, (command) => menu.value?.navigate(command) ?? false)
+}
 onMounted(async () => {
     await nextTick()
-    panel.value?.querySelector<HTMLButtonElement>('button')?.focus()
+    menu.value?.navigate('first')
 })
 </script>
 
@@ -32,54 +81,15 @@ onMounted(async () => {
     <div class="game-menu-backdrop" @pointerdown.self.prevent.stop @click.self.stop>
         <section
             ref="panel"
-            class="game-menu rpg-panel game-frame-host"
+            class="game-menu"
             role="dialog"
             aria-modal="true"
             aria-label="Игровое меню"
             tabindex="-1"
-            @keydown.stop="dialogActionKeys($event, panel, () => emit('resume'))"
+            @keydown.stop="keydown"
             @keyup.stop
         >
-            <GameFrame variant="window" />
-            <h2>Игровое меню</h2>
-            <p>Мир продолжает жить, пока открыто меню.</p>
-            <GameButton variant="primary" data-dialog-action="resume" @click="emit('resume')">
-                Вернуться в игру
-            </GameButton>
-            <GameButton
-                data-dialog-action="character"
-                :disabled="!automationAvailable"
-                @click="emit('character')"
-            >
-                Персонаж · P
-            </GameButton>
-            <GameButton
-                data-dialog-action="markers"
-                :disabled="!automationAvailable"
-                @click="emit('markers')"
-            >
-                Метки
-            </GameButton>
-            <GameButton
-                data-dialog-action="scenarios"
-                :disabled="!automationAvailable"
-                @click="emit('scenarios')"
-            >
-                Сценарии
-            </GameButton>
-            <GameButton
-                data-dialog-action="sound"
-                aria-label="Без звука"
-                :aria-pressed="muted"
-                :disabled="forcedMute"
-                @click="setAudioMuted(!muted)"
-            >
-                Звук: {{ muted ? 'выключен' : 'включён' }}
-            </GameButton>
-            <p v-if="forcedMute">В этом режиме звук отключён.</p>
-            <GameButton variant="danger" data-dialog-action="leave" @click="emit('leave')">
-                Выйти из игры
-            </GameButton>
+            <MenuPanel ref="menu" :items="items" @action="activate" />
         </section>
     </div>
 </template>
@@ -95,28 +105,10 @@ onMounted(async () => {
     background: #0b151ab3;
 }
 .game-menu {
-    display: grid;
-    gap: 12px;
-    width: min(340px, 100%);
+    --menu-panel-max-height: calc(100dvh - 32px);
+    box-sizing: border-box;
+    width: min(380px, 100%);
     max-height: calc(100dvh - 32px);
-    overflow: auto;
-    padding: 20px;
-    color: var(--rpg-text);
-    font:
-        14px/1.5 system-ui,
-        sans-serif;
-}
-h2,
-p {
-    margin: 0;
-}
-p {
-    color: #c4cbbb;
-}
-button {
-    min-height: 44px;
-    padding: 10px 14px;
-    border: 1px solid transparent;
-    cursor: pointer;
+    min-width: 0;
 }
 </style>

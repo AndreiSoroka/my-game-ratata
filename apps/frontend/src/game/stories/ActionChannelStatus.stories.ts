@@ -7,7 +7,7 @@ import { characterFixture } from '../testing/characterFixture'
 import ActionChannelStatus from '../ui/ActionChannelStatus.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Prayer channel' } satisfies Meta
+const meta = { title: 'Shared/Prayer channel' } satisfies Meta
 export default meta
 type Story = StoryObj
 

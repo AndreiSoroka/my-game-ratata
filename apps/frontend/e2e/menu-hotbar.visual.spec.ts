@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { readyUiStory } from './ui-story-ready'
+
 for (const [background, ability] of [
     ['vanguard', 'Пусто'],
     ['ranger', 'Выстрел'],
@@ -7,7 +9,7 @@ for (const [background, ability] of [
     ['cleric', 'Молитва'],
 ]) {
     test(`production ${background} hotbar preset`, async ({ page }) => {
-        await page.goto(`/iframe.html?id=interface-hotbar--${background}&viewMode=story`)
+        await page.goto(`/iframe.html?id=shared-hotbar--${background}&viewMode=story`)
         const bar = page.getByLabel('Быстрые действия')
         await expect(bar.getByRole('button', { name: /^1: Удар ножом/ })).toBeVisible()
         await expect(bar.getByRole('button', { name: new RegExp(`^2: ${ability}`) })).toBeVisible()
@@ -22,7 +24,7 @@ for (const width of [1280, 390]) {
     ]) {
         test(`production ${state} hotbar at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=interface-hotbar--${state}&viewMode=story`)
+            await page.goto(`/iframe.html?id=shared-hotbar--${state}&viewMode=story`)
             const bar = page.getByLabel('Быстрые действия')
             await expect(bar).toBeVisible()
             await expect(page.getByRole('status', { name: 'Серия ударов' })).toHaveText(
@@ -50,12 +52,25 @@ for (const width of [1280, 390]) {
         })
     }
 }
-for (const width of [1280, 390]) {
+for (const width of [1280, 390, 320]) {
     test(`production game menu at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=interface-game-menu--open&viewMode=story')
+        await page.goto('/iframe.html?id=shared-game-menu--open&viewMode=story')
         const menu = page.getByRole('dialog', { name: 'Игровое меню' })
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toBeFocused()
+        await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toHaveAttribute(
+            'data-focus-ring',
+            'false'
+        )
+        await expect(menu.getByText('В этом режиме звук отключён.')).toHaveCount(0)
+        await expect(menu.locator('.menu-panel__divider')).toHaveAttribute(
+            'data-fantasy-divider',
+            'divider-000'
+        )
+        await expect(menu.locator('.menu-panel__divider')).toHaveAttribute(
+            'data-fantasy-divider-ends',
+            'both'
+        )
         await page.keyboard.press('Tab')
         await expect(menu.getByRole('button', { name: 'Персонаж · P', exact: true })).toBeFocused()
         await page.keyboard.press('Tab')
@@ -64,10 +79,15 @@ for (const width of [1280, 390]) {
         await expect(menu.getByRole('button', { name: 'Сценарии', exact: true })).toBeFocused()
         await page.keyboard.press('Tab')
         await expect(menu.getByRole('button', { name: 'Выйти из игры' })).toBeFocused()
+        await expect(menu.getByRole('button', { name: 'Выйти из игры' })).toHaveCSS(
+            'outline-style',
+            'none'
+        )
         const bounds = await menu.boundingBox()
         expect(bounds!.x).toBeGreaterThanOrEqual(0)
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
-        await page.evaluate(() => document.fonts.ready)
+        expect(bounds!.width).toBe(Math.min(380, width - 32))
+        await readyUiStory(page, false)
         await expect(menu).toHaveScreenshot(`game-menu-${width}.png`)
     })
 }

@@ -1,0 +1,83 @@
+.menu-panel {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-height: var(--menu-panel-max-height, none);
+    color: var(--ui-light-panel-title);
+    font:
+        14px/1.5 system-ui,
+        sans-serif;
+}
+
+.menu-panel__outer,
+.menu-panel__inner {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.menu-panel__outer {
+    padding: 10px;
+    background: var(--ui-light-panel-coffee);
+}
+
+.menu-panel__inner {
+    flex: 1;
+}
+
+.menu-panel__scroll {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 14px 8px;
+}
+
+.menu-panel__header {
+    margin-bottom: 22px;
+    text-align: center;
+}
+
+.menu-panel__header h2 {
+    margin: 0;
+    color: var(--ui-light-panel-title);
+    font: 500 27px/1.2 var(--ratata-font-family, sans-serif);
+}
+
+.menu-panel__header p {
+    margin: 13px 0 0;
+    color: var(--ui-light-panel-text);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.menu-panel__actions {
+    display: grid;
+    gap: 12px;
+}
+
+.menu-panel__item {
+    min-width: 0;
+}
+
+.menu-panel .menu-panel__divider {
+    width: 70%;
+    margin-inline: auto;
+    margin-bottom: 12px;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.menu-panel__item > .ui-button {
+    width: 100%;
+    font-size: 18px;
+}
+
+.menu-panel__hint {
+    margin: 8px 0 0;
+    color: var(--ui-light-panel-text);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}

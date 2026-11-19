@@ -3,13 +3,23 @@
     --ui-light-border-cream: #f1ddb6;
     --ui-light-border-gold: #f8f3b8;
     --ui-light-border-copper: #fbc1a6;
+    --ui-light-border-wood: #79522f;
 
     --ui-light-panel-parchment: #fef0d2;
+    --ui-light-panel-coffee: #f3e4c7;
     --ui-light-panel-title: #554a34;
     --ui-light-panel-text: #5d5037;
     --ui-light-panel-muted: #7e7258;
     --ui-light-panel-divider: #a3916255;
     --ui-light-panel-warning: #9e3e2c;
+
+    --ui-light-bar-track: #785b3c;
+    --ui-light-bar-health: #d64a50;
+    --ui-light-bar-mana: #3c79de;
+    --ui-light-bar-energy: #e5b649;
+    --ui-light-bar-text: var(--ui-light-panel-text);
+    --ui-light-bar-highlight: #ffffff;
+    --ui-light-bar-shade: #21170e;
 
     --ui-light-button-text: #fff4d6;
     --ui-light-button-text-hover: #fff9e8;

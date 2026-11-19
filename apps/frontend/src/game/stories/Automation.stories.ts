@@ -8,7 +8,7 @@ import ScenarioPanel from '../ui/ScenarioPanel.vue'
 import ScenarioRunStatus from '../ui/ScenarioRunStatus.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Automation' } satisfies Meta
+const meta = { title: 'Shared/Automation' } satisfies Meta
 export default meta
 type Story = StoryObj
 

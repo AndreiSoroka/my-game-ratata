@@ -7,7 +7,7 @@ import { characterFixture } from '../testing/characterFixture'
 import InventoryOverlay from '../ui/InventoryOverlay.vue'
 import WorkshopOrders from '../ui/WorkshopOrders.vue'
 import { renderVueStory } from './renderVueStory'
-const meta = { title: 'Interface/Workshop orders' } satisfies Meta
+const meta = { title: 'Shared/Workshop orders' } satisfies Meta
 export default meta
 type Story = StoryObj
 const workshop: WorkshopSnapshot = {

@@ -40,7 +40,7 @@ it('keeps test sessions silent even when the saved preference enables audio', ()
         const button = wrapper.get('[aria-label="Без звука"]')
         expect(button.attributes('disabled')).toBeDefined()
         expect(button.attributes('aria-pressed')).toBe('true')
-        expect(wrapper.text()).toContain('В этом режиме звук отключён.')
+        expect(wrapper.text()).not.toContain('В этом режиме звук отключён.')
     } finally {
         wrapper.unmount()
     }

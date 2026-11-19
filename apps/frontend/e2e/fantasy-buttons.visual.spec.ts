@@ -49,7 +49,7 @@ async function assertFits(stage: Locator, width: number): Promise<void> {
 for (const width of [1280, 390, 320]) {
     test(`fantasy menu actions and keyboard order at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=interface-fantasy-buttons--menu&viewMode=story')
+        await page.goto('/iframe.html?id=shared-fantasy-buttons--menu&viewMode=story')
         const menu = page.getByRole('dialog', { name: 'Игровое меню', exact: true })
         await expect(menu).toBeVisible()
         await expect(menu.getByRole('button')).toHaveCount(6)
@@ -85,7 +85,7 @@ for (const width of [1280, 320]) {
     for (const section of ['variants', 'sizes']) {
         test(`fantasy button ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=interface-fantasy-buttons--${section}&viewMode=story`)
+            await page.goto(`/iframe.html?id=shared-fantasy-buttons--${section}&viewMode=story`)
             const stage = page.locator('.fantasy-buttons-stage')
             await expect(stage).toBeVisible()
             await ready(page)
@@ -99,7 +99,7 @@ for (const width of [1280, 320]) {
 
 test('fantasy button visible states at 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/iframe.html?id=interface-fantasy-buttons--states&viewMode=story')
+    await page.goto('/iframe.html?id=shared-fantasy-buttons--states&viewMode=story')
     const stage = page.locator('.fantasy-buttons-stage')
     await expect(stage).toBeVisible()
     await expect(page.getByTestId('fantasy-disabled')).toBeDisabled()
@@ -110,7 +110,7 @@ test('fantasy button visible states at 390px', async ({ page }) => {
 })
 
 test('fantasy buttons retain native focus hover and pressed behavior', async ({ page }) => {
-    await page.goto('/iframe.html?id=interface-fantasy-buttons--states&viewMode=story')
+    await page.goto('/iframe.html?id=shared-fantasy-buttons--states&viewMode=story')
     const focus = page.getByTestId('fantasy-focus')
     const hover = page.getByTestId('fantasy-hover')
     await focus.focus()

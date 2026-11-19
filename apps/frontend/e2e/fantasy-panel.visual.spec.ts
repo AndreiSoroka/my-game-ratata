@@ -7,7 +7,7 @@ import {
     type ScreenshotPixels,
 } from './fantasy-border-pixels'
 
-const storyId = 'interface-base-fantasy-ui-borders-fantasypanel'
+const storyId = 'shared-external-fantasy-ui-borders-fantasypanel'
 
 async function ready(page: Page): Promise<void> {
     await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(133, 93, 48)')

@@ -2,7 +2,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { readScreenshotPixels, screenshotCorner, screenshotPixel } from './fantasy-border-pixels'
 
-const storyId = 'interface-base-fantasy-ui-borders-fantasyborder'
+const storyId = 'shared-external-fantasy-ui-borders-fantasyborder'
 
 async function ready(page: Page): Promise<void> {
     const background = await page.evaluate(() => {

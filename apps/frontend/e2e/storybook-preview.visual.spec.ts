@@ -10,19 +10,19 @@ const axeScript = addonRequire.resolve('axe-core/axe.min.js')
 const stories = [
     {
         name: 'FantasyBorder',
-        id: 'interface-base-fantasy-ui-borders-fantasyborder',
+        id: 'shared-external-fantasy-ui-borders-fantasyborder',
         testId: 'fantasy-border-story',
         sections: ['default', 'variants', 'colors', 'composition', 'sizes'],
     },
     {
         name: 'FantasyDivider',
-        id: 'interface-base-fantasy-ui-borders-fantasydivider',
+        id: 'shared-external-fantasy-ui-borders-fantasydivider',
         testId: 'fantasy-divider-story',
         sections: ['default', 'variants', 'directions', 'colors', 'sizes'],
     },
     {
         name: 'FantasyPanel',
-        id: 'interface-base-fantasy-ui-borders-fantasypanel',
+        id: 'shared-external-fantasy-ui-borders-fantasypanel',
         testId: 'fantasy-panel-story',
         sections: ['default', 'variants', 'appearances', 'colors', 'composition', 'sizes'],
     },
@@ -141,7 +141,7 @@ for (const story of stories) {
 }
 
 test('FantasyDivider Default Controls update the rendered divider', async ({ page }) => {
-    await page.goto('/?path=/story/interface-base-fantasy-ui-borders-fantasydivider--default')
+    await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasydivider--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
     await expect(preview.getByTestId('fantasy-divider-story')).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
@@ -164,7 +164,7 @@ test('FantasyDivider Default Controls update the rendered divider', async ({ pag
 })
 
 test('FantasyBorder Default Controls update the rendered border', async ({ page }) => {
-    await page.goto('/?path=/story/interface-base-fantasy-ui-borders-fantasyborder--default')
+    await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasyborder--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
     await expect(preview.getByTestId('fantasy-border-story')).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
@@ -179,7 +179,7 @@ test('FantasyBorder Default Controls update the rendered border', async ({ page 
 })
 
 test('FantasyPanel Default Controls update the rendered panel', async ({ page }) => {
-    await page.goto('/?path=/story/interface-base-fantasy-ui-borders-fantasypanel--default')
+    await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasypanel--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
     await expect(preview.getByTestId('fantasy-panel-story')).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })

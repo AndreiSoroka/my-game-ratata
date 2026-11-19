@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 for (const width of [1280, 390, 320]) {
     test(`hero background selection and focus at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=interface-join-game--ready&viewMode=story')
+        await page.goto('/iframe.html?id=shared-join-game--ready&viewMode=story')
         const form = page.locator('.join-panel')
         const radio = form.locator('input[value="ranger"]')
         await expect(form.getByRole('button', { name: 'Войти', exact: true })).toBeEnabled()

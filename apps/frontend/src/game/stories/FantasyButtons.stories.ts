@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import FantasyButtonsStory from './FantasyButtonsStory.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Fantasy buttons' } satisfies Meta
+const meta = { title: 'Shared/Fantasy buttons' } satisfies Meta
 export default meta
 type Story = StoryObj
 

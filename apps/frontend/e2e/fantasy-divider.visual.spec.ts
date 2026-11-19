@@ -6,7 +6,7 @@ import {
     type ScreenshotPixels,
 } from './fantasy-border-pixels'
 
-const storyId = 'interface-base-fantasy-ui-borders-fantasydivider'
+const storyId = 'shared-external-fantasy-ui-borders-fantasydivider'
 const variants = [
     { key: '000', height: 22, cap: 16, opaqueY: 0, lineY: 8 },
     { key: '001', height: 22, cap: 2, opaqueY: 8, lineY: 8 },

@@ -22,7 +22,7 @@ const states = [
 for (const { story, width, numbers, extended } of states) {
     test(`production player status ${story} at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto(`/iframe.html?id=interface-player-status--${story}&viewMode=story`)
+        await page.goto(`/iframe.html?id=shared-player-status--${story}&viewMode=story`)
         const panel = page.getByRole('region', { name: 'Player status' })
         await expect(panel).toBeVisible()
         await page.evaluate(async () => {
@@ -45,7 +45,7 @@ for (const { story, width, numbers, extended } of states) {
 
 test('extended HUD republishes its occupied height after a viewport resize', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 844 })
-    await page.goto('/iframe.html?id=interface-player-status--wanted&viewMode=story')
+    await page.goto('/iframe.html?id=shared-player-status--wanted&viewMode=story')
     const panel = page.getByRole('region', { name: 'Player status' })
     await expect(panel.getByLabel('Покровитель и развитие')).toBeVisible()
     await expect(panel.getByLabel('Кража и розыск')).toContainText('В чёрном списке Новогорода')

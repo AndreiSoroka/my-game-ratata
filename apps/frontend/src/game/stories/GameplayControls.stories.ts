@@ -10,7 +10,7 @@ import PartyPanel from '../ui/PartyPanel.vue'
 import SpeechBubbles from '../ui/SpeechBubbles.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Gameplay controls' } satisfies Meta
+const meta = { title: 'Shared/Gameplay controls' } satisfies Meta
 export default meta
 type Story = StoryObj
 const player = characterFixture('mira', {

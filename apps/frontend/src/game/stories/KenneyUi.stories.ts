@@ -10,7 +10,7 @@ import {
 } from '../ui/renderKenneyUiStory'
 
 const meta = {
-    title: 'Interface/Kenney UI',
+    title: 'Shared/Kenney UI',
     argTypes: {
         label: {
             control: 'text',

@@ -5,7 +5,7 @@ import { fullConstellationCatalog } from '../../backend/src/game/constellationNo
 for (const width of [320, 390, 1280]) {
     test(`full catalogue remains readable and pannable at ${width}px`, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=interface-character--full-sky&viewMode=story')
+        await page.goto('/iframe.html?id=shared-character--full-sky&viewMode=story')
         const graph = page.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
         await expect(graph.locator('[role=button]')).toHaveCount(9)
@@ -62,7 +62,7 @@ for (const width of [320, 390, 1280]) {
 for (const width of [320, 390, 1280]) {
     test(`unknown player stars stay inert at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=interface-character--development&viewMode=story')
+        await page.goto('/iframe.html?id=shared-character--development&viewMode=story')
         const graph = page.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
         const unknown = graph.locator('[data-node-id].closed').first()

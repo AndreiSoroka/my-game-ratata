@@ -12,7 +12,7 @@ for (const width of [1280, 390, 320]) {
         test(`shared Kenney ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
             await page.goto(
-                `/iframe.html?id=interface-kenney-hud-primitives--${section}&viewMode=story`
+                `/iframe.html?id=shared-kenney-hud-primitives--${section}&viewMode=story`
             )
             const stage = page.getByLabel(`Общие компоненты Kenney: ${section}`)
             await expect(stage).toBeVisible()
@@ -31,7 +31,7 @@ for (const width of [1280, 390, 320]) {
 test('shared resource bars reveal only authorized numbers and keep empty fills empty', async ({
     page,
 }) => {
-    await page.goto('/iframe.html?id=interface-kenney-hud-primitives--resources&viewMode=story')
+    await page.goto('/iframe.html?id=shared-kenney-hud-primitives--resources&viewMode=story')
     const bars = page.getByRole('progressbar')
     await expect(bars).toHaveCount(5)
     await expect(page.getByRole('progressbar', { name: 'Полное здоровье' })).toHaveAttribute(

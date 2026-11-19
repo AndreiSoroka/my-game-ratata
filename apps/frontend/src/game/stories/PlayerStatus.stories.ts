@@ -12,7 +12,7 @@ import {
 import PlayerStatusPanel from '../ui/PlayerStatusPanel.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Interface/Player status' } satisfies Meta
+const meta = { title: 'Shared/Player status' } satisfies Meta
 export default meta
 type Story = StoryObj
 

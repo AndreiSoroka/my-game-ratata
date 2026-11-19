@@ -8,7 +8,7 @@ import CityMarket from '../ui/CityMarket.vue'
 import ItemCondition from '../ui/ItemCondition.vue'
 import RepairWorkshop from '../ui/RepairWorkshop.vue'
 import { renderVueStory } from './renderVueStory'
-const meta = { title: 'Interface/City economy' } satisfies Meta
+const meta = { title: 'Shared/City economy' } satisfies Meta
 export default meta
 type Story = StoryObj
 const market: MarketSnapshot = {
