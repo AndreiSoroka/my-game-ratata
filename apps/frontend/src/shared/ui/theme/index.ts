@@ -1,0 +1,1 @@
+export { lightUiColors } from './palette'

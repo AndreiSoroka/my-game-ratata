@@ -1,20 +1,8 @@
-import { type Component, createApp } from 'vue'
+import type { Component } from 'vue'
 
-/** Reuse the production component and release its subscriptions when Storybook removes it. */
+import { renderVueStory as renderSharedVueStory } from '@/shared/lib/storybook'
+
+/** Preserve the legacy game stories while Shared previews use the canvas background. */
 export function renderVueStory(component: Component, props: Record<string, unknown>): HTMLElement {
-    const host = document.createElement('div')
-    host.style.cssText =
-        'position:relative;min-height:520px;background:#354137;padding:24px;box-sizing:border-box'
-    const app = createApp(component, props)
-    app.mount(host)
-    let connected = false
-    const observer = new MutationObserver(() => {
-        if (host.isConnected) connected = true
-        else if (connected) {
-            app.unmount()
-            observer.disconnect()
-        }
-    })
-    observer.observe(document.body, { childList: true, subtree: true })
-    return host
+    return renderSharedVueStory(component, props, { background: '#354137' })
 }

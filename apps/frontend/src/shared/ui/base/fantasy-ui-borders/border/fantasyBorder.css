@@ -1,0 +1,30 @@
+.fantasy-border {
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+    min-width: calc(2 * var(--fantasy-border-size));
+    min-height: calc(2 * var(--fantasy-border-size));
+    border: var(--fantasy-border-size) solid transparent;
+}
+
+.fantasy-border::before {
+    position: absolute;
+    z-index: -1;
+    inset: calc(-1 * var(--fantasy-border-size));
+    box-sizing: border-box;
+    pointer-events: none;
+    content: '';
+    image-rendering: pixelated;
+    border: var(--fantasy-border-size) solid transparent;
+    border-image: var(--fantasy-border-image) var(--fantasy-border-slice) /
+        var(--fantasy-border-size) / 0 stretch;
+    filter: var(--fantasy-border-filter);
+}
+
+.fantasy-border__filters {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}

@@ -58,7 +58,7 @@ The light menu button borders use **Fantasy UI Borders 1.0**, created and distri
 - Official source: https://kenney.nl/assets/fantasy-ui-borders
 - License: [Creative Commons Zero 1.0 (CC0)](https://creativecommons.org/publicdomain/zero/1.0/)
 - Downloaded: 2026-11-19
-- Original PNG and vector assets: `apps/frontend/public/game/map/assets/KenneyFantasyUiBorders/`
+- Canonical original PNG and vector assets: `apps/frontend/src/shared/ui/base/fantasy-ui-borders/assets/`
 - Original license and project source record are preserved as `License.txt` and `SOURCE.txt` alongside the assets.
 
-The pack is copied unchanged, including its native-size and double-size PNG exports, SVG source and reference previews. The opt-in fantasy button skin uses the transparent-center `PNG/Default/Border/panel-border-026.png` frame with interlocking square corner details; CSS stretches its straight edges while preserving the corners.
+The complete pack is preserved unchanged inside the shared UI module, including its native-size and double-size PNG exports, SVG source and reference previews. New shared UI components import these local assets. The legacy public directory `apps/frontend/public/game/map/assets/KenneyFantasyUiBorders/` retains only the unchanged `PNG/Default/Border/panel-border-026.png`, original `License.txt` and a compatibility `SOURCE.txt`, preserving the existing URL used by the opt-in `GameButton` fantasy skin. That skin stretches the frame's straight edges while preserving its interlocking square corners.

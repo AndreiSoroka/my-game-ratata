@@ -1,0 +1,43 @@
+:root {
+    --ui-light-border-white: #ffffff;
+    --ui-light-border-cream: #f1ddb6;
+    --ui-light-border-gold: #f8f3b8;
+    --ui-light-border-copper: #fbc1a6;
+
+    --ui-light-panel-parchment: #fef0d2;
+    --ui-light-panel-title: #554a34;
+    --ui-light-panel-text: #5d5037;
+    --ui-light-panel-muted: #7e7258;
+    --ui-light-panel-divider: #a3916255;
+    --ui-light-panel-warning: #9e3e2c;
+
+    --ui-light-button-text: #fff4d6;
+    --ui-light-button-text-hover: #fff9e8;
+    --ui-light-button-edge: #5a3b22;
+    --ui-light-button-focus: #6b421d;
+    --ui-light-button-text-shadow: #4b301e;
+    --ui-light-button-shadow: #5a3b2240;
+    --ui-light-button-pressed-shadow: #3e251b99;
+    --ui-light-button-selected-edge: #e4c27b;
+
+    --ui-light-button-wood-top: #9a6e3b;
+    --ui-light-button-wood-bottom: #855d30;
+    --ui-light-button-wood-hover-top: #a57740;
+    --ui-light-button-wood-hover-bottom: #906635;
+    --ui-light-button-primary-top: #b78132;
+    --ui-light-button-primary-bottom: #996323;
+    --ui-light-button-primary-hover-top: #c08c3b;
+    --ui-light-button-primary-hover-bottom: #a56f2a;
+    --ui-light-button-success-top: #52663c;
+    --ui-light-button-success-bottom: #3c512d;
+    --ui-light-button-success-hover-top: #5c7045;
+    --ui-light-button-success-hover-bottom: #465c34;
+    --ui-light-button-danger-top: #a16146;
+    --ui-light-button-danger-bottom: #8c5038;
+    --ui-light-button-danger-hover-top: #ad6b4d;
+    --ui-light-button-danger-hover-bottom: #995940;
+    --ui-light-button-slot-top: #755631;
+    --ui-light-button-slot-bottom: #5e4027;
+    --ui-light-button-slot-hover-top: var(--ui-light-button-wood-hover-top);
+    --ui-light-button-slot-hover-bottom: var(--ui-light-button-wood-hover-bottom);
+}

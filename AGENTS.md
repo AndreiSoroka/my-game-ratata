@@ -15,6 +15,7 @@
 
 ## Shared game interface
 
+- New vendor asset wrappers live in `apps/frontend/src/shared/ui/base/<pack>` with their assets, component-local stories/styles and per-component public APIs. Keep Shared independent of `game`; pass theme colors into base components. The independent Fantasy UI Borders component is documented in its module; legacy game controls migrate separately.
 - Build new and updated UI with the production components in `apps/frontend/src/game/ui/primitives`: `GameButton`, `GameInput`, `GameSelect`, `GameTextarea`, `GameFrame`, `GameItemSlot`, `GameRibbon` and `GameResourceBar`. See that directory's `README.md` and the focused Storybook stories.
 - Preserve intentional component skins. The player HUD uses the opt-in Kenney parchment frame, red ribbon and metallic resource bars; keep its original appearance when reusing or extending the shared components.
 - Keep colors, decorative asset sources and control states in `primitives/gameUi.css`. Parent styles own layout, sizing and scrolling, not a second button/field/frame skin. Preserve semantic resource colors and specialized world/SVG graphics.
