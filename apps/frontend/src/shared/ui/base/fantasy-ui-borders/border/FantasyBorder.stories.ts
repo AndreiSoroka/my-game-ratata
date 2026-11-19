@@ -44,14 +44,18 @@ export const Default: Story = {
     render: (args, context) => preview('default', args, context.globals),
 }
 export const Variants: Story = {
+    parameters: { controls: { disable: true } },
     render: (_args, context) => preview('variants', {}, context.globals),
 }
 export const Colors: Story = {
+    parameters: { controls: { disable: true } },
     render: (_args, context) => preview('colors', {}, context.globals),
 }
 export const Composition: Story = {
+    parameters: { controls: { disable: true } },
     render: (_args, context) => preview('composition', {}, context.globals),
 }
 export const Sizes: Story = {
+    parameters: { controls: { disable: true } },
     render: (_args, context) => preview('sizes', {}, context.globals),
 }

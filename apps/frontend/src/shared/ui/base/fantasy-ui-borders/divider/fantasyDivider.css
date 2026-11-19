@@ -1,0 +1,53 @@
+.fantasy-divider {
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: calc(var(--fantasy-divider-cap-width) + 1px);
+    height: var(--fantasy-divider-height);
+    min-height: var(--fantasy-divider-height);
+}
+
+.fantasy-divider::before,
+.fantasy-divider::after {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    pointer-events: none;
+    image-rendering: pixelated;
+    border: 0 solid transparent;
+    border-right-width: var(--fantasy-divider-cap-width);
+    border-image: var(--fantasy-divider-image) 0 var(--fantasy-divider-cap) 0 0 fill / 0
+        var(--fantasy-divider-cap-width) 0 0 / 0 stretch;
+    filter: var(--fantasy-divider-filter);
+}
+
+.fantasy-divider::before {
+    content: '';
+}
+
+.fantasy-divider--left::before {
+    transform: scaleX(-1);
+}
+
+.fantasy-divider--both {
+    min-width: calc(var(--fantasy-divider-cap-width) + var(--fantasy-divider-cap-width) + 2px);
+}
+
+.fantasy-divider--both::before {
+    left: round(down, 50%, 1px);
+}
+
+.fantasy-divider--both::after {
+    right: calc(100% - round(down, 50%, 1px));
+    content: '';
+    transform: scaleX(-1);
+}
+
+.fantasy-divider__filters {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
