@@ -1,0 +1,36 @@
+.fantasy-panel {
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+    min-width: calc(2 * var(--fantasy-panel-size));
+    min-height: calc(2 * var(--fantasy-panel-size));
+    border: var(--fantasy-panel-size) solid transparent;
+    background-color: color-mix(
+        in srgb,
+        var(--fantasy-panel-color) var(--fantasy-panel-center-opacity),
+        transparent
+    );
+    background-clip: padding-box;
+}
+
+.fantasy-panel::before {
+    position: absolute;
+    z-index: -1;
+    inset: calc(-1 * var(--fantasy-panel-size));
+    box-sizing: border-box;
+    pointer-events: none;
+    content: '';
+    image-rendering: pixelated;
+    border: var(--fantasy-panel-size) solid transparent;
+    border-image: var(--fantasy-panel-image) var(--fantasy-panel-slice) /
+        var(--fantasy-panel-size) / 0 stretch;
+    filter: var(--fantasy-panel-filter);
+}
+
+.fantasy-panel__filters {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
