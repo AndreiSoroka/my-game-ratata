@@ -1,7 +1,8 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, Label, Rectangle, vec } from 'excalibur'
 
-import { healthBarPercent } from '../ui/healthPresentation'
+import { healthBarPercent } from '@/entities/character'
+
 import { characterOverhead } from './characterPresentationGeometry'
 
 export interface CharacterBundle {

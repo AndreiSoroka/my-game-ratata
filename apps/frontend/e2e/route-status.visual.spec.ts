@@ -41,3 +41,9 @@ for (const width of [1280, 390]) {
         await expect(page.getByText(/путь перекрыт/)).toHaveCount(0)
     })
 }
+
+test('hides the blocked-route overlay while the player is stunned', async ({ page }) => {
+    await page.goto('/iframe.html?id=shared-prayer-channel--stunned-while-blocked&viewMode=story')
+    await expect(page.locator('#storybook-root > div')).toBeVisible()
+    await expect(page.getByRole('status')).toHaveCount(0)
+})

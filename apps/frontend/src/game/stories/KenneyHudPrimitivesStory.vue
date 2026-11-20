@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { HealthSnapshot, SoulSnapshot } from '@my-game-ratata/contracts'
 
+import { SoulBadge } from '@/entities/character'
+
 import GameFrame from '../ui/primitives/GameFrame.vue'
 import GameResourceBar from '../ui/primitives/GameResourceBar.vue'
 import GameRibbon from '../ui/primitives/GameRibbon.vue'
-import SoulBadge from '../ui/SoulBadge.vue'
 
 defineProps<{ section: 'parchment' | 'ribbons' | 'resources' }>()
 const soul: SoulSnapshot = {

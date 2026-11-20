@@ -10,6 +10,7 @@ export function playerStatusFixture(overrides: Partial<CharacterSnapshot> = {}):
         nickname: 'Андрей Сорока',
         heroClass: 'cleric',
         health: { kind: 'percent', percent: 100 },
+        movement: { mode: 'walking', dashing: false, dashCooldownMsLeft: 0 },
         resources: {
             mana: { kind: 'percent', percent: 100, hasCapacity: true },
             energy: { kind: 'percent', percent: 100, hasCapacity: true },
@@ -49,7 +50,7 @@ export function faithKnownStatusFixture(): CharacterSnapshot {
 }
 
 /** The observer has only an earned omen; the exact mood is absent from the snapshot. */
-export function faithOmenStatusFixture(): CharacterSnapshot {
+export function faithUnknownMoodStatusFixture(): CharacterSnapshot {
     const character = faithKnownStatusFixture()
     character.progression!.deity = {
         ...character.progression!.deity,

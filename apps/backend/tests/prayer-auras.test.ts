@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { resolveCharacterDamage } from '../src/game/abilityDamage'
+import { AdventureService } from '../src/game/adventure'
 import type { GameCharacter } from '../src/game/character'
 import type { PendingAttackHit } from '../src/game/characterState'
 import { attemptAttack } from '../src/game/combat'
@@ -8,6 +9,8 @@ import { applyAttackStun, resolveAttackDamage } from '../src/game/combatDamage'
 import { defendContact } from '../src/game/combatDefense'
 import { observeCombatEvent } from '../src/game/combatObservation'
 import { advanceCharacter } from '../src/game/movement'
+import { NavigationService } from '../src/game/navigation'
+import { PartyService } from '../src/game/parties'
 import {
     activePrayerAuras,
     bindPrayerAuraEnvironment,
@@ -17,6 +20,9 @@ import {
     prayerDamageInterrupts,
 } from '../src/game/prayerAuras'
 import { createSnapshot, findVisibleTarget } from '../src/game/queries'
+import { roomSnapshot } from '../src/game/roomSnapshot'
+import { TheftService } from '../src/game/theft'
+import { WorldLocations } from '../src/game/worldLocations'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
 import { theftFixture } from './theftFixtures'
 
@@ -78,6 +84,66 @@ const attack: PendingAttackHit = {
     hitAt: 1000,
     targetEnergyDrain: 0,
 }
+
+it('projects only active aura IDs to their own character even when the aura source is hidden', () => {
+    const { source, living, undead, characters, context } = fixture()
+    channel(source, {
+        wardRank: 4,
+        wardTargetIds: [undead.id],
+        protection: true,
+        blessing: true,
+        domain: true,
+    })
+    const state = {
+        adventure: new AdventureService(),
+        characters: new Map(characters.map((actor) => [actor.id, actor])),
+        parties: new PartyService(),
+        theft: new TheftService(),
+        tick: 0,
+        world: new WorldLocations(
+            new NavigationService({
+                ...context.navigation.grid,
+                id: 'prayer-aura-snapshot-test',
+            })
+        ),
+    }
+    const forUndead = roomSnapshot(state, 1000, undead.locationId, undead.id)
+    expect(forUndead.characters.map(({ id }) => id)).not.toContain(source.id)
+    expect(
+        forUndead.characters.find(({ id }) => id === undead.id)
+    ).toMatchObject({
+        prayerAuraEffects: [
+            'weakened',
+            'slowed',
+            'feared',
+            'prayer-blessing',
+            'prayer-vulnerability',
+        ],
+    })
+    const forLiving = roomSnapshot(state, 1000, living.locationId, living.id)
+    expect(forLiving.characters.map(({ id }) => id)).toEqual(
+        expect.arrayContaining([source.id, undead.id])
+    )
+    expect(
+        forLiving.characters.find(({ id }) => id === living.id)
+    ).toMatchObject({
+        prayerAuraEffects: ['prayer-protection', 'prayer-blessing'],
+    })
+    expect(
+        forLiving.characters.find(({ id }) => id === undead.id)
+    ).not.toHaveProperty('prayerAuraEffects')
+    expect(
+        forLiving.characters.find(({ id }) => id === source.id)
+    ).not.toHaveProperty('prayerAuraEffects')
+    expect(
+        roomSnapshot(
+            state,
+            10_000,
+            undead.locationId,
+            undead.id
+        ).characters.find(({ id }) => id === undead.id)
+    ).not.toHaveProperty('prayerAuraEffects')
+})
 
 describe('shared continuous prayer effects', () => {
     it('protects living enemies as well as friends, blesses party undead, and excludes its own source from advantage', () => {

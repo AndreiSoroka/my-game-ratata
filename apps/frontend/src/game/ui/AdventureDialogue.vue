@@ -8,6 +8,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { SoulBadge } from '@/entities/character'
+
 import CityDemandReport from './CityDemandReport.vue'
 import CityMarket from './CityMarket.vue'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
@@ -16,7 +18,6 @@ import GameFrame from './primitives/GameFrame.vue'
 import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import RepairWorkshop from './RepairWorkshop.vue'
-import SoulBadge from './SoulBadge.vue'
 import { speechBubbleId } from './speechReceipts'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'

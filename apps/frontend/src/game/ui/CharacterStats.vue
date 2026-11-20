@@ -2,12 +2,13 @@
 import { type CharacterSnapshot, resolveCombatWeapon } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { healthBarPercent } from '@/entities/character'
+
 import {
     observedDamageText,
     observedResourceText,
     observedText,
 } from './characterSheetPresentation'
-import { healthBarPercent } from './healthPresentation'
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import GameFrame from './primitives/GameFrame.vue'
 

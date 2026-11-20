@@ -190,16 +190,11 @@ async function joinGame(): Promise<void> {
                 style="display: contents"
             >
                 <InventoryHud
-                    :nickname="nickname"
-                    :status="status"
                     :snapshot="snapshot"
                     :player="localCharacter"
-                    :local-player-id="localPlayerId"
                     :inventory-open="inventoryOpen"
-                    :test-mode="Boolean(testInterface)"
                     @toggle-inventory="toggleInventory"
                     @open-menu="gameMenu.show"
-                    @create-marker="automationPanels?.create()"
                     @close-inventory="closeInventory"
                     @plant="startPlanting"
                     @assign-hotbar="gameplay?.assignItem($event.slot, $event.itemId)"

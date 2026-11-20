@@ -10,10 +10,11 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
+import { SoulBadge } from '@/entities/character'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
-import SoulBadge from './SoulBadge.vue'
 
 const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()

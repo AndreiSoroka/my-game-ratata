@@ -74,33 +74,36 @@ it.each(['moving', 'cancelled', 'dead', 'empty'] as const)(
     }
 )
 
-it('preserves stun and prayer priority over route feedback', async () => {
+it('suppresses action feedback while stunned and gives prayer priority over the route when clear', async () => {
     const player = walker()
+    const castingPlayer = walker({
+        abilities: {
+            known: ['pray'],
+            cooldowns: {},
+            barrier: null,
+            casting: {
+                abilityId: 'pray',
+                mode: 'purify_grave',
+                targetId: 'grave',
+                startedAt: 0,
+                completesAt: 10_000,
+            },
+        },
+    })
+    const stunnedCooldowns = { ...player.cooldowns, stunMsLeft: 2000 }
     const wrapper = mount(ActionChannelStatus, {
         props: {
-            player: { ...player, cooldowns: { ...player.cooldowns, stunMsLeft: 2000 } },
+            player: { ...player, cooldowns: stunnedCooldowns },
             serverTime: 1000,
         },
     })
     try {
-        expect(wrapper.text()).toBe('СТАН · 2.0 с')
+        expect(wrapper.find('[role="status"]').exists()).toBe(false)
         await wrapper.setProps({
-            player: {
-                ...player,
-                abilities: {
-                    known: ['pray'],
-                    cooldowns: {},
-                    barrier: null,
-                    casting: {
-                        abilityId: 'pray',
-                        mode: 'purify_grave',
-                        targetId: 'grave',
-                        startedAt: 0,
-                        completesAt: 10_000,
-                    },
-                },
-            },
+            player: { ...castingPlayer, cooldowns: stunnedCooldowns },
         })
+        expect(wrapper.find('[role="status"]').exists()).toBe(false)
+        await wrapper.setProps({ player: castingPlayer })
         expect(wrapper.text()).toContain('Очищение могилы · 9.0 с')
         expect(wrapper.text()).not.toContain('путь перекрыт')
         await wrapper.get('button').trigger('click')

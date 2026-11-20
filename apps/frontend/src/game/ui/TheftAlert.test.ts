@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
 import TheftAlert from './TheftAlert.vue'
-import TheftStatus from './TheftStatus.vue'
 
 describe('crime feedback', () => {
     it('lets a victim call guards and removes the action at the server deadline', async () => {
@@ -57,45 +56,6 @@ describe('crime feedback', () => {
                 },
             })
             expect(wrapper.find('aside').exists()).toBe(false)
-        } finally {
-            wrapper.unmount()
-        }
-    })
-    it('explains permanent blacklist consequences after temporary pursuit expires', () => {
-        const wrapper = mount(TheftStatus, {
-            props: {
-                theft: {
-                    cooldownMsLeft: 0,
-                    wantedMsLeft: 0,
-                    blacklisted: true,
-                    accusations: [],
-                    lastResult: null,
-                },
-            },
-        })
-        try {
-            expect(wrapper.text()).toContain('В чёрном списке')
-            expect(wrapper.text()).toContain('Стража нападёт')
-            expect(wrapper.text()).toContain('30 золотых')
-        } finally {
-            wrapper.unmount()
-        }
-    })
-    it('shows cooldown and wanted time without item details', () => {
-        const wrapper = mount(TheftStatus, {
-            props: {
-                theft: {
-                    cooldownMsLeft: 7100,
-                    wantedMsLeft: 29_200,
-                    blacklisted: false,
-                    accusations: [],
-                    lastResult: null,
-                },
-            },
-        })
-        try {
-            expect(wrapper.text()).toContain('Кража · 8 с')
-            expect(wrapper.text()).toContain('Розыск · 30 с')
         } finally {
             wrapper.unmount()
         }

@@ -10,6 +10,8 @@ test.describe('shared gameplay controls', () => {
                 mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
             )
             await join(page, `keys-${info.workerIndex}-${mobile}`, 'arcanist')
+            const effects = page.getByRole('region', { name: 'Player effects' })
+            await expect(effects.getByText('Всё в порядке', { exact: true })).toBeVisible()
             const slots = page
                 .getByLabel('Быстрые действия')
                 .getByRole('button', { name: /^[1-4]:/ })
@@ -29,6 +31,10 @@ test.describe('shared gameplay controls', () => {
             ).toEqual(position)
             await page.keyboard.press('Digit1')
             await expectPrivateBarrier(page)
+            await expect(effects.locator('[data-player-effect="barrier"]')).toContainText(
+                'Магический барьер'
+            )
+            await expect(effects.getByText('Всё в порядке', { exact: true })).toHaveCount(0)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
             await page.keyboard.press('ArrowDown')

@@ -16,6 +16,14 @@ import { GRAVE_PURIFY_MANA_COST } from './graves'
 import { REVIVE_MANA_COST } from './life'
 import type { DeityId } from './progression'
 
+export type PrayerAuraEffectId =
+    | 'weakened'
+    | 'slowed'
+    | 'feared'
+    | 'prayer-protection'
+    | 'prayer-blessing'
+    | 'prayer-vulnerability'
+
 export function prayerManaCost(
     mode: PrayerMode,
     abilityId: PrayerActionId = 'pray'

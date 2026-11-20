@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
-import PlayerStatusPanel from './PlayerStatusPanel.vue'
+import GamePlayerStatus from './GamePlayerStatus.vue'
 
 it('keeps mobile target spacing relative to the game host through HUD resizing without moving focus', () => {
     let resize: ResizeObserverCallback | undefined
@@ -29,7 +29,7 @@ it('keeps mobile target spacing relative to the game host through HUD resizing w
     ) {
         return this === host ? new DOMRect(0, 40, 390, 844) : new DOMRect(0, 80, 150, bottom - 80)
     })
-    const view = mount(PlayerStatusPanel, {
+    const view = mount(GamePlayerStatus, {
         props: { character: characterFixture('cleric') },
         attachTo: host,
     })

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { CharacterSnapshot, WorldGraveSnapshot } from '@my-game-ratata/contracts'
 
+import { healthBarPercent, healthText } from '@/entities/character'
+
 import { relation } from './combatTargeting'
 import GraveDetails from './GraveDetails.vue'
-import { healthBarPercent, healthText } from './healthPresentation'
 import GameFrame from './primitives/GameFrame.vue'
 import type { WorldSelectionTarget } from './worldTargetSelection'
 

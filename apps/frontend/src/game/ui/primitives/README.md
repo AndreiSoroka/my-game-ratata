@@ -38,19 +38,19 @@ An item slot defaults to 40px. Override `--game-item-slot-size` or the component
 
 ## Kenney HUD surfaces
 
-The restored player HUD uses `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. These are reusable production primitives, demonstrated separately under **Shared/Kenney HUD primitives**. This restoration applies them only to the HUD; other game windows retain their current skin until deliberately migrated with contrast checks.
+**Shared/Kenney HUD primitives** demonstrates the legacy `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. The live HUD cards share a parchment surface and brown outline. **Widgets/Player status** shows resources and faith, and **Widgets/Player effects** shows active effects and law statuses.
 
-For a parchment frame, keep a transparent physical border on the native host and set `--game-frame-border-width` to that same width. The filled Kenney frame is painted behind content and outsets across that border, matching the original border-box geometry. The HUD uses 10px on desktop and 8px on mobile, with `--game-frame-image-width: 14px` preserving the original painted ornament width independently of layout. Parchment hosts expose local `--game-panel-text`, `--game-panel-muted`, `--game-panel-divider` and `--game-panel-warning` tokens without changing nested controls' default palette.
+For a parchment frame, keep a transparent physical border on the native host and set `--game-frame-border-width` to that same width. The filled Kenney frame is painted behind content and outsets across that border. Parchment hosts expose local `--game-panel-text`, `--game-panel-muted`, `--game-panel-divider` and `--game-panel-warning` tokens.
 
-The ribbon accepts arbitrary accessible content, such as a heading and identity icons. Its dimensions are controlled by `--game-ribbon-height` and `--game-ribbon-cap-width` (HUD: 32px/16px desktop, 24px/12px mobile). Keep the surrounding layout responsible for the name's ellipsis and icon slots.
+The ribbon accepts arbitrary accessible content, such as a heading and identity icons. Its dimensions are controlled by `--game-ribbon-height` and `--game-ribbon-cap-width`. The surrounding layout controls truncation and icon placement.
 
-Resource bars consume the projected snapshot directly, using the same `healthBarPercent` and `healthText` helpers as the HUD. A percent snapshot never acquires a numeric current/max label. Zero fills remain zero. Style their dimensions with `--game-resource-height`, `--game-resource-border-width` and `--game-resource-font-size` (HUD: 28px/6px/12px desktop, 17px/3px/9px mobile). The HUD keeps `--game-resource-image-width: 6px` at both sizes so the original metallic bevel survives the compact border. Use `.game-resource-bar__fill`/`.game-resource-bar__text` when inspecting geometry and authorized text in tests.
+`GameResourceBar` consumes the projected snapshot directly and renders current/max only for an exact snapshot. Style its dimensions with `--game-resource-height`, `--game-resource-border-width` and `--game-resource-font-size`. Use `.game-resource-bar__fill` and `.game-resource-bar__text` when inspecting the legacy primitive in tests.
 
 ## Fantasy buttons on parchment
 
 Use `GameButton skin="fantasy"` for wooden controls with the original **Kenney Fantasy UI Borders** ornament. The opt-in skin supports the same semantic variants, sizes, icon mode and native interactions as the default button. Its nine-slice border keeps the corner ornaments at a fixed size while the button grows or wraps. All fills, border sources and hover/pressed/selected/disabled/focus states belong to `gameUi.css`.
 
-Compose it with `GameFrame skin="parchment"` and the `game-fantasy-surface` host class for warm, readable panel text. Keep layout and button dimensions in the owning window. The default button and existing HUD retain their current skins; adding a Storybook example does not migrate live windows.
+Compose it with `GameFrame skin="parchment"` and the `game-fantasy-surface` host class for warm, readable panel text. Keep layout and button dimensions in the owning window.
 
 ```vue
 <section class="my-window game-frame-host game-fantasy-surface">

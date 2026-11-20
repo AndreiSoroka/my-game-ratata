@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 
-/** Aligns sibling world overlays with the HUD's actual height, including earned faith knowledge. */
+/** Aligns sibling world overlays with the full height of the resources and effects widgets. */
 export function useStatusPanelBounds(panel: Ref<HTMLElement | undefined>): void {
     let container: HTMLElement | undefined
     let observer: ResizeObserver | undefined

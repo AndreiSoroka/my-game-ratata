@@ -1,6 +1,7 @@
 import type {
     CharacterRelationship,
     CharacterSnapshot,
+    PrayerAuraEffectId,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -10,6 +11,7 @@ import {
 } from './combatObservation'
 import { snapshotCompanionSoul } from './companionState'
 import { canTargetByFaction } from './factions'
+import { prayerAuraEffects } from './prayerAuras'
 import type { SnapshotContext } from './roomSnapshot'
 import { canHearSpeech } from './socialSpeech'
 
@@ -21,12 +23,16 @@ export function projectRoomCharacter(
 ): CharacterSnapshot {
     const actor = context.characters.get(character.id)
     const activity = observedWorkerActivity(context, actor, view, playerId)
+    const auraEffects = observedPrayerAuraEffects(actor, playerId, view)
+    const observed = observeCharacterCombat(character, actor, view)
+    delete observed.prayerAuraEffects
     return {
-        ...observeCharacterCombat(character, actor, view),
+        ...observed,
         ...(context.social === undefined || actor === undefined
             ? {}
             : { interactions: context.social.interactions(actor) }),
         ...(activity === undefined ? {} : { workerActivity: activity }),
+        ...(auraEffects.length === 0 ? {} : { prayerAuraEffects: auraEffects }),
         ...(character.soul === undefined
             ? {}
             : {
@@ -40,6 +46,42 @@ export function projectRoomCharacter(
         inventory: character.id === playerId ? character.inventory : [],
         theft: context.theft.snapshot(character.id, playerId, view.now),
     }
+}
+
+function observedPrayerAuraEffects(
+    actor: GameCharacter | undefined,
+    playerId: string | undefined,
+    view: CombatObserver
+): PrayerAuraEffectId[] {
+    if (
+        actor === undefined ||
+        actor.id !== playerId ||
+        actor.id !== view.observer?.id
+    ) {
+        return []
+    }
+
+    const effects = prayerAuraEffects(actor, view.now)
+    const ids: PrayerAuraEffectId[] = []
+    if (effects.minimumDamage) {
+        ids.push('weakened')
+    }
+    if (effects.slowMultiplier < 1) {
+        ids.push('slowed')
+    }
+    if (effects.feared) {
+        ids.push('feared')
+    }
+    if (effects.dodgeBonus > 0) {
+        ids.push('prayer-protection')
+    }
+    if (effects.advantage) {
+        ids.push('prayer-blessing')
+    }
+    if (effects.damageTakenMultiplier > 1) {
+        ids.push('prayer-vulnerability')
+    }
+    return ids
 }
 
 function relationshipFor(

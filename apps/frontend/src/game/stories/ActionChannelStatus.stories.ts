@@ -52,3 +52,15 @@ export const RouteInProgress: Story = {
             serverTime: 3500,
         }),
 }
+
+export const StunnedWhileBlocked: Story = {
+    render: () => {
+        const player = characterFixture('route-walker', {
+            control: { mode: 'route', targetId: null, route: routeFixture() },
+        })
+        return renderVueStory(ActionChannelStatus, {
+            player: { ...player, cooldowns: { ...player.cooldowns, stunMsLeft: 2_000 } },
+            serverTime: 3500,
+        })
+    },
+}

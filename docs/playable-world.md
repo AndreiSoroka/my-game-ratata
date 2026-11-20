@@ -51,7 +51,7 @@ Space and F confirm the focused button. Actual windows and text fields own their
 input. Escape performs one operation per press: close the game menu, handle the
 current chat/window, cancel a ritual or automated action/target, then open the
 menu if nothing remains to cancel. Holding Escape does not advance through these
-steps. The visible menu button also works on touch screens.
+steps. The menu button beside Inventory also works on touch screens.
 **Вернуться в игру** resumes input; **Выйти из игры** returns to sign-in without
 abandoning the living identity, including during rescue. Signing in with the same
 name resumes that identity. The world continues while the menu is open.
@@ -193,9 +193,9 @@ remaining route with one notice; stun and action locks freeze that budget.
 These temporary routes are separate from the pathfinder's intermediate cells,
 saved N markers, scenario destinations and interaction reach rules.
 
-Press physical **N**, or use the HUD marker button, to remember your current place.
-The game menu's **Метки** window lists personal markers with their location names
-and supports renaming and deletion. These are prototype cartography tools, with no
+Press physical **N** to remember your current place. The game menu's **Метки** window
+also offers **Поставить здесь** and lists personal markers with their location names.
+It supports renaming and deletion. These are prototype cartography tools, with no
 skill requirement yet. Markers, scenario definitions and current runs live only in
 server memory, attached to the current identity. Rejoining and resurrection retain
 them; permanent death, abandoning that life or restarting the world removes them.

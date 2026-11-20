@@ -7,6 +7,7 @@ import GameFrame from './primitives/GameFrame.vue'
 
 const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
 const emit = defineEmits<{ cancelPrayer: []; cancelRoute: [] }>()
+const stunned = computed(() => props.player.cooldowns.stunMsLeft > 0)
 const prayerName = computed(
     () =>
         ({
@@ -29,16 +30,8 @@ const remainingSeconds = computed(() => {
 })
 </script>
 <template>
-    <p
-        v-if="player.cooldowns.stunMsLeft > 0"
-        class="control-status rpg-panel game-frame-host"
-        role="status"
-    >
-        <GameFrame variant="panel" />
-        СТАН · {{ (player.cooldowns.stunMsLeft / 1000).toFixed(1) }} с
-    </p>
     <div
-        v-else-if="player.abilities?.casting"
+        v-if="!stunned && player.abilities?.casting"
         class="control-status rpg-panel game-frame-host"
         role="status"
     >
@@ -54,7 +47,7 @@ const remainingSeconds = computed(() => {
         </GameButton>
     </div>
     <div
-        v-else-if="blockedRoute?.points[0]"
+        v-else-if="!stunned && blockedRoute?.points[0]"
         class="control-status control-status--route rpg-panel game-frame-host"
         role="status"
     >

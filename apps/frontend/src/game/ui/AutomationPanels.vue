@@ -87,7 +87,7 @@ watch(
 )
 onMounted(() => window.addEventListener('keydown', key, true))
 onBeforeUnmount(() => window.removeEventListener('keydown', key, true))
-defineExpose({ open, close, create, hasOpenWindow: computed(() => activeWindow.value !== null) })
+defineExpose({ open, close, hasOpenWindow: computed(() => activeWindow.value !== null) })
 </script>
 
 <template>

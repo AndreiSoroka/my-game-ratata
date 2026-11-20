@@ -179,6 +179,8 @@ export interface CharacterSnapshot {
     creatureType: CreatureType
     theft?: CharacterTheftSnapshot
     movement?: CharacterMovementSnapshot
+    /** Active prayer aura effects are visible only to this character. */
+    prayerAuraEffects?: ReadonlyArray<import('./prayer').PrayerAuraEffectId>
     soul?: SoulSnapshot
     progression?: ProgressionSnapshot
     heroClass?: HeroClass | null

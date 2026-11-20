@@ -9,8 +9,9 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { healthBarPercent, healthText } from '@/entities/character'
+
 import { graveName } from './graveInteractions'
-import { healthBarPercent, healthText } from './healthPresentation'
 
 const props = defineProps<{
     grave: WorldGraveSnapshot

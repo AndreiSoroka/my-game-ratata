@@ -27,10 +27,10 @@ test.describe('routes, private markers and scenario editor', () => {
 
             await page.keyboard.press('KeyN')
             await expectMarkerCount(page, 1)
-            await page.getByRole('button', { name: 'Поставить метку', exact: true }).click()
-            await expectMarkerCount(page, 2)
             await openPanel(page, 'Метки')
             const markers = page.getByRole('dialog', { name: 'Метки', exact: true })
+            await markers.getByRole('button', { name: 'Поставить здесь', exact: true }).click()
+            await expectMarkerCount(page, 2)
             await markers.getByLabel('Название метки 1', { exact: true }).fill('Camp')
             await page.keyboard.press('KeyN')
             await expectMarkerCount(page, 2)

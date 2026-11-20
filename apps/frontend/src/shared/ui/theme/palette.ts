@@ -14,6 +14,7 @@ export const lightUiColors = {
         text: 'var(--ui-light-panel-text)',
         muted: 'var(--ui-light-panel-muted)',
         divider: 'var(--ui-light-panel-divider)',
+        positive: 'var(--ui-light-panel-positive)',
         warning: 'var(--ui-light-panel-warning)',
     },
     bar: {

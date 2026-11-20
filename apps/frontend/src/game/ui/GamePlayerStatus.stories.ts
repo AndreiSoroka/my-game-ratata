@@ -2,27 +2,27 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
+import { renderVueStory } from '../stories/renderVueStory'
 import {
     faithKnownStatusFixture,
-    faithOmenStatusFixture,
+    faithUnknownMoodStatusFixture,
     LONG_PLAYER_NAME,
     playerStatusFixture,
     wantedStatusFixture,
 } from '../testing/playerStatusFixture'
-import PlayerStatusPanel from '../ui/PlayerStatusPanel.vue'
-import { renderVueStory } from './renderVueStory'
+import GamePlayerStatus from './GamePlayerStatus.vue'
 
-const meta = { title: 'Shared/Player status' } satisfies Meta
+const meta = { title: 'Game/Player HUD' } satisfies Meta
 export default meta
 type Story = StoryObj
 
 /** Mount in a real game host so ResizeObserver publishes the HUD's occupied space. */
-function statusStory(props: { character: CharacterSnapshot }): HTMLElement {
+function statusStory(props: { character: CharacterSnapshot; serverTime?: number }): HTMLElement {
     const host = renderVueStory(
         {
             render: () =>
                 h('section', { class: 'game-screen', style: 'position:relative;height:100dvh' }, [
-                    h(PlayerStatusPanel, props),
+                    h(GamePlayerStatus, props),
                 ]),
         },
         {}
@@ -65,6 +65,13 @@ export const LowResources: Story = {
             }),
         }),
 }
+
+export const LowHealth: Story = {
+    render: () =>
+        statusStory({
+            character: playerStatusFixture({ health: { kind: 'percent', percent: 25 } }),
+        }),
+}
 export const AuthorizedNumbers: Story = {
     render: () =>
         statusStory({
@@ -95,9 +102,26 @@ export const ScriptedEcho: Story = {
 export const FaithKnown: Story = {
     render: () => statusStory({ character: faithKnownStatusFixture() }),
 }
-export const FaithOmen: Story = {
-    render: () => statusStory({ character: faithOmenStatusFixture() }),
+export const FaithUnknownMood: Story = {
+    render: () => statusStory({ character: faithUnknownMoodStatusFixture() }),
 }
 export const Wanted: Story = {
     render: () => statusStory({ character: wantedStatusFixture() }),
+}
+
+export const ManyEffects: Story = {
+    render: () => {
+        const character = wantedStatusFixture()
+        return statusStory({
+            serverTime: 1_000,
+            character: {
+                ...character,
+                cooldowns: { ...character.cooldowns, stunMsLeft: 800 },
+                abilities: { ...character.abilities!, barrier: { expiresAt: 6_000 } },
+                combat: { defensiveStance: true, combo: { stacks: 2, limit: 3, expiresAt: 5_000 } },
+                movement: { mode: 'sneaking', dashing: false, dashCooldownMsLeft: 0 },
+                prayerAuraEffects: ['prayer-blessing', 'prayer-protection'],
+            },
+        })
+    },
 }

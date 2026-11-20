@@ -11,6 +11,7 @@
     --ui-light-panel-text: #5d5037;
     --ui-light-panel-muted: #7e7258;
     --ui-light-panel-divider: #a3916255;
+    --ui-light-panel-positive: #486b46;
     --ui-light-panel-warning: #9e3e2c;
 
     --ui-light-bar-track: color-mix(
@@ -20,7 +21,7 @@
     );
     --ui-light-bar-health: #d64a50;
     --ui-light-bar-mana: #3c79de;
-    --ui-light-bar-energy: #e5b649;
+    --ui-light-bar-energy: #e7b033;
     --ui-light-bar-text: var(--ui-light-button-text);
     --ui-light-bar-highlight: #ffffff;
     --ui-light-bar-shade: #21170e;
