@@ -361,9 +361,9 @@ window.__ratataTest.stop()
 
 Backend tests cover combat reach, map connectivity, crossings, isolated locations, quest credit, reward duplication, gathering/crafting, progression, resurrection/permadeath, atomic theft, private outcomes and bounded crime reactions. Frontend tests cover controls, theft interactions, hit presentation and movement cleanup.
 
-`bun run check` is the automatic pre-commit gate: formatting, types, lint, unit/script tests and builds. When gameplay or UI behavior changes, run the affected browser E2E scenarios manually, for example `bun run test:e2e -- e2e/social-exchange.spec.ts`. Documentation and formatting changes do not require browser runs.
+The pre-commit hook uses `lint-staged` to check formatting and lint only staged files. Run `bun run check` separately for repository-wide formatting, types, lint, unit/script tests and builds. When gameplay or UI behavior changes, run the affected browser E2E scenarios manually, for example `bun run test:e2e -- e2e/social-exchange.spec.ts`. Documentation and formatting changes do not require browser runs.
 
-`bun run test:e2e` runs the full standard headless Chromium suite. `bun run check:full` combines the automatic checks with that full suite for an explicitly requested full verification. App browser runs start a fresh test world on backend/frontend ports 3500/5500. Plain `playwright test` also defaults to Chromium; other browser projects require an explicit selection.
+`bun run test:e2e` runs the full standard headless Chromium suite. `bun run check:full` combines `bun run check` with that suite for an explicitly requested full verification. App browser runs start a fresh test world on backend/frontend ports 3500/5500. Plain `playwright test` also defaults to Chromium; other browser projects require an explicit selection.
 
 Additional suites run manually from the repository root:
 

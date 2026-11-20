@@ -49,17 +49,19 @@ npm run test:unit
 
 ### Run End-to-End Tests with [Playwright](https://playwright.dev)
 
-From the repository root, `bun run check` and the pre-commit hook run formatting,
-types, lint, unit/script tests and builds. When gameplay or UI behavior changes,
-run the affected browser scenarios manually. Browser runs use headless Chromium
-by default; documentation and formatting changes do not require them.
+The pre-commit hook uses `lint-staged` to check formatting and lint only staged
+files. Run `bun run check` from the repository root for repository-wide
+formatting, types, lint, unit/script tests and builds. When gameplay or UI
+behavior changes, run the affected browser scenarios manually. Browser runs use
+headless Chromium by default. Documentation and formatting changes do not
+require them.
 
 ```sh
 # Run the affected scenario
 bun run test:e2e -- e2e/social-exchange.spec.ts
 # Run the full standard Chromium suite manually
 bun run test:e2e
-# Run the automatic checks and full standard Chromium suite explicitly
+# Run the full repository checks and standard Chromium suite
 bun run check:full
 ```
 

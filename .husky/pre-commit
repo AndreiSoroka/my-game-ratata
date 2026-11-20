@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -e
 
-bun run check
+bun run lint-staged

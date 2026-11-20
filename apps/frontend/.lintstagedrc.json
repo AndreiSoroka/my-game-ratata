@@ -1,0 +1,7 @@
+{
+    "*": "prettier --check --ignore-unknown --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
+    "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue}": [
+        "oxlint",
+        "eslint --max-warnings=0 --no-warn-ignored"
+    ]
+}
