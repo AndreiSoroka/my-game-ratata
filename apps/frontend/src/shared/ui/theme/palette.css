@@ -14,15 +14,15 @@
     --ui-light-panel-positive: #486b46;
     --ui-light-panel-warning: #9e3e2c;
 
-    --ui-dark-panel-surface: #252c2beb;
-    --ui-dark-panel-outline: #453929;
-    --ui-dark-panel-border: #9d835c;
+    --ui-dark-panel-surface: #182b21f2;
+    --ui-dark-panel-border: #c6b89b;
+    --ui-dark-panel-ornament: #aa9e87;
     --ui-dark-panel-title: #f4e7cc;
     --ui-dark-panel-text: #e1ddd0;
-    --ui-dark-panel-divider: #b49a6e80;
+    --ui-dark-panel-divider: #aa9e8780;
     --ui-dark-panel-positive: #a9cf92;
     --ui-dark-panel-warning: #ffa28e;
-    --ui-dark-bar-track: #4a4d45;
+    --ui-dark-bar-track: #414b42;
 
     --ui-light-bar-track: color-mix(
         in srgb,

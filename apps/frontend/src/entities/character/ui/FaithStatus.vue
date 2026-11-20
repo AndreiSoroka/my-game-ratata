@@ -1,20 +1,14 @@
 <script setup lang="ts">
 import type { DeityMood } from '@my-game-ratata/contracts'
-import { computed } from 'vue'
 
 import PatronMood from './PatronMood.vue'
 import PlayerStatusRow from './PlayerStatusRow.vue'
 
-const props = defineProps<{
+defineProps<{
     patronName?: string
-    patronMasteryName?: string
     patronMasteryLevel?: number
     patronMood?: DeityMood
 }>()
-const masteryLabel = computed(() => {
-    const name = props.patronMasteryName?.trim()
-    return name === props.patronName?.trim() ? 'ур.' : name || 'Чудеса'
-})
 </script>
 <template>
     <div v-if="patronName" class="faith-status" aria-label="Покровитель и развитие">
@@ -35,11 +29,11 @@ const masteryLabel = computed(() => {
             </template>
             <span
                 class="faith-status__name"
-                :title="`${patronName} · ${masteryLabel} ${patronMasteryLevel ?? 0}`"
+                :title="`${patronName} · ур. ${patronMasteryLevel ?? 0}`"
             >
                 <span class="faith-status__patron">{{ patronName }}</span>
                 <span class="faith-status__progress"
-                    >· <span class="faith-status__mastery">{{ `${masteryLabel} ` }}</span
+                    >· <span class="faith-status__mastery">ур. </span
                     >{{ patronMasteryLevel ?? 0 }}</span
                 >
             </span>

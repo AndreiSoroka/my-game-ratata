@@ -2,22 +2,25 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import type { PlayerEffect } from '../model/playerEffects'
+import type { PlayerEffectsData } from '../model/playerEffects'
 import PlayerEffectsView from './PlayerEffectsView.vue'
-
-type StoryArgs = { effects: readonly PlayerEffect[] }
 
 const meta = {
     title: 'Entities/Character/Player effects',
+    args: { soulKind: 'spark', isCanSpeak: true },
+    argTypes: {
+        soulKind: { control: 'inline-radio', options: ['spark', 'echo'] },
+        isCanSpeak: { control: 'boolean' },
+    },
     render(args) {
         const host = renderVueStory(PlayerEffectsView, { ...args }, { padding: '16px' })
         host.style.maxWidth = '362px'
         return host
     },
-} satisfies Meta<StoryArgs>
+} satisfies Meta<PlayerEffectsData>
 
 export default meta
-type Story = StoryObj<StoryArgs>
+type Story = StoryObj<PlayerEffectsData>
 
 export const Crime: Story = {
     args: {

@@ -4,7 +4,7 @@ import './fantasyPanel.css'
 import { computed } from 'vue'
 
 import { createFantasyPanelFilterId } from './filterId'
-import { resolveFantasyPanel } from './panelVariants'
+import { FANTASY_PANEL_VARIANTS, resolveFantasyPanel } from './panelVariants'
 import type { FantasyPanelProps } from './types'
 
 const props = withDefaults(defineProps<FantasyPanelProps>(), {
@@ -14,14 +14,28 @@ const props = withDefaults(defineProps<FantasyPanelProps>(), {
 })
 const filterId = createFantasyPanelFilterId()
 const variant = computed(() => resolveFantasyPanel(props.panel, props.appearance))
+const borderColor = computed(() => props.borderColor ?? props.color)
+const backgroundColor = computed(() => props.backgroundColor ?? props.color)
+const splitColors = computed(() => borderColor.value !== backgroundColor.value)
+const transparentOpacity = 127 / 255
+const borderOpacity = computed(() =>
+    variant.value.appearance === 'transparent-border' ? transparentOpacity : 1
+)
+const backgroundOpacity = computed(() =>
+    variant.value.appearance === 'transparent-center' ? transparentOpacity : 1
+)
+const image = computed(() =>
+    splitColors.value
+        ? FANTASY_PANEL_VARIANTS[variant.value.key].transparentCenterSrc
+        : variant.value.src
+)
 const decoration = computed(() => ({
-    '--fantasy-panel-image': `url("${variant.value.src}")`,
+    '--fantasy-panel-image': `url("${image.value}")`,
     '--fantasy-panel-slice': String(variant.value.slice),
     '--fantasy-panel-size': `${variant.value.slice}px`,
     '--fantasy-panel-filter': `url("#${filterId}")`,
-    '--fantasy-panel-color': props.color,
-    '--fantasy-panel-center-opacity':
-        variant.value.appearance === 'transparent-center' ? `${(127 / 255) * 100}%` : '100%',
+    '--fantasy-panel-color': backgroundColor.value,
+    '--fantasy-panel-center-opacity': `${backgroundOpacity.value * 100}%`,
 }))
 </script>
 
@@ -49,8 +63,40 @@ const decoration = computed(() => ({
                     height="1"
                     color-interpolation-filters="sRGB"
                 >
-                    <feFlood :style="{ floodColor: color }" result="panel-color" />
-                    <feComposite in="panel-color" in2="SourceAlpha" operator="in" />
+                    <template v-if="splitColors">
+                        <!-- The transparent-center PNG marks cutouts, fill and ornament with alpha 0, 127 and 255. -->
+                        <feComponentTransfer in="SourceAlpha" result="panel-border-mask">
+                            <feFuncA type="discrete" :tableValues="`0 0 ${borderOpacity}`" />
+                        </feComponentTransfer>
+                        <feComponentTransfer in="SourceAlpha" result="panel-fill-mask">
+                            <feFuncA type="discrete" :tableValues="`0 ${backgroundOpacity} 0`" />
+                        </feComponentTransfer>
+                        <feFlood :style="{ floodColor: borderColor }" result="panel-border-color" />
+                        <feComposite
+                            in="panel-border-color"
+                            in2="panel-border-mask"
+                            operator="in"
+                            result="panel-ornament"
+                        />
+                        <feFlood
+                            :style="{ floodColor: backgroundColor }"
+                            result="panel-fill-color"
+                        />
+                        <feComposite
+                            in="panel-fill-color"
+                            in2="panel-fill-mask"
+                            operator="in"
+                            result="panel-fill"
+                        />
+                        <feMerge>
+                            <feMergeNode in="panel-fill" />
+                            <feMergeNode in="panel-ornament" />
+                        </feMerge>
+                    </template>
+                    <template v-else>
+                        <feFlood :style="{ floodColor: borderColor }" result="panel-color" />
+                        <feComposite in="panel-color" in2="SourceAlpha" operator="in" />
+                    </template>
                 </filter>
             </defs>
         </svg>

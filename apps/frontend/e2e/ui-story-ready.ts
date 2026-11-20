@@ -18,7 +18,7 @@ export async function readyUiStory(page: Page, waitForCanvas = false): Promise<v
         await document.fonts.ready
         const sources = new Set<string>()
         for (const element of document.querySelectorAll(
-            '.fantasy-border, .fantasy-divider, .ui-button'
+            '.fantasy-border, .fantasy-divider, .fantasy-panel, .ui-button'
         )) {
             for (const pseudo of [null, '::before', '::after']) {
                 const source = getComputedStyle(element, pseudo).borderImageSource

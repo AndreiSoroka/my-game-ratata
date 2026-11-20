@@ -10,9 +10,14 @@ import CharacterHudFrame from './CharacterHudFrame.vue'
 import FaithStatus from './FaithStatus.vue'
 import PlayerStatusBar from './PlayerStatusBar.vue'
 import PlayerStatusRow from './PlayerStatusRow.vue'
-import SoulBadge from './SoulBadge.vue'
 
 const props = defineProps<PlayerStatusViewProps>()
+
+const sortedPatrons = computed(() =>
+    (props.patrons ?? [])
+        .filter((patron) => patron.name.trim())
+        .sort((left, right) => (right.level ?? 0) - (left.level ?? 0))
+)
 
 const resourcePresentation = {
     hp: { label: 'HP', name: 'Health', color: lightUiColors.bar.health.color },
@@ -47,7 +52,7 @@ const bars = computed(() =>
                     divider="divider-005"
                     ends="right"
                     fade
-                    color="var(--character-hud-border, var(--ui-dark-panel-border))"
+                    color="var(--character-hud-border, var(--ui-dark-panel-ornament))"
                     aria-hidden="true"
                 />
                 <h2 class="player-status__name" :title="nickname">
@@ -58,14 +63,8 @@ const bars = computed(() =>
                     divider="divider-005"
                     ends="left"
                     fade
-                    color="var(--character-hud-border, var(--ui-dark-panel-border))"
+                    color="var(--character-hud-border, var(--ui-dark-panel-ornament))"
                     aria-hidden="true"
-                />
-                <SoulBadge
-                    class="player-status__identity"
-                    :soul-kind="soulKind"
-                    :is-can-speak="isCanSpeak"
-                    compact
                 />
             </div>
             <div class="player-status__resources">
@@ -91,7 +90,7 @@ const bars = computed(() =>
                     />
                 </PlayerStatusRow>
             </div>
-            <div v-if="patronName" class="player-status__details">
+            <div v-if="sortedPatrons.length" class="player-status__details">
                 <PlayerStatusRow>
                     <FantasyDivider
                         divider="divider-002"
@@ -102,10 +101,11 @@ const bars = computed(() =>
                     />
                 </PlayerStatusRow>
                 <FaithStatus
-                    :patron-name="patronName"
-                    :patron-mastery-name="patronMasteryName"
-                    :patron-mastery-level="patronMasteryLevel"
-                    :patron-mood="patronMood"
+                    v-for="patron in sortedPatrons"
+                    :key="patron.id"
+                    :patron-name="patron.name"
+                    :patron-mastery-level="patron.level"
+                    :patron-mood="patron.mood"
                 />
             </div>
         </div>
@@ -147,26 +147,6 @@ const bars = computed(() =>
     white-space: nowrap;
 }
 
-.player-status__identity {
-    grid-column: 2;
-    justify-self: center;
-    gap: 4px;
-    color: inherit;
-    font-family: inherit;
-}
-
-.player-status__identity :deep(.soul-badge__icon) {
-    color: inherit;
-    font-family: inherit;
-}
-
-.player-status__identity :deep(.soul-badge__icon),
-.player-status__identity :deep(.soul-badge__icon svg) {
-    width: 12px;
-    height: 12px;
-    font-size: 12px;
-}
-
 .player-status__resources {
     display: grid;
     gap: 10px;
@@ -187,14 +167,13 @@ const bars = computed(() =>
 
 @container (max-width: 180px) {
     .player-status__layout {
-        padding: 2px;
+        padding: 0;
     }
 
     .player-status__header {
         grid-template-columns: 14px minmax(0, 1fr) 14px;
         gap: 0 1px;
-        margin-inline: -2px;
-        padding: 2px 0;
+        padding: 0;
     }
 
     .player-status__divider {
@@ -216,16 +195,19 @@ const bars = computed(() =>
         font-size: 11px;
     }
 
-    .player-status__identity :deep(.soul-badge__icon),
-    .player-status__identity :deep(.soul-badge__icon svg) {
-        width: 10px;
-        height: 10px;
-        font-size: 10px;
-    }
-
     .player-status__details {
         --player-status-detail-icon-size: 10px;
         gap: 4px;
+    }
+}
+
+@container (max-width: 110px) {
+    .player-status__header {
+        grid-template-columns: 9px minmax(0, 1fr) 9px;
+    }
+
+    .player-status__divider {
+        transform: scale(0.36);
     }
 }
 </style>

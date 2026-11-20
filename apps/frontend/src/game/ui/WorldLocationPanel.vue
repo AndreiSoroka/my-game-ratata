@@ -85,7 +85,7 @@ function cellLabel(cell: (typeof cells.value)[number]): string {
     position: absolute;
     z-index: 3;
     left: 16px;
-    top: 58px;
+    top: var(--game-hud-top);
     display: flex;
     align-items: center;
     gap: 14px;
@@ -183,7 +183,6 @@ function cellLabel(cell: (typeof cells.value)[number]): string {
 @media (max-width: 740px) {
     .world-location {
         --map-cell: 7px;
-        top: 76px;
         left: 12px;
         width: calc(100% - 184px);
         padding: 8px;

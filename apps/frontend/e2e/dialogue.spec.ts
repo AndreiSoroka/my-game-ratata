@@ -80,7 +80,11 @@ for (const mobile of [false, true]) {
         )
         await selectVisibleAlly(page, guardName)
         await talkThroughKeyboardMenu(page, guardName)
-        await expect(page.getByRole('dialog', { name: /Разговор:.*Рада/ })).toBeVisible()
+        const dialogue = page.getByRole('dialog', { name: /Разговор:.*Рада/ })
+        await expect(dialogue).toBeVisible()
+        const speechBadge = dialogue.locator('.soul-badge__speech')
+        await expect(speechBadge).toHaveText('Есть речь')
+        await expect(speechBadge.locator('.soul-speech-icon')).toBeVisible()
         const speech = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.adventure!.dialogue!
         )
@@ -92,7 +96,7 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('PageDown')
         await expect(page.locator('.speech-text')).toBeFocused()
         await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog', { name: /Разговор:.*Рада/ })).toHaveCount(0)
+        await expect(dialogue).toHaveCount(0)
         await expect(page.locator('.speech-bubble')).toHaveCount(0)
     })
 }

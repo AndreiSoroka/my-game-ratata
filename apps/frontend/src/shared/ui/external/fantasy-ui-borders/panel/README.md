@@ -12,7 +12,8 @@ import { lightUiColors } from '@/shared/ui/theme'
     <FantasyPanel
         panel="panel-026"
         appearance="solid"
-        :color="lightUiColors.panel.parchment"
+        :border-color="lightUiColors.border.wood"
+        :background-color="lightUiColors.panel.parchment"
         class="card-layout"
     >
         <div :style="{ color: lightUiColors.panel.text }">
@@ -25,15 +26,19 @@ import { lightUiColors } from '@/shared/ui/theme'
 
 The explicit public API exports `FantasyPanel`, `FantasyPanelProps`, `FantasyPanelVariant` and `FantasyPanelAppearance`. The asset registry is private; there is no dependency on game code, the theme or the Border/Divider components.
 
-| Prop                                  | Default        | Meaning                                                                                        |
-| ------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------- |
-| `panel?: FantasyPanelVariant`         | `panel-026`    | One of `panel-000` through `panel-031`. Unknown JavaScript values use `026`.                   |
-| `appearance?: FantasyPanelAppearance` | `solid`        | `solid`, `transparent-border` or `transparent-center`. Unknown JavaScript values use `solid`.  |
-| `color?: string`                      | `currentColor` | Any valid CSS color, including HEX, RGB/RGBA, HSL, CSS variables and inherited `currentColor`. |
+| Prop                                  | Default        | Meaning                                                                                       |
+| ------------------------------------- | -------------- | --------------------------------------------------------------------------------------------- |
+| `panel?: FantasyPanelVariant`         | `panel-026`    | One of `panel-000` through `panel-031`. Unknown JavaScript values use `026`.                  |
+| `appearance?: FantasyPanelAppearance` | `solid`        | `solid`, `transparent-border` or `transparent-center`. Unknown JavaScript values use `solid`. |
+| `borderColor?: string`                | `color`        | Color of the decorative ornament.                                                             |
+| `backgroundColor?: string`            | `color`        | Color of the filled surface, including the pixels around the inner corners.                   |
+| `color?: string`                      | `currentColor` | Fallback for either color when its own prop is omitted.                                       |
 
-Each shape imports three independent original PNGs: Panel, Transparent border and Transparent center. They preserve the authored cutouts and alpha. The partially transparent regions have alpha 127/255: the ornament for `transparent-border`, the filled non-ornament region for `transparent-center`. The other filled region remains opaque. A single tint colors the artwork; the component does not assign a second background or change slot colors.
+All color props accept CSS colors such as HEX, RGBA, HSL, CSS variables and `currentColor`. Slotted content keeps its own color.
 
-Border artwork uses an isolated SVG `feFlood` → `feComposite` filter in sRGB on the decorative pseudo-element. The original center is uniform in every asset, so its identical fill is painted as a native CSS background clipped to the padding box. `color-mix` in sRGB preserves the source center opacity (100% or exactly 127/255), multiplied by the supplied color's alpha. The image border omits `fill`; the two painted regions never overlap. Native background color also lets accessibility tools measure the real background behind slotted text. Each instance has its own filter ID, including separate Vue apps and coexistence with Border and Divider. The zero-size SVG is hidden from accessibility and cannot receive focus or pointer input.
+Each shape imports three original PNGs from the Panel, Transparent border and Transparent center folders. The `appearance` prop applies alpha 127/255 to the corresponding region. When the colors differ, the SVG filter uses the Transparent center PNG to distinguish cutouts, surface and ornament by their alpha values, then applies the requested tint and opacity to each painted region. With one tint, the filter uses the PNG for the selected appearance directly.
+
+The filter applies only to the decorative pseudo-element. The uniform center is painted as a CSS background clipped to the padding box, with its source opacity multiplied by the supplied color's alpha. The center and the decorated edge occupy separate pixels. Each panel has its own filter ID, including across separate Vue apps.
 
 Native attributes, classes, styles and events fall through to the root. The component does not invent a dialog role, capture keyboard input or own scrolling. Add suitable native semantics on the consumer when a region needs a name. Padding, width and scrollable children belong to the consumer. A transparent physical border reserves space for the native corners; the decorative image covers the external border box beneath the slot.
 

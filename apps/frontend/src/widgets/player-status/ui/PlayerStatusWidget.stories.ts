@@ -1,27 +1,27 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
-import type { PlayerStatusData } from '@/entities/character'
+import type { PatronStatusEntry, PlayerStatusData } from '@/entities/character'
 import { renderVueStory } from '@/shared/lib/storybook'
 
 import PlayerStatusWidget from './PlayerStatusWidget.vue'
 
 const percentage = { control: { type: 'range', min: 0, max: 100, step: 1 } } as const
-const patron = { patronName: 'Угольная Мать', patronMasteryLevel: 3 }
+const patron = { id: 'hearth', name: 'Угольная Мать', level: 3 } satisfies PatronStatusEntry
 
 const meta = {
     title: 'Widgets/Player status',
     args: {
         nickname: 'Андрей Сорока',
-        soulKind: 'spark',
-        isCanSpeak: true,
         hpPercent: 100,
         manaPercent: 100,
         energyPercent: 100,
+        patrons: [],
     },
     argTypes: {
         hpPercent: percentage,
         manaPercent: percentage,
         energyPercent: percentage,
+        patrons: { control: 'object' },
     },
     render(args) {
         const host = renderVueStory(PlayerStatusWidget, { ...args }, { padding: '16px' })
@@ -61,8 +61,6 @@ export const AuthorizedNumbers: Story = {
     },
 }
 
-export const ScriptedEcho: Story = { args: { soulKind: 'echo', isCanSpeak: false } }
+export const FaithKnown: Story = { args: { patrons: [{ ...patron, mood: 'benevolent' }] } }
 
-export const FaithKnown: Story = { args: { ...patron, patronMood: 'benevolent' } }
-
-export const FaithUnknownMood: Story = { args: patron }
+export const FaithUnknownMood: Story = { args: { patrons: [patron] } }

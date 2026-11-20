@@ -28,14 +28,5 @@ const statusBars = computed(() => {
 </script>
 
 <template>
-    <PlayerStatusView
-        v-bind="statusBars"
-        :nickname="nickname"
-        :soul-kind="soulKind"
-        :is-can-speak="isCanSpeak"
-        :patron-name="patronName"
-        :patron-mastery-name="patronMasteryName"
-        :patron-mastery-level="patronMasteryLevel"
-        :patron-mood="patronMood"
-    />
+    <PlayerStatusView v-bind="statusBars" :nickname="nickname" :patrons="patrons" />
 </template>

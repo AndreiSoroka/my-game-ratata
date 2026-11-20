@@ -7,7 +7,8 @@ defineProps<{
     section: 'default' | 'variants' | 'appearances' | 'colors' | 'composition' | 'sizes'
     panel?: FantasyPanelVariant
     appearance?: FantasyPanelAppearance
-    color?: string
+    borderColor?: string
+    backgroundColor?: string
     foreground?: string
 }>()
 const variants = Array.from(
@@ -49,7 +50,8 @@ const sizes = [
             <FantasyPanel
                 :panel="panel"
                 :appearance="appearance"
-                :color="color"
+                :border-color="borderColor || undefined"
+                :background-color="backgroundColor || undefined"
                 class="panel-default"
                 data-testid="panel-default"
             >

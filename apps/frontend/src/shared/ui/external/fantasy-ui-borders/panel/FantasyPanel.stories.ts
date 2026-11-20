@@ -9,7 +9,8 @@ import type { FantasyPanelAppearance, FantasyPanelVariant } from './index'
 type PanelArgs = {
     panel: FantasyPanelVariant
     appearance: FantasyPanelAppearance
-    color: string
+    borderColor: string
+    backgroundColor: string
 }
 type Section = 'default' | 'variants' | 'appearances' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
@@ -18,7 +19,12 @@ const variants = Array.from(
 )
 const meta = {
     title: 'Shared/External/fantasy-ui-borders/FantasyPanel',
-    args: { panel: 'panel-026', appearance: 'solid', color: lightUiColors.panel.parchment },
+    args: {
+        panel: 'panel-026',
+        appearance: 'solid',
+        borderColor: lightUiColors.panel.parchment,
+        backgroundColor: lightUiColors.panel.parchment,
+    },
     parameters: { backgrounds: { disable: false } },
     argTypes: {
         panel: { control: 'select', options: variants },
@@ -26,7 +32,8 @@ const meta = {
             control: 'select',
             options: ['solid', 'transparent-border', 'transparent-center'],
         },
-        color: { control: 'text' },
+        borderColor: { control: 'text' },
+        backgroundColor: { control: 'text' },
     },
 } satisfies Meta<PanelArgs>
 export default meta

@@ -218,6 +218,29 @@ test('FantasyPanel keeps all three source opacity patterns', async ({ page }) =>
     }
 })
 
+test('FantasyPanel colors the ornament and the full surface independently', async ({ page }) => {
+    for (const [appearance, ornament, fill] of [
+        ['solid', [255, 0, 0, 255], [0, 0, 255, 255]],
+        ['transparent-border', [255, 128, 128, 255], [0, 0, 255, 255]],
+        ['transparent-center', [255, 0, 0, 255], [128, 128, 255, 255]],
+    ] as const) {
+        await page.goto(
+            `/iframe.html?id=${storyId}--default&viewMode=story&args=appearance:${appearance};borderColor:red;backgroundColor:blue`
+        )
+        const panel = page.getByTestId('panel-default')
+        await expect(panel).toHaveAttribute('data-fantasy-panel-appearance', appearance)
+        await ready(page)
+        await page.getByTestId('fantasy-panel-story').evaluate((stage) => {
+            stage.style.backgroundColor = 'white'
+        })
+        const pixels = await readScreenshotPixels(panel)
+        expect(screenshotPixel(pixels, 0, 0)).toEqual(ornament)
+        expect(screenshotPixel(pixels, 12, 0)).toEqual([255, 255, 255, 255])
+        expect(screenshotPixel(pixels, 24, 4)).toEqual(fill)
+        expect(screenshotPixel(pixels, 24, 24)).toEqual(fill)
+    }
+})
+
 test('FantasyPanel native source alpha and corners match all 32', async ({ page }) => {
     await page.goto(`/iframe.html?id=${storyId}--variants&viewMode=story`)
     await expect(page.getByTestId('fantasy-panel-story')).toBeVisible()
@@ -277,7 +300,7 @@ test('FantasyPanel preserves 020/025 corners and minimums', async ({ page }) => 
 
 test('FantasyPanel multiplies color and center alpha once', async ({ page }) => {
     await page.goto(
-        `/iframe.html?id=${storyId}--default&viewMode=story&args=appearance:transparent-center;color:currentColor`
+        `/iframe.html?id=${storyId}--default&viewMode=story&args=appearance:transparent-center;borderColor:currentColor;backgroundColor:currentColor`
     )
     const panel = page.getByTestId('panel-default')
     await expect(panel).toHaveAttribute('data-fantasy-panel-appearance', 'transparent-center')

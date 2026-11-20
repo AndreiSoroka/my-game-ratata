@@ -12,8 +12,6 @@ const meta = {
     title: 'Entities/Character/Player status',
     args: {
         nickname: 'Андрей Сорока',
-        soulKind: 'spark',
-        isCanSpeak: true,
         hpPercent: 60,
         hpAnimated: false,
         manaPercent: 25,
@@ -21,11 +19,10 @@ const meta = {
         energyPercent: 82,
         energyAnimated: false,
         dimSecondaryResources: false,
+        patrons: [],
     },
     argTypes: {
         nickname: { control: 'text' },
-        soulKind: { control: 'inline-radio', options: ['spark', 'echo'] },
-        isCanSpeak: { control: 'boolean' },
         hpPercent: percentage,
         hpAnimated: { control: 'boolean' },
         manaPercent: percentage,
@@ -39,10 +36,7 @@ const meta = {
         manaMax: number,
         energyCurrent: number,
         energyMax: number,
-        patronName: { control: 'text' },
-        patronMasteryName: { control: 'text' },
-        patronMasteryLevel: number,
-        patronMood: { control: 'select', options: ['benevolent', 'neutral', 'wrathful'] },
+        patrons: { control: 'object' },
     },
     render(args) {
         const host = renderVueStory(PlayerStatusView, { ...args }, { padding: '16px' })
@@ -55,6 +49,17 @@ export default meta
 type Story = StoryObj<PlayerStatusViewProps>
 
 export const Normal: Story = {}
+
+export const MultiplePatrons: Story = {
+    args: {
+        patrons: [
+            { id: 'road', name: 'Безымянный Путник', level: 2 },
+            { id: 'hearth', name: 'Угольная Мать', level: 6, mood: 'benevolent' },
+            { id: 'grave', name: 'Хранитель Праха', level: 3, mood: 'wrathful' },
+            { id: 'lantern', name: 'Слепой Архивариус', mood: 'neutral' },
+        ],
+    },
+}
 
 export const AuthorizedNumbers: Story = {
     args: {

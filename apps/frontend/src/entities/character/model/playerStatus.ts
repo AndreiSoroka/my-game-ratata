@@ -1,9 +1,9 @@
 import {
     type CharacterSnapshot,
+    type DeityId,
     type DeityMood,
     PRAYER_SCHOOL_DEFINITIONS,
     prayerAbilityForDeity,
-    type SoulSnapshot,
 } from '@my-game-ratata/contracts'
 import { readonly, shallowRef } from 'vue'
 
@@ -26,14 +26,16 @@ export interface PlayerStatusResources {
     energyMax?: number | undefined
 }
 
+export interface PatronStatusEntry {
+    id: DeityId
+    name: string
+    level?: number | undefined
+    mood?: DeityMood | undefined
+}
+
 interface PlayerStatusDetails {
     nickname: string
-    soulKind?: SoulSnapshot['kind'] | undefined
-    isCanSpeak?: boolean | undefined
-    patronName?: string | undefined
-    patronMasteryName?: string | undefined
-    patronMasteryLevel?: number | undefined
-    patronMood?: DeityMood | undefined
+    patrons?: readonly PatronStatusEntry[] | undefined
 }
 
 export interface PlayerStatusData extends PlayerStatusDetails, PlayerStatusResources {}
@@ -47,39 +49,34 @@ export interface PlayerStatusViewProps extends PlayerStatusData {
 
 export function projectPlayerStatusDetails({
     nickname,
-    soul,
     progression,
     abilities,
-}: Pick<
-    CharacterSnapshot,
-    'nickname' | 'soul' | 'progression' | 'abilities'
->): PlayerStatusDetails {
+}: Pick<CharacterSnapshot, 'nickname' | 'progression' | 'abilities'>): PlayerStatusDetails {
+    const patron = projectPrimaryPatron(progression, abilities)
     return {
         nickname,
-        soulKind: soul?.kind,
-        isCanSpeak: soul?.canSpeak,
-        ...projectPatronDetails(progression, abilities),
+        patrons: patron ? [patron] : [],
     }
 }
 
-function projectPatronDetails(
+function projectPrimaryPatron(
     progression: CharacterSnapshot['progression'],
     abilities: CharacterSnapshot['abilities']
-) {
+): PatronStatusEntry | undefined {
     const patron = progression?.deity
-    if (!patron) return {}
+    if (!patron) return undefined
 
     const prayer = prayerAbilityForDeity(patron.id)
-    if (!abilities?.known.includes(prayer)) return {}
+    if (!abilities?.known.includes(prayer)) return undefined
 
     const mastery = progression.masteries.find(
         (entry) => entry.id === PRAYER_SCHOOL_DEFINITIONS[prayer].constellationId
     )
     return {
-        patronName: patron.name,
-        patronMasteryName: mastery?.name,
-        patronMasteryLevel: mastery?.level,
-        patronMood: patron.mood ?? undefined,
+        id: patron.id,
+        name: patron.name,
+        level: mastery?.level,
+        mood: patron.mood ?? undefined,
     }
 }
 

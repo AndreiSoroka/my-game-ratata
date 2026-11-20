@@ -55,3 +55,42 @@ it('animates health below 30 percent and mana and energy below 20 percent', asyn
     expect(dimmedBars()).toEqual([])
     wrapper.unmount()
 })
+
+it('displays patrons in descending level order without mutating the input', async () => {
+    const patrons = [
+        { id: 'grave', name: 'Хранитель Праха' },
+        { id: 'road', name: 'Безымянный Путник', level: 2, mood: 'wrathful' },
+        { id: 'hearth', name: 'Угольная Мать', level: 6, mood: 'benevolent' },
+        { id: 'lantern', name: 'Слепой Архивариус', level: 0, mood: 'neutral' },
+    ] as const
+    const wrapper = mount(PlayerStatusWidget, {
+        props: {
+            nickname: 'Путник',
+            hpPercent: 100,
+            manaPercent: 100,
+            energyPercent: 100,
+            patrons,
+        },
+    })
+    const rows = wrapper.findAll('.faith-status')
+    expect(
+        rows.map((row) => ({
+            name: row.get('.faith-status__patron').text(),
+            mood: row.element.querySelector('[data-patron-mood]')?.getAttribute('data-patron-mood'),
+        }))
+    ).toEqual([
+        { name: 'Угольная Мать', mood: 'benevolent' },
+        { name: 'Безымянный Путник', mood: 'wrathful' },
+        { name: 'Хранитель Праха', mood: undefined },
+        { name: 'Слепой Архивариус', mood: 'neutral' },
+    ])
+    expect(rows[2]?.get('.faith-status__progress').text()).toMatch(/\b0$/)
+    expect(patrons.map(({ id }) => id)).toEqual(['grave', 'road', 'hearth', 'lantern'])
+    expect(wrapper.findAll('[data-fantasy-divider="divider-002"]')).toHaveLength(1)
+
+    await wrapper.setProps({ patrons: [] })
+
+    expect(wrapper.find('.player-status__details').exists()).toBe(false)
+    expect(wrapper.find('[data-fantasy-divider="divider-002"]').exists()).toBe(false)
+    wrapper.unmount()
+})

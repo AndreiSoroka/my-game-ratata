@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { masteriesFixture } from '../testing/masteryFixture'
 import {
     faithKnownStatusFixture,
     faithUnknownMoodStatusFixture,
@@ -11,19 +12,25 @@ import {
 import GamePlayerStatus from './GamePlayerStatus.vue'
 
 describe('production player status', () => {
-    it('shows the full nickname to assistive technology and two accessible identity icons', () => {
+    it('shows the full nickname and keeps accessible identity in the effects panel', () => {
         expect(LONG_PLAYER_NAME).toHaveLength(24)
         const wrapper = mount(GamePlayerStatus, {
             props: { character: playerStatusFixture({ nickname: LONG_PLAYER_NAME }) },
         })
-        expect(wrapper.get('h2').text()).toBe(LONG_PLAYER_NAME)
-        expect(wrapper.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
         const panel = wrapper.get('[role="region"][aria-label="Player status"]')
+        expect(panel.get('h2').text()).toBe(LONG_PLAYER_NAME)
+        expect(panel.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
         expect(panel.classes()).toContain('character-hud-frame')
         expect(panel.findAll('[role="separator"][aria-hidden="true"]')).toHaveLength(2)
-        expect(
-            wrapper.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))
-        ).toEqual(['Искра', 'Есть речь'])
+        expect(panel.find('.soul-badge-icons').exists()).toBe(false)
+        const effects = wrapper.get('[aria-label="Player effects"]')
+        const icons = effects.get('.player-effects__identity')
+        expect(effects.get('h2').text()).toBe('Статус игрока')
+        expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
+            'Искра',
+            'Есть речь',
+        ])
+        expect(effects.text()).toContain('Всё в порядке')
         for (const label of ['Connected', 'Шаг', 'Рывок', 'DMG', 'Dodge', 'Crit', 'Speed', 'CD'])
             expect(wrapper.text()).not.toContain(label)
         expect(
@@ -112,10 +119,15 @@ describe('production player status', () => {
                 },
             }),
         })
-        expect(
-            wrapper.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))
-        ).toEqual(['Искра', 'Без речи'])
-        expect(wrapper.find('.soul-badge').text()).toBe('✧')
+        const effects = wrapper.get('[aria-label="Player effects"]')
+        const icons = effects.get('.player-effects__identity')
+        expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
+            'Искра',
+            'Без речи',
+        ])
+        expect(icons.text()).not.toContain('Искра')
+        expect(icons.text()).not.toContain('Без речи')
+        expect(effects.text()).toContain('Всё в порядке')
         wrapper.unmount()
     })
 })
@@ -146,6 +158,21 @@ describe('earned HUD status', () => {
         expect(wrapper.get('.faith-status__name').attributes('title')).toBe('Угольная Мать · ур. 3')
         expect(wrapper.find('[data-patron-mood]').exists()).toBe(false)
         expect(wrapper.text()).not.toContain(character.progression!.deity.omen)
+        wrapper.unmount()
+    })
+
+    it('shows the patron name with the level of its prayer school', () => {
+        const character = faithKnownStatusFixture()
+        character.abilities!.known = ['pray_road']
+        const progression = character.progression!
+        progression.deity = { ...progression.deity, id: 'road', name: 'Безымянный Путник' }
+        progression.masteries = masteriesFixture({ prayer: 3, prayer_road: 7 })
+
+        const wrapper = mount(GamePlayerStatus, { props: { character } })
+        const status = wrapper.get('.faith-status__name')
+        expect(status.get('.faith-status__patron').text()).toBe('Безымянный Путник')
+        expect(status.get('.faith-status__progress').text()).toBe('· ур. 7')
+        expect(status.attributes('title')).toBe('Безымянный Путник · ур. 7')
         wrapper.unmount()
     })
 })

@@ -14,6 +14,8 @@ for (const mobile of [false, true]) {
             `menu-${info.workerIndex}-${mobile}`
         )
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
+        await expect(page.getByRole('region', { name: 'World location' })).toHaveCSS('top', '14px')
+        await expect(page.locator('.game-player-status')).toHaveCSS('top', '14px')
         const guild = page.getByRole('button', { name: 'Гильдия', exact: true })
         await guild.click()
         await expect(page.getByRole('dialog', { name: 'Гильдия приключенцев' })).toBeVisible()

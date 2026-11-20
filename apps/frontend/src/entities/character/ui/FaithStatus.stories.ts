@@ -8,7 +8,6 @@ import FaithStatus from './FaithStatus.vue'
 
 interface StoryArgs {
     patronName?: string
-    patronMasteryName?: string
     patronMasteryLevel?: number
     patronMood?: DeityMood
 }
@@ -17,8 +16,13 @@ const meta = {
     title: 'Entities/Character/Faith status',
     args: {
         patronName: 'Угольная Мать',
-        patronMasteryName: 'Угольная Мать',
         patronMasteryLevel: 3,
+    },
+    argTypes: {
+        patronMood: {
+            control: 'select',
+            options: ['benevolent', 'neutral', 'wrathful'] satisfies DeityMood[],
+        },
     },
     render(args) {
         const host = renderVueStory(

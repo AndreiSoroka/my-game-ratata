@@ -2,6 +2,7 @@ import type {
     BladeComboSnapshot,
     CharacterSnapshot,
     PrayerAuraEffectId,
+    SoulKind,
 } from '@my-game-ratata/contracts'
 
 export type PlayerEffectKind =
@@ -21,6 +22,12 @@ export interface PlayerEffect {
     remainingMs?: number
     stacks?: number
     stackLimit?: number
+}
+
+export interface PlayerEffectsData {
+    effects: readonly PlayerEffect[]
+    soulKind?: SoulKind | undefined
+    isCanSpeak?: boolean | undefined
 }
 
 export function projectPlayerEffects(

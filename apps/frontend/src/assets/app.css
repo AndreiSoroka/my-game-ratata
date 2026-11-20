@@ -75,6 +75,7 @@
 }
 
 .game-screen {
+    --game-hud-top: max(14px, env(safe-area-inset-top, 0px));
     position: relative;
     height: 100vh;
     display: grid;
@@ -122,4 +123,3 @@
     font-weight: 800;
     padding: 0 14px;
 }
-

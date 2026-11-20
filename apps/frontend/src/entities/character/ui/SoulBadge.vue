@@ -1,54 +1,21 @@
 <script setup lang="ts">
 import type { SoulSnapshot } from '@my-game-ratata/contracts'
-import { computed } from 'vue'
 
-const props = withDefaults(
-    defineProps<{
-        soul?: SoulSnapshot
-        compact?: boolean
-        soulKind?: SoulSnapshot['kind']
-        isCanSpeak?: boolean
-    }>(),
-    { isCanSpeak: undefined }
-)
-const kind = computed(() => props.soulKind ?? props.soul?.kind)
-const canSpeak = computed(() => props.isCanSpeak ?? props.soul?.canSpeak)
+import SoulSpeechIcon from './SoulSpeechIcon.vue'
+
+defineProps<{ soul?: SoulSnapshot }>()
 const sources = { human: 'Человек', model: 'Модель', script: 'Сценарий' }
 </script>
 <template>
-    <span
-        v-if="kind"
-        class="soul-badge"
-        :class="[`soul-badge--${kind}`, { 'soul-badge--compact': compact }]"
-    >
-        <template v-if="compact">
-            <span
-                class="soul-badge__icon"
-                role="img"
-                :aria-label="kind === 'spark' ? 'Искра' : 'Эхо'"
-                :title="kind === 'spark' ? 'Искра' : 'Эхо'"
-                >{{ kind === 'spark' ? '✧' : '◌' }}</span
-            >
-            <span
-                class="soul-badge__icon"
-                role="img"
-                :aria-label="canSpeak ? 'Есть речь' : 'Без речи'"
-                :title="canSpeak ? 'Есть речь' : 'Без речи'"
-            >
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M21 4H3v13h5v4l5-4h8z" />
-                    <path v-if="canSpeak" d="M7 9h10M7 12h7" />
-                    <path v-else d="m3 2 19 20" />
-                </svg>
+    <span v-if="soul" class="soul-badge" :class="`soul-badge--${soul.kind}`">
+        {{ soul.kind === 'spark' ? '✧ Искра' : '◌ Эхо' }}
+        <span class="soul-badge__details">
+            {{ sources[soul.controlSource] }} ·
+            <span class="soul-badge__speech">
+                <SoulSpeechIcon class="soul-badge__speech-icon" :is-can-speak="soul.canSpeak" />
+                {{ soul.canSpeak ? 'Есть речь' : 'Без речи' }}
             </span>
-        </template>
-        <template v-else>
-            {{ kind === 'spark' ? '✧ Искра' : '◌ Эхо' }}
-            <span
-                >{{ soul ? `${sources[soul.controlSource]} · ` : ''
-                }}{{ canSpeak ? 'Есть речь' : 'Без речи' }}</span
-            >
-        </template>
+        </span>
     </span>
 </template>
 <style scoped>
@@ -65,27 +32,19 @@ const sources = { human: 'Человек', model: 'Модель', script: 'Сц�
 .soul-badge--echo {
     color: #abc1c8;
 }
-.soul-badge span {
+.soul-badge__details {
     color: #a8b4a5;
+    flex-wrap: wrap;
 }
-.soul-badge--compact {
-    flex-wrap: nowrap;
-    gap: 8px;
+
+.soul-badge__details,
+.soul-badge__speech {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
-.soul-badge__icon {
-    display: inline-grid;
-    width: 16px;
-    height: 16px;
-    place-items: center;
-    font: 16px/1 system-ui;
-}
-.soul-badge__icon svg {
-    width: 16px;
-    height: 16px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+
+.soul-badge__speech-icon {
+    font-size: 14px;
 }
 </style>

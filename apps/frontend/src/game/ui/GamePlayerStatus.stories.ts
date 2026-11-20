@@ -127,13 +127,9 @@ export const ManyEffects: Story = {
 }
 
 const hudPalettes = [
-    { label: 'Графит', surface: '#191e26eb', border: '#8d99a6' },
-    {
-        label: 'Тёмный камень · в игре',
-        surface: 'var(--ui-dark-panel-surface)',
-        border: 'var(--ui-dark-panel-border)',
-    },
-    { label: 'Тёмный янтарь', surface: '#38291deb', border: '#bb9052' },
+    { label: 'Графит', surface: '#191e26f2', border: '#8d99a6' },
+    { label: 'Тёмный янтарь', surface: '#38291df2', border: '#bb9052' },
+    { label: 'Бежевая рамка · в игре' },
 ]
 
 export const DarkPalettes: Story = {
@@ -170,7 +166,7 @@ export const DarkPalettes: Story = {
                                         class: 'game-screen',
                                         style: {
                                             position: 'relative',
-                                            height: '520px',
+                                            height: '560px',
                                             background:
                                                 'linear-gradient(145deg, #539765 0 38%, #a5ad9e 38% 68%, #539765 68%)',
                                             '--character-hud-surface': surface,

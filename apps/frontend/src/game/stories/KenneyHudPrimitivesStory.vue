@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HealthSnapshot, SoulSnapshot } from '@my-game-ratata/contracts'
 
-import { SoulBadge } from '@/entities/character'
+import { SoulBadgeIcons } from '@/entities/character'
 
 import GameFrame from '../ui/primitives/GameFrame.vue'
 import GameResourceBar from '../ui/primitives/GameResourceBar.vue'
@@ -50,11 +50,11 @@ const resources: Array<{
             <h2>Лента имени</h2>
             <GameRibbon class="kenney-hud-ribbon">
                 <strong>Астрия Янтарь</strong>
-                <SoulBadge :soul="soul" compact />
+                <SoulBadgeIcons :soul-kind="soul.kind" :is-can-speak="soul.canSpeak" />
             </GameRibbon>
             <GameRibbon class="kenney-hud-ribbon">
                 <strong title="МихаилСорокаНовгородский">МихаилСорокаНовгородский</strong>
-                <SoulBadge :soul="soul" compact />
+                <SoulBadgeIcons :soul-kind="soul.kind" :is-can-speak="soul.canSpeak" />
             </GameRibbon>
         </template>
         <template v-else>
@@ -119,13 +119,10 @@ p {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.kenney-hud-ribbon :deep(.soul-badge) {
+.kenney-hud-ribbon :deep(.soul-badge-icons) {
     flex: 0 0 auto;
     color: inherit;
     gap: 5px;
-}
-.kenney-hud-ribbon :deep(.soul-badge span) {
-    color: inherit;
 }
 .kenney-hud-resource {
     margin-bottom: 14px;

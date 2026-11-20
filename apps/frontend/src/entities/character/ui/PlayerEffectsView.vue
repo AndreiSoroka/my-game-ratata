@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { PlayerEffect, PlayerEffectKind } from '../model/playerEffects'
+import type { PlayerEffect, PlayerEffectKind, PlayerEffectsData } from '../model/playerEffects'
 import CharacterHudFrame from './CharacterHudFrame.vue'
 import PlayerStatusRow from './PlayerStatusRow.vue'
+import SoulBadgeIcons from './SoulBadgeIcons.vue'
 
-const props = defineProps<{ effects: readonly PlayerEffect[] }>()
+const props = defineProps<PlayerEffectsData>()
 
 const presentation: Record<
     PlayerEffectKind,
@@ -113,6 +114,11 @@ function effectText(
     <CharacterHudFrame class="player-effects" role="region" aria-label="Player effects">
         <div class="player-effects__layout">
             <h2 class="player-effects__title">Статус игрока</h2>
+            <SoulBadgeIcons
+                class="player-effects__identity"
+                :soul-kind="soulKind"
+                :is-can-speak="isCanSpeak"
+            />
             <ul v-if="activeEffects.length > 0" class="player-effects__list" role="list">
                 <li
                     v-for="effect in activeEffects"
@@ -167,6 +173,15 @@ function effectText(
     text-align: center;
 }
 
+.player-effects__identity {
+    --soul-badge-icon-size: var(--player-status-detail-icon-size);
+    --soul-badge-icon-font: var(--ratata-font-family, sans-serif);
+    flex: none;
+    align-self: center;
+    gap: 4px;
+    color: var(--ui-dark-panel-title);
+}
+
 .player-effects__list {
     display: grid;
     gap: 6px;
@@ -205,7 +220,7 @@ function effectText(
     .player-effects__layout {
         --player-status-detail-icon-size: 10px;
         gap: 6px;
-        padding: 2px;
+        padding: 0;
     }
 
     .player-effects__title {

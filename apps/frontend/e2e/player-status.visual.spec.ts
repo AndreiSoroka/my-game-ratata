@@ -63,7 +63,20 @@ for (const {
         await expect(panel.locator('[data-player-effect]')).toHaveCount(0)
         await expect(panel.locator('.player-status__layout')).toHaveCSS('row-gap', '12px')
         await expect(panel.locator('.player-status__resources')).toHaveCSS('row-gap', '10px')
-        await expect(panel.locator('.player-status__header [role="img"]')).toHaveCount(2)
+        await expect(panel.locator('.player-status__header [role="img"]')).toHaveCount(0)
+        await expect(panel.locator('.soul-badge-icons')).toHaveCount(0)
+        const identity = effects.locator('.player-effects__identity')
+        const isEcho = story === 'scripted-echo'
+        await expect(identity.getByRole('img')).toHaveCount(2)
+        await expect(identity.getByRole('img', { name: isEcho ? 'Эхо' : 'Искра' })).toBeVisible()
+        await expect(
+            identity.getByRole('img', { name: isEcho ? 'Без речи' : 'Есть речь' })
+        ).toBeVisible()
+        const effectsHeading = effects.getByRole('heading', { name: 'Статус игрока' })
+        await expect(effectsHeading).toBeVisible()
+        const effectsTitle = (await effectsHeading.boundingBox())!
+        const identityBounds = (await identity.boundingBox())!
+        expect(identityBounds.y).toBeGreaterThanOrEqual(effectsTitle.y + effectsTitle.height)
         await expect(panel).not.toContainText('Connected')
         await expect(panel.locator('.player-status__header')).toHaveCSS(
             'background-color',
@@ -167,7 +180,8 @@ test('extended HUD republishes its occupied height after a viewport resize', asy
 test('compact status list scrolls and reserves space for the adjacent overlays', async ({
     page,
 }) => {
-    await page.setViewportSize({ width: 320, height: 480 })
+    const height = 418
+    await page.setViewportSize({ width: 320, height })
     await page.goto(`/iframe.html?id=${storyId}--many-effects&viewMode=story`)
     const panel = page.getByRole('region', { name: 'Player status' })
     const effects = page.getByRole('region', { name: 'Player effects' })
@@ -189,7 +203,7 @@ test('compact status list scrolls and reserves space for the adjacent overlays',
     expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.height)
     expect(dimensions.scrollTop).toBeGreaterThan(0)
     const bounds = await effects.boundingBox()
-    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(368)
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height - 112)
 })
 
 test('character entity controls edit fill and exact values independently', async ({ page }) => {
@@ -213,11 +227,14 @@ test('character entity controls edit fill and exact values independently', async
 
 async function expectHudFrame(panel: Locator): Promise<void> {
     await expect(panel).toHaveClass(/character-hud-frame/)
-    await expect(panel).toHaveAttribute('data-fantasy-panel', 'panel-028')
-    await expect(panel).toHaveCSS('background-clip', 'border-box')
-    await expect(panel).toHaveCSS('background-color', 'rgba(37, 44, 43, 0.92)')
-    await expect(panel).toHaveCSS('outline-color', 'rgb(69, 57, 41)')
-    await expect(panel).toHaveCSS('outline-width', '2px')
+    await expect(panel).toHaveCSS('padding', '7px')
+    await expect(panel).toHaveCSS('background-image', /^linear-gradient\(155deg,/)
+    const border = panel.locator(':scope > [data-fantasy-border="border-017"]')
+    await expect(border.locator('feFlood[result="border-color"]')).toHaveCSS(
+        'flood-color',
+        'rgb(198, 184, 155)'
+    )
+    await expect(panel).toHaveCSS('outline-style', 'none')
 }
 
 async function assertStatusDetails(
@@ -350,7 +367,6 @@ async function assertPanelGeometry(
         const heading = panel.querySelector('h2')!
         const title = heading.getBoundingClientRect()
         const header = panel.querySelector('.player-status__header')!.getBoundingClientRect()
-        const icons = panel.querySelector('.soul-badge')!.getBoundingClientRect()
         const [left, right] = Array.from(
             panel.querySelectorAll('.player-status__header .fantasy-divider'),
             (element) => element.getBoundingClientRect()
@@ -367,14 +383,9 @@ async function assertPanelGeometry(
                 Math.abs((title.left + title.right) / 2 - (header.left + header.right) / 2) < 1,
             nicknameBetweenOrnaments: left!.right <= title.left && title.right <= right!.left,
             truncatedNickname: heading.scrollWidth > heading.clientWidth,
-            distinctNameAndIcons:
-                title.right <= icons.left ||
-                icons.right <= title.left ||
-                title.bottom <= icons.top ||
-                icons.bottom <= title.top,
             height: bounds.height,
-            compactLimit: window.innerWidth <= 740 ? 150 : 180,
-            contained: [title, icons, left!, right!, ...tracks].every(
+            compactLimit: window.innerWidth <= 740 ? 160 : 190,
+            contained: [title, left!, right!, ...tracks].every(
                 (rect) =>
                     rect.left >= bounds.left &&
                     rect.right <= bounds.right &&
@@ -389,7 +400,6 @@ async function assertPanelGeometry(
     expect(sizes.centeredNickname).toBe(true)
     expect(sizes.nicknameBetweenOrnaments).toBe(true)
     expect(sizes.truncatedNickname).toBe(expectTruncatedNickname)
-    expect(sizes.distinctNameAndIcons).toBe(true)
     expect(sizes.height).toBeLessThanOrEqual(extended ? 500 : sizes.compactLimit)
     expect(sizes.contained).toBe(true)
 }

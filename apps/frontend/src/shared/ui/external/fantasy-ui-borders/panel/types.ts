@@ -4,4 +4,6 @@ export interface FantasyPanelProps {
     panel?: FantasyPanelVariant
     appearance?: FantasyPanelAppearance
     color?: string
+    borderColor?: string
+    backgroundColor?: string
 }

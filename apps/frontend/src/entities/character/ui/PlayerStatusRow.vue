@@ -55,4 +55,11 @@ withDefaults(defineProps<{ align?: 'start' | 'center' }>(), { align: 'center' })
         font-size: 9px;
     }
 }
+
+@container (max-width: 110px) {
+    .player-status-row {
+        --player-status-row-leading-width: 10px;
+        column-gap: 2px;
+    }
+}
 </style>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { type PlayerEffect, PlayerEffectsView } from '@/entities/character'
+import { type PlayerEffectsData, PlayerEffectsView } from '@/entities/character'
 
-defineProps<{ effects: readonly PlayerEffect[] }>()
+defineProps<PlayerEffectsData>()
 </script>
 
 <template>
-    <PlayerEffectsView :effects="effects" />
+    <PlayerEffectsView v-bind="$props" />
 </template>

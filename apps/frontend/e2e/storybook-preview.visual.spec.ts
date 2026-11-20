@@ -178,12 +178,12 @@ test('FantasyBorder Default Controls update the rendered border', async ({ page 
     )
 })
 
-test('FantasyPanel Default Controls update the rendered panel', async ({ page }) => {
+test('FantasyPanel Controls edit both colors independently', async ({ page }) => {
     await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasypanel--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
     await expect(preview.getByTestId('fantasy-panel-story')).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
-    await expect(controls).toHaveAccessibleName(/^Controls\s*3$/)
+    await expect(controls).toHaveAccessibleName(/^Controls\s*4$/)
     await controls.click()
     const panel = preview.getByTestId('panel-default')
     await expect(page.locator('#control-panel')).toHaveValue('panel-026')
@@ -195,15 +195,21 @@ test('FantasyPanel Default Controls update the rendered panel', async ({ page })
         'transparent-border',
         'transparent-center',
     ])
-    await expect(page.locator('#control-color')).toHaveValue(lightUiColors.panel.parchment)
+    const borderColor = page.locator('#control-borderColor')
+    const backgroundColor = page.locator('#control-backgroundColor')
+    await expect(borderColor).toHaveValue(lightUiColors.panel.parchment)
+    await expect(backgroundColor).toHaveValue(lightUiColors.panel.parchment)
     await page.locator('#control-panel').selectOption('panel-025')
     await expect(panel).toHaveAttribute('data-fantasy-panel', 'panel-025')
     await page.locator('#control-appearance').selectOption('transparent-center')
     await expect(panel).toHaveAttribute('data-fantasy-panel-appearance', 'transparent-center')
-    await page.locator('#control-color').fill(lightUiColors.border.gold)
-    await page.locator('#control-color').press('Tab')
-    await expect(panel.locator('feFlood')).toHaveAttribute('style', /--ui-light-border-gold/)
-    const expectedColor = await panel.evaluate((element, reference) => {
+    const initialBackground = await panel.evaluate(
+        (element) => getComputedStyle(element).backgroundColor
+    )
+    await borderColor.fill(lightUiColors.border.gold)
+    await borderColor.press('Tab')
+    const borderFlood = panel.locator('feFlood[result="panel-border-color"]')
+    const expectedBorder = await panel.evaluate((element, reference) => {
         const probe = element.ownerDocument.createElement('span')
         probe.hidden = true
         probe.style.color = reference
@@ -212,7 +218,13 @@ test('FantasyPanel Default Controls update the rendered panel', async ({ page })
         probe.remove()
         return color
     }, lightUiColors.border.gold)
-    await expect(panel.locator('feFlood')).toHaveCSS('flood-color', expectedColor)
+    await expect(borderFlood).toHaveCSS('flood-color', expectedBorder)
+    await expect(panel).toHaveCSS('background-color', initialBackground)
+
+    await backgroundColor.fill(lightUiColors.panel.coffee)
+    await backgroundColor.press('Tab')
+    await expect(panel).not.toHaveCSS('background-color', initialBackground)
+    await expect(borderFlood).toHaveCSS('flood-color', expectedBorder)
 })
 
 for (const story of stories) {

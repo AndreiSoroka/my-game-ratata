@@ -38,13 +38,17 @@ const effects = computed(() => projectPlayerEffects(props.character, props.serve
 <template>
     <div ref="panel" class="game-player-status">
         <PlayerStatusWidget class="game-player-status__resources" v-bind="status" />
-        <PlayerEffectsWidget :effects="effects" />
+        <PlayerEffectsWidget
+            :effects="effects"
+            :soul-kind="character.soul?.kind"
+            :is-can-speak="character.soul?.canSpeak"
+        />
     </div>
 </template>
 
 <style scoped>
 .game-player-status {
-    --game-player-status-top: 58px;
+    --game-player-status-top: var(--game-hud-top, 14px);
     position: absolute;
     top: var(--game-player-status-top);
     right: 14px;
@@ -62,7 +66,6 @@ const effects = computed(() => projectPlayerEffects(props.character, props.serve
 
 @media (max-width: 740px) {
     .game-player-status {
-        --game-player-status-top: 76px;
         right: 12px;
         width: 150px;
     }
