@@ -1,6 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
+import { BarFill } from '@/shared/ui/common/bar-fill'
+import { BarTrack } from '@/shared/ui/common/bar-track'
+
 import { GameBar } from './index'
 
 it('composes an accessible native progressbar with independently colored track and fill', async () => {
@@ -18,12 +21,8 @@ it('composes an accessible native progressbar with independently colored track a
         expect(view.attributes('aria-valuemax')).toBe('60')
         expect(view.attributes('aria-valuenow')).toBe('30')
         expect(view.element.style.getPropertyValue('--game-bar-percent')).toBe('50%')
-        expect(view.element.style.getPropertyValue('--game-bar-color')).toBe('#3366cc')
-        expect(
-            (view.get('.bar-track').element as HTMLElement).style.getPropertyValue(
-                '--bar-track-color'
-            )
-        ).toBe('#223344')
+        expect(view.getComponent(BarFill).props('color')).toBe('#3366cc')
+        expect(view.getComponent(BarTrack).props('color')).toBe('#223344')
         expect(view.get('.game-bar__fill').attributes('aria-hidden')).toBe('true')
         expect(view.find('.game-bar__label').exists()).toBe(false)
         await view.get('.game-bar__fill').trigger('click')
@@ -66,11 +65,11 @@ it.each([
     }
 )
 
-it('reacts to value, colors, height and shadows and renders optional values beside the track', async () => {
+it('reacts to value, colors, height and shadows and renders optional values inside the track', async () => {
     const view = mount(GameBar, { props: { value: 25, showValue: true } })
     try {
         expect(view.get('.game-bar__label').text()).toBe('25 / 100')
-        expect(view.get('.game-bar__label').element.parentElement).toBe(view.element)
+        expect(view.get('.bar-track__content .game-bar__label').text()).toBe('25 / 100')
         await view.setProps({
             value: 10,
             max: 20,
@@ -82,7 +81,7 @@ it('reacts to value, colors, height and shadows and renders optional values besi
         })
         expect(view.attributes('aria-valuenow')).toBe('10')
         expect(view.element.style.getPropertyValue('--game-bar-percent')).toBe('50%')
-        expect(view.element.style.getPropertyValue('--game-bar-color')).toBe('var(--fill)')
+        expect(view.getComponent(BarFill).props('color')).toBe('var(--fill)')
         expect(view.element.style.getPropertyValue('--game-bar-text-color')).toBe('purple')
         expect(view.get('.game-bar__label').text()).toBe('10 / 20')
         const track = view.get('.bar-track')
@@ -94,6 +93,7 @@ it('reacts to value, colors, height and shadows and renders optional values besi
         )
         expect(view.attributes('data-shadow')).toBe('false')
         expect(track.attributes('data-shadow')).toBe('false')
+        expect(view.getComponent(BarFill).props('shadow')).toBe(false)
     } finally {
         view.unmount()
     }

@@ -3,6 +3,7 @@ import './gameBar.css'
 
 import { computed } from 'vue'
 
+import { BarFill } from '@/shared/ui/common/bar-fill'
 import { BarTrack } from '@/shared/ui/common/bar-track'
 import { lightUiColors } from '@/shared/ui/theme'
 
@@ -24,7 +25,6 @@ const progress = computed(() => {
     return { value, max, percent: (value / max) * 100 }
 })
 const decoration = computed(() => ({
-    '--game-bar-color': props.color,
     '--game-bar-text-color': props.textColor,
     '--game-bar-percent': `${progress.value.percent}%`,
 }))
@@ -45,10 +45,17 @@ const valueText = computed(
         :aria-valuenow="progress.value"
     >
         <BarTrack :color="trackColor" :height="height" :shadow="shadow">
-            <span v-show="progress.percent > 0" class="game-bar__fill" aria-hidden="true" />
+            <BarFill
+                v-show="progress.percent > 0"
+                class="game-bar__fill"
+                :color="color"
+                :shadow="shadow"
+                :data-full="progress.value === progress.max"
+                aria-hidden="true"
+            />
+            <span v-if="showValue || $slots.default" class="game-bar__label">
+                <slot>{{ valueText }}</slot>
+            </span>
         </BarTrack>
-        <span v-if="showValue || $slots.default" class="game-bar__label">
-            <slot>{{ valueText }}</slot>
-        </span>
     </div>
 </template>

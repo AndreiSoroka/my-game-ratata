@@ -1,57 +1,31 @@
 .game-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
     width: 100%;
     min-width: 0;
 }
 
-.game-bar > .bar-track {
-    flex: 1;
-}
-
-.game-bar__fill {
-    position: absolute;
-    inset: 0 auto 0 0;
-    box-sizing: border-box;
-    display: block;
+.game-bar .game-bar__fill {
+    --bar-fill-shadow: inset -1px 0 0 color-mix(in srgb, var(--ui-light-bar-shade) 45%, transparent);
     width: var(--game-bar-percent);
-    max-width: 100%;
     height: 100%;
-    overflow: hidden;
     border-radius: inherit;
-    background: linear-gradient(
-        color-mix(in srgb, var(--game-bar-color) 70%, var(--ui-light-bar-highlight)) 0%,
-        color-mix(in srgb, var(--game-bar-color) 88%, var(--ui-light-bar-highlight)) 40%,
-        var(--game-bar-color) 58%,
-        color-mix(in srgb, var(--game-bar-color) 78%, var(--ui-light-bar-shade)) 100%
-    );
-    box-shadow:
-        inset 0 1px 0 color-mix(in srgb, var(--ui-light-bar-highlight) 45%, transparent),
-        inset 0 -2px 1px color-mix(in srgb, var(--ui-light-bar-shade) 22%, transparent),
-        1px 0 2px color-mix(in srgb, var(--ui-light-bar-shade) 20%, transparent);
 }
 
-.game-bar__fill::after {
-    position: absolute;
-    inset: 2px 3px auto;
-    height: 30%;
-    border-radius: inherit;
-    background: color-mix(in srgb, var(--ui-light-bar-highlight) 20%, transparent);
-    content: '';
-    pointer-events: none;
-}
-
-.game-bar[data-shadow='false'] .game-bar__fill {
-    box-shadow: none;
+.game-bar__fill[data-full='true'] {
+    --bar-fill-shadow: none;
 }
 
 .game-bar__label {
-    flex: 0 0 auto;
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
     color: var(--game-bar-text-color);
     font:
-        500 12px/1.3 system-ui,
+        600 min(12px, calc(var(--bar-track-height) - 2px)) / 1 system-ui,
         sans-serif;
     font-variant-numeric: tabular-nums;
+    -webkit-text-stroke: 2px var(--ui-light-bar-shade);
+    paint-order: stroke fill;
+    white-space: nowrap;
     pointer-events: none;
 }

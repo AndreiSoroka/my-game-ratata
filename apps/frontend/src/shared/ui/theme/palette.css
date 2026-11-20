@@ -13,11 +13,15 @@
     --ui-light-panel-divider: #a3916255;
     --ui-light-panel-warning: #9e3e2c;
 
-    --ui-light-bar-track: #785b3c;
+    --ui-light-bar-track: color-mix(
+        in srgb,
+        var(--ui-light-border-wood) 52%,
+        var(--ui-light-panel-coffee)
+    );
     --ui-light-bar-health: #d64a50;
     --ui-light-bar-mana: #3c79de;
     --ui-light-bar-energy: #e5b649;
-    --ui-light-bar-text: var(--ui-light-panel-text);
+    --ui-light-bar-text: var(--ui-light-button-text);
     --ui-light-bar-highlight: #ffffff;
     --ui-light-bar-shade: #21170e;
 

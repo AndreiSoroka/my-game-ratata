@@ -9,7 +9,6 @@ import type { BarTrackProps } from './index'
 const meta = {
     title: 'Shared/Common/BarTrack',
     args: { color: lightUiColors.bar.track, height: 24, shadow: true },
-    parameters: { backgrounds: { disable: false } },
     argTypes: {
         color: { control: 'text' },
         height: { control: { type: 'range', min: 8, max: 48, step: 2 } },
@@ -19,14 +18,24 @@ const meta = {
 export default meta
 type Story = StoryObj<BarTrackProps>
 
+function preview(section: string, args: Partial<BarTrackProps> = {}): HTMLElement {
+    const host = renderVueStory(
+        BarTrackStory,
+        { section, ...args },
+        { background: lightUiColors.panel.coffee }
+    )
+    host.style.minHeight = '100dvh'
+    return host
+}
+
 export const Default: Story = {
-    render: (args) => renderVueStory(BarTrackStory, { section: 'default', ...args }),
+    render: (args) => preview('default', args),
 }
 export const Colors: Story = {
     parameters: { controls: { disable: true } },
-    render: () => renderVueStory(BarTrackStory, { section: 'colors' }),
+    render: () => preview('colors'),
 }
 export const Sizes: Story = {
     parameters: { controls: { disable: true } },
-    render: () => renderVueStory(BarTrackStory, { section: 'sizes' }),
+    render: () => preview('sizes'),
 }

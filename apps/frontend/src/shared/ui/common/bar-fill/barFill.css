@@ -1,0 +1,20 @@
+.bar-fill {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--bar-fill-height, 24px);
+    border-radius: 4px;
+    background: linear-gradient(
+        color-mix(in srgb, var(--bar-fill-color) 84%, var(--ui-light-bar-highlight)),
+        var(--bar-fill-color) 60%,
+        color-mix(in srgb, var(--bar-fill-color) 94%, var(--ui-light-bar-shade))
+    );
+    box-shadow: var(
+        --bar-fill-shadow,
+        inset 0 0 0 1px color-mix(in srgb, var(--ui-light-bar-shade) 16%, transparent)
+    );
+}
+
+.bar-fill[data-shadow='false'] {
+    box-shadow: none;
+}

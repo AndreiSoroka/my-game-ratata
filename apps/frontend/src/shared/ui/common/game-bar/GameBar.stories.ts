@@ -19,7 +19,6 @@ const meta = {
         showValue: false,
         shadow: true,
     },
-    parameters: { backgrounds: { disable: false } },
     argTypes: {
         value: { control: 'number' },
         max: { control: 'number' },
@@ -36,10 +35,20 @@ export default meta
 type Story = StoryObj<GameBarProps>
 
 function preview(section: string, props: Partial<GameBarProps> = {}): HTMLElement {
-    return renderVueStory(GameBarStory, { section, ...props })
+    const host = renderVueStory(
+        GameBarStory,
+        { section, ...props },
+        { background: lightUiColors.panel.coffee }
+    )
+    host.style.minHeight = '100dvh'
+    return host
 }
 
 export const Default: Story = { render: (args) => preview('default', args) }
+export const WithValue: Story = {
+    parameters: { controls: { disable: true } },
+    render: () => preview('default', { value: 18, max: 30, showValue: true }),
+}
 export const Resources: Story = {
     parameters: { controls: { disable: true } },
     render: () => preview('resources'),

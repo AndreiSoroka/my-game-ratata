@@ -1,16 +1,15 @@
 .bar-track {
+    --bar-track-radius: 4px;
+    --bar-track-rim: 1px;
     position: relative;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
     height: var(--bar-track-height, 24px);
-    padding: 2px;
-    border-radius: 999px;
+    padding: var(--bar-track-rim);
+    border-radius: var(--bar-track-radius);
     background: var(--bar-track-color);
-    box-shadow:
-        inset 0 2px 3px color-mix(in srgb, var(--ui-light-bar-shade) 40%, transparent),
-        inset 0 -1px 0 color-mix(in srgb, var(--ui-light-bar-highlight) 18%, transparent),
-        0 1px 0 color-mix(in srgb, var(--ui-light-bar-shade) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-light-bar-shade) 45%, transparent);
 }
 
 .bar-track[data-shadow='false'] {
@@ -24,5 +23,5 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    border-radius: inherit;
+    border-radius: calc(var(--bar-track-radius) - var(--bar-track-rim));
 }
