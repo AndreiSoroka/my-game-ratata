@@ -15,9 +15,9 @@ import SoulBadge from './SoulBadge.vue'
 const props = defineProps<PlayerStatusViewProps>()
 
 const resourcePresentation = {
-    hp: { label: 'HP', name: 'Health', ...lightUiColors.bar.health },
-    mana: { label: 'MP', name: 'Mana', ...lightUiColors.bar.mana },
-    energy: { label: 'EN', name: 'Energy', ...lightUiColors.bar.energy },
+    hp: { label: 'HP', name: 'Health', color: lightUiColors.bar.health.color },
+    mana: { label: 'MP', name: 'Mana', color: lightUiColors.bar.mana.color },
+    energy: { label: 'EN', name: 'Energy', color: lightUiColors.bar.energy.color },
 }
 
 const bars = computed(() =>
@@ -47,7 +47,7 @@ const bars = computed(() =>
                     divider="divider-005"
                     ends="right"
                     fade
-                    :color="lightUiColors.panel.title"
+                    color="var(--character-hud-border, var(--ui-dark-panel-border))"
                     aria-hidden="true"
                 />
                 <h2 class="player-status__name" :title="nickname">
@@ -58,7 +58,7 @@ const bars = computed(() =>
                     divider="divider-005"
                     ends="left"
                     fade
-                    :color="lightUiColors.panel.title"
+                    color="var(--character-hud-border, var(--ui-dark-panel-border))"
                     aria-hidden="true"
                 />
                 <SoulBadge
@@ -84,7 +84,7 @@ const bars = computed(() =>
                         :value="bar.percent"
                         :label="bar.name"
                         :color="bar.color"
-                        :track-color="bar.trackColor"
+                        track-color="var(--ui-dark-bar-track)"
                         :value-text="bar.text"
                         :animated="bar.animated"
                         :dimmed="bar.kind !== 'hp' && dimSecondaryResources"
@@ -97,7 +97,7 @@ const bars = computed(() =>
                         divider="divider-002"
                         ends="right"
                         fade
-                        :color="lightUiColors.panel.divider"
+                        color="var(--ui-dark-panel-divider)"
                         aria-hidden="true"
                     />
                 </PlayerStatusRow>
@@ -114,7 +114,6 @@ const bars = computed(() =>
 
 <style scoped>
 .player-status {
-    color: var(--ui-light-panel-text);
     font-family: var(--ratata-font-family, sans-serif);
 }
 
@@ -132,7 +131,7 @@ const bars = computed(() =>
     gap: 2px 7px;
     min-width: 0;
     padding: 3px 6px;
-    color: var(--ui-light-panel-title);
+    color: var(--ui-dark-panel-title);
 }
 
 .player-status__name {
@@ -174,7 +173,7 @@ const bars = computed(() =>
 }
 
 .player-status__resource-label {
-    color: var(--ui-light-panel-title);
+    color: var(--ui-dark-panel-title);
     font-weight: 700;
     line-height: 1;
 }

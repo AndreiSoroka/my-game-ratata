@@ -125,3 +125,74 @@ export const ManyEffects: Story = {
         })
     },
 }
+
+const hudPalettes = [
+    { label: 'Графит', surface: '#191e26eb', border: '#8d99a6' },
+    {
+        label: 'Тёмный камень · в игре',
+        surface: 'var(--ui-dark-panel-surface)',
+        border: 'var(--ui-dark-panel-border)',
+    },
+    { label: 'Тёмный янтарь', surface: '#38291deb', border: '#bb9052' },
+]
+
+export const DarkPalettes: Story = {
+    render() {
+        const character: CharacterSnapshot = {
+            ...wantedStatusFixture(),
+            health: { kind: 'percent', percent: 76 },
+            resources: {
+                mana: { kind: 'percent', percent: 61, hasCapacity: true },
+                energy: { kind: 'percent', percent: 88, hasCapacity: true },
+            },
+            prayerAuraEffects: ['prayer-blessing'],
+        }
+
+        return renderVueStory(
+            {
+                render: () =>
+                    h(
+                        'div',
+                        {
+                            style: {
+                                display: 'grid',
+                                gridTemplateColumns:
+                                    'repeat(auto-fit, minmax(min(100%, 330px), 1fr))',
+                                gap: '16px',
+                            },
+                        },
+                        hudPalettes.map(({ label, surface, border }) =>
+                            h('div', { key: label }, [
+                                h('h2', { style: { margin: '0 0 8px', color: '#f4e7cc' } }, label),
+                                h(
+                                    'section',
+                                    {
+                                        class: 'game-screen',
+                                        style: {
+                                            position: 'relative',
+                                            height: '520px',
+                                            background:
+                                                'linear-gradient(145deg, #539765 0 38%, #a5ad9e 38% 68%, #539765 68%)',
+                                            '--character-hud-surface': surface,
+                                            '--character-hud-border': border,
+                                        },
+                                    },
+                                    [
+                                        h(GamePlayerStatus, {
+                                            character,
+                                            style: {
+                                                '--game-player-status-top': '26px',
+                                                right: '50%',
+                                                transform: 'translateX(50%)',
+                                            },
+                                        }),
+                                    ]
+                                ),
+                            ])
+                        )
+                    ),
+            },
+            {}
+        )
+    },
+}

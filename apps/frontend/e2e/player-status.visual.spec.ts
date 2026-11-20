@@ -214,9 +214,9 @@ test('character entity controls edit fill and exact values independently', async
 async function expectHudFrame(panel: Locator): Promise<void> {
     await expect(panel).toHaveClass(/character-hud-frame/)
     await expect(panel).toHaveAttribute('data-fantasy-panel', 'panel-028')
-    await expect(panel).toHaveCSS('background-clip', 'padding-box, border-box')
-    await expect(panel).toHaveCSS('background-image', /rgb\(121, 82, 47\)/)
-    await expect(panel).toHaveCSS('outline-color', 'rgb(121, 82, 47)')
+    await expect(panel).toHaveCSS('background-clip', 'border-box')
+    await expect(panel).toHaveCSS('background-color', 'rgba(37, 44, 43, 0.92)')
+    await expect(panel).toHaveCSS('outline-color', 'rgb(69, 57, 41)')
     await expect(panel).toHaveCSS('outline-width', '2px')
 }
 

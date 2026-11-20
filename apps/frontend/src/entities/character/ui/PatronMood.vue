@@ -36,7 +36,7 @@ const moods = {
 <style scoped>
 .patron-mood {
     display: inline-flex;
-    color: var(--ui-light-panel-text);
+    color: var(--character-hud-text, var(--ui-light-panel-text));
 }
 
 .patron-mood svg {
@@ -45,10 +45,10 @@ const moods = {
 }
 
 .patron-mood[data-patron-mood='benevolent'] {
-    color: var(--ui-light-panel-positive);
+    color: var(--character-hud-positive, var(--ui-light-panel-positive));
 }
 
 .patron-mood[data-patron-mood='wrathful'] {
-    color: var(--ui-light-panel-warning);
+    color: var(--character-hud-warning, var(--ui-light-panel-warning));
 }
 </style>

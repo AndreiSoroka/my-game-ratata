@@ -144,7 +144,6 @@ function effectText(
 
 <style scoped>
 .player-effects {
-    color: var(--ui-light-panel-text);
     font-family: var(--ratata-font-family, sans-serif);
 }
 
@@ -161,7 +160,7 @@ function effectText(
 .player-effects__title {
     flex: none;
     margin: 0;
-    color: var(--ui-light-panel-title);
+    color: var(--ui-dark-panel-title);
     font-size: 17px;
     font-weight: 700;
     line-height: 1.15;
@@ -190,16 +189,16 @@ function effectText(
     width: var(--player-status-detail-icon-size);
     height: var(--player-status-detail-icon-size);
     margin-block-start: calc((1lh - var(--player-status-detail-icon-size)) / 2);
-    color: var(--ui-light-panel-title);
+    color: var(--ui-dark-panel-title);
 }
 
 .player-effects__label[data-tone='warning'] {
-    color: var(--ui-light-panel-warning);
+    color: var(--ui-dark-panel-warning);
     font-weight: 700;
 }
 
 .player-effects__label[data-tone='positive'] {
-    color: var(--ui-light-panel-positive);
+    color: var(--ui-dark-panel-positive);
 }
 
 @container (max-width: 180px) {

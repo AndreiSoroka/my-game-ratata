@@ -51,7 +51,7 @@ const masteryLabel = computed(() => {
 </template>
 <style scoped>
 .faith-status {
-    color: var(--ui-light-panel-text);
+    color: var(--character-hud-text, var(--ui-light-panel-text));
     font-family: var(--ratata-font-family, sans-serif);
     line-height: 1.4;
 }

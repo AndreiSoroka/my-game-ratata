@@ -38,7 +38,7 @@ An item slot defaults to 40px. Override `--game-item-slot-size` or the component
 
 ## Kenney HUD surfaces
 
-**Shared/Kenney HUD primitives** demonstrates the legacy `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. The live HUD cards share a parchment surface and brown outline. **Widgets/Player status** shows resources and faith, and **Widgets/Player effects** shows active effects and law statuses.
+**Shared/Kenney HUD primitives** demonstrates the legacy `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. The live HUD cards share a lightly translucent charcoal stone surface and an amber frame. **Widgets/Player status** shows resources and faith, and **Widgets/Player effects** shows active effects and law statuses. **Game/Player HUD/Dark Palettes** previews the two cards together in three dark palettes.
 
 For a parchment frame, keep a transparent physical border on the native host and set `--game-frame-border-width` to that same width. The filled Kenney frame is painted behind content and outsets across that border. Parchment hosts expose local `--game-panel-text`, `--game-panel-muted`, `--game-panel-divider` and `--game-panel-warning` tokens.
 
