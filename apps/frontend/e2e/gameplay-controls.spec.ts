@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 test.describe('shared gameplay controls', () => {
     test.setTimeout(60_000)
@@ -31,9 +31,7 @@ test.describe('shared gameplay controls', () => {
             ).toEqual(position)
             await page.keyboard.press('Digit1')
             await expectPrivateBarrier(page)
-            await expect(effects.locator('[data-player-effect="barrier"]')).toContainText(
-                'Магический барьер'
-            )
+            await expectDisclosedBarrier(effects)
             await expect(effects.getByText('Всё в порядке', { exact: true })).toHaveCount(0)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
@@ -119,6 +117,17 @@ test.describe('shared gameplay controls', () => {
         }
     })
 })
+
+async function expectDisclosedBarrier(effects: Locator): Promise<void> {
+    const disclosure = effects.getByRole('button', { name: 'Активные эффекты' })
+    const barrier = effects.locator('[data-player-effect="barrier"]')
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    await expect(barrier).toBeHidden()
+    await disclosure.press('Enter')
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    await expect(barrier).toBeVisible()
+    await expect(barrier).toContainText('Магический барьер')
+}
 
 async function expectPrivateBarrier(page: Page): Promise<void> {
     await expect

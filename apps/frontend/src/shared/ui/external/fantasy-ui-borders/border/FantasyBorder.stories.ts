@@ -6,7 +6,7 @@ import { lightUiColors } from '@/shared/ui/theme'
 import FantasyBorderStory from './FantasyBorderStory.vue'
 import type { FantasyBorderVariant } from './index'
 
-type BorderArgs = { border: FantasyBorderVariant; color: string }
+type BorderArgs = { border: FantasyBorderVariant; borderWidth?: number; color: string }
 type Section = 'default' | 'variants' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
     { length: 32 },
@@ -18,6 +18,7 @@ const meta = {
     parameters: { backgrounds: { disable: false } },
     argTypes: {
         border: { control: 'select', options: variants },
+        borderWidth: { control: 'number' },
         color: { control: 'text' },
     },
 } satisfies Meta<BorderArgs>

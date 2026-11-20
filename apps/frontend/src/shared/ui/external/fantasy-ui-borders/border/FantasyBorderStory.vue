@@ -6,6 +6,7 @@ import { FantasyBorder, type FantasyBorderVariant } from './index'
 defineProps<{
     section: 'default' | 'variants' | 'colors' | 'composition' | 'sizes'
     border?: FantasyBorderVariant
+    borderWidth?: number
     color?: string
     foreground?: string
 }>()
@@ -42,6 +43,7 @@ const sizeExamples = [
             <h2>FantasyBorder</h2>
             <FantasyBorder
                 :border="border"
+                :border-width="borderWidth"
                 :color="color"
                 class="border-default"
                 data-testid="border-default"

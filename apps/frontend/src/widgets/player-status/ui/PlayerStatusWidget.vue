@@ -9,7 +9,7 @@ import {
 
 const LOW_HEALTH_PERCENT = 30
 const LOW_RESOURCE_PERCENT = 20
-const props = defineProps<PlayerStatusData>()
+const props = defineProps<PlayerStatusData & { compact?: boolean }>()
 const { resources: displayedResources, update } = createPlayerStatusStore(props)
 watchEffect(() => update(props))
 const statusBars = computed(() => {
@@ -28,5 +28,10 @@ const statusBars = computed(() => {
 </script>
 
 <template>
-    <PlayerStatusView v-bind="statusBars" :nickname="nickname" :patrons="patrons" />
+    <PlayerStatusView
+        v-bind="statusBars"
+        :nickname="nickname"
+        :patrons="patrons"
+        :compact="compact"
+    />
 </template>

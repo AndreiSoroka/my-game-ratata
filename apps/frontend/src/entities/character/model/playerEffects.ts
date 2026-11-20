@@ -28,6 +28,7 @@ export interface PlayerEffectsData {
     effects: readonly PlayerEffect[]
     soulKind?: SoulKind | undefined
     isCanSpeak?: boolean | undefined
+    compact?: boolean
 }
 
 export function projectPlayerEffects(

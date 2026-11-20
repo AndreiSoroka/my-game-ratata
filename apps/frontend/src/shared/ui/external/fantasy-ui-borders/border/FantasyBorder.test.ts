@@ -98,6 +98,23 @@ it('updates only the border color filter and keeps slotted content unchanged', a
     }
 })
 
+it('sets the rendered border width independently of the native slice', async () => {
+    const view = mount(FantasyBorder, { props: { border: 'border-017' } })
+    const style = (view.element as HTMLElement).style
+    try {
+        expect(style.getPropertyValue('--fantasy-border-size')).toBe('16px')
+        await view.setProps({ borderWidth: 8 })
+        expect(style.getPropertyValue('--fantasy-border-size')).toBe('8px')
+        expect(style.getPropertyValue('--fantasy-border-slice')).toBe('16')
+        for (const borderWidth of [0, -1, NaN, Infinity]) {
+            await view.setProps({ borderWidth })
+            expect(style.getPropertyValue('--fantasy-border-size')).toBe('16px')
+        }
+    } finally {
+        view.unmount()
+    }
+})
+
 it('uses a distinct local filter identity across independent Vue applications', () => {
     const first = mount(FantasyBorder, { props: { color: 'red' } })
     const second = mount(FantasyBorder, { props: { color: 'blue' } })

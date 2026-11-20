@@ -20,9 +20,14 @@ const sortedPatrons = computed(() =>
 )
 
 const resourcePresentation = {
-    hp: { label: 'HP', name: 'Health', color: lightUiColors.bar.health.color },
-    mana: { label: 'MP', name: 'Mana', color: lightUiColors.bar.mana.color },
-    energy: { label: 'EN', name: 'Energy', color: lightUiColors.bar.energy.color },
+    hp: { label: 'HP', name: 'Health', color: lightUiColors.bar.health.color, compactHeight: 13 },
+    mana: { label: 'MP', name: 'Mana', color: lightUiColors.bar.mana.color, compactHeight: 10 },
+    energy: {
+        label: 'EN',
+        name: 'Energy',
+        color: lightUiColors.bar.energy.color,
+        compactHeight: 10,
+    },
 }
 
 const bars = computed(() =>
@@ -44,10 +49,17 @@ const bars = computed(() =>
 </script>
 
 <template>
-    <CharacterHudFrame class="player-status" role="region" aria-label="Player status">
+    <component
+        :is="compact ? 'section' : CharacterHudFrame"
+        class="player-status"
+        :class="{ 'player-status--compact': compact }"
+        role="region"
+        aria-label="Player status"
+    >
         <div class="player-status__layout">
             <div class="player-status__header">
                 <FantasyDivider
+                    v-if="!compact"
                     class="player-status__divider player-status__divider--before"
                     divider="divider-005"
                     ends="right"
@@ -59,6 +71,7 @@ const bars = computed(() =>
                     {{ nickname }}
                 </h2>
                 <FantasyDivider
+                    v-if="!compact"
                     class="player-status__divider player-status__divider--after"
                     divider="divider-005"
                     ends="left"
@@ -84,6 +97,7 @@ const bars = computed(() =>
                         :label="bar.name"
                         :color="bar.color"
                         track-color="var(--ui-dark-bar-track)"
+                        :height="compact ? bar.compactHeight : undefined"
                         :value-text="bar.text"
                         :animated="bar.animated"
                         :dimmed="bar.kind !== 'hp' && dimSecondaryResources"
@@ -93,6 +107,7 @@ const bars = computed(() =>
             <div v-if="sortedPatrons.length" class="player-status__details">
                 <PlayerStatusRow>
                     <FantasyDivider
+                        class="player-status__faith-divider"
                         divider="divider-002"
                         ends="right"
                         fade
@@ -109,7 +124,7 @@ const bars = computed(() =>
                 />
             </div>
         </div>
-    </CharacterHudFrame>
+    </component>
 </template>
 
 <style scoped>
@@ -208,6 +223,52 @@ const bars = computed(() =>
 
     .player-status__divider {
         transform: scale(0.36);
+    }
+}
+
+.player-status--compact {
+    flex: none;
+    min-width: 0;
+}
+
+.player-status--compact .player-status__layout {
+    gap: 4px;
+    padding: 0;
+}
+
+.player-status--compact .player-status__header {
+    display: block;
+    padding: 0;
+}
+
+.player-status--compact .player-status__name {
+    font-size: 13px;
+}
+
+.player-status--compact .player-status__resources {
+    gap: 3px;
+}
+
+.player-status--compact .player-status__details {
+    --player-status-detail-icon-size: 10px;
+    gap: 3px;
+}
+
+.player-status--compact .player-status__resource,
+.player-status--compact .player-status__details :deep(.player-status-row) {
+    --player-status-row-leading-width: 16px;
+    column-gap: 4px;
+    font-size: 10px;
+}
+
+.player-status--compact .player-status__faith-divider {
+    height: 4px;
+    min-height: 4px;
+}
+
+@container (max-width: 160px) {
+    .player-status--compact .player-status__name {
+        font-size: 11px;
     }
 }
 </style>

@@ -13,6 +13,7 @@ export {
     type PlayerStatusViewProps,
     projectPlayerStatusDetails,
 } from './model/playerStatus'
+export { default as CharacterHudFrame } from './ui/CharacterHudFrame.vue'
 export { default as PlayerEffectsView } from './ui/PlayerEffectsView.vue'
 export { default as PlayerStatusView } from './ui/PlayerStatusView.vue'
 export { default as SoulBadge } from './ui/SoulBadge.vue'

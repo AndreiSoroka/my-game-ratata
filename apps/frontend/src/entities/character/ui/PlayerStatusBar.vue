@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { GameBar } from '@/shared/ui/common/game-bar'
 
-defineProps<{
-    value: number
-    label: string
-    color: string
-    trackColor: string
-    valueText?: string | undefined
-    animated?: boolean
-    dimmed?: boolean
-}>()
+withDefaults(
+    defineProps<{
+        value: number
+        label: string
+        color: string
+        trackColor: string
+        height?: number | undefined
+        valueText?: string | undefined
+        animated?: boolean
+        dimmed?: boolean
+    }>(),
+    { height: 18 }
+)
 </script>
 
 <template>
@@ -19,7 +23,7 @@ defineProps<{
         :label="label"
         :color="color"
         :track-color="trackColor"
-        :height="18"
+        :height="height"
         :aria-valuetext="valueText"
         :data-animated="animated ? 'true' : 'false'"
         :data-dimmed="dimmed ? 'true' : 'false'"

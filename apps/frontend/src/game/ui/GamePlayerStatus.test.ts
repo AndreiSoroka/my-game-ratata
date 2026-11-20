@@ -12,20 +12,22 @@ import {
 import GamePlayerStatus from './GamePlayerStatus.vue'
 
 describe('production player status', () => {
-    it('shows the full nickname and keeps accessible identity in the effects panel', () => {
+    it('shows the full nickname and accessible identity in one compact HUD frame', () => {
         expect(LONG_PLAYER_NAME).toHaveLength(24)
         const wrapper = mount(GamePlayerStatus, {
             props: { character: playerStatusFixture({ nickname: LONG_PLAYER_NAME }) },
         })
-        const panel = wrapper.get('[role="region"][aria-label="Player status"]')
+        expect(wrapper.findAll('.character-hud-frame')).toHaveLength(1)
+        const frame = wrapper.get('.character-hud-frame')
+        const panel = frame.get('[role="region"][aria-label="Player status"]')
         expect(panel.get('h2').text()).toBe(LONG_PLAYER_NAME)
         expect(panel.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
-        expect(panel.classes()).toContain('character-hud-frame')
-        expect(panel.findAll('[role="separator"][aria-hidden="true"]')).toHaveLength(2)
+        expect(panel.find('[data-fantasy-divider="divider-005"]').exists()).toBe(false)
         expect(panel.find('.soul-badge-icons').exists()).toBe(false)
-        const effects = wrapper.get('[aria-label="Player effects"]')
+        expect(panel.find('[aria-label="Player effects"]').exists()).toBe(false)
+        const effects = frame.get('[aria-label="Player effects"]')
         const icons = effects.get('.player-effects__identity')
-        expect(effects.get('h2').text()).toBe('Статус игрока')
+        expect(effects.find('h2').exists()).toBe(false)
         expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
             'Искра',
             'Есть речь',
@@ -106,30 +108,6 @@ describe('production player status', () => {
         expect(wrapper.findAll('[aria-valuetext]')).toHaveLength(0)
         wrapper.unmount()
     })
-    it('updates active model Spark and independent speech indicators without textual badges', async () => {
-        const wrapper = mount(GamePlayerStatus, { props: { character: playerStatusFixture() } })
-        await wrapper.setProps({
-            character: playerStatusFixture({
-                soul: {
-                    kind: 'spark',
-                    controlSource: 'model',
-                    canSpeak: false,
-                    personality: 'Тихий',
-                    companion: null,
-                },
-            }),
-        })
-        const effects = wrapper.get('[aria-label="Player effects"]')
-        const icons = effects.get('.player-effects__identity')
-        expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
-            'Искра',
-            'Без речи',
-        ])
-        expect(icons.text()).not.toContain('Искра')
-        expect(icons.text()).not.toContain('Без речи')
-        expect(effects.text()).toContain('Всё в порядке')
-        wrapper.unmount()
-    })
 })
 
 describe('earned HUD status', () => {
@@ -178,16 +156,51 @@ describe('earned HUD status', () => {
 })
 
 describe('player effects widget', () => {
-    it('renders the three law statuses in separate rows outside the resources widget', () => {
+    it('updates active model Spark and independent speech indicators without textual badges', async () => {
+        const wrapper = mount(GamePlayerStatus, { props: { character: playerStatusFixture() } })
+        await wrapper.setProps({
+            character: playerStatusFixture({
+                soul: {
+                    kind: 'spark',
+                    controlSource: 'model',
+                    canSpeak: false,
+                    personality: 'Тихий',
+                    companion: null,
+                },
+            }),
+        })
+        const effects = wrapper.get('[aria-label="Player effects"]')
+        const icons = effects.get('.player-effects__identity')
+        expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
+            'Искра',
+            'Без речи',
+        ])
+        expect(icons.text()).not.toContain('Искра')
+        expect(icons.text()).not.toContain('Без речи')
+        expect(effects.text()).toContain('Всё в порядке')
+        wrapper.unmount()
+    })
+    it('keeps law previews visible and discloses three separate status rows', async () => {
         const wrapper = mount(GamePlayerStatus, { props: { character: wantedStatusFixture() } })
         const resources = wrapper.get('[aria-label="Player status"]')
         const effects = wrapper.get('[aria-label="Player effects"]')
         expect(resources.find('[data-player-effect]').exists()).toBe(false)
-        expect(effects.findAll('[data-player-effect]').map((row) => row.text())).toEqual([
+        const disclosure = effects.get('button[aria-label="Активные эффекты"]')
+        const list = effects.get('ul')
+        expect(disclosure.find('[data-effect-preview]').exists()).toBe(true)
+        expect(disclosure.attributes('aria-expanded')).toBe('false')
+        expect(list.element.style.display).toBe('none')
+        await disclosure.trigger('click')
+        expect(disclosure.attributes('aria-expanded')).toBe('true')
+        expect(list.element.style.display).toBe('')
+        expect(list.findAll('[data-player-effect]').map((row) => row.text())).toEqual([
             'Кража · 4 с',
             'Розыск · 22 с',
             'В чёрном списке Новогорода',
         ])
+        await disclosure.trigger('click')
+        expect(disclosure.attributes('aria-expanded')).toBe('false')
+        expect(list.element.style.display).toBe('none')
         wrapper.unmount()
     })
     it('keeps the blacklist label after temporary pursuit expires', () => {
@@ -243,6 +256,7 @@ describe('player effects widget', () => {
         const effects = wrapper.get('[aria-label="Player effects"]')
         expect(effects.text()).toContain('Всё в порядке')
         expect(effects.findAll('[data-player-effect]')).toHaveLength(0)
+        expect(effects.find('button[aria-label="Активные эффекты"]').exists()).toBe(false)
         wrapper.unmount()
     })
 })

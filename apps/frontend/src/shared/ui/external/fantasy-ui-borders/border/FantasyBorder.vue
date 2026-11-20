@@ -14,10 +14,14 @@ const props = withDefaults(defineProps<FantasyBorderProps>(), {
 })
 const filterId = createFantasyBorderFilterId()
 const variant = computed(() => resolveFantasyBorder(props.border))
+const borderWidth = computed(() => {
+    const width = props.borderWidth
+    return width !== undefined && Number.isFinite(width) && width > 0 ? width : variant.value.slice
+})
 const decoration = computed(() => ({
     '--fantasy-border-image': `url("${variant.value.src}")`,
     '--fantasy-border-slice': String(variant.value.slice),
-    '--fantasy-border-size': `${variant.value.slice}px`,
+    '--fantasy-border-size': `${borderWidth.value}px`,
     '--fantasy-border-filter': `url("#${filterId}")`,
 }))
 </script>

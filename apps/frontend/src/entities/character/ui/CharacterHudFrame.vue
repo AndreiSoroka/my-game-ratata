@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
+
+defineProps<{ compact?: boolean }>()
 </script>
 
 <template>
@@ -7,6 +9,7 @@ import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
         <FantasyBorder
             class="character-hud-frame__border"
             border="border-017"
+            :border-width="compact ? 8 : undefined"
             color="var(--character-hud-border, var(--ui-dark-panel-border))"
         >
             <slot />

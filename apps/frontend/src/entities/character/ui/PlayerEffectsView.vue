@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 
 import type { PlayerEffect, PlayerEffectKind, PlayerEffectsData } from '../model/playerEffects'
 import CharacterHudFrame from './CharacterHudFrame.vue'
@@ -7,6 +7,8 @@ import PlayerStatusRow from './PlayerStatusRow.vue'
 import SoulBadgeIcons from './SoulBadgeIcons.vue'
 
 const props = defineProps<PlayerEffectsData>()
+const listId = useId()
+const expanded = ref(false)
 
 const presentation: Record<
     PlayerEffectKind,
@@ -91,35 +93,87 @@ const activeEffects = computed(() =>
         .filter(({ remainingMs }) => remainingMs === undefined || remainingMs > 0)
         .map((effect) => {
             const { label, path, tone } = presentation[effect.kind]
-            return { kind: effect.kind, path, tone, text: effectText(effect, label) }
+            const stacks =
+                effect.stacks !== undefined && effect.stackLimit !== undefined
+                    ? `${effect.stacks}/${effect.stackLimit}`
+                    : undefined
+            const timer = effectTimer(effect)
+            const text = [label, stacks, timer].filter(Boolean).join(' · ')
+            return { kind: effect.kind, path, tone, timer, text }
         })
 )
+const hasActiveEffects = computed(() => activeEffects.value.length > 0)
+watch(hasActiveEffects, () => {
+    expanded.value = false
+})
 
-function effectText(
-    { kind, remainingMs, stacks, stackLimit }: PlayerEffect,
-    label: string
-): string {
-    const parts = [label]
-    if (stacks !== undefined && stackLimit !== undefined) parts.push(`${stacks}/${stackLimit}`)
-    if (remainingMs !== undefined) {
-        const seconds =
-            kind === 'stun' ? Math.ceil(remainingMs / 100) / 10 : Math.ceil(remainingMs / 1000)
-        parts.push(`${seconds.toLocaleString('ru-RU')} с`)
-    }
-    return parts.join(' · ')
+function effectTimer({ kind, remainingMs }: PlayerEffect): string | undefined {
+    if (remainingMs === undefined) return undefined
+    const seconds =
+        kind === 'stun' ? Math.ceil(remainingMs / 100) / 10 : Math.ceil(remainingMs / 1000)
+    return `${seconds.toLocaleString('ru-RU')} с`
 }
 </script>
 
 <template>
-    <CharacterHudFrame class="player-effects" role="region" aria-label="Player effects">
+    <component
+        :is="compact ? 'section' : CharacterHudFrame"
+        class="player-effects"
+        :class="{ 'player-effects--compact': compact }"
+        role="region"
+        aria-label="Player effects"
+    >
         <div class="player-effects__layout">
-            <h2 class="player-effects__title">Статус игрока</h2>
-            <SoulBadgeIcons
-                class="player-effects__identity"
-                :soul-kind="soulKind"
-                :is-can-speak="isCanSpeak"
-            />
-            <ul v-if="activeEffects.length > 0" class="player-effects__list" role="list">
+            <h2 v-if="!compact" class="player-effects__title">Статус игрока</h2>
+            <div class="player-effects__summary">
+                <SoulBadgeIcons
+                    class="player-effects__identity"
+                    :soul-kind="soulKind"
+                    :is-can-speak="isCanSpeak"
+                />
+                <button
+                    v-if="compact && hasActiveEffects"
+                    class="player-effects__toggle"
+                    type="button"
+                    aria-label="Активные эффекты"
+                    :aria-description="`Всего: ${activeEffects.length}`"
+                    :aria-controls="listId"
+                    :aria-expanded="expanded"
+                    @click="expanded = !expanded"
+                >
+                    <span class="player-effects__preview" aria-hidden="true">
+                        <span
+                            v-for="effect in activeEffects"
+                            :key="effect.kind"
+                            class="player-effects__preview-chip"
+                            :data-effect-preview="effect.kind"
+                            :data-tone="effect.tone"
+                            :title="effect.text"
+                        >
+                            <svg
+                                class="player-effects__icon"
+                                viewBox="0 0 12 12"
+                                shape-rendering="crispEdges"
+                                focusable="false"
+                            >
+                                <path :d="effect.path" fill="currentColor" fill-rule="evenodd" />
+                            </svg>
+                            {{ effect.timer }}
+                        </span>
+                    </span>
+                    <span class="player-effects__count" aria-hidden="true">{{
+                        activeEffects.length
+                    }}</span>
+                </button>
+                <p v-else-if="compact" class="player-effects__empty">Всё в порядке</p>
+            </div>
+            <ul
+                v-if="hasActiveEffects"
+                v-show="!compact || expanded"
+                :id="compact ? listId : undefined"
+                class="player-effects__list"
+                role="list"
+            >
                 <li
                     v-for="effect in activeEffects"
                     :key="effect.kind"
@@ -143,96 +197,9 @@ function effectText(
                     </PlayerStatusRow>
                 </li>
             </ul>
-            <p v-else class="player-effects__empty">Всё в порядке</p>
+            <p v-else-if="!compact" class="player-effects__empty">Всё в порядке</p>
         </div>
-    </CharacterHudFrame>
+    </component>
 </template>
 
-<style scoped>
-.player-effects {
-    font-family: var(--ratata-font-family, sans-serif);
-}
-
-.player-effects__layout {
-    --player-status-detail-icon-size: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 0;
-    min-width: 0;
-    padding: 8px 12px 10px;
-}
-
-.player-effects__title {
-    flex: none;
-    margin: 0;
-    color: var(--ui-dark-panel-title);
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.15;
-    text-align: center;
-}
-
-.player-effects__identity {
-    --soul-badge-icon-size: var(--player-status-detail-icon-size);
-    --soul-badge-icon-font: var(--ratata-font-family, sans-serif);
-    flex: none;
-    align-self: center;
-    gap: 4px;
-    color: var(--ui-dark-panel-title);
-}
-
-.player-effects__list {
-    display: grid;
-    gap: 6px;
-    margin: 0;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 0;
-    line-height: 1.4;
-    list-style: none;
-}
-
-.player-effects__empty {
-    margin: 0;
-    font-size: 12px;
-    line-height: 1.4;
-    text-align: center;
-}
-
-.player-effects__icon {
-    width: var(--player-status-detail-icon-size);
-    height: var(--player-status-detail-icon-size);
-    margin-block-start: calc((1lh - var(--player-status-detail-icon-size)) / 2);
-    color: var(--ui-dark-panel-title);
-}
-
-.player-effects__label[data-tone='warning'] {
-    color: var(--ui-dark-panel-warning);
-    font-weight: 700;
-}
-
-.player-effects__label[data-tone='positive'] {
-    color: var(--ui-dark-panel-positive);
-}
-
-@container (max-width: 180px) {
-    .player-effects__layout {
-        --player-status-detail-icon-size: 10px;
-        gap: 6px;
-        padding: 0;
-    }
-
-    .player-effects__title {
-        font-size: 11px;
-    }
-
-    .player-effects__empty {
-        font-size: 9px;
-    }
-
-    .player-effects__list {
-        gap: 4px;
-    }
-}
-</style>
+<style scoped src="./playerEffectsView.css"></style>

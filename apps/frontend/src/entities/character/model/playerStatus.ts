@@ -41,6 +41,7 @@ interface PlayerStatusDetails {
 export interface PlayerStatusData extends PlayerStatusDetails, PlayerStatusResources {}
 
 export interface PlayerStatusViewProps extends PlayerStatusData {
+    compact?: boolean
     hpAnimated?: boolean
     manaAnimated?: boolean
     energyAnimated?: boolean

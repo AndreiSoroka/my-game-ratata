@@ -7,7 +7,7 @@ import PlayerStatusBar from './PlayerStatusBar.vue'
 
 type StoryArgs = Pick<
     InstanceType<typeof PlayerStatusBar>['$props'],
-    'value' | 'label' | 'color' | 'trackColor' | 'valueText' | 'animated' | 'dimmed'
+    'value' | 'label' | 'color' | 'trackColor' | 'height' | 'valueText' | 'animated' | 'dimmed'
 >
 
 const meta = {
@@ -17,12 +17,14 @@ const meta = {
         label: 'Здоровье',
         color: lightUiColors.bar.health.color,
         trackColor: lightUiColors.bar.health.trackColor,
+        height: 18,
         valueText: '36/50',
         animated: false,
         dimmed: false,
     },
     argTypes: {
         value: { control: { type: 'range', min: 0, max: 100 } },
+        height: { control: { type: 'number', min: 8 } },
         animated: { control: 'boolean' },
         dimmed: { control: 'boolean' },
     },
@@ -39,6 +41,8 @@ export default meta
 type Story = StoryObj<StoryArgs>
 
 export const Normal: Story = {}
+
+export const Compact: Story = { args: { height: 13 } }
 
 export const Animated: Story = { args: { value: 16, valueText: '8/50', animated: true } }
 

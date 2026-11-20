@@ -260,7 +260,7 @@ async function exchangeFailureState(page: Page, giftId?: string) {
 
 async function assertHudLayout(page: Page): Promise<void> {
     const viewport = page.viewportSize()!
-    const status = await page.getByLabel('Player status', { exact: true }).boundingBox()
+    const status = await page.locator('.game-player-status').boundingBox()
     const hints = await page.locator('.social-hints').boundingBox()
     expect(hints!.y).toBeGreaterThanOrEqual(status!.y + status!.height)
     expect(hints!.x).toBeGreaterThanOrEqual(0)

@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
+import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
 import type { PlayerEffectsData } from '../model/playerEffects'
+import CharacterHudFrame from './CharacterHudFrame.vue'
 import PlayerEffectsView from './PlayerEffectsView.vue'
 
 const meta = {
@@ -61,3 +63,27 @@ export const PrayerEffects: Story = {
 }
 
 export const Empty: Story = { args: { effects: [] } }
+
+export const Compact: Story = {
+    args: {
+        compact: true,
+        effects: [
+            { kind: 'stun', remainingMs: 760 },
+            { kind: 'barrier', remainingMs: 4500 },
+            { kind: 'defensive-stance' },
+            { kind: 'prayer-blessing' },
+        ],
+    },
+    render(args) {
+        return renderVueStory(
+            {
+                render: () =>
+                    h(CharacterHudFrame, { compact: true, style: { width: '150px' } }, () =>
+                        h(PlayerEffectsView, { ...args })
+                    ),
+            },
+            {},
+            { padding: '16px' }
+        )
+    },
+}

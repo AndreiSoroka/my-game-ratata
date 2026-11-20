@@ -3,6 +3,7 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
 import {
+    CharacterHudFrame,
     healthBarPercent,
     type PlayerStatusData,
     projectPlayerEffects,
@@ -37,12 +38,15 @@ const effects = computed(() => projectPlayerEffects(props.character, props.serve
 
 <template>
     <div ref="panel" class="game-player-status">
-        <PlayerStatusWidget class="game-player-status__resources" v-bind="status" />
-        <PlayerEffectsWidget
-            :effects="effects"
-            :soul-kind="character.soul?.kind"
-            :is-can-speak="character.soul?.canSpeak"
-        />
+        <CharacterHudFrame compact>
+            <PlayerStatusWidget v-bind="status" compact />
+            <PlayerEffectsWidget
+                :effects="effects"
+                :soul-kind="character.soul?.kind"
+                :is-can-speak="character.soul?.canSpeak"
+                compact
+            />
+        </CharacterHudFrame>
     </div>
 </template>
 
@@ -55,13 +59,8 @@ const effects = computed(() => projectPlayerEffects(props.character, props.serve
     z-index: 3;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    width: min(300px, calc(100% - 28px));
+    width: min(220px, calc(100% - 28px));
     max-height: max(0px, calc(100% - var(--game-player-status-top) - 112px));
-}
-
-.game-player-status__resources {
-    flex: none;
 }
 
 @media (max-width: 740px) {

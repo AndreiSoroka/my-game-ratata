@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
+import { h } from 'vue'
 
-import type { PatronStatusEntry, PlayerStatusData } from '@/entities/character'
+import {
+    CharacterHudFrame,
+    type PatronStatusEntry,
+    type PlayerStatusData,
+} from '@/entities/character'
 import { renderVueStory } from '@/shared/lib/storybook'
 
 import PlayerStatusWidget from './PlayerStatusWidget.vue'
@@ -24,9 +29,18 @@ const meta = {
         patrons: { control: 'object' },
     },
     render(args) {
-        const host = renderVueStory(PlayerStatusWidget, { ...args }, { padding: '16px' })
-        host.style.maxWidth = '332px'
-        return host
+        return renderVueStory(
+            {
+                render: () =>
+                    h(
+                        CharacterHudFrame,
+                        { compact: true, style: { width: 'min(220px, 100%)' } },
+                        () => h(PlayerStatusWidget, { ...args, compact: true })
+                    ),
+            },
+            {},
+            { padding: '16px' }
+        )
     },
 } satisfies Meta<PlayerStatusData>
 
