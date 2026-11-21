@@ -159,11 +159,15 @@ it.each([
         const { game, container, onChatState } = setup()
         document.body.append(container)
         await startWorld(game)
+        const editor = document.createElement('input')
+        editor.dataset.publicChatInput = ''
+        container.appendChild(editor)
         try {
             const canvas = container.querySelector('canvas')!
             canvas.focus()
             calls.handlers?.keyDown(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }))
-            calls.handlers?.keyDown(new KeyboardEvent('keydown', { key: 'я', code: 'KeyZ' }))
+            editor.focus()
+            game.updateChatDraft('я')
             calls.send.mockClear()
             calls.handlers?.pointer({
                 ...pointer,

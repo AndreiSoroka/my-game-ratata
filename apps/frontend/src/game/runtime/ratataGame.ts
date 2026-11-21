@@ -62,7 +62,7 @@ export class RatataGame {
             options.onChatState,
             this.releaseInputs,
             (message) => this.send(message),
-            focusWorldInput
+            () => focusWorldInput(true)
         )
         this.maps = new RuntimeMapLoading({
             apply: async (map, request) => {
@@ -145,6 +145,8 @@ export class RatataGame {
     }
 
     public readonly cancelChat = (): void => this.chat.cancel()
+
+    public readonly updateChatDraft = (text: string): void => this.chat.setDraft(text)
 
     public readonly releaseUiControls = (): void => this.releaseInputs()
 

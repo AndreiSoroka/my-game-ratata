@@ -1,6 +1,7 @@
 import { nextTick, ref } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
+import { isPublicChatEditor } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 export function useGameMenu(options: {
@@ -26,6 +27,7 @@ export function useGameMenu(options: {
     useEscapeOwner({
         active: () => options.chatting(),
         escape: () => options.game()?.cancelChat(),
+        ownsFocus: isPublicChatEditor,
         priority: 150,
     })
     useEscapeOwner({

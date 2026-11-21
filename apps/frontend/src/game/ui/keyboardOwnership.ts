@@ -1,4 +1,5 @@
 const editorSelector = 'input, textarea, select, [contenteditable="true"], .speech-text'
+const publicChatEditorSelector = 'input[data-public-chat-input]'
 const windowSelector = '[role="dialog"], [role="menu"], [role="alertdialog"], .adventure-window'
 
 export function isTextEntry(target: EventTarget | null): boolean {
@@ -24,11 +25,13 @@ export function worldKeyboardOwned(): boolean {
     )
 }
 /** A placement tool may own canvas clicks; other visible windows still block them. */
-export function worldPointerBlocked(): boolean {
+export function worldPointerBlocked(allowPublicChat = false): boolean {
     const windows = Array.from(document.querySelectorAll<HTMLElement>(windowSelector))
     return (
         windows.some((window) => !window.hasAttribute('data-world-pointer-owner')) ||
-        isTextEntry(document.activeElement)
+        (allowPublicChat
+            ? isForeignTextEntry(document.activeElement)
+            : isTextEntry(document.activeElement))
     )
 }
 /** A reading panel may explicitly pass physical movement through without granting other game keys. */
@@ -51,40 +54,40 @@ export function permitsWorldMovement(event: KeyboardEvent): boolean {
     )
 }
 
-/** The custom public draft may retain focus in its read-only history, never in another editor. */
+/** The public draft accepts confirmation from its editor or read-only history. */
 export function publicChatOwnsKey(event: KeyboardEvent): boolean {
     if (
         reservedKey(event) ||
-        isTextEntry(event.target) ||
-        isTextEntry(document.activeElement) ||
+        isForeignTextEntry(event.target) ||
+        isForeignTextEntry(document.activeElement) ||
         document.querySelector(windowSelector) !== null
     )
         return false
     const target = event.target instanceof HTMLElement ? event.target : document.activeElement
     if (!(target instanceof HTMLElement)) return true
     if (target.closest('button')) return false
-    const reader = target.closest('[data-public-chat-reader]')
-    if (
-        reader &&
-        [
-            'ArrowUp',
-            'ArrowDown',
-            'ArrowLeft',
-            'ArrowRight',
-            'PageUp',
-            'PageDown',
-            'Home',
-            'End',
-        ].includes(event.code)
+    return (
+        isPublicChatEditor(target) ||
+        target.closest('[data-public-chat-reader]') !== null ||
+        !isOwnedUiTarget(target)
     )
-        return false
-    return !isOwnedUiTarget(target) || reader !== null
 }
 
 /** Explicitly leaving public typing returns to the world without taking a foreign window's focus. */
-export function focusWorldInput(): void {
-    if (document.querySelector(windowSelector) || isTextEntry(document.activeElement)) return
+export function focusWorldInput(allowPublicChat = false): void {
+    const editorOwnsFocus = allowPublicChat
+        ? isForeignTextEntry(document.activeElement)
+        : isTextEntry(document.activeElement)
+    if (document.querySelector(windowSelector) || editorOwnsFocus) return
     document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
+}
+
+function isForeignTextEntry(target: EventTarget | null): boolean {
+    return isTextEntry(target) && !isPublicChatEditor(target)
+}
+
+export function isPublicChatEditor(target: EventTarget | null): boolean {
+    return target instanceof HTMLInputElement && target.matches(publicChatEditorSelector)
 }
 
 /** A HUD button owns confirmation, but its focus does not disable unrelated game shortcuts. */

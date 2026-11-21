@@ -65,7 +65,9 @@ it('finishes a public draft from history focus without moving, then returns to c
     const canvas = document.createElement('canvas')
     canvas.dataset.gameCanvas = 'true'
     canvas.tabIndex = 0
-    document.body.append(canvas)
+    const editor = document.createElement('input')
+    editor.dataset.publicChatInput = ''
+    document.body.append(canvas, editor)
     const wrapper = mount(ChatHistoryPanel, {
         props: { entries: [], typing: false },
         attachTo: document.body,
@@ -95,13 +97,27 @@ it('finishes a public draft from history focus without moving, then returns to c
         canvas.focus()
         key(canvas, 'Enter', 'Enter')
         await wrapper.vm.$nextTick()
+        editor.focus()
+        expect(key(editor, 'KeyW', 'ц').defaultPrevented).toBe(false)
+        chat.setDraft('Привет')
+        const composing = new KeyboardEvent('keydown', {
+            code: 'Enter',
+            key: 'Enter',
+            isComposing: true,
+            bubbles: true,
+            cancelable: true,
+        })
+        editor.dispatchEvent(composing)
+        expect(composing.defaultPrevented).toBe(false)
+        expect(chat.isActive).toBe(true)
+        expect(send).not.toHaveBeenCalled()
         const history = wrapper.get('ol').element
         history.focus()
         key(history, 'KeyW', 'ц')
         expect(move).not.toHaveBeenCalled()
         key(history, 'Enter', 'Enter')
         await wrapper.vm.$nextTick()
-        expect(send).toHaveBeenCalledExactlyOnceWith({ type: 'chat', text: 'ц' })
+        expect(send).toHaveBeenCalledExactlyOnceWith({ type: 'chat', text: 'Привет' })
         expect(document.activeElement).toBe(canvas)
         key(canvas, 'KeyD', 'в')
         expect(move).toHaveBeenCalledExactlyOnceWith('KeyD')
@@ -110,6 +126,7 @@ it('finishes a public draft from history focus without moving, then returns to c
         chat.cancel()
         wrapper.unmount()
         canvas.remove()
+        editor.remove()
     }
 })
 

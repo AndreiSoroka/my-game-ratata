@@ -1,5 +1,5 @@
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 interface CityMap {
     tilewidth: number
@@ -40,6 +40,7 @@ for (const mobile of [false, true]) {
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
         const canvas = page.locator('canvas[data-game-canvas]')
         const history = page.getByRole('list', { name: 'Услышанные реплики' })
+        const draft = page.getByRole('textbox', { name: 'Сообщение в чат' })
         await history.focus()
         await moveRight(page)
         await page.getByRole('button', { name: 'Рядом', exact: true }).focus()
@@ -70,42 +71,53 @@ for (const mobile of [false, true]) {
 
         await canvas.focus()
         await page.keyboard.press('Enter')
-        await page.keyboard.type('first draft')
+        await expect(draft).toBeFocused()
+        await page.keyboard.insertText('Привет ')
+        await page.keyboard.type('first drat')
+        await page.keyboard.press('ArrowLeft')
+        await page.keyboard.insertText('f')
+        await page.keyboard.press('ArrowRight')
+        await expect(draft).toHaveValue('Привет first draft')
+        await expectDraftClearOfHotbar(page, draft)
         const typingAt = await position(page)
         await page.keyboard.press('KeyW')
         await settled(page)
         expect(await position(page)).toEqual(typingAt)
-        await expect(page.locator('.chat-input')).toContainText('first draftw')
+        await expect(draft).toHaveValue('Привет first draftw')
         await page.keyboard.press('KeyQ')
         await page.keyboard.press('Digit1')
         await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
-        await expect(page.locator('.chat-input')).toContainText('first draftwq1')
+        await expect(draft).toHaveValue('Привет first draftwq1')
         await page.keyboard.down('Enter')
         await page.keyboard.down('Enter')
-        await expect(page.locator('.chat-input')).toHaveCount(0)
+        await expect(draft).toHaveCount(0)
         await page.keyboard.up('Enter')
         await expect(canvas).toBeFocused()
         await moveRight(page)
+        await expect(
+            history.getByRole('listitem').filter({ hasText: /^Вы:\s*Привет first draftwq1$/ })
+        ).toHaveCount(1)
 
         await page.keyboard.press('Enter')
         await page.keyboard.type('keep draft')
         const beforeClick = await position(page)
         const bounds = await canvas.boundingBox()
         await canvas.click({ position: { x: bounds!.width * 0.85, y: bounds!.height * 0.4 } })
-        await expect(page.locator('.chat-input')).toHaveCount(0)
+        await expect(draft).toHaveCount(0)
         await expect(canvas).toBeFocused()
         await settled(page)
         expect(await position(page)).toEqual(beforeClick)
         await moveRight(page)
         await page.keyboard.press('Enter')
-        await expect(page.locator('.chat-input__draft')).toHaveText('keep draft')
+        await expect(draft).toBeFocused()
+        await expect(draft).toHaveValue('keep draft')
         await history.focus()
         await page.keyboard.press('Escape')
-        await expect(page.locator('.chat-input')).toHaveCount(0)
+        await expect(draft).toHaveCount(0)
         await expect(canvas).toBeFocused()
         await moveRight(page)
         await page.keyboard.press('Enter')
-        await expect(page.locator('.chat-input__draft')).toHaveText('')
+        await expect(draft).toHaveValue('')
         await page.keyboard.press('Escape')
 
         await page.keyboard.press('KeyI')
@@ -117,6 +129,25 @@ for (const mobile of [false, true]) {
         expect(await position(page)).toEqual(modalAt)
         await page.keyboard.press('Escape')
     })
+}
+
+async function expectDraftClearOfHotbar(page: Page, draft: Locator): Promise<void> {
+    await expect(draft).toBeInViewport({ ratio: 1 })
+    await draft.click({ trial: true })
+    const hotbar = page.getByRole('group', { name: 'Быстрые действия' })
+    await expect(hotbar).toBeVisible()
+    await expect
+        .poll(async () => {
+            const [field, bar] = await Promise.all([draft.boundingBox(), hotbar.boundingBox()])
+            if (!field || !bar) return false
+            return (
+                field.x + field.width <= bar.x ||
+                bar.x + bar.width <= field.x ||
+                field.y + field.height <= bar.y ||
+                bar.y + bar.height <= field.y
+            )
+        })
+        .toBe(true)
 }
 
 async function stageOnPlaza(page: Page, map: CityMap): Promise<void> {

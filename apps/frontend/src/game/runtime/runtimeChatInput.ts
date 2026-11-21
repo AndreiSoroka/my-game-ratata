@@ -42,6 +42,13 @@ export class RuntimeChatInput {
         this.onEnd?.()
     }
 
+    public setDraft(text: string): void {
+        const draft = text.slice(0, chatMaxLength)
+        if (!this.active || draft === this.draft) return
+        this.draft = draft
+        this.emitState()
+    }
+
     public handleKey(event: KeyboardEvent, sendChat: (text: string) => void): boolean {
         if (event.key === 'Enter') {
             event.preventDefault()
@@ -56,29 +63,13 @@ export class RuntimeChatInput {
             return true
         }
 
-        if (!this.active) {
-            return false
-        }
-
-        event.preventDefault()
-
-        if (event.key === 'Escape') {
+        if (this.active && event.key === 'Escape') {
+            event.preventDefault()
             this.end()
             return true
         }
 
-        if (event.key === 'Backspace') {
-            this.draft = this.draft.slice(0, -1)
-            this.emitState()
-            return true
-        }
-
-        if (isPrintableKey(event) && this.draft.length < chatMaxLength) {
-            this.draft += event.key
-            this.emitState()
-        }
-
-        return true
+        return false
     }
 
     private begin(): void {
@@ -113,8 +104,4 @@ export class RuntimeChatInput {
             maxLength: chatMaxLength,
         })
     }
-}
-
-function isPrintableKey(event: KeyboardEvent): boolean {
-    return event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey
 }

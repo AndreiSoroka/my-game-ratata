@@ -4,6 +4,7 @@ interface EscapeOwner {
     active: () => boolean
     escape: () => void
     element?: Ref<HTMLElement | undefined>
+    ownsFocus?: (element: HTMLElement) => boolean
     priority?: number
 }
 const owners = new Map<number, EscapeOwner>()
@@ -40,7 +41,9 @@ function currentOwner(event: KeyboardEvent): EscapeOwner | undefined {
     const focus = event.target instanceof HTMLElement ? event.target : document.activeElement
     const first = active[0]?.[1]
     if (focus instanceof HTMLElement) {
-        const focused = active.find(([, owner]) => owner.element?.value?.contains(focus))?.[1]
+        const focused = active.find(
+            ([, owner]) => owner.element?.value?.contains(focus) || owner.ownsFocus?.(focus)
+        )?.[1]
         if (focused) return (focused.priority ?? 100) === (first?.priority ?? 100) ? focused : first
         // A foreign editor/dialog owns its Escape, even if one of our windows is visible.
         if (

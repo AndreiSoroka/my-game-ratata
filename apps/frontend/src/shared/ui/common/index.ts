@@ -9,6 +9,15 @@ export {
     type UiButtonStateColors,
     type UiButtonVariant,
 } from './button'
+export {
+    type UiFieldProps,
+    UiInput,
+    type UiInputHandle,
+    type UiInputProps,
+    type UiInputType,
+    UiTextarea,
+    type UiTextareaHandle,
+} from './field'
 export { GameBar, type GameBarProps } from './game-bar'
 export { HudFrame } from './hud-frame'
 export { HudRow } from './hud-row'

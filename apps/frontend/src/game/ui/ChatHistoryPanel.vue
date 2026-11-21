@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 
 import type { ChatHistoryEntry } from './chatHistory'
-import { isTextEntry, permitsWorldMovement } from './keyboardOwnership'
+import { permitsWorldMovement } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
@@ -40,12 +40,14 @@ function latest(): void {
 }
 function key(event: KeyboardEvent): void {
     const target = event.target
-    const draftKey =
+    if (
         props.typing &&
+        event.key === 'Enter' &&
         target instanceof HTMLElement &&
-        target.closest('button') === null &&
-        !isTextEntry(target)
-    if (!draftKey && !permitsWorldMovement(event)) event.stopPropagation()
+        target.closest('button') === null
+    )
+        return
+    if (!permitsWorldMovement(event)) event.stopPropagation()
 }
 watch(
     () => props.entries.at(-1)?.id,
@@ -64,7 +66,7 @@ watch(filter, async () => {
 <template>
     <aside
         class="chat-history rpg-panel game-frame-host"
-        :class="{ 'chat-history--typing': typing, 'chat-history--collapsed': collapsed }"
+        :class="{ 'chat-history--collapsed': collapsed }"
         aria-label="История чата"
         data-game-input-owner
         data-world-movement="wasd"
@@ -122,17 +124,10 @@ watch(filter, async () => {
 </template>
 <style scoped>
 .chat-history {
-    position: absolute;
-    bottom: 104px;
-    left: 12px;
-    z-index: 5;
-    width: min(370px, calc(100vw - 24px));
+    min-width: 0;
     color: var(--rpg-text);
     font: 12px/1.4 system-ui;
     box-sizing: border-box;
-}
-.chat-history--typing {
-    bottom: 64px;
 }
 header,
 nav {
@@ -182,15 +177,10 @@ small {
 }
 @media (max-width: 740px) {
     .chat-history {
-        width: min(300px, calc(100vw - 24px));
-        bottom: max(170px, var(--game-hotbar-top, 0px));
         font-size: 11px;
     }
     ol {
         max-height: 17vh;
-    }
-    .chat-history--typing {
-        bottom: 64px;
     }
 }
 @media (max-height: 520px) {

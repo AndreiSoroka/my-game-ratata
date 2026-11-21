@@ -21,7 +21,7 @@ interface PointerContext {
 
 /** The first world click leaves typing without also selecting or acting in the world. */
 export function consumeRuntimePointerFocus(event: PointerEvent, chat: RuntimeChatInput): boolean {
-    if (worldPointerBlocked()) return true
+    if (worldPointerBlocked(chat.isActive)) return true
     if (event.button !== PointerButton.Left && event.pointerType !== PointerType.Touch)
         return chat.isActive
     if (chat.isActive) {

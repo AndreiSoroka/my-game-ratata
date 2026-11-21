@@ -276,7 +276,11 @@ async function joinGame(): Promise<void> {
                     @close="closeChest"
                     @command="game?.sendCommand($event)"
                 />
-                <GameChat :state="chatInput" :entries="chatHistory.entries.value" />
+                <GameChat
+                    :state="chatInput"
+                    :entries="chatHistory.entries.value"
+                    @draft="game?.updateChatDraft($event)"
+                />
                 <MapLoadError :game="game" :message="errorMessage" :status="status" />
             </div>
             <GameWindows
