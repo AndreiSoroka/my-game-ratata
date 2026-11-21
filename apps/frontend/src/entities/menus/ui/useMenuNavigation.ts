@@ -1,7 +1,8 @@
 import type { Ref } from 'vue'
 
-import type { MenuItem, MenuNavigationCommand, MenuPanelHandle } from '../model/menu'
+import type { MenuItem, MenuNavigationCommand } from '../model/menu'
 import { menuNavigationTargetIndex } from '../model/menuNavigation'
+import type { MenuPanelHandle } from './menuPanel'
 
 /** Navigation depends on menu data and focus, never on a particular input device. */
 export function useMenuNavigation(

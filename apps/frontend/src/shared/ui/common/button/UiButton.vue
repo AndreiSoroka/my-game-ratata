@@ -10,7 +10,7 @@ import {
 import { FantasyPanel } from '@/shared/ui/external/fantasy-ui-borders/panel'
 
 import { uiButtonColors } from './buttonColors'
-import type { UiButtonProps } from './types'
+import type { UiButtonProps } from './uiButtonProps'
 
 const props = withDefaults(defineProps<UiButtonProps>(), {
     border: 'border-026',

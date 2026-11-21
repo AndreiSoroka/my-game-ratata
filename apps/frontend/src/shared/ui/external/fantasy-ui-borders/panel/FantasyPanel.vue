@@ -3,10 +3,10 @@ import './fantasyPanel.css'
 
 import { computed } from 'vue'
 
+import type { FantasyPanelProps } from './fantasyPanelProps'
 import { createFantasyPanelFilterId } from './filterId'
 import gradientAlpha from './gradient-alpha.svg?inline'
 import { FANTASY_PANEL_VARIANTS, resolveFantasyPanel } from './panelVariants'
-import type { FantasyPanelProps } from './types'
 
 const props = withDefaults(defineProps<FantasyPanelProps>(), {
     as: 'div',

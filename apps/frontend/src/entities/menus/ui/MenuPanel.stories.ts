@@ -3,7 +3,7 @@ import { fn } from 'storybook/test'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import type { MenuPanelProps } from '../model/menu'
+import type { MenuPanelProps } from './menuPanel'
 import MenuPanel from './MenuPanel.vue'
 import MenuPanelStory from './MenuPanelStory.vue'
 import { menuStoryItems } from './menuStoryItems'

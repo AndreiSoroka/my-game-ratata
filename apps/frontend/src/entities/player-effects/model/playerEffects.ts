@@ -23,11 +23,6 @@ export interface PlayerEffect {
     stackLimit?: number
 }
 
-export interface PlayerEffectsData {
-    effects: readonly PlayerEffect[]
-    compact?: boolean
-}
-
 export function projectPlayerEffects(
     character: CharacterSnapshot,
     serverTime?: number

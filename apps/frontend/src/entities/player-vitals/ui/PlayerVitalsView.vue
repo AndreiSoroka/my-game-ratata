@@ -5,9 +5,10 @@ import { HudFrame, HudRow } from '@/shared/ui/common'
 import { FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
-import { resourceNumbersText } from '../model/healthPresentation'
-import { playerResourceKinds, type PlayerVitalsViewProps } from '../model/playerVitals'
+import { playerResourceKinds } from '../model/playerVitals'
+import { resourceNumbersText } from './healthPresentation'
 import PlayerVitalsBar from './PlayerVitalsBar.vue'
+import type { PlayerVitalsViewProps } from './playerVitalsViewProps'
 
 const props = defineProps<PlayerVitalsViewProps>()
 

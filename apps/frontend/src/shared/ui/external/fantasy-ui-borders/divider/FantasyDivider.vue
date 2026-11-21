@@ -4,8 +4,8 @@ import './fantasyDivider.css'
 import { computed } from 'vue'
 
 import { resolveFantasyDivider } from './dividerVariants'
+import type { FantasyDividerProps } from './fantasyDividerProps'
 import { createFantasyDividerFilterId } from './filterId'
-import type { FantasyDividerProps } from './types'
 
 const props = withDefaults(defineProps<FantasyDividerProps>(), {
     divider: 'divider-000',

@@ -7,7 +7,7 @@ import { BarFill } from '@/shared/ui/common/bar-fill'
 import { BarTrack } from '@/shared/ui/common/bar-track'
 import { lightUiColors } from '@/shared/ui/theme'
 
-import type { GameBarProps } from './types'
+import type { GameBarProps } from './gameBarProps'
 
 const props = withDefaults(defineProps<GameBarProps>(), {
     max: 100,

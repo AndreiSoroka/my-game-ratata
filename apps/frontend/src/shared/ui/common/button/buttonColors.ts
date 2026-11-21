@@ -6,7 +6,7 @@ import type {
     UiButtonProps,
     UiButtonStateColors,
     UiButtonVariant,
-} from './types'
+} from './uiButtonProps'
 
 const palettes = {
     secondary: lightUiColors.button.wood,

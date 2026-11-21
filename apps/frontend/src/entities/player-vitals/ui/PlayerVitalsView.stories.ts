@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import type { PlayerVitalsViewProps } from '../model/playerVitals'
 import PlayerVitalsView from './PlayerVitalsView.vue'
+import type { PlayerVitalsViewProps } from './playerVitalsViewProps'
 
 const percentage = { control: { type: 'range', min: 0, max: 100, step: 1 } } as const
 const number = { control: { type: 'number', min: 0 } } as const

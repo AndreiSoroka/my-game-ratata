@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 
 import { menuKeyboardInput } from '@/shared/lib/input'
 
-import type { MenuPanelHandle, MenuPanelProps } from '../model/menu'
+import type { MenuPanelHandle, MenuPanelProps } from './menuPanel'
 import MenuPanel from './MenuPanel.vue'
 import { menuItemsFor } from './menuStoryItems'
 

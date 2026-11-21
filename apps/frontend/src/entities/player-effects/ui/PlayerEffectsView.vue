@@ -3,7 +3,8 @@ import { computed, ref, useId, watch } from 'vue'
 
 import { HudFrame, HudRow } from '@/shared/ui/common'
 
-import type { PlayerEffect, PlayerEffectKind, PlayerEffectsData } from '../model/playerEffects'
+import type { PlayerEffect, PlayerEffectKind } from '../model/playerEffects'
+import type { PlayerEffectsData } from './playerEffectsViewProps'
 
 const props = defineProps<PlayerEffectsData>()
 defineSlots<{ identity?(props: { class: string }): unknown }>()

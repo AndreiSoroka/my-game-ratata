@@ -5,7 +5,7 @@ import { computed } from 'vue'
 
 import { lightUiColors } from '@/shared/ui/theme'
 
-import type { BarTrackProps } from './types'
+import type { BarTrackProps } from './barTrackProps'
 
 const props = withDefaults(defineProps<BarTrackProps>(), {
     color: lightUiColors.bar.track,

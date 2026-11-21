@@ -4,8 +4,8 @@ import { h } from 'vue'
 import { renderVueStory } from '@/shared/lib/storybook'
 import { HudFrame } from '@/shared/ui/common'
 
-import type { PlayerEffectsData } from '../model/playerEffects'
 import PlayerEffectsView from './PlayerEffectsView.vue'
+import type { PlayerEffectsData } from './playerEffectsViewProps'
 
 const meta = {
     title: 'Entities/Player effects/PlayerEffectsView',

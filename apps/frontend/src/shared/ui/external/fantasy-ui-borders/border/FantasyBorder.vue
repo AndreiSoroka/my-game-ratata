@@ -4,8 +4,8 @@ import './fantasyBorder.css'
 import { computed } from 'vue'
 
 import { resolveFantasyBorder } from './borderVariants'
+import type { FantasyBorderProps } from './fantasyBorderProps'
 import { createFantasyBorderFilterId } from './filterId'
-import type { FantasyBorderProps } from './types'
 
 const props = withDefaults(defineProps<FantasyBorderProps>(), {
     as: 'div',

@@ -13,15 +13,4 @@ export interface MenuItem {
     dividerBefore?: boolean
 }
 
-export interface MenuPanelProps {
-    items: readonly MenuItem[]
-    title?: string
-    description?: string
-}
-
 export type MenuNavigationCommand = MenuInputCommand
-
-/** Device adapters submit intentions; the menu owns item order and native focus. */
-export interface MenuPanelHandle {
-    navigate: (command: MenuNavigationCommand) => boolean
-}

@@ -23,14 +23,6 @@ export interface PlayerVitalsData extends PlayerVitalsResources {
     nickname: string
 }
 
-export interface PlayerVitalsViewProps extends PlayerVitalsData {
-    compact?: boolean
-    hpAnimated?: boolean
-    manaAnimated?: boolean
-    energyAnimated?: boolean
-    dimSecondaryResources?: boolean
-}
-
 export function createPlayerVitalsStore(initial: PlayerVitalsResources) {
     const resources = shallowRef(copyResources(initial))
 

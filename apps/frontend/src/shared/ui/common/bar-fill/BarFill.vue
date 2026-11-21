@@ -5,7 +5,7 @@ import { computed } from 'vue'
 
 import { lightUiColors } from '@/shared/ui/theme'
 
-import type { BarFillProps } from './types'
+import type { BarFillProps } from './barFillProps'
 
 const props = withDefaults(defineProps<BarFillProps>(), {
     color: lightUiColors.bar.health.color,

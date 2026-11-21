@@ -1,3 +1,4 @@
+export { default as UiButton } from './UiButton.vue'
 export type {
     UiButtonAppearance,
     UiButtonColors,
@@ -5,5 +6,4 @@ export type {
     UiButtonProps,
     UiButtonStateColors,
     UiButtonVariant,
-} from './types'
-export { default as UiButton } from './UiButton.vue'
+} from './uiButtonProps'

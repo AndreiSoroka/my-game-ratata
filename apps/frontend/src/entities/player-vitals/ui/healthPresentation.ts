@@ -1,6 +1,6 @@
 import type { HealthSnapshot } from '@my-game-ratata/contracts'
 
-import type { ResourceNumbers } from './playerVitals'
+import type { ResourceNumbers } from '../model/playerVitals'
 
 export function healthBarPercent(health: HealthSnapshot): number {
     return health.kind === 'percent'
