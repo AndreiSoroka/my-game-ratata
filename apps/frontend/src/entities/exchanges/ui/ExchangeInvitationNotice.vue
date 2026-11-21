@@ -43,8 +43,8 @@ const incoming = computed(() => props.direction === 'incoming')
                 <UiButton
                     v-if="incoming"
                     class="exchange-invitation__button"
-                    appearance="panel"
-                    panel="panel-001"
+                    appearance="ghost"
+                    border="border-001"
                     @click="emit('decline')"
                 >
                     Отклонить
