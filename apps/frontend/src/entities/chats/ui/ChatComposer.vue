@@ -8,6 +8,16 @@ const props = defineProps<{ maxLength: number; autofocus?: boolean }>()
 const draft = defineModel<string>('draft', { required: true })
 const input = useTemplateRef<UiInputHandle>('input')
 
+function focusAtEnd(): void {
+    const element = input.value?.element
+    if (!element) return
+    element.focus({ preventScroll: true })
+    const end = element.value.length
+    element.setSelectionRange(end, end)
+}
+
+defineExpose({ focusAtEnd })
+
 onMounted(() => {
     if (props.autofocus) input.value?.focus({ preventScroll: true })
 })
@@ -23,6 +33,8 @@ onMounted(() => {
             enterkeyhint="send"
             v-bind="$attrs"
             v-model="draft"
+            :focus-ring="false"
+            :framed="false"
             :maxlength="maxLength"
         >
             <template #leading><span aria-hidden="true">&gt;</span></template>

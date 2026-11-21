@@ -8,7 +8,13 @@ import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
 import type { UiInputProps } from './uiField'
 
 defineOptions({ inheritAttrs: false })
-withDefaults(defineProps<UiInputProps>(), { border: 'border-017', type: 'text' })
+withDefaults(defineProps<UiInputProps>(), {
+    border: 'border-017',
+    borderWidth: 8,
+    type: 'text',
+    focusRing: true,
+    framed: true,
+})
 const model = defineModel<string>({ default: '' })
 const element = useTemplateRef<HTMLInputElement>('element')
 
@@ -20,11 +26,11 @@ defineExpose({
 </script>
 
 <template>
-    <FantasyBorder
+    <component
+        :is="framed ? FantasyBorder : 'div'"
         class="ui-field ui-input"
-        :border="border"
-        :border-width="8"
-        color="var(--ui-field-border)"
+        :data-focus-ring="focusRing"
+        v-bind="framed ? { border, borderWidth, color: 'var(--ui-field-border)' } : {}"
     >
         <span v-if="$slots.leading" class="ui-field__adornment"><slot name="leading" /></span>
         <input
@@ -35,5 +41,5 @@ defineExpose({
             class="ui-field__control"
         />
         <span v-if="$slots.trailing" class="ui-field__adornment"><slot name="trailing" /></span>
-    </FantasyBorder>
+    </component>
 </template>

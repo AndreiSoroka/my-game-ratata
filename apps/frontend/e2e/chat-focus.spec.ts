@@ -23,27 +23,16 @@ for (const mobile of [false, true]) {
         await page.setViewportSize(
             mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
         )
-        await page.goto('/?test=1')
-        await page.waitForFunction(() => Boolean(window.__ratataTest))
-        const cityMap = page.waitForResponse((response) => {
-            const path = new URL(response.url()).pathname
-            return path.startsWith('/world/maps/') && path.endsWith(`/${CENTER_LOCATION_ID}.json`)
-        })
-        await page.evaluate(
-            (name) => window.__ratataTest!.join(name),
-            `chat-focus-${info.workerIndex}-${mobile}`
-        )
-        await expect
-            .poll(() => page.evaluate(() => window.__ratataTest!.getState().connected))
-            .toBe(true)
-        await stageOnPlaza(page, (await (await cityMap).json()) as CityMap)
-        await page.addStyleTag({ content: '.test-panel { display: none !important }' })
+        await joinOnPlaza(page, `chat-focus-${info.workerIndex}-${mobile}`)
         const canvas = page.locator('canvas[data-game-canvas]')
-        const history = page.getByRole('list', { name: 'Услышанные реплики' })
-        const draft = page.getByRole('textbox', { name: 'Сообщение в чат' })
+        const chat = page.locator('.game-chat')
+        const toolbar = chat.getByRole('navigation', { name: 'Каналы чата' })
+        const history = chat.getByRole('list', { name: 'Услышанные реплики' })
+        const historyPanel = chat.getByRole('complementary', { name: 'История чата' })
+        const draft = chat.getByRole('textbox', { name: 'Сообщение в чат' })
         await history.focus()
         await moveRight(page)
-        await page.getByRole('button', { name: 'Рядом', exact: true }).focus()
+        await toolbar.getByRole('button', { name: 'Рядом', exact: true }).focus()
         await moveRight(page)
         await history.focus()
         await page.keyboard.press('KeyQ')
@@ -70,8 +59,16 @@ for (const mobile of [false, true]) {
         expect(await position(page)).toEqual(readingAt)
 
         await canvas.focus()
+        const [readingFrame, readingToolbar, readingHistory] = await Promise.all([
+            chat.boundingBox(),
+            toolbar.boundingBox(),
+            historyPanel.boundingBox(),
+        ])
         await page.keyboard.press('Enter')
         await expect(draft).toBeFocused()
+        expect(await chat.boundingBox()).toEqual(readingFrame)
+        expect(await toolbar.boundingBox()).toEqual(readingToolbar)
+        expect((await historyPanel.boundingBox())!.height).toBeLessThan(readingHistory!.height)
         await page.keyboard.insertText('Привет ')
         await page.keyboard.type('first drat')
         await page.keyboard.press('ArrowLeft')
@@ -120,6 +117,8 @@ for (const mobile of [false, true]) {
         await expect(draft).toHaveValue('')
         await page.keyboard.press('Escape')
 
+        await expectCollapsedComposer(page, canvas, chat)
+
         await page.keyboard.press('KeyI')
         await expect(page.getByRole('dialog', { name: 'Inventory and equipment' })).toBeVisible()
         const modalAt = await position(page)
@@ -129,6 +128,67 @@ for (const mobile of [false, true]) {
         expect(await position(page)).toEqual(modalAt)
         await page.keyboard.press('Escape')
     })
+}
+
+async function joinOnPlaza(page: Page, name: string): Promise<void> {
+    await page.goto('/?test=1')
+    await page.waitForFunction(() => Boolean(window.__ratataTest))
+    const cityMap = page.waitForResponse((response) => {
+        const path = new URL(response.url()).pathname
+        return path.startsWith('/world/maps/') && path.endsWith(`/${CENTER_LOCATION_ID}.json`)
+    })
+    await page.evaluate((playerName) => window.__ratataTest!.join(playerName), name)
+    await expect
+        .poll(() => page.evaluate(() => window.__ratataTest!.getState().connected))
+        .toBe(true)
+    await stageOnPlaza(page, (await (await cityMap).json()) as CityMap)
+    await page.addStyleTag({ content: '.test-panel { display: none !important }' })
+}
+
+async function expectCollapsedComposer(page: Page, canvas: Locator, chat: Locator): Promise<void> {
+    const toolbar = chat.getByRole('navigation', { name: 'Каналы чата' })
+    const nearby = toolbar.getByRole('button', { name: 'Рядом', exact: true })
+    const history = chat.getByRole('list', { name: 'Услышанные реплики' })
+    const collapse = chat.getByRole('button', { name: 'Свернуть историю чата' })
+    const expand = chat.getByRole('button', { name: 'Развернуть историю чата' })
+    const preview = chat.locator('.chat-history__preview')
+    const draft = chat.getByRole('textbox', { name: 'Сообщение в чат' })
+    await nearby.click()
+    await collapse.click()
+    await expect(preview).toBeVisible()
+    await expect(toolbar).toHaveCount(0)
+    await expect(history).toBeHidden()
+    const compactHeight = (await chat.boundingBox())!.height
+    await canvas.focus()
+    await page.keyboard.press('Enter')
+    await expect(draft).toBeFocused()
+    await expect(preview).toBeHidden()
+    await expect(expand).toHaveAttribute('aria-expanded', 'false')
+    await expect(chat.locator('.chat-composer-frame [data-fantasy-border]')).toHaveCount(0)
+    expect((await chat.boundingBox())!.height).toBe(compactHeight)
+    const [draftBox, expandBox] = await Promise.all([draft.boundingBox(), expand.boundingBox()])
+    expect(draftBox!.x + draftBox!.width).toBeLessThanOrEqual(expandBox!.x)
+    expect(draftBox!.y).toBeLessThan(expandBox!.y + expandBox!.height)
+    expect(expandBox!.y).toBeLessThan(draftBox!.y + draftBox!.height)
+    const draftText = 'Черновик после переключения'
+    await draft.fill(draftText)
+    for (const toggle of [expand, collapse]) {
+        await draft.press('Home')
+        await expect(draft).toHaveJSProperty('selectionStart', 0)
+        await toggle.click()
+        await expect(draft).toBeFocused()
+        await expect(draft).toHaveValue(draftText)
+        await expect(draft).toHaveJSProperty('selectionStart', draftText.length)
+        await expect(draft).toHaveJSProperty('selectionEnd', draftText.length)
+    }
+    await page.keyboard.press('Escape')
+    await expect(draft).toHaveCount(0)
+    await expect(preview).toBeVisible()
+    await expect(canvas).toBeFocused()
+    await expand.click()
+    await expect(nearby).toHaveAttribute('aria-pressed', 'true')
+    await expect(history).toContainText('Привет first draftwq1')
+    await canvas.focus()
 }
 
 async function expectDraftClearOfHotbar(page: Page, draft: Locator): Promise<void> {

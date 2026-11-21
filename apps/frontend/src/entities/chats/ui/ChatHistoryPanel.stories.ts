@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
-import { h, ref } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
@@ -10,6 +9,7 @@ interface StoryArgs {
     entries: readonly ChatHistoryEntry[]
     filter: ChatHistoryFilter
     collapsed: boolean
+    listId?: string
 }
 
 const entries = [
@@ -32,25 +32,13 @@ const meta = {
         entries: { control: 'object' },
         filter: { control: 'inline-radio', options: ['all', 'say', 'whisper'] },
         collapsed: { control: 'boolean' },
+        listId: { control: 'text' },
     },
     render(args) {
-        const host = renderVueStory(
-            {
-                setup() {
-                    const filter = ref(args.filter)
-                    const collapsed = ref(args.collapsed)
-                    return () =>
-                        h(ChatHistoryPanel, {
-                            entries: args.entries,
-                            filter: filter.value,
-                            collapsed: collapsed.value,
-                            'onUpdate:filter': (value: ChatHistoryFilter) => (filter.value = value),
-                            'onUpdate:collapsed': (value: boolean) => (collapsed.value = value),
-                        })
-                },
-            },
-            {}
-        )
+        const host = renderVueStory(ChatHistoryPanel, {
+            ...args,
+            style: { maxBlockSize: '210px' },
+        })
         host.style.maxWidth = '418px'
         return host
     },

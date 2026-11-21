@@ -1,3 +1,6 @@
 export type { ChatHistoryEntry, ChatHistoryFilter } from './model/chatHistory'
 export { default as ChatComposer } from './ui/ChatComposer.vue'
+export { default as ChatComposerFrame } from './ui/ChatComposerFrame.vue'
+export { default as ChatFrame } from './ui/ChatFrame.vue'
 export { default as ChatHistoryPanel } from './ui/ChatHistoryPanel.vue'
+export { default as ChatToolbar } from './ui/ChatToolbar.vue'

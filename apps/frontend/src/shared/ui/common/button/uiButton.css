@@ -70,7 +70,7 @@
     flex: 1 1 auto;
     align-items: center;
     justify-content: center;
-    padding: 4px 8px;
+    padding: var(--ui-button-panel-padding, 4px 8px);
 }
 
 .ui-button__panel[data-fantasy-panel-appearance='transparent-center'] {

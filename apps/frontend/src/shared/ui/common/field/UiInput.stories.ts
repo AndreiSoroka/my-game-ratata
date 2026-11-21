@@ -14,6 +14,9 @@ const inputTypes = ['text', 'search', 'email', 'password', 'tel', 'url'] as cons
 
 interface InputArgs extends FieldStoryArgs {
     type: (typeof inputTypes)[number]
+    borderWidth: number
+    focusRing: boolean
+    framed: boolean
     leading: 'none' | 'empty' | 'prompt'
     trailing: 'none' | 'empty' | 'count'
 }
@@ -25,7 +28,10 @@ const meta = {
         modelValue: 'Встретимся у ворот.',
         placeholder: 'Введите сообщение…',
         border: 'border-017',
+        borderWidth: 8,
         type: 'text',
+        focusRing: true,
+        framed: true,
         disabled: false,
         readonly: false,
         required: false,
@@ -38,6 +44,9 @@ const meta = {
     argTypes: {
         ...fieldStoryArgTypes,
         type: { control: 'select', options: [...inputTypes] },
+        borderWidth: { control: { type: 'number', min: 1, step: 1 } },
+        focusRing: { control: 'boolean' },
+        framed: { control: 'boolean' },
         leading: {
             name: 'Левый слот (leading)',
             control: {

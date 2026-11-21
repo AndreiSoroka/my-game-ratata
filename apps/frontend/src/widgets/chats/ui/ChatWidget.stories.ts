@@ -28,6 +28,7 @@ const meta = {
                 text: 'Карту оставила у фонаря.',
                 at: 2,
             },
+            { id: 'request', channel: 'status', name: 'Лада', text: 'Поручение принято', at: 3 },
         ],
         filter: 'all',
         collapsed: false,
@@ -53,7 +54,6 @@ const meta = {
                     return () =>
                         h(ChatWidget, {
                             ...args,
-                            style: { display: 'grid', gap: '8px' },
                             draft: draft.value,
                             filter: filter.value,
                             collapsed: collapsed.value,
@@ -78,3 +78,5 @@ export const Default: Story = {}
 export const Reading: Story = { args: { typing: false } }
 
 export const Collapsed: Story = { args: { typing: false, collapsed: true } }
+
+export const CollapsedTyping: Story = { args: { collapsed: true } }

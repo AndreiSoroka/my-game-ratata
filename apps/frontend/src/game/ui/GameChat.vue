@@ -41,7 +41,6 @@ useEscapeOwner({
 <template>
     <ChatWidget
         class="game-chat"
-        :class="{ 'game-chat--typing': state.active }"
         :entries="entries"
         :draft="state.draft"
         :max-length="state.maxLength"
@@ -56,21 +55,17 @@ useEscapeOwner({
 <style scoped>
 .game-chat {
     position: absolute;
-    bottom: max(104px, var(--game-hotbar-top, 0px));
+    --game-chat-bottom: max(104px, var(--game-hotbar-top, 0px));
+    bottom: var(--game-chat-bottom);
     left: 12px;
     z-index: 5;
-    display: grid;
-    gap: 8px;
     width: min(370px, calc(100% - 24px));
-}
-
-.game-chat--typing {
-    bottom: max(64px, var(--game-hotbar-top, 0px));
+    max-block-size: calc(100% - var(--game-chat-bottom) - 12px);
 }
 
 @media (max-width: 740px) {
     .game-chat {
-        bottom: max(170px, var(--game-hotbar-top, 0px));
+        --game-chat-bottom: max(170px, var(--game-hotbar-top, 0px));
         width: min(300px, calc(100% - 24px));
     }
 }

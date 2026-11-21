@@ -43,7 +43,8 @@ const meta = {
                         })
                 },
             },
-            {}
+            {},
+            { background: 'var(--vt-c-black-soft)' }
         )
         host.style.maxWidth = '418px'
         return host

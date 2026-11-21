@@ -9,6 +9,9 @@ export type UiInputType = 'text' | 'search' | 'email' | 'password' | 'tel' | 'ur
 
 export interface UiInputProps extends UiFieldProps {
     type?: UiInputType
+    borderWidth?: number
+    focusRing?: boolean
+    framed?: boolean
 }
 
 interface UiFieldHandle<Element extends HTMLInputElement | HTMLTextAreaElement> {

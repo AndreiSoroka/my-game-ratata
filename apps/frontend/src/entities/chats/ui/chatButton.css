@@ -1,0 +1,6 @@
+.ui-button.chat-button {
+    --ui-button-panel-padding: 2px 0;
+    min-inline-size: 36px;
+    min-block-size: 36px;
+    font-size: 14px;
+}

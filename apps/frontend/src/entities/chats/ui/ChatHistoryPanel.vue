@@ -1,57 +1,33 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
+import './chatButton.css'
 
-import { HudFrame, UiButton, type UiButtonColors } from '@/shared/ui/common'
-import { FantasyDivider } from '@/shared/ui/external'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+
+import { UiButton } from '@/shared/ui/common'
+import { FantasyBorder } from '@/shared/ui/external'
 
 import {
     type ChatHistoryEntry,
     type ChatHistoryFilter,
     filterChatHistory,
 } from '../model/chatHistory'
+import { chatButtonColors } from './chatButtonColors'
 
-const props = defineProps<{ entries: readonly ChatHistoryEntry[] }>()
-const filter = defineModel<ChatHistoryFilter>('filter', { default: 'all' })
-const collapsed = defineModel<boolean>('collapsed', { default: false })
-const listId = useId()
+const props = withDefaults(
+    defineProps<{
+        entries: readonly ChatHistoryEntry[]
+        filter?: ChatHistoryFilter
+        collapsed?: boolean
+        listId?: string
+    }>(),
+    { filter: 'all', collapsed: false }
+)
 const scroller = useTemplateRef<HTMLOListElement>('scroller')
-const visible = computed(() => filterChatHistory(props.entries, filter.value))
-const channels = [
-    ['all', 'Все'],
-    ['say', 'Рядом'],
-    ['whisper', 'Личные'],
-] as const
-
-const buttonColors = {
-    normal: {
-        text: 'var(--ui-dark-panel-text)',
-        border: 'var(--ui-dark-panel-ornament)',
-        backgroundTop: 'var(--ui-dark-bar-track)',
-        backgroundBottom: 'var(--ui-dark-panel-surface)',
-    },
-    highlighted: {
-        text: 'var(--ui-dark-panel-title)',
-        border: 'var(--ui-dark-panel-border)',
-    },
-    focus: 'var(--ui-dark-panel-title)',
-    shadow: 'var(--ui-dark-panel-surface)',
-} satisfies UiButtonColors
-
-const activeButtonColors = {
-    ...buttonColors,
-    normal: {
-        text: 'var(--ui-light-panel-title)',
-        border: 'var(--ui-light-panel-parchment)',
-        backgroundTop: 'var(--ui-light-panel-parchment)',
-        backgroundBottom: 'var(--ui-dark-panel-border)',
-    },
-    highlighted: {
-        text: 'var(--ui-light-panel-title)',
-        border: 'var(--ui-light-border-white)',
-    },
-} satisfies UiButtonColors
+const visible = computed(() => filterChatHistory(props.entries, props.filter))
+const preview = computed(() => visible.value.at(-1))
 
 let atBottom = true
+let resizeObserver: ResizeObserver | undefined
 const unread = ref(0)
 
 function scroll(): void {
@@ -74,55 +50,40 @@ watch(
     },
     { flush: 'post' }
 )
-watch(filter, latest, { flush: 'post' })
+watch(() => props.filter, latest, { flush: 'post' })
 watch(
-    collapsed,
+    () => props.collapsed,
     (hidden) => {
         if (!hidden && atBottom) latest()
     },
     { flush: 'post' }
 )
-onMounted(latest)
+onMounted(() => {
+    latest()
+    if (!scroller.value || typeof ResizeObserver === 'undefined') return
+    resizeObserver = new ResizeObserver(() => {
+        if (!props.collapsed && atBottom) latest()
+    })
+    resizeObserver.observe(scroller.value)
+})
+onBeforeUnmount(() => resizeObserver?.disconnect())
 </script>
 
 <template>
     <aside class="chat-history" aria-label="История чата" tabindex="-1">
-        <HudFrame>
-            <header class="chat-history__header">
-                <nav class="chat-history__channels" aria-label="Каналы чата">
-                    <UiButton
-                        v-for="[channel, label] in channels"
-                        :key="channel"
-                        border="border-015"
-                        class="chat-history__button"
-                        :colors="filter === channel ? activeButtonColors : buttonColors"
-                        :aria-pressed="filter === channel"
-                        @click="filter = channel"
-                    >
-                        {{ label }}
-                    </UiButton>
-                </nav>
-                <UiButton
-                    border="border-015"
-                    class="chat-history__button"
-                    :colors="buttonColors"
-                    :aria-controls="listId"
-                    :aria-expanded="!collapsed"
-                    :aria-label="collapsed ? 'Развернуть историю чата' : 'Свернуть историю чата'"
-                    @click="collapsed = !collapsed"
-                >
-                    {{ collapsed ? '+' : '−' }}
-                </UiButton>
-            </header>
-            <FantasyDivider
-                v-if="!collapsed"
-                divider="divider-002"
-                ends="both"
-                color="var(--ui-dark-panel-ornament)"
-                aria-hidden="true"
-            />
+        <p v-if="collapsed" class="chat-history__preview">
+            <template v-if="preview">
+                <strong>{{ preview.name }}:</strong> {{ preview.text }}
+            </template>
+            <span v-else class="chat-history__empty">Здесь появятся услышанные реплики.</span>
+        </p>
+        <FantasyBorder
+            v-show="!collapsed"
+            class="chat-history__surface"
+            border="border-006"
+            color="var(--ui-dark-panel-border)"
+        >
             <ol
-                v-show="!collapsed"
                 :id="listId"
                 ref="scroller"
                 class="chat-history__entries"
@@ -148,53 +109,54 @@ onMounted(latest)
                 </li>
             </ol>
             <UiButton
-                v-if="unread && !collapsed"
-                border="border-015"
-                class="chat-history__button"
-                :colors="buttonColors"
+                v-if="unread"
+                appearance="panel"
+                panel="panel-001"
+                class="chat-button"
+                :colors="chatButtonColors"
                 @click="latest"
             >
                 Новые сообщения · {{ unread }} ↓
             </UiButton>
-        </HudFrame>
+        </FantasyBorder>
     </aside>
 </template>
 
 <style scoped>
 .chat-history {
-    min-width: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    min-inline-size: 0;
+    min-block-size: 0;
+    color: var(--ui-dark-panel-text);
     font:
         12px/1.4 system-ui,
         sans-serif;
 }
 
-.chat-history__header,
-.chat-history__channels {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+.chat-history__surface {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-block-size: 0;
+    background: var(--ui-dark-panel-surface);
 }
 
-.chat-history__header {
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.chat-history__button {
-    min-width: 36px;
-    min-height: 36px;
-    padding: 6px 9px;
-    font-size: 14px;
+.chat-history__preview {
+    align-self: center;
+    overflow: hidden;
+    margin: 0;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .chat-history__entries {
-    max-height: min(24vh, 210px);
+    min-block-size: 0;
     overflow: auto;
     overscroll-behavior: contain;
     scrollbar-color: var(--ui-dark-panel-ornament) var(--ui-dark-panel-surface);
     list-style: none;
     margin: 0;
-    padding: 5px 0;
+    padding: 2px;
 }
 
 .chat-history__entries:focus-visible {
@@ -229,16 +191,6 @@ onMounted(latest)
 @media (max-width: 740px) {
     .chat-history {
         font-size: 11px;
-    }
-
-    .chat-history__entries {
-        max-height: 17vh;
-    }
-}
-
-@media (max-height: 520px) {
-    .chat-history__entries {
-        max-height: 16vh;
     }
 }
 </style>

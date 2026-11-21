@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
+import {
+    FantasyBorder,
+    type FantasyBorderVariant,
+} from '@/shared/ui/external/fantasy-ui-borders/border'
+
+withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), { border: 'border-017' })
 </script>
 
 <template>
     <div class="hud-frame">
         <FantasyBorder
             class="hud-frame__border"
-            border="border-017"
+            :border="border"
             color="var(--character-hud-border, var(--ui-dark-panel-border))"
         >
             <slot />
