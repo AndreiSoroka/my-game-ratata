@@ -14,7 +14,6 @@ import ActionChannelStatus from './ActionChannelStatus.vue'
 import ActionHotbar from './ActionHotbar.vue'
 import { combatKeyBlocked } from './combatTargeting'
 import PartyPanel from './PartyPanel.vue'
-import SelectedTargetPanel from './SelectedTargetPanel.vue'
 import SpeechBubbles from './SpeechBubbles.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { worldHudButtonAttrs } from './uiKeyboard'
@@ -81,7 +80,7 @@ function key(event: KeyboardEvent): void {
         hotbar.value?.resetGesture()
     if (combatKeyBlocked(event, props.blocked)) return
     const digit = /^Digit([1-4])$/.exec(event.code)
-    if (!['KeyQ', 'KeyE'].includes(event.code) && !digit) return
+    if (!['KeyQ', 'KeyE', 'Tab'].includes(event.code) && !digit) return
     event.preventDefault()
     event.stopImmediatePropagation()
     if (event.repeat) return
@@ -93,7 +92,8 @@ function key(event: KeyboardEvent): void {
     }
     const actions: Record<string, () => void> = {
         KeyQ: selectSelf,
-        KeyE: () => cycle(event.shiftKey),
+        KeyE: () => cycle('hostile', event.shiftKey),
+        Tab: () => cycle('non-hostile', event.shiftKey),
     }
     actions[event.code]?.()
 }
@@ -204,17 +204,6 @@ defineExpose({
         @select="select"
         @leave="send({ type: 'party_leave' })"
     />
-    <SelectedTargetPanel
-        :target="target"
-        :grave="grave"
-        :object="
-            selectedTarget?.kind !== 'character' && selectedTarget?.kind !== 'grave'
-                ? selectedTarget
-                : undefined
-        "
-        :player="player"
-        :server-time="snapshot.serverTime"
-    />
     <ActionChannelStatus
         :player="player"
         @cancel-prayer="send({ type: 'cancel_prayer' })"
@@ -222,6 +211,8 @@ defineExpose({
     />
     <ActionHotbar
         ref="hotbar"
+        :data-selected-target-key="selectedTarget?.key"
+        :data-selected-target-name="selectedTarget?.name"
         :player="player"
         :target="target"
         :grave="grave"
@@ -260,7 +251,9 @@ defineExpose({
             >
                 {{ interactionPrompt }}
             </button>
-            <span v-else class="target-help">Q себя · E цель · Shift+E назад · F действие</span>
+            <span v-else class="target-help">
+                Q себя · Tab союзники и объекты · E враги · Shift+Tab/E назад · F действие
+            </span>
         </template>
     </ActionHotbar>
     <SpeechBubbles ref="speech" :game="game" :snapshot="snapshot" :player="player" />

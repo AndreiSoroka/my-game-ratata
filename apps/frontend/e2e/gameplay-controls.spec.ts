@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 test.describe('shared gameplay controls', () => {
     test.setTimeout(60_000)
     for (const mobile of [false, true]) {
@@ -34,7 +36,7 @@ test.describe('shared gameplay controls', () => {
             await page.keyboard.press('Digit1')
             await expectPrivateBarrier(page)
             await expectDisclosedBarrier(hud, mobile)
-            await expectMobileTargetBelowHud(page, hud, mobile)
+            await expectSelfSelection(page, hud)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
             await page.keyboard.press('ArrowDown')
@@ -158,26 +160,15 @@ async function expectDisclosedBarrier(hud: Locator, mobile: boolean): Promise<vo
     await expect(detail).toContainText('Магический барьер')
 }
 
-async function expectMobileTargetBelowHud(
-    page: Page,
-    hud: Locator,
-    mobile: boolean
-): Promise<void> {
-    if (!mobile) return
-    const target = page.getByLabel('Выбранная цель', { exact: true })
+async function expectSelfSelection(page: Page, hud: Locator): Promise<void> {
+    const selfId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
+    const selected = selectedWorldTarget(page)
     await page.locator('canvas[data-game-canvas=true]').focus()
     await page.keyboard.press('KeyQ')
-    await expect(target).toContainText('Вы')
+    await expect(selected).toHaveAttribute('data-selected-target-key', `character:${selfId}`)
     await expect(hud.locator('[data-player-effect-detail="barrier"]')).toBeVisible()
-    await expect
-        .poll(async () => {
-            const hudBounds = (await hud.boundingBox())!
-            const targetBounds = (await target.boundingBox())!
-            return targetBounds.y - hudBounds.y - hudBounds.height
-        })
-        .toBeGreaterThanOrEqual(0)
     await page.keyboard.press('KeyQ')
-    await expect(target).toHaveCount(0)
+    await expect(selected).toHaveCount(0)
 }
 
 async function expectPrivateBarrier(page: Page): Promise<void> {

@@ -8,7 +8,6 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
-import type { PointerEvent as ExcaliburPointerEvent } from 'excalibur'
 
 import { focusWorldInput } from '../ui/keyboardOwnership'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
@@ -25,7 +24,7 @@ import { handleRuntimeKeyDown } from './runtimeKeyDown'
 import { RuntimeMapLoading, runtimeMapRequest } from './runtimeMapLoading'
 import { flushRuntimeMoveInput, RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
-import { consumeRuntimePointerFocus, handleRuntimePointer } from './runtimePointer'
+import { createRuntimePointerHandlers } from './runtimePointer'
 import {
     disposeRuntimePresentation,
     initializeRuntimePresentation,
@@ -56,6 +55,18 @@ export class RatataGame {
     private lastAxis: Vector2 = { x: 0, y: 0 }
     public selectionTileSize = 16
     public readonly planting = new PlantingPreview(() => this.releaseInputs())
+    private readonly pointerHandlers = createRuntimePointerHandlers(() => ({
+        engine: this.view?.engine,
+        mapReady: this.isMapReady,
+        snapshot: this.snapshot,
+        playerId: this.localPlayerId,
+        canSelect: (key) => this.canSelectTarget(key),
+        chat: this.chat,
+        plant: (point) => this.planting.pick(point),
+        resourceVisible: (node) => this.isInteractionVisible(node.position, node.bounds, Infinity),
+        options: this.options,
+        send: this.send,
+    }))
 
     public constructor(private readonly options: RatataGameOptions) {
         this.chat = new RuntimeChatInput(
@@ -116,7 +127,7 @@ export class RatataGame {
                 keyDown: this.handleKeyDown,
                 keyUp: this.handleKeyUp,
                 release: this.releaseInputs,
-                pointer: (event) => this.handlePointerDown(event),
+                ...this.pointerHandlers,
             },
             mounted: (view) => {
                 this.view = view
@@ -302,27 +313,14 @@ export class RatataGame {
         this.movementControls.release()
     }
 
-    private handlePointerDown(event: ExcaliburPointerEvent): void {
-        if (!this.isMapReady) return
-        if (consumeRuntimePointerFocus(event, this.chat)) return
-        handleRuntimePointer(event, {
-            snapshot: this.snapshot,
-            playerId: this.localPlayerId,
-            visible: (id) => this.canSelectTarget(`character:${id}`),
-            resourceVisible: (node) =>
-                this.canSelectTarget(`resource:${node.id}`) &&
-                this.isInteractionVisible(node.position, node.bounds, Infinity),
-            plant: (point) => this.planting.pick(point),
-            select: (id) => this.options.onCharacterClick?.(id),
-            send: (command) => this.send(command),
-        })
-    }
-
     private flushMoveInput(): void {
         this.lastAxis = flushRuntimeMoveInput(this.pressedKeys, this.lastAxis, this.send)
     }
 
-    private readonly send = (message: ClientMessage): void => this.socket.send(message)
+    private readonly send = (message: ClientMessage): void => {
+        this.options.onCommand?.(message)
+        this.socket.send(message)
+    }
 
     private handleServerEvent(event: GameEventPayload): void {
         this.options.onEvent?.(event)

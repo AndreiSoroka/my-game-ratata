@@ -72,14 +72,17 @@ function closeMenu(): void {
     openedActions.value = []
 }
 function stopMovement(player: CharacterSnapshot): void {
-    if (player.path.length > 0) emit('command', { type: 'move_to', target: { ...player.position } })
+    if (player.control && player.control.mode !== 'none')
+        emit('command', { type: 'cancel_control' })
+    else if (player.path.length > 0)
+        emit('command', { type: 'move_to', target: { ...player.position } })
     emit('command', { type: 'move_input', axis: { x: 0, y: 0 } })
 }
 const canOpen = computed(
     () =>
         !open.value &&
         !props.blocked &&
-        props.player?.alive &&
+        Boolean(props.player?.alive) &&
         Boolean(target.value?.actions.length)
 )
 const prompt = computed(() => {
@@ -92,10 +95,12 @@ const prompt = computed(() => {
         ? `${targetLabel} · ${actionLabel}`
         : targetLabel
 })
-function openMenu(): void {
+function canOpenFor(key: string): boolean {
+    return canOpen.value && target.value?.key === key && props.canSelectTarget?.(key) !== false
+}
+function openMenu(expectedKey?: string): void {
     const selected = target.value
-    if (!selected || !props.player || !canOpen.value) return
-    if (props.canSelectTarget?.(selected.key) === false) return
+    if (!selected || !props.player || !canOpenFor(expectedKey ?? selected.key)) return
     stopMovement(props.player)
     if (grave.value) emit('selectGrave', grave.value.id)
     if (selected.actions.length === 1 && !selected.actions[0]!.disabled) {
@@ -168,7 +173,7 @@ watch(
     { immediate: true }
 )
 onBeforeUnmount(() => emit('targetChange', undefined))
-defineExpose({ openMenu, prompt })
+defineExpose({ canOpenFor, openMenu, prompt })
 </script>
 <template>
     <NearbyActionMenu

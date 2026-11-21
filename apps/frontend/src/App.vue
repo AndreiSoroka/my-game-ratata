@@ -24,6 +24,7 @@ import TreePlanting from './game/ui/TreePlanting.vue'
 import { useAppChat } from './game/ui/useAppChat'
 import { useAppSession } from './game/ui/useAppSession'
 import { useAppWindows } from './game/ui/useAppWindows'
+import { useCharacterApproach } from './game/ui/useCharacterApproach'
 import { useCharacterViews } from './game/ui/useCharacterViews'
 import { useChestSession } from './game/ui/useChestSession'
 import { useInventoryUi } from './game/ui/useInventoryUi'
@@ -123,14 +124,18 @@ const windows = useAppWindows({
     toggleInventory: toggleInventoryBase,
     leave: () => leaveSession('nickname'),
 })
-const {
-    gameMenu,
-    characterModal,
-    automationPanels,
-    worldInputBlocked,
-    openNearbyMenu,
-    prepareAutomationWindow,
-} = windows
+const { gameMenu, characterModal, automationPanels, worldInputBlocked, prepareAutomationWindow } =
+    windows
+const characterApproach = useCharacterApproach({
+    game,
+    snapshot,
+    player: () => localCharacter.value,
+    selectedId: () => gameplay.value?.selectedId,
+    blocked: () => worldInputBlocked.value || planting.value,
+    select: (id) => gameplay.value?.select(id) ?? false,
+    canOpen: (id) => interaction.value?.canOpenFor(`character:${id}`) ?? false,
+    open: windows.openNearbyMenu,
+})
 const runtimeState = {
     game,
     chatInput,
@@ -161,6 +166,7 @@ async function joinGame(): Promise<void> {
         gameplay: () => gameplay.value,
         notices,
         chatHistory,
+        characterApproach,
         confirmDeath,
         hotbarSession,
         cleanupFailedJoin,
@@ -219,8 +225,8 @@ async function joinGame(): Promise<void> {
                     :characters="visibleCharacters"
                     :blocked="worldInputBlocked"
                     :interaction-prompt="interaction?.prompt"
-                    @interact="openNearbyMenu"
-                    @request-interact="openNearbyMenu()"
+                    @interact="windows.openNearbyMenu"
+                    @request-interact="windows.openNearbyMenu()"
                     @open-menu="gameMenu.show"
                     @plant="startPlanting"
                 />

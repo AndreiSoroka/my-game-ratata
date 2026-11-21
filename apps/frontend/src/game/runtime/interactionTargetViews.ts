@@ -1,10 +1,12 @@
 import type { CharacterRelationship, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
+import { createWorldNameLabel } from './characterViewBundle'
 import { contourShapeKey, interactionContour } from './interactionContour'
 
 export interface TargetHighlight {
     key: string
+    name?: string
     position: Vector2
     bounds?: WorldObjectBounds
     interactionAreas?: WorldObjectBounds[]
@@ -16,13 +18,16 @@ export interface TargetHighlight {
 export class InteractionTargetViews {
     private readonly frame = new Actor({ anchor: vec(0, 0) })
     private readonly ground = new Actor({ anchor: vec(0.5, 0.5) })
+    private readonly name = createWorldNameLabel()
     private shape = ''
     private disposed = false
 
     public constructor(engine: Engine) {
+        this.name.graphics.anchor = vec(0.5, 1)
         this.clear()
         engine.add(this.ground)
         engine.add(this.frame)
+        engine.add(this.name)
     }
 
     public set(target: TargetHighlight | undefined): void {
@@ -57,6 +62,7 @@ export class InteractionTargetViews {
         )
         this.ground.z = target.position.y - 1
         this.frame.graphics.isVisible = this.ground.graphics.isVisible = true
+        this.placeName(target.name, bounds)
     }
 
     private setCompound(target: TargetHighlight): boolean {
@@ -71,11 +77,21 @@ export class InteractionTargetViews {
         this.frame.z = bounds.y + bounds.height + 3
         this.frame.graphics.isVisible = true
         this.ground.graphics.isVisible = false
+        this.placeName(target.name, bounds)
         return true
+    }
+
+    private placeName(text: string | undefined, bounds: WorldObjectBounds): void {
+        this.name.graphics.isVisible = Boolean(text)
+        if (!text) return
+        if (this.name.text !== text) this.name.text = text
+        this.name.pos = vec(bounds.x + bounds.width / 2, bounds.y - 8)
+        this.name.z = this.frame.z + 1
     }
 
     public clear(): void {
         this.frame.graphics.isVisible = this.ground.graphics.isVisible = false
+        this.name.graphics.isVisible = false
     }
 
     public dispose(): void {
@@ -84,6 +100,7 @@ export class InteractionTargetViews {
         this.clear()
         this.frame.kill()
         this.ground.kill()
+        this.name.kill()
     }
 }
 

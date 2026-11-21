@@ -67,13 +67,17 @@ export function useWorldTargetSelection(props: SelectionProps, effects: Selectio
         const nearest = nearestAttackTarget(props, tileSize(), visible)
         return nearest && selectKey(nearest.key) ? nearest.id : undefined
     }
-    function cycle(reverse: boolean): void {
+    function cycle(group: 'hostile' | 'non-hostile', reverse: boolean): void {
         const targets = selectableWorldTargets(props.snapshot, props.player, {
             characters: props.characters,
             tileSize: tileSize(),
             isVisible: visible,
+        }).filter((target) => {
+            const hostile = target.kind === 'character' && target.relationship === 'hostile'
+            return hostile === (group === 'hostile')
         })
-        selectKey(nextWorldTarget(targets, selectedKey.value, reverse))
+        const next = nextWorldTarget(targets, selectedKey.value, reverse)
+        if (next !== undefined) selectKey(next)
     }
     function validateSelection(): boolean {
         if (!selectedKey.value || selectedKey.value === `character:${props.player.id}`) return true
@@ -195,16 +199,20 @@ function installSelectionLifecycle(
                 resetSelectedAction(state.selectedKey.value)
         }
     )
-    watch(selectedTarget, (selected) =>
-        props.game?.setCombatTarget(
-            selected
-                ? {
-                      ...selected,
-                      kind: selected.kind === 'character' ? 'character' : 'object',
-                  }
-                : undefined
-        )
-    )
+    watch(selectedTarget, (selected) => {
+        if (!selected) {
+            props.game?.setCombatTarget(undefined)
+            return
+        }
+        const { name, ...target } = selected
+        const character = target.kind === 'character'
+        // Other characters already have a world nameplate. The local player has none by default.
+        props.game?.setCombatTarget({
+            ...target,
+            kind: character ? 'character' : 'object',
+            ...(!character || target.relationship === 'self' ? { name } : {}),
+        })
+    })
     let frame = 0
     function checkViewport(): void {
         validateSelection()

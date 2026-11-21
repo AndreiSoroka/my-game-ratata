@@ -15,9 +15,13 @@ interface Graphic {
 interface ViewActor {
     pos: Vector2
     z: number
+    text?: string
     graphics: { isVisible: boolean; use: ReturnType<typeof vi.fn<(graphic: Graphic) => void>> }
     kill: ReturnType<typeof vi.fn<() => void>>
 }
+vi.mock('./characterViewBundle', () => ({
+    createWorldNameLabel: () => ({ text: '', graphics: {}, kill: vi.fn<() => void>() }),
+}))
 vi.mock('excalibur', () => ({
     Actor: class {
         public graphics = { isVisible: true, use: vi.fn<(graphic: Graphic) => void>() }
@@ -33,7 +37,7 @@ function setup() {
     const view = new InteractionTargetViews({
         add: (actor: ViewActor) => actors.push(actor),
     } as unknown as Engine)
-    return { view, ground: actors[0]!, frame: actors[1]! }
+    return { view, ground: actors[0]!, frame: actors[1]!, name: actors[2]! }
 }
 const character: TargetHighlight = {
     key: 'character:lea',
@@ -80,8 +84,30 @@ describe('exact selected interaction target presentation', () => {
         expect(frame.pos).toEqual({ x: 89, y: 89 })
         expect(frame.graphics.use).toHaveBeenCalledTimes(2)
     })
+    it('places a supplied world name above the marker and hides it for a target with its own nameplate', () => {
+        const { view, frame, name } = setup()
+        view.set({
+            key: 'chest:supply',
+            name: 'Сундук',
+            position: { x: 314, y: 408 },
+            bounds: { x: 300, y: 400, width: 32, height: 16 },
+        })
+        expect(name.text).toBe('Сундук')
+        expect(name.pos).toEqual({ x: 316, y: 392 })
+        expect(name.z).toBeGreaterThan(frame.z)
+        expect(name.graphics.isVisible).toBe(true)
+
+        view.set(character)
+        expect(name.graphics.isVisible).toBe(false)
+        view.set({ ...character, relationship: 'self', name: 'Лея' })
+        expect(name.text).toBe('Лея')
+        expect(name.pos).toEqual({ x: 100, y: 163 })
+        expect(name.graphics.isVisible).toBe(true)
+        view.set(undefined)
+        expect(name.graphics.isVisible).toBe(false)
+    })
     it('removes both markers immediately on cleared selection and cannot reappear after disposal', () => {
-        const { view, ground, frame } = setup()
+        const { view, ground, frame, name } = setup()
         view.set(character)
         expect(frame.graphics.isVisible && ground.graphics.isVisible).toBe(true)
         view.set(undefined)
@@ -96,6 +122,7 @@ describe('exact selected interaction target presentation', () => {
         expect(frame.graphics.isVisible || ground.graphics.isVisible).toBe(false)
         expect(frame.kill).toHaveBeenCalledOnce()
         expect(ground.kill).toHaveBeenCalledOnce()
+        expect(name.kill).toHaveBeenCalledOnce()
     })
     it('draws four outlined gold corners and a separate translucent ground ring', () => {
         const { view, frame, ground } = setup()

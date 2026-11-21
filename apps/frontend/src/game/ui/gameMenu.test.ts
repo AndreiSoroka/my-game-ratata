@@ -345,9 +345,9 @@ it('clears selection and cancels a ritual before a subsequent Escape opens the m
     try {
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ' }))
         await flushPromises()
-        expect(wrapper.find('[aria-label="Выбранная цель"]').exists()).toBe(true)
+        expect(wrapper.get('.hotbar').attributes('data-selected-target-key')).toBeDefined()
         await pressEscape()
-        expect(wrapper.find('[aria-label="Выбранная цель"]').exists()).toBe(false)
+        expect(wrapper.get('.hotbar').attributes('data-selected-target-key')).toBeUndefined()
         expect(wrapper.find('.game-menu').exists()).toBe(false)
         const praying = characterFixture('self', {
             abilities: {

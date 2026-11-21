@@ -19,7 +19,7 @@ interface AppWindowsOptions {
     defeated: Ref<boolean>
     snapshot: Ref<WorldSnapshot | undefined>
     gameplay: Ref<{ select: (id: string) => boolean | void } | undefined>
-    interaction: Ref<{ openMenu: () => void } | undefined>
+    interaction: Ref<{ openMenu: (expectedKey?: string) => void } | undefined>
     social?: Ref<{ hasOpenWindow: boolean } | undefined>
     closeInventory: () => void
     closeContainers: () => void
@@ -66,7 +66,7 @@ export function useAppWindows(options: AppWindowsOptions) {
         if (options.chestPending.value) return
         options.closeInventory()
         automationPanels.value?.close()
-        void nextTick(() => options.interaction.value?.openMenu())
+        void nextTick(() => options.interaction.value?.openMenu(id ? `character:${id}` : undefined))
     }
     function toggleInventory(): void {
         characterOpen.value = false

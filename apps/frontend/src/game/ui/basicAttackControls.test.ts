@@ -82,7 +82,7 @@ it.each(['enemy', 'dummy'])(
         try {
             await clickWithPointer(wrapper.get('.hotbar-slot').element)
             expect(wrapper.vm.selectedId).toBe(nearest)
-            expect(wrapper.get('[aria-label="Выбранная цель"]').text()).toContain(nearest)
+            expect(wrapper.get('.hotbar').attributes('data-selected-target-name')).toBe(nearest)
             expect(highlight).toHaveBeenLastCalledWith(
                 expect.objectContaining({ id: nearest, kind: 'character' })
             )
@@ -120,7 +120,7 @@ it('swings without a selected target when only allies and out-of-range enemies a
         pressCombatKey('Digit1')
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedKey).toBeUndefined()
-        expect(wrapper.find('[aria-label="Выбранная цель"]').exists()).toBe(false)
+        expect(wrapper.get('.hotbar').attributes('data-selected-target-name')).toBeUndefined()
         expect(attacks()).toEqual([{ type: 'attack' }])
     } finally {
         wrapper.unmount()

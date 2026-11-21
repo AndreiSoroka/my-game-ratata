@@ -8,6 +8,7 @@ import {
     socialExpect,
     socialMenu,
 } from './social-helpers'
+import { clickVisibleCharacter, selectedWorldTarget } from './world-target-ui'
 
 const expect = socialExpect
 test.use({ trace: 'retain-on-failure' })
@@ -27,6 +28,7 @@ for (const layout of [
         try {
             const firstName = `g-a-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
             const secondName = `g-b-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
+            const useMouse = layout.name === 'desktop'
             const firstId = await joinSocial(first, firstName)
             giftId = await gatherGift(first)
             const secondId = await joinSocial(second, secondName)
@@ -34,20 +36,23 @@ for (const layout of [
                 () => window.__ratataTest!.getState().player!.position
             )
             const arrival = await second.evaluate(
-                (position) =>
-                    window.__ratataTest!.navigate(position, { tolerance: 20, timeoutMs: 25_000 }),
-                point
+                ({ position, tolerance }) =>
+                    window.__ratataTest!.navigate(position, { tolerance, timeoutMs: 25_000 }),
+                { position: point, tolerance: useMouse ? 64 : 20 }
             )
             expect(arrival.status).toBe('arrived')
             await first.locator('canvas[data-game-canvas=true]').focus()
             await first.keyboard.press('KeyQ')
-            await expect(first.getByLabel('Выбранная цель')).toContainText('Вы')
+            await expect(selectedWorldTarget(first)).toHaveAttribute(
+                'data-selected-target-key',
+                `character:${firstId}`
+            )
             await assertTopNotices(first)
             await first.keyboard.down('KeyQ')
             await first.keyboard.down('KeyQ')
             await first.keyboard.up('KeyQ')
-            await expect(first.getByLabel('Выбранная цель')).toHaveCount(0)
-            await socialMenu(first, secondId, /^Шёпот:/)
+            await expect(selectedWorldTarget(first)).toHaveCount(0)
+            await openGiftWhisper(first, secondId, secondName, useMouse)
             const whisper = first.getByRole('dialog', { name: /^Шёпот:/ })
             const position = await first.evaluate(
                 () => window.__ratataTest!.getState().player!.position
@@ -122,6 +127,29 @@ for (const layout of [
             await context.close()
         }
     })
+}
+
+async function openGiftWhisper(
+    page: Page,
+    id: string,
+    nickname: string,
+    useMouse: boolean
+): Promise<void> {
+    if (!useMouse) return socialMenu(page, id, /^Шёпот:/)
+    const distance = () =>
+        page.evaluate(
+            (targetId) =>
+                window.__ratataTest!.observe().targets.find((target) => target.id === targetId)
+                    ?.distance,
+            id
+        )
+    await expect.poll(distance).toBeGreaterThan(48)
+    await clickVisibleCharacter(page, id, 2)
+    await expect(selectedWorldTarget(page)).toHaveAttribute('data-selected-target-name', nickname)
+    const whisperAction = page.getByRole('menuitem', { name: `Шёпот: ${nickname}`, exact: true })
+    await expect(whisperAction).toBeVisible()
+    await expect.poll(distance).toBeLessThanOrEqual(48)
+    await whisperAction.click()
 }
 
 async function exerciseTradeInvitation(
@@ -355,18 +383,6 @@ async function assertTopNotices(page: Page, invitation?: Locator): Promise<void>
             })
             .toBeGreaterThanOrEqual(0)
     } else expect((await notices.boundingBox())!.y).toBeCloseTo(14, 0)
-
-    const target = page.getByLabel('Выбранная цель', { exact: true })
-    if (!(await target.isVisible())) return
-    await expect
-        .poll(async () => {
-            const [stack, selection] = await Promise.all([
-                notices.boundingBox(),
-                target.boundingBox(),
-            ])
-            return selection!.y - stack!.y - stack!.height
-        })
-        .toBeGreaterThanOrEqual(0)
 }
 
 async function assertHudLayout(page: Page): Promise<void> {
@@ -377,7 +393,4 @@ async function assertHudLayout(page: Page): Promise<void> {
     expect(hints!.x).toBeGreaterThanOrEqual(0)
     expect(hints!.x + hints!.width).toBeLessThanOrEqual(viewport.width)
     expect(hints!.y + hints!.height).toBeLessThanOrEqual(viewport.height)
-    const target = await page.getByLabel('Выбранная цель', { exact: true }).boundingBox()
-    if (viewport.width <= 740 && target)
-        expect(target.y).toBeGreaterThanOrEqual(hints!.y + hints!.height)
 }

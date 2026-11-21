@@ -78,8 +78,10 @@ remain in their windows. Gold and item condition are shown in the inventory.
 
 ## Inventory, containers and interaction menus
 
-**Q** selects yourself. **E** cycles nearby visible characters and objects from
-nearest to farthest; **Shift+E** reverses. **F** performs the selected target's
+**Q** toggles self-selection. **Tab** cycles nearby visible non-hostile
+characters, recoverable bodies and objects. **E** cycles hostile characters.
+Both cycle from nearest to farthest. **Shift+Tab** and **Shift+E** reverse the
+respective order. **F** performs the selected target's
 sole action directly or opens that target's choices. Without a selection, it uses
 the nearby interaction in the facing direction. Menus consume gameplay keys and
 release held movement. Arrows or W/S select a row, F/Enter/Space activates and
@@ -291,7 +293,7 @@ In the inventory, focus an apple's slot and press Shift+1–4 to bind it directl
 
 Use arrows to move between inventory cells and Enter or F to open and confirm item actions. When equipping, consuming or transferring removes the selected item from the bag, keyboard focus returns to the same cell, even if it becomes empty. Continue with the arrows without reopening the inventory. A rejected action keeps its current menu and focus.
 
-Q selects yourself; E cycles nearby visible characters, recoverable bodies and interactive objects from nearest to farthest, and Shift+E reverses the order. The selection radius is the greater of 12 map tiles and the longest learned ability range plus three tiles; targets must also intersect the camera viewport and pass existing concealment rules. The same limit applies to mouse and party-panel selection. Changing the selected target cancels automatic action repetition. F opens the selected reachable target's actions, or uses the facing interaction when there is no selected target. Any friendly reachable character offers **Следовать**. Friendly targets use a circle and shield, hostile targets a diamond and crossed swords; objects retain gold corners. Manual movement, stun, death, window focus loss and Esc cancel automatic control. Follow can continue across adjacent locations using ordinary movement. Menus consume gameplay keys and release held movement.
+Tab cycles non-hostile targets, including training dummies and interactive objects. E cycles hostile characters. The selection radius is the greater of 12 map tiles and the longest learned ability range plus three tiles. Targets must also intersect the camera viewport and pass existing concealment rules. The same limit applies to mouse and party-panel selection. Changing the selected target cancels automatic action repetition. F opens the selected reachable target's actions, or uses the facing interaction when there is no selected target. Any friendly reachable character offers **Следовать**. Friendly targets use a circle and shield, hostile targets a diamond and crossed swords; objects retain gold corners. Manual movement, stun, death, window focus loss and Esc cancel automatic control. Follow can continue across adjacent locations using ordinary movement. Menus consume gameplay keys and release held movement.
 
 The party panel puts the crowned leader first, shows names and health with a thin bar without numeric text, and marks distant, offline or fallen members. Incoming invitations offer acceptance/refusal; pending invitations cannot be sent back to their sender.
 

@@ -1,5 +1,7 @@
 import { expect as baseExpect, type Page } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 export const socialExpect = baseExpect.configure({ timeout: 10_000 })
 const expect = socialExpect
 
@@ -51,13 +53,13 @@ export async function selectSocialTarget(page: Page, id: string): Promise<void> 
                 .snapshot!.characters.find((actor) => actor.id === targetId)!.nickname,
         id
     )
-    const panel = page.getByLabel('Выбранная цель')
+    const selected = selectedWorldTarget(page)
     const limit = await page.evaluate(() => window.__ratataTest!.observe().targets.length + 1)
     for (let count = 0; count < limit; count += 1) {
-        await page.keyboard.press('KeyE')
-        if (await panel.getByText(name, { exact: true }).isVisible()) break
+        await page.keyboard.press('Tab')
+        if ((await selected.getAttribute('data-selected-target-name')) === name) break
     }
-    await expect(panel.getByText(name, { exact: true })).toBeVisible()
+    await expect(selected).toHaveAttribute('data-selected-target-name', name)
 }
 
 export async function socialMenu(page: Page, id: string, action: RegExp): Promise<void> {

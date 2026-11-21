@@ -69,7 +69,9 @@ describe('grave selection and hotbar', () => {
         try {
             wrapper.vm.selectGrave(grave.id)
             await flushPromises()
-            expect(wrapper.get('[aria-label="Выбранная цель"]').text()).toContain('100/100 HP')
+            expect(wrapper.get('.hotbar').attributes('data-selected-target-key')).toBe(
+                `grave:${grave.id}`
+            )
             press('Digit1')
             expect(sendCommand).toHaveBeenLastCalledWith({
                 type: 'attack',
@@ -84,7 +86,7 @@ describe('grave selection and hotbar', () => {
                 snapshot: { ...snapshot, graves: [{ ...grave, phase: 'purified' }] },
             })
             expect(wrapper.vm.selectedGraveId).toBeUndefined()
-            expect(wrapper.find('[aria-label="Выбранная цель"]').exists()).toBe(false)
+            expect(wrapper.get('.hotbar').attributes('data-selected-target-key')).toBeUndefined()
         } finally {
             wrapper.unmount()
         }

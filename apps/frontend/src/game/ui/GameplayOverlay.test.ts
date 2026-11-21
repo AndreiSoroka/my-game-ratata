@@ -11,16 +11,26 @@ function oneAttack(targetId: string) {
     return { type: 'auto_action', action: { kind: 'attack', targetId, once: true } } as const
 }
 
-it('cycles items, hostile and friendly targets by distance in both directions and selects self with Q', async () => {
+it('cycles non-hostile targets and enemies separately and toggles self with Q', async () => {
     const player = characterFixture('self'),
         friend = characterFixture('friend', { position: { x: 40, y: 0 } }),
         enemy = characterFixture('enemy', {
             faction: 'monsters',
             relationship: 'hostile',
             position: { x: 24, y: 0 },
+        }),
+        farEnemy = characterFixture('far enemy', {
+            faction: 'monsters',
+            relationship: 'hostile',
+            position: { x: 56, y: 0 },
+        }),
+        dummy = characterFixture('dummy', {
+            position: { x: 32, y: 0 },
+            trainingTarget: { areaId: 'yard' },
         })
+    const characters = [player, friend, enemy, farEnemy, dummy]
     const snapshot = {
-        ...worldFixture([player, friend, enemy]),
+        ...worldFixture(characters),
         items: [{ id: 'apple', itemId: 'food' as const, position: { x: 8, y: 0 } }],
     }
     const send = vi.fn<() => void>(),
@@ -32,7 +42,7 @@ it('cycles items, hostile and friendly targets by distance in both directions an
     const wrapper = mount(GameplayOverlay, {
         props: {
             player,
-            characters: [player, friend, enemy],
+            characters,
             snapshot,
             blocked: false,
             game: game as never,
@@ -42,11 +52,14 @@ it('cycles items, hostile and friendly targets by distance in both directions an
     const press = (code: string, shiftKey = false) =>
         window.dispatchEvent(new KeyboardEvent('keydown', { code, shiftKey, bubbles: true }))
     try {
-        press('KeyE')
+        press('Tab')
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedKey).toBe('item:apple')
         expect(wrapper.vm.selectedId).toBeUndefined()
-        expect(wrapper.get('[aria-label="Выбранная цель"]').text()).toContain('F действие')
+        expect(wrapper.get('.hotbar').attributes('data-selected-target-name')).toBe('Apple')
+        expect(game.setCombatTarget).toHaveBeenLastCalledWith(
+            expect.objectContaining({ key: 'item:apple', name: 'Apple' })
+        )
         press('KeyE')
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedId).toBe('enemy')
@@ -59,10 +72,16 @@ it('cycles items, hostile and friendly targets by distance in both directions an
         })
         press('KeyE')
         await wrapper.vm.$nextTick()
-        expect(wrapper.vm.selectedId).toBe('friend')
+        expect(wrapper.vm.selectedId).toBe(farEnemy.id)
         press('KeyE', true)
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedId).toBe('enemy')
+        press('Tab', true)
+        await wrapper.vm.$nextTick()
+        expect(wrapper.vm.selectedId).toBe(friend.id)
+        press('Tab', true)
+        await wrapper.vm.$nextTick()
+        expect(wrapper.vm.selectedId).toBe(dummy.id)
         press('KeyQ')
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedId).toBe('self')
@@ -82,6 +101,7 @@ it('cycles items, hostile and friendly targets by distance in both directions an
         expect(wrapper.vm.selectedId).toBeUndefined()
         await wrapper.setProps({ blocked: true })
         send.mockClear()
+        press('Tab')
         press('KeyE')
         press('KeyQ')
         expect(send).not.toHaveBeenCalled()
@@ -154,10 +174,13 @@ it('uses the same distance and viewport guard for direct selection, cycling and 
     try {
         expect(wrapper.vm.select(far.id)).toBe(false)
         expect(wrapper.vm.select(hidden.id)).toBe(false)
-        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab' }))
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedId).toBe(near.id)
         send.mockClear()
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+        expect(wrapper.vm.selectedId).toBe(near.id)
+        expect(send).not.toHaveBeenCalled()
         visible = false
         await wrapper.setProps({ snapshot: { ...worldFixture(characters), tick: 2 } })
         expect(wrapper.vm.selectedKey).toBeUndefined()
@@ -371,6 +394,7 @@ it('ignores held hotbar and selection keys, clears gestures on movement, and can
         press('Digit1', true)
         press('KeyQ', true)
         press('KeyE', true)
+        press('Tab', true)
         expect(send).toHaveBeenCalledExactlyOnceWith(oneAttack(enemy.id))
         press('KeyW')
         press('Digit1')

@@ -1,26 +1,27 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { clickVisibleCharacter, selectedWorldTarget } from './world-target-ui'
+
 async function selectVisibleAlly(page: Page, name: string): Promise<void> {
     const limit = await page.evaluate(() => {
         return Math.min(256, window.__ratataTest!.observe().targets.length + 1)
     })
-    const panel = page.getByLabel('Выбранная цель')
+    const selected = selectedWorldTarget(page)
     for (let count = 0; count < limit; count += 1) {
-        await page.keyboard.press('KeyE')
-        await expect(panel).toBeVisible()
-        if (await panel.getByText(name, { exact: true }).isVisible()) break
+        await page.keyboard.press('Tab')
+        if ((await selected.getAttribute('data-selected-target-name')) === name) break
     }
-    await expect(panel.getByText(name, { exact: true })).toBeVisible()
+    await expect(selected).toHaveAttribute('data-selected-target-name', name)
 }
 
 async function talkThroughActionMenu(
     page: Page,
     prompt: Locator,
     name: string,
-    pointer: boolean
+    mobile: boolean
 ): Promise<void> {
-    if (pointer) await prompt.click()
-    else await page.keyboard.press('KeyF')
+    if (mobile) await prompt.click()
+    else await openGuardMenuWithMouse(page, name)
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
     await expect(
@@ -39,6 +40,16 @@ async function talkThroughActionMenu(
     }
     await expect(talk).toBeFocused()
     await page.keyboard.press('Enter')
+}
+
+async function openGuardMenuWithMouse(page: Page, name: string): Promise<void> {
+    const selected = selectedWorldTarget(page)
+    await page.keyboard.press('Escape')
+    await expect(selected).toHaveCount(0)
+    await clickVisibleCharacter(page, 'npc_guard_1', 1)
+    await expect(selected).toHaveAttribute('data-selected-target-name', name)
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    await clickVisibleCharacter(page, 'npc_guard_1', 2)
 }
 
 for (const mobile of [false, true]) {
@@ -98,6 +109,12 @@ for (const mobile of [false, true]) {
         const prompt = hotbar.getByRole('button', { name: /^F / })
         await expect(guide).toBeVisible()
         await expect(prompt).toHaveCount(0)
+        await page.keyboard.press('KeyE')
+        const selfId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
+        await expect(selectedWorldTarget(page)).toHaveAttribute(
+            'data-selected-target-key',
+            `character:${selfId}`
+        )
         await selectVisibleAlly(page, guardName)
         await expect(prompt).toBeVisible()
         await expect(prompt).toContainText(guardName)

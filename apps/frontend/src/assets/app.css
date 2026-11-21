@@ -113,6 +113,10 @@
     image-rendering: pixelated;
 }
 
+.game-screen .game-canvas:focus {
+    outline: none;
+}
+
 .game-error {
     position: fixed;
     right: 14px;

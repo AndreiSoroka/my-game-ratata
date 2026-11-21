@@ -9,6 +9,7 @@ interface InputHandlers {
     keyUp: (event: KeyboardEvent) => void
     release: () => void
     pointer: (event: PointerEvent) => void
+    click?: (event: MouseEvent) => void
 }
 export function installRuntimeInputs(
     engine: Engine,
@@ -32,6 +33,7 @@ export function installRuntimeInputs(
     window.addEventListener('focusin', focus)
     document.addEventListener('visibilitychange', hidden)
     canvas.addEventListener('contextmenu', preventContextMenu)
+    if (handlers.click) canvas.addEventListener('click', handlers.click)
     engine.input.pointers.primary.on('down', handlers.pointer)
     return () => {
         window.removeEventListener('keydown', handlers.keyDown)
@@ -40,6 +42,7 @@ export function installRuntimeInputs(
         window.removeEventListener('focusin', focus)
         document.removeEventListener('visibilitychange', hidden)
         canvas.removeEventListener('contextmenu', preventContextMenu)
+        if (handlers.click) canvas.removeEventListener('click', handlers.click)
         engine.input.pointers.primary.off('down', handlers.pointer)
     }
 }

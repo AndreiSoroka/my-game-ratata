@@ -1,4 +1,9 @@
-import type { GameEventPayload, HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    ClientMessage,
+    GameEventPayload,
+    HeroClass,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 
 import type { ChatInputState } from './chatInput'
 
@@ -8,6 +13,8 @@ export interface RatataGameOptions {
     createOnly?: boolean
     heroClass?: HeroClass
     onCharacterClick?: (id: string) => void
+    onCharacterDoubleClick?: (id: string) => void
+    onCommand?: (message: ClientMessage) => void
     onEvent?: (event: GameEventPayload) => void
     onChatState: (state: ChatInputState) => void
     onError: (message: string) => void

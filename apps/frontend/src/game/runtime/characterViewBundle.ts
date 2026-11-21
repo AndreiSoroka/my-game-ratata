@@ -18,14 +18,18 @@ const labelFont = new Font({
     family: 'Pixelify Sans, system-ui, sans-serif',
     size: 8,
 })
-export function createBundle(): CharacterBundle {
+export function createWorldNameLabel(): Label {
     const label = new Label({ font: labelFont, text: '' })
     label.graphics.anchor = vec(0.5, 0.5)
+    return label
+}
+
+export function createBundle(): CharacterBundle {
     return {
         body: new Actor({ anchor: vec(0.5, 0.75), height: 48, width: 48 }),
         hpBack: createBar(Color.fromHex('#171717'), 32),
         hpFill: createBar(Color.Green, 32),
-        label,
+        label: createWorldNameLabel(),
     }
 }
 

@@ -1,6 +1,8 @@
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 interface CityMap {
     tilewidth: number
     layers: {
@@ -38,7 +40,7 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('KeyQ')
         await page.keyboard.press('KeyF')
         await page.keyboard.press('Digit1')
-        await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
+        await expect(selectedWorldTarget(page)).toHaveCount(0)
         await page.evaluate(() =>
             window.__ratataTest!.send({
                 type: 'chat',
@@ -83,7 +85,7 @@ for (const mobile of [false, true]) {
         await expect(draft).toHaveValue('Привет first draftw')
         await page.keyboard.press('KeyQ')
         await page.keyboard.press('Digit1')
-        await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
+        await expect(selectedWorldTarget(page)).toHaveCount(0)
         await expect(draft).toHaveValue('Привет first draftwq1')
         await page.keyboard.down('Enter')
         await page.keyboard.down('Enter')

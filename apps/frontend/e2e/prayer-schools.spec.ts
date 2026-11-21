@@ -1,6 +1,8 @@
 import { ABILITY_DEFINITIONS, type PrayerAbilityId } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 const schools: PrayerAbilityId[] = ['pray_road', 'pray']
 const unavailableSchools: PrayerAbilityId[] = ['pray_lantern', 'pray_grave']
 
@@ -118,15 +120,13 @@ for (const width of [390, 1280]) {
 }
 
 async function selectAlly(page: Page, name: string): Promise<void> {
-    const panel = page.getByLabel('Выбранная цель')
-    const count = await page.evaluate(
-        () => window.__ratataTest!.getState().snapshot!.characters.length + 1
-    )
+    const selected = selectedWorldTarget(page)
+    const count = await page.evaluate(() => window.__ratataTest!.observe().targets.length + 1)
     for (let index = 0; index < count; index += 1) {
-        await page.keyboard.press('KeyE')
-        if (await panel.getByText(name, { exact: true }).isVisible()) break
+        await page.keyboard.press('Tab')
+        if ((await selected.getAttribute('data-selected-target-name')) === name) break
     }
-    await expect(panel.getByText(name, { exact: true })).toBeVisible()
+    await expect(selected).toHaveAttribute('data-selected-target-name', name)
 }
 
 async function enterChapel(page: Page): Promise<void> {

@@ -8,6 +8,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 const areaId = 'map-2-2:training:yard-1'
 const dummyId = 'map-2-2:training:dummy-1'
 
@@ -23,7 +25,7 @@ test('shows the learned prayer radius in the authored training interior without 
         () => window.__ratataTest!.getState().player!.abilities!.prayer!
     )
     expect(prayer.harm).toBe(false)
-    await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
+    await expect(selectedWorldTarget(page)).toHaveCount(0)
     await expect(canvas).toHaveAttribute('data-training-prayer-radius', String(prayer.radius))
     await page.screenshot({ path: info.outputPath('training-prayer-radius.png') })
     await navigate(page, yard.outside)
@@ -52,7 +54,7 @@ for (const mobile of [false, true]) {
         const yard = await join(page, `blade-${info.project.name}-${mobile}`, 'vanguard')
         const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
         const localAttacks = () => starts.filter((event) => event.actorId === playerId)
-        const selected = page.getByLabel('Выбранная цель')
+        const selected = selectedWorldTarget(page)
         const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
         const playerX = () =>
             page.evaluate(() => window.__ratataTest!.getState().player!.position.x)
@@ -60,7 +62,7 @@ for (const mobile of [false, true]) {
         await navigate(page, yard.inside)
         await expect(selected).toHaveCount(0)
         await activateBlade(page, attack, mobile, 1)
-        await expect(selected).toContainText('Тренировочный манекен')
+        await expect(selected).toHaveAttribute('data-selected-target-key', `character:${dummyId}`)
         await expect.poll(playerX).toBeGreaterThan(yard.inside.x + 8)
         await expect.poll(() => localAttacks().length).toBe(1)
         await waitForAttackIdle(page)
@@ -70,7 +72,7 @@ for (const mobile of [false, true]) {
         await expect(selected).toHaveCount(0)
         await navigate(page, yard.inside)
         await activateBlade(page, attack, mobile, 2)
-        await expect(selected).toContainText('Тренировочный манекен')
+        await expect(selected).toHaveAttribute('data-selected-target-key', `character:${dummyId}`)
         await expect(attack).toHaveAttribute('aria-pressed', 'true')
         await expect(attack.getByLabel('Автоповтор')).toBeVisible()
         await expect.poll(playerX).toBeGreaterThan(yard.inside.x + 8)
@@ -122,10 +124,11 @@ for (const mobile of [false, true]) {
         await navigate(page, yard.inside)
         await expect(canvas).toHaveAttribute('data-training-guides', areaId)
         await canvas.focus()
-        const selected = page.getByLabel('Выбранная цель')
         await selectTrainingTarget(page)
-        await expect(selected).toContainText('Тренировочный манекен')
-        await expect(selected.getByRole('progressbar')).toHaveCount(0)
+        await expect(selectedWorldTarget(page)).toHaveAttribute(
+            'data-selected-target-key',
+            `character:${dummyId}`
+        )
         const before = await dummyState(page)
         const firstHit = hits.length
         await page.keyboard.press('Digit2')
@@ -241,15 +244,11 @@ async function join(page: Page, name: string, heroClass: HeroClass = 'ranger') {
 }
 
 async function selectTrainingTarget(page: Page): Promise<void> {
+    const selected = selectedWorldTarget(page)
     const targetCount = await page.evaluate(() => window.__ratataTest!.observe().targets.length)
     for (let count = 0; count <= targetCount; count += 1) {
-        await page.keyboard.press('KeyE')
-        if (
-            await page
-                .getByLabel('Выбранная цель')
-                .getByText('Тренировочный манекен', { exact: true })
-                .isVisible()
-        )
+        await page.keyboard.press('Tab')
+        if ((await selected.getAttribute('data-selected-target-key')) === `character:${dummyId}`)
             return
     }
 }

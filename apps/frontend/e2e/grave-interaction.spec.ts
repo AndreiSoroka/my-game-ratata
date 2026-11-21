@@ -11,6 +11,7 @@ import {
     captureWorldDamage,
 } from './grave-diagnostics'
 import { approachObservedGrave } from './grave-targeting'
+import { selectedWorldTarget } from './world-target-ui'
 
 const cases = [
     // Final-death scenarios use the north; each ritual gets its own authored source.
@@ -101,7 +102,7 @@ for (const { mobile, direction, viewport } of cases) {
             expect(finished.resources.mana.kind).toBe('percent')
             expect(manaAtStart.length).toBeGreaterThanOrEqual(2)
             expect(manaAtStart.every((percent) => percent < 100)).toBe(true)
-            await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
+            await expect(selectedWorldTarget(page)).toHaveCount(0)
             await page.screenshot({ path: info.outputPath('grave-purified.png') })
             await attachOutcome(
                 page,
@@ -255,20 +256,11 @@ async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
         expect(hotbar).not.toBeNull()
         expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(hotbar!.y)
         await prompt.click()
-        await assertMobileTargetSpace(page)
     } else {
         await page.locator('canvas[data-game-canvas=true]').focus()
         await page.keyboard.press('KeyF')
     }
-}
-async function assertMobileTargetSpace(page: Page): Promise<void> {
-    const target = page.getByLabel('Выбранная цель')
-    await expect(target).toBeVisible()
-    const targetBounds = await target.boundingBox()
-    const playerBounds = await page.getByRole('region', { name: 'Player vitals' }).boundingBox()
-    expect(targetBounds).not.toBeNull()
-    expect(playerBounds).not.toBeNull()
-    expect(targetBounds!.y).toBeGreaterThanOrEqual(playerBounds!.y + playerBounds!.height)
+    await expect(selectedWorldTarget(page)).toHaveAttribute('data-selected-target-key', /^grave:/)
 }
 
 async function cancelRitual(page: Page, mobile: boolean): Promise<void> {

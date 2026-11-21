@@ -1,6 +1,8 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 for (const mobile of [false, true]) {
     test(`HUD focus and game-menu ownership (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,
@@ -16,6 +18,10 @@ for (const mobile of [false, true]) {
             `menu-${info.workerIndex}-${mobile}`
         )
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
+        const canvas = page.locator('canvas[data-game-canvas=true]')
+        await canvas.focus()
+        await expect(canvas).toBeFocused()
+        await expect(canvas).toHaveCSS('outline-style', 'none')
         await expect(page.getByRole('region', { name: 'World location' })).toHaveCount(0)
         await expect(page.locator('.game-player-status')).toHaveCSS('top', '14px')
         const menuButton = await hotbarMenuButton(page)
@@ -28,9 +34,9 @@ for (const mobile of [false, true]) {
         const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
         await attack.focus()
         await page.keyboard.press('KeyQ')
-        await expect(page.getByLabel('Выбранная цель')).toBeVisible()
+        await expect(selectedWorldTarget(page)).toHaveCount(1)
         await page.keyboard.press('Escape')
-        await expect(page.getByLabel('Выбранная цель')).toHaveCount(0)
+        await expect(selectedWorldTarget(page)).toHaveCount(0)
         await expect(menu).toHaveCount(0)
         await page.keyboard.press('Shift+Digit3')
         await page

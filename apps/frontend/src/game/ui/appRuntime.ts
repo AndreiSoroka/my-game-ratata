@@ -27,6 +27,7 @@ interface AppRuntimeOptions {
     hotbarSession?: { clear: () => void }
     cleanupFailedJoin: () => void
     openNearbyMenu: (id?: string) => void
+    characterApproach?: ReturnType<typeof import('./useCharacterApproach').useCharacterApproach>
     toggleInventory: () => void
     toggleCharacter?: () => void
     chatHistory?: ReturnType<typeof import('./chatHistory').createChatHistory>
@@ -79,7 +80,13 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         onContextAction: () => options.openNearbyMenu(options.gameplay()?.selectedId),
         getChatTargetId: () => options.gameplay()?.selectedId,
         getChatFocusKey: () => options.gameplay()?.selectedKey,
-        onCharacterClick: (id) => options.gameplay()?.select(id, true),
+        onCharacterClick: (id) => {
+            const gameplay = options.gameplay()
+            if (gameplay?.selectedId !== id) options.characterApproach?.stop()
+            gameplay?.select(id)
+        },
+        onCharacterDoubleClick: (id) => void options.characterApproach?.begin(id),
+        onCommand: options.characterApproach?.command,
         onEvent: (event) => {
             options.chatHistory?.event(event)
             options.gameplay()?.receive(event)

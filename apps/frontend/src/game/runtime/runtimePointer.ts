@@ -4,11 +4,18 @@ import type {
     Vector2,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import { PointerButton, type PointerEvent, PointerType } from 'excalibur'
+import {
+    type Engine,
+    GlobalCoordinates,
+    PointerButton,
+    type PointerEvent,
+    PointerType,
+} from 'excalibur'
 
 import { focusWorldInput, worldPointerBlocked } from '../ui/keyboardOwnership'
 import { characterAt } from './runtimeCharacterTargets'
 import type { RuntimeChatInput } from './runtimeChatInput'
+import type { RatataGameOptions } from './runtimeOptions'
 interface PointerContext {
     snapshot: WorldSnapshot | undefined
     playerId: string | undefined
@@ -17,6 +24,60 @@ interface PointerContext {
     plant: (point: Vector2) => boolean
     select: (id: string) => void
     send: (command: ClientMessage) => void
+}
+
+interface RuntimePointerSource extends Pick<PointerContext, 'snapshot' | 'playerId'> {
+    engine: Engine | undefined
+    mapReady: boolean
+    canSelect: (key: string) => boolean
+    chat: RuntimeChatInput
+    plant: PointerContext['plant']
+    resourceVisible: (node: AdventureResourceNode) => boolean
+    options: Pick<RatataGameOptions, 'onCharacterClick' | 'onCharacterDoubleClick'>
+    send: PointerContext['send']
+}
+
+export function createRuntimePointerHandlers(read: () => RuntimePointerSource) {
+    let lastClickedCharacter: string | undefined
+    return {
+        pointer(event: PointerEvent): void {
+            const source = read()
+            if (!source.mapReady || consumeRuntimePointerFocus(event, source.chat)) return
+            handleRuntimePointer(event, {
+                snapshot: source.snapshot,
+                playerId: source.playerId,
+                visible: (id) => source.canSelect(`character:${id}`),
+                resourceVisible: (node) =>
+                    source.canSelect(`resource:${node.id}`) && source.resourceVisible(node),
+                plant: source.plant,
+                select: (id) => source.options.onCharacterClick?.(id),
+                send: source.send,
+            })
+        },
+        click(event: MouseEvent): void {
+            const previous = lastClickedCharacter
+            lastClickedCharacter = undefined
+            const { engine, mapReady, chat, snapshot, playerId, canSelect, options } = read()
+            if (!engine || !mapReady || chat.isActive || worldPointerBlocked()) return
+            if (!isUnmodifiedPrimaryClick(event)) return
+            const point = GlobalCoordinates.fromPagePosition(
+                event.pageX,
+                event.pageY,
+                engine
+            ).worldPos
+            const id = characterAt(snapshot, playerId, point, (actorId) =>
+                canSelect(`character:${actorId}`)
+            )
+            if (event.detail === 1) lastClickedCharacter = id
+            if (event.detail === 2 && id && id === previous) options.onCharacterDoubleClick?.(id)
+        },
+    }
+}
+
+function isUnmodifiedPrimaryClick(event: MouseEvent): boolean {
+    return (
+        event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+    )
 }
 
 /** The first world click leaves typing without also selecting or acting in the world. */
