@@ -9,7 +9,8 @@ export function runtimeEventFeedback(
     options: Pick<RatataGameOptions, 'onNotice' | 'onDefeat'>,
     releaseInputs: () => void
 ): void {
-    if (isNoticeForPlayer(event, playerId)) options.onNotice?.(event.text)
+    if (event.noticeKind !== 'dash_rejected' && isNoticeForPlayer(event, playerId))
+        options.onNotice?.(event.text)
     if (event.kind === 'permadeath' && event.actorId === playerId) {
         releaseInputs()
         options.onDefeat?.()

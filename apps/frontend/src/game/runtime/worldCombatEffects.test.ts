@@ -4,6 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { characterFixture } from '../testing/characterFixture'
 import { combatEffectCues, eventCaption } from './combatEffectPlan'
 import { CombatEffects } from './combatEffects'
+import { runtimeEventFeedback } from './runtimeEventFeedback'
 
 interface View {
     pos: { x: number; y: number }
@@ -99,6 +100,39 @@ it('aims a projectile at the typed grave without manufacturing a character targe
     expect(rendered.views[0]?.dead).toBe(true)
     effects.dispose()
 })
+
+it.each(['Рывок: ещё 2 с.', 'Не хватает энергии'])(
+    'shows a single dash caption above the actor and lets ordinary notices reach the HUD',
+    (text) => {
+        const { actor, effects, frame } = setup()
+        const onNotice = vi.fn<(text: string) => void>()
+        const releaseInputs = vi.fn<() => void>()
+        const event = {
+            kind: 'notice',
+            noticeKind: 'dash_rejected',
+            actorId: actor.id,
+            text,
+        } as const
+
+        effects.receive(event)
+        runtimeEventFeedback(event, actor.id, { onNotice }, releaseInputs)
+        expect(onNotice).not.toHaveBeenCalled()
+        expect(rendered.views).toHaveLength(1)
+        expect(rendered.views[0]).toMatchObject({ text, pos: { x: 100, y: 58 } })
+        frame(500)
+        expect(rendered.views[0]?.pos).toEqual({ x: 100, y: 54 })
+        frame(500)
+        expect(rendered.views[0]?.dead).toBe(true)
+
+        const ordinary = { kind: 'notice', actorId: actor.id, text: 'Обычное уведомление' } as const
+        effects.receive(ordinary)
+        runtimeEventFeedback(ordinary, actor.id, { onNotice }, releaseInputs)
+        expect(rendered.views).toHaveLength(1)
+        expect(onNotice).toHaveBeenCalledExactlyOnceWith(ordinary.text)
+        effects.dispose()
+    }
+)
+
 it('shows exact hundredths at the grave, ignores misses and unknown world targets, and clears on dispose', () => {
     const { actor, effects } = setup()
     effects.receive({

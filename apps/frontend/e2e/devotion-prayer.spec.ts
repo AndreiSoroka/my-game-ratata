@@ -20,7 +20,8 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('Enter')
         const slot = page.getByLabel('Быстрые действия').getByRole('button', { name: /^1:/ })
         await expect(slot).toHaveAccessibleName(/1: Молитва/)
-        await expect(page.locator('.prayer-preview')).toHaveText('Помолиться · 0 MP · Без эффекта')
+        await expect(slot).toHaveAccessibleDescription('Помолиться · 0 MP · Без эффекта')
+        await expect(page.locator('.prayer-preview')).toHaveCount(0)
 
         const before = await page.evaluate(() => window.__ratataTest!.getState().player!)
         await page.keyboard.press('Digit1')

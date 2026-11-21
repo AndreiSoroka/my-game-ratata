@@ -144,6 +144,7 @@ export function eventCaption(event: GameEventPayload): string | undefined {
         absorb: () => (event.amount === undefined ? 'Барьер' : positiveAmount(event, 'Барьер −')),
         miss: () => 'Промах',
         parry: () => 'Парирование',
+        notice: () => (event.noticeKind === 'dash_rejected' ? event.text : undefined),
         revive: () => 'Возрождение',
         status: () => statusCaption(event),
         cast: () => castCaption(event),

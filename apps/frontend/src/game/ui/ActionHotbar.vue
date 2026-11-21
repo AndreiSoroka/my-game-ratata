@@ -45,12 +45,10 @@ const {
     count,
     saplings,
     known,
-    prayerAssigned,
     label,
     cooldown,
     unavailable,
     tooltip,
-    prayerTooltip,
     activate,
     active,
     waiting,
@@ -157,10 +155,7 @@ defineExpose({ activate, edit, assignItem, resetGesture })
         <div ref="dockContent" class="hotbar-content">
             <div
                 v-if="
-                    player.combat?.defensiveStance ||
-                    player.combat?.combo?.stacks ||
-                    prayerAssigned ||
-                    $slots.guide
+                    player.combat?.defensiveStance || player.combat?.combo?.stacks || $slots.guide
                 "
                 class="hotbar-context"
             >
@@ -178,13 +173,6 @@ defineExpose({ activate, edit, assignItem, resetGesture })
                     aria-label="Серия ударов"
                 >
                     Серия ударов: {{ player.combat.combo.stacks }} / {{ player.combat.combo.limit }}
-                </HudFrame>
-                <HudFrame
-                    v-if="prayerAssigned && !player.combat?.defensiveStance"
-                    class="prayer-preview"
-                    role="status"
-                >
-                    {{ prayerTooltip() }}
                 </HudFrame>
                 <slot name="guide" />
             </div>

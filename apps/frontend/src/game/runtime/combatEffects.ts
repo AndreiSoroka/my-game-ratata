@@ -250,8 +250,9 @@ export class CombatEffects {
 }
 
 function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefined): string {
-    return event.kind === 'world_damage' || event.kind === 'miss'
-        ? hitColors[event.kind === 'miss' ? 'miss' : hitQuality(event)]
+    if (event.kind === 'miss' || event.kind === 'notice') return hitColors.miss
+    return event.kind === 'world_damage'
+        ? hitColors[hitQuality(event)]
         : event.kind === 'heal'
           ? '#a9ea8e'
           : deityColors[

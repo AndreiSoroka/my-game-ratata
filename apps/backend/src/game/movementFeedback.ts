@@ -19,6 +19,7 @@ export function handleDashWithFeedback(
     return [
         {
             kind: 'notice',
+            noticeKind: 'dash_rejected',
             actorId: character.id,
             audienceIds: [character.id],
             text,
@@ -28,14 +29,16 @@ export function handleDashWithFeedback(
 
 function dashReason(character: GameCharacter, now: number): string {
     if (character.stunUntil > now) {
-        return 'Рывок недоступен: персонаж оглушён.'
+        return 'Рывок: оглушение'
     }
     if (character.isActionLocked(now)) {
-        return 'Дождись окончания действия, чтобы сделать рывок.'
+        return 'Действие выполняется'
     }
     const cooldown = character.movement.dashAvailableAt - now
     if (cooldown > 0) {
-        return `Рывок восстанавливается: ещё ${String(Math.ceil(cooldown / 1000))} с.`
+        return `Рывок: ещё ${String(Math.ceil(cooldown / 1000))} с.`
     }
-    return `Для рывка нужно ${String(effectiveDashCost(character))} энергии. Недостаточно сил.`
+    return character.energy < effectiveDashCost(character)
+        ? 'Не хватает энергии'
+        : 'Рывок сейчас недоступен'
 }

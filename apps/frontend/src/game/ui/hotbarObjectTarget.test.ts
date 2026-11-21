@@ -27,9 +27,6 @@ it.each(['ranger', 'cleric'] as const)(
             expect(wrapper.emitted('command')).toBeUndefined()
             expect(wrapper.emitted('shotPreviewChange')?.at(-1)).toEqual([undefined])
             expect(wrapper.emitted('previewChange')?.at(-1)).toEqual([undefined])
-            expect(wrapper.findAll('.prayer-preview').map((preview) => preview.text())).toEqual(
-                heroClass === 'cleric' ? ['Для этой цели используйте F'] : []
-            )
         } finally {
             wrapper.unmount()
         }

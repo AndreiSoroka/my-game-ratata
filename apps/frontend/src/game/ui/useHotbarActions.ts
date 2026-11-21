@@ -1,5 +1,4 @@
 import {
-    ABILITY_DEFINITIONS,
     isPrayerAction,
     type PrayerActionId,
     previewPrayerFromSnapshots,
@@ -56,8 +55,6 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
             : binding?.kind === 'attack'
               ? props.player.cooldowns.attackMsLeft
               : 0
-    const prayerTooltip = () =>
-        describedPrayer(props, preview.value, selectedPrayer.value, boundPrayers.value.length)
     const unavailable = (binding: HotbarBinding | null) =>
         bindingUnavailable(
             binding,
@@ -83,7 +80,6 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         count,
         saplings,
         known,
-        prayerAssigned,
         label: (binding: HotbarBinding | null) => bindingLabel(binding, props.player),
         cooldown,
         unavailable,
@@ -96,7 +92,6 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
                       props.grave
                   )
                 : actionTooltip(binding, props),
-        prayerTooltip,
         activate,
         active,
         waiting,
@@ -172,18 +167,6 @@ function watchGestureChanges(
         () => props.player.control,
         () => gestures.acknowledge()
     )
-}
-
-function describedPrayer(
-    props: HotbarProps,
-    preview: ReturnType<typeof previewPrayerFromSnapshots>,
-    abilityId: PrayerActionId,
-    count: number
-): string {
-    const text = prayerDescription(preview, props.characters, props.player, props.grave)
-    return abilityId === 'pray' && count < 2
-        ? text
-        : `${ABILITY_DEFINITIONS[abilityId].name}: ${text}`
 }
 
 function activeBindingCheck(props: HotbarProps, gestures: ReturnType<typeof createGestures>) {

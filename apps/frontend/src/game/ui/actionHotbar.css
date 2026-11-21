@@ -35,8 +35,7 @@
     gap: 6px;
 }
 
-.hotbar-context__line,
-.prayer-preview {
+.hotbar-context__line {
     font: 14px/1.2 var(--ratata-font-family, system-ui);
     text-align: center;
 }

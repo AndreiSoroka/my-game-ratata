@@ -243,10 +243,10 @@ async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
     await expect(prompt).toBeVisible()
     if (mobile) {
         const bounds = await prompt.boundingBox()
-        const preview = await page.locator('.prayer-preview').boundingBox()
+        const hotbar = await page.locator('.hotbar-content').boundingBox()
         expect(bounds).not.toBeNull()
-        expect(preview).not.toBeNull()
-        expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(preview!.y)
+        expect(hotbar).not.toBeNull()
+        expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(hotbar!.y)
         await prompt.click()
         await assertMobileTargetSpace(page)
     } else {

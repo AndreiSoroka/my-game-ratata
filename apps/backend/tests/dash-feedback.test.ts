@@ -15,7 +15,7 @@ function actor() {
 }
 
 describe('Space dash feedback', () => {
-    it.each(['energy', 'cooldown', 'stun', 'action'] as const)(
+    it.each(['energy', 'cooldown', 'stun', 'action', 'stance'] as const)(
         'privately explains %s without charging or starting movement',
         (reason) => {
             const player = actor()
@@ -31,22 +31,25 @@ describe('Space dash feedback', () => {
             if (reason === 'action') {
                 player.lockAction(1000, 500)
             }
+            if (reason === 'stance') {
+                player.combat.defensiveStance = true
+            }
             const before = player.energy
             const events = handleDashWithFeedback(player, 1000)
             expect(events).toHaveLength(1)
             expect(events[0]).toMatchObject({
                 kind: 'notice',
+                noticeKind: 'dash_rejected',
                 actorId: player.id,
                 audienceIds: [player.id],
+                text: {
+                    energy: 'Не хватает энергии',
+                    cooldown: 'Рывок: ещё 2 с.',
+                    stun: 'Рывок: оглушение',
+                    action: 'Действие выполняется',
+                    stance: 'Рывок сейчас недоступен',
+                }[reason],
             })
-            expect(events[0]?.text).toMatch(
-                {
-                    energy: /30.*Недостаточно сил/,
-                    cooldown: /восстанавливается/,
-                    stun: /оглушён/,
-                    action: /окончания действия/,
-                }[reason]
-            )
             expect(player.energy).toBe(before)
             expect(player.movement.dashUntil).toBe(0)
         }
@@ -62,7 +65,11 @@ describe('Space dash feedback', () => {
         expect(player.movement.dashUntil).toBe(
             1000 + MOVEMENT_RULES.dashDurationMs
         )
-        expect(handleDashWithFeedback(player, 1001)[0]?.kind).toBe('notice')
+        expect(handleDashWithFeedback(player, 1001)[0]).toMatchObject({
+            kind: 'notice',
+            noticeKind: 'dash_rejected',
+            text: 'Рывок: ещё 3 с.',
+        })
         expect(player.movement.dashAvailableAt).toBe(
             1000 + MOVEMENT_RULES.dashCooldownMs
         )

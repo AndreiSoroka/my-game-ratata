@@ -121,7 +121,7 @@ describe('resource projection and affordability', () => {
         const actor = abilityHero()
         actor.energy = 17.870400000000018
         const event = handleDashWithFeedback(actor, 1000)[0]
-        expect(event?.text).toContain('Недостаточно сил')
+        expect(event?.text).toContain('Не хватает энергии')
         expect(event?.text).not.toMatch(/Сейчас|17\.87/)
     })
 })

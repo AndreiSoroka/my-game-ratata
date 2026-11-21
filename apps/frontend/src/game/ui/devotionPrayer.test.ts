@@ -22,7 +22,9 @@ describe('prayer without an eligible target', () => {
         try {
             await wrapper.vm.edit(0)
             await wrapper.get('.hotbar-picker button').trigger('click')
-            expect(wrapper.get('.prayer-preview').text()).toBe('Помолиться · 0 MP · Без эффекта')
+            expect(wrapper.find('.prayer-preview').exists()).toBe(false)
+            const slot = wrapper.get('.hotbar-slot')
+            expect(slot.attributes('aria-description')).toBe('Помолиться · 0 MP · Без эффекта')
             wrapper.vm.activate(0)
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'use_ability', abilityId: 'pray', intent: { mode: 'devotion' } }],
@@ -41,7 +43,7 @@ describe('prayer without an eligible target', () => {
                     action: { kind: 'prayer', abilityId: 'pray', intent: { mode: 'devotion' } },
                 },
             ])
-            expect(wrapper.get('.prayer-preview').text()).toBe('Молитва восстанавливается.')
+            expect(slot.attributes('aria-description')).toContain('Молитва восстанавливается.')
         } finally {
             wrapper.unmount()
         }
