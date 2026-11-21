@@ -1,16 +1,7 @@
 import type { GameEventPayload, NpcRequestStatus, WorldSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
-export interface ChatHistoryEntry {
-    id: string
-    channel: 'say' | 'whisper' | 'status'
-    name: string
-    text: string
-    at: number
-    partnerId?: string
-    partnerName?: string
-    requestKey?: string
-}
+import type { ChatHistoryEntry } from '@/entities/chats'
 
 const requestLabels: Record<NpcRequestStatus['state'], string> = {
     heard: 'Услышал',

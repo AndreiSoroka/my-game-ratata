@@ -2,13 +2,19 @@ import type { ClientMessage } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
-import type { ChatInputState } from '../runtime/chatInput'
+import { type ChatInputState, chatMaxLength } from '../runtime/chatInput'
 import { RuntimeChatInput } from '../runtime/runtimeChatInput'
 import { handleRuntimeKeyDown } from '../runtime/runtimeKeyDown'
 import { RuntimeMovementControls } from '../runtime/runtimeMovementControls'
 import type { RatataGameOptions } from '../runtime/runtimeOptions'
-import ChatHistoryPanel from './ChatHistoryPanel.vue'
+import GameChat from './GameChat.vue'
 import { focusWorldInput } from './keyboardOwnership'
+
+const inactiveDraft = {
+    active: false,
+    draft: '',
+    maxLength: chatMaxLength,
+} satisfies ChatInputState
 
 function key(target: HTMLElement, code: string, value = code): KeyboardEvent {
     const event = new KeyboardEvent('keydown', {
@@ -22,8 +28,8 @@ function key(target: HTMLElement, code: string, value = code): KeyboardEvent {
 }
 
 it('passes only WASD from history and its tabs, retaining native scrolling and confirmation ownership', async () => {
-    const wrapper = mount(ChatHistoryPanel, {
-        props: { entries: [], typing: false },
+    const wrapper = mount(GameChat, {
+        props: { entries: [], state: inactiveDraft },
         attachTo: document.body,
     })
     const heard = vi.fn<(event: KeyboardEvent) => void>()
@@ -65,22 +71,21 @@ it('finishes a public draft from history focus without moving, then returns to c
     const canvas = document.createElement('canvas')
     canvas.dataset.gameCanvas = 'true'
     canvas.tabIndex = 0
-    const editor = document.createElement('input')
-    editor.dataset.publicChatInput = ''
-    document.body.append(canvas, editor)
-    const wrapper = mount(ChatHistoryPanel, {
-        props: { entries: [], typing: false },
+    document.body.append(canvas)
+    const wrapper = mount(GameChat, {
+        props: { entries: [], state: inactiveDraft },
+        attrs: { onDraft: (text: string) => chat.setDraft(text) },
         attachTo: document.body,
     })
     const send = vi.fn<(command: ClientMessage) => void>()
     const move = vi.fn<(code: string) => void>()
     const chat = new RuntimeChatInput(
         (state) => {
-            void wrapper.setProps({ typing: state.active })
+            void wrapper.setProps({ state })
         },
         focusWorldInput,
         undefined,
-        focusWorldInput
+        () => focusWorldInput(true)
     )
     const actions = {
         chat,
@@ -97,9 +102,10 @@ it('finishes a public draft from history focus without moving, then returns to c
         canvas.focus()
         key(canvas, 'Enter', 'Enter')
         await wrapper.vm.$nextTick()
-        editor.focus()
-        expect(key(editor, 'KeyW', 'ц').defaultPrevented).toBe(false)
-        chat.setDraft('Привет')
+        const editor = wrapper.get<HTMLInputElement>('input[data-public-chat-input]')
+        expect(document.activeElement).toBe(editor.element)
+        expect(key(editor.element, 'KeyW', 'ц').defaultPrevented).toBe(false)
+        await editor.setValue('Привет')
         const composing = new KeyboardEvent('keydown', {
             code: 'Enter',
             key: 'Enter',
@@ -107,7 +113,7 @@ it('finishes a public draft from history focus without moving, then returns to c
             bubbles: true,
             cancelable: true,
         })
-        editor.dispatchEvent(composing)
+        editor.element.dispatchEvent(composing)
         expect(composing.defaultPrevented).toBe(false)
         expect(chat.isActive).toBe(true)
         expect(send).not.toHaveBeenCalled()
@@ -126,7 +132,6 @@ it('finishes a public draft from history focus without moving, then returns to c
         chat.cancel()
         wrapper.unmount()
         canvas.remove()
-        editor.remove()
     }
 })
 

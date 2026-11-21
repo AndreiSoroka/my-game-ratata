@@ -11,8 +11,8 @@ export default defineConfig([
         rules: { 'fsd/typo-in-layer-name': 'off' },
     },
     {
-        // Steiger cannot see these entities' consumers in the game adapter.
-        files: ['./src/entities/{menus,player-effects,player-vitals,quick-actions}/**'],
+        // Steiger misses consumers in the game adapter and the temporarily excluded widgets.
+        files: ['./src/entities/{chats,menus,player-effects,player-vitals,quick-actions}/**'],
         rules: { 'fsd/insignificant-slice': 'off' },
     },
 ])
