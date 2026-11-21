@@ -9,7 +9,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
-import { healthBarPercent, healthText } from '@/entities/character'
+import { healthBarPercent, healthText } from '@/entities/player-vitals'
 
 import { graveName } from './graveInteractions'
 

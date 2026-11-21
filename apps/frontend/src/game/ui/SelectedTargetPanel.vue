@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CharacterSnapshot, WorldGraveSnapshot } from '@my-game-ratata/contracts'
 
-import { healthBarPercent, healthText } from '@/entities/character'
+import { healthBarPercent, healthText } from '@/entities/player-vitals'
 
 import { relation } from './combatTargeting'
 import GraveDetails from './GraveDetails.vue'

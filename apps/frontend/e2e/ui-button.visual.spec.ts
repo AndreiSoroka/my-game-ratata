@@ -429,7 +429,7 @@ test('Shared button and entity menu events use the built-in Storybook Actions pa
             event: /onClick:\s*\(1\)/,
         },
         {
-            story: 'entities-menu--actions',
+            story: 'entities-menu-menu--actions',
             button: '[data-dialog-action="markers"]',
             activate: (button: Locator) => button.click(),
             event: /onAction:\s*\(1\)\s*\["markers"\]/,

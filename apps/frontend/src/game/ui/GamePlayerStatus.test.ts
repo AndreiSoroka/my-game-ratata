@@ -17,9 +17,9 @@ describe('production player status', () => {
         const wrapper = mount(GamePlayerStatus, {
             props: { character: playerStatusFixture({ nickname: LONG_PLAYER_NAME }) },
         })
-        expect(wrapper.findAll('.character-hud-frame')).toHaveLength(1)
-        const frame = wrapper.get('.character-hud-frame')
-        const panel = frame.get('[role="region"][aria-label="Player status"]')
+        expect(wrapper.findAll('.hud-frame')).toHaveLength(1)
+        const frame = wrapper.get('.hud-frame')
+        const panel = frame.get('[role="region"][aria-label="Player vitals"]')
         expect(panel.get('h2').text()).toBe(LONG_PLAYER_NAME)
         expect(panel.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
         expect(panel.find('[data-fantasy-divider="divider-005"]').exists()).toBe(false)
@@ -36,7 +36,7 @@ describe('production player status', () => {
         for (const label of ['Connected', 'Шаг', 'Рывок', 'DMG', 'Dodge', 'Crit', 'Speed', 'CD'])
             expect(wrapper.text()).not.toContain(label)
         expect(
-            wrapper.findAll('.player-status__resource-label').map((label) => label.text())
+            wrapper.findAll('.player-vitals__resource-label').map((label) => label.text())
         ).toEqual(['HP', 'MP', 'EN'])
         expect(wrapper.findAll('.game-bar__label')).toHaveLength(0)
         expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(3)
@@ -182,7 +182,7 @@ describe('player effects widget', () => {
     })
     it('keeps law previews visible and discloses three separate status rows', async () => {
         const wrapper = mount(GamePlayerStatus, { props: { character: wantedStatusFixture() } })
-        const resources = wrapper.get('[aria-label="Player status"]')
+        const resources = wrapper.get('[aria-label="Player vitals"]')
         const effects = wrapper.get('[aria-label="Player effects"]')
         expect(resources.find('[data-player-effect]').exists()).toBe(false)
         const disclosure = effects.get('button[aria-label="Активные эффекты"]')

@@ -1,0 +1,84 @@
+import type { Meta, StoryObj } from '@storybook/web-components-vite'
+import { h } from 'vue'
+
+import { renderVueStory } from '@/shared/lib/storybook'
+import { HudFrame } from '@/shared/ui/common/hud-frame'
+
+import type { PlayerEffectsData } from '../model/playerEffects'
+import PlayerEffectsView from './PlayerEffectsView.vue'
+
+const meta = {
+    title: 'Entities/Player effects/Overview',
+    render(args) {
+        const host = renderVueStory(PlayerEffectsView, { ...args }, { padding: '16px' })
+        host.style.maxWidth = '362px'
+        return host
+    },
+} satisfies Meta<PlayerEffectsData>
+
+export default meta
+type Story = StoryObj<PlayerEffectsData>
+
+export const Crime: Story = {
+    args: {
+        effects: [
+            { kind: 'theft-cooldown', remainingMs: 3500 },
+            { kind: 'wanted', remainingMs: 21_500 },
+            { kind: 'blacklisted' },
+        ],
+    },
+}
+
+export const Combat: Story = {
+    args: {
+        effects: [
+            { kind: 'stun', remainingMs: 760 },
+            { kind: 'barrier', remainingMs: 4500 },
+            { kind: 'defensive-stance' },
+            { kind: 'blade-combo', stacks: 2, stackLimit: 3, remainingMs: 1750 },
+            { kind: 'weakened', remainingMs: 2250 },
+            { kind: 'slowed', remainingMs: 1850 },
+            { kind: 'feared', remainingMs: 1300 },
+        ],
+    },
+}
+
+export const Movement: Story = {
+    args: { effects: [{ kind: 'sneaking' }, { kind: 'dashing' }] },
+}
+
+export const PrayerEffects: Story = {
+    args: {
+        effects: [
+            { kind: 'prayer-protection' },
+            { kind: 'prayer-blessing' },
+            { kind: 'prayer-vulnerability' },
+        ],
+    },
+}
+
+export const Empty: Story = { args: { effects: [] } }
+
+export const Compact: Story = {
+    args: {
+        compact: true,
+        effects: [
+            { kind: 'stun', remainingMs: 760 },
+            { kind: 'barrier', remainingMs: 4500 },
+            { kind: 'defensive-stance' },
+            { kind: 'prayer-blessing' },
+        ],
+    },
+    render(args) {
+        return renderVueStory(
+            {
+                render: () =>
+                    h(HudFrame, { style: { width: '150px' } }, () =>
+                        h(PlayerEffectsView, { ...args })
+                    ),
+            },
+            {},
+            { padding: '16px' }
+        )
+    },
+}

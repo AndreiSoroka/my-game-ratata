@@ -2,7 +2,7 @@
 import { type CharacterSnapshot, resolveCombatWeapon } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
-import { healthBarPercent } from '@/entities/character'
+import { healthBarPercent } from '@/entities/player-vitals'
 
 import {
     observedDamageText,

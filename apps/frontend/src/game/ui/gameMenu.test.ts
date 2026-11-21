@@ -109,7 +109,7 @@ it('can leave a pending startup through Escape or the visible menu button before
     })
     const wrapper = await joined()
     try {
-        expect(wrapper.find('[aria-label="Player status"]').exists()).toBe(false)
+        expect(wrapper.find('[aria-label="Player vitals"]').exists()).toBe(false)
         await pressEscape()
         expect(wrapper.find('.game-menu').exists()).toBe(true)
         await pressEscape()

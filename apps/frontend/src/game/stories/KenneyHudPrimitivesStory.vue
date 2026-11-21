@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HealthSnapshot, SoulSnapshot } from '@my-game-ratata/contracts'
 
-import { SoulBadgeIcons } from '@/entities/character'
+import { SoulBadgeIcons } from '@/entities/player-effects'
 
 import GameFrame from '../ui/primitives/GameFrame.vue'
 import GameResourceBar from '../ui/primitives/GameResourceBar.vue'

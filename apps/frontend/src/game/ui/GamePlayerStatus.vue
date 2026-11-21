@@ -3,14 +3,14 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
 import {
-    CharacterHudFrame,
-    healthBarPercent,
-    type PlayerStatusData,
+    FaithStatusList,
     projectPlayerEffects,
-    projectPlayerStatusDetails,
-} from '@/entities/character'
+    projectPlayerPatrons,
+} from '@/entities/player-effects'
+import { healthBarPercent, type PlayerVitalsData } from '@/entities/player-vitals'
+import { HudFrame } from '@/shared/ui/common/hud-frame'
 import { PlayerEffectsWidget } from '@/widgets/player-effects'
-import { PlayerStatusWidget } from '@/widgets/player-status'
+import { PlayerVitalsWidget } from '@/widgets/player-vitals'
 
 import { useStatusPanelBounds } from './useStatusPanelBounds'
 
@@ -18,13 +18,14 @@ const props = defineProps<{ character: CharacterSnapshot; serverTime?: number }>
 const panel = ref<HTMLElement>()
 useStatusPanelBounds(panel)
 
-const status = computed<PlayerStatusData>(() => {
+const vitals = computed<PlayerVitalsData>(() => {
     const {
+        nickname,
         health: hp,
         resources: { mana, energy },
     } = props.character
     return {
-        ...projectPlayerStatusDetails(props.character),
+        nickname,
         hpPercent: healthBarPercent(hp),
         manaPercent: healthBarPercent(mana),
         energyPercent: healthBarPercent(energy),
@@ -33,20 +34,22 @@ const status = computed<PlayerStatusData>(() => {
         ...(energy.kind === 'exact' && { energyCurrent: energy.current, energyMax: energy.max }),
     }
 })
+const patrons = computed(() => projectPlayerPatrons(props.character))
 const effects = computed(() => projectPlayerEffects(props.character, props.serverTime))
 </script>
 
 <template>
     <div ref="panel" class="game-player-status">
-        <CharacterHudFrame compact>
-            <PlayerStatusWidget v-bind="status" compact />
+        <HudFrame>
+            <PlayerVitalsWidget v-bind="vitals" compact />
+            <FaithStatusList :patrons="patrons" />
             <PlayerEffectsWidget
                 :effects="effects"
                 :soul-kind="character.soul?.kind"
                 :is-can-speak="character.soul?.canSpeak"
                 compact
             />
-        </CharacterHudFrame>
+        </HudFrame>
     </div>
 </template>
 

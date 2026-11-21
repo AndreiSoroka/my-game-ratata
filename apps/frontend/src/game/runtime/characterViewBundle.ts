@@ -1,7 +1,7 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, Label, Rectangle, vec } from 'excalibur'
 
-import { healthBarPercent } from '@/entities/character'
+import { healthBarPercent } from '@/entities/player-vitals'
 
 import { characterOverhead } from './characterPresentationGeometry'
 

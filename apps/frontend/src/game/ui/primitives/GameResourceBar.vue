@@ -4,7 +4,7 @@ import './gameUi.css'
 import type { HealthSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
-import { healthBarPercent, healthText } from '@/entities/character'
+import { healthBarPercent, healthText } from '@/entities/player-vitals'
 
 const props = defineProps<{ value: HealthSnapshot; kind: 'hp' | 'mana' | 'energy' }>()
 const percent = computed(() => healthBarPercent(props.value))

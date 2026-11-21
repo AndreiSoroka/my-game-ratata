@@ -8,7 +8,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
-import { SoulBadge } from '@/entities/character'
+import { SoulBadge } from '@/entities/player-effects'
 
 import CityDemandReport from './CityDemandReport.vue'
 import CityMarket from './CityMarket.vue'

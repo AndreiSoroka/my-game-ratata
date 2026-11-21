@@ -10,7 +10,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
-import { SoulBadge } from '@/entities/character'
+import { SoulBadge } from '@/entities/player-effects'
 
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'

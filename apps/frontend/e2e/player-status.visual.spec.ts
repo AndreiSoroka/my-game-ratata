@@ -47,12 +47,12 @@ for (const {
     emptyEffectsMessages,
     hudWidth,
 } of states) {
-    test(`production player status ${story} at ${width}px`, async ({ page }) => {
+    test(`production player HUD ${story} at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
         await page.goto(`/iframe.html?id=${storyId}--${story}&viewMode=story`)
         const hud = page.locator('.game-player-status')
-        const frame = page.locator('.character-hud-frame')
-        const panel = frame.getByRole('region', { name: 'Player status' })
+        const frame = page.locator('.hud-frame')
+        const panel = frame.getByRole('region', { name: 'Player vitals' })
         await expect(panel).toBeVisible()
         await readyUiStory(page)
         await expectHudFrame(frame)
@@ -60,6 +60,8 @@ for (const {
         const effects = frame.getByRole('region', { name: 'Player effects' })
         await expect(effects).toBeVisible()
         await expect(panel.getByRole('region', { name: 'Player effects' })).toHaveCount(0)
+        await expect(panel.locator('.faith-status-list')).toHaveCount(0)
+        await expect(effects.locator('.faith-status-list')).toHaveCount(0)
         await expect(effects.locator('[data-player-effect]')).toHaveCount(effectRows)
         const emptyState = effects.getByText('Всё в порядке', { exact: true })
         await expect(emptyState).toHaveCount(emptyEffectsMessages)
@@ -76,9 +78,9 @@ for (const {
         )
         await expect(effects.locator('[data-player-effect]:visible')).toHaveCount(0)
         await expect(panel.locator('[data-player-effect]')).toHaveCount(0)
-        await expect(panel.locator('.player-status__layout')).toHaveCSS('row-gap', '4px')
-        await expect(panel.locator('.player-status__resources')).toHaveCSS('row-gap', '3px')
-        await expect(panel.locator('.player-status__header [role="img"]')).toHaveCount(0)
+        await expect(panel.locator('.player-vitals__layout')).toHaveCSS('row-gap', '4px')
+        await expect(panel.locator('.player-vitals__resources')).toHaveCSS('row-gap', '3px')
+        await expect(panel.locator('.player-vitals__header [role="img"]')).toHaveCount(0)
         await expect(panel.locator('.soul-badge-icons')).toHaveCount(0)
         const identity = effects.locator('.player-effects__identity')
         const isEcho = story === 'scripted-echo'
@@ -93,7 +95,7 @@ for (const {
         expect(summaryBounds.y).toBeLessThan(iconsBounds.y + iconsBounds.height)
         await expect(effects.getByRole('heading', { name: 'Статус игрока' })).toHaveCount(0)
         await expect(panel).not.toContainText('Connected')
-        await expect(panel.locator('.player-status__header')).toHaveCSS(
+        await expect(panel.locator('.player-vitals__header')).toHaveCSS(
             'background-color',
             'rgba(0, 0, 0, 0)'
         )
@@ -103,10 +105,10 @@ for (const {
         await expect(heading).toHaveCSS('font-family', /Pixelify Sans/)
         await expect(heading).toHaveCSS('white-space', 'nowrap')
         await expect(heading).toHaveCSS('text-overflow', 'ellipsis')
-        await assertStatusDetails(panel, extended, story === 'faith-known' || story === 'wanted')
+        await assertFaithDetails(frame, extended, story === 'faith-known' || story === 'wanted')
         await assertResourceBars(panel, percentagesByStory[story] ?? defaultPercentages, numbers)
         await assertPanelGeometry(panel, story === 'long-name' && width <= 740)
-        expect((await frame.boundingBox())!.height).toBeLessThanOrEqual(extended ? 844 : 116)
+        expect((await frame.boundingBox())!.height).toBeLessThanOrEqual(extended ? 844 : 132)
         await expect(hud).toHaveScreenshot(`player-status-${story}-${width}.png`, {
             animations: 'disabled',
             maxDiffPixels: 0,
@@ -123,7 +125,7 @@ test('low resources pulse independently and only low health dims the other bars'
     const mana = page.getByRole('progressbar', { name: 'Mana' })
     const energy = page.getByRole('progressbar', { name: 'Energy' })
     await expect(health).toHaveAttribute('aria-valuenow', '25')
-    await expect(health).toHaveCSS('animation-name', /player-status-bar-blink/)
+    await expect(health).toHaveCSS('animation-name', /player-vitals-bar-blink/)
     for (const bar of [mana, energy]) {
         await expect(bar).toHaveCSS('opacity', '0.92')
         await expect(bar).toHaveCSS('animation-name', 'none')
@@ -131,7 +133,7 @@ test('low resources pulse independently and only low health dims the other bars'
 
     await page.goto(`/iframe.html?id=${storyId}--low-resources&viewMode=story`)
     for (const bar of [health, mana, energy]) {
-        await expect(bar).toHaveCSS('animation-name', /player-status-bar-blink/)
+        await expect(bar).toHaveCSS('animation-name', /player-vitals-bar-blink/)
         await expect(bar).toHaveAttribute('data-dimmed', 'false')
     }
 
@@ -149,7 +151,9 @@ const patronMoods = [
 
 for (const { state, label, color } of patronMoods) {
     test(`patron mood ${state} shows its icon and tone`, async ({ page }) => {
-        await page.goto(`/iframe.html?id=entities-character-patron-mood--${state}&viewMode=story`)
+        await page.goto(
+            `/iframe.html?id=entities-player-effects-patron-mood--${state}&viewMode=story`
+        )
         const mood = page.getByRole('img', { name: label })
         await expect(mood).toHaveAttribute('title', label)
         await expect(mood).toHaveText('')
@@ -165,9 +169,11 @@ test('effects disclosure republishes the HUD height after toggling and resizing'
 }) => {
     await page.setViewportSize({ width: 1280, height: 844 })
     await page.goto(`/iframe.html?id=${storyId}--wanted&viewMode=story`)
-    const panel = page.getByRole('region', { name: 'Player status' })
-    await expect(panel.getByLabel('Покровитель и развитие')).toBeVisible()
-    const effects = page.getByRole('region', { name: 'Player effects' })
+    const frame = page.locator('.hud-frame')
+    const panel = frame.getByRole('region', { name: 'Player vitals' })
+    const faith = frame.locator('.faith-status-list').getByLabel('Покровитель и развитие')
+    await expect(faith).toBeVisible()
+    const effects = frame.getByRole('region', { name: 'Player effects' })
     const disclosure = effects.getByRole('button', { name: 'Активные эффекты', exact: true })
     const list = effects.getByRole('list', { includeHidden: true })
     const hud = page.locator('.game-player-status')
@@ -188,10 +194,7 @@ test('effects disclosure republishes the HUD height after toggling and resizing'
         'Розыск · 22 с',
         'В чёрном списке Новогорода',
     ])
-    await expect(panel.getByLabel('Покровитель и развитие')).toHaveCSS(
-        'font-family',
-        /Pixelify Sans/
-    )
+    await expect(faith).toHaveCSS('font-family', /Pixelify Sans/)
     await expect(effects).toHaveCSS('font-family', /Pixelify Sans/)
     expect((await hud.boundingBox())!.height).toBeGreaterThan(collapsedHeight)
     await expectPublishedHeight(panel)
@@ -208,13 +211,13 @@ test('effects disclosure republishes the HUD height after toggling and resizing'
     await expectPublishedHeight(panel)
 })
 
-test('compact status list scrolls and reserves space for the adjacent overlays', async ({
+test('compact effects list scrolls and reserves space for the adjacent overlays', async ({
     page,
 }) => {
     const height = 344
     await page.setViewportSize({ width: 320, height })
     await page.goto(`/iframe.html?id=${storyId}--many-effects&viewMode=story`)
-    const panel = page.getByRole('region', { name: 'Player status' })
+    const panel = page.getByRole('region', { name: 'Player vitals' })
     const effects = page.getByRole('region', { name: 'Player effects' })
     const disclosure = effects.getByRole('button', { name: 'Активные эффекты', exact: true })
     await disclosure.click()
@@ -241,34 +244,46 @@ test('compact status list scrolls and reserves space for the adjacent overlays',
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height - 112)
 })
 
-test('player status widget shows the compact HUD and responds to Controls', async ({ page }) => {
+test('player vitals widget shows the compact HUD and responds to Controls', async ({ page }) => {
     await page.goto(
-        '/?path=/story/widgets-player-status--normal&globals=backgrounds.value:parchment'
+        '/?path=/story/widgets-player-vitals--normal&globals=backgrounds.value:parchment'
     )
     const preview = page.frameLocator('#storybook-preview-iframe')
-    const frame = preview.locator('.character-hud-frame')
+    const frame = preview.locator('.hud-frame')
     await expectHudFrame(frame)
     await expect(frame).toHaveCSS('width', '220px')
 
-    const status = frame.getByRole('region', { name: 'Player status' })
-    await expect(status.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
-    await assertResourceBars(status, defaultPercentages, [])
+    const vitals = frame.getByRole('region', { name: 'Player vitals' })
+    await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
+    await expect(frame.locator('.faith-status-list')).toHaveCount(0)
+    await expect(frame.getByRole('region', { name: 'Player effects' })).toHaveCount(0)
+    await assertResourceBars(vitals, defaultPercentages, [])
 
     await page.getByRole('tab', { name: /^Controls/ }).click()
     await page.locator('#control-hpPercent').press('Home')
-    const health = status.getByRole('progressbar', { name: 'Health' })
+    const health = vitals.getByRole('progressbar', { name: 'Health' })
     await expect(health).toHaveAttribute('aria-valuenow', '0')
     await expect(health).toHaveAttribute('data-animated', 'true')
 })
 
-test('character entity controls edit fill and exact values independently', async ({ page }) => {
-    await page.goto('/?path=/story/entities-character-player-status--authorized-numbers')
+test('player vitals entity shows the game layout and edits fill and exact values independently', async ({
+    page,
+}) => {
+    await page.goto('/?path=/story/entities-player-vitals-overview--authorized-numbers')
     const preview = page.frameLocator('#storybook-preview-iframe')
-    const health = preview.getByRole('progressbar', { name: 'Health' })
-    await expect(health).toHaveAttribute('aria-valuenow', '60')
-    await expect(health).toHaveAttribute('aria-valuetext', '18/30')
+    const frame = preview.locator('.hud-frame')
+    await expectHudFrame(frame)
+    await expect(frame).toHaveCSS('width', '220px')
+    const vitals = frame.getByRole('region', { name: 'Player vitals' })
+    await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
+    await assertResourceBars(vitals, [60, 25, 82], ['18/30', '10/40', '123/150'])
+    const health = vitals.getByRole('progressbar', { name: 'Health' })
 
     await page.getByRole('tab', { name: /^Controls/ }).click()
+    const firstControl = page.getByRole('tabpanel').locator('tbody tr').first()
+    await expect(firstControl.getByText('compact', { exact: true })).toBeVisible()
+    const compact = firstControl.getByRole('switch', { name: 'compact' })
+    await expect(compact).toBeChecked()
     await page.locator('#control-hpPercent').press('End')
     await expect(health).toHaveAttribute('aria-valuenow', '100')
     await expect(health).toHaveAttribute('aria-valuetext', '18/30')
@@ -278,6 +293,20 @@ test('character entity controls edit fill and exact values independently', async
     await exactHealth.press('Tab')
     await expect(health).toHaveAttribute('aria-valuetext', '17/30')
     await expect(health).toHaveAttribute('aria-valuenow', '100')
+
+    await compact.press('Space')
+    await expect(compact).not.toBeChecked()
+    const standalone = preview.getByRole('region', { name: 'Player vitals' })
+    await expect(standalone.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(2)
+    await expect(frame).toHaveCount(1)
+    await expect(
+        standalone.getByRole('progressbar', { name: 'Health' }).locator('.bar-track')
+    ).toHaveCSS('height', '18px')
+
+    await compact.press('Space')
+    await expect(compact).toBeChecked()
+    await expect(frame).toHaveCSS('width', '220px')
+    await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
 })
 
 async function expectHudFrame(panel: Locator): Promise<void> {
@@ -285,7 +314,7 @@ async function expectHudFrame(panel: Locator): Promise<void> {
     await expect(panel).toHaveCSS('padding', '7px')
     await expect(panel).toHaveCSS('background-image', /^linear-gradient\(155deg,/)
     const border = panel.locator(':scope > [data-fantasy-border="border-017"]')
-    await expect(border).toHaveCSS('border-top-width', '8px')
+    await expect(border).toHaveCSS('border-top-width', '16px')
     await expect(border.locator('feFlood[result="border-color"]')).toHaveCSS(
         'flood-color',
         'rgb(198, 184, 155)'
@@ -293,29 +322,39 @@ async function expectHudFrame(panel: Locator): Promise<void> {
     await expect(panel).toHaveCSS('outline-style', 'none')
 }
 
-async function assertStatusDetails(
-    panel: Locator,
+async function assertFaithDetails(
+    frame: Locator,
     extended: boolean,
     showPatronMood: boolean
 ): Promise<void> {
-    const divider = panel.locator('[data-fantasy-divider="divider-002"]')
+    const faith = frame.locator('.faith-status-list')
+    const divider = frame.locator('[data-fantasy-divider="divider-002"]')
     if (!extended) {
+        await expect(faith).toHaveCount(0)
         await expect(divider).toHaveCount(0)
         return
     }
 
+    await expect(faith).toBeVisible()
+    await expect(
+        frame.locator(
+            ':scope > .hud-frame__border > .player-vitals + .faith-status-list + .player-effects'
+        )
+    ).toHaveCount(1)
+    await expect(faith).toHaveCSS('margin-block-start', '4px')
+    await expect(faith).toHaveCSS('row-gap', '3px')
     await expect(divider).toBeVisible()
     await expect(divider).toHaveCSS('height', '4px')
     await expect(divider).toHaveAttribute('aria-hidden', 'true')
     await expect(divider).toHaveAttribute('data-fantasy-divider-ends', 'right')
     await expect(divider).toHaveAttribute('data-fantasy-divider-fade', 'true')
-    await expect(panel.locator('.faith-status__omen')).toHaveCount(0)
+    await expect(faith.locator('.faith-status__omen')).toHaveCount(0)
     if (showPatronMood) {
-        const faithTitle = panel.locator('.faith-status__title')
+        const faithTitle = faith.locator('.faith-status__title')
         await expect(faithTitle.getByRole('img', { name: 'Благосклонность' })).toBeVisible()
         await expect(faithTitle).not.toContainText('Благосклонность')
     } else {
-        await expect(panel.locator('[data-patron-mood]')).toHaveCount(0)
+        await expect(faith.locator('[data-patron-mood]')).toHaveCount(0)
     }
 }
 
@@ -382,7 +421,7 @@ async function assertPanelGeometry(
         const bounds = panel.getBoundingClientRect()
         const heading = panel.querySelector('h2')!
         const title = heading.getBoundingClientRect()
-        const header = panel.querySelector('.player-status__header')!.getBoundingClientRect()
+        const header = panel.querySelector('.player-vitals__header')!.getBoundingClientRect()
         const tracks = Array.from(panel.querySelectorAll('.game-bar'), (element) =>
             element.getBoundingClientRect()
         )

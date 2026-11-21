@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
-import type { PlayerEffectsData } from '@/entities/character'
 import { renderVueStory } from '@/shared/lib/storybook'
 
 import PlayerEffectsWidget from './PlayerEffectsWidget.vue'
+
+type PlayerEffectsWidgetProps = InstanceType<typeof PlayerEffectsWidget>['$props']
 
 const meta = {
     title: 'Widgets/Player effects',
@@ -17,10 +18,10 @@ const meta = {
         host.style.maxWidth = '362px'
         return host
     },
-} satisfies Meta<PlayerEffectsData>
+} satisfies Meta<PlayerEffectsWidgetProps>
 
 export default meta
-type Story = StoryObj<PlayerEffectsData>
+type Story = StoryObj<PlayerEffectsWidgetProps>
 
 export const Crime: Story = {
     args: {

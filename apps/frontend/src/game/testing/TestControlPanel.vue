@@ -4,7 +4,7 @@ import './testControlPanel.css'
 import type { Vector2 } from '@my-game-ratata/contracts'
 import { onBeforeUnmount, ref } from 'vue'
 
-import { healthText } from '@/entities/character'
+import { healthText } from '@/entities/player-vitals'
 
 import GameButton from '../ui/primitives/GameButton.vue'
 import GameFrame from '../ui/primitives/GameFrame.vue'

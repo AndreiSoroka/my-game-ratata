@@ -258,7 +258,7 @@ async function assertMobileTargetSpace(page: Page): Promise<void> {
     const target = page.getByLabel('Выбранная цель')
     await expect(target).toBeVisible()
     const targetBounds = await target.boundingBox()
-    const playerBounds = await page.getByRole('region', { name: 'Player status' }).boundingBox()
+    const playerBounds = await page.getByRole('region', { name: 'Player vitals' }).boundingBox()
     expect(targetBounds).not.toBeNull()
     expect(playerBounds).not.toBeNull()
     expect(targetBounds!.y).toBeGreaterThanOrEqual(playerBounds!.y + playerBounds!.height)
