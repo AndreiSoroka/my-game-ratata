@@ -142,6 +142,30 @@ for (const width of [1280, 390, 320]) {
     }
 }
 
+test('FantasyPanel Default Controls switch slot content and panel gradient', async ({ page }) => {
+    await page.goto(`/?path=/story/${storyId}--default`)
+    const panel = page.frameLocator('#storybook-preview-iframe').getByTestId('panel-default')
+    await expect(panel).toHaveText('Панель с содержимым')
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+
+    const slot = page.locator('#control-slotContent')
+    await slot.selectOption({ label: 'Empty element' })
+    await expect(panel.locator(':scope > div')).toBeEmpty()
+
+    await page.locator('#control-as').selectOption('span')
+    await expect(panel).toHaveJSProperty('tagName', 'SPAN')
+    await expect(panel.locator(':scope > span')).toBeEmpty()
+
+    await slot.selectOption({ label: 'Sample text' })
+    await expect(panel).toHaveText('Панель с содержимым')
+    await page.locator('#control-gradientTop').fill('rgb(120, 80, 40)')
+    await page.locator('#control-gradientTop').press('Tab')
+    await expect(panel).not.toHaveClass(/fantasy-panel--gradient/)
+    await page.locator('#control-gradientBottom').fill('rgb(30, 50, 90)')
+    await page.locator('#control-gradientBottom').press('Tab')
+    await expect(panel).toHaveClass(/fantasy-panel--gradient/)
+})
+
 test('FantasyPanel catalog renders all 32 solid panel variants', async ({ page }) => {
     await page.goto(`/iframe.html?id=${storyId}--variants&viewMode=story`)
     const panels = page.getByTestId('fantasy-panel-story').locator('.fantasy-panel')

@@ -74,6 +74,26 @@ for (const width of [1280, 390, 320]) {
     }
 }
 
+test('FantasyBorder Default Controls switch slot content and its native element', async ({
+    page,
+}) => {
+    await page.goto(`/?path=/story/${storyId}--default`)
+    const border = page.frameLocator('#storybook-preview-iframe').getByTestId('border-default')
+    await expect(border).toHaveText('Рамка с содержимым')
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+
+    const slot = page.locator('#control-slotContent')
+    await slot.selectOption({ label: 'Empty element' })
+    await expect(border.locator(':scope > div')).toBeEmpty()
+
+    await page.locator('#control-as').selectOption('span')
+    await expect(border).toHaveJSProperty('tagName', 'SPAN')
+    await expect(border.locator(':scope > span')).toBeEmpty()
+
+    await slot.selectOption({ label: 'Sample text' })
+    await expect(border).toHaveText('Рамка с содержимым')
+})
+
 test('FantasyBorder catalog renders all 32 requested variants', async ({ page }) => {
     await page.goto(`/iframe.html?id=${storyId}--variants&viewMode=story`)
     const stage = page.getByTestId('fantasy-border-story')

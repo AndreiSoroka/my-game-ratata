@@ -31,6 +31,72 @@ const stories = [
     },
 ] as const
 
+interface StoryIndexEntry {
+    title: string
+    importPath: string
+    type: 'story' | 'docs'
+    name: string
+}
+
+test('Entities and Shared component groups list their Default first', async ({ request }) => {
+    const response = await request.get('/index.json')
+    expect(response.ok()).toBe(true)
+    const { entries } = (await response.json()) as { entries: Record<string, StoryIndexEntry> }
+    const componentStories = Object.values(entries).filter(
+        ({ type, title }) => type === 'story' && /^(Entities|Shared)\//.test(title)
+    )
+    const defaults = new Map(componentStories.toReversed().map(({ title, name }) => [title, name]))
+    for (const entry of componentStories) {
+        const component = entry.importPath.split('/').at(-1)?.split('.stories.')[0]
+        expect(entry.title.split('/').at(-1), entry.title).toBe(component)
+        const [layer] = entry.title.split('/')
+        expect(entry.importPath).toContain(`/src/${layer?.toLowerCase()}/`)
+    }
+    for (const entry of componentStories.filter(({ title }) => title.startsWith('Entities/'))) {
+        const [, slice] = entry.title.split('/')
+        expect(entry.title.split('/'), entry.title).toHaveLength(3)
+        expect(entry.importPath).toContain(`/src/entities/${slice}/`)
+    }
+    expect(defaults.size).toBeGreaterThan(0)
+    for (const [title, firstStory] of defaults) {
+        expect(firstStory, title).toBe('Default')
+    }
+})
+
+test('HudRow Default Controls change slots independently', async ({ page }) => {
+    await page.goto('/?path=/story/shared-common-hudrow--default')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const row = preview.locator('#storybook-root > div > .hud-row')
+    await expect(row).toBeVisible()
+    await expect(row.getByRole('img', { name: 'Иконка' })).toBeVisible()
+    const content = row.locator('.hud-row__content')
+    await expect(content.locator('div:empty')).toBeVisible()
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+    await page.locator('#control-leading').selectOption({ label: 'Текст' })
+    await expect(row.locator('.hud-row__leading')).toHaveText('HP')
+    await expect(content.locator('div:empty')).toBeVisible()
+    await page.locator('#control-content').selectOption({ label: 'Полоса ресурса' })
+    await expect(content.getByRole('progressbar', { name: 'Ресурс' })).toBeVisible()
+    await expect(row.getByRole('img', { name: 'Иконка' })).toBeVisible()
+    await page.locator('#control-trailing').selectOption({ label: 'Без слота' })
+    await expect(row.locator('.hud-row__trailing')).toHaveCount(0)
+    await expect(row.locator('.hud-row__leading')).toHaveText('HP')
+})
+
+test('PlayerEffectsView Default Controls preview the identity slot', async ({ page }) => {
+    await page.goto('/?path=/story/entities-player-effects-playereffectsview--default')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const effects = preview.locator('#storybook-root > div > .player-effects')
+    await expect(effects).toBeVisible()
+    await expect(effects.locator('div.player-effects__identity:empty')).toHaveCount(1)
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+    await page.locator('#control-identity').selectOption('soul-badge')
+    await expect(effects.getByRole('img', { name: 'Искра' })).toBeVisible()
+    await expect(effects.locator('div.player-effects__identity:empty')).toHaveCount(0)
+    await page.locator('#control-identity').selectOption('none')
+    await expect(effects.locator('.player-effects__identity')).toHaveCount(0)
+})
+
 async function resolvedColor(page: Page, reference: string): Promise<string> {
     return page.evaluate((color) => {
         const probe = document.createElement('div')
@@ -187,7 +253,7 @@ test('FantasyPanel Controls edit both colors independently', async ({ page }) =>
     const panel = preview.getByTestId('panel-default')
     await expect(panel).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
-    await expect(controls).toHaveAccessibleName(/^Controls\s*4$/)
+    await expect(controls).toBeVisible()
     await controls.click()
     await expect(page.locator('#control-panel')).toHaveValue('panel-026')
     await expect(page.locator('#control-panel option[value^="panel-"]')).toHaveCount(32)

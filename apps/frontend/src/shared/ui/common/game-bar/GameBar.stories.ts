@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
+import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
@@ -6,6 +7,7 @@ import { lightUiColors } from '@/shared/ui/theme'
 import GameBarStory from './GameBarStory.vue'
 import { GameBar, type GameBarProps } from './index'
 
+type StoryArgs = GameBarProps & { content: 'native' | 'empty' | 'text' }
 const meta = {
     title: 'Shared/Common/GameBar',
     args: {
@@ -18,6 +20,7 @@ const meta = {
         label: 'Здоровье',
         showValue: false,
         shadow: true,
+        content: 'native',
     },
     argTypes: {
         value: { control: 'number' },
@@ -29,10 +32,18 @@ const meta = {
         label: { control: 'text' },
         showValue: { control: 'boolean' },
         shadow: { control: 'boolean' },
+        content: {
+            name: 'Содержимое слота',
+            control: {
+                type: 'select',
+                labels: { native: 'Значение полосы', empty: 'Пустой span', text: 'Текст' },
+            },
+            options: ['native', 'empty', 'text'],
+        },
     },
-} satisfies Meta<GameBarProps>
+} satisfies Meta<StoryArgs>
 export default meta
-type Story = StoryObj<GameBarProps>
+type Story = StoryObj<StoryArgs>
 
 function preview(section: string, props: Partial<GameBarProps> = {}): HTMLElement {
     const host = renderVueStory(
@@ -45,12 +56,28 @@ function preview(section: string, props: Partial<GameBarProps> = {}): HTMLElemen
 }
 
 export const Default: Story = {
-    render: (args) =>
-        renderVueStory(GameBar, {
-            ...args,
-            'data-testid': 'game-bar-default',
-            style: { maxWidth: '560px' },
-        }),
+    render: ({ content, ...args }) => {
+        const renderContent = {
+            native: undefined,
+            empty: () => h('span'),
+            text: () => 'Доступно',
+        }
+        return renderVueStory(
+            {
+                render: () =>
+                    h(
+                        GameBar,
+                        {
+                            ...args,
+                            'data-testid': 'game-bar-default',
+                            style: { maxWidth: '560px' },
+                        },
+                        renderContent[content]
+                    ),
+            },
+            {}
+        )
+    },
 }
 export const WithValue: Story = {
     parameters: { controls: { disable: true } },

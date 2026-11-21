@@ -8,7 +8,7 @@ import SoulBadge from './SoulBadge.vue'
 type StoryArgs = { soul?: SoulSnapshot }
 
 const meta = {
-    title: 'Entities/Player effects/SoulBadge',
+    title: 'Entities/player-effects/SoulBadge',
     args: {
         soul: {
             kind: 'spark',
@@ -25,7 +25,7 @@ const meta = {
 export default meta
 type Story = StoryObj<StoryArgs>
 
-export const Spark: Story = {}
+export const Default: Story = {}
 
 export const Echo: Story = {
     args: {

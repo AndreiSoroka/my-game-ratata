@@ -9,7 +9,7 @@ for (const [background, ability] of [
     ['cleric', 'Молитва'],
 ]) {
     test(`production ${background} hotbar preset`, async ({ page }) => {
-        await page.goto(`/iframe.html?id=shared-actionhotbar--${background}&viewMode=story`)
+        await page.goto(`/iframe.html?id=game-actionhotbar--${background}&viewMode=story`)
         const bar = page.getByLabel('Быстрые действия')
         await expect(bar.getByRole('button', { name: /^1: Удар ножом/ })).toBeVisible()
         await expect(bar.getByRole('button', { name: new RegExp(`^2: ${ability}`) })).toBeVisible()
@@ -24,7 +24,7 @@ for (const width of [1280, 390]) {
     ]) {
         test(`production ${state} hotbar at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=shared-actionhotbar--${state}&viewMode=story`)
+            await page.goto(`/iframe.html?id=game-actionhotbar--${state}&viewMode=story`)
             const bar = page.getByLabel('Быстрые действия')
             await expect(bar).toBeVisible()
             await expect(page.getByRole('status', { name: 'Серия ударов' })).toHaveText(
@@ -55,7 +55,7 @@ for (const width of [1280, 390]) {
 for (const width of [1280, 390, 320]) {
     test(`production game menu at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=shared-gamemenu--open&viewMode=story')
+        await page.goto('/iframe.html?id=game-gamemenu--open&viewMode=story')
         const menu = page.getByRole('dialog', { name: 'Игровое меню' })
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toBeFocused()
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toHaveAttribute(

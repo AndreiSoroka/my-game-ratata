@@ -8,7 +8,8 @@ import FaithStatusList from './FaithStatusList.vue'
 type StoryArgs = { patrons: readonly PatronStatusEntry[] }
 
 const meta = {
-    title: 'Entities/Player effects/FaithStatusList',
+    title: 'Entities/player-effects/FaithStatusList',
+    args: { patrons: [{ id: 'hearth', name: 'Угольная Мать', level: 6, mood: 'benevolent' }] },
     parameters: { backgrounds: { disable: false } },
     globals: { backgrounds: { value: 'parchment' } },
     argTypes: { patrons: { control: 'object' } },
@@ -20,6 +21,8 @@ const meta = {
 } satisfies Meta<StoryArgs>
 
 export default meta
+
+export const Default: StoryObj<StoryArgs> = {}
 
 export const MultiplePatrons: StoryObj<StoryArgs> = {
     args: {

@@ -6,7 +6,7 @@ import { characterFixture } from '../testing/characterFixture'
 import ChestContainer from '../ui/ChestContainer.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/ChestContainer' } satisfies Meta
+const meta = { title: 'Game/ChestContainer' } satisfies Meta
 export default meta
 type Story = StoryObj
 const player = characterFixture('owner', {

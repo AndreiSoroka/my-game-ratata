@@ -5,9 +5,9 @@ import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import FantasyBorderStory from './FantasyBorderStory.vue'
-import { FantasyBorder, type FantasyBorderVariant } from './index'
+import { FantasyBorder, type FantasyBorderProps, type FantasyBorderVariant } from './index'
 
-type BorderArgs = { border: FantasyBorderVariant; borderWidth?: number; color: string }
+type BorderArgs = FantasyBorderProps & { slotContent: 'empty' | 'sample' }
 type Section = 'variants' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
     { length: 32 },
@@ -15,12 +15,18 @@ const variants = Array.from(
 )
 const meta = {
     title: 'Shared/External/fantasy-ui-borders/FantasyBorder',
-    args: { border: 'border-026', color: 'currentColor' },
+    args: { as: 'div', border: 'border-026', color: 'currentColor', slotContent: 'sample' },
     parameters: { backgrounds: { disable: false } },
     argTypes: {
+        as: { control: 'select', options: ['div', 'span'] },
         border: { control: 'select', options: variants },
         borderWidth: { control: 'number' },
         color: { control: 'text' },
+        slotContent: {
+            name: 'Default slot',
+            control: { type: 'select', labels: { empty: 'Empty element', sample: 'Sample text' } },
+            options: ['empty', 'sample'],
+        },
     },
 } satisfies Meta<BorderArgs>
 export default meta
@@ -42,18 +48,26 @@ function preview(section: Section, globals: Record<string, unknown>): HTMLElemen
 
 export const Default: Story = {
     render(args, context) {
+        const { slotContent, ...props } = args
         const host = renderVueStory(
             () =>
                 h(
                     FantasyBorder,
                     {
-                        ...args,
+                        ...props,
                         role: 'region',
                         'aria-label': 'FantasyBorder',
                         'data-testid': 'border-default',
-                        style: { width: 'min(480px, 100%)', padding: '16px' },
+                        style: {
+                            display: props.as === 'span' ? 'inline-block' : undefined,
+                            width: 'min(480px, 100%)',
+                            padding: '16px',
+                        },
                     },
-                    () => 'Рамка с содержимым'
+                    () =>
+                        slotContent === 'empty'
+                            ? h(props.as === 'span' ? 'span' : 'div')
+                            : 'Рамка с содержимым'
                 ),
             {}
         )

@@ -8,13 +8,18 @@ import { lightUiColors } from '@/shared/ui/theme'
 import { UiButton, type UiButtonProps } from './index'
 import UiButtonStory from './UiButtonStory.vue'
 
-type ButtonArgs = UiButtonProps & { label: string; onClick: (event: MouseEvent) => void }
+type ButtonArgs = UiButtonProps & {
+    content: 'text' | 'empty'
+    label: string
+    onClick: (event: MouseEvent) => void
+}
 const onClick = fn().mockName('click')
 const borders = Array.from({ length: 32 }, (_, index) => `border-${String(index).padStart(3, '0')}`)
 const panels = Array.from({ length: 32 }, (_, index) => `panel-${String(index).padStart(3, '0')}`)
 const meta = {
     title: 'Shared/Common/UiButton',
     args: {
+        content: 'text',
         label: 'Продолжить',
         border: 'border-026',
         appearance: 'filled',
@@ -27,7 +32,12 @@ const meta = {
         onClick,
     },
     argTypes: {
-        label: { control: 'text' },
+        content: {
+            name: 'Содержимое слота',
+            control: { type: 'select', labels: { text: 'Текст', empty: 'Пустой span' } },
+            options: ['text', 'empty'],
+        },
+        label: { control: 'text', if: { arg: 'content', eq: 'text' } },
         border: { control: 'select', options: borders },
         appearance: { control: 'select', options: ['filled', 'ghost', 'panel'] },
         panel: { control: 'select', options: panels, if: { arg: 'appearance', eq: 'panel' } },
@@ -59,11 +69,19 @@ function preview(section: string): HTMLElement {
 }
 
 export const Default: Story = {
-    render: ({ label, ...args }) =>
+    render: ({ content, label, ...args }) =>
         renderVueStory(
             {
                 render: () =>
-                    h(UiButton, { ...args, 'data-testid': 'ui-button-default' }, () => label),
+                    h(
+                        UiButton,
+                        {
+                            ...args,
+                            'aria-label': content === 'empty' ? label || 'Продолжить' : undefined,
+                            'data-testid': 'ui-button-default',
+                        },
+                        () => (content === 'empty' ? h('span') : label)
+                    ),
             },
             {}
         ),

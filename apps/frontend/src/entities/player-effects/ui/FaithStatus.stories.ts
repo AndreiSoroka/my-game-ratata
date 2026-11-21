@@ -13,15 +13,18 @@ interface StoryArgs {
 }
 
 const meta = {
-    title: 'Entities/Player effects/FaithStatus',
+    title: 'Entities/player-effects/FaithStatus',
     args: {
         patronName: 'Угольная Мать',
         patronMasteryLevel: 3,
     },
     argTypes: {
+        patronName: { control: 'text' },
+        patronMasteryLevel: { control: { type: 'number', min: 0, step: 1 } },
         patronMood: {
             control: 'select',
-            options: ['benevolent', 'neutral', 'wrathful'] satisfies DeityMood[],
+            options: ['unknown', 'benevolent', 'neutral', 'wrathful'],
+            mapping: { unknown: undefined },
         },
     },
     render(args) {
@@ -38,6 +41,6 @@ const meta = {
 export default meta
 type Story = StoryObj<StoryArgs>
 
-export const KnownMood: Story = { args: { patronMood: 'benevolent' } }
+export const Default: Story = {}
 
-export const UnknownMood: Story = {}
+export const KnownMood: Story = { args: { patronMood: 'benevolent' } }

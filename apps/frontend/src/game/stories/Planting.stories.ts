@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import PlantingHint from '../ui/PlantingHint.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/PlantingHint' } satisfies Meta
+const meta = { title: 'Game/PlantingHint' } satisfies Meta
 export default meta
 type Story = StoryObj
 const anchor = { x: 30, y: 150, width: 390, height: 520 }

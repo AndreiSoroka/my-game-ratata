@@ -6,18 +6,47 @@ import { HudFrame } from '@/shared/ui/common'
 
 import PlayerEffectsView from './PlayerEffectsView.vue'
 import type { PlayerEffectsData } from './playerEffectsViewProps'
+import SoulBadgeIcons from './SoulBadgeIcons.vue'
+
+type StoryArgs = PlayerEffectsData & { identity: 'none' | 'empty' | 'soul-badge' }
+
+const identitySlots = {
+    none: undefined,
+    empty: ({ class: className }: { class: string }) => h('div', { class: className }),
+    'soul-badge': ({ class: className }: { class: string }) =>
+        h(SoulBadgeIcons, { class: className, soulKind: 'spark', isCanSpeak: true }),
+}
+
+function renderEffects({ identity, ...props }: StoryArgs, framed = false): HTMLElement {
+    const view = () => h(PlayerEffectsView, props, { identity: identitySlots[identity] })
+    const host = renderVueStory(
+        { render: framed ? () => h(HudFrame, { style: { width: '150px' } }, view) : view },
+        {},
+        { padding: '16px' }
+    )
+    if (!framed) host.style.maxWidth = '362px'
+    return host
+}
 
 const meta = {
-    title: 'Entities/Player effects/PlayerEffectsView',
-    render(args) {
-        const host = renderVueStory(PlayerEffectsView, { ...args }, { padding: '16px' })
-        host.style.maxWidth = '362px'
-        return host
+    title: 'Entities/player-effects/PlayerEffectsView',
+    args: {
+        effects: [{ kind: 'barrier', remainingMs: 4500 }],
+        compact: false,
+        identity: 'empty',
     },
-} satisfies Meta<PlayerEffectsData>
+    argTypes: {
+        effects: { control: 'object' },
+        compact: { control: 'boolean' },
+        identity: { control: 'select', options: Object.keys(identitySlots) },
+    },
+    render: (args) => renderEffects(args),
+} satisfies Meta<StoryArgs>
 
 export default meta
-type Story = StoryObj<PlayerEffectsData>
+type Story = StoryObj<StoryArgs>
+
+export const Default: Story = {}
 
 export const Crime: Story = {
     args: {
@@ -59,6 +88,8 @@ export const PrayerEffects: Story = {
 
 export const Empty: Story = { args: { effects: [] } }
 
+export const WithIdentity: Story = { args: { identity: 'soul-badge' } }
+
 export const Compact: Story = {
     args: {
         compact: true,
@@ -69,16 +100,5 @@ export const Compact: Story = {
             { kind: 'prayer-blessing' },
         ],
     },
-    render(args) {
-        return renderVueStory(
-            {
-                render: () =>
-                    h(HudFrame, { style: { width: '150px' } }, () =>
-                        h(PlayerEffectsView, { ...args })
-                    ),
-            },
-            {},
-            { padding: '16px' }
-        )
-    },
+    render: (args) => renderEffects(args, true),
 }

@@ -11,7 +11,7 @@ for (const width of [1280, 390, 320]) {
     for (const section of ['buttons', 'fields', 'frames', 'slots']) {
         test(`game primitives ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 1000 })
-            await page.goto(`/iframe.html?id=shared-gameprimitivesstory--${section}&viewMode=story`)
+            await page.goto(`/iframe.html?id=game-gameprimitivesstory--${section}&viewMode=story`)
             const stage = page.getByLabel(`Общие компоненты: ${section}`)
             await expect(stage).toBeVisible()
             await ready(page)
@@ -26,7 +26,7 @@ for (const width of [1280, 390, 320]) {
 }
 
 test('native button focus hover and pressed states', async ({ page }) => {
-    await page.goto('/iframe.html?id=shared-gameprimitivesstory--buttons&viewMode=story')
+    await page.goto('/iframe.html?id=game-gameprimitivesstory--buttons&viewMode=story')
     const button = page.getByTestId('primary-default')
     await ready(page)
     await page.getByTestId('secondary-default').focus()
@@ -44,7 +44,7 @@ test('native button focus hover and pressed states', async ({ page }) => {
 })
 
 test('native field focus and editable numeric value', async ({ page }) => {
-    await page.goto('/iframe.html?id=shared-gameprimitivesstory--fields&viewMode=story')
+    await page.goto('/iframe.html?id=game-gameprimitivesstory--fields&viewMode=story')
     const quantity = page.getByRole('spinbutton', { name: 'Количество' })
     await quantity.fill('7')
     await page.keyboard.press('Tab')
@@ -56,7 +56,7 @@ test('native field focus and editable numeric value', async ({ page }) => {
 })
 
 test('shared selected states include checked and current controls', async ({ page }) => {
-    await page.goto('/iframe.html?id=shared-gameprimitivesstory--buttons&viewMode=story')
+    await page.goto('/iframe.html?id=game-gameprimitivesstory--buttons&viewMode=story')
     await expect(page.getByRole('switch', { name: 'Автозапуск' })).toHaveAttribute(
         'aria-checked',
         'true'

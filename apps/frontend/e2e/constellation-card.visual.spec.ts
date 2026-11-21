@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 for (const width of [320, 390, 1280]) {
     test(`spell card spacing and classification at ${width}px`, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=shared-constellationstarcard--prayer&viewMode=story')
+        await page.goto('/iframe.html?id=game-constellationstarcard--prayer&viewMode=story')
         const card = page.getByLabel('Выбранная звезда')
         await expect(card).toContainText('Активное заклинание')
         const spacing = await card.evaluate((element) => {
@@ -25,13 +25,13 @@ for (const width of [320, 390, 1280]) {
         expect(spacing.padding).toBe('18px')
         await page.screenshot({ path: info.outputPath(`spell-card-${width}.png`) })
         await page.goto(
-            '/iframe.html?id=shared-constellationstarcard--physical-passive&viewMode=story'
+            '/iframe.html?id=game-constellationstarcard--physical-passive&viewMode=story'
         )
         await expect(card).toContainText('Пассивный навык')
         await expect(card).not.toContainText('Пассивная способность')
-        await page.goto('/iframe.html?id=shared-constellationstarcard--resurrection&viewMode=story')
+        await page.goto('/iframe.html?id=game-constellationstarcard--resurrection&viewMode=story')
         await expect(card).toContainText('Пассивный навык')
-        await page.goto('/iframe.html?id=shared-constellationstarcard--unknown&viewMode=story')
+        await page.goto('/iframe.html?id=game-constellationstarcard--unknown&viewMode=story')
         await expect(card).toHaveText('Неизвестно')
     })
 }

@@ -5,13 +5,12 @@ import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import FantasyPanelStory from './FantasyPanelStory.vue'
-import { FantasyPanel, type FantasyPanelAppearance, type FantasyPanelVariant } from './index'
+import { FantasyPanel, type FantasyPanelProps, type FantasyPanelVariant } from './index'
 
-type PanelArgs = {
-    panel: FantasyPanelVariant
-    appearance: FantasyPanelAppearance
-    borderColor: string
-    backgroundColor: string
+type PanelArgs = Omit<FantasyPanelProps, 'backgroundGradient'> & {
+    gradientTop: string
+    gradientBottom: string
+    slotContent: 'empty' | 'sample'
 }
 type Section = 'variants' | 'appearances' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
@@ -21,20 +20,37 @@ const variants = Array.from(
 const meta = {
     title: 'Shared/External/fantasy-ui-borders/FantasyPanel',
     args: {
+        as: 'div',
         panel: 'panel-026',
         appearance: 'solid',
+        color: 'currentColor',
         borderColor: lightUiColors.panel.parchment,
         backgroundColor: lightUiColors.panel.parchment,
+        gradientTop: '',
+        gradientBottom: '',
+        slotContent: 'sample',
     },
     parameters: { backgrounds: { disable: false } },
     argTypes: {
+        as: { control: 'select', options: ['div', 'span'] },
         panel: { control: 'select', options: variants },
         appearance: {
             control: 'select',
             options: ['solid', 'transparent-border', 'transparent-center'],
         },
+        color: {
+            control: 'text',
+            description: 'Fallback for an empty border or background color.',
+        },
         borderColor: { control: 'text' },
         backgroundColor: { control: 'text' },
+        gradientTop: { name: 'Gradient top color', control: 'text' },
+        gradientBottom: { name: 'Gradient bottom color', control: 'text' },
+        slotContent: {
+            name: 'Default slot',
+            control: { type: 'select', labels: { empty: 'Empty element', sample: 'Sample text' } },
+            options: ['empty', 'sample'],
+        },
     },
 } satisfies Meta<PanelArgs>
 export default meta
@@ -56,25 +72,36 @@ function preview(section: Section, globals: Record<string, unknown>): HTMLElemen
 
 export const Default: Story = {
     render(args, context) {
+        const { gradientTop, gradientBottom, slotContent, ...props } = args
         const host = renderVueStory(
             () =>
                 h(
                     FantasyPanel,
                     {
-                        ...args,
-                        borderColor: args.borderColor || undefined,
-                        backgroundColor: args.backgroundColor || undefined,
+                        ...props,
+                        borderColor: props.borderColor || undefined,
+                        backgroundColor: props.backgroundColor || undefined,
+                        backgroundGradient:
+                            gradientTop && gradientBottom
+                                ? [gradientTop, gradientBottom]
+                                : undefined,
                         role: 'region',
                         'aria-label': 'FantasyPanel',
                         'data-testid': 'panel-default',
-                        style: { width: 'min(560px, 100%)', padding: '16px' },
+                        style: {
+                            display: props.as === 'span' ? 'inline-block' : undefined,
+                            width: 'min(560px, 100%)',
+                            padding: '16px',
+                        },
                     },
                     () =>
-                        h(
-                            'span',
-                            { style: { color: lightUiColors.panel.text } },
-                            'Панель с содержимым'
-                        )
+                        slotContent === 'empty'
+                            ? h(props.as === 'span' ? 'span' : 'div')
+                            : h(
+                                  'span',
+                                  { style: { color: lightUiColors.panel.text } },
+                                  'Панель с содержимым'
+                              )
                 ),
             {}
         )

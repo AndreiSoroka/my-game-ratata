@@ -9,7 +9,7 @@ const percentage = { control: { type: 'range', min: 0, max: 100, step: 1 } } as 
 const number = { control: { type: 'number', min: 0 } } as const
 
 const meta = {
-    title: 'Entities/Player vitals/PlayerVitalsView',
+    title: 'Entities/player-vitals/PlayerVitalsView',
     args: {
         compact: true,
         nickname: 'Андрей Сорока',
@@ -48,7 +48,7 @@ const meta = {
 export default meta
 type Story = StoryObj<PlayerVitalsViewProps>
 
-export const Normal: Story = {}
+export const Default: Story = {}
 
 export const AuthorizedNumbers: Story = {
     args: {

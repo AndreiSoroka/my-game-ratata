@@ -4,7 +4,7 @@ import { characterFixture } from '../testing/characterFixture'
 import DeathOverlay from '../ui/DeathOverlay.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/DeathOverlay' } satisfies Meta
+const meta = { title: 'Game/DeathOverlay' } satisfies Meta
 export default meta
 type Story = StoryObj
 const character = characterFixture('fallen', {

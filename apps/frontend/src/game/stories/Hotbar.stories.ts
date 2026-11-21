@@ -10,7 +10,7 @@ import type { HotbarBinding } from '../ui/hotbarBindings'
 import { hotbarIdentityKey, provideHotbarSession } from '../ui/hotbarSession'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/ActionHotbar' } satisfies Meta
+const meta = { title: 'Game/ActionHotbar' } satisfies Meta
 export default meta
 type Story = StoryObj
 function render(heroClass: HeroClass): HTMLElement {

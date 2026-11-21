@@ -37,32 +37,42 @@ const trailingExamples = {
 
 interface StoryArgs {
     align: 'start' | 'center'
-    slot1: keyof typeof leadingExamples
-    slot2: keyof typeof contentExamples
-    slot3: keyof typeof trailingExamples
+    leading: keyof typeof leadingExamples
+    content: keyof typeof contentExamples
+    trailing: keyof typeof trailingExamples
     width: number
 }
 
 const meta = {
     title: 'Shared/Common/HudRow',
-    args: { align: 'center', slot1: 'div', slot2: 'div', slot3: 'div', width: 330 },
+    args: { align: 'center', leading: 'div', content: 'div', trailing: 'icon', width: 330 },
     argTypes: {
         align: { control: 'inline-radio', options: ['start', 'center'] },
-        slot1: {
-            control: 'select',
+        leading: {
+            name: 'Левый слот (leading)',
+            control: {
+                type: 'select',
+                labels: { div: 'Пустой div', icon: 'Иконка', text: 'Текст' },
+            },
             options: Object.keys(leadingExamples),
-            description: 'Левый слот (leading)',
         },
-        slot2: {
-            control: 'select',
+        content: {
+            name: 'Центральный слот (default)',
+            control: {
+                type: 'select',
+                labels: { div: 'Пустой div', bar: 'Полоса ресурса', text: 'Текст', icon: 'Иконка' },
+            },
             options: Object.keys(contentExamples),
-            description: 'Широкий центральный слот (default)',
         },
-        slot3: {
-            control: 'select',
+        trailing: {
+            name: 'Правый слот (trailing)',
+            control: {
+                type: 'select',
+                labels: { div: 'Пустой div', icon: 'Иконка', text: 'Текст', empty: 'Без слота' },
+            },
             options: Object.keys(trailingExamples),
-            description: 'Правый слот (trailing)',
         },
+        width: { control: { type: 'range', min: 110, max: 560, step: 10 } },
     },
     render(args) {
         const host = renderVueStory(
@@ -72,9 +82,9 @@ const meta = {
                         HudRow,
                         { align: args.align },
                         {
-                            leading: leadingExamples[args.slot1],
-                            default: contentExamples[args.slot2],
-                            trailing: trailingExamples[args.slot3],
+                            leading: leadingExamples[args.leading],
+                            default: contentExamples[args.content],
+                            trailing: trailingExamples[args.trailing],
                         }
                     ),
             },

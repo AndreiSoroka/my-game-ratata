@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 for (const width of [1280, 390]) {
     test(`shows authoritative route failure countdown at ${width}px`, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=shared-actionchannelstatus--blocked-route&viewMode=story')
+        await page.goto('/iframe.html?id=game-actionchannelstatus--blocked-route&viewMode=story')
         const status = page.getByRole('status')
         await expect(status).toContainText('Точка 4: путь перекрыт')
         await expect(status).toContainText('отмена через 8 с')
@@ -35,7 +35,7 @@ for (const width of [1280, 390]) {
             path: `/tmp/ratata-route-status-${width === 390 ? 'mobile' : 'desktop'}.png`,
         })
         await page.goto(
-            '/iframe.html?id=shared-actionchannelstatus--route-in-progress&viewMode=story'
+            '/iframe.html?id=game-actionchannelstatus--route-in-progress&viewMode=story'
         )
         // The empty running state is meaningful only after the actual story host
         // has mounted, rather than during Storybook's initial loading screen.
@@ -46,7 +46,7 @@ for (const width of [1280, 390]) {
 
 test('hides the blocked-route overlay while the player is stunned', async ({ page }) => {
     await page.goto(
-        '/iframe.html?id=shared-actionchannelstatus--stunned-while-blocked&viewMode=story'
+        '/iframe.html?id=game-actionchannelstatus--stunned-while-blocked&viewMode=story'
     )
     await expect(page.locator('#storybook-root > div')).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(0)

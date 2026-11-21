@@ -59,6 +59,6 @@ Panel artwork requires its own native slices; do not reuse the thinner Border cu
 
 The source images are 48×48. `border-image` stretches only the repeat-safe edges; corners retain their native dimensions and the uniform CSS center fills the remaining area. Minimum width and height are twice the slice (44×44 for `020` and `025`). There is no scaling API.
 
-See **Shared/External/fantasy-ui-borders/FantasyPanel** for Default, Variants, Appearances, Colors, Composition and Sizes. Default exposes live Controls; fixed catalogs hide them. Stories use the single native Storybook background selector, with intentional white probes only for inspecting transparency and color.
+See **Shared/External/fantasy-ui-borders/FantasyPanel** for Default, Variants, Appearances, Colors, Composition and Sizes. Default exposes the element, colors, gradient and slot content through live Controls. Fixed catalogs hide those controls. Stories use the single native Storybook background selector, with intentional white probes for inspecting transparency and color.
 
 Manual headless coverage: `bun run test:e2e:storybook -- e2e/fantasy-panel.visual.spec.ts e2e/storybook-preview.visual.spec.ts`. Captures wait for the canvas background, fonts and decoration images. Browser suites stay outside automatic `check` and pre-commit.

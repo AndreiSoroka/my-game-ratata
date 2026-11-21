@@ -8,9 +8,13 @@ import SoulBadgeIcons from './SoulBadgeIcons.vue'
 type StoryArgs = { soulKind?: SoulKind; isCanSpeak?: boolean }
 
 const meta = {
-    title: 'Entities/Player effects/SoulBadgeIcons',
+    title: 'Entities/player-effects/SoulBadgeIcons',
     argTypes: {
-        soulKind: { control: 'inline-radio', options: ['spark', 'echo'] },
+        soulKind: {
+            control: 'inline-radio',
+            options: ['none', 'spark', 'echo'],
+            mapping: { none: undefined },
+        },
         isCanSpeak: { control: 'boolean' },
     },
     render(args) {
@@ -25,7 +29,7 @@ const meta = {
 export default meta
 type Story = StoryObj<StoryArgs>
 
-export const Spark: Story = { args: { soulKind: 'spark', isCanSpeak: true } }
+export const Default: Story = { args: { soulKind: 'spark', isCanSpeak: true } }
 
 export const SilentEcho: Story = { args: { soulKind: 'echo', isCanSpeak: false } }
 

@@ -7,7 +7,7 @@ import { exchangeFixture, whisperFixture } from '../ui/socialFixtures'
 import ExchangeConsentGallery from './ExchangeConsentGallery.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/ExchangeWindow' } satisfies Meta
+const meta = { title: 'Game/ExchangeWindow' } satisfies Meta
 export default meta
 type Story = StoryObj
 

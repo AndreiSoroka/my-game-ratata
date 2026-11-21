@@ -11,7 +11,7 @@ type StoryArgs = Pick<
 >
 
 const meta = {
-    title: 'Entities/Player vitals/PlayerVitalsBar',
+    title: 'Entities/player-vitals/PlayerVitalsBar',
     args: {
         value: 72,
         label: 'Здоровье',
@@ -24,7 +24,11 @@ const meta = {
     },
     argTypes: {
         value: { control: { type: 'range', min: 0, max: 100 } },
+        label: { control: 'text' },
+        color: { control: 'text' },
+        trackColor: { control: 'text' },
         height: { control: { type: 'number', min: 8 } },
+        valueText: { control: 'text' },
         animated: { control: 'boolean' },
         dimmed: { control: 'boolean' },
     },
@@ -40,7 +44,7 @@ const meta = {
 export default meta
 type Story = StoryObj<StoryArgs>
 
-export const Normal: Story = {}
+export const Default: Story = {}
 
 export const Compact: Story = { args: { height: 13 } }
 

@@ -11,7 +11,7 @@ for (const width of [390, 1280]) {
             page,
         }, info) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=shared-characterwindow--${story}&viewMode=story`)
+            await page.goto(`/iframe.html?id=game-characterwindow--${story}&viewMode=story`)
             const window = page.getByRole('dialog', { name: 'Персонаж', exact: true })
             await expect(window).toBeVisible()
             const graph = window.getByRole('group', { name: 'Созвездия развития' })
