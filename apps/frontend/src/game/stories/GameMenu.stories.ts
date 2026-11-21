@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import GameMenu from '../ui/GameMenu.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/Game menu' } satisfies Meta
+const meta = { title: 'Shared/GameMenu' } satisfies Meta
 export default meta
 type Story = StoryObj
 

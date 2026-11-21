@@ -10,6 +10,8 @@
 
 ## Storybook
 
+- For component stories in `Entities`, `Widgets` and `Shared`, use the layer and, where applicable, the slice or package as folders. The last segment of `title` matches the exact `.vue` filename without its extension, including capitalization. For example, use `Entities/Menu/MenuPanel`, `Widgets/Player vitals/PlayerVitalsWidget` and `Shared/Common/UiButton`. A gallery without a single component can use a descriptive title.
+- Put state and example names such as `Normal`, `Disabled` and `AuthorizedNumbers` in story exports. When a title changes, update Storybook links and browser tests that use its story IDs.
 - Storybook stories should showcase clean, focused components and states, not a one-off pile of unrelated UI inside every story.
 - Extract reusable HTML/CSS/Vue primitives or render helpers first, then compose larger examples such as HUD groups, windows, inventory panels, or quest dialogs from those primitives.
 

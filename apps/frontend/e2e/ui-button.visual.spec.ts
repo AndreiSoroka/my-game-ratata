@@ -3,7 +3,7 @@ import { expect, type Locator, test } from '@playwright/test'
 import { readScreenshotPixels, screenshotPixel } from './fantasy-border-pixels'
 import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 
-const storyId = 'shared-common-button'
+const storyId = 'shared-common-uibutton'
 const transparentBackground = /^(none|linear-gradient\(rgba\(0, 0, 0, 0\), rgba\(0, 0, 0, 0\)\))$/
 
 const raisedPanelShadow = /drop-shadow\(.*0px 2px 2px/
@@ -429,7 +429,7 @@ test('Shared button and entity menu events use the built-in Storybook Actions pa
             event: /onClick:\s*\(1\)/,
         },
         {
-            story: 'entities-menu-menu--actions',
+            story: 'entities-menu-menupanel--actions',
             button: '[data-dialog-action="markers"]',
             activate: (button: Locator) => button.click(),
             event: /onAction:\s*\(1\)\s*\["markers"\]/,

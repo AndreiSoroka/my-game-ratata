@@ -12,7 +12,7 @@ const onClick = fn().mockName('click')
 const borders = Array.from({ length: 32 }, (_, index) => `border-${String(index).padStart(3, '0')}`)
 const panels = Array.from({ length: 32 }, (_, index) => `panel-${String(index).padStart(3, '0')}`)
 const meta = {
-    title: 'Shared/Common/Button',
+    title: 'Shared/Common/UiButton',
     args: {
         label: 'Продолжить',
         border: 'border-026',

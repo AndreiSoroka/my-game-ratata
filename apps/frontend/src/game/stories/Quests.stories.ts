@@ -8,7 +8,7 @@ import { guildQuestFixture, workRequestFixture } from '../testing/questFixture'
 import GuildQuestCard from '../ui/GuildQuestCard.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/Quests' } satisfies Meta
+const meta = { title: 'Shared/GuildQuestCard' } satisfies Meta
 export default meta
 type Story = StoryObj
 

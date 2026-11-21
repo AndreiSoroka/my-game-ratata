@@ -9,7 +9,7 @@ import PatronMood from './PatronMood.vue'
 type StoryArgs = { mood: DeityMood }
 
 const meta = {
-    title: 'Entities/Player effects/Patron mood',
+    title: 'Entities/Player effects/PatronMood',
     argTypes: {
         mood: { control: 'inline-radio', options: ['benevolent', 'neutral', 'wrathful'] },
     },

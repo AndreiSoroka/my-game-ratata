@@ -2,7 +2,7 @@ import { expect, type Locator, test } from '@playwright/test'
 
 import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 
-const storyId = 'entities-menu-menu'
+const storyId = 'entities-menu-menupanel'
 
 async function expectHighlighted(panel: Locator, ids: string[]): Promise<void> {
     const selected = await panel

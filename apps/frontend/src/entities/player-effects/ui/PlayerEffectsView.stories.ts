@@ -8,7 +8,7 @@ import type { PlayerEffectsData } from '../model/playerEffects'
 import PlayerEffectsView from './PlayerEffectsView.vue'
 
 const meta = {
-    title: 'Entities/Player effects/Overview',
+    title: 'Entities/Player effects/PlayerEffectsView',
     render(args) {
         const host = renderVueStory(PlayerEffectsView, { ...args }, { padding: '16px' })
         host.style.maxWidth = '362px'

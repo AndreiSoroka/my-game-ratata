@@ -1,6 +1,6 @@
 # Shared game interface
 
-Use these production primitives for new UI and when editing existing controls. Their focused examples live in **Shared/Primitives** in Storybook. Windows and HUDs compose the same components; stories must not reproduce a separate skin.
+Use these production primitives for new UI and when editing existing controls. Their focused examples live in **Shared/GamePrimitivesStory** in Storybook. Windows and HUDs compose the same components; stories must not reproduce a separate skin.
 
 | Component         | Interface                                                                                                                                                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -13,7 +13,7 @@ Use these production primitives for new UI and when editing existing controls. T
 | `GameRibbon`      | Native `div` with an arbitrary content slot and a red Kenney ribbon. Native attributes pass through.                                                                                                                     |
 | `GameResourceBar` | Native `span` progressbar; `value: HealthSnapshot`, `kind="hp\|mana\|energy"`. Shows exact text only when authorized by the snapshot; pass a native accessible label.                                                    |
 
-Use the existing `ItemIcon` for catalog-backed item images; it composes `GameItemSlot`. Trade consent uses the existing two-state `ExchangeConsentIcon` (`accepted`, `name`), demonstrated under **Shared/Exchange/Consent**. Reuse these components rather than drawing another item frame or handshake.
+Use the existing `ItemIcon` for catalog-backed item images; it composes `GameItemSlot`. Trade consent uses the existing two-state `ExchangeConsentIcon` (`accepted`, `name`), demonstrated under **Shared/ExchangeWindow/Consent**. Reuse these components rather than drawing another item frame or handshake.
 
 Keep the native parent element, its `ref`, roles, data attributes and input ownership when adding a frame:
 
@@ -38,7 +38,7 @@ An item slot defaults to 40px. Override `--game-item-slot-size` or the component
 
 ## Kenney HUD surfaces
 
-**Shared/Kenney HUD primitives** demonstrates the legacy `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. The live HUD uses one lightly translucent dark green frame with an inset beige `FantasyBorder` (`border-017`). **Widgets/Player vitals** shows the name and resources. **Widgets/Player effects** shows active effects and law statuses with a compact disclosure in the game. **Entities/Player effects/Faith status list** shows known patrons. **Game/Player HUD/Dark Palettes** previews the full HUD in three dark palettes.
+**Shared/KenneyHudPrimitivesStory** demonstrates the legacy `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. The live HUD uses one lightly translucent dark green frame with an inset beige `FantasyBorder` (`border-017`). **Widgets/Player vitals/PlayerVitalsWidget** shows the name and resources. **Widgets/Player effects/PlayerEffectsWidget** shows active effects and law statuses with a compact disclosure in the game. **Entities/Player effects/FaithStatusList** shows known patrons. **Game/Player HUD/Dark Palettes** previews the full HUD in three dark palettes.
 
 For a parchment frame, keep a transparent physical border on the native host and set `--game-frame-border-width` to that same width. The filled Kenney frame is painted behind content and outsets across that border. Parchment hosts expose local `--game-panel-text`, `--game-panel-muted`, `--game-panel-divider` and `--game-panel-warning` tokens.
 
@@ -61,7 +61,7 @@ Compose it with `GameFrame skin="parchment"` and the `game-fantasy-surface` host
 </section>
 ```
 
-See **Shared/Fantasy buttons** for the menu composition, semantic variants, sizes and interactive states. Verify the skin with the manual headless `fantasy-buttons.visual.spec.ts` screenshots at 1280, 390 and 320px.
+See **Shared/GameButton** for the menu composition, semantic variants, sizes and interactive states. Verify the skin with the manual headless `fantasy-buttons.visual.spec.ts` screenshots at 1280, 390 and 320px.
 
 Fields preserve native event targets and composition behavior. Existing controlled handlers continue to validate/clamp values; the skin does not introduce game rules. Radio and checkbox `v-model` use native Vue behavior. Native attrs including `disabled`, `checked`, `maxlength`, `min`, `max`, labels and `aria-invalid` remain supported. Field refs expose `focus()`, `select()` where relevant and the native `element`; owning window refs remain HTML elements.
 

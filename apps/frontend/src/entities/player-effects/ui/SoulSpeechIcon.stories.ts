@@ -7,7 +7,7 @@ import SoulSpeechIcon from './SoulSpeechIcon.vue'
 type StoryArgs = { isCanSpeak?: boolean }
 
 const meta = {
-    title: 'Entities/Player effects/Soul speech icon',
+    title: 'Entities/Player effects/SoulSpeechIcon',
     argTypes: { isCanSpeak: { control: 'boolean' } },
     render(args) {
         const host = renderVueStory(SoulSpeechIcon, args, {

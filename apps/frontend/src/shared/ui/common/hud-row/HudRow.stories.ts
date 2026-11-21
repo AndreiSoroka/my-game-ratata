@@ -44,7 +44,7 @@ interface StoryArgs {
 }
 
 const meta = {
-    title: 'Shared/Common/HUD row',
+    title: 'Shared/Common/HudRow',
     args: { align: 'center', slot1: 'div', slot2: 'div', slot3: 'div', width: 330 },
     argTypes: {
         align: { control: 'inline-radio', options: ['start', 'center'] },

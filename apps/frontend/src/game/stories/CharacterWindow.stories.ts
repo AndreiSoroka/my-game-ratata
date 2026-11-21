@@ -22,7 +22,7 @@ function windowStory(tab: 'stats' | 'development', heroClass: HeroClass = 'cleri
     return host
 }
 
-const meta = { title: 'Shared/Character' } satisfies Meta
+const meta = { title: 'Shared/CharacterWindow' } satisfies Meta
 export default meta
 type Story = StoryObj
 

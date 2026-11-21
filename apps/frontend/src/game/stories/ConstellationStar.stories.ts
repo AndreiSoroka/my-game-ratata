@@ -4,7 +4,7 @@ import { constellationFixture, fixtureStarId } from '../testing/developmentFixtu
 import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/Constellation star' } satisfies Meta
+const meta = { title: 'Shared/ConstellationStarCard' } satisfies Meta
 export default meta
 type Story = StoryObj
 const node = (id: string) =>

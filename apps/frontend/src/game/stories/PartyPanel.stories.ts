@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import PartyPanel from '../ui/PartyPanel.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/Party panel' } satisfies Meta
+const meta = { title: 'Shared/PartyPanel' } satisfies Meta
 export default meta
 type Story = StoryObj
 

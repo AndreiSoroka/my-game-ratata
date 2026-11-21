@@ -10,7 +10,7 @@ import FaithStatusList from './FaithStatusList.vue'
 type StoryArgs = { patrons: readonly PatronStatusEntry[] }
 
 const meta = {
-    title: 'Entities/Player effects/Faith status list',
+    title: 'Entities/Player effects/FaithStatusList',
     argTypes: { patrons: { control: 'object' } },
     render(args) {
         return renderVueStory(

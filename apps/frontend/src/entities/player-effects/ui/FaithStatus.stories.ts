@@ -13,7 +13,7 @@ interface StoryArgs {
 }
 
 const meta = {
-    title: 'Entities/Player effects/Faith status',
+    title: 'Entities/Player effects/FaithStatus',
     args: {
         patronName: 'Угольная Мать',
         patronMasteryLevel: 3,

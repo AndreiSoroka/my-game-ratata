@@ -10,7 +10,7 @@ import PlayerVitalsWidget from './PlayerVitalsWidget.vue'
 const percentage = { control: { type: 'range', min: 0, max: 100, step: 1 } } as const
 
 const meta = {
-    title: 'Widgets/Player vitals',
+    title: 'Widgets/Player vitals/PlayerVitalsWidget',
     args: {
         nickname: 'Андрей Сорока',
         hpPercent: 100,

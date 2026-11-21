@@ -40,4 +40,4 @@ Explicit custom normal fill colors also provide the hover fill when it is not ov
 
 The native button composes `FantasyBorder as="span"` as decoration or `FantasyPanel as="span"` around the label.
 
-See **Shared/Common/Button** for live Default controls and focused Appearances, Variants, Borders, Colors, States and Panel States examples. Unit tests cover native behavior. Screenshot checks run through the manual headless Storybook suite.
+See **Shared/Common/UiButton** for live Default controls and focused Appearances, Variants, Borders, Colors, States and Panel States examples. Unit tests cover native behavior. Screenshot checks run through the manual headless Storybook suite.

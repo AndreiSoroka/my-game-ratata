@@ -11,7 +11,7 @@ const percentage = { control: { type: 'range', min: 0, max: 100, step: 1 } } as 
 const number = { control: { type: 'number', min: 0 } } as const
 
 const meta = {
-    title: 'Entities/Player vitals/Overview',
+    title: 'Entities/Player vitals/PlayerVitalsView',
     args: {
         compact: true,
         nickname: 'Андрей Сорока',

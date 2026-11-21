@@ -11,7 +11,7 @@ type StoryArgs = Pick<
 >
 
 const meta = {
-    title: 'Entities/Player vitals/Resource bar',
+    title: 'Entities/Player vitals/PlayerVitalsBar',
     args: {
         value: 72,
         label: 'Здоровье',

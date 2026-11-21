@@ -9,7 +9,7 @@ import { menuStoryItems } from './menuStoryItems'
 
 type MenuStoryArgs = MenuPanelProps & { onAction: (id: string) => void }
 const meta = {
-    title: 'Entities/Menu/Menu',
+    title: 'Entities/Menu/MenuPanel',
     args: {
         items: menuStoryItems,
         title: 'Игровое меню',

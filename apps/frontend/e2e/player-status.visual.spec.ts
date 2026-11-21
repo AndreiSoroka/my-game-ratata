@@ -152,7 +152,7 @@ const patronMoods = [
 for (const { state, label, color } of patronMoods) {
     test(`patron mood ${state} shows its icon and tone`, async ({ page }) => {
         await page.goto(
-            `/iframe.html?id=entities-player-effects-patron-mood--${state}&viewMode=story`
+            `/iframe.html?id=entities-player-effects-patronmood--${state}&viewMode=story`
         )
         const mood = page.getByRole('img', { name: label })
         await expect(mood).toHaveAttribute('title', label)
@@ -246,7 +246,7 @@ test('compact effects list scrolls and reserves space for the adjacent overlays'
 
 test('player vitals widget shows the compact HUD and responds to Controls', async ({ page }) => {
     await page.goto(
-        '/?path=/story/widgets-player-vitals--normal&globals=backgrounds.value:parchment'
+        '/?path=/story/widgets-player-vitals-playervitalswidget--normal&globals=backgrounds.value:parchment'
     )
     const preview = page.frameLocator('#storybook-preview-iframe')
     const frame = preview.locator('.hud-frame')
@@ -269,7 +269,7 @@ test('player vitals widget shows the compact HUD and responds to Controls', asyn
 test('player vitals entity shows the game layout and edits fill and exact values independently', async ({
     page,
 }) => {
-    await page.goto('/?path=/story/entities-player-vitals-overview--authorized-numbers')
+    await page.goto('/?path=/story/entities-player-vitals-playervitalsview--authorized-numbers')
     const preview = page.frameLocator('#storybook-preview-iframe')
     const frame = preview.locator('.hud-frame')
     await expectHudFrame(frame)

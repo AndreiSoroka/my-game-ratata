@@ -8,7 +8,7 @@ import SoulBadgeIcons from './SoulBadgeIcons.vue'
 type StoryArgs = { soulKind?: SoulKind; isCanSpeak?: boolean }
 
 const meta = {
-    title: 'Entities/Player effects/Soul badge icons',
+    title: 'Entities/Player effects/SoulBadgeIcons',
     argTypes: {
         soulKind: { control: 'inline-radio', options: ['spark', 'echo'] },
         isCanSpeak: { control: 'boolean' },

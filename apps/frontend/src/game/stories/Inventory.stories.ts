@@ -6,7 +6,7 @@ import ChestSpritePreview from './ChestSpritePreview.vue'
 import ItemCatalogPreview from './ItemCatalog.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Shared/Inventory' } satisfies Meta
+const meta = { title: 'Shared/InventoryOverlay' } satisfies Meta
 
 export default meta
 type Story = StoryObj

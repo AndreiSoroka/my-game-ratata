@@ -7,7 +7,7 @@ import PlayerEffectsWidget from './PlayerEffectsWidget.vue'
 type PlayerEffectsWidgetProps = InstanceType<typeof PlayerEffectsWidget>['$props']
 
 const meta = {
-    title: 'Widgets/Player effects',
+    title: 'Widgets/Player effects/PlayerEffectsWidget',
     args: { soulKind: 'spark', isCanSpeak: true },
     argTypes: {
         soulKind: { control: 'inline-radio', options: ['spark', 'echo'] },

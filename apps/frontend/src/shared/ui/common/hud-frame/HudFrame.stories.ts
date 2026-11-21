@@ -5,7 +5,7 @@ import { renderVueStory } from '@/shared/lib/storybook'
 
 import HudFrame from './HudFrame.vue'
 
-const meta = { title: 'Shared/Common/HUD frame' } satisfies Meta
+const meta = { title: 'Shared/Common/HudFrame' } satisfies Meta
 export default meta
 export const Default: StoryObj = {
     render: () =>

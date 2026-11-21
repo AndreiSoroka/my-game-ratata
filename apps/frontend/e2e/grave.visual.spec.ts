@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
 async function openGraveStory(page: Page, state: string): Promise<void> {
-    await page.goto(`/iframe.html?id=shared-grave--${state}&viewMode=story`)
+    await page.goto(`/iframe.html?id=shared-gravedetails--${state}&viewMode=story`)
     await expect(page.getByLabel('Состояние могилы')).toBeVisible()
 }
 
@@ -80,7 +80,7 @@ test.describe('Storybook production grave states', () => {
 test('Storybook production purification channel exposes its remaining time and cancel button', async ({
     page,
 }) => {
-    await page.goto('/iframe.html?id=shared-prayer-channel--purifying-grave&viewMode=story')
+    await page.goto('/iframe.html?id=shared-actionchannelstatus--purifying-grave&viewMode=story')
     await expect(page.getByRole('status')).toContainText('Очищение могилы · 2.5 с')
     const cancel = page.getByRole('button', { name: 'Прервать · Esc' })
     await expect(cancel).toBeVisible()

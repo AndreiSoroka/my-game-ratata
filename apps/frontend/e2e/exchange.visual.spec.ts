@@ -27,7 +27,7 @@ for (const width of [1280, 390, 320]) {
 
         test(`exchange ${state} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=shared-exchange--${state}&viewMode=story`)
+            await page.goto(`/iframe.html?id=shared-exchangewindow--${state}&viewMode=story`)
             const dialog = page.getByRole('dialog', { name: /^Обмен:/ })
             await expect(dialog).toBeVisible()
             await prepare(dialog)
@@ -50,7 +50,7 @@ for (const width of [1280, 390, 320]) {
 }
 
 test('independent handshake states', async ({ page }) => {
-    await page.goto('/iframe.html?id=shared-exchange--consent&viewMode=story')
+    await page.goto('/iframe.html?id=shared-exchangewindow--consent&viewMode=story')
     const gallery = page.getByLabel('Подтверждение обмена', { exact: true })
     await expect(
         gallery.getByRole('img', { name: 'Вы: не подтверждено', exact: true })
