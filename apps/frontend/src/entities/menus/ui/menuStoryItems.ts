@@ -1,4 +1,4 @@
-import type { MenuItem } from './index'
+import type { MenuItem } from '../model/menu'
 
 export const menuStoryItems: readonly MenuItem[] = [
     { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },

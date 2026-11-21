@@ -7,7 +7,7 @@ import { UiButton } from '@/shared/ui/common'
 import { FantasyBorder, FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
-import type { MenuItem, MenuPanelHandle, MenuPanelProps } from './types'
+import type { MenuItem, MenuPanelHandle, MenuPanelProps } from '../model/menu'
 import { useMenuHighlight } from './useMenuHighlight'
 import { useMenuNavigation } from './useMenuNavigation'
 

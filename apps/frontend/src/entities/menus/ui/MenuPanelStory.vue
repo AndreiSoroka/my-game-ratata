@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 
 import { menuKeyboardInput } from '@/shared/lib/input'
 
-import { MenuPanel, type MenuPanelHandle, type MenuPanelProps } from './index'
+import type { MenuPanelHandle, MenuPanelProps } from '../model/menu'
+import MenuPanel from './MenuPanel.vue'
 import { menuItemsFor } from './menuStoryItems'
 
 const props = withDefaults(defineProps<Partial<MenuPanelProps> & { section?: string }>(), {

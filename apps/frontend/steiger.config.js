@@ -12,7 +12,7 @@ export default defineConfig([
     },
     {
         // Steiger cannot see these entities' consumers in the game adapter.
-        files: ['./src/entities/{player-effects,player-vitals}/**'],
+        files: ['./src/entities/{menus,player-effects,player-vitals}/**'],
         rules: { 'fsd/insignificant-slice': 'off' },
     },
 ])

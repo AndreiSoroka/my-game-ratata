@@ -432,7 +432,7 @@ test('Shared button and menu events use the built-in Storybook Actions panel', a
             event: /onClick:\s*\(1\)/,
         },
         {
-            story: 'game-menu-menupanel--actions',
+            story: 'entities-menus-menupanel--actions',
             button: '[data-dialog-action="markers"]',
             activate: (button: Locator) => button.click(),
             event: /onAction:\s*\(1\)\s*\["markers"\]/,

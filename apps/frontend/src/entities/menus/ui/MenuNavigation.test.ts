@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
-import { type MenuItem, type MenuNavigationCommand, MenuPanel } from './index'
+import { type MenuItem, type MenuNavigationCommand, MenuPanel } from '../index'
 
 const items: readonly MenuItem[] = [
     { id: 'locked-first', label: 'Первый недоступен', disabled: true },

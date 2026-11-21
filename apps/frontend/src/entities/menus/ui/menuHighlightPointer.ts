@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 
-import type { MenuItem } from './types'
+import type { MenuItem } from '../model/menu'
 
 export function menuHighlightPointer(
     mode: Ref<'keyboard' | 'pointer'>,

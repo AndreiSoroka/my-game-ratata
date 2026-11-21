@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
-import { type MenuItem, MenuPanel } from './index'
+import { type MenuItem, MenuPanel } from '../index'
 
 const items: readonly MenuItem[] = [
     { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },

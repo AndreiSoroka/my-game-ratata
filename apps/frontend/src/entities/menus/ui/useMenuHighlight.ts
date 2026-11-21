@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import type { MenuItem } from '../model/menu'
 import { menuHighlightPointer } from './menuHighlightPointer'
-import type { MenuItem } from './types'
 
 /** Presentation ownership is independent from the application's command/focus handling. */
 export function useMenuHighlight(items: () => readonly MenuItem[]) {

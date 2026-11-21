@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 
-import type { MenuItem, MenuNavigationCommand, MenuPanelHandle } from './types'
+import type { MenuItem, MenuNavigationCommand, MenuPanelHandle } from '../model/menu'
+import { menuNavigationTargetIndex } from '../model/menuNavigation'
 
 /** Navigation depends on menu data and focus, never on a particular input device. */
 export function useMenuNavigation(
@@ -29,19 +30,11 @@ export function useMenuNavigation(
             button.click()
             return true
         }
-        const index = targetIndex(command, current, buttons.length)
+        const index = menuNavigationTargetIndex(command, current, buttons.length)
         const button = buttons[index]
         if (!button) return false
         button.focus()
         return document.activeElement === button
     }
     return { navigate }
-}
-
-function targetIndex(command: MenuNavigationCommand, current: number, length: number): number {
-    if (command === 'first') return 0
-    if (command === 'last') return length - 1
-    if (command === 'next') return (current + 1) % length
-    if (command === 'previous') return ((current < 0 ? 0 : current) - 1 + length) % length
-    return -1
 }

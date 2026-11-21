@@ -3,13 +3,14 @@ import { fn } from 'storybook/test'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import { MenuPanel, type MenuPanelProps } from './index'
+import type { MenuPanelProps } from '../model/menu'
+import MenuPanel from './MenuPanel.vue'
 import MenuPanelStory from './MenuPanelStory.vue'
 import { menuStoryItems } from './menuStoryItems'
 
 type MenuStoryArgs = MenuPanelProps & { onAction: (id: string) => void }
 const meta = {
-    title: 'Game/Menu/MenuPanel',
+    title: 'Entities/Menus/MenuPanel',
     args: {
         items: menuStoryItems,
         title: 'Игровое меню',
