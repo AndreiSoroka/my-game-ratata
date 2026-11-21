@@ -15,6 +15,7 @@ import type { InventoryItemInstance } from './inventory'
 import { createItemInstance } from './inventory'
 import { clamp, distance } from './math'
 import type { NavigationService } from './navigation'
+import { overlaps } from './resourcePlacement'
 import { canPerformSkillAction } from './skillProgression'
 import {
     dropPosition,
@@ -141,6 +142,14 @@ export function createWorldChests(
     random: () => number = Math.random
 ): Map<string, WorldChest> {
     const chests = new Map<string, WorldChest>()
+    const authoredContainers = navigation.grid.containers ?? []
+    const farmChests = FARM_SUPPLY_CHESTS.filter(
+        (chest) => chest.locationId === locationId
+    )
+    const occupied = [
+        ...authoredContainers.map((container) => container.bounds),
+        ...farmChests.map((chest) => containerBounds(chest.position)),
+    ]
     const large = navigation.grid.width >= 64 && navigation.grid.height >= 64
     const tiles = large
         ? [
@@ -151,19 +160,31 @@ export function createWorldChests(
               { x: 74, y: 60 },
           ]
         : [{ x: 6, y: 4 }]
-    for (const [index, tile] of tiles.entries()) {
+    for (const [index, preferred] of tiles.entries()) {
+        const tile = navigation.findWalkableTileNear(preferred, (candidate) => {
+            const bounds = containerBounds(navigation.tileToWorld(candidate))
+            return (
+                navigation
+                    .cellsInBounds(bounds)
+                    .every((cell) => navigation.grid.solid[cell] !== true) &&
+                !occupied.some((area) => overlaps(area, bounds)) &&
+                navigation.walkableNeighbors(candidate).length > 0
+            )
+        })
+        if (tile === undefined) {
+            continue
+        }
         const id = `chest_forest_${String(index + 1)}`
+        const position = navigation.tileToWorld(tile)
+        occupied.push(containerBounds(position))
         chests.set(id, {
             contents: generateChestContents(large && index === 0, random),
             id,
             opened: false,
-            position: navigation.tileToWorld(tile),
+            position,
         })
     }
-    for (const definition of FARM_SUPPLY_CHESTS) {
-        if (definition.locationId !== locationId) {
-            continue
-        }
+    for (const definition of farmChests) {
         chests.set(definition.id, {
             contents: generateFarmSupplyContents(random),
             id: definition.id,
@@ -171,7 +192,7 @@ export function createWorldChests(
             opened: false,
         })
     }
-    for (const definition of navigation.grid.containers ?? []) {
+    for (const definition of authoredContainers) {
         const { bounds, contents, ...metadata } = definition
         if (chests.has(definition.id)) {
             throw new Error(`Duplicate container: ${definition.id}`)

@@ -122,6 +122,30 @@ export class NavigationService {
         return isSolidTile(this.grid, tile)
     }
 
+    public findWalkableTileNear(
+        preferred: TileCoordinate,
+        accepts: (tile: TileCoordinate) => boolean = () => true
+    ): TileCoordinate | undefined {
+        const origin = this.worldToTile(
+            this.clampWorld(this.tileToWorld(preferred))
+        )
+        const limit = Math.max(this.grid.width, this.grid.height)
+        for (let radius = 0; radius < limit; radius += 1) {
+            for (let dy = -radius; dy <= radius; dy += 1) {
+                for (let dx = -radius; dx <= radius; dx += 1) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) {
+                        continue
+                    }
+                    const tile = { x: origin.x + dx, y: origin.y + dy }
+                    if (!this.isSolidTile(tile) && accepts(tile)) {
+                        return tile
+                    }
+                }
+            }
+        }
+        return undefined
+    }
+
     public findPathWorld(from: Vector2, to: Vector2): Vector2[] {
         const start = this.worldToTile(from)
         const destination = this.clampWorld(to)

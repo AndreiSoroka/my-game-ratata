@@ -171,25 +171,13 @@ function spawnPosition(
     large: TileCoordinate
 ): Vector2 {
     const { width, height } = navigation.grid
-    const desired = width >= 64 && height >= 64 ? large : small
-    const tile = {
-        x: Math.max(0, Math.min(width - 1, desired.x)),
-        y: Math.max(0, Math.min(height - 1, desired.y)),
+    const tile = navigation.findWalkableTileNear(
+        width >= 64 && height >= 64 ? large : small
+    )
+    if (tile === undefined) {
+        throw new Error('Map has no walkable spawn tile')
     }
-    if (!navigation.isSolidTile(tile)) {
-        return navigation.tileToWorld(tile)
-    }
-    for (let radius = 1; radius < Math.max(width, height); radius += 1) {
-        for (let dy = -radius; dy <= radius; dy += 1) {
-            for (let dx = -radius; dx <= radius; dx += 1) {
-                const candidate = { x: tile.x + dx, y: tile.y + dy }
-                if (!navigation.isSolidTile(candidate)) {
-                    return navigation.tileToWorld(candidate)
-                }
-            }
-        }
-    }
-    throw new Error('Map has no walkable spawn tile')
+    return navigation.tileToWorld(tile)
 }
 
 function spawnLocationId(navigation: NavigationService): string {

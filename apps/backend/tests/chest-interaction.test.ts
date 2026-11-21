@@ -12,7 +12,10 @@ import {
     parseAgentDecision,
 } from '../src/game/agentDecisions'
 import { GameCharacter } from '../src/game/character'
-import { chestHasLineOfSight } from '../src/game/chestInteraction'
+import {
+    chestHasLineOfSight,
+    createWorldChests,
+} from '../src/game/chestInteraction'
 import { createItemInstance, inventoryCapacity } from '../src/game/inventory'
 import { parseClientMessage } from '../src/game/messages'
 import { NavigationService } from '../src/game/navigation'
@@ -27,6 +30,47 @@ const now = 10_000
 afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+})
+
+it('moves blocked legacy chests to distinct walkable tiles while preserving their loot and IDs', () => {
+    const width = 96
+    const height = 80
+    const markers = [
+        { x: 50, y: 43 },
+        { x: 20, y: 20 },
+        { x: 74, y: 20 },
+        { x: 20, y: 60 },
+        { x: 74, y: 60 },
+    ]
+    const solid = Array<boolean>(width * height).fill(false)
+    for (const marker of markers.slice(0, 2)) {
+        solid[marker.y * width + marker.x] = true
+    }
+    const nav = new NavigationService({
+        id: 'chest-spawns',
+        width,
+        height,
+        tileWidth: 16,
+        tileHeight: 16,
+        solid,
+        solidLayerNames: [],
+    })
+    const chests = [...createWorldChests(nav, nav.grid.id, () => 0).values()]
+    expect(chests.map((chest) => chest.id)).toEqual(
+        markers.map((_, index) => `chest_forest_${String(index + 1)}`)
+    )
+    expect(
+        chests.map((chest) => chest.contents.map((item) => item.itemId))
+    ).toEqual([
+        ['food'],
+        ...markers.slice(1).map(() => ['simple_sword', 'food', 'boots']),
+    ])
+    const positions = chests.map((chest) => nav.worldToTile(chest.position))
+    expect(
+        new Set(positions.map(({ x, y }) => `${String(x)},${String(y)}`)).size
+    ).toBe(markers.length)
+    expect(positions.slice(2)).toEqual(markers.slice(2))
+    expect(positions.some((position) => nav.isSolidTile(position))).toBe(false)
 })
 
 describe('authoritative explicit chest opening', () => {
