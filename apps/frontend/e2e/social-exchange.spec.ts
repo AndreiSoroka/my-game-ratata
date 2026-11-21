@@ -25,15 +25,11 @@ for (const layout of [
         const { context, first, second, exchangeFrames } = await openTradePages(browser, viewport)
         let giftId: string | undefined
         try {
-            const firstId = await joinSocial(
-                first,
-                `g-a-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
-            )
+            const firstName = `g-a-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
+            const secondName = `g-b-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
+            const firstId = await joinSocial(first, firstName)
             giftId = await gatherGift(first)
-            const secondId = await joinSocial(
-                second,
-                `g-b-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
-            )
+            const secondId = await joinSocial(second, secondName)
             const point = await first.evaluate(
                 () => window.__ratataTest!.getState().player!.position
             )
@@ -72,9 +68,12 @@ for (const layout of [
                 await first.evaluate(() => window.__ratataTest!.getState().player!.position)
             ).toEqual(position)
             await first.keyboard.press('Escape')
-            await socialMenu(first, secondId, /^Обменяться:/)
-            await second.getByRole('button', { name: /приглашение к обмену/ }).click()
-            await second.getByRole('button', { name: 'Начать обмен', exact: true }).click()
+            await exerciseTradeInvitation(first, second, {
+                firstId,
+                firstName,
+                secondId,
+                secondName,
+            })
             const trade = first.getByRole('dialog', { name: /^Обмен:/ })
             await expect(trade.getByLabel('Ваши вещи для обмена')).toBeVisible()
             await proposeGift(first, giftId, exchangeFrames)
@@ -122,6 +121,79 @@ for (const layout of [
             await context.close()
         }
     })
+}
+
+async function exerciseTradeInvitation(
+    first: Page,
+    second: Page,
+    players: { firstId: string; firstName: string; secondId: string; secondName: string }
+): Promise<void> {
+    const outgoing = first.getByRole('region', { name: 'Предложение отправлено' })
+    const incoming = second.getByRole('region', { name: 'Приглашение к торговле' })
+    const accept = incoming.getByRole('button', { name: 'Начать торговлю', exact: true })
+    const firstTrade = first.getByRole('dialog', { name: /^Обмен:/ })
+    const secondTrade = second.getByRole('dialog', { name: /^Обмен:/ })
+    const secondWhisper = second.getByRole('dialog', { name: /^Шёпот:/ })
+
+    await second.getByRole('button', { name: /^Шёпот:/ }).click()
+    await expect(secondWhisper).toBeVisible()
+
+    async function invite(): Promise<string> {
+        await socialMenu(first, players.secondId, /^Обменяться:/)
+        await expect(outgoing).toContainText(players.secondName)
+        await expect(incoming).toContainText(players.firstName)
+        await expect(firstTrade).toHaveCount(0)
+        await expect(secondTrade).toHaveCount(0)
+        await expect(secondWhisper).toBeVisible()
+        await expect(outgoing).toBeInViewport({ ratio: 1 })
+        await expect(incoming).toBeInViewport({ ratio: 1 })
+        await expect
+            .poll(() => readExchange(first))
+            .toMatchObject({ status: 'invited', incoming: false, partnerId: players.secondId })
+        const invitation = (await readExchange(first))!
+        await expect
+            .poll(() => readExchange(second))
+            .toMatchObject({
+                id: invitation.id,
+                status: 'invited',
+                incoming: true,
+                partnerId: players.firstId,
+            })
+        return invitation.id
+    }
+
+    async function expectClosed(id: string): Promise<void> {
+        await expect.poll(() => readExchange(first)).toMatchObject({ id, status: 'cancelled' })
+        await expect.poll(() => readExchange(second)).toMatchObject({ id, status: 'cancelled' })
+        await expect(outgoing).toHaveCount(0)
+        await expect(incoming).toHaveCount(0)
+        await expect(firstTrade).toHaveCount(0)
+        await expect(secondTrade).toHaveCount(0)
+    }
+
+    const cancelled = await invite()
+    await outgoing.getByRole('button', { name: 'Отменить предложение', exact: true }).click()
+    await expectClosed(cancelled)
+
+    const declined = await invite()
+    expect(declined).not.toBe(cancelled)
+    await incoming.getByRole('button', { name: 'Отклонить', exact: true }).click()
+    await expectClosed(declined)
+
+    const confirmed = await invite()
+    expect(confirmed).not.toBe(declined)
+    await accept.click()
+    await expect.poll(() => readExchange(first)).toMatchObject({ id: confirmed, status: 'active' })
+    await expect.poll(() => readExchange(second)).toMatchObject({ id: confirmed, status: 'active' })
+    await expect(outgoing).toHaveCount(0)
+    await expect(incoming).toHaveCount(0)
+    await expect(firstTrade).toBeVisible()
+    await expect(secondTrade).toBeVisible()
+    await expect(secondWhisper).toHaveCount(0)
+}
+
+function readExchange(page: Page) {
+    return page.evaluate(() => window.__ratataTest!.getState().snapshot?.social?.exchange)
 }
 
 interface ExchangeFrame {

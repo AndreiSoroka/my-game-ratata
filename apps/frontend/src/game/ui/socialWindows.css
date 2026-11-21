@@ -120,7 +120,6 @@
 }
 .social-hints {
     position: absolute;
-    z-index: 12;
     right: 12px;
     top: var(--ratata-player-status-bottom, 240px);
     max-height: max(90px, calc(100dvh - var(--ratata-player-status-bottom, 240px) - 110px));
@@ -129,7 +128,18 @@
     gap: 8px;
     max-width: min(340px, calc(100% - 24px));
 }
-.social-hints button {
+.social-hints:has(> .social-hints__invitation) {
+    width: min(340px, calc(100% - 24px));
+}
+.social-hints > button,
+.social-hints__invitation {
+    position: relative;
+    z-index: 12;
+}
+.social-hints__invitation--over-whisper {
+    z-index: 26;
+}
+.social-hints > button {
     padding: 8px 12px;
     text-align: left;
     overflow-wrap: anywhere;
@@ -151,6 +161,9 @@
     .social-hints {
         width: min(210px, calc(100% - 24px));
     }
+    .social-hints:has(> .social-hints__invitation) {
+        width: min(260px, calc(100% - 24px));
+    }
     .social-surface--exchange {
         inset: 8px;
     }
@@ -167,7 +180,6 @@
         font-size: 16px;
     }
 }
-
 .social-window .social-window__close {
     display: grid;
     place-items: center;

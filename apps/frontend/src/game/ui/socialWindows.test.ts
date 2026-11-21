@@ -5,7 +5,7 @@ import { expect, it } from 'vitest'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import PrivateConversation from './PrivateConversation.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
-import { questOfferFixture, whisperFixture } from './socialFixtures'
+import { exchangeFixture, questOfferFixture, whisperFixture } from './socialFixtures'
 import SocialPanels from './SocialPanels.vue'
 
 it('sends whisper privately, clears text and rejects sending after lost reach', async () => {
@@ -87,10 +87,116 @@ it('shows approved quest terms and accepts the exact offer and revision explicit
     }
 })
 
+it('opens an incoming trade only after the accepted invitation becomes active', async () => {
+    const player = characterFixture('self')
+    const incoming = exchangeFixture({ status: 'invited', incoming: true })
+    const snapshot = { ...worldFixture([player]), social: { exchange: incoming } }
+    const view = mount(SocialPanels, {
+        props: { snapshot, player, characters: [player], connected: true },
+    })
+    try {
+        const invitation = view.get('section.exchange-invitation')
+        expect(invitation.text()).toContain('Капля хочет с вами поторговаться.')
+        expect(view.vm.hasOpenWindow).toBe(false)
+        expect(view.emitted('command')).toBeUndefined()
+
+        await invitation
+            .findAll('button')
+            .find((button) => button.text() === 'Начать торговлю')!
+            .trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'exchange_answer', exchangeId: incoming.id, accept: true }],
+        ])
+        expect(view.find('[role="dialog"]').exists()).toBe(false)
+        expect(view.vm.hasOpenWindow).toBe(false)
+
+        const active = {
+            ...snapshot,
+            social: { exchange: { ...incoming, status: 'active' as const } },
+        }
+        await view.setProps({ snapshot: active })
+        expect(view.find('section.exchange-invitation').exists()).toBe(false)
+        expect(view.find('[aria-label="Обмен: Капля"]').exists()).toBe(true)
+        expect(view.vm.hasOpenWindow).toBe(true)
+        await view.setProps({ snapshot: { ...active, tick: active.tick + 1 } })
+        expect(view.emitted('open')).toHaveLength(1)
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'exchange_answer', exchangeId: incoming.id, accept: true }],
+            [{ type: 'release_input' }],
+        ])
+    } finally {
+        view.unmount()
+    }
+})
+
+it('cancels a sent invitation without opening an exchange window', async () => {
+    const player = characterFixture('self')
+    const pending = exchangeFixture({ status: 'invited' })
+    const snapshot = { ...worldFixture([player]), social: { exchange: pending } }
+    const view = mount(SocialPanels, {
+        props: { snapshot, player, characters: [player], connected: true },
+    })
+    try {
+        const invitation = view.get('section.exchange-invitation')
+        expect(invitation.text()).toContain('Предложение отправлено')
+        expect(view.vm.hasOpenWindow).toBe(false)
+        await invitation.get('button').trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'exchange_cancel', exchangeId: pending.id }],
+        ])
+        await view.setProps({
+            snapshot: {
+                ...snapshot,
+                social: { exchange: { ...pending, status: 'cancelled' } },
+            },
+        })
+        expect(view.find('section.exchange-invitation').exists()).toBe(false)
+        expect(view.find('[role="dialog"]').exists()).toBe(false)
+        expect(view.vm.hasOpenWindow).toBe(false)
+    } finally {
+        view.unmount()
+    }
+})
+
+it('keeps a private conversation focused when an incoming invitation is declined', async () => {
+    const player = characterFixture('self')
+    const canvas = document.createElement('canvas')
+    canvas.dataset.gameCanvas = 'true'
+    canvas.tabIndex = 0
+    document.body.append(canvas)
+    const snapshot = { ...worldFixture([player]), social: { whisper: whisperFixture() } }
+    const view = mount(SocialPanels, {
+        props: { snapshot, player, characters: [player], connected: true },
+        attachTo: document.body,
+    })
+    try {
+        await view.get('.social-hints > button').trigger('click')
+        const input = view.get('.private-conversation input').element as HTMLInputElement
+        input.focus()
+        const invitation = exchangeFixture({ status: 'invited', incoming: true })
+        await view.setProps({
+            snapshot: { ...snapshot, social: { ...snapshot.social, exchange: invitation } },
+        })
+        const notice = view.get('section.exchange-invitation')
+        expect(notice.classes()).toContain('social-hints__invitation--over-whisper')
+        expect(document.activeElement).toBe(input)
+        await notice
+            .findAll('button')
+            .find((button) => button.text() === 'Отклонить')!
+            .trigger('click')
+        expect(view.emitted('command')?.at(-1)).toEqual([
+            { type: 'exchange_answer', exchangeId: invitation.id, accept: false },
+        ])
+        expect(document.activeElement).toBe(input)
+    } finally {
+        view.unmount()
+        canvas.remove()
+    }
+})
+
 it('closes the completed exchange and its whisper without reopening on repeated snapshots', async () => {
     const player = characterFixture('self')
     const base = worldFixture([player])
-    const { exchangeFixture } = await import('./socialFixtures')
     const snapshot = { ...base, social: { whisper: whisperFixture(), exchange: exchangeFixture() } }
     const view = mount(SocialPanels, {
         props: { snapshot, player, characters: [player], connected: true },
@@ -168,7 +274,6 @@ it('retains quest whisper text and reward selection across revisions of the same
 })
 
 it('does not steal focus from reopened whisper when completed trade snapshots repeat', async () => {
-    const { exchangeFixture } = await import('./socialFixtures')
     const player = characterFixture('self')
     const canvas = document.createElement('canvas')
     canvas.dataset.gameCanvas = 'true'

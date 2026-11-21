@@ -245,6 +245,7 @@ export class ExchangeService {
         session.status = 'active'
         session.expiresAt = now + 600_000
         pauseExchangeActor(session, actor, now)
+        this.env.onInvitationAccepted?.(session.actorIds[0], actor.id, now)
         return ok()
     }
 

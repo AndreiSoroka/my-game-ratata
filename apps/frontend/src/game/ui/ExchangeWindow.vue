@@ -35,9 +35,6 @@ const terminalText = computed(() =>
         ? 'Обмен завершён'
         : (props.exchange.notice ?? 'Обмен отменён')
 )
-function answer(accept: boolean): void {
-    emit('command', { type: 'exchange_answer', exchangeId: props.exchange.id, accept })
-}
 function whisper(text: string): void {
     emit('command', { type: 'whisper', targetId: props.exchange.partnerId, text })
 }
@@ -49,14 +46,6 @@ function whisper(text: string): void {
         @close="emit('close')"
     >
         <div class="exchange-content">
-            <div
-                v-if="exchange.status === 'invited'"
-                class="exchange-invitation game-frame-host"
-                role="status"
-            >
-                <GameFrame variant="inset" />
-                {{ exchange.incoming ? 'Вас приглашают обменяться' : 'Ждём согласия собеседника' }}
-            </div>
             <div
                 v-if="terminal"
                 class="exchange-terminal game-frame-host"
@@ -177,17 +166,6 @@ function whisper(text: string): void {
                         Отменить
                     </GameButton>
                 </template>
-                <template v-else-if="exchange.status === 'invited' && exchange.incoming">
-                    <GameButton
-                        type="button"
-                        class="exchange-primary"
-                        variant="primary"
-                        @click="answer(true)"
-                    >
-                        Начать обмен
-                    </GameButton>
-                    <GameButton type="button" @click="answer(false)">Отказаться</GameButton>
-                </template>
                 <template v-else-if="terminal">
                     <GameButton
                         type="button"
@@ -205,7 +183,6 @@ function whisper(text: string): void {
                     </GameButton>
                     <GameButton type="button" @click="emit('close')">Закрыть</GameButton>
                 </template>
-                <GameButton v-else type="button" @click="emit('close')">Отменить</GameButton>
             </footer>
         </div>
     </SocialWindow>

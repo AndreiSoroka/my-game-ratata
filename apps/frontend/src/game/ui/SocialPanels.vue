@@ -4,8 +4,11 @@ import './socialWindows.css'
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
+import { ExchangeInvitationWidget } from '@/widgets/exchanges'
+
 import { activeQuests } from './activeQuests'
 import ExchangeWindow from './ExchangeWindow.vue'
+import { focusWorldInput } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import QuestTurnInWindow from './QuestTurnInWindow.vue'
@@ -19,7 +22,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage]; open: []; quests: [] }>()
 const whisperTarget = ref<string>()
-const exchangeId = ref<string>()
+const openedExchangeId = ref<string>()
 const hiddenExchangeId = ref<string>()
 const hints = ref<HTMLElement>()
 const social = computed(() => props.snapshot.social)
@@ -31,28 +34,33 @@ const turnInVisible = computed(() => available.value && Boolean(social.value?.qu
 const questOfferVisible = computed(
     () => available.value && !turnInVisible.value && Boolean(social.value?.questOffer)
 )
-const exchangeVisible = computed(
-    () =>
-        available.value &&
-        !turnInVisible.value &&
-        !questOfferVisible.value &&
-        exchange.value &&
-        exchange.value.status !== 'completed' &&
-        hiddenExchangeId.value !== exchange.value.id &&
-        (exchangeId.value === exchange.value.id || !exchange.value.incoming)
+const canActOnInvitation = computed(
+    () => available.value && !turnInVisible.value && !questOfferVisible.value
 )
+const visibleExchange = computed(() => {
+    const current = exchange.value
+    if (
+        canActOnInvitation.value &&
+        current &&
+        hiddenExchangeId.value !== current.id &&
+        (current.status === 'active' ||
+            (current.status === 'cancelled' && openedExchangeId.value === current.id))
+    )
+        return current
+    return undefined
+})
 const whisperVisible = computed(
     () =>
         available.value &&
         !turnInVisible.value &&
         !questOfferVisible.value &&
-        !exchangeVisible.value &&
+        !visibleExchange.value &&
         Boolean(whisper.value) &&
         whisper.value?.partnerId === whisperTarget.value
 )
 const hasOpenWindow = computed(() =>
     Boolean(
-        exchangeVisible.value ||
+        visibleExchange.value ||
         whisperVisible.value ||
         questOfferVisible.value ||
         turnInVisible.value
@@ -67,20 +75,38 @@ function command(message: ClientMessage): void {
         whisperTarget.value = message.targetId
         prepare()
     }
-    if (message.type === 'exchange_invite') prepare()
     emit('command', message)
 }
 function showWhisper(): void {
     whisperTarget.value = whisper.value?.partnerId
     prepare()
 }
-function showExchange(): void {
-    exchangeId.value = exchange.value?.id
-    hiddenExchangeId.value = undefined
-    prepare()
+function answerInvitation(exchangeId: string, accept: boolean): void {
+    const current = exchange.value
+    if (
+        !canActOnInvitation.value ||
+        current?.id !== exchangeId ||
+        current.status !== 'invited' ||
+        !current.incoming
+    )
+        return
+    emit('command', { type: 'exchange_answer', exchangeId, accept })
+    if (!accept) restoreFocus()
+}
+function cancelInvitation(exchangeId: string): void {
+    const current = exchange.value
+    if (
+        !canActOnInvitation.value ||
+        current?.id !== exchangeId ||
+        current.status !== 'invited' ||
+        current.incoming
+    )
+        return
+    emit('command', { type: 'exchange_cancel', exchangeId })
+    restoreFocus()
 }
 function restoreFocus(): void {
-    void nextTick(() => document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus())
+    void nextTick(() => focusWorldInput())
 }
 function closeWhisper(): void {
     whisperTarget.value = undefined
@@ -88,10 +114,10 @@ function closeWhisper(): void {
     restoreFocus()
 }
 function closeExchange(): void {
-    const current = exchange.value
+    const current = visibleExchange.value
     hiddenExchangeId.value = current?.id
-    exchangeId.value = undefined
-    if (current && ['invited', 'active'].includes(current.status))
+    openedExchangeId.value = undefined
+    if (current?.status === 'active')
         emit('command', { type: 'exchange_cancel', exchangeId: current.id })
     restoreFocus()
 }
@@ -99,16 +125,25 @@ watch(
     () => props.player.id,
     () => {
         whisperTarget.value = undefined
-        exchangeId.value = undefined
+        openedExchangeId.value = undefined
         hiddenExchangeId.value = undefined
     }
+)
+watch(
+    () => (visibleExchange.value?.status === 'active' ? visibleExchange.value.id : undefined),
+    (id) => {
+        if (id === undefined || openedExchangeId.value === id) return
+        openedExchangeId.value = id
+        prepare()
+    },
+    { immediate: true }
 )
 watch(
     () => `${exchange.value?.id ?? ''}:${exchange.value?.status ?? ''}`,
     () => {
         if (exchange.value?.status !== 'completed') return
         hiddenExchangeId.value = exchange.value.id
-        exchangeId.value = undefined
+        openedExchangeId.value = undefined
         whisperTarget.value = undefined
         restoreFocus()
     },
@@ -165,32 +200,29 @@ defineExpose({ command, hasOpenWindow })
 </script>
 <template>
     <div v-if="available" ref="hints" class="social-hints" aria-label="Личные разговоры и квесты">
+        <ExchangeInvitationWidget
+            :exchange="exchange"
+            class="social-hints__invitation"
+            :class="{ 'social-hints__invitation--over-whisper': whisperVisible }"
+            :inert="!canActOnInvitation || undefined"
+            data-game-input-owner
+            @pointerdown.stop
+            @accept="answerInvitation($event, true)"
+            @decline="answerInvitation($event, false)"
+            @cancel="cancelInvitation"
+        />
         <GameButton
             variant="success"
             v-if="
                 whisper &&
                 !whisperVisible &&
-                !exchangeVisible &&
+                !visibleExchange &&
                 !questOfferVisible &&
                 !turnInVisible
             "
             @click="showWhisper"
         >
             Шёпот: {{ whisper.partnerName }}{{ whisper.messages.length ? ' · новые реплики' : '' }}
-        </GameButton>
-        <GameButton
-            variant="success"
-            v-if="
-                exchange &&
-                !exchangeVisible &&
-                !questOfferVisible &&
-                !turnInVisible &&
-                ['invited', 'active'].includes(exchange.status)
-            "
-            @click="showExchange"
-        >
-            {{ exchange.partnerName }}:
-            {{ exchange.status === 'invited' ? 'приглашение к обмену' : 'обмен' }}
         </GameButton>
         <GameButton @click="emit('quests')">Квесты · {{ questCount }}</GameButton>
     </div>
@@ -221,8 +253,9 @@ defineExpose({ command, hasOpenWindow })
         @command="command"
     />
     <ExchangeWindow
-        v-else-if="exchangeVisible && exchange"
-        :exchange="exchange"
+        v-else-if="visibleExchange"
+        :key="visibleExchange.id"
+        :exchange="visibleExchange"
         :player="player"
         :gold="snapshot.adventure?.gold ?? 0"
         :conversation="whisper"

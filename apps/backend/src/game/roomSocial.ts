@@ -69,6 +69,16 @@ export class RoomSocial {
                     'Приглашение к добровольному обмену. Проверь окно обмена и реши, согласиться ли.',
                     now
                 ),
+            onInvitationAccepted: (inviterId, inviteeId, now) => {
+                if (this.ai()?.configured(inviterId) === true) {
+                    this.wake(
+                        inviterId,
+                        inviteeId,
+                        'Собеседник принял твоё приглашение к обмену. Проверь текущие условия и реши следующий шаг.',
+                        now
+                    )
+                }
+            },
         })
         this.quests = new NpcQuestService({
             adventure,

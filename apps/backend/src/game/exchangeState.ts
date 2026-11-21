@@ -30,6 +30,11 @@ export interface ExchangeEnvironment {
         exchangeId: string,
         now: number
     ): void
+    onInvitationAccepted?(
+        inviterId: string,
+        inviteeId: string,
+        now: number
+    ): void
 }
 export interface ExchangeOffer {
     refusal?: { id: string; reason: string }
