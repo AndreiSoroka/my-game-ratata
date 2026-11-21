@@ -51,7 +51,14 @@ for (const { mobile, direction, viewport } of cases) {
             await page.screenshot({ path: info.outputPath('grave-menu.png') })
             await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
             await expect.poll(() => purificationTargets).toEqual([grave!.id])
-            await expect(page.locator('.control-status')).toContainText('Очищение могилы')
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () => window.__ratataTest!.getState().player?.abilities?.casting?.mode
+                    )
+                )
+                .toBe('purify_grave')
+            await expect(page.locator('.control-status')).toHaveCount(0)
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
             const casting = await page.evaluate(() => window.__ratataTest!.getState().player!)
             expect(casting.resourceChecks?.prayers.pray.purify_grave).toBe('ready')
@@ -243,7 +250,7 @@ async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
     await expect(prompt).toBeVisible()
     if (mobile) {
         const bounds = await prompt.boundingBox()
-        const hotbar = await page.locator('.hotbar-content').boundingBox()
+        const hotbar = await page.locator('.hotbar__tray').boundingBox()
         expect(bounds).not.toBeNull()
         expect(hotbar).not.toBeNull()
         expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(hotbar!.y)
@@ -265,8 +272,14 @@ async function assertMobileTargetSpace(page: Page): Promise<void> {
 }
 
 async function cancelRitual(page: Page, mobile: boolean): Promise<void> {
-    if (mobile) await page.getByRole('button', { name: 'Прервать · Esc' }).click()
-    else await page.keyboard.press('Escape')
+    const cancel = page.getByRole('button', { name: 'Прервать молитву' })
+    if (mobile) {
+        await expect(cancel).toHaveText('×')
+        await cancel.click()
+    } else {
+        await expect(cancel).toBeHidden()
+        await page.keyboard.press('Escape')
+    }
 }
 async function shootGrave(
     page: Page,

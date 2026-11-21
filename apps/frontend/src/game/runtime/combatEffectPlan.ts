@@ -15,6 +15,7 @@ import {
 import { combatHitLabel } from './combatHitLabel'
 import { BARRIER_COLOR, type EffectShape, FIRE_COLOR, SPARK_COLOR } from './effectGraphics'
 import { deityColors } from './prayerGraphics'
+import { isFloatingNotice } from './runtimeQueries'
 
 export interface EffectCue {
     kind: EffectShape
@@ -97,7 +98,7 @@ function impactCues(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (event.kind === 'notice' && isPrayerAction(event.abilityId))
+    if (event.kind === 'notice' && event.noticeKind === 'prayer_unanswered')
         return [
             {
                 ...base,
@@ -144,7 +145,7 @@ export function eventCaption(event: GameEventPayload): string | undefined {
         absorb: () => (event.amount === undefined ? 'Барьер' : positiveAmount(event, 'Барьер −')),
         miss: () => 'Промах',
         parry: () => 'Парирование',
-        notice: () => (event.noticeKind === 'dash_rejected' ? event.text : undefined),
+        notice: () => (isFloatingNotice(event) ? event.text : undefined),
         revive: () => 'Возрождение',
         status: () => statusCaption(event),
         cast: () => castCaption(event),

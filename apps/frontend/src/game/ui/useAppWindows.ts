@@ -97,6 +97,10 @@ export function useAppWindows(options: AppWindowsOptions) {
         ...character,
         worldInputBlocked,
         openNearbyMenu,
+        openInventory(): void {
+            gameMenu.resume()
+            if (!options.inventoryOpen.value) toggleInventory()
+        },
         toggleInventory,
         prepareAutomationWindow,
         openAutomation,

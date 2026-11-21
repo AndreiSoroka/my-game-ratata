@@ -1,7 +1,7 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 
 import { routeFixture } from '../testing/automationFixture'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
@@ -18,13 +18,13 @@ function walker(overrides: Partial<CharacterSnapshot> = {}): CharacterSnapshot {
 
 it('shows the current stable route number and the server countdown, without advancing its own timer', async () => {
     vi.useFakeTimers()
-    const wrapper = mount(ActionChannelStatus, { props: { player: walker(), serverTime: 1000 } })
+    const wrapper = mount(ActionChannelStatus, { props: { player: walker() } })
     try {
         expect(wrapper.get('[role="status"]').text()).toContain('Точка 4: путь перекрыт')
         expect(wrapper.text()).toContain('отмена через 8 с')
         expect(wrapper.text()).toContain('Esc — остановить')
         vi.advanceTimersByTime(30_000)
-        await wrapper.setProps({ serverTime: 31_000 })
+        await nextTick()
         expect(wrapper.text()).toContain('отмена через 8 с')
         await wrapper.setProps({
             player: walker({
@@ -38,7 +38,6 @@ it('shows the current stable route number and the server countdown, without adva
         expect(wrapper.text()).toContain('отмена через 4 с')
         await wrapper.get('button').trigger('click')
         expect(wrapper.emitted('cancelRoute')).toEqual([[]])
-        expect(wrapper.emitted('cancelPrayer')).toBeUndefined()
     } finally {
         wrapper.unmount()
         vi.useRealTimers()
@@ -49,7 +48,7 @@ it.each(['moving', 'cancelled', 'dead', 'empty'] as const)(
     'hides blocked route feedback when %s',
     async (state) => {
         const wrapper = mount(ActionChannelStatus, {
-            props: { player: walker(), serverTime: 1000 },
+            props: { player: walker() },
         })
         try {
             const player =
@@ -74,7 +73,7 @@ it.each(['moving', 'cancelled', 'dead', 'empty'] as const)(
     }
 )
 
-it('suppresses action feedback while stunned and gives prayer priority over the route when clear', async () => {
+it('hides the blocked route during stun or prayer', async () => {
     const player = walker()
     const castingPlayer = walker({
         abilities: {
@@ -92,10 +91,7 @@ it('suppresses action feedback while stunned and gives prayer priority over the 
     })
     const stunnedCooldowns = { ...player.cooldowns, stunMsLeft: 2000 }
     const wrapper = mount(ActionChannelStatus, {
-        props: {
-            player: { ...player, cooldowns: stunnedCooldowns },
-            serverTime: 1000,
-        },
+        props: { player: { ...player, cooldowns: stunnedCooldowns } },
     })
     try {
         expect(wrapper.find('[role="status"]').exists()).toBe(false)
@@ -104,11 +100,9 @@ it('suppresses action feedback while stunned and gives prayer priority over the 
         })
         expect(wrapper.find('[role="status"]').exists()).toBe(false)
         await wrapper.setProps({ player: castingPlayer })
-        expect(wrapper.text()).toContain('Очищение могилы · 9.0 с')
-        expect(wrapper.text()).not.toContain('путь перекрыт')
-        await wrapper.get('button').trigger('click')
-        expect(wrapper.emitted('cancelPrayer')).toEqual([[]])
-        expect(wrapper.emitted('cancelRoute')).toBeUndefined()
+        expect(wrapper.find('[role="status"]').exists()).toBe(false)
+        await wrapper.setProps({ player })
+        expect(wrapper.get('[role="status"]').text()).toContain('путь перекрыт')
     } finally {
         wrapper.unmount()
     }

@@ -12,7 +12,6 @@ import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import GraveDetails from './GraveDetails.vue'
 import NearbyActionMenu from './NearbyActionMenu.vue'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
-import GameButton from './primitives/GameButton.vue'
 
 const props = defineProps<{
     snapshot: WorldSnapshot | undefined
@@ -27,7 +26,6 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
     command: [command: ClientMessage]
-    requestOpen: []
     targetChange: [target: TargetHighlight | undefined]
     selectGrave: [id: string]
 }>()
@@ -84,6 +82,16 @@ const canOpen = computed(
         props.player?.alive &&
         Boolean(target.value?.actions.length)
 )
+const prompt = computed(() => {
+    const selected = target.value
+    if (!canOpen.value || !selected) return undefined
+    const actionLabel =
+        selected.actions.length === 1 ? selected.actions[0]?.label : 'Выбрать действие'
+    const targetLabel = `F ${selected.name}`
+    return actionLabel && actionLabel !== selected.name
+        ? `${targetLabel} · ${actionLabel}`
+        : targetLabel
+})
 function openMenu(): void {
     const selected = target.value
     if (!selected || !props.player || !canOpen.value) return
@@ -160,21 +168,9 @@ watch(
     { immediate: true }
 )
 onBeforeUnmount(() => emit('targetChange', undefined))
-defineExpose({ openMenu })
+defineExpose({ openMenu, prompt })
 </script>
 <template>
-    <GameButton
-        v-if="target && actions.length && !blocked && !open"
-        class="nearby-prompt"
-        @click="emit('requestOpen')"
-    >
-        <kbd>F</kbd> <strong>{{ target.name }}</strong>
-        <span
-            v-if="actions.length !== 1 || actions[0]?.label !== target.name"
-            class="nearby-prompt__action"
-            >{{ actions.length === 1 ? actions[0]?.label : 'Выбрать действие' }}</span
-        >
-    </GameButton>
     <NearbyActionMenu
         :open="open"
         :actions="actions"
@@ -190,39 +186,3 @@ defineExpose({ openMenu })
         />
     </NearbyActionMenu>
 </template>
-<style scoped>
-.nearby-prompt {
-    position: absolute;
-    z-index: 6;
-    left: 16px;
-    bottom: 16px;
-    padding: 10px 13px;
-    max-width: calc(100% - 32px);
-    text-align: left;
-    border: 1px solid transparent;
-    cursor: pointer;
-}
-.nearby-prompt strong {
-    margin-left: 0.4rem;
-    font-weight: 600;
-}
-.nearby-prompt__action {
-    display: block;
-    color: #bcc8b4;
-    font-size: 0.9em;
-}
-.nearby-prompt kbd {
-    border: 1px solid #8c9478;
-    padding: 1px 4px;
-    border-radius: 2px;
-    font: inherit;
-}
-@media (max-width: 740px) {
-    .nearby-prompt {
-        left: 12px;
-        bottom: max(184px, var(--game-hotbar-top, 0px));
-        padding: 7px 10px;
-        font-size: 11px;
-    }
-}
-</style>

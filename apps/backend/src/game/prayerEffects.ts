@@ -11,6 +11,7 @@ import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellations'
 import { miracleChance } from './deities'
 import { resetMartyrStreak } from './martyr'
+import { unansweredPrayer } from './prayerFeedback'
 import { applyPrayerGifts } from './prayerGifts'
 import { applyPrayerGraves } from './prayerGraves'
 import { applyPrayerWave } from './prayerWave'
@@ -71,7 +72,7 @@ export function completePrayer(
     )
     const events = [...gift.events, ...wave.events, ...graves.events]
     if (events.length === 0) {
-        events.push(unansweredPrayer(actor, abilityId))
+        events.push(unansweredPrayer(actor.id, abilityId))
     }
     const experience = gift.experience + wave.experience + graves.experience
     if (experience > 0) {
@@ -144,16 +145,4 @@ function wasLowHpGift(
         actor.progression.constellations.hostileWound > 0 &&
         actor.progression.constellations.lowHpFromHostile
     )
-}
-function unansweredPrayer(
-    actor: GameCharacter,
-    abilityId: PrayerActionId
-): GameEventPayload {
-    return {
-        kind: 'notice',
-        actorId: actor.id,
-        audienceIds: [actor.id],
-        abilityId,
-        text: 'Божество не ответило на просьбу. Мана потрачена.',
-    }
 }

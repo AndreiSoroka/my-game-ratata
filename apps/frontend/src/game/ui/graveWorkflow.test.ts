@@ -131,9 +131,9 @@ describe('grave selection and hotbar', () => {
                         },
                     },
                 })
-                expect(wrapper.get('.control-status').text()).toContain('Очищение могилы · 10.0 с')
+                expect(wrapper.find('.control-status').exists()).toBe(false)
                 if (input === 'escape') press('Escape')
-                else await wrapper.get('.control-status button').trigger('click')
+                else await wrapper.get('button[aria-label="Прервать молитву"]').trigger('click')
                 expect(sendCommand).toHaveBeenCalledWith({ type: 'cancel_prayer' })
             } finally {
                 wrapper.unmount()

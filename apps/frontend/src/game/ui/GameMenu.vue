@@ -12,10 +12,18 @@ import {
 } from '../runtime/audioPreference'
 import { useEscapeOwner } from './uiEscapeOwners'
 
-const props = withDefaults(defineProps<{ automationAvailable?: boolean }>(), {
-    automationAvailable: true,
-})
-const emit = defineEmits<{ resume: []; leave: []; character: []; markers: []; scenarios: [] }>()
+const props = withDefaults(
+    defineProps<{ automationAvailable?: boolean; inventoryAvailable?: boolean }>(),
+    { automationAvailable: true, inventoryAvailable: true }
+)
+const emit = defineEmits<{
+    resume: []
+    leave: []
+    character: []
+    inventory: []
+    markers: []
+    scenarios: []
+}>()
 const panel = ref<HTMLElement>()
 const menu = ref<MenuPanelHandle>()
 const muted = ref(isAudioMuted())
@@ -23,6 +31,7 @@ const forcedMute = isAudioMuteForced()
 const items = computed<readonly MenuItem[]>(() => [
     { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },
     { id: 'character', label: 'Персонаж', key: 'P', disabled: !props.automationAvailable },
+    { id: 'inventory', label: 'Инвентарь', key: 'I', disabled: !props.inventoryAvailable },
     { id: 'markers', label: 'Метки', disabled: !props.automationAvailable },
     { id: 'scenarios', label: 'Сценарии', disabled: !props.automationAvailable },
     {
@@ -49,6 +58,9 @@ function activate(id: string): void {
         case 'character':
             emit('character')
             break
+        case 'inventory':
+            emit('inventory')
+            break
         case 'markers':
             emit('markers')
             break
@@ -67,6 +79,17 @@ function keydown(event: KeyboardEvent): void {
     if (event.code === 'Escape' || event.key === 'Escape') {
         event.preventDefault()
         if (!event.repeat) emit('resume')
+        return
+    }
+    if (
+        event.code === 'KeyI' &&
+        !event.isComposing &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey
+    ) {
+        event.preventDefault()
+        if (!event.repeat && props.inventoryAvailable) activate('inventory')
         return
     }
     menuKeyboardInput(event, (command) => menu.value?.navigate(command) ?? false)

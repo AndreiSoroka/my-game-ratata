@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { HudFrame, HudRow } from '@/shared/ui/common'
+import { HudRow } from '@/shared/ui/common'
 import { FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
@@ -42,8 +42,7 @@ const bars = computed(() =>
 </script>
 
 <template>
-    <component
-        :is="compact ? 'section' : HudFrame"
+    <section
         class="player-vitals"
         :class="{ 'player-vitals--compact': compact }"
         role="region"
@@ -94,12 +93,16 @@ const bars = computed(() =>
                 </HudRow>
             </div>
         </div>
-    </component>
+    </section>
 </template>
 
 <style scoped>
 .player-vitals {
     font-family: var(--ratata-font-family, sans-serif);
+}
+
+.player-vitals:not(.player-vitals--compact) {
+    container-type: inline-size;
 }
 
 .player-vitals__layout {

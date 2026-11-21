@@ -216,6 +216,25 @@ for (const withContext of [false, true]) {
             )
             expect(f.random).toHaveBeenCalledTimes(1)
         })
+        it('sends a failed Grave resurrection result only to the caster', () => {
+            const f = fixture([], withContext, 'pray_grave')
+            f.random.mockReturnValue(1)
+            expect(
+                f.complete().filter((event) => event.kind === 'notice')
+            ).toEqual([
+                {
+                    kind: 'notice',
+                    noticeKind: 'prayer_unanswered',
+                    actorId: f.caster.id,
+                    audienceIds: [f.caster.id],
+                    abilityId: 'pray_grave',
+                    text: 'Божество не ответило',
+                },
+            ])
+            expect(f.target.alive).toBe(false)
+            expect(f.caster.mana).toBe(f.initialMana - 20)
+            expect(f.random).toHaveBeenCalledTimes(1)
+        })
     })
 }
 

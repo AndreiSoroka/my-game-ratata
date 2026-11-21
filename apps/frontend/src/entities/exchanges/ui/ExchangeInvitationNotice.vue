@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 
-import { UiButton } from '@/shared/ui/common'
+import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
@@ -11,6 +11,16 @@ const props = defineProps<{ partnerName: string; direction: ExchangeInvitationDi
 const emit = defineEmits<{ accept: []; decline: []; cancel: [] }>()
 const headingId = useId()
 const incoming = computed(() => props.direction === 'incoming')
+const declineColors: UiButtonColors = {
+    highlighted: {
+        text: lightUiColors.panel.title,
+        border: lightUiColors.border.wood,
+        backgroundTop: 'transparent',
+        backgroundBottom: 'transparent',
+    },
+    edge: 'transparent',
+    shadow: 'transparent',
+}
 </script>
 
 <template>
@@ -45,6 +55,7 @@ const incoming = computed(() => props.direction === 'incoming')
                     class="exchange-invitation__button"
                     appearance="ghost"
                     border="border-001"
+                    :colors="declineColors"
                     @click="emit('decline')"
                 >
                     Отклонить

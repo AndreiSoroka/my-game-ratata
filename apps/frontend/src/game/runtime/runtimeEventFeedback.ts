@@ -1,7 +1,7 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { RatataGameOptions } from './runtimeOptions'
-import { isNoticeForPlayer } from './runtimeQueries'
+import { isFloatingNotice, isNoticeForPlayer } from './runtimeQueries'
 
 export function runtimeEventFeedback(
     event: GameEventPayload,
@@ -9,7 +9,7 @@ export function runtimeEventFeedback(
     options: Pick<RatataGameOptions, 'onNotice' | 'onDefeat'>,
     releaseInputs: () => void
 ): void {
-    if (event.noticeKind !== 'dash_rejected' && isNoticeForPlayer(event, playerId))
+    if (isNoticeForPlayer(event, playerId) && !isFloatingNotice(event))
         options.onNotice?.(event.text)
     if (event.kind === 'permadeath' && event.actorId === playerId) {
         releaseInputs()

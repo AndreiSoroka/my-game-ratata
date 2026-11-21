@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 for (const mobile of [false, true]) {
     test(`HUD focus and game-menu ownership (${mobile ? 'mobile' : 'desktop'})`, async ({
@@ -16,17 +16,13 @@ for (const mobile of [false, true]) {
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
         await expect(page.getByRole('region', { name: 'World location' })).toHaveCSS('top', '14px')
         await expect(page.locator('.game-player-status')).toHaveCSS('top', '14px')
+        const menuButton = await hotbarMenuButton(page)
         const guild = page.getByRole('button', { name: 'Гильдия', exact: true })
         await guild.click()
         await expect(page.getByRole('dialog', { name: 'Гильдия приключенцев' })).toBeVisible()
         await guild.click()
         await guild.focus()
-        await page.keyboard.press('KeyI')
-        await expect(page.getByRole('dialog', { name: 'Inventory and equipment' })).toBeVisible()
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog', { name: 'Inventory and equipment' })).toHaveCount(0)
-        const menu = page.getByRole('dialog', { name: 'Игровое меню' })
-        await expect(menu).toHaveCount(0)
+        const { menu, inventoryEntry } = await checkInventoryMenu(page)
         const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
         await attack.focus()
         await page.keyboard.press('KeyQ')
@@ -49,7 +45,11 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('KeyS')
         await expect(character).toBeFocused()
         await page.keyboard.press('ArrowDown')
+        await expect(inventoryEntry).toBeFocused()
+        await page.keyboard.press('ArrowDown')
         await expect(markers).toBeFocused()
+        await page.keyboard.press('KeyW')
+        await expect(inventoryEntry).toBeFocused()
         await page.keyboard.press('KeyW')
         await expect(character).toBeFocused()
         await page.keyboard.press('ArrowUp')
@@ -60,7 +60,6 @@ for (const mobile of [false, true]) {
         await expect(resume).toBeFocused()
         const before = await page.evaluate(() => window.__ratataTest!.getState())
         await page.keyboard.press('KeyW')
-        await page.keyboard.press('KeyI')
         await page.keyboard.press('Digit2')
         await expect
             .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot?.tick))
@@ -79,7 +78,7 @@ for (const mobile of [false, true]) {
         } finally {
             await page.keyboard.up('KeyD')
         }
-        await page.getByRole('button', { name: 'Игровое меню', exact: true }).click()
+        await menuButton.click()
         const stoppingTick = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.tick
         )
@@ -116,4 +115,37 @@ for (const mobile of [false, true]) {
         await expect(page.getByRole('button', { name: /^2: Искра/ })).toBeVisible()
         await expect(page.getByRole('button', { name: /^3: Искра/ })).toBeVisible()
     })
+}
+
+async function checkInventoryMenu(page: Page) {
+    await page.keyboard.press('Escape')
+    const menu = page.getByRole('dialog', { name: 'Игровое меню' })
+    const inventoryEntry = menu.getByRole('button', { name: 'Инвентарь · I', exact: true })
+    const inventory = page.getByRole('dialog', { name: 'Inventory and equipment' })
+    await expect(inventoryEntry).toBeVisible()
+    await page.keyboard.press('KeyI')
+    await expect(menu).toHaveCount(0)
+    await expect(inventory).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(inventory).toHaveCount(0)
+    await expect(menu).toHaveCount(0)
+    return { menu, inventoryEntry }
+}
+
+async function hotbarMenuButton(page: Page): Promise<Locator> {
+    await expect(page.getByRole('button', { name: 'Inventory', exact: true })).toHaveCount(0)
+    const hotbar = page.getByRole('group', { name: 'Быстрые действия' })
+    const frame = hotbar.locator('.hud-frame')
+    await expect(frame).toHaveCount(1)
+    const menuButton = frame.getByRole('button', { name: 'Игровое меню', exact: true })
+    const fourthSlot = frame.getByRole('button', { name: /^4:/ })
+    await expect(menuButton).toBeVisible()
+    const [slotBounds, menuBounds] = await Promise.all([
+        fourthSlot.boundingBox(),
+        menuButton.boundingBox(),
+    ])
+    expect(menuBounds!.x).toBeGreaterThanOrEqual(slotBounds!.x + slotBounds!.width)
+    expect(menuBounds!.y).toBeLessThan(slotBounds!.y + slotBounds!.height)
+    expect(menuBounds!.y + menuBounds!.height).toBeGreaterThan(slotBounds!.y)
+    return menuButton
 }

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 async function selectVisibleAlly(page: Page, name: string): Promise<void> {
     const limit = await page.evaluate(() => {
@@ -13,8 +13,14 @@ async function selectVisibleAlly(page: Page, name: string): Promise<void> {
     await expect(panel.getByText(name, { exact: true })).toBeVisible()
 }
 
-async function talkThroughKeyboardMenu(page: Page, name: string): Promise<void> {
-    await page.keyboard.press('KeyF')
+async function talkThroughActionMenu(
+    page: Page,
+    prompt: Locator,
+    name: string,
+    pointer: boolean
+): Promise<void> {
+    if (pointer) await prompt.click()
+    else await page.keyboard.press('KeyF')
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
     const talk = menu.getByRole('menuitem', { name: `Поговорить: ${name}`, exact: true })
@@ -78,8 +84,23 @@ for (const mobile of [false, true]) {
                     .__ratataTest!.getState()
                     .snapshot!.characters.find((actor) => actor.id === 'npc_guard_1')!.nickname
         )
+        await page.locator('canvas[data-game-canvas=true]').focus()
+        await page.keyboard.press('KeyQ')
+        const hotbar = page.locator('.hotbar-content')
+        const guide = hotbar.getByText('Q себя', { exact: false })
+        const prompt = hotbar.getByRole('button', { name: /^F / })
+        await expect(guide).toBeVisible()
+        await expect(prompt).toHaveCount(0)
         await selectVisibleAlly(page, guardName)
-        await talkThroughKeyboardMenu(page, guardName)
+        await expect(prompt).toBeVisible()
+        await expect(prompt).toContainText(guardName)
+        await expect(guide).toBeHidden()
+        const [promptBounds, trayBounds] = await Promise.all([
+            prompt.boundingBox(),
+            hotbar.getByRole('group', { name: 'Быстрые действия' }).boundingBox(),
+        ])
+        expect(promptBounds!.y + promptBounds!.height).toBeLessThanOrEqual(trayBounds!.y)
+        await talkThroughActionMenu(page, prompt, guardName, mobile)
         const dialogue = page.getByRole('dialog', { name: /Разговор:.*Рада/ })
         await expect(dialogue).toBeVisible()
         const speechBadge = dialogue.locator('.soul-badge__speech')

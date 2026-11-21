@@ -1,23 +1,14 @@
 <script setup lang="ts">
-import { ABILITY_DEFINITIONS, type CharacterSnapshot } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 
-const props = defineProps<{ player: CharacterSnapshot; serverTime: number }>()
+const props = defineProps<{ player: CharacterSnapshot }>()
 const emit = defineEmits<{ cancelPrayer: []; cancelRoute: [] }>()
 const stunned = computed(() => props.player.cooldowns.stunMsLeft > 0)
-const prayerName = computed(
-    () =>
-        ({
-            ward: 'Сдерживание нежити',
-            purify_grave: 'Очищение могилы',
-            revive: 'Воскрешение',
-            restore: ABILITY_DEFINITIONS[props.player.abilities?.casting?.abilityId ?? 'pray'].name,
-            harm: 'Карающая молитва',
-        })[props.player.abilities?.casting?.mode ?? 'revive']
-)
+const casting = computed(() => props.player.abilities?.casting)
 const blockedRoute = computed(() => {
     const control = props.player.control
     return props.player.alive && control?.mode === 'route' && control.route?.waiting === 'blocked'
@@ -30,24 +21,18 @@ const remainingSeconds = computed(() => {
 })
 </script>
 <template>
-    <div
-        v-if="!stunned && player.abilities?.casting"
-        class="control-status rpg-panel game-frame-host"
-        role="status"
+    <GameButton
+        v-if="!stunned && casting && !casting.uninterruptible"
+        class="prayer-cancel"
+        icon
+        aria-label="Прервать молитву"
+        @keydown.esc.stop.prevent="emit('cancelPrayer')"
+        @click="emit('cancelPrayer')"
     >
-        <GameFrame variant="panel" />
-        {{ prayerName }} ·
-        {{ (Math.max(0, player.abilities.casting.completesAt - serverTime) / 1000).toFixed(1) }} с
-        <GameButton
-            v-if="!player.abilities.casting.uninterruptible"
-            @keydown.esc.stop.prevent="emit('cancelPrayer')"
-            @click="emit('cancelPrayer')"
-        >
-            Прервать · Esc
-        </GameButton>
-    </div>
+        ×
+    </GameButton>
     <div
-        v-else-if="!stunned && blockedRoute?.points[0]"
+        v-else-if="!stunned && !casting && blockedRoute?.points[0]"
         class="control-status control-status--route rpg-panel game-frame-host"
         role="status"
     >
@@ -62,21 +47,34 @@ const remainingSeconds = computed(() => {
     </div>
 </template>
 <style scoped>
-.control-status {
+.control-status,
+.prayer-cancel {
     position: absolute;
     left: 50%;
     top: 42%;
     transform: translateX(-50%);
-    padding: 10px;
     z-index: 9;
+}
+.control-status {
+    padding: 10px;
     color: var(--rpg-focus);
 }
-button {
+.control-status button {
     display: block;
     margin: 8px auto 0;
     padding: 6px 12px;
     border: 1px solid transparent;
     cursor: pointer;
+}
+.prayer-cancel {
+    display: none;
+}
+@media (max-width: 640px), (pointer: coarse) {
+    .prayer-cancel {
+        display: inline-grid;
+        min-width: 44px;
+        min-height: 44px;
+    }
 }
 .control-status--route {
     width: max-content;

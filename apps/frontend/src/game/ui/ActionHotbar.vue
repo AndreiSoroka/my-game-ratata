@@ -15,6 +15,7 @@ import { itemAssetCatalog } from '../assets/itemCatalog'
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { abilityUsage } from './abilityUsage'
 import { dialogActionKeys } from './dialogActionKeys'
+import GameMenuButton from './GameMenuButton.vue'
 import { objectTargetUnavailable } from './hotbarActions'
 import type { HotbarBinding as Binding } from './hotbarBindings'
 import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
@@ -37,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     command: [message: ClientMessage]
     cancel: []
+    openMenu: []
     plant: []
     previewChange: [preview: PrayerPreviewHighlight | undefined]
     shotPreviewChange: [path: ProjectilePath | undefined]
@@ -77,7 +79,10 @@ function describeAction(binding: Binding | null, index: number): QuickAction | n
                 : undefined,
         cooldownMs: cooldown(binding),
         active: isActive,
-        repeat: isActive && !props.player.combat?.defensiveStance ? waiting.value : undefined,
+        repeat:
+            isActive && !props.player.combat?.defensiveStance
+                ? (waiting.value ?? 'Автоповтор включён')
+                : undefined,
         disabled: Boolean(objectTargetUnavailable(binding, props)),
         unavailable: reason !== undefined,
     }
@@ -182,11 +187,15 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                 class="hotbar__tray"
                 :actions="actions"
                 :blocked="blocked || !player.alive"
-                :waiting="player.control?.mode === 'action' ? waiting : undefined"
+                :waiting="waiting"
                 @activate="activate"
                 @assign="edit"
                 @clear="clearSlot"
-            />
+            >
+                <template #trailing>
+                    <GameMenuButton class="hotbar-menu" @open="emit('openMenu')" />
+                </template>
+            </QuickActionBar>
         </div>
         <section
             v-if="editing !== undefined"

@@ -279,19 +279,19 @@ test('the compact effect strip wraps and reserves space for adjacent overlays', 
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(height - 112)
 })
 
-test('player vitals widget shows the compact HUD and responds to Controls', async ({ page }) => {
+test('player vitals widget mounts directly in compact mode and responds to Controls', async ({
+    page,
+}) => {
     await page.goto(
         '/?path=/story/widgets-player-vitals-playervitalswidget--normal&globals=backgrounds.value:parchment'
     )
     const preview = page.frameLocator('#storybook-preview-iframe')
-    const frame = preview.locator('.hud-frame')
-    await expectHudFrame(frame)
-    await expect(frame).toHaveCSS('width', '220px')
-
-    const vitals = frame.getByRole('region', { name: 'Player vitals' })
+    const vitals = preview.locator('#storybook-root > div > section.player-vitals')
+    await expect(preview.locator('.hud-frame')).toHaveCount(0)
+    await expect(vitals).toHaveCSS('width', '220px')
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
-    await expect(frame.locator('.faith-status-list')).toHaveCount(0)
-    await expect(frame.getByRole('region', { name: 'Player effects' })).toHaveCount(0)
+    await expect(preview.locator('.faith-status-list')).toHaveCount(0)
+    await expect(preview.getByRole('region', { name: 'Player effects' })).toHaveCount(0)
     await assertResourceBars(vitals, defaultPercentages, [])
 
     await page.getByRole('tab', { name: /^Controls/ }).click()
@@ -307,7 +307,7 @@ test('player vitals entity mounts directly and edits fill and exact values indep
     await page.goto('/?path=/story/entities-player-vitals-playervitalsview--authorized-numbers')
     const preview = page.frameLocator('#storybook-preview-iframe')
     const frame = preview.locator('.hud-frame')
-    const vitals = preview.locator('#storybook-root > div > .player-vitals')
+    const vitals = preview.locator('#storybook-root > div > section.player-vitals')
     await expect(vitals).toHaveCSS('width', '220px')
     await expect(frame).toHaveCount(0)
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
@@ -331,8 +331,9 @@ test('player vitals entity mounts directly and edits fill and exact values indep
 
     await compact.press('Space')
     await expect(compact).not.toBeChecked()
+    await expect(vitals).toHaveCSS('width', '330px')
+    await expect(frame).toHaveCount(0)
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(2)
-    await expectHudFrame(frame)
     await expect(health.locator('.bar-track')).toHaveCSS('height', '18px')
 
     await compact.press('Space')

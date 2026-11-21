@@ -121,22 +121,39 @@
 .social-hints {
     position: absolute;
     right: 12px;
-    top: var(--ratata-player-status-bottom, 240px);
-    max-height: max(90px, calc(100dvh - var(--ratata-player-status-bottom, 240px) - 110px));
+    top: var(--game-social-hints-top, 240px);
+    max-height: max(0px, calc(100dvh - var(--game-social-hints-top, 240px) - 8px));
     overflow-y: auto;
     display: grid;
-    gap: 8px;
     max-width: min(340px, calc(100% - 24px));
 }
-.social-hints:has(> .social-hints__invitation) {
+.social-notices {
+    position: absolute;
+    inset-inline: 0;
+    top: var(--game-social-notices-top, 14px);
     width: min(340px, calc(100% - 24px));
+    max-height: max(0px, calc(100dvh - var(--game-social-notices-top, 14px) - 8px));
+    margin-inline: auto;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    overflow-y: auto;
+    pointer-events: none;
 }
 .social-hints > button,
-.social-hints__invitation {
+.social-notices > button,
+.social-notices__invitation {
     position: relative;
     z-index: 12;
 }
-.social-hints__invitation--over-whisper {
+.social-notices > button,
+.social-notices__invitation {
+    pointer-events: auto;
+}
+.social-notices__invitation {
+    inline-size: 100%;
+}
+.social-notices__invitation--over-whisper {
     z-index: 26;
 }
 .social-hints > button {
@@ -161,7 +178,7 @@
     .social-hints {
         width: min(210px, calc(100% - 24px));
     }
-    .social-hints:has(> .social-hints__invitation) {
+    .social-notices {
         width: min(260px, calc(100% - 24px));
     }
     .social-surface--exchange {

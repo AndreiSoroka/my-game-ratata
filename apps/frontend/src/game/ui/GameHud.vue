@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { CharacterSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import GameMenuButton from './GameMenuButton.vue'
 import GamePlayerStatus from './GamePlayerStatus.vue'
-import GameButton from './primitives/GameButton.vue'
-import { activateFocusedButton } from './uiKeyboard'
 import WorldLocationPanel from './WorldLocationPanel.vue'
 
 defineProps<{
@@ -11,7 +10,7 @@ defineProps<{
     player: CharacterSnapshot | undefined
     inventoryOpen: boolean
 }>()
-const emit = defineEmits<{ toggleInventory: []; openMenu: [] }>()
+const emit = defineEmits<{ openMenu: [] }>()
 </script>
 
 <template>
@@ -24,32 +23,15 @@ const emit = defineEmits<{ toggleInventory: []; openMenu: [] }>()
         :server-time="snapshot?.serverTime"
     />
     <slot />
-    <div class="bottom-actions" aria-label="Actions">
-        <GameButton
-            class="bottom-actions__button"
-            :class="{ 'bottom-actions__button--active': inventoryOpen }"
-            :aria-pressed="inventoryOpen"
-            @click="emit('toggleInventory')"
-            @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
-        >
-            Inventory
-        </GameButton>
-        <GameButton
-            icon
-            class="bottom-actions__menu"
-            aria-label="Игровое меню"
-            title="Меню · Esc"
-            @click="emit('openMenu')"
-            @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
-        >
-            ☰
-        </GameButton>
-    </div>
+    <GameMenuButton v-if="!snapshot || !player" class="startup-menu" @open="emit('openMenu')" />
 </template>
 
 <style scoped>
-.bottom-actions__menu {
-    min-width: var(--game-bottom-action-size);
-    min-height: var(--game-bottom-action-size);
+.startup-menu {
+    position: absolute;
+    bottom: var(--game-hotbar-bottom);
+    left: 50%;
+    z-index: 3;
+    transform: translateX(-50%);
 }
 </style>

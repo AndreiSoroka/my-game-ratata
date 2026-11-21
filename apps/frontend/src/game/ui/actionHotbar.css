@@ -14,6 +14,7 @@
     z-index: 7;
     grid-area: 2 / 1;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     justify-items: center;
     width: min(360px, calc(100% - 24px));
     row-gap: 8px;
@@ -21,6 +22,10 @@
 
 .hotbar__tray {
     pointer-events: auto;
+}
+
+.hotbar-menu {
+    --game-menu-button-size: var(--quick-action-size);
 }
 
 .hotbar-picker {

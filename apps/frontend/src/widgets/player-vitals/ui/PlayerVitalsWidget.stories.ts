@@ -1,9 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
-import { h } from 'vue'
 
 import type { PlayerVitalsData } from '@/entities/player-vitals'
 import { renderVueStory } from '@/shared/lib/storybook'
-import { HudFrame } from '@/shared/ui/common'
 
 import PlayerVitalsWidget from './PlayerVitalsWidget.vue'
 
@@ -23,16 +21,13 @@ const meta = {
         energyPercent: percentage,
     },
     render(args) {
-        return renderVueStory(
-            {
-                render: () =>
-                    h(HudFrame, { style: { width: 'min(220px, 100%)' } }, () =>
-                        h(PlayerVitalsWidget, { ...args, compact: true })
-                    ),
-            },
-            {},
+        const host = renderVueStory(
+            PlayerVitalsWidget,
+            { ...args, compact: true },
             { padding: '16px' }
         )
+        host.style.maxWidth = '252px'
+        return host
     },
 } satisfies Meta<PlayerVitalsData>
 

@@ -17,7 +17,12 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="quick-action-bar" role="group" aria-label="Быстрые действия">
+    <div
+        class="quick-action-bar"
+        :class="{ 'quick-action-bar--with-trailing': $slots.trailing }"
+        role="group"
+        aria-label="Быстрые действия"
+    >
         <p v-if="waiting" class="hotbar-waiting" role="status">{{ waiting }}</p>
         <HudFrame>
             <div class="quick-action-bar__slots">
@@ -31,6 +36,9 @@ const emit = defineEmits<{
                     @assign="emit('assign', index)"
                     @clear="emit('clear', index)"
                 />
+                <div v-if="$slots.trailing" class="quick-action-bar__trailing">
+                    <slot name="trailing" />
+                </div>
             </div>
         </HudFrame>
         <p class="quick-action-bar__hint">1–4 · Дважды: повтор · Shift: назначить</p>
@@ -40,6 +48,7 @@ const emit = defineEmits<{
 <style scoped>
 .quick-action-bar {
     --quick-action-size: 50px;
+    --quick-action-gap: 7px;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
@@ -48,12 +57,27 @@ const emit = defineEmits<{
     color: var(--ui-dark-panel-title);
 }
 
+.quick-action-bar--with-trailing {
+    inline-size: 329px;
+}
+
 .quick-action-bar__slots {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 9px 7px;
+    gap: 9px var(--quick-action-gap);
     min-inline-size: 0;
+}
+
+.quick-action-bar--with-trailing .quick-action-bar__slots {
+    --quick-action-size: min(50px, calc((100cqi - 4 * var(--quick-action-gap)) / 5));
+}
+
+.quick-action-bar__trailing {
+    display: grid;
+    flex: none;
+    inline-size: var(--quick-action-size);
+    aspect-ratio: 1;
 }
 
 .quick-action-bar__hint,

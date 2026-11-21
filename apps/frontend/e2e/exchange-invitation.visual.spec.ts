@@ -36,6 +36,24 @@ for (const width of [1280, 320]) {
     })
 }
 
+test('ExchangeInvitationNotice keeps Decline transparent when highlighted', async ({ page }) => {
+    await page.goto(uiStoryUrl(`${noticeStory}--default`))
+    const notice = page.getByRole('region', { name: incomingName, exact: true })
+    const decline = notice.getByRole('button', { name: 'Отклонить' })
+    const border = decline.locator('.ui-button__border')
+    const transparentFill = 'linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0))'
+    await expect(border).toHaveCSS('opacity', '0.6')
+    await decline.hover()
+    await expect(decline).toHaveCSS('background-image', transparentFill)
+    await expect(border).toHaveCSS('opacity', '1')
+
+    await page.mouse.move(0, 0)
+    await notice.getByRole('button', { name: tradeButton }).press('Tab')
+    await expect(decline).toBeFocused()
+    await expect(decline).toHaveCSS('outline-style', 'solid')
+    await expect(decline).toHaveCSS('background-image', transparentFill)
+})
+
 test('ExchangeInvitationNotice fits a long partner name at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 844 })
     await page.goto(uiStoryUrl(`${noticeStory}--long-name`))

@@ -77,13 +77,19 @@ test.describe('Storybook production grave states', () => {
     })
 })
 
-test('Storybook production purification channel exposes its remaining time and cancel button', async ({
+test('Storybook purification channel shows only a compact cancel button on narrow screens', async ({
     page,
 }) => {
     await page.goto('/iframe.html?id=game-actionchannelstatus--purifying-grave&viewMode=story')
-    await expect(page.getByRole('status')).toContainText('Очищение могилы · 2.5 с')
-    const cancel = page.getByRole('button', { name: 'Прервать · Esc' })
+    await expect(page.locator('#storybook-root > div')).toBeVisible()
+    const cancel = page.getByRole('button', { name: 'Прервать молитву' })
+    await expect(page.getByRole('status')).toHaveCount(0)
+    await expect(cancel).toBeHidden()
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(page.getByRole('status')).toHaveCount(0)
     await expect(cancel).toBeVisible()
+    await expect(cancel).toHaveText('×')
     await expect(cancel).toBeEnabled()
     await cancel.focus()
     await expect(cancel).toBeFocused()

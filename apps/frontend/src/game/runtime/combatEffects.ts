@@ -23,6 +23,7 @@ interface Effect {
     duration: number
     from: { x: number; y: number }
     cue?: EffectCue
+    prayerCompletion?: Pick<GameEventPayload, 'actorId' | 'abilityId'>
     particles?: ReturnType<CombatParticles['burst']>
 }
 // Shares the conservative 32-effect scene budget with damage, barriers and stun labels.
@@ -53,9 +54,17 @@ export class CombatEffects {
         const target = this.eventTarget(event)
         if (event.kind === 'cast' && event.phase !== 'started') this.stopChannel(event.actorId)
         if (!target) return
+        if (event.kind === 'notice' && event.noticeKind === 'prayer_unanswered')
+            this.removePrayerCompletion(event)
         if (actor) for (const cue of combatEffectCues(event, actor)) this.visual(cue)
         const caption = eventCaption(event)
-        if (caption) this.label(target, caption, captionColor(event, actor))
+        if (caption)
+            this.label(
+                target,
+                caption,
+                captionColor(event, actor),
+                isCompletedPrayer(event) ? event : undefined
+            )
     }
     public sync(characters: CharacterSnapshot[]): void {
         const active = new Set(
@@ -73,10 +82,8 @@ export class CombatEffects {
     }
     private eventTarget(event: GameEventPayload): EffectTarget | undefined {
         if (event.target && event.kind !== 'attack') return this.worldTarget(event.target)
-        const casterCaption =
-            event.kind === 'cast' && isPrayerAction(event.abilityId) && event.phase === 'completed'
         return this.character(
-            event.kind === 'attack' || casterCaption
+            event.kind === 'attack' || isCompletedPrayer(event)
                 ? (event.actorId ?? '')
                 : (event.targetId ?? event.actorId ?? '')
         )
@@ -129,6 +136,20 @@ export class CombatEffects {
             if (effect.cue?.channel && effect.cue.fromId === actorId) this.remove(effect)
         this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
     }
+    private removePrayerCompletion(event: GameEventPayload): void {
+        for (let index = this.effects.length - 1; index >= 0; index -= 1) {
+            const effect = this.effects[index]!
+            if (
+                effect.prayerCompletion &&
+                effect.prayerCompletion.actorId === event.actorId &&
+                effect.prayerCompletion.abilityId === event.abilityId
+            ) {
+                this.effects.splice(index, 1)
+                this.remove(effect)
+                return
+            }
+        }
+    }
     private cueTarget(cue: EffectCue): EffectTarget | undefined {
         return cue.target ? this.worldTarget(cue.target) : this.character(cue.targetId)
     }
@@ -162,7 +183,12 @@ export class CombatEffects {
         const particles = this.particles.burst(cue, actor.pos, this.now)
         Object.assign(effect, { particles })
     }
-    private label(target: EffectTarget, text: string, color: string): void {
+    private label(
+        target: EffectTarget,
+        text: string,
+        color: string,
+        prayerCompletion?: Effect['prayerCompletion']
+    ): void {
         const actor = new Label({
             text,
             pos: vec(target.position.x, target.position.y - 42),
@@ -181,6 +207,7 @@ export class CombatEffects {
             started: this.now,
             duration: 1000,
             from: { x: actor.pos.x, y: actor.pos.y },
+            prayerCompletion,
         })
         actor.actions.fade(0, 1000)
     }
@@ -247,6 +274,10 @@ export class CombatEffects {
             return keep
         })
     }
+}
+
+function isCompletedPrayer(event: GameEventPayload): boolean {
+    return event.kind === 'cast' && event.phase === 'completed' && isPrayerAction(event.abilityId)
 }
 
 function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefined): string {

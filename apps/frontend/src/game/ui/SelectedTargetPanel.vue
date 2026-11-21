@@ -66,7 +66,7 @@ defineProps<{
 <style scoped>
 .target-panel {
     position: absolute;
-    top: 58px;
+    top: max(58px, calc(var(--game-social-notices-bottom, 0px) + 8px));
     left: 50%;
     transform: translateX(-50%);
     width: 240px;
@@ -94,11 +94,8 @@ progress {
     .target-panel {
         top: max(
             212px,
-            var(--ratata-player-status-bottom, 240px),
-            calc(
-                var(--ratata-player-status-bottom, 240px) + var(--ratata-social-hints-height, 0px) +
-                    8px
-            )
+            calc(var(--game-social-notices-bottom, 0px) + 8px),
+            calc(var(--game-social-hints-top, 240px) + var(--ratata-social-hints-height, 0px) + 8px)
         );
         width: 210px;
     }

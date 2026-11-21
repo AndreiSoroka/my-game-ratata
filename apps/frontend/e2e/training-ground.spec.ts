@@ -72,8 +72,10 @@ for (const mobile of [false, true]) {
         await activateBlade(page, attack, mobile, 2)
         await expect(selected).toContainText('Тренировочный манекен')
         await expect(attack).toHaveAttribute('aria-pressed', 'true')
+        await expect(attack.getByLabel('Автоповтор')).toBeVisible()
         await expect.poll(playerX).toBeGreaterThan(yard.inside.x + 8)
         await expect.poll(() => localAttacks().length).toBeGreaterThanOrEqual(3)
+        await expect(page.getByText('Повтор: действие выполняется', { exact: true })).toHaveCount(0)
 
         await attack.click()
         await expect(attack).toHaveAttribute('aria-pressed', 'false')

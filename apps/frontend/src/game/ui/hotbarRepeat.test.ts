@@ -122,6 +122,16 @@ it('can arm a meaningful prayer while waiting for mana and displays authoritativ
         })
         expect(wrapper.findAll('.hotbar-slot')[1]!.classes()).toContain('active')
         expect(wrapper.get('.hotbar-waiting').text()).toContain('ждём силы')
+        for (const waiting of ['action', null] as const) {
+            await wrapper.setProps({
+                player: {
+                    ...player,
+                    control: { mode: 'action', targetId: player.id, action, waiting },
+                },
+            })
+            expect(wrapper.find('.hotbar-waiting').exists()).toBe(false)
+            expect(wrapper.get('[aria-label="Автоповтор"]').text()).toBe('↻')
+        }
         wrapper.vm.activate(1)
         expect(wrapper.emitted('command')?.at(-1)).toEqual([{ type: 'auto_action', action: null }])
     } finally {

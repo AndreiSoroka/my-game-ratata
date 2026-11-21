@@ -76,17 +76,26 @@
 
 .game-screen {
     --game-hud-top: max(14px, env(safe-area-inset-top, 0px));
-    --game-bottom-actions-inset: max(14px, env(safe-area-inset-bottom, 0px));
-    --game-bottom-action-size: 40px;
-    --game-footer-gap: 8px;
-    --game-hotbar-bottom: calc(
-        var(--game-bottom-actions-inset) + var(--game-bottom-action-size) + var(--game-footer-gap)
+    --game-social-notices-top: var(--game-hud-top);
+    --game-social-notices-bottom: calc(
+        var(--game-social-notices-top) + var(--ratata-social-notices-height, 0px)
     );
+    --game-social-hints-top: var(--ratata-player-status-bottom, 240px);
+    --game-hud-dock-inset: max(62px, calc(env(safe-area-inset-bottom, 0px) + 48px));
+    --game-footer-gap: 8px;
+    --game-hotbar-bottom: var(--game-hud-dock-inset);
     position: relative;
     height: 100vh;
     display: grid;
     grid-template-rows: minmax(0, 1fr);
     overflow: hidden;
+}
+
+@media (max-width: 1279px) {
+    .game-screen:has(.game-player-status__effects) {
+        --game-social-notices-top: var(--ratata-player-status-bottom, 240px);
+        --game-social-hints-top: calc(var(--game-social-notices-bottom) + 8px);
+    }
 }
 
 .game-host {
@@ -111,31 +120,11 @@
     padding: 10px 12px;
 }
 
-.bottom-actions {
-    position: absolute;
-    left: 50%;
-    bottom: var(--game-bottom-actions-inset);
-    z-index: 3;
-    display: flex;
-    gap: 8px;
-    transform: translateX(-50%);
-}
-
-.bottom-actions__button {
-    min-width: 116px;
-    min-height: var(--game-bottom-action-size);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 800;
-    padding: 0 14px;
-}
-
 @media (max-width: 1040px) {
     .game-screen {
-        --game-adventure-tools-bottom: calc(
-            var(--game-bottom-actions-inset) + var(--game-bottom-action-size) +
-                var(--game-footer-gap)
-        );
+        --game-social-notices-top: var(--ratata-player-status-bottom, 240px);
+        --game-social-hints-top: calc(var(--game-social-notices-bottom) + 8px);
+        --game-adventure-tools-bottom: var(--game-hud-dock-inset);
         --game-hotbar-bottom: calc(
             var(--game-adventure-tools-bottom) + var(--ratata-adventure-tools-height, 0px) +
                 var(--game-footer-gap)

@@ -3,11 +3,6 @@ import { expect, type Page, test } from '@playwright/test'
 
 const schools: PrayerAbilityId[] = ['pray_road', 'pray']
 const unavailableSchools: PrayerAbilityId[] = ['pray_lantern', 'pray_grave']
-interface PrayerControls {
-    cycle: string
-    interact: string
-    self: string
-}
 
 for (const width of [390, 1280]) {
     test(`learns Vera's two independent prayers and refuses unknown schools (${width}px)`, async ({
@@ -53,11 +48,10 @@ for (const width of [390, 1280]) {
             teacher.id
         )
         expect(navigation.status).toBe('arrived')
-        const controls = await prayerControls(page)
-        await selectAlly(page, teacher.nickname, controls)
-        await assertUnavailableLessons(page, teacher.id, controls, rejectedLessons)
+        await selectAlly(page, teacher.nickname)
+        await assertUnavailableLessons(page, teacher.id, rejectedLessons)
         for (const abilityId of schools) {
-            await page.keyboard.press(controls.interact)
+            await page.keyboard.press('KeyF')
             const lesson = page.getByRole('menuitem', {
                 name: `Изучить: ${ABILITY_DEFINITIONS[abilityId].name}`,
                 exact: true,
@@ -79,7 +73,7 @@ for (const width of [390, 1280]) {
         expect(Object.keys(player.abilities!.prayers!)).toEqual(expect.arrayContaining(schools))
         for (const abilityId of unavailableSchools)
             expect(player.abilities!.known).not.toContain(abilityId)
-        await page.keyboard.press(controls.self)
+        await page.keyboard.press('KeyQ')
         for (const [index, abilityId] of schools.entries()) {
             await page.keyboard.press(`Shift+Digit${index + 1}`)
             const picker = page.getByRole('dialog', { name: `Назначить слот ${index + 1}` })
@@ -123,19 +117,13 @@ for (const width of [390, 1280]) {
     })
 }
 
-async function prayerControls(page: Page): Promise<PrayerControls> {
-    return (await page.locator('body').innerText()).includes('Q себя')
-        ? { cycle: 'KeyE', interact: 'KeyF', self: 'KeyQ' }
-        : { cycle: 'Shift+KeyT', interact: 'KeyE', self: 'KeyF' }
-}
-
-async function selectAlly(page: Page, name: string, controls: PrayerControls): Promise<void> {
+async function selectAlly(page: Page, name: string): Promise<void> {
     const panel = page.getByLabel('Выбранная цель')
     const count = await page.evaluate(
         () => window.__ratataTest!.getState().snapshot!.characters.length + 1
     )
     for (let index = 0; index < count; index += 1) {
-        await page.keyboard.press(controls.cycle)
+        await page.keyboard.press('KeyE')
         if (await panel.getByText(name, { exact: true }).isVisible()) break
     }
     await expect(panel.getByText(name, { exact: true })).toBeVisible()
@@ -179,10 +167,9 @@ function observeRejectedLessons(page: Page): string[] {
 async function assertUnavailableLessons(
     page: Page,
     teacherId: string,
-    controls: PrayerControls,
     rejectedLessons: string[]
 ): Promise<void> {
-    await page.keyboard.press(controls.interact)
+    await page.keyboard.press('KeyF')
     for (const abilityId of unavailableSchools) {
         await expect(
             page.getByRole('menuitem', {

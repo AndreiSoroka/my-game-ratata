@@ -69,6 +69,13 @@ export function isNoticeForPlayer(
     )
 }
 
+export function isFloatingNotice(event: GameEventPayload): boolean {
+    return (
+        event.kind === 'notice' &&
+        (event.noticeKind === 'dash_rejected' || event.noticeKind === 'prayer_unanswered')
+    )
+}
+
 export function isChatEvent(
     event: GameEventPayload
 ): event is GameEventPayload & { actorId: string; text: string } {

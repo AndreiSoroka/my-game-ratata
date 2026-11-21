@@ -374,6 +374,16 @@ it.each(prayerAbilityIds)(
         const random = vi.fn(() => 1)
         const events = complete(actor, abilityId, target, 1000, random)
         expect(events.some((event) => event.kind === 'heal')).toBe(false)
+        expect(events.filter((event) => event.kind === 'notice')).toEqual([
+            {
+                kind: 'notice',
+                noticeKind: 'prayer_unanswered',
+                actorId: actor.id,
+                audienceIds: [actor.id],
+                abilityId,
+                text: 'Божество не ответило',
+            },
+        ])
         const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]
         expect(masteryExperience(actor, school.constellationId)).toBe(
             prayerXp(0)

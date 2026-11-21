@@ -178,7 +178,7 @@ it('keeps a private conversation focused when an incoming invitation is declined
             snapshot: { ...snapshot, social: { ...snapshot.social, exchange: invitation } },
         })
         const notice = view.get('section.exchange-invitation')
-        expect(notice.classes()).toContain('social-hints__invitation--over-whisper')
+        expect(notice.classes()).toContain('social-notices__invitation--over-whisper')
         expect(document.activeElement).toBe(input)
         await notice
             .findAll('button')

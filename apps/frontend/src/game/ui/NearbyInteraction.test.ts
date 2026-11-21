@@ -57,16 +57,17 @@ describe('opening a one-target interaction', () => {
         const second = resident('second', 40)
         const wrapper = interaction(player, [first, second])
         try {
-            expect(wrapper.get('.nearby-prompt').text()).toContain(first.nickname)
-            expect(wrapper.get('.nearby-prompt').text()).not.toContain(second.nickname)
+            expect(wrapper.vm.prompt).toContain(`F ${first.nickname} · `)
             wrapper.vm.openMenu()
             await flushPromises()
+            expect(wrapper.vm.prompt).toBeUndefined()
             expect(wrapper.get('h2').text()).toBe(first.nickname)
             const closer = { ...second, position: { x: 0, y: 10 } }
             await wrapper.setProps({
                 snapshot: worldFixture([player, first, closer]),
                 characters: [first, closer],
             })
+            expect(wrapper.vm.prompt).toBeUndefined()
             expect(wrapper.get('h2').text()).toBe(first.nickname)
             expect(wrapper.find('[data-action-id="talk:second"]').exists()).toBe(false)
             await wrapper
@@ -104,7 +105,7 @@ describe('interaction menu invalidation', () => {
                     isPositionVisible: (position) => change !== 'hidden' || position.y !== 20,
                 })
                 expect(wrapper.find('[role="menu"]').exists()).toBe(false)
-                expect(wrapper.get('.nearby-prompt').text()).toContain(second.nickname)
+                expect(wrapper.vm.prompt).toContain(`F ${second.nickname} · `)
                 wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'talk:second')
                 await flushPromises()
                 expect(wrapper.emitted('command')).toHaveLength(1)
@@ -153,6 +154,7 @@ describe('interaction menu invalidation', () => {
                     })
                 }
                 expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+                expect(Boolean(wrapper.vm.prompt)).toBe(change === 'travel')
                 wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'talk:first')
                 expect(wrapper.emitted('command')).toHaveLength(1)
             } finally {

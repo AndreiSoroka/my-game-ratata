@@ -40,6 +40,9 @@ const heroClass = ref<HeroClass>('vanguard')
 const defeated = ref(false)
 const gameHost = ref<HTMLElement>()
 const game = ref<RatataGame>()
+const canSelectTarget = (key: string): boolean => game.value?.canSelectTarget(key) ?? false
+const isPositionVisible: RatataGame['isInteractionVisible'] = (position, bounds, range) =>
+    game.value?.isInteractionVisible(position, bounds, range) ?? false
 const isJoining = ref(false)
 const isStarted = ref(false)
 const localPlayerId = ref<string>()
@@ -129,7 +132,6 @@ const {
     automationPanels,
     worldInputBlocked,
     openNearbyMenu,
-    toggleInventory,
     prepareAutomationWindow,
     closeOtherContainers,
 } = windows
@@ -193,7 +195,6 @@ async function joinGame(): Promise<void> {
                     :snapshot="snapshot"
                     :player="localCharacter"
                     :inventory-open="inventoryOpen"
-                    @toggle-inventory="toggleInventory"
                     @open-menu="gameMenu.show"
                     @close-inventory="closeInventory"
                     @plant="startPlanting"
@@ -221,7 +222,10 @@ async function joinGame(): Promise<void> {
                     :player="localCharacter"
                     :characters="visibleCharacters"
                     :blocked="worldInputBlocked"
+                    :interaction-prompt="interaction?.prompt"
                     @interact="openNearbyMenu"
+                    @request-interact="openNearbyMenu()"
+                    @open-menu="gameMenu.show"
                     @plant="startPlanting"
                 />
                 <NearbyInteraction
@@ -232,14 +236,10 @@ async function joinGame(): Promise<void> {
                     :snapshot="snapshot"
                     :player="localCharacter"
                     :characters="visibleCharacters"
-                    :can-select-target="(key) => game?.canSelectTarget(key) ?? false"
-                    :is-position-visible="
-                        (position, bounds, range) =>
-                            game?.isInteractionVisible(position, bounds, range) ?? false
-                    "
+                    :can-select-target="canSelectTarget"
+                    :is-position-visible="isPositionVisible"
                     :blocked="worldInputBlocked"
                     @command="gameWindows?.command($event)"
-                    @request-open="openNearbyMenu"
                     @target-change="game?.setInteractionTarget($event)"
                     @select-grave="gameplay?.selectGrave($event)"
                 />

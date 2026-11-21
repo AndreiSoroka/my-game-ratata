@@ -19,8 +19,8 @@ it('does not offer voluntary cancellation for a frozen Last Light channel', asyn
             uninterruptible: true,
         },
     }
-    const view = mount(ActionChannelStatus, { props: { player, serverTime: 1000 } })
-    expect(view.text()).toContain('Молитва')
+    const view = mount(ActionChannelStatus, { props: { player } })
+    expect(view.find('[role="status"]').exists()).toBe(false)
     expect(view.find('button').exists()).toBe(false)
     await view.setProps({
         player: {
@@ -31,7 +31,8 @@ it('does not offer voluntary cancellation for a frozen Last Light channel', asyn
             },
         },
     })
-    await view.get('button').trigger('click')
+    expect(view.find('[role="status"]').exists()).toBe(false)
+    await view.get('button[aria-label="Прервать молитву"]').trigger('click')
     expect(view.emitted('cancelPrayer')).toHaveLength(1)
     view.unmount()
 })

@@ -76,13 +76,41 @@ async function joined() {
     await flushPromises()
     return wrapper
 }
-async function pressEscape(repeat = false): Promise<void> {
+async function pressKey(code: string, repeat = false): Promise<void> {
     const target = document.activeElement ?? document.body
     target.dispatchEvent(
-        new KeyboardEvent('keydown', { code: 'Escape', bubbles: true, cancelable: true, repeat })
+        new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true, repeat })
     )
     await flushPromises()
 }
+const pressEscape = (repeat = false) => pressKey('Escape', repeat)
+
+it('opens inventory with I from the menu after Character and gives focus to the bag', async () => {
+    const wrapper = await joined()
+    try {
+        await pressEscape()
+        const menu = wrapper.get('.game-menu')
+        expect(document.activeElement).toBe(menu.get('[data-dialog-action="resume"]').element)
+        await pressKey('ArrowDown')
+        expect(document.activeElement).toBe(menu.get('[data-dialog-action="character"]').element)
+        await pressKey('ArrowDown')
+        const action = menu.get('[data-dialog-action="inventory"]')
+        expect(action.text()).toBe('Инвентарь · I')
+        expect(document.activeElement).toBe(action.element)
+        await pressKey('KeyI', true)
+        expect(wrapper.find('.game-menu').exists()).toBe(true)
+        await pressKey('KeyI')
+        expect(wrapper.find('.game-menu').exists()).toBe(false)
+        const inventory = wrapper.get('[role="dialog"][aria-label="Inventory and equipment"]')
+        expect(inventory.element.contains(document.activeElement)).toBe(true)
+        await pressEscape()
+        expect(wrapper.find('.inventory-overlay').exists()).toBe(false)
+        expect(wrapper.find('.game-menu').exists()).toBe(false)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
 it('opens markers and scenarios from the game menu and lets Escape return to the world', async () => {
     const wrapper = await joined()
     try {
@@ -112,6 +140,7 @@ it('can leave a pending startup through Escape or the visible menu button before
         expect(wrapper.find('[aria-label="Player vitals"]').exists()).toBe(false)
         await pressEscape()
         expect(wrapper.find('.game-menu').exists()).toBe(true)
+        expect(wrapper.get('[data-dialog-action="inventory"]').attributes('disabled')).toBeDefined()
         await pressEscape()
         await wrapper.get('button[aria-label="Игровое меню"]').trigger('click')
         await flushPromises()

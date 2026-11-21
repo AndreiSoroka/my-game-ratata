@@ -25,8 +25,9 @@ const props = defineProps<{
     player: CharacterSnapshot
     characters: CharacterSnapshot[]
     blocked: boolean
+    interactionPrompt?: string
 }>()
-const emit = defineEmits<{ interact: [id: string]; plant: [] }>()
+const emit = defineEmits<{ interact: [id: string]; requestInteract: []; openMenu: []; plant: [] }>()
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
 const speech = ref<InstanceType<typeof SpeechBubbles>>()
 const unavailable = computed(() => !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
@@ -214,7 +215,6 @@ defineExpose({
     />
     <ActionChannelStatus
         :player="player"
-        :server-time="snapshot.serverTime"
         @cancel-prayer="send({ type: 'cancel_prayer' })"
         @cancel-route="cancel(true)"
     />
@@ -242,27 +242,52 @@ defineExpose({
         "
         :blocked="blocked"
         @command="send"
+        @open-menu="emit('openMenu')"
         @plant="emit('plant')"
         @cancel="cancel()"
         @preview-change="game?.setPrayerPreview?.($event)"
         @shot-preview-change="game?.setShotPreview?.($event)"
     >
         <template #guide>
-            <span class="target-help">Q себя · E цель · Shift+E назад · F действие</span>
+            <button
+                v-if="interactionPrompt"
+                type="button"
+                class="target-help nearby-prompt"
+                @click="emit('requestInteract')"
+            >
+                {{ interactionPrompt }}
+            </button>
+            <span v-else class="target-help">Q себя · E цель · Shift+E назад · F действие</span>
         </template>
     </ActionHotbar>
     <SpeechBubbles ref="speech" :game="game" :snapshot="snapshot" :player="player" />
 </template>
 <style scoped>
 .target-help {
+    display: grid;
+    place-content: center;
+    min-height: 20px;
     color: var(--rpg-text);
     font: 10px system-ui;
     text-align: center;
     text-shadow: 1px 1px #101c13;
 }
+.nearby-prompt {
+    display: block;
+    justify-self: center;
+    border: 0;
+    padding: 0 4px;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.nearby-prompt:focus-visible {
+    outline: 1px solid var(--rpg-focus);
+}
 @media (max-width: 740px) {
     .target-help {
         font-size: 9px;
+        min-height: 24px;
     }
 }
 </style>

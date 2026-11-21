@@ -56,7 +56,7 @@ export interface GameEventPayload {
     /** Server-authored status earned by a successful private worker inspection. */
     workerActivity?: import('./workerRequests').WorkerActivitySnapshot
     requestStatus?: import('./social').NpcRequestStatus
-    noticeKind?: 'dash_rejected'
+    noticeKind?: 'dash_rejected' | 'prayer_unanswered'
     speakerName?: string
     channel?: import('./social').SpeechChannel
     hitQuality?: CombatHitQuality

@@ -70,9 +70,11 @@ defineExpose({
     <GameMenu
         v-if="windows.gameMenu.open.value"
         :automation-available="Boolean(player)"
+        :inventory-available="Boolean(player?.alive) && !defeated"
         @resume="windows.gameMenu.resume"
         @leave="windows.gameMenu.leave"
         @character="windows.openCharacter"
+        @inventory="windows.openInventory"
         @markers="windows.openAutomation('markers')"
         @scenarios="windows.openAutomation('scenarios')"
     />

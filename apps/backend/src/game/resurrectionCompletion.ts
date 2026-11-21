@@ -9,6 +9,7 @@ import {
 import type { PrayerCast } from './abilityState'
 import type { GameCharacter } from './character'
 import { type resolveMiracle } from './deities'
+import { unansweredPrayer } from './prayerFeedback'
 import { applyPrayerGift } from './prayerGifts'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
 
@@ -22,14 +23,7 @@ export function completeReviveWithoutContext(
     random?: () => number
 ): GameEventPayload[] {
     if (!outcome.success) {
-        return [
-            {
-                actorId: caster.id,
-                targetId: target.id,
-                kind: 'notice',
-                text: 'Божество не вернуло душу. Мана потрачена; можно повторить молитву, пока не истекло время.',
-            },
-        ]
+        return [unansweredPrayer(caster.id, cast.abilityId)]
     }
     const factors = captureMasteryFactors(caster)
     const lowHpGift =

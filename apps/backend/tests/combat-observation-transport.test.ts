@@ -6,6 +6,7 @@ import type {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { handleAgentRequest } from '../src/agentBridge'
+import { handleAbilityCommand } from '../src/game/abilityCommands'
 import type { GameCharacter } from '../src/game/character'
 import {
     observeCombatEvent,
@@ -49,6 +50,57 @@ function receivedSnapshot(messages: ServerMessage[]): WorldSnapshot {
     }
     return message.snapshot
 }
+
+it('sends the failed prayer caption only to the caster and strips the audience', () => {
+    const { room, join } = observationRoom()
+    const owner = join('Caster')
+    const foreign = join('Observer')
+    const anonymous = join()
+    const actor = requireActor(owner.actor)
+    actor.abilities.known.add('pray')
+    actor.hp -= 10
+    try {
+        const started = handleAbilityCommand(
+            actor,
+            {
+                type: 'use_ability',
+                abilityId: 'pray',
+                intent: { mode: 'restore', targetId: actor.id },
+            },
+            room.abilityContextFor(actor, 1000)
+        )
+        const at = actor.abilities.casting?.completesAt
+        if (at === undefined) {
+            throw new Error('Expected prayer channel')
+        }
+        room.publishEvents([
+            ...started,
+            ...advancePrayerCast(
+                actor,
+                at,
+                room.abilityContextFor(actor, at),
+                () => 1
+            ),
+        ])
+        const unanswered = (messages: ServerMessage[]) =>
+            receivedEvents(messages).filter(
+                (event) => event.noticeKind === 'prayer_unanswered'
+            )
+        expect(unanswered(owner.messages)).toEqual([
+            {
+                kind: 'notice',
+                noticeKind: 'prayer_unanswered',
+                actorId: actor.id,
+                abilityId: 'pray',
+                text: 'Божество не ответило',
+            },
+        ])
+        expect(unanswered(foreign.messages)).toEqual([])
+        expect(unanswered(anonymous.messages)).toEqual([])
+    } finally {
+        room.stop()
+    }
+})
 
 describe('serialized WebSocket combat privacy', () => {
     it('applies one projection to owner, foreign observer and a socket that has not joined', () => {

@@ -2,7 +2,7 @@
 import './socialWindows.css'
 
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { ExchangeInvitationWidget } from '@/widgets/exchanges'
 
@@ -25,6 +25,7 @@ const whisperTarget = ref<string>()
 const openedExchangeId = ref<string>()
 const hiddenExchangeId = ref<string>()
 const hints = ref<HTMLElement>()
+const notices = ref<HTMLElement>()
 const social = computed(() => props.snapshot.social)
 const whisper = computed(() => social.value?.whisper)
 const exchange = computed(() => social.value?.exchange)
@@ -169,41 +170,49 @@ watch(
 watch(available, (value) => {
     if (!value) whisperTarget.value = undefined
 })
-let resize: ResizeObserver | undefined
-let container: HTMLElement | undefined
 watch(
-    hints,
-    (element) => {
-        resize?.disconnect()
-        container?.style.removeProperty('--ratata-social-hints-height')
-        container = element?.closest<HTMLElement>('.game-screen') ?? undefined
+    [notices, hints],
+    ([noticePanel, hintPanel], _, onCleanup) => {
+        const container = noticePanel?.closest<HTMLElement>('.game-screen')
+        if (!container || !noticePanel) return
         const measure = (): void => {
-            if (container && element)
-                container.style.setProperty(
-                    '--ratata-social-hints-height',
-                    `${Math.ceil(element.getBoundingClientRect().height)}px`
-                )
+            container.style.setProperty(
+                '--ratata-social-notices-height',
+                `${Math.ceil(noticePanel.getBoundingClientRect().height)}px`
+            )
+            container.style.setProperty(
+                '--ratata-social-hints-height',
+                `${Math.ceil(hintPanel?.getBoundingClientRect().height ?? 0)}px`
+            )
         }
         measure()
-        if (element && typeof ResizeObserver !== 'undefined') {
-            resize = new ResizeObserver(measure)
-            resize.observe(element)
-        }
+        const resize =
+            typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+        resize?.observe(noticePanel)
+        if (hintPanel) resize?.observe(hintPanel)
+        onCleanup(() => {
+            resize?.disconnect()
+            container.style.removeProperty('--ratata-social-notices-height')
+            container.style.removeProperty('--ratata-social-hints-height')
+        })
     },
     { flush: 'post' }
 )
-onBeforeUnmount(() => {
-    resize?.disconnect()
-    container?.style.removeProperty('--ratata-social-hints-height')
-})
 defineExpose({ command, hasOpenWindow })
 </script>
 <template>
-    <div v-if="available" ref="hints" class="social-hints" aria-label="Личные разговоры и квесты">
+    <div
+        v-if="available"
+        ref="notices"
+        class="social-notices"
+        role="group"
+        aria-label="Квесты и торговля"
+    >
+        <GameButton @click="emit('quests')">Квесты · {{ questCount }}</GameButton>
         <ExchangeInvitationWidget
             :exchange="exchange"
-            class="social-hints__invitation"
-            :class="{ 'social-hints__invitation--over-whisper': whisperVisible }"
+            class="social-notices__invitation"
+            :class="{ 'social-notices__invitation--over-whisper': whisperVisible }"
             :inert="!canActOnInvitation || undefined"
             data-game-input-owner
             @pointerdown.stop
@@ -211,20 +220,11 @@ defineExpose({ command, hasOpenWindow })
             @decline="answerInvitation($event, false)"
             @cancel="cancelInvitation"
         />
-        <GameButton
-            variant="success"
-            v-if="
-                whisper &&
-                !whisperVisible &&
-                !visibleExchange &&
-                !questOfferVisible &&
-                !turnInVisible
-            "
-            @click="showWhisper"
-        >
+    </div>
+    <div v-if="available && whisper && !hasOpenWindow" ref="hints" class="social-hints">
+        <GameButton variant="success" @click="showWhisper">
             Шёпот: {{ whisper.partnerName }}{{ whisper.messages.length ? ' · новые реплики' : '' }}
         </GameButton>
-        <GameButton @click="emit('quests')">Квесты · {{ questCount }}</GameButton>
     </div>
     <QuestTurnInWindow
         v-if="turnInVisible && social?.questTurnIn"

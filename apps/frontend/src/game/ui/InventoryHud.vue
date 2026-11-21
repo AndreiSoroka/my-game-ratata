@@ -16,7 +16,6 @@ const props = defineProps<{
     inventoryOpen: boolean
 }>()
 const emit = defineEmits<{
-    toggleInventory: []
     openMenu: []
     closeInventory: []
     plant: []
@@ -27,11 +26,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <GameHud
-        v-bind="props"
-        @toggle-inventory="emit('toggleInventory')"
-        @open-menu="emit('openMenu')"
-    >
+    <GameHud v-bind="props" @open-menu="emit('openMenu')">
         <template #surface><slot name="surface" /></template>
         <InventoryOverlay
             v-if="inventoryOpen && player"

@@ -1,4 +1,4 @@
-import { type Browser, type Page, test, type TestInfo } from '@playwright/test'
+import { type Browser, type Locator, type Page, test, type TestInfo } from '@playwright/test'
 
 import {
     captureExchange,
@@ -42,6 +42,7 @@ for (const layout of [
             await first.locator('canvas[data-game-canvas=true]').focus()
             await first.keyboard.press('KeyQ')
             await expect(first.getByLabel('Выбранная цель')).toContainText('Вы')
+            await assertTopNotices(first)
             await first.keyboard.down('KeyQ')
             await first.keyboard.down('KeyQ')
             await first.keyboard.up('KeyQ')
@@ -147,6 +148,7 @@ async function exerciseTradeInvitation(
         await expect(secondWhisper).toBeVisible()
         await expect(outgoing).toBeInViewport({ ratio: 1 })
         await expect(incoming).toBeInViewport({ ratio: 1 })
+        await Promise.all([assertTopNotices(first, outgoing), assertTopNotices(second, incoming)])
         await expect
             .poll(() => readExchange(first))
             .toMatchObject({ status: 'invited', incoming: false, partnerId: players.secondId })
@@ -328,6 +330,48 @@ async function exchangeFailureState(page: Page, giftId?: string) {
             draftStatus: document.querySelector('.exchange-draft-status')?.textContent?.trim(),
         }
     }, giftId)
+}
+
+async function assertTopNotices(page: Page, invitation?: Locator): Promise<void> {
+    const width = page.viewportSize()!.width
+    const notices = page.locator('.social-notices')
+    const quests = notices.getByRole('button', { name: /^Квесты ·/ })
+    await expect(quests).toBeInViewport({ ratio: 1 })
+    const questBounds = (await quests.boundingBox())!
+    expect(questBounds.x + questBounds.width / 2).toBeCloseTo(width / 2, 0)
+
+    if (invitation) {
+        const bounds = (await invitation.boundingBox())!
+        expect(bounds.x + bounds.width / 2).toBeCloseTo(width / 2, 0)
+        expect(bounds.y).toBeGreaterThanOrEqual(questBounds.y + questBounds.height)
+    }
+
+    if (width <= 740) {
+        const location = page.getByRole('region', { name: 'World location', exact: true })
+        const status = page.locator('.game-player-status')
+        await expect
+            .poll(async () => {
+                const [stack, map, vitals] = await Promise.all([
+                    notices.boundingBox(),
+                    location.boundingBox(),
+                    status.boundingBox(),
+                ])
+                return stack!.y - Math.max(map!.y + map!.height, vitals!.y + vitals!.height)
+            })
+            .toBeGreaterThanOrEqual(0)
+    } else expect((await notices.boundingBox())!.y).toBeCloseTo(14, 0)
+
+    const target = page.getByLabel('Выбранная цель', { exact: true })
+    if (!(await target.isVisible())) return
+    await expect
+        .poll(async () => {
+            const [stack, selection] = await Promise.all([
+                notices.boundingBox(),
+                target.boundingBox(),
+            ])
+            return selection!.y - stack!.y - stack!.height
+        })
+        .toBeGreaterThanOrEqual(0)
 }
 
 async function assertHudLayout(page: Page): Promise<void> {

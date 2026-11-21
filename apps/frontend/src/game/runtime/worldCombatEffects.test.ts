@@ -133,6 +133,32 @@ it.each(['Рывок: ещё 2 с.', 'Не хватает энергии'])(
     }
 )
 
+it('replaces the completed prayer caption with one refusal above the caster and no toast', () => {
+    const { actor, effects, frame } = setup()
+    const onNotice = vi.fn<(text: string) => void>()
+    const releaseInputs = vi.fn<() => void>()
+    effects.receive({ kind: 'cast', phase: 'completed', actorId: actor.id, abilityId: 'pray' })
+    const completedCaption = rendered.views.find((view) => view.text === 'Молитва')
+    expect(completedCaption?.dead).toBe(false)
+    const event = {
+        kind: 'notice',
+        noticeKind: 'prayer_unanswered',
+        actorId: actor.id,
+        abilityId: 'pray',
+        text: 'Божество не ответило',
+    } as const
+    effects.receive(event)
+    runtimeEventFeedback(event, actor.id, { onNotice }, releaseInputs)
+    expect(completedCaption?.dead).toBe(true)
+    expect(onNotice).not.toHaveBeenCalled()
+    const captions = rendered.views.filter((view) => view.text !== undefined && !view.dead)
+    expect(captions).toHaveLength(1)
+    expect(captions[0]).toMatchObject({ text: event.text, pos: { x: 100, y: 58 } })
+    frame(1000)
+    expect(captions[0]?.dead).toBe(true)
+    effects.dispose()
+})
+
 it('shows exact hundredths at the grave, ignores misses and unknown world targets, and clears on dispose', () => {
     const { actor, effects } = setup()
     effects.receive({

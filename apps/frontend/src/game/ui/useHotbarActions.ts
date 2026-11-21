@@ -99,9 +99,10 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         hasPendingAttack: gestures.hasPendingAttack,
     }
 }
-function controlWaitingLabel(control: CharacterControlSnapshot | undefined): string {
-    const waiting = control?.waiting ?? ''
-    if (control?.action?.kind === 'attack' && control.action.once === true)
+function controlWaitingLabel(control: CharacterControlSnapshot | undefined): string | undefined {
+    if (control?.mode !== 'action') return undefined
+    const waiting = control.waiting ?? ''
+    if (control.action?.kind === 'attack' && control.action.once === true)
         return {
             cooldown: 'Ждём восстановления удара',
             resources: 'Ждём силы',
@@ -113,8 +114,8 @@ function controlWaitingLabel(control: CharacterControlSnapshot | undefined): str
         cooldown: 'Повтор: ждём восстановление',
         resources: 'Повтор: ждём силы',
         range: 'Повтор: подходим к цели',
-        action: 'Повтор: действие выполняется',
-        '': 'Автоповтор включён',
+        action: undefined,
+        '': undefined,
     }[waiting]
 }
 function prayerPreview(props: HotbarProps, abilityId: PrayerActionId) {

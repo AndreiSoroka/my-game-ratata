@@ -29,7 +29,6 @@ export const PurifyingGrave: Story = {
                     },
                 },
             }),
-            serverTime: 500,
         }),
 }
 
@@ -39,7 +38,6 @@ export const BlockedRoute: Story = {
             player: characterFixture('route-walker', {
                 control: { mode: 'route', targetId: null, route: routeFixture() },
             }),
-            serverTime: 3500,
         }),
 }
 
@@ -49,7 +47,6 @@ export const RouteInProgress: Story = {
             player: characterFixture('route-walker', {
                 control: { mode: 'route', targetId: null, route: routeFixture({ waiting: null }) },
             }),
-            serverTime: 3500,
         }),
 }
 
@@ -60,7 +57,6 @@ export const StunnedWhileBlocked: Story = {
         })
         return renderVueStory(ActionChannelStatus, {
             player: { ...player, cooldowns: { ...player.cooldowns, stunMsLeft: 2_000 } },
-            serverTime: 3500,
         })
     },
 }

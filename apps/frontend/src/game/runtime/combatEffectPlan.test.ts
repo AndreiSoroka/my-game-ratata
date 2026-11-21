@@ -99,11 +99,22 @@ describe('authoritative combat presentation', () => {
         const actor = characterFixture('priest')
         expect(
             combatEffectCues(
-                { kind: 'notice', abilityId: 'pray', text: 'Нет ответа', actorId: actor.id },
+                {
+                    kind: 'notice',
+                    noticeKind: 'prayer_unanswered',
+                    abilityId: 'pray',
+                    text: 'Божество не ответило',
+                    actorId: actor.id,
+                },
                 actor
             )[0]
         ).toMatchObject({ kind: 'refused', count: 0, targetId: actor.id })
-        expect(combatEffectCues({ kind: 'notice', text: 'Обычное уведомление' }, actor)).toEqual([])
+        expect(
+            combatEffectCues(
+                { kind: 'notice', abilityId: 'pray', text: 'Обычное уведомление' },
+                actor
+            )
+        ).toEqual([])
     })
 })
 

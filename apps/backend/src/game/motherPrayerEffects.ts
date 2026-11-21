@@ -13,6 +13,7 @@ import {
     resolveMotherTarget,
 } from './motherPrayerResolution'
 import { hasPrayerAdvantage, prayerAuraEffects } from './prayerAuras'
+import { unansweredPrayer } from './prayerFeedback'
 import { awardMasteries } from './skillProgression'
 export { advanceMotherPrayerTicks } from './motherPrayerDomain'
 
@@ -59,13 +60,7 @@ export function completeMotherPrayer(
         ...finishMotherRewards(actor, cast, plan, context, experience, evidence)
     )
     if (events.length === 0 && hasMiracle) {
-        events.push({
-            kind: 'notice',
-            actorId: actor.id,
-            audienceIds: [actor.id],
-            abilityId: cast.abilityId,
-            text: 'Божество не ответило на просьбу. Мана потрачена.',
-        })
+        events.push(unansweredPrayer(actor.id, cast.abilityId))
     }
     return events
 }
