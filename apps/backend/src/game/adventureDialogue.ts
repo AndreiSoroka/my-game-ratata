@@ -35,7 +35,9 @@ export function interactAdventureNpc(
     if (npc === undefined) {
         return rejectDialogue(
             state,
-            `Нужен живой собеседник ${interactionRangeText(CONVERSATION_REACH, navigation?.grid.tileWidth)}.`
+            navigation === undefined
+                ? 'Подойди к живому собеседнику.'
+                : `Подойди к живому собеседнику ${interactionRangeText(CONVERSATION_REACH, navigation.grid.tileWidth)}.`
         )
     }
 
