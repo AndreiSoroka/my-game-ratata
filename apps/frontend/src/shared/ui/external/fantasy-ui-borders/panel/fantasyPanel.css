@@ -13,7 +13,12 @@
     background-clip: padding-box;
 }
 
-.fantasy-panel::before {
+.fantasy-panel--gradient {
+    background-color: transparent;
+}
+
+.fantasy-panel::before,
+.fantasy-panel--gradient::after {
     position: absolute;
     z-index: -1;
     inset: calc(-1 * var(--fantasy-panel-size));
@@ -24,7 +29,15 @@
     border: var(--fantasy-panel-size) solid transparent;
     border-image: var(--fantasy-panel-image) var(--fantasy-panel-slice) /
         var(--fantasy-panel-size) / 0 stretch;
-    filter: var(--fantasy-panel-filter);
+}
+
+.fantasy-panel::before {
+    filter: var(--fantasy-panel-filter) var(--fantasy-panel-decoration-shadow,);
+}
+
+.fantasy-panel--gradient::after {
+    border-image-slice: var(--fantasy-panel-slice) fill;
+    filter: var(--fantasy-panel-gradient-filter);
 }
 
 .fantasy-panel__filters {

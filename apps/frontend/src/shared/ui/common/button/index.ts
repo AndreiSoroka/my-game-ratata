@@ -1,6 +1,7 @@
 export type {
     UiButtonAppearance,
     UiButtonColors,
+    UiButtonPanelAppearance,
     UiButtonProps,
     UiButtonStateColors,
     UiButtonVariant,

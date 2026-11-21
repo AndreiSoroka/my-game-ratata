@@ -7,6 +7,7 @@ import {
     FantasyBorder,
     getFantasyBorderMetrics,
 } from '@/shared/ui/external/fantasy-ui-borders/border'
+import { FantasyPanel } from '@/shared/ui/external/fantasy-ui-borders/panel'
 
 import { uiButtonColors } from './buttonColors'
 import type { UiButtonProps } from './types'
@@ -14,16 +15,21 @@ import type { UiButtonProps } from './types'
 const props = withDefaults(defineProps<UiButtonProps>(), {
     border: 'border-026',
     appearance: 'filled',
+    panel: 'panel-004',
+    panelAppearance: 'solid',
     variant: 'secondary',
     highlighted: undefined,
     focusRing: true,
     disabled: false,
     type: 'button',
 })
-const colors = computed(() => {
+const buttonStyle = computed(() => {
+    const colors = uiButtonColors(props)
+    if (props.appearance === 'panel') return colors
+
     const metrics = getFantasyBorderMetrics(props.border)
     return {
-        ...uiButtonColors(props),
+        ...colors,
         '--ui-button-border-corner': `${metrics.cornerSize}px`,
         '--ui-button-border-edge': `${metrics.edgeSize}px`,
     }
@@ -39,15 +45,29 @@ const colors = computed(() => {
         :data-highlight-managed="highlighted !== undefined"
         :data-highlighted="highlighted"
         :data-focus-ring="focusRing"
-        :style="colors"
+        :style="buttonStyle"
     >
-        <FantasyBorder
+        <FantasyPanel
+            v-if="appearance === 'panel'"
             as="span"
-            class="ui-button__border"
-            :border="border"
-            color="var(--ui-button-current-border)"
-            aria-hidden="true"
-        />
-        <span class="ui-button__content"><slot /></span>
+            class="ui-button__panel"
+            :panel="panel"
+            :appearance="panelAppearance"
+            border-color="var(--ui-button-current-border)"
+            background-color="var(--ui-button-panel-color)"
+            :background-gradient="['var(--ui-button-panel-top)', 'var(--ui-button-panel-bottom)']"
+        >
+            <span class="ui-button__content"><slot /></span>
+        </FantasyPanel>
+        <template v-else>
+            <FantasyBorder
+                as="span"
+                class="ui-button__border"
+                :border="border"
+                color="var(--ui-button-current-border)"
+                aria-hidden="true"
+            />
+            <span class="ui-button__content"><slot /></span>
+        </template>
     </button>
 </template>

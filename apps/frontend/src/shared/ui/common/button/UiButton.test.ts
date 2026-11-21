@@ -65,6 +65,44 @@ it('composes an inaccessible span outline without block children or nested butto
     }
 })
 
+it('composes a panel around the label of the same native button', async () => {
+    const onClick = vi.fn<(event: MouseEvent) => void>()
+    const view = mount(UiButton, {
+        props: { appearance: 'panel' },
+        attrs: { onClick },
+        slots: { default: '<strong>Продолжить</strong>' },
+    })
+    try {
+        const panel = view.get('[data-fantasy-panel]')
+        expect(view.element.tagName).toBe('BUTTON')
+        expect(panel.element.tagName).toBe('SPAN')
+        expect(panel.attributes('data-fantasy-panel')).toBe('panel-004')
+        expect(panel.attributes('data-fantasy-panel-appearance')).toBe('solid')
+        expect(panel.get('svg').attributes('aria-hidden')).toBe('true')
+        expect(panel.get('strong').text()).toBe('Продолжить')
+        expect(view.find('[data-fantasy-border]').exists()).toBe(false)
+        expect(view.element.querySelector('button, div')).toBeNull()
+
+        await panel.get('strong').trigger('click')
+        expect(onClick).toHaveBeenCalledTimes(1)
+
+        await view.setProps({ panel: 'panel-025', panelAppearance: 'transparent-center' })
+        expect(panel.attributes('data-fantasy-panel')).toBe('panel-025')
+        expect(panel.attributes('data-fantasy-panel-appearance')).toBe('transparent-center')
+        expect(view.element.style.getPropertyValue('--ui-button-normal-text')).toBe(
+            lightUiColors.button.panelShade
+        )
+        expect(view.element.style.getPropertyValue('--ui-button-highlighted-text')).toBe(
+            lightUiColors.button.panelShade
+        )
+        expect(view.element.style.getPropertyValue('--ui-button-pressed-text')).toBe(
+            lightUiColors.button.panelShade
+        )
+    } finally {
+        view.unmount()
+    }
+})
+
 it('retains native disabled and form button types', async () => {
     const onClick = vi.fn<(event: MouseEvent) => void>()
     const view = mount(UiButton, { props: { disabled: true, type: 'submit' }, attrs: { onClick } })

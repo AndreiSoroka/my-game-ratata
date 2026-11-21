@@ -1,6 +1,14 @@
 .ui-button {
     --ui-button-current-border: var(--ui-button-normal-border);
     --ui-button-border-opacity: 1;
+    --ui-button-current-top: var(--ui-button-normal-top);
+    --ui-button-current-bottom: var(--ui-button-normal-bottom);
+    --ui-button-raised-shadow:
+        inset 0 0 0 1px var(--ui-button-edge),
+        0 2px var(--ui-button-shadow-blur, 0px) var(--ui-button-shadow);
+    --ui-button-current-shadow: var(--ui-button-raised-shadow);
+    --ui-button-label-shadow: 0 1px var(--ui-light-button-text-shadow);
+    --ui-button-current-text-shadow: var(--ui-button-label-shadow);
     position: relative;
     isolation: isolate;
     display: inline-flex;
@@ -15,20 +23,57 @@
     padding-block: max(12px, calc(var(--ui-button-border-edge) + 8px));
     padding-inline: max(24px, calc(var(--ui-button-border-corner) + 8px));
     color: var(--ui-button-normal-text);
-    background: linear-gradient(var(--ui-button-normal-top), var(--ui-button-normal-bottom));
-    box-shadow:
-        inset 0 0 0 1px var(--ui-button-edge),
-        0 2px 0 var(--ui-button-shadow);
+    background: linear-gradient(var(--ui-button-current-top), var(--ui-button-current-bottom));
+    box-shadow: var(--ui-button-current-shadow);
     font: 18px/1.2 var(--ratata-font-family, sans-serif);
     text-align: center;
-    text-shadow: 0 1px var(--ui-light-button-text-shadow);
+    text-shadow: var(--ui-button-current-text-shadow);
     cursor: pointer;
     appearance: none;
 }
 
+.ui-button--filled {
+    --ui-button-shadow-blur: 3px;
+}
+
 .ui-button--ghost {
     --ui-button-border-opacity: 0.6;
+    --ui-button-current-shadow: none;
+    --ui-button-current-text-shadow: none;
+}
+
+.ui-button--panel {
+    --ui-button-panel-top: color-mix(
+        in srgb,
+        var(--ui-button-current-top) 72%,
+        var(--ui-light-button-panel-shade)
+    );
+    --ui-button-panel-bottom: color-mix(
+        in srgb,
+        var(--ui-button-current-bottom) 75%,
+        var(--ui-light-button-panel-shade)
+    );
+    --ui-button-panel-color: color-mix(
+        in srgb,
+        var(--ui-button-panel-top),
+        var(--ui-button-panel-bottom)
+    );
+    --fantasy-panel-decoration-shadow: drop-shadow(0 2px 2px var(--ui-button-shadow));
+    align-items: stretch;
+    padding: 0;
+    background: transparent;
     box-shadow: none;
+}
+
+.ui-button > .ui-button__panel {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+}
+
+.ui-button__panel[data-fantasy-panel-appearance='transparent-center'] {
     text-shadow: none;
 }
 
@@ -52,24 +97,25 @@
     ) {
     --ui-button-current-border: var(--ui-button-highlighted-border);
     --ui-button-border-opacity: 1;
+    --ui-button-current-top: var(--ui-button-highlighted-top);
+    --ui-button-current-bottom: var(--ui-button-highlighted-bottom);
+    --ui-button-current-shadow: var(--ui-button-raised-shadow);
+    --ui-button-current-text-shadow: var(--ui-button-label-shadow);
     color: var(--ui-button-highlighted-text);
-    background: linear-gradient(
-        var(--ui-button-highlighted-top),
-        var(--ui-button-highlighted-bottom)
-    );
-    box-shadow:
-        inset 0 0 0 1px var(--ui-button-edge),
-        0 2px 0 var(--ui-button-shadow);
-    text-shadow: 0 1px var(--ui-light-button-text-shadow);
 }
 
 .ui-button:not(:disabled):not([aria-disabled='true']):active {
     --ui-button-current-border: var(--ui-button-pressed-border);
     --ui-button-border-opacity: 1;
+    --ui-button-current-top: var(--ui-button-pressed-top);
+    --ui-button-current-bottom: var(--ui-button-pressed-bottom);
+    --ui-button-current-shadow: inset 0 3px 5px var(--ui-button-pressed-shadow);
+    --ui-button-current-text-shadow: var(--ui-button-label-shadow);
     color: var(--ui-button-pressed-text);
-    background: linear-gradient(var(--ui-button-pressed-top), var(--ui-button-pressed-bottom));
-    box-shadow: inset 0 3px 5px var(--ui-button-pressed-shadow);
-    text-shadow: 0 1px var(--ui-light-button-text-shadow);
+}
+
+.ui-button--panel:not(:disabled):not([aria-disabled='true']):active {
+    --fantasy-panel-decoration-shadow: drop-shadow(0 1px 1px var(--ui-button-shadow));
 }
 
 .ui-button:focus-visible {

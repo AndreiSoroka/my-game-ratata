@@ -1,12 +1,32 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, test } from '@playwright/test'
 
+import { readScreenshotPixels, screenshotPixel } from './fantasy-border-pixels'
 import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 
 const storyId = 'shared-common-button'
 const transparentBackground = /^(none|linear-gradient\(rgba\(0, 0, 0, 0\), rgba\(0, 0, 0, 0\)\))$/
 
+const raisedPanelShadow = /drop-shadow\(.*0px 2px 2px/
+const pressedPanelShadow = /drop-shadow\(.*0px 1px 1px/
+
+function panelFilter(panel: Locator): Promise<string> {
+    return panel.evaluate((element) => getComputedStyle(element, '::before').filter)
+}
+
+function panelGradientTop(panel: Locator): Locator {
+    return panel.locator('feFlood[result="panel-top-color"]')
+}
+
 for (const width of [1280, 390, 320]) {
-    for (const section of ['default', 'appearances', 'variants', 'borders', 'colors', 'states']) {
+    for (const section of [
+        'default',
+        'appearances',
+        'variants',
+        'borders',
+        'colors',
+        'states',
+        'panel-states',
+    ]) {
         test(`UiButton ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 1000 })
             await page.goto(uiStoryUrl(`${storyId}--${section}`))
@@ -111,6 +131,169 @@ test('UiButton ghost stays transparent until pointer or keyboard highlights it',
     await expect(ghost).not.toHaveCSS('background-image', transparentBackground)
 })
 
+test('UiButton filled keeps its ornament and bottom shadow while removing the dark default edge', async ({
+    page,
+}) => {
+    await page.goto(uiStoryUrl(`${storyId}--appearances`))
+    const filled = page.getByTestId('ui-button-filled')
+    await expect(filled.locator('[data-fantasy-border]')).toHaveAttribute(
+        'data-fantasy-border',
+        'border-026'
+    )
+    const bottomShadow = / 0px 2px 3px 0px(?:,|$)/
+    const darkEdge = /rgb\(90, 59, 34\) 0px 0px 0px 1px inset/
+    await expect(filled).toHaveCSS('box-shadow', bottomShadow)
+    await expect(filled).not.toHaveCSS('box-shadow', darkEdge)
+    await filled.hover()
+    await expect(filled).toHaveCSS('box-shadow', bottomShadow)
+    await expect(filled).not.toHaveCSS('box-shadow', darkEdge)
+})
+
+test('UiButton panel appearances preserve the native label and center alpha with a vertical gradient', async ({
+    page,
+}) => {
+    await page.goto(uiStoryUrl(`${storyId}--appearances`))
+    const stage = page.getByTestId('ui-button-story')
+    await expect(stage).toBeVisible()
+    await readyUiStory(page)
+    for (const [appearance, alpha] of [
+        ['solid', 255],
+        ['transparent-center', 127],
+    ] as const) {
+        const button = page.getByTestId(`ui-button-panel-${appearance}`)
+        const panel = button.locator('[data-fantasy-panel]')
+        await expect(button).toHaveJSProperty('tagName', 'BUTTON')
+        await expect(button).toHaveAccessibleName('Продолжить')
+        await expect(panel).toHaveJSProperty('tagName', 'SPAN')
+        await expect(panel).toHaveAttribute('data-fantasy-panel', 'panel-004')
+        await expect(panel).toHaveAttribute('data-fantasy-panel-appearance', appearance)
+        await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(button).toHaveCSS('background-image', 'none')
+        await expect(button).toHaveCSS('box-shadow', 'none')
+        await expect.poll(() => panelFilter(panel)).toMatch(raisedPanelShadow)
+
+        await stage.evaluate((element) => (element.style.backgroundColor = 'white'))
+        const onWhite = await readScreenshotPixels(button)
+        await stage.evaluate((element) => (element.style.backgroundColor = 'black'))
+        const onBlack = await readScreenshotPixels(button)
+
+        // Away from the text and frame, the same fill reveals exactly 255 minus its alpha.
+        const x = Math.floor(onWhite.width / 4)
+        const top = Math.floor(onWhite.height / 3)
+        const bottom = Math.floor((onWhite.height * 2) / 3)
+        for (const y of [top, bottom]) {
+            const white = screenshotPixel(onWhite, x, y)
+            const black = screenshotPixel(onBlack, x, y)
+            for (let channel = 0; channel < 3; channel += 1) {
+                const background = white[channel]! - black[channel]!
+                expect(Math.abs(background - (255 - alpha))).toBeLessThanOrEqual(2)
+            }
+        }
+        expect(screenshotPixel(onWhite, x, top)[0]!).toBeGreaterThan(
+            screenshotPixel(onWhite, x, bottom)[0]!
+        )
+    }
+})
+
+test('UiButton wraps a long label within the center of a large FantasyPanel at 320px', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 1000 })
+    await page.goto(uiStoryUrl(`${storyId}--panel-states`))
+    const button = page.getByTestId('ui-button-panel-long')
+    const panel = button.locator('[data-fantasy-panel="panel-025"]')
+    await expect(panel).toBeVisible()
+    await readyUiStory(page)
+    const geometry = await panel.evaluate((element) => {
+        const frame = element.getBoundingClientRect()
+        const style = getComputedStyle(element)
+        const label = element.querySelector('.ui-button__content')!
+        const range = document.createRange()
+        range.selectNodeContents(label)
+        const lines = [...range.getClientRects()]
+        return {
+            lineCount: lines.length,
+            inside: lines.every(
+                (line) =>
+                    line.left >= frame.left + parseFloat(style.borderLeftWidth) &&
+                    line.right <= frame.right - parseFloat(style.borderRightWidth) &&
+                    line.top >= frame.top + parseFloat(style.borderTopWidth) &&
+                    line.bottom <= frame.bottom - parseFloat(style.borderBottomWidth)
+            ),
+        }
+    })
+    expect(geometry.lineCount).toBeGreaterThan(1)
+    expect(geometry.inside).toBe(true)
+
+    const image = await readScreenshotPixels(button)
+    // The panel-025 nine-slice boundary is 22px from the edge. Both points are inside its fill.
+    for (const fraction of [0.25, 0.5, 0.75]) {
+        const y = Math.floor(image.height * fraction)
+        const railFill = screenshotPixel(image, 20, y)
+        const centerFill = screenshotPixel(image, 24, y)
+        for (let channel = 0; channel < 3; channel += 1) {
+            expect(Math.abs(railFill[channel]! - centerFill[channel]!)).toBeLessThanOrEqual(2)
+        }
+    }
+})
+
+test('UiButton panel artwork follows hover, keyboard focus, press and disabled states', async ({
+    page,
+}) => {
+    await page.goto(uiStoryUrl(`${storyId}--panel-states`))
+    const stage = page.getByTestId('ui-button-story')
+    const solid = page.getByTestId('ui-button-panel-action')
+    const translucent = page.getByTestId('ui-button-panel-translucent-action')
+    const disabled = page.getByTestId('ui-button-panel-disabled')
+    await expect(solid).toBeVisible()
+    await readyUiStory(page)
+
+    const solidPanel = solid.locator('[data-fantasy-panel]')
+    const solidTop = panelGradientTop(solidPanel)
+    const rest = await solidTop.evaluate((element) => getComputedStyle(element).floodColor)
+    await solid.hover()
+    await expect(solidTop).not.toHaveCSS('flood-color', rest)
+    const hover = await solidTop.evaluate((element) => getComputedStyle(element).floodColor)
+    await expect.poll(() => panelFilter(solidPanel)).toMatch(raisedPanelShadow)
+    await expect(solid).toHaveCSS('background-image', 'none')
+    await expect(solid).toHaveCSS('box-shadow', 'none')
+    await expect(solid).toHaveScreenshot('ui-button-panel-hover.png')
+    await page.mouse.down()
+    try {
+        await expect(solidTop).not.toHaveCSS('flood-color', hover)
+        await expect.poll(() => panelFilter(solidPanel)).toMatch(pressedPanelShadow)
+        await expect(solid).toHaveCSS('background-image', 'none')
+        await expect(solid).toHaveCSS('box-shadow', 'none')
+        await expect(solid).toHaveScreenshot('ui-button-panel-pressed.png')
+    } finally {
+        await page.mouse.up()
+    }
+
+    await page.mouse.move(0, 0)
+    await expect(solidTop).toHaveCSS('flood-color', rest)
+    const translucentPanel = translucent.locator('[data-fantasy-panel]')
+    const translucentTop = panelGradientTop(translucentPanel)
+    const translucentRest = await translucentTop.evaluate(
+        (element) => getComputedStyle(element).floodColor
+    )
+    await page.keyboard.press('Tab')
+    await expect(translucent).toBeFocused()
+    await expect(translucent).toHaveCSS('outline-style', 'solid')
+    await expect(translucent).toHaveCSS('background-image', 'none')
+    await expect(translucentTop).not.toHaveCSS('flood-color', translucentRest)
+    await expect.poll(() => panelFilter(translucentPanel)).toMatch(raisedPanelShadow)
+    await expect(stage).toHaveScreenshot('ui-button-panel-focus.png')
+
+    const disabledPanel = disabled.locator('[data-fantasy-panel]')
+    const disabledTop = panelGradientTop(disabledPanel)
+    const disabledRest = await disabledTop.evaluate(
+        (element) => getComputedStyle(element).floodColor
+    )
+    await expect(disabled).toBeDisabled()
+    await disabled.hover()
+    await expect(disabledTop).toHaveCSS('flood-color', disabledRest)
+})
+
 test('UiButton paints custom state colors and resolves CSS variables in its border only', async ({
     page,
 }) => {
@@ -177,7 +360,9 @@ test('UiButton custom ghost keeps its purple palette while pressed', async ({ pa
     await expect(button).toHaveCSS('background-image', highlighted)
 })
 
-test('UiButton Default Controls update the actual native button and border', async ({ page }) => {
+test('UiButton Default Controls update the actual native button, border and panel', async ({
+    page,
+}) => {
     await page.goto(`/?path=/story/${storyId}--default`)
     const preview = page.frameLocator('#storybook-preview-iframe')
     const button = preview.getByTestId('ui-button-default')
@@ -195,6 +380,12 @@ test('UiButton Default Controls update the actual native button and border', asy
     )
     await page.locator('#control-appearance').selectOption('ghost')
     await expect(button).toHaveCSS('background-image', transparentBackground)
+    await page.locator('#control-appearance').selectOption('panel')
+    await page.locator('#control-panel').selectOption('panel-025')
+    await page.locator('#control-panelAppearance').selectOption('transparent-center')
+    const panel = button.locator('[data-fantasy-panel]')
+    await expect(panel).toHaveAttribute('data-fantasy-panel', 'panel-025')
+    await expect(panel).toHaveAttribute('data-fantasy-panel-appearance', 'transparent-center')
     await page.locator('#control-label').fill('Новое действие')
     await page.locator('#control-label').press('Tab')
     await expect(button).toHaveText('Новое действие')
@@ -228,11 +419,19 @@ test('Shared button and entity menu events use the built-in Storybook Actions pa
         {
             story: `${storyId}--default`,
             button: '[data-testid="ui-button-default"]',
+            activate: (button: Locator) => button.click(),
+            event: /onClick:\s*\(1\)/,
+        },
+        {
+            story: `${storyId}--panel-states`,
+            button: '[data-testid="ui-button-panel-action"]',
+            activate: (button: Locator) => button.press('Space'),
             event: /onClick:\s*\(1\)/,
         },
         {
             story: 'entities-menu--actions',
             button: '[data-dialog-action="markers"]',
+            activate: (button: Locator) => button.click(),
             event: /onAction:\s*\(1\)\s*\["markers"\]/,
         },
     ]
@@ -243,7 +442,7 @@ test('Shared button and entity menu events use the built-in Storybook Actions pa
         await expect(button).toBeVisible()
         await page.getByRole('tab', { name: /^Actions/ }).click()
         await page.getByRole('button', { name: 'Clear', exact: true }).click()
-        await button.click()
+        await example.activate(button)
         await expect(page.getByRole('tabpanel')).toContainText(example.event)
         await expect(preview.getByRole('status')).toHaveCount(0)
     }

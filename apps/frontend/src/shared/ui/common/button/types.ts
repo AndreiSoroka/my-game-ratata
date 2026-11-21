@@ -1,7 +1,9 @@
 import type { FantasyBorderVariant } from '@/shared/ui/external/fantasy-ui-borders/border'
+import type { FantasyPanelVariant } from '@/shared/ui/external/fantasy-ui-borders/panel'
 
 export type UiButtonVariant = 'secondary' | 'primary' | 'success' | 'danger'
-export type UiButtonAppearance = 'filled' | 'ghost'
+export type UiButtonAppearance = 'filled' | 'ghost' | 'panel'
+export type UiButtonPanelAppearance = 'solid' | 'transparent-center'
 
 export interface UiButtonStateColors {
     text?: string
@@ -23,6 +25,8 @@ export interface UiButtonColors {
 export interface UiButtonProps {
     border?: FantasyBorderVariant
     appearance?: UiButtonAppearance
+    panel?: FantasyPanelVariant
+    panelAppearance?: UiButtonPanelAppearance
     variant?: UiButtonVariant
     colors?: UiButtonColors
     highlighted?: boolean

@@ -1,6 +1,12 @@
 import { lightUiColors } from '@/shared/ui/theme'
 
-import type { UiButtonColors, UiButtonProps, UiButtonStateColors, UiButtonVariant } from './types'
+import type {
+    UiButtonAppearance,
+    UiButtonColors,
+    UiButtonProps,
+    UiButtonStateColors,
+    UiButtonVariant,
+} from './types'
 
 const palettes = {
     secondary: lightUiColors.button.wood,
@@ -24,33 +30,44 @@ function stateProperties(name: string, colors: Required<UiButtonStateColors>) {
     }
 }
 
-function defaultStates(variant: UiButtonVariant, ghost: boolean) {
+function defaultStates({ variant = 'secondary', appearance, panelAppearance }: UiButtonProps) {
+    const ghost = appearance === 'ghost'
+    const panel = appearance === 'panel'
+    const translucent = panel && panelAppearance === 'transparent-center'
     const palette = palettes[variant]
+    const border = panel ? 'var(--ui-button-panel-color)' : ornaments[variant]
+    const panelText = translucent ? lightUiColors.button.panelShade : undefined
+    const normalText = ghost ? lightUiColors.panel.title : lightUiColors.button.text
+    const activeText = panelText ?? lightUiColors.button.textHover
     return {
         normal: {
-            text: ghost ? lightUiColors.panel.title : lightUiColors.button.text,
-            border: ghost ? lightUiColors.border.wood : ornaments[variant],
+            text: panelText ?? normalText,
+            border: ghost ? lightUiColors.border.wood : border,
             backgroundTop: ghost ? 'transparent' : palette.top,
             backgroundBottom: ghost ? 'transparent' : palette.bottom,
         },
         highlighted: {
-            text: lightUiColors.button.textHover,
-            border: ornaments[variant],
+            text: activeText,
+            border,
             backgroundTop: palette.hoverTop,
             backgroundBottom: palette.hoverBottom,
         },
         pressed: {
-            text: lightUiColors.button.textHover,
-            border: ornaments[variant],
+            text: activeText,
+            border,
             backgroundTop: palette.bottom,
             backgroundBottom: palette.top,
         },
     }
 }
 
-function effectProperties(colors: UiButtonColors): Record<string, string> {
+function effectProperties(
+    colors: UiButtonColors,
+    appearance: UiButtonAppearance | undefined
+): Record<string, string> {
     return {
-        '--ui-button-edge': colors.edge ?? lightUiColors.button.edge,
+        '--ui-button-edge':
+            colors.edge ?? (appearance === 'ghost' ? lightUiColors.button.edge : 'transparent'),
         '--ui-button-shadow': colors.shadow ?? lightUiColors.button.shadow,
         '--ui-button-pressed-shadow': colors.pressedShadow ?? lightUiColors.button.pressedShadow,
         '--ui-button-focus': colors.focus ?? lightUiColors.button.focus,
@@ -96,11 +113,11 @@ function customFill(
 
 export function uiButtonColors(props: UiButtonProps): Record<string, string> {
     const colors = props.colors ?? {}
-    const defaults = defaultStates(props.variant ?? 'secondary', props.appearance === 'ghost')
+    const defaults = defaultStates(props)
     return {
         ...stateProperties('normal', { ...defaults.normal, ...colors.normal }),
         ...stateProperties('highlighted', highlightedColors(defaults.highlighted, colors)),
         ...stateProperties('pressed', pressedColors(defaults.pressed, colors)),
-        ...effectProperties(colors),
+        ...effectProperties(colors, props.appearance),
     }
 }

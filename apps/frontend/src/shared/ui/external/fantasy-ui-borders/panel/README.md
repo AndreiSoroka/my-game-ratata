@@ -1,6 +1,6 @@
 # FantasyPanel
 
-A native `div` with a default slot, using the original filled Kenney Fantasy UI Borders panels. Import through this component's public API:
+A native `div` or `span` with a default slot, using the original filled Kenney Fantasy UI Borders panels. Import through this component's public API:
 
 ```vue
 <script setup lang="ts">
@@ -26,19 +26,21 @@ import { lightUiColors } from '@/shared/ui/theme'
 
 The explicit public API exports `FantasyPanel`, `FantasyPanelProps`, `FantasyPanelVariant` and `FantasyPanelAppearance`. The asset registry is private; there is no dependency on game code, the theme or the Border/Divider components.
 
-| Prop                                  | Default        | Meaning                                                                                       |
-| ------------------------------------- | -------------- | --------------------------------------------------------------------------------------------- |
-| `panel?: FantasyPanelVariant`         | `panel-026`    | One of `panel-000` through `panel-031`. Unknown JavaScript values use `026`.                  |
-| `appearance?: FantasyPanelAppearance` | `solid`        | `solid`, `transparent-border` or `transparent-center`. Unknown JavaScript values use `solid`. |
-| `borderColor?: string`                | `color`        | Color of the decorative ornament.                                                             |
-| `backgroundColor?: string`            | `color`        | Color of the filled surface, including the pixels around the inner corners.                   |
-| `color?: string`                      | `currentColor` | Fallback for either color when its own prop is omitted.                                       |
+| Prop                                             | Default        | Meaning                                                                                       |
+| ------------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------- |
+| `as?: 'div' \| 'span'`                           | `div`          | Native element. Use `span` for a decorative layer inside a button.                            |
+| `panel?: FantasyPanelVariant`                    | `panel-026`    | One of `panel-000` through `panel-031`. Unknown JavaScript values use `026`.                  |
+| `appearance?: FantasyPanelAppearance`            | `solid`        | `solid`, `transparent-border` or `transparent-center`. Unknown JavaScript values use `solid`. |
+| `borderColor?: string`                           | `color`        | Color of the decorative ornament.                                                             |
+| `backgroundColor?: string`                       | `color`        | Color of the filled surface, including the pixels around the inner corners.                   |
+| `backgroundGradient?: readonly [string, string]` |                | Optional top and bottom colors for the entire fill. Both stops use the selected fill opacity. |
+| `color?: string`                                 | `currentColor` | Fallback for either color when its own prop is omitted.                                       |
 
 All color props accept CSS colors such as HEX, RGBA, HSL, CSS variables and `currentColor`. Slotted content keeps its own color.
 
 Each shape imports three original PNGs from the Panel, Transparent border and Transparent center folders. The `appearance` prop applies alpha 127/255 to the corresponding region. When the colors differ, the SVG filter uses the Transparent center PNG to distinguish cutouts, surface and ornament by their alpha values, then applies the requested tint and opacity to each painted region. With one tint, the filter uses the PNG for the selected appearance directly.
 
-The filter applies only to the decorative pseudo-element. The uniform center is painted as a CSS background clipped to the padding box, with its source opacity multiplied by the supplied color's alpha. The center and the decorated edge occupy separate pixels. Each panel has its own filter ID, including across separate Vue apps.
+The filters apply only to the decorative pseudo-elements. A flat color uses a CSS background clipped to the padding box. A gradient uses the panel's full nine-slice fill mask to continue through the inner corners. Both multiply the fill opacity by the supplied color's alpha. Set `--fantasy-panel-decoration-shadow` to a CSS `drop-shadow()` to cast a shadow from the decoration. Each panel has unique filter IDs, including across separate Vue apps.
 
 Native attributes, classes, styles and events fall through to the root. The component does not invent a dialog role, capture keyboard input or own scrolling. Add suitable native semantics on the consumer when a region needs a name. Padding, width and scrollable children belong to the consumer. A transparent physical border reserves space for the native corners; the decorative image covers the external border box beneath the slot.
 

@@ -18,13 +18,24 @@ const borders = Array.from(
     { length: 32 },
     (_, index) => `border-${String(index).padStart(3, '0')}` as FantasyBorderVariant
 )
+const appearances: { id: string; caption: string; props: UiButtonProps }[] = [
+    { id: 'filled', caption: 'filled', props: { appearance: 'filled' } },
+    { id: 'ghost', caption: 'ghost', props: { appearance: 'ghost' } },
+    { id: 'panel-solid', caption: 'panel · solid', props: { appearance: 'panel' } },
+    {
+        id: 'panel-transparent-center',
+        caption: 'panel · transparent-center',
+        props: { appearance: 'panel', panelAppearance: 'transparent-center' },
+    },
+]
 const labels = {
     default: 'UiButton',
-    appearances: 'Заполненные и прозрачные кнопки',
+    appearances: 'Оформление кнопок',
     variants: 'Смысловые цвета',
     borders: 'Все 32 рамки',
     colors: 'Свои цвета и градиенты',
     states: 'Состояния кнопки',
+    'panel-states': 'Состояния кнопок FantasyPanel',
 } as const
 function reportClick(event: MouseEvent): void {
     if (event.target instanceof Element && event.target.closest('.ui-button')) {
@@ -45,6 +56,8 @@ function reportClick(event: MouseEvent): void {
             <UiButton
                 :border="border"
                 :appearance="appearance"
+                :panel="panel"
+                :panel-appearance="panelAppearance"
                 :variant="variant"
                 :colors="colors"
                 :highlighted="highlighted"
@@ -56,11 +69,11 @@ function reportClick(event: MouseEvent): void {
             >
         </template>
         <div v-else-if="section === 'appearances'" class="ui-button-story__grid">
-            <figure v-for="mode in ['filled', 'ghost'] as const" :key="mode">
-                <UiButton :appearance="mode" :data-testid="`ui-button-${mode}`"
+            <figure v-for="mode in appearances" :key="mode.id">
+                <UiButton v-bind="mode.props" :data-testid="`ui-button-${mode.id}`"
                     >Продолжить</UiButton
                 >
-                <figcaption>{{ mode }}</figcaption>
+                <figcaption>{{ mode.caption }}</figcaption>
             </figure>
         </div>
         <div v-else-if="section === 'variants'" class="ui-button-story__grid">
@@ -108,7 +121,7 @@ function reportClick(event: MouseEvent): void {
                 >Цвет прозрачной кнопки</UiButton
             >
         </div>
-        <div v-else class="ui-button-story__grid">
+        <div v-else-if="section === 'states'" class="ui-button-story__grid">
             <UiButton data-testid="ui-button-focus">Фокус</UiButton>
             <UiButton variant="primary" data-testid="ui-button-hover">Наведение</UiButton>
             <UiButton variant="danger" data-testid="ui-button-pressed">Нажатие</UiButton>
@@ -124,6 +137,24 @@ function reportClick(event: MouseEvent): void {
             >
             <UiButton appearance="ghost" :focus-ring="false" data-testid="ui-button-focus-no-ring"
                 >Фокус без внешнего контура</UiButton
+            >
+        </div>
+        <div v-else-if="section === 'panel-states'" class="ui-button-story__grid">
+            <UiButton appearance="panel" variant="primary" data-testid="ui-button-panel-action"
+                >Подтвердить</UiButton
+            >
+            <UiButton
+                appearance="panel"
+                panel-appearance="transparent-center"
+                variant="success"
+                data-testid="ui-button-panel-translucent-action"
+                >Открыть журнал</UiButton
+            >
+            <UiButton appearance="panel" disabled data-testid="ui-button-panel-disabled"
+                >Недоступно</UiButton
+            >
+            <UiButton appearance="panel" panel="panel-025" data-testid="ui-button-panel-long"
+                >Вернуться к заданию и поговорить со смотрителем северных ворот</UiButton
             >
         </div>
     </section>

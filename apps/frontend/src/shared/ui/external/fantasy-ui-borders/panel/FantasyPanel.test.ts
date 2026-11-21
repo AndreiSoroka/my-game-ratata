@@ -44,6 +44,21 @@ it('preserves its native div, arbitrary slot content and native attributes/event
     }
 })
 
+it('renders a native span when used as decorative button content', () => {
+    const view = mount(FantasyPanel, {
+        props: { as: 'span', panel: 'panel-025' },
+        attrs: { 'aria-hidden': 'true' },
+    })
+    try {
+        expect(view.element.tagName).toBe('SPAN')
+        expect(view.attributes('data-fantasy-panel')).toBe('panel-025')
+        expect(view.attributes('aria-hidden')).toBe('true')
+        expect(view.get('svg').attributes('focusable')).toBe('false')
+    } finally {
+        view.unmount()
+    }
+})
+
 it('updates panel, appearance and color without replacing the slot or filtering its content', async () => {
     const view = mount(FantasyPanel, {
         props: { color: 'rgba(255, 0, 0, 0.5)' },

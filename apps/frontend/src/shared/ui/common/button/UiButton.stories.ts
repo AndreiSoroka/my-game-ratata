@@ -10,12 +10,15 @@ import UiButtonStory from './UiButtonStory.vue'
 type ButtonArgs = UiButtonProps & { label: string; onClick: (event: MouseEvent) => void }
 const onClick = fn().mockName('click')
 const borders = Array.from({ length: 32 }, (_, index) => `border-${String(index).padStart(3, '0')}`)
+const panels = Array.from({ length: 32 }, (_, index) => `panel-${String(index).padStart(3, '0')}`)
 const meta = {
     title: 'Shared/Common/Button',
     args: {
         label: 'Продолжить',
         border: 'border-026',
         appearance: 'filled',
+        panel: 'panel-004',
+        panelAppearance: 'solid',
         variant: 'secondary',
         disabled: false,
         focusRing: true,
@@ -25,7 +28,13 @@ const meta = {
     argTypes: {
         label: { control: 'text' },
         border: { control: 'select', options: borders },
-        appearance: { control: 'select', options: ['filled', 'ghost'] },
+        appearance: { control: 'select', options: ['filled', 'ghost', 'panel'] },
+        panel: { control: 'select', options: panels, if: { arg: 'appearance', eq: 'panel' } },
+        panelAppearance: {
+            control: 'select',
+            options: ['solid', 'transparent-center'],
+            if: { arg: 'appearance', eq: 'panel' },
+        },
         variant: { control: 'select', options: ['secondary', 'primary', 'success', 'danger'] },
         colors: { control: 'object' },
         highlighted: { control: 'boolean' },
@@ -69,4 +78,8 @@ export const Colors: Story = {
 export const States: Story = {
     parameters: { controls: { disable: true } },
     render: () => preview('states'),
+}
+export const PanelStates: Story = {
+    parameters: { controls: { disable: true } },
+    render: () => preview('panel-states'),
 }

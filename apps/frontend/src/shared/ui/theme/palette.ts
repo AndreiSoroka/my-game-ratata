@@ -34,6 +34,7 @@ export const lightUiColors = {
         textShadow: 'var(--ui-light-button-text-shadow)',
         shadow: 'var(--ui-light-button-shadow)',
         pressedShadow: 'var(--ui-light-button-pressed-shadow)',
+        panelShade: 'var(--ui-light-button-panel-shade)',
         selectedEdge: 'var(--ui-light-button-selected-edge)',
         wood: {
             top: 'var(--ui-light-button-wood-top)',
