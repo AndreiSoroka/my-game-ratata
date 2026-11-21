@@ -13,11 +13,11 @@ for (const [background, ability] of [
         const bar = page.getByLabel('Быстрые действия')
         await expect(bar.getByRole('button', { name: /^1: Удар ножом/ })).toBeVisible()
         await expect(bar.getByRole('button', { name: new RegExp(`^2: ${ability}`) })).toBeVisible()
-        await page.evaluate(() => document.fonts.ready)
+        await readyUiStory(page)
         await expect(bar).toHaveScreenshot(`hotbar-${background}.png`)
     })
 }
-for (const width of [1280, 390]) {
+for (const width of [1280, 390, 320]) {
     for (const { state, second, pressed, contextCount } of [
         { state: 'blade-techniques', second: 'Широкий размах', pressed: 'false', contextCount: 1 },
         { state: 'blade-guard', second: 'Глухая оборона', pressed: 'true', contextCount: 2 },
@@ -47,11 +47,24 @@ for (const width of [1280, 390]) {
             const bounds = await bar.boundingBox()
             expect(bounds!.x).toBeGreaterThanOrEqual(0)
             expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
-            await page.evaluate(() => document.fonts.ready)
+            await readyUiStory(page)
             await expect(page).toHaveScreenshot(`hotbar-${state}-${width}.png`)
         })
     }
 }
+
+test('production hotbar assignment opens and dismisses at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.goto('/iframe.html?id=game-actionhotbar--assignment&viewMode=story')
+    const picker = page.getByRole('dialog', { name: 'Назначить слот 3' })
+    await expect(picker).toBeVisible()
+    await expect(picker.getByRole('button', { name: /Выстрел/ })).toBeFocused()
+    await readyUiStory(page)
+    await expect(picker).toHaveScreenshot('hotbar-assignment-320.png')
+    await page.keyboard.press('Escape')
+    await expect(picker).toHaveCount(0)
+})
+
 for (const width of [1280, 390, 320]) {
     test(`production game menu at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })

@@ -49,7 +49,7 @@ const emit = defineEmits<{ toggleInventory: []; openMenu: [] }>()
 
 <style scoped>
 .bottom-actions__menu {
-    min-width: 40px;
-    min-height: 40px;
+    min-width: var(--game-bottom-action-size);
+    min-height: var(--game-bottom-action-size);
 }
 </style>

@@ -34,25 +34,6 @@ export function bindingMatchesAction(
         : action.kind === 'ability' && binding.id === action.abilityId
 }
 
-export const hotbarGlyphs: Record<AbilityId, string> = {
-    wide_swing: '◔',
-    circular_swing: '◌',
-    lunge: '➜',
-    pommel_strike: '⚒',
-    defensive_stance: '⛨',
-    pray: '✦',
-    pray_woven: '✥',
-    pray_road: '➤',
-    pray_lantern: '✧',
-    pray_grave: '☾',
-    spark: 'ϟ',
-    barrier: '◇',
-    shot: '➶',
-    skeleton_strike: '⚒',
-    fireball: '●',
-    greater_fireball: '◉',
-}
-
 export function prayerDescription(
     preview: PrayerPreview,
     characters: CharacterSnapshot[],

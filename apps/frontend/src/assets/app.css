@@ -76,6 +76,12 @@
 
 .game-screen {
     --game-hud-top: max(14px, env(safe-area-inset-top, 0px));
+    --game-bottom-actions-inset: max(14px, env(safe-area-inset-bottom, 0px));
+    --game-bottom-action-size: 40px;
+    --game-footer-gap: 8px;
+    --game-hotbar-bottom: calc(
+        var(--game-bottom-actions-inset) + var(--game-bottom-action-size) + var(--game-footer-gap)
+    );
     position: relative;
     height: 100vh;
     display: grid;
@@ -107,8 +113,8 @@
 
 .bottom-actions {
     position: absolute;
-    bottom: 14px;
     left: 50%;
+    bottom: var(--game-bottom-actions-inset);
     z-index: 3;
     display: flex;
     gap: 8px;
@@ -117,9 +123,34 @@
 
 .bottom-actions__button {
     min-width: 116px;
-    min-height: 40px;
+    min-height: var(--game-bottom-action-size);
     cursor: pointer;
     font-size: 13px;
     font-weight: 800;
     padding: 0 14px;
+}
+
+@media (max-width: 1040px) {
+    .game-screen {
+        --game-adventure-tools-bottom: calc(
+            var(--game-bottom-actions-inset) + var(--game-bottom-action-size) +
+                var(--game-footer-gap)
+        );
+        --game-hotbar-bottom: calc(
+            var(--game-adventure-tools-bottom) + var(--ratata-adventure-tools-height, 0px) +
+                var(--game-footer-gap)
+        );
+        --game-hotbar-top: calc(
+            var(--game-hotbar-bottom) + var(--ratata-hotbar-height, 0px) + var(--game-footer-gap)
+        );
+    }
+
+    .game-screen .adventure-tools.game-frame-host {
+        right: auto;
+        left: 50%;
+        bottom: var(--game-adventure-tools-bottom);
+        width: max-content;
+        max-width: calc(100% - 16px);
+        transform: translateX(-50%);
+    }
 }

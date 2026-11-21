@@ -2,6 +2,7 @@ import '../ui/rpgControls.css'
 
 import { bladeAbilityIds, type CharacterSnapshot, type HeroClass } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
+import { userEvent, within } from 'storybook/test'
 import { defineComponent, h } from 'vue'
 
 import { characterFixture } from '../testing/characterFixture'
@@ -29,6 +30,13 @@ export const Vanguard: Story = { render: () => render('vanguard') }
 export const Ranger: Story = { render: () => render('ranger') }
 export const Arcanist: Story = { render: () => render('arcanist') }
 export const Cleric: Story = { render: () => render('cleric') }
+export const Assignment: Story = {
+    render: () => render('arcanist'),
+    async play({ canvasElement }) {
+        const slot = await within(canvasElement).findByRole('button', { name: /^3: Пусто/ })
+        await userEvent.click(slot)
+    },
+}
 
 function bladeStory(guard: boolean): HTMLElement {
     const player = characterFixture('blade-adventurer', {

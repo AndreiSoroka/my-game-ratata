@@ -18,6 +18,7 @@ import GameFrame from './primitives/GameFrame.vue'
 import TheftAlert from './TheftAlert.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
+import { useFooterHeight } from './useFooterHeight'
 
 const props = defineProps<{
     adventure: AdventureSnapshot
@@ -32,6 +33,8 @@ const emit = defineEmits<{ command: [message: ClientMessage]; closeInventory: []
 type AdventureWindow = 'crafting' | 'companions' | 'guild'
 const activeWindow = ref<AdventureWindow | null>(null)
 const windowRoot = ref<HTMLElement>()
+const toolsRow = ref<HTMLElement>()
+useFooterHeight(toolsRow, '--ratata-adventure-tools-height')
 const showWindow = computed(() => !props.inventoryOpen && !props.adventure.dialogue)
 const incomingInvitations = computed(
     () => props.party?.invitations.filter((invitation) => invitation.toId === props.player.id) ?? []
@@ -74,7 +77,7 @@ defineExpose({
         @keyup.space.stop
         @focusin="emit('command', { type: 'release_input' })"
     >
-        <div class="adventure-tools game-frame-host" aria-label="Приключение">
+        <div ref="toolsRow" class="adventure-tools game-frame-host" aria-label="Приключение">
             <GameFrame variant="panel" />
             <span class="adventure-level" title="Сумма уровней созвездий"
                 >Ступени

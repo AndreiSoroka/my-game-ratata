@@ -183,7 +183,7 @@ small {
 @media (max-width: 740px) {
     .chat-history {
         width: min(300px, calc(100vw - 24px));
-        bottom: 170px;
+        bottom: max(170px, var(--game-hotbar-top, 0px));
         font-size: 11px;
     }
     ol {

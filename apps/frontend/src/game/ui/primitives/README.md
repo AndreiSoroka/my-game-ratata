@@ -40,6 +40,8 @@ An item slot defaults to 40px. Override `--game-item-slot-size` or the component
 
 **Game/KenneyHudPrimitivesStory** demonstrates the legacy `GameFrame skin="parchment"`, `GameRibbon` and `GameResourceBar`. The live resource HUD uses a translucent dark green frame with an inset beige `FantasyBorder` (`border-017`). **Widgets/Player vitals/PlayerVitalsWidget** shows the name and resources, and **Entities/player-effects/FaithStatusList** shows known patrons. **Widgets/Player effects/PlayerEffectsStripWidget** shows how active effects and law statuses appear in the separate strip next to the HUD. **Game/Player HUD/Many Effects** previews the two together.
 
+**Entities/quick-actions/QuickActionSlot** showcases the Kenney tiles for quick actions. **Entities/quick-actions/QuickActionBar** groups four slots in the shared `HudFrame`. The game adapter supplies availability, cooldowns and item counts and owns assignment and action commands. **Game/ActionHotbar** previews real class presets and the blade stance.
+
 For a parchment frame, keep a transparent physical border on the native host and set `--game-frame-border-width` to that same width. The filled Kenney frame is painted behind content and outsets across that border. Parchment hosts expose local `--game-panel-text`, `--game-panel-muted`, `--game-panel-divider` and `--game-panel-warning` tokens.
 
 The ribbon accepts arbitrary accessible content, such as a heading and identity icons. Its dimensions are controlled by `--game-ribbon-height` and `--game-ribbon-cap-width`. The surrounding layout controls truncation and icon placement.

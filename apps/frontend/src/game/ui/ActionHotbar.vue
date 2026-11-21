@@ -6,19 +6,20 @@ import {
     type ProjectilePath,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+
+import { hotbarGlyphs as glyphs, type QuickAction, QuickActionBar } from '@/entities/quick-actions'
+import { HudFrame, UiButton, type UiButtonColors } from '@/shared/ui/common'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { abilityUsage } from './abilityUsage'
 import { dialogActionKeys } from './dialogActionKeys'
 import { objectTargetUnavailable } from './hotbarActions'
-import { type HotbarBinding as Binding, hotbarGlyphs as glyphs } from './hotbarBindings'
-import GameButton from './primitives/GameButton.vue'
-import GameFrame from './primitives/GameFrame.vue'
-import GameItemSlot from './primitives/GameItemSlot.vue'
+import type { HotbarBinding as Binding } from './hotbarBindings'
 import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
+import { useFooterHeight } from './useFooterHeight'
 import { useHotbarActions } from './useHotbarActions'
 import { useShotPreview } from './useShotPreview'
 const props = defineProps<{
@@ -55,6 +56,47 @@ const {
     waiting,
     resetGesture,
 } = useHotbarActions(props, emit)
+const actions = computed(() => bindings.value.map(describeAction))
+
+function describeAction(binding: Binding | null, index: number): QuickAction | null {
+    if (!binding) return null
+    const reason = unavailable(binding)
+    const isActive = active(binding, index)
+    return {
+        label: label(binding),
+        description: reason ?? tooltip(binding),
+        icon:
+            binding.kind === 'item'
+                ? { kind: 'image', src: itemAssetCatalog[binding.id].src }
+                : { kind: 'glyph', text: binding.kind === 'attack' ? '⚔' : glyphs[binding.id] },
+        quantity:
+            binding.kind === 'item'
+                ? binding.id === 'sapling'
+                    ? saplings.value
+                    : count.value
+                : undefined,
+        cooldownMs: cooldown(binding),
+        active: isActive,
+        repeat: isActive && !props.player.combat?.defensiveStance ? waiting.value : undefined,
+        disabled: Boolean(objectTargetUnavailable(binding, props)),
+        unavailable: reason !== undefined,
+    }
+}
+
+const pickerButtonColors: UiButtonColors = {
+    normal: {
+        text: 'var(--ui-dark-panel-text)',
+        border: 'var(--ui-dark-panel-divider)',
+    },
+    highlighted: {
+        text: 'var(--ui-dark-panel-title)',
+        border: 'var(--ui-dark-panel-border)',
+        backgroundTop: 'var(--ui-dark-bar-track)',
+        backgroundBottom: 'var(--ui-dark-panel-surface)',
+    },
+    focus: 'var(--ui-dark-panel-title)',
+}
+
 useShotPreview(props, bindings, emit)
 const editing = ref<number>()
 watch(
@@ -64,6 +106,8 @@ watch(
     }
 )
 const bar = ref<HTMLElement>()
+const dockContent = ref<HTMLElement>()
+useFooterHeight(dockContent, '--ratata-hotbar-height')
 const picker = ref<HTMLElement>()
 async function edit(index: number): Promise<void> {
     if (props.blocked) return
@@ -106,140 +150,130 @@ defineExpose({ activate, edit, assignItem, resetGesture })
 <template>
     <div
         ref="bar"
-        class="hotbar rpg-panel game-frame-host"
-        aria-label="Быстрые действия"
+        class="hotbar"
         @keydown="activateFocusedButton($event, bar)"
         @keyup="stopButtonConfirmation($event, bar)"
     >
-        <GameFrame variant="panel" />
-        <div v-for="(binding, index) in bindings" :key="index" class="hotbar-cell">
-            <GameItemSlot
-                as="button"
-                type="button"
-                class="hotbar-slot"
-                :empty="!binding"
-                :selected="active(binding, index)"
-                :class="{ active: active(binding, index) }"
-                :aria-pressed="active(binding, index)"
-                :aria-disabled="
-                    blocked || !player.alive || Boolean(objectTargetUnavailable(binding, props))
+        <div ref="dockContent" class="hotbar-content">
+            <div
+                v-if="
+                    player.combat?.defensiveStance ||
+                    player.combat?.combo?.stacks ||
+                    prayerAssigned ||
+                    $slots.guide
                 "
-                :aria-label="`${index + 1}: ${label(binding)}. Shift+${index + 1} — назначить`"
-                :title="`${unavailable(binding) ?? tooltip(binding)} · Shift+${index + 1}: назначить`"
-                :aria-description="unavailable(binding) ?? tooltip(binding)"
-                @click="binding ? activate(index) : edit(index)"
-                @contextmenu.prevent="edit(index)"
+                class="hotbar-context"
             >
-                <kbd>{{ index + 1 }}</kbd
-                ><span
-                    v-if="active(binding, index) && !player.combat?.defensiveStance"
-                    class="hotbar-auto"
-                    :title="waiting"
-                    aria-label="Автоповтор"
-                    >↻</span
+                <HudFrame
+                    v-if="player.combat?.defensiveStance"
+                    class="hotbar-context__line"
+                    role="status"
                 >
-                <img
-                    v-if="binding?.kind === 'item'"
-                    class="hotbar-item"
-                    :src="itemAssetCatalog[binding.id].src"
-                    alt=""
-                />
-                <span v-else-if="binding">{{
-                    binding.kind === 'attack' ? '⚔' : glyphs[binding.id]
-                }}</span>
-                <small v-if="binding?.kind === 'item'">{{
-                    binding.id === 'sapling' ? saplings : count
-                }}</small>
-                <b v-if="cooldown(binding) > 0" class="hotbar-cooldown">{{
-                    (cooldown(binding) / 1000).toFixed(1)
-                }}</b>
-            </GameItemSlot>
-            <GameButton
-                v-if="binding"
-                type="button"
-                class="hotbar-clear"
-                :aria-label="`Очистить слот ${index + 1}`"
-                :title="`Очистить слот ${index + 1}`"
-                @click.stop="clearSlot(index)"
-            >
-                ×
-            </GameButton>
+                    Глухая оборона · Движение, атаки и колдовство недоступны
+                </HudFrame>
+                <HudFrame
+                    v-if="player.combat?.combo?.stacks"
+                    class="hotbar-context__line"
+                    role="status"
+                    aria-label="Серия ударов"
+                >
+                    Серия ударов: {{ player.combat.combo.stacks }} / {{ player.combat.combo.limit }}
+                </HudFrame>
+                <HudFrame
+                    v-if="prayerAssigned && !player.combat?.defensiveStance"
+                    class="prayer-preview"
+                    role="status"
+                >
+                    {{ prayerTooltip() }}
+                </HudFrame>
+                <slot name="guide" />
+            </div>
+            <QuickActionBar
+                class="hotbar__tray"
+                :actions="actions"
+                :blocked="blocked || !player.alive"
+                :waiting="player.control?.mode === 'action' ? waiting : undefined"
+                @activate="activate"
+                @assign="edit"
+                @clear="clearSlot"
+            />
         </div>
-        <p>1–4 · Дважды: повтор · Shift: назначить</p>
-        <p v-if="player.control?.mode === 'action'" class="hotbar-waiting" role="status">
-            {{ waiting }}
-        </p>
+        <section
+            v-if="editing !== undefined"
+            ref="picker"
+            class="hotbar-picker"
+            role="dialog"
+            aria-modal="true"
+            :aria-label="`Назначить слот ${editing + 1}`"
+            @keydown.stop="dialogActionKeys($event, picker, close)"
+            @keyup.stop
+        >
+            <HudFrame>
+                <h2>Слот {{ editing + 1 }}</h2>
+                <div class="hotbar-picker__actions">
+                    <UiButton
+                        v-for="ability in known"
+                        :key="ability"
+                        appearance="ghost"
+                        border="border-015"
+                        :colors="pickerButtonColors"
+                        data-dialog-action
+                        @click="assign({ kind: 'ability', id: ability })"
+                    >
+                        {{ glyphs[ability] }} {{ ABILITY_DEFINITIONS[ability].name }}
+                        <small
+                            >{{ abilityUsage(player, ability).mana }} MP ·
+                            {{ abilityUsage(player, ability).energy }} EN</small
+                        >
+                    </UiButton>
+                    <UiButton
+                        appearance="ghost"
+                        border="border-015"
+                        :colors="pickerButtonColors"
+                        data-dialog-action
+                        @click="assign({ kind: 'attack' })"
+                    >
+                        ⚔ {{ label({ kind: 'attack' }) }}
+                    </UiButton>
+                    <UiButton
+                        appearance="ghost"
+                        border="border-015"
+                        :colors="pickerButtonColors"
+                        data-dialog-action
+                        @click="assign({ kind: 'item', id: 'food' })"
+                    >
+                        Яблоко · {{ count }}
+                    </UiButton>
+                    <UiButton
+                        appearance="ghost"
+                        border="border-015"
+                        :colors="pickerButtonColors"
+                        data-dialog-action
+                        @click="assign({ kind: 'item', id: 'sapling' })"
+                    >
+                        Саженец · {{ saplings }}
+                    </UiButton>
+                    <UiButton
+                        appearance="ghost"
+                        border="border-015"
+                        :colors="pickerButtonColors"
+                        data-dialog-action
+                        @click="assign(null)"
+                    >
+                        Очистить слот
+                    </UiButton>
+                    <UiButton
+                        appearance="ghost"
+                        border="border-015"
+                        :colors="pickerButtonColors"
+                        data-dialog-action
+                        @click="close"
+                    >
+                        Закрыть · Esc
+                    </UiButton>
+                </div>
+            </HudFrame>
+        </section>
     </div>
-    <div
-        v-if="player.combat?.defensiveStance || player.combat?.combo?.stacks || prayerAssigned"
-        class="hotbar-context"
-    >
-        <p
-            v-if="player.combat?.defensiveStance"
-            class="hotbar-context__line rpg-panel game-frame-host"
-            role="status"
-        >
-            <GameFrame variant="panel" />Глухая оборона · Движение, атаки и колдовство недоступны
-        </p>
-        <p
-            v-if="player.combat?.combo?.stacks"
-            class="hotbar-context__line rpg-panel game-frame-host"
-            role="status"
-            aria-label="Серия ударов"
-        >
-            <GameFrame variant="panel" />Серия ударов: {{ player.combat.combo.stacks }} /
-            {{ player.combat.combo.limit }}
-        </p>
-        <p
-            v-if="prayerAssigned && !player.combat?.defensiveStance"
-            class="prayer-preview rpg-panel game-frame-host"
-            role="status"
-        >
-            <GameFrame variant="panel" />{{ prayerTooltip() }}
-        </p>
-    </div>
-    <section
-        v-if="editing !== undefined"
-        ref="picker"
-        class="hotbar-picker rpg-panel game-frame-host"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="`Назначить слот ${editing + 1}`"
-        @keydown.stop="dialogActionKeys($event, picker, close)"
-        @keyup.stop
-    >
-        <GameFrame variant="window" />
-        <h2>Слот {{ editing + 1 }}</h2>
-        <GameButton
-            v-for="ability in known"
-            :key="ability"
-            data-dialog-action
-            type="button"
-            @click="assign({ kind: 'ability', id: ability })"
-        >
-            {{ glyphs[ability] }} {{ ABILITY_DEFINITIONS[ability].name }}
-            <small
-                >{{ abilityUsage(player, ability).mana }} MP ·
-                {{ abilityUsage(player, ability).energy }} EN</small
-            >
-        </GameButton>
-        <GameButton data-dialog-action type="button" @click="assign({ kind: 'attack' })">
-            ⚔ {{ label({ kind: 'attack' }) }}
-        </GameButton>
-        <GameButton data-dialog-action type="button" @click="assign({ kind: 'item', id: 'food' })">
-            Яблоко · {{ count }}
-        </GameButton>
-        <GameButton
-            data-dialog-action
-            type="button"
-            @click="assign({ kind: 'item', id: 'sapling' })"
-        >
-            Саженец · {{ saplings }}
-        </GameButton>
-        <GameButton data-dialog-action type="button" @click="assign(null)"
-            >Очистить слот</GameButton
-        >
-        <GameButton data-dialog-action type="button" @click="close">Закрыть · Esc</GameButton>
-    </section>
 </template>
 <style scoped src="./actionHotbar.css"></style>

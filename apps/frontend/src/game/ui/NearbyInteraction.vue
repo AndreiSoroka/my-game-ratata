@@ -220,7 +220,7 @@ defineExpose({ openMenu })
 @media (max-width: 740px) {
     .nearby-prompt {
         left: 12px;
-        bottom: 184px;
+        bottom: max(184px, var(--game-hotbar-top, 0px));
         padding: 7px 10px;
         font-size: 11px;
     }

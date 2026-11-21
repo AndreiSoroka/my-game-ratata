@@ -248,21 +248,19 @@ defineExpose({
         @cancel="cancel()"
         @preview-change="game?.setPrayerPreview?.($event)"
         @shot-preview-change="game?.setShotPreview?.($event)"
-    />
+    >
+        <template #guide>
+            <span class="target-help">Q себя · E цель · Shift+E назад · F действие</span>
+        </template>
+    </ActionHotbar>
     <SpeechBubbles ref="speech" :game="game" :snapshot="snapshot" :player="player" />
-    <span class="target-help">Q себя · E цель · Shift+E назад · F действие</span>
 </template>
 <style scoped>
 .target-help {
-    position: absolute;
-    left: 50%;
-    bottom: 92px;
-    transform: translateX(-50%);
-    z-index: 4;
     color: var(--rpg-text);
     font: 10px system-ui;
+    text-align: center;
     text-shadow: 1px 1px #101c13;
-    white-space: nowrap;
 }
 @media (max-width: 740px) {
     .target-help {

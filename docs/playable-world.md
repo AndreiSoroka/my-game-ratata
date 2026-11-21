@@ -281,6 +281,8 @@ Without a selected target, Shot and Spark fire in the facing direction. Their wo
 
 Each assigned slot also has an **×** button labeled **Очистить слот N**, reachable with Tab and activated with Enter or Space. Clearing removes only that slot's binding, keeps every item in the inventory and returns keyboard focus to the now-empty slot.
 
+The hotbar uses the same dark frame as the player HUD. Active slots use a light face with a dark icon, cooldowns are shown in seconds, and bound consumables show their count on the bottom edge, including zero. Inventory and the game menu sit below the hotbar. On narrow screens, the adventure shortcuts get their own row as well.
+
 In the inventory, focus an apple's slot and press Shift+1–4 to bind it directly; Enter is not required. After selecting the apple with Enter or a click, the same shortcuts and numbered assignment buttons also work. The inventory stays open and keeps keyboard focus; assigning a slot does not eat the apple. Close the inventory with Esc, then press the slot's number to eat it.
 
 Use arrows to move between inventory cells and Enter or F to open and confirm item actions. When equipping, consuming or transferring removes the selected item from the bag, keyboard focus returns to the same cell, even if it becomes empty. Continue with the arrows without reopening the inventory. A rejected action keeps its current menu and focus.
