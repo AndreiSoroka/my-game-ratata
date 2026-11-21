@@ -55,7 +55,7 @@ useEscapeOwner({
 <style scoped>
 .game-chat {
     position: absolute;
-    --game-chat-bottom: max(104px, var(--game-hotbar-top, 0px));
+    --game-chat-bottom: var(--game-hotbar-bottom);
     bottom: var(--game-chat-bottom);
     left: 12px;
     z-index: 5;
@@ -63,9 +63,14 @@ useEscapeOwner({
     max-block-size: calc(100% - var(--game-chat-bottom) - 12px);
 }
 
+@media (max-width: 1140px) {
+    .game-chat {
+        --game-chat-bottom: var(--game-hotbar-top);
+    }
+}
+
 @media (max-width: 740px) {
     .game-chat {
-        --game-chat-bottom: max(170px, var(--game-hotbar-top, 0px));
         width: min(300px, calc(100% - 24px));
     }
 }

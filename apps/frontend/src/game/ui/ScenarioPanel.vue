@@ -247,7 +247,6 @@ function repeat(event: Event): void {
                 {{ selectedHelper.reason }}
             </p>
             <p v-if="selectedHelper" class="automation-muted">
-                {{ selectedHelper.canFight ? 'Может сражаться' : 'Не сражается' }} ·
                 {{ selectedHelper.canFollow ? 'Может путешествовать' : 'Остаётся у своего поста' }}
             </p>
             <p v-if="dirty" class="automation-muted">Сохраните изменения перед запуском.</p>

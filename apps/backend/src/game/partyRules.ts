@@ -8,6 +8,8 @@ import { type GuildService } from './guild'
 import { distance } from './math'
 import type { NoticeStore } from './notices'
 
+export const PARTY_INVITATION_RANGE = 240
+
 export interface PartyRecord {
     id: string
     leaderId: string
@@ -33,7 +35,7 @@ export function nearbyPlayers(
         available(other) &&
         other.id !== actor.id &&
         other.locationId === actor.locationId &&
-        distance(actor.position, other.position) <= 240
+        distance(actor.position, other.position) <= PARTY_INVITATION_RANGE
     )
 }
 

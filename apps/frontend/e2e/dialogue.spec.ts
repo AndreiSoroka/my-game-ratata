@@ -23,6 +23,12 @@ async function talkThroughActionMenu(
     else await page.keyboard.press('KeyF')
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
+    await expect(
+        menu.getByRole('menuitem', { name: `Попросить идти вместе: ${name}`, exact: true })
+    ).toBeEnabled()
+    await expect(
+        menu.getByRole('menuitem', { name: `Попросить помочь в бою: ${name}`, exact: true })
+    ).toBeEnabled()
     const talk = menu.getByRole('menuitem', { name: `Поговорить: ${name}`, exact: true })
     await expect(talk).toBeEnabled()
     const limit = await menu.getByRole('menuitem').count()
@@ -78,6 +84,7 @@ for (const mobile of [false, true]) {
             return api.navigate({ targetKey: guard.key }, { tolerance: 32 })
         })
         expect(approached.status, approached.reason).toBe('arrived')
+        await expect(page.getByRole('button', { name: 'Спутники', exact: true })).toHaveCount(0)
         const guardName = await page.evaluate(
             () =>
                 window

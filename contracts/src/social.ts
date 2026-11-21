@@ -52,6 +52,8 @@ export interface CharacterInteractions {
     aiDialogue: boolean
     whisper: boolean
     exchange: boolean
+    /** Which companion actions this viewer can request. */
+    companionRequests?: 'available' | 'occupied' | 'own'
 }
 
 export type WhisperClientMessage =

@@ -14,8 +14,6 @@ const meta = {
             kind: 'spark',
             controlSource: 'human',
             canSpeak: true,
-            personality: 'Дружелюбный',
-            companion: null,
         },
     },
     argTypes: { soul: { control: 'object' } },
@@ -33,8 +31,6 @@ export const Echo: Story = {
             kind: 'echo',
             controlSource: 'script',
             canSpeak: false,
-            personality: 'Молчаливый',
-            companion: null,
         },
     },
 }

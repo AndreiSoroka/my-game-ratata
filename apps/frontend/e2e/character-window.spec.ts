@@ -18,6 +18,8 @@ for (const viewport of [
             `character-${width}-${info.workerIndex}`
         )
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
+        await expect(page.getByRole('button', { name: 'Знания', exact: true })).toHaveCount(0)
+        await expect(page.getByRole('button', { name: 'Ремесло', exact: true })).toHaveCount(0)
         await page.keyboard.press('KeyP')
         const menu = page.getByRole('dialog', { name: 'Персонаж', exact: true })
         await expect(menu).toBeVisible()
@@ -70,18 +72,21 @@ for (const viewport of [
         )
         await expect(menu).not.toHaveAttribute('aria-modal', 'true')
         await expectReadingMovement(page)
+        await menu.getByRole('tab', { name: 'Ремесло', exact: true }).click()
+        await expect(menu.getByRole('tabpanel', { name: 'Ремесло' })).toContainText(
+            'Сплести сапоги'
+        )
+        await expect(menu).toHaveAttribute('aria-modal', 'true')
         await menu.getByRole('tab', { name: 'Развитие', exact: true }).click()
         await page.keyboard.press('Escape')
         await expect(menu).toHaveCount(0)
-        await page.getByRole('button', { name: 'Знания', exact: true }).click()
+        await page.getByRole('button', { name: 'Игровое меню', exact: true }).click()
+        await page.getByRole('button', { name: 'Персонаж · P', exact: true }).click()
+        await expect(menu).toBeVisible()
         await expect(menu.getByRole('tab', { name: 'Развитие' })).toHaveAttribute(
             'aria-selected',
             'true'
         )
-        await page.keyboard.press('Escape')
-        await page.getByRole('button', { name: 'Игровое меню', exact: true }).click()
-        await page.getByRole('button', { name: 'Персонаж · P', exact: true }).click()
-        await expect(menu).toBeVisible()
     })
 }
 

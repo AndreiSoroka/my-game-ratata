@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { socialMenu } from './social-helpers'
 import { abandonGuildContract, openObservedWorkerOffer } from './worker-contract-helpers'
 
 const scenarios = [
@@ -55,12 +56,12 @@ for (const scenario of scenarios) {
             () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
         )
         try {
-            await page.getByRole('button', { name: /^Квесты ·/ }).click()
-            const journal = page.getByRole('region', { name: 'Активные квесты' })
+            const character = await openQuestJournal(page)
+            const journal = character.getByRole('region', { name: 'Активные квесты' })
             await expect(journal).toBeVisible()
             await expect(journal).toContainText(scenario.workerLabel)
             await expect(journal.getByRole('radio')).toHaveCount(0)
-            await assertFitsViewport(page.getByRole('dialog', { name: 'Персонаж', exact: true }))
+            await assertFitsViewport(character)
             await page.screenshot({
                 path: info.outputPath(`worker-rewards-${scenario.name}.png`),
             })
@@ -69,17 +70,15 @@ for (const scenario of scenarios) {
         } finally {
             await abandonGuildContract(page, workerInstance)
         }
-        await page.getByRole('button', { name: 'Гильдия', exact: true }).focus()
-        await page.keyboard.press('KeyF')
-        const guild = page.getByRole('dialog', { name: 'Гильдия приключенцев' })
-        const hunt = guild
-            .locator('.guild-job')
-            .filter({ has: page.getByRole('heading', { name: 'Зачистка троп' }) })
-        await expect(hunt.getByRole('button', { name: 'Взять', exact: true })).toBeEnabled()
-        await hunt.getByRole('radio', { name: scenario.guildLabel }).focus()
-        await page.keyboard.press('KeyF')
-        await hunt.getByRole('button', { name: 'Взять', exact: true }).focus()
-        await page.keyboard.press('KeyF')
+        const contactId = await page.evaluate(
+            () => window.__ratataTest!.getState().snapshot?.party?.guildContact?.npcId
+        )
+        expect(contactId, 'No guild contact is available after the worker offer').toBeTruthy()
+        await socialMenu(
+            page,
+            contactId!,
+            new RegExp(`^Взять «Зачистка троп» · 30 ◈ · ${scenario.guildLabel}$`)
+        )
         await expect
             .poll(() =>
                 page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)
@@ -89,10 +88,12 @@ for (const scenario of scenarios) {
             () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
         )
         try {
-            const active = guild.getByRole('article', { name: 'Общий контракт' })
+            const character = await openQuestJournal(page)
+            await character.getByRole('button', { name: /Зачистка троп/ }).click()
+            const active = character.getByRole('article', { name: 'Общий контракт' })
             await expect(active).toContainText(scenario.guildLabel)
             await expect(active.getByRole('radio')).toHaveCount(0)
-            await assertFitsViewport(guild)
+            await assertFitsViewport(character)
             await page.screenshot({
                 path: info.outputPath(`guild-rewards-${scenario.name}.png`),
             })
@@ -100,6 +101,14 @@ for (const scenario of scenarios) {
             await abandonGuildContract(page, guildInstance)
         }
     })
+}
+
+async function openQuestJournal(page: Page): Promise<Locator> {
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    await page.keyboard.press('KeyP')
+    const character = page.getByRole('dialog', { name: 'Персонаж', exact: true })
+    await character.getByRole('tab', { name: 'Квесты', exact: true }).click()
+    return character
 }
 
 async function approachMira(page: Page): Promise<void> {

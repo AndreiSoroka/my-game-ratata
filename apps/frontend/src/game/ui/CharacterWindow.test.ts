@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { adventureFixture, worldFixture } from '../testing/characterFixture'
 import { developmentCharacterFixture, fixtureStarId } from '../testing/developmentFixture'
 import {
     observedDamageText,
@@ -79,5 +80,33 @@ it('does not intercept P in a text editor', async () => {
     } finally {
         view.unmount()
         input.remove()
+    }
+})
+
+it('keeps recipes and crafting commands in the modal character tab', async () => {
+    const player = developmentCharacterFixture()
+    const adventure = adventureFixture()
+    adventure.materials.fiber = 3
+    adventure.recipes = [
+        { id: 'boots', itemId: 'boots', label: 'Сплести сапоги', cost: { fiber: 3 } },
+    ]
+    const view = mount(CharacterWindow, {
+        props: {
+            player,
+            characters: [],
+            snapshot: { ...worldFixture([player]), adventure },
+        },
+    })
+    try {
+        await view.get('[role="tab"]').trigger('keydown', { code: 'End' })
+        expect(view.emitted('update:tab')).toEqual([['crafting']])
+        await view.setProps({ tab: 'crafting' })
+        expect(view.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
+        const crafting = view.get('[aria-labelledby="character-crafting-tab"]')
+        expect(crafting.text()).toContain('Волокно: 3')
+        await crafting.get('article button').trigger('click')
+        expect(view.emitted('command')).toEqual([[{ type: 'craft', recipeId: 'boots' }]])
+    } finally {
+        view.unmount()
     }
 })

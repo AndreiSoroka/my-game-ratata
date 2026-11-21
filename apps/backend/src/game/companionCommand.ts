@@ -1,9 +1,10 @@
 import type { CompanionClientMessage } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import type {
-    AssistanceContext,
-    CompanionAssistance,
+import {
+    type AssistanceContext,
+    type CompanionAssistance,
+    companionReachText,
 } from './companionAssistance'
 import type { CompanionRuntime } from './companionMovement'
 import { applyCompanionOrder } from './companionOrders'
@@ -60,7 +61,7 @@ export function checkCompanionCommand(
     if (!canRequest(actor, npc) || state === undefined) {
         return deny(
             'unavailable',
-            'Подойди к живому собеседнику ближе: не дальше 64 шагов.'
+            `Нужен живой собеседник ${companionReachText(actor, context)}.`
         )
     }
     const speaker = speakerDenial(npc)

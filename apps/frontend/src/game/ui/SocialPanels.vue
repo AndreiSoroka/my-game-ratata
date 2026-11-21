@@ -6,7 +6,6 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import { ExchangeInvitationWidget } from '@/widgets/exchanges'
 
-import { activeQuests } from './activeQuests'
 import ExchangeWindow from './ExchangeWindow.vue'
 import { focusWorldInput } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
@@ -20,7 +19,7 @@ const props = defineProps<{
     characters: CharacterSnapshot[]
     connected: boolean
 }>()
-const emit = defineEmits<{ command: [message: ClientMessage]; open: []; quests: [] }>()
+const emit = defineEmits<{ command: [message: ClientMessage]; open: [] }>()
 const whisperTarget = ref<string>()
 const openedExchangeId = ref<string>()
 const hiddenExchangeId = ref<string>()
@@ -30,7 +29,6 @@ const social = computed(() => props.snapshot.social)
 const whisper = computed(() => social.value?.whisper)
 const exchange = computed(() => social.value?.exchange)
 const available = computed(() => props.player.alive && props.connected)
-const questCount = computed(() => activeQuests(props.snapshot).length)
 const turnInVisible = computed(() => available.value && Boolean(social.value?.questTurnIn))
 const questOfferVisible = computed(
     () => available.value && !turnInVisible.value && Boolean(social.value?.questOffer)
@@ -173,12 +171,12 @@ watch(available, (value) => {
 watch(
     [notices, hints],
     ([noticePanel, hintPanel], _, onCleanup) => {
-        const container = noticePanel?.closest<HTMLElement>('.game-screen')
-        if (!container || !noticePanel) return
+        const container = (noticePanel ?? hintPanel)?.closest<HTMLElement>('.game-screen')
+        if (!container) return
         const measure = (): void => {
             container.style.setProperty(
                 '--ratata-social-notices-height',
-                `${Math.ceil(noticePanel.getBoundingClientRect().height)}px`
+                `${Math.ceil(noticePanel?.getBoundingClientRect().height ?? 0)}px`
             )
             container.style.setProperty(
                 '--ratata-social-hints-height',
@@ -188,7 +186,7 @@ watch(
         measure()
         const resize =
             typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
-        resize?.observe(noticePanel)
+        if (noticePanel) resize?.observe(noticePanel)
         if (hintPanel) resize?.observe(hintPanel)
         onCleanup(() => {
             resize?.disconnect()
@@ -202,13 +200,12 @@ defineExpose({ command, hasOpenWindow })
 </script>
 <template>
     <div
-        v-if="available"
+        v-if="available && exchange?.status === 'invited'"
         ref="notices"
         class="social-notices"
         role="group"
-        aria-label="Квесты и торговля"
+        aria-label="Приглашения к торговле"
     >
-        <GameButton @click="emit('quests')">Квесты · {{ questCount }}</GameButton>
         <ExchangeInvitationWidget
             :exchange="exchange"
             class="social-notices__invitation"

@@ -80,12 +80,16 @@ describe('one facing interaction target', () => {
             characterFixture(id, {
                 position: { x, y: 100 },
                 controllerKind: 'scripted',
+                interactions: {
+                    aiDialogue: false,
+                    whisper: false,
+                    exchange: false,
+                    companionRequests: 'available',
+                },
                 soul: {
                     kind: 'spark',
                     controlSource: 'script',
                     canSpeak: true,
-                    personality: '',
-                    companion: { canFight: true, leaderId: null, order: 'idle', lastReply: null },
                 },
             })
         snapshot.characters.push(person('behind', 80), person('ahead', 124))
@@ -126,6 +130,42 @@ describe('one facing interaction target', () => {
         player.alive = false
         expect(select()).toBeUndefined()
     })
+})
+
+it('keeps companion requests in sight out to 64 pixels using the viewer’s action availability', () => {
+    const { snapshot, select } = setup()
+    const npc = characterFixture('resident', {
+        position: { x: 164, y: 100 },
+        controllerKind: 'scripted',
+        soul: { kind: 'echo', controlSource: 'script', canSpeak: true },
+        interactions: {
+            aiDialogue: false,
+            whisper: true,
+            exchange: true,
+            companionRequests: 'available',
+        },
+    })
+    snapshot.characters.push(npc)
+    const follow = { type: 'companion_request', request: 'follow', targetId: npc.id }
+    const help = { type: 'companion_request', request: 'help', targetId: npc.id }
+    expect(select()?.actions.map(({ command }) => command)).toEqual([follow, help])
+
+    npc.interactions!.companionRequests = 'own'
+    expect(select()?.actions.map(({ command }) => command)).toEqual([
+        follow,
+        help,
+        { type: 'companion_request', request: 'guard', targetId: npc.id },
+        { type: 'companion_request', request: 'dismiss', targetId: npc.id },
+    ])
+    expect(select(snapshot, snapshot.characters, () => false)).toBeUndefined()
+
+    npc.interactions!.companionRequests = 'occupied'
+    expect(select()?.actions).toMatchObject([
+        { command: follow, disabled: true },
+        { command: help, disabled: true },
+    ])
+    npc.position.x = 165
+    expect(select()).toBeUndefined()
 })
 
 describe('commands for the selected interaction target', () => {

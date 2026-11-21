@@ -135,22 +135,17 @@
     max-height: max(0px, calc(100dvh - var(--game-social-notices-top, 14px) - 8px));
     margin-inline: auto;
     display: grid;
-    gap: 8px;
     justify-items: center;
     overflow-y: auto;
     pointer-events: none;
 }
 .social-hints > button,
-.social-notices > button,
 .social-notices__invitation {
     position: relative;
     z-index: 12;
 }
-.social-notices > button,
 .social-notices__invitation {
     pointer-events: auto;
-}
-.social-notices__invitation {
     inline-size: 100%;
 }
 .social-notices__invitation--over-whisper {

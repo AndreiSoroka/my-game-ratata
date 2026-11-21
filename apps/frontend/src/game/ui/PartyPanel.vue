@@ -10,7 +10,7 @@ const props = defineProps<{
     selectedId?: string
     currentLocationId?: string
 }>()
-const emit = defineEmits<{ select: [id: string] }>()
+const emit = defineEmits<{ select: [id: string]; leave: [] }>()
 const members = computed(() =>
     [...props.party.members].sort(
         (a, b) => Number(b.id === props.party.leaderId) - Number(a.id === props.party.leaderId)
@@ -55,13 +55,16 @@ const members = computed(() =>
                 >Другая локация</small
             >
         </GameButton>
+        <GameButton size="compact" class="party-leave" @click="emit('leave')">
+            Покинуть отряд
+        </GameButton>
     </aside>
 </template>
 <style scoped>
 .party-panel {
     position: absolute;
     left: 14px;
-    top: 104px;
+    top: var(--game-hud-top, 14px);
     width: 220px;
     z-index: 4;
     padding: 10px;
@@ -84,6 +87,9 @@ h2 {
 }
 .party-member[aria-pressed='true'] {
     outline: 2px solid var(--rpg-focus);
+}
+.party-leave {
+    margin-top: 8px;
 }
 .party-member__name {
     display: block;
@@ -116,7 +122,6 @@ small {
 @media (max-width: 740px) {
     .party-panel {
         width: 164px;
-        top: 114px;
         left: 8px;
         padding: 6px;
     }

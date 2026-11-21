@@ -34,7 +34,7 @@ export function scenarioHelpers(
             name: actor.nickname,
             eligible: allowed.accepted,
             reason: allowed.error,
-            ...access.capabilities(actor),
+            canFollow: access.capabilities(actor).canFollow,
             run: assigned ? run.snapshot : (report ?? null),
         })
     }

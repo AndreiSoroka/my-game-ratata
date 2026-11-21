@@ -38,8 +38,6 @@ function fixture() {
             kind: 'spark',
             controlSource: 'script',
             canSpeak: true,
-            personality: 'kind',
-            companion: null,
         },
     })
     const snapshot = {

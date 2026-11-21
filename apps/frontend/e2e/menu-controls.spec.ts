@@ -14,14 +14,13 @@ for (const mobile of [false, true]) {
             `menu-${info.workerIndex}-${mobile}`
         )
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
-        await expect(page.getByRole('region', { name: 'World location' })).toHaveCSS('top', '14px')
+        await expect(page.getByRole('region', { name: 'World location' })).toHaveCount(0)
         await expect(page.locator('.game-player-status')).toHaveCSS('top', '14px')
         const menuButton = await hotbarMenuButton(page)
-        const guild = page.getByRole('button', { name: 'Гильдия', exact: true })
-        await guild.click()
-        await expect(page.getByRole('dialog', { name: 'Гильдия приключенцев' })).toBeVisible()
-        await guild.click()
-        await guild.focus()
+        await expect(page.getByLabel('Приключение', { exact: true })).toHaveCount(0)
+        await expect(page.getByRole('button', { name: /^Квесты ·/ })).toHaveCount(0)
+        await expectBottomDock(page, mobile)
+        await menuButton.focus()
         const { menu, inventoryEntry } = await checkInventoryMenu(page)
         const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
         await attack.focus()
@@ -115,6 +114,24 @@ for (const mobile of [false, true]) {
         await expect(page.getByRole('button', { name: /^2: Искра/ })).toBeVisible()
         await expect(page.getByRole('button', { name: /^3: Искра/ })).toBeVisible()
     })
+}
+
+async function expectBottomDock(page: Page, mobile: boolean): Promise<void> {
+    const chat = page.locator('.game-chat')
+    const hotbar = page.locator('.hotbar-content')
+    await expect(page.locator('.hotbar')).toHaveCSS('bottom', '12px')
+    await expect(chat).toBeVisible()
+    await expect
+        .poll(async () => {
+            const [chatBox, hotbarBox] = await Promise.all([
+                chat.boundingBox(),
+                hotbar.boundingBox(),
+            ])
+            if (!chatBox || !hotbarBox) return false
+            const upperEdge = mobile ? hotbarBox.y - 8 : hotbarBox.y + hotbarBox.height
+            return Math.abs(chatBox.y + chatBox.height - upperEdge) <= 1
+        })
+        .toBe(true)
 }
 
 async function checkInventoryMenu(page: Page) {

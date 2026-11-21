@@ -14,6 +14,7 @@ import {
     humanControlled,
     isCityBlacklisted,
 } from './crimeRules'
+import { interactionRangeText } from './interactionRangeText'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { visibilityRadius } from './queries'
@@ -55,7 +56,7 @@ export function reportTheft(
         return [
             privateTheftNotice(
                 actor.id,
-                'Для жалобы нужны свежее свидетельство и городской стражник в пределах 64 шагов.'
+                `Для жалобы нужны свежее свидетельство и городской стражник ${interactionRangeText(THEFT_RULES.reportRange, context.navigation.grid.tileWidth)}.`
             ),
         ]
     }
@@ -91,7 +92,7 @@ export function absolve(
         return [
             privateTheftNotice(
                 actor.id,
-                'Подойди к живому городскому клирику в пределах 64 шагов, чтобы попросить отпущения.'
+                `Чтобы попросить отпущения, нужен живой городской клирик ${interactionRangeText(THEFT_RULES.absolutionRange, context.navigation.grid.tileWidth)}.`
             ),
         ]
     }

@@ -11,21 +11,6 @@
     opacity: 0.45;
     cursor: default;
 }
-.adventure-tools.game-frame-host {
-    position: absolute;
-    z-index: 5;
-    right: 16px;
-    bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 5px 6px 5px 13px;
-    border: 1px solid transparent;
-}
-.adventure-gold {
-    color: #edd084;
-    font-variant-numeric: tabular-nums;
-}
 .adventure-window.game-frame-host {
     position: absolute;
     z-index: 8;
@@ -182,10 +167,6 @@
 }
 
 @media (max-width: 640px) {
-    .adventure-tools.game-frame-host {
-        right: 8px;
-        bottom: 8px;
-    }
     .adventure-window.game-frame-host {
         padding: 12px;
     }
@@ -200,44 +181,6 @@
     }
 }
 
-.adventure-crafting {
-    right: 16px;
-    bottom: 78px;
-    width: min(380px, calc(100% - 32px));
-    max-height: calc(100% - 130px);
-    overflow: auto;
-    box-sizing: border-box;
-}
-.crafting-materials {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr auto;
-    gap: 8px 12px;
-    font:
-        13px/1.4 system-ui,
-        sans-serif;
-    margin: 18px 0;
-}
-.crafting-materials dd {
-    color: #eacf8b;
-    margin: 0;
-    font-variant-numeric: tabular-nums;
-}
-.crafting-recipe {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 13px 0;
-    border-top: 1px solid #526049;
-    font:
-        13px/1.5 system-ui,
-        sans-serif;
-}
-.crafting-recipe p {
-    font-size: 11px;
-    color: #b3bdab;
-    margin: 4px 0 0;
-}
 .adventure-resources,
 .adventure-rescue {
     position: absolute;
@@ -257,47 +200,7 @@
 .adventure-rescue {
     bottom: 172px;
 }
-.adventure-level {
-    font-size: 11px;
-    color: #b8c5b5;
-    white-space: nowrap;
-}
-@media (max-width: 640px) {
-    .adventure-tools.game-frame-host {
-        gap: 6px;
-        font-size: 11px;
-    }
-    .adventure-tools button {
-        padding: 7px 8px;
-    }
-    .adventure-level {
-        display: none;
-    }
-}
-
-.adventure-tools.game-frame-host {
-    gap: 6px;
-    font-size: 12px;
-}
-.adventure-tools button {
-    padding: 8px 10px;
-}
 @media (max-width: 740px) {
-    .adventure-tools.game-frame-host {
-        right: 8px;
-        bottom: 62px;
-        max-width: calc(100% - 16px);
-        box-sizing: border-box;
-        gap: 4px;
-    }
-    .adventure-tools button {
-        padding: 7px 6px;
-        font-size: 11px;
-    }
-    .adventure-level {
-        display: none;
-    }
-    .adventure-crafting,
     .adventure-journal,
     .adventure-dialogue {
         bottom: 124px;
@@ -315,15 +218,9 @@
 }
 
 @media (max-width: 740px) {
-    .adventure-tools.game-frame-host {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    .adventure-crafting,
     .adventure-journal,
     .adventure-dialogue,
-    .adventure-knowledge,
-    .adventure-companions {
+    .adventure-knowledge {
         bottom: 160px;
         max-height: calc(100% - 220px);
     }

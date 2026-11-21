@@ -201,6 +201,7 @@ defineExpose({
         :current-location-id="snapshot.location?.id"
         :selected-id="selectedId"
         @select="select"
+        @leave="send({ type: 'party_leave' })"
     />
     <SelectedTargetPanel
         :target="target"

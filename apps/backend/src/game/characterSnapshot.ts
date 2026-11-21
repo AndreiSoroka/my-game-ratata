@@ -45,7 +45,11 @@ export function createCharacterSnapshot(
         xp: character.xp,
         xpToNext: 0,
         progression: snapshotProgression(character, now, includePrivate),
-        soul: character.soul,
+        soul: {
+            canSpeak: character.soul.canSpeak,
+            controlSource: character.soul.controlSource,
+            kind: character.soul.kind,
+        },
         life: {
             retired:
                 character.tags.has('state.retired') ||

@@ -1,6 +1,7 @@
-import type { HeroClass } from '@my-game-ratata/contracts'
+import type { AdventureSnapshot, HeroClass } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
+import { adventureFixture, worldFixture } from '../testing/characterFixture'
 import {
     constellationFixture,
     developmentCharacterFixture,
@@ -12,10 +13,16 @@ import CharacterWindow from '../ui/CharacterWindow.vue'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import { renderVueStory } from './renderVueStory'
 
-function windowStory(tab: 'stats' | 'development', heroClass: HeroClass = 'cleric'): HTMLElement {
+function windowStory(
+    tab: 'stats' | 'development' | 'crafting',
+    heroClass: HeroClass = 'cleric',
+    adventure?: AdventureSnapshot
+): HTMLElement {
+    const player = developmentCharacterFixture(heroClass)
     const host = renderVueStory(CharacterWindow, {
-        player: developmentCharacterFixture(heroClass),
+        player,
         characters: [],
+        snapshot: adventure ? { ...worldFixture([player]), adventure } : undefined,
         tab,
     })
     host.style.minHeight = '100dvh'
@@ -31,6 +38,17 @@ export const Statistics: Story = {
 }
 export const Development: Story = {
     render: () => windowStory('development'),
+}
+export const Crafting: Story = {
+    render: () => {
+        const adventure = adventureFixture()
+        adventure.materials.fiber = 3
+        adventure.recipes = [
+            { id: 'bake_bread', itemId: 'food', label: 'Испечь хлеб', cost: { grain: 3 } },
+            { id: 'boots', itemId: 'boots', label: 'Сплести сапоги', cost: { fiber: 3 } },
+        ]
+        return windowStory('crafting', 'cleric', adventure)
+    },
 }
 export const ResourceEstimates: Story = {
     render: () => renderVueStory(CharacterStats, { player: developmentCharacterFixture() }),

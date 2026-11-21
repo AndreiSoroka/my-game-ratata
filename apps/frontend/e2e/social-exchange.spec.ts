@@ -334,29 +334,24 @@ async function exchangeFailureState(page: Page, giftId?: string) {
 
 async function assertTopNotices(page: Page, invitation?: Locator): Promise<void> {
     const width = page.viewportSize()!.width
-    const notices = page.locator('.social-notices')
-    const quests = notices.getByRole('button', { name: /^Квесты ·/ })
-    await expect(quests).toBeInViewport({ ratio: 1 })
-    const questBounds = (await quests.boundingBox())!
-    expect(questBounds.x + questBounds.width / 2).toBeCloseTo(width / 2, 0)
-
-    if (invitation) {
-        const bounds = (await invitation.boundingBox())!
-        expect(bounds.x + bounds.width / 2).toBeCloseTo(width / 2, 0)
-        expect(bounds.y).toBeGreaterThanOrEqual(questBounds.y + questBounds.height)
+    const notices = page.getByRole('group', { name: 'Приглашения к торговле' })
+    if (!invitation) {
+        await expect(notices).toHaveCount(0)
+        return
     }
+    await expect(invitation).toBeInViewport({ ratio: 1 })
+    const bounds = (await invitation.boundingBox())!
+    expect(bounds.x + bounds.width / 2).toBeCloseTo(width / 2, 0)
 
     if (width <= 740) {
-        const location = page.getByRole('region', { name: 'World location', exact: true })
         const status = page.locator('.game-player-status')
         await expect
             .poll(async () => {
-                const [stack, map, vitals] = await Promise.all([
+                const [stack, vitals] = await Promise.all([
                     notices.boundingBox(),
-                    location.boundingBox(),
                     status.boundingBox(),
                 ])
-                return stack!.y - Math.max(map!.y + map!.height, vitals!.y + vitals!.height)
+                return stack!.y - vitals!.y - vitals!.height
             })
             .toBeGreaterThanOrEqual(0)
     } else expect((await notices.boundingBox())!.y).toBeCloseTo(14, 0)

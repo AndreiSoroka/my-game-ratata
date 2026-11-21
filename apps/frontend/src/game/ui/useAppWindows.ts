@@ -20,7 +20,6 @@ interface AppWindowsOptions {
     snapshot: Ref<WorldSnapshot | undefined>
     gameplay: Ref<{ select: (id: string) => boolean | void } | undefined>
     interaction: Ref<{ openMenu: () => void } | undefined>
-    adventure: Ref<{ hasOpenWindow: boolean; closeWindows: () => void } | undefined>
     social?: Ref<{ hasOpenWindow: boolean } | undefined>
     closeInventory: () => void
     closeContainers: () => void
@@ -55,7 +54,6 @@ export function useAppWindows(options: AppWindowsOptions) {
             options.chatInput.value.active,
             options.status.value !== 'Connected',
             options.defeated.value,
-            options.adventure.value?.hasOpenWindow,
             options.social?.value?.hasOpenWindow,
             automationPanels.value?.hasOpenWindow,
             options.snapshot.value?.adventure?.dialogue,
@@ -68,7 +66,6 @@ export function useAppWindows(options: AppWindowsOptions) {
         if (options.chestPending.value) return
         options.closeInventory()
         automationPanels.value?.close()
-        options.adventure.value?.closeWindows()
         void nextTick(() => options.interaction.value?.openMenu())
     }
     function toggleInventory(): void {
@@ -79,17 +76,12 @@ export function useAppWindows(options: AppWindowsOptions) {
     function prepareAutomationWindow(): void {
         characterOpen.value = false
         options.closeContainers()
-        options.adventure.value?.closeWindows()
         if (options.snapshot.value?.adventure?.dialogue)
             options.game.value?.sendCommand({ type: 'dialogue_choice', choiceId: 'close' })
     }
     function openAutomation(window: 'markers' | 'scenarios'): void {
         gameMenu.resume()
         automationPanels.value?.open(window)
-    }
-    function closeOtherContainers(): void {
-        options.closeContainers()
-        automationPanels.value?.close()
     }
     return {
         automationPanels,
@@ -104,6 +96,5 @@ export function useAppWindows(options: AppWindowsOptions) {
         toggleInventory,
         prepareAutomationWindow,
         openAutomation,
-        closeOtherContainers,
     }
 }

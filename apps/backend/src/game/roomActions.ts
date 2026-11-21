@@ -74,7 +74,8 @@ export function handleRoomAction(
             player,
             message,
             context.allCharacters,
-            now
+            now,
+            context.navigation.grid.tileWidth
         )
     }
     if (message.type === 'companion_request') {
@@ -223,5 +224,6 @@ function companionAction(
             context.adventure.hasCompletedQuest(actorId, questId),
         hasLineOfSight: (actor, npc) =>
             context.navigation.hasLineOfSight(actor.position, npc.position),
+        tileWidthFor: () => context.navigation.grid.tileWidth,
     })
 }

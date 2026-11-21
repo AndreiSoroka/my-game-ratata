@@ -1,10 +1,26 @@
 import type {
     CharacterArchetype,
     CharacterControllerKind,
+    CompanionOrder,
+    CompanionWaitMode,
     ControlSource,
-    SoulProfile,
     SoulSnapshot,
 } from '@my-game-ratata/contracts'
+
+export interface SoulProfile extends SoulSnapshot {
+    personality: string
+}
+
+export interface CharacterSoul extends SoulProfile {
+    companion: {
+        canFight: boolean
+        lastReply: string | null
+        leaderId: string | null
+        order: CompanionOrder
+        waitMode?: CompanionWaitMode
+        controlRevision?: number
+    } | null
+}
 
 interface SoulOptions {
     archetype: CharacterArchetype
@@ -12,7 +28,7 @@ interface SoulOptions {
     soul?: Partial<SoulProfile>
 }
 
-export function createCharacterSoul(options: SoulOptions): SoulSnapshot {
+export function createCharacterSoul(options: SoulOptions): CharacterSoul {
     const defaults = defaultSoul(options)
     const controlSource = options.soul?.controlSource ?? defaults.controlSource
     return {
@@ -38,7 +54,7 @@ function defaultSoul(options: SoulOptions): SoulProfile {
 }
 
 export function setCharacterControlSource(
-    character: { soul: SoulSnapshot },
+    character: { soul: CharacterSoul },
     source: ControlSource
 ): void {
     character.soul.controlSource = source

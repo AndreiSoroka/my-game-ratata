@@ -93,8 +93,6 @@ export const ScriptedEcho: Story = {
                     kind: 'echo',
                     controlSource: 'script',
                     canSpeak: false,
-                    personality: 'Молчаливый',
-                    companion: null,
                 },
             }),
         }),

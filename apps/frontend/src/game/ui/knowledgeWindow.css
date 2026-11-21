@@ -1,5 +1,4 @@
-.adventure-knowledge,
-.adventure-companions {
+.adventure-knowledge {
     left: 50%;
     bottom: 78px;
     transform: translateX(-50%);
@@ -24,8 +23,7 @@
         12px/1.5 system-ui,
         sans-serif;
 }
-.knowledge-target select,
-.companion-conversation input {
+.knowledge-target select {
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
@@ -116,8 +114,7 @@
     margin-top: 18px !important;
 }
 @media (max-width: 740px) {
-    .adventure-knowledge,
-    .adventure-companions {
+    .adventure-knowledge {
         bottom: 160px;
         max-height: calc(100% - 220px);
     }

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [320, 390, 1280]) {
-    for (const tab of ['statistics', 'development']) {
+    for (const tab of ['statistics', 'development', 'crafting']) {
         test(`character ${tab} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
             await page.goto(`/iframe.html?id=game-characterwindow--${tab}&viewMode=story`)

@@ -19,8 +19,6 @@ export function playerStatusFixture(overrides: Partial<CharacterSnapshot> = {}):
             kind: 'spark',
             controlSource: 'human',
             canSpeak: true,
-            personality: 'Любознательный',
-            companion: null,
         },
         ...overrides,
     })

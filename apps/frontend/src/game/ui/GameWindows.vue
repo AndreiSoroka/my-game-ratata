@@ -43,7 +43,6 @@ defineExpose({
             :characters="characters"
             :connected="connected"
             @open="emit('open')"
-            @quests="windows.openQuests"
             @command="emit('command', $event)"
         />
         <DeathOverlay

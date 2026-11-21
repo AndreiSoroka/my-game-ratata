@@ -32,6 +32,7 @@ import {
     type HarvestDrops,
     inspectGather,
 } from './harvestWork'
+import { interactionRangeText } from './interactionRangeText'
 import {
     addInventoryItems,
     countInventoryItem,
@@ -42,6 +43,8 @@ import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { canPerformSkillAction } from './skillProgression'
+
+const resourceInteractionRange = 48
 
 export class AdventureResources {
     private readonly nodes: AdventureResourceNode[]
@@ -152,7 +155,7 @@ export class AdventureResources {
         if (genericResourceUnavailable(actor, node, now, navigation)) {
             setNotice(
                 state,
-                'Подойди к ресурсу в своей локации: не дальше 48 шагов.'
+                `Для сбора нужен ресурс ${interactionRangeText(resourceInteractionRange, navigation?.grid.tileWidth)} в твоей локации.`
             )
             return []
         }
@@ -225,7 +228,9 @@ export class AdventureResources {
         if (!navigation.hasLineOfSight(actor.position, node.position)) {
             return { status: 'stop' }
         }
-        if (distance(actor.position, node.position) <= 48) {
+        if (
+            distance(actor.position, node.position) <= resourceInteractionRange
+        ) {
             return { status: 'ready' }
         }
         return navigation.findPathWorld(actor.position, node.position).length >
@@ -291,7 +296,7 @@ function genericResourceUnavailable(
     return (
         !canPerformSkillAction(actor, now) ||
         actor.locationId !== node.locationId ||
-        distance(actor.position, node.position) > 48 ||
+        distance(actor.position, node.position) > resourceInteractionRange ||
         (navigation !== undefined &&
             !navigation.hasLineOfSight(actor.position, node.position))
     )

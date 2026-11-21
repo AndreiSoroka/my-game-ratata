@@ -33,7 +33,7 @@ test.describe('shared gameplay controls', () => {
             ).toEqual(position)
             await page.keyboard.press('Digit1')
             await expectPrivateBarrier(page)
-            await expectDisclosedBarrier(page, hud, mobile)
+            await expectDisclosedBarrier(hud, mobile)
             await expectMobileTargetBelowHud(page, hud, mobile)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
@@ -91,9 +91,10 @@ test.describe('shared gameplay controls', () => {
                     window.__ratataTest!.getState().snapshot!.party!.invitations[0]!.id
                 window.__ratataTest!.send({ type: 'party_answer', invitationId, accept: true })
             })
-            await expect(first.getByLabel('Мой отряд').getByRole('button')).toHaveCount(2)
+            const party = first.getByLabel('Мой отряд')
+            await expect(party.getByRole('button', { pressed: false })).toHaveCount(2)
             await expect(first.getByRole('img', { name: 'Лидер', exact: true })).toHaveCount(1)
-            await expect(first.getByLabel('Мой отряд')).not.toContainText('100%')
+            await expect(party).not.toContainText('100%')
             await expect(first.locator('.party-member__hp > span').first()).toHaveAttribute(
                 'style',
                 'width: 100%;'
@@ -113,6 +114,7 @@ test.describe('shared gameplay controls', () => {
                     first.evaluate(() => window.__ratataTest!.getState().player?.control?.mode)
                 )
                 .toBe('none')
+            await leaveParty(first)
         } finally {
             await firstContext.close()
             await secondContext.close()
@@ -120,7 +122,16 @@ test.describe('shared gameplay controls', () => {
     })
 })
 
-async function expectDisclosedBarrier(page: Page, hud: Locator, mobile: boolean): Promise<void> {
+async function leaveParty(page: Page): Promise<void> {
+    const party = page.getByLabel('Мой отряд')
+    await party.getByRole('button', { name: 'Покинуть отряд', exact: true }).click()
+    await expect(party).toHaveCount(0)
+    await expect
+        .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.partyId))
+        .toBeNull()
+}
+
+async function expectDisclosedBarrier(hud: Locator, mobile: boolean): Promise<void> {
     const strip = hud.locator('.player-effects-strip')
     const effects = strip.getByRole('list', { name: 'Player effects' })
     const barrier = effects.getByRole('button', { name: /Магический барьер/ })
@@ -132,18 +143,13 @@ async function expectDisclosedBarrier(page: Page, hud: Locator, mobile: boolean)
 
     const frameBounds = (await hud.locator('.hud-frame').boundingBox())!
     const stripBounds = (await strip.boundingBox())!
-    const locationBounds = (await page
-        .getByRole('region', { name: 'World location' })
-        .boundingBox())!
     const stripRight = stripBounds.x + stripBounds.width
     if (mobile) {
         expect(stripBounds.y).toBeGreaterThanOrEqual(frameBounds.y + frameBounds.height)
         expect(stripRight).toBeCloseTo(frameBounds.x + frameBounds.width, 1)
-        expect(stripBounds.y).toBeGreaterThanOrEqual(locationBounds.y + locationBounds.height)
     } else {
         expect(stripRight).toBeLessThanOrEqual(frameBounds.x)
         expect(stripBounds.y).toBeCloseTo(frameBounds.y, 1)
-        expect(stripBounds.x).toBeGreaterThanOrEqual(locationBounds.x + locationBounds.width)
     }
 
     await barrier.press('Enter')

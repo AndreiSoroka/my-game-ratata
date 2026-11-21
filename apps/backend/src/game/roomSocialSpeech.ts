@@ -2,11 +2,12 @@ import type { ClientMessage } from '@my-game-ratata/contracts'
 
 import type { NpcAiCoordinator } from '../ai/coordinator'
 import type { GameCharacter } from './character'
+import { interactionRangeText } from './interactionRangeText'
 import type { GameRoom } from './room'
 import { canHearSpeech, speechAvailable } from './socialSpeech'
 import { projectSpeechFocus } from './speechFocus'
 import { createSpeechEvent } from './speechReceipts'
-import type { WhisperService } from './whispers'
+import { WHISPER_RANGE, type WhisperService } from './whispers'
 
 export function handleSocialSpeech(
     room: GameRoom,
@@ -29,7 +30,7 @@ export function handleSocialSpeech(
     ) {
         if (!whispers.handle(actor, message, now)) {
             notice(
-                'Подойди к собеседнику ближе: шёпот слышен в пределах 48 шагов и прямой видимости.'
+                `Шёпот слышен ${interactionRangeText(WHISPER_RANGE, room.navigationFor(actor).grid.tileWidth)} при прямой видимости.`
             )
         }
         return true

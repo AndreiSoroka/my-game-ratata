@@ -82,7 +82,6 @@ export interface ScenarioHelperSnapshot {
     name: string
     eligible: boolean
     reason: string | null
-    canFight: boolean
     canFollow: boolean
     run: ScenarioRunSnapshot | null
 }

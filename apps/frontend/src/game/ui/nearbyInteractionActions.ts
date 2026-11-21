@@ -8,6 +8,7 @@ import type {
 import {
     CHEST_FOOTPRINT_SIZE,
     CHEST_INTERACTION_RANGE,
+    COMPANION_REQUEST_RANGE,
     FARM_INTERACTION_RANGE,
     interactionApproachPoints,
     THEFT_RULES,
@@ -17,6 +18,7 @@ import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import { chestActions } from './chestActions'
 import { relation } from './combatTargeting'
 import { corpseSharesGrave, graveTargets } from './graveInteractions'
+import { guildContractActions } from './guildContractActions'
 import { facingInteractionTarget, interactionDistance } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
 import { justiceActions } from './justiceActions'
@@ -113,7 +115,11 @@ function characterTargets(
                 relationship: relation(character, player),
                 name: character.nickname,
                 position: character.position,
-                range: Math.max(48, THEFT_RULES.reportRange, THEFT_RULES.absolutionRange),
+                range: Math.max(
+                    COMPANION_REQUEST_RANGE,
+                    THEFT_RULES.reportRange,
+                    THEFT_RULES.absolutionRange
+                ),
                 actions: [
                     ...(snapshot.social?.quest?.status === 'active'
                         ? snapshot.social.quest.objectives.flatMap((objective, objectiveIndex) =>
@@ -136,7 +142,8 @@ function characterTargets(
                           )
                         : []),
                     ...justiceActions(snapshot, player, one),
-                    ...characterActions(one, player),
+                    ...characterActions(character, player),
+                    ...guildContractActions(player, character, snapshot.party),
                     ...socialActions(one, player),
                     ...theftActions(snapshot, player, one),
                     ...reviveActions(one, player),

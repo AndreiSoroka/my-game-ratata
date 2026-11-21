@@ -68,6 +68,8 @@ export function npcAssistanceContext(room: GameRoom) {
     return {
         modelConsent: true,
         conversation: true,
+        tileWidthFor: (actor: GameCharacter) =>
+            room.navigationFor(actor).grid.tileWidth,
         questCompleted: (id: string, questId: string) =>
             room.adventureForWorkers().hasCompletedQuest(id, questId),
         hasLineOfSight: (left: GameCharacter, right: GameCharacter) =>

@@ -34,8 +34,6 @@ describe('city justice actions', () => {
                 canSpeak: true,
                 controlSource: 'human',
                 kind: 'spark',
-                personality: '',
-                companion: null,
             },
         })
         player.theft!.accusations = [

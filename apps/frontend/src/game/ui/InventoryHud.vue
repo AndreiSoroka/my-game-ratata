@@ -10,7 +10,7 @@ import type {
 import GameHud from './GameHud.vue'
 import InventoryOverlay from './InventoryOverlay.vue'
 
-const props = defineProps<{
+defineProps<{
     snapshot: WorldSnapshot | undefined
     player: CharacterSnapshot | undefined
     inventoryOpen: boolean
@@ -26,7 +26,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <GameHud v-bind="props" @open-menu="emit('openMenu')">
+    <GameHud :snapshot="snapshot" :player="player" @open-menu="emit('openMenu')">
         <template #surface><slot name="surface" /></template>
         <InventoryOverlay
             v-if="inventoryOpen && player"

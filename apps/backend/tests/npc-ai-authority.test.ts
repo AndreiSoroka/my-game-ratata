@@ -11,7 +11,6 @@ import {
     snapshotControl,
 } from '../src/game/characterControl'
 import { CompanionService } from '../src/game/companions'
-import { snapshotCompanionSoul } from '../src/game/companionState'
 import { NavigationService } from '../src/game/navigation'
 
 function character(id: string, human = false): GameCharacter {
@@ -217,7 +216,7 @@ describe('model-control lifecycle boundaries', () => {
 })
 
 describe('addressed model speech', () => {
-    it('delivers a stable private speech receipt and keeps its snapshot out of a stranger’s view', () => {
+    it('delivers a stable private speech receipt and keeps the cached reply server-side', () => {
         const f = fixture()
         const result = f.service.decide(
             f.actor,
@@ -238,14 +237,8 @@ describe('addressed model speech', () => {
                 speechId: 1,
             }),
         ])
-        expect(
-            snapshotCompanionSoul(f.actor, f.actor.soul, f.recipient.id)
-                .companion?.lastReply
-        ).toBe('Принёс новости.')
-        expect(
-            snapshotCompanionSoul(f.actor, f.actor.soul, f.stranger.id)
-                .companion?.lastReply
-        ).toBeNull()
+        expect(f.actor.soul.companion?.lastReply).toBe('Принёс новости.')
+        expect(f.actor.snapshot(1000).soul).not.toHaveProperty('companion')
         const publicSpeech = f.service.decide(
             f.actor,
             { type: 'speak', text: 'Всем добрый день.' },
@@ -254,10 +247,8 @@ describe('addressed model speech', () => {
         )
         expect(publicSpeech.events[0]?.speechId).toBe(2)
         expect(publicSpeech.events[0]?.audienceIds).toBeUndefined()
-        expect(
-            snapshotCompanionSoul(f.actor, f.actor.soul, f.stranger.id)
-                .companion?.lastReply
-        ).toBe('Всем добрый день.')
+        expect(f.actor.soul.companion?.lastReply).toBe('Всем добрый день.')
+        expect(f.actor.snapshot(1001).soul).not.toHaveProperty('companion')
     })
 
     it.each([

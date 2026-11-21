@@ -15,8 +15,6 @@ function resident(id: string, y: number): CharacterSnapshot {
             kind: 'spark',
             controlSource: 'script',
             canSpeak: true,
-            personality: '',
-            companion: null,
         },
     })
 }

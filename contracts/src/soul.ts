@@ -20,6 +20,7 @@ export type CompanionOrder = 'idle' | 'follow' | 'guard' | 'help' | 'wait'
 export type CompanionWaitMode = 'until_request' | 'until_return'
 export type CompanionRequest =
     'follow' | 'guard' | 'help' | 'dismiss' | 'talk' | 'wait'
+export const COMPANION_REQUEST_RANGE = 64
 
 /** Authored willingness to accept a scenario; evaluated by the server. */
 export type AssistancePolicy =
@@ -30,24 +31,10 @@ export type AssistancePolicy =
     | { kind: 'all'; conditions: AssistancePolicy[] }
     | { kind: 'any'; conditions: AssistancePolicy[] }
 
-export interface SoulProfile {
+export interface SoulSnapshot {
     canSpeak: boolean
     controlSource: ControlSource
     kind: SoulKind
-    personality: string
-}
-
-export interface CompanionSnapshot {
-    canFight: boolean
-    lastReply: string | null
-    leaderId: string | null
-    order: CompanionOrder
-    waitMode?: CompanionWaitMode
-    controlRevision?: number
-}
-
-export interface SoulSnapshot extends SoulProfile {
-    companion: CompanionSnapshot | null
 }
 
 export interface CompanionClientMessage {

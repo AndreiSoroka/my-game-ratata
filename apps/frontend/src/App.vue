@@ -31,7 +31,6 @@ import { useLifeChoice } from './game/ui/useLifeChoice'
 
 const gameplay = ref<InstanceType<typeof GameplayOverlay>>()
 const interaction = ref<InstanceType<typeof NearbyInteraction>>()
-const adventurePanel = ref<InstanceType<typeof AdventurePanel>>()
 const gameWindows = ref<InstanceType<typeof GameWindows>>()
 const errorMessage = ref('')
 const heroName = useHeroName(undefined, () => (errorMessage.value = ''))
@@ -85,7 +84,6 @@ const {
     onOpen: () => {
         automationPanels.value?.close()
         inventoryOpen.value = false
-        adventurePanel.value?.closeWindows()
         if (snapshot.value?.adventure?.dialogue)
             game.value?.sendCommand({ type: 'dialogue_choice', choiceId: 'close' })
     },
@@ -119,7 +117,6 @@ const windows = useAppWindows({
     snapshot,
     gameplay,
     interaction,
-    adventure: adventurePanel,
     social: gameWindows,
     closeInventory,
     closeContainers,
@@ -133,7 +130,6 @@ const {
     worldInputBlocked,
     openNearbyMenu,
     prepareAutomationWindow,
-    closeOtherContainers,
 } = windows
 const runtimeState = {
     game,
@@ -244,18 +240,13 @@ async function joinGame(): Promise<void> {
                     @select-grave="gameplay?.selectGrave($event)"
                 />
                 <AdventurePanel
-                    ref="adventurePanel"
                     v-if="snapshot?.adventure && localCharacter"
                     :adventure="snapshot.adventure"
                     :characters="visibleCharacters"
                     :inventory-open="inventoryOpen || chestPending"
-                    :location-id="snapshot.location?.id"
                     :player="localCharacter"
-                    :party="snapshot.party"
                     :server-time="snapshot.serverTime"
-                    @close-inventory="closeOtherContainers"
                     @command="game?.sendCommand($event)"
-                    @character="windows.openDevelopment"
                 />
                 <AutomationPanels
                     v-if="snapshot && localCharacter"

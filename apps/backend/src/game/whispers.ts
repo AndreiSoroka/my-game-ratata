@@ -8,6 +8,8 @@ import type { GameCharacter } from './character'
 import type { NavigationService } from './navigation'
 import { canHearSpeech } from './socialSpeech'
 
+export const WHISPER_RANGE = 48
+
 interface WhisperWorld {
     getCharacter(id: string): GameCharacter | undefined
     navigationFor(actor: GameCharacter): NavigationService
@@ -40,7 +42,7 @@ export class WhisperService {
                 actor,
                 this.world.navigationFor(actor),
                 now,
-                48
+                WHISPER_RANGE
             )
         )
     }

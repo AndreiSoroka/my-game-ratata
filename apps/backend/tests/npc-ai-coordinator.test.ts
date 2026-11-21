@@ -113,8 +113,7 @@ it('physically visits the merchant, learns earned stock, returns and privately r
         room
             .snapshot(Date.now(), kaplya.locationId, bob.actor.id)
             .characters.find((character) => character.id === kaplya.id)?.soul
-            ?.companion?.lastReply
-    ).toBeNull()
+    ).not.toHaveProperty('companion')
     expect(kaplya.soul.controlSource).toBe('script')
 }, 15_000)
 

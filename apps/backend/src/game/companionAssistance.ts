@@ -1,7 +1,10 @@
+import { COMPANION_REQUEST_RANGE } from '@my-game-ratata/contracts'
+
 import { evaluateAssistancePolicy } from './assistancePolicy'
 import type { GameCharacter } from './character'
 import type { CompanionRuntime } from './companionMovement'
 import { canRequest, release, sync } from './companionState'
+import { interactionRangeText } from './interactionRangeText'
 import { canPerformSkillAction } from './skillProgression'
 
 export interface AssistanceContext {
@@ -10,6 +13,17 @@ export interface AssistanceContext {
     conversation?: boolean
     questCompleted(actorId: string, questId: string): boolean
     hasLineOfSight(actor: GameCharacter, npc: GameCharacter): boolean
+    tileWidthFor?(actor: GameCharacter): number
+}
+
+export function companionReachText(
+    actor: GameCharacter,
+    context?: AssistanceContext
+): string {
+    return interactionRangeText(
+        COMPANION_REQUEST_RANGE,
+        context?.tileWidthFor?.(actor)
+    )
 }
 
 export interface AssistanceResult {
@@ -31,7 +45,7 @@ export class CompanionAssistance {
         if (!assistanceAvailable(actor, npc, context, now)) {
             return {
                 accepted: false,
-                error: 'Подойди к свободному живому помощнику в пределах 64 шагов.',
+                error: `Для поручения нужен свободный живой помощник ${companionReachText(actor, context)}.`,
             }
         }
         if (

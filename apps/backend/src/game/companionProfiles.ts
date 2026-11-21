@@ -2,9 +2,9 @@ import type {
     AssistancePolicy,
     CompanionOrder,
     CompanionRequest,
-    SoulProfile,
 } from '@my-game-ratata/contracts'
 
+import type { SoulProfile } from './characterSoul'
 import { cityResidents } from './cityResidents'
 
 export interface CompanionProfile {

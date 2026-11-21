@@ -1,6 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     type CharacterSnapshot,
+    COMPANION_REQUEST_RANGE,
     type PartySnapshot,
     prayerAbilityIds,
     profileForPrayer,
@@ -15,21 +16,13 @@ import type { InteractionAction } from './nearbyInteractionActions'
 import { invitationActions } from './partyActions'
 
 export function characterActions(
-    characters: CharacterSnapshot[],
+    target: CharacterSnapshot,
     player: CharacterSnapshot
 ): InteractionAction[] {
-    const target = characters
-        .filter(
-            (character) =>
-                character.id !== player.id &&
-                isDialogueCharacter(character) &&
-                interactionDistance(player, character) <= 48
-        )
-        .sort(
-            (first, second) =>
-                interactionDistance(player, first) - interactionDistance(player, second)
-        )[0]
-    if (!target) return []
+    if (target.id === player.id || !isDialogueCharacter(target)) return []
+    const distance = interactionDistance(player, target)
+    const requests = distance <= COMPANION_REQUEST_RANGE ? companionActions(target) : []
+    if (distance > 48) return requests
     return [
         ...merchantServiceActions(target),
         ...(!target.interactions?.aiDialogue
@@ -41,18 +34,15 @@ export function characterActions(
                   },
               ]
             : []),
-        ...companionActions(target, player),
+        ...requests,
         ...teacherActions(target, player),
         ...prayerLearningActions(target, player),
     ]
 }
-function companionActions(
-    target: CharacterSnapshot,
-    player: CharacterSnapshot
-): InteractionAction[] {
-    const companion = target.soul?.companion
-    if (!companion || target.interactions?.aiDialogue) return []
-    const occupied = companion.leaderId !== null && companion.leaderId !== player.id
+function companionActions(target: CharacterSnapshot): InteractionAction[] {
+    const availability = target.interactions?.companionRequests
+    if (!availability || target.interactions?.aiDialogue) return []
+    const occupied = availability === 'occupied'
     const actions: InteractionAction[] = [
         {
             id: `follow:${target.id}`,
@@ -67,7 +57,7 @@ function companionActions(
             command: { type: 'companion_request', targetId: target.id, request: 'help' },
         },
     ]
-    if (companion.leaderId === player.id)
+    if (availability === 'own')
         actions.push(
             {
                 id: `guard:${target.id}`,

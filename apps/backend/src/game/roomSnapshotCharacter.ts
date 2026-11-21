@@ -1,4 +1,5 @@
 import type {
+    CharacterInteractions,
     CharacterRelationship,
     CharacterSnapshot,
     PrayerAuraEffectId,
@@ -9,7 +10,6 @@ import {
     type CombatObserver,
     observeCharacterCombat,
 } from './combatObservation'
-import { snapshotCompanionSoul } from './companionState'
 import { canTargetByFaction } from './factions'
 import { prayerAuraEffects } from './prayerAuras'
 import type { SnapshotContext } from './roomSnapshot'
@@ -24,20 +24,14 @@ export function projectRoomCharacter(
     const actor = context.characters.get(character.id)
     const activity = observedWorkerActivity(context, actor, view, playerId)
     const auraEffects = observedPrayerAuraEffects(actor, playerId, view)
+    const interactions = interactionsFor(context, actor, view.observer?.id)
     const observed = observeCharacterCombat(character, actor, view)
     delete observed.prayerAuraEffects
     return {
         ...observed,
-        ...(context.social === undefined || actor === undefined
-            ? {}
-            : { interactions: context.social.interactions(actor) }),
+        ...(interactions === undefined ? {} : { interactions }),
         ...(activity === undefined ? {} : { workerActivity: activity }),
         ...(auraEffects.length === 0 ? {} : { prayerAuraEffects: auraEffects }),
-        ...(character.soul === undefined
-            ? {}
-            : {
-                  soul: snapshotCompanionSoul(actor, character.soul, playerId),
-              }),
         relationship: relationshipFor(view.observer, actor, playerId, view.now),
         control:
             character.id === playerId
@@ -46,6 +40,32 @@ export function projectRoomCharacter(
         inventory: character.id === playerId ? character.inventory : [],
         theft: context.theft.snapshot(character.id, playerId, view.now),
     }
+}
+
+function interactionsFor(
+    context: SnapshotContext,
+    actor: GameCharacter | undefined,
+    viewerId: string | undefined
+): CharacterInteractions | undefined {
+    if (context.social === undefined || actor === undefined) {
+        return undefined
+    }
+    const interactions: CharacterInteractions =
+        context.social.interactions(actor)
+    const companion = actor.soul.companion
+    if (
+        viewerId !== undefined &&
+        companion !== null &&
+        !interactions.aiDialogue
+    ) {
+        interactions.companionRequests =
+            companion.leaderId === null
+                ? 'available'
+                : companion.leaderId === viewerId
+                  ? 'own'
+                  : 'occupied'
+    }
+    return interactions
 }
 
 function observedPrayerAuraEffects(

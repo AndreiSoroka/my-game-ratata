@@ -241,7 +241,9 @@ An Искра means a currently connected human or an accepted model-control lea
 
 Disconnecting removes the human connection, not the character. The same identity stays visible, vulnerable and able to continue its running scenario as an Эхо; manual held input and private conversation/container sessions close. Rejoining with the same nickname on the same running server restores the same identity and its Искра. Permanent death creates a new identity, and a backend restart resets the in-memory world. Party online status follows the actual connection.
 
-The world-facing rules are described in [companionship](../knowledge/social/companions.md) and [routine work](../knowledge/work/routines.md). Open **Спутники** near city residents. The panel shows their nature, actual control source, speech capability, personality, current agreement and last reply. You make requests within 64 world units; characters may refuse. The princess can travel after an introduction and refuses combat. The veteran can accompany and fight. The guard protects his post and declines travel. Speech does not require movement or combat, and talking does not force someone to follow.
+The world-facing rules are described in [companionship](../knowledge/social/companions.md) and [routine work](../knowledge/work/routines.md). Select a nearby resident with **E** and press **F** to see available actions. Use **Поговорить** to introduce yourself to a scripted resident or **Шёпот** to speak privately. Characters can refuse requests based on their habits and existing commitments.
+
+Use **F** on a nearby guild representative to take an offered contract and choose who shares its reward. View active contracts in **P → Квесты**. Use **F** on a nearby player to invite them or answer their invitation, and use **Покинуть отряд** in the party panel to leave.
 
 By default, running personalities use local authored rules. The UI reports **Сценарий** and **Эхо** for that controller. It reports **Модель** and **Искра** during an accepted model-control lease. The external agent bridge retains its five-second lease; expiry or an explicit wait returns the actor to its scripted scenario as an Эхо without changing its identity or inventory.
 
@@ -251,7 +253,7 @@ Existing worker, artisan, guard, companion and hostile strategies enter the comm
 
 Прохор and Дарья wander through city street routes using the shared scenario runner. Прохор accepts noncombat work after an introduction; Дарья requires completion of Мира’s hearts-for-the-bell quest. Willingness is authored as typed conditions (`always`, `never`, `met`, `quest_completed`, `all`, `any`), and existing promises, reach, line of sight and availability are checked on assignment. Echo does not mean a player can commandeer it.
 
-A successful conversation stops an NPC and suspends its current scenario step while at least one valid nearby viewer is talking. Closing the last conversation resumes the step. Lost reach or sight, travel, death, disconnect and urgent threats end the corresponding conversation holds. The **Спутники** talk action uses the same dialogue session as F.
+A successful conversation stops an NPC and suspends its current scenario step while at least one valid nearby viewer is talking. Closing the last conversation resumes the step. Lost reach or sight, travel, death, disconnect and urgent threats end the corresponding conversation holds.
 
 ## External agent MCP
 

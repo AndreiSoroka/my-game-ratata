@@ -12,7 +12,6 @@ import {
     type CreatureType,
     type HeroClass,
     isCreatureType,
-    type SoulSnapshot,
     type Vector2,
 } from '@my-game-ratata/contracts'
 
@@ -30,7 +29,7 @@ import {
 } from './characterRecovery'
 import * as characterResources from './characterResourceActions'
 import { createCharacterSnapshot } from './characterSnapshot'
-import { createCharacterSoul } from './characterSoul'
+import { type CharacterSoul, createCharacterSoul } from './characterSoul'
 import {
     type AttackResourceSpend,
     createPendingAttackHit,
@@ -81,7 +80,7 @@ export class GameCharacter {
     public readonly heroClass: HeroClass | undefined
     public readonly mortal: boolean
     public readonly respawnPolicy: 'automatic' | 'none'
-    public readonly soul: SoulSnapshot
+    public readonly soul: CharacterSoul
     public progression: CharacterProgression = createProgression()
     public movement = createMovementState()
     public combat = createCombatState()

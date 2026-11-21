@@ -151,7 +151,8 @@ export class PartyService {
         actor: GameCharacter,
         message: PartyClientMessage,
         characters: Iterable<GameCharacter>,
-        now: number
+        now: number,
+        tileWidth?: number
     ): GameEventPayload[] {
         this.update(characters, now)
         if (!available(actor)) {
@@ -162,7 +163,7 @@ export class PartyService {
         }
         switch (message.type) {
             case 'party_invite':
-                return this.invite(actor, message.targetId, now)
+                return this.invite(actor, message.targetId, now, tileWidth)
             case 'party_answer':
                 return this.answer(
                     actor,
@@ -244,21 +245,28 @@ export class PartyService {
     private invite(
         actor: GameCharacter,
         targetId: string,
-        now: number
+        now: number,
+        tileWidth?: number
     ): GameEventPayload[] {
         return this.tell(
             actor.id,
-            inviteToParty(actor, targetId, now, {
-                characters: this.characters,
-                membership: this.membership,
-                parties: this.parties,
-                invitations: this.invitations,
-                notices: this.notices,
-                guild: this.guild,
-                newPartyId: () => `party_${String(this.nextParty++)}`,
-                newInvitationId: () =>
-                    `invitation_${String(this.nextInvitation++)}`,
-            })
+            inviteToParty(
+                actor,
+                targetId,
+                now,
+                {
+                    characters: this.characters,
+                    membership: this.membership,
+                    parties: this.parties,
+                    invitations: this.invitations,
+                    notices: this.notices,
+                    guild: this.guild,
+                    newPartyId: () => `party_${String(this.nextParty++)}`,
+                    newInvitationId: () =>
+                        `invitation_${String(this.nextInvitation++)}`,
+                },
+                tileWidth
+            )
         )
     }
 

@@ -8,19 +8,16 @@ it('hides AI companion orders while keeping self follow, whisper and exchange on
     const player = characterFixture('self')
     const npc = characterFixture('ai', {
         position: { x: 20, y: 0 },
-        interactions: { aiDialogue: true, whisper: true, exchange: true },
+        controllerKind: 'scripted',
+        interactions: { aiDialogue: true, whisper: true, exchange: true, companionRequests: 'own' },
         soul: {
             kind: 'echo',
             controlSource: 'script',
-            personality: '',
             canSpeak: true,
-            companion: { canFight: false, lastReply: null, leaderId: player.id, order: 'follow' },
         },
     })
     expect(
-        characterActions([npc], player).some(
-            (action) => action.command.type === 'companion_request'
-        )
+        characterActions(npc, player).some((action) => action.command.type === 'companion_request')
     ).toBe(false)
     expect(followActions([npc], player).map((action) => action.command)).toEqual([
         { type: 'follow', targetId: npc.id },

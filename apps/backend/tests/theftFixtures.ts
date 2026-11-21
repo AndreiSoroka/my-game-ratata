@@ -22,7 +22,7 @@ export function theftCharacter(
         spawnPosition: position,
     })
 }
-export function theftFixture() {
+export function theftFixture(tileWidth = 16) {
     const actor = theftCharacter('thief')
     actor.movement.mode = 'sneaking'
     const victim = theftCharacter('victim', { x: 112, y: 100 })
@@ -32,8 +32,8 @@ export function theftFixture() {
         id: 'theft-test',
         width: 30,
         height: 30,
-        tileWidth: 16,
-        tileHeight: 16,
+        tileWidth,
+        tileHeight: tileWidth,
         solid: new Array<boolean>(900).fill(false),
         solidLayerNames: [],
     })
@@ -51,7 +51,7 @@ export function theftFixture() {
                     actor: attacker,
                     targets: characters,
                     now,
-                    tileSize: 16,
+                    tileSize: tileWidth,
                     respawnDelayMsFor: () => 15_000,
                 })
             ),

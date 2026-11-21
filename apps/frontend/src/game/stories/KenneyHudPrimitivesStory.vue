@@ -12,8 +12,6 @@ const soul: SoulSnapshot = {
     kind: 'spark',
     controlSource: 'human',
     canSpeak: true,
-    personality: 'Любознательный',
-    companion: null,
 }
 const resources: Array<{
     label: string

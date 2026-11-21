@@ -6,10 +6,10 @@ import type {
     CharacterVisualId,
     CreatureType,
     HeroClass,
-    SoulProfile,
     Vector2,
 } from '@my-game-ratata/contracts'
 
+import type { SoulProfile } from './characterSoul'
 import type { NpcIdentityKey } from './npcIdentityCatalog'
 
 export interface GameCharacterOptions {

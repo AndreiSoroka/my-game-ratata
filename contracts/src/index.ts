@@ -59,7 +59,7 @@ export * from './movement'
 import type { PartyClientMessage, PartySnapshot } from './party'
 export type * from './party'
 import type { CompanionClientMessage, SoulSnapshot } from './soul'
-export type * from './soul'
+export * from './soul'
 import type {
     ProgressionClientMessage,
     ProgressionSnapshot,

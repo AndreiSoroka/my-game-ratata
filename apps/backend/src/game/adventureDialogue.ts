@@ -14,6 +14,8 @@ import {
 } from './adventureState'
 import { refreshTradeDialogue } from './adventureTrading'
 import type { GameCharacter } from './character'
+import { CONVERSATION_REACH } from './conversationSessions'
+import { interactionRangeText } from './interactionRangeText'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
 import { createSpeechEvent } from './speechReceipts'
@@ -33,7 +35,7 @@ export function interactAdventureNpc(
     if (npc === undefined) {
         return rejectDialogue(
             state,
-            'Подойди к живому собеседнику ближе: не дальше 48 шагов.'
+            `Нужен живой собеседник ${interactionRangeText(CONVERSATION_REACH, navigation?.grid.tileWidth)}.`
         )
     }
 

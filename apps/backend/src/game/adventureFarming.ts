@@ -15,6 +15,7 @@ import {
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
+import { interactionRangeText } from './interactionRangeText'
 import {
     addInventoryItems,
     consumeInventoryItems,
@@ -69,7 +70,7 @@ export class AdventureFarming {
         if (!canWork(actor, plot, now, navigation)) {
             setNotice(
                 state,
-                'Для работы подойди к грядке в своей локации: не дальше 48 шагов.'
+                `Для работы нужна грядка ${interactionRangeText(FARM_INTERACTION_RANGE, navigation?.grid.tileWidth)} в твоей локации.`
             )
             return []
         }

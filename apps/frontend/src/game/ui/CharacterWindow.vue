@@ -2,6 +2,7 @@
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import CharacterCrafting from './CharacterCrafting.vue'
 import CharacterDevelopment from './CharacterDevelopment.vue'
 import CharacterQuests from './CharacterQuests.vue'
 import CharacterStats from './CharacterStats.vue'
@@ -45,7 +46,7 @@ function toggleKey(event: KeyboardEvent): void {
 function tabKey(event: KeyboardEvent): void {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.code)) return
     event.preventDefault()
-    const tabs: CharacterTab[] = ['stats', 'development', 'quests']
+    const tabs: CharacterTab[] = ['stats', 'development', 'quests', 'crafting']
     const index = tabs.indexOf(tab.value)
     tab.value =
         tabs[
@@ -158,6 +159,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                 >
                     Квесты
                 </GameButton>
+                <GameButton
+                    id="character-crafting-tab"
+                    role="tab"
+                    :aria-selected="tab === 'crafting'"
+                    aria-controls="character-crafting-panel"
+                    :tabindex="tab === 'crafting' ? 0 : -1"
+                    @click="tab = 'crafting'"
+                >
+                    Ремесло
+                </GameButton>
             </div>
             <div class="character-content">
                 <div
@@ -181,7 +192,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                     />
                 </div>
                 <div
-                    v-else
+                    v-else-if="tab === 'quests'"
                     id="character-quests-panel"
                     role="tabpanel"
                     aria-labelledby="character-quests-tab"
@@ -192,6 +203,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                         :characters="characters"
                         @command="emit('command', $event)"
                     />
+                </div>
+                <div
+                    v-else
+                    id="character-crafting-panel"
+                    role="tabpanel"
+                    aria-labelledby="character-crafting-tab"
+                >
+                    <CharacterCrafting
+                        v-if="snapshot?.adventure"
+                        :adventure="snapshot.adventure"
+                        :alive="player.alive"
+                        @command="emit('command', $event)"
+                    />
+                    <p v-else>Данные ремесла недоступны.</p>
                 </div>
             </div>
             <footer>

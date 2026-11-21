@@ -2,9 +2,11 @@ import type { PartyInvitationSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { GuildService } from './guild'
+import { interactionRangeText } from './interactionRangeText'
 import type { NoticeStore } from './notices'
 import {
     nearbyPlayers,
+    PARTY_INVITATION_RANGE,
     type PartyRecord,
     pendingPartyInvitation,
 } from './partyRules'
@@ -24,7 +26,8 @@ export function inviteToParty(
     actor: GameCharacter,
     targetId: string,
     now: number,
-    context: PartyInviteContext
+    context: PartyInviteContext,
+    tileWidth?: number
 ): string {
     const {
         characters,
@@ -37,7 +40,7 @@ export function inviteToParty(
     } = context
     const target = characters.get(targetId)
     if (!nearbyPlayers(actor, target)) {
-        return 'Пригласи другого живого игрока в своей локации, не дальше 240 шагов.'
+        return `Пригласи другого живого игрока ${interactionRangeText(PARTY_INVITATION_RANGE, tileWidth)} в своей локации.`
     }
     const pending = pendingPartyInvitation(
         invitations.values(),

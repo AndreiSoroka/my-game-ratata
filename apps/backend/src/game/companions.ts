@@ -13,6 +13,7 @@ import type { GameCharacter } from './character'
 import {
     type AssistanceContext,
     CompanionAssistance,
+    companionReachText,
 } from './companionAssistance'
 import {
     applyModelCompanionCommand,
@@ -35,7 +36,6 @@ import {
     notice,
     release,
     replyToCompanion,
-    setCompanionReplyRecipient,
     sync,
 } from './companionState'
 import { consumeCompanionWait } from './companionWait'
@@ -176,7 +176,7 @@ export class CompanionService {
         if (!canRequest(actor, npc)) {
             return notice(
                 actor,
-                'Подойди к живому собеседнику ближе: не дальше 64 шагов.'
+                `Нужен живой собеседник ${companionReachText(actor, assistance)}.`
             )
         }
         if (!npc.soul.canSpeak) {
@@ -292,7 +292,6 @@ export class CompanionService {
         if (parsed?.type === 'speak') {
             const state = this.stateFor(character)
             state.lastReply = parsed.text
-            setCompanionReplyRecipient(character, parsed.targetId)
             sync(character, state)
         }
         if (parsed !== undefined) {

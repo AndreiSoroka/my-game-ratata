@@ -15,6 +15,8 @@ export function createRoomScenarioService(
     adventure: AdventureService
 ): ScenarioService {
     const context = {
+        tileWidthFor: (actor: GameCharacter) =>
+            room.navigationFor(actor).grid.tileWidth,
         questCompleted: (actorId: string, questId: string) =>
             adventure.hasCompletedQuest(actorId, questId),
         hasLineOfSight: (actor: GameCharacter, npc: GameCharacter) =>

@@ -81,9 +81,11 @@
         var(--game-social-notices-top) + var(--ratata-social-notices-height, 0px)
     );
     --game-social-hints-top: var(--ratata-player-status-bottom, 240px);
-    --game-hud-dock-inset: max(62px, calc(env(safe-area-inset-bottom, 0px) + 48px));
+    --game-hotbar-bottom: max(12px, env(safe-area-inset-bottom, 0px));
     --game-footer-gap: 8px;
-    --game-hotbar-bottom: var(--game-hud-dock-inset);
+    --game-hotbar-top: calc(
+        var(--game-hotbar-bottom) + var(--ratata-hotbar-height, 0px) + var(--game-footer-gap)
+    );
     position: relative;
     height: 100vh;
     display: grid;
@@ -124,22 +126,5 @@
     .game-screen {
         --game-social-notices-top: var(--ratata-player-status-bottom, 240px);
         --game-social-hints-top: calc(var(--game-social-notices-bottom) + 8px);
-        --game-adventure-tools-bottom: var(--game-hud-dock-inset);
-        --game-hotbar-bottom: calc(
-            var(--game-adventure-tools-bottom) + var(--ratata-adventure-tools-height, 0px) +
-                var(--game-footer-gap)
-        );
-        --game-hotbar-top: calc(
-            var(--game-hotbar-bottom) + var(--ratata-hotbar-height, 0px) + var(--game-footer-gap)
-        );
-    }
-
-    .game-screen .adventure-tools.game-frame-host {
-        right: auto;
-        left: 50%;
-        bottom: var(--game-adventure-tools-bottom);
-        width: max-content;
-        max-width: calc(100% - 16px);
-        transform: translateX(-50%);
     }
 }

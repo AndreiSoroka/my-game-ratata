@@ -12,6 +12,7 @@ import type { JusticeContext } from './cityJustice'
 import { constellationModifiers } from './constellationModifiers'
 import { CrimeService } from './crime'
 import { effectiveTheftCost } from './effectiveParameters'
+import { interactionRangeText } from './interactionRangeText'
 import {
     canAddInventoryItems,
     type InventoryItemInstance,
@@ -66,7 +67,7 @@ export class TheftService {
             return [
                 privateTheftNotice(
                     actor.id,
-                    'Для кражи нужны скрытность, свободные руки и живая цель не дальше 28 шагов.'
+                    `Для кражи нужны скрытность, свободные руки и живая цель ${interactionRangeText(THEFT_RULES.range, context.navigation.grid.tileWidth)}.`
                 ),
             ]
         }

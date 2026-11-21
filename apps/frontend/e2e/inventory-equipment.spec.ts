@@ -105,7 +105,17 @@ async function acquireBoots(page: Page) {
                 }, fiber!.id)
             })
             .toBe(3)
-        await page.evaluate(() => window.__ratataTest!.send({ type: 'craft', recipeId: 'boots' }))
+        await page.locator('canvas[data-game-canvas=true]').focus()
+        await page.keyboard.press('KeyP')
+        const character = page.getByRole('dialog', { name: 'Персонаж', exact: true })
+        await character.getByRole('tab', { name: 'Ремесло', exact: true }).click()
+        await character
+            .getByRole('article')
+            .filter({ hasText: 'Сплести сапоги' })
+            .getByRole('button', { name: 'Создать', exact: true })
+            .click()
+        await page.keyboard.press('Escape')
+        await expect(character).toHaveCount(0)
     }
     await expect
         .poll(() =>

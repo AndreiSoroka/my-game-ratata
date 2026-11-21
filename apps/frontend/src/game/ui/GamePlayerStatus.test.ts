@@ -229,8 +229,6 @@ describe('player identity', () => {
                     kind: 'spark',
                     controlSource: 'model',
                     canSpeak: false,
-                    personality: 'Тихий',
-                    companion: null,
                 },
             }),
         })
