@@ -4,7 +4,7 @@ A native `div` or `span` with a default slot, using the original filled Kenney F
 
 ```vue
 <script setup lang="ts">
-import { FantasyPanel } from '@/shared/ui/external/fantasy-ui-borders/panel'
+import { FantasyPanel } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 </script>
 

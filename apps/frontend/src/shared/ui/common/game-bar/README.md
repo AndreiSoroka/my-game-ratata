@@ -1,6 +1,6 @@
 # GameBar
 
-Import `GameBar` and `GameBarProps` from `@/shared/ui/common/game-bar`.
+Import `GameBar` and `GameBarProps` from `@/shared/ui/common`.
 It composes `BarTrack` with `BarFill` and adds progress semantics.
 
 - `value` is required; `max` defaults to 100. Values are clamped to 0…max.

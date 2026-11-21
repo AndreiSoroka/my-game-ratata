@@ -1,6 +1,6 @@
 # UiButton
 
-Import `UiButton` and its types from `@/shared/ui/common/button`. The root is a native button: classes, styles, ARIA, form attributes and listeners fall through unchanged. It has a default slot, `type="button"` and native `disabled` behavior. Do not nest interactive controls in its slot.
+Import `UiButton` and its types from `@/shared/ui/common`. The root is a native button: classes, styles, ARIA, form attributes and listeners fall through unchanged. It has a default slot, `type="button"` and native `disabled` behavior. Do not nest interactive controls in its slot.
 
 ```vue
 <UiButton

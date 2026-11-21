@@ -3,7 +3,7 @@ import { h } from 'vue'
 
 import type { PlayerVitalsData } from '@/entities/player-vitals'
 import { renderVueStory } from '@/shared/lib/storybook'
-import { HudFrame } from '@/shared/ui/common/hud-frame'
+import { HudFrame } from '@/shared/ui/common'
 
 import PlayerVitalsWidget from './PlayerVitalsWidget.vue'
 

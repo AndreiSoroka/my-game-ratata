@@ -3,9 +3,8 @@ import './menuPanel.css'
 
 import { useId } from 'vue'
 
-import { UiButton } from '@/shared/ui/common/button'
-import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
-import { FantasyDivider } from '@/shared/ui/external/fantasy-ui-borders/divider'
+import { UiButton } from '@/shared/ui/common'
+import { FantasyBorder, FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import type { MenuItem, MenuPanelHandle, MenuPanelProps } from './types'

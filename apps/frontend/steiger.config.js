@@ -15,14 +15,4 @@ export default defineConfig([
         files: ['./src/entities/{player-effects,player-vitals}/**'],
         rules: { 'fsd/insignificant-slice': 'off' },
     },
-    {
-        // These folders group components that expose their own public APIs.
-        files: ['./src/shared/ui/{common,external}/**'],
-        rules: { 'fsd/public-api': 'off' },
-    },
-    {
-        // Exclude only the public entry points from this rule's import graph.
-        files: ['./src/shared/ui/common/*/index.ts', './src/shared/ui/external/*/*/index.ts'],
-        rules: { 'fsd/no-public-api-sidestep': 'off' },
-    },
 ])

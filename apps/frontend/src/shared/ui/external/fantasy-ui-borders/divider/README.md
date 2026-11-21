@@ -4,7 +4,7 @@ A horizontal separator using the original Kenney Fantasy UI Borders artwork. Imp
 
 ```vue
 <script setup lang="ts">
-import { FantasyDivider } from '@/shared/ui/external/fantasy-ui-borders/divider'
+import { FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 </script>
 

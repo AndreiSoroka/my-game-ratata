@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DeityMood } from '@my-game-ratata/contracts'
 
-import { HudRow } from '@/shared/ui/common/hud-row'
+import { HudRow } from '@/shared/ui/common'
 
 import PatronMood from './PatronMood.vue'
 

@@ -1,5 +1,5 @@
 import type { MenuInputCommand } from '@/shared/lib/input'
-import type { UiButtonVariant } from '@/shared/ui/common/button'
+import type { UiButtonVariant } from '@/shared/ui/common'
 
 export interface MenuItem {
     id: string

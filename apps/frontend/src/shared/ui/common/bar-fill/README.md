@@ -1,7 +1,7 @@
 # BarFill
 
 `BarFill` рисует цветную часть полосы. Импортируйте компонент и `BarFillProps`
-через `@/shared/ui/common/bar-fill`.
+через `@/shared/ui/common`.
 
 `color` принимает CSS-цвет, включая переменные и `currentColor`. По умолчанию
 используется `lightUiColors.bar.health.color`. Высота `height`

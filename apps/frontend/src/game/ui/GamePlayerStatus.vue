@@ -8,7 +8,7 @@ import {
     projectPlayerPatrons,
 } from '@/entities/player-effects'
 import { healthBarPercent, type PlayerVitalsData } from '@/entities/player-vitals'
-import { HudFrame } from '@/shared/ui/common/hud-frame'
+import { HudFrame } from '@/shared/ui/common'
 import { PlayerEffectsWidget } from '@/widgets/player-effects'
 import { PlayerVitalsWidget } from '@/widgets/player-vitals'
 

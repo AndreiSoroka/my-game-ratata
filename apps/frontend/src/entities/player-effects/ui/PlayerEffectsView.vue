@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 
-import { HudFrame } from '@/shared/ui/common/hud-frame'
-import { HudRow } from '@/shared/ui/common/hud-row'
+import { HudFrame, HudRow } from '@/shared/ui/common'
 
 import type { PlayerEffect, PlayerEffectKind, PlayerEffectsData } from '../model/playerEffects'
 

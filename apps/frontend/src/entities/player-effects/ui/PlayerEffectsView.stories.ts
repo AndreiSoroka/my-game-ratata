@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
-import { HudFrame } from '@/shared/ui/common/hud-frame'
+import { HudFrame } from '@/shared/ui/common'
 
 import type { PlayerEffectsData } from '../model/playerEffects'
 import PlayerEffectsView from './PlayerEffectsView.vue'

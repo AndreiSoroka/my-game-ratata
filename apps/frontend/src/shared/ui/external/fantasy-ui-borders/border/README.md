@@ -4,7 +4,7 @@ A native `div` (or opt-in `span`) with a default slot and a decorative Kenney Fa
 
 ```vue
 <script setup lang="ts">
-import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
+import { FantasyBorder } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 </script>
 

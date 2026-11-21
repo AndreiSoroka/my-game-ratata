@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { HudRow } from '@/shared/ui/common/hud-row'
-import { FantasyDivider } from '@/shared/ui/external/fantasy-ui-borders/divider'
+import { HudRow } from '@/shared/ui/common'
+import { FantasyDivider } from '@/shared/ui/external'
 
 import type { PatronStatusEntry } from '../model/patronStatus'
 import FaithStatus from './FaithStatus.vue'

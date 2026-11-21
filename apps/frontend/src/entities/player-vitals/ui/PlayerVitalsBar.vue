@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GameBar } from '@/shared/ui/common/game-bar'
+import { GameBar } from '@/shared/ui/common'
 
 withDefaults(
     defineProps<{

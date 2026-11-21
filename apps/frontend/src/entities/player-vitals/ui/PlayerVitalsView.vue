@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { HudFrame } from '@/shared/ui/common/hud-frame'
-import { HudRow } from '@/shared/ui/common/hud-row'
-import { FantasyDivider } from '@/shared/ui/external/fantasy-ui-borders/divider'
+import { HudFrame, HudRow } from '@/shared/ui/common'
+import { FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import { resourceNumbersText } from '../model/healthPresentation'
