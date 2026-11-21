@@ -141,6 +141,43 @@ for (const { state, label, color } of patronMoods) {
     })
 }
 
+for (const width of [1280, 320]) {
+    test(`earned prayer details fit the player HUD at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto(`/iframe.html?id=${storyId}--faith-precise&viewMode=story`)
+        const hud = page.locator('.game-player-status')
+        const frame = hud.locator('.hud-frame')
+        const faith = frame.getByLabel('Покровитель и развитие')
+        const chances = faith.locator('.faith-status__chances')
+        await expect(chances).toContainText(/Шанс лечения\s*55%/)
+        await expect(chances).toContainText(/Шанс очищения могилы\s*20% за шаг/)
+        await expect(chances).toContainText(/Шанс воскрешения\s*55%/)
+        const timer = faith.locator('.faith-status__timer')
+        const mood = faith.getByRole('img', { name: 'Спокойствие' })
+        await expect(timer).toHaveText('12 с')
+        await expect(mood).toBeVisible()
+        await readyUiStory(page)
+
+        const timerBounds = (await timer.boundingBox())!
+        expect(timerBounds.x + timerBounds.width).toBeLessThanOrEqual((await mood.boundingBox())!.x)
+        const frameBounds = (await frame.boundingBox())!
+        const chancesBounds = (await chances.boundingBox())!
+        expect(chancesBounds.x).toBeGreaterThanOrEqual(frameBounds.x)
+        expect(chancesBounds.x + chancesBounds.width).toBeLessThanOrEqual(
+            frameBounds.x + frameBounds.width
+        )
+        const overflow = await chances.evaluate(
+            (element) => element.scrollWidth > element.clientWidth
+        )
+        expect(overflow).toBe(false)
+        await expectPublishedHeight(frame.getByRole('region', { name: 'Player vitals' }))
+        await expect(hud).toHaveScreenshot(`player-status-faith-precise-${width}.png`, {
+            animations: 'disabled',
+            maxDiffPixels: 0,
+        })
+    })
+}
+
 test('each effect discloses its details and republishes the HUD height after resizing', async ({
     page,
 }) => {

@@ -39,6 +39,9 @@ export function parseAutoAction(
         return undefined
     }
     const record = value as Record<string, unknown>
+    if ('once' in record) {
+        return parseSingleAttack(record)
+    }
     if (record['kind'] === 'gather') {
         return parseGatherAction(record)
     }
@@ -53,6 +56,17 @@ export function parseAutoAction(
             : undefined
     }
     return parseAutomaticAbility(record)
+}
+function parseSingleAttack(
+    record: Record<string, unknown>
+): CharacterAutoAction | undefined {
+    if (record['kind'] !== 'attack' || record['once'] !== true) {
+        return undefined
+    }
+    const reference = parseCombatReference(record)
+    return reference?.targetId === undefined
+        ? undefined
+        : { kind: 'attack', targetId: reference.targetId, once: true }
 }
 function parseAutomaticAbility(
     record: Record<string, unknown>

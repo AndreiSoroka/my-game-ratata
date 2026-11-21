@@ -40,11 +40,14 @@ const {
     selectKey,
     select,
     selectGrave,
+    selectSelf,
+    acquireAttackTarget,
     cycle,
     validateSelection,
 } = useWorldTargetSelection(props, {
     cancel: () => cancel(),
     resetGesture: () => hotbar.value?.resetGesture(),
+    hasPendingAttack: (targetId) => hotbar.value?.hasPendingAttack(targetId) ?? false,
     interact: (id) => emit('interact', id),
 })
 function send(command: ClientMessage): void {
@@ -87,13 +90,7 @@ function key(event: KeyboardEvent): void {
         return
     }
     const actions: Record<string, () => void> = {
-        KeyQ: () => {
-            selectedKey.value =
-                selectedKey.value === `character:${props.player.id}`
-                    ? undefined
-                    : `character:${props.player.id}`
-            hotbar.value?.resetGesture()
-        },
+        KeyQ: selectSelf,
         KeyE: () => cycle(event.shiftKey),
     }
     actions[event.code]?.()
@@ -227,6 +224,7 @@ defineExpose({
         :target="target"
         :grave="grave"
         :graves="snapshot.graves"
+        :acquire-attack-target="acquireAttackTarget"
         :can-reach-grave="
             (selected) =>
                 game?.isInteractionVisible(selected.position, undefined, Infinity) ?? false

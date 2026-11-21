@@ -6,7 +6,7 @@ import {
     type ServerMessage,
     type Vector2,
 } from '@my-game-ratata/contracts'
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 const areaId = 'map-2-2:training:yard-1'
 const dummyId = 'map-2-2:training:dummy-1'
@@ -31,6 +31,62 @@ test('shows the learned prayer radius in the authored training interior without 
 })
 
 for (const mobile of [false, true]) {
+    test(`selects the dummy and approaches for single and repeated blade attacks (${mobile ? 'mobile' : 'desktop'})`, async ({
+        page,
+    }, info) => {
+        test.setTimeout(60_000)
+        const starts: GameEventPayload[] = []
+        page.on('websocket', (socket) => {
+            if (new URL(socket.url()).pathname !== '/ws') return
+            socket.on('framereceived', ({ payload }) => {
+                if (typeof payload !== 'string') return
+                const message = JSON.parse(payload) as ServerMessage
+                if (message.type === 'event' && message.event.kind === 'attack') {
+                    starts.push(message.event)
+                }
+            })
+        })
+        await page.setViewportSize(
+            mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
+        )
+        const yard = await join(page, `blade-${info.project.name}-${mobile}`, 'vanguard')
+        const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
+        const localAttacks = () => starts.filter((event) => event.actorId === playerId)
+        const selected = page.getByLabel('Выбранная цель')
+        const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
+        const playerX = () =>
+            page.evaluate(() => window.__ratataTest!.getState().player!.position.x)
+
+        await navigate(page, yard.inside)
+        await expect(selected).toHaveCount(0)
+        await activateBlade(page, attack, mobile, 1)
+        await expect(selected).toContainText('Тренировочный манекен')
+        await expect.poll(playerX).toBeGreaterThan(yard.inside.x + 8)
+        await expect.poll(() => localAttacks().length).toBe(1)
+        await waitForAttackIdle(page)
+        expect(localAttacks().map((event) => event.targetId)).toEqual([dummyId])
+
+        await page.keyboard.press('Escape')
+        await expect(selected).toHaveCount(0)
+        await navigate(page, yard.inside)
+        await activateBlade(page, attack, mobile, 2)
+        await expect(selected).toContainText('Тренировочный манекен')
+        await expect(attack).toHaveAttribute('aria-pressed', 'true')
+        await expect.poll(playerX).toBeGreaterThan(yard.inside.x + 8)
+        await expect.poll(() => localAttacks().length).toBeGreaterThanOrEqual(3)
+
+        await attack.click()
+        await expect(attack).toHaveAttribute('aria-pressed', 'false')
+        await page.waitForFunction(
+            () => window.__ratataTest!.getState().player?.control?.mode === 'none'
+        )
+        const countAfterCancel = localAttacks().length
+        await waitForAttackIdle(page)
+        expect(localAttacks().map((event) => event.targetId)).toEqual(
+            Array.from({ length: countAfterCancel }, () => dummyId)
+        )
+    })
+
     test(`trains with ordinary attacks and clears guides outside the pen (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,
     }, info) => {
@@ -132,6 +188,29 @@ for (const mobile of [false, true]) {
         })
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         expect(await page.evaluate(() => window.__ratataTest!.getState().player!.alive)).toBe(true)
+    })
+}
+
+async function activateBlade(
+    page: Page,
+    attack: Locator,
+    pointer: boolean,
+    count: 1 | 2
+): Promise<void> {
+    if (pointer) {
+        await attack.click({ clickCount: count })
+        return
+    }
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    for (let press = 0; press < count; press += 1) {
+        await page.keyboard.press('Digit1')
+    }
+}
+
+async function waitForAttackIdle(page: Page): Promise<void> {
+    await page.waitForFunction(() => {
+        const player = window.__ratataTest!.getState().player
+        return player?.control?.mode === 'none' && player.cooldowns.attackMsLeft === 0
     })
 }
 

@@ -7,6 +7,10 @@ import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
 import GameplayOverlay from './GameplayOverlay.vue'
 
+function oneAttack(targetId: string) {
+    return { type: 'auto_action', action: { kind: 'attack', targetId, once: true } } as const
+}
+
 it('cycles items, hostile and friendly targets by distance in both directions and selects self with Q', async () => {
     const player = characterFixture('self'),
         friend = characterFixture('friend', { position: { x: 40, y: 0 } }),
@@ -47,7 +51,7 @@ it('cycles items, hostile and friendly targets by distance in both directions an
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedId).toBe('enemy')
         press('Digit1')
-        expect(send).toHaveBeenLastCalledWith({ type: 'attack', targetId: 'enemy' })
+        expect(send).toHaveBeenLastCalledWith(oneAttack(enemy.id))
         press('Digit1')
         expect(send).toHaveBeenLastCalledWith({
             type: 'auto_action',
@@ -367,11 +371,11 @@ it('ignores held hotbar and selection keys, clears gestures on movement, and can
         press('Digit1', true)
         press('KeyQ', true)
         press('KeyE', true)
-        expect(send).toHaveBeenCalledExactlyOnceWith({ type: 'attack', targetId: enemy.id })
+        expect(send).toHaveBeenCalledExactlyOnceWith(oneAttack(enemy.id))
         press('KeyW')
         press('Digit1')
         expect(send).toHaveBeenCalledTimes(2)
-        expect(send).toHaveBeenLastCalledWith({ type: 'attack', targetId: enemy.id })
+        expect(send).toHaveBeenLastCalledWith(oneAttack(enemy.id))
         press('Digit1')
         expect(send).toHaveBeenLastCalledWith({
             type: 'auto_action',

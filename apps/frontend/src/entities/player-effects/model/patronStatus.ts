@@ -2,15 +2,25 @@ import {
     type CharacterSnapshot,
     type DeityId,
     type DeityMood,
+    type DeitySnapshot,
     PRAYER_SCHOOL_DEFINITIONS,
     prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
+
+export interface PatronPrayerChances {
+    healing: number
+    purificationPerStep: number
+    resurrection: number | null
+}
 
 export interface PatronStatusEntry {
     id: DeityId
     name: string
     level?: number | undefined
     mood?: DeityMood | undefined
+    omen?: string | undefined
+    prayerChances?: PatronPrayerChances | undefined
+    changesInMs?: number | undefined
 }
 
 export function projectPlayerPatrons({
@@ -27,6 +37,24 @@ export function projectPlayerPatrons({
         (entry) => entry.id === PRAYER_SCHOOL_DEFINITIONS[prayer].constellationId
     )
     return [
-        { id: patron.id, name: patron.name, level: mastery?.level, mood: patron.mood ?? undefined },
+        {
+            id: patron.id,
+            name: patron.name,
+            level: mastery?.level,
+            mood: patron.mood ?? undefined,
+            ...(patron.id === 'hearth' && hearthPatronDetails(patron)),
+        },
     ]
+}
+
+function hearthPatronDetails(patron: DeitySnapshot) {
+    const { omen, perception, successChance, hearthPrayerChances, changesInMs } = patron
+    return {
+        omen: perception === 'vague' ? undefined : omen,
+        prayerChances:
+            hearthPrayerChances && successChance !== null
+                ? { ...hearthPrayerChances, healing: successChance }
+                : undefined,
+        changesInMs: changesInMs ?? undefined,
+    }
 }

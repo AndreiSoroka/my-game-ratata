@@ -123,6 +123,10 @@ describe('character sheet privacy', () => {
                 ...raw.progression.deity,
                 mood: 'benevolent',
                 successChance: 0.8,
+                hearthPrayerChances: {
+                    purificationPerStep: 0.29,
+                    resurrection: 0.8,
+                },
             },
             otherDeities: [raw.progression.deity],
         }
@@ -136,6 +140,13 @@ describe('character sheet privacy', () => {
         expect(foreign.progression).not.toHaveProperty('otherDeities')
         expect(foreign.progression?.deity.mood).toBeNull()
         expect(foreign.progression?.deity.successChance).toBeNull()
+        expect(foreign.progression?.deity).not.toHaveProperty(
+            'hearthPrayerChances'
+        )
+        expect(raw.progression.deity.hearthPrayerChances).toEqual({
+            purificationPerStep: 0.29,
+            resurrection: 0.8,
+        })
         expect(observer.exactCombatNumbers).toBe(false)
     })
 })

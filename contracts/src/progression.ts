@@ -11,6 +11,11 @@ export interface DeitySnapshot {
     perception: 'vague' | 'hint' | 'clear' | 'precise'
     mood: DeityMood | null
     successChance: number | null
+    /** Additional Hearth prayer chances visible to the owner after earning insight. */
+    hearthPrayerChances?: {
+        purificationPerStep: number
+        resurrection: number | null
+    }
     changesInMs: number | null
 }
 

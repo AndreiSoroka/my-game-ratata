@@ -7,7 +7,7 @@ import type {
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
-import { relation } from './combatTargeting'
+import { attackableTarget, relation } from './combatTargeting'
 import {
     isWorldTargetEligible,
     nextWorldTarget,
@@ -15,6 +15,7 @@ import {
     worldSelectionRange,
     type WorldSelectionTarget,
     worldTargetCandidates,
+    type WorldTargetVisibility,
 } from './worldTargetSelection'
 
 interface SelectionProps {
@@ -27,23 +28,13 @@ interface SelectionProps {
 interface SelectionEffects {
     cancel: () => void
     resetGesture: () => void
+    hasPendingAttack: (targetId: string) => boolean
     interact: (id: string) => void
 }
 
 export function useWorldTargetSelection(props: SelectionProps, effects: SelectionEffects) {
     const state = createSelectionState(props)
-    const {
-        selectedKey,
-        selectedTarget,
-        selectedId,
-        selectedGraveId,
-        target,
-        grave,
-        candidates,
-        tileSize,
-        visible,
-        eligible,
-    } = state
+    const { selectedKey, selectedTarget, candidates, tileSize, visible, eligible } = state
     function selectKey(key: string | undefined): boolean {
         if (props.blocked || !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
             return false
@@ -64,6 +55,18 @@ export function useWorldTargetSelection(props: SelectionProps, effects: Selectio
         return true
     }
     const selectGrave = (id: string) => selectKey(`grave:${id}`)
+    function selectSelf(): void {
+        const previous = selectedKey.value
+        const self = `character:${props.player.id}`
+        selectedKey.value = previous === self ? undefined : self
+        if (previous && previous !== self) resetSelectedAction(previous)
+        else effects.resetGesture()
+    }
+    function acquireAttackTarget(): string | undefined {
+        if (selectedKey.value !== undefined) return undefined
+        const nearest = nearestAttackTarget(props, tileSize(), visible)
+        return nearest && selectKey(nearest.key) ? nearest.id : undefined
+    }
     function cycle(reverse: boolean): void {
         const targets = selectableWorldTargets(props.snapshot, props.player, {
             characters: props.characters,
@@ -81,23 +84,44 @@ export function useWorldTargetSelection(props: SelectionProps, effects: Selectio
         return false
     }
     function resetSelectedAction(key: string): void {
-        effects.resetGesture()
-        if (targetedControlKey(props.player.control) === key) effects.cancel()
+        const prefix = 'character:'
+        const pending = key.startsWith(prefix) && effects.hasPendingAttack(key.slice(prefix.length))
+        if (pending || targetedControlKey(props.player.control) === key) effects.cancel()
+        else effects.resetGesture()
     }
     installSelectionLifecycle(props, state, validateSelection, resetSelectedAction)
     return {
         selectedKey,
         selectedTarget,
-        selectedId,
-        selectedGraveId,
-        target,
-        grave,
+        selectedId: state.selectedId,
+        selectedGraveId: state.selectedGraveId,
+        target: state.target,
+        grave: state.grave,
         selectKey,
         select,
         selectGrave,
+        selectSelf,
+        acquireAttackTarget,
         cycle,
         validateSelection,
     }
+}
+
+function nearestAttackTarget(
+    props: SelectionProps,
+    tileSize: number,
+    visible: WorldTargetVisibility
+) {
+    return selectableWorldTargets(props.snapshot, props.player, {
+        characters: props.characters.filter(
+            (actor) => actor.alive && !actor.life?.retired && attackableTarget(actor, props.player)
+        ),
+        tileSize,
+        isVisible: (candidate) =>
+            candidate.kind === 'character' &&
+            visible(candidate) &&
+            props.game?.isInteractionVisible?.(candidate.position, undefined, Infinity) === true,
+    })[0]
 }
 
 function createSelectionState(props: SelectionProps) {

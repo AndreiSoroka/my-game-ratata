@@ -5,6 +5,7 @@ import { h } from 'vue'
 import { renderVueStory } from '../stories/renderVueStory'
 import {
     faithKnownStatusFixture,
+    faithPreciseStatusFixture,
     faithUnknownMoodStatusFixture,
     LONG_PLAYER_NAME,
     playerStatusFixture,
@@ -104,6 +105,9 @@ export const FaithKnown: Story = {
 }
 export const FaithUnknownMood: Story = {
     render: () => statusStory({ character: faithUnknownMoodStatusFixture() }),
+}
+export const FaithPrecise: Story = {
+    render: () => statusStory({ character: faithPreciseStatusFixture() }),
 }
 export const Wanted: Story = {
     render: () => statusStory({ character: wantedStatusFixture() }),

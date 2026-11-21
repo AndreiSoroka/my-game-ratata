@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { masteriesFixture } from '../testing/masteryFixture'
 import {
     faithKnownStatusFixture,
+    faithPreciseStatusFixture,
     faithUnknownMoodStatusFixture,
     LONG_PLAYER_NAME,
     playerStatusFixture,
@@ -135,6 +136,71 @@ describe('earned HUD status', () => {
         expect(wrapper.get('.faith-status__name').attributes('title')).toBe('Угольная Мать · ур. 3')
         expect(wrapper.find('[data-patron-mood]').exists()).toBe(false)
         expect(wrapper.text()).not.toContain(character.progression!.deity.omen)
+        wrapper.unmount()
+    })
+
+    it('marks a changed omen once and treats gaining access or switching patron as a baseline', async () => {
+        const unearned = faithUnknownMoodStatusFixture()
+        unearned.progression!.deity.perception = 'vague'
+        const wrapper = mount(GamePlayerStatus, { props: { character: unearned } })
+        const highlight = '[data-mood-change-id]'
+        expect(wrapper.find(highlight).exists()).toBe(false)
+
+        const hint = faithUnknownMoodStatusFixture()
+        await wrapper.setProps({ character: hint })
+        expect(wrapper.find(highlight).exists()).toBe(false)
+
+        const changed = faithUnknownMoodStatusFixture()
+        changed.progression!.deity.omen = 'Другой известный намёк'
+        await wrapper.setProps({ character: changed })
+        const first = wrapper.get(highlight)
+        expect(wrapper.find('[data-patron-mood]').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain(changed.progression!.deity.omen)
+        await wrapper.setProps({
+            character: { ...changed, progression: { ...changed.progression! } },
+        })
+        expect(wrapper.get(highlight).element).toBe(first.element)
+
+        const next = faithUnknownMoodStatusFixture()
+        await wrapper.setProps({ character: next })
+        expect(wrapper.get(highlight).attributes('data-mood-change-id')).not.toBe(
+            first.attributes('data-mood-change-id')
+        )
+
+        const road = faithKnownStatusFixture()
+        road.progression!.deity.id = 'road'
+        road.progression!.deity.name = 'Безымянный Путник'
+        road.abilities!.known = ['pray_road']
+        await wrapper.setProps({ character: road })
+        expect(wrapper.find(highlight).exists()).toBe(false)
+        await wrapper.setProps({ character: changed })
+        expect(wrapper.find(highlight).exists()).toBe(false)
+        wrapper.unmount()
+    })
+
+    it('renders the earned per-step chances and countdown from the owner snapshot', async () => {
+        const wrapper = mount(GamePlayerStatus, { props: { character: faithKnownStatusFixture() } })
+        const chances = '.faith-status__chances'
+        const timer = '.faith-status__timer'
+        expect(wrapper.find(chances).exists()).toBe(false)
+        expect(wrapper.find(timer).exists()).toBe(false)
+
+        const will = faithPreciseStatusFixture()
+        Object.assign(will.progression!.deity, {
+            perception: 'clear',
+            changesInMs: null,
+            hearthPrayerChances: { purificationPerStep: 0.290909, resurrection: null },
+            successChance: 0.8,
+        })
+        await wrapper.setProps({ character: will })
+        expect(wrapper.get(chances).text()).toMatch(/Шанс лечения\s*80%/)
+        expect(wrapper.get(chances).text()).toMatch(/Шанс очищения могилы\s*29,09% за шаг/)
+        expect(wrapper.get(chances).text()).not.toContain('Шанс воскрешения')
+        expect(wrapper.find(timer).exists()).toBe(false)
+
+        await wrapper.setProps({ character: faithPreciseStatusFixture() })
+        expect(wrapper.get(chances).text()).toMatch(/Шанс воскрешения\s*55%/)
+        expect(wrapper.get(timer).text()).toBe('12 с')
         wrapper.unmount()
     })
 

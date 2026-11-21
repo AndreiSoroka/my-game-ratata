@@ -37,7 +37,7 @@ export function faithKnownStatusFixture(): CharacterSnapshot {
                 name: 'Угольная Мать',
                 domain: 'Исцеление',
                 omen: 'Тепло очага укрывает от холода.',
-                perception: 'precise',
+                perception: 'clear',
                 mood: 'benevolent',
                 successChance: null,
                 changesInMs: null,
@@ -58,6 +58,22 @@ export function faithUnknownMoodStatusFixture(): CharacterSnapshot {
         mood: null,
         omen: 'Тепло очага едва заметно. Пламя ждёт доброго дела.',
     }
+    return character
+}
+
+export function faithPreciseStatusFixture(): CharacterSnapshot {
+    const character = faithKnownStatusFixture()
+    character.progression!.deity = {
+        ...character.progression!.deity,
+        omen: 'Знаки противоречивы. Ответ божества неясен.',
+        perception: 'precise',
+        mood: 'neutral',
+        successChance: 0.55,
+        hearthPrayerChances: { purificationPerStep: 0.2, resurrection: 0.55 },
+        changesInMs: 11_200,
+    }
+    character.progression!.resurrectionUnlocked = true
+    character.progression!.resurrectionSchools = ['pray']
     return character
 }
 

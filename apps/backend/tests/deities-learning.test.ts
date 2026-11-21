@@ -16,10 +16,11 @@ import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
 import { abilityContext } from './abilityTestHelpers'
 import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
-describe('shared deities and meaningful miracles', () => {
+describe('shared deities and earned insight', () => {
     it('uses the same changing mood for everybody and reveals progressively better information', () => {
         const actor = hero()
         const peer = hero()
+        actor.abilities.known.add('pray')
         const now = 15_000
         const vague = actor.snapshot(now).progression?.deity
         expect(vague).toEqual(peer.snapshot(now).progression?.deity)
@@ -42,14 +43,19 @@ describe('shared deities and meaningful miracles', () => {
             successChance: null,
         })
         expect(hint?.omen).not.toBe(vague?.omen)
+        expect(hint).not.toHaveProperty('hearthPrayerChances')
 
         actor.progression.constellations.opened.add('prayer.omen2')
+        expect(actor.snapshot(now).progression?.deity).not.toHaveProperty(
+            'hearthPrayerChances'
+        )
         actor.progression.constellations.opened.add('prayer.omen3')
         expect(actor.snapshot(now).progression?.deity).toMatchObject({
             perception: 'clear',
             mood: deityMood('hearth', now),
             successChance: miracleChance(actor, now),
             changesInMs: null,
+            hearthPrayerChances: { resurrection: null },
         })
 
         actor.progression.constellations.opened.add('prayer.omen4')
@@ -58,7 +64,90 @@ describe('shared deities and meaningful miracles', () => {
             changesInMs: 15_000,
         })
     })
+})
 
+describe('Hearth prayer chances in owner progression', () => {
+    it.each([
+        {
+            now: 0,
+            mood: 'wrathful',
+            healing: 0.25,
+            step: 0.090909,
+            improved: 0.5,
+        },
+        {
+            now: 30_000,
+            mood: 'neutral',
+            healing: 0.55,
+            step: 0.2,
+            improved: 0.8,
+        },
+        {
+            now: 60_000,
+            mood: 'benevolent',
+            healing: 0.8,
+            step: 0.290909,
+            improved: 0.95,
+        },
+    ])(
+        'projects Hearth prayer chances for $mood mood',
+        ({ now, mood, healing, step, improved }) => {
+            const actor = hero('cleric')
+            const opened = actor.progression.constellations.opened
+            opened.add('prayer.omen1').add('prayer.omen2').add('prayer.omen3')
+            const deity = actor.snapshot(now).progression?.deity
+            expect(deity).toMatchObject({ mood, successChance: healing })
+            expect(deity?.hearthPrayerChances?.purificationPerStep).toBeCloseTo(
+                step,
+                6
+            )
+            expect(deity?.hearthPrayerChances?.resurrection).toBe(healing)
+
+            opened
+                .add('prayer.revive_experienced')
+                .add('prayer.revive_master')
+                .add('prayer.revive_stable')
+            expect(
+                actor.snapshot(now).progression?.deity.hearthPrayerChances
+                    ?.resurrection
+            ).toBeCloseTo(improved)
+            expect(
+                actor.snapshot(now, false).progression?.deity
+            ).not.toHaveProperty('hearthPrayerChances')
+        }
+    )
+
+    it('keeps Hearth prayer chances tied to its learned prayer and active patron', () => {
+        const actor = hero()
+        const opened = actor.progression.constellations.opened
+        opened.add('prayer.omen1').add('prayer.omen2').add('prayer.omen3')
+        expect(actor.snapshot(0).progression?.deity).not.toHaveProperty(
+            'hearthPrayerChances'
+        )
+
+        actor.abilities.known.add('pray')
+        expect(
+            actor.snapshot(0).progression?.deity.hearthPrayerChances
+                ?.resurrection
+        ).toBeNull()
+        actor.progression.masteries.prayer.level = 5
+        expect(
+            actor.snapshot(0).progression?.deity.hearthPrayerChances
+                ?.resurrection
+        ).toBe(0.25)
+
+        actor.progression.patron = 'road'
+        const progression = actor.snapshot(0).progression
+        expect(progression?.deity).not.toHaveProperty('hearthPrayerChances')
+        const hearth = progression?.otherDeities?.find(
+            (deity) => deity.id === 'hearth'
+        )
+        expect(hearth).toMatchObject({ id: 'hearth', successChance: 0.25 })
+        expect(hearth).not.toHaveProperty('hearthPrayerChances')
+    })
+})
+
+describe('prayer costs and meaningful miracles', () => {
     it('charges a failed prayer without granting XP from failure or cooldown spam', () => {
         const actor = hero()
         actor.abilities.known.add('pray')

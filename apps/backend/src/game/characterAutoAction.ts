@@ -109,8 +109,7 @@ export function advanceAutoAction(
     }
     state.waiting = status === 'ready' ? null : status
     if (status === 'range') {
-        approach(actor, state, world, context, now)
-        return true
+        return approach(actor, state, world, context, now)
     }
     actor.clearPath()
     actor.setMoveInput({ x: 0, y: 0 })
@@ -128,7 +127,11 @@ function execute(
     now: number
 ): void {
     if (action.kind === 'attack') {
+        const sequence = actor.combat.sequence
         world.requestAttack(actor, now, action.targetId, action.target)
+        if (action.once === true && actor.combat.sequence !== sequence) {
+            actions.delete(actor)
+        }
     } else {
         const command: AbilityClientMessage =
             action.kind === 'prayer'
@@ -163,19 +166,30 @@ function approach(
     world: ControlWorld,
     context: AbilityContext,
     now: number
-): void {
+): boolean {
     const reference = autoWorldTarget(state.action)
     const target =
         reference === undefined
             ? world.getCharacter(autoTargetId(state.action) ?? '')
             : context.graves?.get(reference.id)
     if (target === undefined || now - state.lastPlanAt < 300) {
-        return
+        return true
     }
     state.lastPlanAt = now
-    actor.setPath(
-        context.navigation.findPathWorld(actor.position, target.position)
+    const path = context.navigation.findPathWorld(
+        actor.position,
+        target.position
     )
+    actor.setPath(path)
+    if (
+        path.length === 0 &&
+        state.action.kind === 'attack' &&
+        state.action.once === true
+    ) {
+        actions.delete(actor)
+        return false
+    }
+    return true
 }
 
 export function replaceAutoAction(

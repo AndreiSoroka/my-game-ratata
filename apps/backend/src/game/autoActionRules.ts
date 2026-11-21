@@ -26,7 +26,7 @@ import {
     reachedAutoWorldTarget,
 } from './autoActionWorldTargets'
 import type { GameCharacter } from './character'
-import { isTargetInAttackRange } from './combat'
+import { availableToAttack, isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
 import { canAttackCharacter } from './combatTargets'
 import { effectiveAbility } from './effectiveParameters'
@@ -72,7 +72,7 @@ export function autoActionStatus(
     ) {
         return 'stop'
     }
-    if (pendingAction(actor, context.now)) {
+    if (pendingAction(actor, action, context.now)) {
         return 'action'
     }
     if (!reached(actor, action, target, context)) {
@@ -81,8 +81,7 @@ export function autoActionStatus(
     if (cooldownAt(actor, action) > context.now) {
         return 'cooldown'
     }
-    const costs = resolvedActionCosts(actor, action, context)
-    if (actor.mana < costs.mana || actor.energy < costs.energy) {
+    if (!hasResources(actor, action, context)) {
         return 'resources'
     }
     if (activeBarrier(actor, action, context.now)) {
@@ -90,8 +89,29 @@ export function autoActionStatus(
     }
     return 'ready'
 }
-function pendingAction(actor: GameCharacter, now: number): boolean {
-    return actor.abilities.casting !== null || actor.isActionLocked(now)
+function pendingAction(
+    actor: GameCharacter,
+    action: CombatAction,
+    now: number
+): boolean {
+    return (
+        actor.abilities.casting !== null ||
+        actor.isActionLocked(now) ||
+        (action.kind === 'attack' &&
+            action.once === true &&
+            actor.pendingAttack !== undefined)
+    )
+}
+function hasResources(
+    actor: GameCharacter,
+    action: CombatAction,
+    context: AbilityContext
+): boolean {
+    if (action.kind === 'attack' && action.once === true) {
+        return true
+    }
+    const costs = resolvedActionCosts(actor, action, context)
+    return actor.mana >= costs.mana && actor.energy >= costs.energy
 }
 function legalAutoTarget(
     actor: GameCharacter,
@@ -230,14 +250,19 @@ function available(
     if (!availableActor(actor, now)) {
         return false
     }
-    return (
-        action.kind === 'attack' ||
-        knowsAbility(
-            actor,
-            action.kind === 'prayer'
-                ? (action.abilityId ?? 'pray')
-                : action.abilityId
+    if (action.kind === 'attack') {
+        return (
+            action.once !== true ||
+            (actor.config.basicAttackKind === 'melee' &&
+                !actor.combat.defensiveStance &&
+                availableToAttack(actor, now))
         )
+    }
+    return knowsAbility(
+        actor,
+        action.kind === 'prayer'
+            ? (action.abilityId ?? 'pray')
+            : action.abilityId
     )
 }
 function activeBarrier(

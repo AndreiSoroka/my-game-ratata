@@ -3,13 +3,23 @@ import type { DeityMood } from '@my-game-ratata/contracts'
 
 import { HudRow } from '@/shared/ui/common'
 
+import type { PatronPrayerChances } from '../model/patronStatus'
 import PatronMood from './PatronMood.vue'
 
 defineProps<{
     patronName?: string
     patronMasteryLevel?: number
     patronMood?: DeityMood
+    moodChangeId?: number | undefined
+    prayerChances?: PatronPrayerChances | undefined
+    changesInMs?: number | undefined
 }>()
+
+const percentageFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
+
+function formatChance(chance: number): string {
+    return `${percentageFormat.format(chance * 100)}%`
+}
 </script>
 <template>
     <div v-if="patronName" class="faith-status" aria-label="Покровитель и развитие">
@@ -30,18 +40,51 @@ defineProps<{
             </template>
             <span
                 class="faith-status__name"
+                :class="{ 'faith-status__name--timed': patronMood && changesInMs !== undefined }"
                 :title="`${patronName} · ур. ${patronMasteryLevel ?? 0}`"
             >
-                <span class="faith-status__patron">{{ patronName }}</span>
+                <span
+                    :key="moodChangeId"
+                    class="faith-status__patron"
+                    :data-mood-change-id="
+                        moodChangeId !== undefined && moodChangeId > 0 ? moodChangeId : undefined
+                    "
+                    >{{ patronName }}</span
+                >
                 <span class="faith-status__progress"
                     >· <span class="faith-status__mastery">ур. </span
                     >{{ patronMasteryLevel ?? 0 }}</span
                 >
             </span>
             <template v-if="patronMood" #trailing>
+                <span
+                    v-if="changesInMs !== undefined"
+                    class="faith-status__timer"
+                    role="timer"
+                    aria-label="До смены настроения"
+                >
+                    {{ Math.ceil(changesInMs / 1000) }} с
+                </span>
                 <PatronMood class="faith-status__mood" :mood="patronMood" />
             </template>
         </HudRow>
+        <ul
+            v-if="prayerChances"
+            class="faith-status__chances"
+            role="list"
+            aria-label="Шансы молитвы"
+        >
+            <li>Шанс лечения {{ formatChance(prayerChances.healing) }}</li>
+            <li>
+                Шанс очищения могилы
+                <span class="faith-status__per-step">
+                    {{ formatChance(prayerChances.purificationPerStep) }} за шаг
+                </span>
+            </li>
+            <li v-if="prayerChances.resurrection !== null">
+                Шанс воскрешения {{ formatChance(prayerChances.resurrection) }}
+            </li>
+        </ul>
     </div>
 </template>
 <style scoped>
@@ -68,8 +111,51 @@ defineProps<{
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.faith-status__patron[data-mood-change-id] {
+    animation: faith-status-mood-pulse 240ms ease-in-out 2;
+}
 .faith-status__progress {
     flex: none;
+}
+.faith-status__timer {
+    margin-inline-end: 4px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.faith-status__chances {
+    margin: 2px 0 0;
+    margin-inline-start: var(--faith-status-text-inset, 33px);
+    padding: 0;
+    list-style: none;
+    overflow-wrap: anywhere;
+    font-size: var(--faith-status-font-size, 12px);
+    font-variant-numeric: tabular-nums;
+}
+.faith-status__per-step {
+    white-space: nowrap;
+}
+
+@keyframes faith-status-mood-pulse {
+    0%,
+    100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: color-mix(in srgb, currentColor 24%, transparent);
+    }
+}
+@keyframes faith-status-mood-hold {
+    from {
+        background-color: color-mix(in srgb, currentColor 24%, transparent);
+    }
+    to {
+        background-color: transparent;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .faith-status__patron[data-mood-change-id] {
+        animation: faith-status-mood-hold 480ms steps(1, end);
+    }
 }
 @container (max-width: 180px) {
     .faith-status__name {
@@ -77,6 +163,21 @@ defineProps<{
     }
     .faith-status__mastery {
         display: none;
+    }
+    .faith-status__name--timed {
+        display: block;
+        white-space: normal;
+    }
+    .faith-status__name--timed .faith-status__patron {
+        overflow-wrap: anywhere;
+    }
+    .faith-status__name--timed .faith-status__progress {
+        display: inline-block;
+        margin-inline-start: 3px;
+        white-space: nowrap;
+    }
+    .faith-status__chances {
+        margin-inline-start: 8px;
     }
 }
 </style>

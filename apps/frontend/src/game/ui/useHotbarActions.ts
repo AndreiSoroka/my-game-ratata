@@ -1,4 +1,5 @@
 import {
+    type CharacterControlSnapshot,
     isPrayerAction,
     type PrayerActionId,
     previewPrayerFromSnapshots,
@@ -12,7 +13,6 @@ import {
     actionTooltip,
     bindingLabel,
     bindingUnavailable,
-    controlWaitingLabel,
     createActivator,
     type HotbarEmit,
     type HotbarProps,
@@ -73,7 +73,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         unavailable
     )
     const active = activeBindingCheck(props, gestures)
-    const waiting = computed(() => controlWaitingLabel(props.player.control?.waiting))
+    const waiting = computed(() => controlWaitingLabel(props.player.control))
     return {
         bindings,
         food,
@@ -96,7 +96,26 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         active,
         waiting,
         resetGesture: gestures.reset,
+        hasPendingAttack: gestures.hasPendingAttack,
     }
+}
+function controlWaitingLabel(control: CharacterControlSnapshot | undefined): string {
+    const waiting = control?.waiting ?? ''
+    if (control?.action?.kind === 'attack' && control.action.once === true)
+        return {
+            cooldown: 'Ждём восстановления удара',
+            resources: 'Ждём силы',
+            range: 'Подходим к цели',
+            action: 'Ждём завершения действия',
+            '': 'Готовим удар',
+        }[waiting]
+    return {
+        cooldown: 'Повтор: ждём восстановление',
+        resources: 'Повтор: ждём силы',
+        range: 'Повтор: подходим к цели',
+        action: 'Повтор: действие выполняется',
+        '': 'Автоповтор включён',
+    }[waiting]
 }
 function prayerPreview(props: HotbarProps, abilityId: PrayerActionId) {
     const objectReason = objectTargetUnavailable({ kind: 'ability', id: abilityId }, props)
@@ -154,8 +173,11 @@ function watchGestureChanges(
         () => gestures.reset()
     )
     watch(
+        () => props.target?.id,
+        (targetId) => gestures.syncTarget(targetId)
+    )
+    watch(
         [
-            () => props.target?.id,
             () => props.grave?.id,
             () => props.grave?.phase,
             () => props.objectTarget,
@@ -163,9 +185,8 @@ function watchGestureChanges(
         ],
         () => gestures.reset()
     )
-    watch(
-        () => props.player.control,
-        () => gestures.acknowledge()
+    watch([() => props.player.control, () => props.player.combat?.action?.id], () =>
+        gestures.acknowledge()
     )
 }
 

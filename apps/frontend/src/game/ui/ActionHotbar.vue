@@ -28,6 +28,7 @@ const props = defineProps<{
     grave?: WorldGraveSnapshot
     graves?: WorldGraveSnapshot[]
     objectTarget?: boolean
+    acquireAttackTarget?: () => string | undefined
     canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
@@ -53,6 +54,7 @@ const {
     active,
     waiting,
     resetGesture,
+    hasPendingAttack,
 } = useHotbarActions(props, emit)
 const actions = computed(() => bindings.value.map(describeAction))
 
@@ -143,7 +145,7 @@ function close(): void {
     document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
 }
 useDialogEscape(picker, close)
-defineExpose({ activate, edit, assignItem, resetGesture })
+defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
 </script>
 <template>
     <div

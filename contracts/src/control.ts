@@ -8,7 +8,9 @@ export type CharacterAutoAction =
           kind: 'attack'
           targetId?: string
           target?: import('./graves').WorldCombatTarget
+          once?: never
       }
+    | { kind: 'attack'; targetId: string; target?: never; once: true }
     | {
           kind: 'ability'
           abilityId: Exclude<AbilityId, PrayerActionId>

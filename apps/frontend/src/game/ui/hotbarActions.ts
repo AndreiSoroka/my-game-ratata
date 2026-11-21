@@ -1,6 +1,5 @@
 import {
     ABILITY_DEFINITIONS,
-    type AutoActionWaiting,
     type CharacterAutoAction,
     type CharacterSnapshot,
     type ClientMessage,
@@ -9,6 +8,7 @@ import {
     type PrayerActionId,
     type PrayerPreview,
     resolveCombatWeapon,
+    type WorldCombatTarget,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 import type { ComputedRef, Ref } from 'vue'
@@ -32,6 +32,7 @@ export interface HotbarProps {
     grave?: WorldGraveSnapshot
     graves?: WorldGraveSnapshot[]
     objectTarget?: boolean
+    acquireAttackTarget?: () => string | undefined
     canReachGrave?: (grave: WorldGraveSnapshot) => boolean
     characters: CharacterSnapshot[]
     canReach?: (target: CharacterSnapshot) => boolean
@@ -84,10 +85,12 @@ export function objectTargetUnavailable(
         : undefined
 }
 function attackUnavailable(props: HotbarProps, cooldown: number): string | undefined {
-    const weapon = resolveCombatWeapon(props.player.archetype, props.player.equipment.weapon)
-    if (weapon.broken) return 'Оружие сломано — снимите или почините его'
+    if (attackWeaponBroken(props)) return 'Оружие сломано — снимите или почините его'
     if (props.grave?.phase === 'ruined') return 'Могила разрушена'
     return cooldown > 0 ? 'Атака восстанавливается' : undefined
+}
+function attackWeaponBroken({ player }: HotbarProps): boolean {
+    return resolveCombatWeapon(player.archetype, player.equipment.weapon).broken
 }
 function abilityUnavailable(
     id: Exclude<import('@my-game-ratata/contracts').AbilityId, PrayerActionId>,
@@ -116,25 +119,25 @@ function abilityResourceReason(
     return check === 'ready' ? undefined : 'Сейчас недоступно'
 }
 function actionFor(
-    binding: Exclude<HotbarBinding, { kind: 'item' }>,
+    binding: Extract<HotbarBinding, { kind: 'ability' }>,
     props: HotbarProps,
     intent: PrayerPreview['intent']
-): Exclude<CharacterAutoAction, { kind: 'gather' | 'plant_tree' }> | undefined {
-    const target = combatAddress(props)
-    if (binding.kind === 'attack') return target ? { kind: 'attack', ...target } : undefined
+): Extract<CharacterAutoAction, { kind: 'ability' | 'prayer' }> | undefined {
     if (isPrayerAction(binding.id))
         return intent ? { kind: 'prayer', abilityId: binding.id, intent } : undefined
     return {
         kind: 'ability',
         abilityId: binding.id,
-        ...(binding.id === 'barrier' || binding.id === 'defensive_stance' ? {} : target),
+        ...(binding.id === 'barrier' || binding.id === 'defensive_stance'
+            ? {}
+            : combatAddress(props)),
     }
 }
 function combatAddress(
     props: HotbarProps
 ):
-    | { target: import('@my-game-ratata/contracts').WorldCombatTarget }
-    | { targetId: string }
+    | { target: WorldCombatTarget; targetId?: never }
+    | { targetId: string; target?: never }
     | undefined {
     if (props.grave) return { target: { kind: 'grave', id: props.grave.id } }
     return props.target?.alive && attackableTarget(props.target, props.player)
@@ -142,13 +145,8 @@ function combatAddress(
         : undefined
 }
 function singleCommand(
-    action: Exclude<CharacterAutoAction, { kind: 'gather' | 'plant_tree' }>
+    action: Extract<CharacterAutoAction, { kind: 'ability' | 'prayer' }>
 ): ClientMessage {
-    if (action.kind === 'attack')
-        return {
-            type: 'attack',
-            ...(action.target ? { target: action.target } : { targetId: action.targetId }),
-        }
     return action.kind === 'prayer'
         ? { type: 'use_ability', abilityId: action.abilityId ?? 'pray', intent: action.intent }
         : {
@@ -191,22 +189,42 @@ export function createActivator(
             if (!unavailable(binding)) activateFood(food.value, emit, gestures, index)
             return
         }
-        if (binding.kind === 'ability' && !known.value.includes(binding.id)) return
-        const action = bindingAction(binding, props, preview)
-        if (!action) {
-            if (binding.kind === 'attack') activateUntargetedAttack(binding, unavailable, emit)
+        if (binding.kind === 'attack') {
+            activateAttack(props, emit, gestures, index, unavailable(binding))
             return
         }
+        if (!known.value.includes(binding.id)) return
+        const action = bindingAction(binding, props, preview)
+        if (!action) return
         if (!unavailable(binding)) emit('command', singleCommand(action))
         gestures.remember(index, action)
     }
 }
-function activateUntargetedAttack(
-    binding: HotbarBinding,
-    unavailable: (binding: HotbarBinding) => string | undefined,
-    emit: HotbarEmit
+function activateAttack(
+    props: HotbarProps,
+    emit: HotbarEmit,
+    gestures: ReturnType<typeof createGestures>,
+    index: number,
+    reason: string | undefined
 ): void {
-    if (!unavailable(binding)) emit('command', { type: 'attack' })
+    const address = combatAddress(props)
+    if (!props.grave && (props.player.basicAttackKind ?? 'melee') === 'melee') {
+        if (attackWeaponBroken(props)) return
+        const acquiredTargetId = address ? undefined : props.acquireAttackTarget?.()
+        const targetId = address?.targetId ?? acquiredTargetId
+        if (targetId !== undefined) {
+            const attack = { kind: 'attack', targetId } as const
+            emit('command', {
+                type: 'auto_action',
+                action: { ...attack, once: true },
+            })
+            gestures.markAttackPending(targetId)
+            gestures.remember(index, attack, acquiredTargetId)
+            return
+        }
+    }
+    if (!reason) emit('command', { type: 'attack', ...address })
+    if (address) gestures.remember(index, { kind: 'attack', ...address })
 }
 function activatePlanting(
     binding: HotbarBinding,
@@ -234,15 +252,6 @@ function canAct(props: HotbarProps, binding: HotbarBinding): boolean {
         !guardBlocksBinding(binding, props)
     )
 }
-export function controlWaitingLabel(waiting: AutoActionWaiting | undefined): string {
-    return {
-        cooldown: 'Повтор: ждём восстановление',
-        resources: 'Повтор: ждём силы',
-        range: 'Повтор: подходим к цели',
-        action: 'Повтор: действие выполняется',
-        '': 'Автоповтор включён',
-    }[waiting ?? '']
-}
 function activateFood(
     food: CharacterSnapshot['inventory'],
     emit: HotbarEmit,
@@ -268,11 +277,10 @@ export function actionTooltip(binding: HotbarBinding | null, props: HotbarProps)
 }
 
 function bindingAction(
-    binding: Exclude<HotbarBinding, { kind: 'item' }>,
+    binding: Extract<HotbarBinding, { kind: 'ability' }>,
     props: HotbarProps,
     preview: ActionState['preview']
 ) {
-    const intent =
-        binding.kind === 'ability' && isPrayerAction(binding.id) ? preview(binding.id).intent : null
+    const intent = isPrayerAction(binding.id) ? preview(binding.id).intent : null
     return actionFor(binding, props, intent)
 }

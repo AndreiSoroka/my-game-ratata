@@ -5,12 +5,14 @@ export function publicProgression(
     progression: ProgressionSnapshot
 ): ProgressionSnapshot {
     const description = { ...progression }
+    const deity = { ...progression.deity }
     delete description.constellations
     delete description.otherDeities
+    delete deity.hearthPrayerChances
     return {
         ...description,
         deity: {
-            ...progression.deity,
+            ...deity,
             omen: 'Знамения доступны только самому персонажу.',
             perception: 'vague',
             mood: null,

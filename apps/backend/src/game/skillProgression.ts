@@ -16,6 +16,7 @@ import {
     profileForPrayer,
     type ProgressionSnapshot,
     resolveCombatWeapon,
+    resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -28,6 +29,7 @@ import {
 import type { CharacterConstellations } from './constellationState'
 import { snapshotDeity, snapshotOtherDeities } from './deities'
 import { readCachedConstellationLayout } from './personalConstellationSky'
+import { prayerPurificationChance } from './prayerProbability'
 
 export interface MasteryPractice {
     level: number
@@ -93,6 +95,26 @@ export function snapshotProgression(
     includePrivate = true
 ): ProgressionSnapshot {
     const factors = captureMasteryFactors(actor)
+    const deity = snapshotDeity(actor, now)
+    const resurrectionUnlocked = canUseResurrection(actor)
+    if (
+        includePrivate &&
+        deity.id === 'hearth' &&
+        deity.successChance !== null &&
+        deity.mood !== null &&
+        actor.abilities.known.has('pray')
+    ) {
+        deity.hearthPrayerChances = {
+            purificationPerStep: prayerPurificationChance(deity.successChance),
+            resurrection: resurrectionUnlocked
+                ? resolveResurrectionParameters(
+                      'pray',
+                      actor.progression.constellations.opened,
+                      deity.mood
+                  ).successChance
+                : null,
+        }
+    }
     return {
         masteries: constellationIds.map((id) => {
             const mastery = actor.progression.masteries[id]
@@ -111,7 +133,7 @@ export function snapshotProgression(
                 conflictMultiplier: factors[id],
             }
         }),
-        deity: snapshotDeity(actor, now),
+        deity,
         ...(includePrivate
             ? {
                   otherDeities: snapshotOtherDeities(actor, now),
@@ -122,7 +144,7 @@ export function snapshotProgression(
             : {}),
         magicChaptersRead: actor.progression.magicChaptersRead,
         magicChaptersTotal: 3,
-        resurrectionUnlocked: canUseResurrection(actor),
+        resurrectionUnlocked,
         resurrectionSchools: prayerAbilityIds.filter((id) =>
             canUseResurrection(actor, id)
         ),

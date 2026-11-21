@@ -182,7 +182,9 @@ it('consumes food once per double-press gesture and allows rebinding the basic a
             .find((button) => button.text().includes('Удар ножом'))!
             .trigger('click')
         wrapper.vm.activate(1)
-        expect(wrapper.emitted('command')?.at(-1)).toEqual([{ type: 'attack', targetId: enemy.id }])
+        expect(wrapper.emitted('command')?.at(-1)).toEqual([
+            { type: 'auto_action', action: { kind: 'attack', targetId: enemy.id, once: true } },
+        ])
     } finally {
         wrapper.unmount()
     }
