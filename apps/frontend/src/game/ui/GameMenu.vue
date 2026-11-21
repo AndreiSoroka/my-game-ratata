@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
-import { type MenuItem, MenuPanel, type MenuPanelHandle } from '@/entities/menu'
 import { menuKeyboardInput } from '@/shared/lib/input'
 
 import {
@@ -10,6 +9,7 @@ import {
     setAudioMuted,
     subscribeAudioMute,
 } from '../runtime/audioPreference'
+import { type MenuItem, MenuPanel, type MenuPanelHandle } from './menu'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = withDefaults(defineProps<{ automationAvailable?: boolean }>(), {

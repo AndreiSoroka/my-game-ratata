@@ -26,6 +26,7 @@
         "lint": "run-s lint:workspace lint:frontend",
         "lint:workspace": "eslint apps/backend contracts --max-warnings=0",
         "lint:frontend": "bun run --cwd apps/frontend lint",
+        "lint:fsd": "bun run --cwd apps/frontend lint:fsd",
         "lint:fix": "run-s lint:fix:workspace lint:fix:frontend",
         "lint:fix:workspace": "eslint apps/backend contracts --fix",
         "lint:fix:frontend": "bun run --cwd apps/frontend lint:fix",

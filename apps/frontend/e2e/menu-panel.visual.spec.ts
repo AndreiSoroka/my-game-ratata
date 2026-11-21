@@ -2,7 +2,7 @@ import { expect, type Locator, test } from '@playwright/test'
 
 import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 
-const storyId = 'entities-menu-menupanel'
+const storyId = 'game-menu-menupanel'
 
 async function expectHighlighted(panel: Locator, ids: string[]): Promise<void> {
     const selected = await panel
@@ -195,7 +195,7 @@ test('MenuPanel disabled actions remain unavailable and do not acquire hover hig
     await expect(panel.locator('[data-dialog-action="markers"]')).toBeFocused()
 })
 
-test('MenuPanel keyboard adapter navigates entity actions and skips disabled entries', async ({
+test('MenuPanel keyboard adapter navigates actions and skips disabled entries', async ({
     page,
 }) => {
     await page.goto(uiStoryUrl(`${storyId}--disabled`))
@@ -249,7 +249,7 @@ test('MenuPanel keyboard activation logs one action while confirmation is held',
     await expect(page.getByRole('tabpanel')).not.toContainText(/onAction:\s*\(2\)/)
 })
 
-test('MenuPanel entity navigation scrolls the last action into view', async ({ page }) => {
+test('MenuPanel keyboard navigation scrolls the last action into view', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 480 })
     await page.goto(uiStoryUrl(`${storyId}--overflow`))
     const panel = page.locator('.menu-panel')

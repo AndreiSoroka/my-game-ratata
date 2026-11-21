@@ -21,9 +21,10 @@
         "test:e2e:storybook": "playwright test --config playwright.storybook.config.ts",
         "build-only": "vite build",
         "type-check": "vue-tsc --build",
-        "lint": "run-s lint:oxlint lint:eslint",
+        "lint": "run-s lint:oxlint lint:eslint lint:fsd",
         "lint:oxlint": "oxlint .",
         "lint:eslint": "eslint . --cache --cache-location ./node_modules/.tmp/eslint/.eslintcache --max-warnings=0",
+        "lint:fsd": "CHOKIDAR_USEPOLLING=1 steiger ./src --config ./steiger.config.js",
         "lint:fix": "run-s lint:fix:oxlint lint:fix:eslint",
         "lint:fix:oxlint": "oxlint . --fix",
         "lint:fix:eslint": "eslint . --fix --cache --cache-location ./node_modules/.tmp/eslint/.eslintcache",
@@ -40,6 +41,7 @@
         "vue": "^3.5.45"
     },
     "devDependencies": {
+        "@feature-sliced/steiger-plugin": "0.8.2",
         "@playwright/test": "^1.65.0",
         "@storybook/addon-a11y": "10.6.6",
         "@storybook/addon-docs": "10.6.6",
@@ -63,6 +65,7 @@
         "npm-run-all2": "^9.0.4",
         "oxlint": "~1.92.0",
         "prettier": "3.9.10",
+        "steiger": "0.10.0",
         "storybook": "10.6.6",
         "typescript": "npm:@typescript/typescript6@^6.0.2",
         "vite": "^8.3.6",

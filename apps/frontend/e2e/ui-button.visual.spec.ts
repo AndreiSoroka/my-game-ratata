@@ -417,9 +417,7 @@ test('UiButton keeps real keyboard focus and highlight without a focus outline w
     await expect(noRing).not.toHaveCSS('background-image', transparentBackground)
 })
 
-test('Shared button and entity menu events use the built-in Storybook Actions panel', async ({
-    page,
-}) => {
+test('Shared button and menu events use the built-in Storybook Actions panel', async ({ page }) => {
     const cases = [
         {
             story: `${storyId}--default`,
@@ -434,7 +432,7 @@ test('Shared button and entity menu events use the built-in Storybook Actions pa
             event: /onClick:\s*\(1\)/,
         },
         {
-            story: 'entities-menu-menupanel--actions',
+            story: 'game-menu-menupanel--actions',
             button: '[data-dialog-action="markers"]',
             activate: (button: Locator) => button.click(),
             event: /onAction:\s*\(1\)\s*\["markers"\]/,
