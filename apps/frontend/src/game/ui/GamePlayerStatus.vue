@@ -2,14 +2,10 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
-import {
-    FaithStatusList,
-    projectPlayerEffects,
-    projectPlayerPatrons,
-} from '@/entities/player-effects'
+import { FaithStatusList, projectPlayerPatrons, SoulBadgeIcons } from '@/entities/player-effects'
 import { healthBarPercent, type PlayerVitalsData } from '@/entities/player-vitals'
 import { HudFrame } from '@/shared/ui/common'
-import { PlayerEffectsWidget } from '@/widgets/player-effects'
+import { PlayerEffectsStripWidget } from '@/widgets/player-effects'
 import { PlayerVitalsWidget } from '@/widgets/player-vitals'
 
 import { useStatusPanelBounds } from './useStatusPanelBounds'
@@ -35,21 +31,24 @@ const vitals = computed<PlayerVitalsData>(() => {
     }
 })
 const patrons = computed(() => projectPlayerPatrons(props.character))
-const effects = computed(() => projectPlayerEffects(props.character, props.serverTime))
 </script>
 
 <template>
     <div ref="panel" class="game-player-status">
-        <HudFrame>
+        <HudFrame class="game-player-status__vitals">
             <PlayerVitalsWidget v-bind="vitals" compact />
             <FaithStatusList :patrons="patrons" />
-            <PlayerEffectsWidget
-                :effects="effects"
+            <SoulBadgeIcons
+                class="game-player-status__identity"
                 :soul-kind="character.soul?.kind"
                 :is-can-speak="character.soul?.canSpeak"
-                compact
             />
         </HudFrame>
+        <PlayerEffectsStripWidget
+            class="game-player-status__effects"
+            :character="character"
+            :server-time="serverTime"
+        />
     </div>
 </template>
 
@@ -61,15 +60,61 @@ const effects = computed(() => projectPlayerEffects(props.character, props.serve
     right: 14px;
     z-index: 3;
     display: flex;
-    flex-direction: column;
-    width: min(220px, calc(100% - 28px));
+    flex-direction: row-reverse;
+    align-items: flex-start;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100% - 28px);
     max-height: max(0px, calc(100% - var(--game-player-status-top) - 112px));
+    pointer-events: none;
+}
+
+.game-player-status__vitals {
+    flex: none;
+    width: 220px;
+    max-width: 100%;
+    pointer-events: auto;
+}
+
+.game-player-status__identity {
+    --soul-badge-icon-size: 12px;
+    --soul-badge-icon-font: var(--ratata-font-family, sans-serif);
+    flex: none;
+    min-height: 16px;
+    gap: 4px;
+    margin-block-start: 5px;
+    border-block-start: 1px solid var(--ui-dark-panel-divider);
+    color: var(--ui-dark-panel-title);
+}
+
+.game-player-status__effects {
+    width: 224px;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
 }
 
 @media (max-width: 740px) {
     .game-player-status {
         right: 12px;
+        flex-direction: column;
+        align-items: flex-end;
+        max-width: calc(100% - 24px);
+    }
+
+    .game-player-status__vitals {
         width: 150px;
+    }
+
+    .game-player-status__effects {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
+@container (max-width: 180px) {
+    .game-player-status__identity {
+        --soul-badge-icon-size: 10px;
     }
 }
 </style>

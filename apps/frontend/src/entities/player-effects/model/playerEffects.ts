@@ -23,8 +23,21 @@ export interface PlayerEffect {
     stackLimit?: number
 }
 
+export interface PlayerEffectsSnapshot extends Pick<
+    CharacterSnapshot,
+    'alive' | 'combat' | 'prayerAuraEffects'
+> {
+    abilities?: Pick<NonNullable<CharacterSnapshot['abilities']>, 'barrier'>
+    cooldowns: Pick<CharacterSnapshot['cooldowns'], 'stunMsLeft'>
+    movement?: Pick<NonNullable<CharacterSnapshot['movement']>, 'mode' | 'dashing'>
+    theft?: Pick<
+        NonNullable<CharacterSnapshot['theft']>,
+        'cooldownMsLeft' | 'wantedMsLeft' | 'blacklisted'
+    >
+}
+
 export function projectPlayerEffects(
-    character: CharacterSnapshot,
+    character: PlayerEffectsSnapshot,
     serverTime?: number
 ): PlayerEffect[] {
     const effects = character.alive ? livingEffects(character, serverTime) : []
@@ -36,7 +49,7 @@ export function projectPlayerEffects(
 }
 
 function livingEffects(
-    character: CharacterSnapshot,
+    character: PlayerEffectsSnapshot,
     serverTime: number | undefined
 ): PlayerEffect[] {
     const { abilities, combat, cooldowns, movement, prayerAuraEffects } = character

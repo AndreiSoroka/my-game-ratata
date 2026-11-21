@@ -10,8 +10,10 @@ test.describe('shared gameplay controls', () => {
                 mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
             )
             await join(page, `keys-${info.workerIndex}-${mobile}`, 'arcanist')
-            const effects = page.getByRole('region', { name: 'Player effects' })
-            await expect(effects.getByText('Всё в порядке', { exact: true })).toBeVisible()
+            const hud = page.locator('.game-player-status')
+            await expect(hud.locator('.hud-frame')).toBeVisible()
+            await expect(hud.getByRole('list', { name: 'Player effects' })).toHaveCount(0)
+            await expect(hud.getByText('Всё в порядке', { exact: true })).toHaveCount(0)
             const slots = page
                 .getByLabel('Быстрые действия')
                 .getByRole('button', { name: /^[1-4]:/ })
@@ -31,8 +33,8 @@ test.describe('shared gameplay controls', () => {
             ).toEqual(position)
             await page.keyboard.press('Digit1')
             await expectPrivateBarrier(page)
-            await expectDisclosedBarrier(effects)
-            await expect(effects.getByText('Всё в порядке', { exact: true })).toHaveCount(0)
+            await expectDisclosedBarrier(page, hud, mobile)
+            await expectMobileTargetBelowHud(page, hud, mobile)
             await expect(slots.nth(0).locator('.hotbar-cooldown')).toBeVisible()
             await page.keyboard.press('Shift+Digit4')
             await page.keyboard.press('ArrowDown')
@@ -118,15 +120,58 @@ test.describe('shared gameplay controls', () => {
     })
 })
 
-async function expectDisclosedBarrier(effects: Locator): Promise<void> {
-    const disclosure = effects.getByRole('button', { name: 'Активные эффекты' })
-    const barrier = effects.locator('[data-player-effect="barrier"]')
-    await expect(disclosure).toHaveAttribute('aria-expanded', 'false')
-    await expect(barrier).toBeHidden()
-    await disclosure.press('Enter')
-    await expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+async function expectDisclosedBarrier(page: Page, hud: Locator, mobile: boolean): Promise<void> {
+    const strip = hud.locator('.player-effects-strip')
+    const effects = strip.getByRole('list', { name: 'Player effects' })
+    const barrier = effects.getByRole('button', { name: /Магический барьер/ })
+    const detail = strip.locator('[data-player-effect-detail]')
+    await expect(barrier).toHaveAttribute('data-player-effect', 'barrier')
     await expect(barrier).toBeVisible()
-    await expect(barrier).toContainText('Магический барьер')
+    await expect(barrier).toHaveAttribute('aria-expanded', 'false')
+    await expect(detail).toHaveCount(0)
+
+    const frameBounds = (await hud.locator('.hud-frame').boundingBox())!
+    const stripBounds = (await strip.boundingBox())!
+    const locationBounds = (await page
+        .getByRole('region', { name: 'World location' })
+        .boundingBox())!
+    const stripRight = stripBounds.x + stripBounds.width
+    if (mobile) {
+        expect(stripBounds.y).toBeGreaterThanOrEqual(frameBounds.y + frameBounds.height)
+        expect(stripRight).toBeCloseTo(frameBounds.x + frameBounds.width, 1)
+        expect(stripBounds.y).toBeGreaterThanOrEqual(locationBounds.y + locationBounds.height)
+    } else {
+        expect(stripRight).toBeLessThanOrEqual(frameBounds.x)
+        expect(stripBounds.y).toBeCloseTo(frameBounds.y, 1)
+        expect(stripBounds.x).toBeGreaterThanOrEqual(locationBounds.x + locationBounds.width)
+    }
+
+    await barrier.press('Enter')
+    await expect(barrier).toHaveAttribute('aria-expanded', 'true')
+    await expect(detail).toHaveCount(1)
+    await expect(detail).toContainText('Магический барьер')
+}
+
+async function expectMobileTargetBelowHud(
+    page: Page,
+    hud: Locator,
+    mobile: boolean
+): Promise<void> {
+    if (!mobile) return
+    const target = page.getByLabel('Выбранная цель', { exact: true })
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    await page.keyboard.press('KeyQ')
+    await expect(target).toContainText('Вы')
+    await expect(hud.locator('[data-player-effect-detail="barrier"]')).toBeVisible()
+    await expect
+        .poll(async () => {
+            const hudBounds = (await hud.boundingBox())!
+            const targetBounds = (await target.boundingBox())!
+            return targetBounds.y - hudBounds.y - hudBounds.height
+        })
+        .toBeGreaterThanOrEqual(0)
+    await page.keyboard.press('KeyQ')
+    await expect(target).toHaveCount(0)
 }
 
 async function expectPrivateBarrier(page: Page): Promise<void> {

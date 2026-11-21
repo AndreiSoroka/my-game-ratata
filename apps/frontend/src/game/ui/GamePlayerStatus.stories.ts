@@ -109,6 +109,20 @@ export const Wanted: Story = {
     render: () => statusStory({ character: wantedStatusFixture() }),
 }
 
+export const ActiveEffects: Story = {
+    render: () => {
+        const character = wantedStatusFixture()
+        return statusStory({
+            serverTime: 1_000,
+            character: {
+                ...character,
+                abilities: { ...character.abilities!, barrier: { expiresAt: 6_000 } },
+                prayerAuraEffects: ['prayer-blessing'],
+            },
+        })
+    },
+}
+
 export const ManyEffects: Story = {
     render: () => {
         const character = wantedStatusFixture()

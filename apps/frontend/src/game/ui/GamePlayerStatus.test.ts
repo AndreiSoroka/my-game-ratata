@@ -25,14 +25,13 @@ describe('production player status', () => {
         expect(panel.find('[data-fantasy-divider="divider-005"]').exists()).toBe(false)
         expect(panel.find('.soul-badge-icons').exists()).toBe(false)
         expect(panel.find('[aria-label="Player effects"]').exists()).toBe(false)
-        const effects = frame.get('[aria-label="Player effects"]')
-        const icons = effects.get('.player-effects__identity')
-        expect(effects.find('h2').exists()).toBe(false)
+        const icons = frame.get('.game-player-status__identity')
         expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
             'Искра',
             'Есть речь',
         ])
-        expect(effects.text()).toContain('Всё в порядке')
+        expect(wrapper.find('.player-effects-strip').exists()).toBe(false)
+        expect(wrapper.text()).not.toContain('Всё в порядке')
         for (const label of ['Connected', 'Шаг', 'Рывок', 'DMG', 'Dodge', 'Crit', 'Speed', 'CD'])
             expect(wrapper.text()).not.toContain(label)
         expect(
@@ -155,7 +154,7 @@ describe('earned HUD status', () => {
     })
 })
 
-describe('player effects widget', () => {
+describe('player identity', () => {
     it('updates active model Spark and independent speech indicators without textual badges', async () => {
         const wrapper = mount(GamePlayerStatus, { props: { character: playerStatusFixture() } })
         await wrapper.setProps({
@@ -169,41 +168,51 @@ describe('player effects widget', () => {
                 },
             }),
         })
-        const effects = wrapper.get('[aria-label="Player effects"]')
-        const icons = effects.get('.player-effects__identity')
+        const icons = wrapper.get('.hud-frame').get('.game-player-status__identity')
         expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
             'Искра',
             'Без речи',
         ])
         expect(icons.text()).not.toContain('Искра')
         expect(icons.text()).not.toContain('Без речи')
-        expect(effects.text()).toContain('Всё в порядке')
         wrapper.unmount()
     })
-    it('keeps law previews visible and discloses three separate status rows', async () => {
+})
+
+describe('player effects strip', () => {
+    it('projects law effects into a sibling strip and discloses one effect at a time', async () => {
         const wrapper = mount(GamePlayerStatus, { props: { character: wantedStatusFixture() } })
-        const resources = wrapper.get('[aria-label="Player vitals"]')
-        const effects = wrapper.get('[aria-label="Player effects"]')
-        expect(resources.find('[data-player-effect]').exists()).toBe(false)
-        const disclosure = effects.get('button[aria-label="Активные эффекты"]')
-        const list = effects.get('ul')
-        expect(disclosure.find('[data-effect-preview]').exists()).toBe(true)
-        expect(disclosure.attributes('aria-expanded')).toBe('false')
-        expect(list.element.style.display).toBe('none')
-        await disclosure.trigger('click')
-        expect(disclosure.attributes('aria-expanded')).toBe('true')
-        expect(list.element.style.display).toBe('')
-        expect(list.findAll('[data-player-effect]').map((row) => row.text())).toEqual([
-            'Кража · 4 с',
-            'Розыск · 22 с',
-            'В чёрном списке Новогорода',
+        const frame = wrapper.get('.hud-frame')
+        const strip = wrapper.get('.player-effects-strip')
+        const tiles = strip.findAll('button[data-player-effect]')
+        expect(frame.element.nextElementSibling).toBe(strip.element)
+        expect(frame.find('[data-player-effect]').exists()).toBe(false)
+        expect(tiles.map((tile) => tile.attributes('data-player-effect'))).toEqual([
+            'theft-cooldown',
+            'wanted',
+            'blacklisted',
         ])
-        await disclosure.trigger('click')
-        expect(disclosure.attributes('aria-expanded')).toBe('false')
-        expect(list.element.style.display).toBe('none')
+        expect(tiles.map((tile) => tile.attributes('aria-expanded'))).toEqual([
+            'false',
+            'false',
+            'false',
+        ])
+        const theft = strip.get('[data-player-effect="theft-cooldown"]')
+        const wanted = strip.get('[data-player-effect="wanted"]')
+        await theft.trigger('click')
+        expect(theft.attributes('aria-expanded')).toBe('true')
+        const theftDetail = strip.get('[data-player-effect-detail]').text()
+        expect(theftDetail).toContain('Кража')
+        expect(theftDetail).toContain('4 с')
+        await wanted.trigger('click')
+        expect(theft.attributes('aria-expanded')).toBe('false')
+        expect(wanted.attributes('aria-expanded')).toBe('true')
+        const wantedDetail = strip.get('[data-player-effect-detail]').text()
+        expect(wantedDetail).toContain('Розыск')
+        expect(wantedDetail).toContain('22 с')
         wrapper.unmount()
     })
-    it('keeps the blacklist label after temporary pursuit expires', () => {
+    it('keeps the blacklist label after temporary pursuit expires', async () => {
         const wrapper = mount(GamePlayerStatus, {
             props: {
                 character: playerStatusFixture({
@@ -217,15 +226,17 @@ describe('player effects widget', () => {
                 }),
             },
         })
-        const effects = wrapper.get('[aria-label="Player effects"]')
-        expect(effects.findAll('[data-player-effect]').map((row) => row.text())).toEqual([
-            'В чёрном списке Новогорода',
-        ])
+        const strip = wrapper.get('.player-effects-strip')
+        expect(strip.findAll('[data-player-effect]')).toHaveLength(1)
+        await strip.get('[data-player-effect="blacklisted"]').trigger('click')
+        expect(strip.get('[data-player-effect-detail]').text()).toContain(
+            'В чёрном списке Новогорода'
+        )
         expect(wrapper.find('[aria-label="Покровитель и развитие"]').exists()).toBe(false)
         expect(wrapper.find('[data-fantasy-divider="divider-002"]').exists()).toBe(false)
         wrapper.unmount()
     })
-    it('replaces elapsed effects with the normal-state message', async () => {
+    it('removes the strip when the last effects expire', async () => {
         const character = playerStatusFixture({
             cooldowns: { attackMsLeft: 500, respawnMsLeft: 0, stunMsLeft: 800 },
             abilities: {
@@ -253,10 +264,9 @@ describe('player effects widget', () => {
             },
             serverTime: 3_500,
         })
-        const effects = wrapper.get('[aria-label="Player effects"]')
-        expect(effects.text()).toContain('Всё в порядке')
-        expect(effects.findAll('[data-player-effect]')).toHaveLength(0)
-        expect(effects.find('button[aria-label="Активные эффекты"]').exists()).toBe(false)
+        expect(wrapper.find('.player-effects-strip').exists()).toBe(false)
+        expect(wrapper.findAll('[data-player-effect]')).toHaveLength(0)
+        expect(wrapper.get('.hud-frame').find('.game-player-status__identity').exists()).toBe(true)
         wrapper.unmount()
     })
 })
