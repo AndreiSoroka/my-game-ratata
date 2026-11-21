@@ -266,15 +266,15 @@ test('player vitals widget shows the compact HUD and responds to Controls', asyn
     await expect(health).toHaveAttribute('data-animated', 'true')
 })
 
-test('player vitals entity shows the game layout and edits fill and exact values independently', async ({
+test('player vitals entity mounts directly and edits fill and exact values independently', async ({
     page,
 }) => {
     await page.goto('/?path=/story/entities-player-vitals-playervitalsview--authorized-numbers')
     const preview = page.frameLocator('#storybook-preview-iframe')
     const frame = preview.locator('.hud-frame')
-    await expectHudFrame(frame)
-    await expect(frame).toHaveCSS('width', '220px')
-    const vitals = frame.getByRole('region', { name: 'Player vitals' })
+    const vitals = preview.locator('#storybook-root > div > .player-vitals')
+    await expect(vitals).toHaveCSS('width', '220px')
+    await expect(frame).toHaveCount(0)
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
     await assertResourceBars(vitals, [60, 25, 82], ['18/30', '10/40', '123/150'])
     const health = vitals.getByRole('progressbar', { name: 'Health' })
@@ -296,16 +296,14 @@ test('player vitals entity shows the game layout and edits fill and exact values
 
     await compact.press('Space')
     await expect(compact).not.toBeChecked()
-    const standalone = preview.getByRole('region', { name: 'Player vitals' })
-    await expect(standalone.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(2)
-    await expect(frame).toHaveCount(1)
-    await expect(
-        standalone.getByRole('progressbar', { name: 'Health' }).locator('.bar-track')
-    ).toHaveCSS('height', '18px')
+    await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(2)
+    await expectHudFrame(frame)
+    await expect(health.locator('.bar-track')).toHaveCSS('height', '18px')
 
     await compact.press('Space')
     await expect(compact).toBeChecked()
-    await expect(frame).toHaveCSS('width', '220px')
+    await expect(vitals).toHaveCSS('width', '220px')
+    await expect(frame).toHaveCount(0)
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
 })
 

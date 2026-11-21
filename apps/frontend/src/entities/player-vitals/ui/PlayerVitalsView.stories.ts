@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
-import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
-import { HudFrame } from '@/shared/ui/common/hud-frame'
 
 import type { PlayerVitalsViewProps } from '../model/playerVitals'
 import PlayerVitalsView from './PlayerVitalsView.vue'
@@ -41,19 +39,8 @@ const meta = {
         energyMax: number,
     },
     render(args) {
-        const host = renderVueStory(
-            {
-                render() {
-                    const vitals = h(PlayerVitalsView, { ...args })
-                    return args.compact
-                        ? h(HudFrame, { style: { width: 'min(220px, 100%)' } }, () => vitals)
-                        : vitals
-                },
-            },
-            {},
-            { padding: '16px' }
-        )
-        host.style.maxWidth = '362px'
+        const host = renderVueStory(PlayerVitalsView, { ...args }, { padding: '16px' })
+        host.style.maxWidth = args.compact ? '252px' : '362px'
         return host
     },
 } satisfies Meta<PlayerVitalsViewProps>

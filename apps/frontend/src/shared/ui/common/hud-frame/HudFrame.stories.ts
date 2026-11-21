@@ -12,9 +12,7 @@ export const Default: StoryObj = {
         renderVueStory(
             {
                 render: () =>
-                    h(HudFrame, { style: { width: '300px' } }, () =>
-                        h('div', { style: { padding: '8px 12px 10px' } }, 'Статус игрока')
-                    ),
+                    h(HudFrame, { style: { width: 'min(300px, 100%)' } }, () => 'Статус игрока'),
             },
             {}
         ),

@@ -4,7 +4,7 @@ import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import BarFillStory from './BarFillStory.vue'
-import type { BarFillProps } from './index'
+import { BarFill, type BarFillProps } from './index'
 
 const meta = {
     title: 'Shared/Common/BarFill',
@@ -18,17 +18,24 @@ const meta = {
 export default meta
 type Story = StoryObj<BarFillProps>
 
-function preview(section: 'default' | 'colors' | 'sizes', args: BarFillProps = {}): HTMLElement {
+function preview(section: 'colors' | 'sizes'): HTMLElement {
     const host = renderVueStory(
         BarFillStory,
-        { section, ...args },
+        { section },
         { background: lightUiColors.panel.coffee }
     )
     host.style.minHeight = '100dvh'
     return host
 }
 
-export const Default: Story = { render: (args) => preview('default', args) }
+export const Default: Story = {
+    render: (args) =>
+        renderVueStory(BarFill, {
+            ...args,
+            'data-testid': 'fill-default',
+            style: { maxWidth: '560px' },
+        }),
+}
 export const Colors: Story = {
     parameters: { controls: { disable: true } },
     render: () => preview('colors'),

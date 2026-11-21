@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { lightUiColors } from '@/shared/ui/theme'
 
-import { BarFill, type BarFillProps } from './index'
+import { BarFill } from './index'
 
-withDefaults(defineProps<BarFillProps & { section?: 'default' | 'colors' | 'sizes' }>(), {
-    section: 'default',
-    shadow: undefined,
-})
+defineProps<{ section: 'colors' | 'sizes' }>()
 const colors = [
     { label: 'Здоровье', color: lightUiColors.bar.health.color },
     { label: 'Бирюзовый', color: 'hsl(178 30% 42%)' },
@@ -17,22 +14,14 @@ const heights = [10, 18, 24, 34]
 
 <template>
     <section class="bar-fill-story" data-testid="bar-fill-story" aria-label="BarFill">
-        <h2>
-            {{
-                section === 'colors'
-                    ? 'Цвета заполнения'
-                    : section === 'sizes'
-                      ? 'Высота и кромка'
-                      : 'BarFill'
-            }}
-        </h2>
+        <h2>{{ section === 'colors' ? 'Цвета заполнения' : 'Высота и кромка' }}</h2>
         <template v-if="section === 'colors'">
             <figure v-for="sample in colors" :key="sample.label">
                 <figcaption>{{ sample.label }}</figcaption>
                 <BarFill :color="sample.color" />
             </figure>
         </template>
-        <template v-else-if="section === 'sizes'">
+        <template v-else>
             <figure v-for="size in heights" :key="size">
                 <figcaption>{{ size }} px</figcaption>
                 <BarFill :height="size" />
@@ -42,13 +31,6 @@ const heights = [10, 18, 24, 34]
                 <BarFill :shadow="false" />
             </figure>
         </template>
-        <BarFill
-            v-else
-            :color="color"
-            :height="height"
-            :shadow="shadow"
-            data-testid="fill-default"
-        />
     </section>
 </template>
 

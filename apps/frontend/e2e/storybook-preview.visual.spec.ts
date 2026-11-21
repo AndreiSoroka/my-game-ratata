@@ -12,18 +12,21 @@ const stories = [
         name: 'FantasyBorder',
         id: 'shared-external-fantasy-ui-borders-fantasyborder',
         testId: 'fantasy-border-story',
+        defaultTestId: 'border-default',
         sections: ['default', 'variants', 'colors', 'composition', 'sizes'],
     },
     {
         name: 'FantasyDivider',
         id: 'shared-external-fantasy-ui-borders-fantasydivider',
         testId: 'fantasy-divider-story',
+        defaultTestId: 'divider-default',
         sections: ['default', 'variants', 'directions', 'colors', 'sizes'],
     },
     {
         name: 'FantasyPanel',
         id: 'shared-external-fantasy-ui-borders-fantasypanel',
         testId: 'fantasy-panel-story',
+        defaultTestId: 'panel-default',
         sections: ['default', 'variants', 'appearances', 'colors', 'composition', 'sizes'],
     },
 ] as const
@@ -45,7 +48,9 @@ for (const story of stories) {
         page,
     }) => {
         await page.goto(`/iframe.html?id=${story.id}--default&viewMode=story`)
-        await expect(page.getByTestId(story.testId)).toBeVisible()
+        await expect(
+            page.locator(`#storybook-root > div > [data-testid="${story.defaultTestId}"]`)
+        ).toBeVisible()
         const background = await resolvedColor(page, lightUiColors.button.wood.bottom)
         await expect(page.locator('body')).toHaveCSS('background-color', background)
         await page.evaluate(() => document.fonts.ready)
@@ -92,18 +97,20 @@ for (const story of stories) {
                     globals: `backgrounds.value:${preset}`,
                 })
                 await page.goto(`/iframe.html?${query}`)
-                const stage = page.getByTestId(story.testId)
-                await expect(stage).toBeVisible()
+                const content = page.getByTestId(
+                    section === 'default' ? story.defaultTestId : story.testId
+                )
+                await expect(content).toBeVisible()
                 const background = await resolvedColor(page, reference)
                 expect(background).not.toBe('rgba(0, 0, 0, 0)')
                 await expect(page.locator('body')).toHaveCSS('background-color', background)
-                await expect(stage).toHaveCSS('color', await resolvedColor(page, foreground))
-                await expect(stage).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-                await expect(stage).toHaveCSS('background-image', 'none')
-                const host = page.locator('#storybook-root > div').filter({ has: stage })
+                await expect(content).toHaveCSS('color', await resolvedColor(page, foreground))
+                const host = page.locator('#storybook-root > div').filter({ has: content })
                 await expect(host).toHaveCount(1)
-                await expect(host).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-                await expect(host).toHaveCSS('background-image', 'none')
+                for (const surface of await host.or(page.getByTestId(story.testId)).all()) {
+                    await expect(surface).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+                    await expect(surface).toHaveCSS('background-image', 'none')
+                }
             }
         })
     }
@@ -119,20 +126,18 @@ for (const story of stories) {
                 globals: 'backgrounds.value:!undefined',
             })
             await page.goto(`/iframe.html?${query}`)
-            const stage = page.getByTestId(story.testId)
+            const component = page.getByTestId(story.defaultTestId)
             const body = page.locator('body')
-            await expect(stage).toBeVisible()
+            await expect(component).toBeVisible()
             await expect(body).toHaveCSS(
                 'background-color',
                 await resolvedColor(page, 'var(--color-background)')
             )
-            await expect(stage).toHaveCSS(
+            await expect(component).toHaveCSS(
                 'color',
                 await body.evaluate((element) => getComputedStyle(element).color)
             )
-            await expect(stage).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-            await expect(stage).toHaveCSS('background-image', 'none')
-            const host = page.locator('#storybook-root > div').filter({ has: stage })
+            const host = page.locator('#storybook-root > div').filter({ has: component })
             await expect(host).toHaveCount(1)
             await expect(host).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
             await expect(host).toHaveCSS('background-image', 'none')
@@ -143,11 +148,11 @@ for (const story of stories) {
 test('FantasyDivider Default Controls update the rendered divider', async ({ page }) => {
     await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasydivider--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
-    await expect(preview.getByTestId('fantasy-divider-story')).toBeVisible()
+    const divider = preview.getByTestId('divider-default')
+    await expect(divider).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
     await expect(controls).toBeVisible()
     await controls.click()
-    const divider = preview.getByTestId('divider-default')
     await expect(page.locator('#control-divider')).toHaveValue('divider-000')
     await page.locator('#control-divider').selectOption('divider-004')
     await expect(divider).toHaveAttribute('data-fantasy-divider', 'divider-004')
@@ -166,26 +171,24 @@ test('FantasyDivider Default Controls update the rendered divider', async ({ pag
 test('FantasyBorder Default Controls update the rendered border', async ({ page }) => {
     await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasyborder--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
-    await expect(preview.getByTestId('fantasy-border-story')).toBeVisible()
+    const border = preview.getByTestId('border-default')
+    await expect(border).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
     await expect(controls).toBeVisible()
     await controls.click()
     await expect(page.locator('#control-border')).toHaveValue('border-026')
     await page.locator('#control-border').selectOption('border-025')
-    await expect(preview.getByTestId('border-default')).toHaveAttribute(
-        'data-fantasy-border',
-        'border-025'
-    )
+    await expect(border).toHaveAttribute('data-fantasy-border', 'border-025')
 })
 
 test('FantasyPanel Controls edit both colors independently', async ({ page }) => {
     await page.goto('/?path=/story/shared-external-fantasy-ui-borders-fantasypanel--default')
     const preview = page.frameLocator('#storybook-preview-iframe')
-    await expect(preview.getByTestId('fantasy-panel-story')).toBeVisible()
+    const panel = preview.getByTestId('panel-default')
+    await expect(panel).toBeVisible()
     const controls = page.getByRole('tab', { name: /^Controls/ })
     await expect(controls).toHaveAccessibleName(/^Controls\s*4$/)
     await controls.click()
-    const panel = preview.getByTestId('panel-default')
     await expect(page.locator('#control-panel')).toHaveValue('panel-026')
     await expect(page.locator('#control-panel option[value^="panel-"]')).toHaveCount(32)
     await expect(page.locator('#control-appearance')).toHaveValue('solid')

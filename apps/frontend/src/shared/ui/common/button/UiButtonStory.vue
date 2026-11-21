@@ -3,16 +3,7 @@ import type { FantasyBorderVariant } from '@/shared/ui/external/fantasy-ui-borde
 
 import { UiButton, type UiButtonProps, type UiButtonVariant } from './index'
 
-const props = withDefaults(
-    defineProps<
-        UiButtonProps & {
-            section: string
-            label?: string
-            onButtonClick?: (event: MouseEvent) => void
-        }
-    >(),
-    { highlighted: undefined, focusRing: undefined }
-)
+const props = defineProps<{ section: string; onButtonClick: (event: MouseEvent) => void }>()
 const variants: UiButtonVariant[] = ['secondary', 'primary', 'success', 'danger']
 const borders = Array.from(
     { length: 32 },
@@ -29,7 +20,6 @@ const appearances: { id: string; caption: string; props: UiButtonProps }[] = [
     },
 ]
 const labels = {
-    default: 'UiButton',
     appearances: 'Оформление кнопок',
     variants: 'Смысловые цвета',
     borders: 'Все 32 рамки',
@@ -39,7 +29,7 @@ const labels = {
 } as const
 function reportClick(event: MouseEvent): void {
     if (event.target instanceof Element && event.target.closest('.ui-button')) {
-        props.onButtonClick?.(event)
+        props.onButtonClick(event)
     }
 }
 </script>
@@ -52,23 +42,7 @@ function reportClick(event: MouseEvent): void {
         @click="reportClick"
     >
         <h2>{{ labels[section as keyof typeof labels] }}</h2>
-        <template v-if="section === 'default'">
-            <UiButton
-                :border="border"
-                :appearance="appearance"
-                :panel="panel"
-                :panel-appearance="panelAppearance"
-                :variant="variant"
-                :colors="colors"
-                :highlighted="highlighted"
-                :focus-ring="focusRing"
-                :disabled="disabled"
-                :type="type"
-                data-testid="ui-button-default"
-                >{{ label }}</UiButton
-            >
-        </template>
-        <div v-else-if="section === 'appearances'" class="ui-button-story__grid">
+        <div v-if="section === 'appearances'" class="ui-button-story__grid">
             <figure v-for="mode in appearances" :key="mode.id">
                 <UiButton v-bind="mode.props" :data-testid="`ui-button-${mode.id}`"
                     >Продолжить</UiButton

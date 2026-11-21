@@ -117,7 +117,9 @@ for (const width of [1280, 390, 320]) {
         test(`FantasyDivider ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 1000 })
             await page.goto(`/iframe.html?id=${storyId}--${section}&viewMode=story`)
-            const stage = page.getByTestId('fantasy-divider-story')
+            const stage = page.getByTestId(
+                section === 'default' ? 'divider-default' : 'fantasy-divider-story'
+            )
             await expect(stage).toBeVisible()
             await ready(page)
             await assertFits(stage, width)

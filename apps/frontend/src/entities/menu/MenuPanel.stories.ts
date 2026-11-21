@@ -3,7 +3,7 @@ import { fn } from 'storybook/test'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import type { MenuPanelProps } from './index'
+import { MenuPanel, type MenuPanelProps } from './index'
 import MenuPanelStory from './MenuPanelStory.vue'
 import { menuStoryItems } from './menuStoryItems'
 
@@ -31,7 +31,14 @@ function preview(section: string, props: Partial<MenuStoryArgs> = {}): HTMLEleme
     return renderVueStory(MenuPanelStory, { section, ...props }, { padding: '16px' })
 }
 
-export const Default: Story = { render: (args) => preview('default', args) }
+export const Default: Story = {
+    render(args) {
+        const host = renderVueStory(MenuPanel, { ...args }, { padding: '16px' })
+        host.style.maxWidth = '412px'
+        host.style.marginInline = 'auto'
+        return host
+    },
+}
 export const Actions: Story = {
     parameters: { controls: { disable: true } },
     render: (args) => preview('actions', { onAction: args.onAction }),

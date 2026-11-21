@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
+import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import FantasyBorderStory from './FantasyBorderStory.vue'
-import type { FantasyBorderVariant } from './index'
+import { FantasyBorder, type FantasyBorderVariant } from './index'
 
 type BorderArgs = { border: FantasyBorderVariant; borderWidth?: number; color: string }
-type Section = 'default' | 'variants' | 'colors' | 'composition' | 'sizes'
+type Section = 'variants' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
     { length: 32 },
     (_, index) => `border-${String(index).padStart(3, '0')}` as FantasyBorderVariant
@@ -25,38 +26,54 @@ const meta = {
 export default meta
 type Story = StoryObj<BorderArgs>
 
-function preview(
-    section: Section,
-    args: Partial<BorderArgs>,
-    globals: Record<string, unknown>
-): HTMLElement {
+function canvasForeground(globals: Record<string, unknown>): string {
     const backgrounds = globals.backgrounds as { value?: string } | string | undefined
     const background = typeof backgrounds === 'string' ? backgrounds : backgrounds?.value
-    const foreground =
-        background === 'wood' || background === 'dark'
-            ? lightUiColors.button.text
-            : background === 'parchment'
-              ? lightUiColors.panel.text
-              : 'inherit'
-    return renderVueStory(FantasyBorderStory, { section, ...args, foreground })
+    return background === 'wood' || background === 'dark'
+        ? lightUiColors.button.text
+        : background === 'parchment'
+          ? lightUiColors.panel.text
+          : 'inherit'
+}
+
+function preview(section: Section, globals: Record<string, unknown>): HTMLElement {
+    return renderVueStory(FantasyBorderStory, { section, foreground: canvasForeground(globals) })
 }
 
 export const Default: Story = {
-    render: (args, context) => preview('default', args, context.globals),
+    render(args, context) {
+        const host = renderVueStory(
+            () =>
+                h(
+                    FantasyBorder,
+                    {
+                        ...args,
+                        role: 'region',
+                        'aria-label': 'FantasyBorder',
+                        'data-testid': 'border-default',
+                        style: { width: 'min(480px, 100%)', padding: '16px' },
+                    },
+                    () => 'Рамка с содержимым'
+                ),
+            {}
+        )
+        host.style.color = canvasForeground(context.globals)
+        return host
+    },
 }
 export const Variants: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('variants', {}, context.globals),
+    render: (_args, context) => preview('variants', context.globals),
 }
 export const Colors: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('colors', {}, context.globals),
+    render: (_args, context) => preview('colors', context.globals),
 }
 export const Composition: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('composition', {}, context.globals),
+    render: (_args, context) => preview('composition', context.globals),
 }
 export const Sizes: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('sizes', {}, context.globals),
+    render: (_args, context) => preview('sizes', context.globals),
 }

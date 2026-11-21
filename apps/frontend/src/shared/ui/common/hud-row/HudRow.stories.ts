@@ -78,13 +78,10 @@ const meta = {
                         }
                     ),
             },
-            {},
-            { background: lightUiColors.panel.parchment }
+            {}
         )
         host.style.maxWidth = `${args.width}px`
         host.style.containerType = 'inline-size'
-        host.style.color = lightUiColors.panel.text
-        host.style.font = '12px/1.4 var(--ratata-font-family, sans-serif)'
         return host
     },
 } satisfies Meta<StoryArgs>

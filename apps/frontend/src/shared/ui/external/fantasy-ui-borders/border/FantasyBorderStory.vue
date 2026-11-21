@@ -4,10 +4,7 @@ import { lightUiColors } from '@/shared/ui/theme'
 import { FantasyBorder, type FantasyBorderVariant } from './index'
 
 defineProps<{
-    section: 'default' | 'variants' | 'colors' | 'composition' | 'sizes'
-    border?: FantasyBorderVariant
-    borderWidth?: number
-    color?: string
+    section: 'variants' | 'colors' | 'composition' | 'sizes'
     foreground?: string
 }>()
 const variants = Array.from(
@@ -39,20 +36,7 @@ const sizeExamples = [
         :aria-label="`FantasyBorder: ${section}`"
         :style="{ color: foreground ?? lightUiColors.button.text }"
     >
-        <template v-if="section === 'default'">
-            <h2>FantasyBorder</h2>
-            <FantasyBorder
-                :border="border"
-                :border-width="borderWidth"
-                :color="color"
-                class="border-default"
-                data-testid="border-default"
-            >
-                <strong>Одна рамка, любое содержимое</strong>
-                <p>Вариант и цвет задаются через публичные props.</p>
-            </FantasyBorder>
-        </template>
-        <template v-else-if="section === 'variants'">
+        <template v-if="section === 'variants'">
             <h2>32 варианта рамок</h2>
             <div class="border-variant-grid">
                 <figure v-for="variant in variants" :key="variant">
@@ -190,14 +174,6 @@ figcaption {
     margin-top: 8px;
     overflow-wrap: anywhere;
     font-size: 12px;
-}
-.border-default {
-    width: min(480px, 100%);
-    padding: 22px;
-}
-.border-default strong {
-    display: block;
-    font-size: 18px;
 }
 .border-variant-grid {
     display: grid;

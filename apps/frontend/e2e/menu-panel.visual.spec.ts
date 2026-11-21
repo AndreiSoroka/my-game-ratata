@@ -60,7 +60,7 @@ test('MenuPanel uses the approved double frame, coffee palette and external item
 
 test('MenuPanel separates Exit with the requested two-ended native divider', async ({ page }) => {
     await page.goto(uiStoryUrl(`${storyId}--default`))
-    const panel = page.locator('.menu-panel')
+    const panel = page.locator('#storybook-root > div > .menu-panel')
     await expect(panel).toBeVisible()
     await readyUiStory(page)
     const divider = panel.locator('.menu-panel__divider')

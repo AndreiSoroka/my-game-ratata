@@ -4,7 +4,7 @@ import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import BarTrackStory from './BarTrackStory.vue'
-import type { BarTrackProps } from './index'
+import { BarTrack, type BarTrackProps } from './index'
 
 const meta = {
     title: 'Shared/Common/BarTrack',
@@ -18,10 +18,10 @@ const meta = {
 export default meta
 type Story = StoryObj<BarTrackProps>
 
-function preview(section: string, args: Partial<BarTrackProps> = {}): HTMLElement {
+function preview(section: 'colors' | 'sizes'): HTMLElement {
     const host = renderVueStory(
         BarTrackStory,
-        { section, ...args },
+        { section },
         { background: lightUiColors.panel.coffee }
     )
     host.style.minHeight = '100dvh'
@@ -29,7 +29,12 @@ function preview(section: string, args: Partial<BarTrackProps> = {}): HTMLElemen
 }
 
 export const Default: Story = {
-    render: (args) => preview('default', args),
+    render: (args) =>
+        renderVueStory(BarTrack, {
+            ...args,
+            'data-testid': 'track-default',
+            style: { maxWidth: '560px' },
+        }),
 }
 export const Colors: Story = {
     parameters: { controls: { disable: true } },

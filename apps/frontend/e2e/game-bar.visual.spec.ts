@@ -6,16 +6,19 @@ const catalogs = [
     {
         name: 'bar-track',
         story: 'shared-common-bartrack',
+        defaultId: 'track-default',
         sections: ['default', 'colors', 'sizes'],
     },
     {
         name: 'bar-fill',
         story: 'shared-common-barfill',
+        defaultId: 'fill-default',
         sections: ['default', 'colors', 'sizes'],
     },
     {
         name: 'game-bar',
         story: 'shared-common-gamebar',
+        defaultId: 'game-bar-default',
         sections: ['default', 'with-value', 'resources', 'values', 'colors', 'sizes'],
     },
 ]
@@ -27,14 +30,20 @@ function barStoryUrl(story: string): string {
 for (const width of [1280, 390, 320]) {
     for (const catalog of catalogs) {
         for (const section of catalog.sections) {
+            const subject =
+                section === 'default'
+                    ? `#storybook-root > div > [data-testid="${catalog.defaultId}"]`
+                    : `[data-testid="${catalog.name}-story"]`
+            const background = section === 'default' ? 'rgba(0, 0, 0, 0)' : 'rgb(243, 228, 199)'
+
             test(`${catalog.name} ${section} at ${width}px`, async ({ page }) => {
                 await page.setViewportSize({ width, height: 1000 })
                 await page.goto(barStoryUrl(`${catalog.story}--${section}`))
-                const stage = page.getByTestId(`${catalog.name}-story`)
+                const stage = page.locator(subject)
                 await expect(stage).toBeVisible()
                 await expect(page.locator('#storybook-root > div')).toHaveCSS(
                     'background-color',
-                    'rgb(243, 228, 199)'
+                    background
                 )
                 await readyUiStory(page)
                 await expectUiFits(stage, width)

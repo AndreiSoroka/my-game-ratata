@@ -131,7 +131,9 @@ for (const width of [1280, 390, 320]) {
         test(`FantasyPanel ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 1000 })
             await page.goto(`/iframe.html?id=${storyId}--${section}&viewMode=story`)
-            const stage = page.getByTestId('fantasy-panel-story')
+            const stage = page.getByTestId(
+                section === 'default' ? 'panel-default' : 'fantasy-panel-story'
+            )
             await expect(stage).toBeVisible()
             await ready(page)
             await assertFits(stage, width)
@@ -230,8 +232,8 @@ test('FantasyPanel colors the ornament and the full surface independently', asyn
         const panel = page.getByTestId('panel-default')
         await expect(panel).toHaveAttribute('data-fantasy-panel-appearance', appearance)
         await ready(page)
-        await page.getByTestId('fantasy-panel-story').evaluate((stage) => {
-            stage.style.backgroundColor = 'white'
+        await page.locator('#storybook-root > div').evaluate((host) => {
+            ;(host as HTMLElement).style.backgroundColor = 'white'
         })
         const pixels = await readScreenshotPixels(panel)
         expect(screenshotPixel(pixels, 0, 0)).toEqual(ornament)

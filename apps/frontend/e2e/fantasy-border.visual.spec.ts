@@ -61,7 +61,9 @@ for (const width of [1280, 390, 320]) {
         test(`FantasyBorder ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 1000 })
             await page.goto(`/iframe.html?id=${storyId}--${section}&viewMode=story`)
-            const stage = page.getByTestId('fantasy-border-story')
+            const stage = page.getByTestId(
+                section === 'default' ? 'border-default' : 'fantasy-border-story'
+            )
             await expect(stage).toBeVisible()
             await ready(page)
             await assertFits(stage, width)

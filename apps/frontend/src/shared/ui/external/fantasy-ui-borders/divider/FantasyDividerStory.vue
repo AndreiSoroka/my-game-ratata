@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { lightUiColors } from '@/shared/ui/theme'
 
-import { FantasyDivider, type FantasyDividerEnds, type FantasyDividerVariant } from './index'
+import { FantasyDivider, type FantasyDividerVariant } from './index'
 
 defineProps<{
-    section: 'default' | 'variants' | 'directions' | 'colors' | 'sizes'
-    divider?: FantasyDividerVariant
-    color?: string
-    fade?: boolean
-    ends?: FantasyDividerEnds
+    section: 'variants' | 'directions' | 'colors' | 'sizes'
     foreground?: string
 }>()
 const variants = Array.from(
@@ -46,19 +42,7 @@ const sizes = [
         :aria-label="`FantasyDivider: ${section}`"
         :style="{ color: foreground ?? lightUiColors.button.text }"
     >
-        <template v-if="section === 'default'">
-            <h2>FantasyDivider</h2>
-            <p>Декоративный разделитель сохраняет высоту исходного орнамента.</p>
-            <FantasyDivider
-                :divider="divider"
-                :color="color"
-                :fade="fade"
-                :ends="ends"
-                data-testid="divider-default"
-                aria-label="Пример разделителя"
-            />
-        </template>
-        <template v-else-if="section === 'variants'">
+        <template v-if="section === 'variants'">
             <h2>Шесть вариантов и затухание</h2>
             <section v-for="variant in variants" :key="variant" class="divider-comparison">
                 <h3>{{ variant }}</h3>

@@ -4,7 +4,7 @@ import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import GameBarStory from './GameBarStory.vue'
-import type { GameBarProps } from './index'
+import { GameBar, type GameBarProps } from './index'
 
 const meta = {
     title: 'Shared/Common/GameBar',
@@ -44,7 +44,14 @@ function preview(section: string, props: Partial<GameBarProps> = {}): HTMLElemen
     return host
 }
 
-export const Default: Story = { render: (args) => preview('default', args) }
+export const Default: Story = {
+    render: (args) =>
+        renderVueStory(GameBar, {
+            ...args,
+            'data-testid': 'game-bar-default',
+            style: { maxWidth: '560px' },
+        }),
+}
 export const WithValue: Story = {
     parameters: { controls: { disable: true } },
     render: () => preview('default', { value: 18, max: 30, showValue: true }),

@@ -4,7 +4,7 @@ import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import FantasyDividerStory from './FantasyDividerStory.vue'
-import type { FantasyDividerEnds, FantasyDividerVariant } from './index'
+import { FantasyDivider, type FantasyDividerEnds, type FantasyDividerVariant } from './index'
 
 type DividerArgs = {
     divider: FantasyDividerVariant
@@ -12,7 +12,7 @@ type DividerArgs = {
     fade: boolean
     ends: FantasyDividerEnds
 }
-type Section = 'default' | 'variants' | 'directions' | 'colors' | 'sizes'
+type Section = 'variants' | 'directions' | 'colors' | 'sizes'
 const variants = Array.from(
     { length: 6 },
     (_, index) => `divider-${String(index).padStart(3, '0')}` as FantasyDividerVariant
@@ -31,42 +31,46 @@ const meta = {
 export default meta
 type Story = StoryObj<DividerArgs>
 
-function preview(
-    section: Section,
-    args: Partial<DividerArgs>,
-    globals: Record<string, unknown>
-): HTMLElement {
+function canvasForeground(globals: Record<string, unknown>): string {
     const backgrounds = globals.backgrounds as { value?: string } | string | undefined
     const background = typeof backgrounds === 'string' ? backgrounds : backgrounds?.value
-    const foreground =
-        background === 'wood' || background === 'dark'
-            ? lightUiColors.button.text
-            : background === 'parchment'
-              ? lightUiColors.panel.text
-              : 'inherit'
-    return renderVueStory(
-        FantasyDividerStory,
-        { section, ...args, foreground },
-        { background: 'transparent' }
-    )
+    return background === 'wood' || background === 'dark'
+        ? lightUiColors.button.text
+        : background === 'parchment'
+          ? lightUiColors.panel.text
+          : 'inherit'
+}
+
+function preview(section: Section, globals: Record<string, unknown>): HTMLElement {
+    return renderVueStory(FantasyDividerStory, { section, foreground: canvasForeground(globals) })
 }
 
 export const Default: Story = {
-    render: (args, context) => preview('default', args, context.globals),
+    render(args, context) {
+        const host = renderVueStory(FantasyDivider, {
+            ...args,
+            'data-testid': 'divider-default',
+            'aria-label': 'Пример разделителя',
+        })
+        host.style.maxWidth = '850px'
+        host.style.color = canvasForeground(context.globals)
+        host.setAttribute('role', 'main')
+        return host
+    },
 }
 export const Variants: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('variants', {}, context.globals),
+    render: (_args, context) => preview('variants', context.globals),
 }
 export const Directions: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('directions', {}, context.globals),
+    render: (_args, context) => preview('directions', context.globals),
 }
 export const Colors: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('colors', {}, context.globals),
+    render: (_args, context) => preview('colors', context.globals),
 }
 export const Sizes: Story = {
     parameters: { controls: { disable: true } },
-    render: (_args, context) => preview('sizes', {}, context.globals),
+    render: (_args, context) => preview('sizes', context.globals),
 }

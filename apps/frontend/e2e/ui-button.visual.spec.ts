@@ -27,10 +27,15 @@ for (const width of [1280, 390, 320]) {
         'states',
         'panel-states',
     ]) {
+        const subject =
+            section === 'default'
+                ? '#storybook-root > div > [data-testid="ui-button-default"]'
+                : '[data-testid="ui-button-story"]'
+
         test(`UiButton ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 1000 })
             await page.goto(uiStoryUrl(`${storyId}--${section}`))
-            const stage = page.getByTestId('ui-button-story')
+            const stage = page.locator(subject)
             await expect(stage).toBeVisible()
             await readyUiStory(page)
             await expectUiFits(stage, width)

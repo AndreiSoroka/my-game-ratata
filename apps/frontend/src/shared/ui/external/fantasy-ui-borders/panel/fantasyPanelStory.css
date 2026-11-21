@@ -36,11 +36,6 @@ figcaption {
     color: var(--ui-light-panel-text);
     overflow-wrap: anywhere;
 }
-.panel-default {
-    width: min(560px, 100%);
-    padding: 20px;
-    color: var(--ui-light-panel-parchment);
-}
 .panel-variant-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { lightUiColors } from '@/shared/ui/theme'
 
-import { FantasyPanel, type FantasyPanelAppearance, type FantasyPanelVariant } from './index'
+import { FantasyPanel, type FantasyPanelVariant } from './index'
 
 defineProps<{
-    section: 'default' | 'variants' | 'appearances' | 'colors' | 'composition' | 'sizes'
-    panel?: FantasyPanelVariant
-    appearance?: FantasyPanelAppearance
-    borderColor?: string
-    backgroundColor?: string
+    section: 'variants' | 'appearances' | 'colors' | 'composition' | 'sizes'
     foreground?: string
 }>()
 const variants = Array.from(
@@ -45,24 +41,7 @@ const sizes = [
         :aria-label="`FantasyPanel: ${section}`"
         :style="{ color: foreground ?? lightUiColors.button.text }"
     >
-        <template v-if="section === 'default'">
-            <h2>FantasyPanel</h2>
-            <FantasyPanel
-                :panel="panel"
-                :appearance="appearance"
-                :border-color="borderColor || undefined"
-                :background-color="backgroundColor || undefined"
-                class="panel-default"
-                data-testid="panel-default"
-            >
-                <div class="panel-copy">
-                    <h3>Панель с любым содержимым</h3>
-                    <p>Форма, оформление и цвет меняются через Controls.</p>
-                    <p>Цвет текста задаётся содержимому отдельно от заливки панели.</p>
-                </div>
-            </FantasyPanel>
-        </template>
-        <template v-else-if="section === 'variants'">
+        <template v-if="section === 'variants'">
             <h2>32 формы панелей</h2>
             <div class="panel-variant-grid">
                 <figure v-for="variant in variants" :key="variant">

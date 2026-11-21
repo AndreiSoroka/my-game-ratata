@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
-import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
-import { HudFrame } from '@/shared/ui/common/hud-frame'
 
 import type { PatronStatusEntry } from '../model/patronStatus'
 import FaithStatusList from './FaithStatusList.vue'
@@ -11,17 +9,13 @@ type StoryArgs = { patrons: readonly PatronStatusEntry[] }
 
 const meta = {
     title: 'Entities/Player effects/FaithStatusList',
+    parameters: { backgrounds: { disable: false } },
+    globals: { backgrounds: { value: 'parchment' } },
     argTypes: { patrons: { control: 'object' } },
     render(args) {
-        return renderVueStory(
-            {
-                render: () =>
-                    h(HudFrame, { style: { width: 'min(220px, 100%)' } }, () =>
-                        h(FaithStatusList, { ...args })
-                    ),
-            },
-            {}
-        )
+        const host = renderVueStory(FaithStatusList, args)
+        host.style.maxWidth = '268px'
+        return host
     },
 } satisfies Meta<StoryArgs>
 

@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
+import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
-import type { UiButtonProps } from './index'
+import { UiButton, type UiButtonProps } from './index'
 import UiButtonStory from './UiButtonStory.vue'
 
 type ButtonArgs = UiButtonProps & { label: string; onClick: (event: MouseEvent) => void }
@@ -47,18 +48,26 @@ const meta = {
 export default meta
 type Story = StoryObj<ButtonArgs>
 
-function preview(section: string, args: Partial<ButtonArgs> = {}): HTMLElement {
-    const { onClick: onButtonClick = onClick, ...buttonArgs } = args
+function preview(section: string): HTMLElement {
     const host = renderVueStory(
         UiButtonStory,
-        { section, ...buttonArgs, onButtonClick },
+        { section, onButtonClick: onClick },
         { background: lightUiColors.panel.coffee, padding: '0' }
     )
     host.style.minHeight = '100dvh'
     return host
 }
 
-export const Default: Story = { render: (args) => preview('default', args) }
+export const Default: Story = {
+    render: ({ label, ...args }) =>
+        renderVueStory(
+            {
+                render: () =>
+                    h(UiButton, { ...args, 'data-testid': 'ui-button-default' }, () => label),
+            },
+            {}
+        ),
+}
 export const Appearances: Story = {
     parameters: { controls: { disable: true } },
     render: () => preview('appearances'),

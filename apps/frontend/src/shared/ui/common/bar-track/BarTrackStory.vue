@@ -1,29 +1,21 @@
 <script setup lang="ts">
-import { BarTrack, type BarTrackProps } from './index'
+import { BarTrack } from './index'
 
-withDefaults(defineProps<BarTrackProps & { section?: string }>(), { shadow: undefined })
+defineProps<{ section: 'colors' | 'sizes' }>()
 const colors = ['#785b3c', '#284154', '#c8b68c', 'rgba(60, 90, 100, .5)']
 const sizes = [10, 18, 24, 34]
 </script>
 
 <template>
     <section class="bar-track-story" data-testid="bar-track-story" aria-label="BarTrack">
-        <h2>
-            {{
-                section === 'colors'
-                    ? 'Цвета подложки'
-                    : section === 'sizes'
-                      ? 'Размеры подложки'
-                      : 'BarTrack'
-            }}
-        </h2>
+        <h2>{{ section === 'colors' ? 'Цвета подложки' : 'Размеры подложки' }}</h2>
         <template v-if="section === 'colors'">
             <figure v-for="(sample, index) in colors" :key="sample">
                 <BarTrack :color="sample" :data-testid="index === 0 ? 'track-custom' : undefined" />
                 <figcaption>{{ sample }}</figcaption>
             </figure>
         </template>
-        <template v-else-if="section === 'sizes'">
+        <template v-else>
             <figure v-for="size in sizes" :key="size">
                 <BarTrack :height="size" />
                 <figcaption>{{ size }} px</figcaption>
@@ -33,13 +25,6 @@ const sizes = [10, 18, 24, 34]
                 <figcaption>Без теней</figcaption>
             </figure>
         </template>
-        <BarTrack
-            v-else
-            :color="color"
-            :height="height"
-            :shadow="shadow"
-            data-testid="track-default"
-        />
     </section>
 </template>
 
