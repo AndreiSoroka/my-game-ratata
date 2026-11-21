@@ -71,6 +71,7 @@ for (const width of [1280, 320]) {
             const bar = page.locator('#storybook-root > div > .quick-action-bar')
             await expect(bar).toHaveAccessibleName('Быстрые действия')
             await expect(bar.locator(actionSlots)).toHaveCount(4)
+            await expect(bar).not.toContainText('Дважды: повтор')
             await readyUiStory(page)
             await expectUiFits(bar, width)
             await expect(bar).toHaveScreenshot(`quick-action-bar-${state}-${width}.png`)

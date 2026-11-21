@@ -9,6 +9,7 @@ const props = defineProps<{
     number: number
     action: QuickAction | null
     blocked?: boolean
+    buttonAttrs?: Record<string, unknown>
 }>()
 const emit = defineEmits<{ activate: []; assign: []; clear: [] }>()
 
@@ -70,6 +71,7 @@ const clearColors: UiButtonColors = {
 <template>
     <div class="quick-action-slot">
         <UiButton
+            v-bind="buttonAttrs"
             class="hotbar-slot"
             appearance="panel"
             panel="panel-007"
@@ -112,6 +114,7 @@ const clearColors: UiButtonColors = {
         </UiButton>
         <UiButton
             v-if="action"
+            v-bind="buttonAttrs"
             class="hotbar-clear"
             border="border-015"
             :colors="clearColors"

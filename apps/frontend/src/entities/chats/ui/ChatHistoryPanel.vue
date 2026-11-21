@@ -19,6 +19,7 @@ const props = withDefaults(
         filter?: ChatHistoryFilter
         collapsed?: boolean
         listId?: string
+        buttonAttrs?: Record<string, unknown>
     }>(),
     { filter: 'all', collapsed: false }
 )
@@ -110,6 +111,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
             </ol>
             <UiButton
                 v-if="unread"
+                v-bind="buttonAttrs"
                 appearance="panel"
                 panel="panel-001"
                 class="chat-button"

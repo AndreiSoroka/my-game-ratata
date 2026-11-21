@@ -18,6 +18,7 @@ defineProps<{
     typing: boolean
     historyAttrs?: Record<string, unknown>
     composerAttrs?: Record<string, unknown>
+    buttonAttrs?: Record<string, unknown>
 }>()
 const emit = defineEmits<{ 'update:draft': [value: string] }>()
 const filter = defineModel<ChatHistoryFilter>('filter', { default: 'all' })
@@ -36,6 +37,7 @@ watch(collapsed, () => composer.value?.focusAtEnd(), { flush: 'post' })
                 v-model:filter="filter"
                 v-model:collapsed="collapsed"
                 :history-id="historyId"
+                :button-attrs="buttonAttrs"
             />
         </template>
         <template #history>
@@ -45,6 +47,7 @@ watch(collapsed, () => composer.value?.focusAtEnd(), { flush: 'post' })
                 :collapsed="collapsed"
                 :entries="entries"
                 :list-id="historyId"
+                :button-attrs="buttonAttrs"
             />
         </template>
         <template v-if="typing" #composer>

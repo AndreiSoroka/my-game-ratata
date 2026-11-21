@@ -27,7 +27,7 @@ function key(target: HTMLElement, code: string, value = code): KeyboardEvent {
     return event
 }
 
-it('passes only WASD from history and its tabs, retaining native scrolling and confirmation ownership', async () => {
+it('passes only WASD from history and lets HUD buttons pass world shortcuts', async () => {
     const wrapper = mount(GameChat, {
         props: { entries: [], state: inactiveDraft },
         attachTo: document.body,
@@ -58,11 +58,52 @@ it('passes only WASD from history and its tabs, retaining native scrolling and c
         const tab = wrapper.get('button').element
         tab.focus()
         key(tab, 'KeyD', 'в')
-        expect(heard).toHaveBeenCalledTimes(2)
         key(tab, 'Enter', 'Enter')
-        expect(heard).toHaveBeenCalledTimes(2)
+        key(tab, 'KeyF', 'а')
+        expect(heard.mock.calls.slice(1).map(([event]) => event.code)).toEqual([
+            'KeyD',
+            'Enter',
+            'KeyF',
+        ])
     } finally {
         window.removeEventListener('keydown', heard)
+        wrapper.unmount()
+    }
+})
+
+it('keeps chat buttons out of Tab and activates them only from the pointer', async () => {
+    const wrapper = mount(GameChat, {
+        props: { entries: [], state: inactiveDraft },
+    })
+    try {
+        const history = wrapper.get('ol')
+        Object.defineProperties(history.element, {
+            clientHeight: { value: 100 },
+            scrollHeight: { value: 300 },
+        })
+        await history.trigger('scroll')
+        await wrapper.setProps({
+            entries: [{ id: 'incoming', channel: 'say', name: 'Мира', text: 'Привет', at: 1 }],
+        })
+        expect(wrapper.findAll('button')).toHaveLength(5)
+        for (const button of wrapper.findAll('button')) {
+            expect(button.attributes('tabindex')).toBe('-1')
+            expect(button.attributes('data-world-hud-button')).toBeDefined()
+            const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+            button.element.dispatchEvent(down)
+            expect(down.defaultPrevented).toBe(true)
+        }
+        expect(history.attributes('tabindex')).toBe('0')
+        const toggle = wrapper.get('button[aria-expanded]')
+        toggle.element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        await wrapper.vm.$nextTick()
+        expect(toggle.attributes('aria-expanded')).toBe('true')
+        toggle.element.dispatchEvent(
+            new MouseEvent('click', { detail: 1, bubbles: true, cancelable: true })
+        )
+        await wrapper.vm.$nextTick()
+        expect(toggle.attributes('aria-expanded')).toBe('false')
+    } finally {
         wrapper.unmount()
     }
 })

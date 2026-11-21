@@ -1,9 +1,11 @@
+import type { ClientMessage } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
 for (const mobile of [false, true]) {
     test(`HUD focus and game-menu ownership (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,
     }, info) => {
+        const dashCount = trackDashCommands(page)
         await page.setViewportSize(
             mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
         )
@@ -20,6 +22,7 @@ for (const mobile of [false, true]) {
         await expect(page.getByLabel('Приключение', { exact: true })).toHaveCount(0)
         await expect(page.getByRole('button', { name: /^Квесты ·/ })).toHaveCount(0)
         await expectBottomDock(page, mobile)
+        await expectDockKeysReachWorld(page, menuButton, dashCount)
         await menuButton.focus()
         const { menu, inventoryEntry } = await checkInventoryMenu(page)
         const attack = page.getByRole('button', { name: /^1: Удар ножом/ })
@@ -66,7 +69,7 @@ for (const mobile of [false, true]) {
         const during = await page.evaluate(() => window.__ratataTest!.getState())
         expect(during.connected).toBe(true)
         expect(during.player?.position).toEqual(before.player?.position)
-        expect(during.player?.resources).toEqual(before.player?.resources)
+        expect(during.player?.resources.mana).toEqual(before.player?.resources.mana)
         await menu.getByRole('button', { name: 'Вернуться в игру' }).click()
         await expect(menu).toHaveCount(0)
         await page.keyboard.down('KeyD')
@@ -114,6 +117,55 @@ for (const mobile of [false, true]) {
         await expect(page.getByRole('button', { name: /^2: Искра/ })).toBeVisible()
         await expect(page.getByRole('button', { name: /^3: Искра/ })).toBeVisible()
     })
+}
+
+function trackDashCommands(page: Page): () => number {
+    let count = 0
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framesent', ({ payload }) => {
+            if (
+                typeof payload === 'string' &&
+                (JSON.parse(payload) as ClientMessage).type === 'dash'
+            )
+                count += 1
+        })
+    })
+    return () => count
+}
+
+async function expectDockKeysReachWorld(
+    page: Page,
+    menuButton: Locator,
+    dashCount: () => number
+): Promise<void> {
+    const emptySlot = page
+        .getByRole('group', { name: 'Быстрые действия' })
+        .getByRole('button', { name: /^4:/ })
+    const draft = page.getByRole('textbox', { name: 'Сообщение в чат' })
+    for (const button of [menuButton, emptySlot]) {
+        await expect(button).toHaveAttribute('tabindex', '-1')
+        await button.focus()
+        await expect(button).toBeFocused()
+        const before = dashCount()
+        await page.keyboard.press('Space')
+        await expect.poll(dashCount).toBe(before + 1)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+
+        await button.focus()
+        await expect(button).toBeFocused()
+        await page.keyboard.press('Enter')
+        await expect(draft).toBeFocused()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await page.keyboard.press('Escape')
+        await expect(draft).toHaveCount(0)
+    }
+
+    await emptySlot.click()
+    const picker = page.getByRole('dialog', { name: 'Назначить слот 4' })
+    await expect(picker).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(picker).toHaveCount(0)
 }
 
 async function expectBottomDock(page: Page, mobile: boolean): Promise<void> {

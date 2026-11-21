@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import GameButton from './primitives/GameButton.vue'
-import { activateFocusedButton } from './uiKeyboard'
+import { worldHudButtonAttrs } from './uiKeyboard'
 
 const emit = defineEmits<{ open: [] }>()
 </script>
 
 <template>
     <GameButton
+        v-bind="worldHudButtonAttrs"
         icon
         class="game-menu-button"
         aria-label="Игровое меню"
         title="Меню · Esc"
         @click="emit('open')"
-        @keydown="activateFocusedButton($event, $event.currentTarget as HTMLElement)"
     >
         ☰
     </GameButton>

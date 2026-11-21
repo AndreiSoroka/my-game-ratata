@@ -8,6 +8,7 @@ defineProps<{
     actions: readonly (QuickAction | null)[]
     blocked?: boolean
     waiting?: string | undefined
+    buttonAttrs?: Record<string, unknown>
 }>()
 const emit = defineEmits<{
     activate: [index: number]
@@ -32,6 +33,7 @@ const emit = defineEmits<{
                     :action="action"
                     :number="index + 1"
                     :blocked="blocked"
+                    :button-attrs="buttonAttrs"
                     @activate="emit('activate', index)"
                     @assign="emit('assign', index)"
                     @clear="emit('clear', index)"
@@ -41,7 +43,6 @@ const emit = defineEmits<{
                 </div>
             </div>
         </HudFrame>
-        <p class="quick-action-bar__hint">1–4 · Дважды: повтор · Shift: назначить</p>
     </div>
 </template>
 
@@ -80,19 +81,10 @@ const emit = defineEmits<{
     aspect-ratio: 1;
 }
 
-.quick-action-bar__hint,
 .hotbar-waiting {
     margin: 0;
     text-align: center;
     line-height: 1.2;
-}
-
-.quick-action-bar__hint {
-    font-size: 10px;
-    text-shadow: 0 1px var(--ui-dark-panel-surface);
-}
-
-.hotbar-waiting {
     justify-self: center;
     border: 1px solid var(--ui-dark-panel-divider);
     padding: 3px 6px;

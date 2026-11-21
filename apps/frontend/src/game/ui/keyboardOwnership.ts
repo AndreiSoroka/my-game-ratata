@@ -8,12 +8,15 @@ export function isTextEntry(target: EventTarget | null): boolean {
         (target.isContentEditable || target.closest(editorSelector) !== null)
     )
 }
+export function isWorldHudButton(target: EventTarget | null): boolean {
+    return target instanceof Element && target.closest('button[data-world-hud-button]') !== null
+}
 export function isOwnedUiTarget(target: EventTarget | null): boolean {
     return (
         target instanceof HTMLElement &&
         (isTextEntry(target) ||
             target.closest(windowSelector) !== null ||
-            target.closest('[data-game-input-owner]') !== null)
+            (!isWorldHudButton(target) && target.closest('[data-game-input-owner]') !== null))
     )
 }
 export function isConfirmationKey(event: KeyboardEvent): boolean {
@@ -65,6 +68,7 @@ export function publicChatOwnsKey(event: KeyboardEvent): boolean {
         return false
     const target = event.target instanceof HTMLElement ? event.target : document.activeElement
     if (!(target instanceof HTMLElement)) return true
+    if (isWorldHudButton(target)) return true
     if (target.closest('button')) return false
     return (
         isPublicChatEditor(target) ||
@@ -90,14 +94,16 @@ export function isPublicChatEditor(target: EventTarget | null): boolean {
     return target instanceof HTMLInputElement && target.matches(publicChatEditorSelector)
 }
 
-/** A HUD button owns confirmation, but its focus does not disable unrelated game shortcuts. */
 export function gameKeyBlocked(event: KeyboardEvent): boolean {
     if (reservedKey(event)) return true
     if (permitsWorldMovement(event)) return false
     if (worldKeyboardOwned() || isOwnedUiTarget(event.target)) return true
     const focus = event.target instanceof HTMLElement ? event.target : document.activeElement
     return (
-        focus instanceof HTMLElement && focus.closest('button') !== null && isConfirmationKey(event)
+        focus instanceof HTMLElement &&
+        focus.closest('button') !== null &&
+        !isWorldHudButton(focus) &&
+        isConfirmationKey(event)
     )
 }
 

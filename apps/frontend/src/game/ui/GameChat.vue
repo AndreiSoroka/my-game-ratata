@@ -3,13 +3,15 @@ import type { ChatHistoryEntry } from '@/entities/chats'
 import { ChatWidget } from '@/widgets/chats'
 
 import type { ChatInputState } from '../runtime/chatInput'
-import { permitsWorldMovement } from './keyboardOwnership'
+import { isWorldHudButton, permitsWorldMovement } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
+import { worldHudButtonAttrs } from './uiKeyboard'
 
 const props = defineProps<{ state: ChatInputState; entries: readonly ChatHistoryEntry[] }>()
 const emit = defineEmits<{ draft: [value: string] }>()
 
 function handleHistoryKey(event: KeyboardEvent): void {
+    if (isWorldHudButton(event.target)) return
     const target = event.target
     if (
         props.state.active &&
@@ -34,6 +36,7 @@ useEscapeOwner({
     priority: 10,
     active: () =>
         document.activeElement instanceof HTMLElement &&
+        !isWorldHudButton(document.activeElement) &&
         document.activeElement.closest('[data-public-chat-reader]') !== null,
     escape: () => document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus(),
 })
@@ -47,6 +50,7 @@ useEscapeOwner({
         :typing="state.active"
         :history-attrs="historyAttrs"
         :composer-attrs="composerAttrs"
+        :button-attrs="worldHudButtonAttrs"
         @pointerdown.stop
         @update:draft="emit('draft', $event)"
     />

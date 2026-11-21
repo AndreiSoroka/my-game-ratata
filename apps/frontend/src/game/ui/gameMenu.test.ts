@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import App from '../../App.vue'
 import type { RatataGameOptions } from '../runtime/runtimeOptions'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
+import { clickWithPointer } from '../testing/clickWithPointer'
 import ActionHotbar from './ActionHotbar.vue'
 
 const runtime = vi.hoisted(() => ({
@@ -142,7 +143,7 @@ it('can leave a pending startup through Escape or the visible menu button before
         expect(wrapper.find('.game-menu').exists()).toBe(true)
         expect(wrapper.get('[data-dialog-action="inventory"]').attributes('disabled')).toBeDefined()
         await pressEscape()
-        await wrapper.get('button[aria-label="Игровое меню"]').trigger('click')
+        await clickWithPointer(wrapper.get('button[aria-label="Игровое меню"]').element)
         await flushPromises()
         expect(wrapper.find('.game-menu').exists()).toBe(true)
         await wrapper.get('[data-dialog-action="leave"]').trigger('click')
@@ -209,7 +210,7 @@ it('opens a local menu, traps its confirmation and exits through cleanup without
         expect(runtime.stop).not.toHaveBeenCalled()
         await pressEscape()
         expect(wrapper.find('.game-menu').exists()).toBe(false)
-        await wrapper.get('button[aria-label="Игровое меню"]').trigger('click')
+        await clickWithPointer(wrapper.get('button[aria-label="Игровое меню"]').element)
         await flushPromises()
         await wrapper.get('[data-dialog-action="leave"]').trigger('click')
         await flushPromises()
@@ -307,15 +308,19 @@ it('keeps hidden inventory unchanged on death and returns focus to the death dia
     }
 })
 
-it('restores the prior HUD focus after resuming a living character', async () => {
+it('restores the world focus when the menu opened with a HUD button focused', async () => {
     const wrapper = await joined()
     try {
         const button = wrapper.get<HTMLButtonElement>('button[aria-label="Игровое меню"]')
+        const canvas = document.createElement('canvas')
+        canvas.dataset.gameCanvas = ''
+        canvas.tabIndex = 0
+        wrapper.get('.game-host').element.append(canvas)
         button.element.focus()
-        await button.trigger('click')
+        await pressEscape()
         await flushPromises()
         await pressEscape()
-        expect(document.activeElement).toBe(button.element)
+        expect(document.activeElement).toBe(canvas)
     } finally {
         wrapper.unmount()
     }

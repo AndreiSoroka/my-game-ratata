@@ -1,4 +1,28 @@
-import { isConfirmationKey } from './keyboardOwnership'
+import { focusWorldInput, isConfirmationKey, isWorldHudButton } from './keyboardOwnership'
+
+export const worldHudButtonAttrs = {
+    tabindex: -1,
+    'data-world-hud-button': '',
+    onMousedown: (event: MouseEvent) => event.preventDefault(),
+    onClickCapture(event: MouseEvent): void {
+        // Native keyboard clicks have neither a click count nor a pointer type.
+        if (event.detail === 0 && !hasPointerType(event)) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            return
+        }
+        if (isWorldHudButton(document.activeElement)) focusWorldInput()
+    },
+    onContextmenuCapture(event: MouseEvent): void {
+        if (event.button === 2 || hasPointerType(event)) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+    },
+}
+
+function hasPointerType(event: MouseEvent): boolean {
+    return 'pointerType' in event && Boolean(event.pointerType)
+}
 
 /** Confirm only the focused button; letters use physical codes for every keyboard layout. */
 export function activateFocusedButton(
@@ -17,12 +41,6 @@ export function activateFocusedButton(
     event.stopPropagation()
     if (!event.repeat && !focused.disabled) focused.click()
     return true
-}
-
-export function stopButtonConfirmation(event: KeyboardEvent, panel: HTMLElement | undefined): void {
-    if (!isConfirmationKey(event) || !panel?.contains(document.activeElement)) return
-    event.preventDefault()
-    event.stopPropagation()
 }
 
 export function focusPanelSurface(event: PointerEvent, panel: HTMLElement | undefined): void {

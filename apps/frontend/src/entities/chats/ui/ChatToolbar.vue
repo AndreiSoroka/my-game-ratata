@@ -7,7 +7,7 @@ import { lightUiColors } from '@/shared/ui/theme'
 import type { ChatHistoryFilter } from '../model/chatHistory'
 import { chatButtonColors } from './chatButtonColors'
 
-defineProps<{ historyId?: string }>()
+defineProps<{ historyId?: string; buttonAttrs?: Record<string, unknown> }>()
 const filter = defineModel<ChatHistoryFilter>('filter', { default: 'all' })
 const collapsed = defineModel<boolean>('collapsed', { default: false })
 
@@ -33,6 +33,7 @@ const activeButtonColors = {
             <UiButton
                 v-for="[channel, label] in channels"
                 :key="channel"
+                v-bind="buttonAttrs"
                 appearance="panel"
                 panel="panel-001"
                 class="chat-button"
@@ -45,6 +46,7 @@ const activeButtonColors = {
             </UiButton>
         </nav>
         <UiButton
+            v-bind="buttonAttrs"
             appearance="panel"
             panel="panel-001"
             class="chat-button chat-toolbar__toggle"

@@ -1,7 +1,7 @@
 import { nextTick, ref } from 'vue'
 
 import type { RatataGame } from '../runtime/ratataGame'
-import { isPublicChatEditor } from './keyboardOwnership'
+import { isPublicChatEditor, isWorldHudButton } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 export function useGameMenu(options: {
@@ -48,7 +48,10 @@ export function useGameMenu(options: {
 
 function restoreFocus(previous: HTMLElement | undefined): void {
     const death = document.querySelector<HTMLElement>('[role="alertdialog"] [tabindex="-1"]')
-    const valid = previous?.isConnected && !previous.closest('[inert], [hidden], :disabled')
+    const valid =
+        previous?.isConnected &&
+        !isWorldHudButton(previous) &&
+        !previous.closest('[inert], [hidden], :disabled')
     const target = death ?? (valid ? previous : undefined)
     ;(target ?? document.querySelector<HTMLCanvasElement>('[data-game-canvas]'))?.focus()
 }

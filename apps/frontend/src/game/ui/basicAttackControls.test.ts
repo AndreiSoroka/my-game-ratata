@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
 import { characterFixture, worldFixture } from '../testing/characterFixture'
+import { clickWithPointer } from '../testing/clickWithPointer'
 import GameplayOverlay from './GameplayOverlay.vue'
 
 function pressCombatKey(code: string): void {
@@ -79,7 +80,7 @@ it.each(['enemy', 'dummy'])(
             }
         )
         try {
-            await wrapper.get('.hotbar-slot').trigger('click')
+            await clickWithPointer(wrapper.get('.hotbar-slot').element)
             expect(wrapper.vm.selectedId).toBe(nearest)
             expect(wrapper.get('[aria-label="Выбранная цель"]').text()).toContain(nearest)
             expect(highlight).toHaveBeenLastCalledWith(

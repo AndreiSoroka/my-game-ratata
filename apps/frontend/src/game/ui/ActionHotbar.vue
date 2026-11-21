@@ -18,7 +18,8 @@ import { dialogActionKeys } from './dialogActionKeys'
 import GameMenuButton from './GameMenuButton.vue'
 import { objectTargetUnavailable } from './hotbarActions'
 import type { HotbarBinding as Binding } from './hotbarBindings'
-import { activateFocusedButton, stopButtonConfirmation } from './uiKeyboard'
+import { focusWorldInput } from './keyboardOwnership'
+import { worldHudButtonAttrs } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
 import { useFooterHeight } from './useFooterHeight'
 import { useHotbarActions } from './useHotbarActions'
@@ -110,7 +111,6 @@ watch(
         editing.value = undefined
     }
 )
-const bar = ref<HTMLElement>()
 const dockContent = ref<HTMLElement>()
 useFooterHeight(dockContent, '--ratata-hotbar-height')
 const picker = ref<HTMLElement>()
@@ -143,7 +143,7 @@ async function clearSlot(index: number): Promise<void> {
     bindings.value[index] = null
     resetGesture()
     await nextTick()
-    bar.value?.querySelectorAll<HTMLButtonElement>('.hotbar-slot')[index]?.focus()
+    focusWorldInput()
 }
 function close(): void {
     editing.value = undefined
@@ -153,12 +153,7 @@ useDialogEscape(picker, close)
 defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
 </script>
 <template>
-    <div
-        ref="bar"
-        class="hotbar"
-        @keydown="activateFocusedButton($event, bar)"
-        @keyup="stopButtonConfirmation($event, bar)"
-    >
+    <div class="hotbar">
         <div ref="dockContent" class="hotbar-content">
             <div
                 v-if="
@@ -188,6 +183,7 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                 :actions="actions"
                 :blocked="blocked || !player.alive"
                 :waiting="waiting"
+                :button-attrs="worldHudButtonAttrs"
                 @activate="activate"
                 @assign="edit"
                 @clear="clearSlot"

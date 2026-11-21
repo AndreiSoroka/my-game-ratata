@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { isGameKeyboardBlocked } from '../runtime/runtimeKeyboardFocus'
 import { combatKeyBlocked } from './combatTargeting'
+import { publicChatOwnsKey } from './keyboardOwnership'
 
 function keyOn(element: HTMLElement, code: string): KeyboardEvent {
     const event = new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true })
@@ -119,6 +120,25 @@ describe('HUD and window keyboard ownership', () => {
             panel.remove()
         }
     })
+})
+
+it('passes gameplay keys through focused pointer-only buttons even inside chat history', () => {
+    const panel = document.createElement('aside')
+    panel.dataset.gameInputOwner = ''
+    const button = document.createElement('button')
+    button.dataset.worldHudButton = ''
+    button.tabIndex = -1
+    panel.append(button)
+    document.body.append(panel)
+    try {
+        button.focus()
+        for (const code of ['Space', 'Enter', 'KeyF', 'Digit1']) {
+            expect(isGameKeyboardBlocked(keyOn(button, code))).toBe(false)
+        }
+        expect(publicChatOwnsKey(keyOn(button, 'Enter'))).toBe(true)
+    } finally {
+        panel.remove()
+    }
 })
 
 it('keeps unmarked panels and foreign dialogs in control over a read-only history', () => {

@@ -17,6 +17,7 @@ import PartyPanel from './PartyPanel.vue'
 import SelectedTargetPanel from './SelectedTargetPanel.vue'
 import SpeechBubbles from './SpeechBubbles.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
+import { worldHudButtonAttrs } from './uiKeyboard'
 import { useWorldTargetSelection } from './useWorldTargetSelection'
 
 const props = defineProps<{
@@ -252,6 +253,7 @@ defineExpose({
         <template #guide>
             <button
                 v-if="interactionPrompt"
+                v-bind="worldHudButtonAttrs"
                 type="button"
                 class="target-help nearby-prompt"
                 @click="emit('requestInteract')"
