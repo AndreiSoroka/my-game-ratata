@@ -42,9 +42,30 @@ it('disables an expired prompt and closes through the same explicit confirmation
     try {
         const take = view.findAll('button').find((button) => button.text() === 'Сдать')!
         expect(take.attributes('disabled')).toBeDefined()
-        await view.get('[aria-label="Закрыть: Сдать поручение"]').trigger('click')
+        await view
+            .findAll('button')
+            .find((button) => button.text() === 'Вернуться к разговору')!
+            .trigger('click')
         expect(view.emitted('command')).toEqual([
             [{ type: 'quest_turn_in_confirm', confirmationId: 'confirm-1', accept: false }],
+        ])
+    } finally {
+        view.unmount()
+    }
+})
+
+it('labels a worker report and waits for explicit confirmation before submitting the trophy', async () => {
+    const report = { ...prompt, source: 'guild', action: 'report' } as const
+    const view = mount(QuestTurnInWindow, { props: { prompt: report, serverTime: 1000 } })
+    try {
+        expect(view.text()).toContain('Награду выдадут после проверочного рейса')
+        expect(view.emitted('command')).toBeUndefined()
+        await view
+            .findAll('button')
+            .find((button) => button.text() === 'Передать трофей и доложить')!
+            .trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'quest_turn_in_confirm', confirmationId: report.id, accept: true }],
         ])
     } finally {
         view.unmount()

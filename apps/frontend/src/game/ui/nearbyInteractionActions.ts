@@ -143,7 +143,7 @@ function characterTargets(
                         : []),
                     ...justiceActions(snapshot, player, one),
                     ...characterActions(character, player),
-                    ...guildContractActions(player, character, snapshot.party),
+                    ...guildContractActions(player, character, snapshot),
                     ...socialActions(one, player),
                     ...theftActions(snapshot, player, one),
                     ...reviveActions(one, player),

@@ -40,10 +40,10 @@ const ownShare = computed(() => props.shares?.find((share) => share.characterId 
 }
 .quest-reward-total,
 .quest-reward-received {
-    color: #e9cf8d;
+    color: var(--quest-panel-title, #e9cf8d);
 }
 .quest-reward-summary small {
     display: block;
-    color: #b4c0ac;
+    color: var(--quest-panel-muted, #b4c0ac);
 }
 </style>

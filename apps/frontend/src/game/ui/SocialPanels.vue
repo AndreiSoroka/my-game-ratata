@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import './socialWindows.css'
 
-import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    CharacterSnapshot,
+    ClientMessage,
+    QuestRewardMode,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { ExchangeInvitationWidget } from '@/widgets/exchanges'
 
 import ExchangeWindow from './ExchangeWindow.vue'
+import GuildQuestOfferWindow from './GuildQuestOfferWindow.vue'
 import { focusWorldInput } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import QuestTurnInWindow from './QuestTurnInWindow.vue'
+import { useGuildQuestOffer } from './useGuildQuestOffer'
 import WhisperWindow from './WhisperWindow.vue'
 
 const props = defineProps<{
@@ -33,9 +40,18 @@ const turnInVisible = computed(() => available.value && Boolean(social.value?.qu
 const questOfferVisible = computed(
     () => available.value && !turnInVisible.value && Boolean(social.value?.questOffer)
 )
-const canActOnInvitation = computed(
-    () => available.value && !turnInVisible.value && !questOfferVisible.value
+const hasServerQuestWindow = computed(() => turnInVisible.value || questOfferVisible.value)
+const canShowGuildOffer = computed(
+    () => available.value && !hasServerQuestWindow.value && exchange.value?.status !== 'active'
 )
+const guild = useGuildQuestOffer({
+    available: () => canShowGuildOffer.value,
+    playerId: () => props.player.id,
+    snapshot: () => props.snapshot,
+})
+const guildOffer = guild.offer
+const hasQuestWindow = computed(() => hasServerQuestWindow.value || Boolean(guildOffer.value))
+const canActOnInvitation = computed(() => available.value && !hasQuestWindow.value)
 const visibleExchange = computed(() => {
     const current = exchange.value
     if (
@@ -50,31 +66,32 @@ const visibleExchange = computed(() => {
 })
 const whisperVisible = computed(
     () =>
-        available.value &&
-        !turnInVisible.value &&
-        !questOfferVisible.value &&
+        canActOnInvitation.value &&
         !visibleExchange.value &&
         Boolean(whisper.value) &&
         whisper.value?.partnerId === whisperTarget.value
 )
-const hasOpenWindow = computed(() =>
-    Boolean(
-        visibleExchange.value ||
-        whisperVisible.value ||
-        questOfferVisible.value ||
-        turnInVisible.value
-    )
+const hasOpenWindow = computed(
+    () => hasQuestWindow.value || Boolean(visibleExchange.value) || whisperVisible.value
 )
 function prepare(): void {
     emit('open')
     emit('command', { type: 'release_input' })
 }
 function command(message: ClientMessage): void {
+    if (message.type === 'guild_accept') {
+        if (guild.open(message.questId)) prepare()
+        return
+    }
     if (message.type === 'whisper_open') {
         whisperTarget.value = message.targetId
         prepare()
     }
     emit('command', message)
+}
+function acceptGuildOffer(rewardMode: QuestRewardMode): void {
+    const message = guild.accept(rewardMode)
+    if (message) emit('command', message)
 }
 function showWhisper(): void {
     whisperTarget.value = whisper.value?.partnerId
@@ -148,23 +165,30 @@ watch(
     },
     { immediate: true }
 )
-watch(questOfferVisible, (visible) => {
-    if (visible) {
+watch(
+    [
+        () => (questOfferVisible.value ? social.value?.questOffer?.id : undefined),
+        () => (turnInVisible.value ? social.value?.questTurnIn?.id : undefined),
+    ],
+    ([offerId, turnInId], previous) => {
+        if (!offerId && !turnInId) {
+            if (available.value && previous?.some(Boolean)) restoreFocus()
+            return
+        }
         prepare()
+        if (turnInId) {
+            whisperTarget.value = undefined
+            return
+        }
         const issuerId = social.value?.questOffer?.issuerId
         if (issuerId && whisper.value?.partnerId !== issuerId)
             emit('command', { type: 'whisper_open', targetId: issuerId })
-    }
-})
-watch(
-    () => social.value?.questTurnIn?.id,
-    (id) => {
-        if (id && available.value) {
-            whisperTarget.value = undefined
-            prepare()
-        } else restoreFocus()
-    }
+    },
+    { immediate: true }
 )
+watch(guildOffer, (current, previous) => {
+    if (!current && previous && canShowGuildOffer.value) restoreFocus()
+})
 watch(available, (value) => {
     if (!value) whisperTarget.value = undefined
 })
@@ -248,6 +272,14 @@ defineExpose({ command, hasOpenWindow })
             )
         "
         @command="command"
+    />
+    <GuildQuestOfferWindow
+        v-else-if="guildOffer"
+        :key="guildOffer.job.id"
+        :job="guildOffer.job"
+        :issuer-name="guildOffer.contact.nickname"
+        @confirm="acceptGuildOffer"
+        @cancel="guild.close"
     />
     <ExchangeWindow
         v-else-if="visibleExchange"

@@ -6,7 +6,7 @@ import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
 
 const mode = defineModel<QuestRewardMode>({ required: true })
-defineProps<{ disabled?: boolean }>()
+defineProps<{ disabled?: boolean; appearance?: 'light' }>()
 const name = useId()
 const options: Array<{ value: QuestRewardMode; label: string }> = [
     { value: 'party_equal', label: 'Поровну группе' },
@@ -22,16 +22,20 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
 </script>
 
 <template>
-    <fieldset class="quest-reward-choice game-frame-host" :disabled="disabled">
+    <fieldset
+        class="quest-reward-choice"
+        :class="appearance === 'light' ? 'quest-reward-choice--light' : 'game-frame-host'"
+        :disabled="disabled"
+    >
         <legend>Распределение награды</legend>
-        <GameFrame variant="inset" />
+        <GameFrame v-if="appearance !== 'light'" variant="inset" />
         <label
             v-for="option in options"
             :key="option.value"
-            class="quest-reward-option game-frame-host"
-            :class="{ selected: mode === option.value }"
+            class="quest-reward-option"
+            :class="{ selected: mode === option.value, 'game-frame-host': appearance !== 'light' }"
         >
-            <GameFrame variant="inset" />
+            <GameFrame v-if="appearance !== 'light'" variant="inset" />
             <GameInput
                 v-model="mode"
                 type="radio"
@@ -117,6 +121,23 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
 .quest-reward-choice small {
     flex-basis: 100%;
     color: #b4c0ac;
+}
+.quest-reward-choice--light,
+.quest-reward-choice--light .quest-reward-option {
+    border-color: var(--ui-light-panel-divider);
+}
+.quest-reward-choice--light legend {
+    color: var(--ui-light-panel-title);
+}
+.quest-reward-choice--light small {
+    color: var(--ui-light-panel-muted);
+}
+.quest-reward-choice--light label.selected {
+    border-color: var(--ui-light-border-wood);
+    background: var(--ui-light-panel-parchment);
+}
+.quest-reward-choice--light label:focus-within {
+    outline-color: var(--ui-light-button-focus);
 }
 .sr-only {
     position: absolute;

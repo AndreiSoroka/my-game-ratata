@@ -13,6 +13,22 @@
     background: #08140cb0;
     pointer-events: auto;
 }
+.social-surface--quest {
+    inset: 0;
+    align-items: center;
+    padding: 12px;
+}
+.quest-window {
+    width: min(100%, 520px);
+    min-width: 0;
+    outline: none;
+}
+.quest-window .social-muted {
+    color: var(--ui-light-panel-muted);
+}
+.quest-window .social-status {
+    color: var(--ui-light-panel-warning);
+}
 .social-window {
     width: min(100%, 780px);
     max-height: 85vh;

@@ -2,12 +2,12 @@
     color: #f6ebd4;
     font-family: var(--ratata-font-family), system-ui, sans-serif;
 }
-.adventure-ui button {
+.adventure-ui .game-button {
     cursor: pointer;
     border: 1px solid transparent;
     padding: 9px 12px;
 }
-.adventure-ui button:disabled {
+.adventure-ui .game-button:disabled {
     opacity: 0.45;
     cursor: default;
 }
@@ -75,11 +75,6 @@
     height: 8px;
     accent-color: #a4c07c;
     margin-top: 9px;
-}
-.adventure-reward {
-    color: #edcd7c;
-    padding-top: 12px;
-    border-top: 1px solid #526049;
 }
 .adventure-subtle {
     color: #b3bdab;

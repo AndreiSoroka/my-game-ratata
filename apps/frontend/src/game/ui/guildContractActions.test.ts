@@ -43,19 +43,14 @@ function fixture() {
     return { clerk, neighbor, offers, party, player }
 }
 
-it('offers static guild jobs with explicit reward choices only at the visible local contact', () => {
+it('offers one action for each static guild job only at the visible local contact', () => {
     const { clerk, neighbor, offers, party } = fixture()
     expect(offers()).toMatchObject([
         {
-            label: 'Взять «Зачистка троп» · 30 ◈ · Поровну группе',
-            command: { questId: 'slime_hunt', rewardMode: 'party_equal' },
+            label: 'Взять «Зачистка троп» · 30 ◈',
+            command: { type: 'guild_accept', questId: 'slime_hunt' },
         },
-        {
-            label: 'Взять «Зачистка троп» · 30 ◈ · Вся награда сдающему',
-            command: { questId: 'slime_hunt', rewardMode: 'submitter' },
-        },
-        { command: { questId: 'skeleton_hunt', rewardMode: 'party_equal' } },
-        { command: { questId: 'skeleton_hunt', rewardMode: 'submitter' } },
+        { command: { type: 'guild_accept', questId: 'skeleton_hunt' } },
     ])
     expect(offers(neighbor)).toEqual([])
     expect(offers(clerk, false)).toEqual([])
@@ -75,7 +70,6 @@ it('offers contracts only to an eligible leader and skips the latest completed c
 
     party.activeJob = guildQuestFixture({ status: 'completed' })
     expect(offers()).toMatchObject([
-        { command: { questId: 'skeleton_hunt', rewardMode: 'party_equal' } },
-        { command: { questId: 'skeleton_hunt', rewardMode: 'submitter' } },
+        { command: { type: 'guild_accept', questId: 'skeleton_hunt' } },
     ])
 })

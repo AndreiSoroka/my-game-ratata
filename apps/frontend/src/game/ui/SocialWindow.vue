@@ -9,7 +9,7 @@ import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
-const props = defineProps<{ title: string; modal?: boolean; layout?: 'exchange' }>()
+const props = defineProps<{ title: string; modal?: boolean; layout?: 'exchange' | 'quest' }>()
 const emit = defineEmits<{ close: [] }>()
 const panel = ref<HTMLElement>()
 useEscapeOwner({
@@ -59,12 +59,17 @@ onMounted(async () => {
         :class="{
             'social-surface--modal': modal,
             'social-surface--exchange': layout === 'exchange',
+            'social-surface--quest': layout === 'quest',
         }"
+        @pointerdown.self="modal && $event.preventDefault()"
     >
         <section
             ref="panel"
-            class="social-window game-frame-host"
-            :class="{ 'social-window--exchange': layout === 'exchange' }"
+            :class="{
+                'social-window game-frame-host': layout !== 'quest',
+                'social-window--exchange': layout === 'exchange',
+                'quest-window': layout === 'quest',
+            }"
             role="dialog"
             :aria-modal="modal || undefined"
             :aria-label="title"
@@ -72,8 +77,8 @@ onMounted(async () => {
             @keydown.stop="key"
             @keyup.stop
         >
-            <GameFrame variant="window" />
-            <header class="social-window__header">
+            <GameFrame v-if="layout !== 'quest'" variant="window" />
+            <header v-if="layout !== 'quest'" class="social-window__header">
                 <h2>{{ title }}</h2>
                 <GameButton
                     type="button"

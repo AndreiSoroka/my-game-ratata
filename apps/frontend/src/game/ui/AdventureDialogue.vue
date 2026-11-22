@@ -10,12 +10,12 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import { SoulBadge } from '@/entities/player-effects'
 
+import AdventureQuestDecision from './AdventureQuestDecision.vue'
 import CityDemandReport from './CityDemandReport.vue'
 import CityMarket from './CityMarket.vue'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
-import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import RepairWorkshop from './RepairWorkshop.vue'
 import { speechBubbleId } from './speechReceipts'
@@ -28,9 +28,24 @@ const panel = ref<HTMLElement>()
 const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
 const isSign = computed(() => props.adventure.dialogue?.kind === 'sign')
 const rewardMode = ref<QuestRewardMode>('party_equal')
-const acceptingQuest = computed(() =>
-    props.adventure.dialogue?.choices.some((choice) => choice.id === 'accept_quest')
+const dialogueKey = computed(() =>
+    props.adventure.dialogue
+        ? `${props.adventure.dialogue.npcId}:${props.adventure.dialogue.speechId ?? props.adventure.dialogue.text}`
+        : ''
 )
+type QuestChoice = 'accept_quest' | 'turn_in_trophies'
+const pendingQuest = ref<{ choiceId: QuestChoice; dialogueKey: string; questId: string }>()
+const questDecision = computed(() => {
+    const pending = pendingQuest.value
+    const { dialogue, quest } = props.adventure
+    if (!pending || pending.dialogueKey !== dialogueKey.value || pending.questId !== quest.id)
+        return undefined
+    const expectedStatus = pending.choiceId === 'accept_quest' ? 'available' : 'ready'
+    return quest.status === expectedStatus &&
+        dialogue?.choices.some((choice) => choice.id === pending.choiceId)
+        ? pending.choiceId
+        : undefined
+})
 const viewTitle = computed(() =>
     view.value === 'conversation'
         ? props.adventure.dialogue?.title
@@ -38,23 +53,52 @@ const viewTitle = computed(() =>
               view.value
           ]
 )
-function focusFirstAction(): void {
-    void nextTick(() =>
-        panel.value
-            ?.querySelector<HTMLButtonElement>('[data-dialogue-action]:not(:disabled)')
-            ?.focus()
-    )
+function focusFirstAction(choiceId?: QuestChoice): void {
+    void nextTick(() => {
+        if (questDecision.value) return
+        const actions = Array.from(
+            panel.value?.querySelectorAll<HTMLButtonElement>(
+                '[data-dialogue-action]:not(:disabled)'
+            ) ?? []
+        )
+        const action = actions.find((item) => item.dataset['dialogueAction'] === choiceId)
+        const nextFocus = action ?? actions[0]
+        nextFocus?.focus()
+    })
 }
-function choose(choiceId: string): void {
-    if (choiceId === 'trade' && props.adventure.dialogue?.canTrade) view.value = 'shop'
-    if (choiceId === 'repair') view.value = 'repair'
-    if (choiceId === 'city_report') view.value = 'demand'
-    if (choiceId === 'orders') view.value = 'orders'
+function closeQuestDecision(): void {
+    const choiceId = pendingQuest.value?.choiceId
+    pendingQuest.value = undefined
+    if (props.adventure.dialogue) focusFirstAction(choiceId)
+}
+function confirmQuestDecision(): void {
+    const choiceId = questDecision.value
+    if (!choiceId) return
+    closeQuestDecision()
     emit('command', {
         choiceId,
         type: 'dialogue_choice',
         ...(choiceId === 'accept_quest' ? { rewardMode: rewardMode.value } : {}),
     })
+}
+watch(questDecision, (choiceId) => {
+    if (!choiceId && pendingQuest.value) closeQuestDecision()
+})
+function choose(choiceId: string): void {
+    if (questDecision.value) return
+    if (choiceId === 'accept_quest' || choiceId === 'turn_in_trophies') {
+        pendingQuest.value = {
+            choiceId,
+            dialogueKey: dialogueKey.value,
+            questId: props.adventure.quest.id,
+        }
+        return
+    }
+    if (choiceId === 'trade' && props.adventure.dialogue?.canTrade) view.value = 'shop'
+    if (choiceId === 'repair') view.value = 'repair'
+    if (choiceId === 'city_report') view.value = 'demand'
+    if (choiceId === 'orders') view.value = 'orders'
+    emit('command', { choiceId, type: 'dialogue_choice' })
     focusFirstAction()
 }
 function buy(itemId: AdventureTradeItemId): void {
@@ -76,7 +120,7 @@ function escapeDialogue(): void {
     else emit('command', { choiceId: 'close', type: 'dialogue_choice' })
 }
 useEscapeOwner({
-    active: () => Boolean(props.adventure.dialogue),
+    active: () => Boolean(props.adventure.dialogue && !questDecision.value),
     escape: escapeDialogue,
     element: panel,
 })
@@ -105,11 +149,8 @@ function handleKeys(event: KeyboardEvent): void {
     buttons[(current + direction + buttons.length) % buttons.length]?.focus()
 }
 watch(
-    () =>
-        props.adventure.dialogue
-            ? `${props.adventure.dialogue.npcId}:${props.adventure.dialogue.speechId ?? props.adventure.dialogue.text}`
-            : '',
-    async (key, oldKey) => {
+    dialogueKey,
+    (key, oldKey) => {
         if (!key) {
             const canvas = document.querySelector<HTMLCanvasElement>('[data-game-canvas]')
             ;(canvas ?? (previousFocus?.isConnected ? previousFocus : undefined))?.focus()
@@ -118,10 +159,7 @@ watch(
         }
         if (!oldKey && document.activeElement instanceof HTMLElement)
             previousFocus = document.activeElement
-        await nextTick()
-        panel.value
-            ?.querySelector<HTMLButtonElement>('[data-dialogue-action]:not(:disabled)')
-            ?.focus()
+        focusFirstAction()
     },
     { immediate: true }
 )
@@ -136,6 +174,7 @@ watch(
         :class="{ 'adventure-dialogue--sign': isSign }"
         role="dialog"
         aria-modal="false"
+        :inert="questDecision ? true : undefined"
         :aria-describedby="
             !isSign
                 ? speechBubbleId(adventure.dialogue.npcId, adventure.dialogue.speechId)
@@ -167,26 +206,15 @@ watch(
             >PageUp / PageDown — читать реплику · Tab — ответы</small
         >
         <div v-if="view === 'conversation'" class="adventure-choices">
-            <template v-if="acceptingQuest">
-                <p class="adventure-reward">
-                    Общая награда: {{ adventure.quest.rewardGold }} золотых
-                </p>
-                <QuestRewardChoice v-model="rewardMode" />
-            </template>
             <QuestRewardSummary
-                v-else-if="
-                    adventure.dialogue.choices.some(
-                        (choice) =>
-                            choice.id === 'quest_progress' || choice.id === 'turn_in_trophies'
-                    )
-                "
+                v-if="adventure.dialogue.choices.some((choice) => choice.id === 'quest_progress')"
                 :total="adventure.quest.rewardGold"
                 :mode="adventure.quest.rewardMode"
             />
             <GameButton
                 v-for="choice in adventure.dialogue.choices"
                 :key="choice.id"
-                data-dialogue-action
+                :data-dialogue-action="choice.id"
                 @click="choose(choice.id)"
             >
                 {{ choice.label }}
@@ -258,4 +286,13 @@ watch(
             ← Вернуться к разговору
         </GameButton>
     </section>
+    <AdventureQuestDecision
+        v-if="questDecision && adventure.dialogue"
+        v-model="rewardMode"
+        :quest="adventure.quest"
+        :issuer="adventure.dialogue.npcName"
+        :offer="questDecision === 'accept_quest'"
+        @confirm="confirmQuestDecision"
+        @cancel="closeQuestDecision"
+    />
 </template>

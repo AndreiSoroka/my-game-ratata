@@ -13,7 +13,7 @@ export default defineConfig([
     {
         // Steiger misses consumers in the game adapter and the temporarily excluded widgets.
         files: [
-            './src/entities/{chats,exchanges,menus,player-effects,player-vitals,quick-actions}/**',
+            './src/entities/{chats,exchanges,menus,player-effects,player-vitals,quests,quick-actions}/**',
         ],
         rules: { 'fsd/insignificant-slice': 'off' },
     },

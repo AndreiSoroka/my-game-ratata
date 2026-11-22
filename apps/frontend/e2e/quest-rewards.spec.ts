@@ -39,6 +39,7 @@ for (const scenario of scenarios) {
         await openObservedWorkerOffer(page)
         const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
         await expect(offer).toBeVisible()
+        await assertCenteredViewport(offer)
         await expect(offer.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
         await offer.getByRole('radio', { name: scenario.workerLabel }).focus()
         await page.keyboard.press('KeyF')
@@ -52,6 +53,7 @@ for (const scenario of scenarios) {
             )
             .toMatchObject({ status: 'active', rewardMode: workerMode })
         await expect(offer).toBeHidden()
+        await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
         const workerInstance = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
         )
@@ -74,11 +76,28 @@ for (const scenario of scenarios) {
             () => window.__ratataTest!.getState().snapshot?.party?.guildContact?.npcId
         )
         expect(contactId, 'No guild contact is available after the worker offer').toBeTruthy()
-        await socialMenu(
-            page,
-            contactId!,
-            new RegExp(`^Взять «Зачистка троп» · 30 ◈ · ${scenario.guildLabel}$`)
-        )
+        const reviewGuildOffer = () =>
+            socialMenu(page, contactId!, /^Взять «Зачистка троп» · 30 ◈$/)
+        await reviewGuildOffer()
+        await expect(offer.getByRole('heading', { name: 'Зачистка троп' })).toBeVisible()
+        await assertCenteredViewport(offer)
+        await offer.getByRole('button', { name: 'Отказаться', exact: true }).click()
+        await expect(offer).toBeHidden()
+        await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => window.__ratataTest!.getState().snapshot?.party?.activeJob?.status
+                )
+            )
+            .not.toBe('active')
+
+        await reviewGuildOffer()
+        await offer.getByRole('radio', { name: scenario.guildLabel }).focus()
+        await page.keyboard.press('KeyF')
+        await expect(offer.locator(`input[value="${guildMode}"]`)).toBeChecked()
+        await offer.getByRole('button', { name: 'Взять', exact: true }).focus()
+        await page.keyboard.press('Enter')
         await expect
             .poll(() =>
                 page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)
@@ -201,4 +220,17 @@ async function assertFitsViewport(panel: ReturnType<Page['locator']>): Promise<v
     expect(geometry.left).toBeGreaterThanOrEqual(0)
     expect(geometry.right).toBeLessThanOrEqual(geometry.width)
     expect(geometry.overflow).toBe(false)
+}
+
+async function assertCenteredViewport(panel: Locator): Promise<void> {
+    await assertFitsViewport(panel)
+    const offset = await panel.evaluate((element) => {
+        const bounds = element.getBoundingClientRect()
+        return {
+            x: bounds.left + (bounds.width - window.innerWidth) / 2,
+            y: bounds.top + (bounds.height - window.innerHeight) / 2,
+        }
+    })
+    expect(Math.abs(offset.x)).toBeLessThanOrEqual(2)
+    expect(Math.abs(offset.y)).toBeLessThanOrEqual(2)
 }

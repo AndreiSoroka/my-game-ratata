@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import type { ClientMessage, QuestTurnInPromptSnapshot } from '@my-game-ratata/contracts'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { QuestTurnInPanel } from '@/entities/quests'
 
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
-import GameButton from './primitives/GameButton.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import SocialWindow from './SocialWindow.vue'
 
 const props = defineProps<{ prompt: QuestTurnInPromptSnapshot; serverTime: number }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const pending = ref(false)
+const expired = computed(() => props.serverTime >= props.prompt.expiresAt)
+const objectives = computed(() =>
+    props.prompt.objectiveLabels.map((label, index) => ({
+        label,
+        objective: props.prompt.objectives[index],
+    }))
+)
+const confirmLabel = computed(() => {
+    if (pending.value) return 'Проверяем…'
+    return props.prompt.action === 'report' ? 'Передать трофей и доложить' : 'Сдать'
+})
 watch(
     () => props.prompt.id,
     () => {
@@ -18,66 +30,44 @@ watch(
     }
 )
 function answer(accept: boolean): void {
-    if (pending.value) return
+    if (pending.value || (accept && expired.value)) return
     pending.value = true
     emit('command', { type: 'quest_turn_in_confirm', confirmationId: props.prompt.id, accept })
 }
 </script>
 <template>
-    <SocialWindow title="Сдать поручение" modal @close="answer(false)">
-        <p>
-            Заказчик: <strong>{{ prompt.issuerName }}</strong>
-        </p>
-        <h3>{{ prompt.title }}</h3>
-        <p>{{ prompt.description }}</p>
-        <ol v-if="prompt.objectiveLabels.length">
-            <li
-                v-for="(label, index) in prompt.objectiveLabels"
-                :key="index"
-                class="turn-in-objective"
-            >
-                <ItemIcon
-                    v-if="prompt.objectives[index]?.kind === 'deliver'"
-                    :item="
-                        prompt.objectives[index]! as Extract<
-                            (typeof prompt.objectives)[number],
-                            { kind: 'deliver' }
-                        >
-                    "
-                />{{ label }}
-            </li>
-        </ol>
-        <p v-if="prompt.action === 'report'" class="social-status">
-            Сейчас вы передаёте трофей и начинаете проверочный рейс. Награда будет выдана после
-            проверки и возвращения работника.
-        </p>
-        <QuestRewardSummary :total="prompt.rewardGold" :mode="prompt.rewardMode" />
-        <ul v-if="prompt.rewardItems.length" class="turn-in-items">
-            <li v-for="item in prompt.rewardItems" :key="item.instanceId">
-                <ItemIcon :item="item" />{{ itemStackLabel(item) }} · сдающему
-            </li>
-        </ul>
-        <p v-if="serverTime >= prompt.expiresAt" role="status">
-            Подтверждение устарело. Попросите заказчика проверить договор снова.
-        </p>
-        <div class="social-window__actions">
-            <GameButton
-                variant="success"
-                :disabled="pending || serverTime >= prompt.expiresAt"
-                @click="answer(true)"
-            >
-                {{
-                    pending
-                        ? 'Проверяем…'
-                        : prompt.action === 'report'
-                          ? 'Передать трофей и доложить'
-                          : 'Сдать'
-                }}
-            </GameButton>
-            <GameButton :disabled="pending" @click="answer(false)">
-                Вернуться к разговору
-            </GameButton>
-        </div>
+    <SocialWindow title="Сдать поручение" modal layout="quest" @close="answer(false)">
+        <QuestTurnInPanel
+            :confirm-label="confirmLabel"
+            :confirm-disabled="pending || expired"
+            :cancel-disabled="pending"
+            @confirm="answer(true)"
+            @cancel="answer(false)"
+        >
+            <p>
+                Заказчик: <strong>{{ prompt.issuerName }}</strong>
+            </p>
+            <h3>{{ prompt.title }}</h3>
+            <p>{{ prompt.description }}</p>
+            <ol v-if="objectives.length" class="turn-in-items">
+                <li v-for="({ objective, label }, index) in objectives" :key="index">
+                    <ItemIcon v-if="objective?.kind === 'deliver'" :item="objective" />
+                    <span>{{ label }}</span>
+                </li>
+            </ol>
+            <p v-if="prompt.action === 'report'" class="social-muted">
+                Награду выдадут после проверочного рейса и возвращения работника.
+            </p>
+            <QuestRewardSummary :total="prompt.rewardGold" :mode="prompt.rewardMode" />
+            <ul v-if="prompt.rewardItems.length" class="turn-in-items">
+                <li v-for="item in prompt.rewardItems" :key="item.instanceId">
+                    <ItemIcon :item="item" /><span>{{ itemStackLabel(item) }} · сдающему</span>
+                </li>
+            </ul>
+            <p v-if="expired" class="social-status" role="status">
+                Подтверждение устарело. Попросите заказчика проверить договор снова.
+            </p>
+        </QuestTurnInPanel>
     </SocialWindow>
 </template>
 <style scoped>
@@ -85,7 +75,6 @@ function answer(accept: boolean): void {
     list-style: none;
     padding: 0;
 }
-.turn-in-objective,
 .turn-in-items li {
     display: flex;
     align-items: center;

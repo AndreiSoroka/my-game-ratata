@@ -37,8 +37,8 @@ const adventure: AdventureSnapshot = {
     },
     quest: {
         id: 'quest',
-        title: '',
-        description: '',
+        title: 'Три слизневых сердца',
+        description: 'Принесите три сердца, чтобы восстановить защиту города.',
         goal: 3,
         kills: 0,
         status: 'available',
@@ -51,7 +51,7 @@ const adventure: AdventureSnapshot = {
 }
 
 describe('story quest reward choice', () => {
-    it('selects reward sharing only while accepting the story quest', async () => {
+    it('opens a light offer to accept or refuse, keeping the conversation and reward choice', async () => {
         const questDialogue: AdventureSnapshot = {
             ...adventure,
             dialogue: {
@@ -61,10 +61,26 @@ describe('story quest reward choice', () => {
         }
         const wrapper = mount(AdventureDialogue, {
             props: { adventure: questDialogue, characters: [] },
+            attachTo: document.body,
         })
         try {
+            const action = wrapper.get('[data-dialogue-action="accept_quest"]')
+            await action.trigger('click')
+            const offer = wrapper.get('[aria-modal="true"][aria-label="Предложение поручения"]')
+            expect(offer.text()).toContain('Три слизневых сердца')
+            expect(offer.text()).toContain('Общая награда: 40 золотых')
+            expect(wrapper.get('.adventure-dialogue').attributes('inert')).toBeDefined()
+            expect(wrapper.emitted('command')).toBeUndefined()
+            await offer.get('button.ui-button--ghost').trigger('click')
+            await flushPromises()
+            expect(wrapper.find('[aria-modal="true"]').exists()).toBe(false)
+            expect(wrapper.get('.adventure-dialogue').attributes('inert')).toBeUndefined()
+            expect(wrapper.emitted('command')).toBeUndefined()
+            expect(document.activeElement).toBe(action.element)
+
+            await action.trigger('click')
             await wrapper.get('input[value="submitter"]').setValue()
-            await wrapper.get('.adventure-choices button').trigger('click')
+            await wrapper.get('[aria-modal="true"] button.ui-button--panel').trigger('click')
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'dialogue_choice', choiceId: 'accept_quest', rewardMode: 'submitter' }],
             ])
@@ -84,6 +100,48 @@ describe('story quest reward choice', () => {
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'dialogue_choice', choiceId: 'quest_progress' },
             ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
+
+    it('confirms turn-in once and closes an obsolete or cancelled modal without a command', async () => {
+        const ready: AdventureSnapshot = {
+            ...adventure,
+            dialogue: {
+                ...adventure.dialogue!,
+                choices: [{ id: 'turn_in_trophies', label: 'Отдать три сердца' }],
+            },
+            quest: { ...adventure.quest, status: 'ready', rewardMode: 'party_equal' },
+        }
+        const wrapper = mount(AdventureDialogue, {
+            props: { adventure: ready, characters: [] },
+            attachTo: document.body,
+        })
+        try {
+            const action = '[data-dialogue-action="turn_in_trophies"]'
+            const modal = '[aria-modal="true"][aria-label="Сдать поручение"]'
+            await wrapper.get(action).trigger('click')
+            expect(wrapper.get(modal).text()).toContain('Поровну группе')
+            await wrapper.get(modal).trigger('keydown', { code: 'Escape' })
+            await flushPromises()
+            expect(wrapper.find(modal).exists()).toBe(false)
+            expect(document.activeElement).toBe(wrapper.get(action).element)
+            expect(wrapper.emitted('command')).toBeUndefined()
+
+            await wrapper.get(action).trigger('click')
+            await wrapper.setProps({
+                adventure: { ...ready, dialogue: { ...ready.dialogue!, npcId: 'another' } },
+            })
+            expect(wrapper.find(modal).exists()).toBe(false)
+            expect(wrapper.emitted('command')).toBeUndefined()
+
+            await wrapper.get(action).trigger('click')
+            await wrapper.get(`${modal} button.ui-button--panel`).trigger('click')
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'dialogue_choice', choiceId: 'turn_in_trophies' }],
+            ])
+            expect(wrapper.find(modal).exists()).toBe(false)
         } finally {
             wrapper.unmount()
         }

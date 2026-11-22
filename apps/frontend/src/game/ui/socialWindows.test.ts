@@ -273,6 +273,35 @@ it('retains quest whisper text and reward selection across revisions of the same
     }
 })
 
+it('prepares the initially visible offer and prepares again only for a new offer id', async () => {
+    const player = characterFixture('self')
+    const questOffer = questOfferFixture()
+    const snapshot = { ...worldFixture([player]), social: { questOffer } }
+    const view = mount(SocialPanels, {
+        props: { snapshot, player, characters: [player], connected: true },
+    })
+    try {
+        const commands = [
+            [{ type: 'release_input' }],
+            [{ type: 'whisper_open', targetId: questOffer.issuerId }],
+        ]
+        expect(view.emitted('command')).toEqual(commands)
+        await view.setProps({
+            snapshot: {
+                ...snapshot,
+                social: { questOffer: { ...questOffer, revision: questOffer.revision + 1 } },
+            },
+        })
+        expect(view.emitted('command')).toEqual(commands)
+        await view.setProps({
+            snapshot: { ...snapshot, social: { questOffer: { ...questOffer, id: 'offer-2' } } },
+        })
+        expect(view.emitted('command')).toEqual([...commands, ...commands])
+    } finally {
+        view.unmount()
+    }
+})
+
 it('does not steal focus from reopened whisper when completed trade snapshots repeat', async () => {
     const player = characterFixture('self')
     const canvas = document.createElement('canvas')

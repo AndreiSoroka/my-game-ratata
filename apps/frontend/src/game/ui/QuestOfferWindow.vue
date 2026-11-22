@@ -6,9 +6,10 @@ import type {
     QuestRewardMode,
     WhisperSnapshot,
 } from '@my-game-ratata/contracts'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-import GameButton from './primitives/GameButton.vue'
+import { QuestOfferPanel } from '@/entities/quests'
+
 import PrivateConversation from './PrivateConversation.vue'
 import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestTerms from './QuestTerms.vue'
@@ -25,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const rewardMode = ref<QuestRewardMode>(props.offer.rewardMode)
 const initialRevision = ref(props.offer.revision)
+const expired = computed(() => props.serverTime >= props.offer.expiresAt)
 watch(
     () => props.offer.id,
     () => {
@@ -36,6 +38,7 @@ function whisper(text: string): void {
     emit('command', { type: 'whisper', targetId: props.offer.issuerId, text })
 }
 function answer(accept: boolean): void {
+    if (accept && (props.occupied || expired.value)) return
     emit('command', {
         type: 'quest_offer_answer',
         offerId: props.offer.id,
@@ -46,34 +49,36 @@ function answer(accept: boolean): void {
 }
 </script>
 <template>
-    <SocialWindow title="Предложение поручения" modal @close="answer(false)">
-        <p v-if="offer.introduction" class="quest-offer__introduction">{{ offer.introduction }}</p>
-        <QuestTerms :offer="offer" :characters="characters" />
-        <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
-            Заказчик изменил награду. Проверьте текущие условия перед принятием.
-        </p>
-        <QuestRewardChoice v-if="offer.rewardGold > 0" v-model="rewardMode" />
-        <p class="social-muted">
-            Режим фиксируется при принятии. Одновременно можно выполнять один договор.
-        </p>
-        <p v-if="occupied" class="social-status">Сначала завершите или отмените текущий договор.</p>
-        <p v-if="serverTime >= offer.expiresAt" class="social-status">Предложение устарело.</p>
-        <PrivateConversation
-            v-if="conversation?.partnerId === offer.issuerId"
-            :conversation="conversation"
-            :player-id="playerId ?? ''"
-            @send="whisper"
-            @command="emit('command', $event)"
-        />
-        <div class="social-window__actions">
-            <GameButton
-                variant="success"
-                :disabled="occupied || serverTime >= offer.expiresAt"
-                @click="answer(true)"
-            >
-                Взять
-            </GameButton>
-            <GameButton @click="answer(false)">Отказаться</GameButton>
-        </div>
+    <SocialWindow title="Предложение поручения" modal layout="quest" @close="answer(false)">
+        <QuestOfferPanel
+            :confirm-disabled="occupied || expired"
+            @confirm="answer(true)"
+            @cancel="answer(false)"
+        >
+            <p v-if="offer.introduction" class="quest-offer__introduction">
+                {{ offer.introduction }}
+            </p>
+            <QuestTerms :offer="offer" :characters="characters" />
+            <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
+                Заказчик изменил награду. Проверьте текущие условия перед принятием.
+            </p>
+            <QuestRewardChoice
+                v-if="offer.rewardGold > 0"
+                v-model="rewardMode"
+                appearance="light"
+            />
+            <p class="social-muted">Одновременно можно выполнять один договор.</p>
+            <p v-if="occupied" class="social-status" role="status">
+                Сначала завершите или отмените текущий договор.
+            </p>
+            <p v-if="expired" class="social-status" role="status">Предложение устарело.</p>
+            <PrivateConversation
+                v-if="conversation?.partnerId === offer.issuerId"
+                :conversation="conversation"
+                :player-id="playerId ?? ''"
+                @send="whisper"
+                @command="emit('command', $event)"
+            />
+        </QuestOfferPanel>
     </SocialWindow>
 </template>
