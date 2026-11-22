@@ -39,13 +39,16 @@ export function describeOtherEffectChance(
     if (['magic.root', 'arrow.root', 'life.root'].includes(node.id))
         return describeOtherRootChance(node.id)
     if (node.id === 'arrow.sniper_shot') return describeSniperChance()
-    if (node.constellationId === 'arrow' && node.results?.length)
+    if (
+        node.constellationId === 'undead' ||
+        (node.constellationId === 'arrow' && node.results?.length)
+    )
         return withChanceFormulas(
             {
                 deterministic: true,
                 summary: 'Эффект изученной звезды применяется при выполнении её условий.',
                 examples: [],
-                notes: [...node.results],
+                notes: [...(node.results ?? [node.description])],
             },
             [chanceFormula('Применение бонуса при выполнении условий', '100%')]
         )

@@ -15,6 +15,7 @@ import { lifeStars } from './constellationLifeStars'
 import { withPrayerLore } from './constellationPrayerLore'
 import { revivalStars } from './constellationRevivalStars'
 import { roadPrayerStars } from './constellationRoadPrayerStars'
+import { undeadStars } from './constellationUndead'
 
 const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
     arrow: 'shot',
@@ -29,6 +30,7 @@ const rootNames: Partial<Record<ConstellationId, string>> = {
     prayer_road: 'Молитва странника',
     prayer_lantern: 'Молитва ясности',
     prayer_grave: 'Молитва праха',
+    undead: 'Нежескелет',
 }
 
 const roots: ConstellationStar[] = constellationPaths.map((path) => {
@@ -166,7 +168,7 @@ const joints = [
 
 /** Complete authored graph. Owner snapshots disclose only earned metadata and the immediate frontier. */
 const authoredNodes = [
-    ...roots,
+    ...roots.filter((node) => node.constellationId !== 'undead'),
     ...constellationStars,
     ...explicitAbilities,
     ...joints,
@@ -174,6 +176,8 @@ const authoredNodes = [
     ...roadPrayerStars,
     ...lifeStars,
     ...arrowExpansionStars,
+    ...roots.filter((node) => node.constellationId === 'undead'),
+    ...undeadStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(

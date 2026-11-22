@@ -9,8 +9,17 @@ import type { CompanionWorld } from '../src/game/agentDecisions'
 import type { GameCharacter } from '../src/game/character'
 import { advanceRevive } from '../src/game/characterLife'
 import { ClericController } from '../src/game/clericController'
+import {
+    attemptAttack,
+    isTargetInAttackRange,
+    resolvePendingAttackHit,
+} from '../src/game/combat'
+import { createItemInstance, inventoryCapacity } from '../src/game/inventory'
 import { requestNpcAttack, trySkeletonStrike } from '../src/game/npcAbilities'
 import type { GameRoom } from '../src/game/room'
+import { createInventoryRequester } from '../src/game/roomEconomy'
+import { createSkeleton } from '../src/game/spawns'
+import { WorldLocations } from '../src/game/worldLocations'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
 
 function npcWorld(characters: GameCharacter[]) {
@@ -131,6 +140,56 @@ it('skeleton policy only chooses a heavy-strike intention and leaves combat muta
     actor.energy = 23
     expect(trySkeletonStrike(actor, target, world, 2000)).toBe(false)
     expect(request).toHaveBeenCalledTimes(1)
+})
+
+it('stows a broken sword when the skeleton has bag space and resumes ordinary melee', () => {
+    const target = abilityHero()
+    const { world, context, published } = npcWorld([target])
+    const locations = new WorldLocations(context.navigation)
+    const { character: actor } = createSkeleton(context.navigation)
+    const sword = actor.equipment.weapon
+    if (sword === undefined) {
+        throw new Error('Expected a skeleton with its starting sword')
+    }
+    const now = Date.now()
+    sword.durability = 0
+    actor.abilities.availableAt.skeleton_strike = now + 8000
+    target.position = { x: actor.position.x, y: actor.position.y + 16 }
+    actor.inventory = Array.from({ length: inventoryCapacity }, () =>
+        createItemInstance('boots')
+    )
+    const attack = {
+        actor,
+        now,
+        targets: [target],
+        targetId: target.id,
+        tileSize: context.navigation.grid.tileWidth,
+        navigation: context.navigation,
+        respawnDelayMsFor: () => 0,
+        random: () => 0.5,
+    }
+    world.requestInventoryAction = createInventoryRequester(() => locations)
+    world.requestAttack = () => {
+        published.push(...attemptAttack(attack))
+    }
+
+    requestNpcAttack(actor, target, world, now)
+    expect(actor.equipment.weapon).toBe(sword)
+    expect(actor.inventory).toHaveLength(inventoryCapacity)
+    expect(published).toEqual([])
+
+    actor.inventory.pop()
+    requestNpcAttack(actor, target, world, now)
+    expect(actor.equipment.weapon).toBeUndefined()
+    expect(actor.inventory.at(-1)).toBe(sword)
+    expect(actor.snapshot(now).visualId).toBe('skeleton_swordless')
+    expect(isTargetInAttackRange(actor, target, attack.tileSize)).toBe(true)
+    expect(published.map(({ kind }) => kind)).toEqual(['item_equip', 'attack'])
+    expect(
+        resolvePendingAttackHit({ ...attack, now: now + 500 })
+    ).toContainEqual(
+        expect.objectContaining({ kind: 'damage', actorId: actor.id })
+    )
 })
 
 it('a refusal to fight blocks both a special strike and its ordinary-attack fallback', () => {

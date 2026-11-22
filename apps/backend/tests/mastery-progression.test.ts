@@ -19,11 +19,13 @@ import {
     hasStar,
     syncAbilityConstellations,
 } from '../src/game/constellations'
-import { publicProgression } from '../src/game/progressionObservation'
+import {
+    publicProgression,
+    snapshotProgression,
+} from '../src/game/progressionObservation'
 import {
     awardMasteries,
     captureMasteryFactors,
-    snapshotProgression,
 } from '../src/game/skillProgression'
 import { abilityHero } from './abilityTestHelpers'
 
@@ -422,7 +424,7 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(183)
+        expect(fullConstellationCatalog).toHaveLength(192)
         expect(minimumConstellationLevel('prayer.harm')).toBe(1)
         expect(minimumConstellationLevel('prayer.harm1')).toBe(6)
         expect(minimumConstellationLevel('prayer.harm2')).toBe(12)

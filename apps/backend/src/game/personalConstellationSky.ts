@@ -1,6 +1,10 @@
 import { randomBytes } from 'node:crypto'
 
-import type { ConstellationId, HeroClass } from '@my-game-ratata/contracts'
+import type {
+    CharacterArchetype,
+    ConstellationId,
+    HeroClass,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { generateConstellationLayout } from './constellationLayout'
@@ -9,17 +13,19 @@ import { fullConstellationCatalog } from './constellationNodes'
 type RealizedLayout = ReturnType<typeof generateConstellationLayout>
 type Immutable<T> = { readonly [Key in keyof T]: Immutable<T[Key]> }
 export type CachedConstellationLayout = Immutable<RealizedLayout>
+interface SkyBackground {
+    readonly heroClass: HeroClass | undefined
+    readonly archetype: CharacterArchetype
+}
 
 /** Identity-owned private data. Neither the seed nor the complete hidden graph is serialized. */
 export class PersonalConstellationSky {
     readonly #seed = randomBytes(16).toString('hex')
-    readonly #background: { readonly heroClass: HeroClass | undefined }
+    readonly #background: SkyBackground
     #layout: CachedConstellationLayout | undefined
     #catalogVersion: string | undefined
 
-    public constructor(background: {
-        readonly heroClass: HeroClass | undefined
-    }) {
+    public constructor(background: SkyBackground) {
         this.#background = background
     }
 
@@ -33,7 +39,7 @@ export class PersonalConstellationSky {
             generateConstellationLayout(
                 fullConstellationCatalog,
                 this.#seed,
-                startingConstellation(this.#background.heroClass)
+                startingConstellation(this.#background)
             )
         )
         return this.#layout
@@ -44,9 +50,13 @@ export class PersonalConstellationSky {
     }
 }
 
-function startingConstellation(
-    heroClass: HeroClass | undefined
-): ConstellationId {
+function startingConstellation({
+    archetype,
+    heroClass,
+}: SkyBackground): ConstellationId {
+    if (archetype === 'skeleton') {
+        return 'undead'
+    }
     return heroClass === undefined
         ? 'life'
         : {

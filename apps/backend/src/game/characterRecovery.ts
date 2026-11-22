@@ -68,6 +68,7 @@ export function restoreCharacter(
     clearResourcePractice(character)
     clearPursuit(character)
     character.alive = true
+    character.lifeStartedAt = now
     character.movement = createMovementState()
     character.actionLockUntil = 0
     character.attackZones = []

@@ -27,6 +27,14 @@ export function initializeConstellations(actor: GameCharacter): void {
     for (const id of starterConstellationStars(actor.heroClass)) {
         actor.progression.constellations.opened.add(id)
     }
+    if (actor.archetype === 'skeleton') {
+        const { constellations, masteries } = actor.progression
+        constellations.opened.add('blade.root')
+        constellations.opened.add('undead.root')
+        constellations.opened.add('undead.arcane_joints')
+        masteries.blade.level = 1
+        masteries.undead.level = 2
+    }
     syncAbilityConstellations(actor)
 }
 
@@ -134,7 +142,7 @@ export function finishConstellationAction(
         state.credits[node.constellationId] -= 1
         state.evidence = Object.fromEntries(
             Object.entries(state.evidence).filter(
-                ([key]) => evidencePath(key) !== node.constellationId
+                ([key]) => evidencePaths[key] !== node.constellationId
             )
         )
     }
@@ -183,46 +191,36 @@ function acceptActionReceipt(
     return true
 }
 
-function evidencePath(key: string): ConstellationId | undefined {
-    if (
-        key === 'gift' ||
-        key === 'harm' ||
-        key === 'purify' ||
-        key === 'prayer'
-    ) {
-        return 'prayer'
-    }
-    if (key === 'wound' || key === 'recovery' || key === 'work_recovery') {
-        return 'life'
-    }
-    if (key === 'barrier') {
-        return 'magic'
-    }
-    return (
-        {
-            swordsmanship: 'blade',
-            arcana: 'magic',
-            fireball: 'magic',
-            greater_fireball: 'magic',
-            chains: 'magic',
-            marksmanship: 'arrow',
-            quick_shot: 'arrow',
-            sniper_shot: 'arrow',
-            moving_shot: 'arrow',
-            vitality: 'life',
-            stealth: 'shadow',
-            theft: 'shadow',
-            prayer: 'prayer',
-            blade: 'blade',
-            magic: 'magic',
-            arrow: 'arrow',
-            life: 'life',
-            shadow: 'shadow',
-            prayer_road: 'prayer_road',
-            prayer_lantern: 'prayer_lantern',
-            prayer_grave: 'prayer_grave',
-        } as Record<string, ConstellationId>
-    )[key]
+const evidencePaths: Readonly<Partial<Record<string, ConstellationId>>> = {
+    gift: 'prayer',
+    harm: 'prayer',
+    purify: 'prayer',
+    wound: 'life',
+    recovery: 'life',
+    work_recovery: 'life',
+    barrier: 'magic',
+    swordsmanship: 'blade',
+    arcana: 'magic',
+    fireball: 'magic',
+    greater_fireball: 'magic',
+    chains: 'magic',
+    marksmanship: 'arrow',
+    quick_shot: 'arrow',
+    sniper_shot: 'arrow',
+    moving_shot: 'arrow',
+    vitality: 'life',
+    stealth: 'shadow',
+    theft: 'shadow',
+    prayer: 'prayer',
+    blade: 'blade',
+    magic: 'magic',
+    arrow: 'arrow',
+    life: 'life',
+    shadow: 'shadow',
+    prayer_road: 'prayer_road',
+    prayer_lantern: 'prayer_lantern',
+    prayer_grave: 'prayer_grave',
+    undead: 'undead',
 }
 
 function chooseStar(

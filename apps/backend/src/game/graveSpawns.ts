@@ -26,7 +26,7 @@ interface SpawnContext {
     characters: ReadonlyMap<string, GameCharacter>
     navigation: (locationId: string) => NavigationService
     occupants: (locationId: string) => readonly WorldObjectBounds[]
-    add: (spawn: SpawnedCharacter) => void
+    add: (spawn: SpawnedCharacter, inheritedMasteryLevel: number) => void
     remove: (id: string) => void
 }
 
@@ -117,7 +117,8 @@ export class GraveSpawns {
         definition: GraveSourceDefinition,
         initialChildren: readonly string[],
         now: number,
-        firstDelay = GRAVE_SPAWN_INTERVAL_MS
+        firstDelay = GRAVE_SPAWN_INTERVAL_MS,
+        firstMasteryLevel = 0
     ): void {
         if (this.sources.has(definition.id)) {
             return
@@ -127,6 +128,7 @@ export class GraveSpawns {
             children: new Set(initialChildren),
             nextSpawnAt: now + firstDelay,
             nextBirth: 1,
+            firstMasteryLevel,
             retryAt: 0,
             hpUnits: GRAVE_MAX_HP * 100,
             phase: 'active',
@@ -138,7 +140,8 @@ export class GraveSpawns {
     public schedule(
         character: GameCharacter,
         now: number,
-        navigation: NavigationService
+        navigation: NavigationService,
+        inheritedMasteryLevel = 0
     ): void {
         if (
             character.controllerKind !== 'network_player' ||
@@ -161,7 +164,8 @@ export class GraveSpawns {
             },
             [],
             now,
-            FINAL_DEATH_SKELETON_DELAY_MS
+            FINAL_DEATH_SKELETON_DELAY_MS,
+            inheritedMasteryLevel
         )
     }
 
@@ -193,9 +197,10 @@ export class GraveSpawns {
                 source.retryAt = now + 1_000
                 continue
             }
+            const birth = source.nextBirth++
             const spawn = createSkeleton(
                 navigation,
-                `_grave_${entry.id}_${String(source.nextBirth++)}`,
+                `_grave_${entry.id}_${String(birth)}`,
                 navigation.worldToTile(position),
                 'none'
             )
@@ -203,7 +208,7 @@ export class GraveSpawns {
             spawn.character.locationId = entry.locationId
             source.children.add(spawn.character.id)
             source.nextSpawnAt = now + GRAVE_SPAWN_INTERVAL_MS
-            context.add(spawn)
+            context.add(spawn, birth === 1 ? source.firstMasteryLevel : 0)
             this.guardians.sync(
                 source.definition,
                 source.children,

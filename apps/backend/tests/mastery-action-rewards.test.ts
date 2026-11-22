@@ -1,6 +1,7 @@
 import {
     type ConstellationId,
     constellationIds,
+    MASTERY_REWARDS,
     masteryRewardMicros,
     masteryTotalExperience,
     parseMasteryExperience,
@@ -157,10 +158,18 @@ describe('weapon and spell mastery rewards', () => {
     )
     it('freezes defender factors before a first Barrier award and a Life award in the same hit', () => {
         const { actor, target } = encounter()
-        target.progression.masteries.magic.experience =
-            parseMasteryExperience('99.9')
-        target.progression.masteries.life.experience =
-            parseMasteryExperience('99.9')
+        const startingExperience = parseMasteryExperience('99.9')
+        target.progression.masteries.magic.experience = startingExperience
+        target.progression.masteries.life.experience = startingExperience
+        const factors = captureMasteryFactors(target)
+        const barrierExperience = masteryRewardMicros(
+            MASTERY_REWARDS.barrierAbsorb,
+            factors.magic
+        )
+        const woundExperience = masteryRewardMicros(
+            MASTERY_REWARDS.vitalityBlock,
+            factors.life
+        )
         target.mana = 1
         target.abilities.barrier = {
             expiresAt: 5000,
@@ -175,17 +184,19 @@ describe('weapon and spell mastery rewards', () => {
             respawnDelayMs: 15000,
         })
         expect(result.absorbed).toBe(1)
-        expect(target.progression.masteries.magic).toEqual({
-            level: 1,
-            experience: parseMasteryExperience('19.9'),
-        })
-        expect(target.progression.masteries.life).toEqual({
-            level: 1,
-            experience: parseMasteryExperience('19.9'),
-        })
+        expect(target.progression.masteries.magic.level).toBe(1)
+        expect(target.progression.masteries.life.level).toBe(1)
+        expect(total(target, 'magic')).toBe(
+            startingExperience + barrierExperience
+        )
+        expect(total(target, 'life')).toBe(startingExperience + woundExperience)
     })
     it('rewards a Barrier once per application and preserves hostile resource provenance', () => {
         const { actor, target } = encounter()
+        const barrierExperience = masteryRewardMicros(
+            MASTERY_REWARDS.barrierAbsorb,
+            captureMasteryFactors(target).magic
+        )
         target.mana = 8
         target.abilities.barrier = {
             expiresAt: 5000,
@@ -201,7 +212,7 @@ describe('weapon and spell mastery rewards', () => {
                 respawnDelayMs: 15000,
             })
         }
-        expect(total(target, 'magic')).toBe(parseMasteryExperience('20'))
+        expect(total(target, 'magic')).toBe(barrierExperience)
         expect(total(target, 'life')).toBe(0n)
     })
 })

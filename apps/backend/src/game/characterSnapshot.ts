@@ -12,7 +12,7 @@ import { effectiveCharacterStats } from './effectiveParameters'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { snapshotEquipment, snapshotItem } from './inventory'
 import { snapshotMovement } from './movementActions'
-import { snapshotProgression } from './skillProgression'
+import { snapshotProgression } from './progressionObservation'
 
 export function createCharacterSnapshot(
     character: GameCharacter,
@@ -80,7 +80,11 @@ export function createCharacterSnapshot(
         stats: effectiveCharacterStats(character),
         tags: snapshotTags(character, now),
         velocity: character.velocity,
-        visualId: character.visualId,
+        visualId:
+            character.visualId === 'skeleton' &&
+            character.equipment.weapon === undefined
+                ? 'skeleton_swordless'
+                : character.visualId,
     }
 }
 

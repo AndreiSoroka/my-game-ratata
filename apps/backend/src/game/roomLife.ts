@@ -11,6 +11,10 @@ import { resourceOccupants } from './roomEconomy'
 import { advanceRoomLives, finalizeRoomLife } from './roomLifecycle'
 import type { RoomSocket } from './roomMessaging'
 import type { GraveRegistration } from './roomSpawns'
+import {
+    captureSkeletonInheritance,
+    inheritSkeletonProgress,
+} from './skeletonProgression'
 import type { WorldLocations } from './worldLocations'
 import { applyEncounterDifficulty } from './worldSpawns'
 
@@ -68,7 +72,7 @@ export class RoomLife {
             characters: this.characters,
             navigation: (id) => this.world().get(id).navigation,
             occupants: (id) => resourceOccupants(this.world(), id),
-            add: ({ character, controller }) => {
+            add: ({ character, controller }, inheritedMasteryLevel) => {
                 applyEncounterDifficulty(
                     character,
                     this.world().get(character.locationId).description
@@ -78,6 +82,15 @@ export class RoomLife {
                     character.id,
                     new PolicyController(this.companions, controller)
                 )
+                if (inheritedMasteryLevel > 0) {
+                    this.onEvents(
+                        inheritSkeletonProgress(
+                            character,
+                            inheritedMasteryLevel,
+                            now
+                        )
+                    )
+                }
             },
             remove: (id) => {
                 this.world().closeChestViews(id)
@@ -100,19 +113,21 @@ export class RoomLife {
                 at: number,
                 abandoned: boolean
             ) => {
+                const inheritedMasteryLevel = captureSkeletonInheritance(actor)
                 this.world().closeChestViews(actor.id)
                 this.onEvents(
                     this.world()
                         .get(actor.locationId)
                         .inventory.finalizeDeath(actor, at, abandoned)
                 )
+                return () =>
+                    this.deathSpawns.schedule(
+                        actor,
+                        at,
+                        this.world().get(actor.locationId).navigation,
+                        inheritedMasteryLevel
+                    )
             },
-            afterRetire: (actor: GameCharacter, at: number) =>
-                this.deathSpawns.schedule(
-                    actor,
-                    at,
-                    this.world().get(actor.locationId).navigation
-                ),
         }
     }
 }

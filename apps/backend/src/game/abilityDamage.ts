@@ -21,6 +21,7 @@ import {
 } from './prayerAuras'
 import { cancelPrayerCast } from './prayerCancellation'
 import { confirmResourceSpend, recordResourceSpend } from './resourcePractice'
+import { rewardSkeletonKill } from './skeletonKillReward'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
 import { recordVitalityDamage } from './vitalityPractice'
 export interface DamageResolution {
@@ -95,7 +96,7 @@ export function resolveCharacterDamage(
     }
     applyHpDamage(input, result, hostile, auraEffects.advantage)
     finishDefenderPractice(input, result, hostile, factors)
-    finishDamageDeath(input, result.events)
+    finishDamageDeath(input, result.events, hostile)
     return result
 }
 
@@ -229,7 +230,8 @@ function absorbDamage(
 }
 function finishDamageDeath(
     input: CharacterDamageInput,
-    events: GameEventPayload[]
+    events: GameEventPayload[],
+    hostile: boolean
 ): void {
     const { actor, target, now } = input
     if (target.alive) {
@@ -239,4 +241,7 @@ function finishDamageDeath(
     target.abilities.casting = null
     target.queueRespawn(now, input.respawnDelayMs)
     events.push({ kind: 'death', actorId: actor.id, targetId: target.id })
+    if (hostile) {
+        events.push(...rewardSkeletonKill(actor, target, now, input.random))
+    }
 }

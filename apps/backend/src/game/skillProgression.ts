@@ -3,20 +3,15 @@ import {
     type ConstellationId,
     constellationIds,
     type DeityId,
-    formatMasteryExperience,
     type GameEventPayload,
     MASTERY_NAMES,
     masteryConflict,
     masteryThreshold,
-    masteryTotalExperience,
     PRAYER_SCHOOL_DEFINITIONS,
-    prayerAbilityIds,
     type PrayerActionId,
     prayerSchoolId,
     profileForPrayer,
-    type ProgressionSnapshot,
     resolveCombatWeapon,
-    resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -24,14 +19,10 @@ import { canWalkDuringPrayer } from './combatMovement'
 import {
     createConstellationState,
     finishConstellationAction,
-    snapshotConstellations,
     syncAbilityConstellations,
 } from './constellations'
 import type { CharacterConstellations } from './constellationState'
-import { snapshotDeity, snapshotOtherDeities } from './deities'
 import { activeMagicChannel, magicAttackWindingUp } from './magicState'
-import { readCachedConstellationLayout } from './personalConstellationSky'
-import { prayerPurificationChance } from './prayerProbability'
 
 export interface MasteryPractice {
     level: number
@@ -91,67 +82,6 @@ export function canUseResurrection(
             ].level >= 5)
     )
 }
-export function snapshotProgression(
-    actor: GameCharacter,
-    now: number,
-    includePrivate = true
-): ProgressionSnapshot {
-    const factors = captureMasteryFactors(actor)
-    const deity = snapshotDeity(actor, now)
-    const resurrectionUnlocked = canUseResurrection(actor)
-    if (
-        includePrivate &&
-        deity.id === 'hearth' &&
-        deity.successChance !== null &&
-        deity.mood !== null &&
-        actor.abilities.known.has('pray')
-    ) {
-        deity.hearthPrayerChances = {
-            purificationPerStep: prayerPurificationChance(deity.successChance),
-            resurrection: resurrectionUnlocked
-                ? resolveResurrectionParameters(
-                      'pray',
-                      actor.progression.constellations.opened,
-                      deity.mood
-                  ).successChance
-                : null,
-        }
-    }
-    return {
-        masteries: constellationIds.map((id) => {
-            const mastery = actor.progression.masteries[id]
-            return {
-                id,
-                name: MASTERY_NAMES[id],
-                level: mastery.level,
-                experience: formatMasteryExperience(mastery.experience),
-                experienceToNext: formatMasteryExperience(
-                    masteryThreshold(mastery.level)
-                ),
-                totalExperience: formatMasteryExperience(
-                    masteryTotalExperience(mastery.level) + mastery.experience
-                ),
-                pendingOpenings: actor.progression.constellations.credits[id],
-                conflictMultiplier: factors[id],
-            }
-        }),
-        deity,
-        ...(includePrivate
-            ? {
-                  otherDeities: snapshotOtherDeities(actor, now),
-                  ...(readCachedConstellationLayout(actor) === undefined
-                      ? {}
-                      : { constellations: snapshotConstellations(actor) }),
-              }
-            : {}),
-        magicChaptersRead: actor.progression.magicChaptersRead,
-        magicChaptersTotal: 3,
-        resurrectionUnlocked,
-        resurrectionSchools: prayerAbilityIds.filter((id) =>
-            canUseResurrection(actor, id)
-        ),
-    }
-}
 export interface MasteryAward {
     constellationId: ConstellationId
     experience: number
@@ -163,17 +93,17 @@ export interface MasteryAwardOptions {
     evidence?: string[] | undefined
     factors?: Readonly<Record<ConstellationId, number>> | undefined
 }
+interface ResolvedMasteryAward {
+    id: ConstellationId
+    micros: bigint
+}
 /** One validated action. Repeated targets of a branch share one frozen conflict factor. */
 export function awardMasteries(
     actor: GameCharacter,
     awards: readonly MasteryAward[],
     options: MasteryAwardOptions
 ): GameEventPayload[] {
-    if (
-        !canReceiveMastery(actor) ||
-        (options.receiptId !== undefined &&
-            actor.progression.rewardReceipts.has(options.receiptId))
-    ) {
+    if (!canReceiveMastery(actor, options.receiptId)) {
         return []
     }
     const sums = sumMasteryAwards(awards)
@@ -190,17 +120,38 @@ export function awardMasteries(
             id
         ),
     }))
+    return applyMasteryAwards(actor, resolved, options)
+}
+
+/** Resolved experience from sources such as inheritance, already denominated in micro-XP. */
+export function awardMasteryExperience(
+    actor: GameCharacter,
+    id: ConstellationId,
+    micros: bigint,
+    options: MasteryAwardOptions
+): GameEventPayload[] {
+    if (micros <= 0n || !canReceiveMastery(actor, options.receiptId)) {
+        return []
+    }
+    return applyMasteryAwards(actor, [{ id, micros }], options)
+}
+
+function applyMasteryAwards(
+    actor: GameCharacter,
+    awards: readonly ResolvedMasteryAward[],
+    options: MasteryAwardOptions
+): GameEventPayload[] {
     if (options.receiptId !== undefined) {
         actor.progression.rewardReceipts.add(options.receiptId)
     }
-    const events = resolved.flatMap(({ id, micros }) =>
+    const events = awards.flatMap(({ id, micros }) =>
         applyMasteryAward(actor, id, micros)
     )
     syncAbilityConstellations(actor)
     return [
         ...events,
         ...finishConstellationAction(actor, {
-            constellationIds: [...sums.keys()],
+            constellationIds: awards.map(({ id }) => id),
             now: options.now,
             random: options.random,
             actionId: options.receiptId,
@@ -208,12 +159,17 @@ export function awardMasteries(
         }),
     ]
 }
-function canReceiveMastery(actor: GameCharacter): boolean {
+function canReceiveMastery(
+    actor: GameCharacter,
+    receiptId: string | undefined
+): boolean {
     return (
         actor.alive &&
         actor.trainingTarget === undefined &&
         !actor.tags.has('offline') &&
-        !actor.tags.has('state.retired')
+        !actor.tags.has('state.retired') &&
+        (receiptId === undefined ||
+            !actor.progression.rewardReceipts.has(receiptId))
     )
 }
 function sumMasteryAwards(

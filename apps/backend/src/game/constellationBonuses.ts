@@ -3,6 +3,7 @@ import {
     manaRestMultipliers,
     spellManaMultipliers,
 } from './constellationMagicStars'
+import { resolveUndeadBonuses } from './constellationUndead'
 
 export const ENDURANCE_ENERGY_PERCENT = 110
 
@@ -23,6 +24,7 @@ export function resolveConstellationBonuses(
     return {
         ...resolveBladeBonuses(activeIds),
         ...resolveArrowBonuses(activeIds),
+        ...resolveUndeadBonuses(activeIds),
         sparkDamageMultiplier: 1 + 0.1 * learned('magic.spark_damage'),
         sparkRangeCells: learned('magic.spark_range'),
         sparkManaDiscount: learned('magic.spark_economy'),

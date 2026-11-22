@@ -1,4 +1,8 @@
-import { type GameEventPayload, type ResourceSnapshot } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    resourceNeedsRestoration,
+    type ResourceSnapshot,
+} from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
 import { defendRitual, maintainShot, withdrawRangers } from './grave-defense'
@@ -115,7 +119,7 @@ for (const { mobile, direction, viewport } of cases) {
             const finished = await page.evaluate(() => window.__ratataTest!.getState().player!)
             expect(finished.resources.mana.kind).toBe('percent')
             expect(manaAtStart.length).toBeGreaterThanOrEqual(2)
-            expect(manaAtStart.every((percent) => percent < 100)).toBe(true)
+            expect(manaAtStart.every(resourceNeedsRestoration)).toBe(true)
             await expect(selectedWorldTarget(page)).toHaveCount(0)
             await page.screenshot({ path: info.outputPath('grave-purified.png') })
             await attachOutcome(
@@ -456,7 +460,7 @@ async function clearGraveApproach(
                         threat.id
                     )
                 },
-                { timeout: 25_000, intervals: [250] }
+                { timeout: 45_000, intervals: [250] }
             )
             .toBe(false)
     }

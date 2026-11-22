@@ -71,6 +71,10 @@ it.each([
     'prayer.harm2',
     'prayer.omen3',
     'magic.runic_echo',
+    'undead.root',
+    'undead.arcane_frame',
+    'undead.hollow_bones2',
+    'undead.consume_full',
 ])('omits the entire chance panel for the guaranteed rule %s', (nodeId) => {
     const view = mount(ConstellationDebugChance, { props: { nodeId } })
     expect(describeConstellationEffectChance(nodeId).deterministic).toBe(true)

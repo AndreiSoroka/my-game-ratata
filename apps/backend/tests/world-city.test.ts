@@ -70,7 +70,7 @@ describe('city and wilderness initial snapshots', () => {
         expect(skeleton.archetype).toBe('skeleton')
         expect(skeleton.faction).toBe('monsters')
         expect(skeleton.health).toEqual({ kind: 'percent', percent: 100 })
-        expect(room.getCharacter(skeleton.id)?.maxHp).toBe(44)
+        expect(room.getCharacter(skeleton.id)?.maxHp).toBe(50)
         expect(skeleton.resources.energy).toEqual({
             kind: 'percent',
             percent: 100,

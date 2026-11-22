@@ -492,6 +492,7 @@ function createCharacter(
     })
     // These scenarios exercise the shared base mechanics before learned stars.
     character.progression.constellations.opened.clear()
+    character.hp = character.maxHp
     return character
 }
 

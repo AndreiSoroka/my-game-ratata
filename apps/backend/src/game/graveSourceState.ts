@@ -12,6 +12,7 @@ export interface GraveSource {
     children: Set<string>
     nextSpawnAt: number
     nextBirth: number
+    firstMasteryLevel: number
     retryAt: number
     phase: GraveCombatTarget['phase']
     hpUnits: number

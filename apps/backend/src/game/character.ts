@@ -100,6 +100,7 @@ export class GameCharacter {
     public animationUntil = 0
     public alive = true
     public deathSequence = 0
+    public lifeStartedAt: number
     public actionLockUntil = 0
     public interruptWork: (() => void) | undefined
     public prayerAuraEnvironment: PrayerAuraEnvironment | undefined
@@ -123,6 +124,7 @@ export class GameCharacter {
     private pathIndex = 0
 
     public constructor(options: GameCharacterOptions) {
+        this.lifeStartedAt = options.spawnedAt ?? Date.now()
         this.trainingTarget =
             options.trainingTarget === undefined
                 ? undefined
@@ -165,6 +167,7 @@ export class GameCharacter {
             options.visualId ?? defaultVisualIdFor(options.archetype)
         bindNpcIdentityKey(this, options.npcIdentityKey)
         initializeConstellations(this)
+        this.hp = this.maxHp
     }
 
     public get maxHp(): number {

@@ -8,6 +8,7 @@ export const constellationIds = [
     'prayer_road',
     'prayer_lantern',
     'prayer_grave',
+    'undead',
 ] as const
 export type ConstellationId = (typeof constellationIds)[number]
 

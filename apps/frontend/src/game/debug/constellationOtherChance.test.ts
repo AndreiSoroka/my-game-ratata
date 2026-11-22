@@ -83,6 +83,10 @@ describe('all non-prayer effect explanations', () => {
         expect(description('life.hp4').notes.join(' ')).toContain('не повышает')
         expect(description('shadow.sight').summary).toContain('геометрическим')
         expect(description('shadow.noise2').notes.join(' ')).toContain('30%')
+        expect(description('undead.hollow_bones2')).toMatchObject({
+            deterministic: true,
+            notes: [expect.stringContaining('35% суммарно')],
+        })
     })
 })
 

@@ -33,6 +33,7 @@ export function createConstellationState(): CharacterConstellations {
             prayer_road: 0,
             prayer_lantern: 0,
             prayer_grave: 0,
+            undead: 0,
         },
         evidence: {},
         receipts: new Set(),

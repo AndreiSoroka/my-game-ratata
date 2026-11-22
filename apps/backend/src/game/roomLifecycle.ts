@@ -25,8 +25,7 @@ interface LifeContext {
         character: GameCharacter,
         now: number,
         abandoned: boolean
-    ) => void
-    afterRetire?: (character: GameCharacter, now: number) => void
+    ) => (() => void) | undefined
 }
 
 export function advanceRoomLives(context: LifeContext): void {
@@ -63,9 +62,13 @@ export function finalizeRoomLife(
     ) {
         return false
     }
-    context.beforeRetire?.(character, context.now, abandoned)
+    const afterRetire = context.beforeRetire?.(
+        character,
+        context.now,
+        abandoned
+    )
     const event = retireCharacter(character)
-    context.afterRetire?.(character, context.now)
+    afterRetire?.()
     context.onEvents([event])
     character.connected = false
     setCharacterControlSource(character, 'script')

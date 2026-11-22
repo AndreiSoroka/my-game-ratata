@@ -78,6 +78,13 @@ const authoredLevelGates = new Map([
     ['prayer.aura_domain', 12],
     ['prayer.revive_master', 12],
     ['prayer.revive_angelic', 12],
+    ['undead.arcane_frame', 3],
+    ['undead.hollow_bones', 3],
+    ['undead.hollow_bones2', 6],
+    ['undead.arcane_endurance', 3],
+    ['undead.arcane_endurance2', 6],
+    ['undead.consume_half', 5],
+    ['undead.consume_full', 10],
 ])
 
 describe('individually authored constellation requirements', () => {
@@ -92,6 +99,14 @@ describe('individually authored constellation requirements', () => {
         expect(node('magic.fireball').minimumLevel).toBe(3)
         expect(node('magic.greater_fireball').minimumLevel).toBe(10)
         expect(node('prayer.revive').minimumLevel).toBe(5)
+        expect(node('arrow.moving_shot')).toMatchObject({
+            acquisition: 'event',
+            minimumLevel: 4,
+        })
+        expect(node('undead.arcane_joints')).toMatchObject({
+            acquisition: 'event',
+            minimumLevel: 2,
+        })
     })
     it('keeps all five upgrades random, passive and bound to the learned Mother prayer', () => {
         const upgrades = fullConstellationCatalog.filter((entry) =>

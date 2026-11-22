@@ -28,6 +28,9 @@ const base = {
     bladeLungeRecovery: false,
     bladePommelStun: false,
     bladePommelBreak: false,
+    undeadHealthBonus: 0,
+    undeadEnergyBonus: 0,
+    rangedPhysicalDamageMultiplier: 1,
     shotDamageMultiplier: 1,
     shotRangeCells: 0,
     shotEnergyDiscount: 0,
@@ -98,6 +101,12 @@ const bonuses: Array<[string, Partial<typeof base>]> = [
     ['blade.critical', { swordCritBonus: 0.05 }],
     ['blade.dodge', { bladeParryChance: 0.1 }],
     ['blade.resolve', { stunDurationMultiplier: 0.85 }],
+    ['undead.arcane_joints', { undeadHealthBonus: 40 }],
+    ['undead.arcane_frame', { undeadHealthBonus: 70 }],
+    ['undead.arcane_endurance', { undeadEnergyBonus: 45 }],
+    ['undead.arcane_endurance2', { undeadEnergyBonus: 90 }],
+    ['undead.hollow_bones', { rangedPhysicalDamageMultiplier: 0.8 }],
+    ['undead.hollow_bones2', { rangedPhysicalDamageMultiplier: 0.65 }],
     ['arrow.damage1', { shotDamageMultiplier: 1.1 }],
     ['arrow.damage2', { shotDamageMultiplier: 1.1 }],
     ['arrow.range1', { shotRangeCells: 1 }],
@@ -202,10 +211,16 @@ describe('pure constellation bonuses', () => {
             })
         }
     )
-    it('uses additive stacking and highest knowledge rank exactly as before', () => {
+    it('combines additive bonuses and keeps the highest rank of ranked effects', () => {
         const selected = new Set([
             'blade.damage1',
             'blade.damage2',
+            'undead.arcane_joints',
+            'undead.arcane_frame',
+            'undead.arcane_endurance',
+            'undead.arcane_endurance2',
+            'undead.hollow_bones',
+            'undead.hollow_bones2',
             'arrow.damage1',
             'arrow.damage2',
             'arrow.range1',
@@ -228,6 +243,9 @@ describe('pure constellation bonuses', () => {
         expect(resolveConstellationBonuses(selected)).toEqual({
             ...base,
             swordDamageMultiplier: 1.25,
+            undeadHealthBonus: 70,
+            undeadEnergyBonus: 90,
+            rangedPhysicalDamageMultiplier: 0.65,
             shotDamageMultiplier: 1.2,
             shotRangeCells: 2,
             sneakNoiseMultiplier: 0.7,

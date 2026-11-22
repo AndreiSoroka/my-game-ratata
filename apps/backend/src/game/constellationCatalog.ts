@@ -72,6 +72,13 @@ export const constellationPaths = [
             'Вы обращаетесь к Хранителю Праха. Есть шанс восстановить здоровье себе или союзнику, принадлежащему к нежити.',
         color: '#b7a3cf',
     },
+    {
+        id: 'undead',
+        name: 'Нежить',
+        description:
+            'Нежескелет поднимается на десяти HP. Магия скрепляет его кости, а победы закаляют тело и учат усваивать опыт павших.',
+        color: '#9bc4aa',
+    },
 ] satisfies Array<{
     id: ConstellationId
     name: string

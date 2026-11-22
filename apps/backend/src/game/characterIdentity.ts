@@ -27,6 +27,7 @@ export interface GameCharacterOptions {
     nickname: string
     reputation?: CharacterReputation
     spawnPosition: Vector2
+    spawnedAt?: number
     visualId?: CharacterVisualId
     locationId?: string
 }

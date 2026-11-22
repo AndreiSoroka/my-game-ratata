@@ -3,14 +3,14 @@ import { writeFile } from 'node:fs/promises'
 import {
     type ClientMessage,
     type GameEventPayload,
-    resourceFillPercent,
+    type ResourceSnapshot,
     type ServerMessage,
 } from '@my-game-ratata/contracts'
 import type { Page, TestInfo } from '@playwright/test'
 
 /** Observe payment at channel start instead of after regeneration during the ritual. */
-export function capturePrayerManaAtStart(page: Page): number[] {
-    const mana: number[] = []
+export function capturePrayerManaAtStart(page: Page): ResourceSnapshot[] {
+    const mana: ResourceSnapshot[] = []
     let playerId: string | undefined
     let startedAt: number | undefined
     page.on('websocket', (socket) => {
@@ -29,7 +29,7 @@ export function capturePrayerManaAtStart(page: Page): number[] {
                 cast.startedAt !== startedAt
             ) {
                 startedAt = cast.startedAt
-                mana.push(resourceFillPercent(player.resources.mana))
+                mana.push(player.resources.mana)
             }
         })
     })

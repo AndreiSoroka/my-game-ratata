@@ -75,6 +75,10 @@ export function applyEncounterDifficulty(
     character: GameCharacter,
     location: WorldLocationDefinition
 ): void {
+    character.tags.add(`danger.${String(location.dangerLevel)}`)
+    if (character.archetype === 'skeleton') {
+        return
+    }
     const difficulty = encounterDifficulty(location.dangerLevel)
     character.config.combat.maxHp = Math.ceil(
         character.config.combat.maxHp * difficulty.hpMultiplier
@@ -82,5 +86,4 @@ export function applyEncounterDifficulty(
     character.maxHp = character.config.combat.maxHp
     character.hp = character.maxHp
     character.config.combat.damageMultiplier = difficulty.damageMultiplier
-    character.tags.add(`danger.${String(location.dangerLevel)}`)
 }

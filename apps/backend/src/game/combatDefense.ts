@@ -57,9 +57,14 @@ export function defendContact(
     if (outcome !== 'hit') {
         return paidAvoidance(attacker, target, attack, state.delivery, outcome)
     }
-    return state.guarding && state.physical
-        ? paidGuardHit(target, attack, state)
-        : unguardedHit()
+    const hit =
+        state.guarding && state.physical
+            ? paidGuardHit(target, attack, state)
+            : unguardedHit()
+    if (state.delivery === 'ranged_physical') {
+        hit.multiplier *= state.modifiers.rangedPhysicalDamageMultiplier
+    }
+    return hit
 }
 
 function unguardedHit(): ContactDefense {

@@ -75,6 +75,13 @@ describe('each passive owns only its authored effect', () => {
             'Дополнительное восстановление энергии на месте': '+30%',
         })
     })
+    it('reports the authored effect of each Undead star', () => {
+        const undead = nonPrayer.filter((node) => node.constellationId === 'undead')
+        expect(undead).toHaveLength(9)
+        for (const node of undead) {
+            expect(describeConstellationBuild(node.id, all).effects).toEqual([node.description])
+        }
+    })
 })
 
 describe('standalone actions own only their complete applicable build', () => {

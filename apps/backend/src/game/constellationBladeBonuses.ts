@@ -57,7 +57,7 @@ export function resolveBladeBonuses(ids: ReadonlySet<string>) {
               : 0,
         bladeArrowParry: ids.has('blade.arrow_deflect'),
         bladeLongFrontier: ids.has('blade.long_frontier'),
-        bladeHealthMultiplier: ids.has('blade.steel_sinew') ? 1.1 : 1,
+        bladeHealthMultiplier: bladeHealthMultiplier(ids),
         bladeWideArc: ids.has('blade.wide_arc'),
         bladeWideFlow: ids.has('blade.wide_flow'),
         bladeCircleRing: ids.has('blade.circle_ring'),
@@ -67,4 +67,8 @@ export function resolveBladeBonuses(ids: ReadonlySet<string>) {
         bladePommelStun: ids.has('blade.pommel_stun'),
         bladePommelBreak: ids.has('blade.pommel_break'),
     }
+}
+
+export function bladeHealthMultiplier(ids: ReadonlySet<string>): number {
+    return ids.has('blade.steel_sinew') ? 1.1 : 1
 }

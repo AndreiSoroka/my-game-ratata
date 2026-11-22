@@ -1,6 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     type GameEventPayload,
+    isItemBroken,
 } from '@my-game-ratata/contracts'
 
 import { knowsAbility } from './abilityState'
@@ -60,6 +61,22 @@ export function requestNpcAttack(
 ): void {
     if (actorRefusesCombat(actor)) {
         return
+    }
+    const weapon = actor.equipment.weapon
+    if (
+        actor.archetype === 'skeleton' &&
+        weapon !== undefined &&
+        isItemBroken(weapon)
+    ) {
+        const stowed = world.requestInventoryAction?.(
+            actor,
+            { type: 'equipment_action', action: 'unequip', slot: 'weapon' },
+            now
+        )
+        if (stowed?.accepted !== true) {
+            return
+        }
+        world.publishEvents(stowed.events)
     }
     if (!trySkeletonStrike(actor, target, world, now)) {
         world.requestAttack(actor, now)

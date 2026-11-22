@@ -10,6 +10,7 @@ import { createAdventureResourceNodes } from '../src/game/adventureResources'
 import { GameCharacter } from '../src/game/character'
 import { CHARACTER_CONFIG } from '../src/game/characterConfig'
 import { NavigationService } from '../src/game/navigation'
+import { createSkeleton } from '../src/game/spawns'
 import { cityEntryMessage, WorldLocations } from '../src/game/worldLocations'
 import { createLocationEnemies } from '../src/game/worldSpawns'
 
@@ -55,11 +56,15 @@ describe('Novogorod region definition and danger', () => {
             }
         }
     })
+})
 
-    it('increases enemy population, actual weapon damage and HP with distance without changing base archetypes', () => {
+describe('wilderness encounter tiers and travel', () => {
+    it('increases population and slime strength with distance while skeletons start with identical stats', () => {
         let previousCount = 0
-        let previousHp = 0
-        let previousDamage = 0
+        let previousSlimeHp = 0
+        let previousSlimeDamage = 0
+        const starterSkeletonStats =
+            createSkeleton(openMap()).character.snapshot(0).stats
         for (const dangerLevel of [1, 2, 3, 4]) {
             const location = WORLD_LOCATION_DEFINITIONS.find(
                 (candidate) => candidate.dangerLevel === dangerLevel
@@ -71,26 +76,38 @@ describe('Novogorod region definition and danger', () => {
                 openMap(location.id),
                 location
             )
-            const skeleton = monsters[0]?.character
-            if (skeleton === undefined) {
-                throw new Error('Missing skeleton')
-            }
-            expect(monsters.length).toBeGreaterThan(previousCount)
-            expect(skeleton.maxHp).toBeGreaterThan(previousHp)
-            expect(skeleton.snapshot(0).stats.minDamage).toBeGreaterThan(
-                previousDamage
+            const skeletons = monsters.filter(
+                ({ character }) => character.archetype === 'skeleton'
             )
+            const slime = monsters.find(
+                ({ character }) => character.archetype === 'slime'
+            )?.character
+            if (slime === undefined) {
+                throw new Error('Missing slime')
+            }
+            const slimeStats = slime.snapshot(0).stats
+            expect(monsters.length).toBeGreaterThan(previousCount)
+            expect(skeletons.length).toBeGreaterThan(0)
+            for (const { character } of skeletons) {
+                expect(character.maxHp).toBe(50)
+                expect(character.hp).toBe(50)
+                expect(character.snapshot(0).stats).toEqual(
+                    starterSkeletonStats
+                )
+            }
+            expect(slime.maxHp).toBeGreaterThan(previousSlimeHp)
+            expect(slimeStats.minDamage).toBeGreaterThan(previousSlimeDamage)
             previousCount = monsters.length
-            previousHp = skeleton.maxHp
-            previousDamage = skeleton.snapshot(0).stats.minDamage
+            previousSlimeHp = slime.maxHp
+            previousSlimeDamage = slimeStats.minDamage
         }
-        expect(CHARACTER_CONFIG.skeleton.combat.maxHp).toBe(20)
+        expect(CHARACTER_CONFIG.skeleton.combat.maxHp).toBe(10)
         expect(
             CHARACTER_CONFIG.skeleton.combat.damageMultiplier
         ).toBeUndefined()
     })
 
-    it('retains a wilderness creature origin and scaled stats when it respawns after traveling', () => {
+    it('retains spawn origin and starter stats when a skeleton respawns after traveling', () => {
         const location = WORLD_LOCATION_DEFINITIONS[0]
         if (location === undefined) {
             throw new Error('Missing location')

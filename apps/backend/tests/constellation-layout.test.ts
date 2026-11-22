@@ -10,14 +10,18 @@ import { auditPersonalSky } from './personalSkyAudit'
 const centers = ['blade', 'magic', 'prayer', 'arrow'] as const
 
 describe('personal planar skies', () => {
-    it('independently audits 256 seeds for every starting class, including all hidden stars', () => {
-        expect(fullConstellationCatalog).toHaveLength(183)
+    it('keeps the full catalogue and certified components', () => {
+        expect(fullConstellationCatalog).toHaveLength(192)
         expect(
             fullConstellationCatalog.flatMap((node) => node.parents)
-        ).toHaveLength(201)
-        expect(skyComponents(fullConstellationCatalog)).toHaveLength(9)
-        for (let seed = 0; seed < 256; seed += 1) {
-            for (const center of centers) {
+        ).toHaveLength(209)
+        expect(skyComponents(fullConstellationCatalog)).toHaveLength(10)
+    })
+
+    it.each(centers)(
+        'independently audits 256 seeds with %s at the center, including hidden stars',
+        (center) => {
+            for (let seed = 0; seed < 256; seed += 1) {
                 const sky = generateConstellationLayout(
                     fullConstellationCatalog,
                     `personal-sky:${String(seed)}`,
@@ -41,8 +45,9 @@ describe('personal planar skies', () => {
                 expect(sky.diagnostics.attempts).toBeLessThanOrEqual(32)
                 expect(sky.layout.minimumNodeSpacing).toBeGreaterThanOrEqual(80)
             }
-        }
-    }, 180000)
+        },
+        180000
+    )
 
     it('replays one seed exactly and changes both roots and internal shape for another identity', () => {
         const first = generateConstellationLayout(

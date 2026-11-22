@@ -91,7 +91,7 @@ export const CHARACTER_CONFIG: Record<CharacterArchetype, CharacterConfig> = {
             critMultiplier: 1.5,
             dodgeChance: 0.02,
             maxDamage: 8,
-            maxHp: 20,
+            maxHp: 10,
             minDamage: 4,
             rangeScale: 1.2,
             stunChance: 0.15,

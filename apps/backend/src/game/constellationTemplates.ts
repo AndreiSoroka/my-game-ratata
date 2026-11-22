@@ -107,6 +107,15 @@ export const constellationTemplatePositions = freezeTemplate({
     'prayer_lantern.root': { x: 0, y: 0 },
     'prayer_grave.root': { x: 0, y: 0 },
     'prayer_grave.revive': { x: 250, y: -150 },
+    'undead.root': { x: -340, y: 0 },
+    'undead.arcane_joints': { x: 0, y: 0 },
+    'undead.arcane_frame': { x: 300, y: -290 },
+    'undead.hollow_bones': { x: 0, y: -450 },
+    'undead.hollow_bones2': { x: -100, y: -820 },
+    'undead.arcane_endurance': { x: 320, y: 290 },
+    'undead.arcane_endurance2': { x: 590, y: 420 },
+    'undead.consume_half': { x: -200, y: 360 },
+    'undead.consume_full': { x: -360, y: 730 },
 })
 
 function freezeTemplate(
