@@ -1,11 +1,4 @@
 {
-    "defaults": {
-        "cliPath": "codex",
-        "model": "gpt-6-luna",
-        "reasoningEffort": "medium",
-        "serviceTier": "default",
-        "timeoutMs": 60000
-    },
     "limits": {
         "maxCallsPerHour": 120,
         "maxDecisionsPerTask": 12,

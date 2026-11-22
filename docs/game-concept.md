@@ -86,7 +86,7 @@ An authored [knowledge grant](npc-ai.md) only makes a passage available to that
 character's retrieval. Knowing a lesson does not unlock it for the listener.
 Conversation memories are attributed recollections; real inventory, current
 contracts, prices, stock and observed positions come from validated projections.
-Optional reasoning is configured separately and is not implied by a scripted NPC.
+Eligible NPCs use the configured CLI for reasoning when it is available. [NPC reasoning setup](npc-ai.md).
 
 ## Storybook Game Gallery
 

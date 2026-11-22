@@ -9,7 +9,7 @@
 При создании мира общий механизм выбирает вариант по seed, стабильному ID персонажа и версии генерации. Варианты имеют собственные стабильные ID: перестановка списка или порядка создания персонажей не влияет на результат. Речевой seed и случайность карты используются независимо.
 
 ```sh
-GAME_AI_ENABLED=1 GAME_NPC_IDENTITY_SEED=novogorod-example GAME_NPC_SPEECH_SEED=speech-example bun run dev:backend
+GAME_NPC_IDENTITY_SEED=novogorod-example GAME_NPC_SPEECH_SEED=speech-example bun run dev:backend
 ```
 
 В коде seed задаётся через `new GameRoom(undefined, { npcIdentitySeed: 'novogorod-example' })`. Без явной настройки каждый новый мир получает новый seed. Для того же ID и той же версии генерации одинаковый seed повторяет выбор.

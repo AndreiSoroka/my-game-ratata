@@ -12,6 +12,12 @@ export const defaultNpcAiSettings: NpcAiModelSettings = {
     timeoutMs: 60_000,
 }
 
+const defaultClaudeSettings: NpcAiModelSettings = {
+    ...defaultNpcAiSettings,
+    cliPath: 'claude',
+    model: 'sonnet',
+}
+
 export const defaultNpcAiLimits: NpcAiConfig['limits'] = {
     maxCallsPerHour: 120,
     maxDecisionsPerTask: 12,
@@ -19,20 +25,65 @@ export const defaultNpcAiLimits: NpcAiConfig['limits'] = {
     retryDelayMs: 5_000,
 }
 
-/** The opt-in flag is deliberately separate from content/configuration files. */
+function npcAiEnabled(env: Record<string, string | undefined>): boolean {
+    return (env['GAME_AI_ENABLED'] ?? '1') === '1'
+}
+
 export async function loadNpcAiConfig(
-    env: Record<string, string | undefined> = process.env
+    env: Record<string, string | undefined> = process.env,
+    defaultSettings = defaultNpcAiSettings
 ): Promise<NpcAiConfig> {
-    const enabled = env['GAME_AI_ENABLED'] === '1'
+    const enabled = npcAiEnabled(env)
     const path = enabled ? env['GAME_AI_CONFIG'] : undefined
     const input: unknown =
         path === undefined
             ? authoredConfig
             : JSON.parse(await readFile(resolve(path), 'utf8'))
-    return parseNpcAiConfig(input, enabled)
+    return parseNpcAiConfig(input, enabled, defaultSettings)
 }
 
-export function parseNpcAiConfig(input: unknown, enabled = false): NpcAiConfig {
+export async function loadNpcAiStartupConfig(
+    env: Record<string, string | undefined>,
+    findExecutable: (command: string) => string | null
+): Promise<{ provider: 'codex' | 'claude'; config: NpcAiConfig } | undefined> {
+    if (!npcAiEnabled(env)) {
+        return undefined
+    }
+
+    const requested = env['GAME_AI_PROVIDER']
+    if (
+        requested !== undefined &&
+        requested !== 'codex' &&
+        requested !== 'claude'
+    ) {
+        throw invalid('GAME_AI_PROVIDER must be codex or claude')
+    }
+    // An existing custom file uses Codex settings unless the operator selects Claude.
+    const provider =
+        requested ??
+        (env['GAME_AI_CONFIG'] === undefined &&
+        findExecutable('codex') === null &&
+        findExecutable('claude') !== null
+            ? 'claude'
+            : 'codex')
+    const config = await loadNpcAiConfig(
+        env,
+        provider === 'claude' ? defaultClaudeSettings : defaultNpcAiSettings
+    )
+    const npcs = config.npcs.flatMap((npc) => {
+        const cliPath = findExecutable(npc.settings.cliPath)
+        return cliPath === null
+            ? []
+            : [{ ...npc, settings: { ...npc.settings, cliPath } }]
+    })
+    return { provider, config: { ...config, npcs } }
+}
+
+export function parseNpcAiConfig(
+    input: unknown,
+    enabled?: boolean,
+    defaultSettings = defaultNpcAiSettings
+): NpcAiConfig {
     const record = object(input, 'root')
     if (
         record['proactive'] !== undefined &&
@@ -40,7 +91,7 @@ export function parseNpcAiConfig(input: unknown, enabled = false): NpcAiConfig {
     ) {
         throw invalid('proactive must be a boolean')
     }
-    const defaults = settings(record['defaults'], defaultNpcAiSettings)
+    const defaults = settings(record['defaults'], defaultSettings)
     const limits = object(record['limits'] ?? {}, 'limits')
     const rawNpcs = record['npcs']
     if (!Array.isArray(rawNpcs) || rawNpcs.length > 16) {
@@ -69,7 +120,7 @@ export function parseNpcAiConfig(input: unknown, enabled = false): NpcAiConfig {
         throw invalid('npc.actorId must be unique')
     }
     return {
-        enabled,
+        enabled: enabled === true,
         proactive: record['proactive'] !== false,
         defaults,
         limits: {

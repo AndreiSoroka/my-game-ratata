@@ -22,7 +22,7 @@
 Новый мир по умолчанию получает новый seed. Для воспроизводимого набора:
 
 ```sh
-GAME_NPC_SPEECH_SEED=novogorod-example GAME_AI_ENABLED=1 bun run dev:backend
+GAME_NPC_SPEECH_SEED=novogorod-example bun run dev:backend
 ```
 
 В тестах и при создании комнаты используется `new GameRoom(undefined, { npcSpeechSeed: 'novogorod-example' })`. Пустое значение, нулевой символ и строка длиннее 256 символов отклоняются. Одного seed достаточно для повторения выбора при той же версии каталога и алгоритма.

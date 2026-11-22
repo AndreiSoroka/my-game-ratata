@@ -12,7 +12,8 @@ a new seeded layout; the other 24 maps retain their authored geometry. The pure
 `scripts/generate-map.mjs` generator supplies both runtime geometry and the
 optional `scripts/generate-world.mjs` file export. Navigation, residents,
 resources, interactions and covers use that same map. The server resolves ordinary
-character intentions. No external language model or paid API is called by default.
+character intentions. Eligible NPCs can use a model through an authenticated CLI on
+the backend machine. [NPC AI setup](npc-ai.md).
 Current world state lives in server memory; restarting the backend begins a new
 world session. See [generated city and Bell](generated-city.md) for seed, map
 loading, fortifications and shared story rules.
@@ -247,9 +248,9 @@ The world-facing rules are described in [companionship](../knowledge/social/comp
 
 Use **F** on a nearby guild representative to take an offered contract and choose who shares its reward. View active contracts in **P → Квесты**. Use **F** on a nearby player to invite them or answer their invitation, and use **Покинуть отряд** in the party panel to leave.
 
-By default, running personalities use local authored rules. The UI reports **Сценарий** and **Эхо** for that controller. It reports **Модель** and **Искра** during an accepted model-control lease. The external agent bridge retains its five-second lease; expiry or an explicit wait returns the actor to its scripted scenario as an Эхо without changing its identity or inventory.
+NPCs without an active model-control lease use local authored rules. The UI reports **Сценарий** and **Эхо** for that controller. It reports **Модель** and **Искра** during an accepted model-control lease. The external agent bridge retains its five-second lease. Expiry or an explicit wait returns the actor to its scripted scenario as an Эхо with the same identity and inventory.
 
-Optional [NPC reasoning through Codex CLI](npc-ai.md) gives Mira autonomous city coordination and Kaplya peaceful conversation and errands. Enable it with `GAME_AI_ENABLED=1`; model, reasoning and limits are configured per NPC. Its exclusive lease renews while a task is active, and completion is based on ordinary action receipts. Earned merchant information, session memory and local diagnostic feedback remain separate from authoritative game rules.
+Built-in NPC reasoning gives Mira autonomous city coordination and Kaplya peaceful conversation and errands. It runs by default when the backend finds Codex CLI or Claude Code. Set `GAME_AI_ENABLED=0` for scripted NPCs. An exclusive lease renews while a task is active, and the server determines completion from ordinary action receipts. [NPC reasoning and configuration](npc-ai.md).
 
 Existing worker, artisan, guard, companion and hostile strategies enter the common scheduler as bounded server-owned policy tasks. Their retained controllers still choose the next ordinary intention; their profession logic is not yet an editable data-only scenario. The two new wanderers and player-assigned jobs use the semantic scenario steps directly. A running or paused assigned scenario, active conversation or exclusive control prevents the baseline policy from acting concurrently.
 

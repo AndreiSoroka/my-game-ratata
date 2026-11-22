@@ -5,6 +5,7 @@ import { Readable } from 'node:stream'
 
 import { describe, expect, it, vi } from 'vitest'
 
+import { ClaudeCliProvider } from '../src/ai/claudeCliProvider'
 import {
     CodexCliProvider,
     type NpcAiProcess,
@@ -68,6 +69,161 @@ function processResult(stdout = jsonl(), code = 0, stderr = '') {
     }
     return { process, stdin, kill }
 }
+
+const claudeSettings = {
+    ...defaultNpcAiSettings,
+    cliPath: 'claude',
+    model: 'sonnet',
+}
+
+function claudeResult(fields: Record<string, unknown> = {}): string {
+    return JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        structured_output: { replyJson: JSON.stringify(reply) },
+        usage: { input_tokens: 300, output_tokens: 50 },
+        ...fields,
+    })
+}
+
+describe('isolated Claude Code NPC provider', () => {
+    it('passes only context through stdin and accepts a completed structured decision', async () => {
+        const fake = processResult(claudeResult())
+        const logs: NpcAiTelemetry[] = []
+        let directory = ''
+        let instructions = ''
+        const spawn = vi.fn<NpcAiSpawn>((_command, args, options) => {
+            directory = options.cwd
+            const valueAfter = (flag: string) => args[args.indexOf(flag) + 1]
+            instructions = readFileSync(
+                valueAfter('--system-prompt-file') ?? '',
+                'utf8'
+            )
+            expect(args).toEqual(
+                expect.arrayContaining([
+                    '--print',
+                    '--safe-mode',
+                    '--restricted',
+                    '--strict-mcp-config',
+                    '--disable-slash-commands',
+                    '--no-chrome',
+                    '--no-session-persistence',
+                ])
+            )
+            expect(valueAfter('--tools')).toBe('')
+            expect(valueAfter('--permission-prompts')).toBe('none')
+            expect(valueAfter('--mcp-config')).toBe('{"mcpServers":{}}')
+            expect(valueAfter('--max-turns')).toBe('1')
+            expect(valueAfter('--output-format')).toBe('json')
+            expect(valueAfter('--model')).toBe('sonnet')
+            expect(valueAfter('--effort')).toBe('max')
+            expect(JSON.parse(valueAfter('--json-schema') ?? '')).toMatchObject(
+                {
+                    required: ['replyJson'],
+                    properties: { replyJson: { type: 'string' } },
+                }
+            )
+            expect(args.join(' ')).not.toContain('player-provided text')
+            expect(options.env).toHaveProperty(
+                'ANTHROPIC_API_KEY',
+                'test-claude-key'
+            )
+            expect(options.env).not.toHaveProperty('OPENAI_API_KEY')
+            expect(options.env).not.toHaveProperty('GAME_AGENT_TOKEN')
+            expect(options.env).toMatchObject({
+                ENABLE_TOOL_SEARCH: 'false',
+                ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+            })
+            return fake.process
+        })
+        const provider = new ClaudeCliProvider({
+            spawn,
+            log: (entry) => logs.push(entry),
+        })
+        vi.stubEnv('ANTHROPIC_API_KEY', 'test-claude-key')
+        vi.stubEnv('OPENAI_API_KEY', 'test-openai-key')
+        vi.stubEnv('GAME_AGENT_TOKEN', 'test-game-token')
+        try {
+            await expect(
+                provider.decide(
+                    { ...context, memory: 'player-provided text' },
+                    { ...claudeSettings, reasoningEffort: 'ultra' },
+                    new AbortController().signal
+                )
+            ).resolves.toEqual(reply)
+        } finally {
+            vi.unstubAllEnvs()
+        }
+        expect(spawn.mock.calls[0]?.[0]).toBe('claude')
+        expect(fake.stdin.end).toHaveBeenCalledWith(
+            expect.stringContaining('player-provided text')
+        )
+        expect(instructions).toContain('You are not a coding assistant')
+        expect(instructions).toContain('"required":["decision","memory"')
+        expect(logs[0]).toMatchObject({
+            outcome: 'completed',
+            usage: { input_tokens: 300, output_tokens: 50 },
+        })
+        expect(JSON.stringify(logs)).not.toContain('player-provided text')
+        await expect(access(directory)).rejects.toThrow()
+    })
+})
+
+describe('Claude Code NPC process failures', () => {
+    it.each([
+        claudeResult({ subtype: 'error_max_turns' }),
+        claudeResult({ is_error: true }),
+        claudeResult({
+            structured_output: undefined,
+            result: JSON.stringify(reply),
+        }),
+        claudeResult({
+            structured_output: {
+                replyJson: JSON.stringify({
+                    ...reply,
+                    decision: { type: 'teleport' },
+                }),
+            },
+        }),
+        claudeResult({ structured_output: { replyJson: 'invalid-json' } }),
+        'invalid-json',
+    ])(
+        'rejects invalid or incomplete output without executing decisions',
+        async (stdout) => {
+            const fake = processResult(stdout)
+            const provider = new ClaudeCliProvider({
+                spawn: () => fake.process,
+                log: () => undefined,
+            })
+            await expect(
+                provider.decide(
+                    context,
+                    claudeSettings,
+                    new AbortController().signal
+                )
+            ).rejects.toThrow()
+        }
+    )
+
+    it('reports missing authentication without forwarding raw CLI output', async () => {
+        const fake = processResult('Not logged in: secret', 1)
+        const provider = new ClaudeCliProvider({
+            spawn: () => fake.process,
+            log: () => undefined,
+        })
+        await expect(
+            provider.decide(
+                context,
+                claudeSettings,
+                new AbortController().signal
+            )
+        ).rejects.toThrow(
+            /^Claude Code CLI authentication is unavailable; run claude auth login$/
+        )
+    })
+})
 
 describe('isolated Codex NPC provider', () => {
     it('passes only context through stdin, isolates configuration, reads the completed reply and removes assets', async () => {

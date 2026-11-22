@@ -1,5 +1,8 @@
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import { ClaudeCliProvider } from './ai/claudeCliProvider'
+import { CodexCliProvider } from './ai/codexCliProvider'
+import { loadNpcAiStartupConfig } from './ai/config'
 import { knowledgeCorpus } from './ai/knowledgeCorpus'
 import { GameRoom } from './game/room'
 import { WorldMaps } from './game/worldMaps'
@@ -14,7 +17,8 @@ if (!Number.isInteger(port) || port <= 0) {
 }
 
 knowledgeCorpus()
-const aiConfig = await loadNpcAiConfig()
+const ai = await loadNpcAiStartupConfig(Bun.env, Bun.which)
+const aiAvailable = ai !== undefined && ai.config.npcs.length > 0
 const worldMaps = new WorldMaps({
     ...(Bun.env['GAME_WORLD_SEED'] === undefined
         ? {}
@@ -29,8 +33,16 @@ const room = new GameRoom(worldMaps.navigation(CENTER_LOCATION_ID), {
     ...(Bun.env['GAME_NPC_SPEECH_SEED'] === undefined
         ? {}
         : { npcSpeechSeed: Bun.env['GAME_NPC_SPEECH_SEED'] }),
-    ...(aiConfig.enabled
-        ? { ai: { config: aiConfig, provider: new CodexCliProvider() } }
+    ...(aiAvailable
+        ? {
+              ai: {
+                  config: ai.config,
+                  provider:
+                      ai.provider === 'claude'
+                          ? new ClaudeCliProvider()
+                          : new CodexCliProvider(),
+              },
+          }
         : {}),
 })
 room.start()
@@ -46,11 +58,13 @@ const servedPort = server.port ?? port
 
 console.info(`Backend listening on http://${hostname}:${String(servedPort)}`)
 console.info(`Game room ready with map ${room.navigation.summary.id}`)
-import { CodexCliProvider } from './ai/codexCliProvider'
-import { loadNpcAiConfig } from './ai/config'
-if (aiConfig.enabled) {
+if (aiAvailable) {
     console.info(
-        `NPC AI enabled for ${aiConfig.npcs.map((npc) => `${npc.actorId}: ${npc.settings.model} (${npc.settings.reasoningEffort})`).join(', ')}`
+        `NPC AI configured via ${ai.provider} for ${ai.config.npcs.map((npc) => `${npc.actorId}: ${npc.settings.model}`).join(', ')}`
+    )
+} else if (ai !== undefined) {
+    console.warn(
+        'NPC AI has no configured NPC with an available CLI; using scripted behavior'
     )
 }
 

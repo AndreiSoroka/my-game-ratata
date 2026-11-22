@@ -4,7 +4,9 @@ Ash Border is a browser-based multiplayer RPG prototype set in the Lands of Novo
 
 ## Run locally
 
-Install Bun 1.4.4 and Node.js 24.12 or newer. From the repository root, run:
+Install Bun 1.4.4 and Node.js 24.12 or newer. NPC AI is on by default. Install and sign in to either Codex CLI or Claude Code on the machine running the backend. [NPC AI setup](docs/npc-ai.md).
+
+Run the following commands from the repository root.
 
 ```sh
 bun install --frozen-lockfile

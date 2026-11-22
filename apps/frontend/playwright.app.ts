@@ -60,6 +60,7 @@ export function createAppPlaywrightConfig(
                 // Ordinary UI cases use a reproducible generated city whose bell is already active.
                 // Story cases can choose a silent world with an explicit GAME_WORLD_SEED.
                 env: {
+                    GAME_AI_ENABLED: '0',
                     GAME_WORLD_SEED:
                         process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026',
                 },

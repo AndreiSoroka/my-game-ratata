@@ -167,7 +167,7 @@ if (result.status !== 'condition_met') throw new Error(result.reason)
 
 [`scripts/agent-mcp.mjs`](../scripts/agent-mcp.mjs) provides the existing token-protected `ratata_observe` and `ratata_act` tools for eligible NPCs. That bridge uses temporary controller leases and respects NPC capabilities and consent. The browser API described here owns an ordinary player connection and can exercise the full player quest flow; it neither takes over a human's character nor changes global Codex settings.
 
-For optional built-in reasoning by Mira and Kaplya, see [NPC reasoning through Codex CLI](npc-ai.md). It runs only with `GAME_AI_ENABLED=1`, uses configurable per-NPC models and earned observations, and records action results and diagnostic feedback. This background controller is independent of both the MCP bridge and the player-testing interface.
+Built-in NPC reasoning uses Codex CLI or Claude Code and runs by default when a supported CLI is available. It uses earned observations and records action results and diagnostic feedback. Playwright starts its test server with `GAME_AI_ENABLED=0` for repeatable scripted behavior. The built-in controller is independent of the MCP bridge and the player-testing interface. [NPC reasoning setup](npc-ai.md).
 
 ## Forest intentions and previews
 

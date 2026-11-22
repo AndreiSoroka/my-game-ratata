@@ -52,23 +52,22 @@ export async function readLimited(
         const buffer = Buffer.from(chunk)
         size += buffer.byteLength
         if (size > maxOutputBytes) {
-            throw new Error('Codex CLI output exceeds the limit')
+            throw new Error('NPC AI CLI output exceeds the limit')
         }
         chunks.push(buffer)
     }
     return Buffer.concat(chunks).toString('utf8')
 }
 
-export function cliEnvironment(): NodeJS.ProcessEnv {
+export function cliEnvironment(
+    credentialNames: readonly string[]
+): NodeJS.ProcessEnv {
     const names = [
         'PATH',
         'HOME',
         'USER',
         'LOGNAME',
         'TMPDIR',
-        'CODEX_HOME',
-        'OPENAI_API_KEY',
-        'CODEX_API_KEY',
         'HTTPS_PROXY',
         'HTTP_PROXY',
         'ALL_PROXY',
@@ -77,6 +76,7 @@ export function cliEnvironment(): NodeJS.ProcessEnv {
         'SSL_CERT_DIR',
         'NODE_EXTRA_CA_CERTS',
         'SYSTEMROOT',
+        ...credentialNames,
     ]
     return Object.fromEntries(
         names.flatMap((name) => {

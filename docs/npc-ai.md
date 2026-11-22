@@ -1,8 +1,9 @@
-# NPC reasoning through Codex CLI
+# NPC reasoning through Codex CLI or Claude Code
 
-Mira, Kaplya and Sister Vera can optionally use the locally installed Codex CLI to choose
-ordinary character intentions. The backend owns the event queue, controller lease,
-action results and session memory; a model call never blocks the simulation tick.
+Mira, Kaplya and Sister Vera use Codex CLI or Claude Code to choose ordinary
+character intentions when a supported CLI is available. The backend owns the event
+queue, controller lease, action results and session memory. Model calls run outside
+the simulation tick.
 Every resulting action still uses `GameCharacter` and the shared authoritative
 movement, collision, conversation and life-cycle rules.
 
@@ -14,23 +15,35 @@ identity after death and the optional real-model dialogue check.
 
 ## Run locally
 
-Use Bun 1.4.4 and an installed Codex CLI supporting non-interactive JSON Schema
-output (the integration was checked with CLI 0.166.0). Authenticate Codex normally;
-the backend uses that existing login:
+Install and authenticate one CLI under the user account that runs the backend.
+
+- **Codex CLI** uses `codex` on `PATH`. Sign in with `codex login`. [Codex CLI setup](https://learn.chatgpt.com/docs/codex/cli).
+- **Claude Code** uses `claude` on `PATH`. Sign in with `claude auth login`. [Claude Code setup](https://code.claude.com/docs/en/quickstart).
+
+Start the backend as usual.
 
 ```sh
-codex login
-GAME_AI_ENABLED=1 bun run dev:backend
+bun run dev:backend
 ```
 
-Without the exact `GAME_AI_ENABLED=1` flag, both NPCs retain their scripted
-behavior and no model is called. Start the frontend normally as described in
-[Playable world](playable-world.md). Speak normally within 80 world units and line
-of sight. The current E selection is a hint, followed by your companion; otherwise
-one listener responds, or several may ask whom you mean. An NPC explicitly agrees
-before accepting or replacing an errand. Small talk preserves its route and task
-budget. AI follow/help/guard/wait/dismiss requests use chat and existing consent rules.
-Q toggles selection between yourself and no target.
+NPC AI is enabled by default. With the bundled settings, the backend searches for
+`codex` first and uses `claude` if `codex` is absent. Set `GAME_AI_PROVIDER=codex`
+or `GAME_AI_PROVIDER=claude` to pick a CLI explicitly. When no usable executable
+is available, the backend starts with scripted NPCs. Set `GAME_AI_ENABLED=0` to
+always use scripted NPCs. When AI is enabled, the backend logs the provider it
+found or reports that no CLI is available.
+
+The CLI signs in through its own authentication flow on the backend machine.
+For hosted use of Claude Code, Anthropic requires players to authenticate with
+their own eligible credentials. [Anthropic's terms for running Claude Code in a product](https://code.claude.com/docs/en/legal-and-compliance#can-customers-offer-claude-code-in-their-products).
+
+Start the frontend as described in [Playable world](playable-world.md). Speak
+normally within 80 world units and line of sight. The current E selection is a
+hint, followed by your companion. Otherwise one listener responds, or several may
+ask whom you mean. An NPC explicitly agrees before accepting or replacing an
+errand. Small talk preserves its route and task budget. AI follow/help/guard/wait/dismiss
+requests use chat and existing consent rules. Q toggles selection between yourself
+and no target.
 
 Use **Шёпот** within 48 units for a private conversation. **Обменяться** opens a
 voluntary two-sided offer and the same private chat. Real unequipped items, stack
@@ -40,44 +53,43 @@ Changed offers/resources clear confirmations; death, disconnect or lost reach
 cancels without transferring anything. Other players cannot read the offers or
 private conversation. Conversations do not steal the receiver's keyboard focus.
 
-No MCP registration, `GAME_AGENT_TOKEN`, API key or global Codex configuration
-change is required for the existing ChatGPT login. The subprocess runs in a
-disposable directory with shell/code execution, web search, plugins, hooks,
-skills and user coding instructions disabled. It receives a compact earned
-observation through stdin and returns a structured decision. The separate
-[external agent MCP bridge](playable-world.md#external-agent-mcp) remains available
-and cannot override an active exclusive NPC controller lease.
+The subprocess runs in a disposable directory with model tools and session
+persistence disabled. It receives a compact earned observation through stdin and
+returns a structured decision. The separate external agent MCP bridge cannot
+override an active exclusive NPC controller lease. [External agent MCP bridge](playable-world.md#external-agent-mcp).
 
 ## Configuration
 
 Edit [`apps/backend/config/npc-ai.json`](../apps/backend/config/npc-ai.json).
 Settings apply after a backend restart. For a built backend, rebuild after changing
-the bundled default configuration, or select an external configuration file:
+the bundled default configuration. To select an external configuration file,
+set its path when starting the backend.
 
 ```sh
-GAME_AI_ENABLED=1 GAME_AI_CONFIG=/absolute/path/npc-ai.local.json bun run dev:backend
+GAME_AI_PROVIDER=codex GAME_AI_CONFIG=/absolute/path/npc-ai.local.json bun run dev:backend
 ```
 
 `GAME_AI_CONFIG` replaces the default file. Relative paths resolve against the
 backend process's current working directory (`apps/backend` when started through
-`bun run dev:backend`); an absolute path avoids ambiguity. The override is ignored
-while AI is disabled.
+`bun run dev:backend`). A custom file defaults to Codex settings. Set
+`GAME_AI_PROVIDER=claude` to apply it to Claude Code. The override is ignored while
+AI is disabled.
 
-| Setting                      | Default      | Meaning                                                               |
-| ---------------------------- | ------------ | --------------------------------------------------------------------- |
-| `defaults.cliPath`           | `codex`      | Executable path or name found through `PATH`; no shell command string |
-| `defaults.model`             | `gpt-6-luna` | Explicit model for every invocation                                   |
-| `defaults.reasoningEffort`   | `medium`     | Reasoning effort supported by the selected model                      |
-| `defaults.serviceTier`       | `default`    | Standard speed; `fast` is an explicit opt-in                          |
-| `defaults.timeoutMs`         | `60000`      | Maximum time for one CLI response                                     |
-| `limits.maxCallsPerHour`     | `120`        | Shared rolling-hour call limit, including retries                     |
-| `limits.maxDecisionsPerTask` | `12`         | Maximum model decisions for one task                                  |
-| `limits.reviewIntervalMs`    | `60000`      | Mira's regular autonomous review interval                             |
-| `limits.retryDelayMs`        | `5000`       | Delay before the single retry of a failed call                        |
+| Setting                      | Default                                 | Meaning                                                                |
+| ---------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| `defaults.cliPath`           | `codex` or `claude`                     | Executable path or name found through `PATH`                           |
+| `defaults.model`             | `gpt-6-luna` (Codex), `sonnet` (Claude) | Model used for every invocation                                        |
+| `defaults.reasoningEffort`   | `medium`                                | Reasoning effort. Claude Code uses `max` when configured with `ultra`. |
+| `defaults.serviceTier`       | `default`                               | Codex speed setting with optional `fast` tier                          |
+| `defaults.timeoutMs`         | `60000`                                 | Maximum time for one CLI response                                      |
+| `limits.maxCallsPerHour`     | `120`                                   | Shared rolling-hour call limit, including retries                      |
+| `limits.maxDecisionsPerTask` | `12`                                    | Maximum model decisions for one task                                   |
+| `limits.reviewIntervalMs`    | `60000`                                 | Mira's regular autonomous review interval                              |
+| `limits.retryDelayMs`        | `5000`                                  | Delay before the single retry of a failed call                         |
 
 Each `npcs` entry has `actorId`, `role` and optional `settings` overriding the
-global model settings. For example, this keeps Mira on the economical defaults
-while giving Kaplya a shorter invocation timeout:
+global model settings. This Codex configuration keeps Mira on the default timeout
+and gives Kaplya a shorter one.
 
 ```json
 {
@@ -100,11 +112,10 @@ while giving Kaplya a shorter invocation timeout:
 }
 ```
 
-The selected model must be available to the CLI login. Global model, speed and
-`ultra` settings are not inherited. Provider failures receive at most one retry;
-there is no automatic fallback to a more expensive model. Repeated failures
-release the lease and restore scripted behavior. A room stop aborts pending CLI
-processes; death, identity replacement and cancellation invalidate late replies.
+The CLI account needs access to the configured model. Provider failures receive at
+most one retry with the configured model. Repeated failures release the lease and
+restore scripted behavior. A room stop aborts pending CLI processes. Death,
+identity replacement and cancellation invalidate late replies.
 
 ## Current character behavior
 
