@@ -9,10 +9,12 @@ import {
     type EnergyRecoveryRate,
     regenerateCharacter,
 } from './characterRecovery'
+import { interruptSniperOnMove, markArrowWalking } from './combatArchery'
 import {
     canWalkDuringPrayer,
     combatMovementTime,
     lungeDisplacement,
+    walkingTime,
 } from './combatMovement'
 import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
@@ -63,6 +65,7 @@ export function advanceCharacter(
         applyMovementRegen(context, false, false)
         return undefined
     }
+    interruptSniperOnMove(character, now, context.onEvents)
     const forced = lungeDisplacement(character, now, deltaMs)
     if (forced !== undefined) {
         moveCharacter(context, deltaMs, forced)
@@ -169,6 +172,7 @@ function moveCharacter(
         dashMs,
         forced !== undefined || effects.feared
     )
+    markArrowWalking(character, walking)
     wearWalkingEquipment(character, traveled, walking)
     character.velocity = {
         x: character.position.x - before.x,
@@ -224,7 +228,7 @@ function nextPosition(
     dashMs: number,
     slow: number
 ): Vector2 {
-    const { character, deltaMs, navigation } = context
+    const { character, deltaMs, navigation, now } = context
     if (dashMs > 0) {
         const step =
             (effectiveMoveSpeed(character) *
@@ -237,7 +241,11 @@ function nextPosition(
             y: character.movement.dashDirection.y * step,
         })
     }
-    const step = (movementSpeed(character) * slow * deltaMs) / 1000
+    const step =
+        (movementSpeed(character) *
+            slow *
+            walkingTime(character, now, deltaMs)) /
+        1000
     const input = character.getMoveInput()
     if (input.x !== 0 || input.y !== 0) {
         return navigation.moveWithCollision(character.position, {

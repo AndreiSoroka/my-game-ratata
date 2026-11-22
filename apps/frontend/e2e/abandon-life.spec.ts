@@ -55,7 +55,7 @@ for (const mobile of [false, true]) {
         expect(fresh.snapshot?.adventure?.craftOrders).toEqual([])
         await expect(
             page.getByLabel('Быстрые действия').getByRole('button', { name: /^2:/ })
-        ).toHaveAccessibleName(/2: Выстрел/)
+        ).toHaveAccessibleName(/2: Быстрый выстрел/)
         await expect(dialog).toHaveCount(0)
     })
 }

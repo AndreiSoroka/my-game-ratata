@@ -61,7 +61,7 @@ export interface GameEventPayload {
     speakerName?: string
     channel?: import('./social').SpeechChannel
     hitQuality?: CombatHitQuality
-    /** Server-pinned projectile path for a shot with no selected target. */
+    /** Server-authored projectile path when the launch direction is fixed. */
     projectile?: ProjectilePath
     /** New utterance receipt; repeated text receives a new value. */
     speechId?: number

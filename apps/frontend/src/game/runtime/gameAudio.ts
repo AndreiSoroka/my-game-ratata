@@ -1,4 +1,8 @@
-import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    isArrowAbility,
+    type WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import type { Sound } from 'excalibur'
 
 import type { GameSoundId } from '../assets/soundCatalog'
@@ -6,6 +10,12 @@ import { isAudioMuted, subscribeAudioMute } from './audioPreference'
 import { FootstepAudio } from './footstepAudio'
 import { FootstepPlanner } from './footsteps'
 import { type FootstepMap, surfaceAt } from './mapSurfaces'
+
+function playsAttackSound(event: GameEventPayload): boolean {
+    return (
+        !isArrowAbility(event.abilityId) || event.phase === undefined || event.phase === 'completed'
+    )
+}
 
 export class GameAudio {
     private readonly footsteps = new FootstepPlanner()
@@ -82,7 +92,7 @@ export class GameAudio {
     public playEventSound(event: GameEventPayload): void {
         switch (event.kind) {
             case 'attack':
-                this.playSound('attack')
+                if (playsAttackSound(event)) this.playSound('attack')
                 return
             case 'barrel_search':
             case 'chest_open':

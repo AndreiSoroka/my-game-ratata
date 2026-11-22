@@ -1,19 +1,43 @@
 import type {
+    ArrowAbilityId,
     AttackAbilityId,
     AttackDelivery,
     AttackGeometry,
     AttackOrigin,
+    CharacterFacing,
     SpellSkillId,
+    Vector2,
     WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import type { ResourceSpendReceipt } from './resourcePractice'
+
+export interface UsefulArrowHit {
+    abilityId: ArrowAbilityId
+    targetId: string
+    locationId: string
+    at: number
+}
+
+export interface ArrowAttack {
+    abilityId: ArrowAbilityId
+    origin: Vector2
+    aim: Vector2
+    facing: CharacterFacing
+    range: number
+    mobile: boolean
+    moved: boolean
+    openerDamage: number
+    previousHit: UsefulArrowHit | undefined
+}
+
 export interface PendingAttackHit {
     actionId?: string
     origin?: AttackOrigin
     delivery?: AttackDelivery
     geometry?: AttackGeometry
     weaponAttack?: boolean
+    arrow?: ArrowAttack
     comboBonus?: number
     stunDurationMs?: number
     resourceSpends?: ResourceSpendReceipt[] | undefined

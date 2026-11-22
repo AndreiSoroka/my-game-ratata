@@ -4,7 +4,8 @@ import { expect, it } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
 import ActionHotbar from './ActionHotbar.vue'
-import { actionTooltip, bindingUnavailable } from './hotbarActions'
+import { bindingUnavailable } from './hotbarActions'
+import { actionTooltip } from './hotbarPresentation'
 import InventoryOverlay from './InventoryOverlay.vue'
 
 it.each<HeroClass>(['vanguard', 'ranger', 'arcanist', 'cleric'])(

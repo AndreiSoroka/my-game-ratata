@@ -1,10 +1,11 @@
 import {
-    ABILITY_DEFINITIONS,
     type AttackAbilityId,
+    type AttackGeometry,
     forwardAbilityAttack,
     forwardShot,
     type GameEventPayload,
     HUMAN_MELEE_RULES,
+    isArrowAbility,
     isBladeAttackAbility,
     isItemBroken,
 } from '@my-game-ratata/contracts'
@@ -13,16 +14,20 @@ import { knowsAbility } from './abilityState'
 import { prepareComboTarget } from './bladeCombo'
 import { attemptBladeTechnique } from './bladeTechniques'
 import type { GameCharacter } from './character'
-import {
-    type AttackContext,
-    availableToStartAttack,
-    isLegalAttackTarget,
-} from './combat'
+import type { ArrowAttack } from './characterState'
+import { type AttackContext, availableToStartAttack } from './combat'
 import { startCombatAction } from './combatActions'
+import {
+    canAimSniperAt,
+    isPhasedArrow,
+    sniperAttackGeometry,
+    startArrowAttack,
+} from './combatArchery'
+import { prepareTarget, targetWithinZones } from './combatAttackTarget'
 import {
     buildAbilityAttackZones,
     buildAttackZones,
-    isInZones,
+    isInAttackGeometry,
 } from './combatGeometry'
 import { consumeRunicShot } from './constellations'
 import {
@@ -30,7 +35,7 @@ import {
     effectiveAttackEnergyCost,
     effectiveAttackPhases,
 } from './effectiveParameters'
-import { legalGraveTarget } from './graveCombat'
+import { zeroVector } from './math'
 import { recordPaidResources } from './resourcePractice'
 
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
@@ -83,19 +88,78 @@ export function attemptAbilityAttack(
     if (isBladeAttackAbility(id)) {
         return attemptBladeTechnique(context, id)
     }
-    const { actor, now } = context
+    const { actor } = context
     const definition = effectiveAbility(actor, id, context.tileSize)
-    if (!abilityStartReady(context, id)) {
+    const selected = context.targets.find(
+        (target) => target.id === context.targetId
+    )
+    if (
+        !canStartArrow(context, id, selected) ||
+        !abilityStartReady(context, id)
+    ) {
         return []
     }
-    actor.attackZones = buildAbilityAttackZones(actor, id, context.tileSize)
-    if (!targetWithinZones(context)) {
+    const geometry = prepareAbilityGeometry(
+        context,
+        id,
+        definition.range,
+        selected
+    )
+    if (geometry === undefined) {
         return []
     }
+    const arrow = isArrowAbility(id)
+        ? startArrowAttack(
+              context,
+              id,
+              definition.range,
+              id === 'shot' && definition.movementMs === 0,
+              selected
+          )
+        : undefined
+    return [payAbilityAttack(context, id, definition, geometry, arrow)]
+}
+
+function prepareAbilityGeometry(
+    context: AttackContext,
+    id: AttackAbilityId,
+    range: number,
+    selected: GameCharacter | undefined
+): AttackGeometry | undefined {
+    const { actor, tileSize } = context
+    if (id === 'sniper_shot') {
+        const geometry = sniperAttackGeometry(actor.position, range)
+        actor.attackZones = []
+        return selected !== undefined &&
+            isInAttackGeometry(selected.position, geometry)
+            ? geometry
+            : undefined
+    }
+    const zones = buildAbilityAttackZones(actor, id, tileSize)
+    actor.attackZones = zones
+    return targetWithinZones(context)
+        ? { kind: 'rectangles', zones }
+        : undefined
+}
+
+function payAbilityAttack(
+    context: AttackContext,
+    id: AttackAbilityId,
+    definition: ReturnType<typeof effectiveAbility>,
+    geometry: AttackGeometry,
+    arrow: ArrowAttack | undefined
+): GameEventPayload {
+    const { actor, now } = context
+    const phased = isPhasedArrow(arrow)
     const before = { energy: actor.energy, mana: actor.mana }
     actor.energy -= definition.energy
     actor.mana -= definition.mana
     actor.abilities.availableAt[id] = now + definition.cooldownMs
+    if (id === 'sniper_shot') {
+        actor.clearPath()
+        actor.setMoveInput(zeroVector())
+        actor.velocity = zeroVector()
+    }
     const event = startCombatAction(
         actor,
         now,
@@ -103,6 +167,7 @@ export function attemptAbilityAttack(
             resourceSpends: recordPaidResources(actor, before),
             targetId: context.targetId,
             target: context.target,
+            ...(arrow === undefined ? {} : { arrow }),
             abilityId: id,
             weaponAttack: id === 'skeleton_strike',
             canStun: id === 'skeleton_strike',
@@ -111,17 +176,49 @@ export function attemptAbilityAttack(
             delivery:
                 id === 'spark'
                     ? 'magic'
-                    : id === 'shot'
+                    : isArrowAbility(id)
                       ? 'ranged_physical'
                       : 'melee_physical',
         },
-        definition,
-        { kind: 'rectangles', zones: actor.attackZones }
+        phased
+            ? { ...definition, animationMs: definition.windupMs }
+            : definition,
+        geometry
     )
-    if (projectileWithoutTarget(context, id)) {
-        event.projectile = abilityProjectile(actor, id, context.tileSize)
+    if (phased) {
+        event.phase = 'started'
+        event.durationMs = definition.windupMs
+    } else if (projectileWithoutTarget(context, id)) {
+        event.projectile =
+            id === 'shot'
+                ? forwardShot(actor.position, actor.facing, definition.range)
+                : forwardAbilityAttack(
+                      actor.position,
+                      actor.facing,
+                      id,
+                      definition.range
+                  )
     }
-    return [event]
+    return event
+}
+
+function canStartArrow(
+    context: AttackContext,
+    id: AttackAbilityId,
+    selected: GameCharacter | undefined
+): boolean {
+    const { actor, now } = context
+    if (isArrowAbility(id) && actor.movement.dashUntil > now) {
+        return false
+    }
+    if (id !== 'sniper_shot') {
+        return true
+    }
+    return (
+        context.target === undefined &&
+        selected !== undefined &&
+        canAimSniperAt(context, selected)
+    )
 }
 
 function abilityStartReady(
@@ -160,54 +257,6 @@ function ready({ actor, now }: AttackContext): boolean {
         actor.soul.companion?.canFight !== false
     )
 }
-export function prepareTarget(context: AttackContext): boolean {
-    if (context.target !== undefined) {
-        const grave = context.graves?.get(context.target.id)
-        if (
-            context.targetId !== undefined ||
-            !legalGraveTarget(context.actor, grave, context.navigation)
-        ) {
-            return false
-        }
-        context.actor.updateFacing({
-            x: grave.position.x - context.actor.position.x,
-            y: grave.position.y - context.actor.position.y,
-        })
-        return true
-    }
-    if (context.targetId === undefined) {
-        return true
-    }
-    const target = context.targets.find(
-        (candidate) => candidate.id === context.targetId
-    )
-    if (
-        target === undefined ||
-        !isLegalAttackTarget(context.actor, target, context)
-    ) {
-        return false
-    }
-    context.actor.updateFacing({
-        x: target.position.x - context.actor.position.x,
-        y: target.position.y - context.actor.position.y,
-    })
-    return true
-}
-function targetWithinZones(context: AttackContext): boolean {
-    if (context.target !== undefined) {
-        const grave = context.graves?.get(context.target.id)
-        return (
-            grave !== undefined && isInZones(grave, context.actor.attackZones)
-        )
-    }
-    if (context.targetId === undefined) {
-        return true
-    }
-    const target = context.targets.find(
-        (candidate) => candidate.id === context.targetId
-    )
-    return target !== undefined && isInZones(target, context.actor.attackZones)
-}
 function projectileWithoutTarget(
     context: AttackContext,
     id: AttackAbilityId
@@ -217,28 +266,4 @@ function projectileWithoutTarget(
         context.targetId === undefined &&
         context.target === undefined
     )
-}
-function abilityProjectile(
-    actor: GameCharacter,
-    id: 'shot' | 'spark',
-    tileWidth: number
-) {
-    const path =
-        id === 'shot'
-            ? forwardShot(actor.position, actor.facing)
-            : forwardAbilityAttack(actor.position, actor.facing, id)
-    const multiplier =
-        effectiveAbility(actor, id, tileWidth).range /
-        ABILITY_DEFINITIONS[id].range
-    return {
-        ...path,
-        endpoint: {
-            x:
-                actor.position.x +
-                (path.endpoint.x - actor.position.x) * multiplier,
-            y:
-                actor.position.y +
-                (path.endpoint.y - actor.position.y) * multiplier,
-        },
-    }
 }

@@ -2,6 +2,7 @@ import {
     ABILITY_DEFINITIONS,
     type AbilityId,
     type CharacterSheetSnapshot,
+    isArrowAbility,
     isBladeAttackAbility,
     type ObservedAttack,
     type ObservedResource,
@@ -11,6 +12,7 @@ import {
 
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import { hasStar } from './constellations'
 import {
     effectiveAbility,
@@ -73,7 +75,7 @@ function attackKnowledge(actor: GameCharacter, id: AbilityId | 'basic_attack') {
     if (isBladeAttackAbility(id)) {
         return knowledgeStep(actor, 'blade.insight', [5, 2, 1, null])
     }
-    if (id === 'shot') {
+    if (isArrowAbility(id)) {
         return knowledgeStep(actor, 'arrow.insight', [5, 2, null])
     }
     return actor.exactCombatNumbers || hasStar(actor, 'magic.insight')
@@ -94,8 +96,7 @@ function attackSource(actor: GameCharacter, id: AbilityId | 'basic_attack') {
         }
     }
     const ability = effectiveAbility(actor, id)
-    const critBonus =
-        id === 'shot' && hasStar(actor, 'arrow.critical') ? 0.03 : 0
+    const critBonus = arrowCritBonus(actor, id)
     return {
         name: ABILITY_DEFINITIONS[id].name,
         low: Math.round(
@@ -113,6 +114,14 @@ function attackSource(actor: GameCharacter, id: AbilityId | 'basic_attack') {
               ? 0
               : Math.min(0.95, actor.config.combat.critChance + critBonus),
     }
+}
+
+function arrowCritBonus(actor: GameCharacter, id: AbilityId): number {
+    if (!isArrowAbility(id)) {
+        return 0
+    }
+    const bonuses = constellationModifiers(actor)
+    return id === 'shot' ? bonuses.shotCritBonus : bonuses.sniperCritBonus
 }
 
 function observeAttack(
@@ -159,6 +168,7 @@ export function createCharacterSheet(
     const ids = [
         'spark',
         'shot',
+        'sniper_shot',
         'skeleton_strike',
         'fireball',
         'greater_fireball',

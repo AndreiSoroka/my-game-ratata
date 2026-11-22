@@ -1,9 +1,9 @@
 import {
-    ABILITY_DEFINITIONS,
     type AbilityId,
     type CharacterAutoAction,
     type CharacterSnapshot,
     type ClientMessage,
+    isArrowAbility,
     isBladeAbility,
     isPrayerAction,
     type PrayerActionId,
@@ -15,19 +15,16 @@ import {
 import type { ComputedRef, Ref } from 'vue'
 
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
-import { abilityUsage } from './abilityUsage'
 import {
     activateGuard,
-    basicAttackLabel,
     bladeAbilityUnavailable,
-    bladeActionTooltip,
     guardActive,
     guardBlocksBinding,
 } from './bladeHotbar'
 import { attackableTarget } from './combatTargeting'
 import type { HotbarBinding } from './hotbarBindings'
 import type { createGestures } from './hotbarGestures'
-import { activateMagic, isManualMagic, magicActionTooltip, magicUnavailable } from './magicHotbar'
+import { activateMagic, isManualMagic, magicUnavailable } from './magicHotbar'
 
 export interface HotbarProps {
     player: CharacterSnapshot
@@ -46,18 +43,6 @@ export interface HotbarEmit {
     (event: 'cancel'): void
     (event: 'plant'): void
     (event: 'previewChange', preview: PrayerPreviewHighlight | undefined): void
-}
-export function bindingLabel(
-    binding: HotbarBinding | null,
-    player?: HotbarProps['player']
-): string {
-    if (!binding) return 'Пусто'
-    if (binding.kind === 'attack') return player ? basicAttackLabel(player) : 'Базовая атака'
-    return binding.kind === 'item'
-        ? binding.id === 'sapling'
-            ? 'Посадить дерево'
-            : 'Яблоко'
-        : ABILITY_DEFINITIONS[binding.id].name
 }
 export function bindingUnavailable(
     binding: HotbarBinding | null,
@@ -104,11 +89,14 @@ function abilityUnavailable(
     if (guardActive(id, props)) return undefined
     const blocked = bladeAbilityUnavailable(id, props) ?? magicUnavailable(id, props)
     if (blocked) return blocked
+    if (isArrowAbility(id) && props.player.movement?.dashing) return 'Дождитесь конца рывка'
     if (cooldown > 0) return 'Умение восстанавливается'
     return abilityResourceReason(id, props) ?? abilityTargetReason(id, props)
 }
 
 function abilityTargetReason(id: AbilityId, props: HotbarProps): string | undefined {
+    if (id === 'sniper_shot' && (props.grave || !livingAttackTarget(props)))
+        return 'Выберите живую цель: E'
     return !isBladeAbility(id) &&
         !isManualMagic(id) &&
         !['shot', 'spark'].includes(id) &&
@@ -132,6 +120,10 @@ function actionFor(
 ): Extract<CharacterAutoAction, { kind: 'ability' | 'prayer' }> | undefined {
     if (isPrayerAction(binding.id))
         return intent ? { kind: 'prayer', abilityId: binding.id, intent } : undefined
+    if (binding.id === 'sniper_shot') {
+        const target = props.grave ? undefined : livingAttackTarget(props)
+        return target ? { kind: 'ability', abilityId: binding.id, targetId: target.id } : undefined
+    }
     return {
         kind: 'ability',
         abilityId: binding.id,
@@ -146,8 +138,12 @@ function combatAddress(
     | { targetId: string; target?: never }
     | undefined {
     if (props.grave) return { target: { kind: 'grave', id: props.grave.id } }
+    const target = livingAttackTarget(props)
+    return target ? { targetId: target.id } : undefined
+}
+function livingAttackTarget(props: HotbarProps): CharacterSnapshot | undefined {
     return props.target?.alive && attackableTarget(props.target, props.player)
-        ? { targetId: props.target.id }
+        ? props.target
         : undefined
 }
 function singleCommand(
@@ -165,7 +161,7 @@ function singleCommand(
                     : {}),
           }
 }
-function hostileTarget(props: HotbarProps): boolean {
+export function hostileTarget(props: HotbarProps): boolean {
     return (
         props.grave !== undefined ||
         (props.target !== undefined && attackableTarget(props.target, props.player))
@@ -271,27 +267,6 @@ function activateFood(
     emit('cancel')
     emit('command', { type: 'inventory_action', action: 'eat', itemInstanceId: item.instanceId })
     gestures.rememberFood(index)
-}
-
-export function actionTooltip(binding: HotbarBinding | null, props: HotbarProps): string {
-    return (
-        bladeActionTooltip(binding, props) ??
-        rangedActionTooltip(binding, props) ??
-        magicActionTooltip(binding, props) ??
-        bindingLabel(binding)
-    )
-}
-
-function rangedActionTooltip(
-    binding: HotbarBinding | null,
-    props: HotbarProps
-): string | undefined {
-    if (binding?.kind !== 'ability' || hostileTarget(props)) return undefined
-    if (binding.id === 'shot')
-        return `Выстрел вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'shot').energy} EN`
-    if (binding.id === 'spark')
-        return `Искра вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'spark').mana} MP · ${abilityUsage(props.player, 'spark').energy} EN`
-    return undefined
 }
 
 function bindingAction(

@@ -49,7 +49,7 @@ describe('authoritative ability usage metadata', () => {
         try {
             const rows = wrapper.findAll('li').map((row) => row.text().replace(/\s+/g, ' '))
             expect(rows).toContain('Молитва · 5 MP · 0 EN · 2.7 с')
-            expect(rows).toContain('Выстрел · 0 MP · 9 EN · 0.495 с')
+            expect(rows).toContain('Быстрый выстрел · 0 MP · 9 EN · 0.495 с')
             expect(rows).toContain('Искра · 5 MP · 4 EN · 0.8 с')
             expect(wrapper.find('p').exists()).toBe(false)
         } finally {
@@ -73,7 +73,7 @@ describe('authoritative ability usage metadata', () => {
             await wrapper.vm.edit(3)
             const shot = wrapper
                 .findAll('.hotbar-picker button')
-                .find((button) => button.text().includes('Выстрел'))
+                .find((button) => button.text().includes('Быстрый выстрел'))
             expect(shot?.text()).toContain('9 EN')
             const spark = wrapper
                 .findAll('.hotbar-picker button')

@@ -2,7 +2,10 @@ import { ABILITY_DEFINITIONS, type HeroClass, MASTERY_NAMES } from '@my-game-rat
 
 import { magicLevelAbilities } from '../../../../backend/src/game/constellationMagicStars'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
-import { minimumConstellationLevel } from '../../../../backend/src/game/constellationRequirements'
+import {
+    costsConstellationOpening,
+    minimumConstellationLevel,
+} from '../../../../backend/src/game/constellationRequirements'
 import { constellationBuildParents } from './constellationMasteryPlan'
 
 export interface ConstellationUnlockDescription {
@@ -10,6 +13,7 @@ export interface ConstellationUnlockDescription {
     chanceBoosts: string[]
 }
 const eventConditions: Record<string, string[]> = {
+    'arrow.moving_shot': ['Открывается автоматически на 4-м уровне Стрелы без расхода открытия.'],
     'prayer.martyr': [
         'Уровень Чудес от 0 до 2: до третьего уровня.',
         'Пять последовательных циклов: получить реальный вражеский урон по HP, затем полезно вылечить себя молитвой.',
@@ -23,7 +27,7 @@ const eventConditions: Record<string, string[]> = {
     ],
     'magic.runic_echo': [
         'Открыты «Яркая искра» и «Твёрдая рука».',
-        'После полезного попадания боевым заклинанием — полезное попадание Выстрелом по той же цели за 5 секунд.',
+        'После полезного попадания боевым заклинанием — полезное попадание Быстрым выстрелом по той же цели за 5 секунд.',
         'Тренировочные цели не засчитываются. Звезда открывается сразу по событию, без случайного выбора.',
     ],
     'life.breath': [
@@ -39,6 +43,9 @@ const evidenceNames: Record<string, string> = {
     greater_fireball: 'попадания Большим огненным шаром',
     chains: 'полезные Оковы',
     marksmanship: 'попадания стрелой',
+    quick_shot: 'полезные попадания Быстрым выстрелом',
+    sniper_shot: 'полезные попадания Снайперским выстрелом',
+    moving_shot: 'полезные попадания Быстрым выстрелом на ходу',
     gift: 'полезное лечение',
     harm: 'урон Кары',
     purify: 'шаги очищения могил',
@@ -68,7 +75,7 @@ export function describeConstellationUnlock(
         conditions.push(`Изучена способность «${ABILITY_DEFINITIONS[node.ability].name}».`)
     conditions.push(...acquisitionConditions(nodeId, node.acquisition, heroClass))
     const chanceBoosts =
-        node.acquisition === 'random' && node.evidence.length
+        costsConstellationOpening(node, heroClass) && node.evidence.length
             ? [
                   `Вес повышают: ${node.evidence.map((id) => evidenceNames[id] ?? id).join(', ')}.`,
                   'Вес = 1 + min(5, число учтённых событий). Он применяется только после выполнения всех обязательных условий.',
@@ -82,6 +89,8 @@ function acquisitionConditions(
     acquisition: string,
     heroClass?: HeroClass
 ): string[] {
+    if (nodeId === 'arrow.sniper_shot' && heroClass === 'ranger')
+        return ['Следопыт получает Снайперский выстрел при создании без расхода открытия.']
     if (nodeId === 'life.root')
         return [
             'Корень открывается после первой учтённой вражеской раны или первого восстановления энергии, потраченной на успешную полевую работу.',

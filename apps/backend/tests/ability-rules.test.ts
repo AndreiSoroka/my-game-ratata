@@ -26,7 +26,10 @@ it('grants only the starting capabilities for each background', () => {
         'spark',
         'barrier',
     ])
-    expect([...abilityHero('ranger').abilities.known]).toEqual(['shot'])
+    expect([...abilityHero('ranger').abilities.known]).toEqual([
+        'shot',
+        'sniper_shot',
+    ])
     expect(
         abilityHero('vanguard', 'undead').abilities.known.has('skeleton_strike')
     ).toBe(true)

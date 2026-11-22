@@ -91,10 +91,13 @@ function attackCritical(
         hasEquippedSword(actor)
     const bonus =
         attack.abilityId === 'shot'
-            ? modifiers.shotCritBonus
-            : sword
-              ? modifiers.swordCritBonus
-              : 0
+            ? modifiers.shotCritBonus +
+              (attack.arrow?.moved === true ? modifiers.movingShotCritBonus : 0)
+            : attack.abilityId === 'sniper_shot'
+              ? modifiers.sniperCritBonus
+              : sword
+                ? modifiers.swordCritBonus
+                : 0
     return (
         !effects.minimumDamage &&
         rollCharacterCheck(

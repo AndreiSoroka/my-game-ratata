@@ -12,6 +12,7 @@ export interface AttackPhases {
     cycleMs: number
     windupMs: number
     movementMs: number
+    animationMs?: number
 }
 export type StartedCombatAction = GameEventPayload & { actionId: string }
 export function startCombatAction(
@@ -53,7 +54,7 @@ export function startCombatAction(
     }
     actor.lastAttackAt = now
     actor.lockAction(now, phases.movementMs)
-    actor.setAnimation('attack', now, phases.cycleMs)
+    actor.setAnimation('attack', now, phases.animationMs ?? phases.cycleMs)
     actor.attackZoneUntil = now + phases.cycleMs
     return {
         kind: 'attack',

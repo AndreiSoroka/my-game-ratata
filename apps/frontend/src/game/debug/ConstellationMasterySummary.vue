@@ -59,7 +59,9 @@ const rate = computed(() =>
 )
 const threshold = computed(() => masteryThreshold(level.value))
 const repetitions = computed(() => (threshold.value + rate.value - 1n) / rate.value)
-const pending = computed(() => level.value - paidConstellationStars(props.activeIds, props.path))
+const pending = computed(
+    () => level.value - paidConstellationStars(props.activeIds, props.path, props.heroClass)
+)
 const xp = (value: bigint) => displayMasteryExperience(formatMasteryExperience(value))
 const percent = (value: number) =>
     new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 2 }).format(value)

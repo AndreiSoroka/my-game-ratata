@@ -26,6 +26,7 @@ import { applyAgentRoute } from './agentRoute'
 import { agentSpeech } from './agentSpeech'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
+import { cancelSniperAimForMovement } from './combatArchery'
 import { isAdventureCommand } from './extraCommands'
 import { cancelMagicChannel, cancelMagicForMovement } from './magicState'
 import {
@@ -151,6 +152,7 @@ function applyLocalDecision(
             return accepted([
                 ...cancelPrayerForMovement(character, decision.axis, now),
                 ...cancelMagicForMovement(character, decision.axis, now),
+                ...cancelSniperAimForMovement(character, decision.axis, now),
             ])
         case 'move_to':
             return applyAgentRoute(

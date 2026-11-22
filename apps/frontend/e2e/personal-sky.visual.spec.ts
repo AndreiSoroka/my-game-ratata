@@ -4,7 +4,7 @@ const heroes = [
     { story: 'vanguard-development', root: 'Клинок' },
     { story: 'arcanist-development', root: 'Магия' },
     { story: 'development', root: 'Молитва' },
-    { story: 'ranger-development', root: 'Стрела' },
+    { story: 'ranger-development', root: 'Быстрый выстрел' },
 ]
 for (const width of [320, 390, 1280]) {
     for (const hero of heroes) {

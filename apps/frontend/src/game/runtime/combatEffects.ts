@@ -1,13 +1,15 @@
-import type {
-    CharacterSnapshot,
-    GameEventPayload,
-    WorldCombatTarget,
+import {
+    type CharacterSnapshot,
+    type GameEventPayload,
+    isPrayerAction,
+    PRAYER_RULES,
+    PRAYER_SCHOOL_DEFINITIONS,
+    prayerSchoolId,
+    type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
-import { prayerSchoolId } from '@my-game-ratata/contracts'
-import { isPrayerAction, PRAYER_RULES, PRAYER_SCHOOL_DEFINITIONS } from '@my-game-ratata/contracts'
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
-import { combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
+import { channelEnded, combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
 import { combatEffectPose, isMeleeEffect } from './combatEffectPose'
 import { hitColors, hitQuality } from './combatHitLabel'
 import { CombatParticles } from './combatParticles'
@@ -52,7 +54,7 @@ export class CombatEffects {
     public receive(event: GameEventPayload): void {
         const actor = this.character(event.actorId ?? '')
         const target = this.eventTarget(event)
-        if (event.kind === 'cast' && event.phase !== 'started') this.stopChannel(event.actorId)
+        this.stopEndedEffect(event)
         if (!target) return
         if (event.kind === 'notice' && event.noticeKind === 'prayer_unanswered')
             this.removePrayerCompletion(event)
@@ -131,10 +133,18 @@ export class CombatEffects {
         this.engine.off('postupdate', this.update)
         this.graphics.clear()
     }
-    private stopChannel(actorId: string | undefined): void {
-        for (const effect of this.effects)
-            if (effect.cue?.channel && effect.cue.fromId === actorId) this.remove(effect)
-        this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
+    private stopEndedEffect(event: GameEventPayload): void {
+        if (event.phase === 'started') return
+        if (event.kind !== 'cast' && (event.kind !== 'attack' || !event.actionId)) return
+        this.effects = this.effects.filter((effect) => {
+            const cue = effect.cue
+            const ended =
+                event.kind === 'cast'
+                    ? cue?.channel && cue.fromId === event.actorId
+                    : cue?.aimActionId === event.actionId
+            if (ended) this.remove(effect)
+            return !ended
+        })
     }
     private removePrayerCompletion(event: GameEventPayload): void {
         for (let index = this.effects.length - 1; index >= 0; index -= 1) {
@@ -151,6 +161,7 @@ export class CombatEffects {
         }
     }
     private cueTarget(cue: EffectCue): EffectTarget | undefined {
+        if (cue.projectile) return { position: cue.projectile.endpoint }
         return cue.target ? this.worldTarget(cue.target) : this.character(cue.targetId)
     }
     private visual(cue: EffectCue): void {
@@ -170,7 +181,7 @@ export class CombatEffects {
             const scale = (cue.radius ?? PRAYER_RULES.radius) / PRAYER_RULES.radius
             actor.scale = vec(scale, scale)
         }
-        const duration = this.reduced && !cue.channel ? 220 : cue.duration
+        const duration = this.reduced && !cue.channel && cue.kind !== 'aim' ? 220 : cue.duration
         const effect = {
             actor,
             cue,
@@ -291,10 +302,4 @@ function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefi
                     ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
                     : (actor?.progression?.deity.id ?? 'hearth')
             ]
-}
-function channelEnded(
-    cue: EffectCue | undefined,
-    character: (id: string) => CharacterSnapshot | undefined
-): boolean {
-    return Boolean(cue?.channel && !character(cue.fromId)?.abilities?.casting)
 }

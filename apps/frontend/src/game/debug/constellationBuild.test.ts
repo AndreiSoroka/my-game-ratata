@@ -21,9 +21,13 @@ describe('manual constellation build dependencies', () => {
         ['arcanist', 'magic.root'],
         ['cleric', 'prayer.root'],
         ['ranger', 'arrow.root'],
-    ] as const)('starts %s with exactly its own root', (heroClass, root) => {
+    ] as const)('starts %s with its own root and starting stars', (heroClass, root) => {
         expect([...initialConstellationBuild(heroClass)]).toEqual(
-            heroClass === 'cleric' ? [root, 'prayer.revive'] : [root]
+            heroClass === 'cleric'
+                ? [root, 'prayer.revive']
+                : heroClass === 'ranger'
+                  ? [root, 'arrow.sniper_shot']
+                  : [root]
         )
     })
 

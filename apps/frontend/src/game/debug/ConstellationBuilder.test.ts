@@ -116,26 +116,28 @@ it('shows cross-path runic totals only while its example charge is active', asyn
     const view = mount(ConstellationBuildSummary, {
         props: { nodeId: 'arrow.root', activeIds: full },
     })
-    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
-        '×1,2'
-    )
+    expect(
+        view.get('[data-build-metric="Итоговый множитель урона Быстрого выстрела"] dd').text()
+    ).toBe('×1,25')
     await view.get('[data-testid="debug-runic-charged"]').setValue(true)
-    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
-        '×1,32'
-    )
+    expect(
+        view.get('[data-build-metric="Итоговый множитель урона Быстрого выстрела"] dd').text()
+    ).toBe('×1,375')
     await view.setProps({ nodeId: 'magic.runic_echo' })
-    expect(view.get('[data-build-metric="Усиление следующего Выстрела"] dd').text()).toBe('+10%')
+    expect(view.get('[data-build-metric="Усиление следующего Быстрого выстрела"] dd').text()).toBe(
+        '+10%'
+    )
     expect(view.find('[data-testid="debug-runic-charged"]').exists()).toBe(false)
     await view.setProps({ nodeId: 'arrow.root' })
-    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
-        '×1,32'
-    )
+    expect(
+        view.get('[data-build-metric="Итоговый множитель урона Быстрого выстрела"] dd').text()
+    ).toBe('×1,375')
     const noEcho = new Set(full)
     noEcho.delete('magic.runic_echo')
     await view.setProps({ activeIds: noEcho })
     expect(view.find('[data-testid="debug-runic-charged"]').exists()).toBe(false)
-    expect(view.get('[data-build-metric="Итоговый множитель урона Выстрела"] dd').text()).toBe(
-        '×1,2'
-    )
+    expect(
+        view.get('[data-build-metric="Итоговый множитель урона Быстрого выстрела"] dd').text()
+    ).toBe('×1,25')
     view.unmount()
 })

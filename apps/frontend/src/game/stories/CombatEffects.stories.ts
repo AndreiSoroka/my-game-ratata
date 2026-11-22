@@ -66,11 +66,24 @@ export const Barrier: Story = {
 export const Projectiles: Story = {
     render: () =>
         effectPreview('hearth', [
-            { kind: 'arrow', label: 'Выстрел · 50 мс' },
+            { kind: 'arrow', label: 'Быстрый выстрел · 50 мс' },
             { kind: 'spark', label: 'Искра · 200 мс' },
             { kind: 'fireball', label: 'Огненный шар · 400 мс' },
             { kind: 'bone', label: 'Костяной удар' },
         ]),
+}
+
+export const ArcherShots: Story = {
+    name: 'Снайперский выстрел',
+    render: ({ surface }) =>
+        effectPreview(
+            'hearth',
+            [
+                { kind: 'aim', label: 'Прицеливание', origin: true },
+                { kind: 'arrow', label: 'Выпуск стрелы', rotation: -Math.PI / 5 },
+            ],
+            surface
+        ),
 }
 
 export const HearthLightStone: Story = {

@@ -1,4 +1,5 @@
 import {
+    bladeAbilityIds,
     type ConstellationId,
     type GameEventPayload,
 } from '@my-game-ratata/contracts'
@@ -8,6 +9,7 @@ import { type ConstellationStar } from './constellationCatalog'
 import { fullConstellationCatalog } from './constellationNodes'
 import {
     canDiscoverConstellationStar,
+    minimumConstellationLevel,
     starterConstellationStars,
 } from './constellationRequirements'
 import { syncMagicConstellation } from './magicProgression'
@@ -46,6 +48,16 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
         }
     }
     syncMagicConstellation(actor)
+    if (hasStar(actor, 'arrow.sniper_shot')) {
+        known.add('sniper_shot')
+    }
+    if (
+        hasStar(actor, 'arrow.root') &&
+        actor.progression.masteries.arrow.level >=
+            minimumConstellationLevel('arrow.moving_shot')
+    ) {
+        actor.progression.constellations.opened.add('arrow.moving_shot')
+    }
     for (const [ability, path] of [
         ['pray', 'prayer'],
         ['pray_grave', 'prayer_grave'],
@@ -62,13 +74,7 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
 
 function syncBladeAbilities(actor: GameCharacter): void {
     const known = actor.abilities.known
-    for (const id of [
-        'wide_swing',
-        'circular_swing',
-        'lunge',
-        'pommel_strike',
-        'defensive_stance',
-    ] as const) {
+    for (const id of bladeAbilityIds) {
         if (hasStar(actor, `blade.${id}`)) {
             known.add(id)
         }
@@ -200,6 +206,9 @@ function evidencePath(key: string): ConstellationId | undefined {
             greater_fireball: 'magic',
             chains: 'magic',
             marksmanship: 'arrow',
+            quick_shot: 'arrow',
+            sniper_shot: 'arrow',
+            moving_shot: 'arrow',
             vitality: 'life',
             stealth: 'shadow',
             theft: 'shadow',

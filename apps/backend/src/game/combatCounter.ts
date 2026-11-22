@@ -51,6 +51,7 @@ export function resolveCounterAttack(
     }
     const before = { energy: actor.energy, mana: actor.mana }
     actor.energy -= cost
+    actor.combat.lastCounterAttackAt = now
     const actionId = nextCombatActionId(actor)
     const attack: PendingAttackHit = {
         actionId,

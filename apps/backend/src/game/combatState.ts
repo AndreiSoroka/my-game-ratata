@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { UsefulArrowHit } from './characterState'
 
 export interface CharacterCombatState {
     /** The only deadline for starting another attacking action. */
@@ -12,6 +13,9 @@ export interface CharacterCombatState {
     recentDamageUntil: number
     sequence: number
     action?: CombatActionSnapshot
+    lastCounterAttackAt?: number
+    lastUsefulArrowHit?: UsefulArrowHit
+    arrowStep?: { until: number; multiplier: number }
     defensiveStance: boolean
     stanceAvailableAt: number
     stanceController?: string
@@ -59,6 +63,8 @@ export function leaveDefensiveStance(actor: GameCharacter, now: number): void {
 export function clearCombatTransient(actor: GameCharacter, now: number): void {
     delete actor.combat.action
     delete actor.combat.combo
+    delete actor.combat.lastUsefulArrowHit
+    delete actor.combat.arrowStep
     delete actor.combat.lunge
     delete actor.combat.movementFraction
     delete actor.combat.slowMovementUntil

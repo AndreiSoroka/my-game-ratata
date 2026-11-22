@@ -8,6 +8,7 @@ import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import { enqueueCharacterRoute } from './characterRoute'
 import { isChestCommand } from './chestCommands'
+import { cancelSniperAim, cancelSniperAimForMovement } from './combatArchery'
 import { canWalkDuringPrayer } from './combatMovement'
 import { cancelMagicChannel, cancelMagicForMovement } from './magicState'
 import type { NavigationService } from './navigation'
@@ -117,7 +118,10 @@ function applyRouteMessage(
         if (!canWalkDuringPrayer(player)) {
             events.push(...cancelPrayerCast(player, now))
         }
-        events.push(...cancelMagicChannel(player, now))
+        events.push(
+            ...cancelMagicChannel(player, now),
+            ...cancelSniperAim(player, now)
+        )
     }
     events.push(...routeCommandFeedback(player, result))
     if (events.length > 0) {
@@ -134,6 +138,7 @@ function applyMovementInput(
     context.sendEvents([
         ...cancelPrayerForMovement(player, message.axis, now),
         ...cancelMagicForMovement(player, message.axis, now),
+        ...cancelSniperAimForMovement(player, message.axis, now),
     ])
     if (message.axis.x !== 0 || message.axis.y !== 0) {
         cancelCharacterControl(player)

@@ -103,41 +103,53 @@ describe('earned effects of active constellation cards', () => {
             resolveConstellationCardEffects('prayer.root', missingOwnRevival)
         ).toContain(revival)
     })
-    it('includes only the applicable learned modifiers of Shot and both fireballs', () => {
-        const shot = requiredEffects('arrow.root')
-        expect(shot).toContain('Урон Выстрела увеличен на 20%.')
-        expect(shot).toContain('Дальность Выстрела увеличена на 2 клетки.')
-        expect(shot).toContain(
-            'После полезного боевого заклинания следующий Выстрел на 10% сильнее в течение 5 секунд.'
+})
+
+it('includes only the applicable learned modifiers of both shots and both fireballs', () => {
+    const shot = requiredEffects('arrow.root')
+    expect(shot).toContain('Урон Быстрого выстрела увеличен на 25%.')
+    expect(shot).toContain('Дальность Быстрого выстрела увеличена на 2 клетки.')
+    expect(shot).toContain(
+        'После полезного боевого заклинания следующий Быстрый выстрел на 10% сильнее в течение 5 секунд.'
+    )
+    expect(shot.join(' ')).not.toMatch(
+        /Лечение|могил|Барьер|Искры|огненных шаров/
+    )
+    const sniper = requiredEffects('arrow.sniper_shot')
+    expect(sniper).toContain(
+        'Дальность Снайперского выстрела увеличена на 2 клетки.'
+    )
+    expect(sniper).toContain(
+        'Прицеливание Снайперского выстрела короче на 150 мс.'
+    )
+    expect(sniper.join(' ')).not.toContain('Быстрого выстрела')
+    expect(
+        requiredEffects('arrow.sniper_shot', new Set(['arrow.sniper_shot']))
+    ).toEqual([
+        'Во время прицеливания стрелок стоит. Ходьба прерывает выстрел.',
+    ])
+    for (const id of ['magic.fireball', 'magic.greater_fireball']) {
+        const effects = requiredEffects(id)
+        expect(effects).toContain(
+            'Урон Огненной стрелы и Большого огненного шара увеличен на 10%.'
         )
-        expect(shot.join(' ')).not.toMatch(
-            /Лечение|могил|Барьер|Искры|огненных шаров/
+        expect(effects).toContain(
+            'Полезное попадание создаёт рунический заряд, который усиливает следующий Быстрый выстрел на 10% в течение 5 секунд.'
         )
-        for (const id of ['magic.fireball', 'magic.greater_fireball']) {
-            const effects = requiredEffects(id)
-            expect(effects).toContain(
-                'Урон Огненной стрелы и Большого огненного шара увеличен на 10%.'
-            )
-            expect(effects).toContain(
-                'Полезное попадание создаёт рунический заряд: следующий Выстрел на 10% сильнее в течение 5 секунд.'
-            )
-            expect(effects.join(' ')).not.toMatch(
-                /Лечение|могил|Барьер|Искры|Дальность Выстрела/
-            )
-        }
-        expect(
-            fullConstellationCatalog.filter(
-                (node) => node.effectType === 'active'
-            )
-        ).toHaveLength(17)
-        for (const node of fullConstellationCatalog.filter(
-            (entry) => entry.effectType === 'active'
-        )) {
-            expect(() =>
-                resolveConstellationCardEffects(node.id, all)
-            ).not.toThrow()
-        }
-    })
+        expect(effects.join(' ')).not.toMatch(
+            /Лечение|могил|Барьер|Искры|Дальность Быстрого выстрела/
+        )
+    }
+    expect(
+        fullConstellationCatalog.filter((node) => node.effectType === 'active')
+    ).toHaveLength(18)
+    for (const node of fullConstellationCatalog.filter(
+        (entry) => entry.effectType === 'active'
+    )) {
+        expect(() =>
+            resolveConstellationCardEffects(node.id, all)
+        ).not.toThrow()
+    }
 })
 
 it('includes the marching song and only learned Road Prayer improvements', () => {

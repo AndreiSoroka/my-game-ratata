@@ -14,7 +14,7 @@ import {
     isLegalAttackTarget,
 } from './combat'
 import { startCombatAction } from './combatActions'
-import { prepareTarget } from './combatAttack'
+import { prepareTarget } from './combatAttackTarget'
 import { buildAttackZones, isInZones } from './combatGeometry'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveAbility } from './effectiveParameters'

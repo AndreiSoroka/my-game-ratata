@@ -11,13 +11,21 @@ import { describe, expect, it } from 'vitest'
 import { GameCharacter } from '../src/game/character'
 import { retireCharacter } from '../src/game/characterLife'
 import { constellationStars } from '../src/game/constellationCatalog'
-import { constellationWireId } from '../src/game/constellationNodes'
+import {
+    constellationWireId,
+    fullConstellationCatalog,
+} from '../src/game/constellationNodes'
+import {
+    costsConstellationOpening,
+    minimumConstellationLevel,
+} from '../src/game/constellationRequirements'
 import {
     consumeRunicShot,
     finishConstellationAction,
     hasStar,
     recordRunicContact,
     snapshotConstellations,
+    syncAbilityConstellations,
 } from '../src/game/constellations'
 import { prepareConstellationLayout } from '../src/game/personalConstellationSky'
 import { awardMasteries } from '../src/game/skillProgression'
@@ -138,6 +146,72 @@ describe('server-owned constellation discovery', () => {
         retireCharacter(actor)
         expect(hasStar(actor, 'life.hp4')).toBe(false)
         expect(actor.progression.constellations.credits.life).toBe(0)
+    })
+})
+
+describe('Arrow discoveries', () => {
+    it('starts Rangers with two actions and an unsettled mobility star', () => {
+        const actor = hero('ranger')
+        const arrow = fullConstellationCatalog.filter(
+            (node) => node.constellationId === 'arrow'
+        )
+        const sniper = arrow.find((node) => node.id === 'arrow.sniper_shot')
+        if (sniper === undefined) {
+            throw new Error('Sniper Shot is missing from Arrow')
+        }
+        expect(arrow).toHaveLength(40)
+        expect(actor.abilities.known).toEqual(new Set(['shot', 'sniper_shot']))
+        expect(actor.progression.constellations.opened).toEqual(
+            new Set(['arrow.root', sniper.id])
+        )
+        expect(actor.progression.constellations.credits.arrow).toBe(0)
+        expect(costsConstellationOpening(sniper, 'ranger')).toBe(false)
+        expect(minimumConstellationLevel(sniper.id, 'ranger')).toBe(0)
+        expect(costsConstellationOpening(sniper, 'vanguard')).toBe(true)
+        expect(minimumConstellationLevel(sniper.id, 'vanguard')).toBe(2)
+        const nodes = snapshotConstellations(actor).nodes
+        expect(
+            nodes.find((node) => node.id === constellationWireId(sniper.id))
+        ).toMatchObject({ name: 'Снайперский выстрел', unlocked: true })
+        expect(
+            nodes.find(
+                (node) => node.id === constellationWireId('arrow.moving_shot')
+            )
+        ).toMatchObject({ unlocked: false })
+    })
+
+    it('lets Sniper Shot compete for a credit from level two and grants the skill only when drawn', () => {
+        const lucky = hero()
+        const other = hero()
+        const awards = [{ constellationId: 'arrow', experience: 100 }] as const
+        for (const actor of [lucky, other]) {
+            actor.abilities.known.add('shot')
+            syncAbilityConstellations(actor)
+            awardMasteries(actor, awards, { now: 1000, random: () => 1 })
+            expect(actor.progression.masteries.arrow.level).toBe(1)
+            expect(actor.abilities.known.has('sniper_shot')).toBe(false)
+        }
+        awardMasteries(lucky, awards, { now: 2000, random: () => 1 })
+        awardMasteries(other, awards, { now: 2000, random: () => 0 })
+        expect(lucky.progression.masteries.arrow.level).toBe(2)
+        expect(other.progression.masteries.arrow.level).toBe(2)
+        expect(lucky.abilities.known.has('sniper_shot')).toBe(true)
+        expect(other.abilities.known.has('sniper_shot')).toBe(false)
+        expect(hasStar(other, 'arrow.damage1')).toBe(true)
+        expect(lucky.progression.constellations.credits.arrow).toBe(0)
+        expect(other.progression.constellations.credits.arrow).toBe(0)
+    })
+
+    it('grants Moving Shot at level four with no stored opening', () => {
+        const actor = hero('ranger')
+        actor.progression.masteries.arrow.level = 3
+        finishConstellationAction(actor, { now: 1000 })
+        expect(hasStar(actor, 'arrow.moving_shot')).toBe(false)
+        actor.progression.masteries.arrow.level = 4
+        finishConstellationAction(actor, { now: 2000 })
+        expect(hasStar(actor, 'arrow.moving_shot')).toBe(true)
+        expect(actor.progression.constellations.credits.arrow).toBe(0)
+        expect(actor.abilities.known).toEqual(new Set(['shot', 'sniper_shot']))
     })
 })
 

@@ -1,3 +1,4 @@
+import { arrowTemplatePositions } from './constellationArrowTemplate'
 import { bladeTemplatePositions } from './constellationBladeTemplate'
 import type { SkyPoint } from './constellationGeometry'
 
@@ -29,16 +30,7 @@ export const constellationTemplatePositions = freezeTemplate({
     'magic.mana_rest1': { x: -70, y: 525 },
     'magic.mana_rest2': { x: -15, y: 770 },
     'magic.mana_rest3': { x: 35, y: 1035 },
-    'arrow.root': { x: 1900, y: 150 },
-    'arrow.damage1': { x: 1550, y: 110 },
-    'arrow.damage2': { x: 1470, y: 360 },
-    'arrow.range1': { x: 1720, y: -180 },
-    'arrow.range2': { x: 1520, y: -420 },
-    'arrow.economy': { x: 2080, y: -170 },
-    'arrow.tempo': { x: 2290, y: 140 },
-    'arrow.critical': { x: 2170, y: 480 },
-    'arrow.insight1': { x: 1820, y: 540 },
-    'arrow.insight2': { x: 1890, y: 800 },
+    ...arrowTemplatePositions,
     'magic.runic_echo': { x: 930, y: 65 },
     'prayer.root': { x: 0, y: 0 },
     'prayer.insight1': { x: 700, y: 300 },

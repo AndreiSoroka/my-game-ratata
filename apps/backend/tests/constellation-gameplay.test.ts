@@ -34,7 +34,7 @@ describe('effective shared constellation parameters', () => {
         actor.progression.constellations.opened.add('arrow.tempo')
         actor.facing = 'down'
         target.position = { x: actor.position.x, y: actor.position.y + 100 }
-        expect(effectiveAbility(actor, 'shot', 24).range).toBe(112)
+        expect(effectiveAbility(actor, 'shot', 24).range).toBe(144)
         expect(
             isInZones(target, buildAbilityAttackZones(actor, 'shot', 24))
         ).toBe(true)

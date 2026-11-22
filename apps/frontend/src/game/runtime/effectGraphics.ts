@@ -4,7 +4,7 @@ import { Canvas } from 'excalibur'
 import { drawPrayerGraphic, type PrayerShape } from './prayerGraphics'
 
 export type EffectShape =
-    PrayerShape | 'arrow' | 'spark' | 'fireball' | 'slash' | 'bone' | 'barrier' | 'shards'
+    PrayerShape | 'aim' | 'arrow' | 'spark' | 'fireball' | 'slash' | 'bone' | 'barrier' | 'shards'
 export const SPARK_COLOR = '#8cbbff'
 export const BARRIER_COLOR = '#96beed'
 export const FIRE_COLOR = '#ffa75b'
@@ -13,6 +13,20 @@ export function effectSize(kind: EffectShape): number {
 }
 type Context = CanvasRenderingContext2D
 
+function aim(ctx: Context): void {
+    ctx.strokeStyle = '#e9cd89'
+    ctx.beginPath()
+    ctx.arc(0, -12, 6, 0, Math.PI * 2)
+    ctx.moveTo(-9, -12)
+    ctx.lineTo(-4, -12)
+    ctx.moveTo(4, -12)
+    ctx.lineTo(9, -12)
+    ctx.moveTo(0, -21)
+    ctx.lineTo(0, -16)
+    ctx.moveTo(0, -8)
+    ctx.lineTo(0, -3)
+    ctx.stroke()
+}
 function arrow(ctx: Context): void {
     ctx.fillStyle = '#caa76b'
     ctx.fillRect(-16, -1, 29, 2)
@@ -123,6 +137,7 @@ export function drawEffectGraphic(
     ctx.shadowBlur = 0
     ctx.lineWidth = 2
     const renderers: Partial<Record<EffectShape, (ctx: Context) => void>> = {
+        aim,
         arrow,
         spark,
         fireball,

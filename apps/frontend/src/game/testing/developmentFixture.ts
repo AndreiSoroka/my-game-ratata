@@ -28,7 +28,7 @@ const fixtureAbilities: Record<HeroClass, AbilityId[]> = {
     vanguard: [],
     arcanist: ['spark', 'barrier'],
     cleric: ['pray'],
-    ranger: ['shot'],
+    ranger: ['shot', 'sniper_shot'],
 }
 export function constellationFixture(
     full = false,
@@ -49,6 +49,7 @@ export function constellationFixture(
                   ...(heroClass === 'cleric'
                       ? ['prayer.revive', 'prayer.radius1', 'prayer.omen1']
                       : []),
+                  ...(heroClass === 'ranger' ? ['arrow.sniper_shot'] : []),
               ]
     )
     const visible = fullConstellationCatalog.filter(

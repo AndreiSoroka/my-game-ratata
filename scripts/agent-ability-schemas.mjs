@@ -125,6 +125,7 @@ export const abilityDecisionSchemas = [
             abilityId: {
                 enum: [
                     'spark',
+                    'sniper_shot',
                     'skeleton_strike',
                     'fireball',
                     'greater_fireball',
@@ -278,6 +279,7 @@ export const abilityDecisionSchemas = [
                             abilityId: {
                                 enum: [
                                     'spark',
+                                    'sniper_shot',
                                     'skeleton_strike',
                                     'fireball',
                                     'greater_fireball',

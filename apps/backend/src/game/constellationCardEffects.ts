@@ -1,10 +1,12 @@
 import {
     isArcaneAbility,
+    isArrowAbility,
     isBladeAbility,
     isFireSpell,
     resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
+import { arrowCardEffects } from './constellationArrowEffects'
 import { bladeTechniqueCardResults } from './constellationBladeEffects'
 import { resolveConstellationBonuses } from './constellationBonuses'
 import { magicCardEffects } from './constellationMagicEffects'
@@ -65,6 +67,12 @@ function appendActiveEffects(
     ability: string | undefined,
     context: Context
 ): void {
+    if (isArrowAbility(ability)) {
+        effects.push(
+            ...arrowCardEffects(ability, context.bonuses, context.learned)
+        )
+        return
+    }
     switch (ability) {
         case 'pray':
             appendHealingPrayer(effects, context, false)
@@ -89,9 +97,6 @@ function appendActiveEffects(
             appendDescription(effects, context.learned, 'prayer_road.bard')
             break
         case 'pray_lantern':
-            break
-        case 'shot':
-            appendShot(effects, context)
             break
         default:
             throw new Error(
@@ -220,43 +225,6 @@ function appendDivineKnowledge(
     const known = information[rank - 1]
     if (known !== undefined) {
         effects.push(known)
-    }
-}
-function appendShot(effects: string[], { learned, bonuses: b }: Context): void {
-    if (b.shotDamageMultiplier > 1) {
-        effects.push(
-            `Урон Выстрела увеличен на ${percent(b.shotDamageMultiplier - 1)}%.`
-        )
-    }
-    if (b.shotRangeCells > 0) {
-        effects.push(
-            `Дальность Выстрела увеличена на ${cells(b.shotRangeCells)}.`
-        )
-    }
-    if (b.shotEnergyDiscount > 0) {
-        effects.push(
-            `Выстрел расходует на ${number(b.shotEnergyDiscount)} EN меньше.`
-        )
-    }
-    if (b.shotTempoMultiplier < 1) {
-        effects.push(
-            `Интервал между Выстрелами сокращён на ${percent(1 - b.shotTempoMultiplier)}%.`
-        )
-    }
-    if (b.shotCritBonus > 0) {
-        effects.push(
-            `Критический шанс Выстрела увеличен на ${percent(b.shotCritBonus)} процентных пункта.`
-        )
-    }
-    appendDescription(
-        effects,
-        learned,
-        learned.has('arrow.insight2') ? 'arrow.insight2' : 'arrow.insight1'
-    )
-    if (learned.has('magic.runic_echo')) {
-        effects.push(
-            'После полезного боевого заклинания следующий Выстрел на 10% сильнее в течение 5 секунд.'
-        )
     }
 }
 function appendDescription(

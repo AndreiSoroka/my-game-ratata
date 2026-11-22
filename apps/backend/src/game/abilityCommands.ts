@@ -4,6 +4,7 @@ import {
     abilityIds,
     BARRIER_RULES,
     type GameEventPayload,
+    isArrowAbility,
     isBladeAttackAbility,
     isPrayerAction,
     type LearnAbilityId,
@@ -83,7 +84,8 @@ function parseSpellReference(
     const reference = parseCombatReference(record)
     if (
         reference === undefined ||
-        (utilitySpell(id) && Object.keys(reference).length > 0)
+        (utilitySpell(id) && Object.keys(reference).length > 0) ||
+        (id === 'sniper_shot' && reference.targetId === undefined)
     ) {
         return undefined
     }
@@ -218,7 +220,7 @@ function executeAttackAbility(
         return abilityNotice(actor, 'Недостаточно сил для способности.')
     }
     if (
-        id !== 'shot' &&
+        !isArrowAbility(id) &&
         id !== 'spark' &&
         id !== 'skeleton_strike' &&
         !isBladeAttackAbility(id)

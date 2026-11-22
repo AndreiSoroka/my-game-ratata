@@ -53,14 +53,22 @@ const contributions: Record<string, Builder> = {
             ],
         ])
     ),
-    'arrow.damage1': (b) => additive('Усиление урона Выстрела', b.shotDamageMultiplier - 1),
-    'arrow.damage2': (b) => additive('Усиление урона Выстрела', b.shotDamageMultiplier - 1),
-    'arrow.range1': (b) => [row('Добавка к дальности Выстрела', `+${b.shotRangeCells} клетка`)],
-    'arrow.range2': (b) => [row('Добавка к дальности Выстрела', `+${b.shotRangeCells} клетка`)],
-    'arrow.economy': (b) => [row('Расход энергии Выстрела', `−${b.shotEnergyDiscount} EN`)],
-    'arrow.tempo': (b) => reduction('Интервал Выстрела', 1 - b.shotTempoMultiplier),
+    'arrow.damage1': (b) =>
+        additive('Усиление урона Быстрого выстрела', b.shotDamageMultiplier - 1),
+    'arrow.damage2': (b) =>
+        additive('Усиление урона Быстрого выстрела', b.shotDamageMultiplier - 1),
+    'arrow.range1': (b) => [
+        row('Добавка к дальности Быстрого выстрела', `+${b.shotRangeCells} клетка`),
+    ],
+    'arrow.range2': (b) => [
+        row('Добавка к дальности Быстрого выстрела', `+${b.shotRangeCells} клетка`),
+    ],
+    'arrow.economy': (b) => [
+        row('Расход энергии Быстрого выстрела', `−${b.shotEnergyDiscount} EN`),
+    ],
+    'arrow.tempo': (b) => reduction('Интервал Быстрого выстрела', 1 - b.shotTempoMultiplier),
     'arrow.critical': (b) => [
-        row('Бонус критического шанса Выстрела', `+${number(b.shotCritBonus * 100)} п.п.`),
+        row('Бонус критического шанса Быстрого выстрела', `+${number(b.shotCritBonus * 100)} п.п.`),
     ],
     'life.move': (b) => additive('Усиление скорости движения', b.moveSpeedMultiplier - 1),
     'life.dash': (b) => reduction('Расход энергии рывка', 1 - b.dashEnergyMultiplier),
@@ -102,15 +110,15 @@ const contributions: Record<string, Builder> = {
     ],
     'shadow.tempo': (b) => [row('Общий кулдаун кражи', `−${b.theftCooldownDiscount} мс`)],
     'magic.runic_echo': () => [
-        row('Усиление следующего Выстрела', '+10%'),
-        row('Время на Выстрел', '5000 мс'),
+        row('Усиление следующего Быстрого выстрела', '+10%'),
+        row('Время на Быстрый выстрел', '5000 мс'),
     ],
 }
 const knowledge: Record<string, Rows> = {
     'blade.insight1': attackKnowledge('обычного удара', false),
     'blade.insight2': attackKnowledge('обычного удара', true),
-    'arrow.insight1': attackKnowledge('Выстрела', false),
-    'arrow.insight2': attackKnowledge('Выстрела', true),
+    'arrow.insight1': attackKnowledge('обоих выстрелов', false),
+    'arrow.insight2': attackKnowledge('обоих выстрелов', true),
     'magic.insight': attackKnowledge('изученных заклинаний', true),
     ...resourceKnowledge('magic.mana', 'маны', [25, 10, null]),
     ...resourceKnowledge('life.energy', 'энергии', [25, 10, null]),
@@ -122,7 +130,7 @@ export function describePassiveConstellationBuild(
     node: Readonly<ConstellationStar>
 ): Pick<ConstellationBuildSummary, 'rows' | 'effects'> {
     if (node.effectType !== 'passive') throw new Error(`Not a passive star: ${node.id}`)
-    if (node.constellationId === 'blade' && node.results?.length)
+    if (['blade', 'arrow'].includes(node.constellationId) && node.results?.length)
         return {
             rows: node.results.map((value, index) => row(`Результат ${index + 1}`, value)),
             effects: [node.description],

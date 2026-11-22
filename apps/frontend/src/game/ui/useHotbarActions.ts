@@ -1,5 +1,6 @@
 import {
     type CharacterControlSnapshot,
+    isArrowAbility,
     isPrayerAction,
     type PrayerActionId,
     previewPrayerFromSnapshots,
@@ -10,8 +11,6 @@ import { createPrayerPreviewHighlight } from '../runtime/prayerPreviewPresentati
 import { relation } from './combatTargeting'
 import { gravePrayerPreview } from './graveInteractions'
 import {
-    actionTooltip,
-    bindingLabel,
     bindingUnavailable,
     createActivator,
     type HotbarEmit,
@@ -20,6 +19,7 @@ import {
 } from './hotbarActions'
 import { type HotbarBinding, prayerDescription } from './hotbarBindings'
 import { createGestures } from './hotbarGestures'
+import { actionTooltip, bindingLabel } from './hotbarPresentation'
 import { useSavedHotbarBindings } from './hotbarSession'
 import { preferredPrayer } from './prayerSelection'
 
@@ -49,12 +49,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     watchPrayerHighlight(props, emit, prayerAssigned, preview)
     const gestures = createGestures(props, emit, () => bindings.value)
     watchGestureChanges(props, gestures)
-    const cooldown = (binding: HotbarBinding | null) =>
-        binding?.kind === 'ability'
-            ? (props.player.abilities?.cooldowns[binding.id] ?? 0)
-            : binding?.kind === 'attack'
-              ? props.player.cooldowns.attackMsLeft
-              : 0
+    const cooldown = (binding: HotbarBinding | null) => bindingCooldown(binding, props)
     const unavailable = (binding: HotbarBinding | null) =>
         bindingUnavailable(
             binding,
@@ -98,6 +93,13 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
         resetGesture: gestures.reset,
         hasPendingAttack: gestures.hasPendingAttack,
     }
+}
+
+function bindingCooldown(binding: HotbarBinding | null, { player }: HotbarProps): number {
+    if (binding?.kind === 'attack') return player.cooldowns.attackMsLeft
+    if (binding?.kind !== 'ability') return 0
+    const personal = player.abilities?.cooldowns[binding.id] ?? 0
+    return isArrowAbility(binding.id) ? Math.max(personal, player.cooldowns.attackMsLeft) : personal
 }
 function controlWaitingLabel(control: CharacterControlSnapshot | undefined): string | undefined {
     if (control?.mode !== 'action') return undefined

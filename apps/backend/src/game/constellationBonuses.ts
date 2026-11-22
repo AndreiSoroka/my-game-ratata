@@ -22,12 +22,7 @@ export function resolveConstellationBonuses(
     }
     return {
         ...resolveBladeBonuses(activeIds),
-        shotDamageMultiplier:
-            1 + 0.1 * (learned('arrow.damage1') + learned('arrow.damage2')),
-        shotRangeCells: learned('arrow.range1') + learned('arrow.range2'),
-        shotEnergyDiscount: learned('arrow.economy'),
-        shotTempoMultiplier: 1 - 0.1 * learned('arrow.tempo'),
-        shotCritBonus: 0.03 * learned('arrow.critical'),
+        ...resolveArrowBonuses(activeIds),
         sparkDamageMultiplier: 1 + 0.1 * learned('magic.spark_damage'),
         sparkRangeCells: learned('magic.spark_range'),
         sparkManaDiscount: learned('magic.spark_economy'),
@@ -64,6 +59,38 @@ export function resolveConstellationBonuses(
         ...prayerBonuses(activeIds, lastLightEligible),
         deityInsight: rank('prayer.omen', 4),
         otherDeityInsight: rank('prayer.others', 4),
+    }
+}
+
+function resolveArrowBonuses(activeIds: ReadonlySet<string>) {
+    const learned = (id: string) => Number(activeIds.has(`arrow.${id}`))
+    const stages = (id: string) => learned(`${id}1`) + learned(`${id}2`)
+    return {
+        shotDamageMultiplier:
+            1 + (10 * stages('damage') + 5 * learned('damage3')) / 100,
+        shotRangeCells: stages('range'),
+        shotEnergyDiscount: learned('economy') + learned('economy2'),
+        shotTempoMultiplier:
+            1 - (10 * learned('tempo') + 5 * learned('tempo2')) / 100,
+        shotCritBonus:
+            (3 * learned('critical') + 2 * learned('critical2')) / 100,
+        shotSeriesDamage: 0.05 * stages('series'),
+        shotWhileMoving: activeIds.has('arrow.moving_shot'),
+        movingShotDamage: 0.05 * stages('moving_damage'),
+        movingShotCritBonus: 0.02 * stages('moving_critical'),
+        movingShotDashReductionMs: 150 * stages('moving_dash'),
+        movingShotSpeedBonus: 0.05 * stages('moving_speed'),
+        movingShotFollowupDamage: 0.1 * stages('moving_followup'),
+        sniperRangeCells: stages('sniper_range'),
+        sniperWindupReductionMs: 75 * stages('sniper_windup'),
+        sniperEnergyDiscount: 2 * stages('sniper_economy'),
+        sniperCooldownReductionMs: 100 * stages('sniper_tempo'),
+        sniperCritBonus:
+            (3 * learned('sniper_critical1') +
+                2 * learned('sniper_critical2')) /
+            100,
+        sniperOpeningDamage: 0.15 * learned('sniper_opening'),
+        sniperLongRangeDamage: 0.2 * learned('sniper_long_range'),
     }
 }
 

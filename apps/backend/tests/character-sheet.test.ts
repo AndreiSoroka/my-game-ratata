@@ -173,6 +173,18 @@ it('shows the actual attack family critical chance and mastered spell power', ()
         kind: 'exact',
         value: actor.config.combat.critChance,
     })
+    expect(attacks.find((attack) => attack.id === 'sniper_shot')).toMatchObject(
+        {
+            damage: {
+                min: { kind: 'exact', value: 10 },
+                max: { kind: 'exact', value: 15 },
+            },
+            critChance: {
+                kind: 'exact',
+                value: actor.config.combat.critChance,
+            },
+        }
+    )
     expect(attacks.find((attack) => attack.id === 'fireball')).toMatchObject({
         damage: {
             min: { kind: 'exact', value: 11 },

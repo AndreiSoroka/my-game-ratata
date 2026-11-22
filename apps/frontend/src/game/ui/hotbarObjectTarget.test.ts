@@ -55,6 +55,37 @@ it('discards a pending repetition gesture when an object replaces a combat targe
     }
 })
 
+it('requires a living target for Sniper and displays the shared attack cooldown on both arrows', async () => {
+    const player = characterFixture('ranger', {
+        heroClass: 'ranger',
+        abilities: { known: ['shot', 'sniper_shot'], cooldowns: {}, casting: null, barrier: null },
+    })
+    const target = characterFixture('enemy', { faction: 'monsters' })
+    const wrapper = mount(ActionHotbar, {
+        props: { player, characters: [player, target], blocked: false },
+    })
+    try {
+        await wrapper.vm.edit(2)
+        await wrapper.findAll('.hotbar-picker button')[1]!.trigger('click')
+        wrapper.vm.activate(2)
+        expect(wrapper.emitted('command')).toBeUndefined()
+        const slots = wrapper.findAll('.hotbar-slot')
+        expect(slots[2]!.attributes('aria-description')).toContain('Выберите живую цель')
+        await wrapper.setProps({ target })
+        wrapper.vm.activate(2)
+        expect(wrapper.emitted('command')).toEqual([
+            [{ type: 'use_ability', abilityId: 'sniper_shot', targetId: target.id }],
+        ])
+        await wrapper.setProps({
+            player: { ...player, cooldowns: { ...player.cooldowns, attackMsLeft: 1800 } },
+        })
+        expect(slots[1]!.attributes('aria-description')).toContain('Восстановление: 1.8 с')
+        expect(slots[2]!.attributes('aria-description')).toContain('Восстановление: 1.8 с')
+    } finally {
+        wrapper.unmount()
+    }
+})
+
 it('still permits self barrier, real food consumption and planting while an object is selected', async () => {
     const player = characterFixture('self', {
         abilities: { known: ['barrier'], cooldowns: {}, casting: null, barrier: null },

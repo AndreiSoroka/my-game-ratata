@@ -5,6 +5,7 @@ import {
     type BladeTechniqueParameters,
     CITY_PORTAL_MANA_FRACTION,
     isArcaneAbility,
+    isArrowAbility,
     isBladeAbility,
     isFireSpell,
     MAGIC_ABILITY_RULES,
@@ -17,6 +18,7 @@ import {
 import type { GameCharacter } from './character'
 import { resolveCharacterStats } from './characterStats'
 import { constellationModifiers } from './constellationModifiers'
+import { resolveArrowParameters } from './effectiveArrowParameters'
 import { effectiveMaxMana } from './effectiveResources'
 import { hasEquippedSword } from './skillProgression'
 
@@ -43,11 +45,13 @@ export function effectiveAbility(
         }
     }
     const modifiers = constellationModifiers(actor)
-    if (id === 'shot') {
-        definition.range += modifiers.shotRangeCells * cellSize
-        definition.energy -= modifiers.shotEnergyDiscount
-        definition.cooldownMs *= modifiers.shotTempoMultiplier
-        scaleDamage(definition, modifiers.shotDamageMultiplier)
+    if (isArrowAbility(id)) {
+        return resolveArrowParameters(
+            id,
+            modifiers,
+            cellSize > 0 ? cellSize : MOVEMENT_RULES.stepDistance,
+            actor.movement.mode === 'walking'
+        )
     }
     if (id === 'spark') {
         definition.range += modifiers.sparkRangeCells * cellSize

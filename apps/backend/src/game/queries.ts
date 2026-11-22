@@ -103,7 +103,8 @@ export function visibilityRadius(
     observer: GameCharacter,
     target: GameCharacter,
     radius: number,
-    now: number
+    now: number,
+    origin = observer.position
 ): number {
     if (!canPerceivePrayerCaster(observer, target, now)) {
         return -1
@@ -116,8 +117,8 @@ export function visibilityRadius(
         return radius
     }
     const vector = {
-        x: target.position.x - observer.position.x,
-        y: target.position.y - observer.position.y,
+        x: target.position.x - origin.x,
+        y: target.position.y - origin.y,
     }
     const facing = {
         up: { x: 0, y: -1 },

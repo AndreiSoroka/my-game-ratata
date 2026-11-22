@@ -13,6 +13,7 @@ import {
 import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
 import type { AttackContext } from './combat'
+import { arrowContactDamage } from './combatArchery'
 import { resolveCounterAttack } from './combatCounter'
 import {
     applyAttackStun,
@@ -108,7 +109,7 @@ function resolveCharacterContact(
         }
     }
     const withCombo = {
-        ...attack,
+        ...arrowContactDamage(context, attack, target),
         comboBonus: comboEligible(attack)
             ? bladeComboBonus(actor, target.id, now)
             : 0,
@@ -214,7 +215,7 @@ function resolveGraveContacts(
             attack.rawDamage === undefined
                 ? resolveAttackDamage(
                       actor,
-                      attack,
+                      arrowContactDamage(context, attack, grave),
                       context.random ?? Math.random,
                       now
                   )

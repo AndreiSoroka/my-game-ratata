@@ -5,6 +5,7 @@ import {
     type DeityId,
     type GameEventPayload,
     GRAVE_PURIFY_CAST_MS,
+    isArrowAbility,
     isFireSpell,
     isPrayerAction,
     PRAYER_SCHOOL_DEFINITIONS,
@@ -31,11 +32,19 @@ export interface EffectCue {
     wave?: boolean
     radius?: number
     channel?: boolean
+    aimActionId?: string
     count?: number
 }
+
+export function channelEnded(
+    cue: EffectCue | undefined,
+    character: (id: string) => CharacterSnapshot | undefined
+): boolean {
+    return Boolean(cue?.channel && !character(cue.fromId)?.abilities?.casting)
+}
 function attackShape(event: GameEventPayload, actor: CharacterSnapshot): EffectShape {
+    if (isArrowAbility(event.abilityId)) return 'arrow'
     const abilities: Record<string, EffectShape> = {
-        shot: 'arrow',
         spark: 'spark',
         skeleton_strike: 'bone',
     }
@@ -56,13 +65,34 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
         ...(event.target ? { target: event.target } : {}),
     }
     if (event.kind === 'attack')
-        return isFireSpell(event.abilityId ?? '') ? [] : [attackCue(event, actor, base)]
+        return isFireSpell(event.abilityId ?? '') ? [] : attackCues(event, actor, base)
     if (event.kind === 'cast' && isPrayerAction(event.abilityId))
         return prayerCastCues(event, actor, base)
     if (event.kind === 'heal' && (event.amount === undefined || event.amount > 0))
         return [{ ...base, kind: 'restore', count: 10 }]
     if (event.kind === 'revive') return [{ ...base, kind: 'revive', duration: 1000, count: 12 }]
     return impactCues(event, actor, base)
+}
+function attackCues(
+    event: GameEventPayload,
+    actor: CharacterSnapshot,
+    base: Omit<EffectCue, 'kind'>
+): EffectCue[] {
+    if (!isArrowAbility(event.abilityId) || event.phase === undefined)
+        return [attackCue(event, actor, base)]
+    if (event.phase === 'completed' && event.projectile) return [attackCue(event, actor, base)]
+    if (event.phase !== 'started' || event.abilityId !== 'sniper_shot') return []
+    return [
+        {
+            ...base,
+            kind: 'aim',
+            fromId: actor.id,
+            targetId: actor.id,
+            duration: event.durationMs ?? ABILITY_DEFINITIONS.sniper_shot.windupMs,
+            aimActionId: event.actionId,
+            count: 0,
+        },
+    ]
 }
 function prayerCastCues(
     event: GameEventPayload,
@@ -190,6 +220,10 @@ function attackCue(
 }
 
 function attackDuration(event: GameEventPayload, kind: EffectShape): number {
+    if (event.phase === 'completed' && event.projectile) {
+        const { origin, endpoint } = event.projectile
+        return Math.min(220, Math.max(50, Math.hypot(endpoint.x - origin.x, endpoint.y - origin.y)))
+    }
     if (event.durationMs !== undefined) return event.durationMs
     if (event.abilityId) return ABILITY_DEFINITIONS[event.abilityId].windupMs
     if (kind === 'arrow') return ABILITY_DEFINITIONS.shot.windupMs

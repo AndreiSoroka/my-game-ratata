@@ -5,6 +5,7 @@ import {
     ROAD_PRAYER_RULES,
 } from '@my-game-ratata/contracts'
 
+import { arrowExpansionStars } from './constellationArrowStars'
 import {
     constellationPaths,
     type ConstellationStar,
@@ -23,6 +24,7 @@ const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
     prayer_grave: 'pray_grave',
 }
 const rootNames: Partial<Record<ConstellationId, string>> = {
+    arrow: ABILITY_DEFINITIONS.shot.name,
     prayer: 'Молитва',
     prayer_road: 'Молитва странника',
     prayer_lantern: 'Молитва ясности',
@@ -157,7 +159,7 @@ const joints = [
         'magic',
         'joint',
         'Руническое эхо',
-        'Полезное боевое заклинание усиливает следующий Выстрел на 10% на пять секунд.',
+        'Полезное боевое заклинание усиливает следующий Быстрый выстрел на 10% на пять секунд.',
         ['magic.spark_damage', 'arrow.damage1']
     ),
 ]
@@ -171,6 +173,7 @@ const authoredNodes = [
     ...revivalStars,
     ...roadPrayerStars,
     ...lifeStars,
+    ...arrowExpansionStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(

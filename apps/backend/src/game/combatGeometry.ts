@@ -86,6 +86,14 @@ export function buildAbilityAttackZones(
 ): AttackZone[] {
     const range = effectiveAbility(actor, id, tileWidth).range
     const width = id === 'shot' ? SHOT_HALF_WIDTH : SPARK_HALF_WIDTH
+    return forwardAttackZones(actor, range, width)
+}
+
+export function forwardAttackZones(
+    actor: Pick<GameCharacter, 'id' | 'position' | 'facing'>,
+    range: number,
+    width: number
+): AttackZone[] {
     const rotated = rotateZone(
         { minX: -width, maxX: width, minY: 0, maxY: range },
         actor.facing

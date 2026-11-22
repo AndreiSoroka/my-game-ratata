@@ -27,7 +27,12 @@ import {
 } from './autoActionWorldTargets'
 import type { GameCharacter } from './character'
 import { availableToAttack, isTargetInAttackRange } from './combat'
-import { buildAbilityAttackZones, isInZones } from './combatGeometry'
+import { sniperAttackGeometry } from './combatArchery'
+import {
+    buildAbilityAttackZones,
+    isInAttackGeometry,
+    isInZones,
+} from './combatGeometry'
 import { canAttackCharacter } from './combatTargets'
 import { effectiveAbility } from './effectiveParameters'
 import { activeMagicChannel } from './magicState'
@@ -185,6 +190,16 @@ function reached(
         )
     }
     const id = action.abilityId
+    if (id === 'sniper_shot') {
+        return isInAttackGeometry(
+            target.position,
+            sniperAttackGeometry(
+                actor.position,
+                effectiveAbility(actor, id, context.navigation.grid.tileWidth)
+                    .range
+            )
+        )
+    }
     return id === 'shot' || id === 'spark' || id === 'skeleton_strike'
         ? isInZones(
               target,

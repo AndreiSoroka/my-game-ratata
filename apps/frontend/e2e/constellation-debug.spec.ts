@@ -135,17 +135,19 @@ async function assertCatalogResult(
 
 async function assertOwnNonPrayerResults(page: Page): Promise<void> {
     await selectBuildStar(page, 'arrow.damage2')
-    await expect(page.locator('[data-build-metric="Усиление урона Выстрела"] dd')).toHaveText(
-        '+10%'
-    )
     await expect(
-        page.locator('[data-build-metric="Итоговый множитель урона Выстрела"]')
+        page.locator('[data-build-metric="Усиление урона Быстрого выстрела"] dd')
+    ).toHaveText('+10%')
+    await expect(
+        page.locator('[data-build-metric="Итоговый множитель урона Быстрого выстрела"]')
     ).toHaveCount(0)
     await selectBuildStar(page, 'magic.runic_echo')
-    await expect(page.locator('[data-build-metric="Усиление следующего Выстрела"] dd')).toHaveText(
-        '+10%'
+    await expect(
+        page.locator('[data-build-metric="Усиление следующего Быстрого выстрела"] dd')
+    ).toHaveText('+10%')
+    await expect(page.locator('[data-build-metric="Время на Быстрый выстрел"] dd')).toHaveText(
+        '5000 мс'
     )
-    await expect(page.locator('[data-build-metric="Время на Выстрел"] dd')).toHaveText('5000 мс')
     await expect(page.getByTestId('debug-runic-charged')).toHaveCount(0)
     await selectBuildStar(page, 'magic.fireball')
     await expect(page.locator('[data-build-metric="Урон Огненной стрелы"] dd')).toHaveText(
@@ -157,7 +159,7 @@ async function assertOwnNonPrayerResults(page: Page): Promise<void> {
     await expect(page.locator('[data-build-metric="Радиус взрыва, кл."] dd')).toHaveText('4')
     await expect(page.locator('[data-build-metric="Цена заклинания, MP"] dd')).toHaveText('6')
     await expect(buildResultPanel(page).locator('dl')).not.toContainText('Искры')
-    await expect(buildResultPanel(page).locator('dl')).not.toContainText('Выстрела')
+    await expect(buildResultPanel(page).locator('dl')).not.toContainText('Быстрого выстрела')
 }
 
 for (const width of [320, 390, 1280]) {
@@ -230,12 +232,12 @@ for (const width of [320, 390, 1280]) {
         await page.getByTestId('debug-show-summary').click()
         await expect(buildResultPanel(page)).toHaveAttribute('open', '')
         await expect(
-            page.locator('[data-build-metric="Итоговый множитель урона Выстрела"] dd')
-        ).toHaveText('×1,2')
+            page.locator('[data-build-metric="Итоговый множитель урона Быстрого выстрела"] dd')
+        ).toHaveText('×1,25')
         await page.getByTestId('debug-runic-charged').check()
         await expect(
-            page.locator('[data-build-metric="Итоговый множитель урона Выстрела"] dd')
-        ).toHaveText('×1,32')
+            page.locator('[data-build-metric="Итоговый множитель урона Быстрого выстрела"] dd')
+        ).toHaveText('×1,375')
     })
 }
 

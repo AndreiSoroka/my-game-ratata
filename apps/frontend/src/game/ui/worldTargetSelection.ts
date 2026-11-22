@@ -1,18 +1,21 @@
 import {
-    ABILITY_DEFINITIONS,
+    type AbilityId,
     type CharacterRelationship,
     type CharacterSnapshot,
     containerBounds,
     graveBounds,
+    isArrowAbility,
     isFireSpell,
     ITEM_DEFINITIONS,
     MAGIC_ABILITY_RULES,
+    MOVEMENT_RULES,
     type Vector2,
     type WorldGraveSnapshot,
     type WorldObjectBounds,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { abilityUsage } from './abilityUsage'
 import { relation } from './combatTargeting'
 import { graveName } from './graveInteractions'
 import { targetInteractionDistance } from './interactionTargets'
@@ -45,13 +48,17 @@ export function worldSelectionRange(player: CharacterSnapshot, tileSize: number)
     return Math.max(
         tileSize * 12,
         ...(player.abilities?.known ?? []).map(
-            (ability) =>
-                (isFireSpell(ability)
-                    ? MAGIC_ABILITY_RULES[ability].rangeTiles * tileSize
-                    : ABILITY_DEFINITIONS[ability].range) +
-                tileSize * 3
+            (ability) => abilitySelectionRange(player, ability, tileSize) + tileSize * 3
         )
     )
+}
+
+function abilitySelectionRange(player: CharacterSnapshot, ability: AbilityId, tileSize: number) {
+    if (isFireSpell(ability)) return MAGIC_ABILITY_RULES[ability].rangeTiles * tileSize
+    const range = abilityUsage(player, ability).range
+    if (isArrowAbility(ability) && player.abilities?.parameters?.[ability] === undefined)
+        return (range / MOVEMENT_RULES.stepDistance) * tileSize
+    return range
 }
 
 /** Functional targets from the observer's snapshot; no range-dependent action lists are needed. */

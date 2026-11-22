@@ -60,3 +60,22 @@ export function combatMovementTime(
     const slow = Math.max(0, Math.min(now, slowUntil) - start)
     return slow * (actor.combat.movementFraction ?? 1) + now - start - slow
 }
+
+export function walkingTime(
+    character: GameCharacter,
+    now: number,
+    duration: number
+): number {
+    const boost = character.combat.arrowStep
+    if (boost === undefined || character.movement.mode !== 'walking') {
+        return duration
+    }
+    const boosted = Math.max(
+        0,
+        Math.min(now, boost.until) - Math.max(now - duration, boost.until - 600)
+    )
+    if (now >= boost.until) {
+        delete character.combat.arrowStep
+    }
+    return duration + boosted * (boost.multiplier - 1)
+}

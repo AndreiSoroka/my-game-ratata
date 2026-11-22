@@ -8,6 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { holdQuickShotDuringSneak } from './combatArchery'
 import { canWalkDuringPrayer } from './combatMovement'
 import { effectiveDashCost, effectiveDashDuration } from './effectiveParameters'
 import { magicBlocksMovement } from './magicState'
@@ -61,6 +62,9 @@ export function handleMovementCommand(
     if (message.type === 'movement_mode') {
         character.movement.mode = message.mode
         character.movement.dashUntil = 0
+        if (message.mode === 'sneaking') {
+            holdQuickShotDuringSneak(character, now)
+        }
         return events
     }
     const state = character.movement

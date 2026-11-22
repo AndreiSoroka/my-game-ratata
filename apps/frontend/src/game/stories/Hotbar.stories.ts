@@ -21,7 +21,10 @@ function themedHotbarStory(heroClass: HeroClass): Story {
             const player = characterFixture('adventurer', {
                 heroClass,
                 abilities: {
-                    known: ['shot', 'spark', 'pray'],
+                    known:
+                        heroClass === 'ranger'
+                            ? ['shot', 'sniper_shot']
+                            : ['shot', 'spark', 'pray'],
                     cooldowns: {},
                     barrier: null,
                     casting: null,
@@ -36,7 +39,7 @@ export const Ranger = themedHotbarStory('ranger')
 export const Arcanist = themedHotbarStory('arcanist')
 export const Cleric = themedHotbarStory('cleric')
 export const Assignment: Story = {
-    ...themedHotbarStory('arcanist'),
+    ...themedHotbarStory('ranger'),
     async play({ canvasElement }) {
         const slot = await within(canvasElement).findByRole('button', { name: /^3: Пусто/ })
         await userEvent.click(slot)

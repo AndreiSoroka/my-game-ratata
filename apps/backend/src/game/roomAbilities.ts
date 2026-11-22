@@ -8,7 +8,9 @@ import { handleAbilityCommand } from './abilityCommands'
 import { type AbilityContext, abilityNotice } from './abilityContext'
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
+import { hasCharacterRoute } from './characterRoute'
 import { attemptAbilityAttack } from './combat'
+import { effectiveAbility } from './effectiveParameters'
 import { MagicCombat } from './magicCombat'
 import { bindMagicCombat } from './magicState'
 import type { NavigationService } from './navigation'
@@ -96,10 +98,24 @@ export function createRoomCombatActions(
             message: AbilityClientMessage,
             now: number
         ): GameEventPayload[] => {
-            cancelCharacterControl(actor)
+            if (!canShootAlongRoute(actor, message)) {
+                cancelCharacterControl(actor)
+            }
             return handleAbilityCommand(actor, message, contextFor(actor, now))
         },
     }
+}
+
+function canShootAlongRoute(
+    actor: GameCharacter,
+    message: AbilityClientMessage
+): boolean {
+    return (
+        message.type === 'use_ability' &&
+        message.abilityId === 'shot' &&
+        hasCharacterRoute(actor) &&
+        effectiveAbility(actor, 'shot').movementMs === 0
+    )
 }
 
 function roomAbilityAttack(

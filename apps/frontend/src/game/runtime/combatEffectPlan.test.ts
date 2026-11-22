@@ -131,3 +131,30 @@ it('uses the resolved prayer radius for cosmetic waves without changing their bu
     const cues = combatEffectCues({ kind: 'damage', abilityId: 'pray', targetId: 'victim' }, actor)
     expect(cues[0]).toMatchObject({ kind: 'wave', radius: 96, count: 12 })
 })
+
+it('renders aim and launch only in their authoritative arrow phases', () => {
+    const actor = characterFixture('ranger')
+    const event = {
+        kind: 'attack',
+        actorId: actor.id,
+        actionId: 'aim:1',
+        targetId: 'dummy',
+    } as const
+    const projectile = { origin: { x: 3, y: 5 }, endpoint: { x: 43, y: 45 } }
+    expect(
+        combatEffectCues(
+            { ...event, abilityId: 'sniper_shot', phase: 'started', durationMs: 625 },
+            actor
+        )
+    ).toMatchObject([{ kind: 'aim', aimActionId: 'aim:1', targetId: actor.id, duration: 625 }])
+    expect(combatEffectCues({ ...event, abilityId: 'shot', phase: 'started' }, actor)).toEqual([])
+    expect(
+        combatEffectCues({ ...event, abilityId: 'sniper_shot', phase: 'interrupted' }, actor)
+    ).toEqual([])
+    expect(
+        combatEffectCues(
+            { ...event, abilityId: 'sniper_shot', phase: 'completed', projectile },
+            actor
+        )
+    ).toMatchObject([{ kind: 'arrow', projectile, travel: true }])
+})

@@ -18,7 +18,7 @@ describe('all non-prayer effect explanations', () => {
             (node) => !node.constellationId.startsWith('prayer')
         )
         const before = JSON.stringify(fullConstellationCatalog)
-        expect(nodes).toHaveLength(104)
+        expect(nodes.filter((node) => node.constellationId === 'arrow')).toHaveLength(40)
         vi.spyOn(Math, 'random').mockImplementation(() => {
             throw new Error('An explanation must not roll gameplay randomness')
         })
@@ -156,7 +156,7 @@ describe('chance formula boundaries and examples', () => {
         })
         expect(effect.examples[0]?.value).toContain('действует')
         expect(effect.examples[1]?.value).toContain('истекло')
-        expect(effect.notes.join(' ')).toContain('при запуске оплаченного Выстрела')
+        expect(effect.notes.join(' ')).toContain('при запуске оплаченного Быстрого выстрела')
         expect(effect.notes.join(' ')).toContain('≤5000 мс включительно')
         expect(effect.notes.join(' ')).toContain('другую допустимую цель')
     })

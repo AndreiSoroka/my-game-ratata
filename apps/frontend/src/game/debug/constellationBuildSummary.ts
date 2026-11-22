@@ -2,6 +2,7 @@ import {
     ABILITY_DEFINITIONS,
     type AbilityId,
     CITY_PORTAL_MANA_FRACTION,
+    isArrowAbility,
     isBladeAbility,
     isFireSpell,
     MAGIC_ABILITY_RULES,
@@ -10,6 +11,7 @@ import {
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
+import { describeArrowActionBuild } from './constellationArrowBuild'
 import { describeBladeActionBuild } from './constellationBladeBuild'
 import { constellationDistance } from './constellationDistance'
 import { describePassiveConstellationBuild } from './constellationPassiveBuild'
@@ -63,7 +65,8 @@ function activeResult(
     options: ConstellationBuildOptions
 ): ConstellationBuildSummary {
     if (isBladeAbility(ability)) return describeBladeActionBuild(ability, bonuses)
-    if (ability === 'shot') return shot(activeIds, bonuses, options)
+    if (isArrowAbility(ability))
+        return describeArrowActionBuild(ability, activeIds, bonuses, options)
     if (ability !== undefined && isFireSpell(ability))
         return fireball(ability, activeIds, bonuses, options)
     if (
@@ -76,51 +79,6 @@ function activeResult(
     throw new Error(`Missing active result: ${ability}`)
 }
 
-function shot(
-    active: ReadonlySet<string>,
-    bonuses: Bonuses,
-    options: ConstellationBuildOptions
-): ConstellationBuildSummary {
-    const definition = ABILITY_DEFINITIONS.shot
-    const echo = active.has('magic.runic_echo')
-    const runicMultiplier = echo && options.runicCharged === true ? 1.1 : 1
-    return {
-        rows: [
-            row('Урон Выстрела от звёзд Стрелы', multiplier(bonuses.shotDamageMultiplier)),
-            ...(echo
-                ? [
-                      row(
-                          'Руническое эхо',
-                          runicMultiplier > 1 ? 'заряд активен, ×1,10' : 'без заряда, ×1'
-                      ),
-                  ]
-                : []),
-            row(
-                'Итоговый множитель урона Выстрела',
-                multiplier(bonuses.shotDamageMultiplier * runicMultiplier)
-            ),
-            row(
-                'Дальность Выстрела',
-                constellationDistance(definition.range, bonuses.shotRangeCells, options.tileWidth)
-            ),
-            row('Цена Выстрела, EN', definition.energy - bonuses.shotEnergyDiscount),
-            row('Кулдаун Выстрела, мс', definition.cooldownMs * bonuses.shotTempoMultiplier),
-            row(
-                'Бонус критического шанса Выстрела',
-                `+${number(bonuses.shotCritBonus * 100)} п.п.`
-            ),
-            row('Знание Выстрела', shotKnowledge(active)),
-        ],
-        effects: [
-            'Урон дополнительно зависит от характеристик, экипировки, крита и защиты цели.',
-            ...(echo
-                ? [
-                      'Рунический заряд действует менее 5 секунд и расходуется при начале оплаченного Выстрела.',
-                  ]
-                : []),
-        ],
-    }
-}
 function fireball(
     ability: 'fireball' | 'greater_fireball',
     active: ReadonlySet<string>,
@@ -146,7 +104,7 @@ function fireball(
             'Урон может быть поглощён Барьером. Отдельных бросков крита и уклонения нет.',
             ...(active.has('magic.runic_echo')
                 ? [
-                      'Полезное попадание создаёт заряд «Рунического эха»: следующий Выстрел на 10% сильнее в течение 5 секунд.',
+                      'Полезное попадание создаёт заряд «Рунического эха»: следующий Быстрый выстрел на 10% сильнее в течение 5 секунд.',
                   ]
                 : []),
         ],
@@ -174,10 +132,4 @@ function utilitySpell(
 
 function spellCost(base: number, bonuses: Bonuses): number {
     return Math.ceil(base * bonuses.spellManaMultiplier - 1e-10)
-}
-function shotKnowledge(active: ReadonlySet<string>): string {
-    if (active.has('arrow.insight2')) return 'точные урон, интервал и крит'
-    return active.has('arrow.insight1')
-        ? 'урон: шаг 2; интервал: 100 мс; крит: 2 п.п.'
-        : 'урон: шаг 5; интервал: 500 мс; крит: 5 п.п.'
 }

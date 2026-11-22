@@ -19,7 +19,7 @@ describe('public effective ability usage', () => {
             mana: 0,
             energy: 9,
             cooldownMs: 495,
-            range: 88,
+            range: 120,
             windupMs: 50,
             cycleMs: 200,
             movementMs: 200,
@@ -88,7 +88,7 @@ describe('public effective ability usage', () => {
             solidLayerNames: [],
         })
         const raw = actor.snapshot(1000)
-        expect(raw.abilities?.parameters?.shot?.range).toBe(64)
+        expect(raw.abilities?.parameters?.shot?.range).toBe(80)
         for (const viewer of [actor, observer]) {
             const projected = observeCharacterCombat(raw, actor, {
                 observer: viewer,
@@ -97,7 +97,7 @@ describe('public effective ability usage', () => {
                 now: 1000,
             })
             expect(projected.abilities?.parameters).toMatchObject({
-                shot: { range: 88 },
+                shot: { range: 120 },
                 spark: { range: 104 },
                 pray: { range: 96, windupMs: 2700 },
             })
@@ -105,7 +105,7 @@ describe('public effective ability usage', () => {
                 JSON.stringify(projected.abilities?.parameters)
             ).not.toContain('damage')
         }
-        expect(raw.abilities?.parameters?.shot?.range).toBe(64)
+        expect(raw.abilities?.parameters?.shot?.range).toBe(80)
     })
 })
 

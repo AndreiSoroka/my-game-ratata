@@ -77,11 +77,23 @@ test('production hotbar assignment opens and dismisses at 320px', async ({ page 
     await page.goto('/iframe.html?id=game-actionhotbar--assignment&viewMode=story')
     const picker = page.getByRole('dialog', { name: 'Назначить слот 3' })
     await expect(picker).toBeVisible()
-    await expect(picker.getByRole('button', { name: /Выстрел/ })).toBeFocused()
+    await expect(picker.getByRole('button', { name: /Быстрый выстрел/ })).toBeFocused()
+    await expect(picker.getByRole('button', { name: /Снайперский выстрел.*20 EN/ })).toBeVisible()
     await readyUiStory(page)
     await expect(picker).toHaveScreenshot('hotbar-assignment-320.png')
     await page.keyboard.press('Escape')
     await expect(picker).toHaveCount(0)
+})
+
+test('Archer shot phases stay distinguishable in the effect preview', async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(
+        '/iframe.html?id=combat-authoritative-effect-shapes--archer-shots&viewMode=story'
+    )
+    await expect(page.getByRole('img', { name: 'Прицеливание' })).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Выпуск стрелы' })).toBeVisible()
+    await readyUiStory(page)
+    await page.screenshot({ path: info.outputPath('archer-shot-phases-390.png') })
 })
 
 for (const width of [1280, 390, 320]) {

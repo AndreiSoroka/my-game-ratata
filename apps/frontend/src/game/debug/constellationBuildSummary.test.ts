@@ -37,8 +37,10 @@ describe('each passive owns only its authored effect', () => {
         expect(values('blade.damage2')).toEqual({
             'Результат 1': 'Урон клинка увеличен ещё на 15%.',
         })
-        expect(values('arrow.damage2')).toEqual({ 'Усиление урона Выстрела': '+10%' })
-        expect(values('arrow.range2')).toEqual({ 'Добавка к дальности Выстрела': '+1 клетка' })
+        expect(values('arrow.damage2')).toEqual({ 'Усиление урона Быстрого выстрела': '+10%' })
+        expect(values('arrow.range2')).toEqual({
+            'Добавка к дальности Быстрого выстрела': '+1 клетка',
+        })
         expect(values('shadow.noise2')).toEqual({ 'Шум движения крадучись': '−15%' })
         expect(values('shadow.luck2')).toEqual({
             'Бонус получения предмета при незамеченности': '+3 п.п.',
@@ -54,8 +56,8 @@ describe('each passive owns only its authored effect', () => {
         const before = describeConstellationBuild('magic.runic_echo', all)
         const charged = describeConstellationBuild('magic.runic_echo', all, { runicCharged: true })
         expect(before.rows).toEqual([
-            { label: 'Усиление следующего Выстрела', value: '+10%' },
-            { label: 'Время на Выстрел', value: '5000 мс' },
+            { label: 'Усиление следующего Быстрого выстрела', value: '+10%' },
+            { label: 'Время на Быстрый выстрел', value: '5000 мс' },
         ])
         expect(charged).toEqual(before)
         expect(values('magic.root')).toEqual({ 'Дополнительный численный эффект': 'Нет' })
@@ -90,6 +92,7 @@ describe('standalone actions own only their complete applicable build', () => {
             'city_portal',
             'fireball',
             'greater_fireball',
+            'sniper_shot',
         ])
         for (const node of nonPrayer.filter((entry) => entry.effectType === 'active')) {
             const result = describeConstellationBuild(node.id, all)
@@ -101,23 +104,25 @@ describe('standalone actions own only their complete applicable build', () => {
     })
     it('totals Shot modifiers and cross-path charge without including unrelated actions', () => {
         expect(values('arrow.root', all, { tileWidth: 16 })).toMatchObject({
-            'Урон Выстрела от звёзд Стрелы': '×1,2',
-            'Итоговый множитель урона Выстрела': '×1,2',
-            'Дальность Выстрела': '6 клеток',
-            'Цена Выстрела, EN': '9',
-            'Кулдаун Выстрела, мс': '495',
-            'Бонус критического шанса Выстрела': '+3 п.п.',
+            'Урон Быстрого выстрела от звёзд Стрелы': '×1,25',
+            'Итоговый множитель урона Быстрого выстрела': '×1,25',
+            'Дальность Быстрого выстрела': '6 клеток',
+            'Цена Быстрого выстрела, EN': '8',
+            'Кулдаун Быстрого выстрела, мс': '468',
+            'Бонус критического шанса Быстрого выстрела': '+5 п.п.',
         })
         expect(
-            values('arrow.root', all, { runicCharged: true })['Итоговый множитель урона Выстрела']
-        ).toBe('×1,32')
+            values('arrow.root', all, { runicCharged: true })[
+                'Итоговый множитель урона Быстрого выстрела'
+            ]
+        ).toBe('×1,375')
         const noEcho = new Set(all)
         noEcho.delete('magic.runic_echo')
         expect(
             values('arrow.root', noEcho, { runicCharged: true })[
-                'Итоговый множитель урона Выстрела'
+                'Итоговый множитель урона Быстрого выстрела'
             ]
-        ).toBe('×1,2')
+        ).toBe('×1,25')
         expect(JSON.stringify(describeConstellationBuild('arrow.root', all))).not.toMatch(
             /Искр|Барьер|огненн/i
         )
@@ -139,9 +144,11 @@ describe('standalone actions own only their complete applicable build', () => {
             ]
         ).toBe('10–40 HP')
         expect(describeConstellationBuild('magic.fireball', all).effects?.join(' ')).toContain(
-            'следующий Выстрел на 10%'
+            'следующий Быстрый выстрел на 10%'
         )
-        expect(values('magic.fireball')['Итоговый множитель урона Выстрела']).toBeUndefined()
+        expect(
+            values('magic.fireball')['Итоговый множитель урона Быстрого выстрела']
+        ).toBeUndefined()
     })
     it('does not mutate inputs, share output rows or handle prayer nodes as unrelated action totals', () => {
         const ids = [...all]

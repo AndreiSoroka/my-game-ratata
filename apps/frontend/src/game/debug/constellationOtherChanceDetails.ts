@@ -60,17 +60,17 @@ const deterministic: Record<string, DeterministicEffect> = {
         ],
     },
     'arrow.damage1': {
-        formulas: [chanceFormula('Множитель урона Выстрела', '1 + 0.10 × N', countDamage)],
+        formulas: [chanceFormula('Множитель урона Быстрого выстрела', '1 + 0.10 × N', countDamage)],
         notes: [additiveDamage, ordinaryAttack],
     },
     'arrow.damage2': {
-        formulas: [chanceFormula('Множитель урона Выстрела', '1 + 0.10 × N', countDamage)],
+        formulas: [chanceFormula('Множитель урона Быстрого выстрела', '1 + 0.10 × N', countDamage)],
         notes: [additiveDamage, ordinaryAttack],
     },
     'arrow.range1': {
         formulas: [
-            chanceFormula('Дальность Выстрела, пиксели', 'R + N × W', {
-                R: 'Исходная дальность Выстрела в мировых пикселях.',
+            chanceFormula('Дальность Быстрого выстрела, пиксели', 'R + N × W', {
+                R: 'Исходная дальность Быстрого выстрела в мировых пикселях.',
                 N: 'Число изученных звёзд дальности: 1 или 2.',
                 W: 'Ширина клетки текущей карты в мировых пикселях.',
             }),
@@ -81,8 +81,8 @@ const deterministic: Record<string, DeterministicEffect> = {
     },
     'arrow.range2': {
         formulas: [
-            chanceFormula('Дальность Выстрела, пиксели', 'R + N × W', {
-                R: 'Исходная дальность Выстрела в мировых пикселях.',
+            chanceFormula('Дальность Быстрого выстрела, пиксели', 'R + N × W', {
+                R: 'Исходная дальность Быстрого выстрела в мировых пикселях.',
                 N: 'Число изученных звёзд дальности: 1 или 2.',
                 W: 'Ширина клетки текущей карты в мировых пикселях.',
             }),
@@ -91,9 +91,9 @@ const deterministic: Record<string, DeterministicEffect> = {
             'Две звезды дают две клетки. Видимость и геометрия попадания не заменяются случайным броском.',
         ],
     },
-    'arrow.economy': { formulas: [chanceFormula('Цена Выстрела, EN', '10 − 1 = 9')] },
+    'arrow.economy': { formulas: [chanceFormula('Цена Быстрого выстрела, EN', '10 − 1 = 9')] },
     'arrow.tempo': {
-        formulas: [chanceFormula('Кулдаун Выстрела, мс', '550 × 0.90 = 495')],
+        formulas: [chanceFormula('Кулдаун Быстрого выстрела, мс', '550 × 0.90 = 495')],
         notes: [
             'Не снимает оглушение, занятость действия или необходимость оплатить следующий выстрел.',
         ],
@@ -141,10 +141,10 @@ const knowledge: Record<string, KnowledgeEffect> = {
     },
     'arrow.insight1': {
         description:
-            'Свой Выстрел: шаг оценки урона 2, интервала 100 мс, критического шанса 2 п.п.',
+            'Оба своих выстрела: шаг оценки урона 2, интервала 100 мс, критического шанса 2 п.п.',
     },
     'arrow.insight2': {
-        description: 'Свой Выстрел: точные урон, интервал и критический шанс.',
+        description: 'Оба своих выстрела: точные урон, интервал и критический шанс.',
         exact: true,
     },
     'magic.mana1': {

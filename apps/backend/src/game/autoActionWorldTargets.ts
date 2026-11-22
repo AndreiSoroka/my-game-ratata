@@ -47,7 +47,7 @@ export function legalAutoWorldTarget(
     ) {
         return false
     }
-    if (action.kind === 'ability' && action.abilityId === 'barrier') {
+    if (cannotTargetGrave(action)) {
         return false
     }
     const weaponAction =
@@ -58,6 +58,13 @@ export function legalAutoWorldTarget(
         weaponAction &&
         actor.equipment.weapon !== undefined &&
         isItemBroken(actor.equipment.weapon)
+    )
+}
+
+function cannotTargetGrave(action: CharacterAutoAction): boolean {
+    return (
+        action.kind === 'ability' &&
+        (action.abilityId === 'barrier' || action.abilityId === 'sniper_shot')
     )
 }
 

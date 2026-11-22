@@ -238,6 +238,19 @@ test('MCP exposes pinned abilities and cancelable ordinary character control', (
             (entry) => entry.properties?.kind.const === 'prayer'
         )
     )
+    const sniper = choices.find((entry) =>
+        entry.properties.abilityId?.enum?.includes('sniper_shot')
+    )
+    assert.equal(sniper.properties.type.const, 'use_ability')
+    assert.deepEqual(sniper.required, ['type', 'abilityId', 'targetId'])
+    const automaticSniper = automatic.properties.action.oneOf.find((entry) =>
+        entry.properties?.abilityId?.enum?.includes('sniper_shot')
+    )
+    assert.deepEqual(automaticSniper.required, [
+        'kind',
+        'abilityId',
+        'targetId',
+    ])
     assert.ok(
         prayer.properties.intent.oneOf.some(
             (entry) => entry.properties.mode.const === 'devotion'

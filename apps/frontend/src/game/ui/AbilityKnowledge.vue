@@ -6,6 +6,7 @@ import {
     type ClientMessage,
     type ConstellationId,
     isArcaneAbility,
+    isArrowAbility,
     isPrayerAbility,
     type LearnAbilityId,
     PRAYER_SCHOOL_DEFINITIONS,
@@ -41,6 +42,7 @@ const known = computed(() =>
             !props.constellationId ||
             (props.constellationId === 'magic' && isArcaneAbility(id)) ||
             learnable.value.includes(id as LearnAbilityId) ||
+            (props.constellationId === 'arrow' && isArrowAbility(id)) ||
             (props.constellationId === 'prayer' && id === 'pray_woven')
     )
 )

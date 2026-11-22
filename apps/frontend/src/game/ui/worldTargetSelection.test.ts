@@ -33,6 +33,16 @@ describe('world target selection range', () => {
         expect(worldSelectionRange(playerWithAbilities(['greater_fireball']), 20)).toBe(300)
     })
 
+    it('uses the observed Sniper range including learned distance upgrades', () => {
+        const player = playerWithAbilities(['shot', 'sniper_shot'])
+        expect(worldSelectionRange(player, 16)).toBe(208)
+        expect(worldSelectionRange(player, 20)).toBe(260)
+        player.abilities!.parameters = {
+            sniper_shot: { range: 192, mana: 0, energy: 20, cooldownMs: 1800, windupMs: 700 },
+        }
+        expect(worldSelectionRange(player, 16)).toBe(240)
+    })
+
     it('requires both nearby distance and actual visibility, including the exact boundary', () => {
         const player = characterFixture('self')
         expect(isWorldTargetEligible(itemTarget('edge', 192), player, 192, () => true)).toBe(true)

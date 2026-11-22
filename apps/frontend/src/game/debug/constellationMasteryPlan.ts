@@ -5,7 +5,10 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
-import { minimumConstellationLevel } from '../../../../backend/src/game/constellationRequirements'
+import {
+    costsConstellationOpening,
+    minimumConstellationLevel,
+} from '../../../../backend/src/game/constellationRequirements'
 
 const nodes = new Map(fullConstellationCatalog.map((node) => [node.id, node]))
 
@@ -27,7 +30,7 @@ export function constellationBuildLevels(activeIds: ReadonlySet<string>, heroCla
     const levels = createMasteryLevels()
     for (const id of activeIds) {
         const node = nodes.get(id)
-        if (node?.acquisition === 'random') levels[node.constellationId] += 1
+        if (node && costsConstellationOpening(node, heroClass)) levels[node.constellationId] += 1
     }
     for (const id of activeIds) {
         const node = nodes.get(id)
@@ -53,10 +56,13 @@ export function constellationStarPlan(id: string, heroClass?: HeroClass) {
 
 export function paidConstellationStars(
     activeIds: ReadonlySet<string>,
-    path: ConstellationId
+    path: ConstellationId,
+    heroClass?: HeroClass
 ): number {
     return fullConstellationCatalog.filter(
         (node) =>
-            activeIds.has(node.id) && node.constellationId === path && node.acquisition === 'random'
+            activeIds.has(node.id) &&
+            node.constellationId === path &&
+            costsConstellationOpening(node, heroClass)
     ).length
 }

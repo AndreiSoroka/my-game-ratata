@@ -1,5 +1,6 @@
 import {
     type GameEventPayload,
+    isArrowAbility,
     isBladeAttackAbility,
     MASTERY_REWARDS,
 } from '@my-game-ratata/contracts'
@@ -8,6 +9,7 @@ import type { DamageResolution } from './abilityDamage'
 import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
 import type { AttackContext } from './combat'
+import { recordUsefulArrowHit } from './combatArchery'
 import { recordRunicContact } from './constellations'
 import {
     awardMasteries,
@@ -31,6 +33,9 @@ export function rewardCharacterHit(
     if (reward === undefined) {
         return []
     }
+    if (attack.arrow !== undefined) {
+        recordUsefulArrowHit(context, attack.arrow, target.id)
+    }
     const events =
         attack.abilityId === 'spark' || attack.abilityId === 'shot'
             ? recordRunicContact(
@@ -45,7 +50,10 @@ export function rewardCharacterHit(
             now,
             random,
             factors,
-            evidence: reward.evidence,
+            evidence:
+                attack.arrow?.moved === true
+                    ? [...reward.evidence, 'moving_shot']
+                    : reward.evidence,
         })
     )
     return events
@@ -62,11 +70,14 @@ export function attackMasteryReward(
             evidence: ['arcana'],
         }
     }
-    if (abilityId === 'shot') {
+    if (isArrowAbility(abilityId)) {
         return {
             constellationId: 'arrow' as const,
             experience: MASTERY_REWARDS.shotHit,
-            evidence: ['marksmanship'],
+            evidence: [
+                'marksmanship',
+                abilityId === 'shot' ? 'quick_shot' : 'sniper_shot',
+            ],
         }
     }
     return (abilityId === undefined ||

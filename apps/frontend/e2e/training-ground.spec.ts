@@ -96,6 +96,7 @@ for (const mobile of [false, true]) {
     }, info) => {
         test.setTimeout(150_000)
         const hits: GameEventPayload[] = []
+        const sniperPhases: GameEventPayload[] = []
         let socketUrl = ''
         page.on('websocket', (socket) => {
             if (new URL(socket.url()).pathname !== '/ws' || socketUrl) return
@@ -112,6 +113,12 @@ for (const mobile of [false, true]) {
                     message.event.targetId === dummyId
                 )
                     hits.push(message.event)
+                if (
+                    message.type === 'event' &&
+                    message.event?.kind === 'attack' &&
+                    message.event.abilityId === 'sniper_shot'
+                )
+                    sniperPhases.push(message.event)
             })
         })
         await page.setViewportSize(
@@ -120,6 +127,7 @@ for (const mobile of [false, true]) {
         const name = `yard-${info.project.name}-${mobile}`
         const yard = await join(page, name)
         const canvas = page.locator('canvas[data-game-canvas=true]')
+        await expect(page.getByRole('button', { name: /^2: Быстрый выстрел/ })).toBeVisible()
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         await navigate(page, yard.inside)
         await expect(canvas).toHaveAttribute('data-training-guides', areaId)
@@ -135,6 +143,8 @@ for (const mobile of [false, true]) {
         await expect.poll(() => hits.length).toBeGreaterThan(firstHit)
         expect(hits[firstHit]?.amount).toBeGreaterThan(0)
         expect(hits[firstHit]?.hitQuality).toMatch(/weak|normal|strong|critical/)
+        expect(await dummyState(page)).toEqual(before)
+        await fireSniperAtDummy(page, sniperPhases, hits)
         expect(await dummyState(page)).toEqual(before)
         await page.screenshot({ path: info.outputPath('training-inside.png') })
         await page.screenshot({ path: `/tmp/ratata-training-${mobile ? 'mobile' : 'desktop'}.png` })
@@ -194,6 +204,31 @@ for (const mobile of [false, true]) {
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         expect(await page.evaluate(() => window.__ratataTest!.getState().player!.alive)).toBe(true)
     })
+}
+
+async function fireSniperAtDummy(
+    page: Page,
+    phases: GameEventPayload[],
+    hits: GameEventPayload[]
+): Promise<void> {
+    const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
+    await page.getByRole('button', { name: /^3: Пусто/ }).click()
+    const picker = page.getByRole('dialog', { name: 'Назначить слот 3' })
+    await picker.getByRole('button', { name: /Снайперский выстрел.*20 EN/ }).click()
+    await waitForAttackIdle(page)
+    await page.getByRole('button', { name: /^3: Снайперский выстрел/ }).click()
+    const localPhases = () => phases.filter((event) => event.actorId === playerId)
+    await expect
+        .poll(() => localPhases().map((event) => event.phase))
+        .toEqual(['started', 'completed'])
+    const [started, completed] = localPhases()
+    expect(started).toMatchObject({ targetId: dummyId, durationMs: 700 })
+    expect(completed).toMatchObject({ actionId: started!.actionId })
+    expect(completed?.projectile).toBeDefined()
+    await expect
+        .poll(() => hits.find((event) => event.actionId === started?.actionId)?.amount)
+        .toBeGreaterThan(0)
+    await waitForAttackIdle(page)
 }
 
 async function activateBlade(

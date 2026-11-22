@@ -2,7 +2,7 @@ import { expect, type Locator } from '@playwright/test'
 
 export const heroThemeCases = [
     { heroClass: 'vanguard', label: 'Авангард', border: 'border-012', ability: 'Пусто' },
-    { heroClass: 'ranger', label: 'Следопыт', border: 'border-017', ability: 'Выстрел' },
+    { heroClass: 'ranger', label: 'Следопыт', border: 'border-017', ability: 'Быстрый выстрел' },
     { heroClass: 'arcanist', label: 'Арканист', border: 'border-018', ability: 'Искра' },
     { heroClass: 'cleric', label: 'Клирик', border: 'border-010', ability: 'Молитва' },
 ] as const

@@ -286,6 +286,7 @@ it('marks only standalone hotbar bindings active, never enhancement prerequisite
         ['blade.pommel_strike', 'pommel_strike'],
         ['blade.defensive_stance', 'defensive_stance'],
         ['arrow.root', 'shot'],
+        ['arrow.sniper_shot', 'sniper_shot'],
         ['prayer.root', 'pray'],
         ['prayer.area', 'pray_woven'],
         ['prayer_road.root', 'pray_road'],

@@ -8,6 +8,13 @@ import {
 
 import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
+import {
+    arrowAttackGeometry,
+    arrowPhaseEvent,
+    arrowReleaseEvents,
+    canAimSniperAt,
+    isPhasedArrow,
+} from './combatArchery'
 import { resolveContactBatch, usesAttackWeapon } from './combatContacts'
 import {
     buildAttackZones,
@@ -40,12 +47,13 @@ export function resolvePendingAttackHit(
 ): GameEventPayload[] {
     const { actor, now } = context
     const attack = actor.consumePendingAttackHit(now)
-    if (
-        attack === undefined ||
-        !availableToAttack(actor, now) ||
-        !validPendingWeapon(actor, attack)
-    ) {
+    if (attack === undefined) {
         return []
+    }
+    if (!availableToAttack(actor, now) || !validPendingWeapon(actor, attack)) {
+        return isPhasedArrow(attack.arrow)
+            ? [arrowPhaseEvent(actor, attack, 'interrupted')]
+            : []
     }
     const geometry = pendingGeometry(context, attack)
     const area = isAreaAttack(attack)
@@ -56,10 +64,14 @@ export function resolvePendingAttackHit(
     if (graves.length > 0 && !area) {
         targets.length = 0
     }
+    const release = arrowReleaseEvents(context, attack, targets[0] ?? graves[0])
     if (targets.length === 0 && graves.length === 0) {
-        return [missedAttack(actor, attack)]
+        return [...release, missedAttack(actor, attack)]
     }
-    return resolveContactBatch(context, attack, targets, graves)
+    return [
+        ...release,
+        ...resolveContactBatch(context, attack, targets, graves),
+    ]
 }
 function isAreaAttack(attack: PendingAttackHit): boolean {
     return (
@@ -75,6 +87,14 @@ function pendingGeometry(
     if (attack.abilityId === 'lunge') {
         actor.attackZones = buildAttackZones(actor, context.tileSize)
         attack.geometry = { kind: 'rectangles', zones: actor.attackZones }
+        if (actor.combat.action !== undefined) {
+            actor.combat.action.geometry = attack.geometry
+        }
+    } else if (attack.arrow?.mobile === true) {
+        attack.geometry = arrowAttackGeometry(actor, attack.arrow)
+        if (attack.geometry.kind === 'rectangles') {
+            actor.attackZones = attack.geometry.zones
+        }
         if (actor.combat.action !== undefined) {
             actor.combat.action.geometry = attack.geometry
         }
@@ -100,10 +120,7 @@ function characterContacts(
             (area ||
                 attack.targetId === undefined ||
                 target.id === attack.targetId) &&
-            isLegalAttackTarget(actor, target, {
-                ...context,
-                targetId: attack.targetId,
-            }) &&
+            legalContactTarget(context, attack, target) &&
             isInAttackGeometry(target.position, geometry)
     )
     candidates.sort(
@@ -112,6 +129,16 @@ function characterContacts(
             distance(actor.position, b.position)
     )
     return area ? candidates : candidates.slice(0, 1)
+}
+function legalContactTarget(
+    context: AttackContext,
+    attack: PendingAttackHit,
+    target: GameCharacter
+): boolean {
+    const targetedContext = { ...context, targetId: attack.targetId }
+    return attack.arrow?.abilityId === 'sniper_shot'
+        ? canAimSniperAt(targetedContext, target, attack.arrow.origin)
+        : isLegalAttackTarget(context.actor, target, targetedContext)
 }
 function graveContacts(context: AttackContext, geometry: AttackGeometry) {
     return (context.graves?.list(context.actor.locationId) ?? []).filter(
@@ -199,7 +226,8 @@ export function availableToAttack(actor: GameCharacter, now: number): boolean {
 export function isLegalAttackTarget(
     actor: GameCharacter,
     target: GameCharacter,
-    context: AttackContext
+    context: AttackContext,
+    origin = actor.position
 ): boolean {
     return (
         target.alive &&
@@ -209,7 +237,6 @@ export function isLegalAttackTarget(
         canAttackCharacter(actor, target, context.now) &&
         (context.targetId === undefined ||
             canPerceivePrayerCaster(actor, target, context.now)) &&
-        (context.navigation?.hasLineOfSight(actor.position, target.position) ??
-            true)
+        (context.navigation?.hasLineOfSight(origin, target.position) ?? true)
     )
 }

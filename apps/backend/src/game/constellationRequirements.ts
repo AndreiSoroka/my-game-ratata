@@ -16,10 +16,26 @@ export function minimumConstellationLevel(
     if (node === undefined) {
         throw new Error(`Unknown constellation star: ${nodeId}`)
     }
-    return nodeId.endsWith('.revive') && heroClass === 'cleric'
+    return (nodeId.endsWith('.revive') && heroClass === 'cleric') ||
+        startsWithSniperShot(nodeId, heroClass)
         ? 0
         : node.minimumLevel
 }
+
+function startsWithSniperShot(nodeId: string, heroClass?: HeroClass): boolean {
+    return heroClass === 'ranger' && nodeId === 'arrow.sniper_shot'
+}
+
+export function costsConstellationOpening(
+    node: ConstellationStar,
+    heroClass?: HeroClass
+): boolean {
+    return (
+        node.acquisition === 'random' &&
+        !startsWithSniperShot(node.id, heroClass)
+    )
+}
+
 export function starterConstellationStars(heroClass?: HeroClass): Set<string> {
     if (heroClass === undefined) {
         return new Set()
@@ -30,7 +46,14 @@ export function starterConstellationStars(heroClass?: HeroClass): Set<string> {
         cleric: 'prayer.root',
         ranger: 'arrow.root',
     }[heroClass]
-    return new Set(heroClass === 'cleric' ? [root, 'prayer.revive'] : [root])
+    const stars = new Set([root])
+    if (heroClass === 'cleric') {
+        stars.add('prayer.revive')
+    }
+    if (heroClass === 'ranger') {
+        stars.add('arrow.sniper_shot')
+    }
+    return stars
 }
 export interface ConstellationRequirementContext {
     opened: ReadonlySet<string>
@@ -54,7 +77,7 @@ export function canDiscoverConstellationStar(
     context: ConstellationRequirementContext
 ): boolean {
     return (
-        node.acquisition === 'random' &&
+        costsConstellationOpening(node, context.heroClass) &&
         !context.opened.has(node.id) &&
         constellationRequirementsSatisfied(node, context)
     )

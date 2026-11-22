@@ -1,0 +1,48 @@
+import type { SkyPoint } from './constellationGeometry'
+
+/** The northwest and southwest rays hold Quick Shot, with distinct eastern branches for range and mobility. */
+export const arrowTemplatePositions: Record<string, SkyPoint> =
+    Object.fromEntries(
+        Object.entries({
+            root: [1900, 150],
+            damage1: [1550, 110],
+            damage2: [1240, 190],
+            damage3: [1020, 355],
+            range1: [1510, -210],
+            range2: [1200, -505],
+            economy: [1785, -380],
+            economy2: [1720, -730],
+            insight1: [2080, -320],
+            insight2: [2180, -655],
+            tempo: [1910, 625],
+            tempo2: [1970, 1010],
+            critical: [1620, 540],
+            critical2: [1400, 930],
+            series1: [1520, 320],
+            series2: [1150, 530],
+            sniper_shot: [2560, -470],
+            sniper_range1: [2680, -1120],
+            sniper_range2: [2810, -1740],
+            sniper_long_range: [2940, -2270],
+            sniper_windup1: [3050, -850],
+            sniper_windup2: [3470, -1320],
+            sniper_opening: [3730, -1020],
+            sniper_economy1: [3210, -480],
+            sniper_economy2: [3790, -405],
+            sniper_tempo1: [3130, -135],
+            sniper_tempo2: [3670, 120],
+            sniper_critical1: [2770, 110],
+            sniper_critical2: [2970, 540],
+            moving_shot: [2620, 1200],
+            moving_damage1: [3150, 1020],
+            moving_damage2: [3710, 830],
+            moving_followup1: [4280, 810],
+            moving_followup2: [4740, 875],
+            moving_critical1: [3190, 1340],
+            moving_critical2: [3800, 1460],
+            moving_dash1: [3060, 1720],
+            moving_dash2: [3460, 2100],
+            moving_speed1: [2700, 1770],
+            moving_speed2: [2780, 2280],
+        }).map(([id, [x = 0, y = 0]]) => [`arrow.${id}`, { x, y }])
+    )

@@ -209,6 +209,18 @@ export class NavigationService {
     }
 
     public hasLineOfSight(from: Vector2, to: Vector2): boolean {
+        return this.visibleLineFraction(from, to) === 1
+    }
+
+    public visibleLineEndpoint(from: Vector2, to: Vector2): Vector2 {
+        const fraction = this.visibleLineFraction(from, to)
+        return {
+            x: from.x + (to.x - from.x) * fraction,
+            y: from.y + (to.y - from.y) * fraction,
+        }
+    }
+
+    private visibleLineFraction(from: Vector2, to: Vector2): number {
         const steps = Math.max(
             1,
             Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 8)
@@ -222,11 +234,11 @@ export class NavigationService {
             }
 
             if (this.isSolidTile(this.worldToTile(point))) {
-                return false
+                return (index - 1) / steps
             }
         }
 
-        return true
+        return 1
     }
 
     public walkableNeighbors(tile: TileCoordinate): TileCoordinate[] {

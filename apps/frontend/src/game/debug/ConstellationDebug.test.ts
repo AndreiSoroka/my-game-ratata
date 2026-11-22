@@ -57,7 +57,7 @@ it('loads and updates replayable class/seed URL without navigating away', async 
     const view = mount(ConstellationDebug)
     expect(view.get('[data-testid="debug-seed"]').element).toHaveProperty('value', 'URL-seed')
     expect(view.get('[data-testid="debug-class"]').element).toHaveProperty('value', 'ranger')
-    expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Стрела')
+    expect(view.get('[data-testid="selected-star-card"] h3').text()).toBe('Быстрый выстрел')
     await view.get('[data-testid="debug-seed"]').setValue(' next-seed ')
     await view.get('form').trigger('submit')
     expect(new URL(window.location.href).searchParams.get('seed')).toBe('next-seed')

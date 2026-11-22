@@ -252,15 +252,25 @@
             "id": "combat.ranged",
             "file": "combat/ranged.md",
             "audiences": ["common"],
-            "aliases": ["стрелять", "выстрел", "следопыт", "дальний бой"],
+            "aliases": [
+                "стрелять",
+                "выстрел",
+                "быстрый выстрел",
+                "снайперский выстрел",
+                "выстрел на ходу",
+                "следопыт",
+                "дальний бой"
+            ],
             "sources": [
                 "apps/backend/src/game/abilityCommands.ts",
                 "apps/backend/src/game/abilityDamage.ts",
-                "apps/backend/src/game/combatGeometry.ts",
-                "contracts/src/abilities.ts"
+                "apps/backend/src/game/combatArchery.ts",
+                "apps/backend/src/game/constellationArrowStars.ts",
+                "contracts/src/arrowAbilities.ts"
             ],
             "checks": [
                 "apps/backend/tests/ranger-attacks.test.ts",
+                "apps/backend/tests/archery-combat.test.ts",
                 "apps/backend/tests/ability-usage.test.ts"
             ],
             "facts": {}

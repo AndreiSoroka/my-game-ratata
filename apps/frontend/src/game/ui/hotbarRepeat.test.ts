@@ -15,7 +15,7 @@ function mage() {
 }
 it.each<[HeroClass, string]>([
     ['vanguard', 'Пусто'],
-    ['ranger', 'Выстрел'],
+    ['ranger', 'Быстрый выстрел'],
     ['arcanist', 'Искра'],
     ['cleric', 'Молитва'],
 ])('starts %s with a basic attack and its class ability', (heroClass, label) => {
@@ -247,7 +247,7 @@ it('fires Shot forward without selecting a target and previews the shared facing
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
         expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('title')).toContain(
-            'Выстрел вперёд ←'
+            'Быстрый выстрел вперёд ←'
         )
         expect(wrapper.emitted('shotPreviewChange')?.at(-1)).toEqual([
             { origin: { x: 100, y: 100 }, endpoint: { x: 36, y: 100 } },

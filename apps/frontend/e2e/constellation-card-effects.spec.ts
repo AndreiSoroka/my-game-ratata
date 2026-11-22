@@ -93,10 +93,12 @@ test('active cards keep school and action improvements isolated', async ({ page 
     await toggleBySpace(page, 'prayer_grave.revive', false)
     await inspectCard(page, 'prayer_grave.root', 'Молитва праха')
     await expect(bullets(page).filter({ hasText: /Возвращает павших/i })).toHaveCount(0)
-    await inspectCard(page, 'arrow.root', 'Стрела')
-    await expect(bullets(page).filter({ hasText: /20\s*%/ })).toHaveCount(1)
+    await inspectCard(page, 'arrow.root', 'Быстрый выстрел')
     await expect(
-        bullets(page).filter({ hasText: /следующий Выстрел на 10% сильнее/i })
+        bullets(page).filter({ hasText: /Урон Быстрого выстрела увеличен на 25%/ })
+    ).toHaveCount(1)
+    await expect(
+        bullets(page).filter({ hasText: /следующий Быстрый выстрел на 10% сильнее/i })
     ).toHaveCount(1)
     expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(/Искр|лечени|воскреш/i)
     await inspectCard(page, 'magic.fireball', 'Огненная стрела')

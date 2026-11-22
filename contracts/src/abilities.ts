@@ -1,8 +1,14 @@
 import {
+    arrowAbilityDefinitions,
+    type ArrowAbilityId,
+    arrowAbilityIds,
+} from './arrowAbilities'
+import {
     bladeAbilityDefinitions,
     bladeAbilityIds,
     type BladeAttackAbilityId,
 } from './bladeAbilities'
+export { type ArrowAbilityId, isArrowAbility } from './arrowAbilities'
 export * from './bladeAbilities'
 
 export const prayerAbilityIds = [
@@ -39,7 +45,7 @@ export const abilityIds = [
     ...bladeAbilityIds,
     'spark',
     'barrier',
-    'shot',
+    ...arrowAbilityIds,
     'skeleton_strike',
     'fireball',
     'greater_fireball',
@@ -51,7 +57,7 @@ export const abilityIds = [
 export type AbilityId = (typeof abilityIds)[number]
 export type LearnAbilityId = PrayerAbilityId | 'spark' | 'barrier' | 'shot'
 export type AttackAbilityId =
-    'spark' | 'shot' | 'skeleton_strike' | BladeAttackAbilityId
+    'spark' | ArrowAbilityId | 'skeleton_strike' | BladeAttackAbilityId
 export type BasicAttackKind = 'melee' | 'arrow' | 'spark'
 export type DamageKind = 'physical' | 'arcane' | 'holy' | 'unholy'
 export type PrayerMode =
@@ -223,16 +229,7 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
         range: 0,
         windupMs: 0,
     },
-    shot: {
-        name: 'Выстрел',
-        mana: 0,
-        energy: 10,
-        cooldownMs: 550,
-        range: 64,
-        windupMs: 50,
-        damage: 4,
-        maxDamage: 7,
-    },
+    ...arrowAbilityDefinitions,
     skeleton_strike: {
         name: 'Костяной удар',
         mana: 0,

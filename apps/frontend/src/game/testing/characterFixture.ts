@@ -67,6 +67,7 @@ function readyResources(): NonNullable<CharacterSnapshot['resourceChecks']> {
             spark: 'ready',
             barrier: 'ready',
             shot: 'ready',
+            sniper_shot: 'ready',
             skeleton_strike: 'ready',
             fireball: 'ready',
             greater_fireball: 'ready',

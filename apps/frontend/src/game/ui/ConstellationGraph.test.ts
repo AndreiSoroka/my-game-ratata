@@ -231,7 +231,7 @@ it('preserves selected stars on reveal, then clears selection for a new identity
     await view.setProps({ player: revealed })
     expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe('Жизнь')
     await view.setProps({ player: { ...developmentCharacterFixture('ranger'), id: 'new-life' } })
-    expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe('Стрела')
+    expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe('Быстрый выстрел')
     view.unmount()
 })
 

@@ -1,6 +1,7 @@
 import {
     type AttackDelivery,
     type GameEventPayload,
+    isArrowAbility,
     resolveBladeDefense,
     resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
@@ -26,7 +27,7 @@ export function attackDelivery(attack: PendingAttackHit): AttackDelivery {
         attack.abilityId === 'fireball' ||
         attack.abilityId === 'greater_fireball'
             ? 'magic'
-            : attack.abilityId === 'shot'
+            : isArrowAbility(attack.abilityId)
               ? 'ranged_physical'
               : 'melee_physical')
     )
