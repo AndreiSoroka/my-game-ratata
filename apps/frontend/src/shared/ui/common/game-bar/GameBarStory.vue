@@ -1,14 +1,24 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import { lightUiColors } from '@/shared/ui/theme'
 
 import { GameBar, type GameBarProps } from './index'
 
-withDefaults(defineProps<Partial<GameBarProps> & { section?: string }>(), { shadow: undefined })
+const props = withDefaults(
+    defineProps<Partial<GameBarProps> & { section?: string; secondSegments?: readonly number[] }>(),
+    { shadow: undefined }
+)
 const resources = [
     { id: 'health', name: 'Здоровье', value: 82, color: lightUiColors.bar.health.color },
     { id: 'mana', name: 'Мана', value: 64, color: lightUiColors.bar.mana.color },
     { id: 'energy', name: 'Энергия', value: 47, color: lightUiColors.bar.energy.color },
 ]
+const segmentValue = computed(() => props.value ?? 82)
+const segmentLayouts = computed(() => [
+    { id: 'four', label: 'Первая схема', widths: props.segments },
+    { id: 'seven', label: 'Вторая схема', widths: props.secondSegments },
+])
 const values = [0, 1, 25, 50, 100]
 const sizes = [10, 18, 24, 34]
 const headings: Record<string, string> = {
@@ -22,7 +32,13 @@ const headings: Record<string, string> = {
 
 <template>
     <section class="game-bar-story" data-testid="game-bar-story" aria-label="GameBar">
-        <h2>{{ headings[section ?? 'default'] }}</h2>
+        <h2>
+            {{
+                section === 'segments'
+                    ? `Сегменты при ${segmentValue}%`
+                    : headings[section ?? 'default']
+            }}
+        </h2>
         <template v-if="section === 'resources'">
             <figure v-for="resource in resources" :key="resource.id">
                 <figcaption>{{ resource.name }}</figcaption>
@@ -31,6 +47,24 @@ const headings: Record<string, string> = {
                     :color="resource.color"
                     :label="resource.name"
                     :data-testid="`game-bar-${resource.id}`"
+                />
+            </figure>
+        </template>
+        <template v-else-if="section === 'segments'">
+            <figure v-for="layout in segmentLayouts" :key="layout.id">
+                <figcaption>
+                    {{
+                        Array.isArray(layout.widths) && layout.widths.length
+                            ? layout.widths.map((width) => `${width}%`).join(' · ')
+                            : layout.label
+                    }}
+                </figcaption>
+                <GameBar
+                    :value="segmentValue"
+                    :segments="layout.widths"
+                    :color="lightUiColors.bar.health.color"
+                    :label="layout.label"
+                    :data-testid="`game-bar-segments-${layout.id}`"
                 />
             </figure>
         </template>

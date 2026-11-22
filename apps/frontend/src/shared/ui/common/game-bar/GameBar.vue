@@ -24,6 +24,36 @@ const progress = computed(() => {
     const value = Math.min(max, Math.max(0, Number.isFinite(props.value) ? props.value : 0))
     return { value, max, percent: (value / max) * 100 }
 })
+const segmentLayout = computed(() => {
+    const widths = props.segments
+    if (!Array.isArray(widths) || widths.length === 0) return undefined
+    let total = 0
+    for (const width of widths) {
+        if (!Number.isFinite(width) || width <= 0) return undefined
+        total += width
+    }
+    if (Math.abs(total - 100) > 1e-9) return undefined
+    return {
+        widths,
+        gridTemplateColumns: widths.map((width) => `minmax(0, ${width}fr)`).join(' '),
+    }
+})
+const filledSegments = computed(() => {
+    const layout = segmentLayout.value
+    if (!layout || progress.value.value === 0) return 0
+    const { value, max, percent } = progress.value
+    if (value === max) return layout.widths.length
+
+    let threshold = 0
+    let filled = 0
+    for (const width of layout.widths) {
+        filled += 1
+        threshold += width
+        // Converting the ratio to a percentage can land just above an exact boundary.
+        if (percent <= threshold + Number.EPSILON * threshold) break
+    }
+    return filled
+})
 const decoration = computed(() => ({
     '--game-bar-text-color': props.textColor,
     '--game-bar-percent': `${progress.value.percent}%`,
@@ -36,6 +66,7 @@ const valueText = computed(
 <template>
     <div
         class="game-bar"
+        :class="{ 'game-bar--segmented': segmentLayout }"
         :data-shadow="shadow"
         :style="decoration"
         role="progressbar"
@@ -44,8 +75,27 @@ const valueText = computed(
         :aria-valuemax="progress.max"
         :aria-valuenow="progress.value"
     >
-        <BarTrack :color="trackColor" :height="height" :shadow="shadow">
+        <BarTrack
+            :color="segmentLayout ? 'transparent' : trackColor"
+            :height="height"
+            :shadow="!segmentLayout && shadow"
+        >
+            <div
+                v-if="segmentLayout"
+                class="game-bar__segments"
+                :style="{ gridTemplateColumns: segmentLayout.gridTemplateColumns }"
+                aria-hidden="true"
+            >
+                <BarFill
+                    v-for="index in filledSegments"
+                    :key="index"
+                    class="game-bar__segment"
+                    :color="color"
+                    :shadow="shadow"
+                />
+            </div>
             <BarFill
+                v-else
                 v-show="progress.percent > 0"
                 class="game-bar__fill"
                 :color="color"

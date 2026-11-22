@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, test } from '@playwright/test'
 
 import { expectUiFits, readyUiStory } from './ui-story-ready'
 
@@ -27,6 +27,52 @@ function barStoryUrl(story: string): string {
     return `/iframe.html?id=${story}&viewMode=story`
 }
 
+async function expectSegmentGeometry(stage: Locator): Promise<void> {
+    const examples = [
+        { name: 'four', widths: [40, 20, 20, 20], filled: 4 },
+        { name: 'seven', widths: [30, 20, 10, 10, 10, 10, 10], filled: 6 },
+    ]
+    for (const { name, widths, filled } of examples) {
+        const bar = stage.getByTestId(`game-bar-segments-${name}`)
+        const track = bar.locator('.bar-track')
+        const grid = bar.locator('.game-bar__segments')
+        await expect(bar).toHaveAttribute('aria-valuenow', '82')
+        await expect(track).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(track).toHaveCSS('box-shadow', 'none')
+        await expect(track).toHaveCSS('padding', '0px')
+        await expect(grid).toHaveAttribute('aria-hidden', 'true')
+        await expect(grid).toHaveCSS('column-gap', '2px')
+        await expect(grid.locator(':scope > .bar-fill')).toHaveCount(filled)
+
+        const geometry = await grid.evaluate((element) => {
+            const bounds = element.getBoundingClientRect()
+            return {
+                width: bounds.width,
+                height: bounds.height,
+                fills: Array.from(element.children, (fill) => {
+                    const fillBounds = fill.getBoundingClientRect()
+                    return {
+                        left: fillBounds.left - bounds.left,
+                        width: fillBounds.width,
+                        height: fillBounds.height,
+                        radius: getComputedStyle(fill).borderRadius,
+                    }
+                }),
+            }
+        })
+        const contentWidth = geometry.width - (widths.length - 1) * 2
+        let left = 0
+        for (const [index, fill] of geometry.fills.entries()) {
+            const expectedWidth = (contentWidth * widths[index]!) / 100
+            expect(fill.left).toBeCloseTo(left, 1)
+            expect(fill.width).toBeCloseTo(expectedWidth, 1)
+            expect(fill.height).toBe(geometry.height)
+            expect(fill.radius).toBe('0px')
+            left += expectedWidth + 2
+        }
+    }
+}
+
 for (const width of [1280, 390, 320]) {
     for (const catalog of catalogs) {
         for (const section of catalog.sections) {
@@ -51,6 +97,17 @@ for (const width of [1280, 390, 320]) {
             })
         }
     }
+
+    test(`game-bar segments at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 1000 })
+        await page.goto(barStoryUrl('shared-common-gamebar--segments'))
+        const stage = page.getByTestId('game-bar-story')
+        await expect(stage).toBeVisible()
+        await readyUiStory(page)
+        await expectUiFits(stage, width)
+        await expectSegmentGeometry(stage)
+        await expect(stage).toHaveScreenshot(`game-bar-segments-${width}.png`)
+    })
 }
 
 test('GameBar fills the track proportionally with the same one-pixel rim on each edge', async ({
@@ -195,6 +252,90 @@ test('GameBar Default Controls update fill geometry and independent CSS colors',
     await page.locator('label[for="control-shadow"]').click()
     await expect(track).toHaveCSS('box-shadow', 'none')
     await expect(fill).toHaveCSS('box-shadow', 'none')
+})
+
+test('GameBar Default Controls set segments and fill each started block', async ({ page }) => {
+    await page.goto('/?path=/story/shared-common-gamebar--default')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const bar = preview.getByTestId('game-bar-default')
+    const grid = bar.locator('.game-bar__segments')
+    const fills = grid.locator(':scope > .bar-fill')
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+    await page.getByRole('switch', { name: 'Edit segments as JSON' }).click()
+    const segments = page.getByRole('textbox', { name: 'Edit segments as JSON' })
+    const value = page.locator('#control-value')
+    const max = page.locator('#control-max')
+    await segments.fill('[40, 20, 20, 20]')
+    await segments.press('Tab')
+    await max.fill('200')
+    await max.press('Tab')
+    await expect(bar).toHaveAttribute('aria-valuemax', '200')
+    await expect(grid).toBeVisible()
+    await page.locator('label[for="control-showValue"]').click()
+
+    for (const [amount, count] of [
+        [0, 0],
+        [79, 1],
+        [80, 1],
+        [81, 2],
+        [144, 3],
+        [160, 3],
+        [161, 4],
+        [194, 4],
+        [200, 4],
+    ] as const) {
+        await value.fill(String(amount))
+        await value.press('Tab')
+        await expect(bar).toHaveAttribute('aria-valuenow', String(amount))
+        await expect(bar.locator('.game-bar__label')).toHaveText(`${amount} / 200`)
+        await expect(fills).toHaveCount(count)
+        await expect(grid).toHaveCSS('height', '24px')
+    }
+
+    await segments.fill('[40, 20]')
+    await segments.press('Tab')
+    await expect(grid).toHaveCount(0)
+    await expect(bar.locator('.game-bar__fill')).toBeVisible()
+})
+
+test('GameBar Segments Controls adjust both values and edit the schemes independently', async ({
+    page,
+}) => {
+    await page.goto('/?path=/story/shared-common-gamebar--segments')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const first = preview.getByTestId('game-bar-segments-four')
+    const second = preview.getByTestId('game-bar-segments-seven')
+    const firstFills = first.locator('.game-bar__segments > .bar-fill')
+    const secondFills = second.locator('.game-bar__segments > .bar-fill')
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+    const value = page.getByRole('slider', { name: 'value', exact: true })
+
+    await value.press('Home')
+    await expect(first).toHaveAttribute('aria-valuenow', '0')
+    await expect(second).toHaveAttribute('aria-valuenow', '0')
+    await expect(firstFills).toHaveCount(0)
+    await expect(secondFills).toHaveCount(0)
+    await expect(preview.getByRole('heading', { name: 'Сегменты при 0%' })).toBeVisible()
+
+    await value.press('End')
+    await expect(first).toHaveAttribute('aria-valuenow', '100')
+    await expect(second).toHaveAttribute('aria-valuenow', '100')
+    await expect(firstFills).toHaveCount(4)
+    await expect(secondFills).toHaveCount(7)
+
+    await page.getByRole('switch', { name: 'Edit segments as JSON' }).click()
+    const segments = page.getByRole('textbox', { name: 'Edit segments as JSON' })
+    await segments.fill('[50, 50]')
+    await segments.press('Tab')
+    await expect(firstFills).toHaveCount(2)
+    await expect(secondFills).toHaveCount(7)
+
+    await page.getByRole('switch', { name: 'Edit secondSegments as JSON' }).click()
+    const secondSegments = page.getByRole('textbox', { name: 'Edit secondSegments as JSON' })
+    await secondSegments.fill('[25, 25, 25, 25]')
+    await secondSegments.press('Tab')
+    await expect(firstFills).toHaveCount(2)
+    await expect(secondFills).toHaveCount(4)
 })
 
 test('BarTrack Default Controls preserve the separate background primitive', async ({ page }) => {

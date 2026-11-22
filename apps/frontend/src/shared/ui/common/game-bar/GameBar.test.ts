@@ -107,3 +107,56 @@ it('allows a consumer label in the default slot instead of built-in numbers', ()
         view.unmount()
     }
 })
+
+it('shows started segments in full and reports the actual value', async () => {
+    const view = mount(GameBar, {
+        props: { value: 0, max: 200, segments: [40, 20, 20, 20], showValue: true },
+    })
+    try {
+        const segments = view.get('.game-bar__segments')
+        expect(segments.attributes('aria-hidden')).toBe('true')
+        expect(view.getComponent(BarTrack).props('color')).toBe('transparent')
+        expect(view.getComponent(BarTrack).props('shadow')).toBe(false)
+        for (const [value, filled] of [
+            [0, 0],
+            [1, 1],
+            [79, 1],
+            [80, 1],
+            [81, 2],
+            [120, 2],
+            [144, 3],
+            [160, 3],
+            [161, 4],
+            [194, 4],
+            [200, 4],
+        ] as const) {
+            await view.setProps({ value })
+            expect(view.findAllComponents(BarFill)).toHaveLength(filled)
+            expect(view.attributes('aria-valuenow')).toBe(String(value))
+            expect(view.get('.game-bar__label').text()).toBe(`${value} / 200`)
+        }
+
+        await view.setProps({ value: 57, max: 100, segments: [57, 43] })
+        expect(view.findAllComponents(BarFill)).toHaveLength(1)
+    } finally {
+        view.unmount()
+    }
+})
+
+const sparseWidths = [100]
+sparseWidths.length = 2
+
+it.each(
+    [[], [40, 20, 20], [50, 0, 50], [101, -1], [Number.NaN, 70], sparseWidths].map((widths) => ({
+        widths,
+    }))
+)('uses continuous fill for invalid segment widths $widths', ({ widths }) => {
+    const view = mount(GameBar, { props: { value: 72, segments: widths } })
+    try {
+        expect(view.find('.game-bar__segments').exists()).toBe(false)
+        expect(view.find('.game-bar__fill').exists()).toBe(true)
+        expect(view.element.style.getPropertyValue('--game-bar-percent')).toBe('72%')
+    } finally {
+        view.unmount()
+    }
+})

@@ -8,6 +8,7 @@ import GameBarStory from './GameBarStory.vue'
 import { GameBar, type GameBarProps } from './index'
 
 type StoryArgs = GameBarProps & { content: 'native' | 'empty' | 'text' }
+type GalleryProps = Partial<GameBarProps> & { secondSegments?: readonly number[] }
 const meta = {
     title: 'Shared/Common/GameBar',
     args: {
@@ -20,6 +21,7 @@ const meta = {
         label: 'Здоровье',
         showValue: false,
         shadow: true,
+        segments: [],
         content: 'native',
     },
     argTypes: {
@@ -32,6 +34,7 @@ const meta = {
         label: { control: 'text' },
         showValue: { control: 'boolean' },
         shadow: { control: 'boolean' },
+        segments: { control: 'object' },
         content: {
             name: 'Содержимое слота',
             control: {
@@ -45,7 +48,7 @@ const meta = {
 export default meta
 type Story = StoryObj<StoryArgs>
 
-function preview(section: string, props: Partial<GameBarProps> = {}): HTMLElement {
+function preview(section: string, props: GalleryProps = {}): HTMLElement {
     const host = renderVueStory(
         GameBarStory,
         { section, ...props },
@@ -86,6 +89,29 @@ export const WithValue: Story = {
 export const Resources: Story = {
     parameters: { controls: { disable: true } },
     render: () => preview('resources'),
+}
+const segmentControlNames = {
+    value: 'Заполнение, %',
+    segments: 'Первая схема',
+    secondSegments: 'Вторая схема',
+}
+export const Segments: StoryObj<StoryArgs & Pick<GalleryProps, 'secondSegments'>> = {
+    args: {
+        value: 82,
+        segments: [40, 20, 20, 20],
+        secondSegments: [30, 20, 10, 10, 10, 10, 10],
+    },
+    argTypes: {
+        value: {
+            name: segmentControlNames.value,
+            control: { type: 'range', min: 0, max: 100, step: 1 },
+        },
+        segments: { name: segmentControlNames.segments, control: 'object' },
+        secondSegments: { name: segmentControlNames.secondSegments, control: 'object' },
+    },
+    parameters: { controls: { include: Object.values(segmentControlNames) } },
+    render: ({ value, segments, secondSegments }) =>
+        preview('segments', { value, segments, secondSegments }),
 }
 export const Values: Story = {
     parameters: { controls: { disable: true } },
