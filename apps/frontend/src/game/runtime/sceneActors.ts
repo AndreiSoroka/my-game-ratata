@@ -295,10 +295,8 @@ export class SceneActors {
 
         const bundle = createBundle()
         this.bundles.set(snapshot.id, bundle)
-        this.engine.add(bundle.body)
-        this.engine.add(bundle.label)
-        this.engine.add(bundle.hpBack)
-        this.engine.add(bundle.hpFill)
+        for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill])
+            this.engine.add(actor)
 
         return bundle
     }
