@@ -153,7 +153,7 @@ it('boosts the resting bonus only while the rest and song overlap', () => {
 
     applyRoadPrayerRecovery(
         characters,
-        new Map([[ally, characterEnergyRegenRate(ally, false, true, false)]]),
+        new Map([[ally, characterEnergyRegenRate(ally, false, false)]]),
         () => context.navigation,
         startedAt + 250,
         500

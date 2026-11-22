@@ -6,7 +6,6 @@ import {
 
 import type { GameCharacter } from './character'
 import {
-    characterEnergyRegenRate,
     type EnergyRecoveryRate,
     regenerateCharacter,
 } from './characterRecovery'
@@ -99,20 +98,14 @@ function applyMovementRegen(
     walking = false
 ): void {
     const { character, deltaMs, now, onEvents, onEnergyRegen } = context
-    const energyRate = characterEnergyRegenRate(
-        character,
-        moving,
-        energyAllowed,
-        walking
-    )
-    onEnergyRegen?.(energyRate)
     const events = regenerateCharacter(
         character,
         deltaMs,
         moving,
         energyAllowed,
         now,
-        energyRate
+        walking,
+        onEnergyRegen
     )
     onEvents?.(events)
 }

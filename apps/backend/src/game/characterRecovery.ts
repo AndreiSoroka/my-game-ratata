@@ -109,12 +109,8 @@ export function regenerateCharacter(
     moving: boolean,
     energyAllowed = true,
     now = 0,
-    energyRate = characterEnergyRegenRate(
-        character,
-        moving,
-        energyAllowed,
-        moving && character.movement.mode === 'walking'
-    )
+    walking = moving && character.movement.mode === 'walking',
+    onEnergyRegen?: (rate: EnergyRecoveryRate) => void
 ): GameEventPayload[] {
     if (!character.alive) {
         return []
@@ -122,7 +118,15 @@ export function regenerateCharacter(
     const resources = character.config.resources
     const maxMana = effectiveMaxMana(character)
     const beforeMana = character.mana
-    const energy = recoverNaturalEnergy(character, deltaMs, now, energyRate)
+    const energy = recoverNaturalEnergy(
+        character,
+        deltaMs,
+        moving,
+        energyAllowed,
+        now,
+        walking,
+        onEnergyRegen
+    )
     character.mana = regen(
         character.mana,
         maxMana,
@@ -156,12 +160,21 @@ export function regenerateCharacter(
 function recoverNaturalEnergy(
     character: GameCharacter,
     deltaMs: number,
+    moving: boolean,
+    energyAllowed: boolean,
     now: number,
-    energyRate: EnergyRecoveryRate
+    walking: boolean,
+    onEnergyRegen?: (rate: EnergyRecoveryRate) => void
 ): GameEventPayload[] {
-    if (character.energy >= effectiveMaxEnergy(character)) {
+    if (
+        !energyAllowed ||
+        character.combat.defensiveStance ||
+        character.energy >= effectiveMaxEnergy(character)
+    ) {
         return []
     }
+    const energyRate = characterEnergyRegenRate(character, moving, walking)
+    onEnergyRegen?.(energyRate)
     const rate = energyRate(now, deltaMs)
     return rate > 0
         ? restoreEnergy(character, (rate * deltaMs) / 1000, now).events
@@ -171,12 +184,8 @@ function recoverNaturalEnergy(
 export function characterEnergyRegenRate(
     character: GameCharacter,
     moving: boolean,
-    energyAllowed: boolean,
     walking: boolean
 ): EnergyRecoveryRate {
-    if (!energyAllowed || character.combat.defensiveStance) {
-        return () => 0
-    }
     const resources = character.config.resources
     const bonuses = constellationModifiers(character)
     if (moving) {

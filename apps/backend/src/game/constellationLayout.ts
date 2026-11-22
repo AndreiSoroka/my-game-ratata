@@ -42,6 +42,9 @@ export function generateConstellationLayout(
     const components = skyComponents(topology)
     const centerNodeId = `${centerPath}.root`
     const random = constellationRandom(seed)
+    const primaryEdges = constellationTopologyEdges(topology).filter(
+        (edge) => edge.crossLink !== true
+    )
     const maximum =
         options.forceFallback === true
             ? 0
@@ -56,18 +59,18 @@ export function generateConstellationLayout(
         if (positions === undefined) {
             continue
         }
-        const edges = constellationTopologyEdges(topology).filter(
-            (edge) => edge.crossLink !== true
-        )
         const rounded = roundedPositions(positions)
-        if (constellationGeometryProblem(rounded, edges) === undefined) {
-            return realizedLayout(
+        if (constellationGeometryProblem(rounded, primaryEdges) === undefined) {
+            const layout = realizeLayout(
                 topology,
                 rounded,
                 centerNodeId,
                 attempt + 1,
                 false
             )
+            if (typeof layout !== 'string') {
+                return layout
+            }
         }
     }
     const fallback = candidatePositions(
@@ -80,14 +83,21 @@ export function generateConstellationLayout(
         throw new Error('Certified constellation packing failed')
     }
     const positions = roundedPositions(fallback)
-    const edges = constellationTopologyEdges(topology).filter(
-        (edge) => edge.crossLink !== true
-    )
-    const problem = constellationGeometryProblem(positions, edges)
+    const problem = constellationGeometryProblem(positions, primaryEdges)
     if (problem !== undefined) {
         throw new Error(`Invalid certified constellation template: ${problem}`)
     }
-    return realizedLayout(topology, positions, centerNodeId, maximum, true)
+    const layout = realizeLayout(
+        topology,
+        positions,
+        centerNodeId,
+        maximum,
+        true
+    )
+    if (typeof layout === 'string') {
+        throw new Error(`Invalid routed constellation sky: ${layout}`)
+    }
+    return layout
 }
 
 function candidatePositions(
@@ -134,13 +144,13 @@ function roundedPositions(
     )
 }
 
-function realizedLayout(
+function realizeLayout(
     topology: readonly ConstellationTopologyNode[],
     positions: Record<string, SkyPoint>,
     centerNodeId: string,
     attempts: number,
     usedFallback: boolean
-): RealizedConstellationLayout {
+): RealizedConstellationLayout | string {
     const regionIds = [...new Set(topology.map((node) => node.constellationId))]
     const regions = Object.fromEntries(
         regionIds.map((id) => [
@@ -175,12 +185,6 @@ function realizedLayout(
         ),
         ...local,
     }
-    const layout: ConstellationLayoutSnapshot = {
-        centerNodeId,
-        bounds: skyBounds(positions, edgeWaypoints),
-        minimumNodeSpacing: minimumSpacing(positions),
-        regions,
-    }
     const problem = constellationGeometryProblem(
         positions,
         edges.map((edge) => ({
@@ -189,7 +193,13 @@ function realizedLayout(
         }))
     )
     if (problem !== undefined) {
-        throw new Error(`Invalid routed constellation sky: ${problem}`)
+        return problem
+    }
+    const layout: ConstellationLayoutSnapshot = {
+        centerNodeId,
+        bounds: skyBounds(positions, edgeWaypoints),
+        minimumNodeSpacing: minimumSpacing(positions),
+        regions,
     }
     return {
         layout,
