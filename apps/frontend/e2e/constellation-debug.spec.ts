@@ -148,10 +148,14 @@ async function assertOwnNonPrayerResults(page: Page): Promise<void> {
     await expect(page.locator('[data-build-metric="Время на Выстрел"] dd')).toHaveText('5000 мс')
     await expect(page.getByTestId('debug-runic-charged')).toHaveCount(0)
     await selectBuildStar(page, 'magic.fireball')
-    await expect(page.locator('[data-build-metric="Урон Огненного шара"] dd')).toHaveText('9 HP')
-    await expect(page.locator('[data-build-metric="Дальность Огненного шара"] dd')).toHaveText(
+    await expect(page.locator('[data-build-metric="Урон Огненной стрелы"] dd')).toHaveText(
+        '11–44 HP'
+    )
+    await expect(page.locator('[data-build-metric="Дальность Огненной стрелы"] dd')).toHaveText(
         '10 клеток'
     )
+    await expect(page.locator('[data-build-metric="Радиус взрыва, кл."] dd')).toHaveText('4')
+    await expect(page.locator('[data-build-metric="Цена заклинания, MP"] dd')).toHaveText('6')
     await expect(buildResultPanel(page).locator('dl')).not.toContainText('Искры')
     await expect(buildResultPanel(page).locator('dl')).not.toContainText('Выстрела')
 }

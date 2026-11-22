@@ -1,5 +1,5 @@
 import {
-    ABILITY_DEFINITIONS,
+    abilityIds,
     FARM_SOW_ENERGY,
     isPrayerAction,
     MOVEMENT_RULES,
@@ -9,6 +9,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
+import { effectiveAbility } from '../src/game/effectiveParameters'
 import { handleDashWithFeedback } from '../src/game/movementFeedback'
 import {
     observeResource,
@@ -44,22 +45,21 @@ describe('resource projection and affordability', () => {
 
     it('checks fractional balances at every existing cost boundary without spending', () => {
         const actor = abilityHero()
-        for (const [id, definition] of Object.entries(ABILITY_DEFINITIONS)) {
-            if (isPrayerAction(id)) {
+        for (const abilityId of abilityIds) {
+            if (isPrayerAction(abilityId)) {
                 continue
             }
-            const abilityId = id as keyof ReturnType<
-                typeof resourceChecks
-            >['abilities']
-            actor.mana = definition.mana
-            actor.energy = definition.energy
+            const { mana, energy } = effectiveAbility(actor, abilityId)
+            const readyMana = mana + (abilityId === 'barrier' ? 0.001 : 0)
+            actor.mana = readyMana
+            actor.energy = energy
             expect(resourceChecks(actor).abilities[abilityId]).toBe('ready')
-            if (definition.mana > 0) {
-                actor.mana -= 0.001
+            if (mana > 0) {
+                actor.mana = abilityId === 'barrier' ? mana : mana - 0.001
                 expect(resourceChecks(actor).abilities[abilityId]).toBe('mana')
-                actor.mana = definition.mana
+                actor.mana = readyMana
             }
-            if (definition.energy > 0) {
+            if (energy > 0) {
                 actor.energy -= 0.001
                 expect(resourceChecks(actor).abilities[abilityId]).toBe(
                     'energy'

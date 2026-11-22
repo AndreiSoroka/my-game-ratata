@@ -175,8 +175,8 @@ it('shows the actual attack family critical chance and mastered spell power', ()
     })
     expect(attacks.find((attack) => attack.id === 'fireball')).toMatchObject({
         damage: {
-            min: { kind: 'exact', value: 9 },
-            max: { kind: 'exact', value: 9 },
+            min: { kind: 'exact', value: 11 },
+            max: { kind: 'exact', value: 44 },
         },
         critChance: { kind: 'exact', value: 0 },
     })

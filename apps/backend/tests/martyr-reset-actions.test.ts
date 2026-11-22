@@ -60,15 +60,19 @@ describe('Martyr resets only after resolved shared actions', () => {
         ).toBe(false)
     })
 
-    it('ignores unsuccessful learning and resets on an actual chapter learned', () => {
+    it('keeps the streak when magical study is rejected for a believer', () => {
         const actor = abilityHero()
         const scholar = abilityHero('arcanist')
         inProgress(actor)
         expect(studyMagic(actor, scholar, 1000)).toEqual([])
         expect(actor.martyr.cycles).toBe(3)
         scholar.tags.add('scholar')
-        expect(studyMagic(actor, scholar, 1000).length).toBeGreaterThan(0)
-        expect(actor.martyr.cycles).toBe(0)
+        expect(studyMagic(actor, scholar, 1000)).toMatchObject([
+            { kind: 'notice' },
+        ])
+        expect(actor.progression.magicChaptersRead).toBe(0)
+        expect(actor.martyr.cycles).toBe(3)
+        expect(actor.martyr.pendingHostileWound).toBe(true)
     })
 
     it('does not reset an invite recipient until they actually accept membership', () => {

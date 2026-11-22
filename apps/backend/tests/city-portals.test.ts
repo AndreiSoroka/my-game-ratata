@@ -33,7 +33,8 @@ it('channels through the socket, charges only on success and then accepts both e
     actor.position = { x: 24, y: 24 }
     actor.abilities.known.add('city_portal')
     actor.config.resources.manaRegenIdle = 0
-    const mana = actor.mana
+    const mana = 28
+    actor.mana = mana
     const { windupMs, cooldownMs } = ABILITY_DEFINITIONS.city_portal
     const cast = () =>
         room.handleMessage(
@@ -70,7 +71,7 @@ it('channels through the socket, charges only on success and then accepts both e
             room.snapshot(time, CENTER_LOCATION_ID).portals?.[0]
         )
         expect(room.snapshot(time, 'map-0-0').portals).toBeUndefined()
-        expect(actor.mana).toBe(mana - 28)
+        expect(actor.mana).toBe(0)
         expect(actor.abilities.availableAt.city_portal).toBe(time + cooldownMs)
         enter(source.id)
         expect(actor.locationId).toBe(CENTER_LOCATION_ID)
