@@ -110,6 +110,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                     <UiInput
                         id="nickname"
                         v-model="nickname"
+                        :focus-ring="false"
                         :framed="false"
                         autocomplete="off"
                         maxlength="24"

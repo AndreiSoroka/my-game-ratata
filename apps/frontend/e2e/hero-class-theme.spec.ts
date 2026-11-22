@@ -16,6 +16,8 @@ for (const width of [390, 1280]) {
         const name = page.getByRole('textbox', { name: 'Имя героя' })
         const nickname = `Тема героя ${width}`
         await selectNameOnEveryClick(name)
+        await expect(name).toBeFocused()
+        await expect(page.locator('.join-row .ui-input')).toHaveCSS('outline-style', 'none')
         await page.keyboard.insertText(nickname)
         await expect(name).toHaveValue(nickname)
         await name.press('Enter')

@@ -159,6 +159,10 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     text-overflow: ellipsis;
 }
 
+.chat-history:focus {
+    outline: none;
+}
+
 .chat-history__entries {
     min-block-size: 0;
     overflow: auto;
