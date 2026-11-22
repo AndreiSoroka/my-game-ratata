@@ -33,36 +33,7 @@ export function characterFixture(
             energy: { kind: 'percent', percent: 100, hasCapacity: true },
             mana: { kind: 'percent', percent: 100, hasCapacity: true },
         },
-        resourceChecks: {
-            abilities: {
-                wide_swing: 'ready',
-                circular_swing: 'ready',
-                lunge: 'ready',
-                pommel_strike: 'ready',
-                defensive_stance: 'ready',
-                spark: 'ready',
-                barrier: 'ready',
-                shot: 'ready',
-                skeleton_strike: 'ready',
-                fireball: 'ready',
-                greater_fireball: 'ready',
-            },
-            prayers: Object.fromEntries(
-                prayerAbilityIds.map((id) => [
-                    id,
-                    {
-                        restore: 'ready',
-                        revive: 'ready',
-                        harm: 'ready',
-                        devotion: 'ready',
-                        purify_grave: 'ready',
-                    },
-                ])
-            ) as NonNullable<CharacterSnapshot['resourceChecks']>['prayers'],
-            dash: 'ready',
-            sow: 'ready',
-            steal: 'ready',
-        },
+        resourceChecks: readyResources(),
         stats: {
             moveSpeed: 110,
             minDamage: 1,
@@ -82,6 +53,43 @@ export function characterFixture(
             accusations: [],
         },
         ...overrides,
+    }
+}
+
+function readyResources(): NonNullable<CharacterSnapshot['resourceChecks']> {
+    return {
+        abilities: {
+            wide_swing: 'ready',
+            circular_swing: 'ready',
+            lunge: 'ready',
+            pommel_strike: 'ready',
+            defensive_stance: 'ready',
+            spark: 'ready',
+            barrier: 'ready',
+            shot: 'ready',
+            skeleton_strike: 'ready',
+            fireball: 'ready',
+            greater_fireball: 'ready',
+            chains: 'ready',
+            blink: 'ready',
+            dispel_magic: 'ready',
+            city_portal: 'ready',
+        },
+        prayers: Object.fromEntries(
+            prayerAbilityIds.map((id) => [
+                id,
+                {
+                    restore: 'ready',
+                    revive: 'ready',
+                    harm: 'ready',
+                    devotion: 'ready',
+                    purify_grave: 'ready',
+                },
+            ])
+        ) as NonNullable<CharacterSnapshot['resourceChecks']>['prayers'],
+        dash: 'ready',
+        sow: 'ready',
+        steal: 'ready',
     }
 }
 

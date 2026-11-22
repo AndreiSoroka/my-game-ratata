@@ -422,7 +422,7 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(141)
+        expect(fullConstellationCatalog).toHaveLength(153)
         expect(minimumConstellationLevel('prayer.harm')).toBe(1)
         expect(minimumConstellationLevel('prayer.harm1')).toBe(6)
         expect(minimumConstellationLevel('prayer.harm2')).toBe(12)
@@ -464,19 +464,22 @@ describe('all required star conditions', () => {
         expect(state.credits.prayer).toBe(0)
     })
     it('grants learned abilities separately from level slots', () => {
-        const actor = abilityHero('ranger')
-        actor.abilities.known.add('pray')
-        actor.abilities.known.add('fireball')
-        actor.progression.masteries.prayer.level = 4
-        actor.progression.masteries.magic.level = 9
-        syncAbilityConstellations(actor)
-        expect(hasStar(actor, 'prayer.revive')).toBe(false)
-        expect(actor.abilities.known.has('greater_fireball')).toBe(false)
-        actor.progression.masteries.prayer.level = 5
-        actor.progression.masteries.magic.level = 10
-        syncAbilityConstellations(actor)
-        expect(hasStar(actor, 'prayer.revive')).toBe(true)
-        expect(actor.abilities.known.has('greater_fireball')).toBe(true)
-        expect(actor.progression.constellations.credits.magic).toBe(0)
+        const believer = abilityHero('ranger')
+        const mage = abilityHero('arcanist')
+        believer.abilities.known.add('pray')
+        mage.abilities.known.add('fireball')
+        believer.progression.masteries.prayer.level = 4
+        mage.progression.masteries.magic.level = 9
+        syncAbilityConstellations(believer)
+        syncAbilityConstellations(mage)
+        expect(hasStar(believer, 'prayer.revive')).toBe(false)
+        expect(mage.abilities.known.has('greater_fireball')).toBe(false)
+        believer.progression.masteries.prayer.level = 5
+        mage.progression.masteries.magic.level = 10
+        syncAbilityConstellations(believer)
+        syncAbilityConstellations(mage)
+        expect(hasStar(believer, 'prayer.revive')).toBe(true)
+        expect(mage.abilities.known.has('greater_fireball')).toBe(true)
+        expect(mage.progression.constellations.credits.magic).toBe(0)
     })
 })

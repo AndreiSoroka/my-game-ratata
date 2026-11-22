@@ -86,6 +86,18 @@ export const abilityDecisionSchemas = [
     },
     {
         type: 'object',
+        required: ['type'],
+        additionalProperties: false,
+        properties: { type: { const: 'cancel_magic' } },
+    },
+    {
+        type: 'object',
+        required: ['type', 'endpointId'],
+        additionalProperties: false,
+        properties: { type: { const: 'use_portal' }, endpointId: targetId },
+    },
+    {
+        type: 'object',
         required: ['type', 'abilityId', 'target'],
         additionalProperties: false,
         properties: {
@@ -127,7 +139,24 @@ export const abilityDecisionSchemas = [
         additionalProperties: false,
         properties: {
             type: { const: 'use_ability' },
-            abilityId: { const: 'barrier' },
+            abilityId: {
+                enum: [
+                    'barrier',
+                    'chains',
+                    'blink',
+                    'dispel_magic',
+                    'city_portal',
+                ],
+            },
+        },
+    },
+    {
+        type: 'object',
+        required: ['type', 'abilityId'],
+        additionalProperties: false,
+        properties: {
+            type: { const: 'use_ability' },
+            abilityId: { enum: ['fireball', 'greater_fireball'] },
         },
     },
     ...prayerAbilities.map((abilityId) => ({

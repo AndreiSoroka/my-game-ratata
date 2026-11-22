@@ -81,7 +81,16 @@ describe('standalone actions own only their complete applicable build', () => {
             nonPrayer
                 .filter((node) => node.effectType === 'active')
                 .map((node) => node.activationAbilityId)
-        ).toEqual(['shot', ...bladeAbilityIds, 'fireball', 'greater_fireball'])
+        ).toEqual([
+            'shot',
+            ...bladeAbilityIds,
+            'chains',
+            'blink',
+            'dispel_magic',
+            'city_portal',
+            'fireball',
+            'greater_fireball',
+        ])
         for (const node of nonPrayer.filter((entry) => entry.effectType === 'active')) {
             const result = describeConstellationBuild(node.id, all)
             expect(result.effectType).toBe('active')
@@ -115,19 +124,20 @@ describe('standalone actions own only their complete applicable build', () => {
     })
     it('calculates each fireball independently with its own base power and the learned heat modifier', () => {
         expect(values('magic.fireball', all, { tileWidth: 16 })).toEqual({
-            'Урон Огненного шара': '9 HP',
-            'Множитель урона Огненного шара': '×1,1',
-            'Дальность Огненного шара': '10 клеток',
-            'Цена заклинания, MP': '12',
+            'Урон Огненной стрелы': '11–44 HP',
+            'Множитель урона Огненной стрелы': '×1,1',
+            'Дальность Огненной стрелы': '10 клеток',
+            'Радиус взрыва, кл.': '4',
+            'Цена заклинания, MP': '6',
             'Подготовка заклинания, мс': '400',
-            'Кулдаун заклинания, мс': '1000',
+            'Кулдаун заклинания, мс': '5000',
         })
-        expect(values('magic.greater_fireball')['Урон Большого огненного шара']).toBe('20 HP')
+        expect(values('magic.greater_fireball')['Урон Большого огненного шара']).toBe('55–132 HP')
         expect(
             values('magic.fireball', new Set(['magic.root', 'magic.fireball']))[
-                'Урон Огненного шара'
+                'Урон Огненной стрелы'
             ]
-        ).toBe('8 HP')
+        ).toBe('10–40 HP')
         expect(describeConstellationBuild('magic.fireball', all).effects?.join(' ')).toContain(
             'следующий Выстрел на 10%'
         )

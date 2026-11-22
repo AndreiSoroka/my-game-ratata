@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import {
     ABILITY_DEFINITIONS,
+    canLearnDiscipline,
     type CharacterSnapshot,
     type ClientMessage,
     type ConstellationId,
+    isArcaneAbility,
     isPrayerAbility,
     type LearnAbilityId,
     PRAYER_SCHOOL_DEFINITIONS,
@@ -37,9 +39,13 @@ const known = computed(() =>
     (props.player.abilities?.known ?? []).filter(
         (id) =>
             !props.constellationId ||
+            (props.constellationId === 'magic' && isArcaneAbility(id)) ||
             learnable.value.includes(id as LearnAbilityId) ||
             (props.constellationId === 'prayer' && id === 'pray_woven')
     )
+)
+const canLearnMagic = computed(() =>
+    canLearnDiscipline(props.player.abilities?.known ?? [], 'magic')
 )
 function teacher(ability: LearnAbilityId): CharacterSnapshot | undefined {
     return props.characters.find(
@@ -60,8 +66,16 @@ function teaches(actor: CharacterSnapshot, ability: LearnAbilityId): boolean {
     return actor.tags.includes('scholar')
 }
 function learn(abilityId: LearnAbilityId): void {
+    if (isArcaneAbility(abilityId) && !canLearnMagic.value) return
     const target = teacher(abilityId)
     if (target) emit('command', { type: 'learn_ability', abilityId, targetId: target.id })
+}
+function manaPrice(id: Parameters<typeof abilityUsage>[1]): string {
+    const usage = abilityUsage(props.player, id)
+    if (usage.manaFraction !== undefined && usage.mana === 0) {
+        return `${Math.round(100 * usage.manaFraction)}% максимальной маны`
+    }
+    return `${usage.mana} MP`
 }
 </script>
 <template>
@@ -69,8 +83,8 @@ function learn(abilityId: LearnAbilityId): void {
         <h3>Умения</h3>
         <ul>
             <li v-for="id in known" :key="id">
-                <strong>{{ ABILITY_DEFINITIONS[id].name }}</strong> ·
-                {{ abilityUsage(player, id).mana }} MP · {{ abilityUsage(player, id).energy }} EN ·
+                <strong>{{ ABILITY_DEFINITIONS[id].name }}</strong> · {{ manaPrice(id) }} ·
+                {{ abilityUsage(player, id).energy }} EN ·
                 {{ abilityUsage(player, id).cooldownMs / 1000 }} с
             </li>
         </ul>
@@ -80,7 +94,10 @@ function learn(abilityId: LearnAbilityId): void {
             )"
             :key="id"
         >
-            <GameButton :disabled="!player.alive || !teacher(id)" @click="learn(id)">
+            <GameButton
+                :disabled="!player.alive || !teacher(id) || (isArcaneAbility(id) && !canLearnMagic)"
+                @click="learn(id)"
+            >
                 Изучить: {{ ABILITY_DEFINITIONS[id].name }}</GameButton
             ><small
                 >{{
@@ -91,6 +108,9 @@ function learn(abilityId: LearnAbilityId): void {
                           : 'Учитель: учёный'
                 }}
                 · подойдите ближе</small
+            >
+            <small v-if="isArcaneAbility(id) && !canLearnMagic"
+                >Магию нельзя изучать после молитв.</small
             >
         </div>
     </section>

@@ -6,6 +6,7 @@ import type {
 
 import type { AbilityContext } from '../src/game/abilityContext'
 import { GameCharacter } from '../src/game/character'
+import { magicCombatFor } from '../src/game/magicState'
 import { NavigationService } from '../src/game/navigation'
 let serial = 0
 export function abilityHero(
@@ -43,4 +44,14 @@ export function abilityContext(
             solidLayerNames: [],
         }),
     }
+}
+
+export function resolveTestSpells(
+    actor: GameCharacter,
+    context: AbilityContext,
+    now = context.now + 1000
+) {
+    return (
+        magicCombatFor(actor)?.advance(now, () => ({ ...context, now })) ?? []
+    )
 }

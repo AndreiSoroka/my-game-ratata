@@ -1,4 +1,5 @@
 import {
+    ABILITY_DEFINITIONS,
     type AbilityId,
     type ConstellationId,
     ROAD_PRAYER_RULES,
@@ -110,8 +111,8 @@ const explicitAbilities = [
         'magic.fireball',
         'magic',
         'ability',
-        'Огненный шар',
-        'Вы бросаете огненный шар в выбранную цель.',
+        ABILITY_DEFINITIONS.fireball.name,
+        'Огненная стрела взрывается в выбранной точке и обжигает всех в области.',
         ['magic.root'],
         'fireball'
     ),
@@ -119,8 +120,8 @@ const explicitAbilities = [
         'magic.greater_fireball',
         'magic',
         'ability',
-        'Большой огненный шар',
-        'Вы обрушиваете на выбранную цель мощный огненный шар.',
+        ABILITY_DEFINITIONS.greater_fireball.name,
+        'Мощный взрыв обжигает всех в области, включая союзников и мага.',
         ['magic.fireball'],
         'greater_fireball'
     ),

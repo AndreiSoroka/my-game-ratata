@@ -19,7 +19,8 @@ import { buildAttackZones, isInZones } from './combatGeometry'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveAbility } from './effectiveParameters'
 import { legalGraveTarget } from './graveCombat'
-import { distance } from './math'
+import { magicBlocksMovement } from './magicState'
+import { distance, facingDirection } from './math'
 import { recordPaidResources } from './resourcePractice'
 
 type Parameters = ReturnType<typeof effectiveAbility>
@@ -67,6 +68,7 @@ function techniqueReady(
     const weapon = resolveCombatWeapon(actor.archetype, actor.equipment.weapon)
     return (
         availableToStartAttack(actor, now) &&
+        (id !== 'lunge' || !magicBlocksMovement(actor, now)) &&
         knowsAbility(actor, id) &&
         weapon.bladeCompatible &&
         !weapon.broken &&
@@ -160,12 +162,4 @@ function reachableTarget(
     return id === 'pommel_strike'
         ? isInZones(target, buildAttackZones(actor, context.tileSize))
         : distance(actor.position, target.position) <= range
-}
-export function facingDirection(facing: 'up' | 'down' | 'left' | 'right') {
-    return {
-        up: { x: 0, y: -1 },
-        down: { x: 0, y: 1 },
-        left: { x: -1, y: 0 },
-        right: { x: 1, y: 0 },
-    }[facing]
 }

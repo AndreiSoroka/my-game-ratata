@@ -8,6 +8,7 @@ export type PlayerEffectKind =
     | PrayerAuraEffectId
     | 'stun'
     | 'barrier'
+    | 'chains'
     | 'defensive-stance'
     | 'blade-combo'
     | 'sneaking'
@@ -28,7 +29,7 @@ export interface PlayerEffectsSnapshot extends Pick<
     CharacterSnapshot,
     'alive' | 'combat' | 'prayerAuraEffects'
 > {
-    abilities?: Pick<NonNullable<CharacterSnapshot['abilities']>, 'barrier'>
+    abilities?: Pick<NonNullable<CharacterSnapshot['abilities']>, 'barrier' | 'rootedUntil'>
     cooldowns: Pick<CharacterSnapshot['cooldowns'], 'stunMsLeft'>
     movement?: Pick<
         NonNullable<CharacterSnapshot['movement']>,
@@ -60,6 +61,7 @@ function livingEffects(
     const effects: PlayerEffect[] = []
     appendTimed(effects, 'stun', cooldowns.stunMsLeft)
     appendTimed(effects, 'barrier', remainingUntil(abilities?.barrier?.expiresAt, serverTime))
+    appendTimed(effects, 'chains', remainingUntil(abilities?.rootedUntil, serverTime))
     if (combat?.defensiveStance) effects.push({ kind: 'defensive-stance' })
 
     appendBladeCombo(effects, combat?.combo, serverTime)

@@ -14,6 +14,7 @@ import { parseExchangeCommand } from './exchangeCommands'
 import { isAdventureCommand, parseExtraCommand } from './extraCommands'
 import { parseClientMessage } from './messages'
 import { parseNpcQuestDecision } from './npcQuestCommands'
+import { parsePortalUse } from './portalCommand'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { isTheftCommandType } from './theftCommands'
 
@@ -168,7 +169,7 @@ function parseSharedDecision(
     if (isInventoryDecisionType(record['type'])) {
         return parseInventoryDecision(record)
     }
-    return parseAgentCapability(record)
+    return parsePortalUse(record) ?? parseAgentCapability(record)
 }
 
 function parseSocialAgentDecision(

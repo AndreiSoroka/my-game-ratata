@@ -1,5 +1,6 @@
 import {
     abilityIds,
+    arcaneAbilityIds,
     archetypeCreatureTypes,
     CENTER_LOCATION_ID,
     creatureTypes,
@@ -156,9 +157,7 @@ function addDoctrineAudiences(
     }
     if (
         actor.tags.has('scholar') ||
-        (['spark', 'barrier', 'fireball', 'greater_fireball'] as const).some(
-            (id) => actor.abilities.known.has(id)
-        )
+        arcaneAbilityIds.some((id) => actor.abilities.known.has(id))
     ) {
         audiences.add('doctrine:magic')
     }

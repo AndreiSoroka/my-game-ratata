@@ -1,5 +1,6 @@
 import {
     ABILITY_DEFINITIONS,
+    type AbilityId,
     type CharacterAutoAction,
     type CharacterSnapshot,
     type ClientMessage,
@@ -26,6 +27,8 @@ import {
 import { attackableTarget } from './combatTargeting'
 import type { HotbarBinding } from './hotbarBindings'
 import type { createGestures } from './hotbarGestures'
+import { activateMagic, isManualMagic, magicActionTooltip, magicUnavailable } from './magicHotbar'
+
 export interface HotbarProps {
     player: CharacterSnapshot
     target?: CharacterSnapshot
@@ -80,7 +83,8 @@ export function objectTargetUnavailable(
     return props.objectTarget &&
         binding &&
         binding.kind !== 'item' &&
-        (binding.kind === 'attack' || !['barrier', 'defensive_stance'].includes(binding.id))
+        (binding.kind === 'attack' ||
+            (!isManualMagic(binding.id) && binding.id !== 'defensive_stance'))
         ? 'Для этой цели используйте F'
         : undefined
 }
@@ -93,24 +97,27 @@ function attackWeaponBroken({ player }: HotbarProps): boolean {
     return resolveCombatWeapon(player.archetype, player.equipment.weapon).broken
 }
 function abilityUnavailable(
-    id: Exclude<import('@my-game-ratata/contracts').AbilityId, PrayerActionId>,
+    id: Exclude<AbilityId, PrayerActionId>,
     props: HotbarProps,
     cooldown: number
 ): string | undefined {
     if (guardActive(id, props)) return undefined
-    const weaponReason = bladeAbilityUnavailable(id, props)
-    if (weaponReason) return weaponReason
-    if (!['barrier', 'defensive_stance'].includes(id) && props.grave?.phase === 'ruined')
-        return 'Могила разрушена'
+    const blocked = bladeAbilityUnavailable(id, props) ?? magicUnavailable(id, props)
+    if (blocked) return blocked
     if (cooldown > 0) return 'Умение восстанавливается'
-    const resources = abilityResourceReason(id, props)
-    if (resources) return resources
-    if (!isBladeAbility(id) && !['barrier', 'shot', 'spark'].includes(id) && !hostileTarget(props))
-        return 'Выберите врага: E'
-    return undefined
+    return abilityResourceReason(id, props) ?? abilityTargetReason(id, props)
+}
+
+function abilityTargetReason(id: AbilityId, props: HotbarProps): string | undefined {
+    return !isBladeAbility(id) &&
+        !isManualMagic(id) &&
+        !['shot', 'spark'].includes(id) &&
+        !hostileTarget(props)
+        ? 'Выберите врага: E'
+        : undefined
 }
 function abilityResourceReason(
-    id: Exclude<import('@my-game-ratata/contracts').AbilityId, PrayerActionId>,
+    id: Exclude<AbilityId, PrayerActionId>,
     props: HotbarProps
 ): string | undefined {
     const check = props.player.resourceChecks?.abilities[id]
@@ -128,11 +135,10 @@ function actionFor(
     return {
         kind: 'ability',
         abilityId: binding.id,
-        ...(binding.id === 'barrier' || binding.id === 'defensive_stance'
-            ? {}
-            : combatAddress(props)),
+        ...(binding.id === 'defensive_stance' ? {} : combatAddress(props)),
     }
 }
+
 function combatAddress(
     props: HotbarProps
 ):
@@ -184,6 +190,7 @@ export function createActivator(
         if (!binding) return
         if (activatePlanting(binding, emit, gestures)) return
         if (activateGuard(binding, known.value, unavailable, gestures, emit)) return
+        if (activateMagic(binding, props, known.value, unavailable, gestures, emit)) return
         if (gestures.repeat(index, binding)) return
         if (binding.kind === 'item') {
             if (!unavailable(binding)) activateFood(food.value, emit, gestures, index)
@@ -267,13 +274,24 @@ function activateFood(
 }
 
 export function actionTooltip(binding: HotbarBinding | null, props: HotbarProps): string {
-    const blade = bladeActionTooltip(binding, props)
-    if (blade) return blade
-    if (binding?.kind === 'ability' && binding.id === 'shot' && !hostileTarget(props))
+    return (
+        bladeActionTooltip(binding, props) ??
+        rangedActionTooltip(binding, props) ??
+        magicActionTooltip(binding, props) ??
+        bindingLabel(binding)
+    )
+}
+
+function rangedActionTooltip(
+    binding: HotbarBinding | null,
+    props: HotbarProps
+): string | undefined {
+    if (binding?.kind !== 'ability' || hostileTarget(props)) return undefined
+    if (binding.id === 'shot')
         return `Выстрел вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'shot').energy} EN`
-    if (binding?.kind === 'ability' && binding.id === 'spark' && !hostileTarget(props))
+    if (binding.id === 'spark')
         return `Искра вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'spark').mana} MP · ${abilityUsage(props.player, 'spark').energy} EN`
-    return bindingLabel(binding)
+    return undefined
 }
 
 function bindingAction(

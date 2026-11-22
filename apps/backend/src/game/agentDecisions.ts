@@ -27,6 +27,7 @@ import { agentSpeech } from './agentSpeech'
 export { parseAgentDecision } from './agentDecisionParsing'
 import type { GameCharacter } from './character'
 import { isAdventureCommand } from './extraCommands'
+import { cancelMagicChannel, cancelMagicForMovement } from './magicState'
 import {
     cancelMovementMode,
     handleMovementCommand,
@@ -67,6 +68,11 @@ export interface CompanionWorld {
     ): boolean
 
     requestPickup?: PickupRequest
+    requestPortalUse?(
+        actor: GameCharacter,
+        endpointId: string,
+        now: number
+    ): GameEventPayload[]
     chestActions?: {
         handleResult?(
             actor: GameCharacter,
@@ -123,10 +129,18 @@ export function applyAgentDecision(
     if (unavailable !== undefined) {
         return rejected(unavailable)
     }
-    const shared = applySharedDecision(character, decision, world, now)
-    if (shared !== undefined) {
-        return shared
-    }
+    return (
+        applySharedDecision(character, decision, world, now) ??
+        applyLocalDecision(character, decision, world, now)
+    )
+}
+
+function applyLocalDecision(
+    character: GameCharacter,
+    decision: AgentDecision,
+    world: CompanionWorld,
+    now: number
+): AgentDecisionResult {
     switch (decision.type) {
         case 'movement_mode':
         case 'dash':
@@ -134,9 +148,10 @@ export function applyAgentDecision(
         case 'move':
             cancelAgentControl(character, world, now)
             character.setMoveInput(decision.axis)
-            return accepted(
-                cancelPrayerForMovement(character, decision.axis, now)
-            )
+            return accepted([
+                ...cancelPrayerForMovement(character, decision.axis, now),
+                ...cancelMagicForMovement(character, decision.axis, now),
+            ])
         case 'move_to':
             return applyAgentRoute(
                 character,
@@ -154,7 +169,10 @@ export function applyAgentDecision(
             cancelMovementMode(character)
             character.setMoveInput({ x: 0, y: 0 })
             character.clearPath()
-            return accepted(cancelPrayerCast(character, now))
+            return accepted([
+                ...cancelPrayerCast(character, now),
+                ...cancelMagicChannel(character, now),
+            ])
         default:
             return rejected('Unsupported agent decision')
     }
@@ -216,6 +234,9 @@ function applySharedDecision(
     world: CompanionWorld,
     now: number
 ): AgentDecisionResult | undefined {
+    if (decision.type === 'use_portal') {
+        return applyAgentPortal(actor, world, decision.endpointId, now)
+    }
     const service = applyServiceDecision(actor, decision, world, now)
     if (service !== undefined) {
         return service
@@ -263,6 +284,19 @@ function applyServiceDecision(
         )
     }
     return undefined
+}
+
+function applyAgentPortal(
+    actor: GameCharacter,
+    world: CompanionWorld,
+    endpointId: string,
+    now: number
+): AgentDecisionResult {
+    const locationId = actor.locationId
+    const events = world.requestPortalUse?.(actor, endpointId, now) ?? []
+    return actor.locationId !== locationId
+        ? accepted(events)
+        : { accepted: false, error: 'Portal is unavailable', events }
 }
 
 function cancelAgentControl(

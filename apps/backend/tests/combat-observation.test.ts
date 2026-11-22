@@ -21,7 +21,6 @@ describe('observer combat information', () => {
         const { observer, target, view } = observationFixture()
         target.hp = target.maxHp * 0.375
         target.abilities.barrier = {
-            remaining: 3.25,
             expiresAt: 5000,
             practiced: false,
         }
@@ -91,7 +90,6 @@ describe('observer combat information', () => {
         expect(observeGraveCombat(grave, view)).not.toHaveProperty('hp')
         observer.exactCombatNumbers = true
         target.abilities.barrier = {
-            remaining: 3.25,
             expiresAt: 5000,
             practiced: false,
         }
@@ -105,7 +103,7 @@ describe('observer combat information', () => {
             current: target.hp,
             max: target.maxHp,
         })
-        expect(snapshot.abilities?.barrier?.remaining).toBe(3.25)
+        expect(snapshot.abilities?.barrier).toEqual({ expiresAt: 5000 })
         expect(snapshot.resources).toEqual(target.snapshot(1000).resources)
         expect(snapshot).not.toHaveProperty('resourceChecks')
         expect(observeGraveCombat(grave, view).health).toEqual({

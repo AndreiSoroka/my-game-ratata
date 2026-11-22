@@ -18,7 +18,7 @@ describe('all non-prayer effect explanations', () => {
             (node) => !node.constellationId.startsWith('prayer')
         )
         const before = JSON.stringify(fullConstellationCatalog)
-        expect(nodes).toHaveLength(92)
+        expect(nodes).toHaveLength(104)
         vi.spyOn(Math, 'random').mockImplementation(() => {
             throw new Error('An explanation must not roll gameplay randomness')
         })
@@ -138,7 +138,7 @@ describe('chance formula boundaries and examples', () => {
         for (const id of ['magic.fireball', 'magic.greater_fireball']) {
             const effect = description(id)
             expect(effect.summary).toContain('100%')
-            expect(effect.summary).toContain('без бросков')
+            expect(effect.summary).toContain('Отдельных бросков на уклонение и крит нет')
             expect(effect.formulaDetails?.[0]?.variables).toContainEqual({
                 symbol: 'K',
                 description: 'Множитель «Жара»: 1.10 при изученной звезде, иначе 1.',

@@ -7,6 +7,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createItemInstance } from '../src/game/inventory'
+import { magicAttackWindingUp } from '../src/game/magicState'
 import { NavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
@@ -162,6 +163,7 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
 
 it('preserves a due spell until the combat tick when another socket attack arrives between ticks', () => {
     const f = fixture('ranger')
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     f.actor.abilities.known.add('spark')
     f.actor.abilities.known.add('fireball')
     f.room.start()
@@ -169,23 +171,18 @@ it('preserves a due spell until the combat tick when another socket attack arriv
         vi.advanceTimersByTime(3)
         const mana = f.actor.mana
         f.send({ type: 'cast_spell', skillId: 'fireball', target })
-        expect(f.actor.mana).toBe(mana - 12)
-        const pending = f.actor.pendingAttack
-        const zones = structuredClone(f.actor.attackZones)
-        expect(pending).toMatchObject({ target, rawDamage: 8, hitAt: 10403 })
+        expect(f.actor.mana).toBe(mana - 15)
+        expect(magicAttackWindingUp(f.actor)).toBe(true)
         vi.advanceTimersByTime(401)
         expect(Date.now()).toBe(10404)
         expect(f.graveHp()).toBe(100)
         const beforeRejected = f.actor.mana
-        const beforeRejectedAttack = structuredClone(f.actor.pendingAttack)
         f.send({ type: 'use_ability', abilityId: 'spark', target })
         expect(f.actor.mana).toBe(beforeRejected)
-        expect(f.actor.pendingAttack).toBe(pending)
-        expect(f.actor.pendingAttack).toEqual(beforeRejectedAttack)
-        expect(f.actor.attackZones).toEqual(zones)
+        expect(magicAttackWindingUp(f.actor)).toBe(true)
         vi.advanceTimersByTime(46)
-        expect(f.graveHp()).toBe(98)
-        expect(f.actor.pendingAttack).toBeUndefined()
+        expect(f.graveHp()).toBe(97.5)
+        expect(magicAttackWindingUp(f.actor)).toBe(false)
         vi.advanceTimersByTime(100)
         expect(f.actor.attackZones).toEqual([])
         const hits = f.messages.filter(
@@ -195,7 +192,7 @@ it('preserves a due spell until the combat tick when another socket attack arriv
         )
         expect(hits).toHaveLength(1)
         expect(hits[0]).toMatchObject({
-            event: { target, amount: 2, abilityId: 'fireball' },
+            event: { target, amount: 2.5, abilityId: 'fireball' },
         })
     } finally {
         f.room.stop()

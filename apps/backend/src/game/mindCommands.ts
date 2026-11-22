@@ -20,9 +20,12 @@ const requests: CompanionRequest[] = [
 export function parseMindCommand(record: Record<string, unknown>): ParseResult {
     const type = record['type']
     if (
-        type === 'use_ability' ||
-        type === 'learn_ability' ||
-        type === 'cancel_prayer'
+        [
+            'use_ability',
+            'learn_ability',
+            'cancel_prayer',
+            'cancel_magic',
+        ].includes(String(type))
     ) {
         const message = parseAbilityCommand(record)
         return message === undefined
@@ -51,8 +54,7 @@ function parseSpell(record: Record<string, unknown>): ParseResult {
     const skillId = record['skillId']
     const reference = parseCombatReference(record)
     return (skillId === 'fireball' || skillId === 'greater_fireball') &&
-        reference !== undefined &&
-        (reference.targetId !== undefined || reference.target !== undefined)
+        reference !== undefined
         ? { message: { type: 'cast_spell', skillId, ...reference } }
         : { error: 'Invalid spell target' }
 }

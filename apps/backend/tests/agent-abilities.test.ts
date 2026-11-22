@@ -258,7 +258,7 @@ it('agent automatic actions use the same authoritative controller and costs as p
     expect(actor.mana).toBe(70)
     expect(snapshotControl(actor).action).toEqual(decision.action)
     advanceCharacterControl(actor, controls, 1000)
-    expect(actor.mana).toBe(58)
+    expect(actor.mana).toBe(66)
     expect(publishEvents).toHaveBeenCalledOnce()
     expect(
         applyAgentDecision(
@@ -270,7 +270,7 @@ it('agent automatic actions use the same authoritative controller and costs as p
     ).toBe(true)
     expect(snapshotControl(actor).mode).toBe('none')
     advanceCharacterControl(actor, controls, 20000)
-    expect(actor.mana).toBe(58)
+    expect(actor.mana).toBe(66)
     expect(
         parseAgentDecision({
             type: 'auto_action',

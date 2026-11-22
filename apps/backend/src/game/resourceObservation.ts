@@ -125,7 +125,12 @@ export function resourceChecks(
                 .filter((id) => !isPrayerAction(id))
                 .map((id) => {
                     const ability = effectiveAbility(character, id)
-                    return [id, check(ability.mana, ability.energy)]
+                    return [
+                        id,
+                        id === 'barrier' && character.mana === ability.mana
+                            ? 'mana'
+                            : check(ability.mana, ability.energy),
+                    ]
                 })
         ) as CharacterResourceChecks['abilities'],
         prayers: Object.fromEntries(

@@ -24,7 +24,16 @@ import type { RatataTestState } from './testInterface'
 export interface AgentTarget {
     key: string
     id: string
-    kind: 'character' | 'world' | 'resource' | 'farm' | 'chest' | 'item' | 'building' | 'grave'
+    kind:
+        | 'character'
+        | 'world'
+        | 'resource'
+        | 'farm'
+        | 'chest'
+        | 'item'
+        | 'building'
+        | 'grave'
+        | 'portal'
     name: string
     position: Vector2
     bounds?: WorldObjectBounds

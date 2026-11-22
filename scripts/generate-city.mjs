@@ -208,6 +208,19 @@ export function addNovogorod(ctx, location) {
         anchors.push(
             cityAnchor(nextId(), `resource.${key}`, ...resourceTiles[index])
         )
+    const portalTiles = []
+    for (const [x, y] of rectangleCells(plan.plaza)) {
+        if (
+            !standingPoint(x, y) ||
+            resourceTiles.some(([px, py]) => Math.hypot(x - px, y - py) < 2) ||
+            portalTiles.some(([px, py]) => Math.hypot(x - px, y - py) < 2)
+        )
+            continue
+        portalTiles.push([x, y])
+        ground(x, y)
+        anchors.push(cityAnchor(nextId(), `portal.${portalTiles.length}`, x, y))
+        if (portalTiles.length === 4) break
+    }
     anchors.push({
         id: nextId(),
         name: 'Площадь Новогорода',

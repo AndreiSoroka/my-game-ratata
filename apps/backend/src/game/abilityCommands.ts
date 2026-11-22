@@ -12,14 +12,16 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
-import { knowsAbility } from './abilityState'
+import { activeBarrier, knowsAbility } from './abilityState'
 import { toggleDefensiveStance } from './bladeStance'
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import { parseCombatReference } from './combatTargetParsing'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveAbility } from './effectiveParameters'
+import { castUtilitySpell } from './magicAbilities'
 import { learnAbility } from './magicLearning'
+import { activeMagicChannel, cancelMagicChannel } from './magicState'
 import { pray } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
@@ -33,38 +35,18 @@ import { castSpell } from './spellCasting'
 export function parseAbilityCommand(
     record: Record<string, unknown>
 ): AbilityClientMessage | undefined {
-    if (record['type'] === 'cancel_prayer') {
-        return Object.keys(record).length === 1
-            ? { type: 'cancel_prayer' }
-            : undefined
+    const type = record['type']
+    if (type === 'cancel_prayer' || type === 'cancel_magic') {
+        return Object.keys(record).length === 1 ? { type } : undefined
     }
     const id = record['abilityId']
     if (typeof id !== 'string' || !abilityIds.includes(id as AbilityId)) {
         return undefined
     }
-    const targetId = record['targetId']
-    if (record['type'] === 'learn_ability') {
-        if (
-            ![
-                'pray',
-                'pray_road',
-                'pray_lantern',
-                'pray_grave',
-                'spark',
-                'barrier',
-                'shot',
-            ].includes(id) ||
-            !validId(targetId)
-        ) {
-            return undefined
-        }
-        return {
-            type: 'learn_ability',
-            abilityId: id as LearnAbilityId,
-            targetId,
-        }
+    if (type === 'learn_ability') {
+        return parseLearnAbility(id, record['targetId'])
     }
-    if (record['type'] !== 'use_ability') {
+    if (type !== 'use_ability') {
         return undefined
     }
     if (isPrayerAction(id)) {
@@ -73,13 +55,41 @@ export function parseAbilityCommand(
             ? undefined
             : { type: 'use_ability', abilityId: id, intent }
     }
+    return parseSpellReference(id as Exclude<AbilityId, PrayerActionId>, record)
+}
+
+function parseLearnAbility(
+    id: string,
+    targetId: unknown
+): AbilityClientMessage | undefined {
+    const learnable: readonly string[] = [
+        'pray',
+        'pray_road',
+        'pray_lantern',
+        'pray_grave',
+        'spark',
+        'barrier',
+        'shot',
+    ]
+    return learnable.includes(id) && validId(targetId)
+        ? { type: 'learn_ability', abilityId: id as LearnAbilityId, targetId }
+        : undefined
+}
+
+function parseSpellReference(
+    id: Exclude<AbilityId, PrayerActionId>,
+    record: Record<string, unknown>
+): AbilityClientMessage | undefined {
     const reference = parseCombatReference(record)
-    if (reference === undefined) {
+    if (
+        reference === undefined ||
+        (utilitySpell(id) && Object.keys(reference).length > 0)
+    ) {
         return undefined
     }
     return {
         type: 'use_ability',
-        abilityId: id as Exclude<AbilityId, PrayerActionId>,
+        abilityId: id,
         ...reference,
     }
 }
@@ -88,6 +98,10 @@ export function handleAbilityCommand(
     message: AbilityClientMessage,
     context: AbilityContext
 ): GameEventPayload[] {
+    if (message.type === 'cancel_magic') {
+        cancelCharacterControl(actor)
+        return cancelMagicChannel(actor, context.now)
+    }
     if (message.type === 'cancel_prayer') {
         cancelCharacterControl(actor)
         return cancelPrayerCast(actor, context.now)
@@ -109,7 +123,14 @@ export function handleAbilityCommand(
     if (id === 'defensive_stance') {
         return toggleDefensiveStance(actor, context.now)
     }
-    if (!canPerformSkillAction(actor, context.now)) {
+    const interruptsChains =
+        id === 'dispel_magic' &&
+        activeMagicChannel(actor, context.now)?.abilityId === 'chains'
+    if (
+        !canPerformSkillAction(actor, context.now, {
+            allowMagicChannel: interruptsChains,
+        })
+    ) {
         return abilityNotice(actor, 'Персонаж не может действовать сейчас.')
     }
     if (context.now < (actor.abilities.availableAt[id] ?? 0)) {
@@ -136,6 +157,9 @@ function executeAbility(
     if (id === 'barrier') {
         return castBarrier(actor, context.now)
     }
+    if (utilitySpell(id)) {
+        return castUtilitySpell(actor, id, context)
+    }
     if (freeAimAttack(id)) {
         return executeAttackAbility(
             actor,
@@ -144,9 +168,6 @@ function executeAbility(
             context,
             message.target
         )
-    }
-    if (message.targetId === undefined && message.target === undefined) {
-        return abilityNotice(actor, 'Сначала выберите цель.')
     }
     if (id === 'fireball' || id === 'greater_fireball') {
         const events = castSpell(
@@ -169,6 +190,9 @@ function executeAbility(
                   actor,
                   'Заклинание недоступно: проверьте цель, ману и восстановление.'
               )
+    }
+    if (message.targetId === undefined && message.target === undefined) {
+        return abilityNotice(actor, 'Сначала выберите цель.')
     }
     return executeAttackAbility(
         actor,
@@ -224,28 +248,24 @@ function executeAttackAbility(
 function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
     const definition = effectiveAbility(actor, 'barrier')
     const modifiers = constellationModifiers(actor)
-    if (actor.mana < definition.mana) {
-        return abilityNotice(actor, 'Для барьера нужно 12 маны.')
+    if (actor.mana <= definition.mana) {
+        return abilityNotice(
+            actor,
+            'Для Барьера нужна мана на создание и поглощение урона.'
+        )
     }
-    if (
-        actor.abilities.barrier !== null &&
-        actor.abilities.barrier.expiresAt > now &&
-        actor.abilities.barrier.remaining > 0
-    ) {
+    if (activeBarrier(actor, now) !== null) {
         return abilityNotice(actor, 'Барьер уже действует.')
     }
     actor.mana -= definition.mana
     actor.abilities.availableAt.barrier = now + definition.cooldownMs
-    const resourceSpend = recordResourceSpend(actor, 'mana', definition.mana)
+    recordResourceSpend(actor, 'mana', definition.mana)
+    const expiresAt =
+        now + BARRIER_RULES.durationMs + modifiers.barrierDurationBonus
     actor.abilities.barrier = {
-        ...(resourceSpend === undefined ? {} : { resourceSpend }),
-        remaining: BARRIER_RULES.absorption + modifiers.barrierAbsorptionBonus,
-        expiresAt:
-            now + BARRIER_RULES.durationMs + modifiers.barrierDurationBonus,
+        expiresAt,
         practiced: false,
     }
-    actor.lockAction(now, definition.windupMs)
-    actor.setAnimation('attack', now, definition.windupMs)
     return [
         {
             kind: 'status',
@@ -253,13 +273,22 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
             targetId: actor.id,
             statusId: 'barrier',
             abilityId: 'barrier',
-            amount: BARRIER_RULES.absorption + modifiers.barrierAbsorptionBonus,
-            expiresAt:
-                now + BARRIER_RULES.durationMs + modifiers.barrierDurationBonus,
+            expiresAt,
         },
     ]
 }
 
 function freeAimAttack(id: AbilityId): boolean {
     return id === 'shot' || id === 'spark' || isBladeAttackAbility(id)
+}
+
+function utilitySpell(
+    id: AbilityId
+): id is import('./magicAbilities').UtilitySpell {
+    return (
+        id === 'chains' ||
+        id === 'city_portal' ||
+        id === 'blink' ||
+        id === 'dispel_magic'
+    )
 }

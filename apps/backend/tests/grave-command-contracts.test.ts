@@ -60,7 +60,7 @@ describe('grave command boundaries shared by players and agents', () => {
         ).toBeUndefined()
         expect(parseAgentDecision(command)).toBeUndefined()
     })
-    it('accepts legacy character commands and an explicit grave spell', () => {
+    it('accepts legacy character commands and explicit grave or forward spells', () => {
         expect(
             parseClientMessage(
                 JSON.stringify({ type: 'attack', targetId: 'enemy' })
@@ -79,7 +79,7 @@ describe('grave command boundaries shared by players and agents', () => {
             parseClientMessage(
                 JSON.stringify({ type: 'cast_spell', skillId: 'fireball' })
             ).message
-        ).toBeUndefined()
+        ).toEqual({ type: 'cast_spell', skillId: 'fireball' })
     })
 })
 

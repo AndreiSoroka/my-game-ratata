@@ -10,9 +10,8 @@ import { type attemptAttack } from './combat'
 import { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { createRoomScavenger } from './mobScavenging'
-import { loadNavigationService, type NavigationService } from './navigation'
+import { loadNavigationService } from './navigation'
 import { seedNpcPockets } from './npcPockets'
-import { bindPrayerAuraEnvironment } from './prayerAuras'
 import { createRoomCombatActions } from './roomAbilities'
 import { decideForRoomAgent } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
@@ -75,12 +74,6 @@ export class GameRoom {
         () => this.npcAi,
         () => this.characters.values()
     )
-    private readonly prayerAuras = {
-        characters: () => this.characters.values(),
-        navigationFor: (locationId: string) =>
-            this.world.get(locationId).navigation,
-        sameParty: this.parties.sameParty.bind(this.parties),
-    }
     private lastTickAt = Date.now()
     private timer: ReturnType<typeof setInterval> | undefined
     private tickIndex = 0
@@ -171,9 +164,6 @@ export class GameRoom {
             locationId
         )
 
-    public readonly refreshPrayerAuraEnvironment = (): void =>
-        bindPrayerAuraEnvironment(this.characters.values(), this.prayerAuras)
-
     public readonly adventureForWorkers = () => this.adventure
     public readonly requestAdventure = roomEconomy.createAdventureRequester(
         () => this.adventure,
@@ -205,12 +195,6 @@ export class GameRoom {
         (events) => this.publishEvents(events)
     )
 
-    public navigationFor(
-        character: Pick<GameCharacter, 'locationId'>
-    ): NavigationService {
-        return this.world.get(character.locationId).navigation
-    }
-
     private readonly connectionsIn = (locationId: string) =>
         roomQueries.connectionsInLocation(
             this.connections,
@@ -227,12 +211,26 @@ export class GameRoom {
         () => this.world,
         () => this.characters,
         (events) => this.publishEvents(events),
-        this.life.graveRules
+        {
+            graves: this.life.graveRules,
+            sameParty: this.parties.sameParty.bind(this.parties),
+            exchangePaused: (actorId) =>
+                this.social.exchanges.isPaused(actorId),
+            closeConversations: (actorId) =>
+                this.adventure.closeConversations(actorId),
+        }
     )
     public readonly requestAttack = this.combat.requestAttack
+    public readonly navigationFor = this.combat.navigationFor
     public readonly requestAbility = this.combat.requestAbility
     public readonly charactersFor = this.combat.charactersFor
     public readonly abilityContextFor = this.combat.contextFor
+    public readonly portalPassageFor = this.combat.portalPassageFor
+    public readonly requestPortalUse = this.combat.requestPortalUse
+    public readonly magicEffectsFor = this.combat.magicEffectsFor
+    public readonly advanceMagicProjectiles =
+        this.combat.advanceMagicProjectiles
+    public readonly refreshPrayerAuraEnvironment = this.combat.bindActors
     public readonly requestControl = createRoomControlRequester(this)
 
     public readonly requestAutomation = roomScenarios.createScenarioRequester(
@@ -250,6 +248,7 @@ export class GameRoom {
             world: this.world,
             life: this.life,
             social: this.social,
+            magicEffects: this.magicEffectsFor,
         }),
         this.scenarios
     )

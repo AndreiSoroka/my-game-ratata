@@ -9,6 +9,7 @@ import { cancelCharacterControl } from './characterControl'
 import { enqueueCharacterRoute } from './characterRoute'
 import { isChestCommand } from './chestCommands'
 import { canWalkDuringPrayer } from './combatMovement'
+import { cancelMagicChannel, cancelMagicForMovement } from './magicState'
 import type { NavigationService } from './navigation'
 import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
 import { faceNearestTarget } from './queries'
@@ -112,8 +113,11 @@ function applyRouteMessage(
             cancelCharacterControl(player)
         }
     )
-    if (result.accepted && !canWalkDuringPrayer(player)) {
-        events.push(...cancelPrayerCast(player, now))
+    if (result.accepted) {
+        if (!canWalkDuringPrayer(player)) {
+            events.push(...cancelPrayerCast(player, now))
+        }
+        events.push(...cancelMagicChannel(player, now))
     }
     events.push(...routeCommandFeedback(player, result))
     if (events.length > 0) {
@@ -126,9 +130,11 @@ function applyMovementInput(
     message: Extract<ClientMessage, { type: 'move_input' }>
 ): void {
     const { player } = context
-    context.sendEvents(
-        cancelPrayerForMovement(player, message.axis, Date.now())
-    )
+    const now = Date.now()
+    context.sendEvents([
+        ...cancelPrayerForMovement(player, message.axis, now),
+        ...cancelMagicForMovement(player, message.axis, now),
+    ])
     if (message.axis.x !== 0 || message.axis.y !== 0) {
         cancelCharacterControl(player)
     }

@@ -14,6 +14,7 @@ export interface CharacterResources {
     bellImages: BellImages
     chestImage: ImageSource
     farmImage: ImageSource
+    fireImage: ImageSource
     itemImages: Map<ItemId, ImageSource>
     loader: Loader
     music: {
@@ -29,6 +30,7 @@ export function createCharacterResources(): CharacterResources {
     const sheets = new Map<CharacterId, SpriteSheet>()
     const sounds = new Map<GameSoundId, Sound>()
     const farmImage = new ImageSource('/game/map/assets/KenneyTinyFarm/tilemap_packed.png')
+    const fireImage = new ImageSource('/game/assets/world/magic/fire-spells.png')
     const chestImage = new ImageSource('/game/map/assets/MysticWoods/objects/chest_01.png')
     const bellImages: BellImages = {
         states: {
@@ -67,12 +69,14 @@ export function createCharacterResources(): CharacterResources {
         bellImages,
         chestImage,
         farmImage,
+        fireImage,
         itemImages,
         loader: new Loader([
             ...images.values(),
             ...itemImages.values(),
             chestImage,
             farmImage,
+            fireImage,
             ...Object.values(bellImages.states),
             ...bellImages.swing,
             ...sounds.values(),

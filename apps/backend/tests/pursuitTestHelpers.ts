@@ -9,7 +9,10 @@ import { attemptAttack, resolvePendingAttackHit } from '../src/game/combat'
 import { Mob1Controller } from '../src/game/controllers'
 import { advanceCharacter } from '../src/game/movement'
 import { NavigationService } from '../src/game/navigation'
-import { rememberPursuitExit } from '../src/game/pursuitTravel'
+import {
+    rememberPursuitExit,
+    rememberPursuitPortal,
+} from '../src/game/pursuitTravel'
 import { findVisibleTarget } from '../src/game/queries'
 import type { GameRoom } from '../src/game/room'
 import { WorldLocations } from '../src/game/worldLocations'
@@ -85,6 +88,7 @@ export function pursuitFixture(
             ),
         navigationFor: (character: GameCharacter) =>
             world.get(character.locationId).navigation,
+        ...portalRequests(world, characters),
         findVisibleTarget: (observer: GameCharacter, radius: number) =>
             findVisibleTarget(
                 characters,
@@ -128,6 +132,23 @@ export function pursuitFixture(
         step,
         now: () => now,
         move,
+    }
+}
+
+function portalRequests(world: WorldLocations, characters: GameCharacter[]) {
+    return {
+        portalPassageFor: (character: GameCharacter, id: string, at: number) =>
+            world.portals.passage(id, character.locationId, at),
+        requestPortalUse: (character: GameCharacter, id: string, at: number) =>
+            world.usePortal(character, id, at, (passage) =>
+                rememberPursuitPortal(
+                    character,
+                    passage,
+                    characters,
+                    world.get(character.locationId).navigation,
+                    at
+                )
+            ),
     }
 }
 

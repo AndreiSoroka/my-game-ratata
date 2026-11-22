@@ -2,6 +2,8 @@
 import './knowledgeWindow.css'
 
 import {
+    ABILITY_DEFINITIONS,
+    canLearnDiscipline,
     type CharacterSnapshot,
     type ClientMessage,
     type ConstellationId,
@@ -33,6 +35,9 @@ const masteries = computed(() =>
 )
 const magicLevel = computed(
     () => props.player.progression?.masteries.find((entry) => entry.id === 'magic')?.level ?? 0
+)
+const canLearnMagic = computed(() =>
+    canLearnDiscipline(props.player.abilities?.known ?? [], 'magic')
 )
 const teacher = computed(() =>
     props.characters.find(
@@ -89,7 +94,7 @@ function cast(skillId: SpellSkillId): void {
     if (target.value) emit('command', { type: 'cast_spell', skillId, targetId: target.value.id })
 }
 function learnFireball(): void {
-    if (teacher.value)
+    if (teacher.value && canLearnMagic.value)
         emit('command', { type: 'learn_skill', skillId: 'fireball', targetId: teacher.value.id })
 }
 </script>
@@ -161,17 +166,19 @@ function learnFireball(): void {
                 />
                 <div v-if="!player.abilities?.known.includes('fireball')" class="knowledge-action">
                     <GameButton
-                        :disabled="!player.alive || !teacher || magicLevel < 3"
+                        :disabled="!player.alive || !teacher || !canLearnMagic || magicLevel < 3"
                         @click="learnFireball"
                     >
-                        Изучить огненный шар
+                        Изучить огненную стрелу
                     </GameButton>
                     <small>{{
-                        magicLevel < 3
-                            ? 'Требуется Магия 3.'
-                            : teacher
-                              ? `Учитель: ${teacher.nickname}`
-                              : 'Подойдите к учёному.'
+                        !canLearnMagic
+                            ? 'Магию нельзя изучать после молитв.'
+                            : magicLevel < 3
+                              ? 'Требуется Магия 3.'
+                              : teacher
+                                ? `Учитель: ${teacher.nickname}`
+                                : 'Подойдите к учёному.'
                     }}</small>
                 </div>
                 <div v-if="knownSpells.length" class="knowledge-target">
@@ -189,8 +196,7 @@ function learnFireball(): void {
                 </div>
                 <div v-for="id in knownSpells" :key="id" class="knowledge-action">
                     <GameButton :disabled="!canCast(id)" @click="cast(id)">
-                        {{ id === 'fireball' ? 'Огненный шар' : 'Большой огненный шар' }} ·
-                        {{ abilityUsage(player, id).mana }} MP
+                        {{ ABILITY_DEFINITIONS[id].name }} · {{ abilityUsage(player, id).mana }} MP
                     </GameButton>
                 </div>
             </template>

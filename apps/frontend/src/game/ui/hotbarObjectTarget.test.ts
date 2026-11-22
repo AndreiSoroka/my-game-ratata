@@ -85,3 +85,28 @@ it('still permits self barrier, real food consumption and planting while an obje
         wrapper.unmount()
     }
 })
+
+it('casts fire at a friendly selection or forward and never turns two casts into repetition', async () => {
+    const player = characterFixture('fire-caster', {
+        abilities: { known: ['fireball'], cooldowns: {}, casting: null, barrier: null },
+    })
+    const friend = characterFixture('friend')
+    const wrapper = mount(ActionHotbar, {
+        props: { player, characters: [player, friend], target: friend, blocked: false },
+    })
+    try {
+        await wrapper.vm.edit(1)
+        await wrapper.get('.hotbar-picker button').trigger('click')
+        wrapper.vm.activate(1)
+        wrapper.vm.activate(1)
+        await wrapper.setProps({ target: undefined })
+        wrapper.vm.activate(1)
+        expect(wrapper.emitted('command')).toEqual([
+            [{ type: 'use_ability', abilityId: 'fireball', targetId: friend.id }],
+            [{ type: 'use_ability', abilityId: 'fireball', targetId: friend.id }],
+            [{ type: 'use_ability', abilityId: 'fireball' }],
+        ])
+    } finally {
+        wrapper.unmount()
+    }
+})

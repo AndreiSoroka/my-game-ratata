@@ -11,7 +11,7 @@ type CombatAction = Exclude<
 >
 
 import type { AbilityContext } from './abilityContext'
-import { knowsAbility } from './abilityState'
+import { activeBarrier, knowsAbility } from './abilityState'
 import { resolvedActionCosts } from './autoActionCosts'
 import {
     availableActor,
@@ -30,6 +30,7 @@ import { availableToAttack, isTargetInAttackRange } from './combat'
 import { buildAbilityAttackZones, isInZones } from './combatGeometry'
 import { canAttackCharacter } from './combatTargets'
 import { effectiveAbility } from './effectiveParameters'
+import { activeMagicChannel } from './magicState'
 import { distance } from './math'
 import { planMotherPrayer } from './motherPrayerPlan'
 import { prayerHarmTargets } from './prayerContext'
@@ -84,7 +85,7 @@ export function autoActionStatus(
     if (!hasResources(actor, action, context)) {
         return 'resources'
     }
-    if (activeBarrier(actor, action, context.now)) {
+    if (isBarrierAction(action) && activeBarrier(actor, context.now) !== null) {
         return 'cooldown'
     }
     return 'ready'
@@ -96,6 +97,7 @@ function pendingAction(
 ): boolean {
     return (
         actor.abilities.casting !== null ||
+        activeMagicChannel(actor, now) !== undefined ||
         actor.isActionLocked(now) ||
         (action.kind === 'attack' &&
             action.once === true &&
@@ -111,7 +113,13 @@ function hasResources(
         return true
     }
     const costs = resolvedActionCosts(actor, action, context)
+    if (isBarrierAction(action)) {
+        return actor.mana > costs.mana
+    }
     return actor.mana >= costs.mana && actor.energy >= costs.energy
+}
+function isBarrierAction(action: CombatAction): boolean {
+    return action.kind === 'ability' && action.abilityId === 'barrier'
 }
 function legalAutoTarget(
     actor: GameCharacter,
@@ -263,19 +271,5 @@ function available(
         action.kind === 'prayer'
             ? (action.abilityId ?? 'pray')
             : action.abilityId
-    )
-}
-function activeBarrier(
-    actor: GameCharacter,
-    action: CombatAction,
-    now: number
-): boolean {
-    const barrier = actor.abilities.barrier
-    return (
-        action.kind === 'ability' &&
-        action.abilityId === 'barrier' &&
-        barrier !== null &&
-        barrier.expiresAt > now &&
-        barrier.remaining > 0
     )
 }

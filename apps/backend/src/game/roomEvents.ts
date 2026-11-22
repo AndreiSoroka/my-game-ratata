@@ -49,10 +49,9 @@ export function publishRoomEvents(
     const partyEvents = parties.observe(events, (id) => characters.get(id))
     for (const event of [...events, ...partyEvents]) {
         stampSpeechEvent(event, characters.get(event.actorId ?? ''))
-        const actor = characters.get(event.actorId ?? event.targetId ?? '')
         const recipients =
             event.audienceIds === undefined
-                ? socketsIn(actor?.locationId ?? centerLocationId)
+                ? socketsIn(eventLocation(event, characters))
                 : connections.keys()
         deliverObservedEvent(
             event,
@@ -66,6 +65,17 @@ export function publishRoomEvents(
     if (world !== undefined) {
         rememberRoomSpeech([...events, ...partyEvents], characters, world)
     }
+}
+
+function eventLocation(
+    event: GameEventPayload,
+    characters: ReadonlyMap<string, GameCharacter>
+): string {
+    return (
+        event.locationId ??
+        characters.get(event.actorId ?? event.targetId ?? '')?.locationId ??
+        centerLocationId
+    )
 }
 function rememberRoomSpeech(
     events: GameEventPayload[],

@@ -13,7 +13,11 @@ import {
 } from '../src/game/constellations'
 import { createItemInstance } from '../src/game/inventory'
 import { castSpell } from '../src/game/spellCasting'
-import { abilityContext, abilityHero } from './abilityTestHelpers'
+import {
+    abilityContext,
+    abilityHero,
+    resolveTestSpells,
+} from './abilityTestHelpers'
 import { theftFixture } from './theftFixtures'
 
 const pending: PendingAttackHit = {
@@ -114,7 +118,7 @@ describe('debug skill effect examples agree with authoritative rules', () => {
     )
 
     it.each(['fireball', 'greater_fireball'] as const)(
-        'does not dodge or critically multiply a direct %s',
+        'does not dodge or critically multiply a %s blast',
         (skillId) => {
             const actor = abilityHero('arcanist')
             const target = abilityHero('vanguard')
@@ -127,14 +131,16 @@ describe('debug skill effect examples agree with authoritative rules', () => {
                 faction: 'monsters',
                 hp: 200,
                 maxHp: 200,
-                position: { x: 100, y: 132 },
+                position: { x: 100, y: 220 },
             })
-            const base = skillId === 'fireball' ? 8 : 18
-            const events = castSpell(
+            const base = skillId === 'fireball' ? 10 : 50
+            const context = abilityContext([actor, target], 1000, () => 0)
+            castSpell(
                 actor,
                 { type: 'cast_spell', skillId, targetId: target.id },
-                abilityContext([actor, target], 1000, () => 0)
+                context
             )
+            const events = resolveTestSpells(actor, context)
             expect(events).toContainEqual(
                 expect.objectContaining({
                     kind: 'damage',

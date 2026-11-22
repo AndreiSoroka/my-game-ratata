@@ -2,6 +2,15 @@ import type { CharacterFacing, Vector2 } from '@my-game-ratata/contracts'
 
 export const zeroVector = (): Vector2 => ({ x: 0, y: 0 })
 
+export function facingDirection(facing: CharacterFacing): Vector2 {
+    return {
+        up: { x: 0, y: -1 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 },
+        right: { x: 1, y: 0 },
+    }[facing]
+}
+
 export function distance(a: Vector2, b: Vector2): number {
     return Math.hypot(a.x - b.x, a.y - b.y)
 }

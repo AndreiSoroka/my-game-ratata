@@ -14,6 +14,14 @@ export interface ObservedExit {
     direction: Vector2
     expiresAt: number
 }
+export interface ObservedPortal {
+    from: string
+    to: string
+    edge: Vector2
+    endpointId: string
+    returnEndpointId: string
+    expiresAt: number
+}
 export interface PursuitState {
     phase: 'chase' | 'return'
     targetId: string
@@ -22,12 +30,12 @@ export interface PursuitState {
     lastSeenAt: number
     lastPlanAt: number
     sightRadius: number
-    crossing?: ObservedExit
+    crossing?: ObservedExit | ObservedPortal
     foreign?: {
         locationId: string
         entry: Vector2
         until: number
-        exit: ObservedExit
+        exit: ObservedExit | ObservedPortal
     }
 }
 export const pursuits = new WeakMap<GameCharacter, PursuitState>()

@@ -1,5 +1,6 @@
 import { ABILITY_DEFINITIONS, type HeroClass, MASTERY_NAMES } from '@my-game-ratata/contracts'
 
+import { magicLevelAbilities } from '../../../../backend/src/game/constellationMagicStars'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import { minimumConstellationLevel } from '../../../../backend/src/game/constellationRequirements'
 import { constellationBuildParents } from './constellationMasteryPlan'
@@ -34,8 +35,9 @@ const evidenceNames: Record<string, string> = {
     swordsmanship: 'удары клинком',
     arcana: 'полезные заклинания',
     barrier: 'поглощение вражеского урона',
-    fireball: 'попадания Огненным шаром',
+    fireball: 'попадания Огненной стрелой',
     greater_fireball: 'попадания Большим огненным шаром',
+    chains: 'полезные Оковы',
     marksmanship: 'попадания стрелой',
     gift: 'полезное лечение',
     harm: 'урон Кары',
@@ -100,8 +102,10 @@ function acquisitionConditions(
         ]
     if (nodeId === 'magic.greater_fireball')
         return [
-            'Открывается автоматически после освоения Огненного шара и достижения требуемого уровня Магии.',
+            'Открывается автоматически после освоения Огненной стрелы и достижения требуемого уровня Магии.',
         ]
+    if (magicLevelAbilities.some(([ability]) => nodeId === `magic.${ability}`))
+        return ['Открывается автоматически при достижении требуемого уровня Магии.']
     if (eventConditions[nodeId]) return [...eventConditions[nodeId]!]
     return [
         'Есть накопленное открытие. Все условия обязательны: только после их выполнения звезда входит в случайный пул. Если подходящих звёзд нет, открытие сохраняется.',

@@ -1,29 +1,22 @@
-import type {
-    GameEventPayload,
-    Vector2,
-    WorldSnapshot,
-} from '@my-game-ratata/contracts'
-import { getWorldLocationDefinition } from '@my-game-ratata/contracts'
+import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import {
-    advanceCharacterControl,
-    rememberObservedCrossing,
-} from './characterControl'
+import { advanceCharacterControl } from './characterControl'
 import { resolvePendingAttackHit } from './combat'
-import { canWalkDuringPrayer } from './combatMovement'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { recordMovementNoise } from './hearing'
+import { advanceMagicChannel } from './magicAbilities'
+import { magicChannelFor } from './magicState'
 import { advanceCharacter } from './movement'
 import type { PartyService } from './parties'
 import { validatePrayerChannel } from './prayer'
-import { rememberPursuitExit } from './pursuitTravel'
 import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
 import { type RoomSocket, send } from './roomMessaging'
+import { characterMovementIntent, travelRoomCharacter } from './roomTravel'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
 import { pauseWorkerActivity } from './workerActivityState'
@@ -54,6 +47,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, room, now, onEvents } = context
     room.social.update(now, characters.values())
     room.refreshPrayerAuraEnvironment()
+    context.world.portals.expire(now)
     context.parties.update(characters.values(), now)
     room.workerRequests.reconcile(characters, now)
     room.adventureForWorkers().update(
@@ -74,6 +68,12 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             reacting.has(actor.id) ||
             room.findVisibleTarget(actor, 240, now) !== undefined
     )
+    for (const character of characters.values()) {
+        if (magicChannelFor(character) !== undefined) {
+            const abilityContext = room.abilityContextFor(character, now)
+            context.onEvents(advanceMagicChannel(character, abilityContext))
+        }
+    }
     advanceControllers(context, reacting, conversations)
     const roadRecovery = trackRoadPrayerRecovery(characters.values(), onEvents)
     for (const character of characters.values()) {
@@ -100,6 +100,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     for (const character of characters.values()) {
         resolveWorldAttack(character, context)
     }
+    context.onEvents(room.advanceMagicProjectiles(now))
     context.life.advance(now, (actor, at) => room.abilityContextFor(actor, at))
     room.refreshPrayerAuraEnvironment()
     context.world.updateChestViews(characters, now)
@@ -166,7 +167,7 @@ function advanceWorldCharacter(
     onEnergyRegen?: Parameters<typeof advanceCharacter>[0]['onEnergyRegen']
 ): void {
     const { now, deltaMs, world, onEvents } = context
-    const intent = movementIntent(character, now, deltaMs)
+    const intent = characterMovementIntent(character, now, deltaMs)
     const before = { ...character.position }
     const navigation = world.get(character.locationId).navigation
     const event = advanceCharacter({
@@ -195,71 +196,16 @@ function advanceWorldCharacter(
             now
         )
     )
-    if (
-        !character.alive ||
-        character.tags.has('offline') ||
-        (character.isActionLocked(now) && !canWalkDuringPrayer(character)) ||
-        character.stunUntil > now
-    ) {
-        return
-    }
-    const from = character.locationId
-    const edge = { ...character.position }
-    const notice = world.travel(character, intent, now)
-    if (from !== character.locationId) {
-        const previous = getWorldLocationDefinition(from)
-        const next = getWorldLocationDefinition(character.locationId)
-        if (previous !== undefined && next !== undefined) {
-            rememberPursuitExit(
-                character,
-                from,
-                edge,
-                {
-                    x: next.column - previous.column,
-                    y: next.row - previous.row,
-                },
-                context.characters.values(),
-                navigation,
-                now
-            )
-            rememberObservedCrossing(
-                character,
-                from,
-                edge,
-                {
-                    x: next.column - previous.column,
-                    y: next.row - previous.row,
-                },
-                context.characters.values(),
-                navigation,
-                now
-            )
-        }
-    }
+    const notice = travelRoomCharacter(
+        character,
+        intent,
+        world,
+        context.characters,
+        now
+    )
     if (notice !== undefined) {
         sendTravelNotice(character, notice, context)
     }
-}
-
-function movementIntent(
-    character: GameCharacter,
-    now: number,
-    deltaMs: number
-): Vector2 {
-    if (
-        character.movement.dashUntil > now - deltaMs &&
-        character.movement.dashStartedAt < now
-    ) {
-        return character.movement.dashDirection
-    }
-    const input = character.getMoveInput()
-    const point = character.nextPathPoint()
-    return input.x !== 0 || input.y !== 0 || point === undefined
-        ? input
-        : {
-              x: point.x - character.position.x,
-              y: point.y - character.position.y,
-          }
 }
 
 function sendTravelNotice(

@@ -21,7 +21,8 @@ export function isAgentAbility(
     return (
         decision.type === 'use_ability' ||
         decision.type === 'learn_ability' ||
-        decision.type === 'cancel_prayer'
+        decision.type === 'cancel_prayer' ||
+        decision.type === 'cancel_magic'
     )
 }
 export function isAgentControl(
@@ -40,7 +41,8 @@ export function parseAgentCapability(
     if (
         record['type'] === 'use_ability' ||
         record['type'] === 'learn_ability' ||
-        record['type'] === 'cancel_prayer'
+        record['type'] === 'cancel_prayer' ||
+        record['type'] === 'cancel_magic'
     ) {
         return parseAbilityCommand(record)
     }
@@ -58,13 +60,10 @@ export function applyAgentAbility(
     world: CompanionWorld,
     now: number
 ): AgentDecisionResult {
-    if (message.type === 'cancel_prayer') {
-        return cancelAgentPrayer(actor, message, world, now)
+    if (message.type === 'cancel_prayer' || message.type === 'cancel_magic') {
+        return cancelAgentChannel(actor, message, world, now)
     }
-    if (
-        !canPerformSkillAction(actor, now) &&
-        !canLeaveGuard(actor, message, now)
-    ) {
+    if (!canStartAgentAbility(actor, message, now)) {
         return rejected(
             'Ability unavailable while dead, offline, stunned or busy'
         )
@@ -91,6 +90,23 @@ export function applyAgentAbility(
     return performed
         ? { accepted: true, error: null, events }
         : rejectionWithEvents(events)
+}
+
+function canStartAgentAbility(
+    actor: GameCharacter,
+    message: Exclude<
+        AbilityClientMessage,
+        { type: 'cancel_magic' | 'cancel_prayer' }
+    >,
+    now: number
+): boolean {
+    return (
+        canPerformSkillAction(actor, now, {
+            allowMagicChannel:
+                message.type === 'use_ability' &&
+                message.abilityId === 'dispel_magic',
+        }) || canLeaveGuard(actor, message, now)
+    )
 }
 export function applyAgentControl(
     actor: GameCharacter,
@@ -144,8 +160,9 @@ function abilityCanHarm(
 ): boolean {
     if (
         message.type !== 'use_ability' ||
-        message.abilityId === 'barrier' ||
-        message.abilityId === 'defensive_stance'
+        ['barrier', 'blink', 'city_portal', 'defensive_stance'].includes(
+            message.abilityId
+        )
     ) {
         return false
     }
@@ -176,7 +193,7 @@ function abilityCanHarm(
         )?.targets.some((target) => target.kind === 'harm') ?? false
     )
 }
-function cancelAgentPrayer(
+function cancelAgentChannel(
     actor: GameCharacter,
     message: AbilityClientMessage,
     world: CompanionWorld,

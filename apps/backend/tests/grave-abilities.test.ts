@@ -10,6 +10,7 @@ import {
     resolvePendingAttackHit,
 } from '../src/game/combat'
 import { createItemInstance } from '../src/game/inventory'
+import { magicAttackWindingUp } from '../src/game/magicState'
 import { advanceCharacter } from '../src/game/movement'
 import { castSpell } from '../src/game/spellCasting'
 import { graveCombatFixture } from './graveCombatFixture'
@@ -117,9 +118,10 @@ it('uses arcane stone resistance and normal costs for Spark after its own windup
     expect(f.actor.progression.masteries).toEqual(masteries)
 })
 it.each(['fireball', 'greater_fireball'] as const)(
-    'resolves %s on the pinned grave after the ordinary cast lock, with no practice',
+    'resolves %s on the pinned grave after the windup and flight, with no practice',
     (id) => {
         const f = graveCombatFixture('arcanist')
+        f.actor.position.x = 20
         f.actor.abilities.known.add(id)
         const masteries = structuredClone(f.actor.progression.masteries)
         expect(f.ability(id)[0]).toMatchObject({
@@ -128,15 +130,15 @@ it.each(['fireball', 'greater_fireball'] as const)(
             target: f.reference,
         })
         expect(f.service.get('grave')?.hp).toBe(100)
-        expect(f.hit(1399)).toEqual([])
-        expect(f.hit(1400)[0]).toMatchObject({
+        expect(f.hit(1687)).toEqual([])
+        expect(f.hit(1688)[0]).toMatchObject({
             kind: 'world_damage',
-            amount: id === 'fireball' ? 2 : 4.5,
+            amount: id === 'fireball' ? 6.25 : 21.25,
             damageKind: 'arcane',
         })
-        expect(f.actor.mana).toBe(id === 'fireball' ? 58 : 46)
+        expect(f.actor.mana).toBe(id === 'fireball' ? 55 : 30)
         expect(f.actor.progression.masteries).toEqual(masteries)
-        expect(f.hit(1400)).toEqual([])
+        expect(f.hit(1700)).toEqual([])
     }
 )
 it.each([
@@ -192,8 +194,9 @@ it.each([
     expect(f.actor.mana).toBe(mana)
     expect(f.actor.pendingAttack).toBeUndefined()
 })
-it('rechecks spell LoS after cast start and never replaces a ruined grave with a character', () => {
+it('stops at an obstacle added after cast start and protects the grave and character behind it', () => {
     const f = graveCombatFixture('arcanist')
+    f.actor.position.x = 30
     f.actor.abilities.known.add('fireball')
     const enemy = f.enemy(110)
     expect(
@@ -203,15 +206,17 @@ it('rechecks spell LoS after cast start and never replaces a ruined grave with a
             f.context
         )[0]?.kind
     ).toBe('attack')
-    vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(false)
-    expect(f.hit(1400)).toEqual([
-        expect.objectContaining({
-            kind: 'miss',
-            hitQuality: 'miss',
-            abilityId: 'fireball',
-            target: f.reference,
-        }),
-    ])
+    for (let y = 0; y < 32; y += 1) {
+        f.context.navigation.grid.solid[y * 32 + 4] = true
+    }
+    expect(
+        f
+            .hit(1800)
+            .some(
+                (event) =>
+                    event.targetId === enemy.id || event.kind === 'world_damage'
+            )
+    ).toBe(false)
     expect(enemy.hp).toBe(enemy.maxHp)
     expect(f.service.get('grave')?.hp).toBe(100)
 })
@@ -345,19 +350,17 @@ it.each([
         first: 'fireball' as const,
         next: 'spark' as const,
         windup: 400,
-        rawDamage: 8,
-        amount: 2,
+        amount: 6.25,
     },
     {
         first: 'spark' as const,
         next: 'fireball' as const,
         windup: 200,
-        rawDamage: undefined,
         amount: 1.25,
     },
 ])(
     'keeps pending $first target, geometry, damage and costs when $next arrives after its deadline',
-    ({ first, next, windup, rawDamage, amount }) => {
+    ({ first, next, windup, amount }) => {
         const f = graveCombatFixture('arcanist')
         f.actor.abilities.known.add('fireball')
         const other = { kind: 'grave' as const, id: 'second-grave' }
@@ -365,7 +368,7 @@ it.each([
             {
                 id: other.id,
                 locationId: f.actor.locationId,
-                position: { x: 100, y: 112 },
+                position: { x: 100, y: 175 },
             },
             [],
             0
@@ -373,11 +376,10 @@ it.each([
         expect(f.ability(first, 1003)[0]?.kind).toBe('attack')
         const pending = structuredClone(f.actor.pendingAttack)
         const zones = structuredClone(f.actor.attackZones)
-        expect(pending).toMatchObject({ target: f.reference })
-        if (rawDamage === undefined) {
-            expect(pending?.rawDamage).toBeUndefined()
+        if (first === 'spark') {
+            expect(pending).toMatchObject({ target: f.reference })
         } else {
-            expect(pending?.rawDamage).toBe(rawDamage)
+            expect(magicAttackWindingUp(f.actor)).toBe(true)
         }
         const mana = f.actor.mana,
             energy = f.actor.energy
@@ -391,7 +393,10 @@ it.each([
         expect(f.actor.facing).toBe('right')
         expect(f.actor.mana).toBe(mana)
         expect(f.actor.energy).toBe(energy)
-        expect(f.hit(1050 + windup)[0]).toMatchObject({
+        const events = f.hit(1050 + windup)
+        expect(
+            events.find((event) => event.kind === 'world_damage')
+        ).toMatchObject({
             target: f.reference,
             amount,
         })

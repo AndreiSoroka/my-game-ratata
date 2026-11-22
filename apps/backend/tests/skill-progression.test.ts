@@ -11,6 +11,7 @@ import { syncAbilityConstellations } from '../src/game/constellations'
 import { NavigationService } from '../src/game/navigation'
 import { handleProgressionCommand } from '../src/game/progressionCommands'
 import { castSpell } from '../src/game/spellCasting'
+import { resolveTestSpells } from './abilityTestHelpers'
 
 describe('shared prayers and learning', () => {
     it.each(['network_player', 'scripted'] as const)(
@@ -73,7 +74,7 @@ describe('shared prayers and learning', () => {
         }
     )
 
-    it.each(['vanguard', 'ranger', 'arcanist', 'cleric'] as const)(
+    it.each(['vanguard', 'ranger', 'arcanist'] as const)(
         'teaches fireball to %s only near a living friendly scholar',
         (heroClass) => {
             const actor = hero(heroClass)
@@ -117,18 +118,24 @@ describe('authoritative ranged spells', () => {
         actor.abilities.known.add('fireball')
         const target = enemy()
         target.position.x += 100
-        const events = command(
+        const started = command(
             actor,
             { type: 'cast_spell', skillId: 'fireball', targetId: target.id },
             [target],
             1_000
         )
-        expect(events).toMatchObject([
-            { kind: 'attack' },
-            { kind: 'damage', amount: 8 },
+        expect(started).toMatchObject([{ kind: 'attack' }])
+        expect(target.hp).toBe(target.maxHp)
+        const context = {
+            characters: [target],
+            navigation: openMap(),
+            now: 1_000,
+        }
+        expect(resolveTestSpells(actor, context)).toMatchObject([
+            { kind: 'damage', amount: 10 },
         ])
-        expect(target.hp).toBe(target.maxHp - 8)
-        expect(actor.mana).toBe(28)
+        expect(target.hp).toBe(target.maxHp - 10)
+        expect(actor.mana).toBe(25)
         expect(actor.progression.masteries.magic.experience).toBe(40_000_000n)
         expect(
             command(
@@ -139,10 +146,10 @@ describe('authoritative ranged spells', () => {
                     targetId: target.id,
                 },
                 [target],
-                1_500
+                5_999
             )
         ).toEqual([])
-        expect(actor.mana).toBe(28)
+        expect(actor.mana).toBe(25)
         target.hp = 3
         expect(
             command(
@@ -153,15 +160,15 @@ describe('authoritative ranged spells', () => {
                     targetId: target.id,
                 },
                 [target],
-                2_000
+                6_000
             )
-        ).toMatchObject([
-            { kind: 'attack' },
+        ).toMatchObject([{ kind: 'attack' }])
+        expect(resolveTestSpells(actor, context, 7_000)).toMatchObject([
             { kind: 'damage', amount: 3 },
             { kind: 'death' },
         ])
         expect(target.alive).toBe(false)
-        expect(target.respawnAt).toBe(17_000)
+        expect(target.respawnAt).toBe(22_000)
         expect(actor.progression.masteries.magic.experience).toBe(80_000_000n)
         expect(
             command(
@@ -172,14 +179,14 @@ describe('authoritative ranged spells', () => {
                     targetId: target.id,
                 },
                 [target],
-                3_000
+                12_000
             )
         ).toEqual([])
     })
 })
 
 describe('spell validation', () => {
-    it('rejects locked knowledge, allies, offline or remote targets, walls, range, stun and insufficient mana without practice', () => {
+    it('rejects locked knowledge, offline or remote targets, walls, range, stun and insufficient mana without practice', () => {
         const actor = hero()
         const target = enemy()
         const message: ProgressionClientMessage = {
@@ -207,10 +214,6 @@ describe('spell validation', () => {
         actor.mana = 11
         check()
         actor.mana = 40
-        const ally = hero()
-        expect(
-            command(actor, { ...message, targetId: ally.id }, [ally])
-        ).toEqual([])
         const navigation = openMap()
         navigation.grid.solid[7 * 32 + 6] = true
         expect(
@@ -227,6 +230,7 @@ describe('spell validation', () => {
     it('requires greater fireball mastery and validates the caster even at the shared spell entry point', () => {
         const actor = hero()
         const target = enemy()
+        target.position.y = 220
         const message = {
             type: 'cast_spell',
             skillId: 'greater_fireball',
@@ -249,9 +253,12 @@ describe('spell validation', () => {
         actor.actionLockUntil = 0
         expect(castSpell(actor, message, context)).toMatchObject([
             { kind: 'attack' },
-            { kind: 'damage', amount: 18 },
         ])
-        expect(actor.mana).toBe(16)
+        expect(resolveTestSpells(actor, context)[0]).toMatchObject({
+            kind: 'damage',
+            amount: target.maxHp,
+        })
+        expect(actor.mana).toBe(0)
         expect(actor.progression.masteries.magic.experience).toBe(70_000_000n)
         actor.applyDamage(actor.hp, 2_000)
         expect(castSpell(actor, message, { ...context, now: 4_000 })).toEqual(

@@ -5,6 +5,7 @@ import {
     type DeityId,
     type GameEventPayload,
     GRAVE_PURIFY_CAST_MS,
+    isFireSpell,
     isPrayerAction,
     PRAYER_SCHOOL_DEFINITIONS,
     type ProjectilePath,
@@ -36,8 +37,6 @@ function attackShape(event: GameEventPayload, actor: CharacterSnapshot): EffectS
     const abilities: Record<string, EffectShape> = {
         shot: 'arrow',
         spark: 'spark',
-        fireball: 'fireball',
-        greater_fireball: 'fireball',
         skeleton_strike: 'bone',
     }
     if (event.abilityId && abilities[event.abilityId]) return abilities[event.abilityId]!
@@ -56,7 +55,8 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
         duration: 650,
         ...(event.target ? { target: event.target } : {}),
     }
-    if (event.kind === 'attack') return [attackCue(event, actor, base)]
+    if (event.kind === 'attack')
+        return isFireSpell(event.abilityId ?? '') ? [] : [attackCue(event, actor, base)]
     if (event.kind === 'cast' && isPrayerAction(event.abilityId))
         return prayerCastCues(event, actor, base)
     if (event.kind === 'heal' && (event.amount === undefined || event.amount > 0))

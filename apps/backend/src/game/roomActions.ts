@@ -13,16 +13,13 @@ import type { CompanionService } from './companions'
 import { isAdventureCommand } from './extraCommands'
 import { handleMovementCommand } from './movementActions'
 import { handleDashWithFeedback } from './movementFeedback'
-import type { NavigationService } from './navigation'
 import type { PartyService } from './parties'
 import { handleProgressionCommand } from './progressionCommands'
 import type { TheftService } from './theft'
 import { isTheftCommand } from './theftCommands'
 import type { WorldInventory } from './worldInventory'
 
-interface ActionContext {
-    graves?: AbilityContext['graves']
-    requestAbilityAttack?: AbilityContext['requestAbilityAttack']
+interface ActionContext extends AbilityContext {
     theft: TheftService
     adventure: AdventureService
     allCharacters: Iterable<GameCharacter>
@@ -31,8 +28,6 @@ interface ActionContext {
     companions: CompanionService
     inventory: WorldInventory
     message: ClientMessage
-    navigation: NavigationService
-    now: number
     player: GameCharacter
 }
 
@@ -82,12 +77,7 @@ export function handleRoomAction(
         return companionAction(context, message)
     }
     if (isProgressionCommand(message)) {
-        const events = handleProgressionCommand(player, message, {
-            ...(context.graves === undefined ? {} : { graves: context.graves }),
-            characters,
-            navigation: context.navigation,
-            now,
-        })
+        const events = handleProgressionCommand(player, message, context)
         return [
             ...events,
             ...context.inventory.dropLootForDeaths(events, (id) =>
@@ -147,7 +137,7 @@ function rememberConversation(
 }
 
 function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
-    const { message, player, characters, now } = context
+    const { message, player, characters } = context
     if (message.type === 'revive') {
         return handleAbilityCommand(
             player,
@@ -156,23 +146,16 @@ function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
                 abilityId: 'pray',
                 intent: { mode: 'revive', targetId: message.targetId },
             },
-            { characters, navigation: context.navigation, now }
+            context
         )
     }
     if (
         message.type === 'use_ability' ||
         message.type === 'learn_ability' ||
+        message.type === 'cancel_magic' ||
         message.type === 'cancel_prayer'
     ) {
-        const events = handleAbilityCommand(player, message, {
-            characters,
-            navigation: context.navigation,
-            now,
-            ...(context.graves === undefined ? {} : { graves: context.graves }),
-            ...(context.requestAbilityAttack === undefined
-                ? {}
-                : { requestAbilityAttack: context.requestAbilityAttack }),
-        })
+        const events = handleAbilityCommand(player, message, context)
         return [
             ...events,
             ...context.inventory.dropLootForDeaths(events, (id) =>

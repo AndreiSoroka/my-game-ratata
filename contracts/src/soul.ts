@@ -53,6 +53,7 @@ export type AgentDecision =
     | InventoryActionClientMessage
     | EquipmentActionClientMessage
     | AbilityClientMessage
+    | import('./magic').UsePortalCommand
     | CharacterControlCommand
     | PickupItemClientMessage
     | ChestClientMessage

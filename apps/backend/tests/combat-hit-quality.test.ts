@@ -75,8 +75,8 @@ describe('authoritative hit quality', () => {
         })
         const target = abilityHero('vanguard', 'undead')
         Object.assign(target, { faction: 'monsters', hp: 1 })
+        target.mana = 3
         target.abilities.barrier = {
-            remaining: 3,
             expiresAt: 2000,
             practiced: false,
         }

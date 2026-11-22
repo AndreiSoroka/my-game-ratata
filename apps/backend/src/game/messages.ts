@@ -12,6 +12,7 @@ import { parseControlCommand } from './characterControl'
 import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
+import { parsePortalBoundary } from './portalCommand'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { parseSocialBoundary } from './whisperCommands'
 import { parsePickupCommand } from './worldPickup'
@@ -52,6 +53,9 @@ export function parseClientMessage(raw: string): ParseResult {
 
     if (record === undefined) {
         return { error: 'Message must be an object' }
+    }
+    if (record['type'] === 'use_portal') {
+        return parsePortalBoundary(record)
     }
     const social = parseSocialBoundary(record)
     if (social !== undefined) {

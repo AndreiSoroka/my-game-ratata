@@ -9,6 +9,7 @@ import type { GameCharacter } from './character'
 export interface CharacterCombatState {
     /** The only deadline for starting another attacking action. */
     readyAt: number
+    recentDamageUntil: number
     sequence: number
     action?: CombatActionSnapshot
     defensiveStance: boolean
@@ -34,6 +35,7 @@ export interface CharacterCombatState {
 export function createCombatState(): CharacterCombatState {
     return {
         readyAt: 0,
+        recentDamageUntil: 0,
         sequence: 0,
         defensiveStance: false,
         stanceAvailableAt: 0,

@@ -14,7 +14,7 @@ it('explains the learner Magic-three gate and sends teaching only for an eligibl
     student.progression!.masteries = masteriesFixture({ magic: 2 })
     const view = mount(ArcanaStudy, { props: { player: teacher, characters: [student] } })
     const button = () =>
-        view.findAll('button').find((entry) => entry.text() === 'Научить огненному шару')!
+        view.findAll('button').find((entry) => entry.text() === 'Научить огненной стреле')!
     expect(button().attributes('disabled')).toBeDefined()
     expect(view.text()).toContain('Ученику требуется Магия 3.')
     await button().trigger('click')

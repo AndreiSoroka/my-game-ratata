@@ -29,4 +29,8 @@ export const hotbarGlyphs: Record<AbilityId, string> = {
     skeleton_strike: '⚒',
     fireball: '●',
     greater_fireball: '◉',
+    chains: '∞',
+    blink: '↶',
+    dispel_magic: '✴',
+    city_portal: '◈',
 }

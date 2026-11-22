@@ -4,6 +4,7 @@ import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { enqueueCharacterRoute } from './characterRoute'
 import { canWalkDuringPrayer } from './combatMovement'
+import { cancelMagicChannel } from './magicState'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
     routeCommandFeedback,
@@ -41,8 +42,11 @@ export function applyAgentRoute(
             world.requestControl?.(character, { type: 'cancel_control' }, now)
         }
     )
-    if (result.accepted && !canWalkDuringPrayer(character)) {
-        events.push(...cancelPrayerCast(character, now))
+    if (result.accepted) {
+        if (!canWalkDuringPrayer(character)) {
+            events.push(...cancelPrayerCast(character, now))
+        }
+        events.push(...cancelMagicChannel(character, now))
     }
     events.push(...routeCommandFeedback(character, result))
     return {

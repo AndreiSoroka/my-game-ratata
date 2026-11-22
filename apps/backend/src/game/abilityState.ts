@@ -10,6 +10,11 @@ import type {
 
 import { snapshotAbilityUsage } from './abilityUsage'
 import type { GameCharacter } from './character'
+import {
+    clearMagicChannel,
+    magicRootedUntil,
+    snapshotMagicChannel,
+} from './magicState'
 import type {
     MotherPrayerCastState,
     MotherPrayerPlan,
@@ -53,10 +58,8 @@ export interface CharacterAbilityState {
     known: Set<AbilityId>
     availableAt: Partial<Record<AbilityId, number>>
     barrier: {
-        remaining: number
         expiresAt: number
         practiced: boolean
-        resourceSpend?: import('./resourcePractice').ResourceSpendReceipt
     } | null
     casting: PrayerCast | null
     untrainableHpDamage: number
@@ -94,6 +97,7 @@ export function knowsAbility(actor: GameCharacter, id: AbilityId): boolean {
     return actor.abilities.known.has(id)
 }
 export function clearAbilityEffects(actor: GameCharacter): void {
+    clearMagicChannel(actor)
     actor.abilities.barrier = null
     actor.abilities.casting = null
     actor.abilities.untrainableHpDamage = 0
@@ -126,6 +130,8 @@ export function snapshotAbilities(
             )
         }
     }
+    const magicChannel = snapshotMagicChannel(actor, now)
+    const rootedUntil = magicRootedUntil(actor, now)
     return {
         known,
         parameters: snapshotAbilityUsage(actor, known),
@@ -137,6 +143,8 @@ export function snapshotAbilities(
             ? { lastPrayerAbilityId: actor.abilities.lastPrayerAbilityId }
             : {}),
         barrier: snapshotBarrier(actor, now),
+        ...(magicChannel === undefined ? {} : { magicChannel }),
+        ...(rootedUntil <= now ? {} : { rootedUntil }),
         casting: snapshotCast(actor),
     }
 }
@@ -144,12 +152,20 @@ function snapshotBarrier(
     actor: GameCharacter,
     now: number
 ): CharacterAbilitiesSnapshot['barrier'] {
+    const barrier = activeBarrier(actor, now)
+    return barrier === null ? null : { expiresAt: barrier.expiresAt }
+}
+
+export function activeBarrier(
+    actor: GameCharacter,
+    now: number
+): CharacterAbilityState['barrier'] {
     const barrier = actor.abilities.barrier
     return actor.alive &&
         barrier !== null &&
         barrier.expiresAt > now &&
-        barrier.remaining > 0
-        ? { remaining: barrier.remaining, expiresAt: barrier.expiresAt }
+        actor.mana > 0
+        ? barrier
         : null
 }
 function snapshotCast(

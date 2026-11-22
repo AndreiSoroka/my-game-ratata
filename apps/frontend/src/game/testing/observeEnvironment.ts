@@ -1,6 +1,7 @@
 import {
     FARM_INTERACTION_RANGE,
     GRAVE_INTERACTION_RANGE,
+    PORTAL_INTERACTION_TILES,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -10,6 +11,21 @@ import type { AgentTarget } from './agentObservation'
 type TargetDescription = Omit<AgentTarget, 'key' | 'distance' | 'actions'>
 export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[] {
     return [
+        ...(snapshot.portals ?? [])
+            .filter(
+                (portal) =>
+                    portal.expiresAt > snapshot.serverTime &&
+                    (snapshot.location === undefined || portal.locationId === snapshot.location.id)
+            )
+            .map((portal): TargetDescription => ({
+                id: portal.id,
+                kind: 'portal',
+                name: `Портал — ${portal.destinationName}`,
+                position: portal.position,
+                interactionRange:
+                    (snapshot.location?.map.tileWidth ?? 16) * PORTAL_INTERACTION_TILES,
+                details: { destination: portal.destinationLocationId, expiresAt: portal.expiresAt },
+            })),
         ...(snapshot.graves ?? [])
             .filter((grave) => grave.phase !== 'purified')
             .map((grave): TargetDescription => ({

@@ -11,7 +11,11 @@ import { grantRetaliation } from '../src/game/crimeRelations'
 import { practiceResourceMissing } from '../src/game/resourcePractice'
 import { castSpell } from '../src/game/spellCasting'
 import { createTrainingTarget } from '../src/game/trainingTargets'
-import { abilityContext, abilityHero } from './abilityTestHelpers'
+import {
+    abilityContext,
+    abilityHero,
+    resolveTestSpells,
+} from './abilityTestHelpers'
 
 const spells = ['spark', 'fireball'] as const
 type TestSpell = (typeof spells)[number]
@@ -27,9 +31,9 @@ describe('resource provenance of barrier impacts', () => {
                 expect.objectContaining({ kind: 'absorb', targetId: target.id })
             )
             expect(target.hp).toBe(beforeHp)
-            expect(target.abilities.barrier?.remaining).toBeLessThan(100)
+            expect(target.mana).toBeLessThan(100)
             expect(practiceResourceMissing(actor, 'mana')).toBe(
-                spell === 'spark' ? 6 : 12
+                spell === 'spark' ? 6 : 15
             )
             expect(practiceResourceMissing(actor, 'energy')).toBe(
                 spell === 'spark' ? 5 : 0
@@ -47,7 +51,7 @@ describe('resource provenance of barrier impacts', () => {
             expect(events).toContainEqual(
                 expect.objectContaining({ kind: 'absorb', targetId: target.id })
             )
-            expect(target.abilities.barrier?.remaining).toBeLessThan(100)
+            expect(target.mana).toBeLessThan(100)
             expect(practiceResourceMissing(actor, 'mana')).toBe(0)
             expect(practiceResourceMissing(actor, 'energy')).toBe(0)
         }
@@ -64,7 +68,7 @@ describe('resource provenance of barrier impacts', () => {
             )
             expect(events.some((event) => event.kind === 'absorb')).toBe(false)
             expect(target.hp).toBe(beforeHp)
-            expect(target.abilities.barrier?.remaining).toBe(100)
+            expect(target.mana).toBe(100)
             expect(practiceResourceMissing(actor, 'mana')).toBe(0)
             expect(practiceResourceMissing(actor, 'energy')).toBe(0)
         }
@@ -92,7 +96,8 @@ describe('training dummy authority', () => {
         }
         expect(attemptAttack(attack)).toEqual([])
         expect(resolvePendingAttackHit({ ...attack, now: 2000 })).toEqual([])
-        expect(actor.abilities.barrier?.remaining).toBe(8)
+        expect(actor.abilities.barrier?.expiresAt).toBe(6000)
+        expect(actor.mana).toBe(66)
         expect(practiceResourceMissing(actor, 'mana')).toBe(0)
     })
 })
@@ -114,8 +119,8 @@ function encounter(kind: 'hostile' | 'friendly' | 'dummy') {
     if (kind === 'hostile') {
         Object.assign(target, { faction: 'monsters' })
     }
+    target.mana = 100
     target.abilities.barrier = {
-        remaining: 100,
         expiresAt: 10000,
         practiced: false,
     }
@@ -125,11 +130,19 @@ function encounter(kind: 'hostile' | 'friendly' | 'dummy') {
 function cast(actor: GameCharacter, target: GameCharacter, spell: TestSpell) {
     const context = abilityContext([actor, target], 1000, () => 0.5)
     if (spell === 'fireball') {
-        return castSpell(
-            actor,
-            { type: 'cast_spell', skillId: 'fireball', targetId: target.id },
-            context
-        )
+        target.position.y = 210
+        expect(
+            castSpell(
+                actor,
+                {
+                    type: 'cast_spell',
+                    skillId: 'fireball',
+                    targetId: target.id,
+                },
+                context
+            )
+        ).toHaveLength(1)
+        return resolveTestSpells(actor, context)
     }
     const attack = {
         actor,

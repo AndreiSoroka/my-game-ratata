@@ -6,6 +6,7 @@ import type {
 
 import type { GameCharacter } from './character'
 import type { GraveCombatContext } from './graveRules'
+import type { MagicCombat } from './magicCombat'
 import type { NavigationService } from './navigation'
 export interface AbilityContext {
     graves?: GraveCombatContext | undefined
@@ -14,6 +15,12 @@ export interface AbilityContext {
     now: number
     random?: () => number
     sameParty?: (firstId: string, secondId: string) => boolean
+    magic?: MagicCombat
+    canOpenPortal?: (actor: GameCharacter, now: number) => boolean
+    openPortal?: (
+        actor: GameCharacter,
+        now: number
+    ) => GameEventPayload[] | undefined
     respawnDelayMsFor?: (target: GameCharacter) => number
     requestAbilityAttack?: (
         actor: GameCharacter,

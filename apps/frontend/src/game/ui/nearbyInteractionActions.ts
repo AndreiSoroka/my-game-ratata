@@ -11,6 +11,7 @@ import {
     COMPANION_REQUEST_RANGE,
     FARM_INTERACTION_RANGE,
     interactionApproachPoints,
+    PORTAL_INTERACTION_TILES,
     THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
@@ -70,6 +71,7 @@ export function nearbyInteractionTarget(
     if (!player.alive || player.tags.includes('offline')) return undefined
     const candidates = [
         ...characterTargets(snapshot, player, characters),
+        ...portalTargets(snapshot, player),
         ...graveTargets(snapshot, player),
         ...objectTargets(snapshot, player),
         ...resourceTargets(snapshot, player),
@@ -87,6 +89,37 @@ export function nearbyInteractionTarget(
         targetKey,
         ignoreFacing
     )
+}
+
+function portalTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
+    if (
+        player.abilities?.rootedUntil ||
+        player.abilities?.magicChannel ||
+        player.abilities?.casting ||
+        player.cooldowns.stunMsLeft > 0
+    )
+        return []
+    const range = (snapshot.location?.map.tileWidth ?? 16) * PORTAL_INTERACTION_TILES
+    return (snapshot.portals ?? [])
+        .filter(
+            (portal) =>
+                portal.expiresAt > snapshot.serverTime &&
+                (snapshot.location === undefined || portal.locationId === snapshot.location.id) &&
+                interactionDistance(player, portal) <= range
+        )
+        .map((portal) => ({
+            key: `portal:${portal.id}`,
+            name: `Портал — ${portal.destinationName}`,
+            position: portal.position,
+            range,
+            actions: [
+                {
+                    id: 'use-portal',
+                    label: 'Войти',
+                    command: { type: 'use_portal', endpointId: portal.id },
+                },
+            ],
+        }))
 }
 function targetVisible(
     target: TargetCandidate,

@@ -17,7 +17,11 @@ import {
     hasPrayerAdvantage,
     prayerAuraEffects,
 } from '../src/game/prayerAuras'
-import { abilityContext, abilityHero } from './abilityTestHelpers'
+import {
+    abilityContext,
+    abilityHero,
+    resolveTestSpells,
+} from './abilityTestHelpers'
 import { masteryExperience, prayerXp } from './prayerMasteryTestHelpers'
 
 function start(
@@ -244,19 +248,20 @@ describe('channel target perception revalidation', () => {
 
     it('uses the ordinary spell action random source for concentration resistance', () => {
         const caster = abilityHero()
-        caster.hp = 10
+        caster.hp = 20
         for (const id of ['prayer.focus', 'prayer.concentration']) {
             caster.progression.constellations.opened.add(id)
         }
         const attacker = abilityHero('arcanist')
         attacker.abilities.known.add('fireball')
+        attacker.position.y = 220
         Object.assign(attacker, { faction: 'monsters' })
         const random = vi.fn(() => 0.1)
         const context = abilityContext([caster, attacker], 30000, random)
         start(caster, context, { mode: 'restore', targetId: caster.id })
         const unrelated = vi.spyOn(Math, 'random').mockReturnValue(0.9)
         try {
-            const events = handleAbilityCommand(
+            handleAbilityCommand(
                 attacker,
                 {
                     type: 'use_ability',
@@ -265,11 +270,12 @@ describe('channel target perception revalidation', () => {
                 },
                 { ...context, now: 30100 }
             )
+            const events = resolveTestSpells(attacker, context, 31000)
             expect(events).toContainEqual(
                 expect.objectContaining({ kind: 'damage', targetId: caster.id })
             )
             expect(caster.abilities.casting).not.toBeNull()
-            expect(random).toHaveBeenCalledTimes(1)
+            expect(random).toHaveBeenCalledTimes(2)
         } finally {
             unrelated.mockRestore()
         }

@@ -31,13 +31,28 @@ const contributions: Record<string, Builder> = {
     'magic.spark_range': (b) => [row('Добавка к дальности Искры', `+${b.sparkRangeCells} клетка`)],
     'magic.spark_economy': (b) => [row('Расход маны Искры', `−${b.sparkManaDiscount} MP`)],
     'magic.barrier_strength': (b) => [
-        row('Добавка к поглощению Барьера', `+${b.barrierAbsorptionBonus}`),
+        row('Расход Барьера за единицу поглощённого урона', `${number(b.barrierManaPerDamage)} MP`),
     ],
     'magic.barrier_duration': (b) => [
         row('Добавка к длительности Барьера', `+${b.barrierDurationBonus} мс`),
     ],
-    'magic.fire_damage': (b) =>
-        additive('Усиление урона огненных шаров', b.fireDamageMultiplier - 1),
+    'magic.fire_damage': (b) => additive('Усиление урона взрывов', b.fireDamageMultiplier - 1),
+    'magic.chains_duration': (b) => [
+        row('Максимальная длительность Оков', `${number(b.chainsDurationMs / 1000)} с`),
+    ],
+    'magic.chains_party': () => [row('Живые участники отряда', 'Могут перемещаться')],
+    ...Object.fromEntries(
+        [1, 2, 3].flatMap((rank): Array<[string, Builder]> => [
+            [
+                `magic.spell_economy${rank}`,
+                (b) => reduction('Расход маны заклинаний', 1 - b.spellManaMultiplier),
+            ],
+            [
+                `magic.mana_rest${rank}`,
+                (b) => additive('Восстановление маны в покое', b.manaRestMultiplier - 1),
+            ],
+        ])
+    ),
     'arrow.damage1': (b) => additive('Усиление урона Выстрела', b.shotDamageMultiplier - 1),
     'arrow.damage2': (b) => additive('Усиление урона Выстрела', b.shotDamageMultiplier - 1),
     'arrow.range1': (b) => [row('Добавка к дальности Выстрела', `+${b.shotRangeCells} клетка`)],

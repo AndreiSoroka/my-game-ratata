@@ -1,4 +1,5 @@
 import {
+    canLearnDiscipline,
     type ConstellationId,
     type DeityId,
     type GameEventPayload,
@@ -24,6 +25,8 @@ import {
     canPerformSkillAction,
     captureMasteryFactors,
 } from './skillProgression'
+
+const DISCIPLINE_CONFLICT = 'Магию и молитвы нельзя изучать вместе.'
 
 export function canInteractWith(
     actor: GameCharacter,
@@ -55,6 +58,9 @@ export function learnFireball(
     ) {
         return []
     }
+    if (!canLearnDiscipline(actor.abilities.known, 'magic')) {
+        return abilityNotice(actor, DISCIPLINE_CONFLICT)
+    }
     const factors = captureMasteryFactors(scholar)
     resetMartyrStreak(actor)
     actor.abilities.known.add('fireball')
@@ -64,7 +70,7 @@ export function learnFireball(
             actorId: actor.id,
             targetId: scholar.id,
             kind: 'notice',
-            text: 'Изучен Огненный шар. Применяйте его в бою, чтобы развивать Магию.',
+            text: 'Изучена Огненная стрела. Применяйте её в бою, чтобы развивать Магию.',
         },
         ...finishConstellationAction(actor, {
             constellationIds: ['magic'],
@@ -94,6 +100,9 @@ export function studyMagic(
         actor.progression.magicChaptersRead >= 3
     ) {
         return []
+    }
+    if (!canLearnDiscipline(actor.abilities.known, 'magic')) {
+        return abilityNotice(actor, DISCIPLINE_CONFLICT)
     }
     const factors = captureMasteryFactors(actor)
     resetMartyrStreak(actor)
@@ -132,6 +141,9 @@ export function teachMagic(
     ) {
         return []
     }
+    if (!canLearnDiscipline(student.abilities.known, 'magic')) {
+        return abilityNotice(actor, DISCIPLINE_CONFLICT)
+    }
     const factors = captureMasteryFactors(actor)
     resetMartyrStreak(actor)
     resetMartyrStreak(student)
@@ -142,7 +154,7 @@ export function teachMagic(
             actorId: actor.id,
             targetId: student.id,
             kind: 'notice',
-            text: `${student.nickname} изучает Огненный шар.`,
+            text: `${student.nickname} изучает Огненную стрелу.`,
         },
         ...finishConstellationAction(student, {
             constellationIds: ['magic'],
@@ -213,12 +225,16 @@ export function learnAbility(
     if (knowsAbility(actor, id)) {
         return abilityNotice(actor, 'Эта способность уже изучена.')
     }
-    const suitable = isPrayerAbility(id)
-        ? knowsAbility(teacher, id)
-        : id === 'shot'
-          ? teacher.tags.has('veteran') || teacher.id === 'npc_veteran_1'
-          : teacher.tags.has('scholar')
-    if (!suitable) {
+    if (
+        id !== 'shot' &&
+        !canLearnDiscipline(
+            actor.abilities.known,
+            isPrayerAbility(id) ? 'prayer' : 'magic'
+        )
+    ) {
+        return abilityNotice(actor, DISCIPLINE_CONFLICT)
+    }
+    if (!teachesAbility(teacher, id)) {
         return abilityNotice(
             actor,
             'Этот персонаж не обучает выбранной способности.'
@@ -249,4 +265,14 @@ export function learnAbility(
             random: context.random,
         }),
     ]
+}
+
+function teachesAbility(teacher: GameCharacter, id: LearnAbilityId): boolean {
+    if (isPrayerAbility(id)) {
+        return knowsAbility(teacher, id)
+    }
+    if (id === 'shot') {
+        return teacher.tags.has('veteran') || teacher.id === 'npc_veteran_1'
+    }
+    return teacher.tags.has('scholar')
 }

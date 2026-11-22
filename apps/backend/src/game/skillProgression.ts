@@ -29,6 +29,7 @@ import {
 } from './constellations'
 import type { CharacterConstellations } from './constellationState'
 import { snapshotDeity, snapshotOtherDeities } from './deities'
+import { activeMagicChannel, magicAttackWindingUp } from './magicState'
 import { readCachedConstellationLayout } from './personalConstellationSky'
 import { prayerPurificationChance } from './prayerProbability'
 
@@ -264,10 +265,15 @@ export function hasEquippedSword(actor: GameCharacter): boolean {
     const weapon = resolveCombatWeapon(actor.archetype, actor.equipment.weapon)
     return weapon.bladeCompatible && !weapon.broken
 }
+interface SkillActionOptions {
+    interruptWalkingPrayer?: boolean
+    allowMagicChannel?: boolean
+}
+
 export function canPerformSkillAction(
     actor: GameCharacter,
     now: number,
-    options?: { interruptWalkingPrayer: boolean }
+    options?: SkillActionOptions
 ): boolean {
     return (
         actor.trainingTarget === undefined &&
@@ -277,6 +283,19 @@ export function canPerformSkillAction(
         actor.stunUntil <= now &&
         actor.combat.readyAt <= now &&
         !actor.combat.defensiveStance &&
+        abilityAllowsAction(actor, now, options)
+    )
+}
+
+function abilityAllowsAction(
+    actor: GameCharacter,
+    now: number,
+    options?: SkillActionOptions
+): boolean {
+    return (
+        !magicAttackWindingUp(actor) &&
+        (options?.allowMagicChannel === true ||
+            activeMagicChannel(actor, now) === undefined) &&
         ((actor.abilities.casting === null && !actor.isActionLocked(now)) ||
             (options?.interruptWalkingPrayer === true &&
                 canWalkDuringPrayer(actor)))

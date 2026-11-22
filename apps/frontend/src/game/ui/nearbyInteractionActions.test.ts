@@ -39,6 +39,38 @@ function setup() {
         ) => nearbyInteractionTarget(state, player, people, visible, key),
     }
 }
+it('offers the exact local portal within reach and removes the action at expiry', () => {
+    const { player, snapshot, select } = setup()
+    const expiresAt = snapshot.serverTime + 60_000
+    const state = {
+        ...snapshot,
+        portals: [
+            {
+                id: 'entrance',
+                locationId: 'map-1-2',
+                destinationLocationId: 'map-2-2',
+                destinationName: 'Новогород',
+                position: { x: 132, y: 100 },
+                expiresAt,
+            },
+        ],
+    }
+    expect(select(state)?.actions[0]?.command).toEqual({
+        type: 'use_portal',
+        endpointId: 'entrance',
+    })
+    expect(select(state, [player], () => false)).toBeUndefined()
+    expect(select({ ...state, serverTime: expiresAt })).toBeUndefined()
+    player.abilities = {
+        known: [],
+        cooldowns: {},
+        casting: null,
+        barrier: null,
+        rootedUntil: expiresAt,
+    }
+    expect(select(state)).toBeUndefined()
+})
+
 describe('one facing interaction target', () => {
     it('selects the sign ahead even when a sign of the same kind is closer behind', () => {
         const { player, snapshot, select } = setup()

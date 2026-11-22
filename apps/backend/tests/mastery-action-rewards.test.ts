@@ -31,7 +31,11 @@ import {
     recordVitalityDamage,
     recordVitalityRecovery,
 } from '../src/game/vitalityPractice'
-import { abilityContext, abilityHero } from './abilityTestHelpers'
+import {
+    abilityContext,
+    abilityHero,
+    resolveTestSpells,
+} from './abilityTestHelpers'
 
 function encounter(
     kind: 'network_player' | 'scripted' | 'mob1' = 'network_player',
@@ -132,11 +136,13 @@ describe('weapon and spell mastery rewards', () => {
         (id, reward) => {
             const { actor, target, context } = encounter()
             actor.abilities.known.add(id)
+            target.position.y = 210
             castSpell(
                 actor,
                 { type: 'cast_spell', skillId: id, targetId: target.id },
                 context
             )
+            resolveTestSpells(actor, context)
             expect(total(actor, 'magic')).toBe(
                 parseMasteryExperience(String(reward))
             )
@@ -155,8 +161,8 @@ describe('weapon and spell mastery rewards', () => {
             parseMasteryExperience('99.9')
         target.progression.masteries.life.experience =
             parseMasteryExperience('99.9')
+        target.mana = 1
         target.abilities.barrier = {
-            remaining: 1,
             expiresAt: 5000,
             practiced: false,
         }
@@ -180,8 +186,8 @@ describe('weapon and spell mastery rewards', () => {
     })
     it('rewards a Barrier once per application and preserves hostile resource provenance', () => {
         const { actor, target } = encounter()
+        target.mana = 8
         target.abilities.barrier = {
-            remaining: 8,
             expiresAt: 5000,
             practiced: false,
         }
@@ -230,11 +236,13 @@ describe('mastery rewards preserve action boundaries', () => {
         expect(effectiveCharacterStats(actor)).toEqual(before.stats)
         expect(effectiveAbility(actor, 'fireball')).toEqual(before.spell)
         const factors = captureMasteryFactors(actor)
+        target.position.y = 210
         castSpell(
             actor,
             { type: 'cast_spell', skillId: 'fireball', targetId: target.id },
             context
         )
+        resolveTestSpells(actor, context)
         expect(actor.progression.masteries.magic.experience).toBe(
             masteryRewardMicros(48, factors.magic)
         )

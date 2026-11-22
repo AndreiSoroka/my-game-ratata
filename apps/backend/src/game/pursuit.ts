@@ -9,7 +9,9 @@ import { available, humanControlled } from './crimeRules'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import {
+    approachPortal,
     approachPursuitExit,
+    approachRegionalHome,
     homeExit,
     planHomeArrival,
     planPursuit,
@@ -171,8 +173,13 @@ function investigateExit(
     const navigation = room.navigationFor(actor)
     const exit = state.crossing
     if (exit?.from === actor.locationId && now < exit.expiresAt) {
-        approachPursuitExit(actor, exit, state, navigation, now)
-        return { handled: true, returning: false }
+        if (!('endpointId' in exit)) {
+            approachPursuitExit(actor, exit, state, navigation, now)
+            return { handled: true, returning: false }
+        }
+        if (approachPortal(actor, exit.endpointId, state, room, now)) {
+            return { handled: true, returning: false }
+        }
     }
     if (
         exit !== undefined ||
@@ -207,6 +214,21 @@ function returnHome(
             return { handled: true, returning: true }
         }
         planHomeArrival(actor, state, navigation, now)
+    } else if (
+        state.foreign?.exit !== undefined &&
+        'endpointId' in state.foreign.exit
+    ) {
+        if (
+            !approachPortal(
+                actor,
+                state.foreign.exit.returnEndpointId,
+                state,
+                room,
+                now
+            )
+        ) {
+            approachRegionalHome(actor, state, room, now)
+        }
     } else {
         const exit = homeExit(actor, state, navigation)
         if (exit !== undefined) {
