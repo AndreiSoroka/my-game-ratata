@@ -28,35 +28,65 @@ function context(
     }
 }
 
+const authoredLevelGates = new Map([
+    ['arrow.damage3', 6],
+    ['arrow.economy2', 4],
+    ['arrow.tempo2', 4],
+    ['arrow.critical2', 4],
+    ['arrow.series1', 2],
+    ['arrow.series2', 4],
+    ['arrow.sniper_shot', 2],
+    ['arrow.sniper_range1', 3],
+    ['arrow.sniper_range2', 5],
+    ['arrow.sniper_windup1', 3],
+    ['arrow.sniper_windup2', 5],
+    ['arrow.sniper_economy1', 3],
+    ['arrow.sniper_economy2', 5],
+    ['arrow.sniper_tempo1', 3],
+    ['arrow.sniper_tempo2', 5],
+    ['arrow.sniper_critical1', 3],
+    ['arrow.sniper_critical2', 5],
+    ['arrow.sniper_opening', 5],
+    ['arrow.sniper_long_range', 8],
+    ['arrow.moving_damage1', 5],
+    ['arrow.moving_damage2', 7],
+    ['arrow.moving_critical1', 5],
+    ['arrow.moving_critical2', 7],
+    ['arrow.moving_dash1', 5],
+    ['arrow.moving_dash2', 7],
+    ['arrow.moving_speed1', 5],
+    ['arrow.moving_speed2', 7],
+    ['arrow.moving_followup1', 7],
+    ['arrow.moving_followup2', 9],
+    ['blade.combo1', 12],
+    ['life.endurance', 3],
+    ['life.rest', 3],
+    ['life.work', 3],
+    ['magic.fire_damage', 3],
+    ['magic.chains_duration', 5],
+    ['magic.chains_party', 8],
+    ['magic.spell_economy1', 2],
+    ['magic.spell_economy2', 5],
+    ['magic.spell_economy3', 8],
+    ['magic.mana_rest1', 2],
+    ['magic.mana_rest2', 5],
+    ['magic.mana_rest3', 8],
+    ['prayer.harm1', 6],
+    ['prayer.harm2', 12],
+    ['prayer.ward3', 7],
+    ['prayer.ward4', 12],
+    ['prayer.aura_domain', 12],
+    ['prayer.revive_master', 12],
+    ['prayer.revive_angelic', 12],
+])
+
 describe('individually authored constellation requirements', () => {
     it('removes depth-based gates from every ordinary random star', () => {
-        const individual = new Map([
-            ['blade.combo1', 12],
-            ['life.endurance', 3],
-            ['life.rest', 3],
-            ['life.work', 3],
-            ['magic.fire_damage', 3],
-            ['magic.chains_duration', 5],
-            ['magic.chains_party', 8],
-            ['magic.spell_economy1', 2],
-            ['magic.spell_economy2', 5],
-            ['magic.spell_economy3', 8],
-            ['magic.mana_rest1', 2],
-            ['magic.mana_rest2', 5],
-            ['magic.mana_rest3', 8],
-            ['prayer.harm1', 6],
-            ['prayer.harm2', 12],
-            ['prayer.ward3', 7],
-            ['prayer.ward4', 12],
-            ['prayer.aura_domain', 12],
-            ['prayer.revive_master', 12],
-            ['prayer.revive_angelic', 12],
-        ])
         for (const star of fullConstellationCatalog.filter(
             (entry) => entry.acquisition === 'random'
         )) {
             expect(star.minimumLevel, star.id).toBe(
-                individual.get(star.id) ?? 1
+                authoredLevelGates.get(star.id) ?? 1
             )
         }
         expect(node('magic.fireball').minimumLevel).toBe(3)
