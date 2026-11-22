@@ -8,6 +8,7 @@
     z-index: 95;
 }
 .character-window {
+    position: relative;
     display: flex;
     flex-direction: column;
     width: min(1100px, 100%);
@@ -34,11 +35,9 @@
 }
 h2 {
     margin: 3px 0 0;
+    font-family: var(--ratata-font-family, 'Pixelify Sans', system-ui, sans-serif);
     font-size: 22px;
     color: #f1d69a;
-}
-button {
-    cursor: pointer;
 }
 .character-backdrop--reading {
     background: transparent;
@@ -47,7 +46,7 @@ button {
 .character-backdrop--reading .character-window {
     pointer-events: auto;
 }
-.character-close {
+.character-header > :deep(.character-close) {
     display: grid;
     place-items: center;
     padding: 0;
@@ -62,11 +61,11 @@ button {
     gap: 24px;
     border-bottom: 1px solid #53616a;
 }
-.character-tabs button {
+.character-tabs > :deep(button) {
     padding: 14px 0 12px;
     border-bottom: 2px solid transparent;
 }
-.character-tabs button[aria-selected='true'] {
+.character-tabs > :deep(button[aria-selected='true']) {
     border-bottom-color: #e9c77d;
 }
 .character-content {
