@@ -142,6 +142,20 @@ export function effectiveDashCost(
     )
 }
 
+export function effectiveDashDuration(actor: GameCharacter): number {
+    return (
+        MOVEMENT_RULES.dashDurationMs +
+        constellationModifiers(actor).dashDurationBonus
+    )
+}
+
+export function effectiveWorkEnergy(
+    actor: GameCharacter,
+    base: number
+): number {
+    return base * constellationModifiers(actor).workEnergyMultiplier
+}
+
 export function effectiveTheftCost(actor: GameCharacter): number {
     return (
         THEFT_RULES.energyCost -

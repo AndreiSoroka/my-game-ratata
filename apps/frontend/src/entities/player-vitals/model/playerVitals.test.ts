@@ -32,12 +32,12 @@ describe('player vitals store', () => {
     })
 
     it('keeps store instances independent of each other and of mutable inputs', () => {
+        const initialSegments = [40, 20, 20, 20]
         const initial = {
             hpPercent: 50,
             manaPercent: 0,
             energyPercent: 100,
-            hpCurrent: 5,
-            hpMax: 10,
+            hpSegments: initialSegments,
             nickname: 'Игрок',
         }
         const first = createPlayerVitalsStore(initial)
@@ -47,15 +47,14 @@ describe('player vitals store', () => {
         first.update(next)
         next.hpPercent = 80
         initial.hpPercent = 0
-        initial.hpCurrent = 0
+        initialSegments[0] = 0
 
         expect(first.resources.value).toEqual({ hpPercent: 60, manaPercent: 0, energyPercent: 100 })
         expect(second.resources.value).toEqual({
             hpPercent: 50,
             manaPercent: 0,
             energyPercent: 100,
-            hpCurrent: 5,
-            hpMax: 10,
+            hpSegments: [40, 20, 20, 20],
         })
     })
 })

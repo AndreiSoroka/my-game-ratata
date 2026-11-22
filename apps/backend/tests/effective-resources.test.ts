@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { restoreCharacter } from '../src/game/characterRecovery'
 import { createCharacterSheet } from '../src/game/characterSheet'
+import { observeCharacterCombat } from '../src/game/combatObservation'
 import {
+    effectiveMaxEnergy,
     effectiveMaxHp,
     effectiveMaxMana,
 } from '../src/game/effectiveResources'
@@ -10,6 +12,7 @@ import {
     recordMartyrHostileDamage,
     recordMartyrPrayer,
 } from '../src/game/martyr'
+import { prayerResourceMissing } from '../src/game/prayerContext'
 import {
     consumeResourceRecovery,
     recordUsefulResourceSpend,
@@ -145,5 +148,47 @@ describe('capacity changes reconcile provenance without manufacturing practice',
         ).toBe(45)
         expect(consumeResourceRecovery(actor, 'mana', 100, 45)).toBe(45)
         expect(actor.progression.masteries).toEqual(mastery)
+    })
+})
+
+describe('Endurance effective energy capacity', () => {
+    it('increases capacity without granting current energy or exposing exact values', () => {
+        const actor = abilityHero('vanguard')
+        actor.progression.constellations.opened.add('life.endurance')
+
+        expect(actor.energy).toBe(120)
+        expect(actor.config.resources.maxEnergy).toBe(120)
+        expect(effectiveMaxEnergy(actor)).toBe(132)
+        expect(prayerResourceMissing(actor, actor, 'pray_road')).toBe(12)
+        const view = {
+            observer: abilityHero(),
+            getCharacter: () => actor,
+            navigation: undefined,
+            now: 1,
+        }
+        const observed = observeCharacterCombat(
+            actor.snapshot(1, false),
+            actor,
+            view
+        )
+        expect(observed.resources.energy).toEqual({
+            kind: 'percent',
+            hasCapacity: true,
+            percent: 90,
+        })
+
+        actor.progression.constellations.opened.add('life.energy3')
+        expect(createCharacterSheet(actor, 16).energy.max).toEqual({
+            kind: 'exact',
+            value: 132,
+        })
+        actor.applyRegen(10_000, false, true, 10_001)
+        expect(actor.energy).toBe(132)
+        expect(actor.progression.masteries.life.experience).toBe(0n)
+
+        restoreCharacter(actor, 10_002, false)
+        expect(actor.energy).toBe(66)
+        restoreCharacter(actor, 10_003, true)
+        expect(actor.energy).toBe(132)
     })
 })

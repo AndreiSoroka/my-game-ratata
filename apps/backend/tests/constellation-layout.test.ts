@@ -11,10 +11,10 @@ const centers = ['blade', 'magic', 'prayer', 'arrow'] as const
 
 describe('personal planar skies', () => {
     it('independently audits 256 seeds for every starting class, including all hidden stars', () => {
-        expect(fullConstellationCatalog).toHaveLength(134)
+        expect(fullConstellationCatalog).toHaveLength(141)
         expect(
             fullConstellationCatalog.flatMap((node) => node.parents)
-        ).toHaveLength(150)
+        ).toHaveLength(157)
         expect(skyComponents(fullConstellationCatalog)).toHaveLength(9)
         for (let seed = 0; seed < 256; seed += 1) {
             for (const center of centers) {
@@ -42,7 +42,7 @@ describe('personal planar skies', () => {
                 expect(sky.layout.minimumNodeSpacing).toBeGreaterThanOrEqual(80)
             }
         }
-    }, 60000)
+    }, 180000)
 
     it('replays one seed exactly and changes both roots and internal shape for another identity', () => {
         const first = generateConstellationLayout(

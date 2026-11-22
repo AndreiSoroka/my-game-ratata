@@ -51,7 +51,7 @@ interface SimulationContext {
 }
 
 export function advanceRoomSimulation(context: SimulationContext): void {
-    const { characters, room, now } = context
+    const { characters, room, now, onEvents } = context
     room.social.update(now, characters.values())
     room.refreshPrayerAuraEnvironment()
     context.parties.update(characters.values(), now)
@@ -75,7 +75,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             room.findVisibleTarget(actor, 240, now) !== undefined
     )
     advanceControllers(context, reacting, conversations)
-    const roadRecovery = trackRoadPrayerRecovery(characters.values())
+    const roadRecovery = trackRoadPrayerRecovery(characters.values(), onEvents)
     for (const character of characters.values()) {
         advanceWorldCharacter(
             character,
@@ -163,7 +163,7 @@ function advanceControllers(
 function advanceWorldCharacter(
     character: GameCharacter,
     context: SimulationContext,
-    onEnergyRegen?: (rate: number) => void
+    onEnergyRegen?: Parameters<typeof advanceCharacter>[0]['onEnergyRegen']
 ): void {
     const { now, deltaMs, world, onEvents } = context
     const intent = movementIntent(character, now, deltaMs)

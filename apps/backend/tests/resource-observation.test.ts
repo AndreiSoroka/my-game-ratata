@@ -125,3 +125,32 @@ describe('resource projection and affordability', () => {
         expect(event?.text).not.toMatch(/Сейчас|17\.87/)
     })
 })
+
+describe('owner segment boundaries', () => {
+    it.each([
+        [0, 100, 0, true],
+        [0.001, 100, 40, true],
+        [48, 120, 40, true],
+        [48.001, 120, 60, true],
+        [90, 100, 100, true],
+        [100, 100, 100, false],
+        [110, 100, 100, false],
+        [0, 0, 0, false],
+    ])(
+        'projects %s/%s as %s%% without changing eligibility',
+        (current, max, percent, missing) => {
+            const segments = [40, 20, 20, 20]
+            const exact = { kind: 'exact' as const, current, max }
+            const projected = observeResource(exact, false, segments)
+            expect(projected).toEqual({
+                kind: 'percent',
+                percent,
+                hasCapacity: max > 0,
+                segments,
+                needsRestoration: missing,
+            })
+            expect(resourceNeedsRestoration(projected)).toBe(missing)
+            expect(observeResource(exact, true, segments)).toEqual(exact)
+        }
+    )
+})

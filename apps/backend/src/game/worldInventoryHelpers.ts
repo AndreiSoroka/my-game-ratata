@@ -1,6 +1,7 @@
 import type { ItemId, Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import { createItemInstance, type InventoryItemInstance } from './inventory'
 
 export function generateChestContents(
@@ -59,6 +60,13 @@ export function heal(player: GameCharacter, amount: number): number {
     player.hp = Math.min(player.maxHp, player.hp + amount)
 
     return Math.round(player.hp - before)
+}
+
+export function healFood(player: GameCharacter, baseHealing: number): number {
+    return heal(
+        player,
+        baseHealing + constellationModifiers(player).foodHealingBonus
+    )
 }
 
 function maybeAddChestItem(

@@ -12,13 +12,17 @@ const meta = {
     args: {
         nickname: 'Андрей Сорока',
         hpPercent: 100,
+        hpSegments: [],
         manaPercent: 100,
         energyPercent: 100,
+        energySegments: [],
     },
     argTypes: {
         hpPercent: percentage,
+        hpSegments: { control: 'object' },
         manaPercent: percentage,
         energyPercent: percentage,
+        energySegments: { control: 'object' },
     },
     render(args) {
         const host = renderVueStory(
@@ -35,6 +39,16 @@ export default meta
 type Story = StoryObj<PlayerVitalsData>
 
 export const Normal: Story = {}
+
+export const Segmented: Story = {
+    args: {
+        hpPercent: 60,
+        hpSegments: [40, 20, 20, 20],
+        manaPercent: 45,
+        energyPercent: 70,
+        energySegments: [30, 20, 10, 10, 10, 10, 10],
+    },
+}
 
 export const LongName: Story = { args: { nickname: 'МихаилСорокаНовгородский' } }
 

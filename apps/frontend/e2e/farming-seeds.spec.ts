@@ -84,6 +84,7 @@ for (const mobile of [false, true]) {
             droppedId!
         )
         expect(pickup.status).toBe('condition_met')
+        expect(await lifeUnlocked(page)).toBe(false)
         const sow = await page.evaluate(async (plotId) => {
             const api = window.__ratataTest!
             const notice = api.getState().snapshot!.adventure!.noticeId ?? -1
@@ -103,11 +104,22 @@ for (const mobile of [false, true]) {
         expect(sow.action?.label).toContain('1 семя · 5 EN · в рюкзаке: 1')
         expect(sow.plot?.phase, sow.notice ?? 'No sowing result').toBe('growing')
         expect(await seedCount(page)).toBe(0)
+        await expect.poll(() => lifeUnlocked(page)).toBe(true)
         await inspectFarmChest(page)
         await page.screenshot({
             path: info.outputPath(`farming-seeds-${mobile ? 'mobile' : 'desktop'}.png`),
         })
     })
+}
+
+async function lifeUnlocked(page: Page): Promise<boolean | undefined> {
+    return page.evaluate(
+        () =>
+            window
+                .__ratataTest!.getState()
+                .player?.progression?.constellations?.paths.find((path) => path.id === 'life')
+                ?.unlocked
+    )
 }
 
 async function seedCount(page: Page): Promise<number> {

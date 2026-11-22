@@ -1,13 +1,23 @@
+import type { ConstellationId } from '@my-game-ratata/contracts'
+
 import type { GameCharacter } from './character'
-import { effectiveMaxMana } from './effectiveResources'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { canTargetByFaction } from './factions'
+import {
+    recordLifeEnergyRecovery,
+    recordLifeEnergySpend,
+} from './vitalityPractice'
 
 export type PracticeResource = 'mana' | 'energy'
 
 /** A paid loss remains recoverable only until some real recovery consumes it. */
 export interface ResourceSpendReceipt {
+    resource: PracticeResource
+    paid: number
     remaining: number
     useful: boolean
+    lifeSource?: 'work' | 'combat'
+    recoveredBeforeConfirmation: number
 }
 
 export function createResourcePractice(): Record<
@@ -24,7 +34,7 @@ function missingResource(
     const maximum =
         resource === 'mana'
             ? effectiveMaxMana(actor)
-            : actor.config.resources.maxEnergy
+            : effectiveMaxEnergy(actor)
     return Math.max(0, maximum - actor[resource])
 }
 
@@ -47,8 +57,11 @@ function reconcile(
     )
     if (missing > tracked) {
         actor.resourcePractice[resource].push({
+            resource,
+            paid: 0,
             remaining: missing - tracked,
             useful: false,
+            recoveredBeforeConfirmation: 0,
         })
     }
     return actor.resourcePractice[resource]
@@ -77,13 +90,23 @@ export function recordResourceSpend(
         return undefined
     }
     const missing = missingResource(actor, resource)
-    const paid = Math.min(amount, missing)
-    const losses = reconcile(actor, resource, Math.max(0, missing - paid))
-    const receipt = { remaining: paid, useful: false }
-    if (paid > 0) {
+    const recoverable = Math.min(amount, missing)
+    const losses = reconcile(
+        actor,
+        resource,
+        Math.max(0, missing - recoverable)
+    )
+    const receipt = {
+        resource,
+        paid: amount,
+        remaining: recoverable,
+        useful: false,
+        recoveredBeforeConfirmation: 0,
+    }
+    if (recoverable > 0) {
         losses.push(receipt)
     }
-    return paid > 0 ? receipt : undefined
+    return receipt
 }
 
 export function confirmResourceSpend(
@@ -108,8 +131,43 @@ export function confirmCombatResourceSpend(
             actor.faction !== target.faction &&
             canTargetByFaction(actor, target, now))
     ) {
-        receipts.forEach(confirmResourceSpend)
+        for (const receipt of receipts) {
+            confirmResourceSpend(receipt)
+            confirmLifeSpend(actor, receipt, 'combat', now)
+        }
     }
+}
+
+function confirmLifeSpend(
+    actor: GameCharacter,
+    receipt: ResourceSpendReceipt | undefined,
+    source: NonNullable<ResourceSpendReceipt['lifeSource']>,
+    now: number
+): void {
+    if (
+        receipt?.resource !== 'energy' ||
+        receipt.paid <= 0 ||
+        receipt.lifeSource !== undefined ||
+        !actor.alive ||
+        actor.tags.has('offline') ||
+        actor.tags.has('state.retired')
+    ) {
+        return
+    }
+    receipt.lifeSource = source
+    recordLifeEnergySpend(actor, receipt.paid, now)
+    // A paid attack can finish after natural recovery has already restored some of its cost.
+    recordLifeEnergyRecovery(actor, 0, receipt.recoveredBeforeConfirmation, now)
+}
+
+export function recordLifeWorkSpend(
+    actor: GameCharacter,
+    amount: number,
+    now: number
+): void {
+    const receipt = recordResourceSpend(actor, 'energy', amount)
+    confirmResourceSpend(receipt)
+    confirmLifeSpend(actor, receipt, 'work', now)
 }
 
 export function recordUsefulResourceSpend(
@@ -156,9 +214,42 @@ export function consumeResourceRecovery(
     amount: number,
     missingBefore: number
 ): number {
+    return consumeRecovery(actor, resource, amount, missingBefore).useful
+}
+
+export function restoreEnergy(
+    actor: GameCharacter,
+    amount: number,
+    now: number,
+    factors?: Record<ConstellationId, number>
+) {
+    const missing = missingResource(actor, 'energy')
+    const restored = Math.min(Math.max(0, amount), missing)
+    const { useful, work, combat } = consumeRecovery(
+        actor,
+        'energy',
+        restored,
+        missing
+    )
+    actor.energy += restored
+    return {
+        useful,
+        restored,
+        events: recordLifeEnergyRecovery(actor, work, combat, now, factors),
+    }
+}
+
+function consumeRecovery(
+    actor: GameCharacter,
+    resource: PracticeResource,
+    amount: number,
+    missingBefore: number
+) {
     const losses = reconcile(actor, resource, Math.max(0, missingBefore))
     let remaining = Math.min(Math.max(0, amount), Math.max(0, missingBefore))
     let useful = 0
+    let work = 0
+    let combat = 0
     for (const loss of losses) {
         const recovered = Math.min(loss.remaining, remaining)
         loss.remaining -= recovered
@@ -166,18 +257,33 @@ export function consumeResourceRecovery(
         if (loss.useful) {
             useful += recovered
         }
+        if (loss.lifeSource === 'work') {
+            work += recovered
+        } else if (loss.lifeSource === 'combat') {
+            combat += recovered
+        } else if (
+            loss.resource === 'energy' &&
+            loss.paid > 0 &&
+            !loss.useful
+        ) {
+            loss.recoveredBeforeConfirmation += recovered
+        }
     }
     actor.resourcePractice[resource] = losses.filter(
         (loss) => loss.remaining > 0
     )
-    return useful
+    return { useful, work, combat }
 }
 
 export function clearResourcePractice(actor: GameCharacter): void {
     for (const resource of ['mana', 'energy'] as const) {
         for (const loss of actor.resourcePractice[resource]) {
+            loss.paid = 0
             loss.remaining = 0
         }
         actor.resourcePractice[resource] = []
     }
+    const training = actor.progression.constellations.lifeEnergy
+    training.restUntil = 0
+    training.recentSpends = []
 }

@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import type { InventoryItemInstance } from './inventoryItems'
 
 /** Returns true only on the transition into a broken condition. */
@@ -35,17 +36,22 @@ export function repairItem(item: InventoryItemInstance): boolean {
 
 export function wearWalkingEquipment(
     character: GameCharacter,
-    traveled: number
+    traveled: number,
+    walking = true
 ): void {
     if (!Number.isFinite(traveled) || traveled <= 0) {
         return
     }
-    for (const item of Object.values(character.equipment)) {
+    for (const [slot, item] of Object.entries(character.equipment)) {
         const step = ITEM_DEFINITIONS[item.itemId].durabilityWear?.walkPixels
         if (step === undefined || isItemBroken(item)) {
             continue
         }
-        const distance = (item.wearDistance ?? 0) + traveled
+        const wearMultiplier =
+            walking && slot === 'boots'
+                ? constellationModifiers(character).walkingBootWearMultiplier
+                : 1
+        const distance = (item.wearDistance ?? 0) + traveled * wearMultiplier
         // Roundoff at an exact boundary must not give different wear at different tick rates.
         const consumed = Math.floor((distance + 1e-9) / step)
         item.wearDistance = Math.max(0, distance - consumed * step)

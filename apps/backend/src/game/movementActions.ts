@@ -9,7 +9,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
-import { effectiveDashCost } from './effectiveParameters'
+import { effectiveDashCost, effectiveDashDuration } from './effectiveParameters'
 import { normalize } from './math'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
@@ -65,7 +65,7 @@ export function handleMovementCommand(
     const state = character.movement
     state.dashDirection = dashDirection(character)
     state.dashStartedAt = now
-    state.dashUntil = now + MOVEMENT_RULES.dashDurationMs
+    state.dashUntil = now + effectiveDashDuration(character)
     state.dashAvailableAt = now + MOVEMENT_RULES.dashCooldownMs
     state.mode = 'walking'
     const spent = character.drainEnergy(effectiveDashCost(character, now))

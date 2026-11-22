@@ -48,6 +48,16 @@ describe('wheat sowing requirements', () => {
         expect(farmAction(plot, player, 0).label).toContain('нет данных о силах')
     })
 
+    it('shows the effective sowing cost alongside the server affordability hint', () => {
+        const player = characterFixture('hero', {
+            inventory: [{ instanceId: 'seed', itemId: 'wheat_seed' }],
+        })
+        player.resourceChecks!.sowEnergyCost = 4.5
+        const action = farmAction(plot, player, 0)
+        expect(action.label).toContain('1 семя · 4.5 EN')
+        expect(action.disabled).toBe(false)
+    })
+
     it('keeps harvesting available without seeds and a growing crop unavailable', () => {
         const player = characterFixture('hero')
         expect(farmAction({ ...plot, phase: 'ripe' }, player, 0)).toMatchObject({

@@ -31,6 +31,7 @@ const bars = computed(() =>
             kind,
             ...resourcePresentation[kind],
             percent: props[`${kind}Percent`],
+            segments: kind === 'mana' ? undefined : props[`${kind}Segments`],
             animated: props[`${kind}Animated`],
             text:
                 current !== undefined && max !== undefined
@@ -82,6 +83,7 @@ const bars = computed(() =>
                     <PlayerVitalsBar
                         class="player-vitals__bar"
                         :value="bar.percent"
+                        :segments="bar.segments"
                         :label="bar.name"
                         :color="bar.color"
                         track-color="var(--ui-dark-bar-track)"

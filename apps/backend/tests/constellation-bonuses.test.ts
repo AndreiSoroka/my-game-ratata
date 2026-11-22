@@ -41,6 +41,14 @@ const base = {
     fireDamageMultiplier: 1,
     moveSpeedMultiplier: 1,
     dashEnergyMultiplier: 1,
+    foodHealingBonus: 0,
+    walkingBootWearMultiplier: 1,
+    dashDurationBonus: 0,
+    walkingEnergyRegenMultiplier: 1,
+    idleEnergyRegenMultiplier: 1,
+    energyCapacityMultiplier: 1,
+    restEnergyRegenBonus: 0,
+    workEnergyMultiplier: 1,
     sneakSpeedMultiplier: 1,
     sneakNoiseMultiplier: 1,
     sneakSightMultiplier: 1,
@@ -87,6 +95,16 @@ const bonuses: Array<[string, Partial<typeof base>]> = [
     ['magic.fire_damage', { fireDamageMultiplier: 1.1 }],
     ['life.move', { moveSpeedMultiplier: 1.05 }],
     ['life.dash', { dashEnergyMultiplier: 0.9 }],
+    ['life.ration', { foodHealingBonus: 15 }],
+    ['life.tread', { walkingBootWearMultiplier: 0.75 }],
+    ['life.long_dash', { dashDurationBonus: 700 }],
+    [
+        'life.breath',
+        { walkingEnergyRegenMultiplier: 1.2, idleEnergyRegenMultiplier: 1.5 },
+    ],
+    ['life.endurance', { energyCapacityMultiplier: 1.1 }],
+    ['life.rest', { restEnergyRegenBonus: 0.3 }],
+    ['life.work', { workEnergyMultiplier: 0.9 }],
     ['shadow.speed', { sneakSpeedMultiplier: 1.1 }],
     ['shadow.noise1', { sneakNoiseMultiplier: 0.85 }],
     ['shadow.noise2', { sneakNoiseMultiplier: 0.85 }],
@@ -105,7 +123,7 @@ const bonuses: Array<[string, Partial<typeof base>]> = [
     ['prayer.area', { prayerArea: true }],
 ]
 
-describe('pure constellation bonus extraction preserves the original coefficients', () => {
+describe('pure constellation bonuses', () => {
     it('keeps every neutral field and ignores unrelated or unknown metadata IDs', () => {
         expect(resolveConstellationBonuses(new Set())).toEqual(base)
         expect(
@@ -121,7 +139,7 @@ describe('pure constellation bonus extraction preserves the original coefficient
         ).toEqual(base)
     })
     it.each(bonuses)(
-        'applies only the original fields for %s',
+        'applies only the authored fields for %s',
         (id, expected) => {
             expect(resolveConstellationBonuses(new Set([id]))).toEqual({
                 ...base,

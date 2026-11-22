@@ -36,6 +36,23 @@ function statusStory(props: { character: CharacterSnapshot; serverTime?: number 
 export const Normal: Story = {
     render: () => statusStory({ character: playerStatusFixture() }),
 }
+export const SegmentedResources: Story = {
+    render: () =>
+        statusStory({
+            character: playerStatusFixture({
+                health: { kind: 'percent', percent: 60, segments: [40, 20, 20, 20] },
+                resources: {
+                    mana: { kind: 'percent', percent: 45, hasCapacity: true },
+                    energy: {
+                        kind: 'percent',
+                        percent: 70,
+                        segments: [30, 20, 10, 10, 10, 10, 10],
+                        hasCapacity: true,
+                    },
+                },
+            }),
+        }),
+}
 function themedStatusStory(heroClass: HeroClass): Story {
     return {
         parameters: { heroClass },

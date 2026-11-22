@@ -1,4 +1,5 @@
 import {
+    type GameEventPayload,
     MASTERY_REWARDS,
     type PrayerIntent,
     ROAD_PRAYER_RULES,
@@ -7,11 +8,13 @@ import {
 import type { AbilityContext } from './abilityContext'
 import type { RoadPrayerCastState } from './abilityState'
 import type { GameCharacter } from './character'
+import type { EnergyRecoveryRate } from './characterRecovery'
+import { effectiveMaxEnergy } from './effectiveResources'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { canPerceivePrayerCaster } from './prayerAuras'
-import { consumeResourceRecovery } from './resourcePractice'
+import { restoreEnergy } from './resourcePractice'
 
 function activeSong(source: GameCharacter, now: number, since: number) {
     const cast = source.abilities.casting
@@ -31,6 +34,7 @@ function activeSong(source: GameCharacter, now: number, since: number) {
 interface RecoverySong {
     source: GameCharacter
     cast: NonNullable<ReturnType<typeof activeSong>>
+    until: number
     durationMs: number
 }
 
@@ -85,7 +89,10 @@ export function hasRoadPrayerRecovery(
 }
 
 /** Collect movement's recovery rates only for ticks that can have an active song. */
-export function trackRoadPrayerRecovery(characters: Iterable<GameCharacter>) {
+export function trackRoadPrayerRecovery(
+    characters: Iterable<GameCharacter>,
+    onEvents: (events: GameEventPayload[]) => void
+) {
     const sources: GameCharacter[] = []
     for (const character of characters) {
         if (character.abilities.casting?.abilityId === 'pray_road') {
@@ -95,9 +102,9 @@ export function trackRoadPrayerRecovery(characters: Iterable<GameCharacter>) {
     if (sources.length === 0) {
         return undefined
     }
-    const energyRates = new Map<GameCharacter, number>()
+    const energyRates = new Map<GameCharacter, EnergyRecoveryRate>()
     return {
-        observe: (character: GameCharacter) => (rate: number) => {
+        observe: (character: GameCharacter) => (rate: EnergyRecoveryRate) => {
             energyRates.set(character, rate)
         },
         apply: (
@@ -105,23 +112,25 @@ export function trackRoadPrayerRecovery(characters: Iterable<GameCharacter>) {
             now: number,
             deltaMs: number
         ) =>
-            applyRoadPrayerRecovery(
-                sources,
-                energyRates,
-                navigationFor,
-                now,
-                deltaMs
+            onEvents(
+                applyRoadPrayerRecovery(
+                    sources,
+                    energyRates,
+                    navigationFor,
+                    now,
+                    deltaMs
+                )
             ),
     }
 }
 
 export function applyRoadPrayerRecovery(
     characters: Iterable<GameCharacter>,
-    energyRates: ReadonlyMap<GameCharacter, number>,
+    energyRates: ReadonlyMap<GameCharacter, EnergyRecoveryRate>,
     navigationFor: (locationId: string) => NavigationService,
     now: number,
     deltaMs: number
-): void {
+): GameEventPayload[] {
     const since = now - deltaMs
     const songs = [...characters].flatMap((source) => {
         const cast = activeSong(source, now, since)
@@ -131,6 +140,7 @@ export function applyRoadPrayerRecovery(
                   {
                       source,
                       cast,
+                      until: Math.min(now, cast.completesAt),
                       durationMs:
                           Math.min(now, cast.completesAt) -
                           Math.max(since, cast.startedAt),
@@ -138,11 +148,14 @@ export function applyRoadPrayerRecovery(
               ]
     })
     if (songs.length === 0) {
-        return
+        return []
     }
+    const events: GameEventPayload[] = []
     for (const [target, rate] of energyRates) {
-        const missing = target.config.resources.maxEnergy - target.energy
-        if (missing <= 0 || rate <= 0) {
+        if (
+            target.energy >= effectiveMaxEnergy(target) ||
+            rate(now, deltaMs) <= 0
+        ) {
             continue
         }
         const song = songForRecovery(
@@ -154,21 +167,16 @@ export function applyRoadPrayerRecovery(
         if (song === undefined) {
             continue
         }
-        const amount = Math.min(
-            missing,
-            (rate *
+        const amount =
+            (rate(song.until, song.durationMs) *
                 (ROAD_PRAYER_RULES.energyRegenMultiplier - 1) *
                 song.durationMs) /
-                1000
-        )
-        song.cast.road.usefulRecovery += consumeResourceRecovery(
-            target,
-            'energy',
-            amount,
-            missing
-        )
-        target.energy += amount
+            1000
+        const recovery = restoreEnergy(target, amount, now)
+        song.cast.road.usefulRecovery += recovery.useful
+        events.push(...recovery.events)
     }
+    return events
 }
 
 function songForRecovery(

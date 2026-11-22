@@ -5,7 +5,11 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { characterEnergyRegenRate } from './characterRecovery'
+import {
+    characterEnergyRegenRate,
+    type EnergyRecoveryRate,
+    regenerateCharacter,
+} from './characterRecovery'
 import {
     canWalkDuringPrayer,
     combatMovementTime,
@@ -31,7 +35,7 @@ interface MovementContext {
     now: number
     onNoise?: (noise: MovementNoise) => void
     onEvents?: (events: GameEventPayload[]) => void
-    onEnergyRegen?: (rate: number) => void
+    onEnergyRegen?: (rate: EnergyRecoveryRate) => void
 }
 
 export function advanceCharacter(
@@ -91,11 +95,25 @@ function cannotMove(character: GameCharacter, now: number): boolean {
 function applyMovementRegen(
     context: MovementContext,
     moving: boolean,
-    energyAllowed: boolean
+    energyAllowed: boolean,
+    walking = false
 ): void {
     const { character, deltaMs, now, onEvents, onEnergyRegen } = context
-    const events = character.applyRegen(deltaMs, moving, energyAllowed, now)
-    onEnergyRegen?.(characterEnergyRegenRate(character, moving, energyAllowed))
+    const energyRate = characterEnergyRegenRate(
+        character,
+        moving,
+        energyAllowed,
+        walking
+    )
+    onEnergyRegen?.(energyRate)
+    const events = regenerateCharacter(
+        character,
+        deltaMs,
+        moving,
+        energyAllowed,
+        now,
+        energyRate
+    )
     onEvents?.(events)
 }
 
@@ -127,13 +145,19 @@ function moveCharacter(
         confirmResourceSpend(character.movement.dashResourceSpend)
         delete character.movement.dashResourceSpend
     }
-    wearWalkingEquipment(character, traveled)
+    const moving = traveled > 0
+    const walking = isOrdinaryWalk(
+        character,
+        moving,
+        dashMs,
+        forced !== undefined || effects.feared
+    )
+    wearWalkingEquipment(character, traveled, walking)
     character.velocity = {
         x: character.position.x - before.x,
         y: character.position.y - before.y,
     }
     character.updateFacing(character.velocity)
-    const moving = traveled > 0
     const noise = movementNoise(
         character,
         navigation,
@@ -145,10 +169,24 @@ function moveCharacter(
         context.onNoise?.(noise)
     }
     character.updateMovementAnimation(moving, now)
-    applyMovementRegen(context, moving, !moving || dashMs === 0)
+    applyMovementRegen(context, moving, !moving || dashMs === 0, walking)
     if (now >= character.movement.dashUntil) {
         character.movement.dashUntil = 0
     }
+}
+
+function isOrdinaryWalk(
+    character: GameCharacter,
+    moving: boolean,
+    dashMs: number,
+    forced: boolean
+): boolean {
+    return (
+        moving &&
+        !forced &&
+        dashMs === 0 &&
+        character.movement.mode === 'walking'
+    )
 }
 
 function dashTime(

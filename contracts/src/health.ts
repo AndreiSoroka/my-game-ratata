@@ -6,6 +6,10 @@ export interface ExactHealthSnapshot {
 export interface PercentHealthSnapshot {
     kind: 'percent'
     percent: number
+    /** Private segment widths, from left to right. Percent is the sum of lit widths. */
+    segments?: readonly number[]
+    /** A partially filled last segment can look full while this pool can still be restored. */
+    needsRestoration?: boolean
 }
 export type HealthSnapshot = ExactHealthSnapshot | PercentHealthSnapshot
 
@@ -16,4 +20,10 @@ export function healthPercent(health: HealthSnapshot): number {
             ? health.percent
             : (health.current / Math.max(1, health.max)) * 100
     return Math.floor(Math.max(0, Math.min(100, percent)))
+}
+
+export function healthNeedsRestoration(health: HealthSnapshot): boolean {
+    return health.kind === 'exact'
+        ? health.max > 0 && health.current < health.max
+        : (health.needsRestoration ?? health.percent < 100)
 }

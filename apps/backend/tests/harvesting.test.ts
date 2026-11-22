@@ -5,6 +5,7 @@ import { createAdventureState } from '../src/game/adventureState'
 import { GameCharacter } from '../src/game/character'
 import { STONE_REGROW_MS, TREE_GROW_MS } from '../src/game/harvestResources'
 import { countInventoryItem, createItemInstance } from '../src/game/inventory'
+import { resourceChecks } from '../src/game/resourceObservation'
 import { fixture, weapon } from './harvestTestHelpers'
 
 it('uses authored gathering capabilities for a crafted stone axe', () => {
@@ -22,6 +23,26 @@ it('uses authored gathering capabilities for a crafted stone axe', () => {
 })
 
 describe('shared authoritative logging and mining', () => {
+    it.each(['tree', 'stone'] as const)(
+        'validates and charges the discounted cost for %s work',
+        (source) => {
+            const f = fixture(source)
+            f.actor.energy = 4.5
+            expect(f.gather()).toEqual([])
+            expect(f.actor.energy).toBe(4.5)
+
+            f.actor.progression.constellations.opened.add('life.work')
+            f.actor.energy = 4.49
+            expect(f.gather()).toEqual([])
+            expect(f.actor.energy).toBe(4.49)
+            expect(f.resources.snapshot()[0]?.remaining).toBe(8)
+            f.actor.energy = 4.5
+            expect(f.gather()[0]?.kind).toBe('resource_gather')
+            expect(f.actor.energy).toBe(0)
+            expect(f.resources.snapshot()[0]?.remaining).toBe(7)
+        }
+    )
+
     it('turns eight cuts into eight wood, a stump and two real saplings, wearing the axe once per result', () => {
         const f = fixture()
         const tool = weapon(f.actor)
@@ -192,6 +213,19 @@ describe('free soil planting', () => {
             )
         return { ...f, plant }
     }
+
+    it('applies the actual work discount to planting before consuming a sapling', () => {
+        const f = planting()
+        f.actor.energy = 4.5
+        expect(f.plant()).toEqual([])
+        expect(countInventoryItem(f.actor.inventory, 'sapling')).toBe(2)
+
+        f.actor.progression.constellations.opened.add('life.work')
+        expect(resourceChecks(f.actor).plantEnergyCost).toBe(4.5)
+        expect(f.plant()[0]?.kind).toBe('tree_plant')
+        expect(f.actor.energy).toBe(0)
+        expect(countInventoryItem(f.actor.inventory, 'sapling')).toBe(1)
+    })
 
     it('consumes one real seed, waits ten minutes without snapshot side effects and grows only into vacant land', () => {
         const f = planting()

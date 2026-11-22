@@ -30,7 +30,7 @@ import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
 import { recordVitalityRecovery } from './vitalityPractice'
 import { WorldDeathLoot } from './worldDeathLoot'
-import { dropPosition, heal, isPointInZones } from './worldInventoryHelpers'
+import { dropPosition, healFood, isPointInZones } from './worldInventoryHelpers'
 import { type LooseWorldItem, pickupWorldItem } from './worldPickup'
 
 export class WorldInventory {
@@ -221,7 +221,7 @@ export class WorldInventory {
         }
         resetMartyrStreak(player)
         const beforeHp = player.hp
-        const restored = heal(player, healHp)
+        const restored = healFood(player, healHp)
         return [
             {
                 actorId: player.id,

@@ -1,3 +1,5 @@
+import { ITEM_DEFINITIONS, MOVEMENT_RULES } from '@my-game-ratata/contracts'
+
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import type { ConstellationStar } from '../../../../backend/src/game/constellationCatalog'
 import type { ConstellationBuildSummary } from './constellationBuildSummary'
@@ -47,6 +49,24 @@ const contributions: Record<string, Builder> = {
     ],
     'life.move': (b) => additive('Усиление скорости движения', b.moveSpeedMultiplier - 1),
     'life.dash': (b) => reduction('Расход энергии рывка', 1 - b.dashEnergyMultiplier),
+    'life.ration': (b) => [
+        row(
+            'Лечение дорожной едой',
+            `до ${number((ITEM_DEFINITIONS.food.healHp ?? 0) + b.foodHealingBonus)} HP`
+        ),
+    ],
+    'life.tread': (b) => reduction('Износ обуви при ходьбе', 1 - b.walkingBootWearMultiplier),
+    'life.long_dash': (b) => [
+        row('Длительность рывка', `${MOVEMENT_RULES.dashDurationMs + b.dashDurationBonus} мс`),
+    ],
+    'life.breath': (b) => [
+        ...additive('Восстановление энергии при ходьбе', b.walkingEnergyRegenMultiplier - 1),
+        ...additive('Восстановление энергии на месте', b.idleEnergyRegenMultiplier - 1),
+    ],
+    'life.endurance': (b) => additive('Максимальный запас энергии', b.energyCapacityMultiplier - 1),
+    'life.rest': (b) =>
+        additive('Дополнительное восстановление энергии на месте', b.restEnergyRegenBonus),
+    'life.work': (b) => reduction('Расход энергии на полевые работы', 1 - b.workEnergyMultiplier),
     'shadow.speed': (b) => additive('Усиление скорости крадучись', b.sneakSpeedMultiplier - 1),
     'shadow.noise1': (b) => reduction('Шум движения крадучись', 1 - b.sneakNoiseMultiplier),
     'shadow.noise2': (b) => reduction('Шум движения крадучись', 1 - b.sneakNoiseMultiplier),

@@ -16,12 +16,13 @@ import {
 } from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
-import { effectiveMaxMana } from './effectiveResources'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { prayerGiftTargets, prayerResourceMissing } from './prayerContext'
 import {
     consumeResourceRecovery,
     practiceResourceMissing,
+    restoreEnergy,
 } from './resourcePractice'
 import { characterResurrectionParameters } from './resurrection'
 import { finishRoadPrayerRecovery } from './roadPrayerRecovery'
@@ -153,6 +154,10 @@ export function applyPrayerGift(
                 factors
             )
         )
+    } else if (profile.resource === 'energy') {
+        const recovery = restoreEnergy(target, amount, now, factors)
+        meaningful = recovery.useful >= 1 && meaningful
+        lifeEvents.push(...recovery.events)
     } else {
         meaningful =
             consumeResourceRecovery(
@@ -206,7 +211,7 @@ function reviveGift(
         {
             hp: target.maxHp,
             mana: effectiveMaxMana(target),
-            energy: target.config.resources.maxEnergy,
+            energy: effectiveMaxEnergy(target),
         },
         angelic
     )

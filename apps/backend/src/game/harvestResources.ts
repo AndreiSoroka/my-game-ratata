@@ -2,12 +2,14 @@ import {
     type AdventureResourceNode,
     type GameEventPayload,
     type GatherOperation,
+    TREE_PLANT_ENERGY,
     type Vector2,
     type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
+import { effectiveWorkEnergy } from './effectiveParameters'
 import {
     type HarvestDrops,
     rejectWork as reject,
@@ -29,7 +31,7 @@ import {
     resourceApproach,
     resourceReachable,
 } from './resourcePlacement'
-import { recordUsefulResourceSpend } from './resourcePractice'
+import { recordLifeWorkSpend } from './resourcePractice'
 
 export interface PlantInspection {
     position: Vector2
@@ -136,8 +138,9 @@ export class HarvestResources {
             )
         }
         const tile = navigation.worldToTile(center)
-        if (actor.energy < 5) {
-            return reject(state, 'Для посадки нужно 5 сил.')
+        const energy = effectiveWorkEnergy(actor, TREE_PLANT_ENERGY)
+        if (actor.energy < energy) {
+            return reject(state, `Для посадки нужно ${String(energy)} сил.`)
         }
         if (!consumeInventoryItems(actor.inventory, { sapling: 1 })) {
             return reject(state, 'Нужен саженец в рюкзаке.')
@@ -161,7 +164,7 @@ export class HarvestResources {
         node.readyAt = now + TREE_GROW_MS
         node.collisionBounds = stumpBounds(center)
         this.nodes.push(node)
-        recordUsefulResourceSpend(actor, 'energy', actor.drainEnergy(5))
+        recordLifeWorkSpend(actor, actor.drainEnergy(energy), now)
         workAnimation(actor, state, now, 2_000)
         this.dirty.add(actor.locationId)
         this.sync(actor.locationId, navigation)

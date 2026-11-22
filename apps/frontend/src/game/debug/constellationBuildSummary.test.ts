@@ -62,6 +62,17 @@ describe('each passive owns only its authored effect', () => {
         expect(Object.values(values('blade.root'))).toContain('Урон клинка увеличен на 10%.')
         expect(Object.keys(values('blade.root'))).toHaveLength(5)
     })
+    it('shows effective food and dash values and the separate energy recovery bonuses', () => {
+        expect(values('life.ration')).toEqual({ 'Лечение дорожной едой': 'до 25 HP' })
+        expect(values('life.long_dash')).toEqual({ 'Длительность рывка': '1300 мс' })
+        expect(values('life.breath')).toEqual({
+            'Восстановление энергии при ходьбе': '+20%',
+            'Восстановление энергии на месте': '+50%',
+        })
+        expect(values('life.rest')).toEqual({
+            'Дополнительное восстановление энергии на месте': '+30%',
+        })
+    })
 })
 
 describe('standalone actions own only their complete applicable build', () => {

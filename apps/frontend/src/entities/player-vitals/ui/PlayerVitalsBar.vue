@@ -4,6 +4,7 @@ import { GameBar } from '@/shared/ui/common'
 withDefaults(
     defineProps<{
         value: number
+        segments?: readonly number[] | undefined
         label: string
         color: string
         trackColor: string
@@ -20,6 +21,7 @@ withDefaults(
     <GameBar
         class="player-vitals-bar"
         :value="value"
+        v-bind="segments ? { segments } : {}"
         :label="label"
         :color="color"
         :track-color="trackColor"

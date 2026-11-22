@@ -3,6 +3,7 @@ import type {
     ConstellationChanceFormula,
     ConstellationEffectChance,
 } from './constellationChanceTypes'
+import { lifeChanceDetails } from './constellationLifeChanceDetails'
 
 interface DeterministicEffect {
     formulas: ConstellationChanceFormula[]
@@ -147,21 +148,7 @@ const deterministic: Record<string, DeterministicEffect> = {
             'Не снимает оглушение, занятость действия или необходимость оплатить следующий выстрел.',
         ],
     },
-    'life.move': {
-        formulas: [
-            chanceFormula('Скорость движения', 'V × 1.05 × M', {
-                V: 'Базовая скорость персонажа.',
-                M: 'Множитель текущего режима: обычная ходьба, движение крадучись или рывок.',
-            }),
-        ],
-        notes: [
-            'Применяется также к ходьбе крадучись и рывку; коллизии могут остановить фактическое перемещение.',
-        ],
-    },
-    'life.dash': {
-        formulas: [chanceFormula('Цена рывка, EN', '30 × 0.90 = 27')],
-        notes: ['Обычные длительность, перезарядка и проверка возможности рывка сохраняются.'],
-    },
+    ...lifeChanceDetails,
     'shadow.speed': {
         formulas: [
             chanceFormula('Скорость движения крадучись', 'V × K × 0.45 × 1.10', {

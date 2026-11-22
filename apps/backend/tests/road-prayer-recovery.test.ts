@@ -5,9 +5,15 @@ import {
 import { expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
+import { characterEnergyRegenRate } from '../src/game/characterRecovery'
+import { effectiveMaxEnergy } from '../src/game/effectiveResources'
 import { advancePrayerCast, beginPrayerCast } from '../src/game/prayer'
 import { cancelPrayerCast } from '../src/game/prayerCancellation'
-import { recordUsefulResourceSpend } from '../src/game/resourcePractice'
+import {
+    recordLifeWorkSpend,
+    recordUsefulResourceSpend,
+    restoreEnergy,
+} from '../src/game/resourcePractice'
 import {
     applyRoadPrayerRecovery,
     hasRoadPrayerRecovery,
@@ -60,7 +66,7 @@ it('applies fivefold ordinary recovery from the root during the channel and caps
     expect(hasRoadPrayerRecovery(distant, context.navigation, startedAt)).toBe(
         false
     )
-    const energyRates = new Map(characters.map((actor) => [actor, 6]))
+    const energyRates = new Map(characters.map((actor) => [actor, () => 6]))
     for (const actor of characters) {
         actor.energy = 0
         actor.applyRegen(500, false, true, startedAt + 250)
@@ -113,6 +119,49 @@ it('doubles the circular song area with Bard Skills and keeps the instant gift r
     ).toBeCloseTo(ABILITY_DEFINITIONS.pray_road.range * Math.sqrt(2))
 })
 
+it('restores useful work energy up to the Endurance capacity', () => {
+    const caster = abilityHero()
+    const ally = abilityHero()
+    ally.progression.constellations.opened.add('life.endurance')
+    restoreEnergy(ally, 20, startedAt)
+    recordLifeWorkSpend(ally, ally.drainEnergy(30), startedAt)
+    const characters = [caster, ally]
+    const context = start(caster, ally, characters)
+
+    applyRoadPrayerRecovery(
+        characters,
+        new Map([[ally, () => 6]]),
+        () => context.navigation,
+        startedAt + 1500,
+        1500
+    )
+
+    expect(ally.energy).toBe(effectiveMaxEnergy(ally))
+    expect(ally.progression.constellations.lifeEnergy.recovered).toBe(30)
+    expect(ally.progression.masteries.life.experience).toBe(10_000_000n)
+})
+
+it('boosts the resting bonus only while the rest and song overlap', () => {
+    const caster = abilityHero()
+    const ally = abilityHero()
+    ally.progression.constellations.opened.add('life.breath')
+    ally.progression.constellations.opened.add('life.rest')
+    ally.progression.constellations.lifeEnergy.restUntil = startedAt + 8100
+    ally.energy = 0
+    const characters = [caster, ally]
+    const context = start(caster, ally, characters)
+
+    applyRoadPrayerRecovery(
+        characters,
+        new Map([[ally, characterEnergyRegenRate(ally, false, true, false)]]),
+        () => context.navigation,
+        startedAt + 250,
+        500
+    )
+
+    expect(ally.energy).toBeCloseTo(10.08)
+})
+
 it.each([true, false])(
     'credits useful song recovery once and grants the dash discount only if answered (%s)',
     (answered) => {
@@ -125,7 +174,7 @@ it.each([true, false])(
         const context = start(caster, ally, characters)
         applyRoadPrayerRecovery(
             characters,
-            new Map([[ally, 6]]),
+            new Map([[ally, () => 6]]),
             () => context.navigation,
             completesAt,
             1_000

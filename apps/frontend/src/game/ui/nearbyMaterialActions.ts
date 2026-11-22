@@ -99,13 +99,14 @@ export function farmAction(
         0
     )
     const unavailable = sowUnavailable(player, seeds)
+    const sowEnergyCost = player.resourceChecks?.sowEnergyCost ?? FARM_SOW_ENERGY
     return {
         id: `farm:${plot.id}:${plot.phase === 'ripe' ? 'harvest' : 'sow'}`,
         label:
             plot.phase === 'ripe'
                 ? 'Собрать пшеницу · +3 зерна'
                 : plot.phase === 'bare'
-                  ? `Посеять · ${String(FARM_SOW_SEEDS)} семя · ${String(FARM_SOW_ENERGY)} EN · в рюкзаке: ${String(seeds)}${unavailable === undefined ? '' : ` · ${unavailable}`}`
+                  ? `Посеять · ${String(FARM_SOW_SEEDS)} семя · ${String(sowEnergyCost)} EN · в рюкзаке: ${String(seeds)}${unavailable === undefined ? '' : ` · ${unavailable}`}`
                   : `Пшеница растёт · ${String(seconds)} сек.`,
         disabled: plot.phase === 'growing' || (plot.phase === 'bare' && unavailable !== undefined),
         command: {

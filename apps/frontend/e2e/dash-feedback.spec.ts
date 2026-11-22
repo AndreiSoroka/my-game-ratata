@@ -25,6 +25,14 @@ for (const [viewport, size] of [
         await page.locator('canvas[data-game-canvas=true]').focus()
         const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
         expect(playerId).toBeTruthy()
+        const vitals = page.getByRole('region', { name: 'Player vitals' })
+        const health = vitals.getByRole('progressbar', { name: 'Health' })
+        const energy = vitals.getByRole('progressbar', { name: 'Energy' })
+        const mana = vitals.getByRole('progressbar', { name: 'Mana' })
+        await expect(health.locator('.game-bar__segment')).toHaveCount(4)
+        await expect(energy.locator('.game-bar__segment')).toHaveCount(4)
+        await expect(mana.locator('.game-bar__fill')).toBeVisible()
+        await expect(vitals.locator('.game-bar__label')).toHaveCount(0)
 
         await page.keyboard.press('Space')
         await page.waitForFunction(() => {
@@ -40,6 +48,8 @@ for (const [viewport, size] of [
         await dashUntilEnergyRejection(page)
         await expect.poll(() => rejections[1]?.text).toBe(energyCaption)
         await expectCaption(page, energyCaption)
+        await expect(energy.locator('.game-bar__segment')).toHaveCount(1)
+        await expect(energy).toHaveAttribute('data-animated', 'true')
         await page.screenshot({ path: info.outputPath('dash-energy.png') })
 
         expect(rejections.map((event) => event.actorId)).toEqual([playerId, playerId])
