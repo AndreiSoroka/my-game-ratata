@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import './chatButton.css'
 
-import { UiButton, type UiButtonColors } from '@/shared/ui/common'
+import { hudPanelButtonColors, UiButton, type UiButtonColors } from '@/shared/ui/common'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import type { ChatHistoryFilter } from '../model/chatHistory'
-import { chatButtonColors } from './chatButtonColors'
 
 defineProps<{ historyId?: string; buttonAttrs?: Record<string, unknown> }>()
 const filter = defineModel<ChatHistoryFilter>('filter', { default: 'all' })
@@ -18,9 +17,9 @@ const channels = [
 ] as const
 
 const activeButtonColors = {
-    ...chatButtonColors,
+    ...hudPanelButtonColors,
     highlighted: {
-        ...chatButtonColors.highlighted,
+        ...hudPanelButtonColors.highlighted,
         border: lightUiColors.border.gold,
         backgroundBottom: lightUiColors.border.gold,
     },
@@ -38,7 +37,7 @@ const activeButtonColors = {
                 panel="panel-001"
                 class="chat-button"
                 :highlighted="filter === channel || undefined"
-                :colors="filter === channel ? activeButtonColors : chatButtonColors"
+                :colors="filter === channel ? activeButtonColors : hudPanelButtonColors"
                 :aria-pressed="filter === channel"
                 @click="filter = channel"
             >
@@ -50,7 +49,7 @@ const activeButtonColors = {
             appearance="panel"
             panel="panel-001"
             class="chat-button chat-toolbar__toggle"
-            :colors="chatButtonColors"
+            :colors="hudPanelButtonColors"
             :aria-controls="historyId"
             :aria-expanded="!collapsed"
             :aria-label="collapsed ? 'Развернуть историю чата' : 'Свернуть историю чата'"

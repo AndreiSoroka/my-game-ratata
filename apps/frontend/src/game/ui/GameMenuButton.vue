@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { UiButton } from '@/shared/ui/common'
+import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 
 import { worldHudButtonAttrs } from './uiKeyboard'
 
@@ -11,6 +11,7 @@ const emit = defineEmits<{ open: [] }>()
         v-bind="worldHudButtonAttrs"
         appearance="panel"
         panel="panel-001"
+        :colors="hudPanelButtonColors"
         class="game-menu-button"
         aria-label="Игровое меню"
         title="Меню · Esc"

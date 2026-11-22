@@ -3,7 +3,7 @@ import './chatButton.css'
 
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { UiButton } from '@/shared/ui/common'
+import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 import { FantasyBorder, getFantasyBorderMetrics } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
@@ -12,7 +12,6 @@ import {
     type ChatHistoryFilter,
     filterChatHistory,
 } from '../model/chatHistory'
-import { chatButtonColors } from './chatButtonColors'
 
 const props = withDefaults(
     defineProps<{
@@ -121,7 +120,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                 appearance="panel"
                 panel="panel-001"
                 class="chat-button"
-                :colors="chatButtonColors"
+                :colors="hudPanelButtonColors"
                 @click="latest"
             >
                 Новые сообщения · {{ unread }} ↓

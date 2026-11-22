@@ -1,6 +1,7 @@
 export { BarFill, type BarFillProps } from './bar-fill'
 export { BarTrack, type BarTrackProps } from './bar-track'
 export {
+    hudPanelButtonColors,
     UiButton,
     type UiButtonAppearance,
     type UiButtonColors,

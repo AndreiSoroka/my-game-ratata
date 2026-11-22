@@ -8,6 +8,26 @@ import type {
     UiButtonVariant,
 } from './uiButtonProps'
 
+export const hudPanelButtonColors = {
+    normal: {
+        text: lightUiColors.button.panelShade,
+        border: lightUiColors.border.wood,
+        backgroundTop: lightUiColors.border.cream,
+        backgroundBottom: lightUiColors.button.selectedEdge,
+    },
+    highlighted: {
+        text: lightUiColors.button.panelShade,
+        border: lightUiColors.button.selectedEdge,
+        backgroundTop: lightUiColors.panel.parchment,
+        backgroundBottom: lightUiColors.border.cream,
+    },
+    pressed: {
+        text: lightUiColors.button.panelShade,
+        border: lightUiColors.border.wood,
+    },
+    focus: lightUiColors.border.gold,
+} satisfies UiButtonColors
+
 const palettes = {
     secondary: lightUiColors.button.wood,
     primary: lightUiColors.button.primary,

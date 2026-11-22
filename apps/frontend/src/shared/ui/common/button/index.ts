@@ -1,3 +1,4 @@
+export { hudPanelButtonColors } from './buttonColors'
 export { default as UiButton } from './UiButton.vue'
 export type {
     UiButtonAppearance,
