@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { regenerateCharacter } from './characterRecovery'
 import { combatMovementTime, lungeDisplacement } from './combatMovement'
 import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
@@ -107,13 +108,19 @@ function moveCharacter(
         confirmResourceSpend(character.movement.dashResourceSpend)
         delete character.movement.dashResourceSpend
     }
-    wearWalkingEquipment(character, traveled)
+    const moving = traveled > 0
+    const walking = isOrdinaryWalk(
+        character,
+        moving,
+        dashMs,
+        forced !== undefined || effects.feared
+    )
+    wearWalkingEquipment(character, traveled, walking)
     character.velocity = {
         x: character.position.x - before.x,
         y: character.position.y - before.y,
     }
     character.updateFacing(character.velocity)
-    const moving = traveled > 0
     const noise = movementNoise(
         character,
         navigation,
@@ -125,16 +132,32 @@ function moveCharacter(
         context.onNoise?.(noise)
     }
     character.updateMovementAnimation(moving, now)
-    const events = character.applyRegen(
+    const events = regenerateCharacter(
+        character,
         deltaMs,
         moving,
         !moving || dashMs === 0,
-        now
+        now,
+        walking
     )
     context.onEvents?.(events)
     if (now >= character.movement.dashUntil) {
         character.movement.dashUntil = 0
     }
+}
+
+function isOrdinaryWalk(
+    character: GameCharacter,
+    moving: boolean,
+    dashMs: number,
+    forced: boolean
+): boolean {
+    return (
+        moving &&
+        !forced &&
+        dashMs === 0 &&
+        character.movement.mode === 'walking'
+    )
 }
 
 function dashTime(

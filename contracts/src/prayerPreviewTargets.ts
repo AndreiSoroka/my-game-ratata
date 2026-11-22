@@ -1,5 +1,6 @@
 import { type PrayerIntent, type PrayerMode, prayerSchoolId } from './abilities'
 import type { WorldGraveSnapshot } from './graves'
+import { healthNeedsRestoration } from './health'
 import type { CharacterSnapshot } from './index'
 import { PRAYER_SCHOOL_DEFINITIONS } from './prayer'
 import type { PreviewContext } from './prayerPreviewTypes'
@@ -66,9 +67,7 @@ function resourceMissing(
     target: CharacterSnapshot
 ): boolean {
     if (context.profile.resource === 'hp') {
-        return target.health.kind === 'exact'
-            ? target.health.current < target.health.max
-            : target.health.percent < 100
+        return healthNeedsRestoration(target.health)
     }
     return resourceNeedsRestoration(target.resources[context.profile.resource])
 }

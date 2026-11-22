@@ -8,6 +8,12 @@ export interface CharacterConstellations {
     hostileWound: number
     woundPractice: number
     recoveryPractice: number
+    lifeEnergy: {
+        recovered: number
+        workRemainder: number
+        restUntil: number
+        recentSpends: Array<{ at: number; energy: number }>
+    }
     lowHpAwarded: boolean
     lowHpFromHostile: boolean
     lastSpellHit: { targetId: string; at: number } | null
@@ -33,6 +39,12 @@ export function createConstellationState(): CharacterConstellations {
         hostileWound: 0,
         woundPractice: 0,
         recoveryPractice: 0,
+        lifeEnergy: {
+            recovered: 0,
+            workRemainder: 0,
+            restUntil: 0,
+            recentSpends: [],
+        },
         lowHpAwarded: false,
         lowHpFromHostile: false,
         lastSpellHit: null,

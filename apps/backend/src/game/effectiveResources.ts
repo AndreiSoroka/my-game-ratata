@@ -1,5 +1,8 @@
 import type { GameCharacter } from './character'
-import { resolveConstellationBonuses } from './constellationBonuses'
+import {
+    ENDURANCE_ENERGY_PERCENT,
+    resolveConstellationBonuses,
+} from './constellationBonuses'
 
 /** Base configuration stays intact; the identity's learned trait determines its current capacity. */
 export function effectiveMaxHp(actor: GameCharacter): number {
@@ -14,5 +17,12 @@ export function effectiveMaxMana(actor: GameCharacter): number {
     const base = actor.config.resources.maxMana
     return actor.progression.constellations.opened.has('prayer.martyr')
         ? base * 0.85
+        : base
+}
+
+export function effectiveMaxEnergy(actor: GameCharacter): number {
+    const base = actor.config.resources.maxEnergy
+    return actor.progression.constellations.opened.has('life.endurance')
+        ? (base * ENDURANCE_ENERGY_PERCENT) / 100
         : base
 }

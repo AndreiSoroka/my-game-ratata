@@ -9,7 +9,7 @@ import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
-import { effectiveMaxMana } from './effectiveResources'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { canTargetByFaction } from './factions'
 import { canPurifyGrave } from './gravePrayer'
 import { distance } from './math'
@@ -34,7 +34,7 @@ export function prayerResourceMissing(
     return Math.max(
         0,
         profile.resource === 'energy'
-            ? target.config.resources.maxEnergy - target.energy
+            ? effectiveMaxEnergy(target) - target.energy
             : effectiveMaxMana(target) - target.mana
     )
 }

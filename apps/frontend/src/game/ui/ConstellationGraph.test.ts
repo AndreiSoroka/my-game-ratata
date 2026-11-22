@@ -182,6 +182,21 @@ it('places full-catalogue labels without overlapping at detailed scale', () => {
             ).toBe(true)
 })
 
+it('finds room for the cleric center label in the narrow overview', () => {
+    const sky = constellationFixture(true, 'cleric')
+    const { bounds, centerNodeId } = sky.layout!
+    const scale = Math.max(bounds.width / 346, bounds.height / 340)
+    const width = 346 * scale
+    const height = 340 * scale
+    const labels = constellationLabels(sky, centerNodeId, false, scale, {
+        x: -width / 2,
+        y: -height / 2,
+        width,
+        height,
+    })
+    expect(labels.find((label) => label.id === centerNodeId)?.text).toBe('Угольная Мать')
+})
+
 it.each(['vanguard', 'arcanist', 'cleric', 'ranger'] as const)(
     'centers %s on its immutable starting root and resets selection there',
     async (heroClass) => {

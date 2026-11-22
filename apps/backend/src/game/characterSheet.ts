@@ -16,7 +16,7 @@ import {
     effectiveAbility,
     effectiveCharacterStats,
 } from './effectiveParameters'
-import { effectiveMaxMana } from './effectiveResources'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 
 /** Range bounds are observations, never additional copies of the hidden value. */
 export function observeValue(
@@ -180,7 +180,7 @@ export function createCharacterSheet(
         ),
         energy: resource(
             actor.energy,
-            actor.config.resources.maxEnergy,
+            effectiveMaxEnergy(actor),
             knowledgeStep(actor, 'life.energy', [50, 25, 10, null])
         ),
         moveSpeed: observeValue(stats.moveSpeed / tileWidth, body.movement),

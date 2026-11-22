@@ -1,5 +1,7 @@
 import { resolveBladeBonuses } from './constellationBladeBonuses'
 
+export const ENDURANCE_ENERGY_PERCENT = 110
+
 /** Pure bonuses shared by authoritative characters and isolated atlas builds. */
 export function resolveConstellationBonuses(
     activeIds: ReadonlySet<string>,
@@ -30,6 +32,16 @@ export function resolveConstellationBonuses(
         fireDamageMultiplier: 1 + 0.1 * learned('magic.fire_damage'),
         moveSpeedMultiplier: 1 + 0.05 * learned('life.move'),
         dashEnergyMultiplier: 1 - 0.1 * learned('life.dash'),
+        foodHealingBonus: 15 * learned('life.ration'),
+        walkingBootWearMultiplier: 1 - 0.25 * learned('life.tread'),
+        dashDurationBonus: 700 * learned('life.long_dash'),
+        walkingEnergyRegenMultiplier: 1 + 0.2 * learned('life.breath'),
+        idleEnergyRegenMultiplier: 1 + 0.5 * learned('life.breath'),
+        energyCapacityMultiplier: activeIds.has('life.endurance')
+            ? ENDURANCE_ENERGY_PERCENT / 100
+            : 1,
+        restEnergyRegenBonus: 0.3 * learned('life.rest'),
+        workEnergyMultiplier: 1 - 0.1 * learned('life.work'),
         sneakSpeedMultiplier: 1 + 0.1 * learned('shadow.speed'),
         sneakNoiseMultiplier:
             1 - 0.15 * (learned('shadow.noise1') + learned('shadow.noise2')),

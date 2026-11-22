@@ -55,3 +55,27 @@ it('animates health below 30 percent and mana and energy below 20 percent', asyn
     expect(dimmedBars()).toEqual([])
     wrapper.unmount()
 })
+
+it('animates segmented HP and energy at the first visible band', async () => {
+    const segments = [40, 20, 20, 20]
+    const wrapper = mount(PlayerVitalsWidget, {
+        props: {
+            nickname: 'Путник',
+            hpPercent: 40,
+            hpSegments: segments,
+            manaPercent: 100,
+            energyPercent: 60,
+            energySegments: segments,
+        },
+    })
+    const health = wrapper.get('[aria-label="Health"]')
+    const energy = wrapper.get('[aria-label="Energy"]')
+    expect(health.attributes('data-animated')).toBe('true')
+    expect(energy.attributes('data-dimmed')).toBe('true')
+
+    await wrapper.setProps({ hpPercent: 60, energyPercent: 40 })
+    expect(health.attributes('data-animated')).toBe('false')
+    expect(energy.attributes('data-animated')).toBe('true')
+    expect(energy.attributes('data-dimmed')).toBe('false')
+    wrapper.unmount()
+})

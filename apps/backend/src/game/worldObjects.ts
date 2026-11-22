@@ -13,7 +13,7 @@ import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
-import { consumeResourceRecovery } from './resourcePractice'
+import { restoreEnergy } from './resourcePractice'
 import { nextSpeechId } from './speechReceipts'
 import { loadWorldObjects, type WorldObjectDefinition } from './worldObjectData'
 
@@ -175,20 +175,10 @@ export class WorldObjects {
             setNotice(state, 'Ты только что попил. Подожди немного.')
             return []
         }
-        const recovered = Math.min(
-            15,
-            Math.max(0, actor.config.resources.maxEnergy - actor.energy)
-        )
-        consumeResourceRecovery(
-            actor,
-            'energy',
-            recovered,
-            actor.config.resources.maxEnergy - actor.energy
-        )
+        const { restored: recovered, events } = restoreEnergy(actor, 15, now)
         if (recovered > 0) {
             resetMartyrStreak(actor)
         }
-        actor.energy += recovered
         this.drinkAllowedAt.set(actor.id, now + 5_000)
         const text = setNotice(
             state,
@@ -196,7 +186,7 @@ export class WorldObjects {
                 ? 'Прохладная вода освежает. Силы восстановлены.'
                 : 'Ты утолил жажду. Силы уже восстановлены.'
         )
-        return [{ kind: 'water_drink', actorId: actor.id, text }]
+        return [...events, { kind: 'water_drink', actorId: actor.id, text }]
     }
 
     private inLocation(locationId: string): WorldObjectDefinition[] {

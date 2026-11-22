@@ -37,12 +37,21 @@ export function constellationLabels(
     for (const node of candidates) {
         const root = node.parents.length === 0
         const { width, height } = labelSize(root, scale)
+        const offset = 28 * scale
         const positions = [
-            { x: node.x - width / 2, y: node.y + 28 * scale },
-            { x: node.x - width / 2, y: node.y - 28 * scale - height },
-            { x: node.x + 28 * scale, y: node.y - height / 2 },
-            { x: node.x - 28 * scale - width, y: node.y - height / 2 },
+            { x: node.x - width / 2, y: node.y + offset },
+            { x: node.x - width / 2, y: node.y - offset - height },
+            { x: node.x + offset, y: node.y - height / 2 },
+            { x: node.x - offset - width, y: node.y - height / 2 },
         ]
+        if (!detailed && root && node.id === (selectedId ?? sky.layout?.centerNodeId)) {
+            positions.push(
+                { x: node.x + offset, y: node.y + offset },
+                { x: node.x + offset, y: node.y - offset - height },
+                { x: node.x - offset - width, y: node.y + offset },
+                { x: node.x - offset - width, y: node.y - offset - height }
+            )
+        }
         for (const point of positions) {
             const rect = {
                 x: Math.max(

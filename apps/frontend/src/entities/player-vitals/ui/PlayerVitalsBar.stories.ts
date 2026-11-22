@@ -7,13 +7,22 @@ import PlayerVitalsBar from './PlayerVitalsBar.vue'
 
 type StoryArgs = Pick<
     InstanceType<typeof PlayerVitalsBar>['$props'],
-    'value' | 'label' | 'color' | 'trackColor' | 'height' | 'valueText' | 'animated' | 'dimmed'
+    | 'value'
+    | 'segments'
+    | 'label'
+    | 'color'
+    | 'trackColor'
+    | 'height'
+    | 'valueText'
+    | 'animated'
+    | 'dimmed'
 >
 
 const meta = {
     title: 'Entities/player-vitals/PlayerVitalsBar',
     args: {
         value: 72,
+        segments: [],
         label: 'Здоровье',
         color: lightUiColors.bar.health.color,
         trackColor: lightUiColors.bar.health.trackColor,
@@ -24,6 +33,7 @@ const meta = {
     },
     argTypes: {
         value: { control: { type: 'range', min: 0, max: 100 } },
+        segments: { control: 'object' },
         label: { control: 'text' },
         color: { control: 'text' },
         trackColor: { control: 'text' },
@@ -45,6 +55,10 @@ export default meta
 type Story = StoryObj<StoryArgs>
 
 export const Default: Story = {}
+
+export const Segmented: Story = {
+    args: { value: 60, segments: [40, 20, 20, 20], valueText: '' },
+}
 
 export const Compact: Story = { args: { height: 13 } }
 

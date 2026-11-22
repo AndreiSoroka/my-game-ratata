@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type {
-    CharacterSnapshot,
-    ClientMessage,
-    MapSummary,
-    PlantTreePreview,
-    Vector2,
+import {
+    type CharacterSnapshot,
+    type ClientMessage,
+    type MapSummary,
+    type PlantTreePreview,
+    TREE_PLANT_ENERGY,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -61,12 +62,15 @@ let frame = 0
 let disposed = false
 let pointerChosen = false
 const available = computed(() => preview.value?.available === true)
+const energyCost = computed(() => props.player.resourceChecks?.plantEnergyCost ?? TREE_PLANT_ENERGY)
 const status = computed(() =>
     submitted.value
         ? 'Подходим к участку… · WASD / Esc — отменить'
         : reason.value ||
           preview.value?.reason ||
-          (preview.value ? 'Свободный участок · 5 EN' : 'Проверяем участок…')
+          (preview.value
+              ? `Свободный участок · ${String(energyCost.value)} EN`
+              : 'Проверяем участок…')
 )
 function request(attempt = 0): void {
     clearTimeout(timer)

@@ -136,6 +136,26 @@ describe('authoritative movement modes', () => {
 })
 
 describe('paid collision-safe dash', () => {
+    it('extends the learned dash to 1300 ms with its existing cost and cooldown rules', () => {
+        const character = actor('scripted')
+        const map = navigation()
+        character.progression.constellations.opened.add('life.dash')
+        character.progression.constellations.opened.add('life.long_dash')
+        character.setMoveInput({ x: 1, y: 0 })
+        const energy = character.energy
+        expect(
+            handleMovementCommand(character, { type: 'dash' }, 1000)
+        ).toHaveLength(1)
+        expect(character.snapshot(2299).movement?.dashing).toBe(true)
+        expect(character.snapshot(2300).movement?.dashing).toBe(false)
+        expect(character.movement.dashAvailableAt).toBe(3500)
+        for (let now = 1050; now <= 2300; now += 50) {
+            advance(character, map, now, 50)
+        }
+        expect(character.position.x).toBeCloseTo(200 + 90 * 1.6 * 1.3)
+        expect(character.energy).toBe(energy - 27)
+    })
+
     it.each([
         { x: 1, y: 0 },
         { x: 1, y: 1 },

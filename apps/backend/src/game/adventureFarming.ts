@@ -15,6 +15,7 @@ import {
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
+import { effectiveWorkEnergy } from './effectiveParameters'
 import { interactionRangeText } from './interactionRangeText'
 import {
     addInventoryItems,
@@ -25,7 +26,7 @@ import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
-import { recordUsefulResourceSpend } from './resourcePractice'
+import { recordLifeWorkSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 
 export class AdventureFarming {
@@ -136,8 +137,9 @@ function sow(
         setNotice(state, 'Эта грядка уже засеяна. Дождись урожая и собери его.')
         return []
     }
-    if (actor.energy < FARM_SOW_ENERGY) {
-        setNotice(state, 'Для посева нужно 5 сил. Передохни.')
+    const energy = effectiveWorkEnergy(actor, FARM_SOW_ENERGY)
+    if (actor.energy < energy) {
+        setNotice(state, `Для посева нужно ${String(energy)} сил. Передохни.`)
         return []
     }
     if (
@@ -149,18 +151,14 @@ function sow(
         )
         return []
     }
-    recordUsefulResourceSpend(
-        actor,
-        'energy',
-        actor.drainEnergy(FARM_SOW_ENERGY)
-    )
+    recordLifeWorkSpend(actor, actor.drainEnergy(energy), now)
     resetMartyrStreak(actor)
     plot.phase = 'growing'
     plot.readyAt = now + FARM_GROW_MS
     state.gatherAllowedAt = now + FARM_ACTION_COOLDOWN_MS
     setNotice(
         state,
-        'Пшеница посеяна. Потрачено 1 семя и 5 сил; урожай созреет через 45 секунд.'
+        `Пшеница посеяна. Потрачено 1 семя и ${String(energy)} сил; урожай созреет через 45 секунд.`
     )
     return [{ actorId: actor.id, plotId: plot.id, kind: 'farm_sow' }]
 }

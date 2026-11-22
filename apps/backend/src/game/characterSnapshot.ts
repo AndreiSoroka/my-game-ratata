@@ -9,7 +9,7 @@ import { snapshotControl } from './characterControl'
 import { shouldRetireCharacter } from './characterLife'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveCharacterStats } from './effectiveParameters'
-import { effectiveMaxMana } from './effectiveResources'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { snapshotEquipment, snapshotItem } from './inventory'
 import { snapshotMovement } from './movementActions'
 import { snapshotProgression } from './skillProgression'
@@ -69,7 +69,7 @@ export function createCharacterSnapshot(
             energy: {
                 kind: 'exact',
                 current: character.energy,
-                max: character.config.resources.maxEnergy,
+                max: effectiveMaxEnergy(character),
             },
             mana: {
                 kind: 'exact',

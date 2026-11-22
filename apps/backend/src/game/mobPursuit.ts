@@ -8,6 +8,7 @@ import type { GameCharacter } from './character'
 import {
     effectiveAttackEnergyCost,
     effectiveDashCost,
+    effectiveDashDuration,
     effectiveMoveSpeed,
 } from './effectiveParameters'
 import { canTargetByFaction } from './factions'
@@ -32,7 +33,7 @@ export function tryPursuitDash(
     const travel =
         (effectiveMoveSpeed(actor) *
             MOVEMENT_RULES.dashSpeedMultiplier *
-            MOVEMENT_RULES.dashDurationMs) /
+            effectiveDashDuration(actor)) /
         1_000
     // Leave a tile of braking distance; dashing point-blank would pass a stationary target.
     if (

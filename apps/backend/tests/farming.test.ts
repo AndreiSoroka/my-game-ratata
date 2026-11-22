@@ -17,6 +17,7 @@ import {
     inventoryCapacity,
 } from '../src/game/inventory'
 import { parseClientMessage } from '../src/game/messages'
+import { resourceChecks } from '../src/game/resourceObservation'
 
 function plotAt(index: number): FarmPlotDefinition {
     const plot = FARM_PLOTS[index]
@@ -174,6 +175,24 @@ describe('shared communal farms', () => {
             )
         }
     )
+})
+
+it('uses the same discounted sowing cost for the private hint and actual payment', () => {
+    const { service, actor, bare } = fixture()
+    actor.inventory.push(createItemInstance('wheat_seed'))
+    actor.energy = 4.5
+    expect(resourceChecks(actor).sow).toBe('energy')
+    expect(act(service, actor, bare, 'sow')).toEqual([])
+    expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(1)
+
+    actor.progression.constellations.opened.add('life.work')
+    expect(resourceChecks(actor)).toMatchObject({
+        sow: 'ready',
+        sowEnergyCost: 4.5,
+    })
+    expect(act(service, actor, bare, 'sow')[0]?.kind).toBe('farm_sow')
+    expect(actor.energy).toBe(0)
+    expect(countInventoryItem(actor.inventory, 'wheat_seed')).toBe(0)
 })
 
 describe('farm work validation', () => {

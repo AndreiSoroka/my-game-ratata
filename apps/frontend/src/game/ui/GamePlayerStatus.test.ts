@@ -66,6 +66,56 @@ describe('production player status', () => {
         expect(wrapper.text()).not.toContain('NaN')
         wrapper.unmount()
     })
+})
+
+describe('resource knowledge in production player status', () => {
+    it('uses server-supplied segment layouts only for the owner pools that have them', async () => {
+        const character = playerStatusFixture({
+            health: { kind: 'percent', percent: 60, segments: [40, 20, 20, 20] },
+            resources: {
+                mana: { kind: 'percent', percent: 52, hasCapacity: true },
+                energy: {
+                    kind: 'percent',
+                    percent: 70,
+                    segments: [30, 20, 10, 10, 10, 10, 10],
+                    hasCapacity: true,
+                },
+            },
+        })
+        const wrapper = mount(GamePlayerStatus, { props: { character } })
+        const health = wrapper.get('[role="progressbar"][aria-label="Health"]')
+        const energy = wrapper.get('[role="progressbar"][aria-label="Energy"]')
+        const mana = wrapper.get('[role="progressbar"][aria-label="Mana"]')
+        expect(health.attributes('aria-valuenow')).toBe('60')
+        expect(health.findAll('.game-bar__segment')).toHaveLength(2)
+        expect(energy.attributes('aria-valuenow')).toBe('70')
+        expect(energy.findAll('.game-bar__segment')).toHaveLength(4)
+        expect(mana.get('.game-bar__fill').isVisible()).toBe(true)
+        expect(wrapper.findAll('.game-bar__label')).toHaveLength(0)
+
+        await wrapper.setProps({
+            character: {
+                ...character,
+                health: { kind: 'percent', percent: 53 },
+                resources: {
+                    ...character.resources,
+                    energy: { kind: 'exact', current: 63, max: 100 },
+                },
+            },
+        })
+        expect(wrapper.findAll('.game-bar__segments')).toHaveLength(0)
+        expect(health.attributes('aria-valuenow')).toBe('53')
+        expect(health.get('.game-bar__fill').isVisible()).toBe(true)
+        expect(health.text()).toBe('')
+        expect(energy.get('.game-bar__label').text()).toBe('63/100')
+        expect(energy.attributes('aria-valuetext')).toBe('63/100')
+
+        await wrapper.setProps({ character })
+        expect(energy.findAll('.game-bar__segment')).toHaveLength(4)
+        expect(energy.attributes('aria-valuetext')).toBeUndefined()
+        expect(energy.text()).toBe('')
+        wrapper.unmount()
+    })
     it('rounds authorized numbers and removes them when resource visibility changes', async () => {
         const wrapper = mount(GamePlayerStatus, {
             props: {

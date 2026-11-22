@@ -248,6 +248,30 @@ it('distinguishes a projected zero-capacity mana pool from an empty pool when pr
     ).toEqual({ mode: 'restore', targetId: empty.id })
 })
 
+it.each(['pray', 'pray_road'] as const)(
+    'previews %s when the last resource segment is lit and some capacity is missing',
+    (abilityId) => {
+        const actor = abilityHero()
+        actor.abilities.known.add(abilityId)
+        const context = abilityContext([actor])
+        const clientIntent = () =>
+            previewPrayerFromSnapshots(ownerSnapshot(actor), [], undefined, {
+                abilityId,
+            }).intent
+        expect(clientIntent()).toEqual(devotion.intent)
+        actor.hp -= 3
+        actor.energy -= 3
+        expect(ownerSnapshot(actor).health).toMatchObject({ percent: 100 })
+        expect(ownerSnapshot(actor).resources.energy).toMatchObject({
+            percent: 100,
+        })
+        expect(clientIntent()).toEqual({ mode: 'restore', targetId: actor.id })
+        expect(clientIntent()).toEqual(
+            previewPrayer(actor, context, undefined, abilityId).intent
+        )
+    }
+)
+
 it('accepts only an explicit targetless devotion at the command boundary', () => {
     expect(parseAbilityCommand(devotion)).toEqual(devotion)
     for (const intent of [

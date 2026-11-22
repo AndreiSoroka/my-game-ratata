@@ -1,37 +1,100 @@
 import {
     abilityIds,
     type CharacterResourceChecks,
+    type ExactHealthSnapshot,
     FARM_SOW_ENERGY,
+    healthNeedsRestoration,
     isMotherPrayer,
     isPrayerAction,
+    type PercentHealthSnapshot,
     prayerActionIds,
     prayerManaCost,
     type ResourceCheck,
     resourceFillPercent,
     type ResourceSnapshot,
+    TREE_PLANT_ENERGY,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
+import { hasStar } from './constellations'
 import {
     effectiveAbility,
     effectiveDashCost,
     effectiveTheftCost,
+    effectiveWorkEnergy,
 } from './effectiveParameters'
 import { effectiveMaxMana } from './effectiveResources'
 import { hasMotherPrayerAura } from './motherPrayerPlan'
 
+const coarseSegments = Object.freeze([40, 20, 20, 20])
+const fineSegments = Object.freeze([30, 20, 10, 10, 10, 10, 10])
+const tenths = Object.freeze(Array<number>(10).fill(10))
+
+export function healthSegments(owner: GameCharacter | undefined) {
+    if (owner === undefined || hasStar(owner, 'life.hp3')) {
+        return undefined
+    }
+    if (hasStar(owner, 'life.hp2')) {
+        return tenths
+    }
+    return hasStar(owner, 'life.hp1') ? fineSegments : coarseSegments
+}
+
+export function energySegments(owner: GameCharacter | undefined) {
+    if (owner === undefined || hasStar(owner, 'life.energy2')) {
+        return undefined
+    }
+    return hasStar(owner, 'life.energy1') ? fineSegments : coarseSegments
+}
+
 export function observeResource(
     resource: ResourceSnapshot,
-    exact: boolean
+    exact: boolean,
+    segments?: readonly number[]
 ): ResourceSnapshot {
-    if (exact || resource.kind === 'percent') {
+    if (exact) {
         return { ...resource }
+    }
+    if (resource.kind === 'percent') {
+        return {
+            kind: 'percent',
+            percent: resource.percent,
+            hasCapacity: resource.hasCapacity,
+        }
+    }
+    if (segments !== undefined) {
+        return {
+            ...observeSegmentedHealth(resource, segments),
+            hasCapacity: resource.max > 0,
+        }
     }
     return {
         kind: 'percent',
         percent: resourceFillPercent(resource),
         hasCapacity: resource.max > 0,
+    }
+}
+
+/** Round up to the end of the segment containing the actual value. */
+export function observeSegmentedHealth(
+    health: ExactHealthSnapshot,
+    segments: readonly number[]
+): PercentHealthSnapshot {
+    let percent = 0
+    if (health.current > 0 && health.max > 0) {
+        for (const width of segments) {
+            percent += width
+            if (health.current <= health.max * (percent / 100)) {
+                break
+            }
+        }
+    }
+    return {
+        kind: 'percent',
+        percent,
+        segments,
+        needsRestoration: healthNeedsRestoration(health),
     }
 }
 
@@ -44,6 +107,7 @@ export function resourceChecks(
             : character.energy < energy
               ? 'energy'
               : 'ready'
+    const sowEnergyCost = effectiveWorkEnergy(character, FARM_SOW_ENERGY)
     return {
         abilities: Object.fromEntries(
             abilityIds
@@ -92,7 +156,9 @@ export function resourceChecks(
             ])
         ) as CharacterResourceChecks['prayers'],
         dash: check(0, effectiveDashCost(character)),
-        sow: check(0, FARM_SOW_ENERGY),
+        sow: check(0, sowEnergyCost),
+        sowEnergyCost,
+        plantEnergyCost: effectiveWorkEnergy(character, TREE_PLANT_ENERGY),
         steal: check(0, effectiveTheftCost(character)),
     }
 }

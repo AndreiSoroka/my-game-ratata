@@ -108,6 +108,7 @@ export function finishConstellationAction(
         state.evidence[signal] = (state.evidence[signal] ?? 0) + 1
     }
     discoverLastLight(actor, action)
+    discoverLifeBreath(actor)
     syncAbilityConstellations(actor)
     const requirementContext = {
         opened: state.opened,
@@ -130,6 +131,9 @@ export function finishConstellationAction(
         }
         const node = chooseStar(actor, candidates, action.random ?? Math.random)
         state.opened.add(node.id)
+        if (node.id === 'life.energy2') {
+            discoverLifeBreath(actor)
+        }
         state.credits[node.constellationId] -= 1
         state.evidence = Object.fromEntries(
             Object.entries(state.evidence).filter(
@@ -149,6 +153,22 @@ function canResolveDiscoveries(actor: GameCharacter): boolean {
         !actor.tags.has('offline') &&
         !actor.tags.has('state.retired')
     )
+}
+
+export function discoverLifeBreath(actor: GameCharacter): boolean {
+    const state = actor.progression.constellations
+    const baseEnergy = actor.config.resources.maxEnergy
+    if (
+        state.opened.has('life.breath') ||
+        !state.opened.has('life.energy2') ||
+        baseEnergy <= 0 ||
+        state.lifeEnergy.recovered + 1e-9 < 3 * baseEnergy ||
+        !canResolveDiscoveries(actor)
+    ) {
+        return false
+    }
+    state.opened.add('life.breath')
+    return true
 }
 
 function acceptActionReceipt(
@@ -175,7 +195,7 @@ function evidencePath(key: string): ConstellationId | undefined {
     ) {
         return 'prayer'
     }
-    if (key === 'wound' || key === 'recovery') {
+    if (key === 'wound' || key === 'recovery' || key === 'work_recovery') {
         return 'life'
     }
     if (key === 'barrier') {

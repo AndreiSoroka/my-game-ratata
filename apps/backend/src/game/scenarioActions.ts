@@ -3,7 +3,7 @@ import type { ScenarioStep } from '@my-game-ratata/contracts'
 import { canFight } from './autoActionTargets'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
-import { effectiveMaxMana } from './effectiveResources'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { distance } from './math'
 import type { GameRoom } from './room'
 import { approachWorkTarget } from './scenarioApproach'
@@ -69,7 +69,7 @@ function recover(
         step.resource === 'hp'
             ? actor.maxHp
             : step.resource === 'energy'
-              ? actor.config.resources.maxEnergy
+              ? effectiveMaxEnergy(actor)
               : effectiveMaxMana(actor)
     if (step.atLeast > maximum) {
         return {

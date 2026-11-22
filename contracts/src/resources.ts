@@ -1,9 +1,13 @@
 import type { AbilityId, PrayerActionId, PrayerMode } from './abilities'
-import { type ExactHealthSnapshot, healthPercent } from './health'
+import {
+    type ExactHealthSnapshot,
+    healthNeedsRestoration,
+    healthPercent,
+    type PercentHealthSnapshot,
+} from './health'
 
 export type ResourceSnapshot =
-    | ExactHealthSnapshot
-    | { kind: 'percent'; percent: number; hasCapacity: boolean }
+    ExactHealthSnapshot | (PercentHealthSnapshot & { hasCapacity: boolean })
 
 export type ResourceCheck = 'ready' | 'mana' | 'energy'
 
@@ -13,6 +17,8 @@ export interface CharacterResourceChecks {
     prayers: Record<PrayerActionId, Record<PrayerMode, ResourceCheck>>
     dash: ResourceCheck
     sow: ResourceCheck
+    sowEnergyCost?: number
+    plantEnergyCost?: number
     steal: ResourceCheck
 }
 
@@ -21,7 +27,8 @@ export function resourceFillPercent(resource: ResourceSnapshot): number {
 }
 
 export function resourceNeedsRestoration(resource: ResourceSnapshot): boolean {
-    return resource.kind === 'exact'
-        ? resource.max > 0 && resource.current < resource.max
-        : resource.hasCapacity && resource.percent < 100
+    return (
+        (resource.kind === 'exact' || resource.hasCapacity) &&
+        healthNeedsRestoration(resource)
+    )
 }

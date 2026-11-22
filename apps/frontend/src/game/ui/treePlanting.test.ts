@@ -127,6 +127,7 @@ it('confirms planting with a fresh physical F, keeping E and held repeats inacti
     try {
         answer()
         await wrapper.vm.$nextTick()
+        expect(wrapper.text()).toContain('Свободный участок · 5 EN')
         const plantCommands = () =>
             wrapper
                 .emitted<[ClientMessage]>('command')!
@@ -138,6 +139,21 @@ it('confirms planting with a fresh physical F, keeping E and held repeats inacti
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', key: 'а' }))
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', key: 'а' }))
         expect(plantCommands()).toHaveLength(1)
+    } finally {
+        wrapper.unmount()
+    }
+})
+it('shows the effective planting cost from the private resource hint', async () => {
+    const { wrapper, player, answer } = setup()
+    try {
+        answer()
+        await wrapper.setProps({
+            player: {
+                ...player,
+                resourceChecks: { ...player.resourceChecks!, plantEnergyCost: 4.5 },
+            },
+        })
+        expect(wrapper.text()).toContain('Свободный участок · 4.5 EN')
     } finally {
         wrapper.unmount()
     }

@@ -8,6 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { effectiveWorkEnergy } from './effectiveParameters'
 import { createItemInstance, type InventoryItemInstance } from './inventory'
 export const TREE_GROW_MS = 10 * 60_000
 export const STONE_REGROW_MS = 20 * 60_000
@@ -60,7 +61,8 @@ export function gatheringTool(
     }
     const tool = actor.equipment.weapon
     if (node.source === 'bush') {
-        return bushWork(tool)
+        const work = bushWork(tool)
+        return { ...work, energy: effectiveWorkEnergy(actor, work.energy) }
     }
     if (
         tool === undefined ||
@@ -77,7 +79,7 @@ export function gatheringTool(
         ? undefined
         : {
               tool,
-              energy: capability.energy,
+              energy: effectiveWorkEnergy(actor, capability.energy),
               duration: capability.durationMs,
               wear: capability.wear,
           }

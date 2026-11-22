@@ -7,7 +7,8 @@ import { clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
 import { regen } from './characterState'
 import { refreshCombatState } from './combatState'
-import { effectiveMaxMana } from './effectiveResources'
+import { constellationModifiers } from './constellationModifiers'
+import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
@@ -15,8 +16,9 @@ import { clearPursuit } from './pursuitState'
 import {
     clearResourcePractice,
     consumeResourceRecovery,
+    restoreEnergy,
 } from './resourcePractice'
-import { recordVitalityRecovery } from './vitalityPractice'
+import { recordVitalityRecovery, restBonusTime } from './vitalityPractice'
 
 export function tickCharacterTimedState(
     character: GameCharacter,
@@ -70,7 +72,7 @@ export function restoreCharacter(
     const fraction = atSpawn ? 1 : 0.5
     const restored = atSpawn ? undefined : resurrection
     character.energy =
-        restored?.energy ?? character.config.resources.maxEnergy * fraction
+        restored?.energy ?? effectiveMaxEnergy(character) * fraction
     character.hp =
         restored?.hp ?? Math.max(1, Math.ceil(character.maxHp * fraction))
     character.progression.constellations.lowHpFromHostile = false
@@ -104,36 +106,24 @@ export function regenerateCharacter(
     deltaMs: number,
     moving: boolean,
     energyAllowed = true,
-    now = 0
+    now = 0,
+    walking = moving && character.movement.mode === 'walking'
 ): GameEventPayload[] {
     if (!character.alive) {
         return []
     }
     const resources = character.config.resources
     const maxMana = effectiveMaxMana(character)
-    const beforeEnergy = character.energy
     const beforeMana = character.mana
-    character.energy = regen(
-        character.energy,
-        resources.maxEnergy,
+    const energy =
         energyAllowed && !character.combat.defensiveStance
-            ? moving
-                ? resources.energyRegenMove
-                : resources.energyRegenIdle
-            : 0,
-        deltaMs
-    )
+            ? recoverNaturalEnergy(character, deltaMs, moving, walking, now)
+            : []
     character.mana = regen(
         character.mana,
         maxMana,
         moving ? resources.manaRegenMove : resources.manaRegenIdle,
         deltaMs
-    )
-    consumeResourceRecovery(
-        character,
-        'energy',
-        character.energy - beforeEnergy,
-        resources.maxEnergy - beforeEnergy
     )
     consumeResourceRecovery(
         character,
@@ -156,5 +146,28 @@ export function regenerateCharacter(
         now
     )
     recordMartyrRecovery(character)
-    return events
+    return [...energy, ...events]
+}
+
+function recoverNaturalEnergy(
+    character: GameCharacter,
+    deltaMs: number,
+    moving: boolean,
+    walking: boolean,
+    now: number
+): GameEventPayload[] {
+    if (character.energy >= effectiveMaxEnergy(character)) {
+        return []
+    }
+    const resources = character.config.resources
+    const bonuses = constellationModifiers(character)
+    const amount = moving
+        ? resources.energyRegenMove *
+          (walking ? bonuses.walkingEnergyRegenMultiplier : 1) *
+          deltaMs
+        : resources.energyRegenIdle *
+          (bonuses.idleEnergyRegenMultiplier * deltaMs +
+              bonuses.restEnergyRegenBonus *
+                  restBonusTime(character, now, deltaMs))
+    return restoreEnergy(character, amount / 1000, now).events
 }

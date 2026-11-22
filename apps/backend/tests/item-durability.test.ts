@@ -17,10 +17,12 @@ import {
 } from '../src/game/inventory'
 import {
     repairItem,
+    wearHitEquipment,
     wearItem,
     wearWalkingEquipment,
 } from '../src/game/itemDurability'
 import { advanceCharacter } from '../src/game/movement'
+import { handleMovementCommand } from '../src/game/movementActions'
 import { NavigationService } from '../src/game/navigation'
 import { abilityHero } from './abilityTestHelpers'
 
@@ -165,6 +167,33 @@ describe('clothing wears from actual walking', () => {
         const before = structuredClone(boots)
         wearWalkingEquipment(actor, 960)
         expect(boots).toEqual(before)
+    })
+
+    it('discounts boot wear from walking while preserving sneak, dash and hit wear', () => {
+        const actor = abilityHero()
+        const boots = createItemInstance('boots')
+        actor.equipment.boots = boots
+        actor.progression.constellations.opened.add('life.tread')
+        actor.setMoveInput({ x: 1, y: 0 })
+        const navigation = flatNavigation()
+        const advance = (now: number, deltaMs: number) =>
+            advanceCharacter({ character: actor, navigation, now, deltaMs })
+
+        advance(1000, 1000)
+        expect(boots.wearDistance).toBeCloseTo(90 * 0.75)
+        handleMovementCommand(
+            actor,
+            { type: 'movement_mode', mode: 'sneaking' },
+            1000
+        )
+        advance(2000, 1000)
+        expect(boots.wearDistance).toBeCloseTo(90 * 0.75 + 40.5)
+        handleMovementCommand(actor, { type: 'dash' }, 2000)
+        advance(2600, 600)
+        expect(boots.wearDistance).toBeCloseTo(90 * 0.75 + 40.5 + 86.4)
+
+        wearHitEquipment(actor)
+        expect(boots.durability).toBe(999)
     })
 })
 

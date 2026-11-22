@@ -18,7 +18,7 @@ describe('all non-prayer effect explanations', () => {
             (node) => !node.constellationId.startsWith('prayer')
         )
         const before = JSON.stringify(fullConstellationCatalog)
-        expect(nodes).toHaveLength(85)
+        expect(nodes).toHaveLength(92)
         vi.spyOn(Math, 'random').mockImplementation(() => {
             throw new Error('An explanation must not roll gameplay randomness')
         })

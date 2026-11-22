@@ -8,7 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { effectiveDashCost } from './effectiveParameters'
+import { effectiveDashCost, effectiveDashDuration } from './effectiveParameters'
 import { normalize } from './math'
 import {
     recordResourceSpend,
@@ -57,7 +57,7 @@ export function handleMovementCommand(
     const state = character.movement
     state.dashDirection = dashDirection(character)
     state.dashStartedAt = now
-    state.dashUntil = now + MOVEMENT_RULES.dashDurationMs
+    state.dashUntil = now + effectiveDashDuration(character)
     state.dashAvailableAt = now + MOVEMENT_RULES.dashCooldownMs
     state.mode = 'walking'
     const spent = character.drainEnergy(effectiveDashCost(character))

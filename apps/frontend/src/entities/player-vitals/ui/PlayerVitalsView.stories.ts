@@ -14,10 +14,12 @@ const meta = {
         compact: true,
         nickname: 'Андрей Сорока',
         hpPercent: 60,
+        hpSegments: [],
         hpAnimated: false,
         manaPercent: 25,
         manaAnimated: false,
         energyPercent: 82,
+        energySegments: [],
         energyAnimated: false,
         dimSecondaryResources: false,
     },
@@ -25,10 +27,12 @@ const meta = {
         compact: { control: 'boolean' },
         nickname: { control: 'text' },
         hpPercent: percentage,
+        hpSegments: { control: 'object' },
         hpAnimated: { control: 'boolean' },
         manaPercent: percentage,
         manaAnimated: { control: 'boolean' },
         energyPercent: percentage,
+        energySegments: { control: 'object' },
         energyAnimated: { control: 'boolean' },
         dimSecondaryResources: { control: 'boolean' },
         hpCurrent: number,
@@ -49,6 +53,14 @@ export default meta
 type Story = StoryObj<PlayerVitalsViewProps>
 
 export const Default: Story = {}
+
+export const Segmented: Story = {
+    args: {
+        hpSegments: [40, 20, 20, 20],
+        energyPercent: 70,
+        energySegments: [30, 20, 10, 10, 10, 10, 10],
+    },
+}
 
 export const AuthorizedNumbers: Story = {
     args: {

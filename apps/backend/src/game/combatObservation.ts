@@ -18,7 +18,13 @@ import { canPerceivePrayerCaster } from './prayerAuras'
 import { prayerParameters, snapshotPrayerParameters } from './prayerParameters'
 import { publicProgression } from './progressionObservation'
 import { visibilityRadius } from './queries'
-import { observeResource, resourceChecks } from './resourceObservation'
+import {
+    energySegments,
+    healthSegments,
+    observeResource,
+    observeSegmentedHealth,
+    resourceChecks,
+} from './resourceObservation'
 
 export interface CombatObserver {
     observer: GameCharacter | undefined
@@ -34,6 +40,7 @@ export function observeCharacterCombat(
     view: CombatObserver
 ): CharacterSnapshot {
     const description = { ...snapshot }
+    const owner = target?.id === view.observer?.id ? target : undefined
     delete description.resourceChecks
     delete description.characterSheet
     delete description.stats
@@ -49,7 +56,7 @@ export function observeCharacterCombat(
     }
     return {
         ...description,
-        health: observedHealth(snapshot, target, view),
+        health: observedHealth(snapshot, target, owner, view),
         resources: {
             mana: observeResource(
                 snapshot.resources.mana,
@@ -57,7 +64,8 @@ export function observeCharacterCombat(
             ),
             energy: observeResource(
                 snapshot.resources.energy,
-                canReadPool(target, view, 'life.energy3')
+                canReadPool(target, view, 'life.energy3'),
+                energySegments(owner)
             ),
         },
         ...privateSheet(target, view),
@@ -81,14 +89,19 @@ function canReadPool(
 function observedHealth(
     snapshot: CharacterSnapshot,
     target: GameCharacter | undefined,
+    owner: GameCharacter | undefined,
     view: CombatObserver
 ): HealthSnapshot {
     const health: HealthSnapshot =
         target === undefined
             ? snapshot.health
             : { kind: 'exact', current: target.hp, max: target.maxHp }
-    return canReadPool(target, view, 'life.hp4')
-        ? health
+    if (canReadPool(target, view, 'life.hp4')) {
+        return health
+    }
+    const segments = healthSegments(owner)
+    return segments !== undefined && health.kind === 'exact'
+        ? observeSegmentedHealth(health, segments)
         : { kind: 'percent', percent: healthPercent(health) }
 }
 

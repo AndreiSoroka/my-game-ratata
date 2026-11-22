@@ -17,7 +17,7 @@ import {
 afterEach(() => vi.restoreAllMocks())
 
 describe('observer combat information', () => {
-    it('projects own and foreign resources downwards without retaining numeric fields', () => {
+    it('projects private segments and foreign percentages without retaining numeric fields', () => {
         const { observer, target, view } = observationFixture()
         target.hp = target.maxHp * 0.375
         target.abilities.barrier = {
@@ -33,10 +33,18 @@ describe('observer combat information', () => {
         expect(own.health).toEqual({
             kind: 'percent',
             percent: 100,
+            segments: [40, 20, 20, 20],
+            needsRestoration: false,
         })
         expect(own.resources).toEqual({
             mana: { kind: 'percent', percent: 100, hasCapacity: true },
-            energy: { kind: 'percent', percent: 100, hasCapacity: true },
+            energy: {
+                kind: 'percent',
+                percent: 100,
+                hasCapacity: true,
+                segments: [40, 20, 20, 20],
+                needsRestoration: false,
+            },
         })
         expect(own.resourceChecks?.dash).toBe('ready')
         const foreign = observeCharacterCombat(
@@ -110,6 +118,52 @@ describe('observer combat information', () => {
                 observeCombatEvent(eventFor(target, kind), view)?.amount
             ).toBe(7.25)
         }
+    })
+})
+
+describe('owner resource knowledge', () => {
+    it('applies health and energy knowledge independently before exposing exact pools', () => {
+        const { observer, view } = observationFixture()
+        const state = observer.progression.constellations.opened
+        const project = () =>
+            observeCharacterCombat(observer.snapshot(1000), observer, view)
+        observer.hp = observer.maxHp * 0.321
+        observer.energy = observer.config.resources.maxEnergy * 0.321
+        const fine = {
+            kind: 'percent',
+            percent: 50,
+            segments: [30, 20, 10, 10, 10, 10, 10],
+            needsRestoration: true,
+        }
+        state.add('life.hp1')
+        expect(project().health).toEqual(fine)
+        expect(project().resources.energy).toMatchObject({ percent: 40 })
+        state.add('life.energy1')
+        expect(project().resources.energy).toEqual({
+            ...fine,
+            hasCapacity: true,
+        })
+        state.add('life.hp2')
+        expect(project().health).toEqual({
+            ...fine,
+            percent: 40,
+            segments: Array<number>(10).fill(10),
+        })
+        state.add('life.hp3')
+        state.add('life.energy2')
+        const smooth = { kind: 'percent', percent: 32 }
+        expect(project().health).toEqual(smooth)
+        expect(project().resources.energy).toEqual({
+            ...smooth,
+            hasCapacity: true,
+        })
+        state.add('life.hp4')
+        state.add('life.energy3')
+        expect(project().health).toEqual(observer.snapshot(1000).health)
+        expect(project().resources.energy).toEqual(
+            observer.snapshot(1000).resources.energy
+        )
+        expect(project().resources.mana.kind).toBe('percent')
     })
 })
 

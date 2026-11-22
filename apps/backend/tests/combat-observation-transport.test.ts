@@ -1,4 +1,5 @@
 import type {
+    CharacterSnapshot,
     GameEventPayload,
     ServerMessage,
     WorldSnapshot,
@@ -49,6 +50,17 @@ function receivedSnapshot(messages: ServerMessage[]): WorldSnapshot {
         throw new Error('Expected serialized snapshot')
     }
     return message.snapshot
+}
+
+function expectOwnerSegments(owner: CharacterSnapshot | undefined): void {
+    const segmented = {
+        kind: 'percent',
+        percent: 40,
+        segments: [40, 20, 20, 20],
+        needsRestoration: true,
+    }
+    expect(owner?.health).toEqual(segmented)
+    expect(owner?.resources.energy).toEqual({ ...segmented, hasCapacity: true })
 }
 
 it('sends the failed prayer caption only to the caster and strips the audience', () => {
@@ -111,6 +123,7 @@ describe('serialized WebSocket combat privacy', () => {
         const anonymous = join()
         const actor = requireActor(owner.actor)
         actor.hp = actor.maxHp * 0.375
+        actor.energy = actor.config.resources.maxEnergy * 0.375
         actor.abilities.barrier = {
             remaining: 3.25,
             expiresAt: Date.now() + 5000,
@@ -128,10 +141,7 @@ describe('serialized WebSocket combat privacy', () => {
             const own = receivedSnapshot(owner.messages).characters.find(
                 (entry) => entry.id === actor.id
             )
-            expect(own?.health).toEqual({
-                kind: 'percent',
-                percent: 37,
-            })
+            expectOwnerSegments(own)
             expect(own?.abilities?.barrier).not.toHaveProperty('remaining')
             expect(own?.resourceChecks).toBeDefined()
             for (const observer of [foreign, anonymous]) {
@@ -140,9 +150,9 @@ describe('serialized WebSocket combat privacy', () => {
                     (entry) => entry.id === actor.id
                 )
                 expect(target?.health).toEqual({ kind: 'percent', percent: 37 })
-                expect(target?.resources).toMatchObject({
-                    mana: { kind: 'percent' },
-                    energy: { kind: 'percent' },
+                expect(target?.resources).toEqual({
+                    mana: { kind: 'percent', percent: 100, hasCapacity: true },
+                    energy: { kind: 'percent', percent: 37, hasCapacity: true },
                 })
                 expect(target).not.toHaveProperty('resourceChecks')
                 expect(JSON.stringify(target)).not.toMatch(

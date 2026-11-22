@@ -12,6 +12,38 @@ afterEach(() => {
     vi.restoreAllMocks()
 })
 
+it('restores up to 25 HP from one food item with the Life ration star', () => {
+    const world = new WorldInventory(fakeNavigation)
+    const player = createPlayerAt(chestPosition)
+    player.progression.constellations.opened.add('life.ration')
+    player.hp = 1
+    const first = createItemInstance('food')
+    const second = createItemInstance('food')
+    const third = createItemInstance('food')
+    player.inventory.push(first, second, third)
+
+    expect(
+        world.applyInventoryAction(player, 'eat', first.instanceId, 1000)
+    ).toEqual([
+        { kind: 'item_eat', actorId: player.id, itemId: 'food', amount: 25 },
+    ])
+    expect(player.hp).toBe(26)
+    expect(
+        world.applyInventoryAction(player, 'eat', first.instanceId, 1001)
+    ).toEqual([])
+    expect(
+        world.applyInventoryAction(player, 'eat', second.instanceId, 1002)[0]
+    ).toMatchObject({
+        kind: 'item_eat',
+        amount: player.maxHp - 26,
+    })
+    expect(player.hp).toBe(player.maxHp)
+    expect(
+        world.applyInventoryAction(player, 'eat', third.instanceId, 1003)
+    ).toEqual([])
+    expect(player.inventory).toEqual([third])
+})
+
 describe('world inventory chests', () => {
     it('keeps unopened empty chests closed until they are hit', () => {
         vi.spyOn(Math, 'random').mockReturnValue(0.99)

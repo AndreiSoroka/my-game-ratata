@@ -5,6 +5,7 @@ import {
     type ConstellationStar,
     constellationStars,
 } from './constellationCatalog'
+import { lifeStars } from './constellationLifeStars'
 import { withPrayerLore } from './constellationPrayerLore'
 import { revivalStars } from './constellationRevivalStars'
 
@@ -154,6 +155,7 @@ const authoredNodes = [
     ...explicitAbilities,
     ...joints,
     ...revivalStars,
+    ...lifeStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(
