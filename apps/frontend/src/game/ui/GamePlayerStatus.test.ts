@@ -73,7 +73,12 @@ describe('resource knowledge in production player status', () => {
         const character = playerStatusFixture({
             health: { kind: 'percent', percent: 60, segments: [40, 20, 20, 20] },
             resources: {
-                mana: { kind: 'percent', percent: 52, hasCapacity: true },
+                mana: {
+                    kind: 'percent',
+                    percent: 50,
+                    hasCapacity: true,
+                    segments: [30, 20, 10, 10, 10, 10, 10],
+                },
                 energy: {
                     kind: 'percent',
                     percent: 70,
@@ -90,7 +95,7 @@ describe('resource knowledge in production player status', () => {
         expect(health.findAll('.game-bar__segment')).toHaveLength(2)
         expect(energy.attributes('aria-valuenow')).toBe('70')
         expect(energy.findAll('.game-bar__segment')).toHaveLength(4)
-        expect(mana.get('.game-bar__fill').isVisible()).toBe(true)
+        expect(mana.findAll('.game-bar__segment')).toHaveLength(2)
         expect(wrapper.findAll('.game-bar__label')).toHaveLength(0)
 
         await wrapper.setProps({
@@ -99,6 +104,7 @@ describe('resource knowledge in production player status', () => {
                 health: { kind: 'percent', percent: 53 },
                 resources: {
                     ...character.resources,
+                    mana: { kind: 'exact', current: 28, max: 70 },
                     energy: { kind: 'exact', current: 63, max: 100 },
                 },
             },
@@ -107,12 +113,14 @@ describe('resource knowledge in production player status', () => {
         expect(health.attributes('aria-valuenow')).toBe('53')
         expect(health.get('.game-bar__fill').isVisible()).toBe(true)
         expect(health.text()).toBe('')
+        expect(mana.attributes('aria-valuetext')).toBe('28/70')
         expect(energy.get('.game-bar__label').text()).toBe('63/100')
         expect(energy.attributes('aria-valuetext')).toBe('63/100')
 
         await wrapper.setProps({ character })
         expect(energy.findAll('.game-bar__segment')).toHaveLength(4)
         expect(energy.attributes('aria-valuetext')).toBeUndefined()
+        expect(mana.attributes('aria-valuetext')).toBeUndefined()
         expect(energy.text()).toBe('')
         wrapper.unmount()
     })

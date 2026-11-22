@@ -41,6 +41,16 @@ export function healthSegments(owner: GameCharacter | undefined) {
     return hasStar(owner, 'life.hp1') ? fineSegments : coarseSegments
 }
 
+export function manaSegments(owner: GameCharacter | undefined) {
+    if (owner === undefined || hasStar(owner, 'magic.mana3')) {
+        return undefined
+    }
+    if (hasStar(owner, 'magic.mana2')) {
+        return tenths
+    }
+    return hasStar(owner, 'magic.mana1') ? fineSegments : coarseSegments
+}
+
 export function energySegments(owner: GameCharacter | undefined) {
     if (owner === undefined || hasStar(owner, 'life.energy2')) {
         return undefined

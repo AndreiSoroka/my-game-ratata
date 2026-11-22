@@ -31,7 +31,7 @@ const bars = computed(() =>
             kind,
             ...resourcePresentation[kind],
             percent: props[`${kind}Percent`],
-            segments: kind === 'mana' ? undefined : props[`${kind}Segments`],
+            segments: props[`${kind}Segments`],
             animated: props[`${kind}Animated`],
             text:
                 current !== undefined && max !== undefined

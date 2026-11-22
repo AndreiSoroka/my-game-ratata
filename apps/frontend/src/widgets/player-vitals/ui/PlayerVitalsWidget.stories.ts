@@ -13,6 +13,7 @@ const meta = {
         nickname: 'Андрей Сорока',
         hpPercent: 100,
         hpSegments: [],
+        manaSegments: [],
         manaPercent: 100,
         energyPercent: 100,
         energySegments: [],
@@ -20,6 +21,7 @@ const meta = {
     argTypes: {
         hpPercent: percentage,
         hpSegments: { control: 'object' },
+        manaSegments: { control: 'object' },
         manaPercent: percentage,
         energyPercent: percentage,
         energySegments: { control: 'object' },
@@ -44,7 +46,8 @@ export const Segmented: Story = {
     args: {
         hpPercent: 60,
         hpSegments: [40, 20, 20, 20],
-        manaPercent: 45,
+        manaSegments: [30, 20, 10, 10, 10, 10, 10],
+        manaPercent: 50,
         energyPercent: 70,
         energySegments: [30, 20, 10, 10, 10, 10, 10],
     },

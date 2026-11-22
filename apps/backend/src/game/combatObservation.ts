@@ -21,6 +21,7 @@ import { visibilityRadius } from './queries'
 import {
     energySegments,
     healthSegments,
+    manaSegments,
     observeResource,
     observeSegmentedHealth,
     resourceChecks,
@@ -60,7 +61,8 @@ export function observeCharacterCombat(
         resources: {
             mana: observeResource(
                 snapshot.resources.mana,
-                canReadPool(target, view, 'magic.mana3')
+                canReadPool(target, view, 'magic.mana3'),
+                manaSegments(owner)
             ),
             energy: observeResource(
                 snapshot.resources.energy,
