@@ -1,5 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 
+import { selectedWorldTarget } from './world-target-ui'
+
 /** Face the observed source with ordinary movement, never a test-state write. */
 export async function faceGrave(page: Page, id: string): Promise<void> {
     await page.evaluate(async (id) => {
@@ -20,10 +22,7 @@ export async function faceGrave(page: Page, id: string): Promise<void> {
     }, id)
 }
 
-/** A nearby guardian corpse may legitimately win F's nearest-facing selection.
- * Approach from another side and confirm the actual prompt before pressing F.
- * Opening that source's menu pins it through the subsequent ritual workflow.
- */
+/** Reach and select the observed grave before opening its prompt. */
 export async function approachObservedGrave(page: Page, key: string): Promise<void> {
     const source = await page.evaluate(
         (key) => window.__ratataTest!.observe().targets.find((target) => target.key === key),
@@ -54,9 +53,24 @@ export async function approachObservedGrave(page: Page, key: string): Promise<vo
             continue
         }
         await faceGrave(page, source!.id)
+        const selected = await selectGrave(page, key)
         const prompt = page.getByRole('button', { name: /^F Могила / })
-        if (await prompt.isVisible()) return
+        if (selected && (await prompt.isVisible())) return
         attempts.push({ offset, prompt: await page.locator('.nearby-prompt').allTextContents() })
     }
     throw new Error(`Cannot select observed ${key} through F: ${JSON.stringify(attempts)}`)
+}
+
+async function selectGrave(page: Page, key: string): Promise<boolean> {
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    const selected = selectedWorldTarget(page)
+    const count = await page.evaluate(() => window.__ratataTest!.observe().targets.length)
+    const currentKey = () =>
+        selected.evaluateAll((targets) => targets[0]?.getAttribute('data-selected-target-key'))
+    if ((await currentKey()) === key) return true
+    for (let index = 0; index < count; index += 1) {
+        await page.keyboard.press('Tab')
+        if ((await currentKey()) === key) return true
+    }
+    return false
 }

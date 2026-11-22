@@ -59,6 +59,18 @@ for (const { mobile, direction, viewport } of cases) {
                     )
                 )
                 .toBe('purify_grave')
+            await expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        const { player } = window.__ratataTest!.getState()
+                        const cast = player?.abilities?.casting
+                        const zone = window.__ratataGameDebug
+                            ?.prayerAreas?.()
+                            .find((area) => area.actorId === player?.id)
+                        return zone?.abilityId === 'pray' && zone.radius === cast?.radius
+                    })
+                )
+                .toBe(true)
             await expect(page.locator('.control-status')).toHaveCount(0)
             await page.screenshot({ path: info.outputPath('grave-channel.png') })
             const casting = await page.evaluate(() => window.__ratataTest!.getState().player!)
@@ -70,6 +82,7 @@ for (const { mobile, direction, viewport } of cases) {
                     page.evaluate(() => window.__ratataTest!.getState().player?.abilities?.casting)
                 )
                 .toBeNull()
+            await expectLocalPrayerAreaCleared(page)
             expect(
                 await page.evaluate(
                     (id) =>
@@ -91,6 +104,7 @@ for (const { mobile, direction, viewport } of cases) {
             await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
             await expect.poll(() => purificationTargets).toEqual([grave!.id, grave!.id])
             await completePurification(page, rangers, grave!.id, grave!.position)
+            await expectLocalPrayerAreaCleared(page)
             expect(
                 await page.evaluate(
                     (key) =>
@@ -123,6 +137,19 @@ for (const { mobile, direction, viewport } of cases) {
             await Promise.all(rangers.map((ranger) => ranger.close()))
         }
     })
+}
+
+async function expectLocalPrayerAreaCleared(page: Page): Promise<void> {
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const { localPlayerId } = window.__ratataTest!.getState()
+                return window.__ratataGameDebug
+                    ?.prayerAreas?.()
+                    .some((area) => area.actorId === localPlayerId)
+            })
+        )
+        .toBe(false)
 }
 
 async function completePurification(

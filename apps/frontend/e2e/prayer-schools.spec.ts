@@ -148,9 +148,15 @@ async function expectRoadSong(page: Page): Promise<void> {
     await expect(song).toBeVisible()
     await page.waitForFunction(() => {
         const player = window.__ratataTest?.getState().player
+        const cast = player?.abilities?.casting
+        const zone = window.__ratataGameDebug
+            ?.prayerAreas?.()
+            .find((area) => area.actorId === player?.id)
         const energy = document.querySelector('[role="progressbar"][aria-label="Energy"]')
         return (
-            player?.abilities?.casting?.abilityId === 'pray_road' &&
+            cast?.abilityId === 'pray_road' &&
+            zone?.abilityId === cast.abilityId &&
+            zone.radius === cast.radius &&
             energy?.getAttribute('aria-valuenow') === '100'
         )
     })

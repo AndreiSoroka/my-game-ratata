@@ -1,0 +1,42 @@
+.prayer-areas-preview {
+    display: grid;
+    gap: 20px;
+    max-width: 960px;
+    padding: 16px;
+}
+
+.prayer-areas-preview__surface h2 {
+    margin: 0 0 8px;
+    font-size: 16px;
+}
+
+.prayer-areas-preview__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+    gap: 10px;
+}
+
+.prayer-areas-preview figure {
+    min-width: 0;
+    margin: 0;
+}
+
+.prayer-areas-preview figcaption {
+    margin-top: 4px;
+    text-align: center;
+}
+
+.prayer-areas-preview__stage {
+    display: grid;
+    place-items: center;
+    image-rendering: pixelated;
+}
+
+.prayer-areas-preview__stage > * {
+    grid-area: 1 / 1;
+    height: auto;
+}
+
+.prayer-areas-preview__stage canvas {
+    width: 100%;
+}

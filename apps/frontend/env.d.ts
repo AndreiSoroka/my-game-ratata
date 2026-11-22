@@ -2,6 +2,8 @@
 
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
 
+import type { PrayerAreaState } from './src/game/runtime/prayerAreaViews'
+
 declare global {
     interface Window {
         __ratataGameDebug?: {
@@ -11,6 +13,7 @@ declare global {
             buildingCovers?: () => { id: string; visible: boolean }[]
             setCameraZoom?: (zoom: number) => boolean
             captureFrame?: () => Promise<string | undefined>
+            prayerAreas?: () => PrayerAreaState[]
         }
     }
 }

@@ -1,5 +1,7 @@
 import { createCharacterResources } from './characterResources'
 import { GameAudio } from './gameAudio'
+import { MagicViews } from './magicViews'
+import { PrayerAreaViews } from './prayerAreaViews'
 import { createGameCanvas, createGameEngine } from './runtimeCharacterTargets'
 import { SceneActors } from './sceneActors'
 import type { RenderedTiledMap } from './tiledMap'
@@ -18,7 +20,8 @@ export function createRuntimePresentation(container: HTMLElement, map: RenderedT
         resources.chestImage,
         resources.farmImage,
         resources.bellImages,
-        resources.fireImage
+        new MagicViews(engine, resources.fireImage),
+        new PrayerAreaViews(engine, resources.prayerAreaImages)
     )
     sceneActors.addMap(map)
     return { canvas, engine, audio, sceneActors, loader: resources.loader }

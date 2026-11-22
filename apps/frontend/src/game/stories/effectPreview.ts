@@ -38,7 +38,7 @@ export function effectPreview(
         canvas.setAttribute('aria-label', state.label)
         const ctx = canvas.getContext('2d')
         if (ctx) {
-            drawSurface(ctx, surface)
+            drawEffectSurface(ctx, surface)
             ctx.translate(56, 56)
             if (state.origin) {
                 ctx.fillStyle = '#18221d'
@@ -55,13 +55,14 @@ export function effectPreview(
     return panel
 }
 
-function drawSurface(ctx: CanvasRenderingContext2D, surface: EffectSurface): void {
+export function drawEffectSurface(ctx: CanvasRenderingContext2D, surface: EffectSurface): void {
+    const { width, height } = ctx.canvas
     const colors = surfaces[surface]
     ctx.fillStyle = colors.ground
-    ctx.fillRect(0, 0, 112, 112)
+    ctx.fillRect(0, 0, width, height)
     ctx.fillStyle = colors.detail
-    for (let x = 0; x < 112; x += 16) {
-        for (let y = 0; y < 112; y += 16) {
+    for (let x = 0; x < width; x += 16) {
+        for (let y = 0; y < height; y += 16) {
             if (surface === 'grass') ctx.fillRect(x + (y % 3) * 3, y + 5, 2, 3)
             else {
                 ctx.fillRect(x, y, 16, 1)

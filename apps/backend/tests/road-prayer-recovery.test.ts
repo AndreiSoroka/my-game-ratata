@@ -117,6 +117,10 @@ it('doubles the circular song area with Bard Skills and keeps the instant gift r
         caster.snapshot(startedAt).abilities?.prayers?.pray_road
             ?.energyRecoveryRadius
     ).toBeCloseTo(ABILITY_DEFINITIONS.pray_road.range * Math.sqrt(2))
+    caster.progression.constellations.opened.delete('prayer_road.bard')
+    expect(caster.snapshot(startedAt).abilities?.casting?.radius).toBeCloseTo(
+        ABILITY_DEFINITIONS.pray_road.range * Math.sqrt(2)
+    )
 })
 
 it('restores useful work energy up to the Endurance capacity', () => {

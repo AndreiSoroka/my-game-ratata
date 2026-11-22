@@ -26,12 +26,13 @@ import { CorpseViews } from './corpseViews'
 import { DamageFeedback } from './damageFeedback'
 import { DepthPropViews } from './depthPropViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
-import { MagicViews } from './magicViews'
+import type { MagicViews } from './magicViews'
 import {
     interactionHasLineOfSight,
     type MapVisibility,
     updateResourceVisibility,
 } from './mapVisibility'
+import type { PrayerAreaViews } from './prayerAreaViews'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { RouteWaypointViews } from './routeWaypointViews'
 import { SceneMapView } from './sceneMapActor'
@@ -62,7 +63,6 @@ export class SceneActors {
     private localPlayerId: string | undefined
     private readonly statusViews: StatusViews
     private readonly combatEffects: CombatEffects
-    private readonly magicViews: MagicViews
     private readonly damageFeedback: DamageFeedback
     private readonly signReading: SignReadingViews
     private readonly routeWaypoints: RouteWaypointViews
@@ -74,7 +74,8 @@ export class SceneActors {
         chestImage: ImageSource,
         farmImage: ImageSource,
         bellImages: BellImages,
-        fireImage: ImageSource
+        private readonly magicViews: MagicViews,
+        private readonly prayerAreas: PrayerAreaViews
     ) {
         this.mapView = new SceneMapView(engine)
         this.bells = new BellViews(engine, bellImages)
@@ -89,7 +90,6 @@ export class SceneActors {
         this.corpseViews = new CorpseViews(engine, sheets)
         this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
         this.statusViews = new StatusViews(engine)
-        this.magicViews = new MagicViews(engine, fireImage)
         this.combatEffects = new CombatEffects(
             engine,
             (id) => (this.isCharacterVisible(id) ? this.bundles.get(id)?.snapshot : undefined),
@@ -114,6 +114,7 @@ export class SceneActors {
         this.damageFeedback.clear()
         this.combatEffects.clear()
         this.magicViews.clear()
+        this.prayerAreas.clear()
         this.statusViews.clear()
     }
     public dispose(): void {
@@ -125,6 +126,7 @@ export class SceneActors {
         this.damageFeedback.dispose()
         this.combatEffects.dispose()
         this.magicViews.dispose()
+        this.prayerAreas.clear()
         this.statusViews.dispose()
         this.signReading.dispose()
         this.routeWaypoints.dispose()
@@ -168,14 +170,14 @@ export class SceneActors {
         this.playerPosition =
             player?.alive && !player.tags.includes('offline') ? player.position : undefined
         if (!this.playerPosition) this.interactionTarget.clear()
-        this.routeWaypoints.updateSnapshot(snapshot, player, (position) =>
-            this.isPositionVisible(position)
-        )
+        this.routeWaypoints.updateSnapshot(snapshot, player, this.isPositionVisible)
         this.buildingViews.update(player?.position)
-        this.magicViews.sync(snapshot, (position) => this.isPositionVisible(position))
+        this.magicViews.sync(snapshot, this.isPositionVisible)
         this.bells.updateSnapshot(snapshot, (bell) => this.isPositionVisible(bell.position))
-        this.signReading.update(snapshot.adventure?.worldObjects ?? [], player, (position) =>
-            this.isPositionVisible(position)
+        this.signReading.update(
+            snapshot.adventure?.worldObjects ?? [],
+            player,
+            this.isPositionVisible
         )
 
         for (const character of snapshot.characters) {
@@ -187,6 +189,7 @@ export class SceneActors {
         )
         this.statusViews.sync(visibleCharacters)
         this.combatEffects.sync(visibleCharacters)
+        this.prayerAreas.sync(visibleCharacters, snapshot.serverTime)
         this.corpseViews.update(snapshot.chests, snapshot.characters)
         this.worldActors.update(
             snapshot.items,
@@ -215,6 +218,8 @@ export class SceneActors {
     public buildingCoverStates(): { id: string; visible: boolean }[] {
         return this.buildingViews.coverStates()
     }
+
+    public readonly prayerAreaStates = () => this.prayerAreas.states()
 
     private updateResourceViews(snapshot: WorldSnapshot): void {
         this.gravePositions = new Map(
@@ -247,9 +252,8 @@ export class SceneActors {
         this.interactionTarget.set(this.playerPosition && onMap ? target : undefined)
     }
 
-    public isPositionVisible(position: Vector2): boolean {
-        return !this.buildingViews.hidesCharacter(position)
-    }
+    public readonly isPositionVisible = (position: Vector2): boolean =>
+        !this.buildingViews.hidesCharacter(position)
 
     public isInteractionVisible(
         position: Vector2,

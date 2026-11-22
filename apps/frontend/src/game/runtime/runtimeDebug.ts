@@ -4,7 +4,12 @@ import { type Engine, vec } from 'excalibur'
 import type { SceneActors } from './sceneActors'
 
 export function updateRuntimeDebug(
-    view: { engine: Engine; sceneActors: Pick<SceneActors, 'buildingCoverStates'> } | undefined,
+    view:
+        | {
+              engine: Engine
+              sceneActors: Pick<SceneActors, 'buildingCoverStates' | 'prayerAreaStates'>
+          }
+        | undefined,
     snapshot: WorldSnapshot | undefined,
     localPlayerId: string | undefined
 ): void {
@@ -22,6 +27,7 @@ export function updateRuntimeDebug(
                       return true
                   },
                   captureFrame: async () => (engine ? (await engine.screenshot()).src : undefined),
+                  prayerAreas: () => view?.sceneActors.prayerAreaStates() ?? [],
               }
             : {}),
         worldToPage: (point) => {

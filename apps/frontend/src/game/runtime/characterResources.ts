@@ -1,5 +1,5 @@
-import type { ItemId } from '@my-game-ratata/contracts'
-import { ImageSource, Loader, Sound, SpriteSheet } from 'excalibur'
+import { type ItemId, prayerActionIds } from '@my-game-ratata/contracts'
+import { ImageFiltering, ImageSource, Loader, Sound, SpriteSheet } from 'excalibur'
 
 import {
     characterCatalog,
@@ -7,8 +7,10 @@ import {
     type CharacterId,
 } from '../assets/characterCatalog'
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import { prayerAreaSources } from '../assets/prayerAreaAssets'
 import { type GameSoundId, gameSoundIds, musicCatalog, soundCatalog } from '../assets/soundCatalog'
 import type { BellImages } from './bellViews'
+import type { PrayerAreaImages } from './prayerAreaViews'
 
 export interface CharacterResources {
     bellImages: BellImages
@@ -20,6 +22,7 @@ export interface CharacterResources {
     music: {
         adventureBegins: Sound
     }
+    prayerAreaImages: PrayerAreaImages
     sheets: Map<CharacterId, SpriteSheet>
     sounds: Map<GameSoundId, Sound>
 }
@@ -47,6 +50,12 @@ export function createCharacterResources(): CharacterResources {
     const music = {
         adventureBegins: createMusic(),
     }
+    const prayerAreaImages = new Map(
+        prayerActionIds.map((id) => [
+            id,
+            new ImageSource(prayerAreaSources[id], { filtering: ImageFiltering.Pixel }),
+        ])
+    )
 
     for (const definition of Object.values(characterCatalog)) {
         const image = new ImageSource(definition.src)
@@ -79,10 +88,12 @@ export function createCharacterResources(): CharacterResources {
             fireImage,
             ...Object.values(bellImages.states),
             ...bellImages.swing,
+            ...prayerAreaImages.values(),
             ...sounds.values(),
             music.adventureBegins,
         ]),
         music,
+        prayerAreaImages,
         sheets,
         sounds,
     }

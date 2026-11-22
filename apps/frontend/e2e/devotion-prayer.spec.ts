@@ -39,6 +39,13 @@ for (const mobile of [false, true]) {
         expect(after.resourceChecks?.prayers.pray.devotion).toBe('ready')
         expect(after.position).toEqual(before.position)
         expect(after.progression?.masteries).toEqual(before.progression?.masteries)
+        expect(
+            await page.evaluate(
+                (id) =>
+                    window.__ratataGameDebug?.prayerAreas?.().some((area) => area.actorId === id),
+                after.id
+            )
+        ).toBe(false)
         await expect(
             page.getByText('Нет подходящей цели для молитвы.', { exact: true })
         ).toHaveCount(0)

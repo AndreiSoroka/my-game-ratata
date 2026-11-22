@@ -233,7 +233,10 @@ it('gates undead resurrection by the learned grave school and its own mastery', 
             context
         )[0]?.phase
     ).toBe('started')
-    expect(actor.abilities.casting?.abilityId).toBe('pray_grave')
+    expect(actor.snapshot(1000).abilities?.casting).toMatchObject({
+        abilityId: 'pray_grave',
+        radius: 48,
+    })
     advanceRevive(
         actor,
         () => target,
@@ -432,7 +435,10 @@ it.each(['pray_road', 'pray_lantern'] as const)(
         expect(snapshotControl(actor).waiting).toBe('resources')
         actor.mana = 5
         advanceCharacterControl(actor, world, 1001)
-        expect(actor.abilities.casting?.abilityId).toBe(abilityId)
+        expect(actor.snapshot(1001).abilities?.casting).toMatchObject({
+            abilityId,
+            radius: 48,
+        })
         expect(actor.mana).toBe(abilityId === 'pray_road' ? 0 : 5)
         advanceCharacterControl(actor, world, 4001)
         expect(snapshotControl(actor).waiting).toBe('action')

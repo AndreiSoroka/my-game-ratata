@@ -120,6 +120,8 @@ export interface CharacterAbilitiesSnapshot {
         targetId: string
         startedAt: number
         completesAt: number
+        /** Caster-centered area or reach of the active prayer, in world pixels. */
+        radius?: number
         uninterruptible?: boolean
         walkWhileCasting?: boolean
     } | null

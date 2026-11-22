@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { handleAbilityCommand } from '../src/game/abilityCommands'
 import { resolveCharacterDamage } from '../src/game/abilityDamage'
 import { advanceRevive, beginRevive } from '../src/game/characterLife'
+import { observeCharacterCombat } from '../src/game/combatObservation'
 import { cancelPrayerCast } from '../src/game/prayerCancellation'
 import { prayerParameters } from '../src/game/prayerParameters'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
@@ -147,18 +148,39 @@ describe('frozen Mother prayer target plan', () => {
         expect(actor.mana).toBe(35)
         expect(corpse.alive).toBe(true)
     })
-    it('freezes multipliers and target capacity when an opening occurs during a channel', () => {
+})
+
+it.each(['pray', 'pray_woven'] as const)(
+    'preserves the %s radius and other planned effects when stars open mid-channel',
+    (abilityId) => {
         const actor = abilityHero()
+        woven(actor)
         actor.hp = 5
-        const context = abilityContext([actor])
-        cast(actor, context)
+        actor.progression.constellations.opened.add('prayer.radius1')
+        const observer = abilityHero()
+        const context = abilityContext([actor, observer])
+        context.navigation.grid.tileWidth = 24
+        expect(cast(actor, context, abilityId)[0]?.phase).toBe('started')
         actor.progression.constellations.opened.add('prayer.gift1')
         actor.progression.constellations.opened.add('prayer.focus')
-        expect(actor.abilities.casting?.completesAt).toBe(4000)
+        actor.progression.constellations.opened.add('prayer.radius2')
+        const observed = observeCharacterCombat(actor.snapshot(1100), actor, {
+            observer,
+            getCharacter: (id) =>
+                context.characters.find((entry) => entry.id === id),
+            navigation: context.navigation,
+            now: 1100,
+        })
+        expect(observed.abilities?.casting).toMatchObject({
+            abilityId,
+            radius: 72,
+            completesAt: 4000,
+        })
+        expect(observed.abilities?.prayers?.[abilityId]?.radius).toBe(96)
         finish(actor, context)
         expect(actor.hp).toBe(9)
-    })
-})
+    }
+)
 
 describe('Domain receipts and interrupted aura recovery', () => {
     it('pays five-mana aura-only casts and catches up five ticks once, including enemies', () => {

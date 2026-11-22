@@ -1,11 +1,12 @@
-import type {
-    AbilityId,
-    CharacterAbilitiesSnapshot,
-    CharacterArchetype,
-    HeroClass,
-    PrayerActionId,
-    PrayerIntent,
-    Vector2,
+import {
+    ABILITY_DEFINITIONS,
+    type AbilityId,
+    type CharacterAbilitiesSnapshot,
+    type CharacterArchetype,
+    type HeroClass,
+    type PrayerActionId,
+    type PrayerIntent,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
 import { snapshotAbilityUsage } from './abilityUsage'
@@ -168,6 +169,16 @@ export function activeBarrier(
         ? barrier
         : null
 }
+function castAreaRadius(cast: PrayerCast): number {
+    const recoveryRadius =
+        cast.mode === 'prayer' ? cast.road?.recoveryRadius : undefined
+    return (
+        cast.plan?.radius ??
+        recoveryRadius ??
+        ABILITY_DEFINITIONS[cast.abilityId].range
+    )
+}
+
 function snapshotCast(
     actor: GameCharacter
 ): CharacterAbilitiesSnapshot['casting'] {
@@ -178,6 +189,7 @@ function snapshotCast(
               targetId: cast.targetId,
               startedAt: cast.startedAt,
               completesAt: cast.completesAt,
+              radius: castAreaRadius(cast),
               ...(cast.mother?.lastLight === true
                   ? { uninterruptible: true }
                   : {}),
