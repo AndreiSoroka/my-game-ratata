@@ -1,4 +1,8 @@
-import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
+import type {
+    ConstellationNodeSnapshot,
+    ConstellationSnapshot,
+    Vector2,
+} from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue'
 
 import { constellationViewportFocus } from './constellationViewportFocus'
@@ -6,7 +10,8 @@ import { constellationViewportFocus } from './constellationViewportFocus'
 export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
     const svg = ref<SVGSVGElement>()
     const zoom = ref(1)
-    const offset = ref({ x: 0, y: 0 })
+    const offset = ref<Vector2>({ x: 0, y: 0 })
+    const dragOffset = ref<Vector2>({ x: 0, y: 0 })
     const dimensions = ref({ width: 700, height: 450 })
     const bounds = computed(() => snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
     const baseScale = computed(() =>
@@ -19,10 +24,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     const visibleBounds = computed(() =>
         viewportBounds(bounds.value, dimensions.value, unitScale.value, offset.value)
     )
-    const viewBox = computed(() => {
-        const view = visibleBounds.value
-        return `${view.x} ${view.y} ${view.width} ${view.height}`
-    })
+    const viewBox = computed(() => formatViewBox(visibleBounds.value))
     const minimumSpacing = computed(() => snapshot().layout?.minimumNodeSpacing ?? 48)
     const detailed = computed(() => unitScale.value <= minimumSpacing.value / 52)
     const maximumZoom = computed(() => Math.max(8, (unitScale.value * zoom.value) / 0.4))
@@ -30,14 +32,17 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         svg,
         zoom,
         offset,
+        dragOffset,
         () => maximumZoom.value,
         () => unitScale.value
     )
     function reset(): void {
         zoom.value = 1
         offset.value = { x: 0, y: 0 }
+        dragOffset.value = { x: 0, y: 0 }
     }
     function centerOn(point: { x: number; y: number }): void {
+        dragOffset.value = { x: 0, y: 0 }
         offset.value = {
             x: point.x - bounds.value.x - bounds.value.width / 2,
             y: point.y - bounds.value.y - bounds.value.height / 2,
@@ -52,14 +57,14 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         maximumZoom,
         centerOn,
     })
-    function ensureVisible(node: ConstellationNodeSnapshot): void {
+    function ensureVisible(node: ConstellationNodeSnapshot, position: Vector2): void {
         const margin = 32 * unitScale.value
         const { x, y, width, height } = visibleBounds.value
         if (
-            node.x < x + margin ||
-            node.x > x + width - margin ||
-            node.y < y + margin ||
-            node.y > y + height - margin
+            position.x < x + margin ||
+            position.x > x + width - margin ||
+            position.y < y + margin ||
+            position.y > y + height - margin
         )
             centerOn(node)
     }
@@ -67,7 +72,8 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     return {
         svg,
         zoom,
-        bounds,
+        dragOffset,
+        dimensions,
         viewBox,
         visibleBounds,
         unitScale,
@@ -80,10 +86,15 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     }
 }
 
+function formatViewBox({ x, y, width, height }: ReturnType<typeof viewportBounds>): string {
+    return `${x} ${y} ${width} ${height}`
+}
+
 function viewportGestures(
-    svg: import('vue').Ref<SVGSVGElement | undefined>,
-    zoom: import('vue').Ref<number>,
-    offset: import('vue').Ref<{ x: number; y: number }>,
+    svg: Ref<SVGSVGElement | undefined>,
+    zoom: Ref<number>,
+    offset: Ref<Vector2>,
+    dragOffset: Ref<Vector2>,
     maximumZoom: () => number,
     unitScale: () => number
 ) {
@@ -124,6 +135,7 @@ function viewportGestures(
                 x: offset.value.x - dx * unitScale(),
                 y: offset.value.y - dy * unitScale(),
             }
+            dragOffset.value = { x: dragOffset.value.x + dx, y: dragOffset.value.y + dy }
         }
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
     }

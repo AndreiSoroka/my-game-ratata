@@ -2,8 +2,8 @@
 import type { CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
-import ConstellationGraph from './ConstellationGraph.vue'
-import ConstellationStarCard from './ConstellationStarCard.vue'
+import { ConstellationAtlasWidget } from '@/widgets/constellation-atlas'
+
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import KnowledgeWindow from './KnowledgeWindow.vue'
 
@@ -30,15 +30,13 @@ watch(
     <section class="character-development" aria-label="Развитие персонажа">
         <HeroBackgroundSummary :hero-class="player.heroClass" />
         <template v-if="sky">
-            <div class="development-layout">
-                <ConstellationGraph
-                    :key="player.id"
-                    :constellation="sky"
-                    :selected-id="selected?.id"
-                    @select="selectedId = $event"
-                />
-                <ConstellationStarCard v-if="selected" :node="selected" />
-            </div>
+            <ConstellationAtlasWidget
+                :key="player.id"
+                class="development-layout"
+                :constellation="sky"
+                :selected-star="selected"
+                @select="selectedId = $event"
+            />
             <KnowledgeWindow
                 v-if="selected?.unlocked && selected.parents.length === 0"
                 :key="selected.constellationId"

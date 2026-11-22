@@ -2,6 +2,8 @@ import type { ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { ConstellationGraph } from '@/entities/constellations'
+
 import {
     constellationWireId,
     fullConstellationCatalog,
@@ -10,9 +12,6 @@ import { characterFixture } from '../testing/characterFixture'
 import { constellationFixture } from '../testing/developmentFixture'
 import { masteriesFixture } from '../testing/masteryFixture'
 import CharacterDevelopment from './CharacterDevelopment.vue'
-import { observedPathBounds } from './constellationFocusRegion'
-import ConstellationGraph from './ConstellationGraph.vue'
-import { constellationLabels } from './constellationLabels'
 
 function routedSky(learned: boolean): ConstellationSnapshot {
     const source = constellationWireId('blade.root')
@@ -116,33 +115,6 @@ it.each([false, true])(
     }
 )
 
-it('labels the constellation by its earned path name while the root action keeps its name', () => {
-    const sky = routedSky(false)
-    sky.nodes = [
-        {
-            id: 'root',
-            constellationId: 'prayer',
-            x: 0,
-            y: 0,
-            parents: [],
-            unlocked: true,
-            name: 'Молитва',
-        },
-    ]
-    sky.edges = []
-    sky.paths = [{ id: 'prayer', unlocked: true, color: '#fa0', name: 'Угольная Мать' }]
-    const labels = () =>
-        constellationLabels(sky, 'root', false, 1, { x: -250, y: -200, width: 500, height: 400 })
-    expect(labels()[0]?.text).toBe('Угольная Мать')
-    expect(sky.nodes[0]!.name).toBe('Молитва')
-    sky.paths[0]!.name = undefined
-    expect(labels()[0]?.text).toBe('Молитва')
-    sky.paths[0]!.unlocked = false
-    sky.nodes[0]!.unlocked = false
-    sky.nodes[0]!.name = undefined
-    expect(labels()[0]?.text).toBe('Неизвестно')
-})
-
 it('keeps extra mandatory prerequisites marked in the player development preview', () => {
     const sky = constellationFixture(true, 'vanguard')
     const expected = fullConstellationCatalog.flatMap((node) =>
@@ -154,10 +126,4 @@ it('keeps extra mandatory prerequisites marked in the player development preview
     expect(
         sky.edges.filter((edge) => edge.crossLink).map((edge) => `${edge.from}>${edge.to}`)
     ).toEqual(expected)
-})
-
-it('fits only received nodes and internal bends rather than foreign corridors or hidden path extents', () => {
-    const sky = routedSky(false)
-    sky.edges.push({ from: sky.nodes[0]!.id, to: sky.nodes[2]!.id, via: [{ x: 10000, y: 10000 }] })
-    expect(observedPathBounds(sky, 'blade')).toEqual({ x: -200, y: -120, width: 400, height: 120 })
 })

@@ -17,9 +17,12 @@ export function constellationLabels(
     selectedId: string | undefined,
     detailed: boolean,
     scale: number,
-    view: ConstellationRegion
+    view: ConstellationRegion,
+    showClosed: boolean
 ): StarLabel[] {
-    const nodes = sky.nodes.filter((node) => node.parents.length === 0 || detailed)
+    const nodes = sky.nodes.filter(
+        (node) => (showClosed || node.unlocked) && (node.parents.length === 0 || detailed)
+    )
     const visible = nodes.filter(
         (node) =>
             node.x >= view.x &&
@@ -33,7 +36,7 @@ export function constellationLabels(
             (a, b) => priority(a, selectedId) - priority(b, selectedId) || a.id.localeCompare(b.id)
         )
     const labels: StarLabel[] = []
-    const edges = labelEdges(sky)
+    const edges = labelEdges(sky, showClosed)
     for (const node of candidates) {
         const root = node.parents.length === 0
         const { width, height } = labelSize(root, scale)
@@ -121,12 +124,14 @@ function segmentIntersects(
     return true
 }
 
-function labelEdges(sky: ConstellationSnapshot): Vector2[][] {
+function labelEdges(sky: ConstellationSnapshot, showClosed: boolean): Vector2[][] {
     const byId = new Map(sky.nodes.map((node) => [node.id, node]))
     return sky.edges.flatMap((edge) => {
         const from = byId.get(edge.from),
             to = byId.get(edge.to)
-        return from && to ? [[from, ...(edge.via ?? []), to]] : []
+        return from && to && (showClosed || (from.unlocked && to.unlocked))
+            ? [[from, ...(edge.via ?? []), to]]
+            : []
     })
 }
 function edgeIntersects(rect: ConstellationRegion, edges: Vector2[][], scale: number): boolean {

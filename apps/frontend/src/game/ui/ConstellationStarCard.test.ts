@@ -1,8 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { ConstellationStarCard } from '@/entities/constellations'
+
 import { constellationFixture } from '../testing/developmentFixture'
-import ConstellationStarCard from './ConstellationStarCard.vue'
 
 it('classifies every revealed star as an active or passive spell, including physical stars', () => {
     for (const node of constellationFixture(true).nodes) {

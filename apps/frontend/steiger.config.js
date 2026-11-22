@@ -3,8 +3,8 @@ import { defineConfig } from 'steiger'
 
 export default defineConfig([
     ...fsd.configs.recommended,
-    // Enable widget checks separately when that layer is ready.
-    { ignores: ['./src/widgets/**'] },
+    // Keep the existing widgets excluded while checking the constellation atlas.
+    { ignores: ['./src/widgets/{chats,exchanges,player-effects,player-vitals}/**'] },
     {
         // The game adapter has a legacy directory name outside the FSD layers.
         files: ['./src/game/**'],
@@ -16,9 +16,10 @@ export default defineConfig([
         rules: { 'fsd/inconsistent-naming': 'off' },
     },
     {
-        // Steiger misses consumers in the game adapter and the temporarily excluded widgets.
+        // Steiger misses consumers in the game adapters and the temporarily excluded widgets.
         files: [
-            './src/entities/{character-window,chats,exchanges,menus,player-effects,player-vitals,quests,quick-actions}/**',
+            './src/entities/{character-window,chats,constellations,exchanges,menus,player-effects,player-vitals,quests,quick-actions}/**',
+            './src/widgets/constellation-atlas/**',
         ],
         rules: { 'fsd/insignificant-slice': 'off' },
     },

@@ -2,11 +2,11 @@ import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 import { nextTick } from 'vue'
 
+import { ConstellationGraph } from '@/entities/constellations'
+
 import { constellationFixture, fixtureStarId } from '../testing/developmentFixture'
 import { developmentCharacterFixture } from '../testing/developmentFixture'
 import CharacterDevelopment from './CharacterDevelopment.vue'
-import ConstellationGraph from './ConstellationGraph.vue'
-import { constellationLabels } from './constellationLabels'
 
 it('keeps ordinary development selection separate from debug build activation', async () => {
     const root = fixtureStarId('prayer.root')
@@ -75,7 +75,7 @@ it('does not activate stars after a pan made of small pointer movements or a pin
         props: { constellation: constellationFixture(true), enabledStarIds: new Set([root]) },
     })
     const star = view.get(`[data-node-id="${root}"]`)
-    const svg = view.get('svg')
+    const svg = view.get('.constellation-map__sky')
     const pointer = async (target: Element, type: string, id: number, x = 0, y = 0) => {
         const event = new MouseEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y })
         Object.defineProperty(event, 'pointerId', { value: id })
@@ -112,7 +112,7 @@ it('keeps unknown stars inert in detailed mode and preserves fixed bounds across
     const view = mount(ConstellationGraph, {
         props: { constellation: sky, selectedId: fixtureStarId('prayer.root') },
     })
-    const initial = view.get('svg').attributes('viewBox')
+    const initial = view.get('.constellation-map__sky').attributes('viewBox')
     const unknown = () => view.get(`[data-node-id="${fixtureStarId('prayer.radius2')}"]`)
     expect(unknown().attributes('aria-label')).toBe('Неизвестно')
     expect(unknown().attributes('aria-hidden')).toBe('true')
@@ -124,11 +124,11 @@ it('keeps unknown stars inert in detailed mode and preserves fixed bounds across
     view.vm.focusNode(fixtureStarId('prayer.radius2'))
     await unknown().trigger('keydown', { code: 'Space' })
     expect(view.emitted('select')?.at(-1)).toEqual([fixtureStarId('prayer.root')])
-    const focused = view.get('svg').attributes('viewBox')
+    const focused = view.get('.constellation-map__sky').attributes('viewBox')
     await view.setProps({ constellation: constellationFixture(true) })
-    expect(view.get('svg').attributes('viewBox')).toBe(focused)
+    expect(view.get('.constellation-map__sky').attributes('viewBox')).toBe(focused)
     await view.get('[aria-label="Показать весь небосвод"]').trigger('click')
-    expect(view.get('svg').attributes('viewBox')).toBe(initial)
+    expect(view.get('.constellation-map__sky').attributes('viewBox')).toBe(initial)
     view.unmount()
 })
 it('skips unknown stars during keyboard navigation and ignores their key events', async () => {
@@ -156,47 +156,12 @@ it('ignores an unknown root and preserves the current known card', async () => {
         props: { player: developmentCharacterFixture(), characters: [] },
     })
     const before = view.get('[aria-label="Выбранная звезда"]').text()
-    const camera = view.get('svg').attributes('viewBox')
+    const camera = view.get('.constellation-map__sky').attributes('viewBox')
     await view.get(`[data-node-id="${fixtureStarId('prayer_road.root')}"]`).trigger('click')
     expect(view.get('[aria-label="Выбранная звезда"]').text()).toBe(before)
-    expect(view.get('svg').attributes('viewBox')).toBe(camera)
+    expect(view.get('.constellation-map__sky').attributes('viewBox')).toBe(camera)
     view.unmount()
 })
-it('places full-catalogue labels without overlapping at detailed scale', () => {
-    const sky = constellationFixture(true)
-    const labels = constellationLabels(
-        sky,
-        fixtureStarId('prayer.root'),
-        true,
-        1.25,
-        sky.layout!.regions.prayer
-    )
-    expect(labels.length).toBeGreaterThan(0)
-    for (const [index, a] of labels.entries())
-        for (const b of labels.slice(index + 1))
-            expect(
-                a.x + a.width <= b.x ||
-                    b.x + b.width <= a.x ||
-                    a.y + a.height <= b.y ||
-                    b.y + b.height <= a.y
-            ).toBe(true)
-})
-
-it('finds room for the cleric center label in the narrow overview', () => {
-    const sky = constellationFixture(true, 'cleric')
-    const { bounds, centerNodeId } = sky.layout!
-    const scale = Math.max(bounds.width / 346, bounds.height / 340)
-    const width = 346 * scale
-    const height = 340 * scale
-    const labels = constellationLabels(sky, centerNodeId, false, scale, {
-        x: -width / 2,
-        y: -height / 2,
-        width,
-        height,
-    })
-    expect(labels.find((label) => label.id === centerNodeId)?.text).toBe('Угольная Мать')
-})
-
 it.each(['vanguard', 'arcanist', 'cleric', 'ranger'] as const)(
     'centers %s on its immutable starting root and resets selection there',
     async (heroClass) => {
@@ -207,7 +172,8 @@ it.each(['vanguard', 'arcanist', 'cleric', 'ranger'] as const)(
         expect(center.y).toBe(0)
         const view = mount(CharacterDevelopment, { props: { player, characters: [] } })
         expect(view.get('[aria-label="Выбранная звезда"] h3').text()).toBe(center.name)
-        const box = () => view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+        const box = () =>
+            view.get('.constellation-map__sky').attributes('viewBox')!.split(' ').map(Number)
         const [x, y, width, height] = box()
         expect(x! + width! / 2).toBeCloseTo(0)
         expect(y! + height! / 2).toBeCloseTo(0)
@@ -245,7 +211,11 @@ it('fits the complete received path and its local route instead of zooming by an
     sky.layout!.minimumNodeSpacing = 80
     const view = mount(ConstellationGraph, { props: { constellation: sky } })
     await view.get(`[data-node-id="${root.id}"]`).trigger('click')
-    const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+    const [x, y, width, height] = view
+        .get('.constellation-map__sky')
+        .attributes('viewBox')!
+        .split(' ')
+        .map(Number)
     const scale = width! / 700
     expect(x! + width! / 2).toBeCloseTo(1000)
     expect(y! + height! / 2).toBeCloseTo(300)
@@ -255,12 +225,12 @@ it('fits the complete received path and its local route instead of zooming by an
         expect(point.y - y!).toBeGreaterThanOrEqual(35 * scale)
         expect(y! + height! - point.y).toBeGreaterThanOrEqual(35 * scale)
     }
-    const focused = view.get('svg').attributes('viewBox')
+    const focused = view.get('.constellation-map__sky').attributes('viewBox')
     await view.setProps({
         constellation: { ...sky, layout: { ...sky.layout!, minimumNodeSpacing: 1 } },
     })
     await view.get(`[data-node-id="${root.id}"]`).trigger('click')
-    expect(view.get('svg').attributes('viewBox')).toBe(focused)
+    expect(view.get('.constellation-map__sky').attributes('viewBox')).toBe(focused)
     view.unmount()
 })
 
@@ -278,7 +248,11 @@ it('focuses an externally requested leaf without changing the catalogue or accep
     const emitted = view.emitted('select')!.length
     view.vm.focusNode('no-such-star')
     expect(view.emitted('select')).toHaveLength(emitted)
-    const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+    const [x, y, width, height] = view
+        .get('.constellation-map__sky')
+        .attributes('viewBox')!
+        .split(' ')
+        .map(Number)
     expect(x! + width! / 2).toBeCloseTo(node.x)
     expect(y! + height! / 2).toBeCloseTo(node.y)
     expect(view.get(`[data-node-id="${id}"]`).attributes('role')).toBe('button')

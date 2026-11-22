@@ -1,12 +1,9 @@
 .constellation-map {
-    --game-frame-fill: transparent;
     position: relative;
     min-width: 0;
-    overflow: hidden;
     background:
         radial-gradient(ellipse at 20% 25%, #183e4a80, transparent 55%),
         radial-gradient(ellipse at 75% 80%, #40312566, transparent 55%), #08151f;
-    border: 1px solid transparent;
 }
 .constellation-map__sky {
     display: block;
@@ -28,11 +25,11 @@
     z-index: 1;
 }
 .constellation-map__tools button {
-    width: 36px;
-    height: 36px;
-    border: 1px solid transparent;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     font-size: 20px;
-    cursor: pointer;
 }
 .constellation-label {
     pointer-events: none;

@@ -1,8 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { ConstellationGraph } from '@/entities/constellations'
+
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
-import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import { enableAllConstellationStars } from './constellationBuild'
 import ConstellationBuildSummary from './ConstellationBuildSummary.vue'
 import ConstellationDebug from './ConstellationDebug.vue'

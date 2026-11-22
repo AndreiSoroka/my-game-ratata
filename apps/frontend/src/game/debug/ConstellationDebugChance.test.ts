@@ -1,7 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
-import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
+import { ConstellationStarCard } from '@/entities/constellations'
+
 import ConstellationDebugChance from './ConstellationDebugChance.vue'
 import { buildConstellationDebugSnapshot } from './constellationDebugData'
 import { describeConstellationEffectChance } from './constellationEffectChance'

@@ -2,12 +2,15 @@
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref } from 'vue'
 
+import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
+import { FantasyBorder } from '@/shared/ui/external'
+import { useDarkPanelTheme } from '@/shared/ui/theme'
+
+import { projectConstellationBranches } from '../model/constellationParallax'
 import ConstellationBackground from './ConstellationBackground.vue'
 import { constellationLabels } from './constellationLabels'
 import { nextConstellationNode } from './constellationNavigation'
 import ConstellationStar from './ConstellationStar.vue'
-import GameButton from './primitives/GameButton.vue'
-import GameFrame from './primitives/GameFrame.vue'
 import { useConstellationViewport } from './useConstellationViewport'
 
 const props = defineProps<{
@@ -16,8 +19,12 @@ const props = defineProps<{
     enabledStarIds?: ReadonlySet<string>
 }>()
 const emit = defineEmits<{ select: [id: string]; activate: [id: string] }>()
+const theme = useDarkPanelTheme()
 const {
     svg,
+    zoom,
+    dragOffset,
+    dimensions,
     viewBox,
     visibleBounds,
     unitScale,
@@ -32,11 +39,19 @@ const {
     up,
     didDrag,
 } = useConstellationViewport(() => props.constellation)
+const displayedSky = computed(() =>
+    projectConstellationBranches(props.constellation, dragOffset.value, unitScale.value)
+)
 const nodeById = computed(() => new Map(props.constellation.nodes.map((node) => [node.id, node])))
 const colors = computed(
     () => new Map(props.constellation.paths.map((path) => [path.id, path.color]))
 )
 const focusedId = ref('')
+const closedVisibility = computed(() => {
+    if (props.enabledStarIds !== undefined) return 1
+    const progress = Math.max(0, Math.min(1, (zoom.value - 1) / 2))
+    return progress * progress * (3 - 2 * progress)
+})
 const backgroundSeed = computed(() =>
     props.constellation.nodes
         .filter((node) => node.parents.length === 0)
@@ -44,17 +59,18 @@ const backgroundSeed = computed(() =>
         .join('|')
 )
 const interactiveNodes = computed(() =>
-    props.constellation.nodes.filter(
+    displayedSky.value.nodes.filter(
         (node) => canInteract(node) && (detailed.value || node.parents.length === 0)
     )
 )
 const labels = computed(() =>
     constellationLabels(
-        props.constellation,
+        displayedSky.value,
         props.selectedId,
         detailed.value,
         unitScale.value,
-        visibleBounds.value
+        visibleBounds.value,
+        closedVisibility.value > 0
     ).map((label) =>
         props.enabledStarIds !== undefined && !props.enabledStarIds.has(label.id)
             ? { ...label, color: '#8b969e' }
@@ -67,13 +83,31 @@ function canInteract(node: ConstellationNodeSnapshot): boolean {
 function nodeEnabled(node: ConstellationNodeSnapshot): boolean {
     return node.unlocked && (props.enabledStarIds?.has(node.id) ?? true)
 }
-function edgeEnabled(from: string, to: string): boolean {
-    const target = nodeById.value.get(to)
-    if (!target) return false
-    if (props.enabledStarIds === undefined) return target.unlocked
-    const source = nodeById.value.get(from)
-    return source !== undefined && nodeEnabled(source) && nodeEnabled(target)
-}
+const edges = computed(() => {
+    const nodes = new Map(displayedSky.value.nodes.map((node) => [node.id, node]))
+    return displayedSky.value.edges.flatMap(({ from, to, via, crossLink }) => {
+        const source = nodes.get(from)
+        const target = nodes.get(to)
+        if (!source || !target) return []
+        const enabled =
+            props.enabledStarIds === undefined
+                ? target.unlocked
+                : nodeEnabled(source) && nodeEnabled(target)
+        const visibility = source.unlocked && target.unlocked ? 1 : closedVisibility.value
+        return [
+            {
+                id: `${from}:${to}`,
+                points: [source, ...(via ?? []), target]
+                    .map((point) => `${point.x},${point.y}`)
+                    .join(' '),
+                color: enabled ? colors.value.get(target.constellationId) : '#8b969e',
+                opacity: (enabled ? 0.7 : 0.2) * visibility,
+                dash: crossLink ? '8 4 2 4' : enabled ? undefined : '3 4',
+                crossLink,
+            },
+        ]
+    })
+})
 const tabStop = computed(
     () =>
         interactiveNodes.value.find((node) => node.id === focusedId.value)?.id ??
@@ -102,7 +136,7 @@ function choose(node: ConstellationNodeSnapshot, pointer = true): void {
         svg.value?.querySelector<SVGGElement>(`[data-node-id="${node.id}"]`)?.focus()
     )
     emit('select', node.id)
-    if (node.parents.length === 0) focusPath(node)
+    if (node.parents.length === 0) focusPath(nodeById.value.get(node.id)!)
 }
 function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
     if (!interactiveNodes.value.some((entry) => entry.id === node.id)) return
@@ -118,7 +152,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
         if (next) {
             focusedId.value = next.id
             emit('select', next.id)
-            ensureVisible(next)
+            ensureVisible(nodeById.value.get(next.id)!, next)
             void nextTick(() =>
                 svg.value?.querySelector<SVGGElement>(`[data-node-id="${next.id}"]`)?.focus()
             )
@@ -155,12 +189,35 @@ function cameraKey(event: KeyboardEvent): void {
 </script>
 
 <template>
-    <div class="constellation-map game-frame-host">
-        <GameFrame variant="inset" />
+    <FantasyBorder
+        class="constellation-map"
+        :border="theme?.border ?? 'border-014'"
+        :color="theme?.accent ?? 'var(--ui-dark-panel-border)'"
+        :border-width="5"
+        :style="{ '--constellation-closed-visibility': closedVisibility }"
+    >
         <div class="constellation-map__tools" aria-label="Масштаб небосвода">
-            <GameButton icon aria-label="Приблизить небосвод" @click="scale(1.25)">+</GameButton>
-            <GameButton icon aria-label="Отдалить небосвод" @click="scale(0.8)">−</GameButton>
-            <GameButton icon aria-label="Показать весь небосвод" @click="resetSky">⌖</GameButton>
+            <UiButton
+                appearance="panel"
+                :colors="hudPanelButtonColors"
+                aria-label="Приблизить небосвод"
+                @click="scale(1.25)"
+                >+</UiButton
+            >
+            <UiButton
+                appearance="panel"
+                :colors="hudPanelButtonColors"
+                aria-label="Отдалить небосвод"
+                @click="scale(0.8)"
+                >−</UiButton
+            >
+            <UiButton
+                appearance="panel"
+                :colors="hudPanelButtonColors"
+                aria-label="Показать весь небосвод"
+                @click="resetSky"
+                >⌖</UiButton
+            >
         </div>
         <svg
             ref="svg"
@@ -183,41 +240,30 @@ function cameraKey(event: KeyboardEvent): void {
                 fill="transparent"
             />
             <ConstellationBackground
-                :view="visibleBounds"
+                :origin="visibleBounds"
+                :dimensions="dimensions"
                 :unit-scale="unitScale"
                 :seed="backgroundSeed"
+                :zoom="zoom"
+                :pan="dragOffset"
             />
-            <template v-for="edge in constellation.edges" :key="`${edge.from}:${edge.to}`">
-                <polyline
-                    v-if="nodeById.get(edge.from) && nodeById.get(edge.to)"
-                    :points="
-                        [nodeById.get(edge.from)!, ...(edge.via ?? []), nodeById.get(edge.to)!]
-                            .map((point) => `${point.x},${point.y}`)
-                            .join(' ')
-                    "
-                    fill="none"
-                    :stroke="
-                        edgeEnabled(edge.from, edge.to)
-                            ? colors.get(nodeById.get(edge.to)!.constellationId)
-                            : '#8b969e'
-                    "
-                    :opacity="edgeEnabled(edge.from, edge.to) ? 0.7 : 0.2"
-                    :class="{ 'constellation-edge--cross-link': edge.crossLink }"
-                    :stroke-dasharray="
-                        edge.crossLink
-                            ? '8 4 2 4'
-                            : edgeEnabled(edge.from, edge.to)
-                              ? undefined
-                              : '3 4'
-                    "
-                    stroke-width="1.4"
-                    vector-effect="non-scaling-stroke"
-                >
-                    <title v-if="edge.crossLink">Дополнительная обязательная связь</title>
-                </polyline>
-            </template>
+            <polyline
+                v-for="edge in edges"
+                :key="edge.id"
+                :points="edge.points"
+                fill="none"
+                :stroke="edge.color"
+                :opacity="edge.opacity"
+                :pointer-events="edge.opacity === 0 ? 'none' : undefined"
+                :class="{ 'constellation-edge--cross-link': edge.crossLink }"
+                :stroke-dasharray="edge.dash"
+                stroke-width="1.4"
+                vector-effect="non-scaling-stroke"
+            >
+                <title v-if="edge.crossLink">Дополнительная обязательная связь</title>
+            </polyline>
             <ConstellationStar
-                v-for="node in constellation.nodes"
+                v-for="node in displayedSky.nodes"
                 :key="node.id"
                 :node="node"
                 :color="colors.get(node.constellationId) ?? '#dce6dd'"
@@ -238,6 +284,7 @@ function cameraKey(event: KeyboardEvent): void {
                 :y="label.y"
                 :width="label.width"
                 :height="label.height"
+                :opacity="nodeById.get(label.id)?.unlocked ? 1 : closedVisibility"
                 aria-hidden="true"
                 class="constellation-label"
             >
@@ -252,7 +299,7 @@ function cameraKey(event: KeyboardEvent): void {
                 · Пробел включает или отключает</template
             >
         </p>
-    </div>
+    </FantasyBorder>
 </template>
 
 <style scoped src="./constellationGraph.css"></style>

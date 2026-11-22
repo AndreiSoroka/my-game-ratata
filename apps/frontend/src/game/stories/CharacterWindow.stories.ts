@@ -2,15 +2,10 @@ import type { AdventureSnapshot, HeroClass } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { adventureFixture, worldFixture } from '../testing/characterFixture'
-import {
-    constellationFixture,
-    developmentCharacterFixture,
-    fixtureStarId,
-} from '../testing/developmentFixture'
+import { constellationFixture, developmentCharacterFixture } from '../testing/developmentFixture'
 import CharacterDevelopment from '../ui/CharacterDevelopment.vue'
 import CharacterStats from '../ui/CharacterStats.vue'
 import CharacterWindow from '../ui/CharacterWindow.vue'
-import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import { renderVueStory } from './renderVueStory'
 import { parseStoryHeroClass } from './storyHeroClass'
 
@@ -59,26 +54,11 @@ export const Crafting = themedStory((heroClass) => {
 export const ResourceEstimates: Story = {
     render: () => renderVueStory(CharacterStats, { player: developmentCharacterFixture() }),
 }
-export const Sky: Story = {
-    render: () =>
-        renderVueStory(ConstellationGraph, {
-            constellation: constellationFixture(),
-            selectedId: fixtureStarId('prayer.radius1'),
-        }),
-}
 export const PrayerPath: Story = {
     render: () =>
         renderVueStory(CharacterDevelopment, {
             player: developmentCharacterFixture(),
             characters: [],
-        }),
-}
-
-export const FullSky: Story = {
-    render: () =>
-        renderVueStory(ConstellationGraph, {
-            constellation: constellationFixture(true),
-            selectedId: constellationFixture(true).layout!.centerNodeId,
         }),
 }
 

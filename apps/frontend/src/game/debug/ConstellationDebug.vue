@@ -2,10 +2,11 @@
 import type { HeroClass } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { ConstellationStarCard } from '@/entities/constellations'
+import { ConstellationAtlasWidget } from '@/widgets/constellation-atlas'
+
 import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
 import { observedConstellationCardEffects } from '../../../../backend/src/game/constellationResultDisclosure'
-import ConstellationGraph from '../ui/ConstellationGraph.vue'
-import ConstellationStarCard from '../ui/ConstellationStarCard.vue'
 import GameButton from '../ui/primitives/GameButton.vue'
 import GameFrame from '../ui/primitives/GameFrame.vue'
 import GameInput from '../ui/primitives/GameInput.vue'
@@ -21,14 +22,12 @@ import ConstellationMasterySummary from './ConstellationMasterySummary.vue'
 import { useConstellationDebug } from './useConstellationDebug'
 import { provideConstellationDebugPanels } from './useConstellationDebugPanels'
 
-const props = withDefaults(
-    defineProps<{
-        syncUrl?: boolean
-        initialHeroClass?: HeroClass
-        initialSeed?: string
-    }>(),
-    { syncUrl: true }
-)
+interface DebugProps {
+    syncUrl?: boolean
+    initialHeroClass?: HeroClass
+    initialSeed?: string
+}
+const props = withDefaults(defineProps<DebugProps>(), { syncUrl: true })
 const {
     enabledStarIds,
     feedback,
@@ -54,7 +53,7 @@ const {
     changeClass,
     newMap,
 } = useConstellationDebug(props)
-const graph = ref<InstanceType<typeof ConstellationGraph>>()
+const atlas = ref<InstanceType<typeof ConstellationAtlasWidget>>()
 const list = ref<HTMLUListElement>()
 const detailsPanel = ref<HTMLElement>()
 const debugPanels = provideConstellationDebugPanels()
@@ -74,7 +73,7 @@ watch(selectedId, () => {
     if (detailsPanel.value) detailsPanel.value.scrollTop = 0
 })
 function inspectParent(id: string): void {
-    graph.value?.focusNode(id)
+    atlas.value?.focusNode(id)
     document.getElementById('debug-sky')?.scrollIntoView?.({ block: 'start' })
 }
 async function showSummary(): Promise<void> {
@@ -168,127 +167,129 @@ function listKey(event: KeyboardEvent): void {
         <p class="debug-build-help">
             Seed меняет карту. Класс добавляет стартовые звёзды; набор сохраняется.
         </p>
-        <div class="debug-workspace">
-            <ConstellationGraph
-                id="debug-sky"
-                ref="graph"
-                :key="generation"
-                :constellation="sky"
-                :selected-id="selectedId"
-                :enabled-star-ids="enabledStarIds"
-                @select="selectNode"
-                @activate="toggle"
-            />
-            <aside class="debug-sidebar" aria-label="Каталог звёзд">
-                <div
-                    ref="detailsPanel"
-                    class="debug-selected-details"
-                    tabindex="0"
-                    aria-label="Описание выбранной звезды"
-                >
-                    <nav class="debug-card-nav" aria-label="Действия карточки">
-                        <a class="debug-map-link game-frame-host" href="#debug-sky"
-                            ><GameFrame variant="inset" />Показать на карте</a
-                        ><GameButton
-                            size="compact"
-                            class="debug-summary-link"
-                            data-testid="debug-show-summary"
-                            @click="showSummary"
-                        >
-                            Сводка
-                        </GameButton>
-                    </nav>
-                    <ConstellationBuildStatus
-                        :name="selected.name ?? selected.id"
-                        :enabled="enabledStarIds.has(selectedId)"
-                        @toggle="toggle(selectedId)"
-                    />
-                    <div id="debug-star-details" data-testid="selected-star-card">
-                        <ConstellationStarCard :node="selectedCard" />
-                    </div>
-                    <ConstellationMasterySummary
-                        :path="selected.constellationId"
-                        :active-ids="enabledStarIds"
-                        :hero-class="settings.heroClass"
-                    />
-                    <ConstellationBuildSummary
-                        :node-id="selectedId"
-                        :path="selected.constellationId"
-                        :active-ids="enabledStarIds"
-                    />
-                    <ConstellationDebugChance
-                        :node-id="selectedId"
-                        :enabled-star-ids="enabledStarIds"
-                    />
-                    <ConstellationDebugUnlock
-                        :node-id="selectedId"
-                        :active-ids="enabledStarIds"
-                        :hero-class="settings.heroClass"
-                    />
-                </div>
-                <section class="debug-catalog game-frame-host">
-                    <GameFrame variant="panel" />
-                    <div class="debug-filters">
-                        <label
-                            >Искать звезду
-                            <GameInput
-                                v-model="query"
-                                data-testid="debug-search"
-                                type="search"
-                                autocomplete="off"
-                            />
-                        </label>
-                        <label
-                            >Созвездие
-                            <GameSelect v-model="path" data-testid="debug-path">
-                                <option value="">Все созвездия</option>
-                                <option
-                                    v-for="entry in sky.paths"
-                                    :key="entry.id"
-                                    :value="entry.id"
-                                >
-                                    {{ entry.name }}
-                                </option>
-                            </GameSelect>
-                        </label>
-                    </div>
-                    <ul
-                        v-if="filtered.length"
-                        ref="list"
-                        data-testid="debug-star-list"
-                        class="debug-star-list"
-                        aria-label="Звёзды"
-                        @keydown="listKey"
+        <ConstellationAtlasWidget
+            ref="atlas"
+            class="debug-workspace"
+            map-id="debug-sky"
+            :map-key="generation"
+            :constellation="sky"
+            :selected-star="selectedCard"
+            :enabled-star-ids="enabledStarIds"
+            @select="selectNode"
+            @activate="toggle"
+        >
+            <template #sidebar="{ node }">
+                <aside class="debug-sidebar" aria-label="Каталог звёзд">
+                    <div
+                        ref="detailsPanel"
+                        class="debug-selected-details"
+                        tabindex="0"
+                        aria-label="Описание выбранной звезды"
                     >
-                        <li v-for="node in filtered" :key="node.id" class="debug-star-row">
-                            <GameButton
+                        <nav class="debug-card-nav" aria-label="Действия карточки">
+                            <a class="debug-map-link game-frame-host" href="#debug-sky"
+                                ><GameFrame variant="inset" />Показать на карте</a
+                            ><GameButton
                                 size="compact"
-                                :data-star-id="node.id"
-                                :aria-pressed="selectedId === node.id"
-                                aria-controls="debug-star-details"
-                                @click="graph?.focusNode(node.id)"
-                                @keydown="listToggle($event, node.id)"
+                                class="debug-summary-link"
+                                data-testid="debug-show-summary"
+                                @click="showSummary"
                             >
-                                <strong>{{ node.name }}</strong>
-                                <span>{{ pathNames.get(node.constellationId) }}</span>
+                                Сводка
                             </GameButton>
-                            <GameButton
-                                size="compact"
-                                role="switch"
-                                class="debug-star-toggle"
-                                :data-star-toggle="node.id"
-                                :aria-label="`В наборе: ${node.name}`"
-                                :aria-checked="enabledStarIds.has(node.id)"
-                                @click="toggle(node.id)"
-                            >
-                                {{ enabledStarIds.has(node.id) ? '✓' : '+' }}
-                            </GameButton>
-                        </li>
-                    </ul>
-                    <p v-else class="debug-empty" role="status">Звёзды не найдены.</p>
-                </section>
-            </aside>
-        </div>
+                        </nav>
+                        <ConstellationBuildStatus
+                            :name="selected.name ?? selected.id"
+                            :enabled="enabledStarIds.has(selectedId)"
+                            @toggle="toggle(selectedId)"
+                        />
+                        <div id="debug-star-details" data-testid="selected-star-card">
+                            <ConstellationStarCard v-if="node" :node="node" />
+                        </div>
+                        <ConstellationMasterySummary
+                            :path="selected.constellationId"
+                            :active-ids="enabledStarIds"
+                            :hero-class="settings.heroClass"
+                        />
+                        <ConstellationBuildSummary
+                            :node-id="selectedId"
+                            :path="selected.constellationId"
+                            :active-ids="enabledStarIds"
+                        />
+                        <ConstellationDebugChance
+                            :node-id="selectedId"
+                            :enabled-star-ids="enabledStarIds"
+                        />
+                        <ConstellationDebugUnlock
+                            :node-id="selectedId"
+                            :active-ids="enabledStarIds"
+                            :hero-class="settings.heroClass"
+                        />
+                    </div>
+                    <section class="debug-catalog game-frame-host">
+                        <GameFrame variant="panel" />
+                        <div class="debug-filters">
+                            <label
+                                >Искать звезду
+                                <GameInput
+                                    v-model="query"
+                                    data-testid="debug-search"
+                                    type="search"
+                                    autocomplete="off"
+                                />
+                            </label>
+                            <label
+                                >Созвездие
+                                <GameSelect v-model="path" data-testid="debug-path">
+                                    <option value="">Все созвездия</option>
+                                    <option
+                                        v-for="entry in sky.paths"
+                                        :key="entry.id"
+                                        :value="entry.id"
+                                    >
+                                        {{ entry.name }}
+                                    </option>
+                                </GameSelect>
+                            </label>
+                        </div>
+                        <ul
+                            v-if="filtered.length"
+                            ref="list"
+                            data-testid="debug-star-list"
+                            class="debug-star-list"
+                            aria-label="Звёзды"
+                            @keydown="listKey"
+                        >
+                            <li v-for="node in filtered" :key="node.id" class="debug-star-row">
+                                <GameButton
+                                    size="compact"
+                                    :data-star-id="node.id"
+                                    :aria-pressed="selectedId === node.id"
+                                    aria-controls="debug-star-details"
+                                    @click="atlas?.focusNode(node.id)"
+                                    @keydown="listToggle($event, node.id)"
+                                >
+                                    <strong>{{ node.name }}</strong>
+                                    <span>{{ pathNames.get(node.constellationId) }}</span>
+                                </GameButton>
+                                <GameButton
+                                    size="compact"
+                                    role="switch"
+                                    class="debug-star-toggle"
+                                    :data-star-toggle="node.id"
+                                    :aria-label="`В наборе: ${node.name}`"
+                                    :aria-checked="enabledStarIds.has(node.id)"
+                                    @click="toggle(node.id)"
+                                >
+                                    {{ enabledStarIds.has(node.id) ? '✓' : '+' }}
+                                </GameButton>
+                            </li>
+                        </ul>
+                        <p v-else class="debug-empty" role="status">Звёзды не найдены.</p>
+                    </section>
+                </aside>
+            </template>
+        </ConstellationAtlasWidget>
         <ConstellationBuildFeedback
             :feedback="feedback"
             :cascade="lastCascade"

@@ -66,9 +66,11 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
     stroke: transparent !important;
     pointer-events: all;
 }
-.closed,
 .inactive {
     opacity: 0.5;
+}
+.closed {
+    opacity: calc(0.5 * var(--constellation-closed-visibility, 1));
 }
 .closed circle:not(.hit),
 .closed path,

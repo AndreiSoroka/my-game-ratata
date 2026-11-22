@@ -30,7 +30,11 @@ it('shows the full catalogue without a character and keeps selected details when
         'Шанс срабатывания эффекта'
     )
     expect(view.get('[data-testid="debug-unlock-conditions"]').text()).toContain('Клерик')
-    const [x, y, width, height] = view.get('svg').attributes('viewBox')!.split(' ').map(Number)
+    const [x, y, width, height] = view
+        .get('.constellation-map__sky')
+        .attributes('viewBox')!
+        .split(' ')
+        .map(Number)
     const selected = view
         .get('[data-node-id="prayer.revive"]')
         .attributes('transform')!
