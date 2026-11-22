@@ -1,6 +1,7 @@
 import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 
 import type { ConstellationStar } from '../../../../backend/src/game/constellationCatalog'
+import { UNDEAD_ARROW_CATCH_CHANCE } from '../../../../backend/src/game/constellationUndeadTacticsStars'
 import { describeBladeEffectChance } from './constellationBladeChance'
 import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
 import { chancePercent, criticalChance, theftEffectChances } from './constellationChanceMath'
@@ -19,6 +20,31 @@ const specialDescriptions: Record<string, () => ConstellationEffectChance> = {
     'magic.fireball': () => describeFireball('magic.fireball'),
     'magic.greater_fireball': () => describeFireball('magic.greater_fireball'),
     'magic.runic_echo': describeRunicEcho,
+    'undead.arrow_catch': describeArrowCatch,
+}
+
+function describeArrowCatch(): ConstellationEffectChance {
+    return withChanceFormulas(
+        {
+            summary: 'Стрела может застрять в рёбрах после успешного попадания.',
+            examples: [
+                {
+                    label: 'Доступное срабатывание',
+                    value: chancePercent(UNDEAD_ARROW_CATCH_CHANCE),
+                },
+            ],
+            notes: [
+                'Перерыв между срабатываниями длится четыре секунды.',
+                'Следующее ближнее попадание по врагу за эти четыре секунды получает +20% урона.',
+            ],
+        },
+        [
+            chanceFormula(
+                'Шанс срабатывания при доступном эффекте',
+                chancePercent(UNDEAD_ARROW_CATCH_CHANCE)
+            ),
+        ]
+    )
 }
 const targetDodge = 'Итоговое уклонение цели в процентах.'
 const baseCritical =

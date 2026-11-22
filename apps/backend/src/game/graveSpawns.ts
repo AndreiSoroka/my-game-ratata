@@ -1,4 +1,5 @@
 import {
+    type ConstellationId,
     FINAL_DEATH_SKELETON_DELAY_MS,
     GRAVE_MAX_HP,
     GRAVE_MAX_LIVING,
@@ -21,6 +22,7 @@ import {
 } from './graveSourceState'
 import type { NavigationService } from './navigation'
 import { createSkeleton, type SpawnedCharacter } from './spawns'
+import { rememberInheritedPath } from './undeadSurvivalState'
 
 interface SpawnContext {
     characters: ReadonlyMap<string, GameCharacter>
@@ -141,14 +143,16 @@ export class GraveSpawns {
         character: GameCharacter,
         now: number,
         navigation: NavigationService,
-        inheritedMasteryLevel = 0
+        inheritedMasteryLevel = 0,
+        firstMasteryPath?: ConstellationId
     ): void {
+        const id = `final:${character.id}`
         if (
             character.controllerKind !== 'network_player' ||
             !character.mortal ||
             !character.tags.has('state.retired') ||
             character.alive ||
-            this.sources.has(`final:${character.id}`)
+            this.sources.has(id)
         ) {
             return
         }
@@ -158,7 +162,7 @@ export class GraveSpawns {
         }
         this.register(
             {
-                id: `final:${character.id}`,
+                id,
                 locationId: character.locationId,
                 position,
             },
@@ -167,6 +171,10 @@ export class GraveSpawns {
             FINAL_DEATH_SKELETON_DELAY_MS,
             inheritedMasteryLevel
         )
+        const source = this.sources.get(id)
+        if (source !== undefined && firstMasteryPath !== undefined) {
+            source.firstMasteryPath = firstMasteryPath
+        }
     }
 
     public update(now: number, context: SpawnContext): void {
@@ -208,6 +216,9 @@ export class GraveSpawns {
             spawn.character.locationId = entry.locationId
             source.children.add(spawn.character.id)
             source.nextSpawnAt = now + GRAVE_SPAWN_INTERVAL_MS
+            if (birth === 1 && source.firstMasteryPath !== undefined) {
+                rememberInheritedPath(spawn.character, source.firstMasteryPath)
+            }
             context.add(spawn, birth === 1 ? source.firstMasteryLevel : 0)
             this.guardians.sync(
                 source.definition,

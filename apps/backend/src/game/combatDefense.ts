@@ -12,6 +12,7 @@ import { resolveCharacterStats } from './characterStats'
 import { leaveDefensiveStance } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import { prayerAuraEffects, prayerCheckSample } from './prayerAuras'
+import { boneStrikeGuardDrain, undeadPhysicalDefense } from './undeadCombat'
 
 export interface ContactDefense {
     outcome: 'hit' | 'dodge' | 'parry'
@@ -59,11 +60,22 @@ export function defendContact(
     }
     const hit =
         state.guarding && state.physical
-            ? paidGuardHit(target, attack, state)
+            ? paidGuardHit(
+                  target,
+                  attack,
+                  state,
+                  boneStrikeGuardDrain(attacker, target, attack, now)
+              )
             : unguardedHit()
     if (state.delivery === 'ranged_physical') {
         hit.multiplier *= state.modifiers.rangedPhysicalDamageMultiplier
     }
+    hit.multiplier *= undeadPhysicalDefense(
+        attacker,
+        target,
+        state.delivery,
+        now
+    )
     return hit
 }
 
@@ -164,10 +176,12 @@ function paidAvoidance(
 function paidGuardHit(
     target: GameCharacter,
     attack: PendingAttackHit,
-    state: DefenseState
+    state: DefenseState,
+    extraEnergy: number
 ): ContactDefense {
     target.drainEnergy(
-        attack.targetEnergyDrain === 20 ? 20 : state.guard.hitEnergy
+        (attack.targetEnergyDrain === 20 ? 20 : state.guard.hitEnergy) +
+            extraEnergy
     )
     return {
         ...unguardedHit(),

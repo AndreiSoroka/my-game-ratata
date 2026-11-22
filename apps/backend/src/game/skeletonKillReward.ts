@@ -7,6 +7,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { awardUndeadExperience } from './skeletonProgression'
+import { recoverAfterUndeadKill } from './undeadSurvivalRecovery'
 
 interface KillStreak {
     life: number
@@ -56,15 +57,19 @@ export function rewardSkeletonKill(
         : opened.has('undead.consume_half')
           ? victimExperience / 2n
           : 0n
-    return awardUndeadExperience(
-        actor,
-        (baseExperience * BigInt(100 + bonus)) / 100n + copiedExperience,
-        {
-            now,
-            random,
-            receiptId: `skeleton-kill:${String(streak.life)}:${target.id}`,
-        }
-    )
+    const rewards = recoverAfterUndeadKill(actor, strongestLevel, now)
+    return [
+        ...rewards,
+        ...awardUndeadExperience(
+            actor,
+            (baseExperience * BigInt(100 + bonus)) / 100n + copiedExperience,
+            {
+                now,
+                random,
+                receiptId: `skeleton-kill:${String(streak.life)}:${target.id}`,
+            }
+        ),
+    ]
 }
 
 function killStreak(actor: GameCharacter): KillStreak {

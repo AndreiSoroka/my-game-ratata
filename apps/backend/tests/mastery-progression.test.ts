@@ -12,7 +12,7 @@ import {
 import { describe, expect, it, vi } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
-import { fullConstellationCatalog } from '../src/game/constellationNodes'
+import { fullConstellationCatalog as expandedConstellationCatalog } from '../src/game/constellationNodes'
 import { minimumConstellationLevel } from '../src/game/constellationRequirements'
 import {
     finishConstellationAction,
@@ -28,6 +28,7 @@ import {
     captureMasteryFactors,
 } from '../src/game/skillProgression'
 import { abilityHero } from './abilityTestHelpers'
+import { catalogueWithoutUndeadExpansion as fullConstellationCatalog } from './constellationCatalogueFixture'
 
 const xp = parseMasteryExperience
 
@@ -305,7 +306,7 @@ describe('authoritative mastery crossover', () => {
         (controllerKind) => {
             for (const constellationId of constellationIds) {
                 const actor = abilityHero('cleric', 'humanoid', controllerKind)
-                for (const node of fullConstellationCatalog.filter(
+                for (const node of expandedConstellationCatalog.filter(
                     (node) =>
                         node.constellationId === constellationId &&
                         node.acquisition === 'random'
@@ -441,7 +442,7 @@ describe('all required star conditions', () => {
     it('keeps credits when parents exist but level is too low, without consuming RNG', () => {
         const actor = abilityHero('cleric')
         const state = actor.progression.constellations
-        for (const node of fullConstellationCatalog.filter(
+        for (const node of expandedConstellationCatalog.filter(
             (node) =>
                 node.constellationId === 'prayer' &&
                 node.acquisition === 'random' &&

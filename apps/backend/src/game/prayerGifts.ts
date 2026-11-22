@@ -26,6 +26,7 @@ import {
 } from './resourcePractice'
 import { characterResurrectionParameters } from './resurrection'
 import { finishRoadPrayerRecovery } from './roadPrayerRecovery'
+import { dustPrayerQuality, receivesDustKin } from './undeadTactics'
 import { recordVitalityRecovery } from './vitalityPractice'
 
 export function applyPrayerGifts(
@@ -135,7 +136,8 @@ export function applyPrayerGift(
     const power =
         profile.resource === 'hp' ? 6 : profile.resource === 'energy' ? 15 : 12
     const missing = prayerResourceMissing(actor, target, abilityId)
-    const amount = Math.min(missing, Math.round(power * quality))
+    const giftQuality = dustPrayerQuality(actor, target, abilityId, quality)
+    const amount = Math.min(missing, Math.round(power * giftQuality))
     if (amount <= 0) {
         return { events: [], meaningful: false, hpRecovery: false }
     }
@@ -215,6 +217,9 @@ function reviveGift(
         },
         angelic
     )
+    if (receivesDustKin(actor, target, abilityId)) {
+        resources.hp = Math.max(resources.hp, Math.ceil(target.maxHp * 0.65))
+    }
     restoreCharacter(target, now, false, resources)
     if (meaningful) {
         resetMartyrStreak(actor)

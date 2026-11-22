@@ -3,11 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { skyComponents } from '../src/game/constellationComponents'
 import { generateConstellationLayout } from '../src/game/constellationLayout'
 import type { RealizedConstellationLayout } from '../src/game/constellationLayoutTypes'
-import { fullConstellationCatalog } from '../src/game/constellationNodes'
+import { fullConstellationCatalog as expandedConstellationCatalog } from '../src/game/constellationNodes'
 import { constellationTemplatePositions } from '../src/game/constellationTemplates'
+import { catalogueWithoutUndeadExpansion as fullConstellationCatalog } from './constellationCatalogueFixture'
 import { auditPersonalSky } from './personalSkyAudit'
 
-const centers = ['blade', 'magic', 'prayer', 'arrow'] as const
+const centers = ['blade', 'magic', 'prayer', 'arrow', 'undead'] as const
 
 describe('personal planar skies', () => {
     it('keeps the full catalogue and certified components', () => {
@@ -18,21 +19,32 @@ describe('personal planar skies', () => {
         expect(skyComponents(fullConstellationCatalog)).toHaveLength(10)
     })
 
+    it('packs all 39 Undead stars in one connected component', () => {
+        const undeadIds = expandedConstellationCatalog
+            .filter((node) => node.constellationId === 'undead')
+            .map(({ id }) => id)
+        expect(undeadIds).toHaveLength(39)
+        const component = skyComponents(expandedConstellationCatalog).find(
+            ({ ids }) => ids.includes('undead.root')
+        )
+        expect(component?.ids).toEqual(expect.arrayContaining(undeadIds))
+    })
+
     it.each(centers)(
         'independently audits 256 seeds with %s at the center, including hidden stars',
         (center) => {
             for (let seed = 0; seed < 256; seed += 1) {
                 const sky = generateConstellationLayout(
-                    fullConstellationCatalog,
+                    expandedConstellationCatalog,
                     `personal-sky:${String(seed)}`,
                     center
                 )
                 expect(
-                    auditPersonalSky(fullConstellationCatalog, sky),
+                    auditPersonalSky(expandedConstellationCatalog, sky),
                     `seed ${String(seed)}, ${center}`
                 ).toBeUndefined()
                 expect(Object.keys(sky.positions)).toHaveLength(
-                    fullConstellationCatalog.length
+                    expandedConstellationCatalog.length
                 )
                 expect(sky.positions[`${center}.root`]).toEqual({ x: 0, y: 0 })
                 expect(sky.layout.centerNodeId).toBe(`${center}.root`)
@@ -51,19 +63,19 @@ describe('personal planar skies', () => {
 
     it('replays one seed exactly and changes both roots and internal shape for another identity', () => {
         const first = generateConstellationLayout(
-            fullConstellationCatalog,
+            expandedConstellationCatalog,
             'identity-a',
             'prayer'
         )
         expect(
             generateConstellationLayout(
-                fullConstellationCatalog,
+                expandedConstellationCatalog,
                 'identity-a',
                 'prayer'
             )
         ).toEqual(first)
         const second = generateConstellationLayout(
-            fullConstellationCatalog,
+            expandedConstellationCatalog,
             'identity-b',
             'prayer'
         )
@@ -72,29 +84,29 @@ describe('personal planar skies', () => {
                 JSON.stringify(first.positions[id]) !==
                 JSON.stringify(second.positions[id])
         )
-        expect(changed).toHaveLength(fullConstellationCatalog.length - 1)
+        expect(changed).toHaveLength(expandedConstellationCatalog.length - 1)
         expect(distance(first, 'blade.damage1', 'blade.damage2')).not.toBe(
             distance(second, 'blade.damage1', 'blade.damage2')
         )
         expect(first.layout.regions).not.toEqual(second.layout.regions)
     })
 
-    it('certifies a deterministic fallback for all starting classes with zero random attempts', () => {
+    it('certifies a deterministic fallback for all starting constellations with zero random attempts', () => {
         for (const center of centers) {
             const sky = generateConstellationLayout(
-                fullConstellationCatalog,
+                expandedConstellationCatalog,
                 'forced-fallback',
                 center,
                 { maxAttempts: 0 }
             )
             expect(sky.diagnostics).toEqual({ attempts: 0, usedFallback: true })
             expect(
-                auditPersonalSky(fullConstellationCatalog, sky)
+                auditPersonalSky(expandedConstellationCatalog, sky)
             ).toBeUndefined()
             expect(sky.positions[`${center}.root`]).toEqual({ x: 0, y: 0 })
             expect(
                 generateConstellationLayout(
-                    fullConstellationCatalog,
+                    expandedConstellationCatalog,
                     'forced-fallback',
                     center,
                     { forceFallback: true }
@@ -107,7 +119,7 @@ describe('personal planar skies', () => {
 describe('natural constellation shape', () => {
     it('spreads complex root branches around all directions rather than rotating a one-sided comb', () => {
         const sky = generateConstellationLayout(
-            fullConstellationCatalog,
+            expandedConstellationCatalog,
             'natural-directions',
             'blade'
         )
@@ -118,9 +130,10 @@ describe('natural constellation shape', () => {
             'arrow',
             'life',
             'shadow',
+            'undead',
         ]) {
             const root = required(sky, `${path}.root`)
-            const angles = fullConstellationCatalog
+            const angles = expandedConstellationCatalog
                 .filter((node) => node.parents.includes(`${path}.root`))
                 .map((node) => {
                     const point = required(sky, node.id)
@@ -140,7 +153,7 @@ describe('natural constellation shape', () => {
         const orders = new Set<string>()
         for (let seed = 0; seed < 16; seed += 1) {
             const sky = generateConstellationLayout(
-                fullConstellationCatalog,
+                expandedConstellationCatalog,
                 `leaf-order:${String(seed)}`,
                 'blade'
             )
@@ -150,10 +163,10 @@ describe('natural constellation shape', () => {
     })
 
     it('reports actual minimum spacing and never mutates frozen templates or metadata', () => {
-        const before = JSON.stringify(fullConstellationCatalog)
+        const before = JSON.stringify(expandedConstellationCatalog)
         const templates = JSON.stringify(constellationTemplatePositions)
         const sky = generateConstellationLayout(
-            fullConstellationCatalog,
+            expandedConstellationCatalog,
             'spacing-and-immutability',
             'magic'
         )
@@ -168,7 +181,7 @@ describe('natural constellation shape', () => {
             )
         )
         expect(sky.layout.minimumNodeSpacing).toBe(Math.floor(minimum))
-        expect(JSON.stringify(fullConstellationCatalog)).toBe(before)
+        expect(JSON.stringify(expandedConstellationCatalog)).toBe(before)
         expect(JSON.stringify(constellationTemplatePositions)).toBe(templates)
         expect(Object.isFrozen(constellationTemplatePositions)).toBe(true)
         expect(

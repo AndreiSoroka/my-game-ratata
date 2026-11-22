@@ -23,6 +23,13 @@ import { cancelPrayerCast } from './prayerCancellation'
 import { confirmResourceSpend, recordResourceSpend } from './resourcePractice'
 import { rewardSkeletonKill } from './skeletonKillReward'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
+import { interruptUndeadWindup } from './undeadCombat'
+import {
+    finishUndeadWound,
+    graveLoanDamageMultiplier,
+    guardUndeadHp,
+} from './undeadSurvivalCombat'
+import { undeadDamageMultiplier } from './undeadTactics'
 import { recordVitalityDamage } from './vitalityPractice'
 export interface DamageResolution {
     /** Resolved contact used for weapon wear, independent of target HP loss. */
@@ -47,17 +54,6 @@ export interface CharacterDamageInput {
 export function resolveCharacterDamage(
     input: CharacterDamageInput
 ): DamageResolution {
-    const { actor, target, now } = input
-    const auraEffects =
-        input.targetAuraEffects ?? prayerAuraEffects(target, now)
-    const amount = input.amount * auraEffects.damageTakenMultiplier
-    input = {
-        ...input,
-        amount:
-            input.roundFinal === true
-                ? Math.max(1, Math.round(amount))
-                : amount,
-    }
     const result: DamageResolution = {
         impactDamage: 0,
         hpDamage: 0,
@@ -68,12 +64,19 @@ export function resolveCharacterDamage(
     if (!canReceiveDamage(input)) {
         return result
     }
+    const { actor, target, now } = input
+    const hostile = target.trainingTarget === undefined && hostileDamage(input)
+    const auraEffects =
+        input.targetAuraEffects ?? prayerAuraEffects(target, now)
+    input = scaleIncomingDamage(input, hostile, auraEffects)
+    if (!canReceiveDamage(input)) {
+        return result
+    }
     if (target.trainingTarget !== undefined) {
         result.impactDamage = input.amount
         result.events.push(damageEvent(input, input.amount))
         return result
     }
-    const hostile = hostileDamage(input)
     if (hostile) {
         target.combat.recentDamageUntil = now + 1000
     }
@@ -82,14 +85,8 @@ export function resolveCharacterDamage(
     if (hostile && result.absorbed > 0) {
         resetMartyrStreak(actor)
     }
-    if (
-        actor.id !== target.id &&
-        !hostile &&
-        !hasDirectRetaliationRight(actor, target, now)
-    ) {
-        grantRetaliation(target, actor, now + 30_000)
-    }
-    result.hpDamage = Math.min(target.hp, input.amount - result.absorbed)
+    markNonhostileContact(input, hostile)
+    result.hpDamage = guardedHpDamage(input, result.absorbed, hostile)
     if (result.hpDamage <= 0) {
         finishDefenderPractice(input, result, hostile, factors)
         return result
@@ -98,6 +95,54 @@ export function resolveCharacterDamage(
     finishDefenderPractice(input, result, hostile, factors)
     finishDamageDeath(input, result.events, hostile)
     return result
+}
+
+function scaleIncomingDamage(
+    input: CharacterDamageInput,
+    hostile: boolean,
+    auraEffects: PrayerAuraEffects
+): CharacterDamageInput {
+    const { actor, target, damageKind, now } = input
+    const undeadMultiplier = hostile
+        ? undeadDamageMultiplier(actor, target, damageKind, now) *
+          graveLoanDamageMultiplier(target, damageKind, now)
+        : 1
+    const amount =
+        input.amount * auraEffects.damageTakenMultiplier * undeadMultiplier
+    return {
+        ...input,
+        amount:
+            input.roundFinal === true
+                ? Math.max(1, Math.round(amount))
+                : amount,
+    }
+}
+
+function markNonhostileContact(
+    { actor, target, now }: CharacterDamageInput,
+    hostile: boolean
+): void {
+    if (
+        actor.id !== target.id &&
+        !hostile &&
+        !hasDirectRetaliationRight(actor, target, now)
+    ) {
+        grantRetaliation(target, actor, now + 30_000)
+    }
+}
+
+function guardedHpDamage(
+    { actor, target, amount, damageKind, now }: CharacterDamageInput,
+    absorbed: number,
+    hostile: boolean
+): number {
+    const remaining = amount - absorbed
+    return Math.min(
+        target.hp,
+        hostile
+            ? guardUndeadHp(target, actor, remaining, damageKind, now)
+            : remaining
+    )
 }
 
 function hostileDamage({ actor, target, now }: CharacterDamageInput): boolean {
@@ -136,6 +181,12 @@ function applyHpDamage(
     if (hostile) {
         recordMartyrHostileDamage(target, result.hpDamage, now)
         resetMartyrStreak(actor)
+        if (target.alive) {
+            interruptUndeadWindup(target, now)
+            result.events.push(
+                ...finishUndeadWound(target, result.hpDamage, now)
+            )
+        }
     }
     result.impactDamage = result.hpDamage
     result.events.push(damageEvent(input, result.hpDamage))

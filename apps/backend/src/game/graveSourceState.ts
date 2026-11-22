@@ -1,4 +1,5 @@
 import {
+    type ConstellationId,
     GRAVE_MAX_HP,
     GRAVE_PURIFY_STEPS,
     GRAVE_SPAWN_INTERVAL_MS,
@@ -18,6 +19,7 @@ export interface GraveSource {
     hpUnits: number
     restoresAt: number | null
     purificationReceipts: Set<string>
+    firstMasteryPath?: ConstellationId
 }
 
 export function restoreSource(source: GraveSource, now: number): void {

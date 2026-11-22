@@ -1,13 +1,10 @@
-import {
-    ABILITY_DEFINITIONS,
-    type GameEventPayload,
-    isItemBroken,
-} from '@my-game-ratata/contracts'
+import { type GameEventPayload, isItemBroken } from '@my-game-ratata/contracts'
 
 import { knowsAbility } from './abilityState'
 import { actorRefusesCombat } from './agentCapabilities'
 import type { CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
+import { effectiveAbility } from './effectiveParameters'
 import { canPerformSkillAction } from './skillProgression'
 interface NpcAbilityWorld extends CompanionWorld {
     publishEvents(events: GameEventPayload[]): void
@@ -29,7 +26,7 @@ export function trySkeletonStrike(
     }
     if (
         now < (actor.abilities.availableAt.skeleton_strike ?? 0) ||
-        actor.energy < ABILITY_DEFINITIONS.skeleton_strike.energy
+        actor.energy < effectiveAbility(actor, 'skeleton_strike').energy
     ) {
         return false
     }

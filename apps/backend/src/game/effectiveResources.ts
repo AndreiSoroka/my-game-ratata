@@ -2,6 +2,7 @@ import type { GameCharacter } from './character'
 import { bladeHealthMultiplier } from './constellationBladeBonuses'
 import { ENDURANCE_ENERGY_PERCENT } from './constellationBonuses'
 import { undeadEnergyBonus, undeadHealthBonus } from './constellationUndead'
+import { undeadImprintBonus } from './undeadSurvivalState'
 
 /** Base configuration stays intact; the identity's learned trait determines its current capacity. */
 export function effectiveMaxHp(actor: GameCharacter): number {
@@ -9,7 +10,8 @@ export function effectiveMaxHp(actor: GameCharacter): number {
     const multiplier =
         bladeHealthMultiplier(opened) - (opened.has('prayer.martyr') ? 0.3 : 0)
     const base = actor.baseMaxHp + undeadHealthBonus(opened)
-    return Math.max(1, Math.floor(base * multiplier + 1e-10))
+    const capacity = base + undeadImprintBonus(actor, 'hp', opened)
+    return Math.max(1, Math.floor(capacity * multiplier + 1e-10))
 }
 
 export function effectiveMaxMana(actor: GameCharacter): number {
@@ -22,7 +24,8 @@ export function effectiveMaxMana(actor: GameCharacter): number {
 export function effectiveMaxEnergy(actor: GameCharacter): number {
     const opened = actor.progression.constellations.opened
     const base = actor.config.resources.maxEnergy + undeadEnergyBonus(opened)
+    const capacity = base + undeadImprintBonus(actor, 'energy', opened)
     return opened.has('life.endurance')
-        ? (base * ENDURANCE_ENERGY_PERCENT) / 100
-        : base
+        ? (capacity * ENDURANCE_ENERGY_PERCENT) / 100
+        : capacity
 }

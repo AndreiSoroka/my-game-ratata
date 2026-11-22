@@ -19,12 +19,14 @@ import {
     rollCharacterCheck,
 } from './prayerAuras'
 import { hasEquippedSword } from './skillProgression'
+import { boneStrikeStunBonus } from './undeadCombat'
 export function resolveRawAttackDamage(
     actor: GameCharacter,
     attack: PendingAttackHit,
     random: () => number,
     now = Date.now(),
-    effects: PrayerAuraEffects = prayerAuraEffects(actor, now)
+    effects: PrayerAuraEffects = prayerAuraEffects(actor, now),
+    contactCritBonus = 0
 ): { amount: number; critical: boolean; hitQuality: CombatHitQuality } {
     const stats = resolveCharacterStats(actor.config, actor.equipment)
     const definition =
@@ -40,7 +42,7 @@ export function resolveRawAttackDamage(
     const critical = attackCritical(
         actor,
         attack,
-        stats.critChance,
+        stats.critChance + contactCritBonus,
         random,
         now,
         effects
@@ -147,7 +149,9 @@ export function applyAttackStun(
     ) {
         return []
     }
-    const baseDuration = attackStunDuration(actor, attack, random)
+    const baseDuration =
+        attackStunDuration(actor, attack, random) +
+        (heavy ? boneStrikeStunBonus(actor, target, now) : 0)
     const duration = Math.round(
         baseDuration * constellationModifiers(target).stunDurationMultiplier
     )

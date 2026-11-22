@@ -1,4 +1,13 @@
 import { star } from './constellationDefinition'
+import { undeadCombatStars } from './constellationUndeadCombatStars'
+import { undeadSurvivalStars } from './constellationUndeadSurvivalStars'
+import { undeadTacticsStars } from './constellationUndeadTacticsStars'
+
+export const undeadExpansionStars = [
+    ...undeadCombatStars,
+    ...undeadSurvivalStars,
+    ...undeadTacticsStars,
+]
 
 export const undeadStars = [
     {
@@ -82,18 +91,23 @@ export const undeadStars = [
         ),
         minimumLevel: 10,
     },
+    ...undeadExpansionStars,
 ]
 
 export function resolveUndeadBonuses(ids: ReadonlySet<string>) {
     return {
         undeadHealthBonus: undeadHealthBonus(ids),
         undeadEnergyBonus: undeadEnergyBonus(ids),
-        rangedPhysicalDamageMultiplier: ids.has('undead.hollow_bones2')
-            ? 0.65
-            : ids.has('undead.hollow_bones')
-              ? 0.8
-              : 1,
+        rangedPhysicalDamageMultiplier: undeadArrowArmor(ids),
     }
+}
+
+export function undeadArrowArmor(ids: ReadonlySet<string>): number {
+    return ids.has('undead.hollow_bones2')
+        ? 0.65
+        : ids.has('undead.hollow_bones')
+          ? 0.8
+          : 1
 }
 
 export function undeadHealthBonus(ids: ReadonlySet<string>): number {

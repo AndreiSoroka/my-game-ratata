@@ -21,6 +21,7 @@ import { constellationModifiers } from './constellationModifiers'
 import { resolveArrowParameters } from './effectiveArrowParameters'
 import { effectiveMaxMana } from './effectiveResources'
 import { hasEquippedSword } from './skillProgression'
+import { boneStrikePower, boneStrikeWindupBonus } from './undeadCombat'
 
 /** Supply authored tile width whenever consuming range, rather than assuming world units. */
 export function effectiveAbility(
@@ -52,6 +53,16 @@ export function effectiveAbility(
             cellSize > 0 ? cellSize : MOVEMENT_RULES.stepDistance,
             actor.movement.mode === 'walking'
         )
+    }
+    if (id === 'skeleton_strike') {
+        const windupMs = definition.windupMs + boneStrikeWindupBonus(actor)
+        return {
+            ...definition,
+            windupMs,
+            cycleMs: windupMs,
+            movementMs: windupMs,
+            damageMultiplier: boneStrikePower(actor),
+        }
     }
     if (id === 'spark') {
         definition.range += modifiers.sparkRangeCells * cellSize

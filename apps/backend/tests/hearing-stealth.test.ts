@@ -180,6 +180,50 @@ describe('authoritative footsteps and hearing', () => {
 
 describe('hearing scope and lifetime', () => {
     it.each([
+        { stars: [], distance: 1.5, moving: false, hears: false },
+        { stars: ['hollow_sight'], distance: 1.5, moving: false, hears: true },
+        {
+            stars: ['hollow_sight', 'night_watch'],
+            distance: 2.1,
+            moving: true,
+            hears: false,
+        },
+        {
+            stars: ['hollow_sight', 'night_watch'],
+            distance: 2.1,
+            moving: false,
+            hears: true,
+        },
+    ])(
+        'uses the learned sneak-hearing range ($stars, moving $moving)',
+        ({ stars, distance, moving: inMotion, hears }) => {
+            const { source, listener, room, step, noises } = moving('sneaking')
+            step(1200, 200)
+            step(1400, 200)
+            const noise = noises.at(-1)
+            if (noise === undefined) {
+                throw new Error('Expected a step from actual movement')
+            }
+            for (const star of stars) {
+                listener.progression.constellations.opened.add(`undead.${star}`)
+            }
+            listener.position = {
+                ...noise.position,
+                x: noise.position.x + noise.radius * distance,
+            }
+            listener.velocity = { x: inMotion ? 20 : 0, y: 0 }
+            recordMovementNoise(room, noise, [listener])
+            expect(lastHeardPoint(listener, room, noise.emittedAt)).toEqual(
+                hears ? noise.position : undefined
+            )
+            source.position.x += 100
+            expect(lastHeardPoint(listener, room, noise.emittedAt)).toEqual(
+                hears ? noise.position : undefined
+            )
+        }
+    )
+
+    it.each([
         'source-dead',
         'source-offline',
         'source-map',

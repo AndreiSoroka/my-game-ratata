@@ -1,4 +1,5 @@
 import {
+    type ConstellationId,
     constellationIds,
     type GameEventPayload,
     masteryTotalExperience,
@@ -14,14 +15,20 @@ import {
 const MAX_UNDEAD_LEVEL = 40
 
 export function captureSkeletonInheritance(victim: GameCharacter): number {
-    return Math.min(
-        MAX_UNDEAD_LEVEL,
-        Math.max(
-            ...constellationIds.map(
-                (id) => victim.progression.masteries[id].level
-            )
-        )
-    )
+    return captureSkeletonInheritanceProfile(victim)?.level ?? 0
+}
+
+export function captureSkeletonInheritanceProfile(victim: GameCharacter) {
+    let strongest: { mastery: ConstellationId; level: number } | undefined
+    for (const mastery of constellationIds) {
+        const level = victim.progression.masteries[mastery].level
+        if (level > (strongest?.level ?? 0)) {
+            strongest = { mastery, level }
+        }
+    }
+    return strongest === undefined
+        ? undefined
+        : { ...strongest, level: Math.min(MAX_UNDEAD_LEVEL, strongest.level) }
 }
 
 export function inheritSkeletonProgress(

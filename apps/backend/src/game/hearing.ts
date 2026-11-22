@@ -9,6 +9,7 @@ import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { MovementNoise } from './movementNoise'
 import type { GameRoom } from './room'
+import { undeadHearingMultiplier } from './undeadTactics'
 
 const heardByRoom = new WeakMap<GameRoom, Map<string, MovementNoise>>()
 
@@ -78,7 +79,7 @@ function canHear(
         : MOVEMENT_RULES.occludedNoiseMultiplier
     return (
         distance(listener.position, noise.position) <=
-        noise.radius * attenuation
+        noise.radius * attenuation * undeadHearingMultiplier(listener, source)
     )
 }
 

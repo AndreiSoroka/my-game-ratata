@@ -13,6 +13,7 @@ import type { RoomSocket } from './roomMessaging'
 import type { GraveRegistration } from './roomSpawns'
 import {
     captureSkeletonInheritance,
+    captureSkeletonInheritanceProfile,
     inheritSkeletonProgress,
 } from './skeletonProgression'
 import type { WorldLocations } from './worldLocations'
@@ -114,6 +115,8 @@ export class RoomLife {
                 abandoned: boolean
             ) => {
                 const inheritedMasteryLevel = captureSkeletonInheritance(actor)
+                const inheritedMasteryPath =
+                    captureSkeletonInheritanceProfile(actor)?.mastery
                 this.world().closeChestViews(actor.id)
                 this.onEvents(
                     this.world()
@@ -125,7 +128,8 @@ export class RoomLife {
                         actor,
                         at,
                         this.world().get(actor.locationId).navigation,
-                        inheritedMasteryLevel
+                        inheritedMasteryLevel,
+                        inheritedMasteryPath
                     )
             },
         }

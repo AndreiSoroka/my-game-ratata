@@ -114,30 +114,40 @@ describe('shared finalization and corpse ownership', () => {
         f.advance(now + 30_001)
         expect(f.characters.size).toBe(1)
     })
+})
 
-    it('passes the final hero’s highest mastery level only to the first grave skeleton', () => {
-        const f = roomLifeFixture()
-        f.hero.progression.masteries.blade.level = 8
-        f.hero.progression.masteries.life.level = 4
-        f.hero.applyDamage(f.hero.hp, now)
+it('passes the final hero’s highest mastery level only to the first grave skeleton', () => {
+    const f = roomLifeFixture()
+    f.hero.progression.masteries.blade.level = 8
+    f.hero.progression.masteries.life.level = 4
+    f.hero.applyDamage(f.hero.hp, now)
 
-        f.advance(now + 60_000)
-        expect(f.hero.progression.masteries.blade.level).toBe(0)
-        expect(f.characters.size).toBe(0)
+    f.advance(now + 60_000)
+    expect(f.hero.progression.masteries.blade.level).toBe(0)
+    expect(f.characters.size).toBe(0)
 
-        const birthAt = now + 90_000
-        f.advance(birthAt)
-        const first = [...f.characters.values()][0]
-        expect(first?.progression.masteries.undead.level).toBe(8)
-        expect(first?.hp).toBe(first?.maxHp)
+    const birthAt = now + 90_000
+    f.advance(birthAt)
+    const first = [...f.characters.values()][0]
+    if (first === undefined) {
+        throw new Error('Expected the first grave skeleton')
+    }
+    expect(first.progression.masteries.undead.level).toBe(8)
+    expect(first.hp).toBe(first.maxHp)
+    const firstMaxHp = first.maxHp
+    first.progression.constellations.opened.add('undead.imprint')
+    expect(first.maxHp).toBe(firstMaxHp + 10)
 
-        f.advance(birthAt + GRAVE_SPAWN_INTERVAL_MS)
-        const second = [...f.characters.values()].find(
-            (character) => character.id !== first?.id
-        )
-        expect(second?.progression.masteries.undead.level).toBe(2)
-        expect(second?.maxHp).toBe(50)
-    })
+    f.advance(birthAt + GRAVE_SPAWN_INTERVAL_MS)
+    const second = [...f.characters.values()].find(
+        (character) => character.id !== first.id
+    )
+    if (second === undefined) {
+        throw new Error('Expected the second grave skeleton')
+    }
+    expect(second.progression.masteries.undead.level).toBe(2)
+    second.progression.constellations.opened.add('undead.imprint')
+    expect(second.maxHp).toBe(50)
 })
 
 it('insets an edge grave while preserving the corpse, possessions and delayed birth at finalization', () => {

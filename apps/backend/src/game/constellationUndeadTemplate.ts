@@ -1,0 +1,46 @@
+import type { SkyPoint } from './constellationGeometry'
+
+/** The spine forks west at the skull, with six separate rays from the joints. */
+export const undeadTemplatePositions: Record<string, SkyPoint> =
+    Object.fromEntries(
+        Object.entries({
+            bone_windup: [-870, -730],
+            read_recovery: [-1030, -1290],
+            feint: [-1520, -1060],
+            shatter_guard: [-1230, -1860],
+            dull_ring: [-1510, -2360],
+            hollow_sight: [-940, 830],
+            grudge: [-1530, 1080],
+            night_watch: [-1280, 1510],
+            arcane_joints: [1780, 0],
+            arcane_frame: [1350, -550],
+            dense_bone: [920, -890],
+            splinters: [570, -1190],
+            anvil: [210, -1510],
+            dust_kin: [1160, -1110],
+            ash_crust: [910, -1580],
+            hollow_bones: [1940, -710],
+            hollow_bones2: [2060, -1220],
+            bone_rank: [2010, -1760],
+            arrow_catch: [2360, -1660],
+            rattle: [2030, -2240],
+            cracked: [2410, -310],
+            splinter_edge: [2910, -490],
+            nothing_to_lose: [3410, -660],
+            arcane_endurance: [2450, 310],
+            arcane_endurance2: [3050, 570],
+            grave_loan: [3660, 860],
+            marrow_draw: [2870, 130],
+            empty_veins: [2590, 760],
+            reassembly: [2960, 1010],
+            delayed_decay: [1950, 740],
+            held_pain: [2280, 1220],
+            collapse: [1950, 1350],
+            collapse2: [2000, 1850],
+            consume_half: [1310, 600],
+            consume_full: [1370, 1270],
+            grim_feast: [910, 1140],
+            imprint: [690, 910],
+            second_oath: [300, 1260],
+        }).map(([id, [x = 0, y = 0]]) => [`undead.${id}`, { x, y }])
+    )

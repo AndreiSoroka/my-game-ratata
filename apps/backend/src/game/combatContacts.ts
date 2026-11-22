@@ -20,7 +20,11 @@ import {
     resolveAttackDamage,
     resolveRawAttackDamage,
 } from './combatDamage'
-import { attackDelivery, defendContact } from './combatDefense'
+import {
+    attackDelivery,
+    type ContactDefense,
+    defendContact,
+} from './combatDefense'
 import { rewardCharacterHit } from './combatMastery'
 import { invalidateWeaponAction } from './combatState'
 import { damageGrave } from './graveCombat'
@@ -33,6 +37,11 @@ import {
     recordUsefulResourceSpend,
 } from './resourcePractice'
 import { captureMasteryFactors } from './skillProgression'
+import {
+    finishUndeadCombatContact,
+    prepareUndeadCombatContact,
+} from './undeadCombat'
+import { markUndeadContact, undeadContactMultiplier } from './undeadTactics'
 
 interface ContactResult {
     events: GameEventPayload[]
@@ -108,6 +117,17 @@ function resolveCharacterContact(
                 : {}),
         }
     }
+    return resolveLandedContact(context, attack, target, defense, random)
+}
+
+function resolveLandedContact(
+    context: AttackContext,
+    attack: PendingAttackHit,
+    target: GameCharacter,
+    defense: ContactDefense,
+    random: () => number
+): ContactResult {
+    const { actor, now } = context
     const withCombo = {
         ...arrowContactDamage(context, attack, target),
         comboBonus: comboEligible(attack)
@@ -116,26 +136,40 @@ function resolveCharacterContact(
     }
     const effects = prayerAuraEffects(target, now)
     const immune = prayerStunImmune(target, now)
-    const roll = resolveRawAttackDamage(actor, withCombo, random, now)
+    const delivery = attackDelivery(attack)
+    const undead = prepareUndeadCombatContact(
+        actor,
+        target,
+        attack,
+        delivery,
+        now
+    )
+    const roll = resolveRawAttackDamage(
+        actor,
+        withCombo,
+        random,
+        now,
+        undefined,
+        undead?.critBonus
+    )
     const result = resolveCharacterDamage({
         actor,
         target,
         now,
-        amount: roll.amount * defense.multiplier,
+        amount:
+            roll.amount *
+            defense.multiplier *
+            (undead?.damageMultiplier ?? 1) *
+            undeadContactMultiplier(context, attack, target, random),
         roundFinal: true,
         random,
         targetAuraEffects: effects,
         hitQuality: roll.hitQuality,
-        damageKind: attackDelivery(attack) === 'magic' ? 'arcane' : 'physical',
+        damageKind: delivery === 'magic' ? 'arcane' : 'physical',
         respawnDelayMs: context.respawnDelayMsFor(target),
     })
-    confirmCombatResourceSpend(
-        actor,
-        target,
-        result,
-        attack.resourceSpends ?? [],
-        now
-    )
+    const spends = attack.resourceSpends ?? []
+    confirmCombatResourceSpend(actor, target, result, spends, now)
     const events = contactEvents(result.events, attack, roll.critical)
     if (result.hpDamage > 0) {
         drainHitEnergy(target, attack, result, defense.paidGuard)
@@ -154,8 +188,15 @@ function resolveCharacterContact(
     if (result.impactDamage + result.absorbed > 0) {
         advanceBladeCombo(actor, target, attack, now)
     }
+    if (result.trainableDamage > 0) {
+        markUndeadContact(actor, target, attack, now)
+        events.push(
+            ...finishUndeadCombatContact(actor, target, attack, undead, now)
+        )
+    }
     return { events, impact: result.impactDamage + result.absorbed, result }
 }
+
 function drainHitEnergy(
     target: GameCharacter,
     attack: PendingAttackHit,

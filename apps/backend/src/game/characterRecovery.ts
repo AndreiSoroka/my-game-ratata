@@ -19,6 +19,10 @@ import {
     consumeResourceRecovery,
     restoreEnergy,
 } from './resourcePractice'
+import {
+    repairRestingUndead,
+    undeadEnergyRecoveryMultiplier,
+} from './undeadSurvivalRecovery'
 import { recordVitalityRecovery, restBonusTime } from './vitalityPractice'
 
 export function tickCharacterTimedState(
@@ -161,6 +165,7 @@ export function regenerateCharacter(
         character.hp - beforeHp,
         now
     )
+    events.push(...repairRestingUndead(character, moving, now, deltaMs))
     recordMartyrRecovery(character)
     return [...energy, ...events]
 }
@@ -200,7 +205,7 @@ export function characterEnergyRegenRate(
         const rate =
             resources.energyRegenMove *
             (walking ? bonuses.walkingEnergyRegenMultiplier : 1)
-        return () => rate
+        return () => rate * undeadEnergyRecoveryMultiplier(character)
     }
     const { restUntil } = character.progression.constellations.lifeEnergy
     const idleRate =
@@ -208,8 +213,10 @@ export function characterEnergyRegenRate(
     const restRate = resources.energyRegenIdle * bonuses.restEnergyRegenBonus
     return (now, deltaMs) =>
         deltaMs > 0
-            ? idleRate +
-              (restRate * restBonusTime(restUntil, now, deltaMs)) / deltaMs
+            ? (idleRate +
+                  (restRate * restBonusTime(restUntil, now, deltaMs)) /
+                      deltaMs) *
+              undeadEnergyRecoveryMultiplier(character)
             : 0
 }
 

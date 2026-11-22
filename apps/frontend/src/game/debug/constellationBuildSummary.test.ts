@@ -77,7 +77,7 @@ describe('each passive owns only its authored effect', () => {
     })
     it('reports the authored effect of each Undead star', () => {
         const undead = nonPrayer.filter((node) => node.constellationId === 'undead')
-        expect(undead).toHaveLength(9)
+        expect(undead).toHaveLength(39)
         for (const node of undead) {
             expect(describeConstellationBuild(node.id, all).effects).toEqual([node.description])
         }
