@@ -8,6 +8,7 @@ import ChatComposerFrame from './ChatComposerFrame.vue'
 
 interface StoryArgs {
     framed: boolean
+    borderWidth?: number
     default: 'empty' | 'composer'
 }
 
@@ -16,6 +17,7 @@ const meta = {
     args: { framed: true, default: 'composer' },
     argTypes: {
         framed: { control: 'boolean' },
+        borderWidth: { control: { type: 'number', min: 1 } },
         default: {
             name: 'Содержимое слота',
             control: {
@@ -25,7 +27,7 @@ const meta = {
             options: ['empty', 'composer'],
         },
     },
-    render({ default: content, framed }) {
+    render({ borderWidth, default: content, framed }) {
         const host = renderVueStory(
             {
                 setup() {
@@ -33,7 +35,7 @@ const meta = {
                     return () =>
                         h(
                             ChatComposerFrame,
-                            { framed },
+                            { borderWidth, framed },
                             {
                                 default: () =>
                                     content === 'empty'

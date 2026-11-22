@@ -1,1 +1,1 @@
-export { renderVueStory, type StoryPresentationOptions } from './renderVueStory'
+export { renderVueStory, type StoryPresentationOptions, withVueStorySetup } from './renderVueStory'

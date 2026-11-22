@@ -18,6 +18,7 @@
     border: var(--fantasy-border-size) solid transparent;
     border-image: var(--fantasy-border-image) var(--fantasy-border-slice) /
         var(--fantasy-border-size) / 0 stretch;
+    border-image-slice: max(var(--fantasy-border-slice), var(--fantasy-border-min-slice, 0));
     filter: var(--fantasy-border-filter);
 }
 

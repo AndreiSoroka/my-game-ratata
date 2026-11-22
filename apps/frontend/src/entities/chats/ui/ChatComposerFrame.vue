@@ -4,15 +4,21 @@ import { computed } from 'vue'
 import { FantasyBorder, getFantasyBorderMetrics } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
-withDefaults(defineProps<{ framed?: boolean }>(), { framed: true })
+const props = withDefaults(defineProps<{ framed?: boolean; borderWidth?: number }>(), {
+    framed: true,
+})
 defineSlots<{ default?: () => unknown }>()
 
 const defaultBorder = 'border-006'
-const borderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
+const defaultBorderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
+const frameBorderWidth = computed(() => {
+    const width = props.borderWidth
+    return width !== undefined && Number.isFinite(width) && width > 0 ? width : defaultBorderWidth
+})
 const theme = useDarkPanelTheme()
 const framedStyle = computed(() => ({
     ...darkPanelThemeStyle(theme.value),
-    padding: `${borderWidth}px`,
+    padding: `${frameBorderWidth.value}px`,
 }))
 </script>
 
@@ -26,7 +32,7 @@ const framedStyle = computed(() => ({
             v-if="framed"
             as="span"
             :border="theme?.border ?? defaultBorder"
-            :border-width="borderWidth"
+            :border-width="frameBorderWidth"
             class="chat-composer-frame__border"
             color="var(--ui-themed-panel-accent, var(--ui-dark-panel-border))"
             aria-hidden="true"

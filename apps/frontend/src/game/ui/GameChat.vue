@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 import type { ChatHistoryEntry } from '@/entities/chats'
 import { ChatWidget } from '@/widgets/chats'
 
@@ -9,6 +11,7 @@ import { worldHudButtonAttrs } from './uiKeyboard'
 
 const props = defineProps<{ state: ChatInputState; entries: readonly ChatHistoryEntry[] }>()
 const emit = defineEmits<{ draft: [value: string] }>()
+const collapsed = ref(true)
 
 function handleHistoryKey(event: KeyboardEvent): void {
     if (isWorldHudButton(event.target)) return
@@ -43,6 +46,7 @@ useEscapeOwner({
 </script>
 <template>
     <ChatWidget
+        v-model:collapsed="collapsed"
         class="game-chat"
         :entries="entries"
         :draft="state.draft"

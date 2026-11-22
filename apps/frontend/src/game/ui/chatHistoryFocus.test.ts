@@ -1,6 +1,7 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 
 import { type ChatInputState, chatMaxLength } from '../runtime/chatInput'
 import { RuntimeChatInput } from '../runtime/runtimeChatInput'
@@ -27,6 +28,11 @@ function key(target: HTMLElement, code: string, value = code): KeyboardEvent {
     return event
 }
 
+function pointerClick(target: Element): Promise<void> {
+    target.dispatchEvent(new MouseEvent('click', { detail: 1, bubbles: true, cancelable: true }))
+    return nextTick()
+}
+
 it('passes only WASD from history and lets HUD buttons pass world shortcuts', async () => {
     const wrapper = mount(GameChat, {
         props: { entries: [], state: inactiveDraft },
@@ -35,6 +41,7 @@ it('passes only WASD from history and lets HUD buttons pass world shortcuts', as
     const heard = vi.fn<(event: KeyboardEvent) => void>()
     window.addEventListener('keydown', heard)
     try {
+        await pointerClick(wrapper.get('button[aria-expanded]').element)
         const history = wrapper.get('ol').element
         history.focus()
         expect(key(history, 'ArrowUp').defaultPrevented).toBe(false)
@@ -76,6 +83,12 @@ it('keeps chat buttons out of Tab and activates them only from the pointer', asy
         props: { entries: [], state: inactiveDraft },
     })
     try {
+        const toggle = wrapper.get('button[aria-expanded]')
+        expect(toggle.attributes('aria-expanded')).toBe('false')
+        expect(wrapper.get('.chat-history__preview').text()).toBe(
+            'Здесь появятся услышанные реплики.'
+        )
+        await pointerClick(toggle.element)
         const history = wrapper.get('ol')
         Object.defineProperties(history.element, {
             clientHeight: { value: 100 },
@@ -94,14 +107,10 @@ it('keeps chat buttons out of Tab and activates them only from the pointer', asy
             expect(down.defaultPrevented).toBe(true)
         }
         expect(history.attributes('tabindex')).toBe('0')
-        const toggle = wrapper.get('button[aria-expanded]')
         toggle.element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
         await wrapper.vm.$nextTick()
         expect(toggle.attributes('aria-expanded')).toBe('true')
-        toggle.element.dispatchEvent(
-            new MouseEvent('click', { detail: 1, bubbles: true, cancelable: true })
-        )
-        await wrapper.vm.$nextTick()
+        await pointerClick(toggle.element)
         expect(toggle.attributes('aria-expanded')).toBe('false')
     } finally {
         wrapper.unmount()
@@ -140,6 +149,7 @@ it('finishes a public draft from history focus without moving, then returns to c
     const listener = (event: KeyboardEvent) => handleRuntimeKeyDown(event, actions)
     window.addEventListener('keydown', listener)
     try {
+        await pointerClick(wrapper.get('button[aria-expanded]').element)
         canvas.focus()
         key(canvas, 'Enter', 'Enter')
         await wrapper.vm.$nextTick()

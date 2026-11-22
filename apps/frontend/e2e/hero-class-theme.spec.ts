@@ -2,6 +2,8 @@ import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { expectThemedBorder, heroThemeCases } from './hero-theme-visual'
 
+test.use({ reducedMotion: 'reduce' })
+
 const arcanist = heroThemeCases[2]
 
 for (const width of [390, 1280]) {
@@ -28,7 +30,7 @@ for (const width of [390, 1280]) {
 async function inspectJoinThemes(page: Page): Promise<{ accent: string; surface: string }> {
     const form = page.locator('.join-panel')
     const frame = form.locator(':scope > .game-frame .game-frame__theme-border')
-    const input = form.locator('.ui-input')
+    const inputFrame = form.locator('.chat-composer-frame__border')
     const bonusFrame = form
         .getByLabel('Постоянные бонусы прошлого')
         .locator('.game-frame__theme-border')
@@ -47,9 +49,16 @@ async function inspectJoinThemes(page: Page): Promise<{ accent: string; surface:
         expect(await panelSurface(frame)).toBe(await panelSurface(cardFrame))
         accents.add(accent)
         surfaces.add(await panelSurface(frame))
-        await expect(input).toHaveAttribute('data-fantasy-border', border)
-        await expect(input).toHaveCSS('border-top-width', '16px')
+        await expect(inputFrame).toHaveAttribute('data-fantasy-border', border)
+        await expect(inputFrame).toHaveCSS('border-top-width', '16px')
         await expectThemedBorder(bonusFrame, border, 16)
+        for (const themedFrame of [frame, cardFrame, inputFrame, bonusFrame]) {
+            const artwork = await themedFrame.evaluate((element) => {
+                const style = getComputedStyle(element, '::before')
+                return { slice: style.borderImageSlice, width: style.borderImageWidth }
+            })
+            expect(artwork).toEqual({ slice: '16', width: '16px' })
+        }
     }
     expect(accents.size).toBe(heroThemeCases.length)
     expect(surfaces.size).toBe(heroThemeCases.length)
@@ -83,6 +92,10 @@ async function inspectWorldFrames(
 ): Promise<void> {
     const world = page.locator('canvas[data-game-canvas]')
     await expect(world).toBeVisible()
+    await page
+        .locator('.game-chat')
+        .getByRole('button', { name: 'Развернуть историю чата' })
+        .click()
     const frameWidth = new Map([
         ['.game-player-status__vitals .hud-frame__border', 16],
         ['.quick-action-bar .hud-frame__border', 16],
@@ -123,7 +136,9 @@ async function inspectWorldFrames(
 }
 
 function panelSurface(element: Locator): Promise<string> {
-    return element.evaluate((node) =>
-        getComputedStyle(node).getPropertyValue('--ui-themed-panel-surface').trim()
-    )
+    return element.evaluate((node) => {
+        const style = document.createElement('span').style
+        style.color = getComputedStyle(node).getPropertyValue('--ui-themed-panel-surface')
+        return style.color
+    })
 }

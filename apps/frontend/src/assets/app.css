@@ -17,7 +17,6 @@
 
 .join-panel {
     width: min(420px, 100%);
-    border: 1px solid transparent;
     padding: 24px;
 }
 

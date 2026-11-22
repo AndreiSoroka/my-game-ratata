@@ -2,8 +2,6 @@ import type { CharacterSnapshot, HeroClass } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { provideDarkPanelTheme } from '@/shared/ui/theme'
-
 import { renderVueStory } from '../stories/renderVueStory'
 import {
     faithKnownStatusFixture,
@@ -14,28 +12,19 @@ import {
     wantedStatusFixture,
 } from '../testing/playerStatusFixture'
 import GamePlayerStatus from './GamePlayerStatus.vue'
-import { heroClassTheme } from './heroClassThemes'
 
 const meta = { title: 'Game/Player HUD' } satisfies Meta
 export default meta
 type Story = StoryObj
 
 /** Mount in a real game host so ResizeObserver publishes the HUD's occupied space. */
-function statusStory(
-    props: { character: CharacterSnapshot; serverTime?: number },
-    heroClass?: HeroClass
-): HTMLElement {
+function statusStory(props: { character: CharacterSnapshot; serverTime?: number }): HTMLElement {
     const host = renderVueStory(
         {
-            setup() {
-                provideDarkPanelTheme(heroClassTheme(heroClass))
-                return () =>
-                    h(
-                        'section',
-                        { class: 'game-screen', style: 'position:relative;height:100dvh' },
-                        [h(GamePlayerStatus, props)]
-                    )
-            },
+            render: () =>
+                h('section', { class: 'game-screen', style: 'position:relative;height:100dvh' }, [
+                    h(GamePlayerStatus, props),
+                ]),
         },
         {}
     )
@@ -49,7 +38,8 @@ export const Normal: Story = {
 }
 function themedStatusStory(heroClass: HeroClass): Story {
     return {
-        render: () => statusStory({ character: playerStatusFixture({ heroClass }) }, heroClass),
+        parameters: { heroClass },
+        render: () => statusStory({ character: playerStatusFixture({ heroClass }) }),
     }
 }
 export const Vanguard = themedStatusStory('vanguard')

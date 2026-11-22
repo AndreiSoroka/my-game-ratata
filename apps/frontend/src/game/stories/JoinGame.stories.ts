@@ -5,6 +5,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import JoinGameStory from './JoinGameStory.vue'
 import { renderVueStory } from './renderVueStory'
+import { parseStoryHeroClass } from './storyHeroClass'
 
 interface StoryArgs {
     heroClass: HeroClass
@@ -30,8 +31,10 @@ export default meta
 type Story = StoryObj<StoryArgs>
 
 export const Ready: Story = {
-    render: ({ heroClass }) => {
-        const host = renderVueStory(JoinGameStory, { initialHeroClass: heroClass })
+    render: ({ heroClass }, { globals }) => {
+        const host = renderVueStory(JoinGameStory, {
+            initialHeroClass: parseStoryHeroClass(globals.heroClass) ?? heroClass,
+        })
         host.style.padding = '0'
         return host
     },

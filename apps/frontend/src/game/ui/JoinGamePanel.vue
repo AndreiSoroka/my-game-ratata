@@ -6,8 +6,9 @@ import {
     heroClasses,
     REGION_NAME,
 } from '@my-game-ratata/contracts'
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 
+import { ChatComposerFrame } from '@/entities/chats'
 import { UiButton, UiInput } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, provideDarkPanelTheme } from '@/shared/ui/theme'
@@ -22,8 +23,19 @@ import RefreshIcon from './RefreshIcon.vue'
 const nickname = defineModel<string>('nickname', { required: true })
 const heroClass = defineModel<HeroClass>('heroClass', { required: true })
 const frameWidth = 16
+const transitionDuration = 260
+const form = useTemplateRef<HTMLFormElement>('form')
 const theme = computed(() => heroClassTheme(heroClass.value, 'form'))
-provideDarkPanelTheme(theme)
+provideDarkPanelTheme(() => {
+    const currentTheme = theme.value
+    return (
+        currentTheme && {
+            ...currentTheme,
+            surface: 'var(--join-panel-surface)',
+            accent: 'var(--join-panel-accent)',
+        }
+    )
+})
 defineProps<{ canJoin: boolean; errorMessage: string }>()
 defineEmits<{ join: []; 'nickname-edited': []; 'regenerate-name': [] }>()
 const classes = heroClasses.map((id) => ({
@@ -35,6 +47,31 @@ const classes = heroClasses.map((id) => ({
 function selectNickname({ currentTarget }: MouseEvent): void {
     if (currentTarget instanceof HTMLInputElement) currentTarget.select()
 }
+
+let heightAnimation: Animation | undefined
+watch(heroClass, async (_, __, invalidate) => {
+    const panel = form.value
+    if (!panel?.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        heightAnimation?.cancel()
+        return
+    }
+    const from = panel.getBoundingClientRect().height
+    let stale = false
+    invalidate(() => {
+        stale = true
+    })
+    await nextTick()
+    if (stale) return
+
+    heightAnimation?.cancel()
+    const to = panel.getBoundingClientRect().height
+    if (Math.abs(from - to) < 1) return
+    heightAnimation = panel.animate(
+        [from, to].map((height) => ({ height: `${height}px`, overflow: 'clip' })),
+        { duration: transitionDuration, easing: 'ease-out' }
+    )
+})
+onBeforeUnmount(() => heightAnimation?.cancel())
 </script>
 
 <template>
@@ -54,8 +91,14 @@ function selectNickname({ currentTarget }: MouseEvent): void {
             </p>
         </div>
         <form
+            ref="form"
             class="join-panel game-frame-host"
-            :style="darkPanelThemeStyle(theme)"
+            :style="{
+                '--join-panel-surface': theme?.surface,
+                '--join-panel-accent': theme?.accent,
+                '--join-panel-duration': `${transitionDuration}ms`,
+                '--fantasy-border-min-slice': frameWidth,
+            }"
             autocomplete="off"
             @submit.prevent="$emit('join')"
         >
@@ -63,17 +106,19 @@ function selectNickname({ currentTarget }: MouseEvent): void {
             <h1 id="join-title">Ratata</h1>
             <label for="nickname">Имя героя</label>
             <div class="join-row">
-                <UiInput
-                    id="nickname"
-                    v-model="nickname"
-                    :border-width="frameWidth"
-                    autocomplete="off"
-                    maxlength="24"
-                    minlength="1"
-                    required
-                    @click="selectNickname"
-                    @input="$emit('nickname-edited')"
-                />
+                <ChatComposerFrame :border-width="frameWidth">
+                    <UiInput
+                        id="nickname"
+                        v-model="nickname"
+                        :framed="false"
+                        autocomplete="off"
+                        maxlength="24"
+                        minlength="1"
+                        required
+                        @click="selectNickname"
+                        @input="$emit('nickname-edited')"
+                    />
+                </ChatComposerFrame>
                 <UiButton
                     appearance="panel"
                     panel="panel-001"
@@ -106,7 +151,10 @@ function selectNickname({ currentTarget }: MouseEvent): void {
                         />
                         <span
                             class="class-card__content"
-                            :class="{ 'class-card__content--selected': heroClass === option.id }"
+                            :class="{
+                                'class-card__content--selected': heroClass === option.id,
+                                'class-card__content--stone': option.id === 'vanguard',
+                            }"
                             :style="darkPanelThemeStyle(option.theme)"
                         >
                             <FantasyBorder

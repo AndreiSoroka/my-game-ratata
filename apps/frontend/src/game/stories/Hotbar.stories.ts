@@ -5,11 +5,8 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { userEvent, within } from 'storybook/test'
 import { defineComponent, h } from 'vue'
 
-import { provideDarkPanelTheme } from '@/shared/ui/theme'
-
 import { characterFixture } from '../testing/characterFixture'
 import ActionHotbar from '../ui/ActionHotbar.vue'
-import { heroClassTheme } from '../ui/heroClassThemes'
 import type { HotbarBinding } from '../ui/hotbarBindings'
 import { hotbarIdentityKey, provideHotbarSession } from '../ui/hotbarSession'
 import { renderVueStory } from './renderVueStory'
@@ -17,32 +14,29 @@ import { renderVueStory } from './renderVueStory'
 const meta = { title: 'Game/ActionHotbar' } satisfies Meta
 export default meta
 type Story = StoryObj
-function render(heroClass: HeroClass): HTMLElement {
-    const player = characterFixture('adventurer', {
-        heroClass,
-        abilities: {
-            known: ['shot', 'spark', 'pray'],
-            cooldowns: {},
-            barrier: null,
-            casting: null,
+function themedHotbarStory(heroClass: HeroClass): Story {
+    return {
+        parameters: { heroClass },
+        render() {
+            const player = characterFixture('adventurer', {
+                heroClass,
+                abilities: {
+                    known: ['shot', 'spark', 'pray'],
+                    cooldowns: {},
+                    barrier: null,
+                    casting: null,
+                },
+            })
+            return renderVueStory(ActionHotbar, { player, characters: [player], blocked: false })
         },
-    })
-    return renderVueStory(
-        {
-            setup() {
-                provideDarkPanelTheme(heroClassTheme(heroClass))
-                return () => h(ActionHotbar, { player, characters: [player], blocked: false })
-            },
-        },
-        {}
-    )
+    }
 }
-export const Vanguard: Story = { render: () => render('vanguard') }
-export const Ranger: Story = { render: () => render('ranger') }
-export const Arcanist: Story = { render: () => render('arcanist') }
-export const Cleric: Story = { render: () => render('cleric') }
+export const Vanguard = themedHotbarStory('vanguard')
+export const Ranger = themedHotbarStory('ranger')
+export const Arcanist = themedHotbarStory('arcanist')
+export const Cleric = themedHotbarStory('cleric')
 export const Assignment: Story = {
-    render: () => render('arcanist'),
+    ...themedHotbarStory('arcanist'),
     async play({ canvasElement }) {
         const slot = await within(canvasElement).findByRole('button', { name: /^3: Пусто/ })
         await userEvent.click(slot)
