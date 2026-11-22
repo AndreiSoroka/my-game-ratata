@@ -23,6 +23,14 @@ export type PrayerAuraEffectId =
     | 'prayer-protection'
     | 'prayer-blessing'
     | 'prayer-vulnerability'
+    | 'road-prayer-recovery'
+
+export const ROAD_PRAYER_RULES = {
+    energyRegenMultiplier: 5,
+    dashDiscount: 10,
+    dashDiscountDurationMs: 8_000,
+    bardAreaMultiplier: 2,
+} as const
 
 export function prayerManaCost(
     mode: PrayerMode,

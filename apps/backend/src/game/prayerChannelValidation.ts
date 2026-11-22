@@ -3,7 +3,7 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility, type PrayerCast } from './abilityState'
 import type { GameCharacter } from './character'
-import { canPerceivePrayerCaster } from './prayerAuras'
+import { canPerceivePrayerCaster, prayerAuraEffects } from './prayerAuras'
 import { cancelPrayerCast } from './prayerCancellation'
 import { validPrayerIntent } from './prayerContext'
 export type ActivePrayerCast = Extract<
@@ -53,7 +53,9 @@ function prayerInterrupted(
         actor.tags.has('offline') ||
         actor.stunUntil > now ||
         actor.locationId !== cast.locationId ||
-        channelMoved(actor, cast)
+        (cast.walkWhileCasting === true
+            ? prayerAuraEffects(actor, now).feared
+            : channelMoved(actor, cast))
     )
 }
 

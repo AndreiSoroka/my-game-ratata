@@ -10,8 +10,10 @@ import {
     type CombatObserver,
     observeCharacterCombat,
 } from './combatObservation'
+import { roadPrayerDashRemainingMs } from './effectiveParameters'
 import { canTargetByFaction } from './factions'
 import { prayerAuraEffects } from './prayerAuras'
+import { hasRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { SnapshotContext } from './roomSnapshot'
 import { canHearSpeech } from './socialSpeech'
 
@@ -26,12 +28,24 @@ export function projectRoomCharacter(
     const auraEffects = observedPrayerAuraEffects(actor, playerId, view)
     const interactions = interactionsFor(context, actor, view.observer?.id)
     const observed = observeCharacterCombat(character, actor, view)
+    const dashDiscountMsLeft =
+        actor !== undefined && actor.id === playerId
+            ? roadPrayerDashRemainingMs(actor, view.now)
+            : 0
     delete observed.prayerAuraEffects
     return {
         ...observed,
         ...(interactions === undefined ? {} : { interactions }),
         ...(activity === undefined ? {} : { workerActivity: activity }),
         ...(auraEffects.length === 0 ? {} : { prayerAuraEffects: auraEffects }),
+        ...(dashDiscountMsLeft > 0 && observed.movement !== undefined
+            ? {
+                  movement: {
+                      ...observed.movement,
+                      roadPrayerDashDiscountMsLeft: dashDiscountMsLeft,
+                  },
+              }
+            : {}),
         relationship: relationshipFor(view.observer, actor, playerId, view.now),
         control:
             character.id === playerId
@@ -100,6 +114,9 @@ function observedPrayerAuraEffects(
     }
     if (effects.damageTakenMultiplier > 1) {
         ids.push('prayer-vulnerability')
+    }
+    if (hasRoadPrayerRecovery(actor, view.navigation, view.now)) {
+        ids.push('road-prayer-recovery')
     }
     return ids
 }

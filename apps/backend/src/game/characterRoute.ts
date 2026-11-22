@@ -6,6 +6,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canWalkDuringPrayer } from './combatMovement'
 import type { ControlWorld } from './controlWorld'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -171,7 +172,10 @@ export function advanceCharacterRoute(
     }
     const deltaMs = Math.max(0, now - state.lastUpdateAt)
     state.lastUpdateAt = now
-    if (actor.isActionLocked(now) || actor.stunUntil > now) {
+    if (
+        (actor.isActionLocked(now) && !canWalkDuringPrayer(actor)) ||
+        actor.stunUntil > now
+    ) {
         state.lastPosition = { ...actor.position }
         return true
     }

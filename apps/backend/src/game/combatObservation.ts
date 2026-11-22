@@ -100,7 +100,7 @@ function privateSheet(
         return {}
     }
     return {
-        resourceChecks: resourceChecks(target),
+        resourceChecks: resourceChecks(target, view.now),
         characterSheet: createCharacterSheet(
             target,
             view.navigation?.grid.tileWidth ?? MOVEMENT_RULES.stepDistance

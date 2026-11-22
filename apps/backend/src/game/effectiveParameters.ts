@@ -6,6 +6,7 @@ import {
     isBladeAbility,
     MOVEMENT_RULES,
     resolveBladeTechnique,
+    ROAD_PRAYER_RULES,
     THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
@@ -118,10 +119,26 @@ export function effectiveMoveSpeed(actor: GameCharacter): number {
     return actor.config.moveSpeed * modifiers.moveSpeedMultiplier
 }
 
-export function effectiveDashCost(actor: GameCharacter): number {
-    return (
+export function roadPrayerDashRemainingMs(
+    actor: GameCharacter,
+    now: number
+): number {
+    return Math.max(0, (actor.movement.roadPrayerDashUntil ?? now) - now)
+}
+
+export function effectiveDashCost(
+    actor: GameCharacter,
+    now = Date.now()
+): number {
+    const discount =
+        roadPrayerDashRemainingMs(actor, now) > 0
+            ? ROAD_PRAYER_RULES.dashDiscount
+            : 0
+    return Math.max(
+        0,
         MOVEMENT_RULES.dashEnergy *
-        constellationModifiers(actor).dashEnergyMultiplier
+            constellationModifiers(actor).dashEnergyMultiplier -
+            discount
     )
 }
 

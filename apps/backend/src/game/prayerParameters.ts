@@ -5,6 +5,7 @@ import {
     isPrayerAction,
     type PrayerActionId,
     type PrayerParametersSnapshot,
+    ROAD_PRAYER_RULES,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -24,6 +25,17 @@ export function prayerParameters(
             manaCost: definition.mana,
             area: false,
             harm: false,
+            ...(abilityId === 'pray_road'
+                ? {
+                      energyRecoveryRadius:
+                          definition.range *
+                          Math.sqrt(
+                              hasStar(actor, 'prayer_road.bard')
+                                  ? ROAD_PRAYER_RULES.bardAreaMultiplier
+                                  : 1
+                          ),
+                  }
+                : {}),
         }
     }
     const modifiers = constellationModifiers(actor)

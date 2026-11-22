@@ -1,6 +1,7 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canWalkDuringPrayer } from './combatMovement'
 import { effectiveDashCost } from './effectiveParameters'
 import { handleMovementCommand, movementActionAllowed } from './movementActions'
 
@@ -31,14 +32,14 @@ function dashReason(character: GameCharacter, now: number): string {
     if (character.stunUntil > now) {
         return 'Рывок: оглушение'
     }
-    if (character.isActionLocked(now)) {
+    if (character.isActionLocked(now) && !canWalkDuringPrayer(character)) {
         return 'Действие выполняется'
     }
     const cooldown = character.movement.dashAvailableAt - now
     if (cooldown > 0) {
         return `Рывок: ещё ${String(Math.ceil(cooldown / 1000))} с.`
     }
-    return character.energy < effectiveDashCost(character)
+    return character.energy < effectiveDashCost(character, now)
         ? 'Не хватает энергии'
         : 'Рывок сейчас недоступен'
 }

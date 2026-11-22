@@ -1,10 +1,18 @@
-import { MOVEMENT_RULES, type ServerMessage } from '@my-game-ratata/contracts'
+import {
+    type ClientMessage,
+    MOVEMENT_RULES,
+    ROAD_PRAYER_RULES,
+    type ServerMessage,
+} from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
+import { availableToStartAttack } from '../src/game/combat'
 import { advanceCharacter } from '../src/game/movement'
 import { handleMovementCommand } from '../src/game/movementActions'
 import { NavigationService } from '../src/game/navigation'
+import { beginPrayerCast } from '../src/game/prayerCastStart'
+import { resourceChecks } from '../src/game/resourceObservation'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
 
@@ -202,4 +210,106 @@ describe('standing dash at ordinary location borders', () => {
             }
         }
     )
+})
+
+it('keeps held walking input during Road Prayer and interrupts on crossing a border', () => {
+    vi.stubGlobal('Bun', { env: {} })
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    const room = new GameRoom(navigation())
+    const sent: ServerMessage[] = []
+    const socket = {
+        send: (payload: string) =>
+            sent.push(JSON.parse(payload) as ServerMessage),
+    } as unknown as RoomSocket
+    room.handleOpen(socket)
+    const send = (message: ClientMessage) =>
+        room.handleMessage(socket, JSON.stringify(message))
+    send({ type: 'join', nickname: 'Road Cleric' })
+    const init = sent.find((message) => message.type === 'world_init')
+    const character = room.getCharacter(init?.playerId ?? '')
+    if (character === undefined) {
+        throw new Error('Missing player')
+    }
+    character.position = { x: 305, y: 200 }
+    character.energy = 50
+    character.abilities.known.add('pray_road')
+    character.progression.constellations.opened.add('prayer_road.walk')
+    send({ type: 'move_input', axis: { x: 1, y: 0 } })
+    send({
+        type: 'use_ability',
+        abilityId: 'pray_road',
+        intent: { mode: 'restore', targetId: character.id },
+    })
+    room.start()
+    try {
+        vi.advanceTimersByTime(50)
+        expect(character.abilities.casting?.abilityId).toBe('pray_road')
+        expect(character.position.x).toBeGreaterThan(305)
+        expect(character.locationId).toBe('map-2-2')
+        vi.advanceTimersByTime(50)
+        expect(character.locationId).toBe('map-3-2')
+        expect(character.abilities.casting).toBeNull()
+    } finally {
+        room.stop()
+    }
+})
+
+it('honors a Road Prayer dash discount once, only before expiry and on a payable dash', () => {
+    const character = actor()
+    const expiresAt = 1_000 + ROAD_PRAYER_RULES.dashDiscountDurationMs
+    const discountedCost =
+        MOVEMENT_RULES.dashEnergy - ROAD_PRAYER_RULES.dashDiscount
+    character.movement.roadPrayerDashUntil = expiresAt
+    character.energy = discountedCost - 1
+    const dash = { type: 'dash' } as const
+
+    expect(handleMovementCommand(character, dash, 1_000)).toEqual([])
+    expect(character.movement.roadPrayerDashUntil).toBe(expiresAt)
+
+    character.energy = discountedCost
+    expect(resourceChecks(character, expiresAt - 1).dash).toBe('ready')
+    expect(resourceChecks(character, expiresAt).dash).toBe('energy')
+    expect(handleMovementCommand(character, dash, expiresAt - 1)).toEqual([
+        { kind: 'dash', actorId: character.id },
+    ])
+    expect(character.energy).toBe(0)
+    expect(character.movement.roadPrayerDashUntil).toBeUndefined()
+
+    character.energy = discountedCost
+    expect(
+        handleMovementCommand(
+            character,
+            dash,
+            character.movement.dashAvailableAt
+        )
+    ).toEqual([])
+})
+
+it('keeps attacks blocked and interrupts a walking prayer only when a dash is valid', () => {
+    const character = actor()
+    character.energy = 5
+    character.abilities.known.add('pray_road')
+    character.progression.constellations.opened.add('prayer_road.walk')
+    expect(
+        beginPrayerCast(
+            character,
+            { mode: 'restore', targetId: character.id },
+            { characters: [character], now: 1_000, navigation: navigation() },
+            'pray_road'
+        )
+    ).toMatchObject([{ kind: 'cast', phase: 'started' }])
+    expect(availableToStartAttack(character, 1_050)).toBe(false)
+
+    const dash = { type: 'dash' } as const
+    expect(handleMovementCommand(character, dash, 1_050)).toEqual([])
+    expect(character.abilities.casting?.abilityId).toBe('pray_road')
+
+    character.energy = MOVEMENT_RULES.dashEnergy
+    expect(handleMovementCommand(character, dash, 1_100)).toMatchObject([
+        { kind: 'cast', phase: 'interrupted' },
+        { kind: 'dash' },
+    ])
+    expect(character.abilities.casting).toBeNull()
+    expect(character.energy).toBe(0)
 })

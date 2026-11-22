@@ -44,7 +44,7 @@ function describePrayer(
     ability: PrayerAbilityId,
     activeIds?: ReadonlySet<string>
 ): PrayerDescription | undefined {
-    if (node.kind === 'root') return rootChance(ability)
+    if (ability === 'pray_road') return roadPassiveChance(node)
     const revival = describeRevivalChance(node.id, ability)
     if (revival) return revival
     if (node.id.startsWith('prayer.harm')) return harmChance(node.id)
@@ -90,11 +90,15 @@ function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): 
     const definition = PRAYER_SCHOOL_DEFINITIONS[ability]
     const revival = revivalForRoot(ability, activeIds)
     return {
-        summary: `Молитва божеству «${info.god}» восстанавливает ${info.resource} с вероятностью, зависящей от его настроения.`,
+        summary:
+            ability === 'pray_road'
+                ? 'Походная песня ускоряет восстановление сил во время молитвы. Безымянный Путник может ответить разовым даром в конце. Шанс зависит от его настроения.'
+                : `Молитва божеству «${info.god}» восстанавливает ${info.resource} с вероятностью, зависящей от его настроения.`,
         formulaDetails: [
             math.prayerAnswerFormula(ability),
             math.prayerRestorationFormula(ability),
             math.prayerAnswerRollFormula(),
+            ...(ability === 'pray_road' ? [math.prayerSongRecoveryFormula()] : []),
             ...(ability === 'pray'
                 ? [
                       math.prayerHealingMultiplierFormula(),
@@ -113,6 +117,9 @@ function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): 
             `Используется настроение только своего бога (${definition.deityId}). Выбор покровителя в HUD эту привязку не меняет.`,
             faithAndPower,
             oneRoll,
+            ...(ability === 'pray_road'
+                ? ['Походная песня действует с начала молитвы при любом настроении Путника.']
+                : []),
             ...(ability === 'pray'
                 ? [
                       'Пять шагов очищения не обязаны идти подряд; отказ сохраняет уже набранный прогресс. Каждый удачный бросок добавляет один шаг каждой подходящей могиле.',
@@ -122,6 +129,20 @@ function rootChance(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>): 
                   ]),
             'Если бросок не прошёл порог ответа, дар не срабатывает. Вероятности относятся к завершённой допустимой молитве; отмена не делает бросок.',
         ],
+    }
+}
+function roadPassiveChance(node: ConstellationStar): PrayerDescription {
+    const shoulder = node.id === 'prayer_road.shoulder'
+    return {
+        summary: node.results?.join(' ') || node.description,
+        deterministic: !shoulder,
+        formulaDetails: shoulder
+            ? [math.prayerAnswerFormula('pray_road'), math.prayerAnswerRollFormula()]
+            : node.id === 'prayer_road.bard'
+              ? [math.prayerSongRadiusFormula()]
+              : [],
+        examples: [],
+        notes: shoulder ? ['Используется тот же бросок, что и для разового дара.'] : [],
     }
 }
 function revivalForRoot(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>) {

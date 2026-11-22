@@ -195,7 +195,7 @@ describe('authoritative mastery awards', () => {
             })
         }
     )
-    it('banks openings past ten when the school has no random stars', () => {
+    it('unlocks the three Road Prayer stars and banks the remaining openings', () => {
         const actor = abilityHero('cleric')
         actor.abilities.known.add('pray_road')
         awardMasteries(
@@ -212,7 +212,10 @@ describe('authoritative mastery awards', () => {
             { now: 1000 }
         )
         expect(actor.progression.masteries.prayer_road.level).toBe(12)
-        expect(actor.progression.constellations.credits.prayer_road).toBe(12)
+        expect(hasStar(actor, 'prayer_road.walk')).toBe(true)
+        expect(hasStar(actor, 'prayer_road.shoulder')).toBe(true)
+        expect(hasStar(actor, 'prayer_road.bard')).toBe(true)
+        expect(actor.progression.constellations.credits.prayer_road).toBe(9)
     })
 })
 
@@ -221,15 +224,15 @@ describe('authoritative mastery crossover', () => {
         'resolves the fractional power threshold with a %s micro-XP difference',
         (difference) => {
             const actor = abilityHero('cleric')
-            actor.abilities.known.add('pray_road')
-            const mastery = actor.progression.masteries.prayer_road
+            actor.abilities.known.add('pray_lantern')
+            const mastery = actor.progression.masteries.prayer_lantern
             mastery.level = 9
             mastery.experience = xp('3161.27766')
-            actor.progression.constellations.credits.prayer_road = 4
+            actor.progression.constellations.credits.prayer_lantern = 4
             actor.progression.rewardReceipts.add('previous-practice')
             const awards = [
                 {
-                    constellationId: 'prayer_road' as const,
+                    constellationId: 'prayer_lantern' as const,
                     experience:
                         Number(formatMasteryExperience(xp('1') + difference)) /
                         1.2,
@@ -246,30 +249,35 @@ describe('authoritative mastery crossover', () => {
             expect(
                 events.filter((event) => event.kind === 'skill_up')
             ).toHaveLength(levelsGained)
-            expect(actor.progression.constellations.credits.prayer_road).toBe(
-                4 + levelsGained
-            )
+            expect(
+                actor.progression.constellations.credits.prayer_lantern
+            ).toBe(4 + levelsGained)
             expect(actor.progression.rewardReceipts).toEqual(
                 new Set(['previous-practice', 'threshold-practice'])
             )
             expect(awardMasteries(actor, awards, options)).toEqual([])
             expect(mastery).toEqual(expected)
-            expect(actor.progression.constellations.credits.prayer_road).toBe(
-                4 + levelsGained
-            )
+            expect(
+                actor.progression.constellations.credits.prayer_lantern
+            ).toBe(4 + levelsGained)
         }
     )
     it('carries one award across the Fibonacci and power steps without losing micro-XP or credits', () => {
         const actor = abilityHero('cleric')
-        actor.abilities.known.add('pray_road')
-        actor.progression.masteries.prayer_road.level = 7
-        actor.progression.constellations.credits.prayer_road = 2
+        actor.abilities.known.add('pray_lantern')
+        actor.progression.masteries.prayer_lantern.level = 7
+        actor.progression.constellations.credits.prayer_lantern = 2
         const events = awardMasteries(
             actor,
-            [{ constellationId: 'prayer_road', experience: 7962.40266 / 1.2 }],
+            [
+                {
+                    constellationId: 'prayer_lantern',
+                    experience: 7962.40266 / 1.2,
+                },
+            ],
             { now: 1000, receiptId: 'cross-both-curves' }
         )
-        expect(actor.progression.masteries.prayer_road).toEqual({
+        expect(actor.progression.masteries.prayer_lantern).toEqual({
             level: 10,
             experience: xp('0.125'),
         })
@@ -278,10 +286,10 @@ describe('authoritative mastery crossover', () => {
                 .filter((event) => event.kind === 'skill_up')
                 .map((event) => event.amount)
         ).toEqual([8, 9, 10])
-        expect(actor.progression.constellations.credits.prayer_road).toBe(5)
+        expect(actor.progression.constellations.credits.prayer_lantern).toBe(5)
         expect(
             snapshotProgression(actor, 1000).masteries.find(
-                (entry) => entry.id === 'prayer_road'
+                (entry) => entry.id === 'prayer_lantern'
             )
         ).toMatchObject({
             level: 10,
@@ -414,7 +422,7 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(131)
+        expect(fullConstellationCatalog).toHaveLength(134)
         expect(minimumConstellationLevel('prayer.harm')).toBe(1)
         expect(minimumConstellationLevel('prayer.harm1')).toBe(6)
         expect(minimumConstellationLevel('prayer.harm2')).toBe(12)

@@ -5,7 +5,12 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { combatMovementTime, lungeDisplacement } from './combatMovement'
+import { characterEnergyRegenRate } from './characterRecovery'
+import {
+    canWalkDuringPrayer,
+    combatMovementTime,
+    lungeDisplacement,
+} from './combatMovement'
 import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMoveSpeed } from './effectiveParameters'
@@ -26,6 +31,7 @@ interface MovementContext {
     now: number
     onNoise?: (noise: MovementNoise) => void
     onEvents?: (events: GameEventPayload[]) => void
+    onEnergyRegen?: (rate: number) => void
 }
 
 export function advanceCharacter(
@@ -50,7 +56,7 @@ export function advanceCharacter(
     if (character.combat.defensiveStance) {
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
-        context.onEvents?.(character.applyRegen(deltaMs, false, false, now))
+        applyMovementRegen(context, false, false)
         return undefined
     }
     const forced = lungeDisplacement(character, now, deltaMs)
@@ -58,11 +64,14 @@ export function advanceCharacter(
         moveCharacter(context, deltaMs, forced)
         return undefined
     }
-    if (character.isActionLocked(now) && !feared) {
+    if (
+        character.isActionLocked(now) &&
+        !feared &&
+        !canWalkDuringPrayer(character)
+    ) {
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
-        const events = character.applyRegen(deltaMs, false, true, now)
-        context.onEvents?.(events)
+        applyMovementRegen(context, false, true)
         return undefined
     }
     moveCharacter(
@@ -77,6 +86,17 @@ function cannotMove(character: GameCharacter, now: number): boolean {
         character.tags.has('offline') ||
         character.stunUntil > now
     )
+}
+
+function applyMovementRegen(
+    context: MovementContext,
+    moving: boolean,
+    energyAllowed: boolean
+): void {
+    const { character, deltaMs, now, onEvents, onEnergyRegen } = context
+    const events = character.applyRegen(deltaMs, moving, energyAllowed, now)
+    onEnergyRegen?.(characterEnergyRegenRate(character, moving, energyAllowed))
+    onEvents?.(events)
 }
 
 function moveCharacter(
@@ -125,13 +145,7 @@ function moveCharacter(
         context.onNoise?.(noise)
     }
     character.updateMovementAnimation(moving, now)
-    const events = character.applyRegen(
-        deltaMs,
-        moving,
-        !moving || dashMs === 0,
-        now
-    )
-    context.onEvents?.(events)
+    applyMovementRegen(context, moving, !moving || dashMs === 0)
     if (now >= character.movement.dashUntil) {
         character.movement.dashUntil = 0
     }

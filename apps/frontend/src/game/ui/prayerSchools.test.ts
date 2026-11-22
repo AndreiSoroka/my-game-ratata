@@ -151,8 +151,12 @@ it('binds four separate slots and pins the school in single and repeated prayer 
             await view.vm.edit(index)
             await view.findAll('.hotbar-picker [data-dialog-action]')[index]!.trigger('click')
             view.vm.activate(index)
+            const intent =
+                abilityId === 'pray_road'
+                    ? { mode: 'restore', targetId: player.id }
+                    : { mode: 'devotion' }
             expect(view.emitted('command')?.at(-1)).toEqual([
-                { type: 'use_ability', abilityId, intent: { mode: 'devotion' } },
+                { type: 'use_ability', abilityId, intent },
             ])
         }
         const abilityId: PrayerAbilityId = 'pray_grave'

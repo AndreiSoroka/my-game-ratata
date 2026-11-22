@@ -73,6 +73,10 @@ function appendActiveEffects(
             }
             break
         case 'pray_road':
+            appendDescription(effects, context.learned, 'prayer_road.walk')
+            appendDescription(effects, context.learned, 'prayer_road.shoulder')
+            appendDescription(effects, context.learned, 'prayer_road.bard')
+            break
         case 'pray_lantern':
             break
         case 'shot':

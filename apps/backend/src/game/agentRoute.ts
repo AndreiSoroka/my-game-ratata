@@ -3,6 +3,7 @@ import type { GameEventPayload, Vector2 } from '@my-game-ratata/contracts'
 import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { enqueueCharacterRoute } from './characterRoute'
+import { canWalkDuringPrayer } from './combatMovement'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
     routeCommandFeedback,
@@ -40,7 +41,7 @@ export function applyAgentRoute(
             world.requestControl?.(character, { type: 'cancel_control' }, now)
         }
     )
-    if (result.accepted) {
+    if (result.accepted && !canWalkDuringPrayer(character)) {
         events.push(...cancelPrayerCast(character, now))
     }
     events.push(...routeCommandFeedback(character, result))

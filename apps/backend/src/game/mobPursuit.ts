@@ -70,7 +70,7 @@ function readyToPursue(actor: GameCharacter, now: number): boolean {
         actor.controllerKind !== 'network_player' &&
         actor.soul.controlSource !== 'human' &&
         actor.energy >=
-            effectiveDashCost(actor) + effectiveAttackEnergyCost(actor) &&
+            effectiveDashCost(actor, now) + effectiveAttackEnergyCost(actor) &&
         actor.canSpendAttackResources() &&
         movementActionAllowed(actor, { type: 'dash' }, now)
     )

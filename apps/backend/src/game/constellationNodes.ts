@@ -1,4 +1,8 @@
-import type { AbilityId, ConstellationId } from '@my-game-ratata/contracts'
+import {
+    type AbilityId,
+    type ConstellationId,
+    ROAD_PRAYER_RULES,
+} from '@my-game-ratata/contracts'
 
 import {
     constellationPaths,
@@ -7,6 +11,7 @@ import {
 } from './constellationCatalog'
 import { withPrayerLore } from './constellationPrayerLore'
 import { revivalStars } from './constellationRevivalStars'
+import { roadPrayerStars } from './constellationRoadPrayerStars'
 
 const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
     arrow: 'shot',
@@ -54,6 +59,14 @@ const roots: ConstellationStar[] = constellationPaths.map((path) => {
                   effects: [
                       'Лечит вас или союзника.',
                       'Очищает могилы от тёмных сил.',
+                  ],
+              }
+            : {}),
+        ...(path.id === 'prayer_road'
+            ? {
+                  effects: [
+                      `Пока звучит Походная песня, вы и видимые союзники в области её действия восстанавливаете энергию в ${String(ROAD_PRAYER_RULES.energyRegenMultiplier)} раз быстрее.`,
+                      'В конце молитвы Путник может вернуть дополнительные силы выбранной цели.',
                   ],
               }
             : {}),
@@ -154,6 +167,7 @@ const authoredNodes = [
     ...explicitAbilities,
     ...joints,
     ...revivalStars,
+    ...roadPrayerStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(

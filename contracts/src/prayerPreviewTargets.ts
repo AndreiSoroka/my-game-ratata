@@ -75,7 +75,8 @@ function resourceMissing(
 function eligibleGift(
     context: PreviewContext,
     target: CharacterSnapshot,
-    mode: 'restore' | 'revive'
+    mode: 'restore' | 'revive',
+    allowFull = false
 ): boolean {
     const ally =
         target.id === context.player.id ||
@@ -90,7 +91,7 @@ function eligibleGift(
     return (
         target.alive &&
         context.profile.restoreTypes.includes(target.creatureType) &&
-        resourceMissing(context, target)
+        (allowFull || resourceMissing(context, target))
     )
 }
 function harmTargets(context: PreviewContext): CharacterSnapshot[] {
@@ -114,12 +115,10 @@ function chooseIntent(
     if (selectedId !== undefined) {
         return selectedIntent(context, harmed, selectedId)
     }
-    const ordered = context.all
-        .filter((target) => target.id !== context.player.id)
-        .sort((a, b) => {
-            const delta = distance(context, a) - distance(context, b)
-            return delta === 0 ? a.id.localeCompare(b.id) : delta
-        })
+    const { all, player, abilityId } = context
+    const ordered = all
+        .filter((target) => target.id !== player.id)
+        .sort((a, b) => distanceOrder(context, a, b))
     for (const mode of ['revive', 'restore'] as const) {
         const target = ordered.find((candidate) =>
             eligibleGift(context, candidate, mode)
@@ -128,8 +127,8 @@ function chooseIntent(
             return { mode, targetId: target.id }
         }
     }
-    if (eligibleGift(context, context.player, 'restore')) {
-        return { mode: 'restore', targetId: context.player.id }
+    if (eligibleGift(context, player, 'restore', abilityId === 'pray_road')) {
+        return { mode: 'restore', targetId: player.id }
     }
     const undead = harmed[0]
     if (undead !== undefined) {
@@ -138,10 +137,9 @@ function chooseIntent(
             targetId: undead.id,
         }
     }
-    const grave = nearbyGraves(context).sort((a, b) => {
-        const delta = distance(context, a) - distance(context, b)
-        return delta === 0 ? a.id.localeCompare(b.id) : delta
-    })[0]
+    const grave = nearbyGraves(context).sort((a, b) =>
+        distanceOrder(context, a, b)
+    )[0]
     if (grave !== undefined) {
         return { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } }
     }
@@ -162,8 +160,9 @@ function selectedIntent(
     if (target === undefined) {
         return undefined
     }
+    const roadPrayer = context.abilityId === 'pray_road'
     for (const mode of ['revive', 'restore'] as const) {
-        if (eligibleGift(context, target, mode)) {
+        if (eligibleGift(context, target, mode, roadPrayer)) {
             return { mode, targetId: target.id }
         }
     }
@@ -263,8 +262,8 @@ function addAdditionalTargets(
 }
 function distanceOrder(
     context: PreviewContext,
-    a: CharacterSnapshot,
-    b: CharacterSnapshot
+    a: Pick<CharacterSnapshot, 'id' | 'position'>,
+    b: Pick<CharacterSnapshot, 'id' | 'position'>
 ): number {
     const delta = distance(context, a) - distance(context, b)
     return delta !== 0 ? delta : a.id.localeCompare(b.id)

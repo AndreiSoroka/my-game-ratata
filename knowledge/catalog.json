@@ -730,13 +730,16 @@
             "aliases": [
                 "молитва Путника",
                 "молитва странника",
+                "походная песня",
                 "восстановить силы"
             ],
             "extends": "faith.resourceGifts",
             "sources": [
                 "contracts/src/prayer.ts",
                 "apps/backend/src/game/prayer.ts",
-                "apps/backend/src/game/prayerGifts.ts"
+                "apps/backend/src/game/prayerGifts.ts",
+                "apps/backend/src/game/prayerParameters.ts",
+                "apps/backend/src/game/roadPrayerRecovery.ts"
             ],
             "checks": [
                 "apps/backend/tests/prayer-schools.test.ts",

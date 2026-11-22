@@ -10,7 +10,10 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
-import { consumeHealingProvenance } from './abilityState'
+import {
+    consumeHealingProvenance,
+    type RoadPrayerCastState,
+} from './abilityState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
 import { effectiveMaxMana } from './effectiveResources'
@@ -21,6 +24,7 @@ import {
     practiceResourceMissing,
 } from './resourcePractice'
 import { characterResurrectionParameters } from './resurrection'
+import { finishRoadPrayerRecovery } from './roadPrayerRecovery'
 import { recordVitalityRecovery } from './vitalityPractice'
 
 export function applyPrayerGifts(
@@ -31,7 +35,8 @@ export function applyPrayerGifts(
     quality: number,
     abilityId: PrayerActionId = 'pray',
     factors?: Record<ConstellationId, number>,
-    resurrection?: ResurrectionParameters
+    resurrection?: ResurrectionParameters,
+    road?: RoadPrayerCastState
 ) {
     const recipients =
         intent.mode === 'revive'
@@ -68,7 +73,19 @@ export function applyPrayerGifts(
                       : MASTERY_REWARDS.resourceRecovery
         }
     }
-    return { events, meaningful, experience }
+    const recoveryExperience = finishRoadPrayerRecovery(
+        road,
+        actor,
+        intent,
+        context,
+        succeeds,
+        events.some((event) => event.kind === 'heal')
+    )
+    return {
+        events,
+        meaningful: meaningful || recoveryExperience > 0,
+        experience: Math.max(experience, recoveryExperience),
+    }
 }
 
 function meaningfulGiftAttempt(

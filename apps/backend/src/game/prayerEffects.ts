@@ -7,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
+import type { RoadPrayerCastState } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellations'
 import { miracleChance } from './deities'
@@ -26,7 +27,8 @@ export function completePrayer(
     roll: number,
     quality: number,
     receiptId?: string,
-    abilityId: PrayerActionId = 'pray'
+    abilityId: PrayerActionId = 'pray',
+    road?: RoadPrayerCastState
 ): GameEventPayload[] {
     if (intent.mode === 'devotion') {
         return []
@@ -43,17 +45,20 @@ export function completePrayer(
     const castReceipt =
         receiptId ??
         `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`
+    const answered =
+        roll <
+        (resurrection?.successChance ??
+            miracleChance(actor, context.now, school.deityId))
     const gift = applyPrayerGifts(
         actor,
         intent,
         context,
-        roll <
-            (resurrection?.successChance ??
-                miracleChance(actor, context.now, school.deityId)),
+        answered,
         quality * (abilityId === 'pray' ? modifiers.prayerGiftMultiplier : 1),
         abilityId,
         factors,
-        resurrection
+        resurrection,
+        road
     )
     const wave = applyPrayerWave(
         actor,
@@ -71,7 +76,7 @@ export function completePrayer(
         abilityId
     )
     const events = [...gift.events, ...wave.events, ...graves.events]
-    if (events.length === 0) {
+    if (events.length === 0 && (road === undefined || !answered)) {
         events.push(unansweredPrayer(actor.id, abilityId))
     }
     const experience = gift.experience + wave.experience + graves.experience

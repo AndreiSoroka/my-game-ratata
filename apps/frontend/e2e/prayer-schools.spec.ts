@@ -64,7 +64,7 @@ for (const width of [390, 1280]) {
                 .poll(() =>
                     page.evaluate(
                         (id) =>
-                            window.__ratataTest!.getState().player!.abilities!.known.includes(id),
+                            window.__ratataTest?.getState().player?.abilities?.known.includes(id),
                         abilityId
                     )
                 )
@@ -88,35 +88,73 @@ for (const width of [390, 1280]) {
                 name: new RegExp(`^${index + 1}: ${ABILITY_DEFINITIONS[abilityId].name}`),
             })
             await expect(slot).toBeVisible()
-            await page.keyboard.press(`Digit${index + 1}`)
+            await castLearnedPrayer(page, abilityId, index + 1)
             await expect
                 .poll(() =>
                     page.evaluate(
-                        () => window.__ratataTest!.getState().player!.abilities!.lastPrayerAbilityId
+                        () => window.__ratataTest?.getState().player?.abilities?.lastPrayerAbilityId
                     )
                 )
                 .toBe(abilityId)
             await expect
                 .poll(() =>
-                    page.evaluate(() => window.__ratataTest!.getState().player!.abilities!.casting)
+                    page.evaluate(() => window.__ratataTest?.getState().player?.abilities?.casting)
                 )
                 .toBeNull()
             await expect
                 .poll(() =>
-                    page.evaluate(
-                        (id) =>
-                            window.__ratataTest!.getState().player!.abilities!.cooldowns[id] ?? 0,
-                        abilityId
-                    )
+                    page.evaluate((id) => {
+                        const player = window.__ratataTest?.getState().player
+                        if (player?.abilities) return player.abilities.cooldowns[id] ?? 0
+                    }, abilityId)
                 )
                 .toBe(0)
         }
-        expect(
-            (await page.evaluate(() => window.__ratataTest!.getState().player!)).progression!.deity
-                .id
-        ).toBe('road')
+        await expect
+            .poll(() =>
+                page.evaluate(() => window.__ratataTest?.getState().player?.progression?.deity.id)
+            )
+            .toBe('road')
         await page.screenshot({ path: info.outputPath(`vera-two-prayers-${width}.png`) })
     })
+}
+
+async function castLearnedPrayer(
+    page: Page,
+    abilityId: PrayerAbilityId,
+    slot: number
+): Promise<void> {
+    if (abilityId === 'pray_road') await spendEnergyOnDash(page)
+    await page.keyboard.press(`Digit${slot}`)
+    if (abilityId === 'pray_road') await expectRoadSong(page)
+}
+
+async function spendEnergyOnDash(page: Page): Promise<void> {
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    await page.keyboard.press('Space')
+    await page.waitForFunction(() => {
+        const player = window.__ratataTest?.getState().player
+        const energy = document.querySelector('[role="progressbar"][aria-label="Energy"]')
+        return (
+            player?.movement?.dashing === false &&
+            player.movement.dashCooldownMsLeft > 0 &&
+            Number(energy?.getAttribute('aria-valuenow') ?? 100) < 90
+        )
+    })
+}
+
+async function expectRoadSong(page: Page): Promise<void> {
+    const song = page.getByRole('button', { name: 'Походная песня · восстановление EN ×5' })
+    await expect(song).toBeVisible()
+    await page.waitForFunction(() => {
+        const player = window.__ratataTest?.getState().player
+        const energy = document.querySelector('[role="progressbar"][aria-label="Energy"]')
+        return (
+            player?.abilities?.casting?.abilityId === 'pray_road' &&
+            energy?.getAttribute('aria-valuenow') === '100'
+        )
+    })
+    await expect(song).toHaveCount(0)
 }
 
 async function selectAlly(page: Page, name: string): Promise<void> {

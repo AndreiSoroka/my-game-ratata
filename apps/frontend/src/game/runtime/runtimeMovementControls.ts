@@ -1,20 +1,17 @@
-import type {
-    CharacterMovementSnapshot,
-    ClientMessage,
-    MovementMode,
-} from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, ClientMessage, MovementMode } from '@my-game-ratata/contracts'
 
 import { axisFromKeys } from './input'
 
 export class RuntimeMovementControls {
     private sneaking = false
     private disrupted = false
+    private walkingPrayer = false
 
     public constructor(private readonly send: (command: ClientMessage) => void) {}
 
     public keyDown(event: KeyboardEvent): boolean {
         if (event.code === 'KeyC') {
-            if (!event.repeat) {
+            if (!event.repeat && !this.walkingPrayer) {
                 this.sneaking = !this.sneaking
                 this.updateMode()
             }
@@ -25,15 +22,17 @@ export class RuntimeMovementControls {
         return true
     }
 
-    public observe(movement: CharacterMovementSnapshot | undefined, disrupted = false): boolean {
+    public observe(player: CharacterSnapshot | undefined): boolean {
+        const disrupted = player !== undefined && (!player.alive || player.cooldowns.stunMsLeft > 0)
         const started = disrupted && !this.disrupted
         this.disrupted = disrupted
-        if (movement?.dashing || disrupted) this.sneaking = false
+        this.walkingPrayer = player?.abilities?.casting?.walkWhileCasting === true
+        if (player?.movement?.dashing || disrupted || this.walkingPrayer) this.sneaking = false
         return started
     }
 
     public acceptMode(mode: MovementMode): void {
-        this.sneaking = mode === 'sneaking'
+        this.sneaking = mode === 'sneaking' && !this.walkingPrayer
     }
 
     public release(): void {

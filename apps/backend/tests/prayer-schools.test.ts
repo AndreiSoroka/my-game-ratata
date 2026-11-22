@@ -181,6 +181,7 @@ it.each(['pray_road', 'pray_lantern', 'pray_grave'] as const)(
             manaCost: 5,
             area: false,
             harm: false,
+            ...(abilityId === 'pray_road' ? { energyRecoveryRadius: 48 } : {}),
         })
         const beforeMana = f.actor.mana
         const random = vi.fn(() => 0)
@@ -432,7 +433,7 @@ it.each(['pray_road', 'pray_lantern'] as const)(
         actor.mana = 5
         advanceCharacterControl(actor, world, 1001)
         expect(actor.abilities.casting?.abilityId).toBe(abilityId)
-        expect(actor.mana).toBe(5)
+        expect(actor.mana).toBe(abilityId === 'pray_road' ? 0 : 5)
         advanceCharacterControl(actor, world, 4001)
         expect(snapshotControl(actor).waiting).toBe('action')
         const events = advanceRevive(

@@ -252,11 +252,19 @@ describe('known prayer school cards', () => {
             effectType: 'passive',
             name: 'Возвращение праха',
         })
+        const nextRoadStar = requiredCard(actor, 'prayer_road.walk')
+        expect(nextRoadStar.unlocked).toBe(false)
+        expect(nextRoadStar.effects).toBeUndefined()
+        expect(requiredCard(actor, 'prayer_road.bard')).toMatchObject({
+            unlocked: false,
+            parents: [constellationWireId('prayer_road.root')],
+        })
         expect(
-            fullConstellationCatalog.filter(
-                (node) => node.constellationId === 'prayer_road'
+            snapshot.nodes.some(
+                (node) =>
+                    node.id === constellationWireId('prayer_road.shoulder')
             )
-        ).toHaveLength(1)
+        ).toBe(false)
         expect(
             fullConstellationCatalog.filter(
                 (node) => node.constellationId === 'prayer_lantern'

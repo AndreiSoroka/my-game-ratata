@@ -12,6 +12,7 @@ export type PlayerEffectKind =
     | 'blade-combo'
     | 'sneaking'
     | 'dashing'
+    | 'road-prayer-dash'
     | 'theft-cooldown'
     | 'wanted'
     | 'blacklisted'
@@ -29,7 +30,10 @@ export interface PlayerEffectsSnapshot extends Pick<
 > {
     abilities?: Pick<NonNullable<CharacterSnapshot['abilities']>, 'barrier'>
     cooldowns: Pick<CharacterSnapshot['cooldowns'], 'stunMsLeft'>
-    movement?: Pick<NonNullable<CharacterSnapshot['movement']>, 'mode' | 'dashing'>
+    movement?: Pick<
+        NonNullable<CharacterSnapshot['movement']>,
+        'mode' | 'dashing' | 'roadPrayerDashDiscountMsLeft'
+    >
     theft?: Pick<
         NonNullable<CharacterSnapshot['theft']>,
         'cooldownMsLeft' | 'wantedMsLeft' | 'blacklisted'
@@ -59,10 +63,19 @@ function livingEffects(
     if (combat?.defensiveStance) effects.push({ kind: 'defensive-stance' })
 
     appendBladeCombo(effects, combat?.combo, serverTime)
-    if (movement?.mode === 'sneaking') effects.push({ kind: 'sneaking' })
-    if (movement?.dashing) effects.push({ kind: 'dashing' })
+    appendMovementEffects(effects, movement)
     for (const kind of prayerAuraEffects ?? []) effects.push({ kind })
     return effects
+}
+
+function appendMovementEffects(
+    effects: PlayerEffect[],
+    movement: PlayerEffectsSnapshot['movement']
+): void {
+    if (movement === undefined) return
+    if (movement.mode === 'sneaking') effects.push({ kind: 'sneaking' })
+    if (movement.dashing) effects.push({ kind: 'dashing' })
+    appendTimed(effects, 'road-prayer-dash', movement.roadPrayerDashDiscountMsLeft)
 }
 
 function appendBladeCombo(

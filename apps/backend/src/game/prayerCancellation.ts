@@ -1,9 +1,10 @@
 import type { GameEventPayload, Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canWalkDuringPrayer } from './combatMovement'
 import { setPrayerAvailableAt } from './prayerParameters'
 
-/** Interrupt the pending channel before it can spend mana or resurrect its target. */
+/** Interrupt the pending channel before its final effect resolves. */
 export function cancelPrayerCast(
     actor: GameCharacter,
     now: number
@@ -49,6 +50,9 @@ export function cancelPrayerForMovement(
     axis: Vector2,
     now: number
 ): GameEventPayload[] {
+    if (canWalkDuringPrayer(actor)) {
+        return []
+    }
     if (actor.abilities.casting?.mother?.lastLight === true && actor.alive) {
         actor.clearPath()
         actor.setMoveInput({ x: 0, y: 0 })

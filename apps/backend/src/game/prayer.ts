@@ -213,7 +213,10 @@ function finishOtherPrayer(
     cast: ActivePrayerCast,
     context: AbilityContext
 ): GameEventPayload[] {
-    const cost = prayerManaCost(cast.intent.mode, cast.abilityId)
+    const cost =
+        cast.road === undefined
+            ? prayerManaCost(cast.intent.mode, cast.abilityId)
+            : 0
     if (actor.mana < cost) {
         return cancelPrayerCast(actor, context.now)
     }
@@ -239,7 +242,8 @@ function finishOtherPrayer(
             roll,
             outcome.quality,
             cast.receiptId,
-            cast.abilityId
+            cast.abilityId,
+            cast.road
         ),
     ]
 }

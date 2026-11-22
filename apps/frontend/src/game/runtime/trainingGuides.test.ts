@@ -51,6 +51,33 @@ it('uses learned server prayer radius without a target, mana, harm or ready cool
     expect(trainingPrayerHighlight({ ...player, alive: false })).toBeUndefined()
     expect(trainingPrayerHighlight(characterFixture('warrior'))).toBeUndefined()
 })
+it('exposes the song radius independently of the selected gift range', () => {
+    const radius = 48
+    const energyRecoveryRadius = radius * Math.SQRT2
+    const player = characterFixture('bard', {
+        abilities: {
+            known: ['pray_road'],
+            cooldowns: {},
+            barrier: null,
+            casting: null,
+            prayers: {
+                pray_road: {
+                    radius,
+                    energyRecoveryRadius,
+                    durationMs: 3000,
+                    manaCost: 5,
+                    area: false,
+                    harm: false,
+                },
+            },
+        },
+    })
+    expect(trainingPrayerHighlight(player)).toMatchObject({
+        abilityId: 'pray_road',
+        radius,
+        energyRecoveryRadius,
+    })
+})
 it('requires a living connected observer inside the authored rectangle', () => {
     const player = characterFixture('hero', { position: { x: 101, y: 101 } })
     expect(observerTrainingArea([area], player)).toBe(area)

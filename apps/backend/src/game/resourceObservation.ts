@@ -36,7 +36,8 @@ export function observeResource(
 }
 
 export function resourceChecks(
-    character: GameCharacter
+    character: GameCharacter,
+    now = Date.now()
 ): CharacterResourceChecks {
     const check = (mana: number, energy = 0): ResourceCheck =>
         character.mana < mana
@@ -91,7 +92,7 @@ export function resourceChecks(
                 },
             ])
         ) as CharacterResourceChecks['prayers'],
-        dash: check(0, effectiveDashCost(character)),
+        dash: check(0, effectiveDashCost(character, now)),
         sow: check(0, FARM_SOW_ENERGY),
         steal: check(0, effectiveTheftCost(character)),
     }

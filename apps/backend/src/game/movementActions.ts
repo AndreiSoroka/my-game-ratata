@@ -8,8 +8,10 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canWalkDuringPrayer } from './combatMovement'
 import { effectiveDashCost } from './effectiveParameters'
 import { normalize } from './math'
+import { cancelPrayerCast } from './prayerCancellation'
 import {
     recordResourceSpend,
     type ResourceSpendReceipt,
@@ -26,6 +28,7 @@ export interface CharacterMovementState {
     lastStepAt: number
     stepLocationId: string
     dashResourceSpend?: ResourceSpendReceipt
+    roadPrayerDashUntil?: number
 }
 
 export function createMovementState(): CharacterMovementState {
@@ -49,10 +52,15 @@ export function handleMovementCommand(
     if (!movementActionAllowed(character, message, now)) {
         return []
     }
+    const events =
+        canWalkDuringPrayer(character) &&
+        (message.type === 'dash' || message.mode === 'sneaking')
+            ? cancelPrayerCast(character, now)
+            : []
     if (message.type === 'movement_mode') {
         character.movement.mode = message.mode
         character.movement.dashUntil = 0
-        return []
+        return events
     }
     const state = character.movement
     state.dashDirection = dashDirection(character)
@@ -60,7 +68,8 @@ export function handleMovementCommand(
     state.dashUntil = now + MOVEMENT_RULES.dashDurationMs
     state.dashAvailableAt = now + MOVEMENT_RULES.dashCooldownMs
     state.mode = 'walking'
-    const spent = character.drainEnergy(effectiveDashCost(character))
+    const spent = character.drainEnergy(effectiveDashCost(character, now))
+    delete state.roadPrayerDashUntil
     const receipt = recordResourceSpend(character, 'energy', spent)
     if (receipt !== undefined) {
         state.dashResourceSpend = receipt
@@ -68,7 +77,7 @@ export function handleMovementCommand(
         delete state.dashResourceSpend
     }
     character.clearPath()
-    return [{ kind: 'dash', actorId: character.id }]
+    return [...events, { kind: 'dash', actorId: character.id }]
 }
 
 export function snapshotMovement(
@@ -114,9 +123,11 @@ export function movementActionAllowed(
         return character.alive && !character.tags.has('offline')
     }
     return (
-        canPerformSkillAction(character, now) &&
+        canPerformSkillAction(character, now, {
+            interruptWalkingPrayer: true,
+        }) &&
         now >= character.movement.dashAvailableAt &&
-        character.energy >= effectiveDashCost(character)
+        character.energy >= effectiveDashCost(character, now)
     )
 }
 

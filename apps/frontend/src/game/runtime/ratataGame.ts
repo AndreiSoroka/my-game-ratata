@@ -16,7 +16,7 @@ import { movementKeys } from './input'
 import type { TargetHighlight } from './interactionTargetViews'
 import { PlantingPreview } from './plantingPreview'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
-import { characterDisrupted, projectCharacter, projectPosition } from './runtimeCharacterTargets'
+import { projectCharacter, projectPosition } from './runtimeCharacterTargets'
 import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
 import { runtimeEventFeedback } from './runtimeEventFeedback'
@@ -241,8 +241,7 @@ export class RatataGame {
         this.snapshot = snapshot
         const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
         if (!player?.alive) this.chat.cancel()
-        if (this.movementControls.observe(player?.movement, characterDisrupted(player)))
-            this.releaseInputs()
+        if (this.movementControls.observe(player)) this.releaseInputs()
         this.maps.observe(runtimeMapRequest(snapshot, this.initialMap))
         if (this.isMapReady) this.view?.sceneActors?.update(snapshot, this.localPlayerId)
         this.options.onSnapshot(snapshot, this.localPlayerId)

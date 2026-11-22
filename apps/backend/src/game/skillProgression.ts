@@ -20,6 +20,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canWalkDuringPrayer } from './combatMovement'
 import {
     createConstellationState,
     finishConstellationAction,
@@ -265,7 +266,8 @@ export function hasEquippedSword(actor: GameCharacter): boolean {
 }
 export function canPerformSkillAction(
     actor: GameCharacter,
-    now: number
+    now: number,
+    options?: { interruptWalkingPrayer: boolean }
 ): boolean {
     return (
         actor.trainingTarget === undefined &&
@@ -275,7 +277,8 @@ export function canPerformSkillAction(
         actor.stunUntil <= now &&
         actor.combat.readyAt <= now &&
         !actor.combat.defensiveStance &&
-        actor.abilities.casting === null &&
-        !actor.isActionLocked(now)
+        ((actor.abilities.casting === null && !actor.isActionLocked(now)) ||
+            (options?.interruptWalkingPrayer === true &&
+                canWalkDuringPrayer(actor)))
     )
 }

@@ -41,4 +41,13 @@ export const LawStatuses: Story = {
     },
 }
 
+export const RoadPrayer: Story = {
+    args: {
+        effects: [
+            { kind: 'road-prayer-recovery' },
+            { kind: 'road-prayer-dash', remainingMs: 8000 },
+        ],
+    },
+}
+
 export const Empty: Story = { args: { effects: [] } }

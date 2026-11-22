@@ -182,7 +182,8 @@ function validGiftPrayer(
         target.alive &&
         !canTargetByFaction(actor, target, context.now) &&
         prayerTargetNearby(actor, target, context, abilityId) &&
-        prayerResourceMissing(actor, target, abilityId) >= 1
+        (abilityId === 'pray_road' ||
+            prayerResourceMissing(actor, target, abilityId) >= 1)
     )
 }
 

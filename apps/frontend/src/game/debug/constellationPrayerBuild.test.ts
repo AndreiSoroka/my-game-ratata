@@ -121,3 +121,23 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         }
     })
 })
+
+it('includes the chant at the root and lists only learned Road Prayer enhancements', () => {
+    const root = 'prayer_road.root'
+    const active = new Set([root])
+    const initial = calculate(active, root)
+    expect(metric(initial, 'Восстановление энергии во время песни')).toBe('×5')
+    expect(initial.build!.effects.join(' ')).not.toMatch(/шагом|рывок/i)
+    active.add('prayer_road.walk')
+    const walking = calculate(active, root)
+    expect(walking.build!.effects.join(' ')).toMatch(/шагом/)
+    expect(walking.build!.effects.join(' ')).not.toMatch(/рывок стоит|энергии меньше/)
+    active.add('prayer_road.shoulder')
+    const shoulder = calculate(active, 'prayer_road.shoulder').build!
+    expect(shoulder.effects.join(' ')).toMatch(/10.*8|8.*10/)
+    expect(calculate(active, root).build!.effects).toEqual(expect.arrayContaining(shoulder.effects))
+    active.add('prayer_road.bard')
+    const bard = calculate(active, root)
+    expect(metric(bard, 'Радиус')).toBe('3 клетки')
+    expect(metric(bard, 'Радиус песни')).toBe('4,24 клетки')
+})

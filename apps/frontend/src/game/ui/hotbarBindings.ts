@@ -5,6 +5,7 @@ import {
     gravePurifyCastMs,
     isPrayerAction,
     type PrayerPreview,
+    ROAD_PRAYER_RULES,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -49,6 +50,9 @@ export function prayerDescription(
     return [
         `${gift} · ${cost}`,
         preview.durationMs ? `${preview.durationMs / 1000} с` : '',
+        preview.abilityId === 'pray_road'
+            ? `Походная песня ×${ROAD_PRAYER_RULES.energyRegenMultiplier} EN рядом`
+            : '',
         collateralDescription(preview),
     ]
         .filter(Boolean)

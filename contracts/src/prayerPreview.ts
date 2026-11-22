@@ -152,6 +152,9 @@ export function snapshotPrayerParameters(
             manaCost: ABILITY_DEFINITIONS[abilityId].mana,
             area: false,
             harm: false,
+            ...(abilityId === 'pray_road'
+                ? { energyRecoveryRadius: ABILITY_DEFINITIONS.pray_road.range }
+                : {}),
         }
     )
 }

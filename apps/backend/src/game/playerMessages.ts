@@ -8,6 +8,7 @@ import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import { enqueueCharacterRoute } from './characterRoute'
 import { isChestCommand } from './chestCommands'
+import { canWalkDuringPrayer } from './combatMovement'
 import type { NavigationService } from './navigation'
 import { cancelPrayerCast, cancelPrayerForMovement } from './prayerCancellation'
 import { faceNearestTarget } from './queries'
@@ -111,7 +112,7 @@ function applyRouteMessage(
             cancelCharacterControl(player)
         }
     )
-    if (result.accepted) {
+    if (result.accepted && !canWalkDuringPrayer(player)) {
         events.push(...cancelPrayerCast(player, now))
     }
     events.push(...routeCommandFeedback(player, result))

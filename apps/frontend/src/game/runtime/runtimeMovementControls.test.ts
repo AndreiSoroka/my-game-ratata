@@ -1,6 +1,7 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
+import { characterFixture } from '../testing/characterFixture'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import { handleRuntimeShortcut } from './runtimeShortcuts'
 
@@ -26,7 +27,38 @@ describe('shared movement commands', () => {
         const send = vi.fn<(command: ClientMessage) => void>()
         const controls = new RuntimeMovementControls(send)
         controls.keyDown(key('KeyC'))
-        controls.observe({ mode: 'walking', dashing: false, dashCooldownMsLeft: 0 }, true)
+        controls.observe(characterFixture('hero', { alive: false }))
+        controls.keyDown(key('KeyC'))
+        expect(send).toHaveBeenLastCalledWith({ type: 'movement_mode', mode: 'sneaking' })
+    })
+    it('resets sneak on a walking prayer without requiring held movement to be released', () => {
+        const send = vi.fn<(command: ClientMessage) => void>()
+        const controls = new RuntimeMovementControls(send)
+        const walking = characterFixture('hero', {
+            movement: { mode: 'walking', dashing: false, dashCooldownMsLeft: 0 },
+        })
+        const praying = characterFixture('hero', {
+            ...walking,
+            abilities: {
+                known: [],
+                cooldowns: {},
+                barrier: null,
+                casting: {
+                    abilityId: 'pray_road',
+                    targetId: walking.id,
+                    startedAt: 5,
+                    completesAt: 3005,
+                    walkWhileCasting: true,
+                },
+            },
+        })
+        controls.keyDown(key('KeyC'))
+        expect(controls.observe(praying)).toBe(false)
+        controls.keyDown(key('KeyC'))
+        expect(send).toHaveBeenCalledTimes(1)
+        controls.release()
+        expect(send).toHaveBeenLastCalledWith({ type: 'movement_mode', mode: 'walking' })
+        controls.observe(walking)
         controls.keyDown(key('KeyC'))
         expect(send).toHaveBeenLastCalledWith({ type: 'movement_mode', mode: 'sneaking' })
     })
@@ -47,7 +79,11 @@ describe('shared movement commands', () => {
         controls.keyDown(key('Space'))
         controls.keyDown(key('Space', true))
         expect(send.mock.calls.filter(([message]) => message.type === 'dash')).toHaveLength(1)
-        controls.observe({ mode: 'walking', dashing: true, dashCooldownMsLeft: 2500 })
+        controls.observe(
+            characterFixture('hero', {
+                movement: { mode: 'walking', dashing: true, dashCooldownMsLeft: 2500 },
+            })
+        )
         controls.release()
         expect(send).toHaveBeenLastCalledWith({ type: 'movement_mode', mode: 'walking' })
         const noOp = () => undefined

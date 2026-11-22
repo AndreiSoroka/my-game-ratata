@@ -6,6 +6,7 @@ export type MovementClientMessage =
 export interface CharacterMovementSnapshot {
     mode: MovementMode
     dashCooldownMsLeft: number
+    roadPrayerDashDiscountMsLeft?: number
     dashing: boolean
 }
 

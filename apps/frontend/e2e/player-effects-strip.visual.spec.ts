@@ -28,6 +28,26 @@ test('PlayerEffectsStrip Default shows a single selectable row', async ({ page }
     await expect(details).toHaveCount(0)
 })
 
+test('PlayerEffectsStrip shows the Road Prayer song and next dash discount at 320px', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto(uiStoryUrl(`${entity}--road-prayer`))
+    const strip = page.locator(stripSelector)
+    const song = strip.getByRole('button', { name: 'Походная песня · восстановление EN ×5' })
+    const dash = strip.getByRole('button', {
+        name: 'Подставить плечо · следующий рывок −10 EN · 8 с',
+    })
+    await expect(song).toBeVisible()
+    await dash.press('Enter')
+    await expect(strip.locator('[data-player-effect-detail]')).toHaveText(
+        'Подставить плечо · следующий рывок −10 EN · 8 с'
+    )
+    await readyUiStory(page)
+    await expectUiFits(strip, 320)
+    await expect(strip).toHaveScreenshot('player-effects-strip-road-prayer.png')
+})
+
 test('PlayerEffectsStripWidget renders all projected statuses at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 })
     await page.goto(uiStoryUrl(`${widget}--all-statuses`))

@@ -14,6 +14,10 @@ import { preferredPrayer } from '../ui/prayerSelection'
 import { drawAttackGeometry } from './attackGeometryDrawing'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 
+interface TrainingPrayerHighlight extends PrayerPreviewHighlight {
+    energyRecoveryRadius?: number
+}
+
 export function insideTrainingArea(area: TrainingAreaDefinition, position: Vector2): boolean {
     const b = area.bounds
     return (
@@ -45,7 +49,7 @@ export class TrainingGuides {
     private geometries: AttackGeometry[] = []
     private shot: ProjectilePath | undefined
     private prayer: PrayerPreviewHighlight | undefined
-    private learnedPrayer: PrayerPreviewHighlight | undefined
+    private learnedPrayer: TrainingPrayerHighlight | undefined
 
     public constructor(private readonly engine: Engine) {
         this.actor.graphics.isVisible = false
@@ -76,11 +80,16 @@ export class TrainingGuides {
         }
         this.area = area
         this.learnedPrayer = trainingPrayerHighlight(observer)
-        if (this.engine.canvas) this.engine.canvas.dataset.trainingGuides = area.id
         if (this.engine.canvas) {
+            this.engine.canvas.dataset.trainingGuides = area.id
             if (this.learnedPrayer)
                 this.engine.canvas.dataset.trainingPrayerRadius = String(this.learnedPrayer.radius)
             else delete this.engine.canvas.dataset.trainingPrayerRadius
+            if (this.learnedPrayer?.energyRecoveryRadius !== undefined)
+                this.engine.canvas.dataset.trainingEnergyRecoveryRadius = String(
+                    this.learnedPrayer.energyRecoveryRadius
+                )
+            else delete this.engine.canvas.dataset.trainingEnergyRecoveryRadius
         }
         const seen = characters.filter(
             (c) => c.alive && insideTrainingArea(area, c.position) && visible(c.id)
@@ -103,8 +112,11 @@ export class TrainingGuides {
         this.prayer = undefined
         this.learnedPrayer = undefined
         this.actor.graphics.isVisible = false
-        if (this.engine.canvas) delete this.engine.canvas.dataset.trainingGuides
-        if (this.engine.canvas) delete this.engine.canvas.dataset.trainingPrayerRadius
+        if (this.engine.canvas) {
+            delete this.engine.canvas.dataset.trainingGuides
+            delete this.engine.canvas.dataset.trainingPrayerRadius
+            delete this.engine.canvas.dataset.trainingEnergyRecoveryRadius
+        }
     }
     public dispose(): void {
         this.clear()
@@ -158,7 +170,23 @@ export class TrainingGuides {
         ctx.stroke()
         ctx.restore()
     }
-    private drawPrayer(ctx: CanvasRenderingContext2D, preview: PrayerPreviewHighlight): void {
+    private drawPrayer(ctx: CanvasRenderingContext2D, preview: TrainingPrayerHighlight): void {
+        if (
+            preview.energyRecoveryRadius !== undefined &&
+            preview.energyRecoveryRadius !== preview.radius
+        ) {
+            ctx.beginPath()
+            ctx.arc(
+                preview.origin.x,
+                preview.origin.y,
+                preview.energyRecoveryRadius,
+                0,
+                Math.PI * 2
+            )
+            ctx.strokeStyle = '#9fcab0dd'
+            ctx.setLineDash([2, 3])
+            ctx.stroke()
+        }
         ctx.beginPath()
         ctx.arc(preview.origin.x, preview.origin.y, preview.radius, 0, Math.PI * 2)
         ctx.fillStyle = '#ffc36b15'
@@ -187,15 +215,16 @@ export class TrainingGuides {
 
 export function trainingPrayerHighlight(
     observer: CharacterSnapshot | undefined
-): PrayerPreviewHighlight | undefined {
+): TrainingPrayerHighlight | undefined {
     if (!observer?.alive) return undefined
     const abilityId = preferredPrayer(observer)
-    return abilityId
-        ? {
-              abilityId,
-              origin: { ...observer.position },
-              radius: snapshotPrayerParameters(observer, abilityId).radius,
-              warnings: [],
-          }
-        : undefined
+    if (abilityId === undefined) return undefined
+    const { radius, energyRecoveryRadius } = snapshotPrayerParameters(observer, abilityId)
+    return {
+        abilityId,
+        origin: { ...observer.position },
+        radius,
+        ...(energyRecoveryRadius === undefined ? {} : { energyRecoveryRadius }),
+        warnings: [],
+    }
 }

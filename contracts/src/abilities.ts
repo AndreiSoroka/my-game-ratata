@@ -111,6 +111,7 @@ export interface CharacterAbilitiesSnapshot {
         startedAt: number
         completesAt: number
         uninterruptible?: boolean
+        walkWhileCasting?: boolean
     } | null
 }
 export type AbilityClientMessage =
@@ -133,6 +134,7 @@ export interface PrayerParametersSnapshot {
     wardRank?: number
     hasAuras?: boolean
     aurasSuppressed?: boolean
+    energyRecoveryRadius?: number
     cost?: PrayerCostSnapshot
 }
 export interface AbilityDefinition {

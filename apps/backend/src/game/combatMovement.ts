@@ -2,6 +2,15 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 
+export function canWalkDuringPrayer(actor: GameCharacter): boolean {
+    const cast = actor.abilities.casting
+    return (
+        cast?.mode === 'prayer' &&
+        cast.walkWhileCasting === true &&
+        actor.actionLockUntil <= cast.completesAt
+    )
+}
+
 export function movementInputLocked(actor: GameCharacter): boolean {
     return (
         actor.alive &&
@@ -40,7 +49,9 @@ export function combatMovementTime(
     now: number,
     deltaMs: number
 ): number {
-    const movementAt = actor.combat.action?.movementAt ?? actor.actionLockUntil
+    const movementAt =
+        actor.combat.action?.movementAt ??
+        (canWalkDuringPrayer(actor) ? 0 : actor.actionLockUntil)
     const start = Math.max(now - deltaMs, movementAt)
     if (start >= now) {
         return 0

@@ -10,7 +10,7 @@ it('describes all prayer nodes with independent readable complete mathematical l
     const prayers = fullConstellationCatalog.filter((node) =>
         node.constellationId.startsWith('prayer')
     )
-    expect(prayers).toHaveLength(46)
+    expect(prayers).toHaveLength(49)
     for (const node of prayers) {
         const result = description(node.id)
         expect(result.summary.length).toBeGreaterThan(0)
@@ -29,6 +29,22 @@ it('describes all prayer nodes with independent readable complete mathematical l
         expect(result.notes.join(' ')).not.toMatch(/Чудесах 1|уровни Веры|miracles|faith\)/)
     }
     expect(JSON.stringify(fullConstellationCatalog)).toBe(before)
+})
+it('reports the song multiplier separately from the final Road Prayer roll', () => {
+    const root = description('prayer_road.root')
+    expect(root.formulaDetails).toContainEqual({
+        label: 'Множитель восстановления во время песни',
+        expression: '5',
+        variables: [],
+    })
+    expect(description('prayer_road.walk').deterministic).toBe(true)
+    expect(description('prayer_road.bard')).toMatchObject({
+        deterministic: true,
+        formulas: ['R × √2'],
+    })
+    const shoulder = description('prayer_road.shoulder')
+    expect(shoulder.formulas).toContain('B')
+    expect(shoulder.notes.join(' ')).toContain('тот же бросок')
 })
 it.each([
     ['prayer', 'Угольная Мать'],

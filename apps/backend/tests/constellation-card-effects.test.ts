@@ -83,9 +83,9 @@ describe('earned effects of active constellation cards', () => {
         )
     })
     it('isolates the four prayer schools and the undead resurrection mode', () => {
-        for (const id of ['prayer_road.root', 'prayer_lantern.root']) {
-            expect(resolveConstellationCardEffects(id, all)).toBeUndefined()
-        }
+        expect(
+            resolveConstellationCardEffects('prayer_lantern.root', all)
+        ).toBeUndefined()
         expect(
             resolveConstellationCardEffects('prayer_grave.root', all)
         ).toEqual([
@@ -136,6 +136,21 @@ describe('earned effects of active constellation cards', () => {
             ).not.toThrow()
         }
     })
+})
+
+it('includes the marching song and only learned Road Prayer improvements', () => {
+    const baseRoadEffects = requiredEffects(
+        'prayer_road.root',
+        new Set(['prayer_road.root'])
+    )
+    expect(baseRoadEffects[0]).toContain('Походная песня')
+    expect(baseRoadEffects).toHaveLength(2)
+    expect(requiredEffects('prayer_road.root')).toEqual([
+        ...baseRoadEffects,
+        ...requiredEffects('prayer_road.walk'),
+        ...requiredEffects('prayer_road.shoulder'),
+        ...requiredEffects('prayer_road.bard'),
+    ])
 })
 
 describe('passive card data and catalogue isolation', () => {

@@ -1,4 +1,4 @@
-import type { CharacterSnapshot, Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
+import type { Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
 import { Color, DisplayMode, Engine, PointerScope, vec } from 'excalibur'
 
 import { characterOverhead } from './characterPresentationGeometry'
@@ -81,10 +81,6 @@ export function createGameCanvas(container: HTMLElement): HTMLCanvasElement {
     canvas.tabIndex = 0
     container.append(canvas)
     return canvas
-}
-
-export function characterDisrupted(player: CharacterSnapshot | undefined): boolean {
-    return player !== undefined && (!player.alive || player.cooldowns.stunMsLeft > 0)
 }
 
 export function createGameEngine(canvas: HTMLCanvasElement): Engine {

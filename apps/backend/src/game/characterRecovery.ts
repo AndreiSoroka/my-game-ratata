@@ -116,11 +116,7 @@ export function regenerateCharacter(
     character.energy = regen(
         character.energy,
         resources.maxEnergy,
-        energyAllowed && !character.combat.defensiveStance
-            ? moving
-                ? resources.energyRegenMove
-                : resources.energyRegenIdle
-            : 0,
+        characterEnergyRegenRate(character, moving, energyAllowed),
         deltaMs
     )
     character.mana = regen(
@@ -157,4 +153,16 @@ export function regenerateCharacter(
     )
     recordMartyrRecovery(character)
     return events
+}
+
+export function characterEnergyRegenRate(
+    character: GameCharacter,
+    moving: boolean,
+    energyAllowed: boolean
+): number {
+    const resources = character.config.resources
+    if (!energyAllowed || character.combat.defensiveStance) {
+        return 0
+    }
+    return moving ? resources.energyRegenMove : resources.energyRegenIdle
 }

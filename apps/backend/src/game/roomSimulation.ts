@@ -11,6 +11,7 @@ import {
     rememberObservedCrossing,
 } from './characterControl'
 import { resolvePendingAttackHit } from './combat'
+import { canWalkDuringPrayer } from './combatMovement'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { recordMovementNoise } from './hearing'
@@ -18,6 +19,7 @@ import { advanceCharacter } from './movement'
 import type { PartyService } from './parties'
 import { validatePrayerChannel } from './prayer'
 import { rememberPursuitExit } from './pursuitTravel'
+import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
@@ -73,8 +75,13 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             room.findVisibleTarget(actor, 240, now) !== undefined
     )
     advanceControllers(context, reacting, conversations)
+    const roadRecovery = trackRoadPrayerRecovery(characters.values())
     for (const character of characters.values()) {
-        advanceWorldCharacter(character, context)
+        advanceWorldCharacter(
+            character,
+            context,
+            roadRecovery?.observe(character)
+        )
     }
     for (const character of characters.values()) {
         context.onEvents(
@@ -85,6 +92,11 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             )
         )
     }
+    roadRecovery?.apply(
+        (locationId) => context.world.get(locationId).navigation,
+        now,
+        context.deltaMs
+    )
     for (const character of characters.values()) {
         resolveWorldAttack(character, context)
     }
@@ -150,7 +162,8 @@ function advanceControllers(
 
 function advanceWorldCharacter(
     character: GameCharacter,
-    context: SimulationContext
+    context: SimulationContext,
+    onEnergyRegen?: (rate: number) => void
 ): void {
     const { now, deltaMs, world, onEvents } = context
     const intent = movementIntent(character, now, deltaMs)
@@ -162,6 +175,7 @@ function advanceWorldCharacter(
         now,
         navigation,
         onEvents,
+        ...(onEnergyRegen === undefined ? {} : { onEnergyRegen }),
         onNoise: (noise) =>
             recordMovementNoise(
                 context.room,
@@ -184,7 +198,7 @@ function advanceWorldCharacter(
     if (
         !character.alive ||
         character.tags.has('offline') ||
-        character.isActionLocked(now) ||
+        (character.isActionLocked(now) && !canWalkDuringPrayer(character)) ||
         character.stunUntil > now
     ) {
         return

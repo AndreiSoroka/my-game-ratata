@@ -5,6 +5,7 @@ import {
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerActionId,
     prayerSchoolId,
+    ROAD_PRAYER_RULES,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
@@ -62,6 +63,7 @@ export function calculatePrayerBuild(
             value: String(bonuses.targetLimit),
         })
     if (mother) appendMotherEffects(effects, metrics, activeIds, bonuses, context)
+    if (context.ability === 'pray_road') appendRoadEffects(effects, metrics, activeIds, context)
     const reviveId = revivalNode(context.ability)
     if (reviveId !== undefined && activeIds.has(reviveId)) {
         const revival = revivalBuild(activeIds, context)
@@ -87,7 +89,7 @@ function commonMetrics(
             value:
                 mother && bonuses.prayerLastLight
                     ? '30% максимальной MP за лечение; 5 MP за другое чудо'
-                    : `${definition.mana} MP за цель`,
+                    : `${definition.mana} MP${context.ability === 'pray_road' ? '' : ' за цель'}`,
         },
     ]
     return metrics
@@ -125,6 +127,32 @@ function restorationMetrics(
 function revivalNode(ability: PrayerActionId): string | undefined {
     if (prayerSchoolId(ability) === 'pray') return 'prayer.revive'
     return ability === 'pray_grave' ? 'prayer_grave.revive' : undefined
+}
+
+function appendRoadEffects(
+    effects: string[],
+    metrics: PrayerBuildResult['metrics'],
+    activeIds: ReadonlySet<string>,
+    context: PrayerBuildContext
+): void {
+    effects.push('Походная песня помогает вам и всем видимым союзникам рядом, пока длится молитва.')
+    const areaMultiplier = activeIds.has('prayer_road.bard')
+        ? ROAD_PRAYER_RULES.bardAreaMultiplier
+        : 1
+    const radius = ABILITY_DEFINITIONS.pray_road.range * Math.sqrt(areaMultiplier)
+    metrics.push({
+        label: 'Восстановление энергии во время песни',
+        value: times(ROAD_PRAYER_RULES.energyRegenMultiplier),
+    })
+    metrics.push({
+        label: 'Радиус песни',
+        value: constellationDistance(radius, 0, context.tileWidth),
+    })
+    for (const id of ['prayer_road.walk', 'prayer_road.shoulder', 'prayer_road.bard']) {
+        if (!activeIds.has(id)) continue
+        const star = fullConstellationCatalog.find((node) => node.id === id)
+        effects.push(...(star?.results ?? []))
+    }
 }
 
 function appendMotherEffects(
@@ -214,7 +242,7 @@ function healingTargets(ability: PrayerActionId, targetLimit: number): string {
         return `Лечение: себя и подходящих союзников в радиусе, не более ${targetLimit} целей.`
     if (ability === 'pray_grave') return 'Лечение нежити: себя или одного подходящего союзника.'
     return ability === 'pray_road'
-        ? 'Восстановление энергии: себе или одному подходящему союзнику.'
+        ? 'Разовый дар энергии получает клирик или один подходящий союзник.'
         : 'Восстановление маны: себе или одному подходящему союзнику.'
 }
 function times(value: number): string {

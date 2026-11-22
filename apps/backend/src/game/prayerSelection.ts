@@ -18,7 +18,11 @@ import {
     motherPrayerCandidates,
     planMotherPrayer,
 } from './motherPrayerPlan'
-import { prayerHarmTargets, validPrayerIntent } from './prayerContext'
+import {
+    prayerHarmTargets,
+    prayerResourceMissing,
+    validPrayerIntent,
+} from './prayerContext'
 import { prayerAvailableAt, prayerParameters } from './prayerParameters'
 import { canPerformSkillAction } from './skillProgression'
 
@@ -59,6 +63,8 @@ export function resolvePrayerIntent(
         const target = ordered.find(
             (candidate) =>
                 candidate.id !== actor.id &&
+                (abilityId !== 'pray_road' ||
+                    prayerResourceMissing(actor, candidate, abilityId) >= 1) &&
                 validPrayerIntent(
                     actor,
                     { mode, targetId: candidate.id },

@@ -22,6 +22,8 @@ export function describePrayerPassive(
 ): Omit<PrayerBuildResult, 'available'> {
     const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)
     if (!node || node.effectType !== 'passive') throw new Error(`Not a prayer passive: ${nodeId}`)
+    if (node.constellationId === 'prayer_road')
+        return { effects: [...(node.results ?? [])], metrics: [] }
     if (nodeId.startsWith('prayer.insight') && node.results?.length)
         return {
             effects: [node.description],

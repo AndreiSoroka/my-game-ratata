@@ -36,8 +36,16 @@ export type PrayerCast = PrayerCastBase &
               origin: Vector2
               locationId: string
               hpAtStart: number
+              walkWhileCasting?: boolean
+              road?: RoadPrayerCastState
           }
     )
+export interface RoadPrayerCastState {
+    recoveryRadius: number
+    usefulRecovery: number
+    restoredTarget: boolean
+    shoulder: boolean
+}
 export interface CharacterAbilityState {
     lastPrayerAbilityId: PrayerActionId | null
     prayerAurasSuppressed: boolean
@@ -165,6 +173,9 @@ function snapshotCast(
                                 : cast.intent.mode,
                         ...(cast.intent.mode === 'purify_grave'
                             ? { target: cast.intent.target }
+                            : {}),
+                        ...(cast.walkWhileCasting === true
+                            ? { walkWhileCasting: true }
                             : {}),
                     }
                   : {}),

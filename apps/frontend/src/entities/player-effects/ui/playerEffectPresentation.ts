@@ -1,3 +1,5 @@
+import { ROAD_PRAYER_RULES } from '@my-game-ratata/contracts'
+
 import type { PlayerEffect, PlayerEffectKind } from '../model/playerEffects'
 
 const presentation: Record<
@@ -46,6 +48,11 @@ const presentation: Record<
         label: 'Рывок',
         path: 'M7 1h1v1h1v1h1v1h1v3h-1v1H9v1H8v1H7V8h1V7H2V5h6V4H7z M1 2h4v1H1z M1 9h4v1H1z',
     },
+    'road-prayer-dash': {
+        label: `Подставить плечо · следующий рывок −${ROAD_PRAYER_RULES.dashDiscount} EN`,
+        path: 'M6 1h2v2H6z M4 4h4v1h2v1H7v1h2v4H8V8H6V7H5v2H4v1H1V9h2V7h1V5H2v1H1V5h1V4z',
+        tone: 'positive',
+    },
     weakened: {
         label: 'Ослабление',
         path: 'M8 1h3v3h-1v1H9v1H8V5H7V4h1z M6 5h1v2H6v1H5v1H4v1H3v1H1V9h1V8h1V7h1v1h1V7h1z',
@@ -75,6 +82,11 @@ const presentation: Record<
         label: 'Уязвимость',
         path: 'M1 2h5v2H5v2h1v1H5v3H4V9H2V7H1z M7 2h4v5h-1v2H8v1H6V8h1V7H6V5h1z',
         tone: 'warning',
+    },
+    'road-prayer-recovery': {
+        label: `Походная песня · восстановление EN ×${ROAD_PRAYER_RULES.energyRegenMultiplier}`,
+        path: 'M5 1h6v2H7v6H6v1H3V9H2V7h1V6h2z M9 5h2v1H9z M9 8h2v1H9z',
+        tone: 'positive',
     },
 }
 

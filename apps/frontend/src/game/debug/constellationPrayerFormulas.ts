@@ -1,4 +1,4 @@
-import { type PrayerAbilityId } from '@my-game-ratata/contracts'
+import { type PrayerAbilityId, ROAD_PRAYER_RULES } from '@my-game-ratata/contracts'
 
 import { chanceFormula } from './constellationChanceFormula'
 import { prayerSchoolInfo } from './constellationPrayerScenario'
@@ -40,6 +40,17 @@ export function prayerRestorationFormula(ability: PrayerAbilityId) {
                     : '1: модификаторы созвездия «Молитва» на эту школу не действуют.',
         }
     )
+}
+export function prayerSongRecoveryFormula() {
+    return chanceFormula(
+        'Множитель восстановления во время песни',
+        String(ROAD_PRAYER_RULES.energyRegenMultiplier)
+    )
+}
+export function prayerSongRadiusFormula() {
+    return chanceFormula('Радиус песни', `R × √${ROAD_PRAYER_RULES.bardAreaMultiplier}`, {
+        R: 'Радиус песни до изучения навыка.',
+    })
 }
 export function prayerHealingMultiplierFormula() {
     return chanceFormula('Множитель лечения', '1 + 1,30 × A + 2,50 × D + 10 × E + 0,15 × F', {
