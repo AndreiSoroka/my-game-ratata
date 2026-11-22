@@ -1,8 +1,8 @@
 import { computed, nextTick, ref, watch } from 'vue'
 
-import type { RatataGame } from '../runtime/ratataGame'
+import type { CharacterTab } from '@/entities/character-window'
 
-export type CharacterTab = 'stats' | 'development' | 'quests' | 'crafting'
+import type { RatataGame } from '../runtime/ratataGame'
 
 export function useCharacterWindow(options: {
     available: () => boolean

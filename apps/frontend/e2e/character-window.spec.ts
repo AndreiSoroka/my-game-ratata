@@ -1,5 +1,9 @@
 import { expect, type Page, test } from '@playwright/test'
 
+import { expectCharacterWindowAppearance, heroThemeCases } from './hero-theme-visual'
+
+const cleric = heroThemeCases[3]
+
 for (const viewport of [
     { width: 320, height: 480 },
     { width: 390, height: 844 },
@@ -25,8 +29,8 @@ for (const viewport of [
         await expect(menu).toBeVisible()
         await expect(menu.getByRole('tab', { name: 'Характеристики' })).toBeFocused()
         await expect(menu).toContainText('≈')
+        await expectCharacterWindowAppearance(menu, cleric)
         const bonuses = menu.getByRole('region', { name: 'Постоянные бонусы прошлого' })
-        await expect(bonuses).toContainText('Прошлое: Клирик')
         await expect(bonuses).toContainText('+20% опыта всех молитвенных школ')
         const before = await page.evaluate(() => window.__ratataTest!.getState().player!.position)
         await page.keyboard.press('KeyD')
@@ -80,6 +84,7 @@ for (const viewport of [
         await menu.getByRole('tab', { name: 'Развитие', exact: true }).click()
         await page.keyboard.press('Escape')
         await expect(menu).toHaveCount(0)
+        await expect(page.locator('canvas[data-game-canvas]')).toBeFocused()
         await page.getByRole('button', { name: 'Игровое меню', exact: true }).click()
         await page.getByRole('button', { name: 'Персонаж · P', exact: true }).click()
         await expect(menu).toBeVisible()

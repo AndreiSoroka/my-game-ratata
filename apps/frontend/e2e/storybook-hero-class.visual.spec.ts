@@ -1,6 +1,10 @@
 import { expect, type Page, test } from '@playwright/test'
 
-import { expectThemedBorder, heroThemeCases } from './hero-theme-visual'
+import {
+    expectCharacterWindowAppearance,
+    expectThemedBorder,
+    heroThemeCases,
+} from './hero-theme-visual'
 
 test('the hero class toolbar themes the game surfaces across stories', async ({ page }) => {
     await page.goto('/?path=/story/shared-common-hudframe--default')
@@ -61,6 +65,25 @@ test('the hero class toolbar previews the selected class on the join form', asyn
     await chooseClass(page, 'По умолчанию')
     await expect(form.getByRole('radio', { name: 'Авангард', exact: true })).toBeChecked()
     await expectThemedBorder(frame, 'border-012', 16)
+})
+
+test('the character window applies the fixture class and follows the hero class toolbar', async ({
+    page,
+}) => {
+    await page.goto('/?path=/story/game-characterwindow--statistics')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const window = preview.getByRole('dialog', { name: 'Персонаж', exact: true })
+    await expect(window).toBeVisible()
+    const cleric = heroThemeCases[3]
+    await expectCharacterWindowAppearance(window, cleric)
+
+    for (const hero of [heroThemeCases[1], heroThemeCases[2], cleric, heroThemeCases[0]]) {
+        await chooseClass(page, hero.label)
+        await expectCharacterWindowAppearance(window, hero)
+    }
+
+    await chooseClass(page, 'По умолчанию')
+    await expectCharacterWindowAppearance(window, cleric)
 })
 
 async function chooseClass(page: Page, label: string): Promise<void> {

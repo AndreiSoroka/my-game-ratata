@@ -12,13 +12,15 @@ import CharacterStats from '../ui/CharacterStats.vue'
 import CharacterWindow from '../ui/CharacterWindow.vue'
 import ConstellationGraph from '../ui/ConstellationGraph.vue'
 import { renderVueStory } from './renderVueStory'
+import { parseStoryHeroClass } from './storyHeroClass'
 
 function windowStory(
     tab: 'stats' | 'development' | 'crafting',
-    heroClass: HeroClass = 'cleric',
-    adventure?: AdventureSnapshot
+    heroClass: HeroClass,
+    { adventure, full = false }: { adventure?: AdventureSnapshot; full?: boolean } = {}
 ): HTMLElement {
     const player = developmentCharacterFixture(heroClass)
+    if (full) player.progression!.constellations = constellationFixture(true, heroClass)
     const host = renderVueStory(CharacterWindow, {
         player,
         characters: [],
@@ -33,23 +35,27 @@ const meta = { title: 'Game/CharacterWindow' } satisfies Meta
 export default meta
 type Story = StoryObj
 
-export const Statistics: Story = {
-    render: () => windowStory('stats'),
+function themedStory(
+    render: (heroClass: HeroClass) => HTMLElement,
+    fixtureClass: HeroClass = 'cleric'
+): Story {
+    return {
+        parameters: { heroClass: fixtureClass },
+        render: (_, { globals }) => render(parseStoryHeroClass(globals.heroClass) ?? fixtureClass),
+    }
 }
-export const Development: Story = {
-    render: () => windowStory('development'),
-}
-export const Crafting: Story = {
-    render: () => {
-        const adventure = adventureFixture()
-        adventure.materials.fiber = 3
-        adventure.recipes = [
-            { id: 'bake_bread', itemId: 'food', label: 'Испечь хлеб', cost: { grain: 3 } },
-            { id: 'boots', itemId: 'boots', label: 'Сплести сапоги', cost: { fiber: 3 } },
-        ]
-        return windowStory('crafting', 'cleric', adventure)
-    },
-}
+
+export const Statistics = themedStory((heroClass) => windowStory('stats', heroClass))
+export const Development = themedStory((heroClass) => windowStory('development', heroClass))
+export const Crafting = themedStory((heroClass) => {
+    const adventure = adventureFixture()
+    adventure.materials.fiber = 3
+    adventure.recipes = [
+        { id: 'bake_bread', itemId: 'food', label: 'Испечь хлеб', cost: { grain: 3 } },
+        { id: 'boots', itemId: 'boots', label: 'Сплести сапоги', cost: { fiber: 3 } },
+    ]
+    return windowStory('crafting', heroClass, { adventure })
+})
 export const ResourceEstimates: Story = {
     render: () => renderVueStory(CharacterStats, { player: developmentCharacterFixture() }),
 }
@@ -76,17 +82,22 @@ export const FullSky: Story = {
         }),
 }
 
-function fullDevelopment(heroClass: HeroClass): HTMLElement {
-    const player = developmentCharacterFixture(heroClass)
-    player.progression!.constellations = constellationFixture(true, heroClass)
-    const host = renderVueStory(CharacterWindow, { player, characters: [], tab: 'development' })
-    host.style.minHeight = '100dvh'
-    return host
-}
-
-export const FullBladeDevelopment: Story = { render: () => fullDevelopment('vanguard') }
-export const FullMotherDevelopment: Story = { render: () => fullDevelopment('cleric') }
-
-export const VanguardDevelopment: Story = { render: () => windowStory('development', 'vanguard') }
-export const ArcanistDevelopment: Story = { render: () => windowStory('development', 'arcanist') }
-export const RangerDevelopment: Story = { render: () => windowStory('development', 'ranger') }
+export const FullBladeDevelopment = themedStory(
+    (heroClass) => windowStory('development', heroClass, { full: true }),
+    'vanguard'
+)
+export const FullMotherDevelopment = themedStory((heroClass) =>
+    windowStory('development', heroClass, { full: true })
+)
+export const VanguardDevelopment = themedStory(
+    (heroClass) => windowStory('development', heroClass),
+    'vanguard'
+)
+export const ArcanistDevelopment = themedStory(
+    (heroClass) => windowStory('development', heroClass),
+    'arcanist'
+)
+export const RangerDevelopment = themedStory(
+    (heroClass) => windowStory('development', heroClass),
+    'ranger'
+)
