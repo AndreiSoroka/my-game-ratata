@@ -47,6 +47,7 @@ export type GameEventKind =
 
 export interface GameEventPayload {
     actionId?: string
+    locationId?: string
     attackOrigin?: import('./combat').AttackOrigin
     delivery?: import('./combat').AttackDelivery
     attackGeometry?: import('./combat').AttackGeometry

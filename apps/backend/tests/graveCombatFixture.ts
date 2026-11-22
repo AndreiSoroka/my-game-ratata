@@ -15,7 +15,11 @@ import {
 } from '../src/game/combat'
 import { grantRetaliation } from '../src/game/crimeRelations'
 import { GraveSpawns } from '../src/game/graveSpawns'
-import { abilityContext, abilityHero } from './abilityTestHelpers'
+import {
+    abilityContext,
+    abilityHero,
+    resolveTestSpells,
+} from './abilityTestHelpers'
 
 export function graveCombatFixture(
     heroClass: HeroClass = 'ranger',
@@ -67,7 +71,10 @@ export function graveCombatFixture(
             { ...attack(now, target), actor: attacker, target, targetId },
             id
         )
-    const hit = (now = 1050) => resolvePendingAttackHit(attack(now))
+    const hit = (now = 1050) => [
+        ...resolvePendingAttackHit(attack(now)),
+        ...resolveTestSpells(actor, context, now),
+    ]
     const ability = (
         id: 'shot' | 'spark' | 'fireball' | 'greater_fireball',
         now = 1000,

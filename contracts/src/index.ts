@@ -11,6 +11,7 @@ export * from './combat'
 import type { AttackZone } from './combat'
 export * from './combatAim'
 export * from './development'
+export * from './discipline'
 export * from './mastery'
 export * from './prayer'
 export * from './prayerPreview'
@@ -27,12 +28,11 @@ import type {
 } from './control'
 import type { CreatureType } from './creatures'
 export * from './control'
-import type { AutomationCommand, AutomationSnapshot } from './scenarios'
+import type { AutomationCommand } from './scenarios'
 export * from './creatures'
 export * from './scenarios'
 import type {
     ChestClientMessage,
-    ChestContainerSnapshot,
     ContainerKind,
     CorpseAppearance,
 } from './chests'
@@ -56,7 +56,7 @@ import type {
 } from './movement'
 export type * from './events'
 export * from './movement'
-import type { PartyClientMessage, PartySnapshot } from './party'
+import type { PartyClientMessage } from './party'
 export type * from './party'
 import type { CompanionClientMessage, SoulSnapshot } from './soul'
 export * from './soul'
@@ -65,11 +65,13 @@ import type {
     ProgressionSnapshot,
 } from './progression'
 export * from './progression'
-import type { WorldLocation } from './world'
 export * from './world'
+export type * from './worldSnapshot'
 import type { CharacterLifeSnapshot, HeroClass } from './life'
 export * from './life'
-import type { AdventureClientMessage, AdventureSnapshot } from './adventure'
+import type { UsePortalCommand } from './magic'
+export * from './magic'
+import type { AdventureClientMessage } from './adventure'
 export type * from './adventure'
 export * from './environmentGeometry'
 import type { WorldObjectBounds } from './environment'
@@ -96,11 +98,7 @@ export * from './training'
 export * from './trees'
 import type { ExchangeClientMessage } from './exchange'
 import type { NpcQuestClientMessage } from './npcQuests'
-import type {
-    CharacterInteractions,
-    SocialSnapshot,
-    WhisperClientMessage,
-} from './social'
+import type { CharacterInteractions, WhisperClientMessage } from './social'
 
 export interface Vector2 {
     x: number
@@ -292,6 +290,7 @@ export type ClientMessage =
     | AutomationCommand
     | CharacterControlCommand
     | AbilityClientMessage
+    | UsePortalCommand
     | ChestClientMessage
     | TheftClientMessage
     | MovementClientMessage
@@ -309,22 +308,6 @@ export type ClientMessage =
     | MoveInputClientMessage
     | MoveToClientMessage
     | PickupItemClientMessage
-
-export interface WorldSnapshot {
-    serverEpoch?: string
-    social?: SocialSnapshot
-    automation?: AutomationSnapshot
-    graves?: Array<import('./graves').WorldGraveSnapshot>
-    chest?: ChestContainerSnapshot | null
-    party?: PartySnapshot
-    location?: WorldLocation
-    adventure?: AdventureSnapshot
-    chests: WorldChestSnapshot[]
-    characters: CharacterSnapshot[]
-    items: WorldItemSnapshot[]
-    serverTime: number
-    tick: number
-}
 
 export * from './bladeTechniques'
 export type * from './server'

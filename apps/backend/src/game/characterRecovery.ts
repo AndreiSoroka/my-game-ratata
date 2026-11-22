@@ -3,12 +3,13 @@ import type {
     ResurrectionResources,
 } from '@my-game-ratata/contracts'
 
-import { clearAbilityEffects } from './abilityState'
+import { activeBarrier, clearAbilityEffects } from './abilityState'
 import type { GameCharacter } from './character'
 import { regen } from './characterState'
 import { refreshCombatState } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
+import { magicManaRegenSuppressed } from './magicState'
 import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
@@ -25,6 +26,12 @@ export function tickCharacterTimedState(
     now: number
 ): void {
     refreshCombatState(character, now)
+    if (
+        character.abilities.barrier !== null &&
+        activeBarrier(character, now) === null
+    ) {
+        character.abilities.barrier = null
+    }
     // Movement/timed-state runs before hit resolution, including ticks later than the deadline.
     if (
         character.pendingAttack === undefined &&
@@ -97,6 +104,7 @@ export function restoreCharacter(
     character.reviveUntil = 0
     character.stunUntil = 0
     character.combat.stunImmuneUntil = 0
+    character.combat.recentDamageUntil = 0
     character.velocity = zeroVector()
     character.setAnimation('idle', now)
 }
@@ -115,7 +123,6 @@ export function regenerateCharacter(
     if (!character.alive) {
         return []
     }
-    const resources = character.config.resources
     const maxMana = effectiveMaxMana(character)
     const beforeMana = character.mana
     const energy = recoverNaturalEnergy(
@@ -130,7 +137,7 @@ export function regenerateCharacter(
     character.mana = regen(
         character.mana,
         maxMana,
-        moving ? resources.manaRegenMove : resources.manaRegenIdle,
+        manaRecoveryRate(character, moving, now),
         deltaMs
     )
     consumeResourceRecovery(
@@ -203,4 +210,31 @@ export function characterEnergyRegenRate(
             ? idleRate +
               (restRate * restBonusTime(restUntil, now, deltaMs)) / deltaMs
             : 0
+}
+
+function manaRecoveryRate(
+    character: GameCharacter,
+    moving: boolean,
+    now: number
+): number {
+    if (
+        activeBarrier(character, now) !== null ||
+        magicManaRegenSuppressed(character, now)
+    ) {
+        return 0
+    }
+    const resources = character.config.resources
+    if (moving) {
+        return resources.manaRegenMove
+    }
+    const resting =
+        character.combat.readyAt <= now &&
+        character.combat.recentDamageUntil <= now &&
+        !character.combat.defensiveStance &&
+        !character.isActionLocked(now) &&
+        character.abilities.casting === null
+    return (
+        resources.manaRegenIdle *
+        (resting ? constellationModifiers(character).manaRestMultiplier : 1)
+    )
 }

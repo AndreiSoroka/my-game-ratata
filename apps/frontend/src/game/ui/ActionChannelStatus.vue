@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import { ABILITY_DEFINITIONS, type CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 
-const props = defineProps<{ player: CharacterSnapshot }>()
-const emit = defineEmits<{ cancelPrayer: []; cancelRoute: [] }>()
+const props = defineProps<{ player: CharacterSnapshot; serverTime?: number }>()
+const emit = defineEmits<{ cancelPrayer: []; cancelMagic: []; cancelRoute: [] }>()
 const stunned = computed(() => props.player.cooldowns.stunMsLeft > 0)
 const casting = computed(() => props.player.abilities?.casting)
+const magicChannel = computed(() => props.player.abilities?.magicChannel)
+const magicSeconds = computed(() => {
+    const channel = magicChannel.value
+    return channel
+        ? Math.max(
+              0,
+              Math.ceil((channel.completesAt - (props.serverTime ?? channel.startedAt)) / 1000)
+          )
+        : 0
+})
 const blockedRoute = computed(() => {
     const control = props.player.control
     return props.player.alive && control?.mode === 'route' && control.route?.waiting === 'blocked'
@@ -21,8 +31,20 @@ const remainingSeconds = computed(() => {
 })
 </script>
 <template>
+    <div
+        v-if="!stunned && magicChannel"
+        class="control-status control-status--magic rpg-panel game-frame-host"
+    >
+        <GameFrame variant="panel" />
+        <span role="status"
+            >{{ ABILITY_DEFINITIONS[magicChannel.abilityId].name }} · {{ magicSeconds }} с</span
+        >
+        <GameButton aria-label="Прервать заклинание" @click="emit('cancelMagic')"
+            >Прервать · Esc</GameButton
+        >
+    </div>
     <GameButton
-        v-if="!stunned && casting && !casting.uninterruptible"
+        v-else-if="!stunned && casting && !casting.uninterruptible"
         class="prayer-cancel"
         icon
         aria-label="Прервать молитву"
@@ -76,7 +98,8 @@ const remainingSeconds = computed(() => {
         min-height: 44px;
     }
 }
-.control-status--route {
+.control-status--route,
+.control-status--magic {
     width: max-content;
     max-width: calc(100% - 32px);
     box-sizing: border-box;

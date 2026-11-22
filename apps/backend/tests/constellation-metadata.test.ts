@@ -83,7 +83,7 @@ describe('earned constellation metadata', () => {
             expect(Object.hasOwn(path, 'description')).toBe(false)
         }
         const json = JSON.stringify(snapshot)
-        expect(json).not.toContain('Огненный шар')
+        expect(json).not.toContain('Огненная стрела')
         expect(json).not.toContain('Молитва праха')
         expect(json).not.toContain('Возвращение праха')
         expect(json).not.toContain('magic.fireball')
@@ -108,7 +108,7 @@ describe('earned constellation metadata', () => {
         ).toMatchObject({
             unlocked: true,
             effectType: 'active',
-            name: 'Огненный шар',
+            name: 'Огненная стрела',
         })
         const next = after.nodes.find((node) => node.id === greaterId)
         expect(next).toMatchObject({ unlocked: false })
@@ -291,6 +291,10 @@ it('marks only standalone hotbar bindings active, never enhancement prerequisite
         ['prayer_road.root', 'pray_road'],
         ['prayer_lantern.root', 'pray_lantern'],
         ['prayer_grave.root', 'pray_grave'],
+        ['magic.chains', 'chains'],
+        ['magic.blink', 'blink'],
+        ['magic.dispel_magic', 'dispel_magic'],
+        ['magic.city_portal', 'city_portal'],
         ['magic.fireball', 'fireball'],
         ['magic.greater_fireball', 'greater_fireball'],
     ])

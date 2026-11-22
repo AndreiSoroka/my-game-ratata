@@ -4,7 +4,9 @@ import {
     type CharacterSnapshot,
     containerBounds,
     graveBounds,
+    isFireSpell,
     ITEM_DEFINITIONS,
+    MAGIC_ABILITY_RULES,
     type Vector2,
     type WorldGraveSnapshot,
     type WorldObjectBounds,
@@ -17,7 +19,7 @@ import { targetInteractionDistance } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
 
 export type WorldSelectionTargetKind =
-    'character' | 'world' | 'resource' | 'farm' | 'chest' | 'item' | 'grave'
+    'character' | 'world' | 'resource' | 'farm' | 'chest' | 'item' | 'grave' | 'portal'
 
 export interface WorldSelectionTarget {
     key: string
@@ -43,7 +45,11 @@ export function worldSelectionRange(player: CharacterSnapshot, tileSize: number)
     return Math.max(
         tileSize * 12,
         ...(player.abilities?.known ?? []).map(
-            (ability) => ABILITY_DEFINITIONS[ability].range + tileSize * 3
+            (ability) =>
+                (isFireSpell(ability)
+                    ? MAGIC_ABILITY_RULES[ability].rangeTiles * tileSize
+                    : ABILITY_DEFINITIONS[ability].range) +
+                tileSize * 3
         )
     )
 }
@@ -61,6 +67,7 @@ export function worldTargetCandidates(
     )
     return [
         ...characterCandidates(characters, player),
+        ...portalTargets(snapshot, onLocation),
         ...graves.map((grave): WorldSelectionTarget => ({
             key: `grave:${grave.id}`,
             id: grave.id,
@@ -120,6 +127,21 @@ export function worldTargetCandidates(
             position: item.position,
         })),
     ]
+}
+
+function portalTargets(
+    snapshot: WorldSnapshot,
+    onLocation: (locationId: string) => boolean
+): WorldSelectionTarget[] {
+    return (snapshot.portals ?? [])
+        .filter((portal) => portal.expiresAt > snapshot.serverTime && onLocation(portal.locationId))
+        .map((portal) => ({
+            key: `portal:${portal.id}`,
+            id: portal.id,
+            kind: 'portal',
+            name: `Портал — ${portal.destinationName}`,
+            position: portal.position,
+        }))
 }
 
 function characterCandidates(

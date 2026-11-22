@@ -125,7 +125,6 @@ describe('serialized WebSocket combat privacy', () => {
         actor.hp = actor.maxHp * 0.375
         actor.energy = actor.config.resources.maxEnergy * 0.375
         actor.abilities.barrier = {
-            remaining: 3.25,
             expiresAt: Date.now() + 5000,
             practiced: false,
         }
@@ -187,7 +186,7 @@ describe('serialized WebSocket combat privacy', () => {
                 energy: { kind: 'exact' },
             })
             expect(revealed).not.toHaveProperty('resourceChecks')
-            expect(revealed?.abilities?.barrier?.remaining).toBe(3.25)
+            expect(revealed?.abilities?.barrier).not.toHaveProperty('remaining')
             expect(
                 receivedEvents(foreign.messages).findLast(
                     (event) => event.kind === 'damage'

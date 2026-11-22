@@ -238,8 +238,8 @@ describe('shared continuous prayer effects', () => {
                 1000
             )
         ).toMatchObject({ amount: 4, critical: false })
+        undead.mana = 5
         undead.abilities.barrier = {
-            remaining: 5,
             expiresAt: 2000,
             practiced: false,
         }

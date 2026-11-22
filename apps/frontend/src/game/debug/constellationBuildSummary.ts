@@ -1,6 +1,14 @@
-import { ABILITY_DEFINITIONS, type AbilityId, isBladeAbility } from '@my-game-ratata/contracts'
+import {
+    ABILITY_DEFINITIONS,
+    type AbilityId,
+    CITY_PORTAL_MANA_FRACTION,
+    isBladeAbility,
+    isFireSpell,
+    MAGIC_ABILITY_RULES,
+} from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
+import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import { describeBladeActionBuild } from './constellationBladeBuild'
 import { constellationDistance } from './constellationDistance'
@@ -56,8 +64,15 @@ function activeResult(
 ): ConstellationBuildSummary {
     if (isBladeAbility(ability)) return describeBladeActionBuild(ability, bonuses)
     if (ability === 'shot') return shot(activeIds, bonuses, options)
-    if (ability === 'fireball' || ability === 'greater_fireball')
+    if (ability !== undefined && isFireSpell(ability))
         return fireball(ability, activeIds, bonuses, options)
+    if (
+        ability === 'chains' ||
+        ability === 'blink' ||
+        ability === 'dispel_magic' ||
+        ability === 'city_portal'
+    )
+        return utilitySpell(ability, activeIds, bonuses)
     throw new Error(`Missing active result: ${ability}`)
 }
 
@@ -107,22 +122,23 @@ function shot(
     }
 }
 function fireball(
-    ability: AbilityId,
+    ability: 'fireball' | 'greater_fireball',
     active: ReadonlySet<string>,
     bonuses: Bonuses,
     options: ConstellationBuildOptions
 ): ConstellationBuildSummary {
     const definition = ABILITY_DEFINITIONS[ability]
-    const name = ability === 'greater_fireball' ? 'Большого огненного шара' : 'Огненного шара'
+    const name = ability === 'greater_fireball' ? 'Большого огненного шара' : 'Огненной стрелы'
+    const baseDamage = definition.damage!
+    const maxDamage = definition.maxDamage ?? baseDamage
+    const damage = (value: number) => Math.round(value * bonuses.fireDamageMultiplier)
     return {
         rows: [
-            row(
-                `Урон ${name}`,
-                `${Math.round(definition.damage! * bonuses.fireDamageMultiplier)} HP`
-            ),
+            row(`Урон ${name}`, `${damage(baseDamage)}–${damage(maxDamage)} HP`),
             row(`Множитель урона ${name}`, multiplier(bonuses.fireDamageMultiplier)),
             row(`Дальность ${name}`, constellationDistance(definition.range, 0, options.tileWidth)),
-            row('Цена заклинания, MP', definition.mana),
+            row('Радиус взрыва, кл.', MAGIC_ABILITY_RULES[ability].radiusTiles),
+            row('Цена заклинания, MP', spellCost(definition.mana, bonuses)),
             row('Подготовка заклинания, мс', definition.windupMs),
             row('Кулдаун заклинания, мс', definition.cooldownMs),
         ],
@@ -135,6 +151,29 @@ function fireball(
                 : []),
         ],
     }
+}
+function utilitySpell(
+    ability: 'chains' | 'blink' | 'dispel_magic' | 'city_portal',
+    active: ReadonlySet<string>,
+    bonuses: Bonuses
+): ConstellationBuildSummary {
+    const definition = ABILITY_DEFINITIONS[ability]
+    return {
+        rows: [
+            ability === 'city_portal'
+                ? row(
+                      'Цена, % максимальной маны',
+                      number(CITY_PORTAL_MANA_FRACTION * bonuses.spellManaMultiplier * 100)
+                  )
+                : row('Цена применения, MP', spellCost(definition.mana, bonuses)),
+            row('Кулдаун заклинания, мс', definition.cooldownMs),
+        ],
+        effects: resolveConstellationCardEffects(`magic.${ability}`, active),
+    }
+}
+
+function spellCost(base: number, bonuses: Bonuses): number {
+    return Math.ceil(base * bonuses.spellManaMultiplier - 1e-10)
 }
 function shotKnowledge(active: ReadonlySet<string>): string {
     if (active.has('arrow.insight2')) return 'точные урон, интервал и крит'

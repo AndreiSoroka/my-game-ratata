@@ -64,7 +64,7 @@ for (const width of [320, 390, 1280]) {
     }) => {
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/?debug=constellations&class=cleric&seed=card-features')
-        await expect(page.getByTestId('constellation-debug')).toBeVisible()
+        await expect(page.getByTestId('constellation-debug')).toBeVisible({ timeout: 15_000 })
         await assertPrayerListUpdates(page)
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
             width
@@ -99,9 +99,11 @@ test('active cards keep school and action improvements isolated', async ({ page 
         bullets(page).filter({ hasText: /следующий Выстрел на 10% сильнее/i })
     ).toHaveCount(1)
     expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(/Искр|лечени|воскреш/i)
-    await inspectCard(page, 'magic.fireball', 'Огненный шар')
+    await inspectCard(page, 'magic.fireball', 'Огненная стрела')
     await expect(
-        bullets(page).filter({ hasText: /Урон огненных шаров увеличен на 10%/ })
+        bullets(page).filter({
+            hasText: /Урон Огненной стрелы и Большого огненного шара увеличен на 10%/,
+        })
     ).toHaveCount(1)
     expect((await bullets(page).allTextContents()).join(' ')).not.toMatch(/Искр|Барьер|воскреш/i)
     await inspectCard(page, 'prayer.gift1', 'Тёплый дар')

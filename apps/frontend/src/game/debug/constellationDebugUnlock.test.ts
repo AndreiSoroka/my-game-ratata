@@ -32,7 +32,7 @@ it('shows real mastery gates and explicit spell learning prerequisites', () => {
     )
     const fire = describeConstellationUnlock('magic.fire_damage').conditions.join(' ')
     expect(fire).toContain('уровень не ниже 3')
-    expect(fire).toContain('Огненный шар')
+    expect(fire).toContain('Огненная стрела')
     expect(describeConstellationUnlock('magic.greater_fireball').conditions.join(' ')).toContain(
         'уровень не ниже 10'
     )

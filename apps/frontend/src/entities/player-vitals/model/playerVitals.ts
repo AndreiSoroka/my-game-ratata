@@ -12,6 +12,7 @@ export interface PlayerVitalsResources {
     manaPercent: number
     energyPercent: number
     hpSegments?: readonly number[]
+    manaSegments?: readonly number[]
     energySegments?: readonly number[]
     hpCurrent?: number | undefined
     hpMax?: number | undefined
@@ -42,6 +43,7 @@ function copyResources(next: PlayerVitalsResources): PlayerVitalsResources {
         manaPercent: next.manaPercent,
         energyPercent: next.energyPercent,
         ...(next.hpSegments && { hpSegments: [...next.hpSegments] }),
+        ...(next.manaSegments && { manaSegments: [...next.manaSegments] }),
         ...(next.energySegments && { energySegments: [...next.energySegments] }),
     }
     for (const kind of playerResourceKinds) {

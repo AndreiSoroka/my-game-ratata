@@ -66,7 +66,6 @@ it('positive nonlethal damage interrupts a revival once without spending complet
 it('a barrier preserves the channel while it absorbs the whole hit', () => {
     const { caster, target, hurt, finish } = rescue()
     caster.abilities.barrier = {
-        remaining: 8,
         expiresAt: 5000,
         practiced: false,
     }
@@ -77,7 +76,7 @@ it('a barrier preserves the channel while it absorbs the whole hit', () => {
     expect(finish()).toContainEqual(
         expect.objectContaining({ kind: 'revive', targetId: target.id })
     )
-    expect(caster.mana).toBe(35)
+    expect(caster.mana).toBe(33)
 })
 
 it('lethal damage emits one interruption and one death and never completes the abandoned rescue', () => {

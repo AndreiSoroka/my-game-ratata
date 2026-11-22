@@ -14,6 +14,7 @@ import {
     NetworkPlayerController,
 } from './controllers'
 import { normalizeNickname } from './identity'
+import { cancelMagicChannel } from './magicState'
 import { cancelMovementMode } from './movementActions'
 import { prepareConstellationLayout } from './personalConstellationSky'
 import { cancelPrayerCast } from './prayerCancellation'
@@ -204,7 +205,10 @@ export function stopCharacterMovement(
     cancelMovementMode(character)
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()
-    return cancelPrayerCast(character, now)
+    return [
+        ...cancelPrayerCast(character, now),
+        ...cancelMagicChannel(character, now),
+    ]
 }
 
 export function leaveRoom(

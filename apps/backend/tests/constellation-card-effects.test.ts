@@ -115,7 +115,9 @@ describe('earned effects of active constellation cards', () => {
         )
         for (const id of ['magic.fireball', 'magic.greater_fireball']) {
             const effects = requiredEffects(id)
-            expect(effects).toContain('Урон огненных шаров увеличен на 10%.')
+            expect(effects).toContain(
+                'Урон Огненной стрелы и Большого огненного шара увеличен на 10%.'
+            )
             expect(effects).toContain(
                 'Полезное попадание создаёт рунический заряд: следующий Выстрел на 10% сильнее в течение 5 секунд.'
             )
@@ -127,7 +129,7 @@ describe('earned effects of active constellation cards', () => {
             fullConstellationCatalog.filter(
                 (node) => node.effectType === 'active'
             )
-        ).toHaveLength(13)
+        ).toHaveLength(17)
         for (const node of fullConstellationCatalog.filter(
             (entry) => entry.effectType === 'active'
         )) {

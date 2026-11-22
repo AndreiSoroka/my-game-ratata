@@ -103,11 +103,13 @@ useEscapeOwner({
         !props.blocked &&
         Boolean(
             props.player.abilities?.casting ||
+            props.player.abilities?.magicChannel ||
             props.snapshot.automation?.run?.status === 'running' ||
             selectedKey.value ||
             (props.player.control && props.player.control.mode !== 'none')
         ),
     escape: () => {
+        if (props.player.abilities?.magicChannel) send({ type: 'cancel_magic' })
         if (props.player.abilities?.casting) send({ type: 'cancel_prayer' })
         cancel(true)
     },
@@ -206,7 +208,9 @@ defineExpose({
     />
     <ActionChannelStatus
         :player="player"
+        :server-time="snapshot.serverTime"
         @cancel-prayer="send({ type: 'cancel_prayer' })"
+        @cancel-magic="send({ type: 'cancel_magic' })"
         @cancel-route="cancel(true)"
     />
     <ActionHotbar

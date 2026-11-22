@@ -8,6 +8,7 @@ import type {
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
 import type { ControlWorld } from './controlWorld'
+import { magicBlocksMovement } from './magicState'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { routeCommandFeedback } from './routeCommandFeedback'
@@ -174,7 +175,8 @@ export function advanceCharacterRoute(
     state.lastUpdateAt = now
     if (
         (actor.isActionLocked(now) && !canWalkDuringPrayer(actor)) ||
-        actor.stunUntil > now
+        actor.stunUntil > now ||
+        magicBlocksMovement(actor, now)
     ) {
         state.lastPosition = { ...actor.position }
         return true

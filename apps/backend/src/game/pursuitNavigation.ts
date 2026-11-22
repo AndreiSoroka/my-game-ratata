@@ -2,12 +2,16 @@ import {
     getWorldLocationDefinition,
     PURSUIT_RULES,
     type Vector2,
+    WORLD_DIRECTIONS,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { portalReach } from './cityPortals'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import type { ObservedExit, PursuitState } from './pursuitState'
+import { regionalExit, regionalRoute } from './regionalNavigation'
+import type { GameRoom } from './room'
 
 export function planPursuit(
     actor: GameCharacter,
@@ -114,4 +118,66 @@ function edgeCoordinate(
         : direction > 0
           ? size - tileSize / 2
           : (fallback ?? size / 2)
+}
+
+export function approachPortal(
+    actor: GameCharacter,
+    endpointId: string,
+    state: PursuitState,
+    room: GameRoom,
+    now: number
+): boolean {
+    const passage = room.portalPassageFor(actor, endpointId, now)
+    if (passage === undefined) {
+        return false
+    }
+    const point = passage.source.position
+    const navigation = room.navigationFor(actor)
+    if (
+        distance(actor.position, point) <= portalReach(navigation) &&
+        navigation.hasLineOfSight(actor.position, point)
+    ) {
+        room.requestPortalUse(actor, endpointId, now)
+        return true
+    }
+    planPursuit(actor, point, state, navigation, now)
+    return actor.hasPath()
+}
+
+export function approachRegionalHome(
+    actor: GameCharacter,
+    state: PursuitState,
+    room: GameRoom,
+    now: number
+): void {
+    const next = regionalRoute(actor.locationId, state.home.locationId)?.[1]
+    if (
+        next === undefined ||
+        (actor.hasPath() && now - state.lastPlanAt < PURSUIT_RULES.replanMs)
+    ) {
+        return
+    }
+    const navigation = room.navigationFor(actor)
+    const exit = regionalExit(
+        actor.position,
+        actor.locationId,
+        next,
+        navigation
+    )
+    if (exit === undefined) {
+        return
+    }
+    approachPursuitExit(
+        actor,
+        {
+            from: actor.locationId,
+            to: next,
+            edge: exit.point,
+            direction: WORLD_DIRECTIONS[exit.direction],
+            expiresAt: Infinity,
+        },
+        state,
+        navigation,
+        now
+    )
 }

@@ -4,8 +4,9 @@ import type {
     ConstellationEffectChance,
 } from './constellationChanceTypes'
 import { lifeChanceDetails } from './constellationLifeChanceDetails'
+import { magicDeterministicEffects } from './constellationMagicChance'
 
-interface DeterministicEffect {
+export interface DeterministicEffect {
     formulas: ConstellationChanceFormula[]
     notes?: string[]
 }
@@ -56,57 +57,6 @@ const deterministic: Record<string, DeterministicEffect> = {
         ],
         notes: [
             'Не повышает шанс избежать оглушения и не гарантирует прекращение уже более долгого стана. Меч держать не требуется.',
-        ],
-    },
-    'magic.spark_damage': {
-        formulas: [
-            chanceFormula('Рассчитанный урон Искры', 'max(1, round(R × C × A × 1.10))', {
-                R: 'Целочисленный бросок базового урона Искры.',
-                C: 'Множитель критического урона; без крита равен 1.',
-                A: 'Остальные действующие множители атаки.',
-                ...round,
-            }),
-        ],
-        notes: [ordinaryAttack],
-    },
-    'magic.spark_range': {
-        formulas: [
-            chanceFormula('Дальность Искры, пиксели', 'R + W', {
-                R: 'Исходная дальность Искры в мировых пикселях.',
-                W: 'Ширина клетки текущей карты в мировых пикселях.',
-            }),
-        ],
-        notes: ['Препятствия, направление и границы коридора по-прежнему проверяются сервером.'],
-    },
-    'magic.spark_economy': {
-        formulas: [chanceFormula('Цена Искры, MP', '6 − 1 = 5')],
-        notes: ['Цена энергии не меняется.'],
-    },
-    'magic.barrier_strength': {
-        formulas: [
-            chanceFormula('Начальный запас поглощения', '8 + 2 = 10'),
-            chanceFormula('Поглощение одного попадания', 'min(D, B)', {
-                D: 'Входящий урон до Барьера.',
-                B: 'Оставшийся запас поглощения Барьера.',
-            }),
-        ],
-        notes: [
-            'При положительном остатке и неистёкшем времени отдельного броска поглощения нет. Оно может полностью убрать урон HP.',
-        ],
-    },
-    'magic.barrier_duration': {
-        formulas: [chanceFormula('Длительность Барьера, мс', '5000 + 1000 = 6000')],
-        notes: ['Барьер может закончиться раньше, если запас поглощения исчерпан.'],
-    },
-    'magic.fire_damage': {
-        formulas: [
-            chanceFormula('Рассчитанный урон огненного шара', 'round(B × 1.10)', {
-                B: 'Базовый урон: 8 у Огненного шара или 18 у Большого огненного шара.',
-                ...round,
-            }),
-        ],
-        notes: [
-            'Отдельного броска на этот бонус нет. Огненные шары сейчас не проверяют случайные крит и уклонение, но проверяют цель и Барьер.',
         ],
     },
     'arrow.damage1': {
@@ -241,7 +191,7 @@ export function describeDeterministicOtherChance(
 ): ConstellationEffectChance | undefined {
     const accuracy = knowledge[id]
     if (accuracy !== undefined) return describeKnowledge(accuracy)
-    const effect = deterministic[id]
+    const effect = deterministic[id] ?? magicDeterministicEffects[id]
     if (effect === undefined) return undefined
     return withChanceFormulas(
         {

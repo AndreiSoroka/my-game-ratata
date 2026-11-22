@@ -1,10 +1,8 @@
 import {
     type CharacterSnapshot,
-    type GameEventPayload,
     healthPercent,
     type HealthSnapshot,
     MOVEMENT_RULES,
-    trainingAreaAt,
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -14,17 +12,21 @@ import { createCharacterSheet } from './characterSheet'
 import { hasStar } from './constellations'
 import type { GraveCombatTarget } from './graveRules'
 import type { NavigationService } from './navigation'
-import { canPerceivePrayerCaster } from './prayerAuras'
 import { prayerParameters, snapshotPrayerParameters } from './prayerParameters'
 import { publicProgression } from './progressionObservation'
-import { visibilityRadius } from './queries'
 import {
     energySegments,
     healthSegments,
+    manaSegments,
     observeResource,
     observeSegmentedHealth,
     resourceChecks,
 } from './resourceObservation'
+
+export {
+    observeCombatEvent,
+    observeCombatEvents,
+} from './combatEventObservation'
 
 export interface CombatObserver {
     observer: GameCharacter | undefined
@@ -60,7 +62,8 @@ export function observeCharacterCombat(
         resources: {
             mana: observeResource(
                 snapshot.resources.mana,
-                canReadPool(target, view, 'magic.mana3')
+                canReadPool(target, view, 'magic.mana3'),
+                manaSegments(owner)
             ),
             energy: observeResource(
                 snapshot.resources.energy,
@@ -150,7 +153,9 @@ function observedAbilities(
                       parameters: snapshotAbilityUsage(
                           target,
                           abilities.known,
-                          view.navigation.grid.tileWidth
+                          view.navigation.grid.tileWidth,
+                          target.id === view.observer?.id &&
+                              canReadPool(target, view, 'magic.mana3')
                       ),
                   }
                 : {}),
@@ -183,123 +188,6 @@ export function observeGraveCombat(
     }
 }
 
-/** This projection never mutates the numeric domain event used by simulation services. */
-export function observeCombatEvent(
-    event: GameEventPayload,
-    view: CombatObserver
-): GameEventPayload | undefined {
-    const { audienceIds, amount, ...description } = event
-    const observerId = view.observer?.id
-    if (
-        audienceIds !== undefined &&
-        (observerId === undefined || !audienceIds.includes(observerId))
-    ) {
-        return undefined
-    }
-    if (!eventCharacterVisible(event.targetId, view)) {
-        return undefined
-    }
-    const visible = {
-        ...description,
-        ...(amount !== undefined && amountVisible(event, view)
-            ? { amount }
-            : {}),
-    }
-    if (!eventCharacterVisible(event.actorId, view)) {
-        delete visible.actorId
-        delete visible.projectile
-    }
-    if (event.kind === 'water_drink' && !canReadNumbers(view)) {
-        visible.text = 'Пьёт воду.'
-    }
-    return visible
-}
-
-function eventCharacterVisible(
-    id: string | undefined,
-    view: CombatObserver
-): boolean {
-    if (id === undefined || view.observer === undefined) {
-        return true
-    }
-    const character = view.getCharacter(id)
-    return (
-        character === undefined ||
-        canPerceivePrayerCaster(view.observer, character, view.now)
-    )
-}
-
-export function observeCombatEvents(
-    events: readonly GameEventPayload[],
-    view: CombatObserver
-): GameEventPayload[] {
-    return events.flatMap((event) => {
-        const projected = observeCombatEvent(event, view)
-        return projected === undefined ? [] : [projected]
-    })
-}
-
 function canReadNumbers(view: CombatObserver): boolean {
     return view.observer?.exactCombatNumbers === true
-}
-
-function amountVisible(event: GameEventPayload, view: CombatObserver): boolean {
-    if (view.observer?.exactCombatNumbers === true) {
-        return true
-    }
-    if (event.kind === 'damage' || event.kind === 'world_damage') {
-        return trainingMeasurement(event, view)
-    }
-    if (
-        ['heal', 'absorb', 'item_eat', 'revive'].includes(event.kind) ||
-        (event.kind === 'status' && event.statusId === 'barrier')
-    ) {
-        return canReadNumbers(view)
-    }
-    return true
-}
-
-function trainingMeasurement(
-    event: GameEventPayload,
-    view: CombatObserver
-): boolean {
-    const observer = view.observer
-    const target =
-        event.targetId === undefined
-            ? undefined
-            : view.getCharacter(event.targetId)
-    if (
-        !activeObserver(observer, view) ||
-        target?.trainingTarget === undefined ||
-        target.locationId !== observer.locationId ||
-        view.navigation === undefined
-    ) {
-        return false
-    }
-    const area = trainingAreaAt(
-        view.navigation.grid.training?.areas ?? [],
-        observer.locationId,
-        observer.position
-    )
-    return (
-        area?.id === target.trainingTarget.areaId &&
-        Math.hypot(
-            target.position.x - observer.position.x,
-            target.position.y - observer.position.y
-        ) <= visibilityRadius(observer, target, 240, view.now) &&
-        view.navigation.hasLineOfSight(observer.position, target.position)
-    )
-}
-function activeObserver(
-    observer: GameCharacter | undefined,
-    view: CombatObserver
-): observer is GameCharacter {
-    return (
-        observer !== undefined &&
-        observer.alive &&
-        (observer.connected ||
-            view.hasModelLease?.(observer, view.now) === true) &&
-        !observer.tags.has('offline') &&
-        !observer.tags.has('state.retired')
-    )
 }

@@ -18,6 +18,9 @@ import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMoveSpeed } from './effectiveParameters'
 import { wearWalkingEquipment } from './itemDurability'
+import { haltMagicMovement } from './magicMovement'
+import { recordChainsClipping } from './magicPractice'
+import { limitMovementByChains } from './magicState'
 import { distance, moveToward, zeroVector } from './math'
 import { cancelMovementMode } from './movementActions'
 import { type MovementNoise, movementNoise } from './movementNoise'
@@ -46,9 +49,7 @@ export function advanceCharacter(
     if (!wasAlive && character.alive) {
         return { actorId: character.id, kind: 'respawn' }
     }
-    if (cannotMove(character, now)) {
-        character.velocity = zeroVector()
-        cancelMovementMode(character)
+    if (haltMovement(context)) {
         return undefined
     }
     const feared = prayerAuraEffects(character, now).feared
@@ -83,6 +84,21 @@ export function advanceCharacter(
     )
     return undefined
 }
+
+function haltMovement(context: MovementContext): boolean {
+    const { character, now } = context
+    if (cannotMove(character, now)) {
+        character.velocity = zeroVector()
+        cancelMovementMode(character)
+        return true
+    }
+    if (haltMagicMovement(character, now, context.onEvents)) {
+        applyMovementRegen(context, false, !character.combat.defensiveStance)
+        return true
+    }
+    return false
+}
+
 function cannotMove(character: GameCharacter, now: number): boolean {
     return (
         !character.alive ||
@@ -132,7 +148,15 @@ function moveCharacter(
         navigation,
         now
     )
-    character.position = boundedPursuitStep(character, before, next, now)
+    const desired = boundedPursuitStep(character, before, next, now)
+    character.position = limitMovementByChains(character, desired, now)
+    const clipped = recordChainsClipping(
+        character,
+        desired,
+        character.position,
+        now
+    )
+    context.onEvents?.(clipped)
     const traveled = distance(before, character.position)
     if (dashMs > 0 && traveled > 0) {
         confirmResourceSpend(character.movement.dashResourceSpend)

@@ -8,11 +8,21 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
+import { CityPortals, type PortalPassage } from './cityPortals'
 import { clearCombatTransient } from './combatState'
 import type { CorpseWallet } from './corpseWallet'
+import { available } from './crimeRules'
+import { magicBlocksMovement } from './magicState'
+import { cancelMovementMode } from './movementActions'
 import { loadNavigationService, NavigationService } from './navigation'
 import { returnFromPursuit } from './pursuitState'
-import { canPursuitTravel, recordPursuitEntry } from './pursuitTravel'
+import {
+    canPursuitTravel,
+    pursuitPortalHomecoming,
+    recordPursuitEntry,
+    recordPursuitPortalEntry,
+} from './pursuitTravel'
 import { WorldInventory } from './worldInventory'
 import type { WorldMaps } from './worldMaps'
 
@@ -30,6 +40,7 @@ export interface LocationState {
 export class WorldLocations {
     public readonly serverEpoch: string | undefined
     public readonly locations = new Map<string, LocationState>()
+    public readonly portals = new CityPortals(this.locations)
     private readonly blockedEdges = new Map<string, string>()
 
     public constructor(
@@ -133,7 +144,7 @@ export class WorldLocations {
             return undefined
         }
         const margin = summary.tileWidth * 2.5
-        character.position = {
+        const position = {
             x:
                 direction.x > 0
                     ? margin
@@ -147,9 +158,58 @@ export class WorldLocations {
                       ? summary.worldHeight - margin
                       : character.position.y,
         }
-        this.closeChestViews(character.id)
-        character.locationId = next.description.id
+        const notice = this.transfer(character, next, position, now)
         recordPursuitEntry(character, now)
+        return notice
+    }
+
+    public usePortal(
+        character: GameCharacter,
+        endpointId: string,
+        now: number,
+        onPassage: (passage: PortalPassage) => void
+    ): string | undefined {
+        const passage = this.portals.passage(
+            endpointId,
+            character.locationId,
+            now
+        )
+        if (
+            passage === undefined ||
+            !available(character) ||
+            character.trainingTarget !== undefined ||
+            character.stunUntil > now ||
+            character.isActionLocked(now) ||
+            character.combat.defensiveStance ||
+            magicBlocksMovement(character, now) ||
+            !this.portals.reachable(character, passage)
+        ) {
+            return undefined
+        }
+        onPassage(passage)
+        cancelCharacterControl(character)
+        character.setMoveInput({ x: 0, y: 0 })
+        cancelMovementMode(character)
+        const next = this.get(passage.destination.locationId)
+        const notice = this.transfer(
+            character,
+            next,
+            passage.destination.position,
+            now
+        )
+        recordPursuitPortalEntry(character, passage, now)
+        return notice
+    }
+
+    private transfer(
+        character: GameCharacter,
+        next: LocationState,
+        position: Vector2,
+        now: number
+    ): string {
+        this.closeChestViews(character.id)
+        character.position = { ...position }
+        character.locationId = next.description.id
         character.clearPath()
         character.clearPendingAttackHit()
         clearCombatTransient(character, now)
@@ -165,7 +225,11 @@ function forbiddenCityEntry(
     character: GameCharacter,
     next: LocationState
 ): boolean {
-    return next.description.biome === 'city' && character.faction === 'monsters'
+    return (
+        next.description.biome === 'city' &&
+        character.faction === 'monsters' &&
+        !pursuitPortalHomecoming(character, next.description.id)
+    )
 }
 
 function exitDirection(

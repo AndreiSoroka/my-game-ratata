@@ -17,6 +17,7 @@ import {
 import { canAttackCharacter } from './combatTargets'
 import { findGraveHit, legalGraveTarget } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
+import { activeMagicChannel, magicAttackWindingUp } from './magicState'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { canPerceivePrayerCaster, prayerAuraEffects } from './prayerAuras'
@@ -180,6 +181,8 @@ export function availableToStartAttack(
         actor.combat.readyAt <= now &&
         actor.pendingAttack === undefined &&
         !actor.combat.defensiveStance &&
+        !magicAttackWindingUp(actor) &&
+        activeMagicChannel(actor, now) === undefined &&
         actor.abilities.casting === null
     )
 }

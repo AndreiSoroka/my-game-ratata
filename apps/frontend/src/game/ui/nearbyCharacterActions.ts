@@ -1,5 +1,6 @@
 import {
     ABILITY_DEFINITIONS,
+    canLearnDiscipline,
     type CharacterSnapshot,
     COMPANION_REQUEST_RANGE,
     type PartySnapshot,
@@ -73,12 +74,16 @@ function companionActions(target: CharacterSnapshot): InteractionAction[] {
     return actions
 }
 function teacherActions(target: CharacterSnapshot, player: CharacterSnapshot): InteractionAction[] {
-    if (!target.tags.includes('scholar')) return []
+    if (
+        !target.tags.includes('scholar') ||
+        !canLearnDiscipline(player.abilities?.known ?? [], 'magic')
+    )
+        return []
     const actions: InteractionAction[] = []
     if (!player.abilities?.known.includes('fireball'))
         actions.push({
             id: `learn:${target.id}`,
-            label: 'Изучить огненный шар',
+            label: 'Изучить огненную стрелу',
             command: { type: 'learn_skill', skillId: 'fireball', targetId: target.id },
         })
     if ((player.progression?.magicChaptersRead ?? 0) < 3)
@@ -93,7 +98,12 @@ export function prayerLearningActions(
     target: CharacterSnapshot,
     player: CharacterSnapshot
 ): InteractionAction[] {
-    if (!target.alive || relation(target, player) === 'hostile') return []
+    if (
+        !target.alive ||
+        relation(target, player) === 'hostile' ||
+        !canLearnDiscipline(player.abilities?.known ?? [], 'prayer')
+    )
+        return []
     return prayerAbilityIds
         .filter(
             (id) => target.abilities?.known.includes(id) && !player.abilities?.known.includes(id)

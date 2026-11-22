@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
+import {
+    canLearnDiscipline,
+    type CharacterSnapshot,
+    type ClientMessage,
+} from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
 import GameButton from './primitives/GameButton.vue'
@@ -21,7 +25,11 @@ const nearby = computed(() =>
     )
 )
 const students = computed(() =>
-    nearby.value.filter((character) => !character.abilities?.known.includes('fireball'))
+    nearby.value.filter(
+        (character) =>
+            !character.abilities?.known.includes('fireball') &&
+            canLearnDiscipline(character.abilities?.known ?? [], 'magic')
+    )
 )
 const student = computed(
     () => students.value.find((character) => character.id === selectedId.value) ?? students.value[0]
@@ -34,8 +42,10 @@ const studentReady = computed(
 const canTeach = computed(() => props.player.abilities?.known.includes('fireball') ?? false)
 const chaptersRead = computed(() => props.player.progression?.magicChaptersRead ?? 0)
 const chaptersTotal = computed(() => props.player.progression?.magicChaptersTotal ?? 3)
+const canStudy = computed(() => canLearnDiscipline(props.player.abilities?.known ?? [], 'magic'))
 function study(): void {
-    if (teacher.value) emit('command', { type: 'study_magic', targetId: teacher.value.id })
+    if (teacher.value && canStudy.value)
+        emit('command', { type: 'study_magic', targetId: teacher.value.id })
 }
 function teach(): void {
     if (student.value) emit('command', { type: 'teach_magic', targetId: student.value.id })
@@ -45,17 +55,19 @@ function teach(): void {
     <div class="arcana-study">
         <div class="knowledge-action">
             <GameButton
-                :disabled="!player.alive || !teacher || chaptersRead >= chaptersTotal"
+                :disabled="!player.alive || !teacher || !canStudy || chaptersRead >= chaptersTotal"
                 @click="study"
             >
                 Читать главу · {{ chaptersRead }}/{{ chaptersTotal }}
             </GameButton>
             <small>{{
-                chaptersRead >= chaptersTotal
-                    ? 'Все главы изучены. Передайте знания другому.'
-                    : teacher
-                      ? `Книга у ${teacher.nickname}`
-                      : 'Книгу можно читать рядом с учёным.'
+                !canStudy
+                    ? 'Магию нельзя изучать после молитв.'
+                    : chaptersRead >= chaptersTotal
+                      ? 'Все главы изучены. Передайте знания другому.'
+                      : teacher
+                        ? `Книга у ${teacher.nickname}`
+                        : 'Книгу можно читать рядом с учёным.'
             }}</small>
         </div>
         <div v-if="canTeach" class="knowledge-target">
@@ -73,7 +85,7 @@ function teach(): void {
         </div>
         <div v-if="canTeach" class="knowledge-action">
             <GameButton :disabled="!player.alive || !student || !studentReady" @click="teach">
-                Научить огненному шару</GameButton
+                Научить огненной стреле</GameButton
             ><small>{{
                 student && !studentReady
                     ? 'Ученику требуется Магия 3.'

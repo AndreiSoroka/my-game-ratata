@@ -26,6 +26,7 @@ import { CorpseViews } from './corpseViews'
 import { DamageFeedback } from './damageFeedback'
 import { DepthPropViews } from './depthPropViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
+import { MagicViews } from './magicViews'
 import {
     interactionHasLineOfSight,
     type MapVisibility,
@@ -61,6 +62,7 @@ export class SceneActors {
     private localPlayerId: string | undefined
     private readonly statusViews: StatusViews
     private readonly combatEffects: CombatEffects
+    private readonly magicViews: MagicViews
     private readonly damageFeedback: DamageFeedback
     private readonly signReading: SignReadingViews
     private readonly routeWaypoints: RouteWaypointViews
@@ -71,7 +73,8 @@ export class SceneActors {
         itemImages: Map<ItemId, ImageSource>,
         chestImage: ImageSource,
         farmImage: ImageSource,
-        bellImages: BellImages
+        bellImages: BellImages,
+        fireImage: ImageSource
     ) {
         this.mapView = new SceneMapView(engine)
         this.bells = new BellViews(engine, bellImages)
@@ -86,6 +89,7 @@ export class SceneActors {
         this.corpseViews = new CorpseViews(engine, sheets)
         this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
         this.statusViews = new StatusViews(engine)
+        this.magicViews = new MagicViews(engine, fireImage)
         this.combatEffects = new CombatEffects(
             engine,
             (id) => (this.isCharacterVisible(id) ? this.bundles.get(id)?.snapshot : undefined),
@@ -109,6 +113,7 @@ export class SceneActors {
         this.guides.clear()
         this.damageFeedback.clear()
         this.combatEffects.clear()
+        this.magicViews.clear()
         this.statusViews.clear()
     }
     public dispose(): void {
@@ -119,6 +124,7 @@ export class SceneActors {
         this.depthProps.dispose()
         this.damageFeedback.dispose()
         this.combatEffects.dispose()
+        this.magicViews.dispose()
         this.statusViews.dispose()
         this.signReading.dispose()
         this.routeWaypoints.dispose()
@@ -166,6 +172,7 @@ export class SceneActors {
             this.isPositionVisible(position)
         )
         this.buildingViews.update(player?.position)
+        this.magicViews.sync(snapshot, (position) => this.isPositionVisible(position))
         this.bells.updateSnapshot(snapshot, (bell) => this.isPositionVisible(bell.position))
         this.signReading.update(snapshot.adventure?.worldObjects ?? [], player, (position) =>
             this.isPositionVisible(position)
@@ -280,9 +287,7 @@ export class SceneActors {
     private getBundle(snapshot: CharacterSnapshot): CharacterBundle {
         const existing = this.bundles.get(snapshot.id)
 
-        if (existing !== undefined) {
-            return existing
-        }
+        if (existing !== undefined) return existing
 
         const bundle = createBundle()
         this.bundles.set(snapshot.id, bundle)

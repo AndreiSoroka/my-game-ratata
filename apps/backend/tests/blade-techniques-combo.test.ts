@@ -306,15 +306,14 @@ describe('combination uses the original weapon basis and actual successful conta
         f.actor.progression.constellations.opened.add('blade.combo1')
         strike(f, 1000)
         f.target.abilities.barrier = {
-            remaining: 100,
             expiresAt: 10000,
             practiced: false,
         }
+        f.target.mana = 100
         strike(f, 1500)
         expect(f.actor.combat.combo?.stacks).toBe(2)
         const old = f.actor.combat.combo
         f.actor.abilities.barrier = {
-            remaining: 100,
             expiresAt: 10000,
             practiced: false,
         }

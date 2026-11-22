@@ -25,6 +25,7 @@ const vitals = computed<PlayerVitalsData>(() => {
         hpPercent: healthBarPercent(hp),
         manaPercent: healthBarPercent(mana),
         energyPercent: healthBarPercent(energy),
+        ...(mana.kind === 'percent' && mana.segments && { manaSegments: mana.segments }),
         ...(hp.kind === 'percent' && hp.segments && { hpSegments: hp.segments }),
         ...(energy.kind === 'percent' && energy.segments && { energySegments: energy.segments }),
         ...(hp.kind === 'exact' && { hpCurrent: hp.current, hpMax: hp.max }),

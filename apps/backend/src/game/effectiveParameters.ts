@@ -3,7 +3,11 @@ import {
     type AbilityDefinition,
     type AbilityId,
     type BladeTechniqueParameters,
+    CITY_PORTAL_MANA_FRACTION,
+    isArcaneAbility,
     isBladeAbility,
+    isFireSpell,
+    MAGIC_ABILITY_RULES,
     MOVEMENT_RULES,
     resolveBladeTechnique,
     ROAD_PRAYER_RULES,
@@ -13,6 +17,7 @@ import {
 import type { GameCharacter } from './character'
 import { resolveCharacterStats } from './characterStats'
 import { constellationModifiers } from './constellationModifiers'
+import { effectiveMaxMana } from './effectiveResources'
 import { hasEquippedSword } from './skillProgression'
 
 /** Supply authored tile width whenever consuming range, rather than assuming world units. */
@@ -49,14 +54,47 @@ export function effectiveAbility(
         definition.mana -= modifiers.sparkManaDiscount
         scaleDamage(definition, modifiers.sparkDamageMultiplier)
     }
-    if (id === 'fireball' || id === 'greater_fireball') {
-        scaleDamage(definition, modifiers.fireDamageMultiplier)
+    if (isArcaneAbility(id)) {
+        applySpellParameters(actor, id, definition, cellSize)
     }
     return {
         ...definition,
         cycleMs: Math.max(definition.windupMs, 200),
         movementMs: Math.max(definition.windupMs, 200),
     }
+}
+
+function applySpellParameters(
+    actor: GameCharacter,
+    id: AbilityId,
+    definition: AbilityDefinition,
+    cellSize: number
+): void {
+    const base =
+        id === 'city_portal'
+            ? effectiveMaxMana(actor) * CITY_PORTAL_MANA_FRACTION
+            : definition.mana
+    definition.mana = effectiveSpellMana(actor, base)
+    if (isFireSpell(id)) {
+        scaleDamage(
+            definition,
+            constellationModifiers(actor).fireDamageMultiplier
+        )
+    }
+    if (cellSize <= 0) {
+        return
+    }
+    if (isFireSpell(id) || id === 'blink') {
+        definition.range = MAGIC_ABILITY_RULES[id].rangeTiles * cellSize
+    }
+    if (id === 'chains' || id === 'dispel_magic') {
+        definition.range = MAGIC_ABILITY_RULES[id].radiusTiles * cellSize
+    }
+}
+
+export function effectiveSpellMana(actor: GameCharacter, base: number): number {
+    const { spellManaMultiplier } = constellationModifiers(actor)
+    return Math.ceil(Math.max(0, base * spellManaMultiplier) - 1e-10)
 }
 
 function scaleDamage(

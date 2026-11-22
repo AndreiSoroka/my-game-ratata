@@ -98,7 +98,7 @@ describe('effective shared constellation parameters', () => {
         expect(constellationModifiers(actor).bladeParryChance).toBe(0.1)
     })
 
-    it('uses real barrier capacity and duration, and spell power includes mastery once', () => {
+    it('uses the learned barrier conversion rate and duration, and applies spell power once', () => {
         const actor = abilityHero('arcanist')
         for (const id of [
             'magic.barrier_strength',
@@ -114,11 +114,11 @@ describe('effective shared constellation parameters', () => {
             context
         )
         expect(actor.abilities.barrier).toMatchObject({
-            remaining: 10,
             expiresAt: 7000,
         })
+        expect(constellationModifiers(actor).barrierManaPerDamage).toBe(0.8)
         actor.progression.masteries.magic.level = 100
-        expect(effectiveAbility(actor, 'fireball').damage).toBeCloseTo(8.8)
+        expect(effectiveAbility(actor, 'fireball').damage).toBeCloseTo(11)
     })
 
     it('changes collision-resolved movement and actual dash cost for every controller', () => {

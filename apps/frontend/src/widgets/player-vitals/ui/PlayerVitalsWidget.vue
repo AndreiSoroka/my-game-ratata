@@ -21,7 +21,7 @@ watchEffect(() => update(props))
 const vitalBars = computed(() => {
     const resources = displayedResources.value
     const hpAnimated = isLow(resources.hpPercent, LOW_HEALTH_PERCENT, resources.hpSegments)
-    const manaAnimated = resources.manaPercent < LOW_RESOURCE_PERCENT
+    const manaAnimated = isLow(resources.manaPercent, LOW_RESOURCE_PERCENT, resources.manaSegments)
     const energyAnimated = isLow(
         resources.energyPercent,
         LOW_RESOURCE_PERCENT,

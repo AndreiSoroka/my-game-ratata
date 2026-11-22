@@ -78,8 +78,8 @@ describe('shared combat equipment wear', () => {
 describe('clothing damage and death loot', () => {
     it('wears clothes only on actual HP damage, including magic and fatal hits', () => {
         const { actor, target, boots } = encounter()
+        target.mana = 20
         target.abilities.barrier = {
-            remaining: 20,
             expiresAt: 5000,
             practiced: false,
         }

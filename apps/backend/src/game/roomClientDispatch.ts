@@ -60,6 +60,16 @@ export function dispatchRoomClientMessage(
         context.abandon(player)
         return
     }
+    if (message.type === 'use_portal') {
+        context.room.publishEvents(
+            context.room.requestPortalUse(
+                player,
+                message.endpointId,
+                Date.now()
+            )
+        )
+        return
+    }
     if (message.type === 'plant_tree_preview') {
         const preview = plantingPreview(
             player,

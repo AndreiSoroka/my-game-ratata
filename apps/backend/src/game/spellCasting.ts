@@ -1,201 +1,144 @@
 import {
-    ABILITY_DEFINITIONS,
     type GameEventPayload,
-    MASTERY_REWARDS,
+    MAGIC_ABILITY_RULES,
     type ProgressionClientMessage,
-    type SpellSkillId,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
-import { resolveCharacterDamage } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { availableToStartAttack } from './combat'
-import { startCombatAction, type StartedCombatAction } from './combatActions'
-import { canAttackCharacter } from './combatTargets'
-import { recordRunicContact } from './constellations'
+import { startCombatAction } from './combatActions'
 import { effectiveAbility } from './effectiveParameters'
-import { castGraveSpell } from './graveSpellCasting'
-import { distance } from './math'
+import { legalGraveTarget } from './graveCombat'
+import { ensureMagicCombat } from './magicCombat'
+import { distance, facingDirection, normalize } from './math'
 import { canPerceivePrayerCaster } from './prayerAuras'
 import type { ProgressionContext } from './progressionCommands'
-import {
-    confirmCombatResourceSpend,
-    recordResourceSpend,
-} from './resourcePractice'
-import { awardMasteries, captureMasteryFactors } from './skillProgression'
+import { recordResourceSpend } from './resourcePractice'
+import { captureMasteryFactors } from './skillProgression'
 
-const spells: Record<
-    SpellSkillId,
-    {
-        mana: number
-        cooldown: number
-        range: number
-        damage: number
-    }
-> = {
-    fireball: {
-        mana: ABILITY_DEFINITIONS.fireball.mana,
-        cooldown: 1_000,
-        range: 160,
-        damage: 8,
-    },
-    greater_fireball: {
-        mana: ABILITY_DEFINITIONS.greater_fireball.mana,
-        cooldown: 2_000,
-        range: 192,
-        damage: 18,
-    },
-}
+type CastCommand = Extract<ProgressionClientMessage, { type: 'cast_spell' }>
 
 export function castSpell(
     actor: GameCharacter,
-    message: Extract<ProgressionClientMessage, { type: 'cast_spell' }>,
+    message: CastCommand,
     context: ProgressionContext
 ): GameEventPayload[] {
-    if (!availableToStartAttack(actor, context.now)) {
-        return []
-    }
-    const spell = resolvedSpell(actor, message.skillId)
-    const target = context.characters.find(
-        (candidate) => candidate.id === message.targetId
-    )
+    const { now, navigation } = context
+    const id = message.skillId
+    const tileWidth = navigation.grid.tileWidth
+    const definition = effectiveAbility(actor, id, tileWidth)
     if (
-        !actor.abilities.known.has(message.skillId) ||
-        actor.mana < spell.mana ||
-        context.now < actor.progression.spellAvailableAt
+        !availableToStartAttack(actor, now) ||
+        !actor.abilities.known.has(id) ||
+        actor.mana < definition.mana ||
+        now < actor.progression.spellAvailableAt
     ) {
         return []
     }
-    if (message.target !== undefined) {
-        return message.targetId === undefined
-            ? castGraveSpell(actor, message, spell, context)
-            : []
-    }
-    if (!canHit(actor, target, spell.range, context)) {
+    const { rangeTiles, radiusTiles } = MAGIC_ABILITY_RULES[id]
+    const range = rangeTiles * tileWidth
+    const radius = radiusTiles * tileWidth
+    const aim = aimSpell(actor, message, context, range)
+    if (aim === undefined) {
         return []
     }
+    const position = { ...actor.position }
+    const direction = normalize({
+        x: aim.x - position.x,
+        y: aim.y - position.y,
+    })
     const factors = captureMasteryFactors(actor)
-    actor.mana -= spell.mana
-    const resourceSpend = recordResourceSpend(actor, 'mana', spell.mana)
-    actor.progression.spellAvailableAt = context.now + spell.cooldown
-    const started = beginSpell(
-        actor,
-        target,
-        message.skillId,
-        spell.range,
-        context.now
-    )
-    const result = resolveCharacterDamage({
-        actor,
-        target,
-        amount: Math.round(spell.damage),
-        now: context.now,
-        damageKind: 'arcane',
-        respawnDelayMs: context.respawnDelayMsFor?.(target) ?? 15000,
-        ...(context.random === undefined ? {} : { random: context.random }),
-    })
-    confirmCombatResourceSpend(
-        actor,
-        target,
-        result,
-        [resourceSpend],
-        context.now
-    )
-    const events: GameEventPayload[] = [
-        {
-            ...started,
-            text: message.skillId,
-            abilityId: message.skillId,
-            damageKind: 'arcane',
-        },
-        ...result.events.map((event) => ({
-            ...event,
-            actionId: started.actionId,
-            attackOrigin: 'ability' as const,
-            delivery: 'magic' as const,
-            abilityId: message.skillId,
-        })),
-    ]
-    if (result.trainableDamage > 0) {
-        events.push(
-            ...recordRunicContact(actor, target.id, 'spell', context.now)
-        )
-        events.push(...rewardSpellHit(actor, message.skillId, context, factors))
-    }
-    return events
-}
-function rewardSpellHit(
-    actor: GameCharacter,
-    id: SpellSkillId,
-    context: ProgressionContext,
-    factors: ReturnType<typeof captureMasteryFactors>
-): GameEventPayload[] {
-    return awardMasteries(
-        actor,
-        [
-            {
-                constellationId: 'magic',
-                experience:
-                    id === 'fireball'
-                        ? MASTERY_REWARDS.fireballHit
-                        : MASTERY_REWARDS.greaterFireballHit,
-            },
-        ],
-        { now: context.now, random: context.random, factors, evidence: [id] }
-    )
-}
-function resolvedSpell(actor: GameCharacter, id: SpellSkillId) {
-    return {
-        ...spells[id],
-        damage: effectiveAbility(actor, id).damage ?? spells[id].damage,
-    }
-}
-
-function canHit(
-    actor: GameCharacter,
-    target: GameCharacter | undefined,
-    range: number,
-    context: ProgressionContext
-): target is GameCharacter {
-    if (
-        target === undefined ||
-        !target.alive ||
-        target.tags.has('offline') ||
-        target.locationId !== actor.locationId
-    ) {
-        return false
-    }
-    return (
-        canAttackCharacter(actor, target, context.now) &&
-        canPerceivePrayerCaster(actor, target, context.now) &&
-        distance(actor.position, target.position) <= range &&
-        context.navigation.hasLineOfSight(actor.position, target.position)
-    )
-}
-
-function beginSpell(
-    actor: GameCharacter,
-    target: GameCharacter,
-    skillId: SpellSkillId,
-    range: number,
-    now: number
-): StartedCombatAction {
-    actor.updateFacing({
-        x: target.position.x - actor.position.x,
-        y: target.position.y - actor.position.y,
-    })
-    return startCombatAction(
+    actor.mana -= definition.mana
+    actor.progression.spellAvailableAt = now + definition.cooldownMs
+    actor.updateFacing(direction)
+    const started = startCombatAction(
         actor,
         now,
         {
-            targetId: target.id,
-            abilityId: skillId,
+            targetId: message.targetId,
+            target: message.target,
+            abilityId: id,
             delivery: 'magic',
             canStun: false,
             damageMultiplier: 1,
             targetEnergyDrain: 0,
         },
-        { cycleMs: 400, windupMs: 0, movementMs: 400 },
-        { kind: 'circle', center: { ...actor.position }, radius: range },
+        {
+            cycleMs: definition.windupMs,
+            windupMs: definition.windupMs,
+            movementMs: definition.windupMs,
+        },
+        { kind: 'circle', center: aim, radius },
         'immediate'
     )
+    ensureMagicCombat(actor, context).launch({
+        id: started.actionId,
+        actor,
+        abilityId: id,
+        launchedAt: now + definition.windupMs,
+        launched: false,
+        locationId: actor.locationId,
+        position,
+        direction,
+        range: distance(position, aim),
+        traveled: 0,
+        radius,
+        speed: tileWidth * 20,
+        minDamage: Math.round(definition.damage ?? 0),
+        maxDamage: Math.round(definition.maxDamage ?? definition.damage ?? 0),
+        resourceSpend: recordResourceSpend(actor, 'mana', definition.mana),
+        factors,
+        random: context.random ?? Math.random,
+    })
+    return [{ ...started, damageKind: 'arcane' }]
+}
+
+function aimSpell(
+    actor: GameCharacter,
+    message: CastCommand,
+    context: ProgressionContext,
+    range: number
+): Vector2 | undefined {
+    if (message.target !== undefined) {
+        const grave = context.graves?.get(message.target.id)
+        return message.targetId === undefined &&
+            legalGraveTarget(actor, grave, context.navigation) &&
+            distance(actor.position, grave.position) <= range
+            ? { ...grave.position }
+            : undefined
+    }
+    if (message.targetId === undefined) {
+        const direction = facingDirection(actor.facing)
+        return {
+            x: actor.position.x + direction.x * range,
+            y: actor.position.y + direction.y * range,
+        }
+    }
+    return aimAtCharacter(actor, message.targetId, context, range)
+}
+
+function aimAtCharacter(
+    actor: GameCharacter,
+    id: string,
+    context: ProgressionContext,
+    range: number
+): Vector2 | undefined {
+    const target =
+        id === actor.id
+            ? actor
+            : context.characters.find((candidate) => candidate.id === id)
+    if (
+        target === undefined ||
+        !target.alive ||
+        target.locationId !== actor.locationId ||
+        target.tags.has('offline') ||
+        target.tags.has('state.retired') ||
+        !canPerceivePrayerCaster(actor, target, context.now) ||
+        !context.navigation.hasLineOfSight(actor.position, target.position) ||
+        distance(actor.position, target.position) > range
+    ) {
+        return undefined
+    }
+    return { ...target.position }
 }

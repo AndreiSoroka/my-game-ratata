@@ -30,7 +30,7 @@ describe('world target selection range', () => {
         expect(worldSelectionRange(playerWithAbilities(['fireball']), 16)).toBe(208)
         expect(worldSelectionRange(playerWithAbilities(['greater_fireball', 'shot']), 16)).toBe(240)
         expect(worldSelectionRange(playerWithAbilities(['spark']), 8)).toBe(104)
-        expect(worldSelectionRange(playerWithAbilities(['greater_fireball']), 20)).toBe(252)
+        expect(worldSelectionRange(playerWithAbilities(['greater_fireball']), 20)).toBe(300)
     })
 
     it('requires both nearby distance and actual visibility, including the exact boundary', () => {

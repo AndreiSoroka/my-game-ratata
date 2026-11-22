@@ -17,7 +17,8 @@ export function createRuntimePresentation(container: HTMLElement, map: RenderedT
         resources.itemImages,
         resources.chestImage,
         resources.farmImage,
-        resources.bellImages
+        resources.bellImages,
+        resources.fireImage
     )
     sceneActors.addMap(map)
     return { canvas, engine, audio, sceneActors, loader: resources.loader }

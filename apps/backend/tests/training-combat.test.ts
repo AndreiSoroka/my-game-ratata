@@ -13,7 +13,7 @@ import { advanceCharacter } from '../src/game/movement'
 import { prayerHarmTargets } from '../src/game/prayerContext'
 import { findVisibleTarget } from '../src/game/queries'
 import { StationaryController } from '../src/game/trainingTargets'
-import { abilityHero } from './abilityTestHelpers'
+import { abilityHero, resolveTestSpells } from './abilityTestHelpers'
 import { trainingCombatFixture } from './trainingCombatFixture'
 
 describe('shared training target damage', () => {
@@ -151,18 +151,20 @@ describe('training attack abilities', () => {
     )
 
     it.each(['fireball', 'greater_fireball'] as const)(
-        'measures fixed %s damage without practice or target death',
+        'measures %s damage without practice or target death',
         (id) => {
             const f = trainingCombatFixture('arcanist')
             f.actor.abilities.known.add(id)
             f.actor.progression.masteries.magic.level = 3
             const before = structuredClone(f.actor.progression)
             const mana = f.actor.mana
-            const events = f.ability(id)
+            f.dummy.position.y = 220
+            expect(f.ability(id)).toHaveLength(1)
+            const events = resolveTestSpells(f.actor, f.context)
             expect(events).toContainEqual(
                 expect.objectContaining({
                     kind: 'damage',
-                    amount: id === 'fireball' ? 8 : 18,
+                    amount: id === 'fireball' ? 25 : 85,
                     hitQuality: 'normal',
                 })
             )

@@ -10,6 +10,7 @@ import {
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
 import { effectiveDashCost, effectiveDashDuration } from './effectiveParameters'
+import { magicBlocksMovement } from './magicState'
 import { normalize } from './math'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
@@ -126,6 +127,7 @@ export function movementActionAllowed(
         canPerformSkillAction(character, now, {
             interruptWalkingPrayer: true,
         }) &&
+        !magicBlocksMovement(character, now) &&
         now >= character.movement.dashAvailableAt &&
         character.energy >= effectiveDashCost(character, now)
     )

@@ -135,10 +135,9 @@ function roomCharacterAction(
 ) {
     const { room, adventure, theft, characters, parties, companions, world } =
         context
+    const abilityContext = room.abilityContextFor(player, Date.now())
     return handleRoomAction({
-        graves: room.abilityContextFor(player, Date.now()).graves,
-        requestAbilityAttack: room.abilityContextFor(player, Date.now())
-            .requestAbilityAttack,
+        ...abilityContext,
         adventure,
         theft,
         allCharacters: characters.values(),
@@ -149,8 +148,6 @@ function roomCharacterAction(
         companions,
         inventory: world.get(player.locationId).inventory,
         message,
-        navigation: room.navigationFor(player),
-        now: Date.now(),
         player,
     })
 }

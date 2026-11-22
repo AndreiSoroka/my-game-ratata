@@ -78,8 +78,8 @@ describe('resolved shared attack abilities', () => {
     })
     it('absorbs actual damage and emits one death after a barrier is exhausted', () => {
         const { actor, target, attack } = encounter()
+        target.mana = 8
         target.abilities.barrier = {
-            remaining: 8,
             expiresAt: 5000,
             practiced: false,
         }

@@ -43,6 +43,10 @@ export const abilityIds = [
     'skeleton_strike',
     'fireball',
     'greater_fireball',
+    'chains',
+    'blink',
+    'dispel_magic',
+    'city_portal',
 ] as const
 export type AbilityId = (typeof abilityIds)[number]
 export type LearnAbilityId = PrayerAbilityId | 'spark' | 'barrier' | 'shot'
@@ -93,12 +97,18 @@ export interface AbilityUsageSnapshot {
     cooldownMs: number
     range: number
     windupMs: number
+    radius?: number
+    durationMs?: number
+    manaPerSecond?: number
+    manaFraction?: number
 }
 export interface CharacterAbilitiesSnapshot {
     known: AbilityId[]
     parameters?: Partial<Record<AbilityId, AbilityUsageSnapshot>>
     cooldowns: Partial<Record<AbilityId, number>>
     barrier: { remaining?: number; expiresAt: number } | null
+    magicChannel?: import('./magic').MagicChannelSnapshot
+    rootedUntil?: number
     /** Healing alias retained for existing presentation fixtures. */
     prayer?: PrayerParametersSnapshot
     prayers?: Partial<Record<PrayerActionId, PrayerParametersSnapshot>>
@@ -124,6 +134,7 @@ export type AbilityClientMessage =
     | { type: 'use_ability'; abilityId: PrayerActionId; intent: PrayerIntent }
     | { type: 'learn_ability'; abilityId: LearnAbilityId; targetId: string }
     | { type: 'cancel_prayer' }
+    | { type: 'cancel_magic' }
 export interface PrayerParametersSnapshot {
     radius: number
     durationMs: number
@@ -204,11 +215,11 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
     },
     barrier: {
         name: 'Барьер',
-        mana: 12,
+        mana: 4,
         energy: 0,
         cooldownMs: 10000,
         range: 0,
-        windupMs: 400,
+        windupMs: 0,
     },
     shot: {
         name: 'Выстрел',
@@ -230,25 +241,59 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
         stunMs: 800,
     },
     fireball: {
-        name: 'Огненный шар',
-        mana: 12,
+        name: 'Огненная стрела',
+        mana: 15,
         energy: 0,
-        cooldownMs: 1000,
+        cooldownMs: 5000,
         range: 160,
         windupMs: 400,
-        damage: 8,
+        damage: 10,
+        maxDamage: 40,
     },
     greater_fireball: {
         name: 'Большой огненный шар',
-        mana: 24,
+        mana: 40,
         energy: 0,
-        cooldownMs: 2000,
+        cooldownMs: 8000,
         range: 192,
         windupMs: 400,
-        damage: 18,
+        damage: 50,
+        maxDamage: 120,
+    },
+    chains: {
+        name: 'Оковы',
+        mana: 5,
+        energy: 0,
+        cooldownMs: 18000,
+        range: 0,
+        windupMs: 0,
+    },
+    blink: {
+        name: 'Мерцание',
+        mana: 10,
+        energy: 0,
+        cooldownMs: 8000,
+        range: 0,
+        windupMs: 0,
+    },
+    dispel_magic: {
+        name: 'Рассеивание',
+        mana: 12,
+        energy: 0,
+        cooldownMs: 12000,
+        range: 0,
+        windupMs: 0,
+    },
+    city_portal: {
+        name: 'Портал',
+        mana: 0,
+        energy: 0,
+        cooldownMs: 120000,
+        range: 0,
+        windupMs: 10000,
     },
 }
-export const BARRIER_RULES = { absorption: 8, durationMs: 5000 } as const
+export const BARRIER_RULES = { durationMs: 5000 } as const
 export const PRAYER_RULES = {
     harmLevel: 3,
     harmChanceBonus: 0.2,

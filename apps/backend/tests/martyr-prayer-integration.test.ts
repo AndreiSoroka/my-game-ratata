@@ -92,7 +92,6 @@ describe('Martyr through actual shared damage and ordinary Mother commands', () 
     it('does not count fully absorbed or friendly damage as a new hostile cycle', () => {
         const f = fixture()
         f.actor.abilities.barrier = {
-            remaining: 8,
             expiresAt: 10000,
             practiced: false,
         }

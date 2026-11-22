@@ -30,6 +30,11 @@ const presentation: Record<
         path: 'M1 2h10v5h-1v2H8v1H7v1H5v-1H4V9H2V7H1z M2 3v4h1v1h2v1h2V8h2V7h1V3z M5 4h2v3H5z',
         tone: 'positive',
     },
+    chains: {
+        label: 'Оковы',
+        path: 'M1 2h4v1h1v2h2v1h3v4H7V9H6V7H4V6H1z M2 3v2h2V3z M8 7v2h2V7z M4 4l4 4 1-1-4-4z',
+        tone: 'warning',
+    },
     'defensive-stance': {
         label: 'Защитная стойка',
         path: 'M1 2h10v5h-1v2H8v1H7v1H5v-1H4V9H2V7H1z M3 4v2h1v1h1v1h2V7h1V6h1V4H8v2H7v1H5V6H4V4z',

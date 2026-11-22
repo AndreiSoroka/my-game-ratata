@@ -5,7 +5,7 @@ import { snapshotAbilityUsage } from '../src/game/abilityUsage'
 import { attemptAbilityAttack } from '../src/game/combat'
 import { observeCharacterCombat } from '../src/game/combatObservation'
 import { NavigationService } from '../src/game/navigation'
-import { abilityHero } from './abilityTestHelpers'
+import { abilityContext, abilityHero } from './abilityTestHelpers'
 
 describe('public effective ability usage', () => {
     it('mirrors actual discounted costs, focused duration and authored tile range without damage knowledge', () => {
@@ -61,6 +61,7 @@ describe('public effective ability usage', () => {
             expect(Object.keys(values).sort()).toEqual([
                 'cooldownMs',
                 ...('cycleMs' in values ? ['cycleMs'] : []),
+                ...('durationMs' in values ? ['durationMs'] : []),
                 'energy',
                 'mana',
                 ...('movementMs' in values ? ['movementMs'] : []),
@@ -106,28 +107,51 @@ describe('public effective ability usage', () => {
         }
         expect(raw.abilities?.parameters?.shot?.range).toBe(64)
     })
+})
 
-    it('includes only attained abilities and adds learned spells without exporting their numeric power', () => {
-        const actor = abilityHero('vanguard')
-        expect(snapshotAbilities(actor, 1000).parameters).toEqual({})
-        actor.abilities.known.add('fireball')
-        actor.progression.masteries.magic.level = 8
-        actor.progression.constellations.opened.add('magic.fire_damage')
-        const snapshot = snapshotAbilities(actor, 1000)
-        expect(snapshot.parameters).toEqual({
-            fireball: {
-                mana: 12,
-                energy: 0,
-                cooldownMs: 1000,
-                range: 160,
-                windupMs: 400,
-                cycleMs: 400,
-                movementMs: 400,
-            },
-        })
-        expect(snapshot.parameters?.greater_fireball).toBeUndefined()
-        expect(JSON.stringify(snapshot.parameters)).not.toContain('damage')
+it('includes only attained abilities and adds learned spells without exporting their numeric power', () => {
+    const actor = abilityHero('vanguard')
+    expect(snapshotAbilities(actor, 1000).parameters).toEqual({})
+    actor.abilities.known.add('fireball')
+    actor.progression.masteries.magic.level = 8
+    actor.progression.constellations.opened.add('magic.fire_damage')
+    const snapshot = snapshotAbilities(actor, 1000)
+    expect(snapshot.parameters).toEqual({
+        fireball: {
+            mana: 15,
+            energy: 0,
+            cooldownMs: 5000,
+            range: 160,
+            windupMs: 400,
+            cycleMs: 400,
+            movementMs: 400,
+        },
     })
+    expect(snapshot.parameters?.greater_fireball).toBeUndefined()
+    expect(JSON.stringify(snapshot.parameters)).not.toContain('damage')
+})
+
+it('keeps the fraction for portal prices and reveals the rounded amount only to the informed caster', () => {
+    const actor = abilityHero('arcanist')
+    const observer = abilityHero('vanguard')
+    const context = abilityContext([actor, observer])
+    actor.abilities.known.add('city_portal')
+    actor.progression.constellations.opened.add('magic.spell_economy3')
+
+    const portal = (viewer = actor) =>
+        observeCharacterCombat(actor.snapshot(context.now), actor, {
+            observer: viewer,
+            getCharacter: (id) =>
+                context.characters.find((character) => character.id === id),
+            navigation: context.navigation,
+            now: context.now,
+        }).abilities?.parameters?.city_portal
+    expect(portal()).toMatchObject({ mana: 0, durationMs: 60000 })
+    expect(portal()?.manaFraction).toBeCloseTo(0.28)
+    actor.progression.constellations.opened.add('magic.mana3')
+    expect(portal()?.mana).toBe(20)
+    observer.exactCombatNumbers = true
+    expect(portal(observer)?.mana).toBe(0)
 })
 
 function trainedActor() {

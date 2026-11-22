@@ -277,7 +277,6 @@ describe('ordinary NPC prayer and atomic completion', () => {
             locationId: f.actor.locationId,
         })
         f.actor.abilities.barrier = {
-            remaining: 2,
             expiresAt: now + 20_000,
             practiced: false,
         }
@@ -289,7 +288,9 @@ describe('ordinary NPC prayer and atomic completion', () => {
             now: now + 1,
             respawnDelayMs: 15_000,
         }
-        expect(resolveCharacterDamage(input).hpDamage).toBe(0)
+        expect(
+            resolveCharacterDamage({ ...input, amount: f.actor.mana }).hpDamage
+        ).toBe(0)
         expect(f.actor.abilities.casting?.mode).toBe('purify_grave')
         const hit = resolveCharacterDamage({ ...input, now: now + 2 })
         expect(hit.hpDamage).toBe(2)
@@ -298,7 +299,7 @@ describe('ordinary NPC prayer and atomic completion', () => {
         )
         f.actor.hp = f.actor.maxHp
         expect(f.advance(now + 10_000)).toEqual([])
-        expect(f.actor.mana).toBe(35)
+        expect(f.actor.mana).toBe(0)
         expect(f.service.get(source.id)?.phase).toBe('active')
     })
 })

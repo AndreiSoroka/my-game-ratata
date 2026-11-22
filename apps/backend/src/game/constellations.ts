@@ -1,6 +1,6 @@
-import type {
-    ConstellationId,
-    GameEventPayload,
+import {
+    type ConstellationId,
+    type GameEventPayload,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -10,6 +10,7 @@ import {
     canDiscoverConstellationStar,
     starterConstellationStars,
 } from './constellationRequirements'
+import { syncMagicConstellation } from './magicProgression'
 import { captureMasteryLevels } from './skillProgression'
 
 export { constellationModifiers } from './constellationModifiers'
@@ -39,22 +40,12 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
         ['pray_lantern', 'prayer_lantern'],
         ['pray_grave', 'prayer_grave'],
         ['shot', 'arrow'],
-        ['spark', 'magic'],
-        ['barrier', 'magic'],
     ] as const) {
         if (known.has(ability)) {
             actor.progression.constellations.opened.add(`${path}.root`)
         }
     }
-    if (known.has('fireball')) {
-        actor.progression.constellations.opened.add('magic.fireball')
-        if (actor.progression.masteries.magic.level >= 10) {
-            known.add('greater_fireball')
-        }
-    }
-    if (known.has('greater_fireball')) {
-        actor.progression.constellations.opened.add('magic.greater_fireball')
-    }
+    syncMagicConstellation(actor)
     for (const [ability, path] of [
         ['pray', 'prayer'],
         ['pray_grave', 'prayer_grave'],
@@ -207,6 +198,7 @@ function evidencePath(key: string): ConstellationId | undefined {
             arcana: 'magic',
             fireball: 'magic',
             greater_fireball: 'magic',
+            chains: 'magic',
             marksmanship: 'arrow',
             vitality: 'life',
             stealth: 'shadow',

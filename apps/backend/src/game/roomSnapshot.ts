@@ -1,4 +1,7 @@
-import type { WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    MagicEffectSnapshot,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
@@ -24,6 +27,7 @@ export interface SnapshotContext {
     tick: number
     world: WorldLocations
     life?: RoomLife
+    magicEffects?: (locationId: string, now: number) => MagicEffectSnapshot[]
 }
 
 export function createRoomSnapshotter(
@@ -69,9 +73,11 @@ export function roomSnapshot(
         now,
         playerId
     )
+    const portals = context.world.portals.snapshot(locationId, now)
     return {
         ...snapshot,
         serverEpoch: context.world.serverEpoch ?? serverEpoch,
+        magicEffects: context.magicEffects?.(locationId, now) ?? [],
         graves: (context.life?.graves(locationId) ?? []).map((grave) =>
             observeGraveCombat(grave, combatView)
         ),
@@ -79,6 +85,7 @@ export function roomSnapshot(
             projectRoomCharacter(context, character, combatView, playerId)
         ),
         location: location.description,
+        ...(portals.length === 0 ? {} : { portals }),
         ...(playerId === undefined
             ? {}
             : {

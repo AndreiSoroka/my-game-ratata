@@ -282,6 +282,28 @@ function verify(map, style, label) {
             connected.has(Math.floor(y / 16) * 96 + Math.floor(x / 16)),
             `${label}: reachable ${x}/${y}`
         )
+    const portals = anchors.filter((entry) =>
+        value(entry, 'anchorId')?.startsWith('portal.')
+    )
+    assert.equal(portals.length, 4, `${label}: city portal capacity`)
+    for (const [index, portal] of portals.entries()) {
+        const cell = Math.floor(portal.y / 16) * 96 + Math.floor(portal.x / 16)
+        assert.equal(layer(map, 'Paths and ponds').data[cell], pavingGid, label)
+        assert.ok(portal.x > plaza.x && portal.x < plaza.x + plaza.width, label)
+        assert.ok(
+            portal.y > plaza.y && portal.y < plaza.y + plaza.height,
+            label
+        )
+        assert.ok(
+            portals
+                .slice(0, index)
+                .every(
+                    (other) =>
+                        Math.hypot(portal.x - other.x, portal.y - other.y) >= 32
+                ),
+            label
+        )
+    }
     for (const grave of graves) {
         const cell = Math.floor(grave.y / 16) * 96 + Math.floor(grave.x / 16)
         assert.equal(solid[cell], 0, label)

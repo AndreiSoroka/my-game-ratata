@@ -42,7 +42,12 @@ export const SegmentedResources: Story = {
             character: playerStatusFixture({
                 health: { kind: 'percent', percent: 60, segments: [40, 20, 20, 20] },
                 resources: {
-                    mana: { kind: 'percent', percent: 45, hasCapacity: true },
+                    mana: {
+                        kind: 'percent',
+                        percent: 50,
+                        hasCapacity: true,
+                        segments: [30, 20, 10, 10, 10, 10, 10],
+                    },
                     energy: {
                         kind: 'percent',
                         percent: 70,

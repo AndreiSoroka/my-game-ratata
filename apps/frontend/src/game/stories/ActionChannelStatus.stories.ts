@@ -32,6 +32,22 @@ export const PurifyingGrave: Story = {
         }),
 }
 
+export const MaintainingChains: Story = {
+    render: () =>
+        renderVueStory(ActionChannelStatus, {
+            player: characterFixture('arcanist', {
+                abilities: {
+                    known: ['chains'],
+                    cooldowns: {},
+                    barrier: null,
+                    casting: null,
+                    magicChannel: { abilityId: 'chains', startedAt: 0, completesAt: 5000 },
+                },
+            }),
+            serverTime: 2000,
+        }),
+}
+
 export const BlockedRoute: Story = {
     render: () =>
         renderVueStory(ActionChannelStatus, {

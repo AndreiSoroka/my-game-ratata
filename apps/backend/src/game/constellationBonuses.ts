@@ -1,4 +1,8 @@
 import { resolveBladeBonuses } from './constellationBladeBonuses'
+import {
+    manaRestMultipliers,
+    spellManaMultipliers,
+} from './constellationMagicStars'
 
 export const ENDURANCE_ENERGY_PERCENT = 110
 
@@ -27,9 +31,16 @@ export function resolveConstellationBonuses(
         sparkDamageMultiplier: 1 + 0.1 * learned('magic.spark_damage'),
         sparkRangeCells: learned('magic.spark_range'),
         sparkManaDiscount: learned('magic.spark_economy'),
-        barrierAbsorptionBonus: 2 * learned('magic.barrier_strength'),
+        barrierManaPerDamage: learned('magic.barrier_strength') === 1 ? 0.8 : 1,
         barrierDurationBonus: 1000 * learned('magic.barrier_duration'),
         fireDamageMultiplier: 1 + 0.1 * learned('magic.fire_damage'),
+        chainsDurationMs:
+            learned('magic.chains_duration') === 1 ? 10_000 : 5_000,
+        chainsPartyImmune: learned('magic.chains_party') === 1,
+        spellManaMultiplier:
+            spellManaMultipliers[rank('magic.spell_economy', 3)] ?? 1,
+        manaRestMultiplier:
+            manaRestMultipliers[rank('magic.mana_rest', 3)] ?? 1,
         moveSpeedMultiplier: 1 + 0.05 * learned('life.move'),
         dashEnergyMultiplier: 1 - 0.1 * learned('life.dash'),
         foodHealingBonus: 15 * learned('life.ration'),

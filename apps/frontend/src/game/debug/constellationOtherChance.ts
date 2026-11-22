@@ -1,3 +1,5 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
+
 import type { ConstellationStar } from '../../../../backend/src/game/constellationCatalog'
 import { describeBladeEffectChance } from './constellationBladeChance'
 import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
@@ -175,19 +177,22 @@ function describeSight(): ConstellationEffectChance {
 }
 
 function describeFireball(id: string): ConstellationEffectChance {
-    const greater = id === 'magic.greater_fireball'
+    const definition =
+        ABILITY_DEFINITIONS[id === 'magic.greater_fireball' ? 'greater_fireball' : 'fireball']
     return withChanceFormulas(
         {
             deterministic: true,
             summary:
-                '100% применения при допустимой цели, без бросков на случайное уклонение или крит. Барьер может полностью поглотить урон.',
+                '100% попадания по тем, кого накрыл взрыв без преграды. Отдельных бросков на уклонение и крит нет.',
             examples: [],
             notes: [
-                'Сервер проверяет изучение заклинания, живую допустимую цель, одну локацию, дальность, видимость, ману, кулдаун и возможность действовать. По могиле также проверяется её состояние.',
+                'Сервер проверяет изучение заклинания, дальность и видимость точки, ману и возможность действовать. Стена между взрывом и целью защищает от урона.',
             ],
         },
         [
-            chanceFormula('Рассчитанный урон', `round(${greater ? '18' : '8'} × K)`, {
+            chanceFormula('Границы урона взрыва', '[round(L × K); round(H × K)]', {
+                L: `Нижняя базовая граница урона: ${definition.damage ?? 0}.`,
+                H: `Верхняя базовая граница урона: ${definition.maxDamage ?? 0}.`,
                 K: 'Множитель «Жара»: 1.10 при изученной звезде, иначе 1.',
                 round: 'Округление до ближайшего целого.',
             }),

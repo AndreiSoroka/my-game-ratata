@@ -21,7 +21,6 @@ describe('observer combat information', () => {
         const { observer, target, view } = observationFixture()
         target.hp = target.maxHp * 0.375
         target.abilities.barrier = {
-            remaining: 3.25,
             expiresAt: 5000,
             practiced: false,
         }
@@ -37,7 +36,13 @@ describe('observer combat information', () => {
             needsRestoration: false,
         })
         expect(own.resources).toEqual({
-            mana: { kind: 'percent', percent: 100, hasCapacity: true },
+            mana: {
+                kind: 'percent',
+                percent: 100,
+                hasCapacity: true,
+                segments: [40, 20, 20, 20],
+                needsRestoration: false,
+            },
             energy: {
                 kind: 'percent',
                 percent: 100,
@@ -85,7 +90,6 @@ describe('observer combat information', () => {
         expect(observeGraveCombat(grave, view)).not.toHaveProperty('hp')
         observer.exactCombatNumbers = true
         target.abilities.barrier = {
-            remaining: 3.25,
             expiresAt: 5000,
             practiced: false,
         }
@@ -99,7 +103,7 @@ describe('observer combat information', () => {
             current: target.hp,
             max: target.maxHp,
         })
-        expect(snapshot.abilities?.barrier?.remaining).toBe(3.25)
+        expect(snapshot.abilities?.barrier).toEqual({ expiresAt: 5000 })
         expect(snapshot.resources).toEqual(target.snapshot(1000).resources)
         expect(snapshot).not.toHaveProperty('resourceChecks')
         expect(observeGraveCombat(grave, view).health).toEqual({
@@ -122,6 +126,38 @@ describe('observer combat information', () => {
 })
 
 describe('owner resource knowledge', () => {
+    it('reveals mana in finer segments before showing exact values, only for the owner', () => {
+        const { observer, target, view } = observationFixture()
+        const state = observer.progression.constellations.opened
+        observer.mana = 15
+        const project = (viewer = observer) =>
+            observeCharacterCombat(observer.snapshot(1000), observer, {
+                ...view,
+                observer: viewer,
+            }).resources.mana
+        expect(project()).toMatchObject({
+            percent: 40,
+            segments: [40, 20, 20, 20],
+        })
+        state.add('magic.mana1')
+        expect(project()).toMatchObject({
+            percent: 50,
+            segments: [30, 20, 10, 10, 10, 10, 10],
+        })
+        state.add('magic.mana2')
+        expect(project()).toMatchObject({
+            percent: 40,
+            segments: Array<number>(10).fill(10),
+        })
+        state.add('magic.mana3')
+        expect(project()).toEqual({ kind: 'exact', current: 15, max: 40 })
+        expect(project(target)).toEqual({
+            kind: 'percent',
+            percent: 37,
+            hasCapacity: true,
+        })
+    })
+
     it('applies health and energy knowledge independently before exposing exact pools', () => {
         const { observer, view } = observationFixture()
         const state = observer.progression.constellations.opened

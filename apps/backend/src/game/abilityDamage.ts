@@ -6,10 +6,13 @@ import type {
 } from '@my-game-ratata/contracts'
 import { MASTERY_REWARDS } from '@my-game-ratata/contracts'
 
+import { activeBarrier } from './abilityState'
 import type { GameCharacter } from './character'
+import { constellationModifiers } from './constellationModifiers'
 import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
+import { cancelMagicChannel } from './magicState'
 import { recordMartyrHostileDamage, resetMartyrStreak } from './martyr'
 import {
     type PrayerAuraEffects,
@@ -17,7 +20,7 @@ import {
     prayerDamageInterrupts,
 } from './prayerAuras'
 import { cancelPrayerCast } from './prayerCancellation'
-import { confirmResourceSpend } from './resourcePractice'
+import { confirmResourceSpend, recordResourceSpend } from './resourcePractice'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
 import { recordVitalityDamage } from './vitalityPractice'
 export interface DamageResolution {
@@ -70,6 +73,9 @@ export function resolveCharacterDamage(
         return result
     }
     const hostile = hostileDamage(input)
+    if (hostile) {
+        target.combat.recentDamageUntil = now + 1000
+    }
     const factors = captureMasteryFactors(target)
     absorbDamage(input, result, hostile, factors)
     if (hostile && result.absorbed > 0) {
@@ -113,6 +119,7 @@ function applyHpDamage(
         Math.max(0, target.maxHp - target.hp)
     )
     target.applyDamage(result.hpDamage, now)
+    result.events.push(...cancelMagicChannel(target, now))
     wearHitEquipment(target)
     if (
         !target.alive ||
@@ -180,16 +187,15 @@ function absorbDamage(
     factors: Record<ConstellationId, number>
 ): void {
     const { actor, target, now, damageKind } = input
-    const barrier = target.abilities.barrier
-    if (
-        barrier === null ||
-        barrier.expiresAt <= now ||
-        barrier.remaining <= 0
-    ) {
+    const barrier = activeBarrier(target, now)
+    if (barrier === null) {
         return
     }
-    result.absorbed = Math.min(input.amount, barrier.remaining)
-    barrier.remaining -= result.absorbed
+    const rate = constellationModifiers(target).barrierManaPerDamage
+    const paid = Math.min(target.mana, input.amount * rate)
+    target.mana -= paid
+    result.absorbed = paid === input.amount * rate ? input.amount : paid / rate
+    const spend = recordResourceSpend(target, 'mana', paid)
     result.events.push({
         kind: 'absorb',
         actorId: actor.id,
@@ -199,23 +205,25 @@ function absorbDamage(
         damageKind,
         statusId: 'barrier',
     })
-    if (hostile && !barrier.practiced && result.absorbed > 0) {
-        confirmResourceSpend(barrier.resourceSpend)
-        barrier.practiced = true
-        result.events.push(
-            ...awardMasteries(
-                target,
-                [
-                    {
-                        constellationId: 'magic',
-                        experience: MASTERY_REWARDS.barrierAbsorb,
-                    },
-                ],
-                { now, evidence: ['barrier'], factors }
+    if (hostile) {
+        confirmResourceSpend(spend)
+        if (!barrier.practiced) {
+            barrier.practiced = true
+            result.events.push(
+                ...awardMasteries(
+                    target,
+                    [
+                        {
+                            constellationId: 'magic',
+                            experience: MASTERY_REWARDS.barrierAbsorb,
+                        },
+                    ],
+                    { now, evidence: ['barrier'], factors }
+                )
             )
-        )
+        }
     }
-    if (barrier.remaining <= 0) {
+    if (target.mana <= 0) {
         target.abilities.barrier = null
     }
 }

@@ -77,7 +77,7 @@ describe('meaningful resource recovery', () => {
     })
 
     it.each(['network_player', 'scripted'] as const)(
-        'credits a barrier cost once after real hostile absorption for %s',
+        'credits damage paid by the barrier after real hostile absorption for %s',
         (controller) => {
             const actor = abilityHero('arcanist', 'humanoid', controller)
             const enemy = abilityHero('vanguard', 'undead')
@@ -98,9 +98,9 @@ describe('meaningful resource recovery', () => {
                 respawnDelayMs: 15000,
             }
             resolveCharacterDamage(hit)
-            expect(practiceResourceMissing(actor, 'mana')).toBe(12)
+            expect(practiceResourceMissing(actor, 'mana')).toBe(2)
             resolveCharacterDamage({ ...hit, now: 1200 })
-            expect(practiceResourceMissing(actor, 'mana')).toBe(12)
+            expect(practiceResourceMissing(actor, 'mana')).toBe(4)
         }
     )
 })

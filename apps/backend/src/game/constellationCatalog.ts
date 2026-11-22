@@ -5,6 +5,7 @@ import { bladeJointStars } from './constellationBladeJoints'
 import { bladeTechniqueStars } from './constellationBladeTechniques'
 import { combatStars } from './constellationCombatStars'
 import type { ConstellationStar } from './constellationDefinition'
+import { magicStars } from './constellationMagicStars'
 import { otherStars } from './constellationOtherStars'
 
 export { type ConstellationStar, star } from './constellationDefinition'
@@ -21,7 +22,7 @@ export const constellationPaths = [
         id: 'magic',
         name: 'Магия',
         description:
-            'Вы направляете магическую силу, чтобы поражать врагов и защищаться.',
+            'Вы направляете магию на защиту, перемещение и опасный для обеих сторон контроль поля боя.',
         color: '#b8a4ed',
     },
     {
@@ -83,5 +84,6 @@ export const constellationStars: ConstellationStar[] = [
     ...bladeTechniqueStars,
     ...bladeJointStars,
     ...combatStars,
+    ...magicStars,
     ...otherStars,
 ]

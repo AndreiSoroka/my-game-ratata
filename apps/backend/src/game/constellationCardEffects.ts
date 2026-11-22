@@ -1,10 +1,13 @@
 import {
+    isArcaneAbility,
     isBladeAbility,
+    isFireSpell,
     resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
 import { bladeTechniqueCardResults } from './constellationBladeEffects'
 import { resolveConstellationBonuses } from './constellationBonuses'
+import { magicCardEffects } from './constellationMagicEffects'
 import { fullConstellationCatalog } from './constellationNodes'
 import { prayerAnswerChance } from './prayerProbability'
 
@@ -46,7 +49,15 @@ export function resolveConstellationCardEffects(
         learned: learnedIds,
         bonuses: resolveConstellationBonuses(learnedIds),
     }
-    appendActiveEffects(effects, node.activationAbilityId, context)
+    const ability = node.activationAbilityId
+    if (isArcaneAbility(ability)) {
+        effects.push(...magicCardEffects(ability, context.bonuses, learnedIds))
+        if (isFireSpell(ability)) {
+            appendDescription(effects, learnedIds, 'magic.insight')
+        }
+    } else {
+        appendActiveEffects(effects, ability, context)
+    }
     return effects.length > 0 ? [...new Set(effects)] : undefined
 }
 function appendActiveEffects(
@@ -81,10 +92,6 @@ function appendActiveEffects(
             break
         case 'shot':
             appendShot(effects, context)
-            break
-        case 'fireball':
-        case 'greater_fireball':
-            appendFireball(effects, context)
             break
         default:
             throw new Error(
@@ -249,22 +256,6 @@ function appendShot(effects: string[], { learned, bonuses: b }: Context): void {
     if (learned.has('magic.runic_echo')) {
         effects.push(
             'После полезного боевого заклинания следующий Выстрел на 10% сильнее в течение 5 секунд.'
-        )
-    }
-}
-function appendFireball(
-    effects: string[],
-    { learned, bonuses: b }: Context
-): void {
-    if (b.fireDamageMultiplier > 1) {
-        effects.push(
-            `Урон огненных шаров увеличен на ${percent(b.fireDamageMultiplier - 1)}%.`
-        )
-    }
-    appendDescription(effects, learned, 'magic.insight')
-    if (learned.has('magic.runic_echo')) {
-        effects.push(
-            'Полезное попадание создаёт рунический заряд: следующий Выстрел на 10% сильнее в течение 5 секунд.'
         )
     }
 }
