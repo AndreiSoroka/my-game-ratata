@@ -4,6 +4,7 @@ import './uiField.css'
 import { useTemplateRef } from 'vue'
 
 import { FantasyBorder } from '@/shared/ui/external/fantasy-ui-borders/border'
+import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import type { UiInputProps } from './uiField'
 
@@ -16,6 +17,7 @@ withDefaults(defineProps<UiInputProps>(), {
     framed: true,
 })
 const model = defineModel<string>({ default: '' })
+const theme = useDarkPanelTheme()
 const element = useTemplateRef<HTMLInputElement>('element')
 
 defineExpose({
@@ -30,7 +32,12 @@ defineExpose({
         :is="framed ? FantasyBorder : 'div'"
         class="ui-field ui-input"
         :data-focus-ring="focusRing"
-        v-bind="framed ? { border, borderWidth, color: 'var(--ui-field-border)' } : {}"
+        :style="framed ? darkPanelThemeStyle(theme) : undefined"
+        v-bind="
+            framed
+                ? { border: theme?.border ?? border, borderWidth, color: 'var(--ui-field-border)' }
+                : {}
+        "
     >
         <span v-if="$slots.leading" class="ui-field__adornment"><slot name="leading" /></span>
         <input

@@ -2,6 +2,8 @@
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
+import { provideDarkPanelTheme } from '@/shared/ui/theme'
+
 import { useHeroName } from './game/names/useHeroName'
 import type { RatataGame } from './game/runtime/ratataGame'
 import TestControlPanel from './game/testing/TestControlPanel.vue'
@@ -14,6 +16,7 @@ import GameChat from './game/ui/GameChat.vue'
 import GameNotice from './game/ui/GameNotice.vue'
 import GameplayOverlay from './game/ui/GameplayOverlay.vue'
 import GameWindows from './game/ui/GameWindows.vue'
+import { heroClassTheme } from './game/ui/heroClassThemes'
 import { provideHotbarSession } from './game/ui/hotbarSession'
 import InventoryHud from './game/ui/InventoryHud.vue'
 import JoinGamePanel from './game/ui/JoinGamePanel.vue'
@@ -54,6 +57,7 @@ const hotbarSession = provideHotbarSession()
 const { chatHistory, chatInput } = useAppChat(snapshot, localPlayerId)
 
 const { localCharacter, visibleCharacters } = useCharacterViews(snapshot, game, localPlayerId)
+provideDarkPanelTheme(() => heroClassTheme(localCharacter.value?.heroClass))
 const { abandoning, abandonLife, confirmDeath } = useLifeChoice({
     character: () => localCharacter.value,
     connected: () => status.value === 'Connected',

@@ -1,6 +1,7 @@
 import { expect, type Locator, test } from '@playwright/test'
 
-import { readyUiStory } from './ui-story-ready'
+import { expectThemedBorder, heroThemeCases } from './hero-theme-visual'
+import { expectUiFits, readyUiStory } from './ui-story-ready'
 
 const storyId = 'game-player-hud'
 const resourceNames = ['Health', 'Mana', 'Energy'] as const
@@ -91,6 +92,22 @@ for (const { story, width, nickname, numbers, extended, effectCount, hudWidth } 
             maxDiffPixels: 0,
         })
     })
+}
+
+for (const { heroClass, border } of heroThemeCases) {
+    for (const width of [320, 390]) {
+        test(`player HUD ${heroClass} palette at ${width}px`, async ({ page }) => {
+            await page.setViewportSize({ width, height: 844 })
+            await page.goto(`/iframe.html?id=${storyId}--${heroClass}&viewMode=story`)
+            const frame = page.locator('.game-player-status__vitals')
+            await expect(frame.getByRole('heading', { name: 'Андрей Сорока' })).toBeVisible()
+            await expectThemedBorder(frame.locator(':scope > .hud-frame__border'), border, 16)
+            await assertResourceBars(frame, defaultPercentages, [])
+            await expectUiFits(frame, width)
+            await readyUiStory(page)
+            await expect(frame).toHaveScreenshot(`player-status-${heroClass}-${width}.png`)
+        })
+    }
 }
 
 test('low resources pulse independently and only low health dims the other bars', async ({

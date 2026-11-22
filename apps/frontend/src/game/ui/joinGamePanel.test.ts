@@ -9,7 +9,7 @@ it('offers four named native radio cards and updates the background description'
     })
     try {
         expect(wrapper.findAll('input[type="radio"]')).toHaveLength(4)
-        expect(wrapper.findAll('.class-card svg')).toHaveLength(4)
+        expect(wrapper.findAll('.class-card__content > svg')).toHaveLength(4)
         expect(wrapper.find('select').exists()).toBe(false)
         expect(wrapper.get('#hero-class').attributes('value')).toBe('vanguard')
         expect(wrapper.findAll('.class-card__content--selected')).toHaveLength(1)

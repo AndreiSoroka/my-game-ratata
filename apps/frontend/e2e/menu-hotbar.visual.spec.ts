@@ -1,22 +1,27 @@
 import { expect, test } from '@playwright/test'
 
-import { readyUiStory } from './ui-story-ready'
+import { expectThemedBorder, heroThemeCases } from './hero-theme-visual'
+import { expectUiFits, readyUiStory } from './ui-story-ready'
 
-for (const [background, ability] of [
-    ['vanguard', 'Пусто'],
-    ['ranger', 'Выстрел'],
-    ['arcanist', 'Искра'],
-    ['cleric', 'Молитва'],
-]) {
-    test(`production ${background} hotbar preset`, async ({ page }) => {
-        await page.goto(`/iframe.html?id=game-actionhotbar--${background}&viewMode=story`)
-        const bar = page.getByLabel('Быстрые действия')
-        await expect(bar.getByRole('button', { name: /^1: Удар ножом/ })).toBeVisible()
-        await expect(bar.getByRole('button', { name: new RegExp(`^2: ${ability}`) })).toBeVisible()
-        await expect(bar.getByRole('button', { name: 'Игровое меню' })).toBeVisible()
-        await readyUiStory(page)
-        await expect(bar).toHaveScreenshot(`hotbar-${background}.png`)
-    })
+for (const { heroClass, border, ability } of heroThemeCases) {
+    for (const width of [1280, 390, 320]) {
+        const suffix = width === 1280 ? '' : `-${width}`
+
+        test(`production ${heroClass} hotbar preset at ${width}px`, async ({ page }) => {
+            await page.setViewportSize({ width, height: 844 })
+            await page.goto(`/iframe.html?id=game-actionhotbar--${heroClass}&viewMode=story`)
+            const bar = page.getByLabel('Быстрые действия')
+            await expect(bar.getByRole('button', { name: /^1: Удар ножом/ })).toBeVisible()
+            await expect(
+                bar.getByRole('button', { name: new RegExp(`^2: ${ability}`) })
+            ).toBeVisible()
+            await expect(bar.getByRole('button', { name: 'Игровое меню' })).toBeVisible()
+            await expectThemedBorder(bar.locator('.hud-frame__border'), border, 16)
+            await expectUiFits(bar, width)
+            await readyUiStory(page)
+            await expect(bar).toHaveScreenshot(`hotbar-${heroClass}${suffix}.png`)
+        })
+    }
 }
 for (const width of [1280, 390, 320]) {
     for (const { state, second, pressed, contextCount } of [
@@ -81,7 +86,7 @@ test('production hotbar assignment opens and dismisses at 320px', async ({ page 
 for (const width of [1280, 390, 320]) {
     test(`production game menu at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=game-gamemenu--open&viewMode=story')
+        await page.goto('/iframe.html?id=game-gamemenu--open&viewMode=story&mute=1')
         const menu = page.getByRole('dialog', { name: 'Игровое меню' })
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toBeFocused()
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toHaveAttribute(

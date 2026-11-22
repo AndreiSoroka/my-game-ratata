@@ -4,8 +4,9 @@ import { ref } from 'vue'
 
 import JoinGamePanel from '../ui/JoinGamePanel.vue'
 
+const props = defineProps<{ initialHeroClass: HeroClass }>()
 const nickname = ref('Андрей Сорока')
-const heroClass = ref<HeroClass>('vanguard')
+const heroClass = ref(props.initialHeroClass)
 </script>
 
 <template>

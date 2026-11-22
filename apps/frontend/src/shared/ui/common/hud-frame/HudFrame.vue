@@ -1,17 +1,33 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import {
     FantasyBorder,
     type FantasyBorderVariant,
+    getFantasyBorderMetrics,
 } from '@/shared/ui/external/fantasy-ui-borders/border'
+import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
-withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), { border: 'border-017' })
+const props = withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), {
+    border: 'border-017',
+})
+const theme = useDarkPanelTheme()
+const borderWidth = computed(() => getFantasyBorderMetrics(props.border).cornerSize)
+const frameStyle = computed(() => {
+    if (!theme.value) return undefined
+    return {
+        ...darkPanelThemeStyle(theme.value),
+        '--character-hud-border': theme.value.accent,
+    }
+})
 </script>
 
 <template>
-    <div class="hud-frame">
+    <div class="hud-frame" :style="frameStyle">
         <FantasyBorder
             class="hud-frame__border"
-            :border="border"
+            :border="theme?.border ?? border"
+            :border-width="borderWidth"
             color="var(--character-hud-border, var(--ui-dark-panel-border))"
         >
             <slot />
@@ -21,7 +37,10 @@ withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), { border: 'border
 
 <style scoped>
 .hud-frame {
-    --character-hud-fill: var(--character-hud-surface, var(--ui-dark-panel-surface));
+    --character-hud-fill: var(
+        --ui-themed-panel-surface,
+        var(--character-hud-surface, var(--ui-dark-panel-surface))
+    );
     --character-hud-text: var(--ui-dark-panel-text);
     --character-hud-positive: var(--ui-dark-panel-positive);
     --character-hud-warning: var(--ui-dark-panel-warning);
@@ -33,7 +52,7 @@ withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), { border: 'border
     padding: 7px;
     background: linear-gradient(
         155deg,
-        color-mix(in srgb, var(--character-hud-fill) 78%, #708067f2),
+        color-mix(in srgb, var(--character-hud-fill) 78%, var(--ui-themed-panel-accent, #708067f2)),
         var(--character-hud-fill) 58%,
         color-mix(in srgb, var(--character-hud-fill) 66%, #070f0bf2)
     );

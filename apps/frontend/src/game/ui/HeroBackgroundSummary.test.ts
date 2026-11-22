@@ -8,23 +8,20 @@ import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import JoinGamePanel from './JoinGamePanel.vue'
 
 it.each([
-    ['vanguard', '+20 к здоровью', '+20 к энергии', '50 HP · 120 энергии · 40 маны'],
-    ['ranger', '+10 к здоровью', '+20 к энергии', '40 HP · 120 энергии · 40 маны'],
-    ['arcanist', '+30 к мане', 'Магия', '30 HP · 100 энергии · 70 маны'],
-    ['cleric', 'Без прибавки ресурсов', 'всех молитвенных школ', '30 HP · 100 энергии · 40 маны'],
-] as const)(
-    'shows the fixed %s background bonuses at creation',
-    (heroClass, first, second, initial) => {
-        const view = mount(JoinGamePanel, {
-            props: { nickname: 'Новый герой', heroClass, canJoin: true, errorMessage: '' },
-        })
-        expect(view.get('[aria-label="Постоянные бонусы прошлого"]').text()).toContain(first)
-        expect(view.get('[aria-label="Постоянные бонусы прошлого"]').text()).toContain(second)
-        expect(view.text()).toContain(initial)
-        expect(view.text()).toContain('+20% опыта')
-        view.unmount()
-    }
-)
+    ['vanguard', '+20 к здоровью', '+20 к энергии'],
+    ['ranger', '+10 к здоровью', '+20 к энергии'],
+    ['arcanist', '+30 к мане', 'Магия'],
+    ['cleric', 'Без прибавки ресурсов', 'всех молитвенных школ'],
+] as const)('shows the fixed %s background bonuses at creation', (heroClass, first, second) => {
+    const view = mount(JoinGamePanel, {
+        props: { nickname: 'Новый герой', heroClass, canJoin: true, errorMessage: '' },
+    })
+    expect(view.get('[aria-label="Постоянные бонусы прошлого"]').text()).toContain(first)
+    expect(view.get('[aria-label="Постоянные бонусы прошлого"]').text()).toContain(second)
+    expect(view.text()).not.toContain('Начальные запасы до звёзд')
+    expect(view.text()).toContain('+20% опыта')
+    view.unmount()
+})
 
 it('updates bonuses with the radio selection instead of retaining the previous background', async () => {
     const view = mount(JoinGamePanel, {

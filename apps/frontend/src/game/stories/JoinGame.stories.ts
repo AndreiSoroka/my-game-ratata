@@ -1,17 +1,37 @@
 import '../../assets/app.css'
 
+import { HERO_BACKGROUND_DEFINITIONS, type HeroClass, heroClasses } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import JoinGameStory from './JoinGameStory.vue'
 import { renderVueStory } from './renderVueStory'
 
-const meta = { title: 'Game/JoinGamePanel' } satisfies Meta
+interface StoryArgs {
+    heroClass: HeroClass
+}
+
+const meta = {
+    title: 'Game/JoinGamePanel',
+    args: { heroClass: 'vanguard' },
+    argTypes: {
+        heroClass: {
+            name: 'Прошлое героя',
+            options: heroClasses,
+            control: {
+                type: 'select',
+                labels: Object.fromEntries(
+                    heroClasses.map((id) => [id, HERO_BACKGROUND_DEFINITIONS[id].name])
+                ),
+            },
+        },
+    },
+} satisfies Meta<StoryArgs>
 export default meta
-type Story = StoryObj
+type Story = StoryObj<StoryArgs>
 
 export const Ready: Story = {
-    render: () => {
-        const host = renderVueStory(JoinGameStory, {})
+    render: ({ heroClass }) => {
+        const host = renderVueStory(JoinGameStory, { initialHeroClass: heroClass })
         host.style.padding = '0'
         return host
     },

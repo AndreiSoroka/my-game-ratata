@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-    backgroundResources,
     HERO_BACKGROUND_DEFINITIONS,
     type HeroClass,
     MASTERY_NAMES,
@@ -13,14 +12,13 @@ const props = withDefaults(
     defineProps<{
         heroClass?: HeroClass | null
         showTitle?: boolean
-        showStartingResources?: boolean
+        borderWidth?: number
     }>(),
-    { showTitle: true, showStartingResources: false }
+    { showTitle: true }
 )
 const background = computed(() =>
     props.heroClass ? HERO_BACKGROUND_DEFINITIONS[props.heroClass] : undefined
 )
-const resources = computed(() => backgroundResources(props.heroClass ?? undefined))
 const resourceBonuses = computed(() => {
     const bonus = background.value?.resourceBonus
     if (!bonus) return []
@@ -44,14 +42,10 @@ const masteryBonus = computed(() => {
         class="background-summary game-frame-host"
         aria-label="Постоянные бонусы прошлого"
     >
-        <GameFrame variant="inset" />
+        <GameFrame variant="inset" :border-width="borderWidth" />
         <p v-if="showTitle" class="background-title">Прошлое: {{ background.name }}</p>
         <p>{{ resourceBonuses.length ? resourceBonuses.join(' · ') : 'Без прибавки ресурсов' }}</p>
         <p>{{ masteryBonus }}</p>
-        <p v-if="showStartingResources" class="background-starting">
-            Начальные запасы до звёзд: {{ resources.health }} HP · {{ resources.energy }} энергии ·
-            {{ resources.mana }} маны.
-        </p>
     </section>
 </template>
 
@@ -72,9 +66,5 @@ p {
     color: #f0d89c;
     font-size: 14px;
     margin-bottom: 4px;
-}
-.background-starting {
-    margin-top: 6px;
-    color: #b7c7ad;
 }
 </style>

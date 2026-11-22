@@ -43,27 +43,6 @@
     gap: 10px;
 }
 
-.join-row input,
-.join-row button {
-    min-height: 42px;
-}
-
-.join-row input {
-    min-width: 0;
-    padding: 0 12px;
-}
-
-.join-row button {
-    cursor: pointer;
-    font-weight: 800;
-    padding: 0 18px;
-}
-
-.join-row button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
 .join-error,
 .game-error {
     color: #ff8c7a;

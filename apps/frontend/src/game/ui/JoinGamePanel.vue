@@ -6,23 +6,35 @@ import {
     heroClasses,
     REGION_NAME,
 } from '@my-game-ratata/contracts'
+import { computed } from 'vue'
+
+import { UiButton, UiInput } from '@/shared/ui/common'
+import { FantasyBorder } from '@/shared/ui/external'
+import { darkPanelThemeStyle, provideDarkPanelTheme } from '@/shared/ui/theme'
 
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import HeroClassIcon from './HeroClassIcon.vue'
-import GameButton from './primitives/GameButton.vue'
+import { heroClassTheme } from './heroClassThemes'
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
 import RefreshIcon from './RefreshIcon.vue'
 
 const nickname = defineModel<string>('nickname', { required: true })
 const heroClass = defineModel<HeroClass>('heroClass', { required: true })
+const frameWidth = 16
+const theme = computed(() => heroClassTheme(heroClass.value, 'form'))
+provideDarkPanelTheme(theme)
 defineProps<{ canJoin: boolean; errorMessage: string }>()
 defineEmits<{ join: []; 'nickname-edited': []; 'regenerate-name': [] }>()
 const classes = heroClasses.map((id) => ({
     id,
     label: HERO_BACKGROUND_DEFINITIONS[id].name,
     description: HERO_BACKGROUND_DEFINITIONS[id].description,
+    theme: heroClassTheme(id, 'form'),
 }))
+function selectNickname({ currentTarget }: MouseEvent): void {
+    if (currentTarget instanceof HTMLInputElement) currentTarget.select()
+}
 </script>
 
 <template>
@@ -41,38 +53,45 @@ const classes = heroClasses.map((id) => ({
                 знакомые дела. Собирайте свои сценарии и договаривайтесь о помощи.
             </p>
         </div>
-        <form class="join-panel game-frame-host" autocomplete="off" @submit.prevent="$emit('join')">
-            <GameFrame variant="window" />
+        <form
+            class="join-panel game-frame-host"
+            :style="darkPanelThemeStyle(theme)"
+            autocomplete="off"
+            @submit.prevent="$emit('join')"
+        >
+            <GameFrame variant="window" :border-width="frameWidth" />
             <h1 id="join-title">Ratata</h1>
             <label for="nickname">Имя героя</label>
             <div class="join-row">
-                <GameInput
+                <UiInput
                     id="nickname"
                     v-model="nickname"
+                    :border-width="frameWidth"
                     autocomplete="off"
                     maxlength="24"
                     minlength="1"
                     required
-                    type="text"
+                    @click="selectNickname"
                     @input="$emit('nickname-edited')"
                 />
-                <GameButton
-                    icon
+                <UiButton
+                    appearance="panel"
+                    panel="panel-001"
                     class="join-regenerate"
                     aria-label="Сгенерировать другое имя"
                     title="Сгенерировать другое имя"
                     @click="$emit('regenerate-name')"
                 >
                     <RefreshIcon />
-                </GameButton>
-                <GameButton
+                </UiButton>
+                <UiButton
                     variant="primary"
                     class="join-submit"
                     :disabled="!canJoin || nickname.trim().length === 0"
                     type="submit"
                 >
                     Войти
-                </GameButton>
+                </UiButton>
             </div>
             <fieldset class="class-choices" aria-describedby="class-description class-hint">
                 <legend>Прошлое героя</legend>
@@ -86,10 +105,18 @@ const classes = heroClasses.map((id) => ({
                             :value="option.id"
                         />
                         <span
-                            class="class-card__content game-frame-host"
+                            class="class-card__content"
                             :class="{ 'class-card__content--selected': heroClass === option.id }"
+                            :style="darkPanelThemeStyle(option.theme)"
                         >
-                            <GameFrame variant="inset" />
+                            <FantasyBorder
+                                as="span"
+                                class="class-card__frame"
+                                :border="option.theme?.border"
+                                :border-width="frameWidth"
+                                color="var(--ui-themed-panel-accent)"
+                                aria-hidden="true"
+                            />
                             <HeroClassIcon :hero-class="option.id" />
                             <span>{{ option.label }}</span>
                         </span>
@@ -102,7 +129,7 @@ const classes = heroClasses.map((id) => ({
             <HeroBackgroundSummary
                 :hero-class="heroClass"
                 :show-title="false"
-                show-starting-resources
+                :border-width="frameWidth"
             />
             <p id="class-hint" class="class-hint">
                 Прошлое даёт первые преимущества. Любой герой может освоить меч, чудеса и магию
@@ -113,186 +140,4 @@ const classes = heroClasses.map((id) => ({
     </section>
 </template>
 
-<style scoped>
-.join-screen {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
-    gap: clamp(32px, 8vw, 140px);
-    padding: clamp(24px, 6vw, 96px);
-    min-height: 100dvh;
-    box-sizing: border-box;
-    background:
-        linear-gradient(90deg, #080e0dd9 0%, #080e0d55 55%, #080e0d99 100%),
-        url('/game/assets/ash-border.png') center / cover;
-}
-.join-panel {
-    width: 100%;
-    box-sizing: border-box;
-    backdrop-filter: blur(8px);
-}
-.join-row {
-    grid-template-columns: minmax(0, 1fr) 44px auto;
-}
-.join-regenerate {
-    display: grid;
-    place-items: center;
-    padding: 0;
-}
-.join-regenerate svg {
-    width: 22px;
-    height: 22px;
-}
-@media (max-width: 480px) {
-    .join-row {
-        grid-template-columns: minmax(0, 1fr) 44px;
-    }
-    .join-submit {
-        grid-column: 1 / -1;
-    }
-}
-.join-lore {
-    justify-self: start;
-    max-width: 620px;
-    text-shadow: 0 2px 20px #000c;
-}
-.join-lore__eyebrow {
-    margin: 0 0 24px;
-    color: #d5ba7d;
-    font:
-        11px/1.6 system-ui,
-        sans-serif;
-    letter-spacing: 3px;
-}
-.join-lore h2 {
-    margin: 0 0 24px;
-    color: #fff1cf;
-    font-size: clamp(36px, 4.5vw, 68px);
-    font-weight: 600;
-    line-height: 1.15;
-}
-.join-lore__story {
-    max-width: 470px;
-    color: #efe6d1;
-    font:
-        17px/1.7 system-ui,
-        sans-serif;
-}
-.join-lore__invitation {
-    max-width: 440px;
-    margin-top: 20px;
-    color: #b8c5b5;
-    font:
-        14px/1.7 system-ui,
-        sans-serif;
-}
-@media (max-width: 820px) {
-    .join-screen {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 28px;
-        padding: 32px 20px;
-        background-position: 60% center;
-    }
-    .join-lore {
-        max-width: 440px;
-        justify-self: center;
-        text-align: center;
-    }
-    .join-lore h2 {
-        font-size: 36px;
-        margin-bottom: 16px;
-    }
-    .join-lore__eyebrow {
-        font-size: 9px;
-        margin-bottom: 16px;
-    }
-    .join-lore__story {
-        font-size: 14px;
-    }
-    .join-lore__invitation {
-        display: none;
-    }
-    .join-panel {
-        max-width: 440px;
-        justify-self: center;
-    }
-}
-
-.class-choices {
-    min-width: 0;
-    margin: 20px 0 0;
-    padding: 0;
-    border: 0;
-}
-.class-choices legend {
-    margin-bottom: 10px;
-    color: #e3cd9d;
-}
-.class-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-}
-.class-card {
-    position: relative;
-    cursor: pointer;
-}
-.class-card input {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    opacity: 0;
-    cursor: pointer;
-}
-.class-card__content {
-    display: flex;
-    min-height: 86px;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 2px;
-    box-sizing: border-box;
-    border: 1px solid transparent;
-    color: #bec9ba;
-    font:
-        12px/1.4 system-ui,
-        sans-serif;
-}
-.class-card__content svg {
-    width: 34px;
-    height: 34px;
-}
-.class-card:hover .class-card__content {
-    --game-frame-fill: var(--game-ui-surface-raised);
-}
-.class-card__content--selected {
-    --game-frame-fill: var(--game-ui-surface-raised);
-    color: var(--game-ui-gold);
-    box-shadow: inset 0 0 0 1px var(--game-ui-gold);
-}
-.class-card input:focus-visible + .class-card__content {
-    outline: 2px solid var(--game-ui-focus);
-    outline-offset: 3px;
-}
-@media (max-width: 820px) {
-    .class-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-.class-description {
-    margin: 10px 0;
-    color: #e3cd9d;
-    font:
-        14px/1.5 system-ui,
-        sans-serif;
-}
-.class-hint {
-    margin: 18px 0 0;
-    color: #9faa9c;
-    font:
-        12px/1.5 system-ui,
-        sans-serif;
-}
-</style>
+<style scoped src="./joinGamePanel.css" />

@@ -1,6 +1,8 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, HeroClass } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
+
+import { provideDarkPanelTheme } from '@/shared/ui/theme'
 
 import { renderVueStory } from '../stories/renderVueStory'
 import {
@@ -12,19 +14,28 @@ import {
     wantedStatusFixture,
 } from '../testing/playerStatusFixture'
 import GamePlayerStatus from './GamePlayerStatus.vue'
+import { heroClassTheme } from './heroClassThemes'
 
 const meta = { title: 'Game/Player HUD' } satisfies Meta
 export default meta
 type Story = StoryObj
 
 /** Mount in a real game host so ResizeObserver publishes the HUD's occupied space. */
-function statusStory(props: { character: CharacterSnapshot; serverTime?: number }): HTMLElement {
+function statusStory(
+    props: { character: CharacterSnapshot; serverTime?: number },
+    heroClass?: HeroClass
+): HTMLElement {
     const host = renderVueStory(
         {
-            render: () =>
-                h('section', { class: 'game-screen', style: 'position:relative;height:100dvh' }, [
-                    h(GamePlayerStatus, props),
-                ]),
+            setup() {
+                provideDarkPanelTheme(heroClassTheme(heroClass))
+                return () =>
+                    h(
+                        'section',
+                        { class: 'game-screen', style: 'position:relative;height:100dvh' },
+                        [h(GamePlayerStatus, props)]
+                    )
+            },
         },
         {}
     )
@@ -36,6 +47,15 @@ function statusStory(props: { character: CharacterSnapshot; serverTime?: number 
 export const Normal: Story = {
     render: () => statusStory({ character: playerStatusFixture() }),
 }
+function themedStatusStory(heroClass: HeroClass): Story {
+    return {
+        render: () => statusStory({ character: playerStatusFixture({ heroClass }) }, heroClass),
+    }
+}
+export const Vanguard = themedStatusStory('vanguard')
+export const Ranger = themedStatusStory('ranger')
+export const Arcanist = themedStatusStory('arcanist')
+export const Cleric = themedStatusStory('cleric')
 export const LongName: Story = {
     render: () =>
         statusStory({

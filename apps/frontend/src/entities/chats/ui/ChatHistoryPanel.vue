@@ -4,7 +4,8 @@ import './chatButton.css'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import { UiButton } from '@/shared/ui/common'
-import { FantasyBorder } from '@/shared/ui/external'
+import { FantasyBorder, getFantasyBorderMetrics } from '@/shared/ui/external'
+import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import {
     type ChatHistoryEntry,
@@ -24,6 +25,10 @@ const props = withDefaults(
     { filter: 'all', collapsed: false }
 )
 const scroller = useTemplateRef<HTMLOListElement>('scroller')
+const defaultBorder = 'border-006'
+const borderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
+const theme = useDarkPanelTheme()
+const historyStyle = computed(() => darkPanelThemeStyle(theme.value))
 const visible = computed(() => filterChatHistory(props.entries, props.filter))
 const preview = computed(() => visible.value.at(-1))
 
@@ -71,7 +76,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
 </script>
 
 <template>
-    <aside class="chat-history" aria-label="История чата" tabindex="-1">
+    <aside class="chat-history" :style="historyStyle" aria-label="История чата" tabindex="-1">
         <p v-if="collapsed" class="chat-history__preview">
             <template v-if="preview">
                 <strong>{{ preview.name }}:</strong> {{ preview.text }}
@@ -81,8 +86,9 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
         <FantasyBorder
             v-show="!collapsed"
             class="chat-history__surface"
-            border="border-006"
-            color="var(--ui-dark-panel-border)"
+            :border="theme?.border ?? defaultBorder"
+            :border-width="borderWidth"
+            color="var(--chat-history-accent)"
         >
             <ol
                 :id="listId"
@@ -126,6 +132,8 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
 
 <style scoped>
 .chat-history {
+    --chat-history-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
+    --chat-history-accent: var(--ui-themed-panel-accent, var(--ui-dark-panel-border));
     display: grid;
     grid-template-rows: minmax(0, 1fr);
     min-inline-size: 0;
@@ -140,7 +148,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     min-block-size: 0;
-    background: var(--ui-dark-panel-surface);
+    background: var(--chat-history-surface);
 }
 
 .chat-history__preview {
@@ -155,14 +163,15 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     min-block-size: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    scrollbar-color: var(--ui-dark-panel-ornament) var(--ui-dark-panel-surface);
+    scrollbar-color: var(--ui-themed-panel-accent, var(--ui-dark-panel-ornament))
+        var(--chat-history-surface);
     list-style: none;
     margin: 0;
     padding: 2px;
 }
 
 .chat-history__entries:focus-visible {
-    outline: 1px solid var(--ui-dark-panel-border);
+    outline: 1px solid var(--chat-history-accent);
     outline-offset: 2px;
 }
 
@@ -187,7 +196,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
 
 .chat-history__status,
 .chat-history__empty {
-    color: var(--ui-dark-panel-border);
+    color: var(--chat-history-accent);
 }
 
 @media (max-width: 740px) {

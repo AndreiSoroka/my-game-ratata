@@ -48,22 +48,22 @@ const slotColors: UiButtonColors = {
         backgroundTop: 'var(--quick-action-hover)',
     },
     focus: 'var(--ui-dark-panel-title)',
-    shadow: 'var(--ui-dark-panel-surface)',
+    shadow: 'var(--quick-action-surface)',
 }
 
 const clearColors: UiButtonColors = {
     normal: {
         text: 'var(--ui-dark-panel-title)',
         border: 'transparent',
-        backgroundTop: 'var(--ui-dark-bar-track)',
-        backgroundBottom: 'var(--ui-dark-panel-surface)',
+        backgroundTop: 'var(--quick-action-track)',
+        backgroundBottom: 'var(--quick-action-surface)',
     },
     highlighted: {
         text: 'var(--ui-dark-panel-title)',
-        border: 'var(--ui-dark-panel-ornament)',
-        backgroundTop: 'var(--ui-dark-bar-track)',
+        border: 'var(--quick-action-ornament)',
+        backgroundTop: 'var(--quick-action-track)',
     },
-    edge: 'var(--ui-dark-panel-divider)',
+    edge: 'var(--quick-action-divider)',
     focus: 'var(--ui-dark-panel-title)',
 }
 </script>
@@ -129,6 +129,19 @@ const clearColors: UiButtonColors = {
 
 <style scoped>
 .quick-action-slot {
+    --quick-action-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
+    --quick-action-ornament: var(--ui-themed-panel-accent, var(--ui-dark-panel-ornament));
+    --quick-action-border: var(--ui-themed-panel-accent, var(--ui-dark-panel-border));
+    --quick-action-track: color-mix(
+        in srgb,
+        var(--ui-themed-panel-surface, var(--ui-dark-bar-track)) 70%,
+        var(--ui-dark-bar-track)
+    );
+    --quick-action-divider: color-mix(
+        in srgb,
+        var(--ui-themed-panel-accent, var(--ui-dark-panel-divider)) 50%,
+        var(--ui-themed-panel-surface, var(--ui-dark-panel-divider))
+    );
     position: relative;
     inline-size: var(--quick-action-size, 50px);
     aspect-ratio: 1;
@@ -137,13 +150,13 @@ const clearColors: UiButtonColors = {
 
 .hotbar-slot {
     --quick-action-ink: var(--ui-dark-panel-title);
-    --quick-action-rail: var(--ui-dark-panel-ornament);
-    --quick-action-face: var(--ui-dark-bar-track);
-    --quick-action-base: var(--ui-dark-panel-surface);
+    --quick-action-rail: var(--quick-action-ornament);
+    --quick-action-face: var(--quick-action-track);
+    --quick-action-base: var(--quick-action-surface);
     --quick-action-hover: color-mix(
         in srgb,
         var(--quick-action-face) 80%,
-        var(--ui-dark-panel-border)
+        var(--quick-action-border)
     );
     --quick-action-highlight: var(--ui-dark-panel-title);
     inline-size: 100%;
@@ -154,24 +167,24 @@ const clearColors: UiButtonColors = {
 }
 
 .hotbar-slot.active {
-    --quick-action-ink: var(--ui-dark-panel-surface);
-    --quick-action-rail: var(--ui-light-panel-parchment);
+    --quick-action-ink: var(--quick-action-surface);
+    --quick-action-rail: var(--ui-themed-panel-accent, var(--ui-light-panel-parchment));
     --quick-action-face: var(--ui-light-panel-parchment);
-    --quick-action-base: var(--ui-dark-panel-border);
+    --quick-action-base: var(--quick-action-border);
     --quick-action-highlight: var(--ui-light-border-white);
 }
 
 .hotbar-slot--empty {
-    --quick-action-ink: var(--ui-dark-panel-ornament);
-    --quick-action-rail: var(--ui-dark-panel-divider);
-    --quick-action-face: var(--ui-dark-panel-surface);
-    --quick-action-base: var(--ui-dark-panel-surface);
+    --quick-action-ink: var(--quick-action-ornament);
+    --quick-action-rail: var(--quick-action-divider);
+    --quick-action-face: var(--quick-action-surface);
+    --quick-action-base: var(--quick-action-surface);
 }
 
 .hotbar-slot[data-unavailable='true']:not(.active) {
     --quick-action-ink: var(--ui-dark-panel-text);
-    --quick-action-rail: var(--ui-dark-panel-divider);
-    --quick-action-face: color-mix(in srgb, var(--ui-dark-bar-track), var(--ui-dark-panel-surface));
+    --quick-action-rail: var(--quick-action-divider);
+    --quick-action-face: color-mix(in srgb, var(--quick-action-track), var(--quick-action-surface));
 }
 
 .hotbar-slot kbd {
@@ -210,7 +223,7 @@ const clearColors: UiButtonColors = {
 .hotbar-auto {
     position: absolute;
     z-index: 1;
-    background: var(--ui-dark-panel-surface);
+    background: var(--quick-action-surface);
     color: var(--ui-dark-panel-title);
 }
 

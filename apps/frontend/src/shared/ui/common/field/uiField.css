@@ -1,5 +1,6 @@
 .ui-field {
-    --ui-field-border: var(--ui-dark-panel-border);
+    --ui-field-border: var(--ui-themed-panel-accent, var(--ui-dark-panel-border));
+    --ui-field-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
     display: flex;
     align-items: center;
     gap: 6px;
@@ -10,8 +11,8 @@
 .ui-field[data-fantasy-border] {
     background: linear-gradient(
         155deg,
-        color-mix(in srgb, var(--ui-dark-panel-surface) 86%, var(--ui-dark-bar-track)),
-        var(--ui-dark-panel-surface) 70%
+        color-mix(in srgb, var(--ui-field-surface) 86%, var(--ui-dark-bar-track)),
+        var(--ui-field-surface) 70%
     );
     box-shadow: inset 0 1px var(--ui-dark-panel-divider);
 }

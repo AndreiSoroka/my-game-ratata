@@ -1,5 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
+import { h, nextTick, ref } from 'vue'
+
+import { type DarkPanelTheme, provideDarkPanelTheme } from '@/shared/ui/theme'
 
 import GameFrame from './GameFrame.vue'
 import GameResourceBar from './GameResourceBar.vue'
@@ -13,6 +16,37 @@ it('keeps parchment decoration hidden from accessibility and leaves the default 
     expect(frame.classes()).toContain('game-frame--parchment')
     expect(frame.attributes('aria-hidden')).toBe('true')
     frame.unmount()
+})
+
+it('changes only dark frames and keeps the border width of each frame variant', async () => {
+    const theme = ref<DarkPanelTheme>()
+    const wrapper = mount({
+        setup() {
+            provideDarkPanelTheme(theme)
+            return () =>
+                h('div', [
+                    h(GameFrame, { variant: 'window' }),
+                    h(GameFrame, { variant: 'panel' }),
+                    h(GameFrame, { variant: 'inset' }),
+                    h(GameFrame, { variant: 'speech' }),
+                    h(GameFrame, { skin: 'parchment' }),
+                ])
+        },
+    })
+    try {
+        expect(wrapper.find('[data-fantasy-border]').exists()).toBe(false)
+        theme.value = { border: 'border-018', accent: '#cbb8e9', surface: '#24304ce8' }
+        await nextTick()
+        const borders = wrapper.findAll<HTMLElement>('[data-fantasy-border="border-018"]')
+        expect(
+            borders.map(({ element }) => element.style.getPropertyValue('--fantasy-border-size'))
+        ).toEqual(['9px', '7px', '5px'])
+        expect(wrapper.find('.game-frame--speech [data-fantasy-border]').exists()).toBe(false)
+        expect(wrapper.find('.game-frame--parchment [data-fantasy-border]').exists()).toBe(false)
+        expect(wrapper.get('.game-frame--window').attributes('aria-hidden')).toBe('true')
+    } finally {
+        wrapper.unmount()
+    }
 })
 
 it('passes ribbon content and native attributes without adding accessible decoration', () => {

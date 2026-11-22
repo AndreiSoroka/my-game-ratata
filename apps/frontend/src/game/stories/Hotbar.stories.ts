@@ -5,8 +5,11 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { userEvent, within } from 'storybook/test'
 import { defineComponent, h } from 'vue'
 
+import { provideDarkPanelTheme } from '@/shared/ui/theme'
+
 import { characterFixture } from '../testing/characterFixture'
 import ActionHotbar from '../ui/ActionHotbar.vue'
+import { heroClassTheme } from '../ui/heroClassThemes'
 import type { HotbarBinding } from '../ui/hotbarBindings'
 import { hotbarIdentityKey, provideHotbarSession } from '../ui/hotbarSession'
 import { renderVueStory } from './renderVueStory'
@@ -24,7 +27,15 @@ function render(heroClass: HeroClass): HTMLElement {
             casting: null,
         },
     })
-    return renderVueStory(ActionHotbar, { player, characters: [player], blocked: false })
+    return renderVueStory(
+        {
+            setup() {
+                provideDarkPanelTheme(heroClassTheme(heroClass))
+                return () => h(ActionHotbar, { player, characters: [player], blocked: false })
+            },
+        },
+        {}
+    )
 }
 export const Vanguard: Story = { render: () => render('vanguard') }
 export const Ranger: Story = { render: () => render('ranger') }

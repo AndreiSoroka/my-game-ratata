@@ -1,25 +1,34 @@
 <script setup lang="ts">
-import { FantasyBorder } from '@/shared/ui/external'
+import { computed } from 'vue'
+
+import { FantasyBorder, getFantasyBorderMetrics } from '@/shared/ui/external'
+import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 withDefaults(defineProps<{ framed?: boolean }>(), { framed: true })
 defineSlots<{ default?: () => unknown }>()
 
-const borderWidth = 12
+const defaultBorder = 'border-006'
+const borderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
+const theme = useDarkPanelTheme()
+const framedStyle = computed(() => ({
+    ...darkPanelThemeStyle(theme.value),
+    padding: `${borderWidth}px`,
+}))
 </script>
 
 <template>
     <div
         class="chat-composer-frame"
         :class="{ 'chat-composer-frame--framed': framed }"
-        :style="framed ? { padding: `${borderWidth}px` } : undefined"
+        :style="framed ? framedStyle : undefined"
     >
         <FantasyBorder
             v-if="framed"
             as="span"
-            border="border-006"
+            :border="theme?.border ?? defaultBorder"
             :border-width="borderWidth"
             class="chat-composer-frame__border"
-            color="var(--ui-dark-panel-border)"
+            color="var(--ui-themed-panel-accent, var(--ui-dark-panel-border))"
             aria-hidden="true"
         />
         <slot />
@@ -34,10 +43,15 @@ const borderWidth = 12
 }
 
 .chat-composer-frame--framed {
+    --chat-composer-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
     background: linear-gradient(
         155deg,
-        color-mix(in srgb, var(--ui-dark-panel-surface) 86%, var(--ui-dark-bar-track)),
-        var(--ui-dark-panel-surface) 70%
+        color-mix(
+            in srgb,
+            var(--chat-composer-surface) 86%,
+            var(--ui-themed-panel-accent, var(--ui-dark-bar-track))
+        ),
+        var(--chat-composer-surface) 70%
     );
 }
 
