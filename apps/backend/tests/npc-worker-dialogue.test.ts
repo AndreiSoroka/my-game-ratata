@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 
 import { createItemInstance } from '../src/game/inventory'
+import { parseClientMessage } from '../src/game/messages'
 import { configureNpcQuestDialogue } from '../src/game/npcQuestDialogue'
 import { NpcQuestService } from '../src/game/npcQuests'
 import { PartyService } from '../src/game/parties'
@@ -19,7 +20,7 @@ it('offers the clerk’s real worker incident through dialogue and completes the
     const { parties, quests } = createWorkerDialogues(f)
     const open = f.room.requestAdventure(
         f.player,
-        { type: 'interact', targetId: f.clerk.id },
+        { type: 'interact', targetId: f.clerk.id, service: 'worker_requests' },
         f.now
     )
     expect(open.accepted).toBe(true)
@@ -28,6 +29,14 @@ it('offers the clerk’s real worker incident through dialogue and completes the
         f.player.locationId,
         f.player
     ).dialogue
+    expect(dialogue).toMatchObject({
+        canTrade: false,
+        title: 'Обращения работников',
+    })
+    expect(dialogue?.choices.map(({ id }) => id)).toEqual([
+        'leave',
+        `worker-contract:${f.current().id}`,
+    ])
     const choice = dialogue?.choices.find((entry) =>
         entry.id.startsWith('worker-contract:')
     )
@@ -114,6 +123,44 @@ it('offers the clerk’s real worker incident through dialogue and completes the
         f.now
     )
     expect(f.adventure.walletFor(f.player.id).gold).toBe(30)
+})
+
+it('validates explicit city and worker services without starting a conversation', () => {
+    const f = new WorkerSimulation('farmer')
+    const city = {
+        type: 'interact',
+        targetId: f.clerk.id,
+        service: 'city_affairs',
+    } as const
+    const workers = { ...city, service: 'worker_requests' } as const
+    expect(parseClientMessage(JSON.stringify(city))).toEqual({ message: city })
+    expect(parseClientMessage(JSON.stringify(workers))).toEqual({
+        message: workers,
+    })
+    expect(
+        parseClientMessage(JSON.stringify({ ...city, service: 'unknown' }))
+            .message
+    ).toBeUndefined()
+    expect(f.room.requestAdventure(f.player, workers, f.now).accepted).toBe(
+        false
+    )
+    f.publish()
+    createWorkerDialogues(f)
+
+    expect(
+        f.room.requestAdventure(
+            f.player,
+            { ...city, targetId: 'npc_merchant_1' },
+            f.now
+        ).accepted
+    ).toBe(false)
+    expect(f.room.requestAdventure(f.player, city, f.now).accepted).toBe(true)
+    const dialogue = f.adventure.walletFor(f.player.id).dialogue
+    expect(dialogue?.text).toBe('')
+    expect(dialogue?.choices.map(({ id }) => id)).toContain('city_report')
+    expect(
+        dialogue?.choices.some(({ id }) => id.startsWith('worker-contract:'))
+    ).toBe(false)
 })
 
 it('does not stop a worker or a moving clerk for an informational model interaction', () => {

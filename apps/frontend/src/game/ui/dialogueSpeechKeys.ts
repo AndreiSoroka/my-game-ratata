@@ -2,7 +2,7 @@ import type { AdventureDialogue } from '@my-game-ratata/contracts'
 
 import { speechBubbleId } from './speechReceipts'
 
-const focusTargets = '[data-dialogue-action]:not(:disabled), [data-dialogue-focus]:not(:disabled)'
+const focusTargets = '[data-dialogue-action]:not(:disabled)'
 
 function speechText(dialogue: AdventureDialogue): HTMLElement | null {
     return (

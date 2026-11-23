@@ -12,6 +12,7 @@ function resident(id: string, y: number): CharacterSnapshot {
     return characterFixture(id, {
         nickname: `Житель ${id}`,
         controllerKind: 'scripted',
+        interactions: { aiDialogue: true, whisper: true, exchange: false },
         position: { x: 0, y },
         soul: {
             kind: 'spark',
@@ -75,13 +76,14 @@ describe('opening a one-target interaction', () => {
             })
             expect(wrapper.vm.prompt).toBeUndefined()
             expect(wrapper.get('h2').text()).toBe(first.nickname)
-            expect(wrapper.find('[data-action-id="talk:second"]').exists()).toBe(false)
-            const talk = wrapper.get('[data-action-id="talk:first"]')
-            await talk.trigger('keydown', { code: 'KeyF', key: 'а', repeat: true })
+            expect(wrapper.find('[data-action-id="whisper:second"]').exists()).toBe(false)
+            expect(wrapper.text()).not.toContain('Поговорить')
+            const whisper = wrapper.get('[data-action-id="whisper:first"]')
+            await whisper.trigger('keydown', { code: 'KeyF', key: 'а', repeat: true })
             expect(playUiSound.mock.calls).toEqual([['uiOpen']])
-            await talk.trigger('keydown', { code: 'KeyF', key: 'а' })
+            await whisper.trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
-                { type: 'interact', targetId: first.id },
+                { type: 'whisper_open', targetId: first.id },
             ])
             expect(playUiSound.mock.calls).toEqual([['uiOpen'], ['uiClick']])
         } finally {
@@ -115,7 +117,7 @@ describe('interaction menu invalidation', () => {
                 })
                 expect(wrapper.find('[role="menu"]').exists()).toBe(false)
                 expect(wrapper.vm.prompt).toContain(`F ${second.nickname} · `)
-                wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'talk:second')
+                wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'whisper:second')
                 await flushPromises()
                 expect(wrapper.emitted('command')).toHaveLength(1)
                 expect(playUiSound.mock.calls).toEqual([['uiOpen']])
@@ -165,7 +167,7 @@ describe('interaction menu invalidation', () => {
                 }
                 expect(wrapper.find('[role="menu"]').exists()).toBe(false)
                 expect(Boolean(wrapper.vm.prompt)).toBe(change === 'travel')
-                wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'talk:first')
+                wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'whisper:first')
                 expect(wrapper.emitted('command')).toHaveLength(1)
             } finally {
                 wrapper.unmount()

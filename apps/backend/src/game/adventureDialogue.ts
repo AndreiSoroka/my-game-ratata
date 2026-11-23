@@ -2,6 +2,7 @@ import {
     authoredMessage,
     type AuthoredTextKey,
     type GameEventPayload,
+    type NpcInteractionService,
     workshopFor,
 } from '@my-game-ratata/contracts'
 
@@ -21,6 +22,7 @@ import { CONVERSATION_REACH } from './conversationSessions'
 import { interactionRangeText } from './interactionRangeText'
 import type { NavigationService } from './navigation'
 import { setAuthoredNotice, setNotice } from './notices'
+import { residentDialogue } from './residentDialogue'
 import { trophyProgress } from './trophyQuest'
 export function interactAdventureNpc(
     actor: GameCharacter,
@@ -29,8 +31,9 @@ export function interactAdventureNpc(
     state: PlayerAdventure,
     now: number,
     navigation?: NavigationService,
-    service?: 'shop' | 'orders' | 'repair',
-    text?: string
+    service?: NpcInteractionService,
+    text?: string,
+    availableWorkerRequests = false
 ): AdventureActionResult {
     const npc = resolveAdventureNpc(actor, npcId, locationNPCs, now, navigation)
 
@@ -47,17 +50,25 @@ export function interactAdventureNpc(
         return { accepted: false, error, events: [] }
     }
 
-    if (!serviceAvailable(npcId, service)) {
+    if (!serviceAvailable(npcId, service, availableWorkerRequests)) {
         return rejectInteraction(state, 'notice.serviceUnavailable')
     }
     setNotice(state, null)
-    state.dialogue = adventureDialogue(
-        npc.id,
-        npc.nickname,
-        trophyProgress(state, actor),
-        text === undefined ? undefined : { text }
-    )
-    if (service !== undefined) {
+    state.dialogue =
+        service === 'worker_requests'
+            ? residentDialogue(
+                  npc.id,
+                  npc.nickname,
+                  undefined,
+                  'dialogue.workerRequests'
+              )
+            : adventureDialogue(
+                  npc.id,
+                  npc.nickname,
+                  trophyProgress(state, actor),
+                  text === undefined ? undefined : { text }
+              )
+    if (service === 'shop' || service === 'orders' || service === 'repair') {
         state.dialogue.initialView = service
     }
     refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
@@ -144,15 +155,21 @@ function rejectDialogue(
 }
 function serviceAvailable(
     npcId: string,
-    service: 'shop' | 'orders' | 'repair' | undefined
+    service: NpcInteractionService | undefined,
+    availableWorkerRequests: boolean
 ): boolean {
-    if (service === undefined) {
-        return true
+    switch (service) {
+        case 'shop':
+            return adventureNpcRoles[npcId]?.trade === true
+        case 'orders':
+            return workshopFor(npcId) !== undefined
+        case 'repair':
+            return workshopFor(npcId)?.repair === true
+        case 'city_affairs':
+            return adventureNpcRoles[npcId]?.quest === true
+        case 'worker_requests':
+            return availableWorkerRequests
+        default:
+            return true
     }
-    if (service === 'orders') {
-        return workshopFor(npcId) !== undefined
-    }
-    return service === 'repair'
-        ? workshopFor(npcId)?.repair === true
-        : adventureNpcRoles[npcId]?.trade === true
 }

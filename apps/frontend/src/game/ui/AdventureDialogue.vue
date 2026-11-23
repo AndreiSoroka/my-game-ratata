@@ -23,7 +23,6 @@ import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
 import WorkshopOrders from './WorkshopOrders.vue'
 const props = defineProps<{ adventure: AdventureSnapshot; characters: CharacterSnapshot[] }>()
-defineSlots<{ composer: () => unknown }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const panel = ref<HTMLElement>()
 const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
@@ -67,8 +66,7 @@ function focusFirstAction(id?: QuestChoice): void {
             ) ?? []
         )
         const target = actions.find((item) => item.dataset['dialogueAction'] === id) ?? actions[0]
-        if (target) target.focus()
-        else panel.value?.querySelector<HTMLElement>('input[data-dialogue-focus]')?.focus()
+        target?.focus()
     })
 }
 function closeQuestDecision(): void {
@@ -216,7 +214,6 @@ watch(
         <small v-if="!isSign && adventure.dialogue.text" class="dialogue-speech-help">
             {{ tGame('game.conversation.pageupPagedownReadTabSelect') }}
         </small>
-        <slot v-if="view === 'conversation'" name="composer" />
         <div v-if="view === 'conversation'" class="adventure-choices">
             <QuestRewardSummary
                 v-if="adventure.dialogue.choices.some((choice) => choice.id === 'quest_progress')"

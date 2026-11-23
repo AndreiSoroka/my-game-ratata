@@ -12,7 +12,7 @@ import { type CombatObserver, observeCombatEvent } from './combatObservation'
 import { CONVERSATION_REACH } from './conversationSessions'
 import type { PartyService } from './parties'
 import { type RoomSocket, send } from './roomMessaging'
-import { canHearSpeech } from './socialSpeech'
+import { canHearNearbySpeech, canHearSpeech } from './socialSpeech'
 import {
     isDialogueSpeech,
     npcReplyRecipient,
@@ -133,10 +133,7 @@ function describeSpeech(
         language: event.language ?? detectSpeechLanguage(event.text),
         speaker,
         replyRecipient: npcReplyRecipient(event),
-        voice:
-            speaker === undefined
-                ? undefined
-                : npcVoiceKind(event, speaker, event.text),
+        voice: npcVoiceKind(event, speaker, event.text),
     }
 }
 
@@ -219,7 +216,8 @@ function projectSpeech(
         visible.speakerName = speech.speaker.nickname
     }
     const heard =
-        visible.actorId !== undefined && canHearObservedSpeech(speech, view)
+        visible.actorId !== undefined &&
+        canHearObservedSpeech(source, speech, view)
     const readable = heard || canReadUnheardSpeech(source, speech, view)
     if (!readable) {
         visible.text = garbleText(speech.text)
@@ -240,14 +238,16 @@ function projectSpeech(
 }
 
 function canHearObservedSpeech(
+    event: GameEventPayload,
     speech: ObservedSpeech,
     { observer, navigation, now }: CombatObserver
 ): boolean {
+    const hears = event.channel === 'say' ? canHearNearbySpeech : canHearSpeech
     return (
         observer !== undefined &&
         navigation !== undefined &&
         speech.speaker !== undefined &&
-        canHearSpeech(
+        hears(
             observer,
             speech.speaker,
             navigation,
@@ -296,10 +296,11 @@ function isTranslationCandidate(
 
 function npcVoiceKind(
     source: GameEventPayload,
-    speaker: GameCharacter,
+    speaker: GameCharacter | undefined,
     text: string
 ): GameEventPayload['voice'] {
     if (
+        speaker === undefined ||
         speaker.controllerKind === 'network_player' ||
         source.channel === 'whisper' ||
         source.speechId === undefined ||

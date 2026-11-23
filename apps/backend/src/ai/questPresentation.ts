@@ -5,6 +5,7 @@ import type { NpcQuestDecisionContext } from '../game/npcQuestTypes'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech } from '../game/socialSpeech'
 import { createSpeechEvent } from '../game/speechReceipts'
+import { completeNpcCombatReaction } from './combatReactions'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { replySpeech, speechRadius } from './dialogueResult'
 import { attributeNpcSpeech } from './memorySpeechAttribution'
@@ -33,7 +34,10 @@ export function completeNpcBackgroundPresentation(
     now: number,
     finish: (accepted: boolean) => void
 ): boolean {
-    if (completeNpcGreeting(room, state, reply, now)) {
+    if (
+        completeNpcGreeting(room, state, reply, now) ||
+        completeNpcCombatReaction(room, state, reply, now)
+    ) {
         finish(true)
         return true
     }

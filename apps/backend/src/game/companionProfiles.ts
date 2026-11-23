@@ -112,6 +112,8 @@ export const serviceDialogueNames: Readonly<Record<string, readonly string[]>> =
         npc_necromancer_1: [
             'Некромант Савва',
             'Necromancer Savva',
+            'Некромант',
+            'Necromancer',
             'Савва',
             'Savva',
         ],

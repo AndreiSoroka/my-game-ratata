@@ -2,6 +2,7 @@ import {
     authoredMessage,
     type GameEventPayload,
     npcQuestMessage,
+    type WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -19,6 +20,22 @@ interface DialogueQuests {
 const sources = new WeakMap<AdventureService, DialogueQuests>()
 const prefix = 'worker-contract:'
 
+export function workerRequestsAtClerk(
+    adventure: AdventureService,
+    actor: GameCharacter,
+    clerkId: string
+): WorkRequestSnapshot[] {
+    if (actor.controllerKind !== 'network_player') {
+        return []
+    }
+    return (
+        sources
+            .get(adventure)
+            ?.workers.list(actor.locationId)
+            .filter((request) => request.clerkId === clerkId) ?? []
+    )
+}
+
 export function configureNpcQuestDialogue(
     adventure: AdventureService,
     quests: NpcQuestService,
@@ -33,7 +50,8 @@ export function extendNpcQuestDialogue(
     adventure: AdventureService,
     actor: GameCharacter,
     state: PlayerAdventure,
-    now: number
+    now: number,
+    availableRequests?: WorkRequestSnapshot[]
 ): void {
     const source = sources.get(adventure)
     const dialogue = state.dialogue
@@ -41,11 +59,8 @@ export function extendNpcQuestDialogue(
         return
     }
     const requests =
-        actor.controllerKind !== 'network_player'
-            ? []
-            : source.workers
-                  .list()
-                  .filter((request) => request.clerkId === dialogue.npcId)
+        availableRequests ??
+        workerRequestsAtClerk(adventure, actor, dialogue.npcId)
     const choices = requests.map((request) => ({
         id: `${prefix}${request.id}`,
         label: `Обращение: ${request.workerName} — ${request.reason ?? request.enemyName}`,

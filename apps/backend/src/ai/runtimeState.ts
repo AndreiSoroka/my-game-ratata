@@ -37,6 +37,7 @@ export interface NpcAiActorState {
     actor: GameCharacter | undefined
     generation: number
     token: string | undefined
+    hasDialogueModelLease?: boolean
     task: NpcAiTask | null
     events: NpcAiEvent[]
     memory: string

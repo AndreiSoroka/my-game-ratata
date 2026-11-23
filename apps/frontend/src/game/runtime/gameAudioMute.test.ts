@@ -41,6 +41,7 @@ afterEach(() => {
     window.history.replaceState({}, '', '/')
     setAudioMuted(false)
     setNpcVoiceEnabled(false)
+    window.localStorage.removeItem('ratata:npc-voice-enabled')
     vi.restoreAllMocks()
     vi.clearAllMocks()
 })
@@ -156,9 +157,8 @@ it('forces silence from the automated browser build flag before music playback',
     }
 })
 
-it('honors both voice and master audio controls for live NPC speech', () => {
+it('plays live NPC speech by default and honors voice and master mute controls', () => {
     setAudioMuted(false)
-    setNpcVoiceEnabled(false)
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
     const speech = Object.assign(new EventTarget(), {
         getVoices: () => [{ voiceURI: 'ru', lang: 'ru-RU', localService: true }],
@@ -198,21 +198,20 @@ it('honors both voice and master audio controls for live NPC speech', () => {
 
     try {
         say(1)
-        expect(speech.speak).not.toHaveBeenCalled()
-        setNpcVoiceEnabled(true)
-        say(2)
-        setAudioMuted(true)
-        expect(speech.cancel).toHaveBeenCalledOnce()
-        say(3)
-        setAudioMuted(false)
         expect(speech.speak).toHaveBeenCalledExactlyOnceWith(
             expect.objectContaining({ text: 'Привет!', volume: 0.03 })
         )
+        setAudioMuted(true)
+        expect(speech.cancel).toHaveBeenCalledOnce()
+        say(2)
+        expect(speech.speak).toHaveBeenCalledOnce()
 
-        say(4)
+        setAudioMuted(false)
+        say(3)
+        expect(speech.speak).toHaveBeenCalledTimes(2)
         setNpcVoiceEnabled(false)
         expect(speech.cancel).toHaveBeenCalledTimes(2)
-        say(5)
+        say(4)
         expect(speech.speak).toHaveBeenCalledTimes(2)
     } finally {
         player.stop()

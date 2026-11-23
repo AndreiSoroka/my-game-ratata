@@ -5,9 +5,9 @@ let sessionEnabled: boolean | undefined
 export function isNpcVoiceEnabled(): boolean {
     if (sessionEnabled !== undefined) return sessionEnabled
     try {
-        return window.localStorage.getItem(preferenceKey) === 'true'
+        return window.localStorage.getItem(preferenceKey) !== 'false'
     } catch {
-        return false
+        return true
     }
 }
 

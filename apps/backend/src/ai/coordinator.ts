@@ -7,6 +7,7 @@ import { reconcileNpcAction } from './actionResolution'
 import { archiveNpcAiPerson } from './actorLifecycle'
 import { recordNpcAiAttackResolution } from './attackResolution'
 import { reviewNpcAiCity } from './cityReview'
+import { queueNpcCombatReactions } from './combatReactions'
 import { rememberAndGreet } from './coordinatorSocial'
 import { NpcAiTicks } from './coordinatorTicks'
 import { NpcAiDiagnostics } from './diagnostics'
@@ -183,7 +184,29 @@ export class NpcAiCoordinator {
             this.active,
             { room: this.room, diagnostics: this.diagnostics }
         )
+        if (targetId !== undefined && event.system !== true) {
+            this.ticks.yieldCombatReactions(this.states.values(), event.at)
+        }
         this.scheduler.schedule()
+    }
+
+    public observeCombat(
+        events: readonly GameEventPayload[],
+        now: number
+    ): void {
+        if (
+            this.active &&
+            this.config.proactive !== false &&
+            this.room.allowsAutonomousNpcAi()
+        ) {
+            queueNpcCombatReactions(
+                this.room,
+                this.states.values(),
+                events,
+                now,
+                () => this.id('combat-hit')
+            )
+        }
     }
 
     public replyActivities() {

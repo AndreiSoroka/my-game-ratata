@@ -63,7 +63,7 @@ function orderBody(record: Record<string, unknown>): OrderBody | undefined {
         ? { type, orderId, expectedRemaining }
         : undefined
 }
-export function parseMerchantService(
+export function parseNpcInteractionService(
     record: Record<string, unknown>
 ): ParseResult | undefined {
     const { type, targetId, service } = record
@@ -72,9 +72,13 @@ export function parseMerchantService(
     }
     if (
         !validId(targetId) ||
-        (service !== 'shop' && service !== 'orders' && service !== 'repair')
+        (service !== 'shop' &&
+            service !== 'orders' &&
+            service !== 'repair' &&
+            service !== 'city_affairs' &&
+            service !== 'worker_requests')
     ) {
-        return { error: 'Invalid merchant service.' }
+        return { error: 'Invalid NPC interaction service.' }
     }
     return { message: { type, targetId, service } }
 }

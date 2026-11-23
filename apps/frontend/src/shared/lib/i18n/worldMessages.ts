@@ -54,6 +54,7 @@ export const worldMessages = {
     chestPrepositional: ['сундуке', 'chest'],
     chooseAction: ['Выбрать действие', 'Choose action'],
     choosePlot: ['Выберите участок', 'Choose a plot'],
+    cityAffairs: ['Городские дела', 'City affairs'],
     cleansing: ['Очищение:', 'Cleansing:'],
     clearPlot: ['Свободный участок · {energy} EN', 'Clear plot · {energy} EN'],
     clericCanStillBringYou: [
@@ -244,7 +245,6 @@ export const worldMessages = {
         'Можно забрать оставшиеся вещи и золото.',
         'You can take the remaining items and gold.',
     ],
-    talkTo: ['Поговорить: {name}', 'Talk to {name}'],
     theft: ['Кража', 'Theft'],
     tradeInvitations: ['Приглашения к торговле', 'Trade invitations'],
     tradeWith: ['Обменяться: {name}', 'Trade with {name}'],
@@ -271,6 +271,7 @@ export const worldMessages = {
     wheatPlot: ['Пшеничная грядка', 'Wheat plot'],
     whisper: ['Шёпот:', 'Whisper:'],
     whisperTo: ['Шёпот: {name}', 'Whisper to {name}'],
+    workerRequests: ['Обращения работников', 'Worker requests'],
     wSSelectFEnter: [
         '↑↓ / W S — выбор · F / Enter — выполнить · Esc — закрыть',
         '↑↓ / W S to select · F / Enter to use · Esc to close',

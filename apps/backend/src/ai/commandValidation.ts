@@ -4,6 +4,7 @@ import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { npcAiDecisionError } from './actions'
+import { npcCombatReactionProblem } from './combatReactions'
 import { npcDecisionAudienceError } from './decisionAudience'
 import { npcDecisionExchangeError } from './decisionExchange'
 import { npcAssistanceContext } from './dialogueOrders'
@@ -39,11 +40,32 @@ export function npcCommandProblem(
         return problem('unavailable', 'Персонаж сейчас недоступен.')
     }
     const language = replySpeechLanguage(room, state, reply, now)
-    return (
+    const speechProblem =
         npcSpeechLanguageProblem(reply, language) ??
         (language === 'ru'
             ? npcSelfReferenceProblem(actor, reply, speechAudience(room, state))
-            : undefined) ??
+            : undefined)
+    if (
+        state.task?.background === 'combat_reaction' &&
+        state.dialogue === undefined
+    ) {
+        return speechProblem ?? npcCombatReactionProblem(reply)
+    }
+    return (
+        speechProblem ??
+        npcWorldCommandProblem(room, companions, state, actor, reply, now)
+    )
+}
+
+function npcWorldCommandProblem(
+    room: GameRoom,
+    companions: CompanionService,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    reply: NpcAiReply,
+    now: number
+): NpcReplyProblem | undefined {
+    return (
         npcRoleProblem(room, state, actor, reply, now) ??
         backgroundProblem(state, reply) ??
         taskClaimProblem(room, state, actor, reply) ??

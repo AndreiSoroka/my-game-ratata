@@ -57,20 +57,27 @@ test.describe('AI player interface', () => {
             )
             expect(approached).toMatchObject({ status: 'arrived', locationId: initial.locationId })
 
-            const conversation = await page.evaluate(async (key) => {
+            const cityAffairs = await page.evaluate(async (key) => {
                 const api = window.__ratataTest!
                 const target = api.observe().targets.find((candidate) => candidate.key === key)
                 const action = target?.actions.find(
-                    (candidate) => candidate.command.type === 'interact'
+                    (candidate) =>
+                        candidate.command.type === 'interact' &&
+                        candidate.command.service === 'city_affairs'
                 )
-                if (!target || !action) throw new Error('Mira has no available interaction')
+                if (!target || !action) throw new Error('Mira has no city affairs action')
                 return api.act(action.command, { until: { type: 'dialogue', npcId: target.id } })
             }, miraKey)
-            expect(conversation.status).toBe('condition_met')
+            expect(cityAffairs.status).toBe('condition_met')
+            const miraId = await page.evaluate(() => {
+                const api = window.__ratataTest!
+                const id = api.getState().snapshot!.adventure!.dialogue!.npcId
+                api.send({ type: 'dialogue_choice', choiceId: 'close' })
+                return id
+            })
+            await expect(page.getByRole('dialog', { name: 'Разговор: Mira' })).toHaveCount(0)
 
-            // The standard generated city has an active Bell. Its live worker
-            // contracts remain available through the same observed dialogue.
-            const instanceId = await acceptObservedWorkerContract(page)
+            const instanceId = await acceptObservedWorkerContract(page, miraId)
             try {
                 const departed = await page.evaluate(() =>
                     window.__ratataTest!.travel('south', { timeoutMs: 30_000 })
@@ -101,8 +108,8 @@ test.describe('AI player interface', () => {
     }
 })
 
-async function acceptObservedWorkerContract(page: Page): Promise<string> {
-    await openObservedWorkerOffer(page)
+async function acceptObservedWorkerContract(page: Page, clerkId: string): Promise<string> {
+    await openObservedWorkerOffer(page, clerkId)
     await page.evaluate(() => {
         const api = window.__ratataTest!
         const offer = api.getState().snapshot!.social!.questOffer!

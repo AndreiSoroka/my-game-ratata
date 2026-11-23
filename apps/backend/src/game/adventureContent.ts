@@ -6,6 +6,7 @@ import {
     authoredMessage,
     authoredRussian,
     type AuthoredTextKey,
+    BASE_STOCK_MERCHANT_IDS,
     type CityBellState,
     type LocalizedMessage,
     type MarketItemId,
@@ -37,8 +38,12 @@ export const adventureNpcRoles: Record<
     string,
     { quest: boolean; trade: boolean; repair?: boolean; smith?: boolean }
 > = {
-    npc_friendly_girl_1: { quest: true, trade: true },
-    npc_merchant_1: { quest: false, trade: true },
+    ...Object.fromEntries(
+        BASE_STOCK_MERCHANT_IDS.map((id) => [
+            id,
+            { quest: id === 'npc_friendly_girl_1', trade: true },
+        ])
+    ),
     ...Object.fromEntries(
         WORKSHOP_DEFINITIONS.map((workshop) => [
             workshop.npcId,

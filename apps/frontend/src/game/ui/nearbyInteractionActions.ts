@@ -29,6 +29,7 @@ import { justiceActions } from './justiceActions'
 import type { NearbyAction } from './nearbyActions'
 import {
     characterActions,
+    civicServiceActions,
     followActions,
     partyActions,
     reviveActions,
@@ -186,6 +187,7 @@ function characterTargets(
                         : []),
                     ...justiceActions(snapshot, player, one),
                     ...characterActions(character, player),
+                    ...civicServiceActions(character, player, snapshot),
                     ...ashCharacterActions(player, character),
                     ...guildContractActions(player, character, snapshot),
                     ...socialActions(one, player),

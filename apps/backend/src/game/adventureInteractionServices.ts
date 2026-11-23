@@ -1,6 +1,7 @@
 import type {
     AdventureTradeItemId,
     GameEventPayload,
+    NpcInteractionService,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -10,7 +11,10 @@ import { type AdventureTrading, refreshTradeDialogue } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { CityWorldState } from './cityWorldState'
 import type { NavigationService } from './navigation'
-import { extendNpcQuestDialogue } from './npcQuestDialogue'
+import {
+    extendNpcQuestDialogue,
+    workerRequestsAtClerk,
+} from './npcQuestDialogue'
 
 interface Context {
     service: AdventureService
@@ -36,10 +40,16 @@ export function createAdventureInteractions(context: Context) {
         characters: GameCharacter[],
         navigation?: NavigationService,
         now = context.now(),
-        service?: 'shop' | 'orders' | 'repair',
+        service?: NpcInteractionService,
         text?: string
     ) => {
         const state = context.stateFor(actor.id)
+        const requests =
+            service === 'worker_requests'
+                ? workerRequestsAtClerk(context.service, actor, npcId).filter(
+                      (request) => request.stage === 'waiting'
+                  )
+                : undefined
         setCityRefusal(state, context.cities.tradeRefusal(actor.locationId))
         const result = interactAdventureNpc(
             actor,
@@ -49,10 +59,19 @@ export function createAdventureInteractions(context: Context) {
             now,
             navigation,
             service,
-            text
+            text,
+            requests !== undefined && requests.length > 0
         )
         if (result.accepted) {
-            extendNpcQuestDialogue(context.service, actor, state, now)
+            if (service !== 'city_affairs') {
+                extendNpcQuestDialogue(
+                    context.service,
+                    actor,
+                    state,
+                    now,
+                    requests
+                )
+            }
             refresh(actor)
         }
         return result

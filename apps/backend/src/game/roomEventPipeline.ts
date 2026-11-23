@@ -16,6 +16,7 @@ import type { WorldLocations } from './worldLocations'
 interface EventPipelineOptions {
     archivePerson: (id: string, now: number) => void
     hasModelLease: (actor: GameCharacter, now: number) => boolean
+    observeCombat: (events: readonly GameEventPayload[], now: number) => void
     world: () => WorldLocations
     speechTranslations: () => RoomSpeechTranslations
     now?: () => number
@@ -52,6 +53,7 @@ export class RoomEventPipeline {
             now
         )
         this.social.observe(objectiveEvents)
+        this.options.observeCombat(events, now)
         publishRoomEvents(
             events,
             this.characters,

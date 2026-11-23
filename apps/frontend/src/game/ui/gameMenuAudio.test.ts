@@ -53,34 +53,39 @@ it('keeps test sessions silent even when the saved preference enables audio', ()
         expect(button.attributes('disabled')).toBeDefined()
         expect(button.attributes('aria-pressed')).toBe('true')
         expect(voice.attributes('disabled')).toBeDefined()
+        expect(voice.attributes('aria-pressed')).toBe('false')
+        expect(voice.text()).toBe('Озвучка NPC: выключена')
         expect(isNpcVoiceEnabled()).toBe(true)
         expect(wrapper.text()).not.toContain('В этом режиме звук отключён.')
     } finally {
         wrapper.unmount()
     }
 })
-it('persists NPC voice opt-in independently of the master mute setting', async () => {
+it('enables NPC voice by default and remembers overrides independently of master mute', async () => {
     const wrapper = mount(GameMenu)
     try {
         const button = wrapper.get('[aria-label="Озвучка NPC"]')
-        expect(button.attributes('aria-pressed')).toBe('false')
-        await button.trigger('click')
         expect(button.attributes('aria-pressed')).toBe('true')
         expect(isNpcVoiceEnabled()).toBe(true)
-        expect(window.localStorage.getItem('ratata:npc-voice-enabled')).toBe('true')
+        expect(window.localStorage.getItem('ratata:npc-voice-enabled')).toBeNull()
+        await button.trigger('click')
+        expect(button.attributes('aria-pressed')).toBe('false')
+        expect(window.localStorage.getItem('ratata:npc-voice-enabled')).toBe('false')
         await wrapper.get('[aria-label="Без звука"]').trigger('click')
         expect(isAudioMuted()).toBe(true)
-        expect(isNpcVoiceEnabled()).toBe(true)
+        expect(isNpcVoiceEnabled()).toBe(false)
     } finally {
         wrapper.unmount()
     }
     const reopened = mount(GameMenu)
     try {
         const button = reopened.get('[aria-label="Озвучка NPC"]')
-        expect(button.attributes('aria-pressed')).toBe('true')
-        await button.trigger('click')
         expect(button.attributes('aria-pressed')).toBe('false')
-        expect(isNpcVoiceEnabled()).toBe(false)
+        await button.trigger('click')
+        expect(button.attributes('aria-pressed')).toBe('true')
+        expect(isNpcVoiceEnabled()).toBe(true)
+        expect(window.localStorage.getItem('ratata:npc-voice-enabled')).toBe('true')
+        expect(isAudioMuted()).toBe(true)
     } finally {
         reopened.unmount()
     }

@@ -8,6 +8,7 @@ import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 const merchantId = 'npc_merchant_1'
+const necromancerId = 'npc_necromancer_1'
 const guardId = 'npc_guard_1'
 const smithId = 'npc_smith_1'
 
@@ -27,6 +28,7 @@ beforeEach(() => {
                     npcs: [
                         { actorId: merchantId, role: 'advisor' },
                         { actorId: smithId, role: 'advisor' },
+                        { actorId: necromancerId, role: 'necromancer' },
                     ],
                 },
                 true
@@ -219,27 +221,143 @@ it('gives NPCs and players the same visible departure while keeping the private 
     expect(JSON.stringify(input)).not.toContain(question)
 })
 
-it('asks which Savva a bare name means and routes a full name', async () => {
+it('routes a shared name to both audible Savvas and a full name to its owner', async () => {
     const alice = joinScenarioRoom(room, 'Conversation Alice')
-    placeNear(room, merchantId, alice.actor)
-    alice.send({ type: 'chat', text: 'Савва' })
+    const necromancer = character(room, necromancerId)
+    placeNear(room, merchantId, alice.actor, necromancer)
+    alice.send({ type: 'chat', text: 'Савва, ты здесь?' })
     await vi.advanceTimersByTimeAsync(100)
-    expect(provider.turns).toHaveLength(0)
-    expect(
-        alice.sent.some(
-            (message) =>
-                message.type === 'event' &&
-                message.event.kind === 'notice' &&
-                message.event.text?.includes(
-                    'торговца Савву или некроманта Савву'
-                ) === true
-        )
-    ).toBe(true)
+    const first = provider.turns[0]
+    expect(first?.context.actorId).toBe(merchantId)
+    expect(first?.context.events[0]).toMatchObject({
+        nearby: 'broadcast',
+        ambiguous: true,
+    })
+    first?.resolve(npcReply(null, { speech: null }))
+    await vi.advanceTimersByTimeAsync(100)
+    const second = provider.turns[1]
+    expect(second?.context.actorId).toBe(necromancerId)
+    expect(second?.context.events[0]).toMatchObject({
+        id: first?.context.events[0]?.id,
+        ambiguous: true,
+    })
+    second?.resolve(npcReply(null, { speech: null }))
+    await vi.advanceTimersByTimeAsync(100)
+
     alice.send({ type: 'chat', text: 'Торговец Савва, что в лавке?' })
     await vi.advanceTimersByTimeAsync(100)
     expect(provider.turns.map(({ context }) => context.actorId)).toEqual([
         merchantId,
+        necromancerId,
+        merchantId,
     ])
+    expect(provider.turns[2]?.context.events[0]).toMatchObject({
+        nearby: 'addressed',
+        ambiguous: false,
+    })
+})
+
+it('fans unaddressed Nearby chat out and publishes only each model’s chosen public speech', async () => {
+    const alice = joinScenarioRoom(room, 'Conversation Alice')
+    const bob = joinScenarioRoom(room, 'Conversation Bob')
+    const merchant = character(room, merchantId)
+    const smith = character(room, smithId)
+    placeNear(
+        room,
+        merchantId,
+        alice.actor,
+        bob.actor,
+        smith,
+        character(room, guardId)
+    )
+    expect(merchant.soul).toMatchObject({
+        kind: 'echo',
+        controlSource: 'script',
+    })
+    alice.send({ type: 'chat', text: 'Привет!' })
+    expect(
+        room.social.npcSpeech.turns
+            .activity(alice.actor, room.gameplayNow())
+            .map(({ actorId }) => actorId)
+    ).toEqual(expect.arrayContaining([merchantId, smithId]))
+    await vi.advanceTimersByTimeAsync(100)
+    const first = provider.turns[0]
+    expect(first?.context.events[0]).toMatchObject({
+        nearby: 'broadcast',
+        ambiguous: true,
+    })
+    expect(merchant.soul).toMatchObject({
+        kind: 'spark',
+        controlSource: 'model',
+    })
+    first?.resolve(npcReply(null, { speech: 'Добрый день!' }))
+    await vi.advanceTimersByTimeAsync(100)
+    const second = provider.turns[1]
+    expect(second?.context.actorId).toBe(smithId)
+    expect(second?.context.events[0]?.id).toBe(first?.context.events[0]?.id)
+    expect(smith.soul).toMatchObject({ kind: 'spark', controlSource: 'model' })
+    second?.resolve(npcReply(null, { speech: null }))
+    await vi.advanceTimersByTimeAsync(2_100)
+    expect(speech(alice.sent, merchantId)).toEqual(['Добрый день!'])
+    expect(speech(bob.sent, merchantId)).toEqual(['Добрый день!'])
+    for (const session of [alice, bob]) {
+        const reply = session.sent.find(
+            (message) =>
+                message.type === 'event' &&
+                message.event.kind === 'chat' &&
+                message.event.actorId === merchantId
+        )
+        expect(reply).toMatchObject({ event: { channel: 'say' } })
+        expect(reply?.type === 'event' && typeof reply.event.speechId).toBe(
+            'number'
+        )
+        expect(reply).not.toHaveProperty('event.targetId')
+        expect(speech(session.sent, smithId)).toEqual([])
+        expect(speech(session.sent, guardId)).toEqual([])
+    }
+    expect(merchant.soul.kind).toBe('echo')
+    expect(smith.soul.kind).toBe('echo')
+})
+
+it('uses the selected character alone and does not fall back from a named human or invalid target', async () => {
+    const alice = joinScenarioRoom(room, 'Conversation Alice')
+    const bob = joinScenarioRoom(room, 'Conversation Bob')
+    const smith = character(room, smithId)
+    const guard = character(room, guardId)
+    placeNear(room, merchantId, alice.actor, bob.actor, smith, guard)
+    alice.send({ type: 'chat', text: `${bob.actor.nickname}, привет!` })
+    const targeted = 'Савва, привет!'
+    alice.send({ type: 'chat', targetId: guardId, text: targeted })
+    alice.send({ type: 'chat', targetId: 'missing', text: targeted })
+    await vi.advanceTimersByTimeAsync(2_100)
+    expect(provider.turns).toHaveLength(0)
+    expect(speech(alice.sent, guardId)).toEqual([])
+
+    placeNear(room, merchantId, alice.actor, smith)
+    alice.send({ type: 'chat', targetId: smithId, text: targeted })
+    await vi.advanceTimersByTimeAsync(100)
+    expect(provider.turns.map(({ context }) => context.actorId)).toEqual([
+        smithId,
+    ])
+    expect(provider.turns[0]?.context.events[0]).toMatchObject({
+        nearby: 'addressed',
+        ambiguous: false,
+    })
+})
+
+it('drops a public model reply after the player is no longer in the same location', async () => {
+    const alice = joinScenarioRoom(room, 'Conversation Alice')
+    placeNear(room, merchantId, alice.actor)
+    alice.send({ type: 'chat', targetId: merchantId, text: 'Привет!' })
+    await vi.advanceTimersByTimeAsync(100)
+    const turn = provider.turns[0]
+    expect(turn).toBeDefined()
+    alice.actor.locationId = 'map-1-2'
+    await vi.advanceTimersByTimeAsync(100)
+    turn?.resolve(npcReply(null, { speech: 'Запоздалый ответ' }))
+    await vi.advanceTimersByTimeAsync(2_100)
+    expect(turn?.signal.aborted).toBe(true)
+    expect(speech(alice.sent, merchantId)).toEqual([])
 })
 
 function speech(
@@ -264,6 +382,7 @@ function placeNear(
     for (const actor of actors) {
         // Place participants for unit testing the conversation queue.
         actor.position = { ...npc.position }
+        actor.locationId = npc.locationId
     }
 }
 

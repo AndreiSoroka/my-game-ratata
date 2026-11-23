@@ -2,7 +2,7 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
 import type { GameRoom } from '../game/room'
-import { canHearSpeech } from '../game/socialSpeech'
+import { canHearNearbySpeech, canHearSpeech } from '../game/socialSpeech'
 import { memoryForCharacter } from './characterMinds'
 import { addressedSpeechPartner } from './memorySpeechAttribution'
 import type { NpcAiActorState } from './runtimeState'
@@ -18,6 +18,9 @@ export function rememberHeardSpeech(
     event: Heard,
     targetId?: string
 ): void {
+    if (event.nearby !== undefined) {
+        return
+    }
     const actors = memoryParticipants(room, states, speaker, targetId)
     for (const listener of actors.values()) {
         if (
@@ -105,7 +108,8 @@ function remembersEvent(
     if (event.targetId !== undefined && listener.id !== event.targetId) {
         return false
     }
-    return canHearSpeech(listener, speaker, room.navigationFor(listener), at)
+    const hears = event.channel === 'say' ? canHearNearbySpeech : canHearSpeech
+    return hears(listener, speaker, room.navigationFor(listener), at)
 }
 function eventMemory(
     event: GameEventPayload,
@@ -141,7 +145,11 @@ export function rememberNpcAddressedSpeech(
     state: NpcAiActorState,
     event: Heard
 ): void {
-    if (event.system !== true && event.ambiguous !== true) {
+    if (
+        event.system !== true &&
+        event.ambiguous !== true &&
+        event.nearby !== 'broadcast'
+    ) {
         state.mind.recordAddressedSpeech(
             event.id.replace(/^say:/, 'speech:'),
             event.senderId,

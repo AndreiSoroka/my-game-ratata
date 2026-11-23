@@ -3,12 +3,19 @@ import { expect, type Page, test } from '@playwright/test'
 
 import { selectedWorldTarget } from './world-target-ui'
 
-test('reaches Savva in Western Ruins and learns the Ash prayer through his interaction menu', async ({
+interface RuinsMap {
+    layers: { name: string; objects?: (Vector2 & { type: string })[] }[]
+}
+
+const savvaId = 'npc_necromancer_1'
+
+test('chats with Savva in Nearby and learns the Ash prayer through his interaction menu', async ({
     page,
 }, info) => {
     test.setTimeout(120_000)
     await page.goto('/?test=1')
     await page.waitForFunction(() => Boolean(window.__ratataTest))
+    await page.addStyleTag({ content: '.test-panel { display: none !important }' })
     await page
         .getByRole('textbox', { name: 'Имя героя' })
         .fill(`ash-${info.workerIndex}-${Date.now().toString(36)}`)
@@ -22,6 +29,16 @@ test('reaches Savva in Western Ruins and learns the Ash prayer through his inter
         { timeout: 15_000 }
     )
 
+    const ruinsMap = page.waitForResponse(
+        (response) => {
+            const path = new URL(response.url()).pathname
+            return (
+                path.startsWith('/world/maps/') &&
+                path.endsWith(`/${WESTERN_RUINS_LOCATION_ID}.json`)
+            )
+        },
+        { timeout: 65_000 }
+    )
     for (let crossing = 0; crossing < 2; crossing += 1) {
         const travel = await page.evaluate(() =>
             window.__ratataTest!.travel('west', { timeoutMs: 30_000 })
@@ -32,17 +49,44 @@ test('reaches Savva in Western Ruins and learns the Ash prayer through his inter
         .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot?.location?.id))
         .toBe(WESTERN_RUINS_LOCATION_ID)
 
-    const necromancer = await page.evaluate(() =>
-        window
-            .__ratataTest!.getState()
-            .snapshot?.characters.find((actor) => actor.nickname === 'Савва')
-    )
-    expect(necromancer).toMatchObject({ visualId: 'necromancer', relationship: 'friendly' })
-    await approachFromEast(page, necromancer!.position)
-    await followTeacher(page, necromancer!.id)
+    const map: RuinsMap = await (await ruinsMap).json()
+    const refuge = map.layers
+        .find(({ name }) => name === 'Ash refuge')
+        ?.objects?.find(({ type }) => type === 'ash_home')
+    expect(refuge).toBeDefined()
+    await approachFromEast(page, { x: refuge!.x, y: refuge!.y })
+    await expect
+        .poll(() =>
+            page.evaluate(
+                (id) =>
+                    window
+                        .__ratataTest!.getState()
+                        .snapshot?.characters.find((actor) => actor.id === id),
+                savvaId
+            )
+        )
+        .toMatchObject({ visualId: 'necromancer', relationship: 'friendly' })
+    await followTeacher(page, savvaId)
+
+    const chat = page.locator('.game-chat')
+    await chat.getByRole('button', { name: 'Развернуть историю чата' }).click()
+    await chat.getByRole('button', { name: 'Рядом', exact: true }).click()
+    const replies = chat
+        .getByRole('listitem')
+        .filter({ hasText: /^Савва:\s*Я слушаю\. Чем тебе помочь\?$/u })
+    await expect(selectedWorldTarget(page)).toHaveCount(0)
+    await greetNearby(page)
+    await expect(replies).toHaveCount(1)
 
     await selectSavva(page)
+    await greetNearby(page)
+    await expect(replies).toHaveCount(2)
+    await chat.getByRole('button', { name: 'Личные', exact: true }).click()
+    await expect(replies).toHaveCount(0)
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    await followTeacher(page, savvaId)
     await page.keyboard.press('KeyF')
+    await expect(page.getByRole('menuitem', { name: /^Поговорить:/u })).toHaveCount(0)
     const lesson = page.getByRole('menuitem', { name: 'Изучить: Молитва праха', exact: true })
     await expect(lesson).toBeVisible()
     await lesson.dispatchEvent('click', undefined, { timeout: 2_000 })
@@ -58,6 +102,15 @@ test('reaches Savva in Western Ruins and learns the Ash prayer through his inter
     expect(sourceImage.ok()).toBe(true)
     expect(sourceImage.headers()['content-type']).toContain('image/png')
 })
+
+async function greetNearby(page: Page): Promise<void> {
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    await page.keyboard.press('Enter')
+    const input = page.getByRole('textbox', { name: 'Сообщение в чат' })
+    await input.fill('привет')
+    await input.press('Enter')
+    await expect(input).toHaveCount(0)
+}
 
 async function approachFromEast(page: Page, den: Vector2): Promise<void> {
     const eastPoint = await page.evaluate((point) => {

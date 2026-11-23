@@ -34,6 +34,21 @@ export function canHearSpeech(
     )
 }
 
+export function canHearNearbySpeech(
+    listener: GameCharacter,
+    speaker: GameCharacter,
+    navigation: NavigationService,
+    now: number,
+    radius = PUBLIC_SPEECH_RADIUS
+): boolean {
+    const buildings = navigation.grid.buildings ?? []
+    return (
+        canHearSpeech(listener, speaker, navigation, now, radius) &&
+        visibleBuildingPoint(buildings, listener.position, speaker.position) &&
+        visibleBuildingPoint(buildings, speaker.position, listener.position)
+    )
+}
+
 export function canConverseWithNpc(
     first: GameCharacter,
     second: GameCharacter,
@@ -41,11 +56,8 @@ export function canConverseWithNpc(
     now: number,
     radius: number
 ): boolean {
-    const buildings = navigation.grid.buildings ?? []
     return (
-        canHearSpeech(first, second, navigation, now, radius) &&
-        canHearSpeech(second, first, navigation, now, radius) &&
-        visibleBuildingPoint(buildings, first.position, second.position) &&
-        visibleBuildingPoint(buildings, second.position, first.position)
+        canHearNearbySpeech(first, second, navigation, now, radius) &&
+        canHearSpeech(second, first, navigation, now, radius)
     )
 }

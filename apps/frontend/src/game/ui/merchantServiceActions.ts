@@ -1,14 +1,19 @@
-import { type CharacterSnapshot, workshopFor } from '@my-game-ratata/contracts'
+import {
+    BASE_STOCK_MERCHANT_IDS,
+    type CharacterSnapshot,
+    type MerchantServiceView,
+    workshopFor,
+} from '@my-game-ratata/contracts'
 
 import { characterName, tGame } from '@/shared/lib/i18n'
 
 import type { InteractionAction } from './nearbyInteractionActions'
 export function merchantServiceActions(target: CharacterSnapshot): InteractionAction[] {
     const workshop = workshopFor(target.id)
-    if (!workshop) return []
-    const services = workshop.repair
-        ? (['shop', 'orders', 'repair'] as const)
-        : (['shop', 'orders'] as const)
+    const services: MerchantServiceView[] = []
+    if (workshop || BASE_STOCK_MERCHANT_IDS.includes(target.id)) services.push('shop')
+    if (workshop) services.push('orders')
+    if (workshop?.repair) services.push('repair')
     const labels = {
         shop: tGame('game.world.buy'),
         orders: tGame('game.world.order'),

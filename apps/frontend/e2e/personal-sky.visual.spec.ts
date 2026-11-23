@@ -1,5 +1,10 @@
 import { expect, type Locator, test } from '@playwright/test'
 
+import {
+    constellationWireId,
+    fullConstellationCatalog,
+} from '../../backend/src/game/constellationNodes'
+
 const heroes = [
     { story: 'vanguard-development', root: 'Клинок' },
     { story: 'arcanist-development', root: 'Магия' },
@@ -45,6 +50,63 @@ for (const width of [320, 390, 1280]) {
             })
         })
     }
+}
+
+test('visible Magic stars move at different speeds during repeated horizontal drags', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1400, height: 980 })
+    await page.goto('/iframe.html?id=game-characterwindow--arcanist-development&viewMode=story')
+    const graph = page.getByRole('group', { name: 'Созвездия развития' })
+    await graph.getByRole('button', { name: 'Магия', exact: true }).locator('.hit').click()
+    const magicIds = fullConstellationCatalog
+        .filter((node) => node.id === 'magic.root' || node.parents.includes('magic.root'))
+        .map((node) => constellationWireId(node.id))
+    const bounds = (await graph.boundingBox())!
+    const x = bounds.x + 180
+    const y = bounds.y + 40
+    await expect
+        .poll(async () => Object.keys(await visibleStarPositions(graph, magicIds)).length)
+        .toBeGreaterThan(5)
+
+    let before = await visibleStarPositions(graph, magicIds)
+    for (const distance of [100, 100, -100, -100]) {
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + distance, y, { steps: 8 })
+        await page.mouse.up()
+        const after = await visibleStarPositions(graph, magicIds)
+        const displacements = Object.entries(after).flatMap(([id, position]) =>
+            before[id] === undefined ? [] : [(position - before[id]) * Math.sign(distance)]
+        )
+        expect(displacements.length).toBeGreaterThan(3)
+        expect(Math.min(...displacements)).toBeGreaterThan(0)
+        expect(Math.max(...displacements) - Math.min(...displacements)).toBeGreaterThanOrEqual(10)
+        before = after
+    }
+})
+
+function visibleStarPositions(graph: Locator, ids: string[]): Promise<Record<string, number>> {
+    return graph.evaluate((element, ids) => {
+        const bounds = element.getBoundingClientRect()
+        return Object.fromEntries(
+            ids.flatMap((id) => {
+                const node = element.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
+                const position = node?.getScreenCTM()
+                if (
+                    !node ||
+                    !position ||
+                    Number(getComputedStyle(node).opacity) === 0 ||
+                    position.e < bounds.left ||
+                    position.e > bounds.right ||
+                    position.f < bounds.top ||
+                    position.f > bounds.bottom
+                )
+                    return []
+                return [[id, position.e]]
+            })
+        )
+    }, ids)
 }
 
 async function expectUnknownStarsInert(graph: Locator): Promise<void> {

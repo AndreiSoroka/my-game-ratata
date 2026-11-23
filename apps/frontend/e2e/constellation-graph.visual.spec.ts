@@ -123,7 +123,7 @@ function opacity(locator: Locator) {
 const layerRoots = ['blade', 'magic', 'prayer', 'arrow', 'life']
 const skyPan = { x: 100, y: 30 }
 
-test('five constellation layers keep their stars, lines and labels together on pan and zoom', async ({
+test('five depths move stars at different speeds and keep lines and labels attached', async ({
     page,
 }) => {
     await page.goto(
@@ -141,14 +141,16 @@ test('five constellation layers keep their stars, lines and labels together on p
     await panSky(page, graph)
     const panned = await skyProjection(graph)
     for (const [layer, id] of layerRoots.entries()) {
-        const rate = 1 - 0.015 * layer
+        const rate = 1 - 0.05 * layer
         expectMovement(before.stars[id]!.screen, panned.stars[id]!.screen, {
             x: skyPan.x * rate,
             y: skyPan.y * rate,
         })
     }
-    expectGroupPan(before, panned)
-    expectAttachedLink(panned)
+    expectMovement(before.stars.devotion!.screen, panned.stars.devotion!.screen, skyPan)
+    expectLabelAttached(before, panned)
+    expectAttachedLinks(panned)
+    expect(panned.inner[1]!.world).not.toEqual(before.inner[1]!.world)
     expect(panned.cross[1]).not.toEqual(before.cross[1])
     await reset.click()
     expect(await skyProjection(graph)).toEqual(before)
@@ -161,7 +163,7 @@ test('five constellation layers keep their stars, lines and labels together on p
     expectMovement(before.stars.devotion!.world, zoomed.stars.devotion!.world, zoomMovement)
     for (const [index, point] of before.inner.entries())
         expectMovement(point.world, zoomed.inner[index]!.world, zoomMovement)
-    expectAttachedLink(zoomed)
+    expectAttachedLinks(zoomed)
     const scales = await background.evaluateAll((layers) =>
         layers.map(
             (layer) => (layer as SVGPatternElement).patternTransform.baseVal.getItem(0).matrix.a
@@ -171,8 +173,8 @@ test('five constellation layers keep their stars, lines and labels together on p
     expect(scales.at(-1)).toBeGreaterThan(scales[0]!)
     await panSky(page, graph)
     const zoomPanned = await skyProjection(graph)
-    expectGroupPan(zoomed, zoomPanned)
-    expectAttachedLink(zoomPanned)
+    expectLabelAttached(zoomed, zoomPanned)
+    expectAttachedLinks(zoomPanned)
 
     await graph.getByRole('button', { name: 'Молитва', exact: true }).press('Enter')
     const focused = await skyProjection(graph)
@@ -205,16 +207,15 @@ function expectMovement(before: Vector2, after: Vector2, expected: Vector2): voi
     expect(movement.y).toBeCloseTo(expected.y, 1)
 }
 
-function expectGroupPan(before: SkyProjection, after: SkyProjection): void {
+function expectLabelAttached(before: SkyProjection, after: SkyProjection): void {
     const movement = displacement(before.stars.prayer!.screen, after.stars.prayer!.screen)
-    expectMovement(before.stars.devotion!.screen, after.stars.devotion!.screen, movement)
     expectMovement(before.label, after.label, movement)
-    for (const [index, point] of before.inner.entries())
-        expectMovement(point.screen, after.inner[index]!.screen, movement)
 }
 
-function expectAttachedLink(projection: SkyProjection) {
+function expectAttachedLinks(projection: SkyProjection) {
     for (const [end, node] of [
+        [projection.inner[0]?.world, 'prayer'],
+        [projection.inner.at(-1)?.world, 'devotion'],
         [projection.cross[0], 'devotion'],
         [projection.cross.at(-1), 'life'],
     ] as const) {

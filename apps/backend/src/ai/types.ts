@@ -46,7 +46,7 @@ export interface NpcAiActorConfig {
 }
 
 export interface NpcAiTask {
-    background?: 'greeting' | 'self_activity'
+    background?: 'greeting' | 'self_activity' | 'combat_reaction'
     targetId?: string
     deadline?: number
     audienceKey?: string
@@ -66,6 +66,7 @@ export type NpcAiEvent =
     | {
           kind: 'message'
           channel?: 'say' | 'whisper'
+          nearby?: 'addressed' | 'broadcast'
           ambiguous?: boolean
           legacy?: boolean
           system?: boolean
@@ -90,6 +91,13 @@ export type NpcAiEvent =
           status: 'completed' | 'failed' | 'cancelled'
           reason: string
           decision: AgentDecision
+          at: number
+      }
+    | {
+          kind: 'combat_hit'
+          id: string
+          attacker: { id: string; name: string }
+          target: { id: string; name: string }
           at: number
       }
     | { kind: 'world'; id: string; reason: string; at: number }

@@ -1,4 +1,5 @@
 import type { GameRoom } from '../game/room'
+import { npcCombatReactionStillAvailable } from './combatReactions'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 
 export function prioritizeNpcAiStates(
@@ -14,7 +15,8 @@ function turnPriority(state: NpcAiActorState): number {
 
 export function continuationAvailable(
     room: GameRoom,
-    state: NpcAiActorState
+    state: NpcAiActorState,
+    now: number
 ): boolean {
     return (
         state.task !== null &&
@@ -22,6 +24,8 @@ export function continuationAvailable(
         state.guide === undefined &&
         state.pending === undefined &&
         state.attack === undefined &&
+        (state.task.background !== 'combat_reaction' ||
+            npcCombatReactionStillAvailable(room, state, now)) &&
         !room.social.exchanges.isPaused(state.config.actorId)
     )
 }
@@ -50,7 +54,7 @@ export function prepareNpcAiTurns(
         const continuation =
             room.allowsAutonomousNpcAi() &&
             (state.budgetUntil ?? 0) <= wall &&
-            continuationAvailable(room, state)
+            continuationAvailable(room, state, now)
         if (runnableTurn(state, now, continuation)) {
             candidates.push(state)
         }
