@@ -1,46 +1,70 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
-import { computed, inject, type InjectionKey, provide, ref, watch } from 'vue'
+import type { AbilityId, CharacterSnapshot } from '@my-game-ratata/contracts'
+import { computed, inject, type InjectionKey, provide, type Ref, ref, shallowRef, watch } from 'vue'
 
-import { defaultHotbarBindings, type HotbarBinding } from './hotbarBindings'
+import type { HotbarBinding } from './hotbarBindings'
 
 type Bindings = (HotbarBinding | null)[]
-const sessionKey: InjectionKey<Map<string, Bindings>> = Symbol('hotbar session')
+interface HotbarSessionEntry {
+    bindings: Ref<Bindings>
+    seen: Set<AbilityId>
+}
+
+const sessionKey: InjectionKey<Map<string, HotbarSessionEntry>> = Symbol('hotbar session')
 
 /** UI preferences live with this App instance, not the runtime socket or a future character. */
-export function provideHotbarSession(): Map<string, Bindings> {
-    const saved = new Map<string, Bindings>()
+export function provideHotbarSession(): Map<string, HotbarSessionEntry> {
+    const saved = new Map<string, HotbarSessionEntry>()
     provide(sessionKey, saved)
     return saved
 }
 
 export function useSavedHotbarBindings(player: () => CharacterSnapshot) {
-    const saved = inject(sessionKey, undefined)
-    const identity = computed(() => {
-        const actor = player()
-        return hotbarIdentityKey(actor)
-    })
-    const load = () => copy(saved?.get(identity.value) ?? defaultHotbarBindings(player()))
-    const bindings = ref<Bindings>(load())
+    const saved = inject(sessionKey, undefined) ?? new Map<string, HotbarSessionEntry>()
+    const active = shallowRef<HotbarSessionEntry>()
+    let activeKey: string | undefined
     watch(
-        identity,
         () => {
-            bindings.value = load()
+            const actor = player()
+            return [hotbarIdentityKey(actor), actor.abilities?.known, actor.life?.retired] as const
         },
-        { flush: 'sync' }
-    )
-    watch(
-        [bindings, () => player().life?.retired],
-        () => {
-            if (player().life?.retired) saved?.delete(identity.value)
-            else saved?.set(identity.value, copy(bindings.value))
+        ([key, known, retired]) => {
+            const attached = key === activeKey ? active.value : undefined
+            const entry = attached ?? saved.get(key) ?? createEntry()
+            if (retired) {
+                saved.delete(key)
+            } else {
+                if (!attached) saved.set(key, entry)
+                // Final defeat can clear the session before the retired snapshot arrives.
+                if (saved.get(key) === entry) assignNewAbilities(entry, known)
+            }
+            activeKey = key
+            active.value = entry
         },
-        { deep: true, flush: 'sync' }
+        { immediate: true, flush: 'sync' }
     )
-    return bindings
+    return computed(() => active.value!.bindings.value)
 }
 
-function copy(bindings: Bindings): Bindings {
-    return bindings.map((binding) => (binding === null ? null : { ...binding }))
+function createEntry(): HotbarSessionEntry {
+    return { bindings: ref([{ kind: 'attack' }, null, null, null]), seen: new Set() }
+}
+
+function assignNewAbilities(entry: HotbarSessionEntry, known: readonly AbilityId[] = []): void {
+    let updated: Bindings | undefined
+    for (const id of known) {
+        if (entry.seen.has(id)) continue
+        entry.seen.add(id)
+        const bindings = updated ?? entry.bindings.value
+        const index = bindings.indexOf(null)
+        if (
+            index === -1 ||
+            bindings.some((binding) => binding?.kind === 'ability' && binding.id === id)
+        )
+            continue
+        updated ??= [...bindings]
+        updated[index] = { kind: 'ability', id }
+    }
+    if (updated) entry.bindings.value = updated
 }
 
 export function hotbarIdentityKey(actor: CharacterSnapshot): string {

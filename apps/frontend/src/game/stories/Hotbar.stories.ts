@@ -1,9 +1,14 @@
 import '../ui/rpgControls.css'
 
-import { bladeAbilityIds, type CharacterSnapshot, type HeroClass } from '@my-game-ratata/contracts'
+import {
+    type AbilityId,
+    bladeAbilityIds,
+    type CharacterSnapshot,
+    type HeroClass,
+} from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { userEvent, within } from 'storybook/test'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 
 import { characterFixture } from '../testing/characterFixture'
 import ActionHotbar from '../ui/ActionHotbar.vue'
@@ -14,6 +19,13 @@ import { renderVueStory } from './renderVueStory'
 const meta = { title: 'Game/ActionHotbar' } satisfies Meta
 export default meta
 type Story = StoryObj
+const starterAbilities: Record<HeroClass, AbilityId[]> = {
+    vanguard: [],
+    ranger: ['shot', 'sniper_shot'],
+    arcanist: ['spark', 'barrier'],
+    cleric: ['pray'],
+}
+
 function themedHotbarStory(heroClass: HeroClass): Story {
     return {
         parameters: { heroClass },
@@ -21,10 +33,7 @@ function themedHotbarStory(heroClass: HeroClass): Story {
             const player = characterFixture('adventurer', {
                 heroClass,
                 abilities: {
-                    known:
-                        heroClass === 'ranger'
-                            ? ['shot', 'sniper_shot']
-                            : ['shot', 'spark', 'pray'],
+                    known: [...starterAbilities[heroClass]],
                     cooldowns: {},
                     barrier: null,
                     casting: null,
@@ -41,7 +50,7 @@ export const Cleric = themedHotbarStory('cleric')
 export const Assignment: Story = {
     ...themedHotbarStory('ranger'),
     async play({ canvasElement }) {
-        const slot = await within(canvasElement).findByRole('button', { name: /^3: Пусто/ })
+        const slot = await within(canvasElement).findByRole('button', { name: /^4: Пусто/ })
         await userEvent.click(slot)
     },
 }
@@ -62,7 +71,10 @@ function bladeStory(guard: boolean): HTMLElement {
 function savedHotbar(player: CharacterSnapshot, bindings: HotbarBinding[]): HTMLElement {
     const Preview = defineComponent({
         setup() {
-            provideHotbarSession().set(hotbarIdentityKey(player), bindings)
+            provideHotbarSession().set(hotbarIdentityKey(player), {
+                bindings: ref(bindings),
+                seen: new Set(player.abilities?.known),
+            })
             return () => h(ActionHotbar, { player, characters: [player], blocked: false })
         },
     })

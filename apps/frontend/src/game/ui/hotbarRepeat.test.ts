@@ -1,4 +1,4 @@
-import type { HeroClass } from '@my-game-ratata/contracts'
+import { ABILITY_DEFINITIONS, type AbilityId, type HeroClass } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 
@@ -13,17 +13,28 @@ function mage() {
         abilities: { known: ['spark'], cooldowns: {}, casting: null, barrier: null },
     })
 }
-it.each<[HeroClass, string]>([
-    ['vanguard', 'Пусто'],
-    ['ranger', 'Быстрый выстрел'],
-    ['arcanist', 'Искра'],
-    ['cleric', 'Молитва'],
-])('starts %s with a basic attack and its class ability', (heroClass, label) => {
-    const player = characterFixture('self', { heroClass })
+it.each<[HeroClass, AbilityId[]]>([
+    ['vanguard', []],
+    ['ranger', ['shot', 'sniper_shot']],
+    ['arcanist', ['spark', 'barrier']],
+    ['cleric', ['pray']],
+])('starts %s with a basic attack and all its known abilities', (heroClass, known) => {
+    const player = characterFixture('self', {
+        heroClass,
+        abilities: { known, cooldowns: {}, casting: null, barrier: null },
+    })
     const wrapper = mount(ActionHotbar, { props: { player, characters: [player], blocked: false } })
     try {
-        expect(wrapper.get('.hotbar-slot').attributes('aria-label')).toContain('Удар ножом')
-        expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('aria-label')).toContain(label)
+        const labels = ['Удар ножом', ...known.map((id) => ABILITY_DEFINITIONS[id].name)]
+        const slots = wrapper.findAll('.hotbar-slot')
+        expect(slots).toHaveLength(4)
+        slots.forEach((slot, index) => {
+            expect(slot.attributes('aria-label')).toContain(
+                `${index + 1}: ${labels[index] ?? 'Пусто'}.`
+            )
+        })
+        expect(wrapper.emitted('command')).toBeUndefined()
+        expect(wrapper.emitted('cancel')).toBeUndefined()
     } finally {
         wrapper.unmount()
     }

@@ -128,6 +128,7 @@ for (const mobile of [false, true]) {
         const yard = await join(page, name)
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(page.getByRole('button', { name: /^2: Быстрый выстрел/ })).toBeVisible()
+        await expect(page.getByRole('button', { name: /^3: Снайперский выстрел/ })).toBeVisible()
         await expect(canvas).not.toHaveAttribute('data-training-guides')
         await navigate(page, yard.inside)
         await expect(canvas).toHaveAttribute('data-training-guides', areaId)
@@ -212,9 +213,6 @@ async function fireSniperAtDummy(
     hits: GameEventPayload[]
 ): Promise<void> {
     const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
-    await page.getByRole('button', { name: /^3: Пусто/ }).click()
-    const picker = page.getByRole('dialog', { name: 'Назначить слот 3' })
-    await picker.getByRole('button', { name: /Снайперский выстрел.*20 EN/ }).click()
     await waitForAttackIdle(page)
     await page.getByRole('button', { name: /^3: Снайперский выстрел/ }).click()
     const localPhases = () => phases.filter((event) => event.actorId === playerId)

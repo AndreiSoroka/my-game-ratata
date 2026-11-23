@@ -20,7 +20,7 @@ import {
 import { type HotbarBinding, prayerDescription } from './hotbarBindings'
 import { createGestures } from './hotbarGestures'
 import { actionTooltip, bindingLabel } from './hotbarPresentation'
-import { useSavedHotbarBindings } from './hotbarSession'
+import { hotbarIdentityKey, useSavedHotbarBindings } from './hotbarSession'
 import { preferredPrayer } from './prayerSelection'
 
 export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
@@ -172,7 +172,7 @@ function watchGestureChanges(
     gestures: ReturnType<typeof createGestures>
 ): void {
     watch(
-        () => props.player.id,
+        () => hotbarIdentityKey(props.player),
         () => gestures.reset()
     )
     watch(

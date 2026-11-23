@@ -52,24 +52,16 @@ for (const width of [390, 1280]) {
         expect(navigation.status).toBe('arrived')
         await selectAlly(page, teacher.nickname)
         await assertUnavailableLessons(page, teacher.id, rejectedLessons)
-        for (const abilityId of schools) {
-            await page.keyboard.press('KeyF')
-            const lesson = page.getByRole('menuitem', {
-                name: `Изучить: ${ABILITY_DEFINITIONS[abilityId].name}`,
-                exact: true,
-            })
-            await expect(lesson).toBeVisible()
-            await lesson.press('Enter')
-            await expect
-                .poll(() =>
-                    page.evaluate(
-                        (id) =>
-                            window.__ratataTest?.getState().player?.abilities?.known.includes(id),
-                        abilityId
-                    )
-                )
-                .toBe(true)
-        }
+        const slots = page.getByLabel('Быстрые действия').getByRole('button', { name: /^[1-4]:/ })
+        const roadPrayerInFourthSlot = new RegExp(`^4: ${ABILITY_DEFINITIONS.pray_road.name}`)
+        await expect(slots.nth(3)).toHaveAccessibleName(/4: Пусто/)
+        await learnPrayer(page, 'pray_road')
+        await expect(slots.nth(3)).toHaveAccessibleName(roadPrayerInFourthSlot)
+        await learnPrayer(page, 'pray')
+        await expect(slots.nth(0)).toHaveAccessibleName(/^1: Удар ножом/)
+        await expect(slots.nth(1)).toHaveAccessibleName(/^2: Быстрый выстрел/)
+        await expect(slots.nth(2)).toHaveAccessibleName(/^3: Снайперский выстрел/)
+        await expect(slots.nth(3)).toHaveAccessibleName(roadPrayerInFourthSlot)
         const player = await page.evaluate(() => window.__ratataTest!.getState().player!)
         expect(player.progression!.deity.id).toBe('road')
         expect(Object.keys(player.abilities!.prayers!)).toEqual(expect.arrayContaining(schools))
@@ -117,6 +109,24 @@ for (const width of [390, 1280]) {
             .toBe('road')
         await page.screenshot({ path: info.outputPath(`vera-two-prayers-${width}.png`) })
     })
+}
+
+async function learnPrayer(page: Page, abilityId: PrayerAbilityId): Promise<void> {
+    await page.keyboard.press('KeyF')
+    const lesson = page.getByRole('menuitem', {
+        name: `Изучить: ${ABILITY_DEFINITIONS[abilityId].name}`,
+        exact: true,
+    })
+    await expect(lesson).toBeVisible()
+    await lesson.press('Enter')
+    await expect
+        .poll(() =>
+            page.evaluate(
+                (id) => window.__ratataTest?.getState().player?.abilities?.known.includes(id),
+                abilityId
+            )
+        )
+        .toBe(true)
 }
 
 async function castLearnedPrayer(

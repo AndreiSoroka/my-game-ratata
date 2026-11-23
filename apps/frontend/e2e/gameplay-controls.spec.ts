@@ -21,6 +21,7 @@ test.describe('shared gameplay controls', () => {
                 .getByRole('button', { name: /^[1-4]:/ })
             await expect(slots).toHaveCount(4)
             await expect(slots.nth(0)).toHaveAccessibleName(/1: Удар ножом/)
+            await expect(slots.nth(2)).toHaveAccessibleName(/3: Барьер/)
             await page.keyboard.press('Shift+Digit1')
             await expect(page.getByRole('dialog', { name: 'Назначить слот 1' })).toBeVisible()
             // Mage order: spark, barrier. Menu arrows must not leak into movement.

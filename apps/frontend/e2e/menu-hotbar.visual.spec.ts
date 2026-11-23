@@ -3,6 +3,13 @@ import { expect, test } from '@playwright/test'
 import { expectThemedBorder, heroThemeCases } from './hero-theme-visual'
 import { expectUiFits, readyUiStory } from './ui-story-ready'
 
+const thirdSlotLabels = {
+    vanguard: 'Пусто',
+    ranger: 'Снайперский выстрел',
+    arcanist: 'Барьер',
+    cleric: 'Пусто',
+}
+
 for (const { heroClass, border, ability } of heroThemeCases) {
     for (const width of [1280, 390, 320]) {
         const suffix = width === 1280 ? '' : `-${width}`
@@ -14,6 +21,9 @@ for (const { heroClass, border, ability } of heroThemeCases) {
             await expect(bar.getByRole('button', { name: /^1: Удар ножом/ })).toBeVisible()
             await expect(
                 bar.getByRole('button', { name: new RegExp(`^2: ${ability}`) })
+            ).toBeVisible()
+            await expect(
+                bar.getByRole('button', { name: new RegExp(`^3: ${thirdSlotLabels[heroClass]}`) })
             ).toBeVisible()
             const menu = bar.getByRole('button', { name: 'Игровое меню' })
             await expect(menu.locator('[data-fantasy-panel="panel-001"]')).toBeVisible()
@@ -75,7 +85,7 @@ for (const width of [1280, 390, 320]) {
 test('production hotbar assignment opens and dismisses at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 844 })
     await page.goto('/iframe.html?id=game-actionhotbar--assignment&viewMode=story')
-    const picker = page.getByRole('dialog', { name: 'Назначить слот 3' })
+    const picker = page.getByRole('dialog', { name: 'Назначить слот 4' })
     await expect(picker).toBeVisible()
     await expect(picker.getByRole('button', { name: /Быстрый выстрел/ })).toBeFocused()
     await expect(picker.getByRole('button', { name: /Снайперский выстрел.*20 EN/ })).toBeVisible()

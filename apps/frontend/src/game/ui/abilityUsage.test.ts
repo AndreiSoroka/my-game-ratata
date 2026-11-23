@@ -18,7 +18,7 @@ function observedPlayer() {
         heroClass: 'ranger',
         facing: 'right',
         abilities: {
-            known: ['pray', 'shot', 'spark'],
+            known: ['shot', 'sniper_shot', 'pray', 'spark'],
             parameters,
             cooldowns: {},
             casting: null,
@@ -79,7 +79,13 @@ describe('authoritative ability usage metadata', () => {
                 .findAll('.hotbar-picker button')
                 .find((button) => button.text().includes('Искра'))
             expect(spark?.text().replace(/\s+/g, ' ')).toContain('5 MP · 4 EN')
-            await wrapper.setProps({ player: { ...player, heroClass: 'arcanist' } })
+            await wrapper.setProps({
+                player: {
+                    ...player,
+                    heroClass: 'arcanist',
+                    abilities: { ...player.abilities!, known: ['spark', 'barrier', 'pray'] },
+                },
+            })
             expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('aria-description')).toContain(
                 '5 MP · 4 EN'
             )

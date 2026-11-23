@@ -53,9 +53,9 @@ for (const mobile of [false, true]) {
         expect(fresh.player?.equipment).toEqual({})
         expect(fresh.snapshot?.adventure?.gold).toBe(0)
         expect(fresh.snapshot?.adventure?.craftOrders).toEqual([])
-        await expect(
-            page.getByLabel('Быстрые действия').getByRole('button', { name: /^2:/ })
-        ).toHaveAccessibleName(/2: Быстрый выстрел/)
+        const slots = page.getByLabel('Быстрые действия').getByRole('button', { name: /^[1-4]:/ })
+        await expect(slots.nth(1)).toHaveAccessibleName(/2: Быстрый выстрел/)
+        await expect(slots.nth(2)).toHaveAccessibleName(/3: Снайперский выстрел/)
         await expect(dialog).toHaveCount(0)
     })
 }

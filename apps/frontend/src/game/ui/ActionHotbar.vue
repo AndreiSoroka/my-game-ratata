@@ -18,6 +18,7 @@ import { dialogActionKeys } from './dialogActionKeys'
 import GameMenuButton from './GameMenuButton.vue'
 import { objectTargetUnavailable } from './hotbarActions'
 import type { HotbarBinding as Binding } from './hotbarBindings'
+import { hotbarIdentityKey } from './hotbarSession'
 import { focusWorldInput } from './keyboardOwnership'
 import { worldHudButtonAttrs } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
@@ -106,10 +107,11 @@ const pickerButtonColors: UiButtonColors = {
 useShotPreview(props, bindings, emit)
 const editing = ref<number>()
 watch(
-    () => props.player.id,
+    () => hotbarIdentityKey(props.player),
     () => {
         editing.value = undefined
-    }
+    },
+    { flush: 'sync' }
 )
 const dockContent = ref<HTMLElement>()
 useFooterHeight(dockContent, '--ratata-hotbar-height')

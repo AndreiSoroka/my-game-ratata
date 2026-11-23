@@ -13,17 +13,6 @@ export type HotbarBinding =
     | { kind: 'attack' }
     | { kind: 'ability'; id: AbilityId }
     | { kind: 'item'; id: 'food' | 'sapling' }
-export function defaultHotbarBindings(player: CharacterSnapshot): (HotbarBinding | null)[] {
-    const ability = { vanguard: undefined, ranger: 'shot', arcanist: 'spark', cleric: 'pray' }[
-        player.heroClass ?? 'vanguard'
-    ]
-    return [
-        { kind: 'attack' },
-        ability ? { kind: 'ability', id: ability as AbilityId } : null,
-        null,
-        null,
-    ]
-}
 export function bindingMatchesAction(
     binding: HotbarBinding | null,
     action: CharacterAutoAction | undefined
