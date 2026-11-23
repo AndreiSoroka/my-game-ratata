@@ -37,6 +37,17 @@ export function replySpeech(reply: NpcAiReply): string | null {
     return speech == null || speech.trim().length === 0 ? null : speech.trim()
 }
 
+export function dialogueOnlyReply(reply: NpcAiReply): NpcAiReply {
+    return {
+        ...reply,
+        speech: replySpeech(reply),
+        decision: null,
+        taskAcceptance: 'none',
+        companionOrder: null,
+        done: true,
+    }
+}
+
 export function speechRadius(event: Heard): number {
     return event.legacy === true ? 64 : event.channel === 'whisper' ? 48 : 80
 }

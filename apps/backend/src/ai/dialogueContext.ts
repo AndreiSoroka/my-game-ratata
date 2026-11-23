@@ -4,6 +4,7 @@ import type { GameCharacter } from '../game/character'
 import { isConversationOnly } from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
 import type { NpcConversationFeedback } from '../game/roomConversationDepartures'
+import { npcCombatReactionContext } from './combatReactions'
 import { projectContracts } from './contractProjection'
 import { dialogueKey, type NpcAiDialogue } from './dialogue'
 import { dialogueConversationKey, taskConversationKey } from './dialogueMemory'
@@ -32,6 +33,37 @@ export function npcDialogueContext(
         state.config.role,
         now
     )
+    if (
+        state.task?.background === 'combat_reaction' &&
+        state.dialogue === undefined
+    ) {
+        return npcCombatReactionContext(
+            state,
+            actor,
+            observation,
+            personalContext(actor, state)
+        )
+    }
+    return conversationalContext(
+        room,
+        dialogueService,
+        state,
+        actor,
+        now,
+        observation,
+        feedback
+    )
+}
+
+function conversationalContext(
+    room: GameRoom,
+    dialogueService: NpcAiDialogue,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    now: number,
+    observation: NpcAiObservation,
+    feedback: NpcConversationFeedback
+): NpcAiContext {
     refreshRequester(state, observation)
     const dialogue = state.dialogue
     const key =

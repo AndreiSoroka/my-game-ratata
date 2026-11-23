@@ -5,7 +5,7 @@ import {
 
 import {
     parseCraftOrderCommand,
-    parseMerchantService,
+    parseNpcInteractionService,
 } from './craftOrderCommands'
 import { parseEconomyCommand } from './economyCommands'
 import { isGatherOperation } from './forestCommands'
@@ -37,7 +37,7 @@ export function parseExtraCommand(
     record: Record<string, unknown>
 ): ParseResult {
     const type = record['type']
-    const service = parseMerchantService(record)
+    const service = parseNpcInteractionService(record)
     if (service !== undefined) {
         return service
     }

@@ -3,7 +3,7 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import type { CityWorldState } from './cityWorldState'
 import type { NavigationService } from './navigation'
-import { NPC_HUM } from './roomNpcConversations'
+import { NPC_HUM } from './roomNpcReplySpeech'
 import { canHearSpeech } from './socialSpeech'
 import { addressedSpeechPartner } from './speechReceipts'
 

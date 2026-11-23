@@ -1,9 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [390, 1280]) {
-    test(`keeps startup and a pending NPC dialogue accessible at ${width}px`, async ({
-        page,
-    }, info) => {
+    test(`keeps startup settings accessible at ${width}px`, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 844 })
         await page.goto(
             '/iframe.html?id=pages-startgame-startgamesettings--local-admin&viewMode=story'
@@ -22,13 +20,6 @@ for (const width of [390, 1280]) {
         await page.keyboard.press('Escape')
         await expect(panel).toBeHidden()
         await expect(admin).toBeFocused()
-
-        await page.goto(
-            '/iframe.html?id=pages-game-npcconversationcomposer--waiting&viewMode=story'
-        )
-        await expect(page.getByRole('status')).toHaveText('Собеседник обдумывает ответ…')
-        await expect(page.getByRole('button', { name: 'Отправить' })).toBeDisabled()
-        await page.screenshot({ path: info.outputPath(`npc-waiting-${width}.png`) })
     })
 }
 

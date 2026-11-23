@@ -33,6 +33,7 @@ function fixture() {
     const npc = characterFixture('mira', {
         controllerKind: 'scripted',
         position: { x: 124, y: 100 },
+        interactions: { aiDialogue: true, whisper: true, exchange: false },
         inventory: [{ itemId: 'food', instanceId: 'private-npc-food' }],
         soul: {
             kind: 'spark',
@@ -111,7 +112,7 @@ describe('AI observation', () => {
         const observed = observeGame(state)
         expect(observed.targets.find((target) => target.key === 'character:mira')?.actions).toEqual(
             expect.arrayContaining([
-                expect.objectContaining({ command: { type: 'interact', targetId: 'mira' } }),
+                expect.objectContaining({ command: { type: 'whisper_open', targetId: 'mira' } }),
             ])
         )
         for (const id of ['one', 'two'])

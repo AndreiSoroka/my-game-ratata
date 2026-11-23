@@ -3,9 +3,9 @@
 Mira, the necromancer Savva, Kaplya, Leia and Bran can choose ordinary character
 intentions through Codex CLI or Claude Code. Merchant Savva, Zlata, Mila, Nestor,
 Aren, Tikhon, Ignat, Sister Vera and Elisey use the model for addressed dialogue
-and recommendations about their own services. Scripted residents hum after a
-two-second pause. The backend owns the event queue, controller lease, action
-results and session memory. Model calls run outside the simulation tick.
+and recommendations about their own services. The backend owns the event queue,
+controller lease, action results and session memory. Model calls run outside the
+simulation tick.
 Every resulting action still uses `GameCharacter` and the shared authoritative
 movement, collision, conversation and life-cycle rules.
 
@@ -40,10 +40,15 @@ For hosted use of Claude Code, Anthropic requires players to authenticate with
 their own eligible credentials. [Anthropic's terms for running Claude Code in a product](https://code.claude.com/docs/en/legal-and-compliance#can-customers-offer-claude-code-in-their-products).
 
 Start the frontend as described in [Playable world](playable-world.md). Speak
-within 80 world units and line of sight. Select the intended NPC or address them
-by name. Use the fuller names **Торговец Савва** and **Некромант Савва** to pick
-between the two. An NPC explicitly agrees before accepting or replacing an
-errand. Use chat or the interaction menu to ask Kaplya, Leia or Bran to follow.
+within 80 world units and line of sight. Selection addresses one character, and
+a name without selection addresses everyone nearby with that name. Use the fuller
+names **Торговец Савва** and **Некромант Савва** to distinguish them. Unaddressed
+speech reaches nearby listeners. A speaking NPC can take a model lease for the
+turn and decide whether to reply in **Рядом**. Active AI NPCs can also react to a
+confirmed combat hit they witnessed nearby, at most once a minute. These reactions
+use the background model budget and yield to conversation. An NPC explicitly
+agrees before accepting or replacing an errand. Use chat or the interaction menu
+to ask Kaplya, Leia or Bran to follow.
 Q toggles selection between yourself and no target.
 If a conversation ends before the answer, the NPC and nearby characters who
 can see both participants observe the departure. Their social snapshots show
@@ -145,10 +150,9 @@ and gives Kaplya a shorter one.
 ```
 
 The CLI account needs access to the configured model. Interactive turns have a
-60-second total budget, including queue time and any retry. A failed addressed
-turn ends in a hum if the conversation is still current. A room stop aborts
-pending CLI processes. Death, identity replacement and cancellation invalidate
-late replies.
+60-second total budget, including queue time and any retry. A failed or expired
+turn in **Рядом** ends quietly. A room stop aborts pending CLI processes. Death,
+identity replacement and cancellation invalidate late replies.
 
 ## Current character behavior
 

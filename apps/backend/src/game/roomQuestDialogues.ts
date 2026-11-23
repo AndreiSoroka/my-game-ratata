@@ -15,7 +15,8 @@ import type { PartyService } from './parties'
 import { conversationContracts } from './questConversation'
 import { QuestTurnInService } from './questTurnIn'
 import type { GameRoom } from './room'
-import { canHearSpeech } from './socialSpeech'
+import type { NpcHeardSpeech } from './roomNpcConversations'
+import { canHearNearbySpeech } from './socialSpeech'
 import type { WhisperService } from './whispers'
 
 interface DialogueEnvironment {
@@ -89,36 +90,33 @@ export class RoomQuestDialogues {
 
     public heardPublic(
         actor: GameCharacter,
-        targetId: string | undefined,
-        text: string,
-        id: string,
-        now: number
+        { text, id, at }: NpcHeardSpeech,
+        targetIds: readonly string[] | undefined
     ): void {
         const contacts = [...this.environment.actors()].filter(
             (candidate) =>
                 candidate.id !== actor.id &&
                 candidate.controllerKind !== 'network_player' &&
-                (targetId === undefined || candidate.id === targetId) &&
-                canHearSpeech(
+                (targetIds === undefined || targetIds.includes(candidate.id)) &&
+                canHearNearbySpeech(
                     candidate,
                     actor,
                     this.environment.room.navigationFor(actor),
-                    now,
+                    at,
                     48
                 )
         )
         const relevant = contacts.filter(
-            (candidate) =>
-                this.contracts(candidate.id, actor.id, now).length > 0
+            (candidate) => this.contracts(candidate.id, actor.id, at).length > 0
         )
         const selected =
-            targetId !== undefined
+            targetIds?.length === 1
                 ? contacts
                 : relevant.length === 1
                   ? relevant
                   : []
         for (const issuer of selected) {
-            this.turnIns.heard(actor, issuer, text, id, now)
+            this.turnIns.heard(actor, issuer, text, id, at)
         }
     }
 

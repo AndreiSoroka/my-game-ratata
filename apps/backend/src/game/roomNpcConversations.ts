@@ -1,80 +1,99 @@
-import type {
-    GameLocale,
-    SpeechActivitySnapshot,
+import {
+    PUBLIC_SPEECH_RADIUS,
+    type SpeechActivitySnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { NpcAiEvent } from '../ai/types'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import {
+    type NpcConversationSource,
+    NpcReplyQueue,
+    type PendingNpcReply,
+} from './npcReplyQueue'
 import type { GameRoom } from './room'
 import { RoomConversationDepartures } from './roomConversationDepartures'
+import { createNpcReplyPublisher, NPC_HUM } from './roomNpcReplySpeech'
 import { canConverseWithNpc } from './socialSpeech'
-import {
-    attributeNpcSpeech,
-    createDialogueSpeechEvent,
-    createSpeechEvent,
-} from './speechReceipts'
 import type { WhisperService } from './whispers'
 
 export type NpcHeardSpeech = Extract<NpcAiEvent, { kind: 'message' }>
-export type NpcConversationSource = 'panel' | 'say' | 'whisper'
-export const NPC_HUM = 'М-м-м-м-м…'
-const humDelayMs = 2_000
-const replyLimitMs = 60_000
-const requestWindowMs = 30_000
-const requestsPerWindow = 4
+type PrivateConversationSource = Exclude<NpcConversationSource, 'say'>
 
-interface PendingReply {
-    actorId: string
-    deathSequence: number
-    locationId: string
-    recipientDeathSequence: number
-    recipientName: string
-    id: string
-    source: NpcConversationSource
-    dueAt: number
-    humAt?: number
-    deadline: number
-}
-
-/** Each player has one addressed turn, bound to both living identities. */
+/** Private turns stay exclusive; each public speaker can have one turn per NPC. */
 export class RoomNpcConversations {
     public readonly departures: RoomConversationDepartures
-    private readonly pending = new Map<string, PendingReply>()
-    private readonly requests = new Map<string, number[]>()
-    private sequence = 0
+    private readonly pending = new NpcReplyQueue()
+    private readonly publishReply: ReturnType<typeof createNpcReplyPublisher>
 
     public constructor(
         private readonly room: GameRoom,
         private readonly adventure: AdventureService,
-        private readonly whispers: WhisperService
+        whispers: WhisperService
     ) {
         this.departures = new RoomConversationDepartures(room)
+        this.publishReply = createNpcReplyPublisher({
+            room,
+            adventure,
+            whispers,
+        })
     }
 
     public enqueue(
         recipient: GameCharacter,
         npc: GameCharacter,
         event: NpcHeardSpeech,
-        source: NpcConversationSource,
+        source: PrivateConversationSource,
         useModel: boolean
     ): NpcHeardSpeech | undefined {
-        const id = `npc-dialogue:${String(++this.sequence)}`
         const wallNow = this.room.realNow()
-        const performModel = useModel && this.takeRequest(recipient.id, wallNow)
-        const turn: PendingReply = {
-            actorId: npc.id,
-            deathSequence: npc.deathSequence,
-            locationId: npc.locationId,
-            recipientDeathSequence: recipient.deathSequence,
-            recipientName: recipient.nickname,
+        const performModel =
+            useModel && this.pending.allowRequest(recipient.id, wallNow)
+        const turn = this.recordTurn(
+            recipient,
+            npc,
+            event,
             source,
-            id,
-            dueAt: event.at + humDelayMs,
-            deadline: wallNow + replyLimitMs,
-            ...(performModel ? {} : { humAt: event.at + humDelayMs }),
+            wallNow,
+            performModel
+        )
+        return performModel ? turn : undefined
+    }
+
+    public enqueueNearby(
+        recipient: GameCharacter,
+        npcs: GameCharacter[],
+        event: NpcHeardSpeech
+    ): Array<{ npc: GameCharacter; speech: NpcHeardSpeech }> {
+        const wallNow = this.room.realNow()
+        if (
+            npcs.length === 0 ||
+            !this.pending.allowRequest(recipient.id, wallNow)
+        ) {
+            return []
         }
-        const previous = this.pending.get(recipient.id)
+        return npcs.map((npc) => ({
+            npc,
+            speech: this.recordTurn(
+                recipient,
+                npc,
+                event,
+                'say',
+                wallNow,
+                true
+            ),
+        }))
+    }
+
+    private recordTurn(
+        recipient: GameCharacter,
+        npc: GameCharacter,
+        event: NpcHeardSpeech,
+        source: NpcConversationSource,
+        wallNow: number,
+        performModel: boolean
+    ): NpcHeardSpeech {
+        const previous = this.pending.get(recipient.id, source, npc.id)
         if (previous !== undefined) {
             const speaker = this.room.getCharacter(previous.actorId)
             if (
@@ -89,10 +108,19 @@ export class RoomNpcConversations {
                 this.discard(recipient.id, previous, speaker)
             }
         }
-        this.pending.set(recipient.id, turn)
-        return performModel
-            ? { ...event, conversationId: id, replyDeadline: turn.deadline }
-            : undefined
+        const turn = this.pending.add(
+            recipient,
+            npc,
+            source,
+            event.at,
+            wallNow,
+            performModel
+        )
+        return {
+            ...event,
+            conversationId: turn.id,
+            replyDeadline: turn.deadline,
+        }
     }
 
     public close(
@@ -103,7 +131,7 @@ export class RoomNpcConversations {
         if (actorId === undefined) {
             return
         }
-        for (const [recipientId, turn] of this.pending) {
+        for (const [recipientId, turn] of this.pending.entries()) {
             if (
                 (actorId === recipientId || actorId === turn.actorId) &&
                 (source === undefined || turn.source === source) &&
@@ -128,7 +156,11 @@ export class RoomNpcConversations {
         if (event.conversationId === undefined) {
             return true
         }
-        const turn = this.pending.get(event.senderId)
+        const turn = this.pending.get(
+            event.senderId,
+            event.nearby === undefined ? 'whisper' : 'say',
+            npc.id
+        )
         return (
             turn?.id === event.conversationId &&
             turn.actorId === npc.id &&
@@ -139,8 +171,12 @@ export class RoomNpcConversations {
     }
 
     public fail(recipientId: string, id: string, now: number): void {
-        const turn = this.pending.get(recipientId)
-        if (turn?.id === id) {
+        const turn = [...this.pending.forRecipient(recipientId)].find(
+            (entry) => entry.id === id
+        )
+        if (turn?.source === 'say') {
+            this.pending.remove(recipientId, turn)
+        } else if (turn !== undefined) {
             turn.humAt = Math.max(turn.dueAt, now)
         }
     }
@@ -157,16 +193,19 @@ export class RoomNpcConversations {
         ) {
             return
         }
-        const turn = this.pending.get(event.senderId)
+        const turn = this.pending.get(
+            event.senderId,
+            event.nearby === undefined ? 'whisper' : 'say',
+            npc.id
+        )
         const recipient = this.room.getCharacter(event.senderId)
         if (turn !== undefined && recipient !== undefined) {
-            if (text === '') {
-                this.pending.delete(recipient.id)
-            } else {
-                this.deliver(
+            this.pending.remove(recipient.id, turn)
+            if (text !== '') {
+                this.publishReply(
                     npc,
                     recipient,
-                    turn,
+                    turn.source,
                     text,
                     now,
                     event.language ?? this.room.localeFor(recipient.id)
@@ -179,48 +218,50 @@ export class RoomNpcConversations {
         recipient: GameCharacter,
         now: number
     ): SpeechActivitySnapshot[] {
-        const turn = this.pending.get(recipient.id)
-        if (turn === undefined) {
-            return []
+        const activities: SpeechActivitySnapshot[] = []
+        for (const turn of this.pending.forRecipient(recipient.id)) {
+            const npc = this.room.getCharacter(turn.actorId)
+            if (
+                this.currentRecipient(recipient.id, turn, npc, now) !==
+                undefined
+            ) {
+                activities.push({
+                    actorId: turn.actorId,
+                    id: turn.id,
+                    kind: turn.humAt === undefined ? 'thinking' : 'typing',
+                })
+            }
         }
-        const npc = this.room.getCharacter(turn.actorId)
-        return this.currentRecipient(recipient.id, turn, npc, now) === undefined
-            ? []
-            : [
-                  {
-                      actorId: turn.actorId,
-                      id: turn.id,
-                      kind: turn.humAt === undefined ? 'thinking' : 'typing',
-                  },
-              ]
+        return activities
     }
 
     public advance(now: number): void {
         const wallNow = this.room.realNow()
-        for (const [id, requests] of this.requests) {
-            if ((requests.at(-1) ?? 0) <= wallNow - requestWindowMs) {
-                this.requests.delete(id)
-            }
-        }
-        for (const [recipientId, turn] of this.pending) {
+        this.pending.expireRequests(wallNow)
+        for (const [recipientId, turn] of this.pending.entries()) {
             const npc = this.room.getCharacter(turn.actorId)
             const recipient = this.currentRecipient(recipientId, turn, npc, now)
             if (npc === undefined || recipient === undefined) {
                 this.discard(recipientId, turn, npc)
-            } else if (turn.humAt === undefined && wallNow >= turn.deadline) {
-                this.deliver(npc, recipient, turn, NPC_HUM, now)
-            } else if (turn.humAt !== undefined && now >= turn.humAt) {
-                this.deliver(npc, recipient, turn, NPC_HUM, now)
+            } else if (
+                turn.humAt === undefined
+                    ? wallNow >= turn.deadline
+                    : now >= turn.humAt
+            ) {
+                this.pending.remove(recipientId, turn)
+                if (turn.source !== 'say') {
+                    this.publishReply(npc, recipient, turn.source, NPC_HUM, now)
+                }
             }
         }
     }
 
     private discard(
         recipientId: string,
-        turn: PendingReply,
+        turn: PendingNpcReply,
         npc: GameCharacter | undefined
     ): void {
-        this.pending.delete(recipientId)
+        this.pending.remove(recipientId, turn)
         if (npc?.alive === true && npc.deathSequence === turn.deathSequence) {
             this.departures.record(npc, {
                 id: turn.id,
@@ -233,21 +274,9 @@ export class RoomNpcConversations {
         }
     }
 
-    private takeRequest(id: string, now: number): boolean {
-        const recent = (this.requests.get(id) ?? []).filter(
-            (at) => at > now - requestWindowMs
-        )
-        if (recent.length >= requestsPerWindow) {
-            return false
-        }
-        recent.push(now)
-        this.requests.set(id, recent)
-        return true
-    }
-
     private currentRecipient(
         recipientId: string,
-        turn: PendingReply,
+        turn: PendingNpcReply,
         npc: GameCharacter | undefined,
         now: number
     ): GameCharacter | undefined {
@@ -264,51 +293,11 @@ export class RoomNpcConversations {
                 npc,
                 this.room.navigationFor(npc),
                 now,
-                turn.source === 'say' ? 80 : 48
+                turn.source === 'say' ? PUBLIC_SPEECH_RADIUS : 48
             )
         ) {
             return undefined
         }
         return recipient
-    }
-
-    private deliver(
-        npc: GameCharacter,
-        recipient: GameCharacter,
-        turn: PendingReply,
-        text: string,
-        now: number,
-        language?: GameLocale
-    ): void {
-        this.pending.delete(recipient.id)
-        const line = text.trim().slice(0, 400)
-        if (turn.source === 'whisper' && line !== NPC_HUM) {
-            this.whispers.send(npc, recipient, line, now, {
-                language: language ?? this.room.localeFor(recipient.id),
-                keepOriginalForRecipient: true,
-            })
-            return
-        }
-        const event =
-            turn.source === 'panel'
-                ? createDialogueSpeechEvent(npc, recipient, line)
-                : createSpeechEvent(npc, line, {
-                      targetId: recipient.id,
-                      ...(line === NPC_HUM
-                          ? { audienceIds: [recipient.id] }
-                          : {}),
-                  })
-        if (language !== undefined) {
-            event.language = language
-            attributeNpcSpeech(event, recipient.id)
-        }
-        const dialogue = this.adventure.walletFor(recipient.id).dialogue
-        if (turn.source === 'panel' && dialogue?.npcId === npc.id) {
-            delete dialogue.initialView
-            delete dialogue.textMessage
-            dialogue.text = line
-            dialogue.speechId = event.speechId
-        }
-        this.room.publishEvents([event])
     }
 }

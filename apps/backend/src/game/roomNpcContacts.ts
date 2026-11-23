@@ -2,6 +2,7 @@ import type {
     ClientMessage,
     GameEventPayload,
     MerchantServiceView,
+    NpcInteractionService,
 } from '@my-game-ratata/contracts'
 
 import type { NpcAiCoordinator } from '../ai/coordinator'
@@ -11,7 +12,6 @@ import type { GameCharacter } from './character'
 import { recruitableNpc } from './npcRoster'
 import type { GameRoom } from './room'
 import {
-    type NpcConversationSource,
     type NpcHeardSpeech,
     RoomNpcConversations,
 } from './roomNpcConversations'
@@ -64,23 +64,17 @@ export class RoomNpcContacts {
     public receive(
         actor: GameCharacter,
         event: NpcHeardSpeech,
-        targetId?: string,
-        source: NpcConversationSource = event.channel === 'whisper'
-            ? 'whisper'
-            : 'say'
+        targetId: string,
+        source: 'whisper' | 'panel' = 'whisper'
     ): void {
         if (actor.controllerKind !== 'network_player') {
-            return
-        }
-        if (targetId === undefined) {
-            this.ai()?.hear(actor, event)
             return
         }
         const npc = this.room.getCharacter(targetId)
         if (npc?.controllerKind === 'network_player') {
             return
         }
-        if (!this.hears(actor, npc, event.at, source)) {
+        if (!this.hears(actor, npc, event.at)) {
             this.notice(
                 actor,
                 'Подойди к живому собеседнику, чтобы он тебя услышал.'
@@ -174,7 +168,7 @@ export class RoomNpcContacts {
         targetId: string,
         now: number,
         text?: string,
-        service?: MerchantServiceView
+        service?: NpcInteractionService
     ): true {
         const navigation = this.room.navigationFor(actor)
         const characters = this.room.charactersFor(actor)
@@ -185,7 +179,7 @@ export class RoomNpcContacts {
             now,
             navigation
         )
-        if (!this.hears(actor, npc, now, 'panel')) {
+        if (!this.hears(actor, npc, now)) {
             this.notice(
                 actor,
                 'Подойди к живому собеседнику, чтобы поговорить.'
@@ -252,8 +246,7 @@ export class RoomNpcContacts {
     private hears(
         actor: GameCharacter,
         npc: GameCharacter | undefined,
-        now: number,
-        source: NpcConversationSource
+        now: number
     ): npc is GameCharacter {
         return (
             npc?.soul.canSpeak === true &&
@@ -264,7 +257,7 @@ export class RoomNpcContacts {
                 actor,
                 this.room.navigationFor(actor),
                 now,
-                source === 'say' ? 80 : 48
+                48
             )
         )
     }

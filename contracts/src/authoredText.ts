@@ -65,6 +65,7 @@ const lines = {
     'dialogue.bellRestored': ['Колокол снова звучит', 'The Bell Rings Again'],
     'dialogue.alarm': ['Тревога в Новогороде', 'Trouble in Novogorod'],
     'dialogue.residents': ['Жители Новогорода', 'Residents of Novogorod'],
+    'dialogue.workerRequests': ['Обращения работников', 'Workers’ requests'],
     'dialogue.orders': ['Мои заказы и изготовление', 'My orders and crafting'],
     'dialogue.cityReport': [
         'Что нужно городу? Спрос и запасы',

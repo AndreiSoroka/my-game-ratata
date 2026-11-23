@@ -34,10 +34,18 @@ for (const scenario of scenarios) {
             (name) => window.__ratataTest!.join(name, 'ranger'),
             `qr-${info.workerIndex}-${scenario.name[0]}-${Date.now().toString(36)}`
         )
-        await approachMira(page)
+        const miraId = await approachMira(page)
         const { workerMode, guildMode } = scenario
-        await expect(page.getByRole('dialog', { name: 'Разговор: Mira' })).toBeVisible()
-        await openObservedWorkerOffer(page)
+        await socialMenu(page, miraId, /^Городские дела$/u)
+        const cityAffairs = page.getByRole('dialog', { name: 'Разговор: Mira' })
+        await cityAffairs.getByRole('button', { name: 'Что нужно городу? Спрос и запасы' }).click()
+        await expect(
+            cityAffairs.getByRole('heading', { name: 'Потребности города', exact: true })
+        ).toBeVisible()
+        await page.keyboard.press('Escape')
+        await page.keyboard.press('Escape')
+        await expect(cityAffairs).toHaveCount(0)
+        await openObservedWorkerOffer(page, miraId)
         const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
         await expect(offer).toBeVisible()
         await assertCenteredViewport(offer)
@@ -131,7 +139,7 @@ async function openQuestJournal(page: Page): Promise<Locator> {
     return character
 }
 
-async function approachMira(page: Page): Promise<void> {
+async function approachMira(page: Page): Promise<string> {
     await enterBuilding(page, 'Гильдия искателей')
     await expect
         .poll(() =>
@@ -148,15 +156,7 @@ async function approachMira(page: Page): Promise<void> {
             .targets.find((target) => target.kind === 'character' && target.name === 'Mira')!
     )
     await walkTo(page, mira.position, 32)
-    const opened = await page.evaluate(
-        (targetId) =>
-            window.__ratataTest!.act(
-                { type: 'interact', targetId },
-                { until: { type: 'dialogue', npcId: targetId } }
-            ),
-        mira.id
-    )
-    expect(opened.status).toBe('condition_met')
+    return mira.id
 }
 
 async function expectStationaryWithKey(page: Page, code: string): Promise<void> {

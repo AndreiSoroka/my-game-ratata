@@ -166,7 +166,8 @@ function speechEntry(
     snapshot: WorldSnapshot | undefined,
     playerId: string
 ): ChatHistoryEntry {
-    const personal = event.targetId === playerId && event.actorId !== playerId
+    const personal =
+        event.channel === undefined && event.targetId === playerId && event.actorId !== playerId
     const name = speechName(event, snapshot, playerId)
     return {
         id: `speech:${event.actorId ?? 'unknown'}:${receipt}`,

@@ -16,6 +16,11 @@ import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 import type { TreeProfile } from './trees'
 export type { TreeProfile } from './trees'
 
+export const BASE_STOCK_MERCHANT_IDS: readonly string[] = [
+    'npc_friendly_girl_1',
+    'npc_merchant_1',
+]
+
 export type AdventureTradeItemId =
     'food' | 'simple_sword' | 'boots' | 'axe' | 'pickaxe' | 'stone_axe'
 export type AdventureRecipeId = AdventureTradeItemId | 'bake_bread'
@@ -37,7 +42,7 @@ export type AdventureClientMessage =
     | MarketClientMessage
     | CraftOrderClientMessage
     | { type: 'plant_tree'; position: { x: number; y: number } }
-    | { type: 'interact'; targetId: string; service?: MerchantServiceView }
+    | { type: 'interact'; targetId: string; service?: NpcInteractionService }
     | {
           type: 'dialogue_choice'
           choiceId: string
@@ -75,6 +80,8 @@ export interface AdventureDialogueChoice {
 }
 
 export type MerchantServiceView = 'shop' | 'orders' | 'repair'
+export type NpcInteractionService =
+    MerchantServiceView | 'city_affairs' | 'worker_requests'
 
 export interface AdventureDialogue {
     initialView?: MerchantServiceView

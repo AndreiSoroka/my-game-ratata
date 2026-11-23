@@ -95,6 +95,21 @@ it('labels a delivered private scripted reply as personal without replaying expl
     })
 })
 
+it('keeps an explicitly public reply in Nearby even when it carries an addressee', () => {
+    const history = createChatHistory()
+    history.observe(worldFixture([]), 'self')
+    history.event({
+        kind: 'chat',
+        channel: 'say',
+        actorId: 'savva',
+        targetId: 'self',
+        speechId: 1,
+        text: 'Слушаю.',
+    })
+    expect(history.entries.value).toMatchObject([{ channel: 'say', text: 'Слушаю.' }])
+    expect(history.entries.value[0]).not.toHaveProperty('partnerId')
+})
+
 it('updates an existing public or private receipt and drops a translation after changing identity', () => {
     const history = createChatHistory()
     const world = { ...worldFixture([]), serverEpoch: 'one' }

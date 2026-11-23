@@ -2,19 +2,21 @@ import {
     type AdventureDialogue,
     authoredMessage,
     authoredRussian,
+    type AuthoredTextKey,
     type LocalizedMessage,
 } from '@my-game-ratata/contracts'
 
 export function residentDialogue(
     npcId: string,
     npcName: string,
-    override?: { text: string; textMessage?: LocalizedMessage }
+    override?: { text: string; textMessage?: LocalizedMessage },
+    title: AuthoredTextKey = 'dialogue.residents'
 ): AdventureDialogue {
     return {
         npcId,
         npcName,
-        title: authoredRussian('dialogue.residents'),
-        titleMessage: authoredMessage('dialogue.residents'),
+        title: authoredRussian(title),
+        titleMessage: authoredMessage(title),
         canTrade: false,
         ...(override ?? { text: '' }),
         choices: [

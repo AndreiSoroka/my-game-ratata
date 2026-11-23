@@ -4,7 +4,8 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { NpcAiDialogue } from './dialogue'
-import { replySpeech } from './dialogueResult'
+import { dialogueOnlyReply } from './dialogueResult'
+import { hasNpcReplyControl, releaseNpcTurnLease } from './npcTurnLease'
 import { completeNpcBackgroundPresentation } from './questPresentation'
 import { reportNpcRequestStatus } from './requestStatus'
 import {
@@ -54,18 +55,12 @@ export class NpcAiSessionActions {
         reply: NpcAiReply,
         now: number
     ): void {
-        if (state.token === undefined) {
+        if (!hasNpcReplyControl(this.companions, actor, state, now)) {
+            this.cancel(state, now)
             return
         }
         if (state.config.mode === 'dialogue_only') {
-            reply = {
-                ...reply,
-                speech: replySpeech(reply),
-                decision: null,
-                taskAcceptance: 'none',
-                companionOrder: null,
-                done: true,
-            }
+            reply = dialogueOnlyReply(reply)
         }
         publishNpcAiFeedback(this, this.diagnostics, state, reply, now)
         const conversational = state.dialogue !== undefined
@@ -131,6 +126,13 @@ export class NpcAiSessionActions {
         events: NpcAiEvent[],
         now: number
     ): void {
+        if (
+            state.dialogue === undefined &&
+            state.task?.background === 'combat_reaction'
+        ) {
+            this.finish(state, now, 0, false)
+            return
+        }
         if (state.retry >= 1) {
             if (state.dialogue !== undefined) {
                 this.room.social.npcSpeech.fail(state.dialogue, now)
@@ -260,6 +262,9 @@ export class NpcAiSessionActions {
     }
 
     public cancel(state: NpcAiActorState, now: number): void {
+        if (state.dialogue?.nearby !== undefined) {
+            this.room.social.npcSpeech.fail(state.dialogue, now)
+        }
         reportNpcRequestStatus(
             this.room,
             this.diagnostics,
@@ -285,19 +290,7 @@ export class NpcAiSessionActions {
         ) {
             return
         }
-        if (
-            state.config.mode !== 'dialogue_only' &&
-            state.actor !== undefined &&
-            state.token !== undefined
-        ) {
-            this.companions.releaseModelControl(
-                state.actor,
-                state.token,
-                this.room,
-                now
-            )
-        }
-        state.token = undefined
+        releaseNpcTurnLease(this.companions, this.room, state, now)
     }
 
     public cancelInference(state: NpcAiActorState, now: number): void {

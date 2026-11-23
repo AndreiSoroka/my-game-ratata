@@ -3,6 +3,7 @@ import { snapshotCharacterRoute } from '../game/characterRoute'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { prepareNpcActor } from './actorLifecycle'
+import { npcCombatReactionStillAvailable } from './combatReactions'
 import { npcCommandProblem } from './commandValidation'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { npcSelfActivityInterrupted } from './npcAutonomy'
@@ -20,9 +21,21 @@ export class NpcAiTicks {
         private readonly diagnostics: NpcAiDiagnostics
     ) {}
 
+    public yieldCombatReactions(
+        states: Iterable<NpcAiActorState>,
+        now: number
+    ): void {
+        for (const state of states) {
+            if (state.task?.background === 'combat_reaction') {
+                this.yieldBackground(state, now)
+            }
+        }
+    }
+
     public yieldBackground(state: NpcAiActorState, now: number): void {
         if (
-            (state.controller === undefined &&
+            (state.task?.background !== 'combat_reaction' &&
+                state.controller === undefined &&
                 state.ready === undefined &&
                 state.finalizing === undefined) ||
             state.dialogue !== undefined ||
@@ -85,6 +98,8 @@ export class NpcAiTicks {
             )
         if (
             greetingInterrupted ||
+            (state.task?.background === 'combat_reaction' &&
+                !npcCombatReactionStillAvailable(this.room, state, now)) ||
             npcSelfActivityInterrupted(this.room, state, now)
         ) {
             const inbox = state.inbox

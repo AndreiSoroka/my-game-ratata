@@ -151,14 +151,8 @@ export class RoomSocial {
                 message,
                 now,
                 (text) => this.notice(actor, text),
-                (targetId, text, id) =>
-                    this.questDialogues.heardPublic(
-                        actor,
-                        targetId,
-                        text,
-                        id,
-                        now
-                    )
+                (speech, targets) =>
+                    this.questDialogues.heardPublic(actor, speech, targets)
             )
         ) {
             return true

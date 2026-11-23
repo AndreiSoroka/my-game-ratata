@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { interactionHasLineOfSight, type MapVisibility } from '../runtime/mapVisibility'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
+import { guildQuestFixture, workRequestFixture } from '../testing/questFixture'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
 
 const object = (
@@ -130,7 +131,6 @@ describe('one facing interaction target', () => {
         const target = select()!
         expect(target.key).toBe('character:ahead')
         expect(target.actions.map((a) => a.command.type)).toEqual([
-            'interact',
             'companion_request',
             'companion_request',
             'steal',
@@ -141,7 +141,7 @@ describe('one facing interaction target', () => {
         ).toBe(true)
     })
     it.each(['passive', 'scripted'] as const)(
-        'allows addressing a %s NPC without offering companion orders',
+        'offers no generic talk or companion orders for a %s NPC',
         (dialogueMode) => {
             const { snapshot, select } = setup()
             const canSpeak = dialogueMode === 'passive'
@@ -153,15 +153,16 @@ describe('one facing interaction target', () => {
                     interactions: {
                         dialogueMode,
                         aiDialogue: canSpeak,
-                        whisper: false,
+                        whisper: canSpeak,
                         exchange: false,
                     },
                 })
             )
 
             const commands = select()?.actions.map(({ command }) => command)
-            expect(commands).toContainEqual({ type: 'interact', targetId: 'resident' })
+            expect(commands?.some(({ type }) => type === 'interact')).toBe(false)
             expect(commands?.some(({ type }) => type === 'companion_request')).toBe(false)
+            expect(commands?.some(({ type }) => type === 'whisper_open')).toBe(canSpeak)
         }
     )
     it('pins an exact target, never substituting a newly closer neighbor', () => {
@@ -188,6 +189,58 @@ describe('one facing interaction target', () => {
         player.alive = false
         expect(select()).toBeUndefined()
     })
+})
+
+it('offers civic services at the coordinator and at the exact clerk with a waiting request', () => {
+    const { player, snapshot, select } = setup()
+    const mira = characterFixture('npc_friendly_girl_1', {
+        position: { x: 132, y: 100 },
+        controllerKind: 'scripted',
+        soul: { kind: 'echo', controlSource: 'script', canSpeak: true },
+    })
+    const clerk = { ...mira, id: 'clerk', position: { x: 137, y: 100 } }
+    const job = guildQuestFixture({ workRequest: workRequestFixture({ clerkId: clerk.id }) })
+    const state: WorldSnapshot = {
+        ...snapshot,
+        characters: [player, mira, clerk],
+        party: {
+            activeJob: null,
+            invitations: [],
+            jobs: [job],
+            leaderId: null,
+            members: [],
+            notice: null,
+            partyId: null,
+        },
+    }
+    const serviceCommands = (targetId: string) =>
+        select(state, state.characters, undefined, `character:${targetId}`)
+            ?.actions.map(({ command }) => command)
+            .filter(({ type }) => type === 'interact')
+
+    expect(serviceCommands(mira.id)).toEqual([
+        { type: 'interact', targetId: mira.id, service: 'shop' },
+        { type: 'interact', targetId: mira.id, service: 'city_affairs' },
+    ])
+    expect(serviceCommands(clerk.id)).toEqual([
+        { type: 'interact', targetId: clerk.id, service: 'worker_requests' },
+    ])
+    state.party!.jobs = []
+    expect(serviceCommands(clerk.id)).toEqual([])
+})
+
+it('opens the base stock merchant through a direct shop action', () => {
+    const { snapshot, select } = setup()
+    const merchant = characterFixture('npc_merchant_1', {
+        position: { x: 124, y: 100 },
+        controllerKind: 'scripted',
+        soul: { kind: 'echo', controlSource: 'script', canSpeak: true },
+    })
+    snapshot.characters.push(merchant)
+    const commands = select()?.actions.map(({ command }) => command)
+    expect(commands?.filter(({ type }) => type === 'interact')).toEqual([
+        { type: 'interact', targetId: merchant.id, service: 'shop' },
+    ])
 })
 
 it('keeps companion requests in sight out to 64 pixels using the viewer’s action availability', () => {

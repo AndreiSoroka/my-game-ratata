@@ -2,6 +2,7 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { NpcAiCallBudget } from './callBudget'
 import type { CharacterKnowledge } from './characterKnowledge'
+import { markNpcCombatReactionStarted } from './combatReactions'
 import { npcCommandProblem } from './commandValidation'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { npcDialogueContext } from './dialogueContext'
@@ -9,6 +10,7 @@ import { prepareKnowledgeCatalog } from './knowledgeCatalog'
 import { npcKnowledgeInformation } from './knowledgeInformation'
 import { characterKnowledgeScope } from './knowledgeScope'
 import { NecromancerTurns } from './necromancerTurns'
+import { acquireNpcTurnLease } from './npcTurnLease'
 import { reportNpcRequestStatus } from './requestStatus'
 import { createRoomKnowledge } from './roomKnowledge'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
@@ -107,46 +109,40 @@ export class NpcAiScheduler {
     }
 
     private begin(state: NpcAiActorState, now: number): void {
-        if (!npcAiActorAvailable(state.actor)) {
+        const actor = state.actor
+        if (!npcAiActorAvailable(actor) || !this.withinLimits(state, now)) {
             return
         }
-        if (!this.withinLimits(state, now)) {
-            return
-        }
+        const combat =
+            state.task?.background === 'combat_reaction' &&
+            state.inbox.length === 0
         if (
-            state.token === undefined &&
-            state.config.mode === 'dialogue_only'
+            !acquireNpcTurnLease(
+                this.companions,
+                actor,
+                state,
+                now,
+                combat || state.inbox[0]?.nearby !== undefined,
+                this.nextId
+            )
         ) {
-            state.token = this.nextId('dialogue')
-        }
-        if (state.token === undefined) {
-            const token = this.nextId(`lease-${String(++state.generation)}`)
-            if (
-                !this.companions.claimModelControl(
-                    state.actor,
-                    token,
-                    now,
-                    false
-                )
-            ) {
-                state.nextAt = now + 1_000
-                return
-            }
-            state.token = token
+            return
         }
         state.dialogue = state.inbox.shift()
-        state.controlRevision = this.companions.controlRevision(state.actor)
+        markNpcCombatReactionStarted(state, this.room.realNow())
+        state.controlRevision = this.companions.controlRevision(actor)
         state.turnControlRevision = state.controlRevision
         if (state.dialogue === undefined && state.task !== null) {
             state.task.steps += 1
         }
+        const { departures } = this.room.social.npcSpeech.turns
         const context = npcDialogueContext(
             this.room,
             this.sessions.dialogue,
             state,
-            state.actor,
+            actor,
             now,
-            this.room.social.npcSpeech.turns.departures.take(state.actor)
+            combat ? {} : departures.take(actor)
         )
         this.busy = true
         this.budget.spend(this.room.realNow(), isBackgroundNpcTurn(state))
@@ -157,16 +153,18 @@ export class NpcAiScheduler {
             'thinking',
             now
         )
-        this.launch(state, state.actor, context)
+        this.launch(state, actor, context, combat)
     }
 
     private launch(
         state: NpcAiActorState,
         actor: import('../game/character').GameCharacter,
-        context: import('./types').NpcAiContext
+        context: import('./types').NpcAiContext,
+        combat: boolean
     ): void {
         const eligible = prepareNpcTurnEligibility(
             this.room,
+            this.companions,
             state,
             actor,
             this.clock
@@ -178,7 +176,7 @@ export class NpcAiScheduler {
                 ...context,
                 knowledgeScope: characterKnowledgeScope(
                     actor,
-                    this.informationCallAvailable(state)
+                    !combat && this.informationCallAvailable(state)
                 ),
             },
             this.provider,
@@ -194,7 +192,7 @@ export class NpcAiScheduler {
                     clock: this.clock,
                 }),
                 reserveCall: () =>
-                    current() && this.reserveInformationCall(state),
+                    !combat && current() && this.reserveInformationCall(state),
                 validateReply: (reply) =>
                     npcCommandProblem(
                         this.room,

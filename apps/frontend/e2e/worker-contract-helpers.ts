@@ -1,10 +1,9 @@
 import { expect, type Page } from '@playwright/test'
 
-/** Wait for a worker's real report, then request its offer through observed dialogue. */
-export async function openObservedWorkerOffer(page: Page): Promise<void> {
-    const clerkId = await page.evaluate(
-        () => window.__ratataTest!.getState().snapshot!.adventure!.dialogue!.npcId
-    )
+import { socialMenu } from './social-helpers'
+
+/** Wait for a worker's real report, then request its offer through the clerk's menu. */
+export async function openObservedWorkerOffer(page: Page, clerkId: string): Promise<void> {
     await expect
         .poll(
             () =>
@@ -21,10 +20,7 @@ export async function openObservedWorkerOffer(page: Page): Promise<void> {
             { timeout: 60_000 }
         )
         .toBe(true)
-    await page.evaluate(
-        (targetId) => window.__ratataTest!.send({ type: 'interact', targetId }),
-        clerkId
-    )
+    await socialMenu(page, clerkId, /^Обращения работников$/u)
     await expect(page.getByRole('button', { name: /^Обращение:/ })).not.toHaveCount(0)
     const proposal = await page.evaluate(async () => {
         const api = window.__ratataTest!

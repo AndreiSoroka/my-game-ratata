@@ -79,6 +79,7 @@ export function createRoomServices(options: Options): RoomServices {
             archivePerson: (id, now) => ai()?.archivePerson(id, now),
             hasModelLease: (actor, now) =>
                 companions.hasActiveLease(actor, now, room),
+            observeCombat: (events, now) => ai()?.observeCombat(events, now),
             world,
             now: room.gameplayNow,
             speechTranslations: () => room.speechTranslations,

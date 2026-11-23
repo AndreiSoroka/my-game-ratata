@@ -60,16 +60,16 @@ Both methods accept `{ timeoutMs }`; `act` accepts an additional `until` conditi
 | `{ type: 'notice', after: number }`      | A new adventure notice receipt has arrived. A rejection notice also satisfies this condition.            |
 | `{ type: 'idle' }`                       | The living player has no path and zero velocity. This does not prove arrival at an intended destination. |
 
-For example, after approaching an observed NPC:
+For example, after approaching an observed merchant whose actions include `shop`:
 
 ```js
 const api = window.__ratataTest
 const result = await api.act(
-    { type: 'interact', targetId: observedNpcId },
+    { type: 'interact', targetId: observedNpcId, service: 'shop' },
     { until: { type: 'dialogue', npcId: observedNpcId }, timeoutMs: 5_000 }
 )
 if (result.status !== 'condition_met') throw new Error(result.reason)
-// Read result.observation.dialogueChoices before choosing a reply.
+// Read the opened shop and the available dialogue choices from the observation.
 ```
 
 `act` waits for a newer server snapshot before checking its condition. Conditions still describe current state and can already have been true before the command, so a match alone does not prove causation. For repeated interactions, compare a new `speechId`, `noticeId` or the relevant before/after state when the distinction matters.

@@ -3,6 +3,7 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { CharacterMemory } from './characterMemory'
 import { memoryForCharacter } from './characterMinds'
+import { isNpcTurnLeased } from './npcTurnLease'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import type { NpcAiSessionActions } from './session'
 export function prepareNpcActor(
@@ -78,7 +79,7 @@ function leaseExpired(
     now: number
 ): boolean {
     return (
-        state.config.mode !== 'dialogue_only' &&
+        isNpcTurnLeased(state) &&
         state.token !== undefined &&
         !companions.renewModelControl(actor, state.token, now)
     )
