@@ -58,6 +58,32 @@ describe('effect-only known card copy', () => {
 })
 
 describe('earned constellation metadata', () => {
+    it('indicates unmet mastery on a closed neighbor without publishing its level or name', () => {
+        const actor = abilityHero('cleric')
+        actor.progression.constellations.opened.add('prayer.harm')
+        actor.progression.masteries.prayer.level = 5
+        const locked = requiredCard(actor, 'prayer.harm1')
+        expect(locked).toMatchObject({ unlocked: false, levelLocked: true })
+        expect(locked.name).toBeUndefined()
+        expect(locked).not.toHaveProperty('minimumLevel')
+
+        actor.progression.masteries.prayer.level = 6
+        expect(requiredCard(actor, 'prayer.harm1')).toEqual({
+            id: locked.id,
+            constellationId: locked.constellationId,
+            x: locked.x,
+            y: locked.y,
+            unlocked: false,
+            parents: locked.parents,
+        })
+        expect(requiredCard(actor, 'prayer.revive')).toMatchObject({
+            unlocked: true,
+        })
+        expect(requiredCard(actor, 'prayer.revive')).not.toHaveProperty(
+            'levelLocked'
+        )
+    })
+
     it('hides names, descriptions, kind, effects and active/passive type for every unknown node including roots', () => {
         const actor = abilityHero('vanguard')
         const snapshot = snapshotConstellations(actor)

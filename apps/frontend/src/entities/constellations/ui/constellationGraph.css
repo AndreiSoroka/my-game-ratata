@@ -31,6 +31,9 @@
     min-height: 44px;
     font-size: 20px;
 }
+.constellation-edge--closed {
+    transition: opacity 120ms ease-out;
+}
 .constellation-label {
     pointer-events: none;
     overflow: hidden;
@@ -52,6 +55,11 @@
     border-top: 1px solid #294350;
     color: #8ca5b4;
     font-size: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .constellation-edge--closed {
+        transition: none;
+    }
 }
 @media (max-width: 600px) {
     .constellation-map__sky {

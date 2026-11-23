@@ -1,4 +1,4 @@
-import type { Engine } from 'excalibur'
+import type { Engine, ExcaliburGraphicsContext } from 'excalibur'
 import { describe, expect, it, vi } from 'vitest'
 
 import { MapBackdrop } from './mapBackdrop'
@@ -13,8 +13,19 @@ interface GraphicOptions {
 }
 interface ViewActor {
     options: { pos: { x: number; y: number }; width: number; height: number; z: number }
-    graphics: { use: ReturnType<typeof vi.fn<(graphic: { options: GraphicOptions }) => void>> }
+    graphics: {
+        use: ReturnType<typeof vi.fn<(graphic: { options: GraphicOptions }) => void>>
+        onPostDraw: (context: ExcaliburGraphicsContext) => void
+    }
     kill: ReturnType<typeof vi.fn<() => void>>
+}
+
+interface StarPixel {
+    x: number
+    y: number
+    width: number
+    height: number
+    color: string
 }
 
 vi.mock('excalibur', () => ({
@@ -26,6 +37,7 @@ vi.mock('excalibur', () => ({
     Canvas: class {
         public constructor(public options: GraphicOptions) {}
     },
+    Color: { fromHex: (hex: string) => hex },
     vec: (x: number, y: number) => ({ x, y }),
 }))
 
@@ -38,14 +50,30 @@ const map = {
 
 function setup() {
     const actors: ViewActor[] = []
+    const camera = { drawPos: { x: map.worldWidth / 2, y: map.worldHeight / 2 } }
     const backdrop = new MapBackdrop({
+        currentScene: { camera },
         add: (actor: ViewActor) => actors.push(actor),
     } as unknown as Engine)
-    return { actors, backdrop }
+    return { actors, backdrop, camera }
+}
+
+function drawStars(actor: ViewActor): StarPixel[] {
+    const stars: StarPixel[] = []
+    const context = {
+        drawRectangle: (
+            { x, y }: { x: number; y: number },
+            width: number,
+            height: number,
+            color: string
+        ) => stars.push({ x, y, width, height, color }),
+    }
+    actor.graphics.onPostDraw(context as unknown as ExcaliburGraphicsContext)
+    return stars
 }
 
 describe('map void backdrop', () => {
-    it('keeps cached star strips outside the physical map and below its graphics', () => {
+    it('keeps cached black strips outside the physical map and below its graphics', () => {
         const { actors, backdrop } = setup()
         backdrop.setMap(map)
         expect(actors).toHaveLength(4)
@@ -65,27 +93,19 @@ describe('map void backdrop', () => {
         }
     })
 
-    it('draws sparse fixed pixel stars on black without frame randomness', () => {
+    it('draws sparse pixel stars on black without changing them at rest', () => {
         const { actors, backdrop } = setup()
         backdrop.setMap(map)
         const graphic = actors[0]!.graphics.use.mock.calls[0]![0].options
-        const rectangles: { x: number; y: number; width: number; height: number; color: string }[] =
-            []
+        const fillRect = vi.fn<CanvasRenderingContext2D['fillRect']>()
         const context = {
             fillStyle: '',
-            fillRect: (x: number, y: number, width: number, height: number) =>
-                rectangles.push({ x, y, width, height, color: context.fillStyle }),
+            fillRect,
         }
         graphic.draw(context as unknown as CanvasRenderingContext2D)
-        const firstDraw = [...rectangles]
-        expect(firstDraw[0]).toEqual({
-            x: 0,
-            y: 0,
-            width: graphic.width,
-            height: graphic.height,
-            color: '#000000',
-        })
-        const stars = firstDraw.slice(1)
+        expect(context.fillStyle).toBe('#000000')
+        expect(fillRect).toHaveBeenCalledExactlyOnceWith(0, 0, graphic.width, graphic.height)
+        const stars = drawStars(actors[0]!)
         expect(stars.length).toBeGreaterThan(10)
         expect(stars.length).toBeLessThan((graphic.width * graphic.height) / 2000)
         for (const star of stars) {
@@ -96,9 +116,54 @@ describe('map void backdrop', () => {
             expect(star.y).toBeGreaterThanOrEqual(0)
             expect(star.y).toBeLessThan(graphic.height)
         }
-        rectangles.length = 0
-        graphic.draw(context as unknown as CanvasRenderingContext2D)
-        expect(rectangles).toEqual(firstDraw)
+        expect(drawStars(actors[0]!)).toEqual(stars)
+        backdrop.setMap(map)
+        expect(drawStars(actors[4]!)).toEqual(stars)
+    })
+
+    it('moves five layers at 64–88% of the camera scroll in both axes', () => {
+        const { actors, backdrop, camera } = setup()
+        backdrop.setMap(map)
+        const top = actors[0]!
+        const before = drawStars(top)
+        camera.drawPos.x += 100
+        camera.drawPos.y += 100
+        const after = drawStars(top)
+        // Offsets below are in the strip's coordinates before the camera subtracts its 100px.
+        for (const offset of [12, 18, 24, 30, 36]) {
+            expect(
+                before.some((star) =>
+                    after.some(
+                        (point) =>
+                            point.x - star.x === offset &&
+                            point.y - star.y === offset &&
+                            point.color === star.color
+                    )
+                )
+            ).toBe(true)
+        }
+        expect(after).not.toEqual(before)
+        expect(drawStars(top)).toEqual(after)
+    })
+
+    it('fills and clips all strips even after large diagonal camera motion', () => {
+        const { actors, backdrop, camera } = setup()
+        backdrop.setMap(map)
+        for (const x of [-90.5, map.worldWidth + 90.5]) {
+            for (const y of [-90.5, map.worldHeight + 90.5]) {
+                camera.drawPos = { x, y }
+                for (const actor of actors) {
+                    const stars = drawStars(actor)
+                    expect(stars.length).toBeGreaterThan(10)
+                    for (const star of stars) {
+                        expect(star.x).toBeGreaterThanOrEqual(0)
+                        expect(star.y).toBeGreaterThanOrEqual(0)
+                        expect(star.x + star.width).toBeLessThanOrEqual(actor.options.width)
+                        expect(star.y + star.height).toBeLessThanOrEqual(actor.options.height)
+                    }
+                }
+            }
+        }
     })
 
     it('removes previous map stars on replacement and disposes each remaining actor once', () => {

@@ -7,6 +7,7 @@ defineProps<{
     selected: boolean
     enabled?: boolean
     interactive: boolean
+    hitRadius?: number
     showHalo?: boolean
     tabStop: boolean
     unitScale: number
@@ -37,7 +38,7 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
         @click="emit('select')"
         @keydown.stop="emit('key', $event)"
     >
-        <circle class="hit" :r="22 * unitScale" />
+        <circle class="hit" :r="hitRadius ?? 22 * unitScale" />
         <circle class="halo" :r="(node.parents.length === 0 ? 12 : 8) * unitScale" />
         <path
             v-if="node.parents.length === 0"
@@ -50,6 +51,7 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
 .constellation-node {
     cursor: pointer;
     outline: none;
+    pointer-events: none;
 }
 .constellation-node circle,
 .constellation-node path {
@@ -71,6 +73,7 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
 }
 .closed {
     opacity: calc(0.5 * var(--constellation-closed-visibility, 1));
+    transition: opacity 120ms ease-out;
 }
 .closed circle:not(.hit),
 .closed path,
@@ -81,6 +84,10 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
 .selected,
 .constellation-node:focus-visible {
     opacity: 1;
+}
+.closed.selected,
+.closed:focus-visible {
+    opacity: var(--constellation-closed-visibility, 1);
 }
 .selected .hit,
 .constellation-node:focus-visible .hit {
@@ -94,7 +101,11 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
     pointer-events: none;
 }
 .inert {
-    pointer-events: none;
     cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+    .closed {
+        transition: none;
+    }
 }
 </style>

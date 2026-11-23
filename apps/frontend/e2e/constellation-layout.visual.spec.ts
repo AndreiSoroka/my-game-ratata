@@ -21,12 +21,14 @@ for (const width of [390, 1280]) {
             await expect(graph.locator('.constellation-edge--cross-link')).toHaveCount(
                 snapshot.edges.filter((edge) => edge.crossLink).length
             )
-            await expect(graph).toContainText('Угольная Мать')
+            const rootId = snapshot.layout!.centerNodeId!
+            const root = graph.locator(`[data-node-id="${rootId}"]`)
+            await expect(root).toHaveAttribute('role', 'button')
+            await expect(graph.locator('.constellation-label').first()).toBeVisible()
             await page.screenshot({
                 path: info.outputPath(`player-full-${heroClass}-${width}-overview.png`),
             })
-            const rootId = snapshot.layout!.centerNodeId!
-            await graph.locator(`[data-node-id="${rootId}"] .hit`).click()
+            await root.locator('.hit').click()
             const path = snapshot.nodes.find((node) => node.id === rootId)!.constellationId
             const pathIds = snapshot.nodes
                 .filter((node) => node.constellationId === path)

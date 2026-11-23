@@ -1,53 +1,59 @@
-import { constellationIds, type ConstellationSnapshot } from '@my-game-ratata/contracts'
+import type { ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
-import { projectConstellationBranches } from './constellationParallax'
+import { projectConstellationStars } from './constellationParallax'
 
-const farthestBranch = constellationIds.at(-1)!
+const [startId, rootId, childId] = ['layer1', 'layer5', 'layer12'] as const
+const viewport = {
+    drag: { x: 0, y: 0 },
+    center: { x: 0, y: 0 },
+    unitScale: 2,
+    zoomDelta: 0,
+}
 const sky: ConstellationSnapshot = {
     version: 1,
     paths: [],
     nodes: [
-        { id: 'start', constellationId: 'blade', x: 0, y: 0, unlocked: true, parents: [] },
+        { id: startId, constellationId: 'blade', x: 0, y: 0, unlocked: true, parents: [] },
         {
-            id: 'root',
-            constellationId: farthestBranch,
+            id: rootId,
+            constellationId: 'blade',
             x: 110,
             y: 160,
             unlocked: true,
             parents: [],
         },
         {
-            id: 'child',
-            constellationId: farthestBranch,
+            id: childId,
+            constellationId: 'blade',
             x: 160,
             y: 180,
             unlocked: false,
-            parents: ['root', 'start'],
+            parents: [rootId, startId],
         },
     ],
     edges: [
         {
-            from: 'start',
-            to: 'root',
+            from: startId,
+            to: rootId,
             via: [
                 { x: 30, y: 40 },
                 { x: 110, y: 40 },
             ],
             crossLink: true,
         },
-        { from: 'root', to: 'child', via: [{ x: 150, y: 170 }] },
-        { from: 'missing', to: 'child', via: [{ x: 150, y: 170 }] },
+        { from: rootId, to: childId, via: [{ x: 150, y: 170 }] },
+        { from: 'missing', to: childId, via: [{ x: 150, y: 170 }] },
     ],
 }
 
 it('retains the authored geometry at rest', () => {
-    expect(projectConstellationBranches(sky, { x: 0, y: 0 }, 2)).toBe(sky)
+    expect(projectConstellationStars(sky, viewport)).toBe(sky)
 })
 
-it('moves branches at different rates and interpolates cross-branch bends by route distance', () => {
+it('moves stars within one constellation and interpolates bends by route distance', () => {
     const before = structuredClone(sky)
-    const projected = projectConstellationBranches(sky, { x: 100, y: 0 }, 2)
+    const projected = projectConstellationStars(sky, { ...viewport, drag: { x: 100, y: 0 } })
 
     expect(projected.nodes.map((node) => node.x)).toEqual([0, 98, 148])
     const route = projected.edges[0]!
@@ -60,12 +66,41 @@ it('moves branches at different rates and interpolates cross-branch bends by rou
     expect(sky).toEqual(before)
 })
 
-it('limits diagonal drift to eight screen pixels at any scale', () => {
-    const scale = 2.5
-    const projected = projectConstellationBranches(sky, { x: -600, y: 800 }, scale)
+it('gives stars five stable pan rates even when their drift is capped', () => {
+    const fullSky = {
+        ...sky,
+        nodes: ['layer1', 'layer0', 'layer3', 'layer2', 'layer5'].map((id) => ({
+            ...sky.nodes[0]!,
+            id,
+        })),
+    }
+    const drag = { ...viewport, drag: { x: 100, y: 0 } }
+    const projected = projectConstellationStars(fullSky, drag)
+    expect(projected.nodes.map((node) => node.x)).toEqual([0, -3, -6, -9, -12])
+    const capped = projectConstellationStars(fullSky, { ...drag, drag: { x: 500, y: 0 } })
+    expect(capped.nodes.map((node) => node.x)).toEqual([0, -4, -8, -12, -16])
+    const reordered = projectConstellationStars(
+        { ...fullSky, nodes: [...fullSky.nodes].reverse() },
+        drag
+    )
+    expect(reordered.nodes).toEqual([...projected.nodes].reverse())
+})
+
+it('zooms radially and limits combined drift to eight screen pixels at any scale', () => {
+    const unitScale = 2.5
+    const zoomed = projectConstellationStars(sky, { ...viewport, unitScale, zoomDelta: 1 })
+    expect(zoomed.nodes[0]).toEqual(sky.nodes[0])
+    expect(zoomed.nodes[1]).toMatchObject({ x: 114.4, y: 166.4 })
+
+    const projected = projectConstellationStars(sky, {
+        ...viewport,
+        drag: { x: -600, y: 800 },
+        unitScale,
+        zoomDelta: 1,
+    })
     const original = sky.nodes[1]!
     const root = projected.nodes[1]!
-    expect(root.x - original.x).toBeCloseTo(12)
-    expect(root.y - original.y).toBeCloseTo(-16)
-    expect(Math.hypot(root.x - original.x, root.y - original.y) / scale).toBeCloseTo(8)
+    expect(root.x).toBeGreaterThan(original.x)
+    expect(root.y).toBeLessThan(original.y)
+    expect(Math.hypot(root.x - original.x, root.y - original.y) / unitScale).toBeCloseTo(8)
 })

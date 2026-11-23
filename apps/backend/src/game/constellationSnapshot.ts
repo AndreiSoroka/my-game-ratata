@@ -12,6 +12,7 @@ import {
     constellationWireId,
     fullConstellationCatalog,
 } from './constellationNodes'
+import { minimumConstellationLevel } from './constellationRequirements'
 import { observedConstellationCardEffects } from './constellationResultDisclosure'
 import { hasStar } from './constellations'
 import {
@@ -59,7 +60,7 @@ export function snapshotConstellations(
             unlocked: learned.has(`${id}.root`),
             ...(learned.has(`${id}.root`) ? { name, description } : {}),
         })),
-        nodes: visible.map((node) => observeNode(node, learned, sky)),
+        nodes: visible.map((node) => observeNode(actor, node, learned, sky)),
         edges: visible.flatMap((node) =>
             node.parents
                 .filter((id) => visibleIds.has(id))
@@ -87,6 +88,7 @@ function observedEdge(
 }
 
 function observeNode(
+    actor: GameCharacter,
     node: ConstellationStar,
     learnedIds: ReadonlySet<string>,
     sky: CachedConstellationLayout
@@ -98,6 +100,10 @@ function observeNode(
         )
     }
     const learned = learnedIds.has(node.id)
+    const levelLocked =
+        !learned &&
+        actor.progression.masteries[node.constellationId].level <
+            minimumConstellationLevel(node.id, actor.heroClass)
     const effects = learned
         ? observedConstellationCardEffects(node.id, learnedIds)
         : undefined
@@ -106,6 +112,7 @@ function observeNode(
         constellationId: node.constellationId,
         ...position,
         unlocked: learned,
+        ...(levelLocked ? { levelLocked: true } : {}),
         parents: node.parents.map(constellationWireId),
         ...(learned
             ? {

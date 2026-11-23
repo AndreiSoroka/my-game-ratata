@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { useDarkPanelTheme } from '@/shared/ui/theme'
 
-import { projectConstellationBranches } from '../model/constellationParallax'
+import { projectConstellationStars } from '../model/constellationParallax'
 import ConstellationBackground from './ConstellationBackground.vue'
 import { constellationLabels } from './constellationLabels'
-import { nextConstellationNode } from './constellationNavigation'
+import { constellationHitTargets, nextConstellationNode } from './constellationNavigation'
+import { constellationEdges, constellationVisibility } from './constellationPresentation'
 import ConstellationStar from './ConstellationStar.vue'
 import { useConstellationViewport } from './useConstellationViewport'
 
@@ -24,6 +25,7 @@ const {
     svg,
     zoom,
     dragOffset,
+    parallaxZoom,
     dimensions,
     viewBox,
     visibleBounds,
@@ -39,29 +41,39 @@ const {
     up,
     didDrag,
 } = useConstellationViewport(() => props.constellation)
-const displayedSky = computed(() =>
-    projectConstellationBranches(props.constellation, dragOffset.value, unitScale.value)
-)
+const displayedSky = computed(() => {
+    const { x, y, width, height } = visibleBounds.value
+    return projectConstellationStars(props.constellation, {
+        drag: dragOffset.value,
+        center: { x: x + width / 2, y: y + height / 2 },
+        unitScale: unitScale.value,
+        zoomDelta: parallaxZoom.value,
+    })
+})
 const nodeById = computed(() => new Map(props.constellation.nodes.map((node) => [node.id, node])))
 const colors = computed(
     () => new Map(props.constellation.paths.map((path) => [path.id, path.color]))
 )
 const focusedId = ref('')
-const closedVisibility = computed(() => {
-    if (props.enabledStarIds !== undefined) return 1
-    const progress = Math.max(0, Math.min(1, (zoom.value - 1) / 2))
-    return progress * progress * (3 - 2 * progress)
-})
+const nodeVisibility = computed(() => constellationVisibility(zoom.value))
+const markerVisible = (node: ConstellationNodeSnapshot) => nodeVisibility.value(node) > 0
 const backgroundSeed = computed(() =>
     props.constellation.nodes
         .filter((node) => node.parents.length === 0)
         .map((node) => `${node.id}:${node.x}:${node.y}`)
         .join('|')
 )
-const interactiveNodes = computed(() =>
-    displayedSky.value.nodes.filter(
-        (node) => canInteract(node) && (detailed.value || node.parents.length === 0)
+const hitTargets = computed(() =>
+    constellationHitTargets(
+        displayedSky.value.nodes,
+        unitScale.value,
+        zoom.value === 1,
+        props.enabledStarIds !== undefined,
+        markerVisible
     )
+)
+const interactiveNodes = computed(() =>
+    displayedSky.value.nodes.filter((node) => hitTargets.value.has(node.id))
 )
 const labels = computed(() =>
     constellationLabels(
@@ -70,7 +82,7 @@ const labels = computed(() =>
         detailed.value,
         unitScale.value,
         visibleBounds.value,
-        closedVisibility.value > 0
+        markerVisible
     ).map((label) =>
         props.enabledStarIds !== undefined && !props.enabledStarIds.has(label.id)
             ? { ...label, color: '#8b969e' }
@@ -83,42 +95,34 @@ function canInteract(node: ConstellationNodeSnapshot): boolean {
 function nodeEnabled(node: ConstellationNodeSnapshot): boolean {
     return node.unlocked && (props.enabledStarIds?.has(node.id) ?? true)
 }
-const edges = computed(() => {
-    const nodes = new Map(displayedSky.value.nodes.map((node) => [node.id, node]))
-    return displayedSky.value.edges.flatMap(({ from, to, via, crossLink }) => {
-        const source = nodes.get(from)
-        const target = nodes.get(to)
-        if (!source || !target) return []
-        const enabled =
-            props.enabledStarIds === undefined
-                ? target.unlocked
-                : nodeEnabled(source) && nodeEnabled(target)
-        const visibility = source.unlocked && target.unlocked ? 1 : closedVisibility.value
-        return [
-            {
-                id: `${from}:${to}`,
-                points: [source, ...(via ?? []), target]
-                    .map((point) => `${point.x},${point.y}`)
-                    .join(' '),
-                color: enabled ? colors.value.get(target.constellationId) : '#8b969e',
-                opacity: (enabled ? 0.7 : 0.2) * visibility,
-                dash: crossLink ? '8 4 2 4' : enabled ? undefined : '3 4',
-                crossLink,
-            },
-        ]
-    })
-})
-const tabStop = computed(
-    () =>
-        interactiveNodes.value.find((node) => node.id === focusedId.value)?.id ??
-        interactiveNodes.value.find((node) => node.id === props.selectedId)?.id ??
-        interactiveNodes.value[0]?.id
+const edges = computed(() =>
+    constellationEdges(
+        displayedSky.value,
+        colors.value,
+        nodeVisibility.value,
+        props.enabledStarIds === undefined ? undefined : nodeEnabled
+    )
 )
+const tabStop = computed(() => {
+    const selected = [focusedId.value, props.selectedId].find(
+        (id) => id && hitTargets.value.has(id)
+    )
+    return selected ?? interactiveNodes.value[0]?.id
+})
+watch(tabStop, (id) => {
+    const graph = svg.value
+    const active = graph?.ownerDocument.activeElement
+    const activeId = active?.getAttribute('data-node-id')
+    if (id && graph?.contains(active ?? null) && activeId && !hitTargets.value.has(activeId)) {
+        void focusStarElement(id)
+    }
+})
+const focusStarElement = (id: string) =>
+    nextTick(() => svg.value?.querySelector<SVGGElement>(`[data-node-id="${id}"]`)?.focus())
 function resetSky(): void {
     reset()
-    const center = props.constellation.layout?.centerNodeId
-    if (center && nodeById.value.get(center) && canInteract(nodeById.value.get(center)!))
-        emit('select', center)
+    const center = nodeById.value.get(props.constellation.layout?.centerNodeId ?? '')
+    if (center && canInteract(center)) emit('select', center.id)
 }
 function focusNode(id: string): void {
     const node = nodeById.value.get(id)
@@ -129,17 +133,14 @@ function focusNode(id: string): void {
 }
 defineExpose({ focusNode })
 function choose(node: ConstellationNodeSnapshot, pointer = true): void {
-    if ((pointer && didDrag()) || !interactiveNodes.value.some((entry) => entry.id === node.id))
-        return
+    if ((pointer && didDrag()) || !hitTargets.value.has(node.id)) return
     focusedId.value = node.id
-    void nextTick(() =>
-        svg.value?.querySelector<SVGGElement>(`[data-node-id="${node.id}"]`)?.focus()
-    )
+    void focusStarElement(node.id)
     emit('select', node.id)
     if (node.parents.length === 0) focusPath(nodeById.value.get(node.id)!)
 }
 function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
-    if (!interactiveNodes.value.some((entry) => entry.id === node.id)) return
+    if (!hitTargets.value.has(node.id)) return
     const direction = {
         ArrowLeft: [-1, 0],
         ArrowRight: [1, 0],
@@ -153,9 +154,7 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
             focusedId.value = next.id
             emit('select', next.id)
             ensureVisible(nodeById.value.get(next.id)!, next)
-            void nextTick(() =>
-                svg.value?.querySelector<SVGGElement>(`[data-node-id="${next.id}"]`)?.focus()
-            )
+            void focusStarElement(next.id)
         }
     } else if (event.code === 'Space' && props.enabledStarIds !== undefined) {
         event.preventDefault()
@@ -194,7 +193,6 @@ function cameraKey(event: KeyboardEvent): void {
         :border="theme?.border ?? 'border-014'"
         :color="theme?.accent ?? 'var(--ui-dark-panel-border)'"
         :border-width="5"
-        :style="{ '--constellation-closed-visibility': closedVisibility }"
     >
         <div class="constellation-map__tools" aria-label="Масштаб небосвода">
             <UiButton
@@ -255,7 +253,7 @@ function cameraKey(event: KeyboardEvent): void {
                 :stroke="edge.color"
                 :opacity="edge.opacity"
                 :pointer-events="edge.opacity === 0 ? 'none' : undefined"
-                :class="{ 'constellation-edge--cross-link': edge.crossLink }"
+                :class="edge.classes"
                 :stroke-dasharray="edge.dash"
                 stroke-width="1.4"
                 vector-effect="non-scaling-stroke"
@@ -269,7 +267,9 @@ function cameraKey(event: KeyboardEvent): void {
                 :color="colors.get(node.constellationId) ?? '#dce6dd'"
                 :selected="selectedId === node.id && canInteract(node)"
                 :enabled="enabledStarIds === undefined ? undefined : nodeEnabled(node)"
-                :interactive="interactiveNodes.some((entry) => entry.id === node.id)"
+                :interactive="hitTargets.has(node.id)"
+                :hit-radius="hitTargets.get(node.id)"
+                :style="{ '--constellation-closed-visibility': nodeVisibility(node) }"
                 :tab-stop="tabStop === node.id"
                 :show-halo="detailed || node.parents.length === 0"
                 :unit-scale="unitScale"
@@ -284,7 +284,6 @@ function cameraKey(event: KeyboardEvent): void {
                 :y="label.y"
                 :width="label.width"
                 :height="label.height"
-                :opacity="nodeById.get(label.id)?.unlocked ? 1 : closedVisibility"
                 aria-hidden="true"
                 class="constellation-label"
             >

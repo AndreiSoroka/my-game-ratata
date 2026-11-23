@@ -18,10 +18,10 @@ export function constellationLabels(
     detailed: boolean,
     scale: number,
     view: ConstellationRegion,
-    showClosed: boolean
+    isVisible: (node: ConstellationNodeSnapshot) => boolean
 ): StarLabel[] {
     const nodes = sky.nodes.filter(
-        (node) => (showClosed || node.unlocked) && (node.parents.length === 0 || detailed)
+        (node) => isVisible(node) && (node.parents.length === 0 || detailed)
     )
     const visible = nodes.filter(
         (node) =>
@@ -31,30 +31,17 @@ export function constellationLabels(
             node.y <= view.y + view.height
     )
     const candidates = visible
-        .filter((node) => node.parents.length === 0 || node.unlocked || node.id === selectedId)
+        .filter((node) => node.unlocked)
         .sort(
             (a, b) => priority(a, selectedId) - priority(b, selectedId) || a.id.localeCompare(b.id)
         )
     const labels: StarLabel[] = []
-    const edges = labelEdges(sky, showClosed)
+    const edges = detailed ? labelEdges(sky, isVisible) : []
+    const overviewRootId = detailed ? undefined : (selectedId ?? sky.layout?.centerNodeId)
     for (const node of candidates) {
-        const root = node.parents.length === 0
-        const { width, height } = labelSize(root, scale)
-        const offset = 28 * scale
-        const positions = [
-            { x: node.x - width / 2, y: node.y + offset },
-            { x: node.x - width / 2, y: node.y - offset - height },
-            { x: node.x + offset, y: node.y - height / 2 },
-            { x: node.x - offset - width, y: node.y - height / 2 },
-        ]
-        if (!detailed && root && node.id === (selectedId ?? sky.layout?.centerNodeId)) {
-            positions.push(
-                { x: node.x + offset, y: node.y + offset },
-                { x: node.x + offset, y: node.y - offset - height },
-                { x: node.x - offset - width, y: node.y + offset },
-                { x: node.x - offset - width, y: node.y - offset - height }
-            )
-        }
+        const content = labelContent(sky, node, scale)
+        if (!content) continue
+        const { width, height, positions } = labelAnchors(node, scale, overviewRootId)
         for (const point of positions) {
             const rect = {
                 x: Math.max(
@@ -73,8 +60,8 @@ export function constellationLabels(
                 labels.some((other) => intersects(rect, other, 4 * scale))
             )
                 continue
-            if (detailed && edgeIntersects(rect, edges, scale)) continue
-            labels.push(starLabel(sky, node, rect, scale))
+            if (edgeIntersects(rect, edges, scale)) continue
+            labels.push({ ...rect, ...content })
             break
         }
     }
@@ -124,12 +111,15 @@ function segmentIntersects(
     return true
 }
 
-function labelEdges(sky: ConstellationSnapshot, showClosed: boolean): Vector2[][] {
+function labelEdges(
+    sky: ConstellationSnapshot,
+    isVisible: (node: ConstellationNodeSnapshot) => boolean
+): Vector2[][] {
     const byId = new Map(sky.nodes.map((node) => [node.id, node]))
     return sky.edges.flatMap((edge) => {
         const from = byId.get(edge.from),
             to = byId.get(edge.to)
-        return from && to && (showClosed || (from.unlocked && to.unlocked))
+        return from && to && isVisible(from) && isVisible(to)
             ? [[from, ...(edge.via ?? []), to]]
             : []
     })
@@ -142,22 +132,37 @@ function edgeIntersects(rect: ConstellationRegion, edges: Vector2[][], scale: nu
     )
 }
 
-function labelSize(root: boolean, scale: number) {
-    return { width: (root ? 68 : 100) * scale, height: (root ? 34 : 32) * scale }
+function labelAnchors(node: ConstellationNodeSnapshot, scale: number, overviewRootId?: string) {
+    const root = node.parents.length === 0
+    const width = (root ? 68 : 100) * scale
+    const height = (root ? 34 : 32) * scale
+    const offset = 28 * scale
+    const { x, y } = node
+    const positions = [
+        { x: x - width / 2, y: y + offset },
+        { x: x - width / 2, y: y - offset - height },
+        { x: x + offset, y: y - height / 2 },
+        { x: x - offset - width, y: y - height / 2 },
+    ]
+    if (root && node.id === overviewRootId) {
+        positions.push(
+            { x: x + offset, y: y + offset },
+            { x: x + offset, y: y - offset - height },
+            { x: x - offset - width, y: y + offset },
+            { x: x - offset - width, y: y - offset - height }
+        )
+    }
+    return { width, height, positions }
 }
-function starLabel(
-    sky: ConstellationSnapshot,
-    node: ConstellationNodeSnapshot,
-    rect: ConstellationRegion,
-    scale: number
-): StarLabel {
+function labelContent(sky: ConstellationSnapshot, node: ConstellationNodeSnapshot, scale: number) {
     const path = sky.paths.find((entry) => entry.id === node.constellationId)
-    const name = node.parents.length === 0 ? (path?.name ?? node.name) : node.name
+    const root = node.parents.length === 0
+    const text = root ? (path?.name ?? node.name) : node.name
+    if (!text) return
     return {
-        ...rect,
         id: node.id,
-        text: node.unlocked && name ? name : 'Неизвестно',
-        fontSize: (node.parents.length === 0 ? 12 : 11) * scale,
-        color: node.unlocked ? (path?.color ?? '#dce6dd') : '#8b969e',
+        text,
+        fontSize: (root ? 12 : 11) * scale,
+        color: path?.color ?? '#dce6dd',
     }
 }

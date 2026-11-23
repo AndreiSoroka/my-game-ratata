@@ -57,8 +57,8 @@ steps. The menu button beside Inventory also works on touch screens.
 abandoning the living identity, including during rescue. Signing in with the same
 name resumes that identity. The world continues while the menu is open.
 
-The camera can reveal six tiles beyond each map edge, with a black backdrop and
-stationary pixel stars; this does not enlarge the playable map. The compact
+The camera can reveal six tiles beyond each map edge. Five layers of pixel stars
+drift at different speeds across the black margin as the camera moves. The compact
 character panel has an ellipsized nickname, accessible Spark/Echo and speech
 icons, and resource bars. Full names remain available in accessible headings and
 tooltips. Temporary action notices appear at the top center for five seconds;

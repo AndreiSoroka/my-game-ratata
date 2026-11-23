@@ -10,6 +10,7 @@ vi.mock('excalibur', () => ({
         public kill = vi.fn<() => void>()
     },
     Canvas: class {},
+    Color: { fromHex: (hex: string) => hex },
     vec: (x: number, y: number) => ({ x, y }),
 }))
 

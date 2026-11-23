@@ -1,48 +1,57 @@
-import {
-    type ConstellationId,
-    constellationIds,
-    type ConstellationSnapshot,
-    type Vector2,
-} from '@my-game-ratata/contracts'
+import type { ConstellationSnapshot, Vector2 } from '@my-game-ratata/contracts'
 
+const layerCount = 5
 const maximumDragReduction = 0.06
+const maximumZoomExpansion = 0.04
 const maximumOffsetPixels = 8
-const zeroOffset = { x: 0, y: 0 }
 
-/** The viewport already follows the cursor 1:1, so branch depth offsets part of that motion. */
-export function projectConstellationBranches(
-    snapshot: ConstellationSnapshot,
-    drag: Vector2,
+interface ParallaxViewport {
+    drag: Vector2
+    center: Vector2
     unitScale: number
+    zoomDelta: number
+}
+
+export function projectConstellationStars(
+    snapshot: ConstellationSnapshot,
+    { drag, center, unitScale, zoomDelta }: ParallaxViewport
 ): ConstellationSnapshot {
-    const dragLength = Math.hypot(drag.x, drag.y)
-    if (dragLength === 0) return snapshot
+    if (drag.x === 0 && drag.y === 0 && zoomDelta === 0) return snapshot
 
-    const offsets = new Map<ConstellationId, Vector2>()
-    for (const [index, id] of constellationIds.entries()) {
-        const reduction = (maximumDragReduction * index) / (constellationIds.length - 1)
-        const pixels = Math.min(maximumOffsetPixels, dragLength * reduction)
-        const factor = (-pixels / dragLength) * unitScale
-        offsets.set(id, { x: drag.x * factor, y: drag.y * factor })
-    }
-
+    const zoomExpansion = maximumZoomExpansion * Math.max(-1, Math.min(1, zoomDelta))
     const nodesById = new Map(snapshot.nodes.map((node) => [node.id, node]))
+    const offsets = new Map<string, Vector2>()
+    const nodes = snapshot.nodes.map((node) => {
+        const x = (node.x - center.x) * zoomExpansion - drag.x * unitScale * maximumDragReduction
+        const y = (node.y - center.y) * zoomExpansion - drag.y * unitScale * maximumDragReduction
+        const limit = maximumOffsetPixels * unitScale
+        const distance = Math.hypot(x, y)
+        const factor = starDepth(node.id) * (distance > limit ? limit / distance : 1)
+        const offset = { x: x * factor, y: y * factor }
+        offsets.set(node.id, offset)
+        return { ...node, ...translate(node, offset) }
+    })
     return {
         ...snapshot,
-        nodes: snapshot.nodes.map((node) => ({
-            ...node,
-            ...translate(node, offsets.get(node.constellationId) ?? zeroOffset),
-        })),
+        nodes,
         edges: snapshot.edges.map((edge) => {
             const from = nodesById.get(edge.from)
             const to = nodesById.get(edge.to)
             if (!from || !to || !edge.via?.length) return edge
 
-            const start = offsets.get(from.constellationId) ?? zeroOffset
-            const end = offsets.get(to.constellationId) ?? zeroOffset
+            const start = offsets.get(from.id)!
+            const end = offsets.get(to.id)!
             return { ...edge, via: projectBends(from, to, edge.via, start, end) }
         }),
     }
+}
+
+function starDepth(id: string): number {
+    let hash = 2166136261
+    for (let index = 0; index < id.length; index++) {
+        hash = Math.imul(hash ^ id.charCodeAt(index), 16777619)
+    }
+    return ((hash >>> 0) % layerCount) / (layerCount - 1)
 }
 
 function translate(point: Vector2, offset: Vector2): Vector2 {
@@ -56,7 +65,7 @@ function projectBends(
     start: Vector2,
     end: Vector2
 ): Vector2[] {
-    if (start === end) return bends.map((point) => translate(point, start))
+    if (start.x === end.x && start.y === end.y) return bends.map((point) => translate(point, start))
 
     let previous = from
     let distance = 0

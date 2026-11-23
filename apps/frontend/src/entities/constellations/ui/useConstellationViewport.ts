@@ -10,6 +10,8 @@ import { constellationViewportFocus } from './constellationViewportFocus'
 export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
     const svg = ref<SVGSVGElement>()
     const zoom = ref(1)
+    const referenceZoom = ref(1)
+    const parallaxZoom = computed(() => Math.log2(zoom.value / referenceZoom.value))
     const offset = ref<Vector2>({ x: 0, y: 0 })
     const dragOffset = ref<Vector2>({ x: 0, y: 0 })
     const dimensions = ref({ width: 700, height: 450 })
@@ -38,10 +40,12 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     )
     function reset(): void {
         zoom.value = 1
+        referenceZoom.value = 1
         offset.value = { x: 0, y: 0 }
         dragOffset.value = { x: 0, y: 0 }
     }
     function centerOn(point: { x: number; y: number }): void {
+        referenceZoom.value = zoom.value
         dragOffset.value = { x: 0, y: 0 }
         offset.value = {
             x: point.x - bounds.value.x - bounds.value.width / 2,
@@ -58,20 +62,13 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         centerOn,
     })
     function ensureVisible(node: ConstellationNodeSnapshot, position: Vector2): void {
-        const margin = 32 * unitScale.value
-        const { x, y, width, height } = visibleBounds.value
-        if (
-            position.x < x + margin ||
-            position.x > x + width - margin ||
-            position.y < y + margin ||
-            position.y > y + height - margin
-        )
-            centerOn(node)
+        if (outsideViewport(position, visibleBounds.value, 32 * unitScale.value)) centerOn(node)
     }
     observeDimensions(svg, dimensions)
     return {
         svg,
         zoom,
+        parallaxZoom,
         dragOffset,
         dimensions,
         viewBox,
@@ -88,6 +85,19 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
 
 function formatViewBox({ x, y, width, height }: ReturnType<typeof viewportBounds>): string {
     return `${x} ${y} ${width} ${height}`
+}
+
+function outsideViewport(
+    position: Vector2,
+    { x, y, width, height }: ReturnType<typeof viewportBounds>,
+    margin: number
+): boolean {
+    return (
+        position.x < x + margin ||
+        position.x > x + width - margin ||
+        position.y < y + margin ||
+        position.y > y + height - margin
+    )
 }
 
 function viewportGestures(

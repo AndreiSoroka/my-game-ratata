@@ -12,6 +12,7 @@ interface StoryArgs {
     selected: boolean
     enabled?: boolean
     interactive: boolean
+    hitRadius?: number
     showHalo: boolean
     tabStop: boolean
     unitScale: number
@@ -47,6 +48,7 @@ const meta = {
         selected: { control: 'boolean' },
         enabled: { control: 'boolean' },
         interactive: { control: 'boolean' },
+        hitRadius: { control: { type: 'number', min: 1, max: 66, step: 1 } },
         showHalo: { control: 'boolean' },
         tabStop: { control: 'boolean' },
         unitScale: { control: { type: 'number', min: 0.1, max: 3, step: 0.1 } },

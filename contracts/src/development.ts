@@ -57,6 +57,8 @@ export interface ConstellationNodeSnapshot {
     y: number
     kind?: 'root' | 'passive' | 'ability' | 'joint'
     unlocked: boolean
+    /** A closed star whose required mastery level has not been reached. */
+    levelLocked?: true
     /** Closed neighboring stars have neither a name nor an effect description. */
     name?: string
     description?: string
