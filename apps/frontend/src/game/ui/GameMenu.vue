@@ -36,8 +36,8 @@ const panel = ref<HTMLElement>()
 const menu = ref<MenuPanelHandle>()
 const playUiSound = inject(gameUiSoundKey)
 const muted = ref(isAudioMuted())
-const npcVoiceEnabled = ref(isNpcVoiceEnabled())
 const forcedMute = isAudioMuteForced()
+const npcVoiceEnabled = ref(!forcedMute && isNpcVoiceEnabled())
 const items = computed<readonly MenuItem[]>(() => [
     { id: 'resume', label: tGame('game.menu.resume'), variant: 'primary' },
     {
@@ -121,7 +121,7 @@ const unsubscribeAudio = subscribeAudioMute((value) => {
     muted.value = value
 })
 const unsubscribeNpcVoice = subscribeNpcVoiceEnabled((value) => {
-    npcVoiceEnabled.value = value
+    npcVoiceEnabled.value = !forcedMute && value
 })
 onBeforeUnmount(unsubscribeAudio)
 onBeforeUnmount(unsubscribeNpcVoice)
