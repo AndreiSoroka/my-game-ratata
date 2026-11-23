@@ -11,6 +11,7 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import { gameLocale } from '@/shared/lib/i18n'
 
+import type { UiSoundId } from '../assets/soundCatalog'
 import { focusWorldInput } from '../ui/keyboardOwnership'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
@@ -163,6 +164,11 @@ export class RatataGame {
 
     public readonly releaseUiControls = (): void => this.releaseInputs()
 
+    public playUiSound(id: UiSoundId): void {
+        const view = this.view
+        if (this.connected && !this.stopped && view?.engine.ready) view.audio.playSound(id)
+    }
+
     public setInteractionTarget(target: TargetHighlight | undefined): void {
         this.view?.sceneActors?.setInteractionTarget(this.isMapReady ? target : undefined)
     }
@@ -251,9 +257,7 @@ export class RatataGame {
         updateRuntimeDebug(this.view, this.snapshot, this.localPlayerId)
     }
 
-    public retryMap(): void {
-        this.maps.retry()
-    }
+    public readonly retryMap = (): void => this.maps.retry()
 
     private suspendMap(): void {
         this.chat.cancel()
@@ -292,7 +296,6 @@ export class RatataGame {
                 this.flushMoveInput()
             },
             options: this.options,
-            playUi: () => this.view?.audio?.playSound('ui'),
             stopMovement: () => this.sendCommand({ type: 'move_input', axis: { x: 0, y: 0 } }),
         })
     }

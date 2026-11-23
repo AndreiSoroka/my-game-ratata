@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 
+import { gameUiSoundKey } from './gameUiSound'
 import { isConfirmationKey } from './keyboardOwnership'
 import type { NearbyAction } from './nearbyActions'
 import GameButton from './primitives/GameButton.vue'
@@ -15,6 +16,7 @@ const props = defineProps<{
     contextLabel?: string
 }>()
 const emit = defineEmits<{ select: [id: string]; close: [] }>()
+const playUiSound = inject(gameUiSoundKey)
 const menu = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
 useEscapeOwner({ active: () => props.open, escape: () => emit('close'), element: panel })
@@ -38,6 +40,11 @@ function focusAction(id?: string): void {
     ).find((item) => item.dataset.actionId === id)
     ;(button ?? menu.value)?.focus()
 }
+function navigateTo(id?: string): void {
+    const previous = document.activeElement
+    focusAction(id)
+    if (id !== undefined && previous !== document.activeElement) playUiSound?.('uiSelect')
+}
 function activate(id?: string): void {
     if (id !== undefined && enabled.value.some((action) => action.id === id)) {
         emit('select', id)
@@ -46,7 +53,7 @@ function activate(id?: string): void {
 function moveFocus(direction: number): void {
     const index = enabled.value.findIndex((action) => action.id === activeId.value)
     const next = (index + direction + enabled.value.length) % enabled.value.length
-    focusAction(enabled.value[next]?.id)
+    navigateTo(enabled.value[next]?.id)
 }
 function menuKey(event: KeyboardEvent): string {
     return (
@@ -71,7 +78,7 @@ function handleKey(event: KeyboardEvent): void {
         moveFocus(['arrowdown', 's'].includes(key) ? 1 : -1)
     } else if (key === 'home' || key === 'end') {
         event.preventDefault()
-        focusAction((key === 'home' ? enabled.value[0] : enabled.value.at(-1))?.id)
+        navigateTo((key === 'home' ? enabled.value[0] : enabled.value.at(-1))?.id)
     }
 }
 watch(

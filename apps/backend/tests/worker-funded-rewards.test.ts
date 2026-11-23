@@ -45,7 +45,10 @@ it('reserves and debits the entire authored reward from the same finite city fun
     f.turnIn(id)
     expect(f.wallet.questFunding.wallet(f.request.cityId)?.gold).toBe(270)
     expect(f.wallet.questFunding.availableGold(f.request.cityId)).toBe(270)
-    expect(f.wallet.snapshot(f.actor.id).gold).toBe(30)
+    expect(f.wallet.snapshot(f.actor.id)).toMatchObject({
+        gold: 30,
+        lastQuestRewardReceiptId: id,
+    })
 })
 
 it('refuses an unfunded claim and releases reservations on abandonment and issuer death', () => {

@@ -102,6 +102,9 @@ export function createQuestGoldAwarder(
                 state.gold += share.gold
             }
             state.rewardKeys.add(request.receiptId)
+            if (share.gold > 0 || share.characterId === request.submitterId) {
+                state.lastQuestRewardReceiptId = request.receiptId
+            }
             setNotice(
                 state,
                 `Награда за задание: ${String(share.gold)} золотых.`

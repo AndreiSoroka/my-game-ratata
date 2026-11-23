@@ -14,15 +14,23 @@ export function useGameMenu(options: {
     let previousFocus: HTMLElement | undefined
     function show(): void {
         if (!options.available()) return
-        if (!open.value && document.activeElement instanceof HTMLElement)
+        const wasOpen = open.value
+        if (!wasOpen && document.activeElement instanceof HTMLElement)
             previousFocus = document.activeElement
-        options.game()?.cancelChat()
-        options.game()?.releaseUiControls()
+        const game = options.game()
+        game?.cancelChat()
+        game?.releaseUiControls()
         open.value = true
+        if (!wasOpen) game?.playUiSound('uiOpen')
     }
-    function resume(): void {
+    function dismiss(): boolean {
+        const wasOpen = open.value
         open.value = false
         void nextTick(() => restoreFocus(previousFocus))
+        return wasOpen
+    }
+    function resume(): void {
+        if (dismiss()) options.game()?.playUiSound('uiClose')
     }
     useEscapeOwner({
         active: () => options.chatting(),
@@ -38,6 +46,7 @@ export function useGameMenu(options: {
     return {
         open,
         show,
+        dismiss,
         resume,
         leave: () => {
             open.value = false

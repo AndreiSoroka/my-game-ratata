@@ -70,6 +70,7 @@ const {
     planting,
     setInventory,
     closeInventory,
+    dismissInventory,
     startPlanting,
     toggleInventory: toggleInventoryBase,
     closeContainers,
@@ -202,7 +203,7 @@ async function joinGame(): Promise<void> {
                     :player="localCharacter"
                     :inventory-open="inventoryOpen"
                     @open-menu="gameMenu.show"
-                    @close-inventory="closeInventory"
+                    @close-inventory="dismissInventory"
                     @plant="startPlanting"
                     @assign-hotbar="gameplay?.assignItem($event.slot, $event.itemId)"
                     @equipment-action="game?.sendCommand({ type: 'equipment_action', ...$event })"

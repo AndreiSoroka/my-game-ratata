@@ -41,6 +41,10 @@ Run `node scripts/generate-world.mjs` from the repository root. The generator re
 
 Grass, concrete and wood footsteps use nine unchanged clips (three per material) from **Impact Sounds 1.0** by Kenney under CC0. Source: https://kenney.nl/assets/impact-sounds (downloaded 2026-11-06). The original `License.txt` and `SOURCE.txt` are preserved in `apps/frontend/public/game/assets/audio/kenney-impact/` alongside the OGG files. The old generic movement clip remains an unused restored asset; the new surface mixer chooses the material under each character.
 
+## Kenney Interface Sounds and Music Jingles
+
+Menus and reward confirmations use five original clips from **Interface Sounds 1.0**. Mastery level increases use `jingles_PIZZI04.ogg` from **Music Jingles 1.0**. Both Kenney packs use [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The original licenses and source records accompany the clips in `apps/frontend/public/game/assets/audio/kenney-interface/` and `apps/frontend/public/game/assets/audio/kenney-jingles/`. [Interface Sounds](https://kenney.nl/assets/interface-sounds) · [Music Jingles](https://kenney.nl/assets/music-jingles)
+
 ## Project-authored ground tiles
 
 The flat paving, transparent soil-bed strips and dark doorway threshold are small vector tiles authored in `scripts/generate-ground.mjs`. Their SVG sources are saved under `apps/frontend/public/game/map/assets/Novogorod/`. They replace the raised-rock paving and opaque light-grass rectangles; they are not modified Kenney atlas images. The original Kenney and Mystic Woods source images remain unchanged.

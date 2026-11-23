@@ -50,10 +50,12 @@ it.each(['/?test=1', '/?mute=1'])(
         window.localStorage.setItem('ratata:audio-muted', 'false')
         window.history.replaceState({}, '', url)
         const music = clip(0.18),
-            effect = clip(0.25)
+            effect = clip(0.22)
         const player = new GameAudio(
             new Map([
-                ['ui', effect as unknown as Sound],
+                ['uiSelect', effect as unknown as Sound],
+                ['uiConfirmation', effect as unknown as Sound],
+                ['masteryUp', effect as unknown as Sound],
                 ['attack', effect as unknown as Sound],
             ]),
             music as unknown as Sound
@@ -69,7 +71,9 @@ it.each(['/?test=1', '/?mute=1'])(
                 },
             })
             player.playMusic()
-            player.playSound('ui')
+            player.playSound('uiSelect')
+            player.playSound('uiConfirmation')
+            player.playSound('masteryUp')
             player.playEventSound({ kind: 'attack' })
             player.observeWorld(snapshot(8), 'hero')
             player.observeWorld(snapshot(38), 'hero')
@@ -89,9 +93,9 @@ it('stops all active voices immediately and resumes with authored gains and the 
     const now = vi.spyOn(performance, 'now').mockReturnValue(0)
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
     const music = clip(0.18),
-        effect = clip(soundCatalog.ui.volume)
+        effect = clip(soundCatalog.uiOpen.volume)
     const player = new GameAudio(
-        new Map([['ui', effect as unknown as Sound]]),
+        new Map([['uiOpen', effect as unknown as Sound]]),
         music as unknown as Sound
     )
     try {
@@ -105,7 +109,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
             },
         })
         player.playMusic()
-        player.playSound('ui')
+        player.playSound('uiOpen')
         player.observeWorld(snapshot(8), 'hero')
         now.mockReturnValue(300)
         player.observeWorld(snapshot(38), 'hero')
@@ -115,7 +119,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         expect(music.stop).toHaveBeenCalledOnce()
         expect(effect.stop).toHaveBeenCalledOnce()
         expect(footsteps.stop).toHaveBeenCalledOnce()
-        player.playSound('ui')
+        player.playSound('uiOpen')
         now.mockReturnValue(600)
         player.observeWorld(snapshot(68), 'hero')
         expect(effect.play).toHaveBeenCalledOnce()
@@ -123,7 +127,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         setAudioMuted(false)
         expect(music.play).toHaveBeenCalledTimes(2)
         expect(music.volume).toBe(0.18)
-        expect(effect.volume).toBe(soundCatalog.ui.volume)
+        expect(effect.volume).toBe(soundCatalog.uiOpen.volume)
         player.observeWorld(snapshot(68), 'hero')
         now.mockReturnValue(900)
         player.observeWorld(snapshot(98), 'hero')

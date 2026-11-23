@@ -34,6 +34,7 @@ describe('shared city Bell order', () => {
         expect(f.snapshot()).toMatchObject({
             quest: { status: 'completed' },
             gold: 40,
+            lastQuestRewardReceiptId: `city-story:${CENTER_LOCATION_ID}:${f.snapshot().quest.id}`,
             trophies: 0,
             cityState: { bellState: 'prepared' },
             wardRestored: false,
@@ -43,6 +44,9 @@ describe('shared city Bell order', () => {
             gold: 0,
             trophies: 3,
         })
+        expect(f.snapshot(f.other)).not.toHaveProperty(
+            'lastQuestRewardReceiptId'
+        )
         expect(f.snapshot(f.other).quest.notice).toContain(
             'Городской заказ уже выполнен'
         )

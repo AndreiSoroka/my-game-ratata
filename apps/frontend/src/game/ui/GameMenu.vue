@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { isGameLocale } from '@my-game-ratata/contracts'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { type MenuItem, MenuPanel, type MenuPanelHandle } from '@/entities/menus'
 import { gameLocale, gameLocaleNames, gameLocales, setGameLocale, tGame } from '@/shared/lib/i18n'
@@ -17,6 +17,7 @@ import {
     setNpcVoiceEnabled,
     subscribeNpcVoiceEnabled,
 } from '../runtime/npcVoicePreference'
+import { gameUiSoundKey } from './gameUiSound'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = withDefaults(
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 }>()
 const panel = ref<HTMLElement>()
 const menu = ref<MenuPanelHandle>()
+const playUiSound = inject(gameUiSoundKey)
 const muted = ref(isAudioMuted())
 const npcVoiceEnabled = ref(isNpcVoiceEnabled())
 const forcedMute = isAudioMuteForced()
@@ -75,13 +77,19 @@ const items = computed<readonly MenuItem[]>(() => [
     })),
     { id: 'leave', label: tGame('game.menu.leave'), variant: 'danger', dividerBefore: true },
 ])
+function toggleAudio(): void {
+    if (forcedMute) return
+    const willMute = !muted.value
+    setAudioMuted(willMute)
+    if (!willMute) playUiSound?.('uiClick')
+}
 function activate(id: string): void {
     if (isGameLocale(id)) {
         setGameLocale(id)
         return
     }
     if (id === 'sound') {
-        if (!forcedMute) setAudioMuted(!muted.value)
+        toggleAudio()
         return
     }
     if (id === 'npc-voice') {
@@ -136,7 +144,13 @@ function keydown(event: KeyboardEvent): void {
         if (!event.repeat && props.inventoryAvailable) activate('inventory')
         return
     }
-    menuKeyboardInput(event, (command) => menu.value?.navigate(command) ?? false)
+    menuKeyboardInput(event, (command) => {
+        const previous = document.activeElement
+        const navigated = menu.value?.navigate(command) ?? false
+        if (navigated && command !== 'activate' && document.activeElement !== previous)
+            playUiSound?.('uiSelect')
+        return navigated
+    })
 }
 onMounted(async () => {
     await nextTick()

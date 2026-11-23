@@ -79,6 +79,9 @@ it('changes nothing when delivery plus reward cannot fit', () => {
         before
     )
     expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
+    expect(f.adventure.snapshot(f.player.id)).not.toHaveProperty(
+        'lastQuestRewardReceiptId'
+    )
     expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe('ready')
 })
 
@@ -151,6 +154,26 @@ it('keeps party gold mode and pays item rewards only to the submitter', () => {
     expect(f.player.inventory).toContainEqual(food)
     expect(f.friend.inventory).toHaveLength(0)
     expect(f.service.cityFund(f.issuer.locationId)).toBe(289)
+})
+
+it('projects a successful turn-in receipt for an item-only reward', () => {
+    const f = npcQuestFixture()
+    const food = createItemInstance('food')
+    f.issuer.inventory = [food]
+    const id = f.accept(
+        f.draft({
+            rewardGold: 0,
+            rewardItems: [{ instanceId: food.instanceId, quantity: 1 }],
+        })
+    )
+    f.service.inspect(f.player.id, f.merchant.id, 'player:inspect')
+    f.service.update(25)
+    expect(f.turnIn(id).accepted).toBe(true)
+    expect(f.player.inventory).toContainEqual(food)
+    expect(f.adventure.snapshot(f.player.id)).toMatchObject({
+        gold: 0,
+        lastQuestRewardReceiptId: id,
+    })
 })
 
 it('refuses a turn-in racing issuer death without taking the delivery', () => {

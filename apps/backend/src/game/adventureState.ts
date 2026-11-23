@@ -27,6 +27,7 @@ export interface PlayerAdventure {
     dialogue: AdventureDialogue | null
     gatherAllowedAt: number
     gold: number
+    lastQuestRewardReceiptId?: string
     rewardKeys: Set<string>
     notice: string | null
     noticeMessage?: LocalizedMessage

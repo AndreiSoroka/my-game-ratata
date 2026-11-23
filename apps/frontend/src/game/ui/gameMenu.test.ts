@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import App from '../../App.vue'
+import type { UiSoundId } from '../assets/soundCatalog'
 import type { RatataGameOptions } from '../runtime/runtimeOptions'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { clickWithPointer } from '../testing/clickWithPointer'
@@ -13,6 +14,7 @@ const runtime = vi.hoisted(() => ({
     pendingStart: undefined as Promise<void> | undefined,
     stop: vi.fn<() => void>(),
     release: vi.fn<() => void>(),
+    play: vi.fn<(id: UiSoundId) => void>(),
     send: vi.fn<(command: ClientMessage) => void>(),
 }))
 vi.mock('../runtime/ratataGame', () => ({
@@ -43,6 +45,9 @@ vi.mock('../runtime/ratataGame', () => ({
         }
         public releaseUiControls(): void {
             runtime.release()
+        }
+        public playUiSound(id: UiSoundId): void {
+            runtime.play(id)
         }
         public stop(): void {
             runtime.stop()
@@ -92,6 +97,8 @@ it('opens inventory with I from the menu after Character and gives focus to the 
         await pressEscape()
         const menu = wrapper.get('.game-menu')
         expect(document.activeElement).toBe(menu.get('[data-dialog-action="resume"]').element)
+        await pressKey('Home')
+        expect(runtime.play.mock.calls).toEqual([['uiOpen']])
         await pressKey('ArrowDown')
         expect(document.activeElement).toBe(menu.get('[data-dialog-action="character"]').element)
         await pressKey('ArrowDown')
@@ -107,6 +114,32 @@ it('opens inventory with I from the menu after Character and gives focus to the 
         await pressEscape()
         expect(wrapper.find('.inventory-overlay').exists()).toBe(false)
         expect(wrapper.find('.game-menu').exists()).toBe(false)
+        expect(runtime.play.mock.calls).toEqual([
+            ['uiOpen'],
+            ['uiSelect'],
+            ['uiSelect'],
+            ['uiOpen'],
+            ['uiClose'],
+        ])
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('cues the transition from the menu to the character window and actual tab changes', async () => {
+    const wrapper = await joined()
+    try {
+        await pressEscape()
+        await wrapper.get('[data-dialog-action="character"]').trigger('click')
+        await flushPromises()
+        expect(wrapper.find('.game-menu').exists()).toBe(false)
+        const character = wrapper.get('[role="dialog"][aria-label="Персонаж"]')
+        await character.get('#character-stats-tab').trigger('click')
+        await character.get('#character-development-tab').trigger('click')
+        await character.get('#character-development-tab').trigger('click')
+        await pressEscape()
+        expect(character.element.isConnected).toBe(false)
+        expect(runtime.play.mock.calls).toEqual([['uiOpen'], ['uiOpen'], ['uiSelect'], ['uiClose']])
     } finally {
         wrapper.unmount()
     }
@@ -235,6 +268,7 @@ it('closes inventory and chat separately before a later Escape opens the game me
         await pressEscape()
         expect(wrapper.find('.inventory-overlay').exists()).toBe(false)
         expect(wrapper.find('.game-menu').exists()).toBe(false)
+        expect(runtime.play.mock.calls).toEqual([['uiOpen'], ['uiClose']])
         await pressEscape(true)
         expect(wrapper.find('.game-menu').exists()).toBe(false)
         runtime.options?.onChatState({ active: true, draft: 'не отправлять', maxLength: 100 })

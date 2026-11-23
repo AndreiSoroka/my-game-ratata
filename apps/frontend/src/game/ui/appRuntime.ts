@@ -5,8 +5,8 @@ import { tGame } from '@/shared/lib/i18n'
 
 import type { ChatInputState } from '../runtime/chatInput'
 import { RatataGame } from '../runtime/ratataGame'
-import { createConstellationNotices } from './constellationNotices'
 import type GameplayOverlay from './GameplayOverlay.vue'
+import { createOutcomeSounds } from './outcomeSounds'
 import type { createTransientNotices } from './transientNotices'
 
 interface AppRuntimeOptions {
@@ -57,9 +57,29 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
 }
 
 function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): RatataGame {
-    const constellations = createConstellationNotices()
+    const outcomes = createOutcomeSounds()
     let noticeSession = ''
     let accepted = false
+
+    function observeNotices(snapshot: WorldSnapshot, playerId: string | undefined): void {
+        const session = JSON.stringify([snapshot.serverEpoch ?? '', playerId])
+        if (session !== noticeSession) {
+            noticeSession = session
+            options.notices.reset()
+        }
+        options.notices.observe('adventure', snapshot.adventure)
+        options.notices.observe('party', snapshot.party)
+        const exchange = snapshot.social?.exchange
+        if (exchange?.status === 'completed' && exchange.receiptId)
+            options.notices.observe('exchange', {
+                notice: tGame('game.chat.exchangeCompleted'),
+                noticeId: exchange.receiptId,
+            })
+        const outcome = outcomes.observe(snapshot, playerId)
+        options.notices.observe('constellations', outcome?.constellationNotice)
+        if (outcome?.sound) options.game.value?.playUiSound(outcome.sound)
+    }
+
     return new RatataGame({
         container,
         nickname: options.nickname.trim(),
@@ -106,20 +126,7 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
                 options.onJoinAccepted?.()
             }
             options.chatHistory?.observe(snapshot, playerId)
-            const session = JSON.stringify([snapshot.serverEpoch ?? '', playerId])
-            if (session !== noticeSession) {
-                noticeSession = session
-                options.notices.reset()
-            }
-            options.notices.observe('adventure', snapshot.adventure)
-            options.notices.observe('party', snapshot.party)
-            const exchange = snapshot.social?.exchange
-            if (exchange?.status === 'completed' && exchange.receiptId)
-                options.notices.observe('exchange', {
-                    notice: tGame('game.chat.exchangeCompleted'),
-                    noticeId: exchange.receiptId,
-                })
-            options.notices.observe('constellations', constellations.observe(snapshot, playerId))
+            observeNotices(snapshot, playerId)
             options.snapshot.value = snapshot
             options.localPlayerId.value = playerId
             options.isJoining.value = false

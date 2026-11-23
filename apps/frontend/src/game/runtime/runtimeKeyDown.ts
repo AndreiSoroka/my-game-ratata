@@ -14,7 +14,6 @@ interface RuntimeKeyContext {
     send: (command: ClientMessage) => void
     move: (code: string) => void
     options: RatataGameOptions
-    playUi: () => void
     stopMovement: () => void
 }
 
@@ -29,10 +28,7 @@ export function handleRuntimeKeyDown(event: KeyboardEvent, actions: RuntimeKeyCo
     if (
         handleRuntimeShortcut(event, {
             pickup: () => actions.send({ type: 'pickup_item' }),
-            inventory: () => {
-                actions.options.onInventoryToggle()
-                actions.playUi()
-            },
+            inventory: actions.options.onInventoryToggle,
             character: actions.options.onCharacterToggle,
             context: actions.options.onContextAction
                 ? () => {

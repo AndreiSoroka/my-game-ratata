@@ -1,9 +1,10 @@
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, type Ref, ref } from 'vue'
+import { computed, nextTick, provide, type Ref, ref } from 'vue'
 
 import type { ChatInputState } from '../runtime/chatInput'
 import type { RatataGame } from '../runtime/ratataGame'
 import type AutomationPanels from './AutomationPanels.vue'
+import { gameUiSoundKey } from './gameUiSound'
 import { useCharacterWindow } from './useCharacterWindow'
 import { useGameMenu } from './useGameMenu'
 
@@ -27,6 +28,7 @@ interface AppWindowsOptions {
     leave: () => void
 }
 export function useAppWindows(options: AppWindowsOptions) {
+    provide(gameUiSoundKey, (id) => options.game.value?.playUiSound(id))
     const automationPanels = ref<InstanceType<typeof AutomationPanels>>()
     const gameMenu = useGameMenu({
         available: () => options.isStarted.value,
@@ -38,8 +40,9 @@ export function useAppWindows(options: AppWindowsOptions) {
         available: () => options.isStarted.value && Boolean(options.snapshot.value),
         identity: () => options.characterId?.(),
         game: () => options.game.value,
-        prepare: () => {
-            gameMenu.resume()
+        prepare: (wasOpen) => {
+            if (wasOpen) gameMenu.resume()
+            else gameMenu.dismiss()
             prepareAutomationWindow()
             automationPanels.value?.close()
         },
@@ -90,8 +93,11 @@ export function useAppWindows(options: AppWindowsOptions) {
         worldInputBlocked,
         openNearbyMenu,
         openInventory(): void {
-            gameMenu.resume()
-            if (!options.inventoryOpen.value) toggleInventory()
+            if (options.inventoryOpen.value) gameMenu.resume()
+            else {
+                gameMenu.dismiss()
+                toggleInventory()
+            }
         },
         toggleInventory,
         prepareAutomationWindow,

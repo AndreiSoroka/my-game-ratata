@@ -1,6 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { UiSoundId } from '../assets/soundCatalog'
+import { gameUiSoundKey } from './gameUiSound'
 import NearbyActionMenu from './NearbyActionMenu.vue'
 
 const actions = [
@@ -14,15 +16,19 @@ afterEach(() => {
 
 describe('nearby action menu', () => {
     it('focuses enabled actions, wraps and skips disabled items using arrows and W/S', async () => {
+        const playUiSound = vi.fn<(id: UiSoundId) => void>()
         const wrapper = mount(NearbyActionMenu, {
             props: { open: true, actions },
             attachTo: document.body,
+            global: { provide: { [gameUiSoundKey]: playUiSound } },
         })
         try {
             await flushPromises()
             const items = wrapper.findAll('[role="menuitem"]')
             expect(document.activeElement).toBe(items[1]?.element)
             expect(items[0]?.attributes('disabled')).toBeDefined()
+            await items[1]?.trigger('keydown', { key: 'Home' })
+            expect(playUiSound).not.toHaveBeenCalled()
             await items[1]?.trigger('keydown', { key: 'ArrowUp' })
             expect(document.activeElement).toBe(items[2]?.element)
             await items[2]?.trigger('keydown', { key: 'ы', code: 'KeyS' })
@@ -32,6 +38,7 @@ describe('nearby action menu', () => {
             await items[2]?.trigger('keydown', { key: 'w' })
             expect(document.activeElement).toBe(items[1]?.element)
             expect(items.filter((item) => item.attributes('tabindex') === '0')).toHaveLength(1)
+            expect(playUiSound.mock.calls).toEqual(Array.from({ length: 4 }, () => ['uiSelect']))
         } finally {
             wrapper.unmount()
         }

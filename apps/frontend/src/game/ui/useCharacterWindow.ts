@@ -8,7 +8,7 @@ export function useCharacterWindow(options: {
     available: () => boolean
     identity: () => string | undefined
     game: () => RatataGame | undefined
-    prepare: () => void
+    prepare: (wasOpen: boolean) => void
 }) {
     const characterOpen = ref(false)
     const characterTab = ref<CharacterTab>('stats')
@@ -18,14 +18,20 @@ export function useCharacterWindow(options: {
     })
     function openCharacter(): void {
         if (!options.available()) return
-        options.prepare()
-        options.game()?.cancelChat()
-        options.game()?.releaseUiControls()
+        const wasOpen = characterOpen.value
+        options.prepare(wasOpen)
+        const game = options.game()
+        game?.cancelChat()
+        game?.releaseUiControls()
         characterOpen.value = true
+        if (!wasOpen) game?.playUiSound('uiOpen')
     }
     function closeCharacter(): void {
-        options.game()?.releaseUiControls()
+        const wasOpen = characterOpen.value
+        const game = options.game()
+        game?.releaseUiControls()
         characterOpen.value = false
+        if (wasOpen) game?.playUiSound('uiClose')
         void nextTick(() =>
             (
                 document.querySelector<HTMLElement>('[role="alertdialog"] [tabindex="-1"]') ??
@@ -40,8 +46,11 @@ export function useCharacterWindow(options: {
         openCharacter,
         closeCharacter,
         setCharacterTab: (value: CharacterTab) => {
-            options.game()?.releaseUiControls()
+            const game = options.game()
+            game?.releaseUiControls()
+            if (characterTab.value === value) return
             characterTab.value = value
+            if (characterOpen.value) game?.playUiSound('uiSelect')
         },
         toggleCharacter: () => (characterOpen.value ? closeCharacter() : openCharacter()),
     }

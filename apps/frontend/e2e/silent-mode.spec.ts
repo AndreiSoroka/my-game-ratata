@@ -9,7 +9,7 @@ test('keeps test sessions silent before startup and during movement, combat and 
         const start = AudioBufferSourceNode.prototype.start
         AudioBufferSourceNode.prototype.start = function (...args) {
             // Browsers may unlock Web Audio with an inaudible one-sample buffer.
-            if ((this.buffer?.duration ?? 0) > 0.05) recorded.push(this.buffer!.duration)
+            if (this.buffer && this.buffer.length > 1) recorded.push(this.buffer.duration)
             return start.apply(this, args)
         }
     })

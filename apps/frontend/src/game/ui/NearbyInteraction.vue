@@ -6,11 +6,12 @@ import type {
     WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
+import { gameUiSoundKey } from './gameUiSound'
 import GraveDetails from './GraveDetails.vue'
 import NearbyActionMenu from './NearbyActionMenu.vue'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
@@ -31,6 +32,7 @@ const emit = defineEmits<{
     targetChange: [target: TargetHighlight | undefined]
     selectGrave: [id: string]
 }>()
+const playUiSound = inject(gameUiSoundKey)
 const open = ref(false)
 const openedKey = ref<string>()
 const openedActions = ref<{ id: string; signature: string }[]>([])
@@ -72,6 +74,11 @@ function closeMenu(): void {
     open.value = false
     openedKey.value = undefined
     openedActions.value = []
+}
+function dismissMenu(): void {
+    if (!open.value) return
+    closeMenu()
+    playUiSound?.('uiClose')
 }
 function stopMovement(player: CharacterSnapshot): void {
     if (player.control && player.control.mode !== 'none')
@@ -120,6 +127,7 @@ function openMenu(expectedKey?: string): void {
         signature: JSON.stringify(action.command),
     }))
     open.value = true
+    playUiSound?.('uiOpen')
 }
 function isCurrentTarget(): boolean {
     return (
@@ -140,6 +148,7 @@ function select(id: string): void {
     }
     if (action.disabled) return
     closeMenu()
+    playUiSound?.('uiClick')
     emit('command', action.command)
 }
 watch(
@@ -185,7 +194,7 @@ defineExpose({ canOpenFor, openMenu, prompt })
         :actions="actions"
         :context-label="target?.name ?? openedName"
         @select="select"
-        @close="closeMenu"
+        @close="dismissMenu"
     >
         <GraveDetails
             v-if="grave && snapshot"

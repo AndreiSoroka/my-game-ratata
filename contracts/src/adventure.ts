@@ -112,6 +112,8 @@ export interface AdventureSnapshot {
     dialogue: AdventureDialogue | null
     farmPlots: FarmPlotSnapshot[]
     gold: number
+    /** Latest committed quest reward or turn-in for this viewer. */
+    lastQuestRewardReceiptId?: string
     materials: AdventureMaterials
     noticeId?: number
     notice: string | null

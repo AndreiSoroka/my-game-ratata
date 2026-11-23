@@ -1,3 +1,14 @@
+const uiSoundIds = [
+    'uiOpen',
+    'uiClose',
+    'uiSelect',
+    'uiClick',
+    'uiConfirmation',
+    'masteryUp',
+] as const
+
+export type UiSoundId = (typeof uiSoundIds)[number]
+
 export const gameSoundIds = [
     'attack',
     'chestOpen',
@@ -17,7 +28,7 @@ export const gameSoundIds = [
     'stepWood2',
     'pickup',
     'stash',
-    'ui',
+    ...uiSoundIds,
 ] as const
 
 export type GameSoundId = (typeof gameSoundIds)[number]
@@ -33,6 +44,7 @@ export interface MusicAssetDefinition extends SoundAssetDefinition {
 
 const sfxRoot = '/game/assets/audio/sfx'
 const musicRoot = '/game/assets/audio/music'
+const interfaceRoot = '/game/assets/audio/kenney-interface'
 
 export const soundCatalog: Record<GameSoundId, SoundAssetDefinition> = {
     attack: sfx('attack-swing.wav', 0.42),
@@ -53,7 +65,12 @@ export const soundCatalog: Record<GameSoundId, SoundAssetDefinition> = {
     stepWood2: { src: '/game/assets/audio/kenney-impact/footstep_wood_002.ogg', volume: 0.2 },
     pickup: sfx('pickup-drop.wav', 0.24),
     stash: sfx('chest-open.wav', 0.24),
-    ui: sfx('ui-toggle.wav', 0.25),
+    uiOpen: { src: `${interfaceRoot}/open_001.ogg`, volume: 0.2 },
+    uiClose: { src: `${interfaceRoot}/close_001.ogg`, volume: 0.18 },
+    uiSelect: { src: `${interfaceRoot}/select_001.ogg`, volume: 0.12 },
+    uiClick: { src: `${interfaceRoot}/click_001.ogg`, volume: 0.16 },
+    uiConfirmation: { src: `${interfaceRoot}/confirmation_001.ogg`, volume: 0.22 },
+    masteryUp: { src: '/game/assets/audio/kenney-jingles/jingles_PIZZI04.ogg', volume: 0.22 },
 }
 
 export const musicCatalog = {

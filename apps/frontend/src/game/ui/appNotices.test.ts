@@ -9,9 +9,11 @@ import { developmentCharacterFixture } from '../testing/developmentFixture'
 
 const runtime = vi.hoisted(() => ({
     snapshot: undefined as ((snapshot: WorldSnapshot, playerId: string) => void) | undefined,
+    playUiSound: vi.fn<(id: string) => void>(),
 }))
 vi.mock('../runtime/ratataGame', () => ({
     RatataGame: class {
+        public playUiSound = runtime.playUiSound
         public setCombatTarget(): void {}
         public sendCommand(): void {}
         public setInteractionTarget(): void {
@@ -37,6 +39,7 @@ vi.mock('../runtime/ratataGame', () => ({
 afterEach(() => {
     vi.useRealTimers()
     runtime.snapshot = undefined
+    runtime.playUiSound.mockClear()
 })
 
 describe('action notice integration', () => {
@@ -101,14 +104,15 @@ describe('action notice integration', () => {
                 kind: 'passive',
                 name: 'Тёплый дар',
             })
-            const changed = worldFixture([learned])
+            const changed = { ...worldFixture([learned]), tick: 2 }
             runtime.snapshot?.(changed, player.id)
             await nextTick()
             expect(wrapper.findAll('.game-notice')).toHaveLength(1)
             expect(wrapper.get('.game-notice').text()).toBe('Открыта звезда: «Тёплый дар».')
+            expect(runtime.playUiSound).toHaveBeenCalledExactlyOnceWith('uiConfirmation')
             for (let frame = 0; frame < 5; frame++) {
                 vi.advanceTimersByTime(1_000)
-                runtime.snapshot?.(changed, player.id)
+                runtime.snapshot?.({ ...changed, tick: frame + 3 }, player.id)
                 await nextTick()
             }
             expect(wrapper.find('.game-notice').exists()).toBe(false)
@@ -116,6 +120,7 @@ describe('action notice integration', () => {
             runtime.snapshot?.(changed, player.id)
             await nextTick()
             expect(wrapper.find('.game-notice').exists()).toBe(false)
+            expect(runtime.playUiSound).toHaveBeenCalledTimes(1)
         } finally {
             wrapper.unmount()
         }

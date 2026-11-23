@@ -1,9 +1,11 @@
 import { mount } from '@vue/test-utils'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 
+import type { UiSoundId } from '../assets/soundCatalog'
 import { isAudioMuted, setAudioMuted } from '../runtime/audioPreference'
 import { isNpcVoiceEnabled, setNpcVoiceEnabled } from '../runtime/npcVoicePreference'
 import GameMenu from './GameMenu.vue'
+import { gameUiSoundKey } from './gameUiSound'
 
 afterEach(() => {
     window.history.replaceState({}, '', '/')
@@ -13,7 +15,9 @@ afterEach(() => {
 })
 it('offers an accessible persistent sound toggle in ordinary play', async () => {
     setAudioMuted(false)
-    const wrapper = mount(GameMenu)
+    const playUiSound = vi.fn<(_id: UiSoundId) => boolean>(() => isAudioMuted())
+    const options = { global: { provide: { [gameUiSoundKey]: playUiSound } } }
+    const wrapper = mount(GameMenu, options)
     try {
         const button = wrapper.get('[aria-label="Без звука"]')
         expect(button.attributes('aria-pressed')).toBe('false')
@@ -21,16 +25,19 @@ it('offers an accessible persistent sound toggle in ordinary play', async () => 
         expect(button.attributes('aria-pressed')).toBe('true')
         expect(isAudioMuted()).toBe(true)
         expect(window.localStorage.getItem('ratata:audio-muted')).toBe('true')
+        expect(playUiSound).not.toHaveBeenCalled()
     } finally {
         wrapper.unmount()
     }
-    const reopened = mount(GameMenu)
+    const reopened = mount(GameMenu, options)
     try {
         const button = reopened.get('[aria-label="Без звука"]')
         expect(button.attributes('aria-pressed')).toBe('true')
         await button.trigger('click')
         expect(button.attributes('aria-pressed')).toBe('false')
         expect(isAudioMuted()).toBe(false)
+        expect(playUiSound).toHaveBeenCalledExactlyOnceWith('uiClick')
+        expect(playUiSound).toHaveReturnedWith(false)
     } finally {
         reopened.unmount()
     }

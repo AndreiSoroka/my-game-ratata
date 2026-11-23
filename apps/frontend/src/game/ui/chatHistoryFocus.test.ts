@@ -143,7 +143,6 @@ it('finishes a public draft from history focus without moving, then returns to c
         move,
         movement: new RuntimeMovementControls(send),
         options: {} as RatataGameOptions,
-        playUi: vi.fn<() => void>(),
         stopMovement: vi.fn<() => void>(),
     }
     const listener = (event: KeyboardEvent) => handleRuntimeKeyDown(event, actions)
@@ -211,7 +210,6 @@ it.each(['input', 'textarea', 'div'] as const)(
             move,
             movement: new RuntimeMovementControls(send),
             options: {} as RatataGameOptions,
-            playUi: vi.fn<() => void>(),
             stopMovement: vi.fn<() => void>(),
         }
         const listener = (event: KeyboardEvent) => handleRuntimeKeyDown(event, actions)

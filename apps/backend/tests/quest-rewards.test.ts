@@ -68,12 +68,14 @@ describe('atomic quest payments and receipts', () => {
     it('preflights all balances, then can retry the same unspent receipt', () => {
         const blocked = createAdventureState()
         blocked.gold = Number.MAX_SAFE_INTEGER
+        blocked.lastQuestRewardReceiptId = 'contract:previous'
         const states = new Map([['b', blocked]])
         const wallet = createAdventureWalletActions(states)
         expect(wallet.grantQuestGoldOnce(request).ok).toBe(false)
         expect(states.size).toBe(1)
         expect(blocked.gold).toBe(Number.MAX_SAFE_INTEGER)
         expect(blocked.rewardKeys.size).toBe(0)
+        expect(blocked.lastQuestRewardReceiptId).toBe('contract:previous')
         blocked.gold = 0
         expect(wallet.grantQuestGoldOnce(request)).toMatchObject({
             ok: true,
@@ -82,6 +84,7 @@ describe('atomic quest payments and receipts', () => {
         expect(
             [...states.values()].reduce((total, state) => total + state.gold, 0)
         ).toBe(40)
+        expect(blocked.lastQuestRewardReceiptId).toBe(request.receiptId)
     })
 
     it('keeps the first payout frozen across repeats and roster changes', () => {
@@ -124,5 +127,35 @@ describe('atomic quest payments and receipts', () => {
         })
         expect(states.get('one')?.gold).toBe(40)
         expect(states.get('two')?.gold).toBe(40)
+        expect(states.get('one')?.lastQuestRewardReceiptId).toBe(
+            'story:two:bell'
+        )
+        expect(states.get('two')?.lastQuestRewardReceiptId).toBe(
+            'story:two:bell'
+        )
+        expect(
+            wallet.grantQuestGoldOnce({
+                ...request,
+                receiptId: 'story:one:bell',
+                submitterId: 'one',
+                memberIds: ['two'],
+            })
+        ).toMatchObject({ ok: true, alreadyPaid: true })
+        expect(states.get('one')?.lastQuestRewardReceiptId).toBe(
+            'story:two:bell'
+        )
+    })
+
+    it('records the reward cue only for the submitter and paid party members', () => {
+        const states = new Map<string, PlayerAdventure>()
+        const wallet = createAdventureWalletActions(states)
+        wallet.grantQuestGoldOnce({ ...request, totalGold: 2 })
+        expect(states.get('z-submitter')?.lastQuestRewardReceiptId).toBe(
+            request.receiptId
+        )
+        expect(states.get('a')?.lastQuestRewardReceiptId).toBe(
+            request.receiptId
+        )
+        expect(states.get('b')?.lastQuestRewardReceiptId).toBeUndefined()
     })
 })

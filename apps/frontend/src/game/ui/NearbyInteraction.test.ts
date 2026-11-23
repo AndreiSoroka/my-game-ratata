@@ -1,8 +1,10 @@
 import type { CharacterSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+import type { UiSoundId } from '../assets/soundCatalog'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
+import { gameUiSoundKey } from './gameUiSound'
 import NearbyActionMenu from './NearbyActionMenu.vue'
 import NearbyInteraction from './NearbyInteraction.vue'
 
@@ -21,11 +23,13 @@ function resident(id: string, y: number): CharacterSnapshot {
 function interaction(
     player: CharacterSnapshot,
     characters: CharacterSnapshot[],
-    snapshot = worldFixture([player, ...characters])
+    snapshot = worldFixture([player, ...characters]),
+    playUiSound?: (id: UiSoundId) => void
 ) {
     return mount(NearbyInteraction, {
         props: { snapshot, player, characters, blocked: false },
         attachTo: document.body,
+        global: { provide: { [gameUiSoundKey]: playUiSound } },
     })
 }
 
@@ -34,7 +38,8 @@ describe('opening a one-target interaction', () => {
         'stops held input and cancels only an existing path (path: %s)',
         async (hasPath) => {
             const player = characterFixture('self', { path: hasPath ? [{ x: 0, y: 32 }] : [] })
-            const wrapper = interaction(player, [resident('first', 20)])
+            const playUiSound = vi.fn<(id: UiSoundId) => void>()
+            const wrapper = interaction(player, [resident('first', 20)], undefined, playUiSound)
             try {
                 wrapper.vm.openMenu()
                 await flushPromises()
@@ -44,6 +49,8 @@ describe('opening a one-target interaction', () => {
                     expected,
                 ])
                 expect(wrapper.get('h2').text()).toBe('Житель first')
+                await wrapper.get('[aria-label="Закрыть действия"]').trigger('click')
+                expect(playUiSound.mock.calls).toEqual([['uiOpen'], ['uiClose']])
             } finally {
                 wrapper.unmount()
             }
@@ -53,7 +60,8 @@ describe('opening a one-target interaction', () => {
         const player = characterFixture('self')
         const first = resident('first', 20)
         const second = resident('second', 40)
-        const wrapper = interaction(player, [first, second])
+        const playUiSound = vi.fn<(id: UiSoundId) => void>()
+        const wrapper = interaction(player, [first, second], undefined, playUiSound)
         try {
             expect(wrapper.vm.prompt).toContain(`F ${first.nickname} · `)
             wrapper.vm.openMenu()
@@ -68,12 +76,14 @@ describe('opening a one-target interaction', () => {
             expect(wrapper.vm.prompt).toBeUndefined()
             expect(wrapper.get('h2').text()).toBe(first.nickname)
             expect(wrapper.find('[data-action-id="talk:second"]').exists()).toBe(false)
-            await wrapper
-                .get('[data-action-id="talk:first"]')
-                .trigger('keydown', { code: 'KeyF', key: 'а' })
+            const talk = wrapper.get('[data-action-id="talk:first"]')
+            await talk.trigger('keydown', { code: 'KeyF', key: 'а', repeat: true })
+            expect(playUiSound.mock.calls).toEqual([['uiOpen']])
+            await talk.trigger('keydown', { code: 'KeyF', key: 'а' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'interact', targetId: first.id },
             ])
+            expect(playUiSound.mock.calls).toEqual([['uiOpen'], ['uiClick']])
         } finally {
             wrapper.unmount()
         }
@@ -87,7 +97,8 @@ describe('interaction menu invalidation', () => {
             const player = characterFixture('self')
             const first = resident('first', 20)
             const second = resident('second', 40)
-            const wrapper = interaction(player, [first, second])
+            const playUiSound = vi.fn<(id: UiSoundId) => void>()
+            const wrapper = interaction(player, [first, second], undefined, playUiSound)
             try {
                 wrapper.vm.openMenu()
                 await flushPromises()
@@ -107,6 +118,7 @@ describe('interaction menu invalidation', () => {
                 wrapper.getComponent(NearbyActionMenu).vm.$emit('select', 'talk:second')
                 await flushPromises()
                 expect(wrapper.emitted('command')).toHaveLength(1)
+                expect(playUiSound.mock.calls).toEqual([['uiOpen']])
             } finally {
                 wrapper.unmount()
             }

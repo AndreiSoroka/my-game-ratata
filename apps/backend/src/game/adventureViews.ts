@@ -43,10 +43,8 @@ export function adventureSnapshot(context: {
         cities,
         now,
     } = context
-    const progress = trophyProgress(
-        state,
-        actor?.id === playerId ? actor : undefined
-    )
+    const player = actor?.id === playerId ? actor : undefined
+    const progress = trophyProgress(state, player)
     const market = economy.snapshot(locationId, now)
     if (market !== undefined) {
         market.rows = market.rows.filter((row) =>
@@ -73,7 +71,10 @@ export function adventureSnapshot(context: {
         worldObjects: worldObjects.snapshot(locationId),
         farmPlots: resources.snapshotFarms(locationId, now),
         gold: state.gold,
-        materials: materialSnapshot(actor?.id === playerId ? actor : undefined),
+        ...(state.lastQuestRewardReceiptId === undefined
+            ? {}
+            : { lastQuestRewardReceiptId: state.lastQuestRewardReceiptId }),
+        materials: materialSnapshot(player),
         recipes: adventureRecipes,
         resourceNodes: resources.snapshot(locationId),
         notice: state.notice,
