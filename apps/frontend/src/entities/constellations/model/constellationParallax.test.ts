@@ -84,9 +84,15 @@ it('gives constellations five stable pan rates even when their drift is capped',
     }
     const drag = { ...viewport, drag: { x: 100, y: 0 } }
     const projected = projectConstellationStars(fullSky, drag)
-    expect(projected.nodes.map((node) => node.x)).toEqual([0, -3, -6, -9, -12, 0, -3, -6, -9, -12])
+    const panOffsets = [0, -3, -6, -9, -12]
+    expect(projected.nodes.map((node) => node.x)).toEqual(
+        fullSky.nodes.map((_, index) => panOffsets[index % panOffsets.length])
+    )
     const capped = projectConstellationStars(fullSky, { ...drag, drag: { x: 500, y: 0 } })
-    expect(capped.nodes.map((node) => node.x)).toEqual([0, -4, -8, -12, -16, 0, -4, -8, -12, -16])
+    const cappedOffsets = [0, -4, -8, -12, -16]
+    expect(capped.nodes.map((node) => node.x)).toEqual(
+        fullSky.nodes.map((_, index) => cappedOffsets[index % cappedOffsets.length])
+    )
     const reordered = projectConstellationStars(
         { ...fullSky, nodes: [...fullSky.nodes].reverse() },
         drag
