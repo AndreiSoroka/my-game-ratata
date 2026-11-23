@@ -1,8 +1,10 @@
-import type {
-    AshRiteMessage,
-    AttackAbilityId,
-    GameEventPayload,
-    WorldCombatTarget,
+import {
+    type AshRiteMessage,
+    type AttackAbilityId,
+    authoredPhrase,
+    type AuthoredTextKey,
+    type GameEventPayload,
+    type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -37,6 +39,20 @@ export interface AbilityContext {
         now: number,
         target?: WorldCombatTarget
     ) => GameEventPayload[]
+}
+
+export function authoredAbilityNotice(
+    actor: GameCharacter,
+    key: AuthoredTextKey
+): GameEventPayload[] {
+    return [
+        {
+            kind: 'notice',
+            actorId: actor.id,
+            audienceIds: [actor.id],
+            ...authoredPhrase(key),
+        },
+    ]
 }
 export function abilityNotice(
     actor: GameCharacter,

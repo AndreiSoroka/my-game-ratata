@@ -54,3 +54,11 @@ export function disposeRuntimePresentation(
     view.engine.stop()
     view.canvas.remove()
 }
+
+export function suspendRuntimePresentation(view: RuntimePresentation | undefined): void {
+    if (!view) return
+    view.audio.suspendWorld()
+    view.canvas.style.visibility = 'hidden'
+    view.sceneActors.clearDamage()
+    view.sceneActors.setInteractionTarget(undefined)
+}

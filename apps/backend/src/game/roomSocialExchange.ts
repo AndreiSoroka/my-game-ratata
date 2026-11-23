@@ -4,6 +4,12 @@ import type { AgentDecisionResult } from './agentDecisions'
 import type { GameCharacter } from './character'
 import type { ExchangeService } from './exchange'
 
+export function isExchange(message: {
+    type: string
+}): message is ExchangeClientMessage {
+    return message.type.startsWith('exchange_')
+}
+
 export function decideSocialExchange(
     exchanges: ExchangeService,
     actor: GameCharacter,

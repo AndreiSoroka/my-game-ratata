@@ -7,6 +7,7 @@ import {
 import { ref } from 'vue'
 
 import { QuestOfferPanel } from '@/entities/quests'
+import { tGame, tLocalized } from '@/shared/lib/i18n'
 
 import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
@@ -18,13 +19,18 @@ const rewardMode = ref<QuestRewardMode>(DEFAULT_QUEST_REWARD_MODE)
 </script>
 
 <template>
-    <SocialWindow title="Предложение поручения" modal layout="quest" @close="emit('cancel')">
+    <SocialWindow
+        :title="tGame('game.quests.questOffer')"
+        modal
+        layout="quest"
+        @close="emit('cancel')"
+    >
         <QuestOfferPanel @confirm="emit('confirm', rewardMode)" @cancel="emit('cancel')">
             <p>
-                Заказчик: <strong>{{ issuerName }}</strong>
+                {{ tGame('game.quests.questGiver') }} <strong>{{ issuerName }}</strong>
             </p>
-            <h3>{{ job.title }}</h3>
-            <p>{{ job.description }}</p>
+            <h3>{{ tLocalized(job.titleMessage, job.title) }}</h3>
+            <p>{{ tLocalized(job.descriptionMessage, job.description) }}</p>
             <QuestRewardSummary :total="job.rewardGold" />
             <QuestRewardChoice v-if="job.rewardGold > 0" v-model="rewardMode" appearance="light" />
         </QuestOfferPanel>

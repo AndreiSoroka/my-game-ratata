@@ -1,4 +1,8 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import {
+    authoredMessage,
+    type GameEventPayload,
+    npcQuestMessage,
+} from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { PlayerAdventure } from './adventureState'
@@ -46,6 +50,10 @@ export function extendNpcQuestDialogue(
     const choices = requests.map((request) => ({
         id: `${prefix}${request.id}`,
         label: `Обращение: ${request.workerName} — ${request.reason ?? request.enemyName}`,
+        labelMessage: authoredMessage('dialogue.workerRequest', {
+            worker: request.workerName,
+            reason: request.reason ?? request.enemyName,
+        }),
     }))
     dialogue.choices = [
         ...dialogue.choices.filter((choice) => !choice.id.startsWith(prefix)),
@@ -58,6 +66,11 @@ export function extendNpcQuestDialogue(
             : workerActivity(npc, adventure, source.workers, now)
     if (activity !== undefined) {
         dialogue.text += ` ${activity.text}`
+        const textMessage = npcQuestMessage(activity.text)
+        dialogue.workerActivity = {
+            ...activity,
+            ...(textMessage === undefined ? {} : { textMessage }),
+        }
     }
     return activity === undefined
         ? events
@@ -65,7 +78,11 @@ export function extendNpcQuestDialogue(
               event.kind === 'chat' &&
               event.actorId === npc?.id &&
               event.targetId === actor.id
-                  ? { ...event, text: dialogue.text, workerActivity: activity }
+                  ? {
+                        ...event,
+                        text: dialogue.text,
+                        workerActivity: dialogue.workerActivity ?? activity,
+                    }
                   : event
           )
 }

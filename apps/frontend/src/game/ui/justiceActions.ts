@@ -1,5 +1,7 @@
 import { type CharacterSnapshot, THEFT_RULES, type WorldSnapshot } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { InteractionAction } from './nearbyInteractionActions'
 
 export function justiceActions(
@@ -25,7 +27,7 @@ function reportActions(
             if (!proof.reported && proof.expiresAt > snapshot.serverTime)
                 actions.push({
                     id: `report:${proof.thiefId}`,
-                    label: `Пожаловаться на ${proof.thiefName}`,
+                    label: tGame('game.world.reportThief', { name: proof.thiefName }),
                     command: { type: 'report_theft', targetId: proof.thiefId },
                 })
     return actions
@@ -40,7 +42,7 @@ function absolutionActions(
     if (player.theft?.blacklisted && cleric)
         actions.push({
             id: `absolve:${cleric.id}`,
-            label: `Попросить отпущения · ${String(THEFT_RULES.absolutionGold)} золотых`,
+            label: tGame('game.world.askAbsolution', { gold: String(THEFT_RULES.absolutionGold) }),
             disabled: (snapshot.adventure?.gold ?? 0) < THEFT_RULES.absolutionGold,
             command: { type: 'absolve', targetId: cleric.id },
         })

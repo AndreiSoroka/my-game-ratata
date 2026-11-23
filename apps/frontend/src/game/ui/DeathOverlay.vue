@@ -2,6 +2,8 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed, onMounted, ref, useId } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
@@ -66,43 +68,52 @@ function key(event: KeyboardEvent): void {
         <div ref="panel" class="death-overlay__card game-frame-host" tabindex="-1">
             <GameFrame variant="window" />
             <p class="death-overlay__eyebrow">
-                {{ defeated ? 'ИСТОРИЯ ЗАВЕРШЕНА' : 'МЕЖДУ ЖИЗНЬЮ И СМЕРТЬЮ' }}
+                {{
+                    defeated
+                        ? tGame('game.world.storyOver')
+                        : tGame('game.world.betweenLifeAndDeath')
+                }}
             </p>
-            <h2 :id="headingId">{{ defeated ? 'Ваш герой погиб' : 'Вы пали в бою' }}</h2>
+            <h2 :id="headingId">
+                {{ defeated ? tGame('game.world.heroDied') : tGame('game.world.youFell') }}
+            </h2>
             <template v-if="!defeated">
                 <template v-if="seconds > 0 || heartSeconds === undefined">
-                    <p class="death-overlay__countdown">{{ seconds }} <span>секунд</span></p>
+                    <p class="death-overlay__countdown">
+                        {{ seconds }} <span>{{ tGame('game.world.seconds') }}</span>
+                    </p>
                     <p>
-                        Клирик ещё может вернуть вас к жизни. Позовите союзника и дождитесь помощи.
+                        {{ tGame('game.world.clericCanStillBringYou') }}
                     </p>
                 </template>
                 <p v-if="heartSeconds !== undefined">
                     {{
                         heartSeconds > 0
-                            ? `Сердце лича позовёт через ${heartSeconds} с.`
-                            : 'Сердце лича ждёт свободного места рядом с сундуком.'
+                            ? tGame('game.world.lichHeartCallsIn', { seconds: heartSeconds })
+                            : tGame('game.world.lichHeartNeedsSpace')
                     }}
                 </p>
                 <p :id="detailId">
-                    Если начать сначала, этого героя уже нельзя будет воскресить. Вещи и золото
-                    останутся в его теле. Вы выберете нового героя без прежнего опыта и заданий.
+                    {{ tGame('game.world.startingOverMakesThisHero') }}
                 </p>
                 <GameButton
                     variant="danger"
                     :disabled="pending || !connected"
                     @click="$emit('abandonLife')"
                 >
-                    {{ pending ? 'Завершаем жизнь…' : 'Начать сначала' }}
+                    {{ pending ? tGame('game.world.endingLife') : tGame('game.world.startOver') }}
                 </GameButton>
-                <p v-if="!connected" role="status">Нет соединения с сервером.</p>
+                <p v-if="!connected" role="status">
+                    {{ tGame('game.world.disconnectedFromServer') }}
+                </p>
             </template>
             <template v-else>
                 <p :id="detailId">
-                    Следующая жизнь начнётся с новым героем — без прежних вещей, опыта и заданий.
+                    {{ tGame('game.world.yourNextLifeStartsWith') }}
                 </p>
-                <GameButton variant="primary" @click="$emit('newLife')"
-                    >Начать новую жизнь</GameButton
-                >
+                <GameButton variant="primary" @click="$emit('newLife')">{{
+                    tGame('game.world.startNewLife')
+                }}</GameButton>
             </template>
         </div>
     </section>

@@ -1,4 +1,6 @@
 import type { ExchangeSnapshot } from './exchange'
+import type { LocalizedMessage } from './locales'
+import type { GameLocale } from './locales'
 import type { NpcQuestSocialSnapshot } from './npcQuests'
 
 export const PUBLIC_SPEECH_RADIUS = 80
@@ -45,6 +47,7 @@ export interface NpcRequestStatus {
     npcId: string
     state: NpcRequestState
     reason?: string
+    reasonMessage?: LocalizedMessage
     /** Original request, projected only to its author. */
     request?: string
     at: number
@@ -67,7 +70,16 @@ export interface PrivateSpeechSnapshot {
     id: string
     senderId: string
     text: string
+    textMessage?: LocalizedMessage
     at: number
+    language?: GameLocale
+    /** Present only in the receiving player's projection. */
+    translation?: SpeechTranslation
+}
+
+export interface SpeechTranslation {
+    locale: GameLocale
+    text: string
 }
 
 export interface HeardPrivateSpeech extends PrivateSpeechSnapshot {

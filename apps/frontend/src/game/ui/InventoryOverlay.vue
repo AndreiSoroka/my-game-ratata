@@ -11,12 +11,14 @@ import {
     INVENTORY_CAPACITY,
     type InventoryActionKind,
     type ItemInstanceSnapshot,
-    resolveCombatWeapon,
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import InventoryEquipment from './InventoryEquipment.vue'
 import InventoryItemDetails from './InventoryItemDetails.vue'
 import { inventoryKey } from './inventoryKeyboard'
 import ItemCondition from './ItemCondition.vue'
@@ -56,10 +58,6 @@ const focusSurface = useInventoryFocus(panel, () => emit('close'))
 const selectedItemId = ref<string>()
 const focusedItemId = ref<string>()
 const assignedSlot = ref<number>()
-const fallbackWeapon = computed(() =>
-    resolveCombatWeapon(props.character.archetype, props.character.equipment.weapon)
-)
-const equipmentSlots: EquipmentSlotId[] = ['weapon', 'boots']
 const inventorySlots = computed(() =>
     Array.from({ length: INVENTORY_CAPACITY }, (_, index) => props.character.inventory[index])
 )
@@ -153,17 +151,6 @@ function selectItem(item: ItemInstanceSnapshot | undefined): void {
 function itemName(item: ItemInstanceSnapshot): string {
     return itemStackLabel(item)
 }
-
-function unequip(slot: EquipmentSlotId): void {
-    if (props.character.equipment[slot] === undefined) {
-        return
-    }
-
-    emit('equipmentAction', {
-        action: 'unequip',
-        slot,
-    })
-}
 </script>
 
 <template>
@@ -173,97 +160,44 @@ function unequip(slot: EquipmentSlotId): void {
         role="dialog"
         aria-modal="false"
         tabindex="-1"
-        aria-label="Inventory and equipment"
+        :aria-label="tGame('game.character.inventoryAndEquipment')"
         @pointerdown.stop="focusSurface"
         @click.stop
         @keydown.stop="onKey"
         @keyup.stop
     >
-        <section class="inventory-overlay__equipment game-frame-host" aria-label="Equipment">
+        <InventoryEquipment
+            :character="character"
+            @unequip="emit('equipmentAction', { action: 'unequip', slot: $event })"
+        />
+
+        <section
+            class="inventory-overlay__inventory game-frame-host"
+            :aria-label="tGame('game.character.inventoryPanel')"
+        >
             <GameFrame variant="window" />
             <header class="inventory-overlay__header">
-                <h2>Equipped</h2>
-            </header>
-
-            <div class="equipment-slots">
-                <GameButton
-                    v-for="slot in equipmentSlots"
-                    :key="slot"
-                    class="equipment-slot"
-                    type="button"
-                    :title="
-                        slot === 'weapon'
-                            ? (fallbackWeapon.description ?? fallbackWeapon.name)
-                            : undefined
-                    "
-                    :aria-description="slot === 'weapon' ? fallbackWeapon.description : undefined"
-                    @click="unequip(slot)"
-                >
-                    <span class="equipment-slot__label">{{
-                        slot === 'weapon' ? 'Weapon' : 'Boots'
-                    }}</span>
-                    <GameItemSlot
-                        class="equipment-slot__socket"
-                        :empty="!character.equipment[slot]"
-                    >
-                        <img
-                            v-if="character.equipment[slot]"
-                            class="item-icon"
-                            :src="itemAssetCatalog[character.equipment[slot].itemId].src"
-                            :alt="itemName(character.equipment[slot])"
-                        />
-                        <svg
-                            v-else-if="slot === 'weapon' && fallbackWeapon.kind === 'knife'"
-                            viewBox="0 0 32 32"
-                            width="32"
-                            height="32"
-                            role="img"
-                            aria-label="Походный нож"
-                        >
-                            <path
-                                d="M25 3 27 5 16 21 12 17Z"
-                                fill="#c7d3d3"
-                                stroke="#4f686b"
-                                stroke-width="2"
-                            />
-                            <path
-                                d="m12 17 4 4-8 8-4-4Z"
-                                fill="#91643e"
-                                stroke="#352a22"
-                                stroke-width="2"
-                            />
-                            <path d="m10 17 7 7" stroke="#d4ba76" stroke-width="3" />
-                        </svg>
-                    </GameItemSlot>
-                    <ItemCondition
-                        v-if="character.equipment[slot]"
-                        :item="character.equipment[slot]"
-                    />
-                </GameButton>
-            </div>
-        </section>
-
-        <section class="inventory-overlay__inventory game-frame-host" aria-label="Inventory">
-            <GameFrame variant="window" />
-            <header class="inventory-overlay__header">
-                <h2>Inventory</h2>
-                <span class="inventory-capacity" aria-label="Занято слотов"
+                <h2>{{ tGame('game.character.inventoryPanel') }}</h2>
+                <span class="inventory-capacity" :aria-label="tGame('game.character.occupiedSlots')"
                     >{{ character.inventory.length }} / {{ INVENTORY_CAPACITY }}</span
                 >
                 <GameButton
                     class="inventory-overlay__close"
                     type="button"
-                    aria-label="Close inventory"
+                    :aria-label="tGame('game.character.closeInventory')"
                     @click="emit('close')"
                 >
                     ×
                 </GameButton>
             </header>
 
-            <p class="inventory-gold game-frame-host" aria-label="Золото">
-                <GameFrame variant="inset" />Золото: {{ gold ?? '—' }} ◈
+            <p
+                class="inventory-gold game-frame-host"
+                :aria-label="tGame('game.trade.goldExchangeOffer')"
+            >
+                <GameFrame variant="inset" />{{ tGame('game.character.gold') }} {{ gold ?? '—' }} ◈
             </p>
-            <div class="inventory-grid" aria-label="Inventory slots">
+            <div class="inventory-grid" :aria-label="tGame('game.character.inventorySlots')">
                 <GameItemSlot
                     as="button"
                     v-for="(item, index) in inventorySlots"
@@ -278,7 +212,11 @@ function unequip(slot: EquipmentSlotId): void {
                             Boolean(item) && item?.instanceId === selectedItemId,
                     }"
                     type="button"
-                    :aria-label="item === undefined ? `Empty slot ${index + 1}` : itemName(item)"
+                    :aria-label="
+                        item === undefined
+                            ? tGame('game.character.emptySlot', { number: index + 1 })
+                            : itemName(item)
+                    "
                     :title="item ? itemName(item) : undefined"
                     @focus="focusedItemId = item?.instanceId"
                     @click="selectItem(item)"
@@ -311,8 +249,13 @@ function unequip(slot: EquipmentSlotId): void {
                 @plant="emit('plant')"
             />
             <p v-if="assignedSlot !== undefined" class="inventory-hotbar-help" role="status">
-                {{ selectedItem?.itemId === 'sapling' ? 'Саженец назначен' : 'Яблоко назначено' }} в
-                слот {{ assignedSlot + 1 }}. Закройте инвентарь и нажмите {{ assignedSlot + 1 }}.
+                {{
+                    selectedItem?.itemId === 'sapling'
+                        ? tGame('game.character.saplingAssigned')
+                        : tGame('game.character.appleAssigned')
+                }}
+                {{ tGame('game.character.slot') }} {{ assignedSlot + 1
+                }}{{ tGame('game.character.closeYourInventoryAndPress') }} {{ assignedSlot + 1 }}.
             </p>
         </section>
     </aside>

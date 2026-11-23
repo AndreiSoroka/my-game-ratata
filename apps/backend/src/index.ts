@@ -4,6 +4,7 @@ import { ClaudeCliProvider } from './ai/claudeCliProvider'
 import { CodexCliProvider } from './ai/codexCliProvider'
 import { loadNpcAiStartupConfig } from './ai/config'
 import { knowledgeCorpus } from './ai/knowledgeCorpus'
+import { LocalSpeechTranslator } from './game/localSpeechTranslator'
 import { GameRoom } from './game/room'
 import { WorldMaps } from './game/worldMaps'
 import { createFetchHandler, createWebSocketHandlers } from './server'
@@ -19,6 +20,7 @@ if (!Number.isInteger(port) || port <= 0) {
 knowledgeCorpus()
 const ai = await loadNpcAiStartupConfig(Bun.env, Bun.which)
 const aiAvailable = ai !== undefined && ai.config.npcs.length > 0
+const speechTranslator = LocalSpeechTranslator.create()
 const worldMaps = new WorldMaps({
     ...(Bun.env['GAME_WORLD_SEED'] === undefined
         ? {}
@@ -27,6 +29,7 @@ const worldMaps = new WorldMaps({
 const room = new GameRoom(worldMaps.navigation(CENTER_LOCATION_ID), {
     worldMaps,
     worldSeed: worldMaps.seed,
+    ...(speechTranslator === undefined ? {} : { speechTranslator }),
     ...(Bun.env['GAME_NPC_IDENTITY_SEED'] === undefined
         ? {}
         : { npcIdentitySeed: Bun.env['GAME_NPC_IDENTITY_SEED'] }),

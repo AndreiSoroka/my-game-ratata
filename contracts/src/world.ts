@@ -70,6 +70,34 @@ const locationNames = [
     ],
 ]
 
+export const WORLD_LOCATION_ENGLISH_NAMES: Readonly<Record<string, string>> = {
+    'map-0-0': 'Wolf Heights',
+    'map-1-0': 'Dead Pinewood',
+    'map-2-0': 'Northern Outpost',
+    'map-3-0': 'Bone Ravine',
+    'map-4-0': 'Gloom Cliffs',
+    'map-0-1': 'Rotting Fens',
+    'map-1-1': 'Old Forest',
+    'map-2-1': 'Northern Outskirts',
+    'map-3-1': 'Forgotten Barrows',
+    'map-4-1': 'Stone Rift',
+    'map-0-2': 'Western Ruins',
+    'map-1-2': 'Western Fields',
+    'map-2-2': 'Novogorod',
+    'map-3-2': 'Eastern Gardens',
+    'map-4-2': 'Eastern Road',
+    'map-0-3': 'Black Mire',
+    'map-1-3': 'Shepherd Hills',
+    'map-2-3': 'Southern Homesteads',
+    'map-3-3': 'Still Ponds',
+    'map-4-3': 'Abandoned Fort',
+    'map-0-4': 'Exiles’ Reach',
+    'map-1-4': 'Ashen Wastes',
+    'map-2-4': 'Southern Outpost',
+    'map-3-4': 'Distant Quarry',
+    'map-4-4': 'Cursed Thicket',
+}
+
 export const WORLD_LOCATION_DEFINITIONS: readonly WorldLocationDefinition[] =
     locationNames.flatMap((names, row) =>
         names.map((name, column) => {

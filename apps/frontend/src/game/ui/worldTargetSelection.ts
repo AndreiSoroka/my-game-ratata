@@ -6,7 +6,6 @@ import {
     graveBounds,
     isArrowAbility,
     isFireSpell,
-    ITEM_DEFINITIONS,
     MAGIC_ABILITY_RULES,
     MOVEMENT_RULES,
     type Vector2,
@@ -14,6 +13,8 @@ import {
     type WorldObjectBounds,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
+
+import { characterName, itemName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import { abilityUsage } from './abilityUsage'
 import { relation } from './combatTargeting'
@@ -90,7 +91,7 @@ export function worldTargetCandidates(
                 key: `world:${object.id}`,
                 id: object.id,
                 kind: 'world',
-                name: object.name,
+                name: tLocalized(object.nameMessage, object.name),
                 position: object.position,
                 bounds: object.bounds,
                 interactionAreas: object.interactionAreas,
@@ -109,10 +110,10 @@ export function worldTargetCandidates(
                 kind: 'resource',
                 name:
                     node.phase === 'stump'
-                        ? 'Пень'
+                        ? tGame('game.world.stump')
                         : node.phase === 'growing'
-                          ? 'Саженец'
-                          : ITEM_DEFINITIONS[node.kind].name,
+                          ? tGame('game.world.saplingWorldTargetSelection')
+                          : itemName(node.kind),
                 position: node.position,
                 bounds: node.bounds,
             })),
@@ -146,7 +147,9 @@ function portalTargets(
             key: `portal:${portal.id}`,
             id: portal.id,
             kind: 'portal',
-            name: `Портал — ${portal.destinationName}`,
+            name: tGame('game.world.portalDestination', {
+                destination: locationName(portal.destinationLocationId, portal.destinationName),
+            }),
             position: portal.position,
         }))
 }
@@ -169,7 +172,7 @@ function characterCandidates(
             key: `character:${character.id}`,
             id: character.id,
             kind: 'character',
-            name: character.nickname,
+            name: characterName(character.id, character.nickname),
             position: character.position,
             relationship: relation(character, player),
         }))
@@ -195,7 +198,11 @@ function containerCandidates(
             kind: 'chest',
             name:
                 chest.title ??
-                (chest.kind === 'corpse' ? 'Тело' : chest.kind === 'barrel' ? 'Бочка' : 'Сундук'),
+                (chest.kind === 'corpse'
+                    ? tGame('game.world.body')
+                    : chest.kind === 'barrel'
+                      ? tGame('game.world.barrel')
+                      : tGame('game.world.chest')),
             position: chest.position,
             bounds: chest.bounds ?? containerBounds(chest.position),
         }))

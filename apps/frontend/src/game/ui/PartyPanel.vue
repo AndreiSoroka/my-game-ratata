@@ -2,6 +2,8 @@
 import type { PartySnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { characterName, tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 
@@ -21,11 +23,11 @@ const members = computed(() =>
     <aside
         v-if="party.partyId"
         class="party-panel rpg-panel game-frame-host"
-        aria-label="Мой отряд"
+        :aria-label="tGame('game.world.myParty')"
     >
         <GameFrame variant="panel" />
         <h2>
-            Отряд <span>{{ members.length }}/4</span>
+            {{ tGame('game.world.party') }} <span>{{ members.length }}/4</span>
         </h2>
         <GameButton
             v-for="member in members"
@@ -35,28 +37,31 @@ const members = computed(() =>
             @click="emit('select', member.id)"
         >
             <span class="party-member__name"
-                ><span v-if="member.id === party.leaderId" role="img" aria-label="Лидер"
+                ><span
+                    v-if="member.id === party.leaderId"
+                    role="img"
+                    :aria-label="tGame('game.world.leader')"
                     ><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true">
                         <path
                             fill="currentColor"
                             d="M1 2L4 5L7 0L10 5L13 2L11 9H3ZM3 10H11V12H3Z"
                         /></svg
                 ></span>
-                {{ member.nickname }}</span
+                {{ characterName(member.id, member.nickname) }}</span
             >
             <span class="party-member__health">
                 <span class="party-member__hp"
                     ><span :style="{ width: `${member.hpPercent}%` }"></span
                 ></span>
             </span>
-            <small v-if="!member.alive">Ожидает спасения</small>
-            <small v-else-if="!member.online">Не в сети</small>
-            <small v-else-if="currentLocationId && member.locationId !== currentLocationId"
-                >Другая локация</small
-            >
+            <small v-if="!member.alive">{{ tGame('game.world.waitingForRescue') }}</small>
+            <small v-else-if="!member.online">{{ tGame('game.world.offline') }}</small>
+            <small v-else-if="currentLocationId && member.locationId !== currentLocationId">{{
+                tGame('game.world.anotherLocation')
+            }}</small>
         </GameButton>
         <GameButton size="compact" class="party-leave" @click="emit('leave')">
-            Покинуть отряд
+            {{ tGame('game.world.leaveParty') }}
         </GameButton>
     </aside>
 </template>

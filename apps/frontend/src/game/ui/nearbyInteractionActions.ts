@@ -15,6 +15,8 @@ import {
     THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
+import { characterName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import { ashCharacterActions } from './ashActions'
 import { chestActions } from './chestActions'
@@ -110,13 +112,15 @@ function portalTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Targ
         )
         .map((portal) => ({
             key: `portal:${portal.id}`,
-            name: `Портал — ${portal.destinationName}`,
+            name: tGame('game.world.portalDestination', {
+                destination: locationName(portal.destinationLocationId, portal.destinationName),
+            }),
             position: portal.position,
             range,
             actions: [
                 {
                     id: 'use-portal',
-                    label: 'Войти',
+                    label: tGame('game.world.enter'),
                     command: { type: 'use_portal', endpointId: portal.id },
                 },
             ],
@@ -147,7 +151,7 @@ function characterTargets(
                 key: `character:${character.id}`,
                 kind: 'character' as const,
                 relationship: relation(character, player),
-                name: character.nickname,
+                name: characterName(character.id, character.nickname),
                 position: character.position,
                 range: Math.max(
                     COMPANION_REQUEST_RANGE,
@@ -164,7 +168,12 @@ function characterTargets(
                                   ? [
                                         {
                                             id: `quest-inquire:${snapshot.social!.quest!.instanceId}:${objectiveIndex}`,
-                                            label: `Расспросить по поручению: ${snapshot.social!.quest!.title}`,
+                                            label: tGame('game.world.askAboutQuest', {
+                                                quest: tLocalized(
+                                                    snapshot.social!.quest!.titleMessage,
+                                                    snapshot.social!.quest!.title
+                                                ),
+                                            }),
                                             command: {
                                                 type: 'quest_inquire' as const,
                                                 instanceId: snapshot.social!.quest!.instanceId,
@@ -191,7 +200,7 @@ function characterTargets(
 function objectTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
     return (snapshot.adventure?.worldObjects ?? []).map((object) => ({
         key: `world:${object.id}`,
-        name: object.name,
+        name: tLocalized(object.nameMessage, object.name),
         position: object.position,
         bounds: object.bounds,
         interactionAreas: object.interactionAreas,
@@ -223,7 +232,7 @@ function farmTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Target
         .filter((plot) => interactionDistance(player, plot) <= FARM_INTERACTION_RANGE)
         .map((plot) => ({
             key: `farm:${plot.id}`,
-            name: 'Пшеничная грядка',
+            name: tGame('game.world.wheatPlot'),
             position: plot.position,
             range: FARM_INTERACTION_RANGE,
             actions: [farmAction(plot, player, snapshot.serverTime)],
@@ -237,7 +246,7 @@ function chestTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): Targe
         )
         .map((chest) => ({
             key: `chest:${chest.id}`,
-            name: chest.title ?? 'Сундук',
+            name: chest.title ?? tGame('game.world.chest'),
             position: chest.position,
             range: CHEST_INTERACTION_RANGE,
             bounds: chest.bounds ?? {

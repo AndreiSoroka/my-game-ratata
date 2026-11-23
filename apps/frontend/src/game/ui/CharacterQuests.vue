@@ -2,6 +2,8 @@
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
+import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import { activeQuests, questStatusLabel } from './activeQuests'
 import GuildQuestCard from './GuildQuestCard.vue'
 import ItemIcon from './ItemIcon.vue'
@@ -29,21 +31,27 @@ const leader = computed(
 )
 </script>
 <template>
-    <section class="character-quests" aria-label="Активные квесты">
-        <p v-if="!entries.length" class="quests-empty">Активных квестов нет.</p>
+    <section class="character-quests" :aria-label="tGame('game.character.activeQuests')">
+        <p v-if="!entries.length" class="quests-empty">
+            {{ tGame('game.character.noActiveQuests') }}
+        </p>
         <template v-else>
-            <nav class="quest-list" aria-label="Список активных квестов">
+            <nav class="quest-list" :aria-label="tGame('game.character.activeQuestList')">
                 <GameButton
                     v-for="entry in entries"
                     :key="entry.key"
                     :aria-current="selected?.key === entry.key ? 'true' : undefined"
                     @click="selectedKey = entry.key"
                 >
-                    <strong>{{ entry.quest.title }}</strong>
+                    <strong>{{ tLocalized(entry.quest.titleMessage, entry.quest.title) }}</strong>
                     <small>{{ questStatusLabel(entry.quest.status) }}</small>
                 </GameButton>
             </nav>
-            <article v-if="selected" class="quest-detail" aria-label="Подробности квеста">
+            <article
+                v-if="selected"
+                class="quest-detail"
+                :aria-label="tGame('game.character.questDetails')"
+            >
                 <template v-if="selected.source === 'npc'">
                     <QuestTerms
                         :offer="selected.quest"
@@ -55,9 +63,13 @@ const leader = computed(
                         :total="selected.quest.rewardGold"
                         :mode="selected.quest.rewardMode"
                     />
-                    <p v-if="selected.quest.notice" role="status">{{ selected.quest.notice }}</p>
+                    <p v-if="selected.quest.notice" role="status">
+                        {{ tLocalized(selected.quest.noticeMessage, selected.quest.notice) }}
+                    </p>
                     <p class="quest-help">
-                        Вернитесь к {{ selected.quest.issuerName }} и скажите «квест готов».
+                        {{ tGame('game.character.return') }}
+                        {{ characterName(selected.quest.issuerId, selected.quest.issuerName) }}
+                        {{ tGame('game.character.andSayQuestComplete') }}
                     </p>
                     <GameButton
                         variant="danger"
@@ -69,7 +81,7 @@ const leader = computed(
                             })
                         "
                     >
-                        Отменить договор
+                        {{ tGame('game.character.cancelContract') }}
                     </GameButton>
                 </template>
                 <template v-else-if="selected.source === 'guild'">
@@ -81,23 +93,32 @@ const leader = computed(
                         @command="emit('command', $event)"
                     />
                     <p class="quest-help">
-                        Поговорите с распорядителем поручения о следующем шаге или скажите «квест
-                        готов».
+                        {{ tGame('game.character.askQuestGiverAboutNext') }}
                     </p>
                 </template>
                 <template v-else>
-                    <h2>{{ selected.quest.title }}</h2>
-                    <p>{{ selected.quest.description }}</p>
+                    <h2>{{ tLocalized(selected.quest.titleMessage, selected.quest.title) }}</h2>
+                    <p>
+                        {{
+                            tLocalized(
+                                selected.quest.descriptionMessage,
+                                selected.quest.description
+                            )
+                        }}
+                    </p>
                     <p class="quest-item-goal">
                         <ItemIcon
                             :item="{ itemId: selected.quest.requiredItemId ?? 'slime_heart' }"
                         />
-                        <span>Собрано: {{ selected.trophies }} / {{ selected.quest.goal }}</span>
+                        <span
+                            >{{ tGame('game.character.collected') }} {{ selected.trophies }} /
+                            {{ selected.quest.goal }}</span
+                        >
                     </p>
                     <progress
                         :value="selected.trophies"
                         :max="selected.quest.goal"
-                        aria-label="Прогресс поручения"
+                        :aria-label="tGame('game.character.questProgress')"
                     />
                     <p>{{ questStatusLabel(selected.quest.status) }}</p>
                     <QuestRewardSummary
@@ -105,7 +126,7 @@ const leader = computed(
                         :mode="selected.quest.rewardMode"
                     />
                     <p class="quest-help">
-                        Вернитесь к Мире в гильдию Новогорода и скажите «квест готов».
+                        {{ tGame('game.character.returnMiraAtNovogorodGuild') }}
                     </p>
                 </template>
             </article>

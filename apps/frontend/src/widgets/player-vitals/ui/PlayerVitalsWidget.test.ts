@@ -15,7 +15,7 @@ it('uses percentages independently of exact display values and requires both exa
             manaCurrent: 8,
         },
     })
-    const health = wrapper.get('[role="progressbar"][aria-label="Health"]')
+    const health = wrapper.get('[role="progressbar"][aria-label="Здоровье"]')
     expect(health.attributes('aria-valuenow')).toBe('30')
     expect(health.attributes('aria-valuetext')).toBe('5/10')
     expect(health.text()).toBe('5/10')
@@ -39,16 +39,16 @@ it('animates health below 30 percent and mana and energy below 20 percent', asyn
         wrapper.findAll('[data-animated="true"]').map((bar) => bar.attributes('aria-label'))
     const dimmedBars = () =>
         wrapper.findAll('[data-dimmed="true"]').map((bar) => bar.attributes('aria-label'))
-    expect(animatedBars()).toEqual(['Mana'])
+    expect(animatedBars()).toEqual(['Мана'])
     expect(dimmedBars()).toEqual([])
 
     await wrapper.setProps({ hpPercent: 29.9, manaPercent: 20, energyPercent: 5 })
-    expect(animatedBars()).toEqual(['Health', 'Energy'])
+    expect(animatedBars()).toEqual(['Здоровье', 'Энергия'])
     expect(dimmedBars()).toEqual([])
 
     await wrapper.setProps({ energyPercent: 20 })
-    expect(animatedBars()).toEqual(['Health'])
-    expect(dimmedBars()).toEqual(['Mana', 'Energy'])
+    expect(animatedBars()).toEqual(['Здоровье'])
+    expect(dimmedBars()).toEqual(['Мана', 'Энергия'])
 
     await wrapper.setProps({ hpPercent: 30 })
     expect(animatedBars()).toEqual([])
@@ -68,8 +68,8 @@ it('animates segmented HP and energy at the first visible band', async () => {
             energySegments: segments,
         },
     })
-    const health = wrapper.get('[aria-label="Health"]')
-    const energy = wrapper.get('[aria-label="Energy"]')
+    const health = wrapper.get('[aria-label="Здоровье"]')
+    const energy = wrapper.get('[aria-label="Энергия"]')
     expect(health.attributes('data-animated')).toBe('true')
     expect(energy.attributes('data-dimmed')).toBe('true')
 

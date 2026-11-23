@@ -1,6 +1,7 @@
-import type {
-    GuildQuestDefinition,
-    WorkRequestSnapshot,
+import {
+    type GuildQuestDefinition,
+    workerQuestMessages,
+    type WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -41,6 +42,7 @@ function workRequestDefinition(
     view: WorkRequestSnapshot
 ): GuildQuestDefinition {
     return {
+        ...workerQuestMessages(view, 'guild'),
         id: view.id,
         title: `Помочь вернуться к работе: ${view.workerName}`,
         description: `${view.workerName} не может работать в ${view.locationName}: мешает ${view.enemyName}. Принесите один трофей, сообщите о расчистке и дождитесь рабочего рейса.`,

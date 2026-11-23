@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveConstellationCardEffects } from '../src/game/constellationCardEffects'
+import {
+    resolveConstellationCardEffectRows,
+    resolveConstellationCardEffects,
+} from '../src/game/constellationCardEffects'
 import { fullConstellationCatalog } from '../src/game/constellationNodes'
+import { observedConstellationCardEffectRows } from '../src/game/constellationResultDisclosure'
 
 const base = [
     'Лечит вас или союзника.',
@@ -193,4 +197,38 @@ describe('passive card data and catalogue isolation', () => {
         expect(JSON.stringify(fullConstellationCatalog)).toBe(before)
         expect(all.size).toBe(fullConstellationCatalog.length)
     })
+})
+
+it('localizes every earned row and preserves the insight limit for both languages', () => {
+    for (const node of fullConstellationCatalog) {
+        const rows = resolveConstellationCardEffectRows(node.id, all) ?? []
+        expect(rows.map(([russian]) => russian)).toEqual(
+            resolveConstellationCardEffects(node.id, all) ?? []
+        )
+        for (const [, english] of rows) {
+            expect(english, node.id).not.toMatch(/\p{Script=Cyrillic}/u)
+        }
+    }
+    const learned = new Set(['blade.root', 'blade.insight1'])
+    expect(observedConstellationCardEffectRows('blade.root', learned)).toEqual([
+        ['Урон клинка увеличен на 10%.', 'Blade damage increases by 10%.'],
+    ])
+    expect(
+        observedConstellationCardEffectRows('blade.damage2', learned)
+    ).toBeUndefined()
+})
+
+it('formats exact combined ranks, time and fractional costs for both locales', () => {
+    expect(
+        resolveConstellationCardEffectRows('blade.wide_swing', all)?.[3]
+    ).toEqual([
+        'Сектор 150° с радиусом 1,1 обычной досягаемости; стены преграждают удар.',
+        'A 150° arc with a radius of 1.1 times normal reach. Walls block the strike.',
+    ])
+    expect(
+        resolveConstellationCardEffectRows('magic.chains', all)?.[1]
+    ).toEqual([
+        'Расходует 2,4 MP/с во время удержания.',
+        'Costs 2.4 MP/s while held.',
+    ])
 })

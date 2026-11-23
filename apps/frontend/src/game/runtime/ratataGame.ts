@@ -9,6 +9,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import { gameLocale } from '@/shared/lib/i18n'
+
 import { focusWorldInput } from '../ui/keyboardOwnership'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
@@ -29,6 +31,7 @@ import {
     disposeRuntimePresentation,
     initializeRuntimePresentation,
     type RuntimePresentation,
+    suspendRuntimePresentation,
 } from './runtimePresentationLifecycle'
 import {
     runtimeCanSelect,
@@ -91,17 +94,16 @@ export class RatataGame {
             isStopped: () => this.stopped,
             onError: options.onError,
             onEvent: (event) => this.handleServerEvent(event),
+            onSpeechTranslation: options.onSpeechTranslation,
+            getLocale: () => gameLocale.value,
             onSnapshot: (snapshot) => this.applySnapshot(snapshot),
             onPlantingPreview: (preview) => this.planting.receive(preview),
             onStatus: (status) => {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
                     this.maps.stop()
-                    this.view?.audio.suspendWorld()
-                    if (this.view) this.view.canvas.style.visibility = 'hidden'
+                    suspendRuntimePresentation(this.view)
                     this.chat.stopActivity()
-                    this.view?.sceneActors?.clearDamage()
-                    this.view?.sceneActors?.setInteractionTarget(undefined)
                     this.view?.sceneActors?.clearWaypoints()
                 }
                 options.onStatus(status)
@@ -117,7 +119,6 @@ export class RatataGame {
 
     public start(): Promise<void> {
         this.stopped = false
-        this.options.onStatus('Connecting')
         this.socket.connect(this.options.nickname, this.options.heroClass, this.options.createOnly)
         return Promise.resolve()
     }
@@ -257,10 +258,7 @@ export class RatataGame {
     private suspendMap(): void {
         this.chat.cancel()
         this.releaseInputs()
-        this.view?.sceneActors?.setInteractionTarget(undefined)
-        this.view?.audio?.suspendWorld()
-        this.view?.sceneActors?.clearDamage()
-        if (this.view) this.view.canvas.style.visibility = 'hidden'
+        suspendRuntimePresentation(this.view)
         this.options.onMapError?.(null)
         this.options.onStatus('Loading map')
     }

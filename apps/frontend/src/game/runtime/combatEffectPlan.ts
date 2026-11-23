@@ -14,6 +14,8 @@ import {
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
+import { abilityName, gameLocale, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import { combatHitLabel } from './combatHitLabel'
 import { BARRIER_COLOR, type EffectShape, FIRE_COLOR, SPARK_COLOR } from './effectGraphics'
 import { deityColors } from './prayerGraphics'
@@ -172,27 +174,34 @@ function prayerHit(
 export function eventCaption(event: GameEventPayload): string | undefined {
     const captions: Partial<Record<GameEventPayload['kind'], () => string | undefined>> = {
         heal: () => healingCaption(event),
-        absorb: () => (event.amount === undefined ? 'Барьер' : positiveAmount(event, 'Барьер −')),
-        miss: () => 'Промах',
-        parry: () => 'Парирование',
-        notice: () => (isFloatingNotice(event) ? event.text : undefined),
-        revive: () => 'Возрождение',
+        absorb: () =>
+            event.amount === undefined
+                ? tGame('game.canvas.barrier')
+                : positiveAmount(event, `${tGame('game.canvas.barrier')} −`),
+        miss: () => tGame('game.canvas.miss'),
+        parry: () => tGame('game.canvas.parry'),
+        notice: () =>
+            isFloatingNotice(event) ? tLocalized(event.textMessage, event.text ?? '') : undefined,
+        revive: () => tGame('game.canvas.revive'),
         status: () => statusCaption(event),
         cast: () => castCaption(event),
         world_damage: () =>
             event.amount !== undefined && event.amount <= 0 ? undefined : combatHitLabel(event),
-        attack: () => (event.abilityId === 'skeleton_strike' ? 'Костяной удар…' : undefined),
+        attack: () =>
+            event.abilityId === 'skeleton_strike' ? tGame('game.canvas.skeletonStrike') : undefined,
     }
     return captions[event.kind]?.()
 }
 function statusCaption(event: GameEventPayload): string | undefined {
-    if (event.statusId === 'stun') return 'СТАН'
+    if (event.statusId === 'stun') return tGame('game.canvas.stun')
     return event.statusId === 'defensive_stance' && event.expiresAt === undefined
-        ? 'Оборона'
+        ? tGame('game.canvas.defense')
         : undefined
 }
 function positiveAmount(event: GameEventPayload, prefix: string): string | undefined {
-    return event.amount && event.amount > 0 ? `${prefix}${event.amount}` : undefined
+    return event.amount && event.amount > 0
+        ? `${prefix}${event.amount.toLocaleString(gameLocale.value, { maximumFractionDigits: 2 })}`
+        : undefined
 }
 
 function attackCue(
@@ -232,15 +241,17 @@ function attackDuration(event: GameEventPayload, kind: EffectShape): number {
 }
 
 function healingCaption(event: GameEventPayload): string | undefined {
-    if (event.amount === undefined) return 'Восстановление'
-    const resources: Record<string, string> = { hp: 'HP', mana: 'Мана', energy: 'Энергия' }
-    return positiveAmount(event, `${resources[event.text ?? 'hp'] ?? 'HP'} +`)
+    if (event.amount === undefined) return tGame('game.canvas.recovery')
+    const resource =
+        event.text === 'mana' || event.text === 'energy' ? tGame(`game.canvas.${event.text}`) : 'HP'
+    return positiveAmount(event, `${resource} +`)
 }
 function castCaption(event: GameEventPayload): string | undefined {
-    if (event.phase === 'interrupted') return 'Прервано'
+    if (event.phase === 'interrupted') return tGame('game.canvas.interrupted')
     if (event.phase === 'completed' && isPrayerAction(event.abilityId))
-        return ABILITY_DEFINITIONS[event.abilityId].name
-    if (event.phase === 'started' && event.abilityId === 'skeleton_strike') return 'Костяной удар…'
+        return abilityName(event.abilityId)
+    if (event.phase === 'started' && event.abilityId === 'skeleton_strike')
+        return tGame('game.canvas.skeletonStrike')
     return undefined
 }
 

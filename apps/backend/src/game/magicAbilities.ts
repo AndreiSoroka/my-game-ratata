@@ -4,7 +4,7 @@ import {
     MAGIC_ABILITY_RULES,
 } from '@my-game-ratata/contracts'
 
-import { type AbilityContext, abilityNotice } from './abilityContext'
+import { type AbilityContext, authoredAbilityNotice } from './abilityContext'
 import { activeBarrier } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
@@ -51,7 +51,7 @@ export function castUtilitySpell(
         context.navigation.grid.tileWidth
     ).mana
     if (actor.mana < cost) {
-        return abilityNotice(actor, 'Недостаточно маны для заклинания.')
+        return authoredAbilityNotice(actor, 'combat.lowSpellMana')
     }
     ensureMagicCombat(actor, context)
     switch (id) {
@@ -95,7 +95,7 @@ function castChains(
 
 function beginCityPortal(actor: GameCharacter, context: AbilityContext) {
     if (context.canOpenPortal?.(actor, context.now) !== true) {
-        return abilityNotice(actor, 'Здесь нельзя открыть путь в город.')
+        return authoredAbilityNotice(actor, 'combat.cityPortalUnavailable')
     }
     return startMagicChannel(actor, {
         abilityId: 'city_portal',
@@ -155,7 +155,7 @@ function completePortal(
     if (opened === undefined) {
         return [
             ...cancelMagicChannel(actor, now),
-            ...abilityNotice(actor, 'Не удалось открыть портал.'),
+            ...authoredAbilityNotice(actor, 'combat.portalFailed'),
         ]
     }
     pay(actor, 'city_portal', cost, now)
@@ -169,7 +169,7 @@ function castBlink(
 ) {
     const { navigation, now } = context
     if (magicBlocksMovement(actor, now)) {
-        return abilityNotice(actor, 'Оковы не дают сместиться.')
+        return authoredAbilityNotice(actor, 'combat.chained')
     }
     const direction = facingDirection(actor.facing)
     const range =
@@ -180,7 +180,7 @@ function castBlink(
     })
     const destination = limitMovementByChains(actor, desired, now)
     if (distance(actor.position, destination) <= 1e-8) {
-        return abilityNotice(actor, 'Позади нет места для скачка.')
+        return authoredAbilityNotice(actor, 'combat.noBlinkSpace')
     }
     pay(actor, 'blink', cost, now)
     actor.position = destination

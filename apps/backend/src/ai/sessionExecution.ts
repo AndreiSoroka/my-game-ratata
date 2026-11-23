@@ -10,6 +10,8 @@ import { npcDecisionAudienceError } from './decisionAudience'
 import { npcDecisionExchangeError } from './decisionExchange'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { beginNpcGuide } from './guide'
+import { attributeNpcSpeech } from './memorySpeechAttribution'
+import { replySpeechLanguage } from './npcSpeechLanguage'
 import { reportNpcRequestStatus } from './requestStatus'
 import { enqueueNpcAiEvent, type NpcAiActorState } from './runtimeState'
 import {
@@ -52,7 +54,7 @@ export class NpcAiExecution {
             exchangeError === undefined
                 ? this.decide(state, actor, decision, now)
                 : { accepted: false, error: exchangeError, events: [] }
-        this.room.publishEvents(result.events)
+        this.publishResult(state, reply, decision, result, now)
         const id = this.id('action')
         if (result.accepted && decision.type === 'move_to') {
             reportNpcRequestStatus(
@@ -84,6 +86,29 @@ export class NpcAiExecution {
         if (reply.done && result.accepted) {
             this.finish(state, now, reply.waitMs)
         }
+    }
+
+    private publishResult(
+        state: NpcAiActorState,
+        reply: NpcAiReply,
+        decision: AgentDecision,
+        result: AgentDecisionResult,
+        now: number
+    ): void {
+        if (decision.type === 'speak') {
+            const language = replySpeechLanguage(this.room, state, reply, now)
+            const targetId = state.task?.requesterId ?? decision.targetId
+            for (const event of result.events) {
+                if (event.kind !== 'chat') {
+                    continue
+                }
+                event.language = language
+                if (targetId !== undefined) {
+                    attributeNpcSpeech(event, targetId)
+                }
+            }
+        }
+        this.room.publishEvents(result.events)
     }
 
     private guide(

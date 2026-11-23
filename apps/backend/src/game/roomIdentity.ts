@@ -1,6 +1,7 @@
 import {
     CONTRACT_PROTOCOL_VERSION,
     type GameEventPayload,
+    type GameLocale,
     type HeroClass,
     type MapSummary,
     type WorldSnapshot,
@@ -43,6 +44,7 @@ interface JoinContext {
     nicknames: Map<string, string>
     snapshotFor: (character: GameCharacter) => WorldSnapshot
     closeConversations?: (characterId: string) => void
+    onJoined?: (socket: RoomSocket, locale: GameLocale) => void
     tickMs: number
 }
 
@@ -57,11 +59,14 @@ export function createRoomJoiner(
         nickname: string,
         archetype: GameCharacter['archetype'],
         heroClass?: HeroClass,
-        createOnly?: boolean
+        createOnly?: boolean,
+        locale?: GameLocale
     ): void =>
         joinRoom(
             {
                 ...context,
+                onJoined: (socket, locale) =>
+                    context.room.speechTranslations.joined(socket, locale),
                 closeChestViews: (id) => context.world().closeChestViews(id),
                 mapFor: (character) =>
                     context.room.navigationFor(character).summary,
@@ -76,7 +81,8 @@ export function createRoomJoiner(
             nickname,
             archetype,
             heroClass,
-            createOnly
+            createOnly,
+            locale
         )
 }
 
@@ -100,7 +106,8 @@ export function joinRoom(
     nickname: string,
     archetype: GameCharacter['archetype'],
     heroClass: HeroClass | undefined,
-    createOnly?: boolean
+    createOnly?: boolean,
+    locale: GameLocale = 'ru'
 ): void {
     const nicknameKey = normalizeNickname(nickname)
     if (createOnlyNameTaken(context.characters, nicknameKey, createOnly)) {
@@ -123,23 +130,7 @@ export function joinRoom(
         )
         return
     }
-    const existingId = context.connections.get(ws)
-    if (
-        existingId !== undefined &&
-        !isPlayerConnected(context.connections, existingId, ws)
-    ) {
-        context.closeChestViews?.(existingId)
-        context.closeConversations?.(existingId)
-        const existingCharacter = context.characters.get(existingId)
-        stopAndPublish(existingCharacter, context.connections.keys())
-        if (
-            existingCharacter !== undefined &&
-            existingId !== existingPlayerId
-        ) {
-            existingCharacter.connected = false
-            setCharacterControlSource(existingCharacter, 'script')
-        }
-    }
+    releasePreviousIdentity(context, ws, existingPlayerId)
     const existingCharacter =
         existingPlayerId === undefined
             ? undefined
@@ -154,6 +145,7 @@ export function joinRoom(
     stopAndPublish(character, context.connections.keys())
     context.controllers.set(character.id, new NetworkPlayerController())
     context.connections.set(ws, character.id)
+    context.onJoined?.(ws, locale)
     send(ws, {
         map: context.mapFor(character),
         playerId: character.id,
@@ -166,6 +158,28 @@ export function joinRoom(
         actorId: character.id,
         kind: 'join',
     })
+}
+
+function releasePreviousIdentity(
+    context: JoinContext,
+    ws: RoomSocket,
+    nextPlayerId: string | undefined
+): void {
+    const existingId = context.connections.get(ws)
+    if (
+        existingId === undefined ||
+        isPlayerConnected(context.connections, existingId, ws)
+    ) {
+        return
+    }
+    context.closeChestViews?.(existingId)
+    context.closeConversations?.(existingId)
+    const character = context.characters.get(existingId)
+    stopAndPublish(character, context.connections.keys())
+    if (character !== undefined && existingId !== nextPlayerId) {
+        character.connected = false
+        setCharacterControlSource(character, 'script')
+    }
 }
 
 function createOnlyNameTaken(

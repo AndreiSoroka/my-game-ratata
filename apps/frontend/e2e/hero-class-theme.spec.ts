@@ -128,7 +128,7 @@ async function inspectWorldFrames(
     )
     await menu.getByRole('button', { name: 'Инвентарь · I', exact: true }).click()
 
-    const inventory = page.getByRole('dialog', { name: 'Inventory and equipment' })
+    const inventory = page.getByRole('dialog', { name: 'Инвентарь и снаряжение' })
     await expect(inventory).toBeVisible()
     const inventoryFrame = inventory.locator(
         '.inventory-overlay__equipment > .game-frame > .game-frame__theme-border'

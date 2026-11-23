@@ -1,6 +1,8 @@
 import type { FarmPlotSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, ImageSource, Label, SpriteSheet, vec } from 'excalibur'
 
+import { tGame } from '@/shared/lib/i18n'
+
 interface FarmView {
     actor: Actor
     label: Label
@@ -35,10 +37,10 @@ export class FarmViews {
             view.actor.graphics.isVisible = plot.phase !== 'bare'
             view.label.text =
                 plot.phase === 'bare'
-                    ? 'Грядка · посев'
+                    ? tGame('game.canvas.barePlot')
                     : plot.phase === 'ripe'
-                      ? 'Пшеница · созрела'
-                      : `Пшеница · ${String(Math.ceil(remaining / 1000))} сек.`
+                      ? tGame('game.canvas.ripeWheat')
+                      : tGame('game.canvas.growingWheat', { seconds: Math.ceil(remaining / 1000) })
             view.label.color = Color.fromHex(plot.phase === 'ripe' ? '#ffe19a' : '#d2dec4')
         }
     }

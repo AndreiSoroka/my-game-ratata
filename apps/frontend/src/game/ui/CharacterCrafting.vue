@@ -6,17 +6,44 @@ import type {
     ClientMessage,
 } from '@my-game-ratata/contracts'
 
+import { itemName, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
 import GameButton from './primitives/GameButton.vue'
 
 const props = defineProps<{ adventure: AdventureSnapshot; alive: boolean }>()
 defineEmits<{ command: [message: ClientMessage] }>()
 const materials: { id: AdventureMaterial; label: string }[] = [
-    { id: 'herbs', label: 'Травы' },
-    { id: 'fiber', label: 'Волокно' },
-    { id: 'scrap', label: 'Металл' },
-    { id: 'wood', label: 'Древесина' },
-    { id: 'grain', label: 'Зерно пшеницы' },
+    {
+        id: 'herbs',
+        get label() {
+            return tGame('game.character.herbs')
+        },
+    },
+    {
+        id: 'fiber',
+        get label() {
+            return tGame('game.character.fiber')
+        },
+    },
+    {
+        id: 'scrap',
+        get label() {
+            return tGame('game.character.metal')
+        },
+    },
+    {
+        id: 'wood',
+        get label() {
+            return tGame('game.character.timber')
+        },
+    },
+    {
+        id: 'grain',
+        get label() {
+            return tGame('game.character.wheatGrain')
+        },
+    },
 ]
 
 function costLabel(recipe: AdventureRecipe): string {
@@ -37,7 +64,7 @@ function canCraft(recipe: AdventureRecipe): boolean {
 </script>
 
 <template>
-    <section class="character-crafting" aria-label="Материалы и ремесло">
+    <section class="character-crafting" :aria-label="tGame('game.character.materialsAndCrafting')">
         <dl class="crafting-materials">
             <template v-for="material in materials" :key="material.id">
                 <dt>{{ material.label }}</dt>
@@ -45,24 +72,29 @@ function canCraft(recipe: AdventureRecipe): boolean {
             </template>
         </dl>
         <p class="crafting-hint">
-            Ищите ресурсы в мире. Подойдите ближе и соберите их — первые вещи можно сделать самому.
+            {{ tGame('game.character.lookForResourcesInWorld') }}
         </p>
         <article v-for="recipe in adventure.recipes" :key="recipe.id" class="crafting-recipe">
             <div>
-                <strong>{{ recipe.label }}</strong>
+                <strong>{{ tLocalized(recipe.labelMessage, recipe.label) }}</strong>
                 <p>{{ costLabel(recipe) }}</p>
             </div>
             <GameButton
                 :disabled="!canCraft(recipe)"
                 @click="$emit('command', { recipeId: recipe.id, type: 'craft' })"
             >
-                Создать
+                {{ tGame('game.character.craft') }}
             </GameButton>
         </article>
-        <section v-if="adventure.craftOrders?.length" aria-label="Заказы ремесленникам">
-            <h3>Заказы ремесленникам</h3>
+        <section
+            v-if="adventure.craftOrders?.length"
+            :aria-label="tGame('game.quests.workshopOrders')"
+        >
+            <h3>{{ tGame('game.quests.workshopOrders') }}</h3>
             <p v-for="order in adventure.craftOrders" :key="order.id">
-                <strong>{{ order.label }} — {{ craftOrderStatusLabels[order.status] }}</strong
+                <strong
+                    >{{ itemName(order.itemId) }} —
+                    {{ craftOrderStatusLabels[order.status] }}</strong
                 ><br /><small>{{ craftOrderPaymentText(order) }}</small>
             </p>
         </section>

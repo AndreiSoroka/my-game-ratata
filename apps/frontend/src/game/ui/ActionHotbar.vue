@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-    ABILITY_DEFINITIONS,
     type CharacterSnapshot,
     type ClientMessage,
     type ProjectilePath,
@@ -9,6 +8,7 @@ import {
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { hotbarGlyphs as glyphs, type QuickAction, QuickActionBar } from '@/entities/quick-actions'
+import { abilityName, tGame } from '@/shared/lib/i18n'
 import { HudFrame, UiButton, type UiButtonColors } from '@/shared/ui/common'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
@@ -83,7 +83,7 @@ function describeAction(binding: Binding | null, index: number): QuickAction | n
         active: isActive,
         repeat:
             isActive && !props.player.combat?.defensiveStance
-                ? (waiting.value ?? 'Автоповтор включён')
+                ? (waiting.value ?? tGame('game.world.autoRepeatEnabled'))
                 : undefined,
         disabled: Boolean(objectTargetUnavailable(binding, props)),
         unavailable: reason !== undefined,
@@ -168,15 +168,16 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                     class="hotbar-context__line"
                     role="status"
                 >
-                    Глухая оборона · Движение, атаки и колдовство недоступны
+                    {{ tGame('game.world.defensiveStanceMovementAttacksAnd') }}
                 </HudFrame>
                 <HudFrame
                     v-if="player.combat?.combo?.stacks"
                     class="hotbar-context__line"
                     role="status"
-                    aria-label="Серия ударов"
+                    :aria-label="tGame('game.world.strikeCombo')"
                 >
-                    Серия ударов: {{ player.combat.combo.stacks }} / {{ player.combat.combo.limit }}
+                    {{ tGame('game.world.strikeComboActionHotbar') }}
+                    {{ player.combat.combo.stacks }} / {{ player.combat.combo.limit }}
                 </HudFrame>
                 <slot name="guide" />
             </div>
@@ -201,12 +202,12 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
             class="hotbar-picker"
             role="dialog"
             aria-modal="true"
-            :aria-label="`Назначить слот ${editing + 1}`"
+            :aria-label="tGame('game.world.assignSlotNumber', { number: editing + 1 })"
             @keydown.stop="dialogActionKeys($event, picker, close)"
             @keyup.stop
         >
             <HudFrame>
-                <h2>Слот {{ editing + 1 }}</h2>
+                <h2>{{ tGame('game.world.slot') }} {{ editing + 1 }}</h2>
                 <div class="hotbar-picker__actions">
                     <UiButton
                         v-for="ability in known"
@@ -217,7 +218,7 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                         data-dialog-action
                         @click="assign({ kind: 'ability', id: ability })"
                     >
-                        {{ glyphs[ability] }} {{ ABILITY_DEFINITIONS[ability].name }}
+                        {{ glyphs[ability] }} {{ abilityName(ability) }}
                         <small
                             >{{ abilityUsage(player, ability).mana }} MP ·
                             {{ abilityUsage(player, ability).energy }} EN</small
@@ -239,7 +240,7 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                         data-dialog-action
                         @click="assign({ kind: 'item', id: 'food' })"
                     >
-                        Яблоко · {{ count }}
+                        {{ tGame('game.world.apple') }} {{ count }}
                     </UiButton>
                     <UiButton
                         appearance="ghost"
@@ -248,7 +249,7 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                         data-dialog-action
                         @click="assign({ kind: 'item', id: 'sapling' })"
                     >
-                        Саженец · {{ saplings }}
+                        {{ tGame('game.world.sapling') }} {{ saplings }}
                     </UiButton>
                     <UiButton
                         appearance="ghost"
@@ -257,7 +258,7 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                         data-dialog-action
                         @click="assign(null)"
                     >
-                        Очистить слот
+                        {{ tGame('game.world.clearSlot') }}
                     </UiButton>
                     <UiButton
                         appearance="ghost"
@@ -266,7 +267,7 @@ defineExpose({ activate, edit, assignItem, resetGesture, hasPendingAttack })
                         data-dialog-action
                         @click="close"
                     >
-                        Закрыть · Esc
+                        {{ tGame('game.world.closeEsc') }}
                     </UiButton>
                 </div>
             </HudFrame>

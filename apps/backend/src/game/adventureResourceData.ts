@@ -2,10 +2,11 @@ import {
     type AdventureMaterial,
     type AdventureRecipe,
     type AdventureResourceNode,
+    authoredMessage,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
-export const adventureRecipes: AdventureRecipe[] = [
+const recipes: AdventureRecipe[] = [
     {
         cost: { stone: 2, wood: 1 },
         id: 'stone_axe',
@@ -49,6 +50,11 @@ export const adventureRecipes: AdventureRecipe[] = [
         label: 'Сделать кирку',
     },
 ]
+
+export const adventureRecipes = recipes.map((recipe) => ({
+    ...recipe,
+    labelMessage: authoredMessage(`recipe.${recipe.id}`),
+}))
 
 export const adventureMaterialLabels: Record<AdventureMaterial, string> = {
     fiber: 'волокно',

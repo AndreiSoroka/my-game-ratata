@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiInput, type UiInputHandle } from '@/shared/ui/common'
 
 defineOptions({ inheritAttrs: false })
@@ -27,8 +28,8 @@ onMounted(() => {
     <div class="chat-input">
         <UiInput
             ref="input"
-            aria-label="Сообщение в чат"
-            placeholder="Напишите сообщение…"
+            :aria-label="tGame('game.conversation.chatMessage')"
+            :placeholder="tGame('game.conversation.writeMessage')"
             autocomplete="off"
             enterkeyhint="send"
             v-bind="$attrs"

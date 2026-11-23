@@ -9,6 +9,7 @@ import type {
 import { computed, ref, watch } from 'vue'
 
 import { QuestOfferPanel } from '@/entities/quests'
+import { tGame } from '@/shared/lib/i18n'
 
 import PrivateConversation from './PrivateConversation.vue'
 import QuestRewardChoice from './QuestRewardChoice.vue'
@@ -49,7 +50,12 @@ function answer(accept: boolean): void {
 }
 </script>
 <template>
-    <SocialWindow title="Предложение поручения" modal layout="quest" @close="answer(false)">
+    <SocialWindow
+        :title="tGame('game.quests.questOffer')"
+        modal
+        layout="quest"
+        @close="answer(false)"
+    >
         <QuestOfferPanel
             :confirm-disabled="occupied || expired"
             @confirm="answer(true)"
@@ -60,18 +66,20 @@ function answer(accept: boolean): void {
             </p>
             <QuestTerms :offer="offer" :characters="characters" />
             <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
-                Заказчик изменил награду. Проверьте текущие условия перед принятием.
+                {{ tGame('game.quests.questGiverChangedRewardReview') }}
             </p>
             <QuestRewardChoice
                 v-if="offer.rewardGold > 0"
                 v-model="rewardMode"
                 appearance="light"
             />
-            <p class="social-muted">Одновременно можно выполнять один договор.</p>
+            <p class="social-muted">{{ tGame('game.quests.youCanHaveOneActive') }}</p>
             <p v-if="occupied" class="social-status" role="status">
-                Сначала завершите или отмените текущий договор.
+                {{ tGame('game.quests.completeOrCancelYourCurrent') }}
             </p>
-            <p v-if="expired" class="social-status" role="status">Предложение устарело.</p>
+            <p v-if="expired" class="social-status" role="status">
+                {{ tGame('game.quests.offerExpired') }}
+            </p>
             <PrivateConversation
                 v-if="conversation?.partnerId === offer.issuerId"
                 :conversation="conversation"

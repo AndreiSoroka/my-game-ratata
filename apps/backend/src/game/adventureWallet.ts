@@ -1,6 +1,6 @@
 import { createAdventureState, type PlayerAdventure } from './adventureState'
 import { creditWallet, drainWallet, spendWallet } from './corpseWallet'
-import { setNotice } from './notices'
+import { setAuthoredNotice } from './notices'
 import { createQuestGoldAwarder } from './questPayout'
 export function grantAdventureGoldOnce(
     state: PlayerAdventure,
@@ -17,7 +17,7 @@ export function grantAdventureGoldOnce(
     }
     state.rewardKeys.add(rewardId)
     state.gold += amount
-    setNotice(state, `Гильдия выплатила ${String(amount)} золотых.`)
+    setAuthoredNotice(state, 'notice.guildPayment', { amount })
     return true
 }
 

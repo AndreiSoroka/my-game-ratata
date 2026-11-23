@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot } from '@my-game-ratata/contracts'
 
+import { tGame, tLocalized } from '@/shared/lib/i18n'
+
 defineProps<{
     node: ConstellationNodeSnapshot
     color: string
@@ -30,7 +32,11 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
         :role="interactive ? 'button' : undefined"
         :tabindex="interactive ? (tabStop ? 0 : -1) : undefined"
         :aria-hidden="!interactive || undefined"
-        :aria-label="node.unlocked && node.name ? node.name : 'Неизвестно'"
+        :aria-label="
+            node.unlocked && node.name
+                ? tLocalized(node.nameMessage, node.name)
+                : tGame('game.knowledge.unknown')
+        "
         :aria-pressed="interactive ? (enabled ?? selected) : undefined"
         :aria-current="selected ? 'true' : undefined"
         :data-enabled="enabled"

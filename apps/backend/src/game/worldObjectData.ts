@@ -1,10 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type {
-    AuthoredContainerDefinition,
-    WorldObjectBounds,
-    WorldObjectKind,
+import {
+    type AuthoredContainerDefinition,
+    authoredMessage,
+    type AuthoredTextKey,
+    type LocalizedMessage,
+    type WorldObjectBounds,
+    type WorldObjectKind,
+    worldSignMessages,
+    worldSignPresentation,
 } from '@my-game-ratata/contracts'
 
 import { readAuthoredContainer } from './containerData'
@@ -15,7 +20,9 @@ export interface WorldObjectDefinition {
     id: string
     kind: WorldObjectKind
     name: string
+    nameMessage?: LocalizedMessage
     text: string
+    textMessage?: LocalizedMessage
     locationId: string
     bounds: WorldObjectBounds
     interactionAreas?: WorldObjectBounds[]
@@ -79,13 +86,21 @@ export function readWorldObjects(
             object,
             object.type
         )
+        const name = object.name ?? ''
+        const presentation = worldObjectPresentation(
+            object,
+            locationId,
+            name,
+            text
+        )
         return [
             {
                 id,
                 text,
                 locationId,
                 kind: object.type,
-                name: object.name ?? '',
+                name,
+                ...presentation,
                 ...(interactionAreas === undefined ? {} : { interactionAreas }),
                 bounds: {
                     x: object.x,
@@ -96,6 +111,39 @@ export function readWorldObjects(
             },
         ]
     })
+}
+
+const objectNames: Readonly<Partial<Record<string, AuthoredTextKey>>> = {
+    Колодец: 'world.well',
+    'Чистая вода': 'world.water',
+    'Поилка с водой': 'world.trough',
+    'Вода у берега': 'world.pond',
+    'Колокол памяти': 'world.bell',
+}
+
+function worldObjectPresentation(
+    object: MapObject,
+    locationId: string,
+    name: string,
+    text: string
+) {
+    if (object.type !== 'sign') {
+        const key = Object.hasOwn(objectNames, name)
+            ? objectNames[name]
+            : undefined
+        return key === undefined ? {} : { nameMessage: authoredMessage(key) }
+    }
+    const nameKey = propertyValue(object, 'nameMessageKey')
+    const textKey = propertyValue(object, 'textMessageKey')
+    if (
+        typeof nameKey === 'string' &&
+        worldSignMessages[nameKey]?.[0] === name &&
+        typeof textKey === 'string' &&
+        worldSignMessages[textKey]?.[0] === text
+    ) {
+        return { nameMessage: { key: nameKey }, textMessage: { key: textKey } }
+    }
+    return worldSignPresentation(locationId, name, text)
 }
 
 export function readWorldContainers(

@@ -2,6 +2,7 @@
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { useDarkPanelTheme } from '@/shared/ui/theme'
@@ -168,22 +169,16 @@ function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
     } else cameraKey(event)
 }
 function cameraKey(event: KeyboardEvent): void {
-    switch (event.code) {
-        case 'Equal':
-        case 'NumpadAdd':
-            event.preventDefault()
-            scale(1.2)
-            break
-        case 'Minus':
-        case 'NumpadSubtract':
-            event.preventDefault()
-            scale(1 / 1.2)
-            break
-        case 'Home':
-            event.preventDefault()
-            resetSky()
-            break
+    if (event.code === 'Home') {
+        event.preventDefault()
+        resetSky()
+        return
     }
+    const zoomIn = event.code === 'Equal' || event.code === 'NumpadAdd'
+    const zoomOut = event.code === 'Minus' || event.code === 'NumpadSubtract'
+    if (!zoomIn && !zoomOut) return
+    event.preventDefault()
+    scale(zoomIn ? 1.2 : 1 / 1.2)
 }
 </script>
 
@@ -194,25 +189,25 @@ function cameraKey(event: KeyboardEvent): void {
         :color="theme?.accent ?? 'var(--ui-dark-panel-border)'"
         :border-width="5"
     >
-        <div class="constellation-map__tools" aria-label="Масштаб небосвода">
+        <div class="constellation-map__tools" :aria-label="tGame('game.knowledge.skyZoom')">
             <UiButton
                 appearance="panel"
                 :colors="hudPanelButtonColors"
-                aria-label="Приблизить небосвод"
+                :aria-label="tGame('game.knowledge.zoomInOnSky')"
                 @click="scale(1.25)"
                 >+</UiButton
             >
             <UiButton
                 appearance="panel"
                 :colors="hudPanelButtonColors"
-                aria-label="Отдалить небосвод"
+                :aria-label="tGame('game.knowledge.zoomOutFromSky')"
                 @click="scale(0.8)"
                 >−</UiButton
             >
             <UiButton
                 appearance="panel"
                 :colors="hudPanelButtonColors"
-                aria-label="Показать весь небосвод"
+                :aria-label="tGame('game.knowledge.fitEntireSky')"
                 @click="resetSky"
                 >⌖</UiButton
             >
@@ -222,7 +217,7 @@ function cameraKey(event: KeyboardEvent): void {
             :viewBox="viewBox"
             class="constellation-map__sky"
             role="group"
-            aria-label="Созвездия развития"
+            :aria-label="tGame('game.knowledge.progressionConstellations')"
             @wheel.prevent="scale($event.deltaY < 0 ? 1.1 : 1 / 1.1)"
             @pointerdown="down"
             @pointermove="move"
@@ -258,7 +253,9 @@ function cameraKey(event: KeyboardEvent): void {
                 stroke-width="1.4"
                 vector-effect="non-scaling-stroke"
             >
-                <title v-if="edge.crossLink">Дополнительная обязательная связь</title>
+                <title v-if="edge.crossLink">
+                    {{ tGame('game.knowledge.additionalRequiredConnection') }}
+                </title>
             </polyline>
             <ConstellationStar
                 v-for="node in displayedSky.nodes"
@@ -293,9 +290,9 @@ function cameraKey(event: KeyboardEvent): void {
             </foreignObject>
         </svg>
         <p class="constellation-map__help">
-            Перетаскивайте небосвод · + / − масштаб · клик и стрелки выбирают звёзды
+            {{ tGame('game.knowledge.dragPanSkyZoomClick') }}
             <template v-if="enabledStarIds !== undefined">
-                · Пробел включает или отключает</template
+                {{ tGame('game.knowledge.spaceTogglesSelectedStar') }}</template
             >
         </p>
     </FantasyBorder>

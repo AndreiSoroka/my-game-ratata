@@ -56,9 +56,9 @@ it('cycles non-hostile targets and enemies separately and toggles self with Q', 
         await wrapper.vm.$nextTick()
         expect(wrapper.vm.selectedKey).toBe('item:apple')
         expect(wrapper.vm.selectedId).toBeUndefined()
-        expect(wrapper.get('.hotbar').attributes('data-selected-target-name')).toBe('Apple')
+        expect(wrapper.get('.hotbar').attributes('data-selected-target-name')).toBe('Яблоко')
         expect(game.setCombatTarget).toHaveBeenLastCalledWith(
-            expect.objectContaining({ key: 'item:apple', name: 'Apple' })
+            expect.objectContaining({ key: 'item:apple', name: 'Яблоко' })
         )
         press('KeyE')
         await wrapper.vm.$nextTick()

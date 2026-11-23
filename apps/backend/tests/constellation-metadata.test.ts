@@ -100,6 +100,7 @@ describe('earned constellation metadata', () => {
                 'kind',
                 'effectType',
                 'effects',
+                'effectMessages',
             ]) {
                 expect(Object.hasOwn(node, field)).toBe(false)
             }
@@ -124,6 +125,7 @@ describe('earned constellation metadata', () => {
         expect(
             before.nodes.find((node) => node.id === fireballId)
         ).toMatchObject({ unlocked: false })
+        expect(JSON.stringify(before)).not.toContain('Firebolt')
         expect(
             before.nodes.find((node) => node.id === greaterId)
         ).toBeUndefined()
@@ -135,10 +137,13 @@ describe('earned constellation metadata', () => {
             unlocked: true,
             effectType: 'active',
             name: 'Огненная стрела',
+            nameMessage: { params: { text: 'Firebolt' } },
         })
         const next = after.nodes.find((node) => node.id === greaterId)
         expect(next).toMatchObject({ unlocked: false })
         expect(next?.name).toBeUndefined()
+        expect(next?.nameMessage).toBeUndefined()
+        expect(next?.descriptionMessage).toBeUndefined()
         expect(next?.kind).toBeUndefined()
         expect(next?.effectType).toBeUndefined()
     })

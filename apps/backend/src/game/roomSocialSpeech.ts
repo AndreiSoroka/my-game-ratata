@@ -35,7 +35,7 @@ export function handleSocialSpeech(
         }
         return true
     }
-    return handleAiCompanionRequest(ai, actor, message, now, notice)
+    return handleAiCompanionRequest(room, ai, actor, message, now, notice)
 }
 
 function sayPublic(
@@ -84,6 +84,7 @@ function sayPublic(
 }
 
 function handleAiCompanionRequest(
+    room: GameRoom,
     ai: NpcAiCoordinator | undefined,
     actor: GameCharacter,
     message: ClientMessage,
@@ -112,15 +113,26 @@ function handleAiCompanionRequest(
         }
         return true
     }
-    const requests = {
-        follow: 'Пойдём вместе: следуй за мной, если согласишься.',
-        guard: 'Пожалуйста, охраняй это место, если согласишься.',
-        wait:
-            message.waitMode === 'until_return'
-                ? 'Подожди здесь до моего возвращения, затем снова следуй за мной, если согласишься.'
-                : 'Подожди здесь, пока я не попрошу идти дальше, если согласишься.',
-        help: 'Пожалуйста, помоги мне в бою, если ты согласишься.',
-    }
+    const language = room.localeFor(actor.id)
+    const untilReturn = message.waitMode === 'until_return'
+    const requests =
+        language === 'en'
+            ? {
+                  follow: 'Come with me, if you are willing to follow.',
+                  guard: 'Please guard this place if you are willing.',
+                  wait: untilReturn
+                      ? 'Wait here until I return, then follow me again if you are willing.'
+                      : 'Wait here until I ask you to move on, if you are willing.',
+                  help: 'Please help me in combat if you are willing.',
+              }
+            : {
+                  follow: 'Пойдём вместе: следуй за мной, если согласишься.',
+                  guard: 'Пожалуйста, охраняй это место, если согласишься.',
+                  wait: untilReturn
+                      ? 'Подожди здесь до моего возвращения, затем снова следуй за мной, если согласишься.'
+                      : 'Подожди здесь, пока я не попрошу идти дальше, если согласишься.',
+                  help: 'Пожалуйста, помоги мне в бою, если ты согласишься.',
+              }
     const text = requests[message.request]
     const event = createSpeechEvent(actor, text)
     ai.hear(
@@ -130,6 +142,7 @@ function handleAiCompanionRequest(
             id: `request:${actor.id}:${String(event.speechId)}`,
             senderId: actor.id,
             text,
+            language,
             channel: 'whisper',
             locationId: actor.locationId,
             position: { ...actor.position },

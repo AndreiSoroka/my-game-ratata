@@ -59,6 +59,7 @@ export interface WorkerActivitySnapshot {
         | 'reaction'
         | 'scenario'
     text: string
+    textMessage?: import('./locales').LocalizedMessage
     intent?:
         | 'work'
         | 'sow'

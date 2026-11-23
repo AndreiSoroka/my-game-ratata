@@ -5,6 +5,8 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 export type ActiveQuestEntry =
     | { key: string; source: 'story'; quest: AdventureQuestSnapshot; trophies: number }
     | { key: string; source: 'guild'; quest: GuildQuestSnapshot }
@@ -45,8 +47,8 @@ function npcQuests(snapshot: WorldSnapshot): ActiveQuestEntry[] {
 
 export function questStatusLabel(status: string): string {
     return status === 'ready'
-        ? 'Готово к сдаче'
+        ? tGame('game.quests.readyToTurnIn')
         : status === 'reward_missing'
-          ? 'Обещанная награда недоступна'
-          : 'Выполняется'
+          ? tGame('game.quests.rewardMissing')
+          : tGame('game.quests.inProgress')
 }

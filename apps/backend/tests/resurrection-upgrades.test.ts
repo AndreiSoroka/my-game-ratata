@@ -229,6 +229,7 @@ for (const withContext of [false, true]) {
                     audienceIds: [f.caster.id],
                     abilityId: 'pray_grave',
                     text: 'Божество не ответило',
+                    textMessage: { key: 'authored.combat.prayerUnanswered' },
                 },
             ])
             expect(f.target.alive).toBe(false)

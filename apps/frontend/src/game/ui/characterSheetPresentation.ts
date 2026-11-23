@@ -1,7 +1,9 @@
 import type { ObservedResource, ObservedValue } from '@my-game-ratata/contracts'
 
+import { formatGameNumber, tGame } from '@/shared/lib/i18n'
+
 function number(value: number): string {
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)
+    return formatGameNumber(value, { maximumFractionDigits: 2 })
 }
 
 export function observedText(value: ObservedValue, multiplier = 1): string {
@@ -13,7 +15,7 @@ export function observedText(value: ObservedValue, multiplier = 1): string {
 export function observedResourceText(resource: ObservedResource): string {
     return resource.hasCapacity
         ? `${observedText(resource.current)} / ${observedText(resource.max)}`
-        : 'Нет'
+        : tGame('game.character.none')
 }
 
 export function observedDamageText(damage: { min: ObservedValue; max: ObservedValue }): string {

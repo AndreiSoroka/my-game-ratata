@@ -2,6 +2,8 @@
 import type { ClientMessage, WhisperSnapshot } from '@my-game-ratata/contracts'
 import { nextTick, onMounted, ref, watch } from 'vue'
 
+import { characterName, gameLocale, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
@@ -67,25 +69,33 @@ watch(
 onMounted(bottom)
 </script>
 <template>
-    <section class="private-conversation game-frame-host" aria-label="Приватный разговор">
+    <section
+        class="private-conversation game-frame-host"
+        :aria-label="tGame('game.chat.privateConversation')"
+    >
         <GameFrame variant="panel" />
         <header class="private-conversation__header">
-            <span title="Реплики слышите только вы и собеседник">Шёпот</span>
+            <span :title="tGame('game.chat.privateAudience')">{{
+                tGame('game.chat.whisper')
+            }}</span>
             <GameButton
                 v-if="unread"
                 type="button"
                 class="private-conversation__unread"
                 @click="bottom"
             >
-                Новые сообщения ↓
+                {{ tGame('game.chat.privateUnread') }}
             </GameButton>
-            <small v-if="!conversation.available">Собеседник недоступен</small>
+            <small v-if="!conversation.available">{{
+                tGame('game.chat.privateUnavailable')
+            }}</small>
         </header>
         <ol
             ref="history"
             class="private-conversation__history"
             aria-live="polite"
-            aria-label="История шёпота"
+            aria-relevant="additions"
+            :aria-label="tGame('game.chat.privateHistory')"
             tabindex="0"
             @scroll="observeScroll"
         >
@@ -95,12 +105,26 @@ onMounted(bottom)
                 :class="{ 'private-conversation__own': message.senderId === playerId }"
             >
                 <strong>{{
-                    message.senderId === playerId ? 'Вы' : conversation.partnerName
+                    message.senderId === playerId
+                        ? tGame('game.chat.you')
+                        : characterName(conversation.partnerId, conversation.partnerName)
                 }}</strong>
-                <span>{{ message.text }}</span>
+                <span
+                    :lang="
+                        message.translation?.locale ??
+                        (message.textMessage ? gameLocale : message.language)
+                    "
+                    >{{
+                        message.translation?.text ?? tLocalized(message.textMessage, message.text)
+                    }}</span
+                >
+                <details v-if="message.translation">
+                    <summary>{{ tGame('game.chat.original') }}</summary>
+                    <span :lang="message.language">{{ message.text }}</span>
+                </details>
             </li>
             <li v-if="!conversation.messages.length" class="private-conversation__empty">
-                Пока нет сообщений.
+                {{ tGame('game.chat.privateEmpty') }}
             </li>
         </ol>
         <form
@@ -110,13 +134,13 @@ onMounted(bottom)
             @keyup.enter.stop
         >
             <label class="private-conversation__label">
-                <span class="sr-only">Сказать шёпотом</span>
+                <span class="sr-only">{{ tGame('game.chat.privateInput') }}</span>
                 <GameInput
                     v-model="text"
                     maxlength="400"
                     autocomplete="off"
                     :disabled="!conversation.available"
-                    placeholder="Сообщение собеседнику"
+                    :placeholder="tGame('game.chat.privatePlaceholder')"
                     @input="typing.input(text)"
                     @blur="typing.stop"
                 />
@@ -124,8 +148,8 @@ onMounted(bottom)
             <GameButton
                 type="submit"
                 :disabled="!conversation.available || !text.trim()"
-                aria-label="Отправить"
-                title="Отправить · Enter"
+                :aria-label="tGame('game.chat.privateSend')"
+                :title="tGame('game.chat.privateSendKey')"
             >
                 ↗
             </GameButton>

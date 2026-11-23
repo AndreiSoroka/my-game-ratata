@@ -198,7 +198,7 @@ async function checkInventoryMenu(page: Page) {
     await page.keyboard.press('Escape')
     const menu = page.getByRole('dialog', { name: 'Игровое меню' })
     const inventoryEntry = menu.getByRole('button', { name: 'Инвентарь · I', exact: true })
-    const inventory = page.getByRole('dialog', { name: 'Inventory and equipment' })
+    const inventory = page.getByRole('dialog', { name: 'Инвентарь и снаряжение' })
     await expect(inventoryEntry).toBeVisible()
     await page.keyboard.press('KeyI')
     await expect(menu).toHaveCount(0)

@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import {
-    HERO_BACKGROUND_DEFINITIONS,
-    type HeroClass,
-    MASTERY_NAMES,
-} from '@my-game-ratata/contracts'
+import { HERO_BACKGROUND_DEFINITIONS, type HeroClass } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
+
+import { backgroundName, masteryName, tGame } from '@/shared/lib/i18n'
 
 import GameFrame from './primitives/GameFrame.vue'
 
@@ -23,16 +21,16 @@ const resourceBonuses = computed(() => {
     const bonus = background.value?.resourceBonus
     if (!bonus) return []
     return [
-        bonus.health ? `+${bonus.health} к здоровью` : '',
-        bonus.energy ? `+${bonus.energy} к энергии` : '',
-        bonus.mana ? `+${bonus.mana} к мане` : '',
+        bonus.health ? tGame('game.join.healthBonus', { amount: bonus.health }) : '',
+        bonus.energy ? tGame('game.join.energyBonus', { amount: bonus.energy }) : '',
+        bonus.mana ? tGame('game.join.manaBonus', { amount: bonus.mana }) : '',
     ].filter(Boolean)
 })
 const masteryBonus = computed(() => {
     if (!background.value) return ''
     return background.value.id === 'cleric'
-        ? '+20% опыта всех молитвенных школ'
-        : `+20% опыта созвездия «${MASTERY_NAMES[background.value.masteryIds[0]!]}»`
+        ? tGame('game.join.prayerBonus')
+        : tGame('game.join.masteryBonus', { name: masteryName(background.value.masteryIds[0]!) })
 })
 </script>
 
@@ -40,11 +38,19 @@ const masteryBonus = computed(() => {
     <section
         v-if="background"
         class="background-summary game-frame-host"
-        aria-label="Постоянные бонусы прошлого"
+        :aria-label="tGame('game.join.backgroundBonuses')"
     >
         <GameFrame variant="inset" :border-width="borderWidth" />
-        <p v-if="showTitle" class="background-title">Прошлое: {{ background.name }}</p>
-        <p>{{ resourceBonuses.length ? resourceBonuses.join(' · ') : 'Без прибавки ресурсов' }}</p>
+        <p v-if="showTitle" class="background-title">
+            {{ tGame('game.join.backgroundName', { name: backgroundName(background.id) }) }}
+        </p>
+        <p>
+            {{
+                resourceBonuses.length
+                    ? resourceBonuses.join(' · ')
+                    : tGame('game.join.noResourceBonus')
+            }}
+        </p>
         <p>{{ masteryBonus }}</p>
     </section>
 </template>

@@ -1,19 +1,39 @@
 <script setup lang="ts">
 import type { SoulSnapshot } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import SoulSpeechIcon from './SoulSpeechIcon.vue'
 
 defineProps<{ soul?: SoulSnapshot }>()
-const sources = { human: 'Человек', model: 'Модель', script: 'Сценарий' }
+const sources = {
+    get human() {
+        return tGame('game.knowledge.human')
+    },
+    get model() {
+        return tGame('game.knowledge.model')
+    },
+    get script() {
+        return tGame('game.knowledge.script')
+    },
+}
 </script>
 <template>
     <span v-if="soul" class="soul-badge" :class="`soul-badge--${soul.kind}`">
-        {{ soul.kind === 'spark' ? '✧ Искра' : '◌ Эхо' }}
+        {{
+            soul.kind === 'spark'
+                ? tGame('game.knowledge.sparkWithIcon')
+                : tGame('game.knowledge.echoWithIcon')
+        }}
         <span class="soul-badge__details">
             {{ sources[soul.controlSource] }} ·
             <span class="soul-badge__speech">
                 <SoulSpeechIcon class="soul-badge__speech-icon" :is-can-speak="soul.canSpeak" />
-                {{ soul.canSpeak ? 'Есть речь' : 'Без речи' }}
+                {{
+                    soul.canSpeak
+                        ? tGame('game.knowledge.canSpeak')
+                        : tGame('game.knowledge.cannotSpeak')
+                }}
             </span>
         </span>
     </span>

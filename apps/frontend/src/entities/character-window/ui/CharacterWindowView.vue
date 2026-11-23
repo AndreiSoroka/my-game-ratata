@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiButton } from '@/shared/ui/common'
 
 import { type CharacterTab, characterTabs } from '../model/characterTab'
@@ -15,7 +16,9 @@ defineExpose({ panel })
 
 const closeButtonAttrs = {
     class: 'character-close',
-    'aria-label': 'Закрыть персонажа',
+    get 'aria-label'() {
+        return tGame('game.character.closeCharacter')
+    },
     onClick: () => emit('close'),
 }
 
@@ -90,14 +93,16 @@ onMounted(async () => {
             v-bind="$attrs"
             role="dialog"
             :aria-modal="tab !== 'quests' || undefined"
-            aria-label="Персонаж"
+            :aria-label="tGame('game.character.character')"
             tabindex="-1"
             @keydown.capture="panelKey"
         >
             <slot name="frame" />
             <header class="character-header">
                 <div>
-                    <span class="character-eyebrow">ПЕРСОНАЖ</span>
+                    <span class="character-eyebrow">{{
+                        tGame('game.character.characterCharacterWindow')
+                    }}</span>
                     <h2>{{ nickname }}</h2>
                 </div>
                 <slot name="close" :button-attrs="closeButtonAttrs">
@@ -107,7 +112,7 @@ onMounted(async () => {
             <div
                 class="character-tabs"
                 role="tablist"
-                aria-label="Разделы персонажа"
+                :aria-label="tGame('game.character.characterSections')"
                 @keydown="tabKey"
             >
                 <template v-for="item in characterTabs" :key="item.id">

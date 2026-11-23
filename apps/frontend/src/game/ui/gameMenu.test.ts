@@ -102,7 +102,7 @@ it('opens inventory with I from the menu after Character and gives focus to the 
         expect(wrapper.find('.game-menu').exists()).toBe(true)
         await pressKey('KeyI')
         expect(wrapper.find('.game-menu').exists()).toBe(false)
-        const inventory = wrapper.get('[role="dialog"][aria-label="Inventory and equipment"]')
+        const inventory = wrapper.get('[role="dialog"][aria-label="Инвентарь и снаряжение"]')
         expect(inventory.element.contains(document.activeElement)).toBe(true)
         await pressEscape()
         expect(wrapper.find('.inventory-overlay').exists()).toBe(false)
@@ -138,7 +138,7 @@ it('can leave a pending startup through Escape or the visible menu button before
     })
     const wrapper = await joined()
     try {
-        expect(wrapper.find('[aria-label="Player vitals"]').exists()).toBe(false)
+        expect(wrapper.find('[aria-label="Ресурсы игрока"]').exists()).toBe(false)
         await pressEscape()
         expect(wrapper.find('.game-menu').exists()).toBe(true)
         expect(wrapper.get('[data-dialog-action="inventory"]').attributes('disabled')).toBeDefined()

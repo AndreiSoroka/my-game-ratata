@@ -1,4 +1,5 @@
 import type { Vector2 } from './index'
+import type { LocalizedMessage } from './locales'
 
 export * from './environmentGeometry'
 
@@ -16,6 +17,7 @@ export interface WorldObjectSnapshot {
     id: string
     kind: WorldObjectKind
     name: string
+    nameMessage?: LocalizedMessage
     position: Vector2
     bounds: WorldObjectBounds
     /** Exact compound footprint. Bounds alone is only its enclosing rectangle. */

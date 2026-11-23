@@ -1,16 +1,42 @@
+import {
+    authoredMessage,
+    authoredRussian,
+    type AuthoredTextKey,
+    type LocalizedMessage,
+} from '@my-game-ratata/contracts'
+
 export interface NoticeState {
     notice: string | null
     noticeId: number
+    noticeMessage?: LocalizedMessage
 }
 
 /** A receipt identifies a new action result, even when its text repeats. */
 export function setNotice<Text extends string | null>(
     state: NoticeState,
-    text: Text
+    text: Text,
+    message?: LocalizedMessage
 ): Text {
     state.notice = text
+    if (message === undefined) {
+        delete state.noticeMessage
+    } else {
+        state.noticeMessage = message
+    }
     state.noticeId += 1
     return text
+}
+
+export function setAuthoredNotice(
+    state: NoticeState,
+    key: AuthoredTextKey,
+    params?: LocalizedMessage['params']
+): string {
+    return setNotice(
+        state,
+        authoredRussian(key, params),
+        authoredMessage(key, params)
+    )
 }
 
 export class NoticeStore {

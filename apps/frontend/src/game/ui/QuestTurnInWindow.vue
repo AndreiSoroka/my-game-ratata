@@ -3,10 +3,12 @@ import type { ClientMessage, QuestTurnInPromptSnapshot } from '@my-game-ratata/c
 import { computed, ref, watch } from 'vue'
 
 import { QuestTurnInPanel } from '@/entities/quests'
+import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
 import QuestRewardSummary from './QuestRewardSummary.vue'
+import { questObjectiveText } from './questTermsText'
 import SocialWindow from './SocialWindow.vue'
 
 const props = defineProps<{ prompt: QuestTurnInPromptSnapshot; serverTime: number }>()
@@ -14,14 +16,19 @@ const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const pending = ref(false)
 const expired = computed(() => props.serverTime >= props.prompt.expiresAt)
 const objectives = computed(() =>
-    props.prompt.objectiveLabels.map((label, index) => ({
-        label,
-        objective: props.prompt.objectives[index],
-    }))
+    Array.from(
+        { length: Math.max(props.prompt.objectiveLabels.length, props.prompt.objectives.length) },
+        (_, index) => ({
+            label: questObjectiveText(props.prompt, index, props.prompt.objectives[index]),
+            objective: props.prompt.objectives[index],
+        })
+    )
 )
 const confirmLabel = computed(() => {
-    if (pending.value) return 'Проверяем…'
-    return props.prompt.action === 'report' ? 'Передать трофей и доложить' : 'Сдать'
+    if (pending.value) return tGame('game.quests.checking')
+    return props.prompt.action === 'report'
+        ? tGame('game.quests.submitTrophy')
+        : tGame('game.quests.turnIn')
 })
 watch(
     () => props.prompt.id,
@@ -36,7 +43,12 @@ function answer(accept: boolean): void {
 }
 </script>
 <template>
-    <SocialWindow title="Сдать поручение" modal layout="quest" @close="answer(false)">
+    <SocialWindow
+        :title="tGame('game.quests.turnInQuest')"
+        modal
+        layout="quest"
+        @close="answer(false)"
+    >
         <QuestTurnInPanel
             :confirm-label="confirmLabel"
             :confirm-disabled="pending || expired"
@@ -45,10 +57,11 @@ function answer(accept: boolean): void {
             @cancel="answer(false)"
         >
             <p>
-                Заказчик: <strong>{{ prompt.issuerName }}</strong>
+                {{ tGame('game.quests.questGiver') }}
+                <strong>{{ characterName(prompt.issuerId, prompt.issuerName) }}</strong>
             </p>
-            <h3>{{ prompt.title }}</h3>
-            <p>{{ prompt.description }}</p>
+            <h3>{{ tLocalized(prompt.titleMessage, prompt.title) }}</h3>
+            <p>{{ tLocalized(prompt.descriptionMessage, prompt.description) }}</p>
             <ol v-if="objectives.length" class="turn-in-items">
                 <li v-for="({ objective, label }, index) in objectives" :key="index">
                     <ItemIcon v-if="objective?.kind === 'deliver'" :item="objective" />
@@ -56,16 +69,19 @@ function answer(accept: boolean): void {
                 </li>
             </ol>
             <p v-if="prompt.action === 'report'" class="social-muted">
-                Награду выдадут после проверочного рейса и возвращения работника.
+                {{ tGame('game.quests.rewardIsPaidAfterWorker') }}
             </p>
             <QuestRewardSummary :total="prompt.rewardGold" :mode="prompt.rewardMode" />
             <ul v-if="prompt.rewardItems.length" class="turn-in-items">
                 <li v-for="item in prompt.rewardItems" :key="item.instanceId">
-                    <ItemIcon :item="item" /><span>{{ itemStackLabel(item) }} · сдающему</span>
+                    <ItemIcon :item="item" /><span
+                        >{{ itemStackLabel(item) }}
+                        {{ tGame('game.quests.whoeverTurnsItIn') }}</span
+                    >
                 </li>
             </ul>
             <p v-if="expired" class="social-status" role="status">
-                Подтверждение устарело. Попросите заказчика проверить договор снова.
+                {{ tGame('game.quests.confirmationExpiredAskQuestGiver') }}
             </p>
         </QuestTurnInPanel>
     </SocialWindow>

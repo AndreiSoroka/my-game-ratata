@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import {
-    ITEM_DEFINITIONS,
     type ItemId,
     itemIds,
     type MarkerDefinition,
     type ScenarioStep,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
+
+import { itemName, tGame } from '@/shared/lib/i18n'
 
 import AutomationNumberField from './AutomationNumberField.vue'
 import GameSelect from './primitives/GameSelect.vue'
@@ -40,13 +41,27 @@ const missingChest = computed(() => {
     )
 })
 const resources = {
-    wood: 'Древесина',
-    stone: 'Камень',
-    herbs: 'Травы',
-    fiber: 'Волокно',
-    scrap: 'Металлолом',
-    grain: 'Зерно',
-    brushwood: 'Хворост',
+    get wood() {
+        return tGame('game.character.timber')
+    },
+    get stone() {
+        return tGame('game.character.stone')
+    },
+    get herbs() {
+        return tGame('game.character.herbs')
+    },
+    get fiber() {
+        return tGame('game.character.fiber')
+    },
+    get scrap() {
+        return tGame('game.automation.scrapMetal')
+    },
+    get grain() {
+        return tGame('game.automation.grain')
+    },
+    get brushwood() {
+        return tGame('game.character.brushwood')
+    },
 }
 function value(event: Event): string {
     return (event.target as HTMLInputElement).value
@@ -87,7 +102,7 @@ function chest(event: Event): void {
 <template>
     <div class="automation-fields">
         <label>
-            Действие
+            {{ tGame('game.automation.action') }}
             <GameSelect :value="modelValue.kind" @change="kind">
                 <option v-for="(label, id) in scenarioStepLabels" :key="id" :value="id">
                     {{ label }}
@@ -103,18 +118,20 @@ function chest(event: Event): void {
         />
         <template v-else-if="modelValue.kind === 'search'">
             <label>
-                Что искать
+                {{ tGame('game.automation.whatLookFor') }}
                 <GameSelect :value="modelValue.target" @change="patch({ target: value($event) })">
                     <option v-for="(label, id) in scenarioSearchLabels" :key="id" :value="id">
                         {{ label }}
                     </option>
                 </GameSelect>
             </label>
-            <p class="automation-muted">Осматривает видимое пространство рядом. Не перемещается.</p>
+            <p class="automation-muted">
+                {{ tGame('game.automation.scansVisibleAreaNearbyWhile') }}
+            </p>
         </template>
         <template v-else-if="modelValue.kind === 'gather'">
             <label>
-                Ресурс
+                {{ tGame('game.automation.resource') }}
                 <GameSelect
                     :value="modelValue.resource"
                     @change="patch({ resource: value($event) })"
@@ -125,18 +142,20 @@ function chest(event: Event): void {
                 </GameSelect>
             </label>
             <label>
-                Сколько добывать
+                {{ tGame('game.automation.howMuchGather') }}
                 <GameSelect
                     :value="modelValue.amount === 'depleted' ? 'depleted' : 'count'"
                     @change="patch({ amount: value($event) === 'depleted' ? 'depleted' : 1 })"
                 >
-                    <option value="count">Заданное количество</option>
-                    <option value="depleted">До исчерпания источника</option>
+                    <option value="count">{{ tGame('game.automation.fixedAmount') }}</option>
+                    <option value="depleted">
+                        {{ tGame('game.automation.untilSourceRunsOut') }}
+                    </option>
                 </GameSelect>
             </label>
             <AutomationNumberField
                 v-if="modelValue.amount !== 'depleted'"
-                label="Количество"
+                :label="tGame('game.trade.quantity')"
                 :min="1"
                 :max="1000"
                 :model-value="modelValue.amount"
@@ -144,13 +163,13 @@ function chest(event: Event): void {
             />
         </template>
         <p v-else-if="modelValue.kind === 'attack'" class="automation-muted">
-            Атакует подходящего видимого врага по обычным правилам боя.
+            {{ tGame('game.automation.attacksValidVisibleEnemyUsing') }}
         </p>
         <template v-else-if="modelValue.kind === 'deposit'">
             <label>
-                Сундук
+                {{ tGame('game.automation.chest') }}
                 <GameSelect :value="explicitChestKey" @change="chest">
-                    <option value="">Ближайший видимый</option>
+                    <option value="">{{ tGame('game.automation.nearestVisible') }}</option>
                     <option
                         v-for="target in chests"
                         :key="scenarioTargetKey(target)"
@@ -159,33 +178,35 @@ function chest(event: Event): void {
                         {{ scenarioTargetLabel(target) }}
                     </option>
                     <option v-if="missingChest" :value="explicitChestKey" disabled>
-                        Выбранный сундук сейчас не виден
+                        {{ tGame('game.automation.selectedChestIsCurrentlyOut') }}
                     </option>
                 </GameSelect>
             </label>
             <label>
-                Что переносить
+                {{ tGame('game.automation.whatTransfer') }}
                 <GameSelect :value="modelValue.mode" @change="patch({ mode: value($event) })">
-                    <option value="acquired">Только полученное за этот запуск</option>
-                    <option value="all">Из всего рюкзака</option>
+                    <option value="acquired">
+                        {{ tGame('game.automation.onlyItemsCollectedDuringThis') }}
+                    </option>
+                    <option value="all">{{ tGame('game.automation.fromEntireBackpack') }}</option>
                 </GameSelect>
             </label>
             <label>
-                Тип предмета
+                {{ tGame('game.automation.itemType') }}
                 <GameSelect
                     :value="modelValue.itemIds[0] ?? ''"
                     @change="patch({ itemIds: value($event) ? [value($event)] : [] })"
                 >
-                    <option value="">Все подходящие предметы</option>
+                    <option value="">{{ tGame('game.automation.allMatchingItems') }}</option>
                     <option v-for="id in itemIds" :key="id" :value="id">
-                        {{ ITEM_DEFINITIONS[id].name }}
+                        {{ itemName(id) }}
                     </option>
                 </GameSelect>
             </label>
         </template>
         <template v-else-if="modelValue.kind === 'wait'">
             <AutomationNumberField
-                label="Секунд"
+                :label="tGame('game.automation.seconds')"
                 :min="1"
                 :max="3600"
                 :model-value="modelValue.durationMs / 1000"
@@ -194,18 +215,18 @@ function chest(event: Event): void {
         </template>
         <template v-else-if="modelValue.kind === 'recover'">
             <label>
-                Восстановить
+                {{ tGame('game.automation.recover') }}
                 <GameSelect
                     :value="modelValue.resource"
                     @change="patch({ resource: value($event) })"
                 >
-                    <option value="energy">Энергию</option>
-                    <option value="mana">Ману</option>
-                    <option value="hp">Здоровье</option>
+                    <option value="energy">{{ tGame('game.automation.energy') }}</option>
+                    <option value="mana">{{ tGame('game.automation.mana') }}</option>
+                    <option value="hp">{{ tGame('game.automation.health') }}</option>
                 </GameSelect>
             </label>
             <AutomationNumberField
-                label="Не меньше единиц"
+                :label="tGame('game.automation.atLeastThisManyUnits')"
                 :min="1"
                 :max="10000"
                 :model-value="modelValue.atLeast"
@@ -218,11 +239,11 @@ function chest(event: Event): void {
                 (modelValue.kind === 'search' && modelValue.target === 'item')
             "
         >
-            Тип предмета
+            {{ tGame('game.automation.itemType') }}
             <GameSelect :value="modelValue.itemId ?? ''" @change="optionalItem">
-                <option value="">Любой подходящий</option>
+                <option value="">{{ tGame('game.automation.anyMatchingItem') }}</option>
                 <option v-for="id in itemIds" :key="id" :value="id">
-                    {{ ITEM_DEFINITIONS[id].name }}
+                    {{ itemName(id) }}
                 </option>
             </GameSelect>
         </label>

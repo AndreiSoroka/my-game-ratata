@@ -1,31 +1,47 @@
-import type { AdventureDialogue } from '@my-game-ratata/contracts'
+import {
+    type AdventureDialogue,
+    authoredMessage,
+    authoredPhrase,
+    authoredRussian,
+    type AuthoredTextKey,
+    type LocalizedMessage,
+} from '@my-game-ratata/contracts'
 
-import { companionProfiles, residentProfile } from './companionProfiles'
-
-const serviceGreetings: Record<string, string> = {
-    npc_guard_1:
-        'Я стражница Рада. Если ты заметил вора, подойди и подай жалобу через E в течение пяти минут. Имя попадёт в городскую книгу: стража начнёт охоту, торговцы откажут в торговле. Снять запись может сестра Вера в часовне.',
-    npc_cleric_1:
-        'Я сестра Вера. В часовне можно выбрать покровителя, а молитвы и чудеса укрепляют веру. Падшего можно вернуть лишь в первую минуту: нужен живой клерик рядом. В поход берите того, кто сможет помочь на месте. Если имя занесено в городскую книгу жалоб, я могу отпустить грехи за 30 золотых: подойди и выбери это действие через E.',
-    npc_scholar_1:
-        'Я Арен, хранитель библиотеки. Открой «Знания»: здесь можно изучить Огненную стрелу, прочесть три главы и передавать знания другим. Если уже служишь богам и знаешь молитву, начать обучение магии не получится.',
+const greetings: Partial<Record<string, AuthoredTextKey>> = {
+    npc_guard_1: 'resident.guard',
+    npc_cleric_1: 'resident.cleric',
+    npc_scholar_1: 'resident.scholar',
+    npc_princess_1: 'resident.princess',
+    npc_veteran_1: 'resident.veteran',
+    npc_magic_slime_1: 'resident.kaplya',
+    npc_wanderer_1: 'resident.wanderer1',
+    npc_wanderer_2: 'resident.wanderer2',
+    npc_weaver_1: 'resident.weaver',
+    npc_smith_1: 'resident.smith',
+    npc_herbalist_1: 'resident.herbalist',
+    npc_baker_1: 'resident.baker',
+    npc_cartographer_1: 'resident.cartographer',
+    npc_tailor_1: 'resident.tailor',
 }
 
 export function residentDialogue(
     npcId: string,
     npcName: string,
-    text?: string
+    override?: { text: string; textMessage?: LocalizedMessage }
 ): AdventureDialogue {
     return {
         npcId,
         npcName,
-        title: 'Жители Новогорода',
+        title: authoredRussian('dialogue.residents'),
+        titleMessage: authoredMessage('dialogue.residents'),
         canTrade: false,
-        text:
-            text ??
-            serviceGreetings[npcId] ??
-            companionProfiles[npcId]?.greeting ??
-            residentProfile.greeting,
-        choices: [{ id: 'leave', label: 'До встречи' }],
+        ...(override ?? authoredPhrase(greetings[npcId] ?? 'resident.default')),
+        choices: [
+            {
+                id: 'leave',
+                label: authoredRussian('dialogue.leave'),
+                labelMessage: authoredMessage('dialogue.leave'),
+            },
+        ],
     }
 }

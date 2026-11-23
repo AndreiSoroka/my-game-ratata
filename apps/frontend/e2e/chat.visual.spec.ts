@@ -10,6 +10,21 @@ const historyName = 'История чата'
 const listName = 'Услышанные реплики'
 const draftName = 'Сообщение в чат'
 
+test('ChatHistoryPanel translated speech with original at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.goto(uiStoryUrl(`${historyStory}--translated`))
+    const history = page.getByRole('complementary', { name: historyName })
+    const translation = history.getByText('Встретимся у северных ворот.', { exact: true })
+    const original = history.getByText('Meet me at the north gate.', { exact: true })
+    await expect(translation).toBeVisible({ timeout: 25_000 })
+    await expect(original).toBeHidden()
+    await history.getByText('Оригинал', { exact: true }).click()
+    await expect(original).toBeVisible()
+    await expectUiFits(history, 320)
+    await readyUiStory(page)
+    await expect(history).toHaveScreenshot('chat-history-translated-320.png')
+})
+
 for (const width of [1280, 320]) {
     test(`ChatHistoryPanel Default at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })

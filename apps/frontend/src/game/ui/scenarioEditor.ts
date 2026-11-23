@@ -5,27 +5,65 @@ import {
     type ScenarioStep,
 } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 export const scenarioStepLabels: Record<ScenarioStep['kind'], string> = {
-    go: 'Идти',
-    search: 'Осмотреться',
-    gather: 'Добывать',
-    attack: 'Атаковать врага',
-    pickup: 'Подобрать предметы',
-    deposit: 'Сложить в сундук',
-    wait: 'Подождать',
-    recover: 'Восстановиться',
+    get go() {
+        return tGame('game.automation.move')
+    },
+    get search() {
+        return tGame('game.automation.lookAround')
+    },
+    get gather() {
+        return tGame('game.automation.gather')
+    },
+    get attack() {
+        return tGame('game.automation.attackEnemy')
+    },
+    get pickup() {
+        return tGame('game.automation.pickUpItems')
+    },
+    get deposit() {
+        return tGame('game.automation.depositInChest')
+    },
+    get wait() {
+        return tGame('game.automation.wait')
+    },
+    get recover() {
+        return tGame('game.automation.recoverScenarioEditor')
+    },
 }
 export const scenarioSearchLabels: Record<ScenarioSearchKind, string> = {
-    tree: 'Дерево',
-    stone: 'Камень',
-    herbs: 'Травы',
-    fiber: 'Волокно',
-    scrap: 'Металлолом',
-    grain: 'Зерно',
-    brushwood: 'Хворост',
-    enemy: 'Враг',
-    chest: 'Сундук',
-    item: 'Предмет на земле',
+    get tree() {
+        return tGame('game.automation.tree')
+    },
+    get stone() {
+        return tGame('game.character.stone')
+    },
+    get herbs() {
+        return tGame('game.character.herbs')
+    },
+    get fiber() {
+        return tGame('game.character.fiber')
+    },
+    get scrap() {
+        return tGame('game.automation.scrapMetal')
+    },
+    get grain() {
+        return tGame('game.automation.grain')
+    },
+    get brushwood() {
+        return tGame('game.character.brushwood')
+    },
+    get enemy() {
+        return tGame('game.automation.enemy')
+    },
+    get chest() {
+        return tGame('game.world.chest')
+    },
+    get item() {
+        return tGame('game.automation.groundItem')
+    },
 }
 let nextId = 0
 /** Definitions contain only JSON data; this also unwraps nested Vue draft proxies. */
@@ -88,7 +126,7 @@ export function newScenarioStep(
 export function newScenario(): ScenarioDefinition {
     return {
         id: editorId('scenario'),
-        name: 'Новый сценарий',
+        name: tGame('game.automation.newScenario'),
         steps: [],
         repeat: 1,
         threat: 'flee',

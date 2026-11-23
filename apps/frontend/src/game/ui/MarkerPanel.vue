@@ -4,6 +4,8 @@ import './automationControls.css'
 import { getWorldLocationDefinition, type MarkerDefinition } from '@my-game-ratata/contracts'
 import { ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import AutomationWindow from './AutomationWindow.vue'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
@@ -36,26 +38,31 @@ function rename(markerId: string): void {
 </script>
 
 <template>
-    <AutomationWindow title="Метки" @close="emit('close')">
+    <AutomationWindow :title="tGame('game.automation.markers')" @close="emit('close')">
         <div class="automation-form">
             <p class="automation-muted">
-                N ставит метку там, где стоит персонаж. Метки видны только вам и остаются до конца
-                жизни персонажа.
+                {{ tGame('game.automation.nPlacesMarkerWhereYour') }}
             </p>
             <form class="automation-row" @submit.prevent="create">
                 <label>
-                    Название новой метки
-                    <GameInput v-model="name" maxlength="80" placeholder="Следующий номер" />
+                    {{ tGame('game.automation.newMarkerName') }}
+                    <GameInput
+                        v-model="name"
+                        maxlength="80"
+                        :placeholder="tGame('game.automation.nextNumber')"
+                    />
                 </label>
                 <GameButton
                     variant="primary"
                     type="submit"
                     :disabled="!available || markers.length >= 64"
                 >
-                    Поставить здесь
+                    {{ tGame('game.automation.placeHere') }}
                 </GameButton>
             </form>
-            <p v-if="!markers.length" class="automation-muted">Метки пока не поставлены.</p>
+            <p v-if="!markers.length" class="automation-muted">
+                {{ tGame('game.automation.noMarkersPlacedYet') }}
+            </p>
             <ol v-else class="automation-list marker-list">
                 <li
                     v-for="marker in markers"
@@ -66,7 +73,7 @@ function rename(markerId: string): void {
                     <div class="automation-row">
                         <strong class="marker-number">{{ marker.number }}</strong>
                         <label>
-                            Название метки {{ marker.number }}
+                            {{ tGame('game.automation.markerName') }} {{ marker.number }}
                             <GameInput v-model="names[marker.id]" maxlength="80" />
                         </label>
                     </div>
@@ -79,18 +86,22 @@ function rename(markerId: string): void {
                     <div class="automation-row">
                         <GameButton
                             :disabled="!available || !names[marker.id]?.trim()"
-                            :aria-label="`Переименовать метку ${marker.number}`"
+                            :aria-label="
+                                tGame('game.automation.renameMarker', { number: marker.number })
+                            "
                             @click="rename(marker.id)"
                         >
-                            Переименовать
+                            {{ tGame('game.automation.rename') }}
                         </GameButton>
                         <GameButton
                             variant="danger"
                             :disabled="!available"
-                            :aria-label="`Удалить метку ${marker.number}`"
+                            :aria-label="
+                                tGame('game.automation.deleteMarker', { number: marker.number })
+                            "
                             @click="emit('delete', marker.id)"
                         >
-                            Удалить
+                            {{ tGame('game.automation.delete') }}
                         </GameButton>
                     </div>
                 </li>

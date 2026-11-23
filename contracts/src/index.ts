@@ -84,19 +84,24 @@ export * from './health'
 import type { CharacterResourceChecks, ResourceSnapshot } from './resources'
 export * from './exchange'
 import type { JoinClientMessage } from './identity'
+export * from './authoredText'
 export type {
     JoinClientMessage,
     PlayerIdentity,
     WorldPosition,
 } from './identity'
+export * from './locales'
 export * from './materials'
+export { NPC_ENGLISH_NAMES } from './npcNames'
 export * from './npcQuests'
+export * from './npcQuestText'
 export * from './pursuit'
 export * from './resources'
 export * from './service'
 export * from './social'
 export * from './training'
 export * from './trees'
+export * from './worldSignText'
 import type { ExchangeClientMessage } from './exchange'
 import type { NpcQuestClientMessage } from './npcQuests'
 import type { CharacterInteractions, WhisperClientMessage } from './social'
@@ -289,6 +294,7 @@ export type ChatClientMessage = import('./social').ChatClientMessage
 
 export type ClientMessage =
     | import('./social').SpeechActivityCommand
+    | { type: 'set_locale'; locale: import('./locales').GameLocale }
     | WhisperClientMessage
     | ExchangeClientMessage
     | NpcQuestClientMessage

@@ -103,6 +103,29 @@ it('does not treat yes, an unrelated conversation or a negative statement as sur
     expect(f.adventure.snapshot(f.player.id).gold).toBe(0)
 })
 
+it('recognizes the English completion phrase without opening on questions or denials', () => {
+    const f = fixture()
+    for (const [id, text] of [
+        'not quest complete',
+        'quest complete?',
+    ].entries()) {
+        expect(
+            f.turnIn.heard(
+                f.player,
+                f.issuer,
+                text,
+                `message:${String(id)}`,
+                30
+            )
+        ).toBe(false)
+    }
+    expect(
+        f.turnIn.heard(f.player, f.issuer, 'Quest complete!', 'message:2', 30)
+    ).toBe(true)
+    expect(f.prompt().instanceId).toBe(f.instanceId)
+    expect(f.adventure.snapshot(f.player.id).gold).toBe(0)
+})
+
 it('expires at exactly thirty seconds and an old click cannot discard a fresh prompt', () => {
     const f = fixture()
     f.turnIn.heard(f.player, f.issuer, 'готово', 'message:1', 30)

@@ -9,6 +9,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { characterName, tGame } from '@/shared/lib/i18n'
 import { ExchangeInvitationWidget } from '@/widgets/exchanges'
 
 import ExchangeWindow from './ExchangeWindow.vue'
@@ -228,7 +229,7 @@ defineExpose({ command, hasOpenWindow })
         ref="notices"
         class="social-notices"
         role="group"
-        aria-label="Приглашения к торговле"
+        :aria-label="tGame('game.world.tradeInvitations')"
     >
         <ExchangeInvitationWidget
             :exchange="exchange"
@@ -244,7 +245,8 @@ defineExpose({ command, hasOpenWindow })
     </div>
     <div v-if="available && whisper && !hasOpenWindow" ref="hints" class="social-hints">
         <GameButton variant="success" @click="showWhisper">
-            Шёпот: {{ whisper.partnerName }}{{ whisper.messages.length ? ' · новые реплики' : '' }}
+            {{ tGame('game.world.whisper') }} {{ whisper.partnerName
+            }}{{ whisper.messages.length ? tGame('game.world.newSpeechSuffix') : '' }}
         </GameButton>
     </div>
     <QuestTurnInWindow
@@ -277,7 +279,7 @@ defineExpose({ command, hasOpenWindow })
         v-else-if="guildOffer"
         :key="guildOffer.job.id"
         :job="guildOffer.job"
-        :issuer-name="guildOffer.contact.nickname"
+        :issuer-name="characterName(guildOffer.contact.npcId, guildOffer.contact.nickname)"
         @confirm="acceptGuildOffer"
         @cancel="guild.close"
     />

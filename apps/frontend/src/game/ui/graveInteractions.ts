@@ -12,14 +12,18 @@ import {
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { chestActions } from './chestActions'
 import { interactionDistance } from './interactionTargets'
 import type { InteractionAction, InteractionTarget } from './nearbyInteractionActions'
 
 export function graveName(grave: WorldGraveSnapshot): string {
-    return { active: 'Могила', ruined: 'Разрушенная могила', purified: 'Очищенная могила' }[
-        grave.phase
-    ]
+    return {
+        active: tGame('game.world.grave'),
+        ruined: tGame('game.world.destroyedGrave'),
+        purified: tGame('game.world.cleansedGrave'),
+    }[grave.phase]
 }
 
 /** Explicit selection pins the grave even while the ordinary prayer preview changes. */
@@ -42,7 +46,7 @@ export function gravePrayerPreview(
             harmfulTargets: 0,
             includesAllies: false,
             includesSelf: false,
-            unavailableReason: 'Эта молитва не очищает могилы.',
+            unavailableReason: tGame('game.world.prayerCannotCleanse'),
         }
     const wave = previewPrayerFromSnapshots(player, characters, grave.id, {
         abilityId,
@@ -71,7 +75,7 @@ function purificationUnavailable(
     canReach: boolean,
     abilityId: PrayerActionId = 'pray'
 ): string | null {
-    if (grave.phase === 'purified') return 'Могила уже очищена'
+    if (grave.phase === 'purified') return tGame('game.world.alreadyCleansed')
     const requirement = purificationQualification(player)
     if (requirement) return requirement
     const availability = prayerAvailability(player, abilityId)
@@ -80,19 +84,19 @@ function purificationUnavailable(
         !canReach ||
         interactionDistance(player, grave) > snapshotPrayerParameters(player, 'pray').radius
     )
-        return 'Подойдите ближе к могиле'
+        return tGame('game.world.approachGrave')
     return null
 }
 function purificationQualification(player: CharacterSnapshot): string | null {
-    if (!player.abilities?.known.includes('pray')) return 'Нужно изучить молитву'
+    if (!player.abilities?.known.includes('pray')) return tGame('game.world.learnPrayerFirst')
     return null
 }
 function prayerAvailability(player: CharacterSnapshot, abilityId: PrayerActionId): string | null {
     if (!player.alive || player.cooldowns.stunMsLeft > 0 || player.abilities?.casting)
-        return 'Сейчас нельзя молиться'
-    if ((player.abilities?.cooldowns[abilityId] ?? 0) > 0) return 'Молитва восстанавливается'
+        return tGame('game.world.cannotPray')
+    if ((player.abilities?.cooldowns[abilityId] ?? 0) > 0) return tGame('game.world.prayerCooldown')
     if (player.resourceChecks?.prayers[abilityId]?.purify_grave !== 'ready')
-        return 'Недостаточно маны для молитвы'
+        return tGame('game.world.prayerNotEnoughMana')
     return null
 }
 
@@ -104,7 +108,10 @@ export function graveActions(
     return [
         {
             id: `grave:attack:${grave.id}`,
-            label: grave.phase === 'active' ? 'Атаковать могилу' : 'Могила разрушена',
+            label:
+                grave.phase === 'active'
+                    ? tGame('game.world.attackGrave')
+                    : tGame('game.world.graveDestroyed'),
             disabled: grave.phase !== 'active',
             command: { type: 'attack', target: { kind: 'grave', id: grave.id } },
         },
@@ -112,7 +119,10 @@ export function graveActions(
             id: `grave:purify:${grave.id}`,
             label:
                 preview.unavailableReason ??
-                `Упокоить могилу · ${preview.manaCost} MP · ${(preview.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000} с`,
+                tGame('game.world.cleanseGraveCosts', {
+                    mana: preview.manaCost,
+                    seconds: (preview.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000,
+                }),
             disabled: preview.unavailableReason !== null,
             command: {
                 type: 'use_ability',

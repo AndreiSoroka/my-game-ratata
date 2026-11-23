@@ -1,5 +1,7 @@
 import type { CharacterSnapshot, PartySnapshot } from '@my-game-ratata/contracts'
 
+import { characterName, tGame } from '@/shared/lib/i18n'
+
 import type { InteractionAction } from './nearbyInteractionActions'
 
 function validTarget(player: CharacterSnapshot, target: CharacterSnapshot): boolean {
@@ -28,12 +30,12 @@ export function invitationActions(
         return [
             {
                 id: `accept:${incoming.id}`,
-                label: 'Принять приглашение',
+                label: tGame('game.world.acceptInvitation'),
                 command: { type: 'party_answer', invitationId: incoming.id, accept: true },
             },
             {
                 id: `decline:${incoming.id}`,
-                label: 'Отказаться',
+                label: tGame('game.quests.refuseQuest'),
                 command: { type: 'party_answer', invitationId: incoming.id, accept: false },
             },
         ]
@@ -44,7 +46,11 @@ export function invitationActions(
     return [
         {
             id: `party:${target.id}`,
-            label: sent ? 'Приглашение отправлено' : `Пригласить в отряд: ${target.nickname}`,
+            label: sent
+                ? tGame('game.world.invitationSent')
+                : tGame('game.world.inviteToParty', {
+                      name: characterName(target.id, target.nickname),
+                  }),
             disabled: sent || unavailable,
             command: { type: 'party_invite', targetId: target.id },
         },

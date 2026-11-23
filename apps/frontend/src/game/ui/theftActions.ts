@@ -1,5 +1,7 @@
 import { type CharacterSnapshot, THEFT_RULES, type WorldSnapshot } from '@my-game-ratata/contracts'
 
+import { characterName, tGame } from '@/shared/lib/i18n'
+
 import type { InteractionAction } from './nearbyInteractionActions'
 
 export function theftActions(
@@ -38,7 +40,10 @@ function stealAction(
     const wait = Math.max(player.theft?.cooldownMsLeft ?? 0, pairWait)
     return {
         id: `steal:${target.id}`,
-        label: `Попытаться украсть: ${target.nickname} · ${stealRequirement(player, wait)}`,
+        label: tGame('game.world.trySteal', {
+            name: characterName(target.id, target.nickname),
+            requirement: stealRequirement(player, wait),
+        }),
         disabled:
             player.movement?.mode !== 'sneaking' ||
             wait > 0 ||
@@ -48,9 +53,9 @@ function stealAction(
 }
 
 function stealRequirement(player: CharacterSnapshot, wait: number): string {
-    if (player.movement?.mode !== 'sneaking') return 'C — красться'
+    if (player.movement?.mode !== 'sneaking') return tGame('game.world.sneakShortcut')
     return wait > 0
-        ? `через ${String(Math.ceil(wait / 1000))} с`
+        ? tGame('game.world.availableIn', { seconds: String(Math.ceil(wait / 1000)) })
         : `${String(THEFT_RULES.energyCost)} EN`
 }
 
@@ -64,7 +69,7 @@ export function guardActions(
         )
         .map((accusation) => ({
             id: `guards:${accusation.thiefId}`,
-            label: `Позвать стражу: ${accusation.thiefName}`,
+            label: tGame('game.world.callGuards', { name: accusation.thiefName }),
             command: { type: 'call_guards', targetId: accusation.thiefId },
         }))
 }

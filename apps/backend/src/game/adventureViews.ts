@@ -1,6 +1,7 @@
-import type {
-    AdventureClientMessage,
-    AdventureSnapshot,
+import {
+    type AdventureClientMessage,
+    type AdventureSnapshot,
+    authoredMessage,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -76,6 +77,9 @@ export function adventureSnapshot(context: {
         recipes: adventureRecipes,
         resourceNodes: resources.snapshot(locationId),
         notice: state.notice,
+        ...(state.noticeMessage === undefined
+            ? {}
+            : { noticeMessage: state.noticeMessage }),
         noticeId: state.noticeId,
         quest: storyQuestSnapshot(state, progress, cities),
         shop: adventureShop.map((offer) => ({
@@ -136,10 +140,19 @@ function storyQuestSnapshot(
             ? {}
             : {
                   description: definition.description,
+                  descriptionMessage: authoredMessage('story.cityDescription'),
                   accepted: state.questAccepted === true,
                   ...(state.questCancelledReason === undefined
                       ? {}
-                      : { notice: state.questCancelledReason }),
+                      : {
+                            notice: state.questCancelledReason,
+                            ...(state.questCancelledReasonMessage === undefined
+                                ? {}
+                                : {
+                                      noticeMessage:
+                                          state.questCancelledReasonMessage,
+                                  }),
+                        }),
               }),
         ...(state.questRewardMode === null
             ? {}

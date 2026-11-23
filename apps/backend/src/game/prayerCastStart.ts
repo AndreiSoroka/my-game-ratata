@@ -10,7 +10,11 @@ import {
     prayerSchoolId,
 } from '@my-game-ratata/contracts'
 
-import { type AbilityContext, abilityNotice } from './abilityContext'
+import {
+    type AbilityContext,
+    abilityNotice,
+    authoredAbilityNotice,
+} from './abilityContext'
 import { knowsAbility, nextPrayerReceipt } from './abilityState'
 import { planAshSecondaryHeal } from './ashPrayerTargets'
 import type { GameCharacter } from './character'
@@ -50,7 +54,7 @@ export function beginPrayerCast(
     abilityId: PrayerActionId = 'pray'
 ): GameEventPayload[] {
     if (!canStartPrayer(actor, context.now, abilityId)) {
-        return abilityNotice(actor, 'Молитву сейчас нельзя начать.')
+        return authoredAbilityNotice(actor, 'combat.prayerUnavailable')
     }
     ensurePrayerAuraEnvironment(actor, context)
     const plan = isMotherPrayer(abilityId)

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameInput from './primitives/GameInput.vue'
 const props = defineProps<{ selected: number; available: number }>()
@@ -13,14 +15,15 @@ function change(value: number): void {
 <template>
     <div class="trade-gold-editor">
         <span
-            >◈ Золото <small>свободно {{ available }}</small></span
+            >{{ tGame('game.trade.goldTradeGold') }}
+            <small>{{ tGame('game.trade.available') }} {{ available }}</small></span
         >
         <div class="trade-gold-editor__controls">
             <GameButton
                 size="compact"
                 type="button"
                 :disabled="selected <= 0"
-                aria-label="Меньше золота"
+                :aria-label="tGame('game.trade.lessGold')"
                 @click="change(selected - 1)"
             >
                 −
@@ -31,14 +34,14 @@ function change(value: number): void {
                 min="0"
                 :max="available"
                 step="1"
-                aria-label="Предложить золото"
+                :aria-label="tGame('game.trade.offerGold')"
                 @input="change(Number(($event.target as HTMLInputElement).value))"
             />
             <GameButton
                 size="compact"
                 type="button"
                 :disabled="selected >= available"
-                aria-label="Больше золота"
+                :aria-label="tGame('game.trade.moreGold')"
                 @click="change(selected + 1)"
             >
                 +
@@ -49,16 +52,16 @@ function change(value: number): void {
                 size="compact"
                 type="button"
                 :disabled="selected === available"
-                aria-label="Всё золото"
+                :aria-label="tGame('game.trade.allGold')"
                 @click="change(available)"
             >
-                Всё
+                {{ tGame('game.trade.all') }}
             </GameButton>
             <GameButton
                 size="compact"
                 type="button"
                 :disabled="selected <= 0"
-                aria-label="Убрать золото"
+                :aria-label="tGame('game.trade.removeGold')"
                 @click="change(0)"
             >
                 ×

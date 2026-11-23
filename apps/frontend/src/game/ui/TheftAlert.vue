@@ -2,6 +2,8 @@
 import { type CharacterSnapshot, type ClientMessage, THEFT_RULES } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 
@@ -19,27 +21,28 @@ const accusations = computed(
         v-if="accusations.length"
         class="theft-alert game-frame-host"
         role="region"
-        aria-label="Замечена попытка кражи"
+        :aria-label="tGame('game.world.attemptedTheftSpotted')"
     >
         <GameFrame variant="panel" />
-        <strong role="alert">Вы заметили попытку кражи</strong>
+        <strong role="alert">{{ tGame('game.world.youSpottedAttemptedTheft') }}</strong>
         <div v-for="accusation in accusations" :key="accusation.thiefId">
             <p>
-                {{ accusation.thiefName }} · доказательство:
-                {{ Math.ceil((accusation.expiresAt - serverTime) / 1000) }} с
+                {{ accusation.thiefName }} {{ tGame('game.world.evidence') }}
+                {{ Math.ceil((accusation.expiresAt - serverTime) / 1000) }}
+                {{ tGame('game.knowledge.s') }}
             </p>
             <GameButton
                 v-if="accusation.canCallGuards"
                 :disabled="!player.alive"
                 @click="emit('command', { type: 'call_guards', targetId: accusation.thiefId })"
             >
-                Позвать стражу сейчас
+                {{ tGame('game.world.callGuardsNow') }}
             </GameButton>
         </div>
         <small
-            >Для официальной жалобы подойдите к стражнику в городе и нажмите F. Экстренный зов
-            доступен первые {{ THEFT_RULES.accusationMs / 1000 }} секунд; доказательство сохраняется
-            {{ THEFT_RULES.evidenceMs / 60_000 }} минут.</small
+            >{{ tGame('game.world.forFormalReportApproachGuard') }}
+            {{ THEFT_RULES.accusationMs / 1000 }} {{ tGame('game.world.secondsEvidenceLastsFor') }}
+            {{ THEFT_RULES.evidenceMs / 60_000 }} {{ tGame('game.world.minutes') }}</small
         >
     </aside>
 </template>

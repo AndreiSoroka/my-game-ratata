@@ -5,7 +5,11 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import { handleAbilityCommand } from './abilityCommands'
-import { type AbilityContext, abilityNotice } from './abilityContext'
+import {
+    type AbilityContext,
+    abilityNotice,
+    authoredAbilityNotice,
+} from './abilityContext'
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import { hasCharacterRoute } from './characterRoute'
@@ -189,7 +193,7 @@ function roomPortalActions(
                     )
             )
             if (notice === undefined) {
-                return abilityNotice(actor, 'Портал недоступен.')
+                return authoredAbilityNotice(actor, 'combat.portalUnavailable')
             }
             options.closeConversations(actor.id)
             return abilityNotice(actor, notice)

@@ -105,6 +105,7 @@ it('sends the failed prayer caption only to the caster and strips the audience',
                 actorId: actor.id,
                 abilityId: 'pray',
                 text: 'Божество не ответило',
+                textMessage: { key: 'authored.combat.prayerUnanswered' },
             },
         ])
         expect(unanswered(foreign.messages)).toEqual([])

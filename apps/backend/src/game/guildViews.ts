@@ -1,4 +1,7 @@
-import type { GuildQuestSnapshot } from '@my-game-ratata/contracts'
+import {
+    type GuildQuestSnapshot,
+    npcQuestMessage,
+} from '@my-game-ratata/contracts'
 
 import { guildRewardUnchanged } from './guildRewards'
 import type { GuildJob } from './guildRules'
@@ -32,6 +35,10 @@ export function viewGuildJob(
     funding?: QuestFunding
 ): GuildQuestSnapshot {
     const missing = rewardMissing(job, funding)
+    const rewardNotice = missing
+        ? 'Обещанная награда недоступна. Можно дождаться её или оставить договор.'
+        : (job.rewardNotice ?? null)
+    const rewardNoticeMessage = npcQuestMessage(rewardNotice)
     return {
         ...job.definition,
         instanceId: job.id,
@@ -47,9 +54,10 @@ export function viewGuildJob(
                   rewardStatus: missing
                       ? ('missing' as const)
                       : ('reserved' as const),
-                  rewardNotice: missing
-                      ? 'Обещанная награда недоступна. Можно дождаться её или оставить договор.'
-                      : (job.rewardNotice ?? null),
+                  rewardNotice,
+                  ...(rewardNoticeMessage === undefined
+                      ? {}
+                      : { rewardNoticeMessage }),
               }),
         ...(job.completed ? { receiptId: job.id } : {}),
         ...(job.rewardShares === undefined

@@ -9,7 +9,11 @@ import {
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
-import { type AbilityContext, abilityNotice } from './abilityContext'
+import {
+    type AbilityContext,
+    abilityNotice,
+    authoredAbilityNotice,
+} from './abilityContext'
 import { activeBarrier, knowsAbility } from './abilityState'
 import { cancelAshRaise } from './ashRaising'
 import { isAshRiteMessage } from './ashRiteCommands'
@@ -63,7 +67,7 @@ function handleKnownAbility(
 ): GameEventPayload[] {
     const id = message.abilityId
     if (!knowsAbility(actor, id)) {
-        return abilityNotice(actor, 'Способность ещё не изучена.')
+        return authoredAbilityNotice(actor, 'combat.unlearned')
     }
     if (id === 'defensive_stance') {
         return toggleDefensiveStance(actor, context.now)
@@ -76,10 +80,10 @@ function handleKnownAbility(
             allowMagicChannel: interruptsChains,
         })
     ) {
-        return abilityNotice(actor, 'Персонаж не может действовать сейчас.')
+        return authoredAbilityNotice(actor, 'combat.actionUnavailable')
     }
     if (context.now < (actor.abilities.availableAt[id] ?? 0)) {
-        return abilityNotice(actor, 'Способность ещё восстанавливается.')
+        return authoredAbilityNotice(actor, 'combat.cooldown')
     }
     return isAshRiteMessage(message)
         ? (context.useAshRite?.(actor, message, context) ?? [])
@@ -123,7 +127,7 @@ function executeAbility(
         return executeFireSpell(actor, id, message, context)
     }
     if (message.targetId === undefined && message.target === undefined) {
-        return abilityNotice(actor, 'Сначала выберите цель.')
+        return authoredAbilityNotice(actor, 'combat.chooseTarget')
     }
     return executeAttackAbility(
         actor,
@@ -172,7 +176,7 @@ function executeAttackAbility(
         context.navigation.grid.tileWidth
     )
     if (actor.mana < definition.mana || actor.energy < definition.energy) {
-        return abilityNotice(actor, 'Недостаточно сил для способности.')
+        return authoredAbilityNotice(actor, 'combat.lowAbilityEnergy')
     }
     if (
         !isArrowAbility(id) &&
@@ -200,7 +204,7 @@ function executeAttackAbility(
     }
     return events.length > 0
         ? events
-        : abilityNotice(actor, 'Цель недоступна для этой атаки.')
+        : authoredAbilityNotice(actor, 'combat.attackUnavailable')
 }
 function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
     const definition = effectiveAbility(actor, 'barrier')
@@ -212,7 +216,7 @@ function castBarrier(actor: GameCharacter, now: number): GameEventPayload[] {
         )
     }
     if (activeBarrier(actor, now) !== null) {
-        return abilityNotice(actor, 'Барьер уже действует.')
+        return authoredAbilityNotice(actor, 'combat.barrierActive')
     }
     actor.mana -= definition.mana
     actor.abilities.availableAt.barrier = now + definition.cooldownMs

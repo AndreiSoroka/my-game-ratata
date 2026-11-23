@@ -48,7 +48,7 @@ it('uses two independent participant statuses and real item images', async () =>
         expect(wrapper.findAll('.exchange-consent')).toHaveLength(2)
         expect(wrapper.find('[aria-label="Вы: не подтверждено"]').exists()).toBe(true)
         expect(wrapper.find('[aria-label="Капля: не подтверждено"]').exists()).toBe(true)
-        expect(wrapper.get('img[alt="Apple"]').attributes('src')).toContain('Item__64.png')
+        expect(wrapper.get('img[alt="Яблоко"]').attributes('src')).toContain('Item__64.png')
         expect(wrapper.get('.trade-item-editor').text()).toContain('В сумке 5')
         await wrapper.setProps({
             exchange: exchangeFixture({ own: { ...exchangeFixture().own, accepted: true } }),

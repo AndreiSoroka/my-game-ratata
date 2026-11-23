@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { HudFrame, HudRow } from '@/shared/ui/common'
 
 import { presentPlayerEffects } from './playerEffectPresentation'
@@ -24,18 +25,22 @@ watch(hasActiveEffects, () => {
         class="player-effects"
         :class="{ 'player-effects--compact': compact }"
         role="region"
-        aria-label="Player effects"
+        :aria-label="tGame('game.world.playerEffects')"
     >
         <div class="player-effects__layout">
-            <h2 v-if="!compact" class="player-effects__title">Статус игрока</h2>
+            <h2 v-if="!compact" class="player-effects__title">
+                {{ tGame('game.world.playerStatus') }}
+            </h2>
             <div class="player-effects__summary">
                 <slot name="identity" class="player-effects__identity" />
                 <button
                     v-if="compact && hasActiveEffects"
                     class="player-effects__toggle"
                     type="button"
-                    aria-label="Активные эффекты"
-                    :aria-description="`Всего: ${activeEffects.length}`"
+                    :aria-label="tGame('game.world.activeEffects')"
+                    :aria-description="
+                        tGame('game.world.effectCount', { count: activeEffects.length })
+                    "
                     :aria-controls="listId"
                     :aria-expanded="expanded"
                     @click="expanded = !expanded"
@@ -64,7 +69,9 @@ watch(hasActiveEffects, () => {
                         activeEffects.length
                     }}</span>
                 </button>
-                <p v-else-if="compact" class="player-effects__empty">Всё в порядке</p>
+                <p v-else-if="compact" class="player-effects__empty">
+                    {{ tGame('game.world.allClear') }}
+                </p>
             </div>
             <ul
                 v-if="hasActiveEffects"
@@ -96,7 +103,9 @@ watch(hasActiveEffects, () => {
                     </HudRow>
                 </li>
             </ul>
-            <p v-else-if="!compact" class="player-effects__empty">Всё в порядке</p>
+            <p v-else-if="!compact" class="player-effects__empty">
+                {{ tGame('game.world.allClear') }}
+            </p>
         </div>
     </component>
 </template>

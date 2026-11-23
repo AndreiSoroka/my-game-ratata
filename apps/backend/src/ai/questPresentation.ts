@@ -9,6 +9,7 @@ import type { NpcAiDiagnostics } from './diagnostics'
 import { replySpeech, speechRadius } from './dialogueResult'
 import { attributeNpcSpeech } from './memorySpeechAttribution'
 import { completeNpcGreeting } from './npcBackgroundSpeech'
+import { replySpeechLanguage } from './npcSpeechLanguage'
 import type { NpcAiActorState } from './runtimeState'
 import { rememberNpcReply } from './sessionMemory'
 import type { NpcReplyProblem } from './turnInformation'
@@ -141,17 +142,22 @@ export function npcQuestPresentationProblem(
 }
 
 /** Background tasks have no requester. Address the actual validated proposal recipient. */
-export function publishQuestInvitationSpeech(
+function publishQuestInvitationSpeech(
     room: GameRoom,
+    state: NpcAiActorState,
     actor: GameCharacter,
     decision: Presentation,
-    reply: NpcAiReply
+    reply: NpcAiReply,
+    now: number
 ): void {
     const text = replySpeech(reply)
     if (text !== null) {
         room.publishEvents([
             attributeNpcSpeech(
-                createSpeechEvent(actor, text.slice(0, 400)),
+                {
+                    ...createSpeechEvent(actor, text.slice(0, 400)),
+                    language: replySpeechLanguage(room, state, reply, now),
+                },
                 decision.targetId
             ),
         ])
@@ -187,7 +193,14 @@ export function completeBackgroundQuestPresentation(
     })
     room.publishEvents(result.events)
     if (result.accepted) {
-        publishQuestInvitationSpeech(room, actor, reply.decision, reply)
+        publishQuestInvitationSpeech(
+            room,
+            state,
+            actor,
+            reply.decision,
+            reply,
+            now
+        )
         rememberNpcReply(state, reply.memory)
     }
     return result.accepted

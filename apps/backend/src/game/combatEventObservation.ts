@@ -1,4 +1,6 @@
 import {
+    authoredMessage,
+    authoredRussian,
     type GameEventPayload,
     trainingAreaAt,
 } from '@my-game-ratata/contracts'
@@ -39,7 +41,8 @@ export function observeCombatEvent(
         event.kind === 'water_drink' &&
         view.observer?.exactCombatNumbers !== true
     ) {
-        visible.text = 'Пьёт воду.'
+        visible.text = authoredRussian('world.drinkObserved')
+        visible.textMessage = authoredMessage('world.drinkObserved')
     }
     return visible
 }

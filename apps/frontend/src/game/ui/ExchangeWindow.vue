@@ -9,6 +9,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import ExchangeOfferPane from './ExchangeOfferPane.vue'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
@@ -32,8 +34,8 @@ const terminal = computed(
 )
 const terminalText = computed(() =>
     props.exchange.status === 'completed'
-        ? 'Обмен завершён'
-        : (props.exchange.notice ?? 'Обмен отменён')
+        ? tGame('game.trade.exchangeCompleted')
+        : (props.exchange.notice ?? tGame('game.trade.exchangeCancelled'))
 )
 function whisper(text: string): void {
     emit('command', { type: 'whisper', targetId: props.exchange.partnerId, text })
@@ -41,7 +43,7 @@ function whisper(text: string): void {
 </script>
 <template>
     <SocialWindow
-        :title="`Обмен: ${exchange.partnerName}`"
+        :title="tGame('game.trade.exchangeWith', { name: exchange.partnerName })"
         layout="exchange"
         @close="emit('close')"
     >
@@ -55,18 +57,30 @@ function whisper(text: string): void {
                 <GameFrame variant="inset" />
                 {{ terminalText }}
             </div>
-            <div class="exchange-sides" tabindex="0" aria-label="Условия обмена">
-                <ExchangeOfferPane title="Вы" :offer="exchange.own" :terminal="terminal">
+            <div
+                class="exchange-sides"
+                tabindex="0"
+                :aria-label="tGame('game.trade.exchangeTerms')"
+            >
+                <ExchangeOfferPane
+                    :title="tGame('game.trade.you')"
+                    :offer="exchange.own"
+                    :terminal="terminal"
+                >
                     <template v-if="draft.editing.value">
                         <div class="exchange-bag-tools">
-                            <span>Из вашей сумки</span>
-                            <GameButton type="button" @click="draft.all">Все вещи</GameButton>
-                            <GameButton type="button" @click="draft.clear">Убрать вещи</GameButton>
+                            <span>{{ tGame('game.trade.fromYourBag') }}</span>
+                            <GameButton type="button" @click="draft.all">{{
+                                tGame('game.trade.allItems')
+                            }}</GameButton>
+                            <GameButton type="button" @click="draft.clear">{{
+                                tGame('game.trade.removeItems')
+                            }}</GameButton>
                         </div>
                         <ul
                             class="exchange-own-items"
                             tabindex="0"
-                            aria-label="Ваши вещи для обмена"
+                            :aria-label="tGame('game.trade.yourAvailableTradeItems')"
                         >
                             <TradeItemEditor
                                 v-for="item in player.inventory"
@@ -77,7 +91,7 @@ function whisper(text: string): void {
                                 @change="draft.change(item.instanceId, $event)"
                             />
                             <li v-if="!player.inventory.length" class="exchange-bag-empty">
-                                Ваша сумка пуста
+                                {{ tGame('game.trade.yourBagIsEmpty') }}
                             </li>
                         </ul>
                     </template>
@@ -96,23 +110,27 @@ function whisper(text: string): void {
                 />
             </div>
             <div v-if="active" class="exchange-draft-status" role="status">
-                <span v-if="draft.withdrawing.value">Снимаем подтверждение…</span>
-                <span v-else-if="draft.confirming.value">Подтверждаем условия…</span>
-                <span v-else-if="exchange.own.accepted"
-                    >Вы подтвердили эти условия. Для правки сначала снимите подтверждение.</span
-                >
+                <span v-if="draft.withdrawing.value">{{
+                    tGame('game.trade.withdrawingConfirmation')
+                }}</span>
+                <span v-else-if="draft.confirming.value">{{
+                    tGame('game.trade.confirmingTerms')
+                }}</span>
+                <span v-else-if="exchange.own.accepted">{{
+                    tGame('game.trade.youConfirmedTheseTermsWithdraw')
+                }}</span>
                 <span v-else-if="draft.error.value" class="exchange-error">{{
                     draft.error.value
                 }}</span>
-                <span v-else-if="!draft.valid.value" class="exchange-error"
-                    >Часть выбранного недоступна. Измените предложение.</span
-                >
-                <span v-else-if="draft.pending.value">Отправляем предложение…</span>
-                <span v-else-if="draft.dirty.value"
-                    >Черновик · предложите изменения собеседнику</span
-                >
-                <span v-else-if="draft.empty.value">Добавьте вещь или золото</span>
-                <span v-else>Любое изменение условий снимает оба подтверждения</span>
+                <span v-else-if="!draft.valid.value" class="exchange-error">{{
+                    tGame('game.trade.someSelectedItemsAreUnavailable')
+                }}</span>
+                <span v-else-if="draft.pending.value">{{ tGame('game.trade.sendingOffer') }}</span>
+                <span v-else-if="draft.dirty.value">{{
+                    tGame('game.trade.draftProposeChangesYourPartner')
+                }}</span>
+                <span v-else-if="draft.empty.value">{{ tGame('game.trade.addItemOrGold') }}</span>
+                <span v-else>{{ tGame('game.trade.changingTermsClearsBothConfirmations') }}</span>
             </div>
             <PrivateConversation
                 v-if="conversation?.partnerId === exchange.partnerId"
@@ -131,7 +149,7 @@ function whisper(text: string): void {
                             :disabled="Boolean(draft.withdrawing.value || draft.confirming.value)"
                             @click="draft.edit"
                         >
-                            Изменить предложение
+                            {{ tGame('game.trade.editOffer') }}
                         </GameButton>
                     </template>
                     <template v-else>
@@ -146,7 +164,7 @@ function whisper(text: string): void {
                             "
                             @click="draft.propose"
                         >
-                            Предложить
+                            {{ tGame('game.trade.makeOffer') }}
                         </GameButton>
                         <GameButton
                             type="button"
@@ -157,13 +175,13 @@ function whisper(text: string): void {
                         >
                             {{
                                 exchange.own.accepted && !draft.dirty.value
-                                    ? 'Подтверждено'
-                                    : 'Подтвердить'
+                                    ? tGame('game.trade.confirmed')
+                                    : tGame('game.trade.confirm')
                             }}
                         </GameButton>
                     </template>
                     <GameButton type="button" class="exchange-cancel" @click="emit('close')">
-                        Отменить
+                        {{ tGame('game.trade.cancel') }}
                     </GameButton>
                 </template>
                 <template v-else-if="terminal">
@@ -179,9 +197,11 @@ function whisper(text: string): void {
                             })
                         "
                     >
-                        Новый обмен
+                        {{ tGame('game.trade.newExchange') }}
                     </GameButton>
-                    <GameButton type="button" @click="emit('close')">Закрыть</GameButton>
+                    <GameButton type="button" @click="emit('close')">{{
+                        tGame('game.trade.close')
+                    }}</GameButton>
                 </template>
             </footer>
         </div>

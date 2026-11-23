@@ -1,12 +1,7 @@
 import type { CombatHitQuality, GameEventPayload } from '@my-game-ratata/contracts'
 
-export const hitLabels: Record<CombatHitQuality, string> = {
-    miss: 'Промах',
-    weak: 'Слабый удар',
-    normal: 'Удар',
-    strong: 'Добротный удар',
-    critical: 'Критический удар',
-}
+import { gameLocale, tGame } from '@/shared/lib/i18n'
+
 export const hitColors: Record<CombatHitQuality, string> = {
     miss: '#a7a7a7',
     weak: '#a7a7a7',
@@ -19,6 +14,6 @@ export function hitQuality(event: GameEventPayload): CombatHitQuality {
 }
 export function combatHitLabel(event: GameEventPayload): string {
     return typeof event.amount === 'number' && Number.isFinite(event.amount) && event.amount > 0
-        ? `−${event.amount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}`
-        : hitLabels[hitQuality(event)]
+        ? `−${event.amount.toLocaleString(gameLocale.value, { maximumFractionDigits: 2 })}`
+        : tGame(`game.canvas.${hitQuality(event)}`)
 }

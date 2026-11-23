@@ -145,6 +145,24 @@ it('waits for a local Russian voice and declines an expired line', () => {
     expect(synthesis.speak).toHaveBeenCalledOnce()
 })
 
+it('voices English NPC speech with an installed local English voice', () => {
+    const russian = voice('Pavel')
+    const english = voice('Kate', 'en-GB')
+    const { player, synthesis } = setup([russian, voice('Remote English', 'en-US', false)])
+    player.receive(speech(1, { language: 'en', text: 'Welcome to Novogorod.' }))
+    expect(synthesis.speak).not.toHaveBeenCalled()
+
+    synthesis.setVoices([russian, english])
+    expect(synthesis.speak).toHaveBeenLastCalledWith(
+        expect.objectContaining({ voice: english, lang: 'en-GB', text: 'Welcome to Novogorod.' })
+    )
+    completeLatest(synthesis)
+    player.receive(speech(2))
+    expect(synthesis.speak).toHaveBeenLastCalledWith(
+        expect.objectContaining({ voice: russian, lang: 'ru-RU' })
+    )
+})
+
 it('assigns pitch and rate separately when NPCs share the only installed voice', () => {
     const random = vi.spyOn(Math, 'random').mockReturnValue(0)
     const local = voice('Irina')

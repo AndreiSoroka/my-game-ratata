@@ -20,6 +20,7 @@ import {
     positionBundle,
     removeBundle,
     updateBundleHealth,
+    updateBundleName,
 } from './characterViewBundle'
 import { CombatEffects } from './combatEffects'
 import { CorpseViews } from './corpseViews'
@@ -279,8 +280,7 @@ export class SceneActors {
         const bundle = this.getBundle(snapshot)
         bundle.snapshot = snapshot
         positionBundle(bundle, snapshot)
-        bundle.label.text = snapshot.nickname
-        bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
+        updateBundleName(bundle, snapshot, isLocalPlayer)
         this.updateGraphic(bundle.body, snapshot)
         updateBundleHealth(bundle, snapshot, isLocalPlayer)
         const visible = isLocalPlayer || !this.buildingViews.hidesCharacter(snapshot.position)

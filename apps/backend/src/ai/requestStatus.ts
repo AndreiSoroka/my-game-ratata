@@ -1,4 +1,7 @@
-import type { NpcRequestState } from '@my-game-ratata/contracts'
+import {
+    npcQuestMessage,
+    type NpcRequestState,
+} from '@my-game-ratata/contracts'
 
 import type { GameRoom } from '../game/room'
 import type { NpcAiDiagnostics } from './diagnostics'
@@ -19,12 +22,14 @@ export function reportNpcRequestStatus(
         return
     }
     const { task, requesterId } = request
+    const reasonMessage = npcQuestMessage(reason)
     room.social.reportNpcRequestStatus(requesterId, {
         id: task.id,
         npcId: state.config.actorId,
         state: status,
         request: ('text' in task ? task.text : task.request).slice(0, 400),
         ...(reason === undefined ? {} : { reason }),
+        ...(reasonMessage === undefined ? {} : { reasonMessage }),
         at: now,
     })
     diagnostics.record({

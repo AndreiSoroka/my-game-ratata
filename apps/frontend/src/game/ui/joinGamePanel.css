@@ -30,6 +30,13 @@
         --join-panel-surface var(--join-panel-duration) ease-out,
         --join-panel-accent var(--join-panel-duration) ease-out;
 }
+.join-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
 .join-row {
     grid-template-columns: minmax(0, 1fr) 44px auto;
 }

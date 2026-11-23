@@ -2,7 +2,6 @@
 import './knowledgeWindow.css'
 
 import {
-    ABILITY_DEFINITIONS,
     canLearnDiscipline,
     type CharacterSnapshot,
     type ClientMessage,
@@ -10,6 +9,8 @@ import {
     type SpellSkillId,
 } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
+
+import { abilityName, characterName, masteryName, tGame } from '@/shared/lib/i18n'
 
 import AbilityKnowledge from './AbilityKnowledge.vue'
 import { abilityUsage } from './abilityUsage'
@@ -66,16 +67,36 @@ const target = computed(
     () => enemies.value.find((character) => character.id === targetId.value) ?? enemies.value[0]
 )
 const descriptions: Record<ConstellationId, string> = {
-    blade: 'Опыт за полезные удары клинком.',
-    magic: 'Опыт за полезные боевые заклинания, защиту Барьером, новые главы и обучение других.',
-    prayer: 'Опыт за полезное лечение, очищение могил, Кару и воскрешение. Каждый получатель учитывается отдельно.',
-    prayer_road: 'Опыт за восстановление полезно потраченной энергии.',
-    prayer_lantern: 'Опыт за восстановление полезно потраченной маны.',
-    prayer_grave: 'Опыт за полезное лечение и воскрешение нежити.',
-    undead: 'Опыт за победы над противниками и наследие павших.',
-    arrow: 'Опыт за полезные попадания стрелами.',
-    life: 'Опыт за учтённые вражеские раны и их восстановление.',
-    shadow: 'Опыт за скрытное перемещение рядом с врагами и успешные кражи предметов. C — тихий ход, F — взаимодействие.',
+    get blade() {
+        return tGame('game.knowledge.bladeExperience')
+    },
+    get magic() {
+        return tGame('game.knowledge.magicExperience')
+    },
+    get prayer() {
+        return tGame('game.knowledge.hearthExperience')
+    },
+    get prayer_road() {
+        return tGame('game.knowledge.roadExperience')
+    },
+    get prayer_lantern() {
+        return tGame('game.knowledge.lanternExperience')
+    },
+    get prayer_grave() {
+        return tGame('game.knowledge.ashPrayerExperience')
+    },
+    get undead() {
+        return tGame('game.knowledge.undeadExperience')
+    },
+    get arrow() {
+        return tGame('game.knowledge.arrowExperience')
+    },
+    get life() {
+        return tGame('game.knowledge.lifeExperience')
+    },
+    get shadow() {
+        return tGame('game.knowledge.shadowExperience')
+    },
 }
 function distance(character: CharacterSnapshot): number {
     return Math.hypot(
@@ -106,16 +127,20 @@ function learnFireball(): void {
         "
         :role="embedded ? undefined : 'dialog'"
         :aria-modal="embedded ? undefined : false"
-        aria-label="Знания героя"
+        :aria-label="tGame('game.knowledge.heroKnowledge')"
     >
         <GameFrame v-if="!embedded" variant="window" />
         <header v-if="!embedded" class="adventure-window__header">
-            <span>ЗНАНИЯ · СОЗВЕЗДИЯ</span
-            ><GameButton icon aria-label="Закрыть знания" @click="emit('close')">×</GameButton>
+            <span>{{ tGame('game.knowledge.knowledgeConstellations') }}</span
+            ><GameButton
+                icon
+                :aria-label="tGame('game.knowledge.closeKnowledge')"
+                @click="emit('close')"
+                >×</GameButton
+            >
         </header>
         <p v-if="!embedded" class="knowledge-intro">
-            Полезные действия дают опыт. Уровни дают открытия звёзд; неиспользованные открытия
-            сохраняются. Развитие нескольких ветвей создаёт конфликт.
+            {{ tGame('game.knowledge.meaningfulActionsEarnExperienceLevels') }}
         </p>
         <AbilityKnowledge
             :player="player"
@@ -130,13 +155,13 @@ function learnFireball(): void {
             :data-mastery="mastery.id"
         >
             <div class="knowledge-skill__heading">
-                <h2>{{ mastery.name }}</h2>
-                <span>Ур. {{ mastery.level }}</span>
+                <h2>{{ masteryName(mastery.id) }}</h2>
+                <span>{{ tGame('game.knowledge.lvLabel') }} {{ mastery.level }}</span>
             </div>
             <p>{{ descriptions[mastery.id] }}</p>
             <div class="knowledge-practice">
                 <label :for="`practice-${mastery.id}`"
-                    >Опыт
+                    >{{ tGame('game.knowledge.experience') }}
                     <span
                         >{{ displayMasteryExperience(mastery.experience) }} /
                         {{ displayMasteryExperience(mastery.experienceToNext) }}</span
@@ -149,9 +174,9 @@ function learnFireball(): void {
                 />
             </div>
             <p>
-                Конфликт −{{
-                    ((1 - mastery.conflictMultiplier) * 100).toFixed(1).replace('.', ',')
-                }}% · Неиспользованных открытий: {{ mastery.pendingOpenings }}
+                {{ tGame('game.knowledge.conflict')
+                }}{{ ((1 - mastery.conflictMultiplier) * 100).toFixed(1).replace('.', ',')
+                }}{{ tGame('game.knowledge.unusedDiscoveries') }} {{ mastery.pendingOpenings }}
             </p>
             <FaithKnowledge
                 v-if="mastery.id.startsWith('prayer')"
@@ -170,34 +195,38 @@ function learnFireball(): void {
                         :disabled="!player.alive || !teacher || !canLearnMagic || magicLevel < 3"
                         @click="learnFireball"
                     >
-                        Изучить огненную стрелу
+                        {{ tGame('game.knowledge.learnFirebolt') }}
                     </GameButton>
                     <small>{{
                         !canLearnMagic
-                            ? 'Магию нельзя изучать после молитв.'
+                            ? tGame('game.knowledge.youCannotStudyMagicAfter')
                             : magicLevel < 3
-                              ? 'Требуется Магия 3.'
+                              ? tGame('game.knowledge.requiresMagicLevel')
                               : teacher
-                                ? `Учитель: ${teacher.nickname}`
-                                : 'Подойдите к учёному.'
+                                ? tGame('game.knowledge.namedTeacher', {
+                                      name: characterName(teacher.id, teacher.nickname),
+                                  })
+                                : tGame('game.knowledge.approachScholar')
                     }}</small>
                 </div>
                 <div v-if="knownSpells.length" class="knowledge-target">
-                    <label for="spell-target">Цель заклинаний</label
+                    <label for="spell-target">{{ tGame('game.knowledge.spellTarget') }}</label
                     ><GameSelect
                         id="spell-target"
                         :value="target?.id ?? ''"
                         @change="targetId = ($event.target as HTMLSelectElement).value"
                     >
-                        <option v-if="!enemies.length" value="">Врагов поблизости нет</option>
+                        <option v-if="!enemies.length" value="">
+                            {{ tGame('game.knowledge.noEnemiesNearby') }}
+                        </option>
                         <option v-for="enemy in enemies" :key="enemy.id" :value="enemy.id">
-                            {{ enemy.nickname }}
+                            {{ characterName(enemy.id, enemy.nickname) }}
                         </option>
                     </GameSelect>
                 </div>
                 <div v-for="id in knownSpells" :key="id" class="knowledge-action">
                     <GameButton :disabled="!canCast(id)" @click="cast(id)">
-                        {{ ABILITY_DEFINITIONS[id].name }} · {{ abilityUsage(player, id).mana }} MP
+                        {{ abilityName(id) }} · {{ abilityUsage(player, id).mana }} MP
                     </GameButton>
                 </div>
             </template>

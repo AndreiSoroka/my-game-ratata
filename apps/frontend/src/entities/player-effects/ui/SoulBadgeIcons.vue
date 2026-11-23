@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { SoulKind } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import SoulSpeechIcon from './SoulSpeechIcon.vue'
 
 defineProps<{ soulKind?: SoulKind | undefined; isCanSpeak?: boolean | undefined }>()
@@ -11,15 +13,23 @@ defineProps<{ soulKind?: SoulKind | undefined; isCanSpeak?: boolean | undefined 
         <span
             class="soul-badge-icons__icon"
             role="img"
-            :aria-label="soulKind === 'spark' ? 'Искра' : 'Эхо'"
-            :title="soulKind === 'spark' ? 'Искра' : 'Эхо'"
+            :aria-label="
+                soulKind === 'spark' ? tGame('game.knowledge.spark') : tGame('game.knowledge.echo')
+            "
+            :title="
+                soulKind === 'spark' ? tGame('game.knowledge.spark') : tGame('game.knowledge.echo')
+            "
             >{{ soulKind === 'spark' ? '✧' : '◌' }}</span
         >
         <span
             class="soul-badge-icons__icon"
             role="img"
-            :aria-label="isCanSpeak ? 'Есть речь' : 'Без речи'"
-            :title="isCanSpeak ? 'Есть речь' : 'Без речи'"
+            :aria-label="
+                isCanSpeak ? tGame('game.knowledge.canSpeak') : tGame('game.knowledge.cannotSpeak')
+            "
+            :title="
+                isCanSpeak ? tGame('game.knowledge.canSpeak') : tGame('game.knowledge.cannotSpeak')
+            "
         >
             <SoulSpeechIcon :is-can-speak="isCanSpeak" />
         </span>

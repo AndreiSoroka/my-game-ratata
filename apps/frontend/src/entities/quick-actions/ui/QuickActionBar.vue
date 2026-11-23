@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tGame } from '@/shared/lib/i18n'
 import { HudFrame } from '@/shared/ui/common'
 
 import type { QuickAction } from '../model/quickAction'
@@ -22,7 +23,7 @@ const emit = defineEmits<{
         class="quick-action-bar"
         :class="{ 'quick-action-bar--with-trailing': $slots.trailing }"
         role="group"
-        aria-label="Быстрые действия"
+        :aria-label="tGame('game.world.quickActions')"
     >
         <p v-if="waiting" class="hotbar-waiting" role="status">{{ waiting }}</p>
         <HudFrame>

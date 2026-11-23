@@ -1,4 +1,5 @@
 import {
+    authoredMessage,
     FARM_ACTION_COOLDOWN_MS,
     FARM_GROW_MS,
     FARM_HARVEST_GRAIN,
@@ -25,7 +26,7 @@ import {
 import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { setNotice } from './notices'
+import { setAuthoredNotice, setNotice } from './notices'
 import { recordLifeWorkSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
 
@@ -71,12 +72,13 @@ export class AdventureFarming {
         if (!canWork(actor, plot, now, navigation)) {
             setNotice(
                 state,
-                `Для работы нужна грядка ${interactionRangeText(FARM_INTERACTION_RANGE, navigation?.grid.tileWidth)} в твоей локации.`
+                `Для работы нужна грядка ${interactionRangeText(FARM_INTERACTION_RANGE, navigation?.grid.tileWidth)} в твоей локации.`,
+                authoredMessage('farm.nearby')
             )
             return []
         }
         if (now < state.gatherAllowedAt) {
-            setNotice(state, 'Подожди немного перед следующей работой.')
+            setAuthoredNotice(state, 'notice.waitToWork')
             return []
         }
         switch (message.action) {
@@ -134,21 +136,18 @@ function sow(
     now: number
 ): GameEventPayload[] {
     if (phaseAt(plot, now) !== 'bare') {
-        setNotice(state, 'Эта грядка уже засеяна. Дождись урожая и собери его.')
+        setAuthoredNotice(state, 'notice.plotAlreadySown')
         return []
     }
     const energy = effectiveWorkEnergy(actor, FARM_SOW_ENERGY)
     if (actor.energy < energy) {
-        setNotice(state, `Для посева нужно ${String(energy)} сил. Передохни.`)
+        setAuthoredNotice(state, 'notice.farmEnergy', { energy })
         return []
     }
     if (
         !consumeInventoryItems(actor.inventory, { wheat_seed: FARM_SOW_SEEDS })
     ) {
-        setNotice(
-            state,
-            'Для посева нужно 1 семя пшеницы в рюкзаке. Поищи в сундуках, купи у торговца или собери урожай.'
-        )
+        setAuthoredNotice(state, 'farm.seedRequired')
         return []
     }
     recordLifeWorkSpend(actor, actor.drainEnergy(energy), now)
@@ -156,10 +155,7 @@ function sow(
     plot.phase = 'growing'
     plot.readyAt = now + FARM_GROW_MS
     state.gatherAllowedAt = now + FARM_ACTION_COOLDOWN_MS
-    setNotice(
-        state,
-        `Пшеница посеяна. Потрачено 1 семя и ${String(energy)} сил; урожай созреет через 45 секунд.`
-    )
+    setAuthoredNotice(state, 'farm.sown', { energy })
     return [{ actorId: actor.id, plotId: plot.id, kind: 'farm_sow' }]
 }
 
@@ -171,11 +167,9 @@ function harvest(
     seedQuantity: number
 ): GameEventPayload[] {
     if (phaseAt(plot, now) !== 'ripe') {
-        setNotice(
+        setAuthoredNotice(
             state,
-            plot.phase === 'bare'
-                ? 'Сначала засевай пустую грядку.'
-                : 'Пшеница ещё не созрела.'
+            plot.phase === 'bare' ? 'farm.sowFirst' : 'farm.notRipe'
         )
         return []
     }
@@ -184,22 +178,20 @@ function harvest(
         items.push(createItemInstance('wheat_seed', seedQuantity))
     }
     if (!addInventoryItems(actor.inventory, items)) {
-        setNotice(
-            state,
-            'В рюкзаке нет места для всего урожая. Пшеница остаётся на грядке.'
-        )
+        setAuthoredNotice(state, 'farm.noSpace')
         return []
     }
     resetMartyrStreak(actor)
     plot.phase = 'bare'
     plot.readyAt = 0
     state.gatherAllowedAt = now + FARM_ACTION_COOLDOWN_MS
-    setNotice(
-        state,
-        seedQuantity === 0
-            ? 'Собрано зерно +3. Семян не нашлось. Из зерна можно испечь хлеб.'
-            : `Собрано зерно +3 и семена пшеницы +${String(seedQuantity)}. Семена пригодятся для нового посева.`
-    )
+    if (seedQuantity === 0) {
+        setAuthoredNotice(state, 'farm.harvest')
+    } else {
+        setAuthoredNotice(state, 'farm.harvestWithSeeds', {
+            seeds: seedQuantity,
+        })
+    }
     return [
         {
             actorId: actor.id,

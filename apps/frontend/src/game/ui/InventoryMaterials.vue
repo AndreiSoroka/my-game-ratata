@@ -1,23 +1,41 @@
 <script setup lang="ts">
 import type { AdventureMaterials } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameFrame from './primitives/GameFrame.vue'
 
 defineProps<{ materials: AdventureMaterials }>()
 const labels = {
-    herbs: 'Травы',
-    fiber: 'Волокно',
-    scrap: 'Металл',
-    wood: 'Древесина',
-    grain: 'Зерно пшеницы',
-    stone: 'Камень',
-    sapling: 'Саженцы',
-    brushwood: 'Хворост',
+    get herbs() {
+        return tGame('game.character.herbs')
+    },
+    get fiber() {
+        return tGame('game.character.fiber')
+    },
+    get scrap() {
+        return tGame('game.character.metal')
+    },
+    get wood() {
+        return tGame('game.character.timber')
+    },
+    get grain() {
+        return tGame('game.character.wheatGrain')
+    },
+    get stone() {
+        return tGame('game.character.stone')
+    },
+    get sapling() {
+        return tGame('game.character.saplings')
+    },
+    get brushwood() {
+        return tGame('game.character.brushwood')
+    },
 }
 </script>
 <template>
-    <section class="inventory-materials" aria-label="Собранные материалы">
-        <h3>Материалы</h3>
+    <section class="inventory-materials" :aria-label="tGame('game.character.gatheredMaterials')">
+        <h3>{{ tGame('game.character.materials') }}</h3>
         <dl>
             <div
                 v-for="(label, kind) in labels"

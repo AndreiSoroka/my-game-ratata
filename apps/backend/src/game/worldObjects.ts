@@ -1,9 +1,11 @@
-import type {
-    GameEventPayload,
-    Vector2,
-    WorldObjectSnapshot,
+import {
+    authoredMessage,
+    authoredRussian,
+    type GameEventPayload,
+    interactionApproachPoints,
+    type Vector2,
+    type WorldObjectSnapshot,
 } from '@my-game-ratata/contracts'
-import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
 import type { PlayerAdventure } from './adventureState'
 import type { AdventureActionResult } from './adventureTrading'
@@ -12,7 +14,7 @@ import type { CityWorldState } from './cityWorldState'
 import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { setNotice } from './notices'
+import { setAuthoredNotice, setNotice } from './notices'
 import { restoreEnergy } from './resourcePractice'
 import { nextSpeechId } from './speechReceipts'
 import { loadWorldObjects, type WorldObjectDefinition } from './worldObjectData'
@@ -62,6 +64,9 @@ export class WorldObjects {
                 id: object.id,
                 kind: object.kind,
                 name: object.name,
+                ...(object.nameMessage === undefined
+                    ? {}
+                    : { nameMessage: object.nameMessage }),
                 bounds: { ...object.bounds },
                 ...(object.interactionAreas === undefined
                     ? {}
@@ -95,10 +100,7 @@ export class WorldObjects {
             return this.open(actor, object.id, now)?.events ?? []
         }
         if (!canInteract(actor, object, navigation, now)) {
-            setNotice(
-                state,
-                'Подойди ближе к предмету: через стену взаимодействовать нельзя.'
-            )
+            setAuthoredNotice(state, 'world.outOfReach')
             return []
         }
         if (object.kind === 'sign') {
@@ -108,10 +110,25 @@ export class WorldObjects {
                 speechId: nextSpeechId(actor),
                 npcId: `object:${object.id}`,
                 npcName: object.name,
+                ...(object.nameMessage === undefined
+                    ? {}
+                    : {
+                          npcNameMessage: object.nameMessage,
+                          titleMessage: object.nameMessage,
+                      }),
                 title: object.name,
                 text: object.text,
+                ...(object.textMessage === undefined
+                    ? {}
+                    : { textMessage: object.textMessage }),
                 canTrade: false,
-                choices: [{ id: 'leave', label: 'Закрыть' }],
+                choices: [
+                    {
+                        id: 'leave',
+                        label: authoredRussian('dialogue.close'),
+                        labelMessage: authoredMessage('dialogue.close'),
+                    },
+                ],
             }
             return []
         }
@@ -145,15 +162,15 @@ export class WorldObjects {
         const definition = this.cities?.byBell(object.id)
         const city = this.cities?.snapshot(object.locationId)
         if (definition?.cityId !== actor.locationId || city === undefined) {
-            setNotice(state, 'Этот колокол сейчас недоступен.')
+            setAuthoredNotice(state, 'world.bellUnavailable')
             return []
         }
         if (city.bellState !== 'prepared') {
-            setNotice(
+            setAuthoredNotice(
                 state,
                 city.bellState === 'active'
-                    ? 'Колокол памяти уже звучит.'
-                    : 'Колокол пока молчит. Сначала нужно выполнить общий городской заказ Миры.'
+                    ? 'world.bellAlreadyActive'
+                    : 'world.bellSilent'
             )
             return []
         }
@@ -162,7 +179,11 @@ export class WorldObjects {
                 x: object.bounds.x + object.bounds.width / 2,
                 y: object.bounds.y + object.bounds.height / 2,
             }) ?? []
-        setNotice(state, events[0]?.text ?? 'Колокол уже активирован.')
+        if (events[0]?.text === undefined) {
+            setAuthoredNotice(state, 'world.bellActivated')
+        } else {
+            setNotice(state, events[0].text, events[0].textMessage)
+        }
         return events
     }
 
@@ -172,7 +193,7 @@ export class WorldObjects {
         now: number
     ): GameEventPayload[] {
         if (now < (this.drinkAllowedAt.get(actor.id) ?? 0)) {
-            setNotice(state, 'Ты только что попил. Подожди немного.')
+            setAuthoredNotice(state, 'world.drinkWait')
             return []
         }
         const { restored: recovered, events } = restoreEnergy(actor, 15, now)
@@ -180,13 +201,17 @@ export class WorldObjects {
             resetMartyrStreak(actor)
         }
         this.drinkAllowedAt.set(actor.id, now + 5_000)
-        const text = setNotice(
-            state,
-            recovered > 0
-                ? 'Прохладная вода освежает. Силы восстановлены.'
-                : 'Ты утолил жажду. Силы уже восстановлены.'
-        )
-        return [...events, { kind: 'water_drink', actorId: actor.id, text }]
+        const key = recovered > 0 ? 'world.drinkRestore' : 'world.drinkFull'
+        const text = setAuthoredNotice(state, key)
+        return [
+            ...events,
+            {
+                kind: 'water_drink',
+                actorId: actor.id,
+                text,
+                textMessage: authoredMessage(key),
+            },
+        ]
     }
 
     private inLocation(locationId: string): WorldObjectDefinition[] {

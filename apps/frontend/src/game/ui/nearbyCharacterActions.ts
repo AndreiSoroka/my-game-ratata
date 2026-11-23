@@ -1,5 +1,4 @@
 import {
-    ABILITY_DEFINITIONS,
     canLearnDiscipline,
     type CharacterSnapshot,
     COMPANION_REQUEST_RANGE,
@@ -8,6 +7,8 @@ import {
     profileForPrayer,
     snapshotPrayerParameters,
 } from '@my-game-ratata/contracts'
+
+import { abilityName, characterName, tGame } from '@/shared/lib/i18n'
 
 import { isDialogueCharacter } from '../runtime/runtimeQueries'
 import { relation } from './combatTargeting'
@@ -30,7 +31,9 @@ export function characterActions(
             ? [
                   {
                       id: `talk:${target.id}`,
-                      label: `Поговорить: ${target.nickname}`,
+                      label: tGame('game.world.talkTo', {
+                          name: characterName(target.id, target.nickname),
+                      }),
                       command: { type: 'interact' as const, targetId: target.id },
                   },
               ]
@@ -47,13 +50,17 @@ function companionActions(target: CharacterSnapshot): InteractionAction[] {
     const actions: InteractionAction[] = [
         {
             id: `follow:${target.id}`,
-            label: `Попросить идти вместе: ${target.nickname}`,
+            label: tGame('game.world.askToJoin', {
+                name: characterName(target.id, target.nickname),
+            }),
             disabled: occupied,
             command: { type: 'companion_request', targetId: target.id, request: 'follow' },
         },
         {
             id: `help:${target.id}`,
-            label: `Попросить помочь в бою: ${target.nickname}`,
+            label: tGame('game.world.askCombatHelp', {
+                name: characterName(target.id, target.nickname),
+            }),
             disabled: occupied,
             command: { type: 'companion_request', targetId: target.id, request: 'help' },
         },
@@ -62,12 +69,12 @@ function companionActions(target: CharacterSnapshot): InteractionAction[] {
         actions.push(
             {
                 id: `guard:${target.id}`,
-                label: 'Попросить остаться здесь',
+                label: tGame('game.world.askToStay'),
                 command: { type: 'companion_request', targetId: target.id, request: 'guard' },
             },
             {
                 id: `dismiss:${target.id}`,
-                label: 'Отпустить спутника',
+                label: tGame('game.world.dismissCompanion'),
                 command: { type: 'companion_request', targetId: target.id, request: 'dismiss' },
             }
         )
@@ -83,13 +90,13 @@ function teacherActions(target: CharacterSnapshot, player: CharacterSnapshot): I
     if (!player.abilities?.known.includes('fireball'))
         actions.push({
             id: `learn:${target.id}`,
-            label: 'Изучить огненную стрелу',
+            label: tGame('game.world.learnFirebolt'),
             command: { type: 'learn_skill', skillId: 'fireball', targetId: target.id },
         })
     if ((player.progression?.magicChaptersRead ?? 0) < 3)
         actions.push({
             id: `study:${target.id}`,
-            label: 'Читать главу о магии',
+            label: tGame('game.world.readMagicChapter'),
             command: { type: 'study_magic', targetId: target.id },
         })
     return actions
@@ -110,7 +117,7 @@ export function prayerLearningActions(
         )
         .map((abilityId) => ({
             id: `learn:${abilityId}:${target.id}`,
-            label: `Изучить: ${ABILITY_DEFINITIONS[abilityId].name}`,
+            label: tGame('game.world.learnAbility', { ability: abilityName(abilityId) }),
             command: { type: 'learn_ability', abilityId, targetId: target.id },
         }))
 }
@@ -139,7 +146,9 @@ export function reviveActions(
                 )
                 .map<InteractionAction>((abilityId) => ({
                     id: `revive:${abilityId}:${target.id}`,
-                    label: `Воскресить: ${target.nickname}`,
+                    label: tGame('game.world.resurrectNamed', {
+                        name: characterName(target.id, target.nickname),
+                    }),
                     disabled: player.resourceChecks?.prayers[abilityId]?.revive !== 'ready',
                     command: {
                         type: 'use_ability',
@@ -173,7 +182,9 @@ export function followActions(
         )
         .map((target) => ({
             id: `self-follow:${target.id}`,
-            label: `Следовать за ${target.nickname}`,
+            label: tGame('game.world.followNamed', {
+                name: characterName(target.id, target.nickname),
+            }),
             command: { type: 'follow', targetId: target.id },
         }))
 }
@@ -192,7 +203,9 @@ export function socialActions(
                 ? [
                       {
                           id: `whisper:${target.id}`,
-                          label: `Шёпот: ${target.nickname}`,
+                          label: tGame('game.world.whisperTo', {
+                              name: characterName(target.id, target.nickname),
+                          }),
                           command: { type: 'whisper_open' as const, targetId: target.id },
                       },
                   ]
@@ -201,7 +214,9 @@ export function socialActions(
                 ? [
                       {
                           id: `exchange:${target.id}`,
-                          label: `Обменяться: ${target.nickname}`,
+                          label: tGame('game.world.tradeWith', {
+                              name: characterName(target.id, target.nickname),
+                          }),
                           command: { type: 'exchange_invite' as const, targetId: target.id },
                       },
                   ]

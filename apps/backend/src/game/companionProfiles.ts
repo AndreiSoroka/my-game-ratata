@@ -64,6 +64,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
             'Я Мира, хранительница Новогорода и глава гильдии искателей. Расскажи, что случилось: вместе найдём, чем помочь городу.',
     },
     npc_princess_1: {
+        dialogueNames: ['Лея', 'Leia'],
         canFight: false,
         canFollow: true,
         needsIntroduction: true,
@@ -75,6 +76,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
             'Я Лея. Корона не обязывает меня сидеть взаперти. Сначала познакомимся: я выбираю спутников сама.',
     },
     npc_veteran_1: {
+        dialogueNames: ['Бран', 'Bran'],
         canFight: true,
         canFollow: true,
         needsIntroduction: false,
@@ -86,6 +88,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
             'Бран. Если идём вместе — прикрою. Но я товарищ, а не чья-то собственность.',
     },
     npc_guard_1: {
+        dialogueNames: ['Рада', 'Rada'],
         canFight: true,
         canFollow: false,
         needsIntroduction: false,
@@ -107,6 +110,19 @@ export const companionProfiles: Record<string, CompanionProfile> = {
         greeting: 'Буль! Я Капля. Поговорим?',
     },
 }
+
+/** Addressing a service NPC does not give it companion capabilities. */
+export const serviceDialogueNames: Readonly<Record<string, readonly string[]>> =
+    {
+        npc_cleric_1: ['Вера', 'Vera'],
+        npc_merchant_1: ['Савва', 'Savva'],
+        npc_necromancer_1: [
+            'Некромант Савва',
+            'Necromancer Savva',
+            'Савва',
+            'Savva',
+        ],
+    }
 
 /** Public service descriptions do not make their bearers recruitable companions. */
 const servicePersonalities: Readonly<Record<string, string>> = {

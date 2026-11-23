@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tGame } from '@/shared/lib/i18n'
 import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 
 import { worldHudButtonAttrs } from './uiKeyboard'
@@ -13,8 +14,8 @@ const emit = defineEmits<{ open: [] }>()
         panel="panel-001"
         :colors="hudPanelButtonColors"
         class="game-menu-button"
-        aria-label="Игровое меню"
-        title="Меню · Esc"
+        :aria-label="tGame('game.menu.dialog')"
+        :title="tGame('game.menu.shortcut')"
         @click="emit('open')"
     >
         ☰

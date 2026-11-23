@@ -10,12 +10,14 @@ import type { RoomSocket } from './roomMessaging'
 import { connectionsInLocation } from './roomQueries'
 import type { RoomSocial } from './roomSocial'
 import { rewardSkeletonKill } from './skeletonKillReward'
+import type { RoomSpeechTranslations } from './speechTranslation'
 import type { WorldLocations } from './worldLocations'
 
 interface EventPipelineOptions {
     archivePerson: (id: string, now: number) => void
     hasModelLease: (actor: GameCharacter, now: number) => boolean
     world: () => WorldLocations
+    speechTranslations: () => RoomSpeechTranslations
 }
 
 /** Fallen guards are observed immediately. Only their final defeat advances objectives. */
@@ -61,7 +63,8 @@ export class RoomEventPipeline {
             this.connections,
             this.options.world(),
             this.options.hasModelLease,
-            objectiveEvents
+            objectiveEvents,
+            this.options.speechTranslations()
         )
     }
 

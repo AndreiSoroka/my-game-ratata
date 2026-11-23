@@ -144,7 +144,7 @@ async function spendEnergyOnDash(page: Page): Promise<void> {
     await page.keyboard.press('Space')
     await page.waitForFunction(() => {
         const player = window.__ratataTest?.getState().player
-        const energy = document.querySelector('[role="progressbar"][aria-label="Energy"]')
+        const energy = document.querySelector('[role="progressbar"][aria-label="Энергия"]')
         return (
             player?.movement?.dashing === false &&
             player.movement.dashCooldownMsLeft > 0 &&
@@ -162,7 +162,7 @@ async function expectRoadSong(page: Page): Promise<void> {
         const zone = window.__ratataGameDebug
             ?.prayerAreas?.()
             .find((area) => area.actorId === player?.id)
-        const energy = document.querySelector('[role="progressbar"][aria-label="Energy"]')
+        const energy = document.querySelector('[role="progressbar"][aria-label="Энергия"]')
         return (
             cast?.abilityId === 'pray_road' &&
             zone?.abilityId === cast.abilityId &&

@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import { formatLocationCount, type RegionLoreContent, regionLoreContent } from '../model/regionLore'
+import { computed } from 'vue'
 
-withDefaults(defineProps<Partial<RegionLoreContent>>(), regionLoreContent)
+import { gameLocale } from '@/shared/lib/i18n'
+
+import { defaultRegionLore, formatLocationCount, type RegionLoreContent } from '../model/regionLore'
+
+defineProps<Partial<RegionLoreContent>>()
+const defaults = computed(defaultRegionLore)
 </script>
 
 <template>
     <div class="region-lore">
         <p class="region-lore__eyebrow">
-            {{ regionName.toUpperCase() }} · {{ formatLocationCount(locationCount) }}
+            {{ (regionName ?? defaults.regionName).toLocaleUpperCase(gameLocale) }} ·
+            {{ formatLocationCount(locationCount ?? defaults.locationCount) }}
         </p>
-        <h2 class="region-lore__heading">{{ headingFirstLine }}<br />{{ headingSecondLine }}</h2>
-        <p class="region-lore__description">{{ description }}</p>
-        <p class="region-lore__invitation">{{ invitation }}</p>
+        <h2 class="region-lore__heading">
+            {{ headingFirstLine ?? defaults.headingFirstLine }}<br />
+            {{ headingSecondLine ?? defaults.headingSecondLine }}
+        </h2>
+        <p class="region-lore__description">{{ description ?? defaults.description }}</p>
+        <p class="region-lore__invitation">{{ invitation ?? defaults.invitation }}</p>
     </div>
 </template>
 

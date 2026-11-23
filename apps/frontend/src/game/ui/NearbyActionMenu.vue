@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { isConfirmationKey } from './keyboardOwnership'
 import type { NearbyAction } from './nearbyActions'
 import GameButton from './primitives/GameButton.vue'
@@ -117,8 +119,13 @@ onBeforeUnmount(returnFocus)
     >
         <GameFrame variant="window" />
         <header class="nearby-action-panel__header">
-            <h2 :id="labelId">{{ contextLabel ?? 'Действия рядом' }}</h2>
-            <GameButton icon tabindex="-1" aria-label="Закрыть действия" @click="emit('close')">
+            <h2 :id="labelId">{{ contextLabel ?? tGame('game.world.nearbyActions') }}</h2>
+            <GameButton
+                icon
+                tabindex="-1"
+                :aria-label="tGame('game.world.closeActions')"
+                @click="emit('close')"
+            >
                 ×
             </GameButton>
         </header>
@@ -137,10 +144,12 @@ onBeforeUnmount(returnFocus)
             >
                 {{ action.label }}
             </GameButton>
-            <p v-if="actions.length === 0" role="status">Рядом нет доступных действий.</p>
+            <p v-if="actions.length === 0" role="status">
+                {{ tGame('game.world.noActionsAvailableNearby') }}
+            </p>
         </div>
         <p class="nearby-action-panel__hint">
-            ↑↓ / W S — выбор · F / Enter — выполнить · Esc — закрыть
+            {{ tGame('game.world.wSSelectFEnter') }}
         </p>
     </section>
 </template>

@@ -1,4 +1,7 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
+import {
+    authoredPhrase,
+    type GameEventPayload,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
@@ -16,30 +19,36 @@ export function handleDashWithFeedback(
     if (!character.alive || character.tags.has('offline')) {
         return []
     }
-    const text = dashReason(character, now)
     return [
         {
             kind: 'notice',
             noticeKind: 'dash_rejected',
             actorId: character.id,
             audienceIds: [character.id],
-            text,
+            ...dashReason(character, now),
         },
     ]
 }
 
-function dashReason(character: GameCharacter, now: number): string {
+function dashReason(
+    character: GameCharacter,
+    now: number
+): ReturnType<typeof authoredPhrase> {
     if (character.stunUntil > now) {
-        return 'Рывок: оглушение'
+        return authoredPhrase('combat.dashStunned')
     }
     if (character.isActionLocked(now) && !canWalkDuringPrayer(character)) {
-        return 'Действие выполняется'
+        return authoredPhrase('combat.actionInProgress')
     }
     const cooldown = character.movement.dashAvailableAt - now
     if (cooldown > 0) {
-        return `Рывок: ещё ${String(Math.ceil(cooldown / 1000))} с.`
+        return authoredPhrase('combat.dashCooldown', {
+            seconds: Math.ceil(cooldown / 1000),
+        })
     }
-    return character.energy < effectiveDashCost(character, now)
-        ? 'Не хватает энергии'
-        : 'Рывок сейчас недоступен'
+    return authoredPhrase(
+        character.energy < effectiveDashCost(character, now)
+            ? 'combat.lowEnergy'
+            : 'combat.dashUnavailable'
+    )
 }

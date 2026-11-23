@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot } from '@my-game-ratata/contracts'
 
+import { tGame, tLocalized } from '@/shared/lib/i18n'
 import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
@@ -12,7 +13,7 @@ const theme = useDarkPanelTheme()
     <aside
         class="constellation-detail"
         :style="darkPanelThemeStyle(theme)"
-        aria-label="Выбранная звезда"
+        :aria-label="tGame('game.knowledge.selectedStar')"
         aria-live="polite"
     >
         <FantasyBorder
@@ -24,16 +25,22 @@ const theme = useDarkPanelTheme()
             aria-hidden="true"
         />
         <template v-if="node.unlocked && node.name">
-            <h3>{{ node.name }}</h3>
+            <h3>{{ tLocalized(node.nameMessage, node.name) }}</h3>
             <span v-if="node.effectType" class="constellation-detail__type">{{
-                node.effectType === 'active' ? 'Активное заклинание' : 'Пассивный навык'
+                node.effectType === 'active'
+                    ? tGame('game.knowledge.activeSpell')
+                    : tGame('game.knowledge.passiveSkill')
             }}</span>
-            <p v-if="node.description">{{ node.description }}</p>
+            <p v-if="node.description">
+                {{ tLocalized(node.descriptionMessage, node.description) }}
+            </p>
             <ul v-if="node.effects?.length">
-                <li v-for="effect in node.effects" :key="effect">{{ effect }}</li>
+                <li v-for="(effect, index) in node.effects" :key="effect">
+                    {{ tLocalized(node.effectMessages?.[index] ?? undefined, effect) }}
+                </li>
             </ul>
         </template>
-        <h3 v-else>Неизвестно</h3>
+        <h3 v-else>{{ tGame('game.knowledge.unknown') }}</h3>
     </aside>
 </template>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useId } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
@@ -31,7 +32,12 @@ const cancelColors: UiButtonColors = {
         :aria-labelledby="headingId"
     >
         <h2 :id="headingId" class="quest-decision__heading">{{ heading }}</h2>
-        <div class="quest-decision__body" role="region" aria-label="Условия поручения" tabindex="0">
+        <div
+            class="quest-decision__body"
+            role="region"
+            :aria-label="tGame('game.quests.requestTerms')"
+            tabindex="0"
+        >
             <slot />
         </div>
         <div class="quest-decision__actions">

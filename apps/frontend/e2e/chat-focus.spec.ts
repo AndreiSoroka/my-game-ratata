@@ -131,7 +131,7 @@ for (const mobile of [false, true]) {
         await expectCollapsedComposer(page, canvas, chat)
 
         await page.keyboard.press('KeyI')
-        await expect(page.getByRole('dialog', { name: 'Inventory and equipment' })).toBeVisible()
+        await expect(page.getByRole('dialog', { name: 'Инвентарь и снаряжение' })).toBeVisible()
         const modalAt = await position(page)
         await history.focus()
         await page.keyboard.press('KeyD')

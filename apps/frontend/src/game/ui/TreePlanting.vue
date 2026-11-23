@@ -9,6 +9,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { RatataGame } from '../runtime/ratataGame'
 import { isOwnedUiTarget } from './keyboardOwnership'
 import PlantingHint from './PlantingHint.vue'
@@ -65,12 +67,12 @@ const available = computed(() => preview.value?.available === true)
 const energyCost = computed(() => props.player.resourceChecks?.plantEnergyCost ?? TREE_PLANT_ENERGY)
 const status = computed(() =>
     submitted.value
-        ? 'Подходим к участку… · WASD / Esc — отменить'
+        ? tGame('game.world.approachingPlot')
         : reason.value ||
           preview.value?.reason ||
           (preview.value
-              ? `Свободный участок · ${String(energyCost.value)} EN`
-              : 'Проверяем участок…')
+              ? tGame('game.world.clearPlot', { energy: String(energyCost.value) })
+              : tGame('game.world.checkingPlot'))
 )
 function request(attempt = 0): void {
     clearTimeout(timer)
@@ -90,7 +92,7 @@ function request(attempt = 0): void {
         timer = setTimeout(() => {
             if (preview.value || submitted.value || disposed) return
             if (attempt < 2) request(attempt + 1)
-            else reason.value = 'Нет ответа сервера. Выберите участок ещё раз.'
+            else reason.value = tGame('game.world.plotRequestTimedOut')
         }, 1100)
     }
     const delay = Math.max(0, 110 - (performance.now() - lastRequest))
@@ -121,11 +123,11 @@ function point(value: Vector2): void {
 function confirm(): void {
     if (submitted.value) return
     if (!available.value) {
-        reason.value = preview.value?.reason ?? 'Дождитесь проверки участка'
+        reason.value = preview.value?.reason ?? tGame('game.world.waitingForPlotCheck')
         return
     }
     if (saplings() === 0) {
-        reason.value = 'Нет саженцев'
+        reason.value = tGame('game.world.noSaplings')
         return
     }
     submitted.value = true

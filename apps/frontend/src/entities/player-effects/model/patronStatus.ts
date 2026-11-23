@@ -7,6 +7,8 @@ import {
     prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
 
+import { tGame, tLocalized } from '@/shared/lib/i18n'
+
 export interface PatronPrayerChances {
     healing: number
     purificationPerStep: number
@@ -39,7 +41,7 @@ export function projectPlayerPatrons({
     return [
         {
             id: patron.id,
-            name: patron.name,
+            name: tGame(`game.deity.${patron.id}`),
             level: mastery?.level,
             mood: patron.mood ?? undefined,
             ...(patron.id === 'hearth' && hearthPatronDetails(patron)),
@@ -50,7 +52,7 @@ export function projectPlayerPatrons({
 function hearthPatronDetails(patron: DeitySnapshot) {
     const { omen, perception, successChance, hearthPrayerChances, changesInMs } = patron
     return {
-        omen: perception === 'vague' ? undefined : omen,
+        omen: perception === 'vague' ? undefined : tLocalized(patron.omenMessage, omen),
         prayerChances:
             hearthPrayerChances && successChance !== null
                 ? { ...hearthPrayerChances, healing: successChance }

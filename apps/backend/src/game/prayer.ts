@@ -7,7 +7,11 @@ import {
     prayerManaCost,
 } from '@my-game-ratata/contracts'
 
-import { type AbilityContext, abilityNotice } from './abilityContext'
+import {
+    type AbilityContext,
+    abilityNotice,
+    authoredAbilityNotice,
+} from './abilityContext'
 import { secondaryAshPrayerTarget } from './ashPrayerTargets'
 import type { GameCharacter } from './character'
 import { beginRevive } from './characterLife'
@@ -49,7 +53,7 @@ export function pray(
     abilityId: PrayerActionId = 'pray'
 ): GameEventPayload[] {
     if (context === undefined) {
-        return abilityNotice(actor, 'Выберите цель молитвы.')
+        return authoredAbilityNotice(actor, 'combat.choosePrayerTarget')
     }
     const actualContext = {
         ...context,
@@ -100,7 +104,7 @@ function startOtherPrayer(
         )
     }
     if (actor.mana < prayerManaCost(intent.mode, abilityId)) {
-        return abilityNotice(actor, 'Недостаточно маны для молитвы.')
+        return authoredAbilityNotice(actor, 'combat.lowPrayerMana')
     }
     if (intent.mode === 'revive') {
         return startOtherRevival(actor, intent.targetId, context, abilityId)
@@ -123,7 +127,7 @@ function startOtherRevival(
         target === undefined ||
         !beginRevive(actor, target, context.now, context, abilityId)
     ) {
-        return abilityNotice(actor, 'Воскрешение сейчас невозможно.')
+        return authoredAbilityNotice(actor, 'combat.revivalUnavailable')
     }
     return [
         {

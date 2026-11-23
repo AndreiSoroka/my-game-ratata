@@ -1,41 +1,25 @@
 <script setup lang="ts">
-import {
-    type CharacterSnapshot,
-    ITEM_DEFINITIONS,
-    type QuestObjective,
-    type QuestOfferSnapshot,
-    WORLD_LOCATION_DEFINITIONS,
-} from '@my-game-ratata/contracts'
+import { type CharacterSnapshot, type QuestOfferSnapshot } from '@my-game-ratata/contracts'
+
+import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
+import { questObjectiveText } from './questTermsText'
 
-const props = defineProps<{
+defineProps<{
     offer: QuestOfferSnapshot
     characters: CharacterSnapshot[]
     progress?: number[]
 }>()
-function name(id: string): string {
-    return props.characters.find((character) => character.id === id)?.nickname ?? id
-}
-function place(id: string): string {
-    return WORLD_LOCATION_DEFINITIONS.find((location) => location.id === id)?.name ?? id
-}
-function describe(objective: QuestObjective): string {
-    if (objective.kind === 'deliver')
-        return `Доставить: ${ITEM_DEFINITIONS[objective.itemId].name} × ${objective.quantity}. Получатель: ${name(objective.recipientId)}.`
-    if (objective.kind === 'visit') return `Посетить: ${place(objective.locationId)}.`
-    if (objective.kind === 'defeat')
-        return `Победить: ${objective.archetype} × ${objective.quantity}. Место: ${place(objective.locationId)}.`
-    return `Расспросить по поручению: ${name(objective.targetId)}.`
-}
 </script>
 <template>
     <p>
-        Заказчик: <strong>{{ offer.issuerName }}</strong>
+        {{ tGame('game.quests.questGiver') }}
+        <strong>{{ characterName(offer.issuerId, offer.issuerName) }}</strong>
     </p>
-    <h3>{{ offer.title }}</h3>
-    <p>{{ offer.description }}</p>
+    <h3>{{ tLocalized(offer.titleMessage, offer.title) }}</h3>
+    <p>{{ tLocalized(offer.descriptionMessage, offer.description) }}</p>
     <ol class="quest-terms__objectives">
         <li v-for="(objective, index) in offer.objectives" :key="index">
             <ItemIcon
@@ -43,7 +27,7 @@ function describe(objective: QuestObjective): string {
                 :item="{ itemId: objective.itemId, quantity: objective.quantity }"
             />
             <span
-                >{{ offer.objectiveLabels?.[index] ?? describe(objective) }}
+                >{{ questObjectiveText(offer, index, objective, characters) }}
                 <span v-if="progress" class="social-status">
                     · {{ progress[index] ?? 0 }} /
                     {{
@@ -54,12 +38,26 @@ function describe(objective: QuestObjective): string {
                 ></span
             >
         </li>
+        <li
+            v-for="(label, index) in offer.objectiveLabels?.slice(offer.objectives.length)"
+            :key="`extra-${index}`"
+        >
+            {{
+                tLocalized(
+                    offer.objectiveMessages?.[offer.objectives.length + index] ?? undefined,
+                    label
+                )
+            }}
+        </li>
     </ol>
-    <p v-if="!offer.rewardGold && !offer.rewardItems.length">Просьба без награды.</p>
+    <p v-if="!offer.rewardGold && !offer.rewardItems.length">
+        {{ tGame('game.quests.unpaidRequest') }}
+    </p>
     <template v-else>
         <p>
-            Награда: {{ offer.rewardGold }} золота{{
-                ['city', 'worker'].includes(offer.funding) ? ' из городского фонда' : ''
+            {{ tGame('game.quests.reward') }} {{ offer.rewardGold }} {{ tGame('game.quests.gold')
+            }}{{
+                ['city', 'worker'].includes(offer.funding) ? tGame('game.quests.fromCityFund') : ''
             }}.
         </p>
         <ul v-if="offer.rewardItems.length">
@@ -69,7 +67,7 @@ function describe(objective: QuestObjective): string {
             </li>
         </ul>
         <p v-if="offer.rewardItems.length" class="social-muted">
-            Предметную награду получает тот, кто сдаёт договор.
+            {{ tGame('game.quests.personWhoTurnsInContract') }}
         </p>
     </template>
 </template>

@@ -2,13 +2,15 @@
 import { type CharacterSnapshot, MOVEMENT_RULES } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 const props = defineProps<{ character: CharacterSnapshot }>()
 const label = computed(() =>
     props.character.movement?.dashing
-        ? 'Рывок'
+        ? tGame('game.world.dash')
         : {
-              walking: 'Шаг',
-              sneaking: 'Тихий ход',
+              walking: tGame('game.world.walk'),
+              sneaking: tGame('game.world.sneak'),
           }[props.character.movement?.mode ?? 'walking']
 )
 const cooldown = computed(() =>
@@ -16,16 +18,20 @@ const cooldown = computed(() =>
 )
 </script>
 <template>
-    <div class="movement-status" aria-label="Режим движения">
+    <div class="movement-status" :aria-label="tGame('game.world.movementMode')">
         <span>{{ label }}</span>
         <span
             :class="{
                 unavailable: cooldown > 0 || character.resourceChecks?.dash !== 'ready',
             }"
         >
-            {{ cooldown > 0 ? `Рывок: ${cooldown} с` : `Рывок: ${MOVEMENT_RULES.dashEnergy} EN` }}
+            {{
+                cooldown > 0
+                    ? tGame('game.world.dashCooldown', { seconds: cooldown })
+                    : tGame('game.world.dashCost', { energy: MOVEMENT_RULES.dashEnergy })
+            }}
         </span>
-        <small>C — красться · Пробел — рывок · 1–4 — действия</small>
+        <small>{{ tGame('game.world.cSneakSpaceDashFor') }}</small>
     </div>
 </template>
 <style scoped>

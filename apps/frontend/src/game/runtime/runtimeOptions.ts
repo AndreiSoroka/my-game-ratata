@@ -2,6 +2,7 @@ import type {
     ClientMessage,
     GameEventPayload,
     HeroClass,
+    SpeechTranslationServerMessage,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -16,6 +17,7 @@ export interface RatataGameOptions {
     onCharacterDoubleClick?: (id: string) => void
     onCommand?: (message: ClientMessage) => void
     onEvent?: (event: GameEventPayload) => void
+    onSpeechTranslation?: (translation: SpeechTranslationServerMessage) => void
     onChatState: (state: ChatInputState) => void
     onError: (message: string) => void
     onMapError?: (message: string | null) => void

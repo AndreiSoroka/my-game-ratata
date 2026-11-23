@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { HudRow } from '@/shared/ui/common'
 import { FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
@@ -13,15 +14,25 @@ import type { PlayerVitalsViewProps } from './playerVitalsViewProps'
 const props = defineProps<PlayerVitalsViewProps>()
 
 const resourcePresentation = {
-    hp: { label: 'HP', name: 'Health', color: lightUiColors.bar.health.color, compactHeight: 13 },
-    mana: { label: 'MP', name: 'Mana', color: lightUiColors.bar.mana.color, compactHeight: 10 },
+    hp: {
+        label: 'HP',
+        name: 'game.character.health',
+        color: lightUiColors.bar.health.color,
+        compactHeight: 13,
+    },
+    mana: {
+        label: 'MP',
+        name: 'game.character.mana',
+        color: lightUiColors.bar.mana.color,
+        compactHeight: 10,
+    },
     energy: {
         label: 'EN',
-        name: 'Energy',
+        name: 'game.character.energy',
         color: lightUiColors.bar.energy.color,
         compactHeight: 10,
     },
-}
+} as const
 
 const bars = computed(() =>
     playerResourceKinds.map((kind) => {
@@ -47,7 +58,7 @@ const bars = computed(() =>
         class="player-vitals"
         :class="{ 'player-vitals--compact': compact }"
         role="region"
-        aria-label="Player vitals"
+        :aria-label="tGame('game.world.playerVitals')"
     >
         <div class="player-vitals__layout">
             <div class="player-vitals__header">
@@ -84,7 +95,7 @@ const bars = computed(() =>
                         class="player-vitals__bar"
                         :value="bar.percent"
                         :segments="bar.segments"
-                        :label="bar.name"
+                        :label="tGame(bar.name)"
                         :color="bar.color"
                         track-color="var(--ui-dark-bar-track)"
                         :height="compact ? bar.compactHeight : undefined"

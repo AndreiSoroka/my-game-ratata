@@ -5,6 +5,8 @@ import {
     resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { HotbarEmit, HotbarProps } from './hotbarActions'
 import type { HotbarBinding } from './hotbarBindings'
 import type { createGestures } from './hotbarGestures'
@@ -28,7 +30,9 @@ export function bladeAbilityUnavailable(
 ): string | undefined {
     if (!isBladeAbility(id)) return undefined
     const weapon = resolveCombatWeapon(props.player.archetype, props.player.equipment.weapon)
-    return !weapon.bladeCompatible || weapon.broken ? 'Нужен исправный нож или меч' : undefined
+    return !weapon.bladeCompatible || weapon.broken
+        ? tGame('game.world.bladeWeaponRequired')
+        : undefined
 }
 export function bladeActionTooltip(
     binding: HotbarBinding | null,
@@ -40,8 +44,8 @@ export function bladeActionTooltip(
     }
     if (binding?.kind === 'ability' && binding.id === 'defensive_stance')
         return props.player.combat?.defensiveStance
-            ? 'Выйти из глухой обороны'
-            : 'Неподвижная оборона: атаки и колдовство недоступны'
+            ? tGame('game.world.leaveDefensiveStance')
+            : tGame('game.world.defensiveStanceHint')
     return undefined
 }
 /** A toggle is a single intention, never a repeated auto-action. */

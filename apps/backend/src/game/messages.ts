@@ -1,17 +1,16 @@
 import type {
-    CharacterArchetype,
     ClientMessage,
     EquipmentActionKind,
     EquipmentSlotId,
     InventoryActionKind,
     Vector2,
 } from '@my-game-ratata/contracts'
-import { heroClasses } from '@my-game-ratata/contracts'
 
 import { parseControlCommand } from './characterControl'
 import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
+import { parseAbandonLife, parseJoin, parseLocale } from './identityMessages'
 import { parsePortalBoundary } from './portalCommand'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { parseSocialBoundary } from './whisperCommands'
@@ -92,6 +91,8 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
     switch (record['type']) {
         case 'join':
             return parseJoin(record)
+        case 'set_locale':
+            return parseLocale(record)
         case 'move_input':
             return parseMoveInput(record)
         case 'move_to':
@@ -115,50 +116,6 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
         default:
             return parseExtraCommand(record)
     }
-}
-
-function parseAbandonLife(record: Record<string, unknown>): ParseResult {
-    return Object.keys(record).length === 1
-        ? { message: { type: 'abandon_life' } }
-        : { error: 'Abandon life does not accept a target or owner' }
-}
-
-function parseJoin(record: Record<string, unknown>): ParseResult {
-    if (Object.hasOwn(record, 'creatureType')) {
-        return { error: 'Creature type is assigned by the server' }
-    }
-    const nickname = record['nickname']
-
-    if (typeof nickname !== 'string' || nickname.trim().length === 0) {
-        return { error: 'Nickname is required' }
-    }
-    const createOnly = record['createOnly']
-    if (
-        Object.hasOwn(record, 'createOnly') &&
-        typeof createOnly !== 'boolean'
-    ) {
-        return { error: 'join.createOnly must be a boolean' }
-    }
-
-    const heroClass = heroClasses.find(
-        (candidate) => candidate === record['heroClass']
-    )
-    if (record['heroClass'] !== undefined && heroClass === undefined) {
-        return { error: 'Unknown hero class' }
-    }
-    const archetype = parseArchetype(record['archetype'])
-    const message = {
-        nickname: nickname.trim().normalize('NFC').slice(0, 24),
-        type: 'join',
-        ...(typeof createOnly === 'boolean' ? { createOnly } : {}),
-        ...(heroClass === undefined ? {} : { heroClass }),
-    } satisfies ClientMessage
-
-    if (archetype === undefined) {
-        return { message }
-    }
-
-    return { message: { ...message, archetype } }
 }
 
 function parseMoveInput(record: Record<string, unknown>): ParseResult {
@@ -294,14 +251,6 @@ function parseVector(input: unknown): Vector2 | undefined {
     }
 
     return { x, y }
-}
-
-function parseArchetype(input: unknown): CharacterArchetype | undefined {
-    if (input === 'human' || input === 'skeleton' || input === 'slime') {
-        return input
-    }
-
-    return undefined
 }
 
 function parseInventoryActionKind(

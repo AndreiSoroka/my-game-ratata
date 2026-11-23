@@ -36,7 +36,7 @@ describe('inventory action focus', () => {
                 await slot.trigger('keydown', { code: 'Enter' })
                 await flushPromises()
                 const equip = wrapper.get<HTMLButtonElement>('.inventory-actions button')
-                expect(equip.text()).toBe('Equip')
+                expect(equip.text()).toBe('Надеть')
                 expect(document.activeElement).toBe(equip.element)
                 await equip.trigger('keydown', { code: 'Enter' })
                 expect(wrapper.emitted('inventoryAction')).toEqual([
@@ -77,14 +77,16 @@ describe('inventory action focus', () => {
             await flushPromises()
             const drop = wrapper
                 .findAll<HTMLButtonElement>('.inventory-actions button')
-                .find((button) => button.text() === 'Drop')!
+                .find((button) => button.text() === 'Выбросить')!
             drop.element.focus()
             await drop.trigger('keydown', { code: 'KeyF' })
             await wrapper.setProps({
                 character: characterFixture('self', { inventory: [wood] }),
             })
             await flushPromises()
-            expect(document.activeElement).toBe(wrapper.get('[aria-label="Empty slot 2"]').element)
+            expect(document.activeElement).toBe(
+                wrapper.get('[aria-label="Пустая ячейка 2"]').element
+            )
             expect(wrapper.find('.inventory-actions').exists()).toBe(false)
             expect(wrapper.emitted('inventoryAction')).toEqual([
                 [{ action: 'drop', itemInstanceId: 'apple' }],
@@ -122,7 +124,9 @@ describe('inventory action focus', () => {
             await eat.trigger('keydown', { code: 'Enter' })
             await wrapper.setProps({ character: characterFixture('self') })
             await flushPromises()
-            expect(document.activeElement).toBe(wrapper.get('[aria-label="Empty slot 1"]').element)
+            expect(document.activeElement).toBe(
+                wrapper.get('[aria-label="Пустая ячейка 1"]').element
+            )
             expect(wrapper.emitted('inventoryAction')).toEqual([
                 [{ action: 'eat', itemInstanceId: 'apple' }],
             ])
@@ -165,7 +169,7 @@ describe('inventory focus ownership and lifetime', () => {
                 const destinationButton =
                     destination === 'another dialog'
                         ? otherButton
-                        : wrapper.get<HTMLButtonElement>('[aria-label="Close inventory"]').element
+                        : wrapper.get<HTMLButtonElement>('[aria-label="Закрыть инвентарь"]').element
                 const update = wrapper.setProps({ character: characterFixture('self') })
                 // Move focus after Vue patches the inventory, before queued restoration runs.
                 void nextTick(() => destinationButton.focus())

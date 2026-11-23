@@ -1,8 +1,12 @@
 import {
+    type AdventureQuestSnapshot,
     DEFAULT_QUEST_REWARD_MODE,
     type GuildQuestSnapshot,
     ITEM_DEFINITIONS,
+    type LocalizedMessage,
+    npcQuestMessage,
     type NpcQuestSnapshot,
+    type QuestOfferSnapshot,
     type WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -55,6 +59,37 @@ function issuerName(
     return issuer?.nickname ?? job.issuerName ?? issuerId
 }
 
+function questText(
+    source: Pick<
+        QuestOfferSnapshot,
+        'title' | 'description' | 'titleMessage' | 'descriptionMessage'
+    >
+) {
+    const { title, description, titleMessage, descriptionMessage } = source
+    return {
+        title,
+        description,
+        ...(titleMessage === undefined ? {} : { titleMessage }),
+        ...(descriptionMessage === undefined ? {} : { descriptionMessage }),
+    }
+}
+
+function questNotice(
+    notice: string | null,
+    noticeMessage: LocalizedMessage | undefined = npcQuestMessage(notice)
+) {
+    return {
+        notice,
+        ...(noticeMessage === undefined ? {} : { noticeMessage }),
+    }
+}
+
+function storyQuestNotice(quest: AdventureQuestSnapshot, complete: boolean) {
+    return complete
+        ? questNotice('Награда уже передана.')
+        : questNotice(quest.notice ?? null, quest.noticeMessage)
+}
+
 function guildContract(
     job: GuildQuestSnapshot,
     issuer: GameCharacter | undefined,
@@ -65,14 +100,17 @@ function guildContract(
         request !== undefined && !request.proofAccepted
             ? 'Передать трофей клерку и сообщить о расчистке.'
             : (request?.reason ?? null)
+    const objectiveLabels =
+        request === undefined
+            ? [`Прогресс: ${String(job.progress)} / ${String(job.goal)}`]
+            : workerLabels(request)
     return {
         id: job.id,
         instanceId: job.instanceId,
         revision: 1,
         issuerId,
         issuerName: issuerName(job, issuer, issuerId),
-        title: job.title,
-        description: job.description,
+        ...questText(job),
         objectives:
             request === undefined
                 ? []
@@ -84,17 +122,25 @@ function guildContract(
                           recipientId: issuerId,
                       },
                   ],
-        objectiveLabels:
+        objectiveLabels,
+        objectiveMessages:
             request === undefined
-                ? [`Прогресс: ${String(job.progress)} / ${String(job.goal)}`]
-                : workerLabels(request),
+                ? [
+                      {
+                          key: 'authored.npc.quest.progress',
+                          params: { progress: job.progress, goal: job.goal },
+                      },
+                  ]
+                : objectiveLabels.map(
+                      (label) => npcQuestMessage(label) ?? null
+                  ),
         ...guildReward(job),
         funding: request === undefined ? 'city' : 'worker',
         expiresAt: 0,
         ...(request === undefined ? {} : { workerRequestId: request.id }),
         progress: [job.progress],
         status: job.status,
-        notice: job.rewardNotice ?? notice,
+        ...questNotice(job.rewardNotice ?? notice, job.rewardNoticeMessage),
     }
 }
 
@@ -129,8 +175,7 @@ function storyContract(
         revision: 1,
         issuerId: issuer.id,
         issuerName: issuer.nickname,
-        title: quest.title,
-        description: quest.description,
+        ...questText(quest),
         objectives: [
             {
                 kind: 'deliver',
@@ -150,7 +195,7 @@ function storyContract(
         expiresAt: 0,
         progress: [complete ? quest.goal : Math.min(quantity, quest.goal)],
         status: quest.status,
-        notice: complete ? 'Награда уже передана.' : (quest.notice ?? null),
+        ...storyQuestNotice(quest, complete),
         ...(complete ? { receiptId: instanceId } : {}),
     }
 }

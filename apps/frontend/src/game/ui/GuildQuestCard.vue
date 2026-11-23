@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import type { ClientMessage, GuildQuestSnapshot } from '@my-game-ratata/contracts'
+import {
+    type ClientMessage,
+    type GuildQuestSnapshot,
+    npcQuestMessage,
+} from '@my-game-ratata/contracts'
 import { computed, useId } from 'vue'
+
+import { characterName, itemName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import ItemIcon from './ItemIcon.vue'
@@ -20,82 +26,112 @@ const progressId = useId()
 const request = computed(() => props.job.workRequest)
 const trophy = computed(() => request.value && itemAssetCatalog[request.value.requiredTrophyItemId])
 const stageLabels = {
-    reporting: 'Работник идёт за помощью',
-    waiting: 'Работник ждёт у распорядителя',
-    outbound: 'Работник идёт к участку',
-    working: 'Работник пробует работать',
-    returning: 'Работник возвращается к распорядителю',
-    ready: 'Проверка пройдена — получите награду',
-    completed: 'Работник возвращается к обычной работе',
-    cancelled: 'Обращение отменено',
+    get reporting() {
+        return tGame('game.quests.workerReports')
+    },
+    get waiting() {
+        return tGame('game.quests.workerWaits')
+    },
+    get outbound() {
+        return tGame('game.quests.workerHeadsToSite')
+    },
+    get working() {
+        return tGame('game.quests.workerVerifies')
+    },
+    get returning() {
+        return tGame('game.quests.workerReturns')
+    },
+    get ready() {
+        return tGame('game.quests.verificationSucceeded')
+    },
+    get completed() {
+        return tGame('game.quests.workerResumes')
+    },
+    get cancelled() {
+        return tGame('game.quests.requestCancelled')
+    },
 }
 const status = computed(() =>
     props.job.status === 'reward_missing'
-        ? 'Обещанная награда недоступна'
+        ? tGame('game.quests.rewardMissing')
         : request.value
           ? stageLabels[request.value.stage]
           : {
-                active: 'Выполняется',
-                ready: 'Можно получить награду',
-                completed: 'Завершено',
-                cancelled: 'Отменено',
-                reward_missing: 'Обещанная награда недоступна',
+                active: tGame('game.quests.inProgress'),
+                ready: tGame('game.quests.rewardReady'),
+                completed: tGame('game.quests.completed'),
+                cancelled: tGame('game.quests.cancelled'),
+                reward_missing: tGame('game.quests.rewardMissing'),
             }[props.job.status]
 )
 const progressLabel = computed(() =>
     props.job.id === 'survey_frontier'
-        ? 'Исследовано разных земель'
+        ? tGame('game.quests.landsExplored')
         : props.job.id === 'skeleton_hunt'
-          ? 'Побеждено скелетов'
-          : 'Побеждено враждебных слизней'
+          ? tGame('game.quests.skeletonsDefeated')
+          : tGame('game.quests.hostileSlimesDefeated')
 )
 </script>
 
 <template>
-    <article class="quest-card guild-active game-frame-host" aria-label="Общий контракт">
+    <article
+        class="quest-card guild-active game-frame-host"
+        :aria-label="tGame('game.quests.sharedContract')"
+    >
         <GameFrame variant="panel" />
         <span class="quest-card-status">{{ status }}</span>
-        <h2>{{ job.title }}</h2>
-        <p>{{ job.description }}</p>
+        <h2>{{ tLocalized(job.titleMessage, job.title) }}</h2>
+        <p>{{ tLocalized(job.descriptionMessage, job.description) }}</p>
         <template v-if="request">
             <dl class="quest-request-facts">
                 <div>
-                    <dt>Заказчик</dt>
-                    <dd>{{ request.workerName }}</dd>
+                    <dt>{{ tGame('game.quests.questGiverGuildQuest') }}</dt>
+                    <dd>{{ characterName(request.workerId, request.workerName) }}</dd>
                 </div>
                 <div>
-                    <dt>Отчёт и награда</dt>
-                    <dd>{{ job.issuerName ?? 'Городской распорядитель' }}</dd>
+                    <dt>{{ tGame('game.quests.reportAndReward') }}</dt>
+                    <dd>
+                        {{
+                            characterName(
+                                job.issuerId ?? request.clerkId,
+                                job.issuerName ?? tGame('game.quests.citySteward')
+                            )
+                        }}
+                    </dd>
                 </div>
                 <div>
-                    <dt>Участок</dt>
-                    <dd>{{ request.locationName }}</dd>
+                    <dt>{{ tGame('game.quests.worksite') }}</dt>
+                    <dd>{{ locationName(request.locationId, request.locationName) }}</dd>
                 </div>
                 <div>
-                    <dt>Замеченный враг</dt>
+                    <dt>{{ tGame('game.quests.spottedEnemy') }}</dt>
                     <dd>{{ request.enemyName }}</dd>
                 </div>
             </dl>
             <p v-if="request.proofAccepted" class="quest-card-hint">
-                Трофей принят. Повторные пробные рейсы бесплатны.
+                {{ tGame('game.quests.trophyAcceptedAnotherVerificationTrip') }}
             </p>
             <p v-else-if="trophy" class="quest-trophy">
-                <img :src="trophy.src" :alt="trophy.label" />
-                <span>Для доклада: {{ trophy.label }} ×1. Подойдёт трофей, найденный раньше.</span>
+                <img :src="trophy.src" :alt="itemName(request.requiredTrophyItemId)" />
+                <span
+                    >{{ tGame('game.quests.forReport') }}
+                    {{ itemName(request.requiredTrophyItemId) }}
+                    {{ tGame('game.quests.trophyFoundEarlierCounts') }}</span
+                >
             </p>
             <p class="quest-card-hint">
-                Нужно дождаться одного этапа работы и возвращения работника.
+                {{ tGame('game.quests.waitForWorkerCompleteOne') }}
             </p>
             <p v-if="request.reason" class="quest-card-reason" role="status">
-                {{ request.reason }}
+                {{ tLocalized(npcQuestMessage(request.reason), request.reason) }}
             </p>
         </template>
         <template v-else>
             <p class="quest-card-hint">
                 {{
                     job.id === 'survey_frontier'
-                        ? 'Засчитываются посещённые земли за пределами города.'
-                        : 'Засчитываются победы по принятому контракту. Сердца и другие предметы сдавать не нужно.'
+                        ? tGame('game.quests.visitedLandsCount')
+                        : tGame('game.quests.combatContribution')
                 }}
             </p>
             <label :for="progressId"
@@ -105,7 +141,10 @@ const progressLabel = computed(() =>
             <ul v-if="job.participants.length" class="guild-contributions">
                 <li v-for="participant in job.participants" :key="participant.id">
                     <span>{{ participant.nickname }}</span>
-                    <strong>{{ participant.contribution }} · вклад в цель</strong>
+                    <strong
+                        >{{ participant.contribution }}
+                        {{ tGame('game.quests.contributionObjective') }}</strong
+                    >
                 </li>
             </ul>
         </template>
@@ -118,11 +157,13 @@ const progressLabel = computed(() =>
         />
         <ul v-if="job.rewardItems?.length" class="quest-reward-items">
             <li v-for="item in job.rewardItems" :key="item.instanceId">
-                <ItemIcon :item="item" /><span>{{ item.quantity ?? 1 }} шт. · сдающему</span>
+                <ItemIcon :item="item" /><span
+                    >{{ item.quantity ?? 1 }} {{ tGame('game.quests.pcsWhoeverTurnsItIn') }}</span
+                >
             </li>
         </ul>
         <p v-if="job.rewardNotice" class="quest-card-reason" role="status">
-            {{ job.rewardNotice }}
+            {{ tLocalized(job.rewardNoticeMessage, job.rewardNotice) }}
         </p>
         <div
             v-if="job.status !== 'completed' && request?.stage !== 'cancelled'"
@@ -134,7 +175,9 @@ const progressLabel = computed(() =>
                 @click="emit('command', { type: 'guild_report', instanceId: job.instanceId })"
             >
                 {{
-                    request.proofAccepted ? 'Повторить пробный рейс' : 'Передать трофей и доложить'
+                    request.proofAccepted
+                        ? tGame('game.quests.repeatVerification')
+                        : tGame('game.quests.submitTrophy')
                 }}
             </GameButton>
             <GameButton
@@ -142,14 +185,18 @@ const progressLabel = computed(() =>
                 :disabled="!canAct"
                 @click="emit('command', { type: 'guild_turn_in', instanceId: job.instanceId })"
             >
-                Сдать контракт
+                {{ tGame('game.quests.turnInContract') }}
             </GameButton>
             <GameButton
                 v-if="request || actions === 'abandon'"
                 :disabled="!canAbandon"
                 @click="emit('command', { type: 'guild_abandon', instanceId: job.instanceId })"
             >
-                {{ request ? 'Отказаться от обращения' : 'Отказаться от договора' }}
+                {{
+                    request
+                        ? tGame('game.quests.declineWorkerRequest')
+                        : tGame('game.quests.declineContract')
+                }}
             </GameButton>
         </div>
     </article>

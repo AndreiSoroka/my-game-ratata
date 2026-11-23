@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DeityMood } from '@my-game-ratata/contracts'
 
+import { formatGameNumber, tGame } from '@/shared/lib/i18n'
 import { HudRow } from '@/shared/ui/common'
 
 import type { PatronPrayerChances } from '../model/patronStatus'
@@ -15,14 +16,16 @@ defineProps<{
     changesInMs?: number | undefined
 }>()
 
-const percentageFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
-
 function formatChance(chance: number): string {
-    return `${percentageFormat.format(chance * 100)}%`
+    return `${formatGameNumber(chance * 100, { maximumFractionDigits: 2 })}%`
 }
 </script>
 <template>
-    <div v-if="patronName" class="faith-status" aria-label="Покровитель и развитие">
+    <div
+        v-if="patronName"
+        class="faith-status"
+        :aria-label="tGame('game.knowledge.patronAndProgression')"
+    >
         <HudRow class="faith-status__title" align="start">
             <template #leading>
                 <svg
@@ -41,7 +44,12 @@ function formatChance(chance: number): string {
             <span
                 class="faith-status__name"
                 :class="{ 'faith-status__name--timed': patronMood && changesInMs !== undefined }"
-                :title="`${patronName} · ур. ${patronMasteryLevel ?? 0}`"
+                :title="
+                    tGame('game.knowledge.patronLevel', {
+                        name: patronName,
+                        level: patronMasteryLevel ?? 0,
+                    })
+                "
             >
                 <span
                     :key="moodChangeId"
@@ -52,7 +60,8 @@ function formatChance(chance: number): string {
                     >{{ patronName }}</span
                 >
                 <span class="faith-status__progress"
-                    >· <span class="faith-status__mastery">ур. </span
+                    >·
+                    <span class="faith-status__mastery">{{ `${tGame('game.knowledge.lv')} ` }}</span
                     >{{ patronMasteryLevel ?? 0 }}</span
                 >
             </span>
@@ -61,9 +70,9 @@ function formatChance(chance: number): string {
                     v-if="changesInMs !== undefined"
                     class="faith-status__timer"
                     role="timer"
-                    aria-label="До смены настроения"
+                    :aria-label="tGame('game.knowledge.untilMoodChanges')"
                 >
-                    {{ Math.ceil(changesInMs / 1000) }} с
+                    {{ Math.ceil(changesInMs / 1000) }} {{ tGame('game.knowledge.s') }}
                 </span>
                 <PatronMood class="faith-status__mood" :mood="patronMood" />
             </template>
@@ -72,17 +81,22 @@ function formatChance(chance: number): string {
             v-if="prayerChances"
             class="faith-status__chances"
             role="list"
-            aria-label="Шансы молитвы"
+            :aria-label="tGame('game.knowledge.prayerOdds')"
         >
-            <li>Шанс лечения {{ formatChance(prayerChances.healing) }}</li>
             <li>
-                Шанс очищения могилы
+                {{ tGame('game.knowledge.healingChance') }}
+                {{ formatChance(prayerChances.healing) }}
+            </li>
+            <li>
+                {{ tGame('game.knowledge.graveCleansingChance') }}
                 <span class="faith-status__per-step">
-                    {{ formatChance(prayerChances.purificationPerStep) }} за шаг
+                    {{ formatChance(prayerChances.purificationPerStep) }}
+                    {{ tGame('game.knowledge.perStep') }}
                 </span>
             </li>
             <li v-if="prayerChances.resurrection !== null">
-                Шанс воскрешения {{ formatChance(prayerChances.resurrection) }}
+                {{ tGame('game.knowledge.resurrectionChance') }}
+                {{ formatChance(prayerChances.resurrection) }}
             </li>
         </ul>
     </div>

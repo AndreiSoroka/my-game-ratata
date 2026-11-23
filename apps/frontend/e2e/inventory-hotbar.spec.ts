@@ -108,7 +108,7 @@ async function acquireApple(page: Page) {
 async function checkAssignment(page: Page) {
     const before = await inventoryAndPosition(page)
     await page.keyboard.press('KeyI')
-    const inventory = page.getByRole('dialog', { name: 'Inventory and equipment' })
+    const inventory = page.getByRole('dialog', { name: 'Инвентарь и снаряжение' })
     await expect(inventory).toBeVisible()
     const focusedApple = inventory.locator('.inventory-slot[data-filled=true]')
     await expect(focusedApple).toBeFocused()
@@ -125,7 +125,7 @@ async function checkAssignment(page: Page) {
     await expect(inventory.locator('.inventory-actions')).toHaveCount(0)
     expect(await inventoryAndPosition(page)).toEqual(before)
     await page.keyboard.press('Enter')
-    const eat = inventory.getByRole('button', { name: 'Eat', exact: true })
+    const eat = inventory.getByRole('button', { name: 'Съесть', exact: true })
     await expect(eat).toBeFocused()
 
     await page.keyboard.press('Shift+Digit4')

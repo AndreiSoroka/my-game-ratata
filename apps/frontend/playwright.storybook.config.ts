@@ -3,6 +3,12 @@ import { fileURLToPath } from 'node:url'
 
 import { defineConfig, devices } from '@playwright/test'
 
+const serverPort = Number(process.env['E2E_STORYBOOK_PORT'] ?? '6006')
+if (!Number.isInteger(serverPort) || serverPort < 1 || serverPort > 65_535) {
+    throw new Error(`Invalid E2E_STORYBOOK_PORT: ${serverPort}`)
+}
+const storybookUrl = `http://127.0.0.1:${serverPort}`
+
 export default defineConfig({
     testDir: './e2e',
     testMatch: '**/*.visual.spec.ts',
@@ -18,7 +24,7 @@ export default defineConfig({
     reporter: [['html', { outputFolder: 'playwright-report/storybook' }]],
     use: {
         launchOptions: { args: ['--mute-audio'] },
-        baseURL: 'http://127.0.0.1:6006',
+        baseURL: storybookUrl,
         deviceScaleFactor: 1,
         headless: true,
         screenshot: 'only-on-failure',
@@ -37,10 +43,9 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command:
-            'VITE_GAME_AUDIO_MUTED=1 node node_modules/storybook/dist/bin/dispatcher.js dev -p 6006 -h 127.0.0.1 --ci --no-open',
+        command: `VITE_GAME_AUDIO_MUTED=1 node node_modules/storybook/dist/bin/dispatcher.js dev -p ${serverPort} -h 127.0.0.1 --ci --no-open`,
         reuseExistingServer: true,
         timeout: 60 * 1000,
-        url: 'http://127.0.0.1:6006/',
+        url: storybookUrl,
     },
 })

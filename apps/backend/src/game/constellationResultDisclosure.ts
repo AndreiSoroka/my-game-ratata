@@ -1,6 +1,7 @@
 import type { ConstellationId } from '@my-game-ratata/contracts'
 
-import { resolveConstellationCardEffects } from './constellationCardEffects'
+import { resolveConstellationCardEffectRows } from './constellationCardEffects'
+import type { EffectRow } from './constellationEffectText'
 
 /** These insight ranks reveal mechanical card rows, never health or energy capacities. */
 export function constellationResultKnowledge(
@@ -20,10 +21,19 @@ export function observedConstellationCardEffects(
     nodeId: string,
     learned: ReadonlySet<string>
 ): string[] | undefined {
+    return observedConstellationCardEffectRows(nodeId, learned)?.map(
+        ([russian]) => russian
+    )
+}
+
+export function observedConstellationCardEffectRows(
+    nodeId: string,
+    learned: ReadonlySet<string>
+): EffectRow[] | undefined {
     if (!learned.has(nodeId)) {
         return undefined
     }
-    const full = resolveConstellationCardEffects(nodeId, learned)
+    const full = resolveConstellationCardEffectRows(nodeId, learned)
     const path = nodeId.split('.')[0]
     if (full === undefined || (path !== 'blade' && path !== 'prayer')) {
         return full

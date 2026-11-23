@@ -2,6 +2,8 @@
 import { ITEM_DEFINITIONS, type ItemInstanceSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { itemName, tGame } from '@/shared/lib/i18n'
+
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
 import GameButton from './primitives/GameButton.vue'
@@ -15,7 +17,7 @@ const props = defineProps<{
     disabled?: boolean
 }>()
 const emit = defineEmits<{ change: [quantity: number] }>()
-const label = computed(() => ITEM_DEFINITIONS[props.item.itemId].name)
+const label = computed(() => itemName(props.item.itemId))
 const maximum = computed(() => ITEM_DEFINITIONS[props.item.itemId].maxDurability)
 function change(value: number): void {
     emit(
@@ -34,18 +36,24 @@ function change(value: number): void {
         <div class="trade-item-editor__identity">
             <strong :title="itemStackLabel(item)">{{ label }}</strong>
             <small
-                >В сумке {{ item.quantity ?? 1 }} <span>· свободно {{ available }}</span></small
+                >{{ tGame('game.trade.inBag') }} {{ item.quantity ?? 1 }}
+                <span>{{ tGame('game.trade.availableTradeItem') }} {{ available }}</span></small
             >
             <small v-if="maximum" class="trade-item-editor__condition"
-                >Прочность {{ Math.floor(item.durability ?? maximum) }}/{{ maximum }}</small
+                >{{ tGame('game.trade.durability') }}
+                {{ Math.floor(item.durability ?? maximum) }}/{{ maximum }}</small
             >
         </div>
-        <div class="trade-item-editor__controls" role="group" :aria-label="`В обмен: ${label}`">
+        <div
+            class="trade-item-editor__controls"
+            role="group"
+            :aria-label="tGame('game.trade.exchangeItem', { item: label })"
+        >
             <GameButton
                 size="compact"
                 type="button"
                 :disabled="disabled || selected <= 0"
-                :aria-label="`Меньше: ${label}`"
+                :aria-label="tGame('game.trade.offerLessItem', { item: label })"
                 @click="change(selected - 1)"
             >
                 −
@@ -58,14 +66,14 @@ function change(value: number): void {
                 :max="available"
                 step="1"
                 :disabled="disabled || available <= 0"
-                :aria-label="`Количество: ${itemStackLabel(item)}`"
+                :aria-label="tGame('game.trade.itemQuantity', { item: itemStackLabel(item) })"
                 @input="change(Number(($event.target as HTMLInputElement).value))"
             />
             <GameButton
                 size="compact"
                 type="button"
                 :disabled="disabled || selected >= available"
-                :aria-label="`Больше: ${label}`"
+                :aria-label="tGame('game.trade.offerMoreItem', { item: label })"
                 @click="change(selected + 1)"
             >
                 +
@@ -76,16 +84,16 @@ function change(value: number): void {
                 size="compact"
                 type="button"
                 :disabled="disabled || selected === available"
-                :aria-label="`Всё: ${label}`"
+                :aria-label="tGame('game.trade.offerAllItem', { item: label })"
                 @click="change(available)"
             >
-                Всё
+                {{ tGame('game.trade.all') }}
             </GameButton>
             <GameButton
                 size="compact"
                 type="button"
                 :disabled="disabled || selected <= 0"
-                :aria-label="`Убрать: ${label}`"
+                :aria-label="tGame('game.trade.removeItemOffer', { item: label })"
                 @click="change(0)"
             >
                 ×

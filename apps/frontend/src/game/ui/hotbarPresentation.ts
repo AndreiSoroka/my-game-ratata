@@ -1,4 +1,4 @@
-import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
+import { abilityName, tGame } from '@/shared/lib/i18n'
 
 import { abilityUsage } from './abilityUsage'
 import { basicAttackLabel, bladeActionTooltip } from './bladeHotbar'
@@ -10,13 +10,14 @@ export function bindingLabel(
     binding: HotbarBinding | null,
     player?: HotbarProps['player']
 ): string {
-    if (!binding) return 'Пусто'
-    if (binding.kind === 'attack') return player ? basicAttackLabel(player) : 'Базовая атака'
+    if (!binding) return tGame('game.world.emptyQuickSlot')
+    if (binding.kind === 'attack')
+        return player ? basicAttackLabel(player) : tGame('game.world.basicAttack')
     return binding.kind === 'item'
         ? binding.id === 'sapling'
-            ? 'Посадить дерево'
-            : 'Яблоко'
-        : ABILITY_DEFINITIONS[binding.id].name
+            ? tGame('game.world.plantTree')
+            : tGame('game.world.appleHotbarPresentation')
+        : abilityName(binding.id)
 }
 export function actionTooltip(binding: HotbarBinding | null, props: HotbarProps): string {
     return (
@@ -34,12 +35,24 @@ function rangedActionTooltip(
     if (binding?.kind !== 'ability') return undefined
     if (binding.id === 'sniper_shot') {
         const shot = abilityUsage(props.player, binding.id)
-        return `${ABILITY_DEFINITIONS[binding.id].name} · ${shot.energy} EN · прицеливание ${shot.windupMs / 1000} с`
+        return tGame('game.world.aimingShot', {
+            ability: abilityName(binding.id),
+            energy: shot.energy,
+            seconds: shot.windupMs / 1000,
+        })
     }
     if (hostileTarget(props)) return undefined
     if (binding.id === 'shot')
-        return `${ABILITY_DEFINITIONS.shot.name} вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'shot').energy} EN`
+        return tGame('game.world.forwardShot', {
+            ability: abilityName('shot'),
+            direction: { up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing],
+            energy: abilityUsage(props.player, 'shot').energy,
+        })
     if (binding.id === 'spark')
-        return `Искра вперёд ${{ up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing]} · ${abilityUsage(props.player, 'spark').mana} MP · ${abilityUsage(props.player, 'spark').energy} EN`
+        return tGame('game.world.forwardSpark', {
+            direction: { up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing],
+            mana: abilityUsage(props.player, 'spark').mana,
+            energy: abilityUsage(props.player, 'spark').energy,
+        })
     return undefined
 }

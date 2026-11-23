@@ -387,6 +387,7 @@ it.each(prayerAbilityIds)(
                 audienceIds: [actor.id],
                 abilityId,
                 text: 'Божество не ответило',
+                textMessage: { key: 'authored.combat.prayerUnanswered' },
             },
         ])
         const school = PRAYER_SCHOOL_DEFINITIONS[abilityId]

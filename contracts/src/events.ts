@@ -67,6 +67,8 @@ export interface GameEventPayload {
     speechId?: number
     /** Live NPC speech projected only to an authorized listener. */
     voice?: 'dialogue' | 'ambient'
+    /** Language of the original utterance when known. */
+    language?: import('./locales').GameLocale
     abilityId?: AbilityId
     damageKind?: DamageKind
     critical?: boolean
@@ -87,4 +89,5 @@ export interface GameEventPayload {
     targetId?: string
     target?: import('./graves').WorldCombatTarget
     text?: string
+    textMessage?: import('./locales').LocalizedMessage
 }

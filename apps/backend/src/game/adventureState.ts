@@ -2,13 +2,14 @@ import type {
     AdventureDialogue,
     AdventureQuestStatus,
     CityBellState,
+    LocalizedMessage,
     QuestRewardMode,
     QuestRewardShare,
 } from '@my-game-ratata/contracts'
 import { DEFAULT_QUEST_REWARD_MODE } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { setNotice } from './notices'
+import { setAuthoredNotice, setNotice } from './notices'
 import type { QuestGoldAwarder } from './questRewards'
 import { turnInHearts } from './trophyQuest'
 
@@ -17,6 +18,7 @@ export interface PlayerAdventure {
     cityTradeBlockedReason?: string
     questAccepted?: boolean
     questCancelledReason?: string
+    questCancelledReasonMessage?: LocalizedMessage
     questRewardMode: QuestRewardMode | null
     questRewardShares: QuestRewardShare[] | null
     kills: number
@@ -27,6 +29,7 @@ export interface PlayerAdventure {
     gold: number
     rewardKeys: Set<string>
     notice: string | null
+    noticeMessage?: LocalizedMessage
     noticeId: number
 }
 
@@ -69,7 +72,7 @@ export function applyAdventureChoice(
         state.questAccepted = true
         state.questRewardMode = context.rewardMode ?? DEFAULT_QUEST_REWARD_MODE
         state.questStatus = 'active'
-        setNotice(state, 'Задание принято. Собери три слизневых сердца.')
+        setAuthoredNotice(state, 'story.accepted')
     }
 
     if (choiceId === 'turn_in_trophies') {
@@ -84,7 +87,7 @@ export function applyAdventureChoice(
         !state.wardRestored
     ) {
         state.wardRestored = true
-        setNotice(state, 'Колокол памяти восстановлен. Первая глава завершена.')
+        setAuthoredNotice(state, 'story.chapterComplete')
     }
 }
 
@@ -92,8 +95,5 @@ function reportStoryReward(state: PlayerAdventure, actorId: string): void {
     const received =
         state.questRewardShares?.find((share) => share.characterId === actorId)
             ?.gold ?? 0
-    setNotice(
-        state,
-        `Три слизневых сердца переданы Мире. Общая награда: 40 золотых; твоя доля: ${String(received)}.`
-    )
+    setAuthoredNotice(state, 'story.reward', { received })
 }

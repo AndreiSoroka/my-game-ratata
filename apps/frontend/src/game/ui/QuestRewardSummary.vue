@@ -2,6 +2,8 @@
 import type { QuestRewardMode, QuestRewardShare } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 const props = defineProps<{
     total: number
     mode?: QuestRewardMode
@@ -14,16 +16,25 @@ const ownShare = computed(() => props.shares?.find((share) => share.characterId 
 
 <template>
     <div class="quest-reward-summary">
-        <p class="quest-reward-total">Общая награда: {{ total }} золотых</p>
+        <p class="quest-reward-total">
+            {{ tGame('game.quests.totalReward') }} {{ total }} {{ tGame('game.conversation.gold') }}
+        </p>
         <template v-if="mode">
-            <p>{{ mode === 'submitter' ? 'Вся награда сдающему' : 'Поровну группе' }}</p>
+            <p>
+                {{
+                    mode === 'submitter'
+                        ? tGame('game.quests.allToSubmitter')
+                        : tGame('game.quests.equalSplit')
+                }}
+            </p>
             <small v-if="mode === 'party_equal' && !completed">
-                Между всеми участниками группы при сдаче, включая вступивших позже.
+                {{ tGame('game.quests.splitAmongPartyMembersAt') }}
             </small>
-            <small v-if="!completed">Распределение закреплено при принятии.</small>
+            <small v-if="!completed">{{ tGame('game.quests.rewardDistributionWasFixedAt') }}</small>
         </template>
         <p v-if="completed && shares" class="quest-reward-received">
-            Получено вами: {{ ownShare?.gold ?? 0 }} золотых
+            {{ tGame('game.quests.youReceived') }} {{ ownShare?.gold ?? 0 }}
+            {{ tGame('game.conversation.gold') }}
         </p>
     </div>
 </template>

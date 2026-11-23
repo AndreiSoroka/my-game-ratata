@@ -1,9 +1,10 @@
-import type {
-    AgentDecision,
-    ClientMessage,
-    GameEventPayload,
-    NpcRequestStatus,
-    SocialSnapshot,
+import {
+    type AgentDecision,
+    type ClientMessage,
+    type GameEventPayload,
+    npcQuestMessage,
+    type NpcRequestStatus,
+    type SocialSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { NpcAiCoordinator } from '../ai/coordinator'
@@ -19,7 +20,7 @@ import type { PartyService } from './parties'
 import type { GameRoom } from './room'
 import { RoomCommunication } from './roomCommunication'
 import { RoomQuestDialogues } from './roomQuestDialogues'
-import { decideSocialExchange } from './roomSocialExchange'
+import { decideSocialExchange, isExchange } from './roomSocialExchange'
 import { handleSocialSpeech } from './roomSocialSpeech'
 import { createSocialWake } from './roomSocialWake'
 import { createWhisperObserver } from './roomWhisperObserver'
@@ -54,6 +55,8 @@ export class RoomSocial {
                 (actor, listener) =>
                     adventure.cities.observeSpeech(actor.id, listener.id)
             ),
+            translate: (...args) =>
+                room.speechTranslations.privateSpeech(...args),
         })
         this.exchanges = new ExchangeService({
             getCharacter: (id) => room.getCharacter(id),
@@ -241,9 +244,9 @@ export class RoomSocial {
                 : undefined)
         return {
             exchange,
-            privateMessages: this.whispers.heardMessages(actor.id),
+            privateMessages: this.whispers.heardMessages(actor.id, true),
             ...this.communication.snapshot(actor, now),
-            whisper: this.whispers.snapshot(actor, now, partnerId),
+            whisper: this.whispers.snapshot(actor, now, partnerId, true),
             ...questView,
             questTurnIn,
         }
@@ -293,19 +296,15 @@ export class RoomSocial {
     }
 
     private notice(actor: GameCharacter, text: string): void {
+        const textMessage = npcQuestMessage(text)
         this.room.publishEvents([
             {
                 kind: 'notice',
                 actorId: actor.id,
                 audienceIds: [actor.id],
                 text,
+                ...(textMessage === undefined ? {} : { textMessage }),
             },
         ])
     }
-}
-
-function isExchange(message: {
-    type: string
-}): message is import('@my-game-ratata/contracts').ExchangeClientMessage {
-    return message.type.startsWith('exchange_')
 }

@@ -18,6 +18,8 @@ for (const name of [
     'knowledge-model.mjs',
     'knowledge-embeddings.mjs',
     'knowledge-profile.json',
+    'speech-translation-worker.mjs',
+    'translation-models.mjs',
 ])
     await copyFile(
         new URL(name, import.meta.url),

@@ -33,6 +33,8 @@ export interface GuildQuestDefinition {
     id: string
     rewardGold: number
     title: string
+    titleMessage?: LocalizedMessage
+    descriptionMessage?: LocalizedMessage
     workRequest?: WorkRequestSnapshot
 }
 
@@ -51,6 +53,7 @@ export interface GuildQuestSnapshot extends GuildQuestDefinition {
     fundingCityId?: string
     rewardStatus?: 'reserved' | 'missing'
     rewardNotice?: string | null
+    rewardNoticeMessage?: LocalizedMessage
     receiptId?: string
     instanceId: string
     rewardMode: QuestRewardMode
@@ -71,5 +74,6 @@ export interface PartySnapshot {
     notice: string | null
     partyId: string | null
 }
+import type { LocalizedMessage } from './locales'
 import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 import type { WorkRequestSnapshot } from './workerRequests'

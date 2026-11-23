@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { tGame } from '@/shared/lib/i18n'
+
 import githubMark from './asset-credits/github-mark.svg'
 import kenneyBadge from './asset-credits/kenney-yellow.png'
 import mysticWoodsLogo from './asset-credits/mystic-woods.png'
 </script>
 
 <template>
-    <nav class="join-asset-credits" aria-label="Ссылки проекта">
+    <nav class="join-asset-credits" :aria-label="tGame('game.join.projectLinks')">
         <a
             href="https://game-endeavor.itch.io/mystic-woods"
             target="_blank"

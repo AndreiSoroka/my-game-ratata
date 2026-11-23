@@ -6,7 +6,7 @@ for (const width of [1280, 390, 320]) {
             await page.setViewportSize({ width, height: 844 })
             await page.goto(`/iframe.html?id=game-inventoryoverlay--${state}&viewMode=story`)
             const dialog = page.getByRole('dialog', {
-                name: 'Inventory and equipment',
+                name: 'Инвентарь и снаряжение',
                 exact: true,
             })
             await expect(dialog).toBeVisible()

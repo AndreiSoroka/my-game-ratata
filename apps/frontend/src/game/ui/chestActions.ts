@@ -6,6 +6,8 @@ import {
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { ashChestActions } from './ashActions'
 import type { InteractionAction } from './nearbyInteractionActions'
 
@@ -31,10 +33,14 @@ export function chestActions(
                             id: `chest:${chest.id}`,
                             label:
                                 chest.kind === 'corpse'
-                                    ? `Обыскать: ${chest.title?.replace(/^Тело: /, '') ?? 'тело'}`
+                                    ? tGame('game.world.searchBody', {
+                                          name:
+                                              chest.title?.replace(/^Тело: /, '') ??
+                                              tGame('game.world.bodyLower'),
+                                      })
                                     : chest.kind === 'barrel'
-                                      ? 'Открыть бочку'
-                                      : 'Открыть сундук',
+                                      ? tGame('game.world.openBarrel')
+                                      : tGame('game.world.openChest'),
                             command: { type: 'open_chest' as const, chestId: chest.id },
                         },
                     ]

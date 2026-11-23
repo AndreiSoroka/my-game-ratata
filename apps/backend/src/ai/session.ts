@@ -153,7 +153,10 @@ export class NpcAiSessionActions {
         now: number
     ): void {
         const event = state.dialogue
-        const text = 'Сейчас не получилось начать поручение.'
+        const text =
+            issue === 'speech_language'
+                ? 'Не удалось подготовить ответ на языке разговора.'
+                : 'Сейчас не получилось начать поручение.'
         const task =
             event === undefined
                 ? state.task
@@ -182,9 +185,6 @@ export class NpcAiSessionActions {
                 this.release(state, now)
             }
         } else {
-            if (state.task?.requesterId != null) {
-                taskSpeech(this.dialogue, state, text, now)
-            }
             this.finish(state, now, this.config.limits.reviewIntervalMs, false)
         }
     }

@@ -1,6 +1,17 @@
 <script setup lang="ts">
-import type { CharacterSnapshot, GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    CharacterSnapshot,
+    GameEventPayload,
+    GameLocale,
+    LocalizedMessage,
+    SpeechTranslationServerMessage,
+    WorkerActivitySnapshot,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+
+import { speechDisplayText } from '@/entities/chats'
+import { characterName, gameLocale, tGame } from '@/shared/lib/i18n'
 
 import { chatDuration } from '../runtime/chatInput'
 import type { RatataGame } from '../runtime/ratataGame'
@@ -13,7 +24,17 @@ const props = defineProps<{
     snapshot?: WorldSnapshot
     player: CharacterSnapshot
 }>()
-const ambient = ref<{ id: string; receipt: string | number; text: string; until: number }[]>([])
+const ambient = ref<
+    {
+        id: string
+        receipt: string | number
+        text: string
+        until: number
+        language?: GameLocale | undefined
+        textMessage?: LocalizedMessage
+        workerActivity?: WorkerActivitySnapshot
+    }[]
+>([])
 const frame = ref(0)
 const heights = ref(new Map<string, number>())
 const elements = new Map<string, HTMLElement>()
@@ -63,6 +84,10 @@ onBeforeUnmount(() => window.clearInterval(timer))
 const dialogue = computed(() => props.snapshot?.adventure?.dialogue)
 let fallbackReceipt = 0
 const received = new Map<string, number>()
+watch([() => props.snapshot?.serverEpoch, () => props.player.id], () => {
+    received.clear()
+    clear()
+})
 watch(
     () => [dialogue.value?.npcId, dialogue.value?.speechId],
     () => {
@@ -82,6 +107,12 @@ const bubbles = computed(() => {
             receipt: conversation.speechId ?? 'active',
             text: conversation.text,
             until: Infinity,
+            ...(conversation.textMessage === undefined
+                ? {}
+                : { textMessage: conversation.textMessage }),
+            ...(conversation.workerActivity === undefined
+                ? {}
+                : { workerActivity: conversation.workerActivity }),
         })
     return entries.flatMap((entry) => {
         const anchor = props.game?.projectCharacter(entry.id)
@@ -101,7 +132,9 @@ const bubbles = computed(() => {
         return [
             {
                 ...entry,
-                name: character.nickname,
+                text: speechDisplayText(entry),
+                language: entry.textMessage === undefined ? entry.language : gameLocale.value,
+                name: characterName(character.id, character.nickname),
                 active: entry.id === conversation?.npcId,
                 below,
                 style: {
@@ -125,7 +158,7 @@ const typing = computed(() => {
         return [
             {
                 ...entry,
-                name: actor.nickname,
+                name: characterName(actor.id, actor.nickname),
                 style: {
                     left: `${Math.max(14, Math.min(anchor.width - 48, anchor.x - 21))}px`,
                     top: `${Math.max(8, Math.min(anchor.height - 34, anchor.y - 34 >= 8 ? anchor.y - 34 : 'lowerY' in anchor ? anchor.lowerY + 8 : 8))}px`,
@@ -146,8 +179,21 @@ function receive(event: GameEventPayload): void {
             receipt: event.speechId ?? `local-${++fallbackReceipt}`,
             text: event.text,
             until: Date.now() + chatDuration(event.text),
+            language: event.language,
+            ...(event.textMessage === undefined ? {} : { textMessage: event.textMessage }),
+            ...(event.workerActivity === undefined ? {} : { workerActivity: event.workerActivity }),
         },
     ].slice(-8)
+}
+function translate({ actorId, speechId, locale, text }: SpeechTranslationServerMessage): void {
+    const entry = ambient.value.find(
+        (speech) =>
+            speech.id === actorId && speech.receipt === speechId && speech.until > Date.now()
+    )
+    if (entry) {
+        entry.text = text
+        entry.language = locale
+    }
 }
 function acceptReceipt(actorId: string, receipt: number | undefined): boolean {
     if (receipt === undefined) return true
@@ -159,7 +205,7 @@ function acceptReceipt(actorId: string, receipt: number | undefined): boolean {
 function clear(): void {
     ambient.value = []
 }
-defineExpose({ receive, clear })
+defineExpose({ receive, translate, clear })
 </script>
 <template>
     <div class="speech-layer">
@@ -168,7 +214,11 @@ defineExpose({ receive, clear })
             :key="`${activity.actorId}:${activity.id}`"
             class="speech-typing game-frame-host"
             :style="activity.style"
-            :aria-label="`${activity.name} ${activity.kind === 'thinking' ? 'обдумывает ответ' : 'печатает'}`"
+            :aria-label="
+                tGame(activity.kind === 'thinking' ? 'game.chat.thinking' : 'game.chat.typing', {
+                    name: activity.name,
+                })
+            "
             aria-live="off"
             role="img"
         >
@@ -193,6 +243,7 @@ defineExpose({ receive, clear })
             <strong>{{ bubble.name }}</strong>
             <div
                 :tabindex="bubble.active ? 0 : -1"
+                :lang="bubble.language"
                 class="speech-text"
                 @keydown.stop="returnFromSpeech($event, speechBubbleId(bubble.id, bubble.receipt))"
                 @keyup.stop

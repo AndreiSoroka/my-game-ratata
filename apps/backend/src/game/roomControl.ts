@@ -1,6 +1,7 @@
-import type {
-    CharacterControlCommand,
-    ClientMessage,
+import {
+    authoredPhrase,
+    type CharacterControlCommand,
+    type ClientMessage,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -23,7 +24,7 @@ export function handleRoomControl(
                 {
                     kind: 'notice',
                     actorId: actor.id,
-                    text: 'Цель недоступна для этого действия.',
+                    ...authoredPhrase('combat.actionTargetUnavailable'),
                 },
             ])
         }

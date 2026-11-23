@@ -1,13 +1,14 @@
-import type {
-    AdventureClientMessage,
-    AdventureMaterial,
-    AdventureRecipeId,
-    AdventureResourceNode,
-    FarmPlotSnapshot,
-    GameEventPayload,
-    GatherOperation,
-    Vector2,
-    WorldObjectBounds,
+import {
+    type AdventureClientMessage,
+    type AdventureMaterial,
+    type AdventureRecipeId,
+    type AdventureResourceNode,
+    authoredMessage,
+    type FarmPlotSnapshot,
+    type GameEventPayload,
+    type GatherOperation,
+    type Vector2,
+    type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 
 import {
@@ -41,7 +42,7 @@ import {
 } from './inventory'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { setNotice } from './notices'
+import { setAuthoredNotice, setNotice } from './notices'
 import { canPerformSkillAction } from './skillProgression'
 
 const resourceInteractionRange = 48
@@ -155,37 +156,34 @@ export class AdventureResources {
         if (genericResourceUnavailable(actor, node, now, navigation)) {
             setNotice(
                 state,
-                `Для сбора нужен ресурс ${interactionRangeText(resourceInteractionRange, navigation?.grid.tileWidth)} в твоей локации.`
+                `Для сбора нужен ресурс ${interactionRangeText(resourceInteractionRange, navigation?.grid.tileWidth)} в твоей локации.`,
+                authoredMessage('resource.nearby')
             )
             return []
         }
 
         if (node.remaining <= 0) {
-            setNotice(
-                state,
-                'Этот ресурс исчерпан. Ищи другой источник в соседних землях.'
-            )
+            setAuthoredNotice(state, 'resource.depleted')
             return []
         }
 
         if (now < state.gatherAllowedAt) {
-            setNotice(state, 'Подожди немного перед следующим сбором.')
+            setAuthoredNotice(state, 'notice.waitToGather')
             return []
         }
 
         if (
             !addInventoryItems(actor.inventory, [createItemInstance(node.kind)])
         ) {
-            setNotice(
-                state,
-                'В рюкзаке нет места для ресурса. Освободи ячейку.'
-            )
+            setAuthoredNotice(state, 'resource.noSpace')
             return []
         }
         resetMartyrStreak(actor)
         node.remaining -= 1
         state.gatherAllowedAt = now + 800
-        setNotice(state, `Собрано: ${adventureMaterialLabels[node.kind]} +1.`)
+        setAuthoredNotice(state, 'resource.gathered', {
+            material: adventureMaterialLabels[node.kind],
+        })
         return []
     }
 
@@ -254,7 +252,7 @@ export class AdventureResources {
             actor.tags.has('state.retired') ||
             recipe === undefined
         ) {
-            setNotice(state, 'Сейчас этот предмет создать нельзя.')
+            setAuthoredNotice(state, 'notice.cannotCraft')
             return []
         }
 
@@ -268,19 +266,19 @@ export class AdventureResources {
                     countInventoryItem(actor.inventory, kind) < amount
             )
         ) {
-            setNotice(state, 'Не хватает материалов. Собери ресурсы в мире.')
+            setAuthoredNotice(state, 'notice.noMaterials')
             return []
         }
 
         const output = createItemInstance(recipe.itemId)
         if (!craftInventoryItems(actor.inventory, recipe.cost, [output])) {
-            setNotice(state, 'В рюкзаке нет места для созданного предмета.')
+            setAuthoredNotice(state, 'notice.noCraftingSpace')
             return []
         }
 
         resetMartyrStreak(actor)
         this.onCraft?.(actor, recipe.id, output.instanceId)
-        setNotice(state, `Готово: ${recipe.label}.`)
+        setAuthoredNotice(state, 'resource.crafted', { recipe: recipe.label })
         return [
             { actorId: actor.id, itemId: recipe.itemId, kind: 'item_pickup' },
         ]

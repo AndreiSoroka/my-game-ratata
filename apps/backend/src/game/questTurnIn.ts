@@ -1,4 +1,7 @@
-import type { QuestTurnInPromptSnapshot } from '@my-game-ratata/contracts'
+import {
+    npcQuestMessage,
+    type QuestTurnInPromptSnapshot,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { NpcQuestResult } from './npcQuests'
@@ -29,8 +32,9 @@ const result = (
 
 function requestedTurnIn(text: string): boolean {
     return (
-        !/не\s+(?:готов|выполн|заверш|сда)/iu.test(text) &&
-        /(?:готов|выполн|заверш|сда[тю]|сдать|отч[её]т)/iu.test(text)
+        /^quest\s+complete[.!]*$/iu.test(text.trim()) ||
+        (!/не\s+(?:готов|выполн|заверш|сда)/iu.test(text) &&
+            /(?:готов|выполн|заверш|сда[тю]|сдать|отч[её]т)/iu.test(text))
     )
 }
 
@@ -236,11 +240,15 @@ export class QuestTurnInService {
         if (outcome.accepted) {
             this.completed.set(confirmationId, player.id)
             if (view.action === 'report') {
+                const text =
+                    'Спасибо за доклад! Теперь дождёмся проверки рабочего места и возвращения работника.'
+                const textMessage = npcQuestMessage(text)
                 this.environment.whispers.send(
                     issuer,
                     player,
-                    'Спасибо за доклад! Теперь дождёмся проверки рабочего места и возвращения работника.',
-                    now
+                    text,
+                    now,
+                    textMessage === undefined ? undefined : { textMessage }
                 )
             }
         }

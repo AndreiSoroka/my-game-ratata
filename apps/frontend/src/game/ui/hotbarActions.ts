@@ -15,6 +15,8 @@ import {
 } from '@my-game-ratata/contracts'
 import type { ComputedRef, Ref } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { ashHotbarCommand, ashHotbarReason } from './ashActions'
 import {
@@ -54,11 +56,11 @@ export function bindingUnavailable(
     cooldown: number
 ): string | undefined {
     if (!binding) return undefined
-    if (guardBlocksBinding(binding, props)) return 'Сначала выйдите из глухой обороны'
+    if (guardBlocksBinding(binding, props)) return tGame('game.world.firstLeaveDefensiveStance')
     const objectReason = objectTargetUnavailable(binding, props)
     if (objectReason) return objectReason
     if (binding.kind === 'item')
-        return binding.id === 'food' && count === 0 ? 'Нет яблок' : undefined
+        return binding.id === 'food' && count === 0 ? tGame('game.world.noApples') : undefined
     if (binding.kind === 'attack') return attackUnavailable(props, cooldown)
     if (isPrayerAction(binding.id)) return prayerReason
     return abilityUnavailable(binding.id, props, cooldown)
@@ -72,13 +74,13 @@ export function objectTargetUnavailable(
         binding.kind !== 'item' &&
         (binding.kind === 'attack' ||
             (!isManualMagic(binding.id) && binding.id !== 'defensive_stance'))
-        ? 'Для этой цели используйте F'
+        ? tGame('game.world.useForTarget')
         : undefined
 }
 function attackUnavailable(props: HotbarProps, cooldown: number): string | undefined {
-    if (attackWeaponBroken(props)) return 'Оружие сломано — снимите или почините его'
-    if (props.grave?.phase === 'ruined') return 'Могила разрушена'
-    return cooldown > 0 ? 'Атака восстанавливается' : undefined
+    if (attackWeaponBroken(props)) return tGame('game.world.weaponBroken')
+    if (props.grave?.phase === 'ruined') return tGame('game.world.graveDestroyed')
+    return cooldown > 0 ? tGame('game.world.attackOnCooldown') : undefined
 }
 function attackWeaponBroken({ player }: HotbarProps): boolean {
     return resolveCombatWeapon(player.archetype, player.equipment.weapon).broken
@@ -91,20 +93,21 @@ function abilityUnavailable(
     if (guardActive(id, props)) return undefined
     const blocked = bladeAbilityUnavailable(id, props) ?? magicUnavailable(id, props)
     if (blocked) return blocked
-    if (isArrowAbility(id) && props.player.movement?.dashing) return 'Дождитесь конца рывка'
-    if (cooldown > 0) return 'Умение восстанавливается'
+    if (isArrowAbility(id) && props.player.movement?.dashing)
+        return tGame('game.world.finishDashing')
+    if (cooldown > 0) return tGame('game.world.abilityOnCooldown')
     return abilityResourceReason(id, props) ?? abilityTargetReason(id, props)
 }
 
 function abilityTargetReason(id: AbilityId, props: HotbarProps): string | undefined {
     if (isAshRiteId(id)) return ashHotbarReason(id, props.player, props.target)
     if (id === 'sniper_shot' && (props.grave || !livingAttackTarget(props)))
-        return 'Выберите живую цель: E'
+        return tGame('game.world.selectLiving')
     return !isBladeAbility(id) &&
         !isManualMagic(id) &&
         !['shot', 'spark'].includes(id) &&
         !hostileTarget(props)
-        ? 'Выберите врага: E'
+        ? tGame('game.world.selectEnemy')
         : undefined
 }
 function abilityResourceReason(
@@ -112,9 +115,9 @@ function abilityResourceReason(
     props: HotbarProps
 ): string | undefined {
     const check = props.player.resourceChecks?.abilities[id]
-    if (check === 'mana') return 'Недостаточно маны'
-    if (check === 'energy') return 'Недостаточно энергии'
-    return check === 'ready' ? undefined : 'Сейчас недоступно'
+    if (check === 'mana') return tGame('game.world.notEnoughMana')
+    if (check === 'energy') return tGame('game.world.insufficientEnergy')
+    return check === 'ready' ? undefined : tGame('game.world.unavailableNow')
 }
 function actionFor(
     binding: Extract<HotbarBinding, { kind: 'ability' }>,

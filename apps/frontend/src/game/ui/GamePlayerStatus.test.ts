@@ -20,12 +20,12 @@ describe('production player status', () => {
         })
         expect(wrapper.findAll('.hud-frame')).toHaveLength(1)
         const frame = wrapper.get('.hud-frame')
-        const panel = frame.get('[role="region"][aria-label="Player vitals"]')
+        const panel = frame.get('[role="region"][aria-label="Ресурсы игрока"]')
         expect(panel.get('h2').text()).toBe(LONG_PLAYER_NAME)
         expect(panel.get('h2').attributes('title')).toBe(LONG_PLAYER_NAME)
         expect(panel.find('[data-fantasy-divider="divider-005"]').exists()).toBe(false)
         expect(panel.find('.soul-badge-icons').exists()).toBe(false)
-        expect(panel.find('[aria-label="Player effects"]').exists()).toBe(false)
+        expect(panel.find('[aria-label="Эффекты игрока"]').exists()).toBe(false)
         const icons = frame.get('.game-player-status__identity')
         expect(icons.findAll('[role="img"]').map((icon) => icon.attributes('aria-label'))).toEqual([
             'Искра',
@@ -88,9 +88,9 @@ describe('resource knowledge in production player status', () => {
             },
         })
         const wrapper = mount(GamePlayerStatus, { props: { character } })
-        const health = wrapper.get('[role="progressbar"][aria-label="Health"]')
-        const energy = wrapper.get('[role="progressbar"][aria-label="Energy"]')
-        const mana = wrapper.get('[role="progressbar"][aria-label="Mana"]')
+        const health = wrapper.get('[role="progressbar"][aria-label="Здоровье"]')
+        const energy = wrapper.get('[role="progressbar"][aria-label="Энергия"]')
+        const mana = wrapper.get('[role="progressbar"][aria-label="Мана"]')
         expect(health.attributes('aria-valuenow')).toBe('60')
         expect(health.findAll('.game-bar__segment')).toHaveLength(2)
         expect(energy.attributes('aria-valuenow')).toBe('70')
@@ -141,7 +141,7 @@ describe('resource knowledge in production player status', () => {
             '40/40',
             '102/150',
         ])
-        const health = wrapper.get('[aria-label="Health"]')
+        const health = wrapper.get('[aria-label="Здоровье"]')
         expect(health.attributes('aria-valuetext')).toBe('18/30')
         expect(Number(health.attributes('aria-valuenow'))).toBeCloseTo(59.568)
         await wrapper.setProps({

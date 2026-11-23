@@ -8,6 +8,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import GraveDetails from './GraveDetails.vue'
 import NearbyActionMenu from './NearbyActionMenu.vue'
@@ -89,7 +91,9 @@ const prompt = computed(() => {
     const selected = target.value
     if (!canOpen.value || !selected) return undefined
     const actionLabel =
-        selected.actions.length === 1 ? selected.actions[0]?.label : 'Выбрать действие'
+        selected.actions.length === 1
+            ? selected.actions[0]?.label
+            : tGame('game.world.chooseAction')
     const targetLabel = `F ${selected.name}`
     return actionLabel && actionLabel !== selected.name
         ? `${targetLabel} · ${actionLabel}`

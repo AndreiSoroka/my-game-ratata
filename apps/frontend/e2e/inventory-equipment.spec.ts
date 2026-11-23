@@ -34,11 +34,11 @@ async function checkKeyboardEquip(page: Page) {
     const index = before.inventory.indexOf(boots)
     await page.locator('canvas[data-game-canvas=true]').focus()
     await page.keyboard.press('KeyI')
-    const inventory = page.getByRole('dialog', { name: 'Inventory and equipment' })
+    const inventory = page.getByRole('dialog', { name: 'Инвентарь и снаряжение' })
     const slots = inventory.locator('.inventory-slot')
     await expect(slots.nth(index)).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(inventory.getByRole('button', { name: 'Equip', exact: true })).toBeFocused()
+    await expect(inventory.getByRole('button', { name: 'Надеть', exact: true })).toBeFocused()
     await page.keyboard.down('Enter')
     await expect
         .poll(() =>
@@ -47,7 +47,7 @@ async function checkKeyboardEquip(page: Page) {
         .toBe(boots.instanceId)
     await expect(inventory.locator('.inventory-actions')).toHaveCount(0)
     await expect(slots.nth(index)).toBeFocused()
-    await expect(slots.nth(index)).toHaveAccessibleName(`Empty slot ${index + 1}`)
+    await expect(slots.nth(index)).toHaveAccessibleName(`Пустая ячейка ${index + 1}`)
 
     // A held confirmation must not open/activate whatever now occupies the old slot.
     await page.keyboard.down('Enter')

@@ -78,6 +78,9 @@ export function beginAcceptedNpcTask(
                   audienceKey: dialogueKey(event),
                   requesterId: requester.id,
                   request: event.text,
+                  ...(event.language === undefined
+                      ? {}
+                      : { language: event.language }),
                   steps: 1,
                   lastKnownRequester: {
                       locationId: requester.locationId,

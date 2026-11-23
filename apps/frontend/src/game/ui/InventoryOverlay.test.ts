@@ -59,7 +59,7 @@ describe('inventory items and material stacks', () => {
             await slot.trigger('click')
             expect(wrapper.get('.inventory-item-description').text()).toContain('Мире')
             const actions = wrapper.findAll('.inventory-actions button')
-            expect(actions.map((button) => button.text())).toEqual(['Drop'])
+            expect(actions.map((button) => button.text())).toEqual(['Выбросить'])
             await actions[0]!.trigger('click')
             expect(wrapper.emitted('inventoryAction')).toEqual([
                 [{ action: 'drop', itemInstanceId: 'picked-heart' }],

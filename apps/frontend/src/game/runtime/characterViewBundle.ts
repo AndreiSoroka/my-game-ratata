@@ -2,6 +2,7 @@ import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, Label, Rectangle, vec } from 'excalibur'
 
 import { healthBarPercent } from '@/entities/player-vitals'
+import { characterName } from '@/shared/lib/i18n'
 
 import { characterOverhead } from './characterPresentationGeometry'
 
@@ -69,6 +70,15 @@ export function updateBundleHealth(
     )
     bundle.hpBack.graphics.opacity = opacity
     bundle.hpFill.graphics.opacity = opacity
+}
+
+export function updateBundleName(
+    bundle: CharacterBundle,
+    snapshot: CharacterSnapshot,
+    isLocalPlayer: boolean
+): void {
+    bundle.label.text = characterName(snapshot.id, snapshot.nickname)
+    bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
 }
 
 export function positionBundle(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {

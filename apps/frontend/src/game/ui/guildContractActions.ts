@@ -1,5 +1,7 @@
 import type { CharacterSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { InteractionAction } from './nearbyInteractionActions'
 
 export function availableGuildContracts({ party, social }: WorldSnapshot, playerId: string) {
@@ -25,7 +27,7 @@ export function guildContractActions(
 
     return availableGuildContracts(snapshot, player.id).map((job) => ({
         id: `guild-accept:${target.id}:${job.id}`,
-        label: `Взять «${job.title}» · ${job.rewardGold} ◈`,
+        label: tGame('game.world.takeContract', { title: job.title, gold: job.rewardGold }),
         command: { type: 'guild_accept', questId: job.id },
     }))
 }

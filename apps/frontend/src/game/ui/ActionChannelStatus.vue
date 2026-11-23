@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ABILITY_DEFINITIONS, type CharacterSnapshot } from '@my-game-ratata/contracts'
+import { type CharacterSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
+
+import { abilityName, tGame } from '@/shared/lib/i18n'
 
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
@@ -37,17 +39,18 @@ const remainingSeconds = computed(() => {
     >
         <GameFrame variant="panel" />
         <span role="status"
-            >{{ ABILITY_DEFINITIONS[magicChannel.abilityId].name }} · {{ magicSeconds }} с</span
+            >{{ abilityName(magicChannel.abilityId) }} · {{ magicSeconds }}
+            {{ tGame('game.knowledge.s') }}</span
         >
-        <GameButton aria-label="Прервать заклинание" @click="emit('cancelMagic')"
-            >Прервать · Esc</GameButton
-        >
+        <GameButton :aria-label="tGame('game.world.interruptSpell')" @click="emit('cancelMagic')">{{
+            tGame('game.world.interruptEsc')
+        }}</GameButton>
     </div>
     <GameButton
         v-else-if="!stunned && casting && !casting.uninterruptible"
         class="prayer-cancel"
         icon
-        aria-label="Прервать молитву"
+        :aria-label="tGame('game.world.interruptPrayer')"
         @keydown.esc.stop.prevent="emit('cancelPrayer')"
         @click="emit('cancelPrayer')"
     >
@@ -59,13 +62,14 @@ const remainingSeconds = computed(() => {
         role="status"
     >
         <GameFrame variant="panel" />
-        Точка {{ blockedRoute.points[0].number }}: путь перекрыт<template
-            v-if="remainingSeconds !== undefined"
+        {{ tGame('game.world.point') }} {{ blockedRoute.points[0].number
+        }}{{ tGame('game.world.pathBlocked')
+        }}<template v-if="remainingSeconds !== undefined">
+            {{ tGame('game.world.cancellingIn') }} {{ remainingSeconds }}
+            {{ tGame('game.knowledge.s') }}</template
         >
-            · отмена через {{ remainingSeconds }} с</template
-        >
-        · Esc — остановить
-        <GameButton @click="emit('cancelRoute')">Остановить маршрут</GameButton>
+        {{ tGame('game.world.escStop') }}
+        <GameButton @click="emit('cancelRoute')">{{ tGame('game.world.stopRoute') }}</GameButton>
     </div>
 </template>
 <style scoped>

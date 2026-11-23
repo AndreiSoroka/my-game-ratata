@@ -7,6 +7,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, useId } from 'vue'
 
+import { itemName, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
 import GuildQuestCard from './GuildQuestCard.vue'
@@ -35,29 +37,51 @@ const canAbandon = computed(
 )
 const canAct = computed(() => canAbandon.value && Boolean(props.party?.guildContact))
 const statuses: Record<AdventureQuestStatus, string> = {
-    active: 'Соберите сердца',
-    available: 'Новая история',
-    completed: 'Сердца переданы',
-    cancelled: 'Городской заказ закрыт',
-    ready: 'Сердца собраны — вернитесь к Мире',
+    get active() {
+        return tGame('game.quests.collectHearts')
+    },
+    get available() {
+        return tGame('game.quests.newStory')
+    },
+    get completed() {
+        return tGame('game.quests.heartsHandedIn')
+    },
+    get cancelled() {
+        return tGame('game.quests.cityOrderClosed')
+    },
+    get ready() {
+        return tGame('game.quests.heartsCollected')
+    },
 }
 </script>
 <template>
-    <section class="adventure-journal adventure-window game-frame-host" aria-label="Журнал заданий">
+    <section
+        class="adventure-journal adventure-window game-frame-host"
+        :aria-label="tGame('game.quests.questJournal')"
+    >
         <GameFrame variant="window" />
         <header class="adventure-window__header">
-            <span>ЖУРНАЛ ПУТЕШЕСТВЕННИКА</span>
-            <GameButton icon aria-label="Закрыть журнал" @click="emit('close')">×</GameButton>
+            <span>{{ tGame('game.quests.adventurersJournal') }}</span>
+            <GameButton icon :aria-label="tGame('game.quests.closeJournal')" @click="emit('close')"
+                >×</GameButton
+            >
         </header>
         <p class="adventure-eyebrow">
-            {{ adventure.wardRestored ? 'Город пробуждён' : statuses[adventure.quest.status] }}
+            {{
+                adventure.wardRestored
+                    ? tGame('game.quests.cityAwakened')
+                    : statuses[adventure.quest.status]
+            }}
         </p>
-        <h2>{{ adventure.quest.title }}</h2>
-        <p>{{ adventure.quest.description }}</p>
+        <h2>{{ tLocalized(adventure.quest.titleMessage, adventure.quest.title) }}</h2>
+        <p>{{ tLocalized(adventure.quest.descriptionMessage, adventure.quest.description) }}</p>
         <div v-if="!cancelled" class="journal-hearts">
-            <img :src="heart.src" :alt="heart.label" />
+            <img
+                :src="heart.src"
+                :alt="itemName(adventure.quest.requiredItemId ?? 'slime_heart')"
+            />
             <label :for="completed ? undefined : progressId"
-                >Слизневые сердца в рюкзаке:
+                >{{ tGame('game.quests.slimeHeartsInYourBackpack') }}
                 <strong
                     >{{ adventure.trophies
                     }}<template v-if="!completed"> / {{ adventure.quest.goal }}</template></strong
@@ -73,39 +97,42 @@ const statuses: Record<AdventureQuestStatus, string> = {
         />
         <template v-if="!terminal">
             <ol class="journal-steps">
-                <li>Найдите враждебных слизней за пределами Новогорода.</li>
+                <li>{{ tGame('game.quests.findHostileSlimesOutsideNovogorod') }}</li>
                 <li>
-                    После победы подойдите к телу слизня, повернитесь к нему и нажмите
-                    <kbd>F</kbd>, чтобы обыскать его. Затем заберите сердце из окна добычи в рюкзак.
+                    {{ tGame('game.quests.afterDefeatingSlimeApproachIts') }}
+                    <kbd>F</kbd>{{ tGame('game.quests.searchItTakeHeartFrom') }}
                 </li>
                 <li>
-                    Принесите {{ adventure.quest.goal }} сердца Мире в здание гильдии Новогорода и
-                    сдайте их по городскому заказу.
+                    {{ tGame('game.quests.bring') }} {{ adventure.quest.goal }}
+                    {{ tGame('game.quests.heartsMiraAtNovogorodGuild') }}
                 </li>
             </ol>
-            <p class="adventure-subtle">В счётчик входят только сердца в вашем рюкзаке.</p>
+            <p class="adventure-subtle">{{ tGame('game.quests.onlyHeartsInYourBackpack') }}</p>
             <p v-if="adventure.quest.status === 'available'" class="adventure-subtle">
-                Поговорите с Мирой, чтобы принять задание. Сердца можно собрать заранее.
+                {{ tGame('game.quests.speakMiraAcceptQuestYou') }}
             </p>
         </template>
         <p v-else-if="completed" class="adventure-success">
-            Мира получила {{ adventure.quest.goal }} сердца. Награда выдана.
+            {{ tGame('game.quests.miraReceived') }} {{ adventure.quest.goal }}
+            {{ tGame('game.quests.heartsRewardDelivered') }}
         </p>
-        <p v-else class="adventure-subtle">{{ adventure.quest.notice }}</p>
+        <p v-else class="adventure-subtle">
+            {{ tLocalized(adventure.quest.noticeMessage, adventure.quest.notice ?? '') }}
+        </p>
         <p
             v-if="!cancelled && adventure.quest.status !== 'available'"
             class="adventure-subtle journal-statistic"
         >
-            Личных побед над слизнями после принятия задания: {{ adventure.quest.kills }}.
+            {{ tGame('game.quests.yourSlimeKillsSinceAccepting') }} {{ adventure.quest.kills }}.
         </p>
         <p v-if="adventure.wardRestored" class="adventure-success">
-            Колокол памяти пробуждён. Городские мастерские и торговля работают.
+            {{ tGame('game.quests.bellMemoryHasAwakenedCitys') }}
         </p>
         <p
             v-else-if="adventure.cityState?.bellState === 'prepared' || completed"
             class="adventure-subtle"
         >
-            Колокол подготовлен. Последний шаг — подойти к нему внутри часовни и пробудить.
+            {{ tGame('game.quests.bellIsReadyEnterChapel') }}
         </p>
         <QuestRewardSummary
             v-if="!cancelled"
@@ -123,8 +150,11 @@ const statuses: Record<AdventureQuestStatus, string> = {
             :can-abandon="Boolean(canAbandon)"
             @command="emit('command', $event)"
         />
-        <section v-if="adventure.craftOrders?.length" aria-label="Заказы ремесленникам">
-            <h3>Заказы ремесленникам</h3>
+        <section
+            v-if="adventure.craftOrders?.length"
+            :aria-label="tGame('game.quests.workshopOrders')"
+        >
+            <h3>{{ tGame('game.quests.workshopOrders') }}</h3>
             <p v-for="order in adventure.craftOrders" :key="order.id">
                 <strong>{{ order.label }} — {{ craftOrderStatusLabels[order.status] }}</strong
                 ><br />

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type {
     AdventureSnapshot,
-    AdventureTradeItemId,
     CharacterSnapshot,
     ClientMessage,
     QuestRewardMode,
@@ -9,10 +8,11 @@ import type {
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { SoulBadge } from '@/entities/player-effects'
+import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import AdventureQuestDecision from './AdventureQuestDecision.vue'
+import AdventureShop from './AdventureShop.vue'
 import CityDemandReport from './CityDemandReport.vue'
-import CityMarket from './CityMarket.vue'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
@@ -27,6 +27,12 @@ const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const panel = ref<HTMLElement>()
 const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
 const isSign = computed(() => props.adventure.dialogue?.kind === 'sign')
+const dialogueName = computed(() => {
+    const dialogue = props.adventure.dialogue
+    return dialogue === null
+        ? ''
+        : tLocalized(dialogue.npcNameMessage, characterName(dialogue.npcId, dialogue.npcName))
+})
 const rewardMode = ref<QuestRewardMode>('party_equal')
 const dialogueKey = computed(() =>
     props.adventure.dialogue
@@ -48,10 +54,13 @@ const questDecision = computed(() => {
 })
 const viewTitle = computed(() =>
     view.value === 'conversation'
-        ? props.adventure.dialogue?.title
-        : { shop: 'Товары', repair: 'Ремонт', demand: 'Потребности города', orders: 'Заказы' }[
-              view.value
-          ]
+        ? tLocalized(props.adventure.dialogue?.titleMessage, props.adventure.dialogue?.title ?? '')
+        : {
+              shop: tGame('game.conversation.goods'),
+              repair: tGame('game.conversation.repairs'),
+              demand: tGame('game.conversation.cityDemand'),
+              orders: tGame('game.conversation.orders'),
+          }[view.value]
 )
 function focusFirstAction(choiceId?: QuestChoice): void {
     void nextTick(() => {
@@ -100,9 +109,6 @@ function choose(choiceId: string): void {
     if (choiceId === 'orders') view.value = 'orders'
     emit('command', { choiceId, type: 'dialogue_choice' })
     focusFirstAction()
-}
-function buy(itemId: AdventureTradeItemId): void {
-    if (!props.adventure.dialogue?.tradeBlockedReason) emit('command', { itemId, type: 'trade' })
 }
 function backToConversation(): void {
     view.value = 'conversation'
@@ -180,15 +186,19 @@ watch(
                 ? speechBubbleId(adventure.dialogue.npcId, adventure.dialogue.speechId)
                 : undefined
         "
-        :aria-label="`${isSign ? 'Табличка' : 'Разговор'}: ${adventure.dialogue.npcName}`"
+        :aria-label="`${isSign ? tGame('game.conversation.sign') : tGame('game.conversation.conversation')}: ${dialogueName}`"
     >
         <GameFrame variant="window" />
         <header class="adventure-window__header">
-            <h2 v-if="isSign">{{ adventure.dialogue.npcName }}</h2>
-            <span v-else>{{ adventure.dialogue.npcName }}</span>
+            <h2 v-if="isSign">{{ dialogueName }}</h2>
+            <span v-else>{{ dialogueName }}</span>
             <GameButton
                 icon
-                :aria-label="isSign ? 'Закрыть табличку' : 'Закончить разговор'"
+                :aria-label="
+                    isSign
+                        ? tGame('game.conversation.closeSign')
+                        : tGame('game.conversation.endConversation')
+                "
                 @click="emit('command', { choiceId: 'close', type: 'dialogue_choice' })"
             >
                 ×
@@ -200,11 +210,11 @@ watch(
         />
         <h2 v-if="!isSign">{{ viewTitle }}</h2>
         <p v-if="view === 'conversation' && isSign" class="adventure-dialogue__text">
-            {{ adventure.dialogue.text }}
+            {{ tLocalized(adventure.dialogue.textMessage, adventure.dialogue.text) }}
         </p>
-        <small v-if="!isSign" class="dialogue-speech-help"
-            >PageUp / PageDown — читать реплику · Tab — ответы</small
-        >
+        <small v-if="!isSign" class="dialogue-speech-help">{{
+            tGame('game.conversation.pageupPagedownReadTabSelect')
+        }}</small>
         <div v-if="view === 'conversation'" class="adventure-choices">
             <QuestRewardSummary
                 v-if="adventure.dialogue.choices.some((choice) => choice.id === 'quest_progress')"
@@ -217,44 +227,18 @@ watch(
                 :data-dialogue-action="choice.id"
                 @click="choose(choice.id)"
             >
-                {{ choice.label }}
+                {{ tLocalized(choice.labelMessage, choice.label) }}
             </GameButton>
         </div>
-        <div
+        <AdventureShop
             v-if="view === 'shop' && adventure.dialogue.canTrade"
-            class="adventure-shop"
-            aria-label="Торговля"
-        >
-            <p v-if="adventure.dialogue.tradeBlockedReason" class="trade-refusal" role="status">
-                {{ adventure.dialogue.tradeBlockedReason }}
-            </p>
-            <CityMarket
-                v-if="adventure.market"
-                :market="adventure.market"
-                :npc-id="adventure.dialogue.npcId"
-                :gold="adventure.gold"
-                :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
-                @command="emit('command', $event)"
-            />
-            <h3 v-if="!adventure.market">
-                В дорогу <span>У вас {{ adventure.gold }} золотых</span>
-            </h3>
-            <GameButton
-                v-for="offer in adventure.market ? [] : adventure.shop"
-                :key="offer.itemId"
-                data-dialogue-action
-                :disabled="
-                    Boolean(adventure.dialogue.tradeBlockedReason) || adventure.gold < offer.price
-                "
-                @click="buy(offer.itemId)"
-            >
-                <span>{{ offer.label }}</span
-                ><strong>{{ offer.price }} ◈</strong>
-            </GameButton>
-            <GameButton data-dialogue-action @click="backToConversation">
-                ← Вернуться к разговору
-            </GameButton>
-        </div>
+            :dialogue="adventure.dialogue"
+            :shop="adventure.shop"
+            :market="adventure.market"
+            :gold="adventure.gold"
+            @command="emit('command', $event)"
+            @back="backToConversation"
+        />
         <RepairWorkshop
             v-if="view === 'repair' && adventure.repairs"
             :repairs="adventure.repairs"
@@ -268,7 +252,12 @@ watch(
             class="trade-refusal"
             role="status"
         >
-            {{ adventure.dialogue.tradeBlockedReason }}
+            {{
+                tLocalized(
+                    adventure.dialogue.tradeBlockedReasonMessage,
+                    adventure.dialogue.tradeBlockedReason
+                )
+            }}
         </p>
         <WorkshopOrders
             v-if="view === 'orders' && adventure.workshop"
@@ -283,14 +272,14 @@ watch(
             data-dialogue-action
             @click="backToConversation"
         >
-            ← Вернуться к разговору
+            {{ tGame('game.conversation.backConversation') }}
         </GameButton>
     </section>
     <AdventureQuestDecision
         v-if="questDecision && adventure.dialogue"
         v-model="rewardMode"
         :quest="adventure.quest"
-        :issuer="adventure.dialogue.npcName"
+        :issuer="dialogueName"
         :offer="questDecision === 'accept_quest'"
         @confirm="confirmQuestDecision"
         @cancel="closeQuestDecision"

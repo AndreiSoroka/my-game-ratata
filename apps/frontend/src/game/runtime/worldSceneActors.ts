@@ -1,6 +1,7 @@
 import type {
     AdventureResourceNode,
     FarmPlotSnapshot,
+    GameLocale,
     ItemId,
     WorldChestSnapshot,
     WorldItemSnapshot,
@@ -17,6 +18,8 @@ import {
     vec,
 } from 'excalibur'
 
+import { gameLocale, tGame } from '@/shared/lib/i18n'
+
 import { FarmViews } from './farmViews'
 
 interface ItemBundle {
@@ -31,7 +34,8 @@ interface ChestBundle {
 
 export class WorldSceneActors {
     private readonly farmViews: FarmViews
-    private readonly resources = new Map<string, Actor>()
+    private readonly resources = new Map<string, { actor: Actor; label: Label }>()
+    private resourceLocale: GameLocale | undefined
     private readonly chestActors = new Map<string, ChestBundle>()
     private readonly chestImage: ImageSource
     private readonly engine: Engine
@@ -66,22 +70,14 @@ export class WorldSceneActors {
     private updateResources(nodes: AdventureResourceNode[]): void {
         const active = nodes.filter((node) => node.remaining > 0 && node.source === undefined)
         const ids = new Set(active.map((node) => node.id))
-        for (const [id, actor] of this.resources) {
+        for (const [id, resource] of this.resources) {
             if (!ids.has(id)) {
-                actor.kill()
+                resource.actor.kill()
                 this.resources.delete(id)
             }
         }
-        const labels = {
-            herbs: 'Травы',
-            fiber: 'Волокно',
-            wood: 'Древесина',
-            grain: 'Зерно',
-            scrap: 'Металл',
-            stone: 'Камень',
-            sapling: 'Саженцы',
-            brushwood: 'Хворост',
-        }
+        const localeChanged = this.resourceLocale !== gameLocale.value
+        this.resourceLocale = gameLocale.value
         const colors = {
             herbs: '#77b34d',
             fiber: '#ceb378',
@@ -93,7 +89,11 @@ export class WorldSceneActors {
             brushwood: '#9c774e',
         }
         for (const node of active) {
-            if (this.resources.has(node.id)) continue
+            const resource = this.resources.get(node.id)
+            if (resource) {
+                if (localeChanged) resource.label.text = tGame(`game.canvas.${node.kind}`)
+                continue
+            }
             const actor = new Actor({
                 pos: vec(node.position.x, node.position.y),
                 z: node.position.y,
@@ -102,13 +102,13 @@ export class WorldSceneActors {
                 new Rectangle({ width: 9, height: 7, color: Color.fromHex(colors[node.kind]) })
             )
             const label = new Label({
-                text: labels[node.kind],
+                text: tGame(`game.canvas.${node.kind}`),
                 pos: vec(-12, -12),
                 font: new Font({ size: 7, color: Color.White }),
             })
             actor.addChild(label)
             this.engine.add(actor)
-            this.resources.set(node.id, actor)
+            this.resources.set(node.id, { actor, label })
         }
     }
 

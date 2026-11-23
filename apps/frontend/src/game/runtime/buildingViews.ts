@@ -1,6 +1,8 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 import { Actor, Canvas, Color, Engine, Font, Label, vec } from 'excalibur'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { containsPosition, type MapBuilding } from './mapBuildings'
 
 interface BuildingView {
@@ -30,6 +32,8 @@ export class BuildingViews {
                 ? undefined
                 : this.views.find((view) => containsPosition(view.building, playerPosition))
                       ?.building.id
+        const entranceLabel = tGame('game.canvas.entrance')
+        const exitLabel = tGame('game.canvas.exit')
         for (const view of this.views) {
             const entered = view.building.id === this.enteredId
             view.roof.graphics.isVisible = !entered
@@ -39,7 +43,8 @@ export class BuildingViews {
                     view.building.entry.x - playerPosition.x,
                     view.building.entry.y - playerPosition.y
                 ) <= 72
-            view.entry.text = entered ? 'Выход' : 'Вход'
+            const label = entered ? exitLabel : entranceLabel
+            if (view.entry.text !== label) view.entry.text = label
         }
     }
 
@@ -78,7 +83,7 @@ export class BuildingViews {
         const entry = new Label({
             pos: vec(building.entry.x - 8, building.entry.y + 12),
             z: z + 1,
-            text: 'Вход',
+            text: tGame('game.canvas.entrance'),
             font: new Font({
                 size: 5,
                 color: Color.fromHex('#fff2b5'),

@@ -24,6 +24,7 @@ export function taskSpeech(
             id: task.id,
             senderId: task.requesterId,
             text: '',
+            ...(task.language === undefined ? {} : { language: task.language }),
             locationId: state.actor?.locationId ?? '',
             position: { x: 0, y: 0 },
             at: now,

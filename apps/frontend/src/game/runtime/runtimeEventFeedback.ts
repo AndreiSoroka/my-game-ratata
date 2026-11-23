@@ -1,5 +1,7 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
+import { tLocalized } from '@/shared/lib/i18n'
+
 import type { RatataGameOptions } from './runtimeOptions'
 import { isFloatingNotice, isNoticeForPlayer } from './runtimeQueries'
 
@@ -10,7 +12,7 @@ export function runtimeEventFeedback(
     releaseInputs: () => void
 ): void {
     if (isNoticeForPlayer(event, playerId) && !isFloatingNotice(event))
-        options.onNotice?.(event.text)
+        options.onNotice?.(tLocalized(event.textMessage, event.text))
     if (event.kind === 'permadeath' && event.actorId === playerId) {
         releaseInputs()
         options.onDefeat?.()

@@ -6,17 +6,17 @@ interface VoiceProfile {
 
 const rates = [0.76, 1, 1.28]
 
-function profileKey(actorId: string): string {
-    return `ratata:npc-voice:${actorId}`
+function profileKey(actorId: string, language: GameLocale): string {
+    return language === 'ru' ? `ratata:npc-voice:${actorId}` : `ratata:npc-voice:en:${actorId}`
 }
 
 function inRange(value: unknown, minimum: number, maximum: number): value is number {
     return typeof value === 'number' && value >= minimum && value <= maximum
 }
 
-function loadProfile(actorId: string): VoiceProfile | undefined {
+function loadProfile(key: string): VoiceProfile | undefined {
     try {
-        const raw = window.localStorage.getItem(profileKey(actorId))
+        const raw = window.localStorage.getItem(key)
         if (raw === null) return
         const stored = JSON.parse(raw) as Partial<VoiceProfile> | null
         if (
@@ -44,21 +44,25 @@ function newProfile(voices: readonly SpeechSynthesisVoice[]): VoiceProfile | und
 export class NpcVoiceProfiles {
     private readonly profiles = new Map<string, VoiceProfile>()
 
-    public resolve(actorId: string, voices: readonly SpeechSynthesisVoice[]) {
+    public resolve(actorId: string, language: GameLocale, voices: readonly SpeechSynthesisVoice[]) {
         const available = voices
-            .filter((voice) => voice.localService && /^ru(?:[-_]|$)/iu.test(voice.lang))
+            .filter(
+                (voice) =>
+                    voice.localService && voice.lang.split(/[-_]/u)[0]?.toLowerCase() === language
+            )
             .sort((left, right) => left.voiceURI.localeCompare(right.voiceURI))
         const fallback = available[0]
         if (fallback === undefined) return
 
-        const cached = this.profiles.get(actorId)
-        const saved = cached ?? loadProfile(actorId)
+        const key = profileKey(actorId, language)
+        const cached = this.profiles.get(key)
+        const saved = cached ?? loadProfile(key)
         const profile = saved ?? newProfile(available)
         if (profile === undefined) return
-        if (cached === undefined) this.profiles.set(actorId, profile)
+        if (cached === undefined) this.profiles.set(key, profile)
         if (saved === undefined) {
             try {
-                window.localStorage.setItem(profileKey(actorId), JSON.stringify(profile))
+                window.localStorage.setItem(key, JSON.stringify(profile))
             } catch {
                 // Use the in-memory profile if the browser store is unavailable.
             }
@@ -70,3 +74,4 @@ export class NpcVoiceProfiles {
         }
     }
 }
+import type { GameLocale } from '@my-game-ratata/contracts'

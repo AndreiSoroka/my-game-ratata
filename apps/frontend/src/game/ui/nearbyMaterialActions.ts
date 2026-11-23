@@ -6,6 +6,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { FARM_SOW_ENERGY, FARM_SOW_SEEDS } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { interactionDistance, nearestByKind } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
 import type { InteractionAction } from './nearbyInteractionActions'
@@ -44,29 +46,31 @@ export function forestResourceActions(
         return [
             {
                 id: `growth:${node.id}`,
-                label: `Дерево растёт · ${Math.max(0, Math.ceil(((node.readyAt ?? now) - now) / 1000))} сек.`,
+                label: tGame('game.world.treeGrowing', {
+                    seconds: Math.max(0, Math.ceil(((node.readyAt ?? now) - now) / 1000)),
+                }),
                 disabled: true,
                 command,
             },
-            { id: `gather:${node.id}`, label: 'Срубить без добычи', command },
+            { id: `gather:${node.id}`, label: tGame('game.world.cutWithoutLoot'), command },
         ]
     const labels = {
-        herbs: 'травы',
-        fiber: 'волокно',
-        scrap: 'металл',
-        wood: 'древесину',
-        grain: 'зерно',
-        stone: 'камень',
-        sapling: 'саженец',
-        brushwood: 'хворост',
+        herbs: tGame('game.world.gatherHerbs'),
+        fiber: tGame('game.world.gatherFiber'),
+        scrap: tGame('game.world.gatherMetal'),
+        wood: tGame('game.world.gatherTimber'),
+        grain: tGame('game.world.gatherGrain'),
+        stone: tGame('game.world.gatherStone'),
+        sapling: tGame('game.world.gatherSapling'),
+        brushwood: tGame('game.world.gatherBrushwood'),
     }
     return [
         {
             id: `gather:${node.id}`,
             label:
                 node.phase === 'stump'
-                    ? 'Убрать пень · +1 древесина'
-                    : `Собрать ${labels[node.kind]}`,
+                    ? tGame('game.world.removeStump')
+                    : tGame('game.world.gatherMaterial', { material: labels[node.kind] }),
             command,
         },
     ]
@@ -82,7 +86,7 @@ export function pickupActions(
         ? [
               {
                   id: `pickup:${item.id}`,
-                  label: `Подобрать: ${itemStackLabel(item)}`,
+                  label: tGame('game.world.pickUp', { item: itemStackLabel(item) }),
                   command: { type: 'pickup_item', worldItemId: item.id },
               },
           ]
@@ -104,10 +108,15 @@ export function farmAction(
         id: `farm:${plot.id}:${plot.phase === 'ripe' ? 'harvest' : 'sow'}`,
         label:
             plot.phase === 'ripe'
-                ? 'Собрать пшеницу · +3 зерна'
+                ? tGame('game.world.harvestWheat')
                 : plot.phase === 'bare'
-                  ? `Посеять · ${String(FARM_SOW_SEEDS)} семя · ${String(sowEnergyCost)} EN · в рюкзаке: ${String(seeds)}${unavailable === undefined ? '' : ` · ${unavailable}`}`
-                  : `Пшеница растёт · ${String(seconds)} сек.`,
+                  ? tGame('game.world.sowCost', {
+                        required: String(FARM_SOW_SEEDS),
+                        energy: String(sowEnergyCost),
+                        seeds: String(seeds),
+                        unavailable: unavailable === undefined ? '' : ` · ${unavailable}`,
+                    })
+                  : tGame('game.world.wheatGrowing', { seconds: String(seconds) }),
         disabled: plot.phase === 'growing' || (plot.phase === 'bare' && unavailable !== undefined),
         command: {
             type: 'farm_action',
@@ -118,7 +127,7 @@ export function farmAction(
 }
 
 function sowUnavailable(player: CharacterSnapshot, seeds: number): string | undefined {
-    if (seeds < FARM_SOW_SEEDS) return 'нет семян'
-    if (player.resourceChecks?.sow === 'energy') return 'недостаточно сил'
-    return player.resourceChecks?.sow === 'ready' ? undefined : 'нет данных о силах'
+    if (seeds < FARM_SOW_SEEDS) return tGame('game.world.noSeeds')
+    if (player.resourceChecks?.sow === 'energy') return tGame('game.world.notEnoughEnergy')
+    return player.resourceChecks?.sow === 'ready' ? undefined : tGame('game.world.energyUnknown')
 }

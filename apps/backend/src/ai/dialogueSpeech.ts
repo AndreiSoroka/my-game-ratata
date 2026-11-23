@@ -42,6 +42,7 @@ export function speakNpcDialogue(
         )
         return
     }
+    const language = event.language ?? room.localeFor(target.id)
     if (event.legacy === true && state.config.mode !== 'dialogue_only') {
         const result = companions.decide(
             actor,
@@ -50,13 +51,22 @@ export function speakNpcDialogue(
             now,
             state.token
         )
-        room.publishEvents(result.events)
+        room.publishEvents(
+            result.events.map((speech) =>
+                speech.kind === 'chat'
+                    ? attributeNpcSpeech({ ...speech, language }, target.id)
+                    : speech
+            )
+        )
     } else if (event.channel === 'whisper' || event.legacy === true) {
-        room.social.whispers.send(actor, target, text, now)
+        room.social.whispers.send(actor, target, text, now, {
+            language,
+            keepOriginalForRecipient: true,
+        })
     } else {
         room.publishEvents([
             attributeNpcSpeech(
-                createSpeechEvent(actor, text.slice(0, 400)),
+                { ...createSpeechEvent(actor, text.slice(0, 400)), language },
                 target.id
             ),
         ])

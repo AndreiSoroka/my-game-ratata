@@ -3,6 +3,7 @@ import { type CharacterSnapshot, resolveCombatWeapon } from '@my-game-ratata/con
 import { computed } from 'vue'
 
 import { healthBarPercent } from '@/entities/player-vitals'
+import { abilityName, tGame, weaponName } from '@/shared/lib/i18n'
 
 import {
     observedDamageText,
@@ -22,19 +23,19 @@ const resources = computed(() =>
         ? [
               {
                   id: 'health',
-                  name: 'Здоровье',
+                  name: tGame('game.character.health'),
                   observation: sheet.value.health,
                   bar: props.player.health,
               },
               {
                   id: 'mana',
-                  name: 'Мана',
+                  name: tGame('game.character.mana'),
                   observation: sheet.value.mana,
                   bar: props.player.resources.mana,
               },
               {
                   id: 'energy',
-                  name: 'Энергия',
+                  name: tGame('game.character.energy'),
                   observation: sheet.value.energy,
                   bar: props.player.resources.energy,
               },
@@ -44,18 +45,17 @@ const resources = computed(() =>
 </script>
 
 <template>
-    <section class="character-stats" aria-label="Характеристики персонажа">
+    <section class="character-stats" :aria-label="tGame('game.character.characterStats')">
         <HeroBackgroundSummary :hero-class="player.heroClass" />
         <p
             v-if="weapon.kind === 'knife'"
             class="character-explanation"
             data-testid="backup-knife-description"
         >
-            {{ weapon.description }}
+            {{ tGame('game.character.knifeDescription') }}
         </p>
         <p class="character-explanation">
-            Познавайте себя в приключениях: опыт уточняет оценки. Верхняя граница примерного
-            диапазона не включается.
+            {{ tGame('game.character.learnAboutYourselfThroughAdventure') }}
         </p>
         <template v-if="sheet">
             <div class="character-resources">
@@ -73,35 +73,47 @@ const resources = computed(() =>
                         max="100"
                         :aria-label="resource.name"
                     />
-                    <small>Текущий запас / вместимость</small>
+                    <small>{{ tGame('game.character.currentAmountCapacity') }}</small>
                 </article>
             </div>
             <dl class="character-properties">
-                <dt>Скорость движения</dt>
-                <dd>{{ observedText(sheet.moveSpeed) }} клеток/с</dd>
-                <dt>Уклонение</dt>
+                <dt>{{ tGame('game.character.movementSpeed') }}</dt>
+                <dd>{{ observedText(sheet.moveSpeed) }} {{ tGame('game.character.tilesS') }}</dd>
+                <dt>{{ tGame('game.character.dodge') }}</dt>
                 <dd>{{ observedText(sheet.dodgeChance, 100) }}%</dd>
             </dl>
-            <section class="character-attacks" aria-label="Атаки персонажа">
+            <section
+                class="character-attacks"
+                :aria-label="tGame('game.character.characterAttacks')"
+            >
                 <article
                     v-for="attack in sheet.attacks"
                     :key="attack.id"
                     class="character-attack game-frame-host"
                 >
                     <GameFrame variant="inset" />
-                    <h3>{{ attack.name }}</h3>
+                    <h3>
+                        {{
+                            attack.id === 'basic_attack'
+                                ? weaponName(weapon.kind)
+                                : abilityName(attack.id, attack.name)
+                        }}
+                    </h3>
                     <dl class="character-properties">
-                        <dt>Урон</dt>
+                        <dt>{{ tGame('game.character.damage') }}</dt>
                         <dd>{{ observedDamageText(attack.damage) }}</dd>
-                        <dt>Интервал</dt>
-                        <dd>{{ observedText(attack.cooldownMs, 0.001) }} с</dd>
-                        <dt>Критический шанс</dt>
+                        <dt>{{ tGame('game.character.interval') }}</dt>
+                        <dd>
+                            {{ observedText(attack.cooldownMs, 0.001) }}
+                            {{ tGame('game.knowledge.s') }}
+                        </dd>
+                        <dt>{{ tGame('game.character.criticalChance') }}</dt>
                         <dd>{{ observedText(attack.critChance, 100) }}%</dd>
                     </dl>
                 </article>
             </section>
         </template>
-        <p v-else role="status">Сведения о характеристиках ещё не получены.</p>
+        <p v-else role="status">{{ tGame('game.character.characterStatsAreNotAvailable') }}</p>
     </section>
 </template>
 

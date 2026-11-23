@@ -12,7 +12,7 @@ test('PlayerEffectsStrip Default shows a single selectable row', async ({ page }
     const details = strip.locator('[data-player-effect-detail]')
     const combo = strip.getByRole('button', { name: /^Серия ударов/ })
     await expect(strip.getByRole('button')).toHaveCount(5)
-    await expect(strip.getByRole('list', { name: 'Player effects' })).toBeVisible()
+    await expect(strip.getByRole('list', { name: 'Эффекты игрока' })).toBeVisible()
     await expect(combo).toHaveAccessibleName('Серия ударов · 2/3 · 2 с')
     await expect(details).toHaveCount(0)
     await readyUiStory(page)

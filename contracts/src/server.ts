@@ -2,6 +2,7 @@ import type { GameEventPayload } from './events'
 import type { MapSummary, WorldSnapshot } from './index'
 import type { PlantTreePreview } from './planting'
 import type { ContractProtocolVersion } from './service'
+import type { SpeechTranslation } from './social'
 
 export interface WorldInitServerMessage {
     map: MapSummary
@@ -23,6 +24,12 @@ export interface SnapshotServerMessage {
     type: 'snapshot'
 }
 
+export interface SpeechTranslationServerMessage extends SpeechTranslation {
+    type: 'speech_translation'
+    actorId: string
+    speechId: number
+}
+
 export interface ErrorServerMessage {
     code: string
     message: string
@@ -34,4 +41,5 @@ export type ServerMessage =
     | ErrorServerMessage
     | GameEventServerMessage
     | SnapshotServerMessage
+    | SpeechTranslationServerMessage
     | WorldInitServerMessage

@@ -1,6 +1,8 @@
-import type {
-    ConstellationNodeSnapshot,
-    ConstellationSnapshot,
+import {
+    type ConstellationNodeSnapshot,
+    type ConstellationSnapshot,
+    DISCLOSED_AUTHORED_TEXT_KEY,
+    type LocalizedMessage,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -8,12 +10,13 @@ import {
     constellationPaths,
     type ConstellationStar,
 } from './constellationCatalog'
+import { constellationEnglishText } from './constellationEnglishText'
 import {
     constellationWireId,
     fullConstellationCatalog,
 } from './constellationNodes'
 import { minimumConstellationLevel } from './constellationRequirements'
-import { observedConstellationCardEffects } from './constellationResultDisclosure'
+import { observedConstellationCardEffectRows } from './constellationResultDisclosure'
 import { hasStar } from './constellations'
 import {
     type CachedConstellationLayout,
@@ -104,9 +107,7 @@ function observeNode(
         !learned &&
         actor.progression.masteries[node.constellationId].level <
             minimumConstellationLevel(node.id, actor.heroClass)
-    const effects = learned
-        ? observedConstellationCardEffects(node.id, learnedIds)
-        : undefined
+    const english = learned ? constellationEnglishText[node.id] : undefined
     return {
         id: constellationWireId(node.id),
         constellationId: node.constellationId,
@@ -119,11 +120,33 @@ function observeNode(
                   kind: node.kind,
                   name: node.name,
                   description: node.description,
+                  ...(english === undefined
+                      ? {}
+                      : {
+                            nameMessage: disclosedText(english[0]),
+                            descriptionMessage: disclosedText(english[1]),
+                        }),
                   effectType: node.effectType,
-                  ...(effects === undefined ? {} : { effects }),
+                  ...observedEffects(node.id, learnedIds),
               }
             : {}),
     }
+}
+
+function observedEffects(nodeId: string, learnedIds: ReadonlySet<string>) {
+    const rows = observedConstellationCardEffectRows(nodeId, learnedIds)
+    return rows === undefined
+        ? {}
+        : {
+              effects: rows.map(([russian]) => russian),
+              effectMessages: rows.map(([russian, english]) =>
+                  russian === english ? null : disclosedText(english)
+              ),
+          }
+}
+
+function disclosedText(text: string): LocalizedMessage {
+    return { key: DISCLOSED_AUTHORED_TEXT_KEY, params: { text } }
 }
 
 function unlocked(actor: GameCharacter, node: ConstellationStar): boolean {

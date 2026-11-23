@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ClientMessage, WhisperSnapshot } from '@my-game-ratata/contracts'
 
+import { characterName, tGame } from '@/shared/lib/i18n'
+
 import PrivateConversation from './PrivateConversation.vue'
 import SocialWindow from './SocialWindow.vue'
 
@@ -11,7 +13,14 @@ function send(text: string): void {
 }
 </script>
 <template>
-    <SocialWindow :title="`Шёпот: ${conversation.partnerName}`" @close="emit('close')">
+    <SocialWindow
+        :title="
+            tGame('game.chat.privateTitle', {
+                name: characterName(conversation.partnerId, conversation.partnerName),
+            })
+        "
+        @close="emit('close')"
+    >
         <PrivateConversation
             :conversation="conversation"
             :player-id="playerId"

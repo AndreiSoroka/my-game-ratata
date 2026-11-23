@@ -94,9 +94,23 @@ describe('single full conversation bubble', () => {
             wrapper.vm.receive(event)
             await wrapper.vm.$nextTick()
             expect(wrapper.find('.speech-bubble').exists()).toBe(true)
+            const ambient = wrapper.get('.speech-bubble').element
+            const update = {
+                type: 'speech_translation',
+                actorId: npc.id,
+                speechId: 3,
+                locale: 'en',
+                text: 'Hello',
+            } as const
+            wrapper.vm.translate(update)
+            await wrapper.vm.$nextTick()
+            expect(wrapper.get('.speech-bubble').element).toBe(ambient)
+            expect(wrapper.get('.speech-text').text()).toBe('Hello')
+            expect(wrapper.get('.speech-text').attributes('lang')).toBe('en')
             vi.advanceTimersByTime(9000)
             await wrapper.vm.$nextTick()
             wrapper.vm.receive(event)
+            wrapper.vm.translate(update)
             await wrapper.vm.$nextTick()
             expect(wrapper.find('.speech-bubble').exists()).toBe(false)
             wrapper.vm.receive({ ...event, speechId: 4 })

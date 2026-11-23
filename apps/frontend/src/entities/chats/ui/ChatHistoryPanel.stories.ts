@@ -55,6 +55,22 @@ export const Collapsed: Story = { args: { collapsed: true } }
 
 export const Private: Story = { args: { filter: 'whisper' } }
 
+export const Translated: Story = {
+    args: {
+        entries: [
+            {
+                id: 'translated',
+                channel: 'say',
+                name: 'Mira',
+                language: 'en',
+                text: 'Meet me at the north gate.',
+                translation: { locale: 'ru', text: 'Встретимся у северных ворот.' },
+                at: 1,
+            },
+        ],
+    },
+}
+
 export const LongHistory: Story = {
     args: {
         entries: [

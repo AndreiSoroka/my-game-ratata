@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { activateFocusedButton } from './uiKeyboard'
@@ -43,7 +45,11 @@ onMounted(async () => {
         <GameFrame variant="window" />
         <header class="automation-window__header">
             <h2>{{ title }}</h2>
-            <GameButton icon :aria-label="`Закрыть: ${title}`" @click="emit('close')">
+            <GameButton
+                icon
+                :aria-label="tGame('game.automation.closeWithTitle', { title: title })"
+                @click="emit('close')"
+            >
                 ×
             </GameButton>
         </header>

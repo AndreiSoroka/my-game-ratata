@@ -62,7 +62,7 @@ describe('NPC runtime cancellation and deadlines', () => {
         expect(provider.turns[0]?.signal.aborted).toBe(false)
         provider.turns[0]?.resolve(
             npcReply(
-                { type: 'speak', text: 'HEARD' },
+                { type: 'speak', text: 'Первое поручение понятно.' },
                 { taskAcceptance: 'none' }
             )
         )
@@ -71,12 +71,18 @@ describe('NPC runtime cancellation and deadlines', () => {
         expect(provider.turns[1]?.context.events).toContainEqual(
             expect.objectContaining({ text: 'Второе поручение.' })
         )
-        provider.turns[1]?.resolve(npcReply({ type: 'speak', text: 'NEW' }))
-        await f.advance()
-        expect(f.speech().some((event) => event.text === 'HEARD')).toBe(true)
-        expect(f.speech().filter((event) => event.text === 'NEW')).toHaveLength(
-            1
+        provider.turns[1]?.resolve(
+            npcReply({ type: 'speak', text: 'Вот новый ответ.' })
         )
+        await f.advance()
+        expect(
+            f
+                .speech()
+                .some((event) => event.text === 'Первое поручение понятно.')
+        ).toBe(true)
+        expect(
+            f.speech().filter((event) => event.text === 'Вот новый ответ.')
+        ).toHaveLength(1)
         expect(f.actor.soul.kind).toBe('echo')
     })
 
@@ -113,12 +119,12 @@ describe('NPC runtime cancellation and deadlines', () => {
             f.entries().some((entry) => entry['category'] === 'provider_error')
         ).toBe(true)
         provider.turns[0]?.resolve(
-            npcReply({ type: 'speak', text: 'TOO LATE' })
+            npcReply({ type: 'speak', text: 'Запоздалый ответ.' })
         )
         await f.advance()
-        expect(f.speech().some((event) => event.text === 'TOO LATE')).toBe(
-            false
-        )
+        expect(
+            f.speech().some((event) => event.text === 'Запоздалый ответ.')
+        ).toBe(false)
     })
 
     it('stops the provider on room shutdown and drops all later output', async () => {
@@ -129,9 +135,13 @@ describe('NPC runtime cancellation and deadlines', () => {
         f.room.stop()
         expect(provider.turns[0]?.signal.aborted).toBe(true)
         expect(f.actor.soul.kind).toBe('echo')
-        provider.turns[0]?.resolve(npcReply({ type: 'speak', text: 'STOPPED' }))
+        provider.turns[0]?.resolve(
+            npcReply({ type: 'speak', text: 'Ответ после остановки.' })
+        )
         await f.advance()
-        expect(f.speech().some((event) => event.text === 'STOPPED')).toBe(false)
+        expect(
+            f.speech().some((event) => event.text === 'Ответ после остановки.')
+        ).toBe(false)
     })
 })
 

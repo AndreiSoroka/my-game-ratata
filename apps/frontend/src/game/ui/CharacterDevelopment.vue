@@ -2,6 +2,7 @@
 import type { CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { ConstellationAtlasWidget } from '@/widgets/constellation-atlas'
 
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
@@ -27,7 +28,10 @@ watch(
 </script>
 
 <template>
-    <section class="character-development" aria-label="Развитие персонажа">
+    <section
+        class="character-development"
+        :aria-label="tGame('game.character.characterProgression')"
+    >
         <HeroBackgroundSummary :hero-class="player.heroClass" />
         <template v-if="sky">
             <ConstellationAtlasWidget
@@ -47,7 +51,7 @@ watch(
                 @command="emit('command', $event)"
             />
         </template>
-        <p v-else>Небосвод ещё не получен.</p>
+        <p v-else>{{ tGame('game.character.yourSkyIsNotAvailable') }}</p>
     </section>
 </template>
 

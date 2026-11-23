@@ -5,6 +5,8 @@ import type {
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { tGame, tLocalized } from '@/shared/lib/i18n'
+
 import { nearestByKind, targetInteractionDistance } from './interactionTargets'
 import type { InteractionAction } from './nearbyInteractionActions'
 
@@ -22,10 +24,15 @@ export function worldInteractionActions(
             distance(target) <= 48 &&
             isVisible(target.position)
     )
-    const labels = { sign: 'Прочитать', barrel: 'Осмотреть', water: 'Попить', bell: 'Пробудить' }
+    const labels = {
+        sign: tGame('game.world.read'),
+        barrel: tGame('game.world.inspect'),
+        water: tGame('game.world.drink'),
+        bell: tGame('game.world.awaken'),
+    }
     return nearestByKind(objects, (target) => target.kind, distance).map((target) => ({
         id: `world:${target.id}`,
-        label: `${labels[target.kind]}: ${target.name}`,
+        label: `${labels[target.kind]}: ${tLocalized(target.nameMessage, target.name)}`,
         command: { type: 'world_interact', objectId: target.id },
     }))
 }

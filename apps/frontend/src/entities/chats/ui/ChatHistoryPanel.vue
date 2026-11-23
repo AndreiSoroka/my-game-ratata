@@ -3,6 +3,7 @@ import './chatButton.css'
 
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
+import { characterName, gameLocale, tGame } from '@/shared/lib/i18n'
 import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 import { FantasyBorder, getFantasyBorderMetrics } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
@@ -11,6 +12,7 @@ import {
     type ChatHistoryEntry,
     type ChatHistoryFilter,
     filterChatHistory,
+    speechDisplayText,
 } from '../model/chatHistory'
 
 const props = withDefaults(
@@ -30,6 +32,8 @@ const theme = useDarkPanelTheme()
 const historyStyle = computed(() => darkPanelThemeStyle(theme.value))
 const visible = computed(() => filterChatHistory(props.entries, props.filter))
 const preview = computed(() => visible.value.at(-1))
+const speakerName = (entry: ChatHistoryEntry): string =>
+    entry.self ? tGame('game.chat.you') : characterName(entry.actorId ?? '', entry.name)
 
 let atBottom = true
 let resizeObserver: ResizeObserver | undefined
@@ -75,12 +79,24 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
 </script>
 
 <template>
-    <aside class="chat-history" :style="historyStyle" aria-label="История чата" tabindex="-1">
+    <aside
+        class="chat-history"
+        :style="historyStyle"
+        :aria-label="tGame('game.chat.history')"
+        tabindex="-1"
+    >
         <p v-if="collapsed" class="chat-history__preview">
             <template v-if="preview">
-                <strong>{{ preview.name }}:</strong> {{ preview.text }}
+                <strong>{{ speakerName(preview) }}: </strong>
+                <span
+                    :lang="
+                        preview.translation?.locale ??
+                        (preview.textMessage ? gameLocale : preview.language)
+                    "
+                    >{{ speechDisplayText(preview) }}</span
+                >
             </template>
-            <span v-else class="chat-history__empty">Здесь появятся услышанные реплики.</span>
+            <span v-else class="chat-history__empty">{{ tGame('game.chat.empty') }}</span>
         </p>
         <FantasyBorder
             v-show="!collapsed"
@@ -95,7 +111,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                 class="chat-history__entries"
                 role="list"
                 tabindex="0"
-                aria-label="Услышанные реплики"
+                :aria-label="tGame('game.chat.heard')"
                 aria-live="off"
                 @scroll="scroll"
             >
@@ -105,13 +121,27 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                     :class="`chat-history__${entry.channel}`"
                 >
                     <small v-if="entry.channel === 'whisper'"
-                        >Шёпот · {{ entry.partnerName }}</small
+                        >{{ tGame('game.chat.whisper') }} ·
+                        {{ characterName(entry.partnerId ?? '', entry.partnerName ?? '') }}</small
                     >
-                    <small v-else-if="entry.channel === 'status'">Запрос</small>
-                    <strong>{{ entry.name }}:</strong> {{ entry.text }}
+                    <small v-else-if="entry.channel === 'status'">{{
+                        tGame('game.chat.request')
+                    }}</small>
+                    <strong>{{ speakerName(entry) }}: </strong>
+                    <span
+                        :lang="
+                            entry.translation?.locale ??
+                            (entry.textMessage ? gameLocale : entry.language)
+                        "
+                        >{{ speechDisplayText(entry) }}</span
+                    >
+                    <details v-if="entry.translation" class="chat-history__original">
+                        <summary>{{ tGame('game.chat.original') }}</summary>
+                        <span :lang="entry.language">{{ entry.text }}</span>
+                    </details>
                 </li>
                 <li v-if="!visible.length" class="chat-history__empty">
-                    Здесь появятся услышанные реплики.
+                    {{ tGame('game.chat.empty') }}
                 </li>
             </ol>
             <UiButton
@@ -123,7 +153,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                 :colors="hudPanelButtonColors"
                 @click="latest"
             >
-                Новые сообщения · {{ unread }} ↓
+                {{ tGame('game.chat.unread', { count: unread }) }}
             </UiButton>
         </FantasyBorder>
     </aside>
@@ -195,6 +225,12 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
 
 .chat-history__whisper strong {
     color: var(--ui-dark-panel-positive);
+}
+
+.chat-history__original summary {
+    cursor: pointer;
+    width: fit-content;
+    color: var(--ui-dark-panel-ornament);
 }
 
 .chat-history__status,

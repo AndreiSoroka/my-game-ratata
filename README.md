@@ -6,6 +6,15 @@ Ash Border is a browser-based multiplayer RPG prototype set in the Lands of Novo
 
 Install Bun 1.4.4 and Node.js 24.12 or newer. NPC AI is on by default. Install and sign in to either Codex CLI or Claude Code on the machine running the backend. [NPC AI setup](docs/npc-ai.md).
 
+Choose **Русский** or **English** at sign-in or in the game menu. To enable automatic
+speech translation, run `bun run translation:prepare` once before starting the
+backend. It downloads the pinned RU↔EN models into `.cache/ratata-translation`.
+The backend warms them in a local Node process and displays the original speech
+while the translation is pending. The translator works independently of the AI
+NPC provider. Run `bun run translation:smoke` to check both models and measure warm
+latency. Set `GAME_SPEECH_TRANSLATION=0` to disable translation, or
+`GAME_TRANSLATION_MODELS` to use a different model cache.
+
 Run the following commands from the repository root.
 
 ```sh

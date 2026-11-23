@@ -1,4 +1,6 @@
-import { ABILITY_DEFINITIONS, type AbilityId, isFireSpell } from '@my-game-ratata/contracts'
+import { type AbilityId, isFireSpell } from '@my-game-ratata/contracts'
+
+import { abilityName, tGame } from '@/shared/lib/i18n'
 
 import { abilityUsage } from './abilityUsage'
 import type { HotbarEmit, HotbarProps } from './hotbarActions'
@@ -31,7 +33,7 @@ function graveAbilityReason(id: AbilityId, props: HotbarProps): string | undefin
     return props.grave?.phase === 'ruined' &&
         id !== 'defensive_stance' &&
         (!isManualMagic(id) || isFireSpell(id))
-        ? 'Могила разрушена'
+        ? tGame('game.world.graveDestroyed')
         : undefined
 }
 
@@ -41,8 +43,8 @@ export function magicUnavailable(id: AbilityId, props: HotbarProps): string | un
     const { player } = props
     const channel = player.abilities?.magicChannel
     if (channel && (id !== 'dispel_magic' || channel.abilityId !== 'chains'))
-        return 'Поддерживается заклинание'
-    if (id === 'blink' && player.abilities?.rootedUntil) return 'Движение сковано'
+        return tGame('game.world.channelingSpell')
+    if (id === 'blink' && player.abilities?.rootedUntil) return tGame('game.world.movementBound')
     return undefined
 }
 
@@ -79,12 +81,14 @@ export function magicActionTooltip(
     const id = binding.id
     const usage = abilityUsage(props.player, id)
     return [
-        ABILITY_DEFINITIONS[id].name,
+        abilityName(id),
         usage.manaFraction && usage.mana === 0
-            ? `${Math.round(usage.manaFraction * 100)}% максимальной маны`
+            ? tGame('game.knowledge.maximumMana', { percent: Math.round(usage.manaFraction * 100) })
             : `${usage.mana} MP`,
-        usage.manaPerSecond ? `${usage.manaPerSecond} MP/с` : '',
-        usage.durationMs ? `${usage.durationMs / 1000} с` : '',
+        usage.manaPerSecond ? tGame('game.world.manaPerSecond', { mana: usage.manaPerSecond }) : '',
+        usage.durationMs
+            ? tGame('game.world.secondsValue', { seconds: usage.durationMs / 1000 })
+            : '',
         ...magicNotes(id, props),
     ]
         .filter(Boolean)
@@ -96,17 +100,19 @@ function magicNotes(id: ManualMagicId, { grave, target }: HotbarProps): string[]
         case 'fireball':
         case 'greater_fireball':
             return [
-                grave ? 'В выбранную могилу' : (target?.nickname ?? 'Вперёд'),
-                'Взрыв задевает всех в радиусе, включая союзников и вас',
+                grave
+                    ? tGame('game.world.selectedGrave')
+                    : (target?.nickname ?? tGame('game.world.forward')),
+                tGame('game.world.blastHitsAll'),
             ]
         case 'chains':
-            return ['Сковывает движение в круге']
+            return [tGame('game.world.bindsMovement')]
         case 'blink':
-            return ['Смещение назад']
+            return [tGame('game.world.blinkBackward')]
         case 'dispel_magic':
-            return ['Снимает Барьеры и Оковы обеих сторон']
+            return [tGame('game.world.dispelBothSides')]
         case 'city_portal':
-            return ['Проход доступен и врагам']
+            return [tGame('game.world.portalForEnemies')]
         case 'barrier':
             return []
     }

@@ -5,6 +5,7 @@ import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-r
 import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 
 import { type CharacterTab, CharacterWindowView } from '@/entities/character-window'
+import { tGame } from '@/shared/lib/i18n'
 
 import CharacterCrafting from './CharacterCrafting.vue'
 import CharacterDevelopment from './CharacterDevelopment.vue'
@@ -102,11 +103,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
                 :alive="player.alive"
                 @command="emit('command', $event)"
             />
-            <p v-else>Данные ремесла недоступны.</p>
+            <p v-else>{{ tGame('game.character.craftingDataIsUnavailable') }}</p>
         </template>
         <template #footer>
-            Мир продолжает жить · <template v-if="tab === 'quests'">WASD — идти · </template>P или
-            Esc — вернуться
+            {{ tGame('game.character.worldKeepsMoving') }}
+            <template v-if="tab === 'quests'">{{ tGame('game.character.wasdMove') }} </template
+            >{{ tGame('game.character.pOrEscReturn') }}
         </template>
     </CharacterWindowView>
 </template>

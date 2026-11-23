@@ -8,6 +8,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{ player: CharacterSnapshot; characters: CharacterSnapshot[] }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
@@ -33,18 +35,56 @@ const shrine = computed(() =>
     )
 )
 const deities: { id: DeityId; label: string }[] = [
-    { id: 'hearth', label: 'Очаг · исцеление' },
-    { id: 'road', label: 'Дорога · энергия' },
-    { id: 'lantern', label: 'Фонарь · мана' },
-    { id: 'grave', label: 'Хранитель Праха · нежить' },
+    {
+        id: 'hearth',
+        get label() {
+            return tGame('game.knowledge.hearthHealing')
+        },
+    },
+    {
+        id: 'road',
+        get label() {
+            return tGame('game.knowledge.roadEnergy')
+        },
+    },
+    {
+        id: 'lantern',
+        get label() {
+            return tGame('game.knowledge.lanternMana')
+        },
+    },
+    {
+        id: 'grave',
+        get label() {
+            return tGame('game.knowledge.ashGuardianUndead')
+        },
+    },
 ]
 const chanceLabels: Record<DeityId, string> = {
-    hearth: 'Шанс лечения',
-    road: 'Шанс восстановления энергии',
-    lantern: 'Шанс восстановления маны',
-    grave: 'Шанс лечения нежити',
+    get hearth() {
+        return tGame('game.knowledge.healingChance')
+    },
+    get road() {
+        return tGame('game.knowledge.energyRecoveryChance')
+    },
+    get lantern() {
+        return tGame('game.knowledge.manaRecoveryChance')
+    },
+    get grave() {
+        return tGame('game.knowledge.undeadHealingChance')
+    },
 }
-const moods = { benevolent: 'Благосклонен', neutral: 'Спокоен', wrathful: 'Разгневан' }
+const moods = {
+    get benevolent() {
+        return tGame('game.knowledge.benevolent')
+    },
+    get neutral() {
+        return tGame('game.knowledge.neutral')
+    },
+    get wrathful() {
+        return tGame('game.knowledge.wrathful')
+    },
+}
 function choose(deityId: DeityId): void {
     if (shrine.value && known.value.includes(prayerAbilityForDeity(deityId)))
         emit('command', { type: 'choose_deity', deityId, targetId: shrine.value.id })
@@ -53,39 +93,46 @@ function choose(deityId: DeityId): void {
 <template>
     <div v-if="patron" class="faith-knowledge">
         <p class="faith-patron">
-            <strong>{{ patron.name }}</strong> · {{ patron.domain }}
+            <strong>{{ tGame(`game.deity.${patron.id}`) }}</strong> ·
+            {{ tGame(`game.deityDomain.${patron.id}`) }}
         </p>
-        <p class="faith-omen">{{ patron.omen }}</p>
+        <p class="faith-omen">{{ tLocalized(patron.omenMessage, patron.omen) }}</p>
         <div class="faith-secrets">
             <span v-if="patron.mood !== null">{{ moods[patron.mood] }}</span>
             <span v-if="patron.successChance !== null"
                 >{{ chanceLabels[patron.id] }}: {{ Math.round(patron.successChance * 100) }}%</span
             >
             <span v-if="patron.changesInMs !== null"
-                >Перемена через {{ Math.ceil(patron.changesInMs / 1000) }} сек.</span
+                >{{ tGame('game.knowledge.changesIn') }} {{ Math.ceil(patron.changesInMs / 1000) }}
+                {{ tGame('game.knowledge.sec') }}</span
             >
         </div>
-        <section v-if="player.progression?.otherDeities?.length" aria-label="Знамения других богов">
-            <h3>Другие боги</h3>
+        <section
+            v-if="player.progression?.otherDeities?.length"
+            :aria-label="tGame('game.knowledge.signsFromOtherGods')"
+        >
+            <h3>{{ tGame('game.knowledge.otherGods') }}</h3>
             <div
                 v-for="deity in player.progression.otherDeities"
                 :key="deity.id"
                 class="faith-secrets"
             >
-                <strong>{{ deity.name }}</strong
-                ><span>{{ deity.omen }}</span>
+                <strong>{{ tGame(`game.deity.${deity.id}`) }}</strong
+                ><span>{{ tLocalized(deity.omenMessage, deity.omen) }}</span>
                 <span v-if="deity.mood !== null">{{ moods[deity.mood] }}</span>
                 <span v-if="deity.successChance !== null"
                     >{{ chanceLabels[deity.id] }}:
                     {{ Math.round(deity.successChance * 100) }}%</span
                 >
                 <span v-if="deity.changesInMs !== null"
-                    >Перемена через {{ Math.ceil(deity.changesInMs / 1000) }} сек.</span
+                    >{{ tGame('game.knowledge.changesIn') }}
+                    {{ Math.ceil(deity.changesInMs / 1000) }}
+                    {{ tGame('game.knowledge.sec') }}</span
                 >
             </div>
         </section>
         <details class="faith-patrons">
-            <summary>Сменить покровителя</summary>
+            <summary>{{ tGame('game.knowledge.changePatron') }}</summary>
             <div>
                 <GameButton
                     v-for="deity in deities.filter((deity) =>
@@ -101,7 +148,11 @@ function choose(deityId: DeityId): void {
             </div>
             <small
                 >{{
-                    shrine ? `У обряда: ${shrine.nickname}` : 'Подойдите к клирику или святилищу.'
+                    shrine
+                        ? tGame('game.knowledge.atShrine', {
+                              name: characterName(shrine.id, shrine.nickname),
+                          })
+                        : tGame('game.knowledge.approachShrine')
                 }}
             </small>
         </details>

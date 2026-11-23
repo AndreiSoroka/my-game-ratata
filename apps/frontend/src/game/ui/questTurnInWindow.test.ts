@@ -24,7 +24,7 @@ it('requires an explicit button, confirms the server prompt once and blocks repe
     const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: 1000 } })
     try {
         expect(view.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
-        expect(view.get('img').attributes('alt')).toBe('Apple')
+        expect(view.get('img').attributes('alt')).toBe('Яблоко')
         await view.get('[role="dialog"]').trigger('keydown', { code: 'Enter' })
         expect(view.emitted('command')).toBeUndefined()
         const take = view.findAll('button').find((button) => button.text() === 'Сдать')!

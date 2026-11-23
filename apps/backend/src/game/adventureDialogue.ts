@@ -1,11 +1,12 @@
-import type { GameEventPayload } from '@my-game-ratata/contracts'
-import { workshopFor } from '@my-game-ratata/contracts'
-
 import {
-    adventureDialogue,
-    adventureNpcRoles,
-    dragonStory,
-} from './adventureContent'
+    authoredMessage,
+    authoredPhrase,
+    type AuthoredTextKey,
+    type GameEventPayload,
+    workshopFor,
+} from '@my-game-ratata/contracts'
+
+import { adventureDialogue, adventureNpcRoles } from './adventureContent'
 import { resolveAdventureNpc } from './adventureNpc'
 import {
     type AdventureChoiceContext,
@@ -17,7 +18,7 @@ import type { GameCharacter } from './character'
 import { CONVERSATION_REACH } from './conversationSessions'
 import { interactionRangeText } from './interactionRangeText'
 import type { NavigationService } from './navigation'
-import { setNotice } from './notices'
+import { setAuthoredNotice, setNotice } from './notices'
 import { createDialogueSpeechEvent } from './speechReceipts'
 import { trophyProgress } from './trophyQuest'
 export function interactAdventureNpc(
@@ -33,23 +34,27 @@ export function interactAdventureNpc(
     const npc = resolveAdventureNpc(actor, npcId, locationNPCs, now, navigation)
 
     if (npc === undefined) {
-        return rejectDialogue(
+        if (navigation === undefined) {
+            return rejectDialogue(state, 'notice.conversationUnavailable')
+        }
+        const reach = CONVERSATION_REACH / navigation.grid.tileWidth
+        setNotice(
             state,
-            navigation === undefined
-                ? 'Подойди к живому собеседнику.'
-                : `Подойди к живому собеседнику ${interactionRangeText(CONVERSATION_REACH, navigation.grid.tileWidth)}.`
+            `Подойди к живому собеседнику ${interactionRangeText(CONVERSATION_REACH, navigation.grid.tileWidth)}.`,
+            authoredMessage('notice.conversationReach', { reach })
         )
+        return []
     }
 
     if (!serviceAvailable(npcId, service)) {
-        return rejectDialogue(state, 'Эта услуга у собеседника недоступна.')
+        return rejectDialogue(state, 'notice.serviceUnavailable')
     }
     setNotice(state, null)
     state.dialogue = adventureDialogue(
         npc.id,
         npc.nickname,
         trophyProgress(state, actor),
-        text
+        text === undefined ? undefined : { text }
     )
     if (service !== undefined) {
         state.dialogue.initialView = service
@@ -91,7 +96,7 @@ export function chooseAdventureReply(
 
     if (npc === undefined) {
         state.dialogue = null
-        return rejectDialogue(state, 'Разговор прерван. Вернись к собеседнику.')
+        return rejectDialogue(state, 'notice.conversationInterrupted')
     }
 
     const dialogue = adventureDialogue(
@@ -101,11 +106,14 @@ export function chooseAdventureReply(
     )
 
     if (!dialogue.choices.some((choice) => choice.id === choiceId)) {
-        return rejectDialogue(state, 'Этот ответ сейчас недоступен.')
+        return rejectDialogue(state, 'notice.dialogueChoiceUnavailable')
     }
 
     applyAdventureChoice(state, choiceId, actor, context)
-    const text = choiceId === 'ask_dragon' ? dragonStory : undefined
+    const text =
+        choiceId === 'ask_dragon'
+            ? authoredPhrase('dialogue.dragons')
+            : undefined
     state.dialogue = adventureDialogue(
         npc.id,
         npc.nickname,
@@ -118,9 +126,9 @@ export function chooseAdventureReply(
 
 function rejectDialogue(
     state: PlayerAdventure,
-    notice: string
+    notice: AuthoredTextKey
 ): GameEventPayload[] {
-    setNotice(state, notice)
+    setAuthoredNotice(state, notice)
     return []
 }
 function sayDialogue(
@@ -132,6 +140,9 @@ function sayDialogue(
     const event = createDialogueSpeechEvent(npc, actor, text)
     if (state.dialogue !== null) {
         state.dialogue.speechId = event.speechId
+        if (state.dialogue.textMessage !== undefined) {
+            event.textMessage = state.dialogue.textMessage
+        }
     }
     return [event]
 }

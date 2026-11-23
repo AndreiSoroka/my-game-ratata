@@ -1,4 +1,6 @@
 import {
+    authoredMessage,
+    authoredRussian,
     type CityBellState,
     DEFAULT_QUEST_REWARD_MODE,
     type QuestDraft,
@@ -14,13 +16,12 @@ import {
 import type { CityWorldState } from './cityWorldState'
 import type { InventoryItemInstance } from './inventory'
 import { resetMartyrStreak } from './martyr'
-import { setNotice } from './notices'
+import { setAuthoredNotice } from './notices'
 import type { QuestFunding } from './questFunding'
 import { planQuestReward, type QuestGoldAwarder } from './questRewards'
 import { availableInventoryQuantity } from './rewardReservations'
 
-const finished =
-    'Городской заказ уже выполнен. Вещи не израсходованы, награда не начислена.'
+const finished = 'story.finished'
 
 export class CityStoryQuests {
     private readonly consumedHearts: InventoryItemInstance[] = []
@@ -73,12 +74,14 @@ export class CityStoryQuests {
                 state.questStatus === 'active')
         ) {
             state.questStatus = 'cancelled'
-            state.questCancelledReason =
+            const reason =
                 state.questAccepted === true
                     ? finished
                     : city.bellState === 'active'
-                      ? 'Колокол памяти уже звучит. Сердца больше не требуются.'
-                      : 'Городской заказ уже выполнен. Колокол подготовлен внутри часовни.'
+                      ? 'story.bellActive'
+                      : 'story.bellPrepared'
+            state.questCancelledReason = authoredRussian(reason)
+            state.questCancelledReasonMessage = authoredMessage(reason)
         }
     }
 
@@ -138,10 +141,7 @@ export class CityStoryQuests {
             this.turnIn(state, actor, definition, context)
         }
         if (choiceId === 'restore_ward') {
-            setNotice(
-                state,
-                'Подготовленный Колокол памяти находится внутри часовни. Подойди к нему и прикоснись.'
-            )
+            setAuthoredNotice(state, 'story.restore')
         }
         return true
     }
@@ -156,16 +156,13 @@ export class CityStoryQuests {
             this.cities.snapshot(definition.cityId)?.bellState !== 'silent' ||
             state.questStatus !== 'available'
         ) {
-            setNotice(state, finished)
+            setAuthoredNotice(state, finished)
             return false
         }
         state.questStatus = 'active'
         state.questAccepted = true
         state.questRewardMode = context.rewardMode ?? DEFAULT_QUEST_REWARD_MODE
-        setNotice(
-            state,
-            'Городской заказ принят. Принеси Мире три слизневых сердца.'
-        )
+        setAuthoredNotice(state, 'story.cityAccepted')
         return true
     }
 
@@ -177,7 +174,7 @@ export class CityStoryQuests {
     ): void {
         if (this.cities.snapshot(definition.cityId)?.bellState !== 'silent') {
             this.synchronize(state)
-            setNotice(state, finished)
+            setAuthoredNotice(state, finished)
             return
         }
         if (state.questStatus !== 'active') {
@@ -185,7 +182,7 @@ export class CityStoryQuests {
         }
         const items = selectHearts(actor, definition)
         if (items === undefined) {
-            setNotice(state, 'В рюкзаке нужны три свободных слизневых сердца.')
+            setAuthoredNotice(state, 'story.heartsRequired')
             return
         }
         const request = {
@@ -219,10 +216,7 @@ export class CityStoryQuests {
             },
         })
         if (!result.ok) {
-            setNotice(
-                state,
-                'Городская награда сейчас недоступна. Вещи не израсходованы.'
-            )
+            setAuthoredNotice(state, 'story.rewardUnavailable')
             return
         }
         state.questStatus = 'completed'
@@ -234,10 +228,7 @@ export class CityStoryQuests {
             this.synchronize(other)
         }
         resetMartyrStreak(actor)
-        setNotice(
-            state,
-            'Три сердца переданы Мире, общая награда 40 золотых выплачена. Колокол подготовлен — активируй его внутри часовни.'
-        )
+        setAuthoredNotice(state, 'story.cityReward')
     }
 }
 

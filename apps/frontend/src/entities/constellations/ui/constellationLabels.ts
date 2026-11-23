@@ -5,6 +5,8 @@ import type {
     Vector2,
 } from '@my-game-ratata/contracts'
 
+import { gameLocale, masteryName, tLocalized } from '@/shared/lib/i18n'
+
 export interface StarLabel extends ConstellationRegion {
     id: string
     text: string
@@ -157,7 +159,12 @@ function labelAnchors(node: ConstellationNodeSnapshot, scale: number, overviewRo
 function labelContent(sky: ConstellationSnapshot, node: ConstellationNodeSnapshot, scale: number) {
     const path = sky.paths.find((entry) => entry.id === node.constellationId)
     const root = node.parents.length === 0
-    const text = root ? (path?.name ?? node.name) : node.name
+    const text =
+        root && path?.name
+            ? gameLocale.value === 'ru'
+                ? path.name
+                : masteryName(path.id)
+            : node.name && tLocalized(node.nameMessage, node.name)
     if (!text) return
     return {
         id: node.id,

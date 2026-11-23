@@ -11,6 +11,7 @@ import type { MarketClientMessage } from './economy'
 import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
 import type { FarmSupplyClientMessage } from './farmSupply'
 import type { ItemId } from './index'
+import type { LocalizedMessage } from './locales'
 import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 import type { TreeProfile } from './trees'
 export type { TreeProfile } from './trees'
@@ -52,21 +53,25 @@ export type AdventureQuestStatus =
 export interface AdventureQuestSnapshot {
     accepted?: boolean
     notice?: string
+    noticeMessage?: LocalizedMessage
     rewardMode?: QuestRewardMode
     rewardShares?: QuestRewardShare[]
     requiredItemId?: ItemId
     description: string
+    descriptionMessage?: LocalizedMessage
     goal: number
     id: string
     kills: number
     rewardGold: number
     status: AdventureQuestStatus
     title: string
+    titleMessage?: LocalizedMessage
 }
 
 export interface AdventureDialogueChoice {
     id: string
     label: string
+    labelMessage?: LocalizedMessage
 }
 
 export type MerchantServiceView = 'shop' | 'orders' | 'repair'
@@ -78,16 +83,22 @@ export interface AdventureDialogue {
     kind?: 'conversation' | 'sign'
     canTrade: boolean
     tradeBlockedReason?: string
+    tradeBlockedReasonMessage?: LocalizedMessage
     choices: AdventureDialogueChoice[]
     npcId: string
     npcName: string
+    npcNameMessage?: LocalizedMessage
     text: string
+    textMessage?: LocalizedMessage
+    workerActivity?: import('./workerRequests').WorkerActivitySnapshot
     title: string
+    titleMessage?: LocalizedMessage
 }
 
 export interface AdventureShopOffer {
     itemId: AdventureTradeItemId
     label: string
+    labelMessage?: LocalizedMessage
     price: number
 }
 
@@ -104,6 +115,7 @@ export interface AdventureSnapshot {
     materials: AdventureMaterials
     noticeId?: number
     notice: string | null
+    noticeMessage?: LocalizedMessage
     quest: AdventureQuestSnapshot
     recipes: AdventureRecipe[]
     resourceNodes: AdventureResourceNode[]
@@ -137,4 +149,5 @@ export interface AdventureRecipe {
     id: AdventureRecipeId
     itemId: AdventureTradeItemId
     label: string
+    labelMessage?: LocalizedMessage
 }

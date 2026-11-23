@@ -9,6 +9,7 @@ import { npcCityStoryContext } from './npcCityStoryContext'
 import { npcIdentityContext } from './npcIdentityInstructions'
 import { greetingOpportunity } from './npcInitiative'
 import { npcSpeechContext } from './npcSpeechInstructions'
+import { npcSpeechLanguageContext } from './npcSpeechLanguage'
 import { buildNpcAiObservation, type NpcAiObservation } from './observation'
 import { updateNpcAiSocialCapabilities } from './observationPolicy'
 import type { NpcAiActorState } from './runtimeState'
@@ -55,6 +56,7 @@ export function npcDialogueContext(
         actorId: actor.id,
         role: state.config.role,
         personality: actor.soul.personality,
+        ...npcSpeechLanguageContext(room, state, observation, actor, now),
         ...(socialOpportunity === undefined ? {} : { socialOpportunity }),
         ...personalContext(actor, state),
         ...npcCityStoryContext(room, actor, currentPerson(state)),
@@ -71,6 +73,7 @@ export function npcDialogueContext(
         ),
     })
 }
+
 function personalContext(
     actor: GameCharacter,
     state: NpcAiActorState

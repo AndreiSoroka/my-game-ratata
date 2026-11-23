@@ -151,8 +151,17 @@ export function createTurnInPrompt(
         issuerName: issuer.nickname,
         title: job.title,
         description: job.description,
+        ...(job.titleMessage === undefined
+            ? {}
+            : { titleMessage: job.titleMessage }),
+        ...(job.descriptionMessage === undefined
+            ? {}
+            : { descriptionMessage: job.descriptionMessage }),
         objectives: structuredClone(job.objectives),
         objectiveLabels: structuredClone(job.objectiveLabels ?? []),
+        ...(job.objectiveMessages === undefined
+            ? {}
+            : { objectiveMessages: structuredClone(job.objectiveMessages) }),
         rewardGold: job.rewardGold,
         rewardItems: structuredClone(job.rewardItems),
         rewardMode: job.rewardMode,

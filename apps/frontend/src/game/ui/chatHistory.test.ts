@@ -95,6 +95,52 @@ it('labels a delivered private scripted reply as personal without replaying expl
     })
 })
 
+it('updates an existing public or private receipt and drops a translation after changing identity', () => {
+    const history = createChatHistory()
+    const world = { ...worldFixture([]), serverEpoch: 'one' }
+    history.observe(world, 'self')
+    history.event({ kind: 'chat', actorId: 'speaker', speechId: 1, text: 'Город', language: 'ru' })
+    const update = {
+        type: 'speech_translation',
+        actorId: 'speaker',
+        speechId: 1,
+        locale: 'en',
+        text: 'Town',
+    } as const
+    history.translate(update)
+    history.translate(update)
+    expect(history.entries.value).toHaveLength(1)
+    expect(history.entries.value[0]).toMatchObject({
+        text: 'Город',
+        language: 'ru',
+        translation: { locale: 'en', text: 'Town' },
+    })
+    const whisper = {
+        id: 'private-1',
+        senderId: 'speaker',
+        senderName: 'Мира',
+        partnerId: 'speaker',
+        partnerName: 'Мира',
+        text: 'Тише.',
+        at: 1,
+    }
+    history.observe({ ...world, social: { privateMessages: [whisper] } }, 'self')
+    history.observe(
+        {
+            ...world,
+            social: {
+                privateMessages: [{ ...whisper, translation: { locale: 'en', text: 'Quiet.' } }],
+            },
+        },
+        'self'
+    )
+    expect(history.entries.value).toHaveLength(2)
+    expect(history.entries.value[1]?.translation?.text).toBe('Quiet.')
+    history.session('one', 'new')
+    history.translate(update)
+    expect(history.entries.value).toHaveLength(0)
+})
+
 it('names the original errand in task statuses while keeping ordinary replies concise', () => {
     const history = createChatHistory()
     history.observe(worldFixture([]), 'self')

@@ -1,4 +1,5 @@
-import { signText } from './generate-sign-text.mjs'
+import { CENTER_LOCATION_ID } from '../contracts/src/world.ts'
+import { signContent } from './generate-sign-text.mjs'
 import { createPondDrinkingAreas } from './generate-pond-interactions.mjs'
 
 const barrelGids = new Set([198 + 3, 512 + 129, 512 + 130, 768 + 85])
@@ -40,6 +41,20 @@ export function createWorldInteractions(ctx, location, landmarks) {
                 },
                 { name: 'action', type: 'string', value: action },
                 { name: 'text', type: 'string', value: text },
+                ...(geometry.sign && location.id === CENTER_LOCATION_ID
+                    ? [
+                          {
+                              name: 'nameMessageKey',
+                              type: 'string',
+                              value: geometry.sign.nameKey,
+                          },
+                          {
+                              name: 'textMessageKey',
+                              type: 'string',
+                              value: geometry.sign.textKey,
+                          },
+                      ]
+                    : []),
                 ...(type === 'barrel'
                     ? [
                           {
@@ -141,8 +156,10 @@ export function createWorldInteractions(ctx, location, landmarks) {
         const { x, y } = point
         objects[at(x, y)] = 512 + 83
         placed.add(at(x, y))
-        add('sign', x, y, 1, 1, sign.name, signText(location, sign.name), {
+        const content = signContent(location, sign.name)
+        add('sign', x, y, 1, 1, sign.name, content.text, {
             id: sign.id,
+            sign: content,
         })
     }
     for (let y = 0; y < height; y += 1)

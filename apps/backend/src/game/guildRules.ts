@@ -83,6 +83,10 @@ export function removeGuildParticipant(
 export const guildQuests: GuildQuestDefinition[] = [
     {
         id: 'slime_hunt',
+        titleMessage: { key: 'authored.guild.quest.slimeHuntTitle' },
+        descriptionMessage: {
+            key: 'authored.guild.quest.slimeHuntDescription',
+        },
         title: 'Зачистка троп',
         description:
             'Победите трёх враждебных слизней. Для общего прогресса участник отряда должен быть рядом с победой.',
@@ -91,6 +95,10 @@ export const guildQuests: GuildQuestDefinition[] = [
     },
     {
         id: 'skeleton_hunt',
+        titleMessage: { key: 'authored.guild.quest.skeletonHuntTitle' },
+        descriptionMessage: {
+            key: 'authored.guild.quest.skeletonHuntDescription',
+        },
         title: 'Кости старого тракта',
         description:
             'Победите двух скелетов одной группой. Победы засчитываются при участии отряда поблизости.',
@@ -99,6 +107,8 @@ export const guildQuests: GuildQuestDefinition[] = [
     },
     {
         id: 'survey_frontier',
+        titleMessage: { key: 'authored.guild.quest.frontierTitle' },
+        descriptionMessage: { key: 'authored.guild.quest.frontierDescription' },
         title: 'Разведчики Пограничья',
         description:
             'Исследуйте три разные земли за пределами Новогорода. Отряд делится результатами разведки.',

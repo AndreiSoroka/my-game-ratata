@@ -7,15 +7,23 @@ import {
     isBladeAbility,
     isFireSpell,
     resolveAshParameters,
-    resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
 import { arrowCardEffects } from './constellationArrowEffects'
 import { bladeTechniqueCardResults } from './constellationBladeEffects'
 import { resolveConstellationBonuses } from './constellationBonuses'
+import {
+    appendLearnedEffect,
+    authoredEffectRow,
+    type EffectRow,
+    effectRow,
+} from './constellationEffectText'
 import { magicCardEffects } from './constellationMagicEffects'
 import { fullConstellationCatalog } from './constellationNodes'
-import { prayerAnswerChance } from './prayerProbability'
+import {
+    appendAshPrayer,
+    appendHealingPrayer,
+} from './constellationPrayerEffects'
 
 type Bonuses = ReturnType<typeof resolveConstellationBonuses>
 interface Context {
@@ -28,21 +36,23 @@ const numberFormat = new Intl.NumberFormat('ru-RU', {
 })
 const number = (value: number) => numberFormat.format(value)
 const percent = (value: number) => number(value * 100)
-const cells = (value: number) =>
-    `${String(value)} ${value === 1 ? 'клетку' : 'клетки'}`
+const englishFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 2 })
+const englishPercent = (value: number) => englishFormat.format(value * 100)
 
 /** Earned capabilities for one card; it never discloses unlearned descendants. */
-export function resolveConstellationCardEffects(
+export function resolveConstellationCardEffectRows(
     nodeId: string,
     learnedIds: ReadonlySet<string>
-): string[] | undefined {
+): EffectRow[] | undefined {
     const node = nodes.get(nodeId)
     if (node === undefined) {
         return undefined
     }
+    const effects = [...(node.results ?? []), ...(node.effects ?? [])].map(
+        (text) => authoredEffectRow(node, text)
+    )
     if (node.effectType !== 'active') {
-        const results = [...(node.results ?? []), ...(node.effects ?? [])]
-        return results.length === 0 ? undefined : results
+        return effects.length === 0 ? undefined : effects
     }
     if (isBladeAbility(node.activationAbilityId)) {
         return bladeTechniqueCardResults(
@@ -50,7 +60,6 @@ export function resolveConstellationCardEffects(
             resolveConstellationBonuses(learnedIds)
         )
     }
-    const effects = [...(node.results ?? []), ...(node.effects ?? [])]
     const context: Context = {
         learned: learnedIds,
         bonuses: resolveConstellationBonuses(learnedIds),
@@ -59,15 +68,17 @@ export function resolveConstellationCardEffects(
     if (isArcaneAbility(ability)) {
         effects.push(...magicCardEffects(ability, context.bonuses, learnedIds))
         if (isFireSpell(ability)) {
-            appendDescription(effects, learnedIds, 'magic.insight')
+            appendLearnedEffect(effects, learnedIds, 'magic.insight')
         }
     } else {
         appendActiveEffects(effects, ability, context)
     }
-    return effects.length > 0 ? [...new Set(effects)] : undefined
+    return effects.length > 0
+        ? [...new Map(effects.map((row) => [row[0], row])).values()]
+        : undefined
 }
 function appendActiveEffects(
-    effects: string[],
+    effects: EffectRow[],
     ability: string | undefined,
     context: Context
 ): void {
@@ -87,8 +98,11 @@ function appendActiveEffects(
             break
         case 'pray_woven':
             effects.push(
-                'Лечит вас или союзника.',
-                'Очищает могилы от тёмных сил.'
+                effectRow('Лечит вас или союзника.', 'Heals you or an ally.'),
+                effectRow(
+                    'Очищает могилы от тёмных сил.',
+                    'Cleanses graves of dark forces.'
+                )
             )
             appendHealingPrayer(effects, context, true)
             break
@@ -96,9 +110,13 @@ function appendActiveEffects(
             appendAshPrayer(effects, context.learned)
             break
         case 'pray_road':
-            appendDescription(effects, context.learned, 'prayer_road.walk')
-            appendDescription(effects, context.learned, 'prayer_road.shoulder')
-            appendDescription(effects, context.learned, 'prayer_road.bard')
+            appendLearnedEffect(effects, context.learned, 'prayer_road.walk')
+            appendLearnedEffect(
+                effects,
+                context.learned,
+                'prayer_road.shoulder'
+            )
+            appendLearnedEffect(effects, context.learned, 'prayer_road.bard')
             break
         case 'pray_lantern':
             break
@@ -112,177 +130,31 @@ function appendActiveEffects(
 function ashRiteCardEffects(
     ability: AshRiteId,
     learned: ReadonlySet<string>
-): string[] {
+): EffectRow[] {
     if (ability === 'ash_raise') {
         const ash = resolveAshParameters(learned)
         return [
-            `Прислужники: до ${String(ash.raiseSlots)} одновременно, ${String(ash.raiseDurationMs / 1000)} с, ${percent(ash.raiseHpFraction)}% HP при подъёме.`,
-            `Обряд: ${String(ash.raiseWindupMs)} мс и ${String(ASH_RULES.raiseMana)} MP.`,
+            effectRow(
+                `Прислужники: до ${String(ash.raiseSlots)} одновременно, ${String(ash.raiseDurationMs / 1000)} с, ${percent(ash.raiseHpFraction)}% HP при подъёме.`,
+                `Servants: up to ${String(ash.raiseSlots)} at once, lasting ${String(ash.raiseDurationMs / 1000)} s and rising with ${englishPercent(ash.raiseHpFraction)}% HP.`
+            ),
+            effectRow(
+                `Обряд: ${String(ash.raiseWindupMs)} мс и ${String(ASH_RULES.raiseMana)} MP.`,
+                `Rite: ${String(ash.raiseWindupMs)} ms and ${String(ASH_RULES.raiseMana)} MP.`
+            ),
         ]
     }
     const node = fullConstellationCatalog.find(
         (candidate) => candidate.activationAbilityId === ability
     )
-    return node === undefined ? [] : [node.description]
+    return node === undefined ? [] : [authoredEffectRow(node, node.description)]
 }
 
-function appendAshPrayer(
-    effects: string[],
-    learned: ReadonlySet<string>
-): void {
-    const ash = resolveAshParameters(learned)
-    if (learned.has('prayer_grave.revive')) {
-        effects.push(
-            'Возвращает павших товарищей из числа нежити, чья душа ещё не покинула этот мир.'
-        )
-    }
-    if (ash.healPower > 1) {
-        effects.push(`Лечение усилено на ${percent(ash.healPower - 1)}%.`)
-    }
-    if (ash.healChanceBonus > 0) {
-        effects.push(
-            `Шанс исцеления выше на ${percent(ash.healChanceBonus)} п.п.`
-        )
-    }
-    if (ash.healRadiusCells > 0) {
-        effects.push(
-            `Радиус исцеления больше на ${cells(ash.healRadiusCells)}.`
-        )
-    }
-    for (const id of ['brand', 'heal_walk', 'heal_second', 'dash', 'mana']) {
-        appendDescription(effects, learned, `prayer_grave.${id}`)
-    }
-}
-function appendHealingPrayer(
-    effects: string[],
-    { learned, bonuses: b }: Context,
-    woven: boolean
-): void {
-    if (woven) {
-        effects.push(
-            `Одновременно совершает разные чудеса: не более ${String(b.targetLimit)} целей за молитву.`
-        )
-    } else if (b.targetLimit > 1) {
-        effects.push(
-            `За одну молитву совершает один вид чуда: не более ${String(b.targetLimit)} целей.`
-        )
-    } else {
-        effects.push('За одну молитву действует на одну выбранную цель.')
-    }
-    if (learned.has('prayer.revive')) {
-        effects.push(
-            'Воскрешает павших товарищей, душа которых ещё не ушла в мир иной.'
-        )
-        appendRevivalEffects(effects, learned)
-    }
-    if (learned.has('prayer.harm')) {
-        effects.push('Наносит урон нежити в радиусе молитвы.')
-        if (b.prayerHarmMultiplier > 1) {
-            effects.push(
-                `Урон кары увеличен на ${percent(b.prayerHarmMultiplier - 1)}%.`
-            )
-        }
-    }
-    if (b.prayerRadiusCells > 0) {
-        effects.push(
-            `Радиус молитвы увеличен на ${cells(b.prayerRadiusCells)}.`
-        )
-    }
-    if (b.prayerDurationMultiplier < 1) {
-        effects.push(
-            `Молитва совершается на ${percent(1 - b.prayerDurationMultiplier)}% быстрее.`
-        )
-    }
-    if (b.prayerGiftMultiplier > 1) {
-        effects.push(
-            `Лечение усилено на ${percent(b.prayerGiftMultiplier - 1)}%.`
-        )
-    }
-    appendDescription(effects, learned, 'prayer.last_light')
-    appendPrayerPassiveCapabilities(effects, learned, b)
-    appendDivineKnowledge(effects, b.deityInsight, false)
-    appendDivineKnowledge(effects, b.otherDeityInsight, true)
-}
-function appendPrayerPassiveCapabilities(
-    effects: string[],
-    learned: ReadonlySet<string>,
-    b: Bonuses
-): void {
-    if (b.prayerConcentrationChance > 0) {
-        effects.push(
-            b.prayerAbsoluteConcentration
-                ? 'Удары больше не прерывают молитву.'
-                : 'Удар с вероятностью 50% не прерывает молитву.'
-        )
-    }
-    for (let rank = 1; rank <= b.prayerWardRank; rank += 1) {
-        appendDescription(effects, learned, `prayer.ward${String(rank)}`)
-    }
-    for (const id of [
-        'prayer.aura_protection',
-        'prayer.aura_blessing',
-        'prayer.aura_domain',
-    ]) {
-        appendDescription(effects, learned, id)
-    }
-    if (b.prayerMartyr) {
-        effects.push(
-            'Максимальное базовое здоровье уменьшено на 30%, максимальная базовая мана — на 15%.'
-        )
-    }
-}
-function appendRevivalEffects(
-    effects: string[],
-    learned: ReadonlySet<string>
-): void {
-    const parameters = resolveResurrectionParameters('pray', learned, 'neutral')
-    if (
-        learned.has('prayer.revive_higher') ||
-        learned.has('prayer.revive_stable')
-    ) {
-        effects.push(
-            `Воскрешение возвращает не менее ${percent(parameters.hpFraction)}% HP.`
-        )
-    }
-    const bonus = parameters.successChance - prayerAnswerChance('neutral')
-    if (bonus > 0) {
-        effects.push(
-            `Шанс воскрешения повышен на ${percent(bonus)} процентных пунктов, но не выше 95%.`
-        )
-    }
-    if (parameters.angelicChance > 0) {
-        effects.push(
-            `После успешного воскрешения с вероятностью ${percent(parameters.angelicChance)}% возвращает по 150% здоровья, маны и энергии.`
-        )
-    }
-}
-function appendDivineKnowledge(
-    effects: string[],
-    rank: number,
-    others: boolean
-): void {
-    if (rank === 0) {
-        return
-    }
-    const subject = others ? 'других богов' : 'Угольной Матери'
-    const information = [
-        `Позволяет замечать намёки на настроение ${subject}.`,
-        `Раскрывает настроение ${subject}.`,
-        `Раскрывает настроение и вероятность ответа ${subject}.`,
-        `Раскрывает настроение, вероятность ответа и время смены настроения ${subject}.`,
-    ]
-    const known = information[rank - 1]
-    if (known !== undefined) {
-        effects.push(known)
-    }
-}
-function appendDescription(
-    effects: string[],
-    learned: ReadonlySet<string>,
-    id: string
-): void {
-    const description = nodes.get(id)?.description
-    if (learned.has(id) && description !== undefined) {
-        effects.push(...(nodes.get(id)?.results ?? [description]))
-    }
+export function resolveConstellationCardEffects(
+    nodeId: string,
+    learnedIds: ReadonlySet<string>
+): string[] | undefined {
+    return resolveConstellationCardEffectRows(nodeId, learnedIds)?.map(
+        ([russian]) => russian
+    )
 }

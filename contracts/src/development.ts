@@ -61,9 +61,12 @@ export interface ConstellationNodeSnapshot {
     levelLocked?: true
     /** Closed neighboring stars have neither a name nor an effect description. */
     name?: string
+    nameMessage?: import('./locales').LocalizedMessage
     description?: string
+    descriptionMessage?: import('./locales').LocalizedMessage
     effectType?: 'active' | 'passive'
     effects?: string[]
+    effectMessages?: Array<import('./locales').LocalizedMessage | null>
     parents: string[]
 }
 

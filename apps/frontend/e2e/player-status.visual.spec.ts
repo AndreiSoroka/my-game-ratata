@@ -47,13 +47,13 @@ for (const { story, width, nickname, numbers, extended, effectCount, hudWidth } 
         await page.goto(`/iframe.html?id=${storyId}--${story}&viewMode=story`)
         const hud = page.locator('.game-player-status')
         const frame = hud.locator('.hud-frame')
-        const panel = frame.getByRole('region', { name: 'Player vitals' })
+        const panel = frame.getByRole('region', { name: 'Ресурсы игрока' })
         await expect(panel).toBeVisible()
         await readyUiStory(page)
         await expectHudFrame(frame)
         await expect(frame).toHaveCSS('width', hudWidth)
         const strip = hud.locator('.player-effects-strip')
-        const effects = strip.getByRole('list', { name: 'Player effects' })
+        const effects = strip.getByRole('list', { name: 'Эффекты игрока' })
         await expect(effects).toHaveCount(effectCount ? 1 : 0)
         await expect(effects.getByRole('button')).toHaveCount(effectCount)
         await expect(effects.locator('[data-player-effect][aria-expanded="false"]')).toHaveCount(
@@ -115,9 +115,9 @@ test('low resources pulse independently and only low health dims the other bars'
 }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await page.goto(`/iframe.html?id=${storyId}--low-health&viewMode=story`)
-    const health = page.getByRole('progressbar', { name: 'Health' })
-    const mana = page.getByRole('progressbar', { name: 'Mana' })
-    const energy = page.getByRole('progressbar', { name: 'Energy' })
+    const health = page.getByRole('progressbar', { name: 'Здоровье' })
+    const mana = page.getByRole('progressbar', { name: 'Мана' })
+    const energy = page.getByRole('progressbar', { name: 'Энергия' })
     await expect(health).toHaveAttribute('aria-valuenow', '25')
     await expect(health).toHaveCSS('animation-name', /player-vitals-bar-blink/)
     for (const bar of [mana, energy]) {
@@ -187,7 +187,7 @@ for (const width of [1280, 320]) {
             (element) => element.scrollWidth > element.clientWidth
         )
         expect(overflow).toBe(false)
-        await expectPublishedHeight(frame.getByRole('region', { name: 'Player vitals' }))
+        await expectPublishedHeight(frame.getByRole('region', { name: 'Ресурсы игрока' }))
         await expect(hud).toHaveScreenshot(`player-status-faith-precise-${width}.png`, {
             animations: 'disabled',
             maxDiffPixels: 0,
@@ -202,11 +202,11 @@ test('each effect discloses its details and republishes the HUD height after res
     await page.goto(`/iframe.html?id=${storyId}--wanted&viewMode=story`)
     const hud = page.locator('.game-player-status')
     const frame = hud.locator('.hud-frame')
-    const panel = frame.getByRole('region', { name: 'Player vitals' })
+    const panel = frame.getByRole('region', { name: 'Ресурсы игрока' })
     const faith = frame.locator('.faith-status-list').getByLabel('Покровитель и развитие')
     await expect(faith).toBeVisible()
     const strip = hud.locator('.player-effects-strip')
-    const effects = strip.getByRole('list', { name: 'Player effects' })
+    const effects = strip.getByRole('list', { name: 'Эффекты игрока' })
     const theft = effects.getByRole('button', { name: 'Кража · 4 с', exact: true })
     const wanted = effects.getByRole('button', { name: 'Розыск · 22 с', exact: true })
     const blacklisted = effects.getByRole('button', {
@@ -260,9 +260,9 @@ test('the compact effect strip wraps and reserves space for adjacent overlays', 
     await page.goto(`/iframe.html?id=${storyId}--many-effects&viewMode=story`)
     const hud = page.locator('.game-player-status')
     const frame = hud.locator('.hud-frame')
-    const panel = frame.getByRole('region', { name: 'Player vitals' })
+    const panel = frame.getByRole('region', { name: 'Ресурсы игрока' })
     const strip = hud.locator('.player-effects-strip')
-    const effects = strip.getByRole('list', { name: 'Player effects' })
+    const effects = strip.getByRole('list', { name: 'Эффекты игрока' })
     await expect(effects.getByRole('button')).toHaveCount(10)
     await assertStripAlignment(frame, strip, width)
     const layout = await effects.evaluate((list) => {
@@ -308,12 +308,12 @@ test('player vitals widget mounts directly in compact mode and responds to Contr
     await expect(vitals).toHaveCSS('width', '220px')
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
     await expect(preview.locator('.faith-status-list')).toHaveCount(0)
-    await expect(preview.getByRole('region', { name: 'Player effects' })).toHaveCount(0)
+    await expect(preview.getByRole('region', { name: 'Эффекты игрока' })).toHaveCount(0)
     await assertResourceBars(vitals, defaultPercentages, [])
 
     await page.getByRole('tab', { name: /^Controls/ }).click()
     await page.locator('#control-hpPercent').press('Home')
-    const health = vitals.getByRole('progressbar', { name: 'Health' })
+    const health = vitals.getByRole('progressbar', { name: 'Здоровье' })
     await expect(health).toHaveAttribute('aria-valuenow', '0')
     await expect(health).toHaveAttribute('data-animated', 'true')
 })
@@ -329,7 +329,7 @@ test('player vitals entity mounts directly and edits fill and exact values indep
     await expect(frame).toHaveCount(0)
     await expect(vitals.locator('[data-fantasy-divider="divider-005"]')).toHaveCount(0)
     await assertResourceBars(vitals, [60, 25, 82], ['18/30', '10/40', '123/150'])
-    const health = vitals.getByRole('progressbar', { name: 'Health' })
+    const health = vitals.getByRole('progressbar', { name: 'Здоровье' })
 
     await page.getByRole('tab', { name: /^Controls/ }).click()
     const firstControl = page.getByRole('tabpanel').locator('tbody tr').first()

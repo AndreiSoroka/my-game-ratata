@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-    ABILITY_DEFINITIONS,
     canLearnDiscipline,
     type CharacterSnapshot,
     type ClientMessage,
@@ -14,6 +13,8 @@ import {
     prayerAbilityIds,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
+
+import { abilityName, tGame } from '@/shared/lib/i18n'
 
 import { abilityUsage } from './abilityUsage'
 import GameButton from './primitives/GameButton.vue'
@@ -77,19 +78,25 @@ function learn(abilityId: LearnAbilityId): void {
 function manaPrice(id: Parameters<typeof abilityUsage>[1]): string {
     const usage = abilityUsage(props.player, id)
     if (usage.manaFraction !== undefined && usage.mana === 0) {
-        return `${Math.round(100 * usage.manaFraction)}% максимальной маны`
+        return tGame('game.knowledge.maximumMana', {
+            percent: Math.round(100 * usage.manaFraction),
+        })
     }
     return `${usage.mana} MP`
 }
 </script>
 <template>
-    <section v-if="learnable.length" class="ability-knowledge" aria-label="Умения персонажа">
-        <h3>Умения</h3>
+    <section
+        v-if="learnable.length"
+        class="ability-knowledge"
+        :aria-label="tGame('game.knowledge.characterAbilities')"
+    >
+        <h3>{{ tGame('game.knowledge.abilities') }}</h3>
         <ul>
             <li v-for="id in known" :key="id">
-                <strong>{{ ABILITY_DEFINITIONS[id].name }}</strong> · {{ manaPrice(id) }} ·
+                <strong>{{ abilityName(id) }}</strong> · {{ manaPrice(id) }} ·
                 {{ abilityUsage(player, id).energy }} EN ·
-                {{ abilityUsage(player, id).cooldownMs / 1000 }} с
+                {{ abilityUsage(player, id).cooldownMs / 1000 }} {{ tGame('game.knowledge.s') }}
             </li>
         </ul>
         <div
@@ -102,20 +109,20 @@ function manaPrice(id: Parameters<typeof abilityUsage>[1]): string {
                 :disabled="!player.alive || !teacher(id) || (isArcaneAbility(id) && !canLearnMagic)"
                 @click="learn(id)"
             >
-                Изучить: {{ ABILITY_DEFINITIONS[id].name }}</GameButton
+                {{ tGame('game.knowledge.learn') }} {{ abilityName(id) }}</GameButton
             ><small
                 >{{
                     id === 'pray'
-                        ? 'Учитель: клирик'
+                        ? tGame('game.knowledge.clericTeacher')
                         : id === 'shot'
-                          ? 'Учитель: ветеран'
-                          : 'Учитель: учёный'
+                          ? tGame('game.knowledge.veteranTeacher')
+                          : tGame('game.knowledge.scholarTeacher')
                 }}
-                · подойдите ближе</small
+                {{ tGame('game.knowledge.moveCloser') }}</small
             >
-            <small v-if="isArcaneAbility(id) && !canLearnMagic"
-                >Магию нельзя изучать после молитв.</small
-            >
+            <small v-if="isArcaneAbility(id) && !canLearnMagic">{{
+                tGame('game.knowledge.youCannotStudyMagicAfter')
+            }}</small>
         </div>
     </section>
 </template>

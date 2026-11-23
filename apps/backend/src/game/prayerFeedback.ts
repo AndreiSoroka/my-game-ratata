@@ -1,6 +1,7 @@
-import type {
-    GameEventPayload,
-    PrayerActionId,
+import {
+    authoredPhrase,
+    type GameEventPayload,
+    type PrayerActionId,
 } from '@my-game-ratata/contracts'
 
 export function unansweredPrayer(
@@ -13,6 +14,6 @@ export function unansweredPrayer(
         actorId,
         audienceIds: [actorId],
         abilityId,
-        text: 'Божество не ответило',
+        ...authoredPhrase('combat.prayerUnanswered'),
     }
 }

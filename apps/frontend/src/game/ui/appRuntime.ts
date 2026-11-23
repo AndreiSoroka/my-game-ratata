@@ -1,6 +1,8 @@
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { nextTick, type Ref, toRaw } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { ChatInputState } from '../runtime/chatInput'
 import { RatataGame } from '../runtime/ratataGame'
 import { createConstellationNotices } from './constellationNotices'
@@ -40,7 +42,7 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
     await nextTick()
     const container = options.container()
     if (!container) {
-        options.errorMessage.value = 'Game surface is not ready'
+        options.errorMessage.value = tGame('game.canvas.missingSurface')
         options.cleanupFailedJoin()
         return
     }
@@ -48,7 +50,8 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
     options.game.value = runtime
     await runtime.start().catch((error: unknown) => {
         if (toRaw(options.game.value) !== runtime) return
-        options.errorMessage.value = error instanceof Error ? error.message : 'Game failed to start'
+        options.errorMessage.value =
+            error instanceof Error ? error.message : tGame('game.canvas.failedStart')
         options.cleanupFailedJoin()
     })
 }
@@ -91,6 +94,10 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
             options.chatHistory?.event(event)
             options.gameplay()?.receive(event)
         },
+        onSpeechTranslation: (translation) => {
+            options.chatHistory?.translate(translation)
+            options.gameplay()?.translate(translation)
+        },
         onInventoryToggle: options.toggleInventory,
         onCharacterToggle: options.toggleCharacter,
         onSnapshot: (snapshot, playerId) => {
@@ -109,7 +116,7 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
             const exchange = snapshot.social?.exchange
             if (exchange?.status === 'completed' && exchange.receiptId)
                 options.notices.observe('exchange', {
-                    notice: 'Обмен завершён.',
+                    notice: tGame('game.chat.exchangeCompleted'),
                     noticeId: exchange.receiptId,
                 })
             options.notices.observe('constellations', constellations.observe(snapshot, playerId))

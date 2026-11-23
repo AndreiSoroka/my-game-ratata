@@ -5,11 +5,13 @@ import {
     type QuestDraft,
     type QuestObjective,
     type QuestOfferSnapshot,
+    workerQuestMessages,
 } from '@my-game-ratata/contracts'
 
 import { resolveAuthoredQuestDraft } from './authoredQuestOffers'
 import type { GameCharacter } from './character'
 import { snapshotItem } from './inventory'
+import { npcQuestObjectiveMessage } from './npcQuestObjectiveText'
 import type { NpcQuestEnvironment, QuestOfferRecord } from './npcQuestTypes'
 import { questContact } from './npcQuestTypes'
 import { validateQuestDraft } from './npcQuestValidation'
@@ -97,6 +99,9 @@ function createPreparedQuestOffer(
             objectiveLabels: draft.objectives.map((objective) =>
                 objectiveLabel(objective, environment, issuer)
             ),
+            objectiveMessages: draft.objectives.map((objective) =>
+                npcQuestObjectiveMessage(objective, environment, issuer)
+            ),
             rewardGold: draft.rewardGold,
             rewardItems: rewards.filter((item) => item !== undefined),
             funding: draft.funding,
@@ -142,6 +147,7 @@ export function createWorkerQuestOffer(
         targetId,
         issuerDeath: issuer.deathSequence,
         view: {
+            ...workerQuestMessages(request, 'npc'),
             id,
             revision: 1,
             issuerId: issuer.id,
@@ -152,6 +158,10 @@ export function createWorkerQuestOffer(
             objectiveLabels: [
                 objectiveLabel(objective, environment, issuer),
                 'Дождаться реальной проверки работы и возвращения работника',
+            ],
+            objectiveMessages: [
+                null,
+                { key: 'authored.npc.quest.workerAwaitReturn' },
             ],
             rewardGold: 30,
             rewardItems: [],
@@ -202,8 +212,15 @@ export function cloneQuestOffer(
 
 function authoredQuestMetadata(
     draft: QuestDraft
-): Pick<QuestOfferSnapshot, 'authoredQuestId'> {
+): Pick<
+    QuestOfferSnapshot,
+    'authoredQuestId' | 'titleMessage' | 'descriptionMessage'
+> {
     return draft.authoredId === undefined
         ? {}
-        : { authoredQuestId: draft.authoredId }
+        : {
+              authoredQuestId: draft.authoredId,
+              titleMessage: { key: 'authored.story.title' },
+              descriptionMessage: { key: 'authored.story.cityDescription' },
+          }
 }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ClientMessage, RepairSnapshot } from '@my-game-ratata/contracts'
 
+import { itemName, tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{ repairs: RepairSnapshot; gold: number; blocked?: boolean }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
@@ -16,15 +18,18 @@ function repair(instanceIds: string[], expectedTotal: number): void {
 }
 </script>
 <template>
-    <section class="repair-workshop" aria-label="Ремонт снаряжения">
-        <p>У вас {{ gold }} золотых</p>
-        <p v-if="!repairs.items.length">Все вещи исправны.</p>
+    <section class="repair-workshop" :aria-label="tGame('game.trade.equipmentRepairs')">
+        <p>
+            {{ tGame('game.conversation.youHave') }} {{ gold }}
+            {{ tGame('game.conversation.gold') }}
+        </p>
+        <p v-if="!repairs.items.length">{{ tGame('game.trade.allItemsAreInGood') }}</p>
         <div v-for="item in repairs.items" :key="item.instanceId" class="repair-row">
             <span
-                >{{ item.label }}
+                >{{ itemName(item.itemId) }}
                 <small
                     >{{ item.durability }} / {{ item.maxDurability
-                    }}{{ item.equipped ? ' · надето' : '' }}</small
+                    }}{{ item.equipped ? tGame('game.trade.equippedSuffix') : '' }}</small
                 ></span
             >
             <GameButton
@@ -33,7 +38,7 @@ function repair(instanceIds: string[], expectedTotal: number): void {
                 :disabled="blocked || gold < item.price"
                 @click="repair([item.instanceId], item.price)"
             >
-                Починить · {{ item.price }} ◈
+                {{ tGame('game.trade.repair') }} {{ item.price }} ◈
             </GameButton>
         </div>
         <GameButton
@@ -48,7 +53,7 @@ function repair(instanceIds: string[], expectedTotal: number): void {
                 )
             "
         >
-            Починить всё · {{ repairs.total }} ◈
+            {{ tGame('game.trade.repairAll') }} {{ repairs.total }} ◈
         </GameButton>
     </section>
 </template>

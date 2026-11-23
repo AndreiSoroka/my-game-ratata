@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { type ExchangeOfferSnapshot, ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
 
+import { itemName, tGame } from '@/shared/lib/i18n'
+
 import ExchangeConsentIcon from './ExchangeConsentIcon.vue'
 import ItemIcon from './ItemIcon.vue'
 import GameFrame from './primitives/GameFrame.vue'
@@ -13,7 +15,9 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
         <header class="exchange-offer__header">
             <h3>{{ title }}</h3>
             <span v-if="!terminal" class="exchange-offer__state">{{
-                offer.accepted ? 'Готово' : 'Не подтверждено'
+                offer.accepted
+                    ? tGame('game.trade.tradeReady')
+                    : tGame('game.trade.tradeUnconfirmed')
             }}</span>
             <ExchangeConsentIcon :name="title" :accepted="offer.accepted" />
         </header>
@@ -21,7 +25,11 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
             {{ offer.refusal.reason }}
         </p>
         <slot>
-            <ul class="exchange-offer__items" tabindex="0" :aria-label="`Предметы: ${title}`">
+            <ul
+                class="exchange-offer__items"
+                tabindex="0"
+                :aria-label="tGame('game.trade.itemsOf', { name: title })"
+            >
                 <li
                     v-for="item in offer.items"
                     :key="item.instanceId"
@@ -30,12 +38,14 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
                     <GameFrame variant="inset" />
                     <ItemIcon :item="item" show-quantity />
                     <div>
-                        <strong>{{ ITEM_DEFINITIONS[item.itemId].name }}</strong>
+                        <strong>{{ itemName(item.itemId) }}</strong>
                         <small>{{
-                            (item.quantity ?? 1) > 1 ? `× ${item.quantity}` : '1 шт.'
+                            (item.quantity ?? 1) > 1
+                                ? `× ${item.quantity}`
+                                : tGame('game.trade.oneUnit')
                         }}</small>
                         <small v-if="ITEM_DEFINITIONS[item.itemId].maxDurability"
-                            >Прочность
+                            >{{ tGame('game.trade.durability') }}
                             {{
                                 Math.floor(
                                     item.durability ??
@@ -47,13 +57,14 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
                     </div>
                 </li>
                 <li v-if="!offer.items.length" class="exchange-offer__empty game-frame-host">
-                    <GameFrame variant="inset" />Пока пусто
+                    <GameFrame variant="inset" />{{ tGame('game.trade.empty') }}
                 </li>
             </ul>
         </slot>
         <footer class="exchange-offer__gold">
             <slot name="gold"
-                ><span>Золото</span><strong>◈ {{ offer.gold }}</strong></slot
+                ><span>{{ tGame('game.trade.goldExchangeOffer') }}</span
+                ><strong>◈ {{ offer.gold }}</strong></slot
             >
         </footer>
     </section>

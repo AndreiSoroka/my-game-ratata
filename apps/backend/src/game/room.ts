@@ -1,7 +1,4 @@
-import {
-    type ClientMessage,
-    type GameEventPayload,
-} from '@my-game-ratata/contracts'
+import type { GameEventPayload, GameLocale } from '@my-game-ratata/contracts'
 
 import * as roomAi from '../ai/roomAi'
 export type { GameRoomOptions } from '../ai/roomAi'
@@ -32,6 +29,7 @@ import { RoomSocial } from './roomSocial'
 import { createRoomTheftRequester } from './roomTheft'
 import { configureRoomQuests, createRoomParties } from './roomWorkerRequests'
 import { createRoomWorld, initializeRoomCharacters } from './roomWorldSetup'
+import { RoomSpeechTranslations } from './speechTranslation'
 import { TheftService } from './theft'
 import { WorkerRequestService } from './workerRequests'
 import { type WorldLocations } from './worldLocations'
@@ -41,6 +39,7 @@ const tickMs = 50
 export class GameRoom {
     private readonly characters = new Map<string, GameCharacter>()
     private readonly connections = new Map<RoomSocket, string | undefined>()
+    public readonly speechTranslations: RoomSpeechTranslations
     private readonly controllers = new Map<string, CharacterController>()
     private readonly playerIdsByNickname = new Map<string, string>()
     private readonly world: WorldLocations
@@ -87,6 +86,7 @@ export class GameRoom {
             hasModelLease: (actor, now) =>
                 this.companions.hasActiveLease(actor, now, this),
             world: () => this.world,
+            speechTranslations: () => this.speechTranslations,
         }
     )
     private lastTickAt = Date.now()
@@ -98,6 +98,11 @@ export class GameRoom {
         public readonly navigation = loadNavigationService(),
         options: roomAi.GameRoomOptions = {}
     ) {
+        this.speechTranslations = new RoomSpeechTranslations(
+            this.connections,
+            this.getCharacter,
+            options.speechTranslator
+        )
         this.world = createRoomWorld(navigation, this.adventure, options)
         configureRoomQuests(this, this.adventure, this.parties, this.characters)
         const graves = initializeRoomCharacters({
@@ -135,6 +140,7 @@ export class GameRoom {
     }
 
     public stop(): void {
+        this.speechTranslations.stop()
         this.social.stop()
         this.npcAi?.stop()
         if (this.timer !== undefined) {
@@ -145,12 +151,6 @@ export class GameRoom {
 
     public handleOpen(ws: RoomSocket): void {
         this.connections.set(ws, undefined)
-    }
-
-    public handleMessage(ws: RoomSocket, raw: unknown): void {
-        roomClientDispatch.dispatchRawRoomMessage(ws, raw, (message) =>
-            this.handleClientMessage(ws, message)
-        )
     }
 
     public handleClose(ws: RoomSocket): void {
@@ -170,6 +170,10 @@ export class GameRoom {
         this.world.mapAsset(epoch, locationId)
 
     public readonly getCharacter = (id: string) => this.characters.get(id)
+
+    public localeFor(actorId: string): GameLocale {
+        return this.speechTranslations.localeFor(actorId)
+    }
 
     public readonly hasConnectedPlayerInLocation = (
         locationId: string
@@ -265,24 +269,20 @@ export class GameRoom {
         this.scenarios
     )
 
-    private handleClientMessage(ws: RoomSocket, message: ClientMessage): void {
-        roomClientDispatch.dispatchRoomClientMessage(
-            {
-                room: this,
-                adventure: this.adventure,
-                theft: this.theft,
-                characters: this.characters,
-                parties: this.parties,
-                companions: this.companions,
-                world: this.world,
-                connections: this.connections,
-                join: (...args) => this.join(...args),
-                abandon: (actor) => this.life.abandon(actor, Date.now()),
-            },
-            ws,
-            message
-        )
-    }
+    public readonly handleMessage = roomClientDispatch.createRoomMessageHandler(
+        () => ({
+            room: this,
+            adventure: this.adventure,
+            theft: this.theft,
+            characters: this.characters,
+            parties: this.parties,
+            companions: this.companions,
+            world: this.world,
+            connections: this.connections,
+            join: this.join,
+            abandon: (actor) => this.life.abandon(actor, Date.now()),
+        })
+    )
 
     private readonly join = createDefaultRoomJoiner({
         closeConversations: (id) => this.adventure.closeConversations(id),

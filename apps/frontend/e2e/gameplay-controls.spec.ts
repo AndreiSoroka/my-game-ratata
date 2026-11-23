@@ -14,7 +14,7 @@ test.describe('shared gameplay controls', () => {
             await join(page, `keys-${info.workerIndex}-${mobile}`, 'arcanist')
             const hud = page.locator('.game-player-status')
             await expect(hud.locator('.hud-frame')).toBeVisible()
-            await expect(hud.getByRole('list', { name: 'Player effects' })).toHaveCount(0)
+            await expect(hud.getByRole('list', { name: 'Эффекты игрока' })).toHaveCount(0)
             await expect(hud.getByText('Всё в порядке', { exact: true })).toHaveCount(0)
             const slots = page
                 .getByLabel('Быстрые действия')
@@ -136,7 +136,7 @@ async function leaveParty(page: Page): Promise<void> {
 
 async function expectDisclosedBarrier(hud: Locator, mobile: boolean): Promise<void> {
     const strip = hud.locator('.player-effects-strip')
-    const effects = strip.getByRole('list', { name: 'Player effects' })
+    const effects = strip.getByRole('list', { name: 'Эффекты игрока' })
     const barrier = effects.getByRole('button', { name: /Магический барьер/ })
     const detail = strip.locator('[data-player-effect-detail]')
     await expect(barrier).toHaveAttribute('data-player-effect', 'barrier')

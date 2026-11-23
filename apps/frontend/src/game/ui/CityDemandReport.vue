@@ -1,35 +1,37 @@
 <script setup lang="ts">
 import type { MarketSnapshot } from '@my-game-ratata/contracts'
+
+import { itemName, tGame } from '@/shared/lib/i18n'
 defineProps<{ market: MarketSnapshot }>()
 </script>
 <template>
-    <section class="city-demand" aria-label="Спрос города">
-        <h3>{{ market.cityName }} · потребности города</h3>
+    <section class="city-demand" :aria-label="tGame('game.trade.cityDemand')">
+        <h3>{{ market.cityName }} {{ tGame('game.trade.cityNeeds') }}</h3>
         <div class="city-demand__scroll">
             <table>
                 <thead>
                     <tr>
-                        <th>Товар</th>
-                        <th>Запас / норма / резерв</th>
-                        <th>Расход за 10 мин</th>
-                        <th>Город покупает / продаёт</th>
-                        <th>Доставлено / потрачено за 10 мин</th>
+                        <th>{{ tGame('game.trade.goods') }}</th>
+                        <th>{{ tGame('game.trade.stockTargetReserve') }}</th>
+                        <th>{{ tGame('game.trade.usedInMin') }}</th>
+                        <th>{{ tGame('game.trade.cityBuysSells') }}</th>
+                        <th>{{ tGame('game.trade.deliveredSpentInMin') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="row in market.rows" :key="row.itemId">
                         <th>
-                            {{ row.label
+                            {{ itemName(row.itemId)
                             }}<small>{{
                                 row.stock === 0
-                                    ? 'Нет в наличии'
+                                    ? tGame('game.trade.outOfStock')
                                     : row.stock < row.target / 2
-                                      ? 'Дефицит'
+                                      ? tGame('game.trade.shortage')
                                       : row.stock >= row.capacity
-                                        ? 'Закупка закрыта'
+                                        ? tGame('game.trade.buyingClosed')
                                         : row.stock >= row.target
-                                          ? 'Есть запас'
-                                          : 'Есть спрос'
+                                          ? tGame('game.trade.stockAvailable')
+                                          : tGame('game.trade.demandPresent')
                             }}</small>
                         </th>
                         <td>{{ row.stock }} / {{ row.target }} / {{ row.capacity }}</td>

@@ -1,4 +1,4 @@
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import { authoredRussian, CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 export interface CityStoryDefinition {
     cityId: string
@@ -26,8 +26,7 @@ export const cityStoryDefinitions: readonly CityStoryDefinition[] = [
         requiredItemId: 'slime_heart',
         quantity: 3,
         rewardGold: 40,
-        title: 'Сердца для колокола памяти',
-        description:
-            'Принеси Мире три настоящих слизневых сердца из рюкзака. Это общий городской заказ: после первой успешной сдачи Колокол памяти будет подготовлен, а остальные заявки закроются без расхода вещей. Подготовленный колокол нужно активировать внутри часовни.',
+        title: authoredRussian('story.title'),
+        description: authoredRussian('story.cityDescription'),
     },
 ]

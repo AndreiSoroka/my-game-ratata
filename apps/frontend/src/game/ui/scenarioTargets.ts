@@ -1,12 +1,13 @@
 import {
     type CharacterSnapshot,
     getWorldLocationDefinition,
-    ITEM_DEFINITIONS,
     type ScenarioSearchKind,
     type Vector2,
     type WorldObjectBounds,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
+
+import { characterName, itemName, locationName, tGame } from '@/shared/lib/i18n'
 
 import { relation } from './combatTargeting'
 
@@ -21,7 +22,7 @@ export function scenarioTargetKey(target: { id: string; locationId?: string }): 
 }
 export function scenarioTargetLabel(target: ScenarioVisibleTarget): string {
     const location = target.locationId && getWorldLocationDefinition(target.locationId)
-    return location ? `${target.label} · ${location.name}` : target.label
+    return location ? `${target.label} · ${locationName(location.id, location.name)}` : target.label
 }
 export function scenarioVisibleTargets(
     snapshot: WorldSnapshot,
@@ -35,20 +36,30 @@ export function scenarioVisibleTargets(
     result.push(...enemyTargets(characters, player, visible, locationId))
     for (const chest of snapshot.chests) {
         if (visible(chest.position))
-            result.push({ kind: 'chest', id: chest.id, label: chest.title ?? 'Сундук', locationId })
+            result.push({
+                kind: 'chest',
+                id: chest.id,
+                label: chest.title ?? tGame('game.world.chest'),
+                locationId,
+            })
     }
     for (const item of snapshot.items) {
         if (visible(item.position))
             result.push({
                 kind: 'item',
                 id: item.id,
-                label: ITEM_DEFINITIONS[item.itemId].name,
+                label: itemName(item.itemId),
                 locationId,
             })
     }
     for (const plot of snapshot.adventure?.farmPlots ?? []) {
         if (visible(plot.position))
-            result.push({ kind: 'grain', id: plot.id, label: 'Грядка', locationId })
+            result.push({
+                kind: 'grain',
+                id: plot.id,
+                label: tGame('game.automation.farmPlot'),
+                locationId,
+            })
     }
     return result
 }
@@ -63,7 +74,7 @@ function resourceTargets(
         result.push({
             kind: node.kind === 'wood' ? 'tree' : node.kind,
             id: node.id,
-            label: `${ITEM_DEFINITIONS[node.kind].name} · ${Math.round(node.position.x)}, ${Math.round(node.position.y)}`,
+            label: `${itemName(node.kind)} · ${Math.round(node.position.x)}, ${Math.round(node.position.y)}`,
             locationId: snapshot.location?.id,
         })
     }
@@ -78,7 +89,12 @@ function enemyTargets(
     const result: ScenarioVisibleTarget[] = []
     for (const actor of characters) {
         if (actor.alive && relation(actor, player) === 'hostile' && visible(actor.position))
-            result.push({ kind: 'enemy', id: actor.id, label: actor.nickname, locationId })
+            result.push({
+                kind: 'enemy',
+                id: actor.id,
+                label: characterName(actor.id, actor.nickname),
+                locationId,
+            })
     }
     return result
 }

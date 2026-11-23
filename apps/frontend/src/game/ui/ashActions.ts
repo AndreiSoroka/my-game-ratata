@@ -8,6 +8,8 @@ import {
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { abilityName, tGame } from '@/shared/lib/i18n'
+
 import { relation } from './combatTargeting'
 import { interactionDistance } from './interactionTargets'
 import type { InteractionAction } from './nearbyInteractionActions'
@@ -76,7 +78,7 @@ function riteAction(
 ): InteractionAction {
     return {
         id: `${abilityId}:${targetId}`,
-        label: ABILITY_DEFINITIONS[abilityId].name,
+        label: abilityName(abilityId),
         command: { type: 'use_ability', abilityId, targetId },
     }
 }
@@ -87,8 +89,10 @@ export function ashHotbarReason(
     target: CharacterSnapshot | undefined
 ): string | undefined {
     if (abilityId !== 'ash_gift' && abilityId !== 'ash_sacrifice')
-        return 'Выберите цель и используйте F'
-    return canSelectAshSkeleton(player, target) ? undefined : 'Выберите союзного скелета'
+        return tGame('game.world.selectAndUseF')
+    return canSelectAshSkeleton(player, target)
+        ? undefined
+        : tGame('game.world.selectAlliedSkeleton')
 }
 
 export function ashHotbarCommand(

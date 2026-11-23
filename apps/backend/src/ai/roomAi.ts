@@ -4,6 +4,7 @@ import type { CityBellState } from '@my-game-ratata/contracts'
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
+import type { SpeechTranslator } from '../game/speechTranslation'
 import type { WorldMaps } from '../game/worldMaps'
 import { NpcAiCoordinator } from './coordinator'
 import type { NpcAiDiagnostics } from './diagnostics'
@@ -15,6 +16,7 @@ export interface GameRoomOptions {
     initialBellState?: CityBellState
     npcIdentitySeed?: string
     npcSpeechSeed?: string
+    speechTranslator?: SpeechTranslator
     ai?: {
         config: NpcAiConfig
         provider: NpcAiProvider

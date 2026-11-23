@@ -1,5 +1,7 @@
 import type { CharacterSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import { gameLocale, masteryName, tGame, tLocalized } from '@/shared/lib/i18n'
+
 /** Compare only the owner's private sky; learned opaque IDs remain seen across partial snapshots. */
 export function createConstellationNotices() {
     let session = ''
@@ -39,14 +41,14 @@ export function createConstellationNotices() {
             if (!canAnnounce(actor)) return undefined
             const text = [
                 describe(
-                    'созвездие',
-                    'созвездия',
-                    newPaths.map((path) => path.name!)
+                    'constellation',
+                    newPaths.map((path) =>
+                        gameLocale.value === 'ru' ? path.name! : masteryName(path.id)
+                    )
                 ),
                 describe(
-                    'звезда',
-                    'звёзды',
-                    newStars.map((star) => star.name!)
+                    'star',
+                    newStars.map((star) => tLocalized(star.nameMessage, star.name!))
                 ),
             ]
                 .filter(Boolean)
@@ -62,8 +64,11 @@ function canAnnounce(actor: CharacterSnapshot): boolean {
     return actor.alive && actor.life?.retired !== true
 }
 
-function describe(singular: string, plural: string, names: string[]): string {
+function describe(kind: 'star' | 'constellation', names: string[]): string {
     if (names.length === 0) return ''
-    const opened = names.length === 1 ? (singular === 'звезда' ? 'Открыта' : 'Открыто') : 'Открыты'
-    return `${opened} ${names.length === 1 ? singular : plural}: ${names.map((name) => `«${name}»`).join(', ')}.`
+    const list = names
+        .map((name) => (gameLocale.value === 'ru' ? `«${name}»` : `“${name}”`))
+        .join(', ')
+    const subject = names.length === 1 ? kind : (`${kind}s` as const)
+    return tGame(`game.knowledge.${subject}Unlocked`, { names: list })
 }

@@ -54,15 +54,35 @@ async function beginGuide() {
     return { ...f, provider, guild, request }
 }
 
+async function advanceGuideWait(
+    fixture: ReturnType<typeof npcRuntimeFixture>,
+    seconds: number
+): Promise<void> {
+    for (let second = 0; second < seconds; second += 1) {
+        vi.setSystemTime(Date.now() + 900)
+        // The room still ticks and renews the guide's five-second control lease.
+        await fixture.advance(100)
+    }
+}
+
 it('closes a lost-requester guide once and needs a fresh request before another model turn', async () => {
     const f = await beginGuide()
+    const start = { ...f.actor.position }
     await f.advance(3000)
     const waitingAt = { ...f.actor.position }
-    await f.advance(61_000)
+    expect(waitingAt).not.toEqual(start)
+    expect(f.actor.hasPath()).toBe(false)
+
+    await advanceGuideWait(f, 55)
     expect(f.provider.turns).toHaveLength(1)
     expect(f.actor.position).toEqual(waitingAt)
-    vi.setSystemTime(Date.now() + 61_000)
-    await f.advance()
+    expect(f.actor.soul.kind).toBe('spark')
+    await f.diagnostics.flush()
+    expect(
+        f.entries().some((entry) => entry['category'] === 'action_failed')
+    ).toBe(false)
+
+    await advanceGuideWait(f, 7)
     expect(f.provider.turns).toHaveLength(1)
     await f.diagnostics.flush()
     const entries = f
@@ -82,6 +102,19 @@ it('closes a lost-requester guide once and needs a fresh request before another 
                 typeof entry['reason'] === 'string' &&
                 entry['reason'].startsWith('failed:')
         )
+    ).toHaveLength(1)
+    vi.setSystemTime(Date.now() + 61_000)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+    await f.diagnostics.flush()
+    expect(
+        f
+            .entries()
+            .filter(
+                (entry) =>
+                    entry['request'] === f.request &&
+                    entry['category'] === 'action_failed'
+            )
     ).toHaveLength(1)
     f.alice.send({ type: 'move_to', target: { ...f.actor.position } })
     for (

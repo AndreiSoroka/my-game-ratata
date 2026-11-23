@@ -6,6 +6,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
+import { itemName, tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameInput from './primitives/GameInput.vue'
 const props = defineProps<{
@@ -35,23 +37,29 @@ function trade(row: MarketSnapshot['rows'][number]): void {
 }
 </script>
 <template>
-    <section class="city-market" aria-label="Городской рынок">
+    <section class="city-market" :aria-label="tGame('game.trade.cityMarket')">
         <div class="market-controls">
             <GameButton data-dialogue-action :aria-pressed="side === 'buy'" @click="side = 'buy'">
-                Купить
+                {{ tGame('game.trade.buy') }}
             </GameButton>
             <GameButton data-dialogue-action :aria-pressed="side === 'sell'" @click="side = 'sell'">
-                Продать
+                {{ tGame('game.trade.sell') }}
             </GameButton>
             <label
-                >Количество
+                >{{ tGame('game.trade.quantity') }}
                 <GameInput v-model.number="quantity" type="number" min="1" max="100" step="1"
             /></label>
         </div>
-        <p>У вас {{ gold }} золотых · {{ market.cityName }}</p>
+        <p>
+            {{ tGame('game.conversation.youHave') }} {{ gold }} {{ tGame('game.trade.gold') }}
+            {{ market.cityName }}
+        </p>
         <div v-for="row in market.rows" :key="row.itemId" class="market-row">
             <span
-                >{{ row.label }}<small>На складе {{ row.stock }} / {{ row.capacity }}</small></span
+                >{{ itemName(row.itemId)
+                }}<small
+                    >{{ tGame('game.trade.inStock') }} {{ row.stock }} / {{ row.capacity }}</small
+                ></span
             >
             <GameButton
                 variant="primary"
@@ -64,9 +72,9 @@ function trade(row: MarketSnapshot['rows'][number]): void {
                 {{
                     total(row) === null
                         ? side === 'buy'
-                            ? 'Нет товара'
-                            : 'Не покупают'
-                        : `${side === 'buy' ? 'Купить' : 'Продать'} ${quantity} · ${total(row)} ◈`
+                            ? tGame('game.trade.noGoods')
+                            : tGame('game.trade.noBuyer')
+                        : `${side === 'buy' ? tGame('game.trade.buy') : tGame('game.trade.sell')} ${quantity} · ${total(row)} ◈`
                 }}
             </GameButton>
         </div>

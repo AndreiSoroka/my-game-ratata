@@ -38,7 +38,8 @@
         "@my-game-ratata/contracts": "workspace:*",
         "excalibur": "0.32.0",
         "pinia": "^4.1.0",
-        "vue": "^3.5.45"
+        "vue": "^3.5.45",
+        "vue-i18n": "^11.4.18"
     },
     "devDependencies": {
         "@feature-sliced/steiger-plugin": "0.8.2",

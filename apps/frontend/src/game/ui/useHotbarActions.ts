@@ -7,6 +7,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, type ComputedRef, onBeforeUnmount, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { createPrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
 import { relation } from './combatTargeting'
 import { gravePrayerPreview } from './graveInteractions'
@@ -106,16 +108,16 @@ function controlWaitingLabel(control: CharacterControlSnapshot | undefined): str
     const waiting = control.waiting ?? ''
     if (control.action?.kind === 'attack' && control.action.once === true)
         return {
-            cooldown: 'Ждём восстановления удара',
-            resources: 'Ждём силы',
-            range: 'Подходим к цели',
-            action: 'Ждём завершения действия',
-            '': 'Готовим удар',
+            cooldown: tGame('game.world.waitingAttack'),
+            resources: tGame('game.world.waitingEnergy'),
+            range: tGame('game.world.approachingTarget'),
+            action: tGame('game.world.waitingAction'),
+            '': tGame('game.world.preparingStrike'),
         }[waiting]
     return {
-        cooldown: 'Повтор: ждём восстановление',
-        resources: 'Повтор: ждём силы',
-        range: 'Повтор: подходим к цели',
+        cooldown: tGame('game.world.repeatWaitingCooldown'),
+        resources: tGame('game.world.repeatWaitingEnergy'),
+        range: tGame('game.world.repeatApproach'),
         action: undefined,
         '': undefined,
     }[waiting]

@@ -159,7 +159,9 @@ for (const mobile of [false, true]) {
             })
         )
         await expect(page.locator('.speech-text')).toHaveText(speech.text)
-        await expect(page.getByText(speech.text, { exact: true })).toHaveCount(1)
+        await expect(
+            page.locator('.speech-layer').getByText(speech.text, { exact: true })
+        ).toHaveCount(1)
         const bounds = await page.locator('.speech-bubble').boundingBox()
         expect(bounds!.x).toBeGreaterThanOrEqual(12)
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual((mobile ? 390 : 1280) - 12)

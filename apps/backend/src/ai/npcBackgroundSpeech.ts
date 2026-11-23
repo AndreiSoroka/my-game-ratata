@@ -3,6 +3,7 @@ import { createSpeechEvent } from '../game/speechReceipts'
 import { replySpeech } from './dialogueResult'
 import { attributeNpcSpeech } from './memorySpeechAttribution'
 import { npcGreetingStillAvailable } from './npcInitiative'
+import { replySpeechLanguage } from './npcSpeechLanguage'
 import type { NpcAiActorState } from './runtimeState'
 import { rememberNpcReply } from './sessionMemory'
 import type { NpcAiReply } from './types'
@@ -27,7 +28,10 @@ export function completeNpcGreeting(
     ) {
         room.publishEvents([
             attributeNpcSpeech(
-                createSpeechEvent(actor, text.slice(0, 400)),
+                {
+                    ...createSpeechEvent(actor, text.slice(0, 400)),
+                    language: replySpeechLanguage(room, state, reply, now),
+                },
                 targetId
             ),
         ])

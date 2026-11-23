@@ -6,6 +6,10 @@ import { npcDecisionAudienceError } from './decisionAudience'
 import { npcDecisionExchangeError } from './decisionExchange'
 import { npcAssistanceContext } from './dialogueOrders'
 import { npcGuideTargetError } from './guideTargets'
+import {
+    npcSpeechLanguageProblem,
+    replySpeechLanguage,
+} from './npcSpeechLanguage'
 import { npcQuestPresentationProblem } from './questPresentation'
 import { type NpcAiActorState, npcAiBusyFor } from './runtimeState'
 import { npcSelfReferenceProblem } from './speechSelfReference'
@@ -74,8 +78,12 @@ export function npcCommandProblem(
     if (actor === undefined) {
         return problem('unavailable', 'Персонаж сейчас недоступен.')
     }
+    const language = replySpeechLanguage(room, state, reply, now)
     return (
-        npcSelfReferenceProblem(actor, reply, speechAudience(room, state)) ??
+        npcSpeechLanguageProblem(reply, language) ??
+        (language === 'ru'
+            ? npcSelfReferenceProblem(actor, reply, speechAudience(room, state))
+            : undefined) ??
         backgroundProblem(state, reply) ??
         taskClaimProblem(room, state, actor, reply) ??
         companionProblem(room, companions, state, actor, reply, now) ??

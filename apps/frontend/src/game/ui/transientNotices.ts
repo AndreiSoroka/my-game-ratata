@@ -1,6 +1,11 @@
+import type { LocalizedMessage } from '@my-game-ratata/contracts'
+
+import { tLocalized } from '@/shared/lib/i18n'
+
 interface SnapshotNotice {
     notice: string | null
     noticeId?: number | string
+    noticeMessage?: LocalizedMessage
 }
 
 export interface TransientNotices {
@@ -28,7 +33,7 @@ export function createTransientNotices(
             const receipt = value.noticeId ?? value.notice
             if (receipts.get(source) === receipt) return
             receipts.set(source, receipt)
-            show(value.notice)
+            show(tLocalized(value.noticeMessage, value.notice))
         },
         reset(): void {
             clearTimeout(timer)

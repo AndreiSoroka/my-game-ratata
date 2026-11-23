@@ -1,6 +1,7 @@
 import type {
     CharacterArchetype,
     ClientMessage,
+    GameLocale,
     HeroClass,
 } from '@my-game-ratata/contracts'
 
@@ -13,7 +14,7 @@ import {
 } from './roomClientMessages'
 import { type RoomSocket, send, sendError } from './roomMessaging'
 
-export function dispatchRawRoomMessage(
+function dispatchRawRoomMessage(
     ws: RoomSocket,
     raw: unknown,
     dispatch: (message: ClientMessage) => void
@@ -32,11 +33,19 @@ interface DispatchContext extends ClientContext {
         nickname: string,
         archetype: CharacterArchetype,
         heroClass: HeroClass | undefined,
-        createOnly?: boolean
+        createOnly?: boolean,
+        locale?: GameLocale
     ): void
     abandon(actor: GameCharacter): void
 }
-export function dispatchRoomClientMessage(
+export function createRoomMessageHandler(context: () => DispatchContext) {
+    return (ws: RoomSocket, raw: unknown): void =>
+        dispatchRawRoomMessage(ws, raw, (message) =>
+            dispatchRoomClientMessage(context(), ws, message)
+        )
+}
+
+function dispatchRoomClientMessage(
     context: DispatchContext,
     ws: RoomSocket,
     message: ClientMessage
@@ -47,13 +56,18 @@ export function dispatchRoomClientMessage(
             message.nickname,
             message.archetype ?? 'human',
             message.heroClass,
-            message.createOnly
+            message.createOnly,
+            message.locale
         )
         return
     }
     const player = context.characters.get(context.connections.get(ws) ?? '')
     if (player === undefined) {
         sendError(ws, 'not_joined', 'Join the room before sending input')
+        return
+    }
+    if (message.type === 'set_locale') {
+        context.room.speechTranslations.setLocale(ws, message.locale)
         return
     }
     if (message.type === 'abandon_life') {

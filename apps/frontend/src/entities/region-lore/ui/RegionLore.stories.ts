@@ -2,12 +2,12 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import { type RegionLoreContent, regionLoreContent } from '../model/regionLore'
+import { defaultRegionLore, type RegionLoreContent } from '../model/regionLore'
 import RegionLore from './RegionLore.vue'
 
 const meta = {
     title: 'Entities/region-lore/RegionLore',
-    args: { ...regionLoreContent },
+    args: defaultRegionLore(),
     argTypes: {
         regionName: { control: 'text', name: 'Название региона' },
         locationCount: { control: { type: 'number', min: 0, step: 1 }, name: 'Число локаций' },

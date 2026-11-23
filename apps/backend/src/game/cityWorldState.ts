@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto'
 
-import type {
-    CityBellState,
-    CityStateSnapshot,
-    GameEventPayload,
-    Vector2,
+import {
+    authoredPhrase,
+    type CityBellState,
+    type CityStateSnapshot,
+    type GameEventPayload,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
 import {
@@ -108,7 +109,7 @@ export class CityWorldState {
                 objectId: state.definition.bellObjectId,
                 eventId: state.activationId,
                 position: { ...position },
-                text: 'Колокол памяти зазвучал. Городские мастерские и торговля вновь открыты.',
+                ...authoredPhrase('world.bellRang'),
             },
         ]
     }

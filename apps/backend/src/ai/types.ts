@@ -1,6 +1,7 @@
 import type {
     AgentDecision,
     CompanionWaitMode,
+    GameLocale,
     SpeechFocus,
     Vector2,
 } from '@my-game-ratata/contracts'
@@ -52,6 +53,7 @@ export interface NpcAiTask {
     id: string
     requesterId: string | null
     request: string
+    language?: GameLocale
     steps: number
     lastKnownRequester?: { locationId: string; position: Vector2 }
     /** A completed guide permits one closing reply, never another physical step. */
@@ -69,6 +71,7 @@ export type NpcAiEvent =
           id: string
           senderId: string
           text: string
+          language?: GameLocale
           locationId: string
           position: Vector2
           at: number
@@ -134,6 +137,9 @@ export interface NpcAiContext {
     actorId: string
     role: NpcAiRole
     personality: string
+    speechLanguage?: GameLocale
+    speechLanguagesByTarget?: Record<string, GameLocale>
+    questOfferLanguage?: GameLocale
     task: NpcAiTask | null
     events: NpcAiEvent[]
     memory: string
@@ -174,6 +180,7 @@ export type NpcReplyIssue =
     | 'task_unavailable'
     | 'task_concluded'
     | 'command_unavailable'
+    | 'speech_language'
     | 'memory_changed'
 
 export type NpcInformationRequest =

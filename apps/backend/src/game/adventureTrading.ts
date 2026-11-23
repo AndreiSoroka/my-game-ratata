@@ -1,6 +1,8 @@
 import {
     type AdventureDialogue,
     type AdventureTradeItemId,
+    authoredMessage,
+    authoredRussian,
     type GameEventPayload,
     ITEM_DEFINITIONS,
     itemDurability,
@@ -18,7 +20,7 @@ import { cityTradeRefusal } from './crimeRules'
 import { repairItem } from './itemDurability'
 import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
-import { setNotice } from './notices'
+import { setAuthoredNotice, setNotice } from './notices'
 import { availableGold } from './rewardReservations'
 
 export interface AdventureActionResult {
@@ -39,9 +41,25 @@ export function refreshTradeDialogue(
         : undefined
     if (reason === undefined) {
         delete dialogue.tradeBlockedReason
+        delete dialogue.tradeBlockedReasonMessage
     } else {
         dialogue.tradeBlockedReason = reason
+        const translation = tradeRefusalMessage(reason)
+        if (translation === undefined) {
+            delete dialogue.tradeBlockedReasonMessage
+        } else {
+            dialogue.tradeBlockedReasonMessage = translation
+        }
     }
+}
+
+function tradeRefusalMessage(text: string) {
+    for (const key of ['trade.bellSilent', 'trade.blacklisted'] as const) {
+        if (authoredRussian(key) === text) {
+            return authoredMessage(key)
+        }
+    }
+    return undefined
 }
 export function repairSnapshot(
     actor: GameCharacter,
@@ -101,7 +119,7 @@ export class AdventureTrading {
             .snapshot(actor.locationId, now)
             ?.rows.find((row) => row.itemId === itemId)?.buyPrice
         if (price === undefined || price === null) {
-            setNotice(state, 'Товар закончился.')
+            setAuthoredNotice(state, 'notice.outOfStock')
             return []
         }
         return this.handle(
@@ -153,13 +171,19 @@ export class AdventureTrading {
             now
         )
         receipts.set(message.requestId, { signature, result })
-        setNotice(
-            state,
-            result.error ??
-                (message.type === 'repair_items'
-                    ? `Снаряжение отремонтировано за ${String(message.expectedTotal)} золотых.`
-                    : `${message.side === 'buy' ? 'Куплено' : 'Продано'}: ${ITEM_DEFINITIONS[message.itemId].name} × ${String(message.quantity)} · ${String(message.expectedTotal)} золотых.`)
-        )
+        if (result.error !== null) {
+            setNotice(state, result.error, tradeRefusalMessage(result.error))
+        } else if (message.type === 'repair_items') {
+            setAuthoredNotice(state, 'trade.repaired', {
+                total: message.expectedTotal,
+            })
+        } else {
+            setAuthoredNotice(state, `trade.${message.side}`, {
+                item: ITEM_DEFINITIONS[message.itemId].name,
+                quantity: message.quantity,
+                total: message.expectedTotal,
+            })
+        }
         return result
     }
     private perform(

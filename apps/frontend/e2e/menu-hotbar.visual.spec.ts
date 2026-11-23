@@ -111,6 +111,7 @@ for (const width of [1280, 390, 320]) {
         await page.setViewportSize({ width, height: 844 })
         await page.goto('/iframe.html?id=game-gamemenu--open&viewMode=story&mute=1')
         const menu = page.getByRole('dialog', { name: 'Игровое меню' })
+        await expect(menu).toBeVisible({ timeout: 25_000 })
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toBeFocused()
         await expect(menu.getByRole('button', { name: 'Вернуться в игру' })).toHaveAttribute(
             'data-focus-ring',
@@ -121,11 +122,11 @@ for (const width of [1280, 390, 320]) {
         await expect(npcVoice).toHaveText('Озвучка NPC: выключена')
         await expect(npcVoice).toBeDisabled()
         await expect(menu.getByText('В этом режиме звук отключён.')).toHaveCount(0)
-        await expect(menu.locator('.menu-panel__divider')).toHaveAttribute(
+        await expect(menu.locator('.menu-panel__divider').last()).toHaveAttribute(
             'data-fantasy-divider',
             'divider-000'
         )
-        await expect(menu.locator('.menu-panel__divider')).toHaveAttribute(
+        await expect(menu.locator('.menu-panel__divider').last()).toHaveAttribute(
             'data-fantasy-divider-ends',
             'both'
         )
@@ -138,6 +139,13 @@ for (const width of [1280, 390, 320]) {
         await page.keyboard.press('Tab')
         await expect(menu.getByRole('button', { name: 'Сценарии', exact: true })).toBeFocused()
         await page.keyboard.press('Tab')
+        const russian = menu.getByRole('button', { name: 'Язык интерфейса: Русский' })
+        const english = menu.getByRole('button', { name: 'Язык интерфейса: English' })
+        await expect(russian).toBeFocused()
+        await expect(russian).toHaveAttribute('aria-pressed', 'true')
+        await russian.press('Tab')
+        await expect(english).toBeFocused()
+        await english.press('Tab')
         await expect(menu.getByRole('button', { name: 'Выйти из игры' })).toBeFocused()
         await expect(menu.getByRole('button', { name: 'Выйти из игры' })).toHaveCSS(
             'outline-style',
@@ -151,3 +159,17 @@ for (const width of [1280, 390, 320]) {
         await expect(menu).toHaveScreenshot(`game-menu-${width}.png`)
     })
 }
+
+test('production game menu fits in English at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.goto('/iframe.html?id=game-gamemenu--open&viewMode=story&mute=1')
+    await page.getByRole('button', { name: 'Язык интерфейса: English' }).click({ timeout: 25_000 })
+    const translated = page.getByRole('dialog', { name: 'Game menu' })
+    await expect(
+        translated.getByRole('button', { name: 'Interface language: English' })
+    ).toHaveAttribute('aria-pressed', 'true')
+    const npcVoice = translated.getByRole('button', { name: 'NPC voice', exact: true })
+    await expect(npcVoice).toHaveText('NPC voice: off')
+    await expect(npcVoice).toBeDisabled()
+    await expect(translated).toHaveScreenshot('game-menu-en-320.png')
+})

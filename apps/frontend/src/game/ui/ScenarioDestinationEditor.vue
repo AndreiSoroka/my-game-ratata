@@ -6,6 +6,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameSelect from './primitives/GameSelect.vue'
 import { scenarioSearchLabels } from './scenarioEditor'
 import {
@@ -82,9 +84,9 @@ function target(event: Event): void {
 <template>
     <div class="automation-fields">
         <label>
-            Куда идти
+            {{ tGame('game.automation.destination') }}
             <GameSelect :value="selected" @change="change">
-                <optgroup v-if="markers.length" label="Метки">
+                <optgroup v-if="markers.length" :label="tGame('game.automation.markers')">
                     <option
                         v-for="marker in markers"
                         :key="marker.id"
@@ -93,8 +95,10 @@ function target(event: Event): void {
                         {{ marker.number }} · {{ marker.name }}
                     </option>
                 </optgroup>
-                <option v-if="missingMarker" :value="selected" disabled>Метка удалена</option>
-                <optgroup label="Видимые цели поблизости">
+                <option v-if="missingMarker" :value="selected" disabled>
+                    {{ tGame('game.automation.markerDeleted') }}
+                </option>
+                <optgroup :label="tGame('game.automation.visibleTargetsNearby')">
                     <option
                         v-for="(label, kind) in scenarioSearchLabels"
                         :key="kind"
@@ -104,14 +108,14 @@ function target(event: Event): void {
                     </option>
                 </optgroup>
                 <option v-if="modelValue.kind === 'point'" value="point">
-                    Записанная точка · {{ modelValue.locationId }}
+                    {{ tGame('game.automation.recordedPoint') }} {{ modelValue.locationId }}
                 </option>
             </GameSelect>
         </label>
         <label v-if="modelValue.kind === 'visible'">
-            Выбор цели
+            {{ tGame('game.automation.targetSelection') }}
             <GameSelect :value="explicitKey" @change="target">
-                <option value="">Ближайшая подходящая</option>
+                <option value="">{{ tGame('game.automation.nearestValidTarget') }}</option>
                 <option
                     v-for="candidate in candidates"
                     :key="scenarioTargetKey(candidate)"
@@ -120,7 +124,7 @@ function target(event: Event): void {
                     {{ scenarioTargetLabel(candidate) }}
                 </option>
                 <option v-if="missingTarget" :value="explicitKey" disabled>
-                    Выбранная цель сейчас не видна
+                    {{ tGame('game.automation.selectedTargetIsCurrentlyOut') }}
                 </option>
             </GameSelect>
         </label>

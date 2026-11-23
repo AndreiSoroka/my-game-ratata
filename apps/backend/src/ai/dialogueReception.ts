@@ -1,7 +1,14 @@
-import type { SpeechFocus } from '@my-game-ratata/contracts'
+import {
+    detectSpeechLanguage,
+    NPC_ENGLISH_NAMES,
+    type SpeechFocus,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
-import { companionProfiles } from '../game/companionProfiles'
+import {
+    companionProfiles,
+    serviceDialogueNames,
+} from '../game/companionProfiles'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech } from '../game/socialSpeech'
 import type { NpcAiDiagnostics } from './diagnostics'
@@ -81,21 +88,46 @@ function chooseListeners(
     return companion === undefined ? candidates : [companion]
 }
 function namedAtStart(state: NpcAiActorState, text: string): boolean {
+    return afterSpokenName(state, text) !== undefined
+}
+
+export function heardSpeechLanguage(
+    text: string,
+    states: Iterable<NpcAiActorState>
+) {
+    for (const state of states) {
+        const remainder = afterSpokenName(state, text)
+        if (remainder !== undefined) {
+            return detectSpeechLanguage(remainder)
+        }
+    }
+    return detectSpeechLanguage(text)
+}
+
+function afterSpokenName(
+    state: NpcAiActorState,
+    text: string
+): string | undefined {
     const normalized = text.trim().toLocaleLowerCase()
-    const names = companionProfiles[state.config.actorId]?.dialogueNames ?? [
+    const names = [
+        ...(companionProfiles[state.config.actorId]?.dialogueNames ??
+            serviceDialogueNames[state.config.actorId] ??
+            []),
         state.actor?.nickname ?? '',
+        NPC_ENGLISH_NAMES[state.config.actorId] ?? '',
     ]
-    return names.some((alias) => {
+    for (const alias of names) {
         const name = alias.trim().toLocaleLowerCase()
-        return (
+        const rest = normalized.slice(name.length)
+        if (
             name.length > 0 &&
             normalized.startsWith(name) &&
-            (normalized.length === name.length ||
-                /^[\s,!?:.—-]/u.test(
-                    normalized.slice(name.length, name.length + 1)
-                ))
-        )
-    })
+            (rest.length === 0 || /^[\s,!?:.—-]/u.test(rest))
+        ) {
+            return rest
+        }
+    }
+    return undefined
 }
 function queueSpeech(
     state: NpcAiActorState,

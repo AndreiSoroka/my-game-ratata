@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import type { HeroClass } from '@my-game-ratata/contracts'
-import { HERO_BACKGROUND_DEFINITIONS, heroClasses } from '@my-game-ratata/contracts'
+import { type GameLocale, type HeroClass, heroClasses } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 
 import { ChatComposerFrame } from '@/entities/chats'
 import { RegionLore } from '@/entities/region-lore'
+import {
+    backgroundDescription,
+    backgroundName,
+    gameLocale,
+    gameLocaleNames,
+    gameLocales,
+    setGameLocale,
+    tGame,
+} from '@/shared/lib/i18n'
 import { UiButton, UiInput } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, provideDarkPanelTheme } from '@/shared/ui/theme'
@@ -15,6 +23,7 @@ import { heroClassTheme } from './heroClassThemes'
 import JoinAssetCredits from './JoinAssetCredits.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
+import GameSelect from './primitives/GameSelect.vue'
 import RefreshIcon from './RefreshIcon.vue'
 
 const nickname = defineModel<string>('nickname', { required: true })
@@ -35,10 +44,9 @@ provideDarkPanelTheme(() => {
 })
 defineProps<{ canJoin: boolean; errorMessage: string }>()
 defineEmits<{ join: []; 'nickname-edited': []; 'regenerate-name': [] }>()
+const selectedLocale = computed<GameLocale>({ get: () => gameLocale.value, set: setGameLocale })
 const classes = heroClasses.map((id) => ({
     id,
-    label: HERO_BACKGROUND_DEFINITIONS[id].name,
-    description: HERO_BACKGROUND_DEFINITIONS[id].description,
     theme: heroClassTheme(id, 'form'),
 }))
 function selectNickname({ currentTarget }: MouseEvent): void {
@@ -87,8 +95,20 @@ onBeforeUnmount(() => heightAnimation?.cancel())
             @submit.prevent="$emit('join')"
         >
             <GameFrame variant="window" :border-width="frameWidth" />
-            <h1 id="join-title">Ratata</h1>
-            <label for="nickname">Имя героя</label>
+            <div class="join-heading">
+                <h1 id="join-title">Ratata</h1>
+                <GameSelect v-model="selectedLocale" :aria-label="tGame('game.menu.language')">
+                    <option
+                        v-for="locale in gameLocales"
+                        :key="locale"
+                        :lang="locale"
+                        :value="locale"
+                    >
+                        {{ gameLocaleNames[locale] }}
+                    </option>
+                </GameSelect>
+            </div>
+            <label for="nickname">{{ tGame('game.join.heroName') }}</label>
             <div class="join-row">
                 <ChatComposerFrame :border-width="frameWidth">
                     <UiInput
@@ -108,8 +128,8 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                     appearance="panel"
                     panel="panel-001"
                     class="join-regenerate"
-                    aria-label="Сгенерировать другое имя"
-                    title="Сгенерировать другое имя"
+                    :aria-label="tGame('game.join.regenerateName')"
+                    :title="tGame('game.join.regenerateName')"
                     @click="$emit('regenerate-name')"
                 >
                     <RefreshIcon />
@@ -120,11 +140,11 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                     :disabled="!canJoin || nickname.trim().length === 0"
                     type="submit"
                 >
-                    Войти
+                    {{ tGame('game.join.enter') }}
                 </UiButton>
             </div>
             <fieldset class="class-choices" aria-describedby="class-description class-hint">
-                <legend>Прошлое героя</legend>
+                <legend>{{ tGame('game.join.background') }}</legend>
                 <div class="class-grid">
                     <label v-for="option in classes" :key="option.id" class="class-card">
                         <GameInput
@@ -151,13 +171,13 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                                 aria-hidden="true"
                             />
                             <HeroClassIcon :hero-class="option.id" />
-                            <span>{{ option.label }}</span>
+                            <span>{{ backgroundName(option.id) }}</span>
                         </span>
                     </label>
                 </div>
             </fieldset>
             <p id="class-description" class="class-description" aria-live="polite">
-                {{ classes.find((option) => option.id === heroClass)?.description }}
+                {{ backgroundDescription(heroClass) }}
             </p>
             <HeroBackgroundSummary
                 :hero-class="heroClass"
@@ -165,8 +185,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                 :border-width="frameWidth"
             />
             <p id="class-hint" class="class-hint">
-                Прошлое даёт первые преимущества. Любой герой может освоить меч, чудеса и магию
-                через обучение и практику. Новая жизнь начинается без золота.
+                {{ tGame('game.join.backgroundHint') }}
             </p>
             <p v-if="errorMessage" class="join-error" role="alert">{{ errorMessage }}</p>
         </form>

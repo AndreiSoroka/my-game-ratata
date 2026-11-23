@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 
 import type { PlayerEffect, PlayerEffectKind } from '../model/playerEffects'
@@ -41,7 +42,11 @@ const tileColors: UiButtonColors = {
 
 <template>
     <div v-if="activeEffects.length" class="player-effects-strip">
-        <ul class="player-effects-strip__tiles" aria-label="Player effects" role="list">
+        <ul
+            class="player-effects-strip__tiles"
+            :aria-label="tGame('game.world.playerEffects')"
+            role="list"
+        >
             <li v-for="effect in activeEffects" :key="effect.kind">
                 <UiButton
                     class="player-effects-strip__tile"

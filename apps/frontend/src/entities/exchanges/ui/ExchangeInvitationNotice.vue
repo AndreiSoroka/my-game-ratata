@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
@@ -31,14 +32,18 @@ const declineColors: UiButtonColors = {
             class="exchange-invitation__content"
         >
             <h2 :id="headingId" class="exchange-invitation__heading">
-                {{ incoming ? 'Приглашение к торговле' : 'Предложение отправлено' }}
+                {{
+                    incoming
+                        ? tGame('game.trade.tradeInvitation')
+                        : tGame('game.trade.invitationSent')
+                }}
             </h2>
             <p v-if="incoming" class="exchange-invitation__message" role="status">
-                <strong>{{ partnerName }}</strong> хочет с вами поторговаться.
+                <strong>{{ partnerName }}</strong> {{ tGame('game.trade.wantsTradeWithYou') }}
             </p>
             <p v-else class="exchange-invitation__message" role="status">
-                Ожидаем ответа от <strong>{{ `«${partnerName}»` }}</strong> на приглашение к
-                торговле.
+                {{ tGame('game.trade.waitingFor') }} <strong>{{ `«${partnerName}»` }}</strong>
+                {{ tGame('game.trade.answerTradeInvitation') }}
             </p>
             <div class="exchange-invitation__actions">
                 <UiButton
@@ -48,7 +53,7 @@ const declineColors: UiButtonColors = {
                     panel="panel-001"
                     @click="emit('accept')"
                 >
-                    Начать торговлю
+                    {{ tGame('game.trade.startTrading') }}
                 </UiButton>
                 <UiButton
                     v-if="incoming"
@@ -58,7 +63,7 @@ const declineColors: UiButtonColors = {
                     :colors="declineColors"
                     @click="emit('decline')"
                 >
-                    Отклонить
+                    {{ tGame('game.trade.decline') }}
                 </UiButton>
                 <UiButton
                     v-else
@@ -67,7 +72,7 @@ const declineColors: UiButtonColors = {
                     panel="panel-001"
                     @click="emit('cancel')"
                 >
-                    Отменить предложение
+                    {{ tGame('game.trade.cancelInvitation') }}
                 </UiButton>
             </div>
         </FantasyBorder>

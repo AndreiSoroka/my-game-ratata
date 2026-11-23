@@ -10,6 +10,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import ChestPane from './ChestPane.vue'
 import { dialogActionKeys } from './dialogActionKeys'
 import GameButton from './primitives/GameButton.vue'
@@ -24,9 +26,15 @@ useEscapeOwner({ active: () => true, escape: () => emit('close'), element: panel
 const titleId = useId()
 const focusedId = ref('')
 const isCorpse = computed(() => props.chest.kind === 'corpse')
-const containerTitle = computed(() => props.chest.title ?? 'Сундук')
-const containerName = computed(() => (props.chest.kind === 'barrel' ? 'бочка' : 'сундук'))
-const containerPlace = computed(() => (props.chest.kind === 'barrel' ? 'бочке' : 'сундуке'))
+const containerTitle = computed(() => props.chest.title ?? tGame('game.world.chest'))
+const containerName = computed(() =>
+    props.chest.kind === 'barrel' ? tGame('game.world.barrelLower') : tGame('game.world.chestLower')
+)
+const containerPlace = computed(() =>
+    props.chest.kind === 'barrel'
+        ? tGame('game.world.barrelPrepositional')
+        : tGame('game.world.chestPrepositional')
+)
 const hasGold = computed(() => (props.chest.gold ?? 0) > 0)
 const freeSlots = computed(() => Math.max(0, INVENTORY_CAPACITY - props.player.inventory.length))
 const takeableItems = computed(() =>
@@ -147,20 +155,30 @@ onBeforeUnmount(() => {
             <header class="chest-header">
                 <div>
                     <h2 :id="titleId">
-                        {{ isCorpse ? containerTitle : `Рюкзак и ${containerName}` }}
+                        {{
+                            isCorpse
+                                ? containerTitle
+                                : tGame('game.world.backpackAndContainer', {
+                                      container: containerName,
+                                  })
+                        }}
                     </h2>
                     <p>
                         {{
                             isCorpse
-                                ? 'Можно забрать оставшиеся вещи и золото.'
-                                : 'Слева ваши вещи, справа — содержимое контейнера.'
+                                ? tGame('game.world.takeRemainingLoot')
+                                : tGame('game.world.transferBetweenBags')
                         }}
                     </p>
                 </div>
                 <GameButton
                     type="button"
                     data-dialog-action="close"
-                    :aria-label="isCorpse ? 'Закрыть обыск' : 'Закрыть контейнер'"
+                    :aria-label="
+                        isCorpse
+                            ? tGame('game.world.closeLoot')
+                            : tGame('game.world.closeContainer')
+                    "
                     @click="emit('close')"
                 >
                     ×
@@ -171,35 +189,40 @@ onBeforeUnmount(() => {
                 :class="{ 'chest-capacity--full': freeSlots === 0 }"
                 role="status"
             >
-                Рюкзак: {{ player.inventory.length }} / {{ INVENTORY_CAPACITY }} слотов · свободно
+                {{ tGame('game.world.backpack') }} {{ player.inventory.length }} /
+                {{ INVENTORY_CAPACITY }} {{ tGame('game.world.slotsFree') }}
                 {{ freeSlots }}
                 <span v-if="freeSlots === 0">{{
                     takeableItems.length
-                        ? 'Все слоты заняты. Подходящие материалы можно добавить в неполные стопки.'
+                        ? tGame('game.world.remainingStackSpace')
                         : isCorpse
-                          ? 'Рюкзак заполнен. Непоместившиеся вещи останутся в теле.'
-                          : 'Рюкзак заполнен. Переложите вещь в контейнер, чтобы освободить место.'
+                          ? tGame('game.world.lootDoesNotFit')
+                          : tGame('game.world.makeRoom')
                 }}</span>
             </p>
             <div class="chest-columns">
                 <ChestPane
                     side="bag"
-                    title="Мой рюкзак"
+                    :title="tGame('game.world.myBackpack')"
                     :items="bagItems"
                     :is-item-disabled="() => isCorpse"
-                    action-label="Положить →"
-                    empty-text="В рюкзаке нет вещей."
+                    :action-label="tGame('game.world.putIn')"
+                    :empty-text="tGame('game.world.yourBackpackIsEmpty')"
                     @select="put"
                 >
-                    <p class="chest-pane-hint">Надетые вещи остаются на персонаже.</p>
+                    <p class="chest-pane-hint">{{ tGame('game.world.equippedItemsStayOnYour') }}</p>
                 </ChestPane>
                 <ChestPane
                     side="chest"
                     :title="containerTitle"
                     :items="chest.items"
                     :is-item-disabled="(item) => !canAcceptInventoryItem(player.inventory, item)"
-                    action-label="← Взять"
-                    :empty-text="isCorpse ? 'Вещей не осталось.' : 'Контейнер пуст.'"
+                    :action-label="tGame('game.world.take')"
+                    :empty-text="
+                        isCorpse
+                            ? tGame('game.world.noRemainingLoot')
+                            : tGame('game.world.emptyContainer')
+                    "
                     @select="take"
                 >
                     <GameButton
@@ -208,7 +231,7 @@ onBeforeUnmount(() => {
                         data-dialog-action="chest:gold"
                         @click="takeGold"
                     >
-                        Взять золото: {{ chest.gold }}
+                        {{ tGame('game.world.takeGold') }} {{ chest.gold }}
                     </GameButton>
                     <GameButton
                         class="chest-take-all"
@@ -217,14 +240,17 @@ onBeforeUnmount(() => {
                         :disabled="!takeableItems.length && !hasGold"
                         @click="takeAll"
                     >
-                        Забрать всё
+                        {{ tGame('game.world.takeAll') }}
                     </GameButton>
                 </ChestPane>
             </div>
             <p class="chest-hint">
-                ←→ — сторона · ↑↓ / W S — выбор · F / Enter — переложить · Esc — закрыть. Стопки
-                переносятся целиком. Непоместившиеся останутся
-                {{ isCorpse ? 'в теле' : `в ${containerPlace}` }}.
+                {{ tGame('game.world.switchSidesWSSelect') }}
+                {{
+                    isCorpse
+                        ? tGame('game.world.inBody')
+                        : tGame('game.world.inContainer', { container: containerPlace })
+                }}.
             </p>
         </section>
     </div>

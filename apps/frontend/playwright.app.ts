@@ -57,13 +57,7 @@ export function createAppPlaywrightConfig(
             {
                 // No watch: a source/test-file write must not reset an ongoing test world.
                 command: `PORT=${String(backendPort)} bun run --cwd ../backend start`,
-                // Ordinary UI cases use a reproducible generated city whose bell is already active.
-                // Story cases can choose a silent world with an explicit GAME_WORLD_SEED.
-                env: {
-                    GAME_AI_ENABLED: '0',
-                    GAME_WORLD_SEED:
-                        process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026',
-                },
+                env: backendEnvironment(),
                 port: backendPort,
                 reuseExistingServer: false,
             },
@@ -74,6 +68,15 @@ export function createAppPlaywrightConfig(
             },
         ],
     })
+}
+
+function backendEnvironment(): Record<string, string> {
+    // Ordinary UI cases start with an active bell. Story cases can override the world seed.
+    return {
+        GAME_AI_ENABLED: '0',
+        GAME_SPEECH_TRANSLATION: process.env['E2E_REAL_TRANSLATION'] === '1' ? '1' : '0',
+        GAME_WORLD_SEED: process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026',
+    }
 }
 
 function readPortEnv(name: string, fallback: number, offset: number): number {

@@ -8,6 +8,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
+import { itemName, tGame } from '@/shared/lib/i18n'
+
 import { craftOrderPaymentText, craftOrderStatusLabels as statuses } from './craftOrderLabels'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
@@ -75,26 +77,29 @@ function claim(orderId: string, expectedRemaining: number): void {
 }
 </script>
 <template>
-    <section class="workshop-orders" aria-label="Заказы ремесленнику">
-        <p>У вас {{ gold }} золотых</p>
+    <section class="workshop-orders" :aria-label="tGame('game.trade.workshopOrders')">
+        <p>
+            {{ tGame('game.conversation.youHave') }} {{ gold }}
+            {{ tGame('game.conversation.gold') }}
+        </p>
         <p class="workshop-orders__terms">
-            Предоплата 50%. Остальное — при получении. Аванс не возвращается.
+            {{ tGame('game.trade.payUpFrontAndRemainder') }}
         </p>
         <div
             v-if="selected"
             class="order-confirm game-frame-host"
             role="group"
-            aria-label="Подтверждение заказа"
+            :aria-label="tGame('game.trade.confirmOrder')"
         >
             <GameFrame variant="panel" />
-            <strong>{{ selected.label }}</strong>
+            <strong>{{ itemName(selected.itemId) }}</strong>
             <p>
-                Полная цена {{ selected.fullPrice }} ◈ · сейчас {{ selected.deposit }} ◈ · при
-                получении {{ selected.remaining }} ◈
+                {{ tGame('game.trade.fullPrice') }} {{ selected.fullPrice }}
+                {{ tGame('game.trade.now') }} {{ selected.deposit }}
+                {{ tGame('game.trade.onCollection') }} {{ selected.remaining }} ◈
             </p>
             <p>
-                Заказ ждёт настоящие материалы и получает приоритет изготовления. Аванс не
-                возвращается.
+                {{ tGame('game.trade.orderNeedsActualMaterialsAnd') }}
             </p>
             <GameButton
                 variant="primary"
@@ -102,9 +107,11 @@ function claim(orderId: string, expectedRemaining: number): void {
                 :disabled="blocked || !selected.canOrder || gold < selected.deposit"
                 @click="place"
             >
-                Внести предоплату {{ selected.deposit }} ◈
+                {{ tGame('game.trade.payDeposit') }} {{ selected.deposit }} ◈
             </GameButton>
-            <GameButton data-dialogue-action @click="selectedId = undefined"> Назад </GameButton>
+            <GameButton data-dialogue-action @click="selectedId = undefined">
+                {{ tGame('game.trade.back') }}
+            </GameButton>
         </div>
         <template v-else>
             <article
@@ -113,15 +120,18 @@ function claim(orderId: string, expectedRemaining: number): void {
                 class="workshop-order-row game-frame-host"
             >
                 <GameFrame variant="inset" />
-                <strong>{{ offer.label }}</strong>
-                <small>В наличии: {{ offer.stock }} · полная цена {{ offer.fullPrice }} ◈</small>
+                <strong>{{ itemName(offer.itemId) }}</strong>
+                <small
+                    >{{ tGame('game.trade.inStockWorkshopOrders') }} {{ offer.stock }}
+                    {{ tGame('game.trade.fullPriceWorkshopOrders') }} {{ offer.fullPrice }} ◈</small
+                >
                 <GameButton
                     v-if="offer.stock > 0"
                     data-dialogue-action
                     :disabled="blocked || gold < offer.fullPrice"
                     @click="buy(offer)"
                 >
-                    Купить · {{ offer.fullPrice }} ◈
+                    {{ tGame('game.trade.buyWorkshopOrders') }} {{ offer.fullPrice }} ◈
                 </GameButton>
                 <GameButton
                     v-else
@@ -129,19 +139,19 @@ function claim(orderId: string, expectedRemaining: number): void {
                     :disabled="blocked || !offer.canOrder || gold < offer.deposit"
                     @click="selectedId = offer.itemId"
                 >
-                    Заказать · аванс {{ offer.deposit }} ◈
+                    {{ tGame('game.trade.orderDeposit') }} {{ offer.deposit }} ◈
                 </GameButton>
             </article>
         </template>
-        <h3>Ваши заказы</h3>
-        <p v-if="!workshop.orders.length">Заказов пока нет.</p>
+        <h3>{{ tGame('game.trade.yourOrders') }}</h3>
+        <p v-if="!workshop.orders.length">{{ tGame('game.trade.noOrdersYet') }}</p>
         <article
             v-for="order in workshop.orders"
             :key="order.id"
             class="workshop-order-row game-frame-host"
         >
             <GameFrame variant="inset" />
-            <strong>{{ order.label }}</strong
+            <strong>{{ itemName(order.itemId) }}</strong
             ><span>{{ statuses[order.status] }}</span>
             <small>{{ craftOrderPaymentText(order) }}</small>
             <GameButton
@@ -151,7 +161,7 @@ function claim(orderId: string, expectedRemaining: number): void {
                 :disabled="blocked || gold < order.remaining"
                 @click="claim(order.id, order.remaining)"
             >
-                Получить · доплатить {{ order.remaining }} ◈
+                {{ tGame('game.trade.collectPayRemaining') }} {{ order.remaining }} ◈
             </GameButton>
             <GameButton
                 v-if="['waiting_materials', 'queued', 'ready'].includes(order.status)"
@@ -159,24 +169,26 @@ function claim(orderId: string, expectedRemaining: number): void {
                 :disabled="blocked"
                 @click="cancelId = order.id"
             >
-                Отменить заказ
+                {{ tGame('game.trade.cancelOrder') }}
             </GameButton>
         </article>
         <div
             v-if="cancelling"
             class="order-confirm game-frame-host"
             role="group"
-            aria-label="Отмена заказа"
+            :aria-label="tGame('game.trade.cancelOrderWorkshopOrders')"
         >
             <GameFrame variant="panel" />
             <p>
-                Отменить «{{ cancelling.label }}»? Аванс {{ cancelling.deposit }} ◈ не возвращается.
+                {{ tGame('game.trade.cancelWorkshopOrders') }}{{ itemName(cancelling.itemId)
+                }}{{ tGame('game.trade.deposit') }} {{ cancelling.deposit }}
+                {{ tGame('game.trade.isNonrefundable') }}
             </p>
             <GameButton variant="danger" data-dialogue-action :disabled="blocked" @click="cancel">
-                Отменить без возврата аванса
+                {{ tGame('game.trade.cancelAndForfeitDeposit') }}
             </GameButton>
             <GameButton data-dialogue-action @click="cancelId = undefined">
-                Сохранить заказ
+                {{ tGame('game.trade.keepOrder') }}
             </GameButton>
         </div>
     </section>

@@ -3,6 +3,8 @@ import './socialWindows.css'
 
 import { nextTick, onMounted, ref } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import CloseIcon from './CloseIcon.vue'
 import { isConfirmationKey } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
@@ -84,7 +86,7 @@ onMounted(async () => {
                     type="button"
                     class="social-window__close"
                     icon
-                    :aria-label="`Закрыть: ${title}`"
+                    :aria-label="tGame('game.automation.closeWithTitle', { title: title })"
                     @click="emit('close')"
                 >
                     <CloseIcon />

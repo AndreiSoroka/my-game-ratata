@@ -2,6 +2,8 @@
 import type { QuestRewardMode } from '@my-game-ratata/contracts'
 import { useId } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
 
@@ -9,8 +11,18 @@ const mode = defineModel<QuestRewardMode>({ required: true })
 defineProps<{ disabled?: boolean; appearance?: 'light' }>()
 const name = useId()
 const options: Array<{ value: QuestRewardMode; label: string }> = [
-    { value: 'party_equal', label: 'Поровну группе' },
-    { value: 'submitter', label: 'Вся награда сдающему' },
+    {
+        value: 'party_equal',
+        get label() {
+            return tGame('game.quests.equalSplit')
+        },
+    },
+    {
+        value: 'submitter',
+        get label() {
+            return tGame('game.quests.allToSubmitter')
+        },
+    },
 ]
 
 function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
@@ -27,7 +39,7 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
         :class="appearance === 'light' ? 'quest-reward-choice--light' : 'game-frame-host'"
         :disabled="disabled"
     >
-        <legend>Распределение награды</legend>
+        <legend>{{ tGame('game.quests.rewardDistribution') }}</legend>
         <GameFrame v-if="appearance !== 'light'" variant="inset" />
         <label
             v-for="option in options"
@@ -64,10 +76,14 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
                     stroke-width="1.8"
                 />
             </svg>
-            <span>{{ option.value === 'submitter' ? 'Сдающему' : 'Поровну отряду' }}</span>
+            <span>{{
+                option.value === 'submitter'
+                    ? tGame('game.quests.submitter')
+                    : tGame('game.quests.splitAmongParty')
+            }}</span>
             <span class="sr-only">{{ option.label }}</span>
         </label>
-        <small>Выбор фиксируется при принятии задания.</small>
+        <small>{{ tGame('game.quests.youChooseThisWhenYou') }}</small>
     </fieldset>
 </template>
 

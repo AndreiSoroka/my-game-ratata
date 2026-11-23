@@ -4,6 +4,7 @@ import type {
     ItemInstanceSnapshot,
     Vector2,
 } from './index'
+import type { LocalizedMessage } from './locales'
 import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 
 export type QuestObjective =
@@ -34,12 +35,15 @@ export interface QuestOfferSnapshot {
     introduction?: string
     fundingCityId?: string
     objectiveLabels?: string[]
+    objectiveMessages?: Array<LocalizedMessage | null>
     id: string
     revision: number
     issuerId: string
     issuerName: string
     title: string
     description: string
+    titleMessage?: LocalizedMessage
+    descriptionMessage?: LocalizedMessage
     objectives: QuestObjective[]
     rewardGold: number
     rewardItems: ItemInstanceSnapshot[]
@@ -67,6 +71,7 @@ export interface NpcQuestSnapshot extends QuestOfferSnapshot {
     progress: number[]
     status: 'active' | 'ready' | 'completed' | 'cancelled' | 'reward_missing'
     notice: string | null
+    noticeMessage?: LocalizedMessage
     receiptId?: string
     rewardShares?: QuestRewardShare[]
 }
@@ -127,8 +132,11 @@ export interface QuestTurnInPromptSnapshot {
     issuerName: string
     title: string
     description: string
+    titleMessage?: LocalizedMessage
+    descriptionMessage?: LocalizedMessage
     objectives: QuestObjective[]
     objectiveLabels: string[]
+    objectiveMessages?: Array<LocalizedMessage | null>
     rewardGold: number
     rewardItems: ItemInstanceSnapshot[]
     rewardMode: QuestRewardMode
@@ -144,6 +152,7 @@ export interface QuestHistoryEntry {
     issuerId: string
     recipientId: string
     title: string
+    titleMessage?: LocalizedMessage
     status:
         | 'offered'
         | 'revised'
@@ -159,6 +168,7 @@ export interface QuestHistoryEntry {
     rewardGold: number
     receiptId?: string
     nextAction?: string
+    nextActionMessage?: LocalizedMessage
     contactId?: string
     contactName?: string
     locationId?: string

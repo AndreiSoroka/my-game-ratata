@@ -1,5 +1,6 @@
 import {
     type GameEventPayload,
+    type GameLocale,
     PUBLIC_SPEECH_RADIUS,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -23,6 +24,7 @@ interface VoiceLine {
     locationId: string
     speechId: number
     voice: 'ambient' | 'dialogue'
+    language: GameLocale
     text: string
 }
 
@@ -39,7 +41,7 @@ function voiceLine(event: GameEventPayload): VoiceLine | undefined {
     if (event.kind !== 'chat' || (voice !== 'ambient' && voice !== 'dialogue')) return
     if (!actorId || !locationId || speechId === undefined || !text?.trim()) return
     if (!Number.isSafeInteger(speechId)) return
-    return { actorId, locationId, speechId, voice, text }
+    return { actorId, locationId, speechId, voice, text, language: event.language ?? 'ru' }
 }
 
 function volumeAt(distance: number): number {
@@ -178,7 +180,7 @@ export class NpcVoice {
             this.pending = undefined
             return
         }
-        const speech = this.profiles.resolve(pending.actorId, this.voices)
+        const speech = this.profiles.resolve(pending.actorId, pending.language, this.voices)
         if (speech === undefined) return
 
         this.pending = undefined
@@ -188,7 +190,7 @@ export class NpcVoice {
             pending.text.replaceAll('<', '‹').replaceAll('>', '›')
         )
         utterance.voice = speech.voice
-        utterance.lang = 'ru-RU'
+        utterance.lang = speech.voice.lang.replace('_', '-')
         utterance.rate = speech.rate
         utterance.pitch = speech.pitch
         utterance.volume = volume

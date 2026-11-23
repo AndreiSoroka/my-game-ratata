@@ -8,6 +8,7 @@ export interface DeitySnapshot {
     name: string
     domain: string
     omen: string
+    omenMessage?: import('./locales').LocalizedMessage
     perception: 'vague' | 'hint' | 'clear' | 'precise'
     mood: DeityMood | null
     successChance: number | null

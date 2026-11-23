@@ -1,5 +1,7 @@
 import type { MapSummary, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { resolveWorldMapUrl } from './runtimeSocket'
 import { loadRenderedTiledMap, type RenderedTiledMap } from './tiledMap'
 
@@ -65,7 +67,7 @@ export class RuntimeMapLoading {
             this.pending = this.applied = undefined
             this.failure = 'missing-descriptor'
             this.handlers.loading()
-            this.handlers.failed('Сервер не передал данные карты.')
+            this.handlers.failed(tGame('game.canvas.missingMap'))
             return
         }
         if (request?.key === this.applied) {
@@ -119,7 +121,9 @@ export class RuntimeMapLoading {
                 if (!current()) return
                 this.pending = undefined
                 this.failure = request.key
-                this.handlers.failed(error instanceof Error ? error.message : 'Map loading failed')
+                this.handlers.failed(
+                    error instanceof Error ? error.message : tGame('game.canvas.failedMap')
+                )
             })
     }
 }

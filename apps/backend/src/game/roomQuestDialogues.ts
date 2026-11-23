@@ -1,6 +1,8 @@
-import type {
-    NpcQuestSnapshot,
-    QuestHistoryEntry,
+import {
+    NPC_ENGLISH_NAMES,
+    npcQuestMessage,
+    type NpcQuestSnapshot,
+    type QuestHistoryEntry,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -159,6 +161,18 @@ export class RoomQuestDialogues {
                     .some((entry) => entry.instanceId === job.instanceId)
               ? 'guild'
               : 'npc'
+        const action = nextAction(job, issuer)
+        const nextActionMessage =
+            job.status === 'ready'
+                ? {
+                      key: 'authored.npc.quest.returnToNamedGiver',
+                      params: {
+                          issuer: issuer.nickname,
+                          issuerEn:
+                              NPC_ENGLISH_NAMES[issuer.id] ?? issuer.nickname,
+                      },
+                  }
+                : npcQuestMessage(action)
         this.environment.quests.journal.record({
             id: job.id,
             instanceId: job.instanceId,
@@ -166,6 +180,9 @@ export class RoomQuestDialogues {
             issuerId: issuer.id,
             recipientId: player.id,
             title: job.title,
+            ...(job.titleMessage === undefined
+                ? {}
+                : { titleMessage: job.titleMessage }),
             status: job.status,
             at: now,
             rewardGold: job.rewardGold,
@@ -176,7 +193,8 @@ export class RoomQuestDialogues {
             contactId: issuer.id,
             contactName: issuer.nickname,
             locationId: issuer.locationId,
-            nextAction: nextAction(job, issuer),
+            nextAction: action,
+            ...(nextActionMessage === undefined ? {} : { nextActionMessage }),
         })
     }
 
@@ -197,8 +215,11 @@ export class RoomQuestDialogues {
         this.seenCompletions.add(key)
         const text =
             'Спасибо за помощь! Поручение выполнено, награда передана. Хочешь ещё поручение?'
+        const textMessage = npcQuestMessage(text)
         if (
-            !this.environment.whispers.send(issuer, player, text, now) &&
+            !this.environment.whispers.send(issuer, player, text, now, {
+                ...(textMessage === undefined ? {} : { textMessage }),
+            }) &&
             canHearSpeech(
                 player,
                 issuer,
@@ -207,10 +228,13 @@ export class RoomQuestDialogues {
             )
         ) {
             this.environment.room.publishEvents([
-                createSpeechEvent(issuer, text, {
-                    targetId: player.id,
-                    audienceIds: [player.id],
-                }),
+                {
+                    ...createSpeechEvent(issuer, text, {
+                        targetId: player.id,
+                        audienceIds: [player.id],
+                    }),
+                    ...(textMessage === undefined ? {} : { textMessage }),
+                },
             ])
         }
     }

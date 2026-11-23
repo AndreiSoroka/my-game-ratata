@@ -1,5 +1,9 @@
+import { workerQuestMessages } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
+import { nextTick } from 'vue'
+
+import { gameLocale, setGameLocale } from '@/shared/lib/i18n'
 
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import { questOfferFixture } from './socialFixtures'
@@ -66,5 +70,56 @@ it('keeps legacy offers readable without an introduction', () => {
         expect(wrapper.text()).toContain('Доставить 3 пшеницы на городской склад.')
     } finally {
         wrapper.unmount()
+    }
+})
+
+it('localizes the open offer while keeping its structured quantities and IDs', async () => {
+    const previous = gameLocale.value
+    const offer = {
+        ...questOfferFixture(),
+        ...workerQuestMessages(
+            {
+                id: 'request-1',
+                cityId: 'map-2-2',
+                clerkId: 'npc_friendly_girl_1',
+                workerId: 'npc_lumberjack_1',
+                workerName: 'Лесник Данила',
+                locationId: 'map-2-2',
+                locationName: 'Новогород',
+                enemyName: 'Слизень',
+                requiredTrophyItemId: 'slime_heart',
+                proofAccepted: false,
+                stage: 'waiting',
+                reason: null,
+            },
+            'npc'
+        ),
+        issuerId: 'npc_friendly_girl_1',
+        title: 'Вернуть к работе: Лесник Данила',
+        objectives: [
+            { kind: 'deliver', itemId: 'grain', quantity: 3, recipientId: 'city:map-2-2' },
+        ] as const,
+    }
+    setGameLocale('ru')
+    const wrapper = mount(QuestOfferWindow, {
+        props: {
+            offer: { ...offer, objectives: [...offer.objectives] },
+            characters: [],
+            serverTime: 100_000,
+            occupied: false,
+        },
+    })
+    try {
+        expect(wrapper.get('h3').text()).toContain('Лесник Данила')
+        setGameLocale('en')
+        await nextTick()
+        expect(wrapper.get('h3').text()).toBe('Back to work: Forester Danila')
+        expect(wrapper.text()).toContain('Forester Danila cannot work in Novogorod')
+        expect(wrapper.text()).toContain('3 × Grain')
+        expect(wrapper.text()).toContain('Recipient: the city warehouse.')
+        expect(wrapper.emitted('command')).toBeUndefined()
+    } finally {
+        wrapper.unmount()
+        setGameLocale(previous)
     }
 })

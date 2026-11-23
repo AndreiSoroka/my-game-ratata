@@ -1,6 +1,8 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 import { Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import { EFFECT_BUDGET } from './effectBudget'
 
 interface StatusView {
@@ -37,7 +39,7 @@ export class StatusViews {
                 view.until = this.now + character.cooldowns.stunMsLeft
                 view.label.pos = vec(character.position.x, character.position.y - 53)
                 view.label.z = character.position.y + 31
-                view.label.text = `СТАН ${(character.cooldowns.stunMsLeft / 1000).toFixed(1)}`
+                view.label.text = `${tGame('game.canvas.stun')} ${(character.cooldowns.stunMsLeft / 1000).toFixed(1)}`
             }
         }
         for (const [id, view] of this.views)
@@ -61,7 +63,7 @@ export class StatusViews {
             if (left === 0) {
                 view.label.kill()
                 this.views.delete(id)
-            } else view.label.text = `СТАН ${(left / 1000).toFixed(1)}`
+            } else view.label.text = `${tGame('game.canvas.stun')} ${(left / 1000).toFixed(1)}`
         }
     }
 }

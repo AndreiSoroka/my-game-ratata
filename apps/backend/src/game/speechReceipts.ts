@@ -21,6 +21,10 @@ export function addressedSpeechPartner(
     return addressedSpeech.get(event) ?? event.targetId
 }
 
+export function npcReplyRecipient(event: GameEventPayload): string | undefined {
+    return addressedSpeech.get(event)
+}
+
 export function nextSpeechId(speaker: GameCharacter): number {
     const receipt = (serials.get(speaker) ?? 0) + 1
     serials.set(speaker, receipt)

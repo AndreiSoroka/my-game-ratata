@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { tGame } from '@/shared/lib/i18n'
+
 defineProps<{ accepted: boolean; name: string }>()
 </script>
 <template>
@@ -6,8 +8,10 @@ defineProps<{ accepted: boolean; name: string }>()
         class="exchange-consent"
         :class="{ 'exchange-consent--ready': accepted }"
         role="img"
-        :aria-label="`${name}: ${accepted ? 'подтверждено' : 'не подтверждено'}`"
-        :title="accepted ? 'Условия подтверждены' : 'Условия ещё не подтверждены'"
+        :aria-label="`${name}: ${accepted ? tGame('game.trade.confirmedLower') : tGame('game.trade.unconfirmedLower')}`"
+        :title="
+            accepted ? tGame('game.trade.termsConfirmed') : tGame('game.trade.termsUnconfirmed')
+        "
     >
         <svg viewBox="0 0 48 32" aria-hidden="true" shape-rendering="crispEdges">
             <template v-if="accepted">

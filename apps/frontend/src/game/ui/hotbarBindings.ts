@@ -9,6 +9,8 @@ import {
     type WorldGraveSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { tGame } from '@/shared/lib/i18n'
+
 export type HotbarBinding =
     | { kind: 'attack' }
     | { kind: 'ability'; id: AbilityId }
@@ -38,9 +40,13 @@ export function prayerDescription(
     const gift = prayerGift(intent, characters, player)
     return [
         `${gift} · ${cost}`,
-        preview.durationMs ? `${preview.durationMs / 1000} с` : '',
+        preview.durationMs
+            ? tGame('game.world.secondsValue', { seconds: preview.durationMs / 1000 })
+            : '',
         preview.abilityId === 'pray_road'
-            ? `Походная песня ×${ROAD_PRAYER_RULES.energyRegenMultiplier} EN рядом`
+            ? tGame('game.world.recoveryAura', {
+                  multiplier: ROAD_PRAYER_RULES.energyRegenMultiplier,
+              })
             : '',
         collateralDescription(preview),
     ]
@@ -57,17 +63,29 @@ function prayerChannelDescription(
     const cost = prayerPrice(preview)
     if (mode === 'devotion')
         return preview.manaCost > 0
-            ? `Ауры молитвы · ${preview.manaCost} MP · ${(preview.durationMs ?? 3000) / 1000} с`
-            : `Помолиться · ${preview.manaCost} MP · Без эффекта`
+            ? tGame('game.world.prayerAuras', {
+                  mana: preview.manaCost,
+                  seconds: (preview.durationMs ?? 3000) / 1000,
+              })
+            : tGame('game.world.prayWithoutEffect', { mana: preview.manaCost })
     if (mode === 'purify_grave')
-        return `Упокоить могилу · ${cost} · ${(preview.durationMs ?? gravePurifyCastMs(grave?.phase ?? 'active')) / 1000} с${player.abilities?.casting?.uninterruptible ? '' : ' · Esc — прервать'}`
+        return tGame('game.world.cleanseGrave', {
+            cost,
+            seconds: (preview.durationMs ?? gravePurifyCastMs(grave?.phase ?? 'active')) / 1000,
+            cancel: player.abilities?.casting?.uninterruptible
+                ? ''
+                : tGame('game.world.interruptShortcut'),
+        })
     return undefined
 }
 
 function prayerPrice(preview: PrayerPreview): string {
     if (preview.cost?.healingManaFraction)
-        return `${Math.round(preview.cost.healingManaFraction * 100)}% максимальной MP за лечение; ${preview.cost.manaPerTarget} MP за другое чудо`
-    return `${preview.manaCost} MP${preview.abilityId === 'pray_woven' ? ' за цель' : ''}`
+        return tGame('game.world.mixedManaCost', {
+            percent: Math.round(preview.cost.healingManaFraction * 100),
+            mana: preview.cost.manaPerTarget,
+        })
+    return `${preview.manaCost} MP${preview.abilityId === 'pray_woven' ? tGame('game.world.perTarget') : ''}`
 }
 
 function prayerGift(
@@ -78,12 +96,12 @@ function prayerGift(
     const name =
         characters.find((actor) => actor.id === intent?.targetId)?.nickname ?? player.nickname
     const verbs = {
-        revive: 'Воскресить',
-        harm: 'Карающая волна',
-        ward: 'Сдержать нежить',
-        restore: 'Восстановить',
-        devotion: 'Помолиться',
-        purify_grave: 'Упокоить могилу',
+        revive: tGame('game.world.resurrect'),
+        harm: tGame('game.world.punishingWave'),
+        ward: tGame('game.world.repelUndead'),
+        restore: tGame('game.world.recoverResources'),
+        devotion: tGame('game.world.pray'),
+        purify_grave: tGame('game.world.cleanseGraveAction'),
     }
     const mode = intent?.mode ?? 'restore'
     const verb = verbs[mode]
@@ -93,9 +111,9 @@ function prayerGift(
 function collateralDescription(preview: PrayerPreview): string {
     return preview.harmfulTargets > 0
         ? [
-              `Волна: ${preview.harmfulTargets} целей`,
-              preview.includesAllies ? 'включая союзников' : '',
-              preview.includesSelf ? 'включая вас' : '',
+              tGame('game.world.targetsInWave', { count: preview.harmfulTargets }),
+              preview.includesAllies ? tGame('game.world.includingAllies') : '',
+              preview.includesSelf ? tGame('game.world.includingYou') : '',
           ]
               .filter(Boolean)
               .join(', ')

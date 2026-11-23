@@ -1,4 +1,7 @@
-import type { NpcQuestSocialSnapshot } from '@my-game-ratata/contracts'
+import {
+    npcQuestMessage,
+    type NpcQuestSocialSnapshot,
+} from '@my-game-ratata/contracts'
 
 import { cloneQuestOffer } from './npcQuestOffers'
 import type {
@@ -34,7 +37,7 @@ export function snapshotNpcQuests(
                 ? offer
                 : undefined
         ),
-        quest: job === undefined ? null : structuredClone(job.view),
+        quest: job === undefined ? null : snapshotQuest(job),
     }
 }
 
@@ -55,5 +58,11 @@ export function conversationNpcQuests(
                         .contractRoster(job.view.instanceId)
                         .members.has(recipientId))
         )
-        .map((job) => structuredClone(job.view))
+        .map(snapshotQuest)
+}
+
+function snapshotQuest(job: NpcQuestRecord) {
+    const view = structuredClone(job.view)
+    const noticeMessage = npcQuestMessage(view.notice)
+    return noticeMessage === undefined ? view : { ...view, noticeMessage }
 }

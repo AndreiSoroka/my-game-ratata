@@ -3,6 +3,7 @@ import './gameBar.css'
 
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { BarFill } from '@/shared/ui/common/bar-fill'
 import { BarTrack } from '@/shared/ui/common/bar-track'
 import { lightUiColors } from '@/shared/ui/theme'
@@ -15,7 +16,6 @@ const props = withDefaults(defineProps<GameBarProps>(), {
     trackColor: lightUiColors.bar.track,
     textColor: lightUiColors.bar.text,
     height: 24,
-    label: 'Прогресс',
     showValue: false,
     shadow: true,
 })
@@ -70,7 +70,7 @@ const valueText = computed(
         :data-shadow="shadow"
         :style="decoration"
         role="progressbar"
-        :aria-label="label"
+        :aria-label="label ?? tGame('game.world.progress')"
         :aria-valuemin="0"
         :aria-valuemax="progress.max"
         :aria-valuenow="progress.value"

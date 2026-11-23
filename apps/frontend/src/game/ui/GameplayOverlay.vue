@@ -5,6 +5,7 @@ import type {
     CharacterSnapshot,
     ClientMessage,
     GameEventPayload,
+    SpeechTranslationServerMessage,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -127,6 +128,9 @@ function blur(): void {
 function receive(event: GameEventPayload): void {
     speech.value?.receive(event)
 }
+function translate(translation: SpeechTranslationServerMessage): void {
+    speech.value?.translate(translation)
+}
 function assignItem(slot: number, itemId: 'food' | 'sapling'): void {
     hotbar.value?.assignItem(slot, itemId)
 }
@@ -186,6 +190,7 @@ onBeforeUnmount(() => {
     release()
 })
 defineExpose({
+    translate,
     selectedKey,
     selectedId,
     selectedGraveId,

@@ -10,6 +10,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import type { RatataGame } from '../runtime/ratataGame'
 import { gameKeyBlocked } from './keyboardOwnership'
 import MarkerPanel from './MarkerPanel.vue'
@@ -76,8 +78,9 @@ function control(
 }
 function actorName(actorId: string): string {
     return actorId === props.player.id
-        ? 'Мой персонаж'
-        : (automation.value.helpers.find((entry) => entry.actorId === actorId)?.name ?? 'Спутник')
+        ? tGame('game.automation.myCharacter')
+        : (automation.value.helpers.find((entry) => entry.actorId === actorId)?.name ??
+              tGame('game.automation.companion'))
 }
 watch(
     () => props.player.id,

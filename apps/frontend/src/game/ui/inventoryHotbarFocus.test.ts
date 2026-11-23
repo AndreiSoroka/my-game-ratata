@@ -39,7 +39,7 @@ it('assigns the focused apple before Enter and never substitutes a previously se
         expect(wrapper.find('.inventory-actions').exists()).toBe(true)
         wood.element.focus()
         await wood.trigger('keydown', { code: 'Digit4', shiftKey: true })
-        const empty = wrapper.get<HTMLButtonElement>('[aria-label="Empty slot 3"]')
+        const empty = wrapper.get<HTMLButtonElement>('[aria-label="Пустая ячейка 3"]')
         empty.element.focus()
         await empty.trigger('keydown', { code: 'Digit4', shiftKey: true })
         expect(wrapper.emitted('assignHotbar')).toHaveLength(1)

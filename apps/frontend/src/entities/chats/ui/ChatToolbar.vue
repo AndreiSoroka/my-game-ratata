@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import './chatButton.css'
 
+import { tGame } from '@/shared/lib/i18n'
 import { hudPanelButtonColors, UiButton, type UiButtonColors } from '@/shared/ui/common'
 import { lightUiColors } from '@/shared/ui/theme'
 
@@ -11,9 +12,9 @@ const filter = defineModel<ChatHistoryFilter>('filter', { default: 'all' })
 const collapsed = defineModel<boolean>('collapsed', { default: false })
 
 const channels = [
-    ['all', 'Все'],
-    ['say', 'Рядом'],
-    ['whisper', 'Личные'],
+    ['all', 'game.conversation.allChannels'],
+    ['say', 'game.conversation.nearbyChannel'],
+    ['whisper', 'game.conversation.privateChannel'],
 ] as const
 
 const activeButtonColors = {
@@ -28,7 +29,11 @@ const activeButtonColors = {
 
 <template>
     <header class="chat-toolbar">
-        <nav v-show="!collapsed" class="chat-toolbar__channels" aria-label="Каналы чата">
+        <nav
+            v-show="!collapsed"
+            class="chat-toolbar__channels"
+            :aria-label="tGame('game.conversation.chatChannels')"
+        >
             <UiButton
                 v-for="[channel, label] in channels"
                 :key="channel"
@@ -41,7 +46,7 @@ const activeButtonColors = {
                 :aria-pressed="filter === channel"
                 @click="filter = channel"
             >
-                {{ label }}
+                {{ tGame(label) }}
             </UiButton>
         </nav>
         <UiButton
@@ -52,7 +57,11 @@ const activeButtonColors = {
             :colors="hudPanelButtonColors"
             :aria-controls="historyId"
             :aria-expanded="!collapsed"
-            :aria-label="collapsed ? 'Развернуть историю чата' : 'Свернуть историю чата'"
+            :aria-label="
+                collapsed
+                    ? tGame('game.conversation.expandChatHistory')
+                    : tGame('game.conversation.collapseChatHistory')
+            "
             @click="collapsed = !collapsed"
         >
             {{ collapsed ? '+' : '−' }}

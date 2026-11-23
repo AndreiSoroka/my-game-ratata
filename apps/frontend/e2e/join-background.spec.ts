@@ -15,7 +15,7 @@ for (const mobile of [false, true]) {
         await expect(vanguard).toBeChecked()
         const bonuses = page.getByRole('region', { name: 'Постоянные бонусы прошлого' })
         await expect(bonuses).toContainText('+20 к здоровью')
-        await expect(bonuses).toContainText('50 HP · 120 энергии · 40 маны')
+        await expect(bonuses).toContainText('+20 к энергии')
         await vanguard.focus()
         await page.keyboard.press('ArrowRight')
         await expect(ranger).toBeChecked()
@@ -23,7 +23,7 @@ for (const mobile of [false, true]) {
         await expect(page.locator('#class-description')).toContainText('Опыт странствий')
         await expect(bonuses).toContainText('+10 к здоровью')
         await expect(bonuses).toContainText('+20% опыта созвездия «Стрела»')
-        await expect(bonuses).toContainText('40 HP · 120 энергии · 40 маны')
+        await expect(bonuses).toContainText('+20 к энергии')
         await page.keyboard.press('ArrowLeft')
         await expect(vanguard).toBeChecked()
         const boxes = await group.locator('.class-card').evaluateAll((cards) =>
@@ -36,6 +36,6 @@ for (const mobile of [false, true]) {
         expect(boxes.every((box) => box.x >= 0 && box.x + box.width <= (mobile ? 390 : 1280))).toBe(
             true
         )
-        await expect(group.locator('svg')).toHaveCount(4)
+        await expect(group.locator('svg[viewBox="0 0 48 48"]')).toHaveCount(4)
     })
 }

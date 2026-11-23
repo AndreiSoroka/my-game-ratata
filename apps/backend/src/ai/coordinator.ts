@@ -11,7 +11,11 @@ import { reviewNpcAiCity } from './cityReview'
 import { rememberAndGreet } from './coordinatorSocial'
 import { NpcAiTicks } from './coordinatorTicks'
 import { NpcAiDiagnostics } from './diagnostics'
-import { legacyNpcRequest, receiveNpcSpeech } from './dialogueReception'
+import {
+    heardSpeechLanguage,
+    legacyNpcRequest,
+    receiveNpcSpeech,
+} from './dialogueReception'
 import { npcReplyActivities, rememberHeardSpeech } from './memoryObservation'
 import { reviewNpcIdleActivity } from './npcAutonomy'
 import { buildNpcAiObservation } from './observation'
@@ -174,12 +178,21 @@ export class NpcAiCoordinator {
         event: Extract<import('./types').NpcAiEvent, { kind: 'message' }>,
         targetId?: string
     ): void {
-        rememberHeardSpeech(this.room, this.states, requester, event, targetId)
+        const hears = {
+            ...event,
+            language:
+                event.language ??
+                (event.system === true
+                    ? undefined
+                    : heardSpeechLanguage(event.text, this.states.values())) ??
+                this.room.localeFor(requester.id),
+        }
+        rememberHeardSpeech(this.room, this.states, requester, hears, targetId)
         receiveNpcSpeech(
             this.room,
             this.states,
             requester,
-            event,
+            hears,
             targetId,
             this.active,
             { room: this.room, diagnostics: this.diagnostics }

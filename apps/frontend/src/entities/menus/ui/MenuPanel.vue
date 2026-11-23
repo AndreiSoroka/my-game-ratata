@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import './menuPanel.css'
 
-import { useId } from 'vue'
+import { computed, useId } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiButton } from '@/shared/ui/common'
 import { FantasyBorder, FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
@@ -12,10 +13,9 @@ import type { MenuPanelHandle, MenuPanelProps } from './menuPanel'
 import { useMenuHighlight } from './useMenuHighlight'
 import { useMenuNavigation } from './useMenuNavigation'
 
-const props = withDefaults(defineProps<MenuPanelProps>(), {
-    title: 'Игровое меню',
-    description: 'Мир продолжает жить, пока открыто меню.',
-})
+const props = defineProps<MenuPanelProps>()
+const heading = computed(() => props.title ?? tGame('game.menu.dialog'))
+const hint = computed(() => props.description ?? tGame('game.world.liveWorldHint'))
 const emit = defineEmits<{ action: [id: string] }>()
 const instanceId = useId()
 const highlight = useMenuHighlight(() => props.items)
@@ -51,12 +51,12 @@ function hintId(index: number): string {
             >
                 <div class="menu-panel__scroll">
                     <header class="menu-panel__header">
-                        <h2>{{ title }}</h2>
-                        <p v-if="description">{{ description }}</p>
+                        <h2>{{ heading }}</h2>
+                        <p v-if="hint">{{ hint }}</p>
                     </header>
                     <nav
                         class="menu-panel__actions"
-                        :aria-label="title"
+                        :aria-label="heading"
                         @pointerenter="highlight.pointerEnter"
                         @pointermove="highlight.pointerMove"
                         @pointerleave="highlight.pointerLeave"

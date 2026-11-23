@@ -44,10 +44,11 @@ const moods: DeityMood[] = [
     'neutral',
     'wrathful',
 ]
-const hints: Record<DeityMood, string> = {
+const hints: Record<DeityMood | 'vague', string> = {
     benevolent: 'Знаки обещают благосклонность, но не дают гарантий.',
     neutral: 'Знаки противоречивы. Ответ божества неясен.',
     wrathful: 'В знаках чувствуется раздражение. Чуда можно не дождаться.',
+    vague: 'Знаки едва различимы. Воля божества непостижима.',
 }
 
 export function deityMood(deityId: DeityId, now: number): DeityMood {
@@ -106,14 +107,13 @@ export function snapshotDeity(
                 )
               : modifiers.otherDeityInsight
     const mood = deityMood(id, now)
+    const omen = insight >= 1 ? mood : 'vague'
     return {
         id,
         name: deityDefinitions[id].name,
         domain: deityDefinitions[id].domain,
-        omen:
-            insight >= 1
-                ? hints[mood]
-                : 'Знаки едва различимы. Воля божества непостижима.',
+        omen: hints[omen],
+        omenMessage: { key: `game.omen.${omen}` },
         perception:
             insight >= 4
                 ? 'precise'

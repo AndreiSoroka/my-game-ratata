@@ -52,6 +52,7 @@ function pausedContinuation() {
         id: 'accepted-errand',
         requesterId: 'player',
         request: 'Проведи к полям.',
+        language: 'ru',
         steps: 2,
     }
     const navigationFor = vi.fn()

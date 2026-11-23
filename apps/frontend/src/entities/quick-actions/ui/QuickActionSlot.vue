@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 
 import type { QuickAction } from '../model/quickAction'
@@ -13,7 +14,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ activate: []; assign: []; clear: [] }>()
 
-const label = computed(() => props.action?.label ?? 'Пусто')
+const label = computed(() => props.action?.label ?? tGame('game.world.emptyQuickSlot'))
 const description = computed(() => props.action?.description ?? label.value)
 const coolingDown = computed(() => (props.action?.cooldownMs ?? 0) > 0)
 const cooldownLabel = computed(() => ((props.action?.cooldownMs ?? 0) / 1000).toFixed(1))
@@ -21,8 +22,10 @@ const accessibleDescription = computed(() => {
     const quantity = props.action?.quantity
     return [
         description.value,
-        quantity === undefined ? undefined : `В наличии: ${quantity}`,
-        coolingDown.value ? `Восстановление: ${cooldownLabel.value} с` : undefined,
+        quantity === undefined ? undefined : tGame('game.world.quantityAvailable', { quantity }),
+        coolingDown.value
+            ? tGame('game.world.actionCooldown', { seconds: cooldownLabel.value })
+            : undefined,
     ]
         .filter(Boolean)
         .join(' · ')
@@ -80,9 +83,20 @@ const clearColors: UiButtonColors = {
             :data-unavailable="action?.unavailable || undefined"
             :aria-pressed="action?.active ?? false"
             :aria-disabled="disabled"
-            :aria-label="`${number}: ${label}. Shift+${number} — назначить`"
+            :aria-label="
+                tGame('game.world.assignActionHint', {
+                    number: number,
+                    label: label,
+                    shortcut: number,
+                })
+            "
             :aria-description="accessibleDescription"
-            :title="`${description} · Shift+${number}: назначить`"
+            :title="
+                tGame('game.world.assignActionDescription', {
+                    description: description,
+                    number: number,
+                })
+            "
             @click="activate"
             @contextmenu.prevent="!blocked && emit('assign')"
         >
@@ -104,7 +118,7 @@ const clearColors: UiButtonColors = {
                 v-if="action?.repeat !== undefined"
                 class="hotbar-auto"
                 :title="action.repeat"
-                aria-label="Автоповтор"
+                :aria-label="tGame('game.world.autoRepeat')"
                 >↻</span
             >
             <small v-if="action?.quantity !== undefined" class="quick-action-slot__quantity">{{
@@ -118,8 +132,8 @@ const clearColors: UiButtonColors = {
             class="hotbar-clear"
             border="border-015"
             :colors="clearColors"
-            :aria-label="`Очистить слот ${number}`"
-            :title="`Очистить слот ${number}`"
+            :aria-label="tGame('game.world.clearSlotNumber', { number: number })"
+            :title="tGame('game.world.clearSlotNumber', { number: number })"
             @click.stop="emit('clear')"
         >
             ×

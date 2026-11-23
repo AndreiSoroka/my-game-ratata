@@ -139,6 +139,7 @@ describe('inhabited city interiors', () => {
         expect(service.snapshot(hero.id).dialogue?.choices).toContainEqual({
             id: 'repair',
             label: 'Почини моё снаряжение',
+            labelMessage: { key: 'authored.dialogue.repair' },
         })
         expect(service.snapshot(hero.id).dialogue?.text).toContain('Игнат')
         service.grantGoldOnce(hero.id, 100, 'test-payment')

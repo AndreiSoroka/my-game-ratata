@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { tGame } from '@/shared/lib/i18n'
+
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 const props = defineProps<{
@@ -21,19 +23,21 @@ const style = computed(() => ({
         :class="{ available }"
         :style="style"
         role="region"
-        aria-label="Посадка дерева"
+        :aria-label="tGame('game.world.treePlanting')"
         data-world-pointer-owner
     >
         <GameFrame variant="panel" />
-        <strong>{{ approaching ? 'Посадка дерева' : 'Выберите участок' }}</strong>
+        <strong>{{
+            approaching ? tGame('game.world.treePlanting') : tGame('game.world.choosePlot')
+        }}</strong>
         <p role="status">{{ status }}</p>
         <div>
             <GameButton v-if="!approaching" :data-available="available" @click="emit('confirm')">
-                Посадить · F / Enter
+                {{ tGame('game.world.plantFEnter') }}
             </GameButton>
-            <GameButton @click="emit('cancel')">Отмена · Esc</GameButton>
+            <GameButton @click="emit('cancel')">{{ tGame('game.world.cancelEsc') }}</GameButton>
         </div>
-        <small v-if="!approaching">Стрелки · Касание выбирает, повторное — сажает</small>
+        <small v-if="!approaching">{{ tGame('game.world.arrowKeysTapChooseTap') }}</small>
     </section>
 </template>
 <style scoped>

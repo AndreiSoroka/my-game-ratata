@@ -1,4 +1,6 @@
-import { GRID_SIZE, REGION_NAME } from '@my-game-ratata/contracts'
+import { GRID_SIZE } from '@my-game-ratata/contracts'
+
+import { gameLocale, tGame } from '@/shared/lib/i18n'
 
 export interface RegionLoreContent {
     regionName: string
@@ -9,25 +11,17 @@ export interface RegionLoreContent {
     invitation: string
 }
 
-export const regionLoreContent: RegionLoreContent = {
-    regionName: REGION_NAME,
-    locationCount: GRID_SIZE * GRID_SIZE,
-    headingFirstLine: 'Новогород',
-    headingSecondLine: 'и дальние земли',
-    description:
-        'Почему твоя Искра пробудилась именно в этом теле, погребённом у часовни Новогорода? Расспроси жителей о прежних жизнях и найди попутчика, чтобы вместе выйти за городские ворота.',
-    invitation:
-        'Искра живёт в персонаже, пока с ним связан разум. Эхо следует привычкам и повторяет знакомые дела. Собирайте свои сценарии и договаривайтесь о помощи.',
-}
-
-const locationCountRules = new Intl.PluralRules('ru')
-const locationCountNouns: Partial<Record<Intl.LDMLPluralRule, string>> = {
-    one: 'ЛОКАЦИЯ',
-    few: 'ЛОКАЦИИ',
-    other: 'ЛОКАЦИИ',
+export function defaultRegionLore(): RegionLoreContent {
+    return {
+        regionName: tGame('game.join.region'),
+        locationCount: GRID_SIZE * GRID_SIZE,
+        headingFirstLine: tGame('game.join.city'),
+        headingSecondLine: tGame('game.join.distantLands'),
+        description: tGame('game.join.story'),
+        invitation: tGame('game.join.invitation'),
+    }
 }
 
 export function formatLocationCount(count: number): string {
-    const noun = locationCountNouns[locationCountRules.select(count)] ?? 'ЛОКАЦИЙ'
-    return `${count} ${noun}`
+    return tGame('game.join.locations', count).toLocaleUpperCase(gameLocale.value)
 }

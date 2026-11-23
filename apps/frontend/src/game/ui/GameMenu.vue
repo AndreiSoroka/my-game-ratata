@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { isGameLocale } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { type MenuItem, MenuPanel, type MenuPanelHandle } from '@/entities/menus'
+import { gameLocale, gameLocaleNames, gameLocales, setGameLocale, tGame } from '@/shared/lib/i18n'
 import { menuKeyboardInput } from '@/shared/lib/input'
 
 import {
@@ -35,28 +37,49 @@ const muted = ref(isAudioMuted())
 const npcVoiceEnabled = ref(isNpcVoiceEnabled())
 const forcedMute = isAudioMuteForced()
 const items = computed<readonly MenuItem[]>(() => [
-    { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },
-    { id: 'character', label: 'Персонаж', key: 'P', disabled: !props.automationAvailable },
-    { id: 'inventory', label: 'Инвентарь', key: 'I', disabled: !props.inventoryAvailable },
-    { id: 'markers', label: 'Метки', disabled: !props.automationAvailable },
-    { id: 'scenarios', label: 'Сценарии', disabled: !props.automationAvailable },
+    { id: 'resume', label: tGame('game.menu.resume'), variant: 'primary' },
+    {
+        id: 'character',
+        label: tGame('game.menu.character'),
+        key: 'P',
+        disabled: !props.automationAvailable,
+    },
+    {
+        id: 'inventory',
+        label: tGame('game.menu.inventory'),
+        key: 'I',
+        disabled: !props.inventoryAvailable,
+    },
+    { id: 'markers', label: tGame('game.menu.markers'), disabled: !props.automationAvailable },
+    { id: 'scenarios', label: tGame('game.menu.scenarios'), disabled: !props.automationAvailable },
     {
         id: 'sound',
-        label: `Звук: ${muted.value ? 'выключен' : 'включён'}`,
-        ariaLabel: 'Без звука',
+        label: tGame(muted.value ? 'game.menu.soundOff' : 'game.menu.soundOn'),
+        ariaLabel: tGame('game.menu.muted'),
         pressed: muted.value,
         disabled: forcedMute,
     },
     {
         id: 'npc-voice',
-        label: `Озвучка NPC: ${npcVoiceEnabled.value ? 'включена' : 'выключена'}`,
-        ariaLabel: 'Озвучка NPC',
+        label: tGame(npcVoiceEnabled.value ? 'game.menu.npcVoiceOn' : 'game.menu.npcVoiceOff'),
+        ariaLabel: tGame('game.menu.npcVoice'),
         pressed: npcVoiceEnabled.value,
         disabled: forcedMute,
     },
-    { id: 'leave', label: 'Выйти из игры', variant: 'danger', dividerBefore: true },
+    ...gameLocales.map((locale) => ({
+        id: locale,
+        label: gameLocaleNames[locale],
+        ariaLabel: `${tGame('game.menu.language')}: ${gameLocaleNames[locale]}`,
+        pressed: gameLocale.value === locale,
+        dividerBefore: locale === 'ru',
+    })),
+    { id: 'leave', label: tGame('game.menu.leave'), variant: 'danger', dividerBefore: true },
 ])
 function activate(id: string): void {
+    if (isGameLocale(id)) {
+        setGameLocale(id)
+        return
+    }
     if (id === 'sound') {
         if (!forcedMute) setAudioMuted(!muted.value)
         return
@@ -128,7 +151,7 @@ onMounted(async () => {
             class="game-menu"
             role="dialog"
             aria-modal="true"
-            aria-label="Игровое меню"
+            :aria-label="tGame('game.menu.dialog')"
             tabindex="-1"
             @keydown.stop="keydown"
             @keyup.stop

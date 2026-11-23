@@ -10,6 +10,7 @@ import {
 import { computed } from 'vue'
 
 import { healthBarPercent, healthText } from '@/entities/player-vitals'
+import { tGame } from '@/shared/lib/i18n'
 
 import { graveName } from './graveInteractions'
 
@@ -23,7 +24,9 @@ const remaining = computed(() =>
     Math.max(0, (props.grave.restoresAt ?? props.serverTime) - props.serverTime)
 )
 function percent(impact: MaterialImpact): string {
-    return `${MATERIAL_DAMAGE_MULTIPLIERS[props.grave.material][impact] * 100}% урона`
+    return tGame('game.world.damagePercent', {
+        percent: MATERIAL_DAMAGE_MULTIPLIERS[props.grave.material][impact] * 100,
+    })
 }
 function duration(ms: number): string {
     const seconds = Math.ceil(ms / 1000)
@@ -32,7 +35,7 @@ function duration(ms: number): string {
 </script>
 
 <template>
-    <section class="grave-details" aria-label="Состояние могилы">
+    <section class="grave-details" :aria-label="tGame('game.world.graveCondition')">
         <div class="grave-details__heading">
             <strong>{{ graveName(grave) }}</strong>
             <span v-if="grave.health.kind === 'exact'">{{ healthText(grave.health) }} HP</span>
@@ -40,16 +43,20 @@ function duration(ms: number): string {
         <progress
             :value="healthBarPercent(grave.health)"
             :max="100"
-            aria-label="Прочность могилы"
+            :aria-label="tGame('game.world.graveDurability')"
         />
-        <p v-if="grave.phase === 'ruined'">Восстановится через {{ duration(remaining) }}</p>
-        <p v-else-if="grave.phase === 'purified'">Источник нежити очищен навсегда.</p>
-        <p v-else>Источник скелетов · камень</p>
+        <p v-if="grave.phase === 'ruined'">
+            {{ tGame('game.world.restoresIn') }} {{ duration(remaining) }}
+        </p>
+        <p v-else-if="grave.phase === 'purified'">
+            {{ tGame('game.world.sourceUndeathHasBeenCleansed') }}
+        </p>
+        <p v-else>{{ tGame('game.world.skeletonSourceStone') }}</p>
         <div
             v-if="grave.purification"
             class="grave-purification"
             role="progressbar"
-            aria-label="Очищение могилы"
+            :aria-label="tGame('game.world.graveCleansing')"
             :aria-valuenow="grave.purification.completed"
             :aria-valuemin="0"
             :aria-valuemax="grave.purification.required"
@@ -69,27 +76,28 @@ function duration(ms: number): string {
                 />
             </svg>
             <span
-                >Очищение: {{ grave.purification.completed }} /
+                >{{ tGame('game.world.cleansing') }} {{ grave.purification.completed }} /
                 {{ grave.purification.required }}</span
             >
         </div>
         <template v-if="!compact && grave.phase !== 'purified'">
             <dl class="grave-details__resistance">
-                <dt>Кирка</dt>
+                <dt>{{ tGame('game.world.pickaxe') }}</dt>
                 <dd>{{ percent('stone_tool') }}</dd>
-                <dt>Оружие</dt>
+                <dt>{{ tGame('game.world.weapon') }}</dt>
                 <dd>{{ percent('weapon') }}</dd>
-                <dt>Магия</dt>
+                <dt>{{ tGame('game.world.magic') }}</dt>
                 <dd>{{ percent('arcane') }}</dd>
-                <dt>Кулаки</dt>
+                <dt>{{ tGame('game.world.fists') }}</dt>
                 <dd>{{ percent('unarmed') }}</dd>
-                <dt>Стрелы</dt>
+                <dt>{{ tGame('game.world.arrows') }}</dt>
                 <dd>{{ percent('projectile') }}</dd>
             </dl>
             <p class="grave-details__hint">
-                Очищение: {{ prayer?.manaCost ?? GRAVE_PURIFY_MANA_COST }} MP ·
-                {{ (prayer?.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000 }} с без движения.
-                Esc — прервать.
+                {{ tGame('game.world.cleansing') }}
+                {{ prayer?.manaCost ?? GRAVE_PURIFY_MANA_COST }} MP ·
+                {{ (prayer?.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000 }}
+                {{ tGame('game.world.sWithoutMovingEscInterrupt') }}
             </p>
         </template>
     </section>
