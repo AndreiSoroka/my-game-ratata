@@ -1,27 +1,35 @@
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
-import { npcCommandCapabilities } from './commandValidation'
-import { npcDecisionAudienceError } from './decisionAudience'
+import { observedNpcCommandCapabilities } from './commandCapabilities'
 import type { NpcAiDiagnostics } from './diagnostics'
-import { finishOfferRequest, rememberDialogueReply } from './dialogueMemory'
+import { rememberDialogueReply } from './dialogueMemory'
 import { applyNpcCompanionOrder, consumeNpcWait } from './dialogueOrders'
 import {
     abortDialogueTrade,
     beginAcceptedNpcTask,
     dialogueReplyConsumed,
-    recordDialogueAction,
     replySpeech,
 } from './dialogueResult'
+import { applyNpcSocialReply } from './dialogueSocialReply'
 import { speakNpcDialogue } from './dialogueSpeech'
 import { acceptsNpcTask, validateNpcDialogueReply } from './dialogueValidation'
-import { npcQuestExecutionContext } from './questPresentation'
+import type { NpcAiObservation } from './observationTypes'
 import { reportNpcRequestStatus } from './requestStatus'
 export { dialogueKey } from './dialogueResult'
 import { type NpcAiActorState, npcAiBusyFor } from './runtimeState'
+import { isNpcSelfDecision, type NpcSelfDecision } from './selfDecisions'
+import {
+    finishNpcTravelStatus,
+    reportDialogueSelfDecision,
+} from './selfDecisionSession'
 import type { NpcAiEvent, NpcAiReply } from './types'
 
 type Heard = Extract<NpcAiEvent, { kind: 'message' }>
+type ApplySelfDecision = (
+    decision: NpcSelfDecision,
+    event: Heard
+) => import('../game/agentDecisions').AgentDecisionResult
 
 export class NpcAiDialogue {
     private readonly claims = new Map<string, string>()
@@ -35,8 +43,18 @@ export class NpcAiDialogue {
         return this.claims.get(id)
     }
 
-    public commandCapabilities(state: NpcAiActorState, now: number) {
-        return npcCommandCapabilities(this.room, this.companions, state, now)
+    public commandCapabilities(
+        state: NpcAiActorState,
+        observation: NpcAiObservation,
+        now: number
+    ) {
+        return observedNpcCommandCapabilities(
+            this.room,
+            this.companions,
+            state,
+            observation,
+            now
+        )
     }
 
     public abortTrade(state: NpcAiActorState, now: number): void {
@@ -47,14 +65,22 @@ export class NpcAiDialogue {
         state: NpcAiActorState,
         actor: GameCharacter,
         reply: NpcAiReply,
-        now: number
+        now: number,
+        applySelfDecision: ApplySelfDecision
     ): boolean {
         const event = state.dialogue
         if (event === undefined) {
             return false
         }
         state.dialogue = undefined
-        return this.replyToMessage(state, actor, event, reply, now)
+        return this.replyToMessage(
+            state,
+            actor,
+            event,
+            reply,
+            now,
+            applySelfDecision
+        )
     }
 
     private replyToMessage(
@@ -62,7 +88,8 @@ export class NpcAiDialogue {
         actor: GameCharacter,
         event: Heard,
         reply: NpcAiReply,
-        now: number
+        now: number,
+        applySelfDecision: ApplySelfDecision
     ): boolean {
         const wantsTask = acceptsNpcTask(event, reply)
         const requester = validateNpcDialogueReply(
@@ -77,6 +104,22 @@ export class NpcAiDialogue {
         )
         if (requester === undefined) {
             return true
+        }
+        if (isNpcSelfDecision(reply.decision)) {
+            const result = applySelfDecision(reply.decision, event)
+            reportDialogueSelfDecision(
+                this.room,
+                this.diagnostics,
+                state,
+                event,
+                reply.decision,
+                result,
+                now
+            )
+            return (
+                !result.accepted ||
+                this.publishReply(state, event, reply, false, now)
+            )
         }
         if (
             wantsTask &&
@@ -93,19 +136,6 @@ export class NpcAiDialogue {
             )
             return true
         }
-        reportNpcRequestStatus(
-            this.room,
-            this.diagnostics,
-            state,
-            wantsTask
-                ? 'accepted'
-                : reply.taskAcceptance === 'decline'
-                  ? 'declined'
-                  : 'completed',
-            now,
-            undefined,
-            event
-        )
         return this.publishReply(state, event, reply, wantsTask, now)
     }
 
@@ -119,9 +149,32 @@ export class NpcAiDialogue {
         const actor = state.actor
         if (
             actor === undefined ||
-            !this.applySocialReply(state, event, reply, actor, now)
+            !applyNpcSocialReply(
+                this.room,
+                this.diagnostics,
+                state,
+                event,
+                reply,
+                actor,
+                now
+            )
         ) {
             return true
+        }
+        if (!isNpcSelfDecision(reply.decision)) {
+            reportNpcRequestStatus(
+                this.room,
+                this.diagnostics,
+                state,
+                wantsTask
+                    ? 'accepted'
+                    : reply.taskAcceptance === 'decline'
+                      ? 'declined'
+                      : 'completed',
+                now,
+                undefined,
+                event
+            )
         }
         const text = replySpeech(reply)
         rememberDialogueReply(state, event, reply)
@@ -148,64 +201,6 @@ export class NpcAiDialogue {
             reply.decision !== null &&
             this.room.social.isDecision(reply.decision)
         return dialogueReplyConsumed(state, reply, wantsTask, socialHandled)
-    }
-
-    private applySocialReply(
-        state: NpcAiActorState,
-        event: Heard,
-        reply: NpcAiReply,
-        actor: GameCharacter,
-        now: number
-    ): boolean {
-        if (
-            reply.decision !== null &&
-            this.room.social.isDecision(reply.decision)
-        ) {
-            const error = npcDecisionAudienceError(
-                this.room,
-                reply.decision,
-                actor.id,
-                event.senderId
-            )
-            const result =
-                state.config.mode === 'dialogue_only'
-                    ? {
-                          accepted: false,
-                          error: 'Я могу объяснить известное мне, но не принимаю такое действие.',
-                          events: [],
-                      }
-                    : error === undefined
-                      ? this.room.social.decide(
-                            actor,
-                            reply.decision,
-                            now,
-                            npcQuestExecutionContext(state, reply, event)
-                        )
-                      : { accepted: false, error, events: [] }
-            recordDialogueAction(
-                this.diagnostics,
-                state,
-                event,
-                reply.decision,
-                result,
-                now
-            )
-            this.room.publishEvents(result.events)
-            finishOfferRequest(state, event, reply.decision, result.accepted)
-            if (!result.accepted) {
-                reportNpcRequestStatus(
-                    this.room,
-                    this.diagnostics,
-                    state,
-                    'failed',
-                    now,
-                    result.error ?? 'Действие отклонено.',
-                    event
-                )
-                return false
-            }
-        }
-        return true
     }
 
     private accept(
@@ -265,6 +260,13 @@ export class NpcAiDialogue {
                 state.token
             )
         }
+        finishNpcTravelStatus(
+            this.room,
+            this.diagnostics,
+            state,
+            'cancelled',
+            now
+        )
         beginAcceptedNpcTask(state, event, reply, requester, now)
         return true
     }

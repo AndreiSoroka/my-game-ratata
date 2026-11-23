@@ -13,7 +13,7 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
     const decision =
         input['decision'] === null
             ? null
-            : parseAgentDecision(normalizeProviderDecision(input['decision']))
+            : parseNpcDecision(normalizeProviderDecision(input['decision']))
     if (
         decision === undefined ||
         (decision?.type === 'use_ability' &&
@@ -35,6 +35,38 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
         ...(offerService === undefined ? {} : { offerService }),
         ...(diagnostics === undefined ? {} : { diagnostics }),
     }
+}
+
+function parseNpcDecision(input: unknown): NpcAiReply['decision'] | undefined {
+    if (isObject(input)) {
+        switch (input['type']) {
+            case 'travel_to':
+                return validDecisionId(input['targetKey']) &&
+                    typeof input['inviteEscort'] === 'boolean'
+                    ? {
+                          type: 'travel_to',
+                          targetKey: input['targetKey'],
+                          inviteEscort: input['inviteEscort'],
+                      }
+                    : undefined
+            case 'leave_companion':
+                return { type: 'leave_companion' }
+            case 'propose_follow':
+            case 'start_following':
+                return validDecisionId(input['targetId'])
+                    ? { type: input['type'], targetId: input['targetId'] }
+                    : undefined
+        }
+    }
+    return parseAgentDecision(input)
+}
+
+function validDecisionId(input: unknown): input is string {
+    return (
+        typeof input === 'string' &&
+        input.trim().length > 0 &&
+        input.length <= 100
+    )
 }
 
 function parseServiceOffer(input: unknown): NpcServiceOffer | null | undefined {
@@ -142,6 +174,11 @@ const allowedDecisionTypes = new Set([
     'move_to',
     'use_ability',
     'guide',
+    'travel_to',
+    'leave_companion',
+    'propose_follow',
+    'start_following',
+    'attack',
     'interact',
     'dialogue_choice',
     'speak',

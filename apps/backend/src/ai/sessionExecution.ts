@@ -6,16 +6,16 @@ import { snapshotCharacterRoute } from '../game/characterRoute'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { npcAiDecisionError } from './actions'
+import { trackNpcAiAttack } from './attackResolution'
 import { npcDecisionAudienceError } from './decisionAudience'
 import { npcDecisionExchangeError } from './decisionExchange'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { beginNpcGuide } from './guide'
-import { attributeNpcSpeech } from './memorySpeechAttribution'
-import { replySpeechLanguage } from './npcSpeechLanguage'
 import { reportNpcRequestStatus } from './requestStatus'
 import { enqueueNpcAiEvent, type NpcAiActorState } from './runtimeState'
 import {
     addressedDecision,
+    publishNpcDecisionResult,
     rememberNpcInspection,
     rememberNpcMerchant,
 } from './sessionMemory'
@@ -54,19 +54,34 @@ export class NpcAiExecution {
             exchangeError === undefined
                 ? this.decide(state, actor, decision, now)
                 : { accepted: false, error: exchangeError, events: [] }
-        this.publishResult(state, reply, decision, result, now)
+        publishNpcDecisionResult(this.room, state, reply, decision, result, now)
         const id = this.id('action')
-        if (result.accepted && decision.type === 'move_to') {
-            reportNpcRequestStatus(
-                this.room,
-                this.diagnostics,
-                state,
-                'started',
-                now
-            )
-            this.trackMovement(state, actor, decision, reply, id, now)
+        if (
+            result.accepted &&
+            this.trackPendingAction(state, actor, decision, reply, id, now)
+        ) {
             return
         }
+        this.resolveImmediateAction(
+            state,
+            actor,
+            reply,
+            decision,
+            result,
+            id,
+            now
+        )
+    }
+
+    private resolveImmediateAction(
+        state: NpcAiActorState,
+        actor: GameCharacter,
+        reply: NpcAiReply,
+        decision: AgentDecision,
+        result: AgentDecisionResult,
+        id: string,
+        now: number
+    ): void {
         this.recordResult(state, decision, result, id, now)
         if (!result.accepted) {
             reportNpcRequestStatus(
@@ -88,27 +103,41 @@ export class NpcAiExecution {
         }
     }
 
-    private publishResult(
+    private trackPendingAction(
         state: NpcAiActorState,
-        reply: NpcAiReply,
+        actor: GameCharacter,
         decision: AgentDecision,
-        result: AgentDecisionResult,
+        reply: NpcAiReply,
+        id: string,
         now: number
-    ): void {
-        if (decision.type === 'speak') {
-            const language = replySpeechLanguage(this.room, state, reply, now)
-            const targetId = state.task?.requesterId ?? decision.targetId
-            for (const event of result.events) {
-                if (event.kind !== 'chat') {
-                    continue
-                }
-                event.language = language
-                if (targetId !== undefined) {
-                    attributeNpcSpeech(event, targetId)
-                }
-            }
+    ): boolean {
+        if (decision.type === 'move_to') {
+            this.trackMovement(state, actor, decision, reply, id, now)
+        } else if (
+            decision.type === 'attack' &&
+            trackNpcAiAttack(state, actor, decision, reply, id)
+        ) {
+            this.diagnostics.record({
+                actorId: actor.id,
+                taskId: state.task?.id ?? '',
+                request: state.task?.request ?? '',
+                category: 'action_started',
+                action: decision,
+                reason: 'attack_started',
+                receiptId: id,
+                at: now,
+            })
+        } else {
+            return false
         }
-        this.room.publishEvents(result.events)
+        reportNpcRequestStatus(
+            this.room,
+            this.diagnostics,
+            state,
+            'started',
+            now
+        )
+        return true
     }
 
     private guide(

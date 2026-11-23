@@ -55,7 +55,12 @@ export class RoomLoop {
         context.room.social.npcSpeech.turns.advance(now)
         ai?.beforeTick(now)
         context.onEvents(context.life.ashRites.advance(now))
-        advanceRoomSimulation({ ...context, now, deltaMs })
+        advanceRoomSimulation({
+            ...context,
+            now,
+            deltaMs,
+            observeAttackResolution: ai?.observeAttackResolution,
+        })
         if (!this.refreshPresence()) {
             ai?.afterTick(now)
         }

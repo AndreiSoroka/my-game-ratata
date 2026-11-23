@@ -1,27 +1,39 @@
-import type { AgentDecision, Vector2 } from '@my-game-ratata/contracts'
+import type { AgentDecision } from '@my-game-ratata/contracts'
 
 import type { AgentDecisionResult } from '../game/agentDecisions'
 import type { GameCharacter } from '../game/character'
 import { snapshotCharacterRoute } from '../game/characterRoute'
 import type { CompanionService } from '../game/companions'
 import { distance } from '../game/math'
-import { visibilityRadius } from '../game/queries'
 import { regionalRoute } from '../game/regionalNavigation'
 import type { GameRoom } from '../game/room'
-import { npcAiDecisionError } from './actions'
 import {
     crossGuideExit,
+    guideProximity,
+    type GuideView,
     moveGuide,
+    moveTripLeg,
     planGuideLeg,
     receiveGuideCrossing,
 } from './guideNavigation'
-import type { NpcAiGuide } from './guideState'
+import { guideReceipt, type NpcAiGuide } from './guideState'
 export type { NpcAiGuide } from './guideState'
-import { npcGuideTargetError, resolveNpcGuideGoal } from './guideTargets'
+import {
+    npcGuideTargetError,
+    npcSelfTravelTargetError,
+    resolveNpcGuideGoal,
+} from './guideTargets'
 import type { NpcAiActorState } from './runtimeState'
+import {
+    reconcileSelfTravel,
+    releasePreviousCompanion,
+    reviseSelfTravel,
+} from './selfTravel'
+export { stopNpcSelfTravelEscort } from './selfTravel'
 import type { NpcAiEvent } from './types'
 
 type GuideDecision = Extract<AgentDecision, { type: 'guide' }>
+type TravelDecision = Extract<AgentDecision, { type: 'travel_to' }>
 
 export function beginNpcGuide(
     room: GameRoom,
@@ -31,17 +43,61 @@ export function beginNpcGuide(
     id: string,
     now: number
 ): AgentDecisionResult {
-    const actor = state.actor
-    if (
-        actor === undefined ||
-        state.task?.requesterId == null ||
-        state.token === undefined
-    ) {
+    if (state.task?.requesterId == null) {
         return rejected(
             'Для сопровождения нужны принявший поручение NPC и собеседник.'
         )
     }
-    const error = npcGuideTargetError(
+    return beginTrip(room, companions, state, decision, id, now)
+}
+
+export function beginNpcSelfTravel(
+    room: GameRoom,
+    companions: CompanionService,
+    state: NpcAiActorState,
+    decision: TravelDecision,
+    id: string,
+    now: number,
+    escortId?: string
+): AgentDecisionResult {
+    const currentTrip = state.guide
+    const invitedEscort = decision.inviteEscort ? escortId : undefined
+    if (
+        currentTrip?.decision.type === 'travel_to' &&
+        currentTrip.decision.targetKey === decision.targetKey
+    ) {
+        return reviseSelfTravel(
+            companions,
+            state,
+            currentTrip,
+            decision,
+            id,
+            now,
+            invitedEscort
+        )
+    }
+    return beginTrip(room, companions, state, decision, id, now, invitedEscort)
+}
+
+function beginTrip(
+    room: GameRoom,
+    companions: CompanionService,
+    state: NpcAiActorState,
+    decision: GuideDecision | TravelDecision,
+    id: string,
+    now: number,
+    escortId?: string
+): AgentDecisionResult {
+    const actor = state.actor
+    const token = state.token
+    if (actor === undefined || token === undefined) {
+        return rejected('Персонаж сейчас не может отправиться в путь.')
+    }
+    const checkTarget =
+        decision.type === 'travel_to'
+            ? npcSelfTravelTargetError
+            : npcGuideTargetError
+    const error = checkTarget(
         room,
         actor,
         state.config.role,
@@ -66,27 +122,22 @@ export function beginNpcGuide(
         locationId: actor.locationId,
         destination: { ...actor.position },
         deadline: now + Math.max(180_000, route.length * 120_000),
+        ...(escortId === undefined ? {} : { escortId }),
     }
-    const planningError = planGuideLeg(room, state, actor, guide, now)
+    const planningError = planGuideLeg(room, actor, guide, now)
     if (planningError !== undefined) {
         return rejected(planningError)
     }
-    if (guide.exit === undefined) {
-        const policyError = npcAiDecisionError(
-            actor,
-            state.config.role,
-            { type: 'move_to', target: guide.destination },
-            room.navigationFor(actor)
-        )
-        if (policyError !== undefined) {
-            return rejected(policyError)
-        }
+    const result = moveTripLeg(room, companions, state, actor, guide, now)
+    if (!result.accepted) {
+        return result
     }
-    companions.setModelControlExclusive(actor, state.token, true, now)
-    const result = moveGuide(room, companions, state, actor, guide, now)
-    if (result.accepted) {
-        state.guide = guide
+    companions.setModelControlExclusive(actor, token, true, now)
+    if (decision.type === 'travel_to') {
+        releasePreviousCompanion(companions, actor)
     }
+    state.pending = undefined
+    state.guide = guide
     return result
 }
 
@@ -102,18 +153,44 @@ export function reconcileNpcGuide(
     if (guide === undefined || actor === undefined) {
         return undefined
     }
+    const crossed = actor.locationId !== guide.locationId
     if (
         guideExpired(guide, now) ||
         !receiveGuideCrossing(room, companions, state, actor, guide, now)
     ) {
-        return receipt(
+        return guideReceipt(
             guide,
             'failed',
-            'Сопровождение прервано: истекло время или изменилась локация.',
+            guide.decision.type === 'travel_to'
+                ? 'Поездка прервана: истекло время или изменилась локация.'
+                : 'Сопровождение прервано: истекло время или изменилась локация.',
             now
         )
     }
-    const view = guideProximity(room, state, actor, now)
+    if (guide.decision.type === 'travel_to') {
+        return reconcileSelfTravel(
+            room,
+            companions,
+            state,
+            actor,
+            guide,
+            now,
+            crossed
+        )
+    }
+    return reconcileGuidedTrip(room, companions, state, actor, guide, now)
+}
+
+function reconcileGuidedTrip(
+    room: GameRoom,
+    companions: CompanionService,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    guide: NpcAiGuide,
+    now: number
+): NpcAiEvent | undefined {
+    const requester = room.getCharacter(state.task?.requesterId ?? '')
+    const view = guideProximity(room, requester, actor, now)
     rememberCrossingGrace(guide, actor, view, now)
     if (mustWait(guide, view, now)) {
         return pauseGuide(room, companions, state, guide, actor, now)
@@ -124,7 +201,7 @@ export function reconcileNpcGuide(
         }
         const error = resumeGuide(room, companions, state, guide, actor, now)
         if (error !== undefined) {
-            return receipt(guide, 'failed', error, now)
+            return guideReceipt(guide, 'failed', error, now)
         }
     }
     if (crossGuideExit(room, companions, state, actor, guide, now)) {
@@ -133,11 +210,6 @@ export function reconcileNpcGuide(
     return guideArrival(guide, actor, view.range, now)
 }
 
-interface GuideView {
-    visible: boolean
-    range: number
-    position?: Vector2
-}
 function guideExpired(guide: NpcAiGuide, now: number): boolean {
     return now >= guide.deadline || now >= (guide.legDeadline ?? guide.deadline)
 }
@@ -145,34 +217,6 @@ function mustWait(guide: NpcAiGuide, view: GuideView, now: number): boolean {
     const crossing =
         guide.exit !== undefined && now < (guide.crossingGraceUntil ?? 0)
     return (!view.visible || view.range > 80) && !crossing
-}
-function guideProximity(
-    room: GameRoom,
-    state: NpcAiActorState,
-    actor: GameCharacter,
-    now: number
-): GuideView {
-    const requester = room.getCharacter(state.task?.requesterId ?? '')
-    if (
-        requester === undefined ||
-        !requester.alive ||
-        requester.locationId !== actor.locationId
-    ) {
-        return { visible: false, range: Infinity }
-    }
-    const range = distance(actor.position, requester.position)
-    const visible =
-        range <= visibilityRadius(actor, requester, 80, now) &&
-        room
-            .navigationFor(actor)
-            .hasLineOfSight(actor.position, requester.position)
-    return visible
-        ? {
-              visible: true,
-              range,
-              position: { ...requester.position },
-          }
-        : { visible: false, range: Infinity }
 }
 function rememberCrossingGrace(
     guide: NpcAiGuide,
@@ -210,7 +254,12 @@ function pauseGuide(
         state.pending = undefined
     }
     return now - guide.waitingSince >= 60_000
-        ? receipt(guide, 'failed', 'Собеседник не вернулся к проводнику.', now)
+        ? guideReceipt(
+              guide,
+              'failed',
+              'Собеседник не вернулся к проводнику.',
+              now
+          )
         : undefined
 }
 function resumeGuide(
@@ -224,7 +273,7 @@ function resumeGuide(
     delete guide.waitingSince
     if (guide.awaitingPartner === true) {
         guide.awaitingPartner = false
-        const error = planGuideLeg(room, state, actor, guide, now)
+        const error = planGuideLeg(room, actor, guide, now)
         if (error !== undefined) {
             return error
         }
@@ -241,32 +290,17 @@ function guideArrival(
 ): NpcAiEvent | undefined {
     if (distance(actor.position, guide.destination) <= 1) {
         return guide.exit === undefined && range <= 48
-            ? receipt(guide, 'completed', 'arrived_with_requester', now)
+            ? guideReceipt(guide, 'completed', 'arrived_with_requester', now)
             : undefined
     }
     return snapshotCharacterRoute(actor)?.route === undefined
-        ? receipt(
+        ? guideReceipt(
               guide,
               'failed',
               'Путь к месту заблокирован или отменён.',
               now
           )
         : undefined
-}
-function receipt(
-    guide: NpcAiGuide,
-    status: 'completed' | 'failed',
-    reason: string,
-    now: number
-): NpcAiEvent {
-    return {
-        kind: 'action',
-        id: guide.id,
-        decision: guide.decision,
-        status,
-        reason,
-        at: now,
-    }
 }
 function rejected(error: string): AgentDecisionResult {
     return { accepted: false, error, events: [] }

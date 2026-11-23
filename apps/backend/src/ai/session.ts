@@ -1,4 +1,3 @@
-import { agentSpeech } from '../game/agentSpeech'
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
@@ -8,14 +7,19 @@ import { replySpeech } from './dialogueResult'
 import { completeNpcBackgroundPresentation } from './questPresentation'
 import { reportNpcRequestStatus } from './requestStatus'
 import {
+    clearNpcActiveTask,
     enqueueNpcAiEvent,
     interruptInference,
-    npcAiActorAvailable,
     type NpcAiActorState,
 } from './runtimeState'
+import {
+    applyNpcBackgroundSelfDecision,
+    commitNpcSelfDecision,
+    finishNpcTravelStatus,
+} from './selfDecisionSession'
 import { NpcAiExecution } from './sessionExecution'
-import { failNpcTurn } from './sessionFailure'
-import { publishNpcAiFeedback } from './sessionFeedback'
+import { failNpcTurn, rejectNpcReply } from './sessionFailure'
+import { recordNpcAiFeedback } from './sessionFeedback'
 import {
     concludingTaskSpeech,
     rememberNpcReply,
@@ -67,12 +71,56 @@ export class NpcAiSessionActions {
                 done: true,
             }
         }
-        publishNpcAiFeedback(this, this.diagnostics, state, reply, now)
+        recordNpcAiFeedback(
+            state,
+            this.diagnostics,
+            reply.diagnostics ?? [],
+            now
+        )
         const conversational = state.dialogue !== undefined
-        if (this.dialogue.respond(state, actor, reply, now)) {
+        if (
+            this.dialogue.respond(state, actor, reply, now, (decision, heard) =>
+                commitNpcSelfDecision(
+                    this.room,
+                    this.companions,
+                    this.diagnostics,
+                    state,
+                    actor,
+                    decision,
+                    this.id('self-action'),
+                    now,
+                    heard
+                )
+            )
+        ) {
             if (state.task === null) {
                 this.release(state, now)
             }
+            return
+        }
+        this.applyTaskReply(state, actor, reply, now, conversational)
+    }
+
+    private applyTaskReply(
+        state: NpcAiActorState,
+        actor: GameCharacter,
+        reply: NpcAiReply,
+        now: number,
+        conversational: boolean
+    ): void {
+        if (
+            applyNpcBackgroundSelfDecision(
+                this.room,
+                this.companions,
+                this.diagnostics,
+                state,
+                actor,
+                reply,
+                this.id,
+                now,
+                (accepted) => this.finish(state, now, reply.waitMs, accepted)
+            )
+        ) {
             return
         }
         if (state.task === null) {
@@ -112,7 +160,12 @@ export class NpcAiSessionActions {
 
     private wait(state: NpcAiActorState, reply: NpcAiReply, now: number): void {
         if (reply.done) {
-            this.finish(state, now, reply.waitMs)
+            this.finish(
+                state,
+                now,
+                reply.waitMs,
+                state.task?.lastAttackFailed !== true
+            )
         } else {
             state.nextAt =
                 now + Math.max(1_000, Math.min(300_000, reply.waitMs))
@@ -131,21 +184,9 @@ export class NpcAiSessionActions {
         events: NpcAiEvent[],
         now: number
     ): void {
-        if (state.retry >= 1) {
-            if (state.dialogue !== undefined) {
-                this.room.social.npcSpeech.fail(state.dialogue, now)
-            }
-            reportNpcRequestStatus(
-                this.room,
-                this.diagnostics,
-                state,
-                'failed',
-                now,
-                error
-            )
-        }
         failNpcTurn(
             this,
+            this.room,
             this.diagnostics,
             this.config,
             state,
@@ -160,62 +201,15 @@ export class NpcAiSessionActions {
         issue: NpcReplyIssue,
         now: number
     ): void {
-        const event = state.dialogue
-        const text =
-            issue === 'speech_language'
-                ? 'Не удалось подготовить ответ на языке разговора.'
-                : 'Сейчас не получилось начать поручение.'
-        this.diagnostics.record({
-            actorId: state.config.actorId,
-            taskId: event?.id ?? state.task?.id ?? '',
-            request: event?.text ?? state.task?.request ?? '',
-            category: 'action_rejected',
-            reason: issue,
-            at: now,
-        })
-        reportNpcRequestStatus(
+        rejectNpcReply(
+            this,
             this.room,
             this.diagnostics,
+            this.config,
             state,
-            'failed',
-            now,
-            text,
-            event
+            issue,
+            now
         )
-        if (event !== undefined) {
-            this.room.social.npcSpeech.fail(event, now)
-            state.dialogue = undefined
-            state.retry = 0
-            if (state.task === null) {
-                this.release(state, now)
-            }
-        } else {
-            this.finish(state, now, this.config.limits.reviewIntervalMs, false)
-        }
-    }
-
-    public say(
-        state: NpcAiActorState,
-        recipientId: string,
-        text: string,
-        now: number
-    ): void {
-        const actor = state.actor
-        if (!npcAiActorAvailable(actor)) {
-            return
-        }
-        const decision = { type: 'speak' as const, text, targetId: recipientId }
-        const result =
-            state.token === undefined
-                ? agentSpeech(actor, decision, this.room, now)
-                : this.companions.decide(
-                      actor,
-                      decision,
-                      this.room,
-                      now,
-                      state.token
-                  )
-        this.room.publishEvents(result.events)
     }
 
     public finishWithNotice(
@@ -250,11 +244,14 @@ export class NpcAiSessionActions {
             )
         }
         this.release(state, now)
-        state.task = null
-        state.events = []
-        state.pending = undefined
-        state.guide = undefined
-        state.reportedDiagnostics.clear()
+        finishNpcTravelStatus(
+            this.room,
+            this.diagnostics,
+            state,
+            completed ? 'completed' : 'failed',
+            now
+        )
+        clearNpcActiveTask(state)
         state.reviewAt =
             now + Math.max(this.config.limits.reviewIntervalMs, waitMs)
     }
@@ -269,12 +266,15 @@ export class NpcAiSessionActions {
             'Поручение отменено.'
         )
         interruptInference(state)
-        state.pending = undefined
-        state.guide = undefined
-        state.task = null
-        state.events = []
+        finishNpcTravelStatus(
+            this.room,
+            this.diagnostics,
+            state,
+            'cancelled',
+            now
+        )
+        clearNpcActiveTask(state)
         state.inbox = []
-        state.reportedDiagnostics.clear()
         this.release(state, now)
     }
 

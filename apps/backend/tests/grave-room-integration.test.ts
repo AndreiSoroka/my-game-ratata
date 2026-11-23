@@ -2,15 +2,20 @@ import {
     CENTER_LOCATION_ID,
     type ClientMessage,
     GRAVE_PURIFY_CAST_MS,
+    HUMAN_MELEE_RULES,
     type ServerMessage,
 } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { parseNpcAiConfig } from '../src/ai/config'
+import { buildNpcAiObservation } from '../src/ai/observation'
+import { grantRetaliation } from '../src/game/crimeRelations'
 import { createItemInstance } from '../src/game/inventory'
 import { magicAttackWindingUp } from '../src/game/magicState'
 import { NavigationService } from '../src/game/navigation'
-import { GameRoom } from '../src/game/room'
+import { GameRoom, type GameRoomOptions } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
+import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
 
 afterEach(() => {
     vi.useRealTimers()
@@ -18,8 +23,12 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 const target = { kind: 'grave', id: 'test-grave' } as const
+const leiaId = 'npc_princess_1'
 
-function fixture(heroClass: 'cleric' | 'ranger' = 'cleric') {
+function fixture(
+    heroClass: 'cleric' | 'ranger' = 'cleric',
+    options?: GameRoomOptions
+) {
     vi.stubGlobal('Bun', { env: {} })
     vi.useFakeTimers()
     vi.setSystemTime(10000)
@@ -43,7 +52,7 @@ function fixture(heroClass: 'cleric' | 'ranger' = 'cleric') {
             slimeHabitats: [],
         },
     })
-    const room = new GameRoom(navigation)
+    const room = new GameRoom(navigation, options)
     const messages: ServerMessage[] = []
     const socket = {
         send(text: string) {
@@ -74,6 +83,205 @@ function fixture(heroClass: 'cleric' | 'ranger' = 'cleric') {
     }
     return { room, actor, send, grave, graveHp, messages }
 }
+
+function nearbyLeia(room: GameRoom) {
+    const leia = room.getCharacter(leiaId)
+    if (leia === undefined) {
+        throw new Error('Missing Leia fixture')
+    }
+    leia.position = { x: 90, y: 72 }
+    return leia
+}
+
+function leiaModelFixture() {
+    const provider = controlledNpcProvider()
+    const config = parseNpcAiConfig(
+        {
+            proactive: false,
+            npcs: [{ actorId: leiaId, role: 'companion' }],
+        },
+        true
+    )
+    const f = fixture('cleric', { ai: { config, provider } })
+    const leia = nearbyLeia(f.room)
+    f.actor.position.x = 80
+    return { ...f, provider, leia }
+}
+
+it('lets Leia make explicit strikes with her normal combat capability', () => {
+    const f = fixture()
+    const leia = nearbyLeia(f.room)
+    f.actor.position.x = 80
+    f.room.start()
+    try {
+        expect(leia.soul.companion?.canFight).toBe(false)
+        expect(leia.abilities.known.has('pray_road')).toBe(true)
+        expect(leia.abilities.known.has('pray')).toBe(false)
+        const attack = { type: 'attack', target } as const
+        const characterAttack = {
+            type: 'attack',
+            targetId: f.actor.id,
+        } as const
+        expect(f.room.decideForAgent(leiaId, characterAttack).accepted).toBe(
+            false
+        )
+        expect(f.room.decideForAgent(leiaId, attack).accepted).toBe(true)
+        expect(f.room.decideForAgent(leiaId, attack).accepted).toBe(false)
+        expect(f.graveHp()).toBe(100)
+        vi.advanceTimersByTime(HUMAN_MELEE_RULES.cycleMs + 50)
+        expect(f.graveHp()).toBeLessThan(100)
+
+        grantRetaliation(leia, f.actor, Date.now() + 5_000)
+        expect(f.room.decideForAgent(leiaId, characterAttack).accepted).toBe(
+            true
+        )
+        vi.advanceTimersByTime(HUMAN_MELEE_RULES.cycleMs + 50)
+        expect(
+            f.messages.some(
+                (message) =>
+                    message.type === 'event' &&
+                    message.event.kind === 'damage' &&
+                    message.event.actorId === leiaId &&
+                    message.event.targetId === f.actor.id
+            )
+        ).toBe(true)
+    } finally {
+        f.room.stop()
+    }
+})
+
+it('offers Leia only earned attack targets and a reachable approach to a distant grave', () => {
+    const f = fixture()
+    const leia = nearbyLeia(f.room)
+    const observed = () =>
+        buildNpcAiObservation(
+            f.room,
+            leia,
+            'companion',
+            Date.now()
+        ).targets.find(
+            (entry) => entry.kind === 'grave' && entry.id === target.id
+        )
+    expect(observed()?.commands).toEqual([{ type: 'attack', target }])
+    expect(observed()?.details['health']).toMatchObject({ kind: 'percent' })
+    leia.position.x = 60
+    expect(observed()?.commands).toEqual([
+        { type: 'move_to', target: { x: 95, y: 72 } },
+    ])
+    vi.spyOn(f.room.navigationFor(leia), 'hasLineOfSight').mockReturnValue(
+        false
+    )
+    expect(observed()).toBeUndefined()
+})
+
+it.each([
+    { status: 'completed', reason: 'attack_hit' },
+    { status: 'failed', reason: 'attack_missed' },
+])(
+    'reports $reason only when the authoritative attack resolves',
+    async ({ status, reason }) => {
+        const f = leiaModelFixture()
+        const { leia, provider } = f
+        f.room.start()
+        try {
+            f.send({
+                type: 'companion_request',
+                request: 'talk',
+                targetId: leiaId,
+                text: 'Покажи, как ударить по камню.',
+            })
+            await vi.advanceTimersByTimeAsync(100)
+            expect(provider.turns).toHaveLength(1)
+            expect(
+                provider.turns[0]?.context.commandCapabilities?.canFight
+            ).toBe(true)
+            const decision = { type: 'attack', target } as const
+            provider.turns[0]?.resolve(
+                npcReply(decision, {
+                    taskAcceptance: 'accept',
+                    speech: 'Попробую ударить.',
+                    done: false,
+                })
+            )
+            await vi.advanceTimersByTimeAsync(50)
+            expect(leia.pendingAttack?.target).toEqual(target)
+            expect(provider.turns).toHaveLength(1)
+            expect(f.graveHp()).toBe(100)
+            if (status === 'failed') {
+                const navigation = f.room.navigationFor(leia)
+                const original = navigation.hasLineOfSight.bind(navigation)
+                vi.spyOn(navigation, 'hasLineOfSight').mockImplementation(
+                    (from, to) =>
+                        (to.x !== 104 || to.y !== 72) && original(from, to)
+                )
+            }
+            await vi.advanceTimersByTimeAsync(HUMAN_MELEE_RULES.cycleMs + 50)
+            if (status === 'completed') {
+                expect(f.graveHp()).toBeLessThan(100)
+            } else {
+                expect(f.graveHp()).toBe(100)
+            }
+            expect(provider.turns[1]?.context.events).toContainEqual(
+                expect.objectContaining({
+                    kind: 'action',
+                    status,
+                    reason,
+                    decision,
+                })
+            )
+        } finally {
+            f.room.stop()
+        }
+    }
+)
+
+it('reports a landed strike that a barrier fully absorbs as blocked', async () => {
+    const f = leiaModelFixture()
+    f.actor.abilities.known.add('barrier')
+    grantRetaliation(f.leia, f.actor, Date.now() + 5_000)
+    f.room.start()
+    try {
+        f.send({ type: 'use_ability', abilityId: 'barrier' })
+        const decision = { type: 'attack', targetId: f.actor.id } as const
+        f.send({
+            type: 'whisper',
+            targetId: leiaId,
+            text: 'Попробуй ударить по моему барьеру.',
+        })
+        await vi.advanceTimersByTimeAsync(100)
+        expect(f.actor.abilities.barrier).not.toBeNull()
+        expect(f.provider.turns).toHaveLength(1)
+        expect(
+            f.provider.turns[0]?.context.observation.targets.find(
+                (entry) => entry.id === f.actor.id
+            )?.commands
+        ).toContainEqual(decision)
+        f.provider.turns[0]?.resolve(
+            npcReply(decision, {
+                taskAcceptance: 'accept',
+                speech: 'Попробую ударить.',
+                done: false,
+            })
+        )
+        await vi.advanceTimersByTimeAsync(50)
+        expect(
+            f.leia.pendingAttack?.targetId,
+            JSON.stringify(f.provider.turns[1]?.context.replyCorrection)
+        ).toBe(f.actor.id)
+        await vi.advanceTimersByTimeAsync(HUMAN_MELEE_RULES.cycleMs + 50)
+        expect(f.actor.hp).toBe(f.actor.maxHp)
+        expect(f.provider.turns[1]?.context.events).toContainEqual(
+            expect.objectContaining({
+                kind: 'action',
+                status: 'failed',
+                reason: 'attack_blocked',
+                decision,
+            })
+        )
+    } finally {
+        f.room.stop()
+    }
+})
 
 it('delays a Quick Shot while held movement pauses, then releases it from the aimed position', () => {
     const f = fixture('ranger')

@@ -57,6 +57,7 @@ export interface NpcAiTask {
     language?: GameLocale
     steps: number
     lastKnownRequester?: { locationId: string; position: Vector2 }
+    lastAttackFailed?: boolean
     /** A completed guide permits one closing reply, never another physical step. */
     concluding?: boolean
 }
@@ -79,6 +80,7 @@ export type NpcAiEvent =
           position: Vector2
           at: number
           focus?: SpeechFocus
+          exchangeOffer?: import('../game/npcExchangeDiscussion').NpcExchangeOffer
           actorPosition?: Vector2
           actorLocationId?: string
       }
@@ -126,6 +128,17 @@ export interface NpcAiContext extends NpcConversationFeedback {
     commandCapabilities?: {
         canFollow: boolean
         canFight: boolean
+        companionOrder?: import('@my-game-ratata/contracts').CompanionOrder
+        followingSpeaker?: boolean
+        travel?: {
+            mode: 'guide' | 'solo' | 'escorted'
+            targetKey: string
+        }
+        followInitiative?: Array<{
+            targetId: string
+            canPropose: boolean
+            canStart: boolean
+        }>
         serviceOffers?: ReadonlyArray<
             import('../game/npcRoster').NpcServiceOffer
         >

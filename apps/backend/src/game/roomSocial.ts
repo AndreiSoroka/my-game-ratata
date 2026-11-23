@@ -10,7 +10,7 @@ import type { NpcAiCoordinator } from '../ai/coordinator'
 import type { AdventureService } from './adventure'
 import type { AgentDecisionResult } from './agentDecisions'
 import type { GameCharacter } from './character'
-import { ExchangeService } from './exchange'
+import type { ExchangeService } from './exchange'
 import { isNpcQuestClient, isNpcQuestDecision } from './npcQuestCommands'
 import { NpcQuestService } from './npcQuests'
 import type { NpcQuestDecisionContext } from './npcQuestTypes'
@@ -20,7 +20,7 @@ import type { GameRoom } from './room'
 import { RoomCommunication } from './roomCommunication'
 import { RoomNpcContacts } from './roomNpcContacts'
 import { RoomQuestDialogues } from './roomQuestDialogues'
-import { decideSocialExchange, isExchange } from './roomSocialExchange'
+import { createRoomExchange, isExchange } from './roomSocialExchange'
 import { handleSocialSpeech } from './roomSocialSpeech'
 import {
     createRoomSocialSnapshot,
@@ -35,12 +35,19 @@ import { workerActivity } from './workerActivity'
 export class RoomSocial {
     public readonly whispers: WhisperService
     public readonly exchanges: ExchangeService
+    public readonly exchangeAcceptanceProblem: ReturnType<
+        typeof createRoomExchange
+    >['acceptanceProblem']
+    public readonly recordExchangeInquiry: ReturnType<
+        typeof createRoomExchange
+    >['recordInquiry']
     public readonly quests: NpcQuestService
     private readonly questDialogues: RoomQuestDialogues
     private readonly communication: RoomCommunication
     public readonly npcSpeech: RoomNpcContacts
     private readonly wake: ReturnType<typeof createSocialWake>
     private readonly tradeViews = new TradeNotifications()
+    private readonly exchange: ReturnType<typeof createRoomExchange>
 
     public constructor(
         private readonly room: GameRoom,
@@ -51,6 +58,10 @@ export class RoomSocial {
     ) {
         this.wake = createSocialWake(room, ai)
         this.communication = new RoomCommunication(room, ai)
+        this.exchange = createRoomExchange(room, adventure, ai, this.wake)
+        this.exchanges = this.exchange.service
+        this.exchangeAcceptanceProblem = this.exchange.acceptanceProblem
+        this.recordExchangeInquiry = this.exchange.recordInquiry
         this.whispers = new WhisperService({
             getCharacter: (id) => room.getCharacter(id),
             navigationFor: (actor) => room.navigationFor(actor),
@@ -64,34 +75,13 @@ export class RoomSocial {
             translate: (...args) =>
                 room.speechTranslations.privateSpeech(...args),
         })
-        this.npcSpeech = new RoomNpcContacts(room, adventure, this.whispers, ai)
-        this.exchanges = new ExchangeService({
-            getCharacter: (id) => room.getCharacter(id),
-            navigationFor: (actor) => room.navigationFor(actor),
-            aiDialogue: (actor) =>
-                this.ai()?.configured(actor.id) === true &&
-                npcDialogueMode(actor.id) !== 'passive',
-            canControlAI: (actor, now) =>
-                this.ai()?.canControl(actor.id, now) === true,
-            walletFor: (id) => adventure.walletFor(id),
-            onInvite: (actorId, partnerId, _id, now) =>
-                this.wake(
-                    partnerId,
-                    actorId,
-                    'Приглашение к добровольному обмену. Проверь окно обмена и реши, согласиться ли.',
-                    now
-                ),
-            onInvitationAccepted: (inviterId, inviteeId, now) => {
-                if (this.ai()?.configured(inviterId) === true) {
-                    this.wake(
-                        inviterId,
-                        inviteeId,
-                        'Собеседник принял твоё приглашение к обмену. Проверь текущие условия и реши следующий шаг.',
-                        now
-                    )
-                }
-            },
-        })
+        this.npcSpeech = new RoomNpcContacts(
+            room,
+            adventure,
+            this.whispers,
+            ai,
+            this.exchange.recordSpeech
+        )
         this.quests = new NpcQuestService({
             adventure,
             parties,
@@ -217,7 +207,7 @@ export class RoomSocial {
             )
         }
         if (isExchange(decision)) {
-            return decideSocialExchange(this.exchanges, actor, decision, now)
+            return this.exchange.decide(actor, decision, now)
         }
         if (isNpcQuestDecision(decision)) {
             return this.quests.handleDecision(actor, decision, now, context)
@@ -267,12 +257,7 @@ export class RoomSocial {
                 exchange !== null &&
                 this.tradeViews.changed(actor.id, exchange)
             ) {
-                this.wake(
-                    actor.id,
-                    exchange.partnerId,
-                    'Изменились подтверждённые сервером условия обмена. Проверь их и реши следующий шаг.',
-                    now
-                )
+                this.exchange.notifyChange(actor, exchange, now)
             }
         }
     }

@@ -42,6 +42,7 @@ export interface NpcAiTarget {
         | 'world'
         | 'resource'
         | 'farm'
+        | 'grave'
     id: string
     name: string
     position: Vector2

@@ -112,13 +112,14 @@ export class CompanionAssistance {
 
     public readonly releaseAssistance = (
         actorId: string,
-        npc: GameCharacter
+        npc: GameCharacter,
+        options?: { preserveMovement: boolean }
     ): boolean => {
         const state = this.stateFor(npc)
         if (state.leaderId !== actorId) {
             return false
         }
-        release(npc, state)
+        release(npc, state, options?.preserveMovement)
         return true
     }
 

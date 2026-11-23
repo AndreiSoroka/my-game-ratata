@@ -15,7 +15,6 @@ import { activeBarrier, knowsAbility } from './abilityState'
 import { resolvedActionCosts } from './autoActionCosts'
 import {
     availableActor,
-    canFight,
     legalPrayerTarget,
     untargetedAction,
     visibleTarget,
@@ -33,6 +32,7 @@ import {
     isInAttackGeometry,
     isInZones,
 } from './combatGeometry'
+import { canUseCombat } from './combatPermission'
 import { canAttackCharacter } from './combatTargets'
 import { effectiveAbility } from './effectiveParameters'
 import { activeMagicChannel } from './magicState'
@@ -243,7 +243,7 @@ function refusesAutoCombat(
     action: CombatAction,
     context: AbilityContext
 ): boolean {
-    if (canFight(actor)) {
+    if (canUseCombat(actor)) {
         return false
     }
     if (action.kind === 'prayer') {

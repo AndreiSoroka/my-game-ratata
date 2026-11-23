@@ -1,7 +1,5 @@
 import type { NpcAiDiagnostics } from './diagnostics'
 import type { NpcAiActorState } from './runtimeState'
-import type { NpcAiSessionActions } from './session'
-import type { NpcAiReply } from './types'
 import type { NpcAiDiagnostic } from './types'
 
 /** A report is model evidence; only the separate action receipt proves an outcome. */
@@ -38,13 +36,4 @@ export function recordNpcAiFeedback(
         }
     }
     return comment
-}
-export function publishNpcAiFeedback(
-    _session: Pick<NpcAiSessionActions, 'say' | 'dialogue'>,
-    diagnostics: NpcAiDiagnostics,
-    state: NpcAiActorState,
-    reply: NpcAiReply,
-    now: number
-): void {
-    recordNpcAiFeedback(state, diagnostics, reply.diagnostics ?? [], now)
 }

@@ -1,4 +1,5 @@
 import type { NpcAiCoordinator } from '../ai/coordinator'
+import type { NpcExchangeOffer } from './npcExchangeDiscussion'
 import type { GameRoom } from './room'
 
 /** System notices wake the correct pair without inventing a human utterance. */
@@ -11,7 +12,8 @@ export function createSocialWake(
         targetId: string,
         senderId: string,
         text: string,
-        now: number
+        now: number,
+        exchangeOffer?: NpcExchangeOffer
     ): void => {
         const actor = room.getCharacter(senderId)
         if (actor === undefined) {
@@ -26,6 +28,7 @@ export function createSocialWake(
                 text,
                 channel: 'whisper',
                 system: true,
+                ...(exchangeOffer === undefined ? {} : { exchangeOffer }),
                 locationId: actor.locationId,
                 position: { ...actor.position },
                 at: now,

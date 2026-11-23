@@ -14,6 +14,7 @@ import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import { canObserveRoomCharacter } from './characterSight'
 import { isTargetInAttackRange } from './combat'
+import { canUseCombat } from './combatPermission'
 import { canAttackCharacter } from './combatTargets'
 import { companionProfiles } from './companionProfiles'
 import { canTargetByFaction } from './factions'
@@ -153,7 +154,7 @@ export function allowedMode(
     now: number
 ): boolean {
     return mode === 'attack'
-        ? canAttackCharacter(actor, target, now) && canFight(actor)
+        ? canAttackCharacter(actor, target, now) && canUseCombat(actor)
         : !canTargetByFaction(actor, target, now)
 }
 

@@ -27,6 +27,7 @@ import {
     buildAttackZones,
     isInAttackGeometry,
 } from './combatGeometry'
+import { allowsSharedCombat } from './combatPermission'
 import { consumeRunicShot } from './constellations'
 import {
     effectiveAbility,
@@ -244,8 +245,5 @@ function abilityReady(
     )
 }
 function ready({ actor, now }: AttackContext): boolean {
-    return (
-        availableToStartAttack(actor, now) &&
-        actor.soul.companion?.canFight !== false
-    )
+    return availableToStartAttack(actor, now) && allowsSharedCombat(actor)
 }

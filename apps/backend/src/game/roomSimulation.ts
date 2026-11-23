@@ -31,6 +31,13 @@ export interface SimulationContext {
     nicknames: Map<string, string>
     life: RoomLife
     now: number
+    observeAttackResolution?:
+        | ((
+              actor: GameCharacter,
+              actionId: string,
+              events: readonly GameEventPayload[]
+          ) => void)
+        | undefined
     onEvents: (events: GameEventPayload[]) => void
     parties: PartyService
     theft: TheftService
@@ -233,6 +240,7 @@ function resolveWorldAttack(
     context: SimulationContext
 ): void {
     const { characters, world, now, onEvents } = context
+    const pending = character.pendingAttack
     const location = world.get(character.locationId)
     const targets = [...characters.values()].filter(
         (target) =>
@@ -248,6 +256,16 @@ function resolveWorldAttack(
         navigation: location.navigation,
         tileSize: location.navigation.grid.tileWidth,
     })
+    if (
+        pending?.actionId !== undefined &&
+        character.pendingAttack !== pending
+    ) {
+        context.observeAttackResolution?.(
+            character,
+            pending.actionId,
+            hitEvents
+        )
+    }
     const lootEvents = location.inventory.dropLootForDeaths(hitEvents, (id) =>
         characters.get(id)
     )

@@ -62,6 +62,10 @@ export type AgentDecision =
     | { type: 'move'; axis: { x: number; y: number } }
     | { type: 'move_to'; target: { x: number; y: number }; append?: boolean }
     | { type: 'guide'; targetKey: string }
+    | { type: 'travel_to'; targetKey: string; inviteEscort: boolean }
+    | { type: 'leave_companion' }
+    | { type: 'propose_follow'; targetId: string }
+    | { type: 'start_following'; targetId: string }
     | {
           type: 'attack'
           targetId?: string

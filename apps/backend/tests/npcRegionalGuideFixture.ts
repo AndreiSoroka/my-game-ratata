@@ -5,6 +5,7 @@ import {
     type NpcAiDiagnosticRecord,
     NpcAiDiagnostics,
 } from '../src/ai/diagnostics'
+import { knownGuidePlaces } from '../src/ai/guideTargets'
 import type { NpcAiContext } from '../src/ai/types'
 import { NavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
@@ -12,8 +13,19 @@ import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 export const guideRoadY = 1064
+export const regionalTavern = {
+    id: 'three-roads',
+    name: 'Таверна «Три дороги»',
+    bounds: { x: 64, y: 832, width: 48, height: 216 },
+    entry: { x: 88, y: 1048 },
+    interior: { x: 88, y: 856 },
+}
 
-export function regionalGuideFixture(playerFirst = false, fromId = 'map-2-2') {
+export function regionalGuideFixture(
+    playerFirst = false,
+    fromId = 'map-2-2',
+    actorId = 'npc_magic_slime_1'
+) {
     const width = 32
     const height = 72
     const navigation = new NavigationService({
@@ -24,6 +36,7 @@ export function regionalGuideFixture(playerFirst = false, fromId = 'map-2-2') {
         tileHeight: 16,
         solidLayerNames: [],
         solid: Array<boolean>(width * height).fill(false),
+        buildings: [regionalTavern],
         // Put the road well south of the ordinary encounter spawns on this fixture.
         landmarks: [
             {
@@ -46,23 +59,25 @@ export function regionalGuideFixture(playerFirst = false, fromId = 'map-2-2') {
     const config = parseNpcAiConfig(
         {
             defaults: { timeoutMs: 10_000 },
-            npcs: [{ actorId: 'npc_magic_slime_1', role: 'companion' }],
+            npcs: [{ actorId, role: 'companion' }],
         },
         true
     )
     const startAt = Date.now()
     const timeScale = 5
+    const now = () => startAt + (Date.now() - startAt) * timeScale
     const advance = (ms = 250) => vi.advanceTimersByTimeAsync(ms / timeScale)
     const room = new GameRoom(navigation, {
-        ai: { config, provider, diagnostics, clock: Date.now },
-        worldClock: () => startAt + (Date.now() - startAt) * timeScale,
+        ai: { config, provider, diagnostics, clock: now },
+        worldClock: now,
     })
     const alice = joinScenarioRoom(room, 'Regional guide player')
-    const actor = room.getCharacter('npc_magic_slime_1')
+    const actor = room.getCharacter(actorId)
     if (actor === undefined) {
-        throw new Error('Missing Kaplya')
+        throw new Error(`Missing ${actorId}`)
     }
     // Unit setup only: all subsequent travel is resolved by normal commands and simulation.
+    knownGuidePlaces(actor, room.navigationFor(actor))
     actor.locationId = fromId
     alice.actor.locationId = fromId
     actor.position = { x: 56, y: guideRoadY }

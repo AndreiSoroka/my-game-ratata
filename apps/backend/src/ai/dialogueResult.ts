@@ -30,6 +30,14 @@ export function dialogueKey(event: Heard): string {
     return event.channel === 'whisper' ? `whisper:${event.senderId}` : 'say'
 }
 
+export function hasTaskContext(state: NpcAiActorState): boolean {
+    return (
+        state.dialogue === undefined ||
+        (dialogueKey(state.dialogue) === state.task?.audienceKey &&
+            state.task.requesterId === state.dialogue.senderId)
+    )
+}
+
 export function replySpeech(reply: NpcAiReply): string | null {
     const speech =
         reply.speech ??
@@ -67,6 +75,7 @@ export function beginAcceptedNpcTask(
     now: number
 ): void {
     state.pending = undefined
+    state.attack = undefined
     state.guide = undefined
     state.events = []
     state.task =

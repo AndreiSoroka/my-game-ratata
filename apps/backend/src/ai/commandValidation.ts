@@ -1,10 +1,7 @@
+import type { AgentDecision } from '@my-game-ratata/contracts'
+
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
-import {
-    isConversationOnly,
-    npcCanOfferService,
-    npcServiceOffers,
-} from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
 import { npcAiDecisionError } from './actions'
 import { npcDecisionAudienceError } from './decisionAudience'
@@ -16,81 +13,18 @@ import {
     npcSpeechLanguageProblem,
     replySpeechLanguage,
 } from './npcSpeechLanguage'
+import { npcAiObservedAttackError } from './observation'
 import { npcQuestPresentationProblem } from './questPresentation'
 import { type NpcAiActorState, npcAiBusyFor } from './runtimeState'
+import {
+    isNpcSelfDecision,
+    npcSelfDecisionProblem,
+    soloTravelPromiseProblem,
+} from './selfDecisions'
 import { npcSelfReferenceProblem } from './speechSelfReference'
 import type { NpcReplyProblem } from './turnInformation'
-import type { NpcAiContext, NpcAiReply } from './types'
-
-export function npcCommandCapabilities(
-    room: GameRoom,
-    companions: CompanionService,
-    state: NpcAiActorState,
-    now: number
-): NonNullable<NpcAiContext['commandCapabilities']> | undefined {
-    const actor = state.actor
-    if (actor === undefined) {
-        return undefined
-    }
-    const { canFight, canFollow } = companions.capabilities(actor)
-    const partner = room.getCharacter(
-        state.dialogue?.senderId ?? state.task?.requesterId ?? ''
-    )
-    const dialogueOnly = isConversationOnly(
-        state.config.role,
-        state.config.mode
-    )
-    const serviceOffers = npcServiceOffers.filter((service) =>
-        npcCanOfferService(actor.id, service)
-    )
-    return {
-        canFight: !dialogueOnly && canFight,
-        canFollow: !dialogueOnly && canFollow,
-        serviceOffers,
-        movementScope: dialogueOnly
-            ? 'none'
-            : state.config.role === 'city_coordinator'
-              ? 'city'
-              : 'region',
-        orders: dialogueOnly
-            ? {}
-            : allowedOrders(room, companions, actor, partner, now),
-    }
-}
-
-function allowedOrders(
-    room: GameRoom,
-    companions: CompanionService,
-    actor: GameCharacter,
-    partner: GameCharacter | undefined,
-    now: number
-): NonNullable<NpcAiContext['commandCapabilities']>['orders'] {
-    if (partner === undefined) {
-        return {}
-    }
-    const orders: NonNullable<NpcAiContext['commandCapabilities']>['orders'] =
-        {}
-    const context = npcAssistanceContext(room)
-    for (const request of [
-        'follow',
-        'help',
-        'guard',
-        'wait',
-        'dismiss',
-    ] as const) {
-        const check = companions.checkOrder(
-            partner,
-            actor,
-            { type: 'companion_request', targetId: actor.id, request },
-            now,
-            context
-        )
-        orders[request] = check.accepted
-            ? { allowed: true }
-            : { allowed: false, reason: check.reason }
-    }
-    return orders
-}
+import type { NpcAiReply } from './types'
+export { npcCommandCapabilities } from './commandCapabilities'
 
 /** Pure validation, repeated on the simulation tick immediately before commit. */
 export function npcCommandProblem(
@@ -114,7 +48,8 @@ export function npcCommandProblem(
         backgroundProblem(state, reply) ??
         taskClaimProblem(room, state, actor, reply) ??
         companionProblem(room, companions, state, actor, reply, now) ??
-        decisionProblem(room, state, actor, reply) ??
+        soloTravelPromiseProblem(state, reply) ??
+        decisionProblem(room, companions, state, actor, reply, now) ??
         npcQuestPresentationProblem(room, state, actor, reply, now)
     )
 }
@@ -156,6 +91,7 @@ function backgroundProblem(
     }
     const ownDecision =
         reply.decision === null ||
+        isNpcSelfDecision(reply.decision) ||
         ['move_to', 'interact', 'speak', 'wait', 'cancel_control'].includes(
             reply.decision.type
         )
@@ -226,9 +162,11 @@ function companionProblem(
 }
 function decisionProblem(
     room: GameRoom,
+    companions: CompanionService,
     state: NpcAiActorState,
     actor: GameCharacter,
-    reply: NpcAiReply
+    reply: NpcAiReply,
+    now: number
 ): NpcReplyProblem | undefined {
     const decision = reply.decision
     if (decision === null) {
@@ -239,16 +177,7 @@ function decisionProblem(
         return problem('exchange', exchangeError)
     }
     if (room.social.isDecision(decision)) {
-        const error =
-            state.dialogue === undefined
-                ? undefined
-                : npcDecisionAudienceError(
-                      room,
-                      decision,
-                      actor.id,
-                      state.dialogue.senderId
-                  )
-        return error === undefined ? undefined : problem('audience', error)
+        return socialDecisionProblem(room, state, actor, decision)
     }
     const error =
         decision.type === 'guide'
@@ -264,9 +193,50 @@ function decisionProblem(
                   decision,
                   room.navigationFor(actor)
               )
-    return error === undefined
+    if (error !== undefined) {
+        return problem('role_or_navigation', error)
+    }
+    if (isNpcSelfDecision(decision)) {
+        return npcSelfDecisionProblem(
+            room,
+            companions,
+            state,
+            actor,
+            reply,
+            decision,
+            now
+        )
+    }
+    if (decision.type === 'attack') {
+        const attackError = npcAiObservedAttackError(room, actor, decision, now)
+        return attackError === undefined
+            ? undefined
+            : problem('attack_target', attackError)
+    }
+    return undefined
+}
+
+function socialDecisionProblem(
+    room: GameRoom,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    decision: AgentDecision
+): NpcReplyProblem | undefined {
+    const senderId = state.dialogue?.senderId
+    const error =
+        senderId === undefined
+            ? undefined
+            : npcDecisionAudienceError(room, decision, actor.id, senderId)
+    if (error !== undefined) {
+        return problem('audience', error)
+    }
+    const discussion =
+        decision.type === 'exchange_accept'
+            ? room.social.exchangeAcceptanceProblem(actor, decision)
+            : undefined
+    return discussion === undefined
         ? undefined
-        : problem('role_or_navigation', error)
+        : problem('exchange_discussion', discussion)
 }
 
 function problem(code: string, detail: string): NpcReplyProblem {

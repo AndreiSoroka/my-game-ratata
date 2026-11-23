@@ -1,12 +1,16 @@
 import type { AgentDecision } from '@my-game-ratata/contracts'
 
+import type { AgentDecisionResult } from '../game/agentDecisions'
 import type { GameCharacter } from '../game/character'
 import type { GameRoom } from '../game/room'
 import type { NpcAiDialogue } from './dialogue'
 import { taskConversationKey } from './dialogueMemory'
 import { replySpeech } from './dialogueResult'
+import { attributeNpcSpeech } from './memorySpeechAttribution'
+import { replySpeechLanguage } from './npcSpeechLanguage'
 import { buildNpcAiObservation } from './observation'
 import type { NpcAiActorState } from './runtimeState'
+import type { NpcAiReply } from './types'
 export function taskSpeech(
     dialogue: NpcAiDialogue,
     state: NpcAiActorState,
@@ -123,4 +127,28 @@ export function rememberNpcInspection(
         workerActivity: structuredClone(workerActivity),
     })
     state.facts = state.facts.slice(-8)
+}
+
+export function publishNpcDecisionResult(
+    room: GameRoom,
+    state: NpcAiActorState,
+    reply: NpcAiReply,
+    decision: AgentDecision,
+    result: AgentDecisionResult,
+    now: number
+): void {
+    if (decision.type === 'speak') {
+        const language = replySpeechLanguage(room, state, reply, now)
+        const targetId = state.task?.requesterId ?? decision.targetId
+        for (const event of result.events) {
+            if (event.kind !== 'chat') {
+                continue
+            }
+            event.language = language
+            if (targetId !== undefined) {
+                attributeNpcSpeech(event, targetId)
+            }
+        }
+    }
+    room.publishEvents(result.events)
 }

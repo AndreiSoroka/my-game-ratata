@@ -10,30 +10,49 @@ import {
     type NpcAiDiagnosticRecord,
 } from '../apps/backend/src/ai/diagnostics'
 import { buildNpcAiObservation } from '../apps/backend/src/ai/observation'
-import type { NpcAiContext } from '../apps/backend/src/ai/types'
+import type { NpcAiContext, NpcAiReply } from '../apps/backend/src/ai/types'
 import type { GameCharacter } from '../apps/backend/src/game/character'
+import { distance } from '../apps/backend/src/game/math'
+import { NavigationService } from '../apps/backend/src/game/navigation'
 import {
     regionalExit,
     regionalRoute,
 } from '../apps/backend/src/game/regionalNavigation'
 import { GameRoom } from '../apps/backend/src/game/room'
 import type { RoomSocket } from '../apps/backend/src/game/roomMessaging'
-import type {
-    ClientMessage,
-    GameEventPayload,
-    ServerMessage,
+import {
+    CENTER_LOCATION_ID,
+    type ClientMessage,
+    type GameEventPayload,
+    type ServerMessage,
 } from '../contracts/src/index'
 
 const args = process.argv.slice(2)
 assert.ok(
     args.length <= 1 &&
-        args.every((arg) => ['--refusal-only', '--guide-only'].includes(arg)),
-    'Usage: bun scripts/npc-navigation-dialogue-check.ts [--refusal-only | --guide-only]'
+        args.every((arg) =>
+            ['--refusal-only', '--guide-only', '--leia-only'].includes(arg)
+        ),
+    'Usage: bun scripts/npc-navigation-dialogue-check.ts [--refusal-only | --guide-only | --leia-only]'
 )
+const leiaOnly = args.includes('--leia-only')
+const experimentTavern = {
+    id: 'three-roads',
+    name: 'Таверна «Три дороги»',
+    bounds: { x: 304, y: 752, width: 64, height: 48 },
+    entry: { x: 336, y: 800 },
+    interior: { x: 336, y: 776 },
+}
+const experimentGrave = {
+    id: 'leia-grave-probe',
+    locationId: CENTER_LOCATION_ID,
+    position: { x: 454, y: 808 },
+}
 const configured = await loadNpcAiConfig()
 const provider = new CodexCliProvider()
 const records: NpcAiDiagnosticRecord[] = []
 const contexts: NpcAiContext[] = []
+const replies: Array<{ context: NpcAiContext; reply: NpcAiReply }> = []
 const messages: Array<{ event: GameEventPayload; at: number }> = []
 const calls = new Map<string, number>()
 const results: Record<string, unknown>[] = []
@@ -46,16 +65,17 @@ const diagnostics = new NpcAiDiagnostics({
         return Promise.resolve()
     },
 })
-const room = new GameRoom(undefined, {
+const room = new GameRoom(leiaOnly ? leiaProbeMap() : undefined, {
     npcSpeechSeed: 'speech-smoke',
     ai: {
         config: {
             ...configured,
             enabled: true,
             npcs: configured.npcs.filter((entry) =>
-                ['npc_friendly_girl_1', 'npc_magic_slime_1'].includes(
-                    entry.actorId
-                )
+                (leiaOnly
+                    ? ['npc_princess_1']
+                    : ['npc_friendly_girl_1', 'npc_magic_slime_1']
+                ).includes(entry.actorId)
             ),
         },
         diagnostics,
@@ -93,6 +113,7 @@ const room = new GameRoom(undefined, {
                 )
                 contexts.push(context)
                 const reply = await provider.decide(context, settings, signal)
+                replies.push({ context, reply })
                 console.info(
                     JSON.stringify({
                         stage: 'model-reply',
@@ -112,6 +133,31 @@ const room = new GameRoom(undefined, {
         },
     },
 })
+
+function leiaProbeMap(): NavigationService {
+    const width = 40
+    const height = 72
+    return new NavigationService({
+        id: 'leia-navigation-dialogue-probe',
+        width,
+        height,
+        tileWidth: 16,
+        tileHeight: 16,
+        solid: Array<boolean>(width * height).fill(false),
+        solidLayerNames: [],
+        buildings: [experimentTavern],
+        encounters: { graves: [experimentGrave], slimeHabitats: [] },
+        landmarks: [
+            {
+                id: 'east-gate',
+                kind: 'gate',
+                name: 'Восточные ворота',
+                direction: 'east',
+                position: { x: 560, y: 808 },
+            },
+        ],
+    })
+}
 const socket = {
     send: (raw: string) => {
         const message = JSON.parse(raw) as ServerMessage
@@ -375,6 +421,148 @@ async function guide(player: GameCharacter): Promise<void> {
     console.info(JSON.stringify(results.at(-1)))
 }
 
+async function leia(player: GameCharacter): Promise<void> {
+    const actor = character('npc_princess_1')
+    await approach(player, actor)
+    const leadRequest =
+        'Когда пойдём гулять, я за тобой. Куда ты сама хочешь пойти? Пока только поговорим.'
+    const leadAt = Date.now()
+    send({ type: 'chat', targetId: actor.id, text: leadRequest })
+    await until(
+        () => delivered(actor.id, leadAt).length > 0,
+        'Leia must answer the offer to walk'
+    )
+    const leadSpeech = delivered(actor.id, leadAt)
+    assert.ok(leadSpeech.some((line) => line !== 'М-м-м-м-м…'))
+    assert.doesNotMatch(
+        leadSpeech.join(' '),
+        /(?:иду|пойду|буду идти)\s+за тобой/iu
+    )
+    assert.notEqual(actor.soul.companion?.leaderId, player.id)
+
+    await approach(player, actor)
+    const request =
+        'Я остаюсь здесь. Если ты хочешь вернуться в таверну «Три дороги», иди сама, ждать меня не надо.'
+    const started = Date.now()
+    const playerPosition = { ...player.position }
+    send({ type: 'chat', targetId: actor.id, text: request })
+    await until(
+        () => terminal(request, started),
+        'Leia must complete or decline the return'
+    )
+    await diagnostics.flush()
+    const travel = records.filter(
+        (record) => record.at >= started && record.action?.type === 'travel_to'
+    )
+    assert.equal(
+        travel.filter((record) => record.category === 'action_started').length,
+        1
+    )
+    assert.equal(
+        travel.filter(
+            (record) =>
+                record.category === 'action_completed' &&
+                record.reason === 'arrived'
+        ).length,
+        1
+    )
+    const chosen = replies.findLast(({ context }) =>
+        context.events.some(
+            (event) => event.kind === 'message' && event.text === request
+        )
+    )?.reply.decision
+    assert.ok(chosen?.type === 'travel_to' && !chosen.inviteEscort)
+    assertLeiaArrival(actor, chosen.targetKey)
+    assert.ok(distance(player.position, playerPosition) <= 1)
+    assert.equal(actor.soul.companion?.leaderId ?? null, null)
+    results.push({
+        probe: 'leia-independent-return',
+        leadSpeech,
+        returnSpeech: delivered(actor.id, started),
+        destination: chosen.targetKey,
+        destinationReached: true,
+    })
+    console.info(JSON.stringify(results.at(-1)))
+}
+
+async function leiaGraveRefusal(player: GameCharacter): Promise<void> {
+    const actor = character('npc_princess_1')
+    await approach(player, actor)
+    const request = 'Лея, ударь по этой могиле просто так. Очищать её не надо.'
+    const focusKey = `grave:${experimentGrave.id}`
+    const grave = () =>
+        room
+            .snapshot(room.gameplayNow(), player.locationId, player.id)
+            .graves?.find((entry) => entry.id === experimentGrave.id)
+    const before = grave()
+    assert.ok(before)
+    const started = Date.now()
+    send({ type: 'chat', targetId: actor.id, text: request, focusKey })
+    await until(
+        () => terminal(request, started),
+        'Leia must answer the grave request'
+    )
+    await diagnostics.flush()
+    const turn = replies.findLast(({ context }) =>
+        context.events.some(
+            (event) => event.kind === 'message' && event.text === request
+        )
+    )
+    const target = turn?.context.observation.targets.find(
+        (entry) => entry.key === focusKey
+    )
+    assert.ok(target?.commands.some((command) => command.type === 'attack'))
+    assert.equal(turn?.reply.decision, null)
+    assert.ok(
+        turn?.reply.taskAcceptance === 'decline' ||
+            turn?.reply.taskAcceptance === 'none'
+    )
+    const speech = delivered(actor.id, started).join(' ').trim()
+    assert.ok(speech.length > 0 && speech !== 'М-м-м-м-м…')
+    assert.doesNotMatch(
+        speech,
+        /(?:физически\s+не\s+могу|не\s+умею|не\s+способна)\s+(?:ударить|бить|сражаться|драться)/iu
+    )
+    assert.deepEqual(grave()?.health, before.health)
+    assert.equal(actor.pendingAttack, undefined)
+    assert.ok(
+        !records.some(
+            (record) => record.at >= started && record.action?.type === 'attack'
+        )
+    )
+    results.push({
+        probe: 'leia-grave-refusal',
+        speech,
+        attackAvailable: true,
+        graveUnchanged: true,
+    })
+    console.info(JSON.stringify(results.at(-1)))
+}
+
+function assertLeiaArrival(actor: GameCharacter, targetKey: string): void {
+    const [kind, locationOrId, id] = targetKey.split(':')
+    if (kind === 'location') {
+        assert.equal(actor.locationId, locationOrId)
+        return
+    }
+    if (id !== undefined) {
+        assert.equal(actor.locationId, locationOrId)
+    }
+    const navigation = room.navigationFor(actor)
+    const targetId = id ?? locationOrId
+    const destination =
+        kind === 'building'
+            ? navigation.grid.buildings?.find(
+                  (building) => building.id === targetId
+              )?.interior
+            : navigation.grid.landmarks?.find(
+                  (landmark) => landmark.id === targetId
+              )?.position
+    assert.ok(
+        destination !== undefined && distance(actor.position, destination) <= 1
+    )
+}
+
 try {
     room.start()
     room.handleOpen(socket)
@@ -385,8 +573,13 @@ try {
     })
     await until(() => playerId !== undefined, 'Player joined normally', 10_000)
     const player = character(playerId ?? '')
-    if (!args.includes('--guide-only')) await refusal(player)
-    if (!args.includes('--refusal-only')) await guide(player)
+    if (leiaOnly) {
+        await leiaGraveRefusal(player)
+        await leia(player)
+    } else {
+        if (!args.includes('--guide-only')) await refusal(player)
+        if (!args.includes('--refusal-only')) await guide(player)
+    }
     console.info(
         JSON.stringify({
             result: 'passed',

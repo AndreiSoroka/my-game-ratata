@@ -28,6 +28,7 @@ export class NpcAiTicks {
             state.dialogue !== undefined ||
             state.task?.requesterId != null ||
             state.pending !== undefined ||
+            state.attack !== undefined ||
             state.guide !== undefined
         ) {
             return

@@ -40,7 +40,8 @@ export function availableLeader(
 
 export function release(
     character: GameCharacter,
-    state: CompanionRuntime
+    state: CompanionRuntime,
+    preserveMovement = false
 ): void {
     state.leaderId = null
     delete state.leaderDeathSequence
@@ -51,8 +52,10 @@ export function release(
     delete state.waitResumeOrder
     delete state.waitResumeLeaderId
     state.controlRevision = (state.controlRevision ?? 0) + 1
-    character.setMoveInput({ x: 0, y: 0 })
-    character.clearPath()
+    if (!preserveMovement) {
+        character.setMoveInput({ x: 0, y: 0 })
+        character.clearPath()
+    }
     sync(character, state)
 }
 

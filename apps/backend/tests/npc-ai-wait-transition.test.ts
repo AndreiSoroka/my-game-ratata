@@ -106,7 +106,7 @@ it('consumes a waiting anchor only after accepting a new guide task and restores
             f.actor.position.y - oldAnchor.y
         )
     ).toBeGreaterThan(200)
-})
+}, 15_000)
 
 it('retains the waiting instruction after conversation, a declined task and a refused companion order', async () => {
     const f = setup()

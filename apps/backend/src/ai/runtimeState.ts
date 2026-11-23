@@ -4,6 +4,7 @@ import { canRequest } from '../game/companionState'
 import type { GameRoom } from '../game/room'
 import { canPerformSkillAction } from '../game/skillProgression'
 import type { PendingNpcAiAction } from './actions'
+import type { PendingNpcAiAttack } from './attackResolution'
 import { CharacterMemory } from './characterMemory'
 import { memoryForCharacter } from './characterMinds'
 import type { NpcAiGuide } from './guide'
@@ -43,7 +44,9 @@ export interface NpcAiActorState {
     reportedDiagnostics: Set<string>
     facts: NpcAiFact[]
     pending: PendingNpcAiAction | undefined
+    attack?: PendingNpcAiAttack | undefined
     guide: NpcAiGuide | undefined
+    travelRequest?: Extract<NpcAiEvent, { kind: 'message' }> | undefined
     tradePausedAt: number | undefined
     controller: AbortController | undefined
     ready:
@@ -152,6 +155,15 @@ export function enqueueNpcAiEvent(
     if (state.events.length > 16) {
         state.events.shift()
     }
+}
+
+export function clearNpcActiveTask(state: NpcAiActorState): void {
+    state.task = null
+    state.events = []
+    state.pending = undefined
+    state.attack = undefined
+    state.guide = undefined
+    state.reportedDiagnostics.clear()
 }
 
 export function interruptInference(state: NpcAiActorState): void {

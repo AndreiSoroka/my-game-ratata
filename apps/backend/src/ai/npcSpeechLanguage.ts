@@ -111,6 +111,8 @@ function directSpeechTarget(
         case 'quest_propose':
         case 'worker_quest_propose':
         case 'quest_invitation_answer':
+        case 'propose_follow':
+        case 'start_following':
             return decision.targetId
         default:
             return undefined

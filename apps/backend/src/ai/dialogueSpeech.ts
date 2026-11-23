@@ -1,3 +1,4 @@
+import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech } from '../game/socialSpeech'
@@ -9,18 +10,26 @@ import { reportNpcRequestStatus } from './requestStatus'
 import type { NpcAiActorState } from './runtimeState'
 import type { NpcAiEvent } from './types'
 
+type Heard = Extract<NpcAiEvent, { kind: 'message' }>
+
 export function speakNpcDialogue(
     room: GameRoom,
     companions: CompanionService,
     diagnostics: NpcAiDiagnostics,
     state: NpcAiActorState,
-    event: Extract<NpcAiEvent, { kind: 'message' }>,
+    event: Heard,
     text: string,
     now: number
 ): void {
     const actor = state.actor
     if (actor !== undefined && event.conversationId !== undefined) {
-        room.social.npcSpeech.turns.reply(actor, event, text, now)
+        recordInquiry(
+            room,
+            actor,
+            event,
+            text,
+            room.social.npcSpeech.turns.reply(actor, event, text, now)
+        )
         return
     }
     const target = room.getCharacter(event.senderId)
@@ -62,11 +71,13 @@ export function speakNpcDialogue(
                     : speech
             )
         )
+        recordInquiry(room, actor, event, text, result.accepted)
     } else if (event.channel === 'whisper' || event.legacy === true) {
-        room.social.whispers.send(actor, target, text, now, {
+        const heard = room.social.whispers.send(actor, target, text, now, {
             language,
             keepOriginalForRecipient: true,
         })
+        recordInquiry(room, actor, event, text, heard)
     } else {
         room.publishEvents([
             attributeNpcSpeech(
@@ -74,5 +85,18 @@ export function speakNpcDialogue(
                 target.id
             ),
         ])
+        room.social.recordExchangeInquiry(actor, event, text)
+    }
+}
+
+function recordInquiry(
+    room: GameRoom,
+    actor: GameCharacter,
+    event: Heard,
+    text: string,
+    delivered: boolean
+): void {
+    if (delivered) {
+        room.social.recordExchangeInquiry(actor, event, text)
     }
 }

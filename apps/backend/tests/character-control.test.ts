@@ -190,7 +190,7 @@ describe('follow only records an observed location exit', () => {
 describe('automatic attacks respect companion combat consent', () => {
     it('refuses an authored noncombatant even without an attached companion snapshot', () => {
         const { target, world } = setup()
-        const actor = make('npc_princess_1', 64, 'peaceful')
+        const actor = make('npc_magic_slime_1', 64, 'peaceful')
         expect(
             setCharacterControl(
                 actor,

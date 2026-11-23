@@ -21,6 +21,7 @@ export function continuationAvailable(
         state.events.length > 0 &&
         state.guide === undefined &&
         state.pending === undefined &&
+        state.attack === undefined &&
         !room.social.exchanges.isPaused(state.config.actorId)
     )
 }

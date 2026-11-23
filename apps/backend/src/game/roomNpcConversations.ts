@@ -150,12 +150,12 @@ export class RoomNpcConversations {
         event: NpcHeardSpeech,
         text: string,
         now: number
-    ): void {
+    ): boolean {
         if (
             event.conversationId === undefined ||
             !this.available(npc, event, now)
         ) {
-            return
+            return false
         }
         const turn = this.pending.get(event.senderId)
         const recipient = this.room.getCharacter(event.senderId)
@@ -163,7 +163,7 @@ export class RoomNpcConversations {
             if (text === '') {
                 this.pending.delete(recipient.id)
             } else {
-                this.deliver(
+                return this.deliver(
                     npc,
                     recipient,
                     turn,
@@ -173,6 +173,7 @@ export class RoomNpcConversations {
                 )
             }
         }
+        return false
     }
 
     public activity(
@@ -279,15 +280,14 @@ export class RoomNpcConversations {
         text: string,
         now: number,
         language?: GameLocale
-    ): void {
+    ): boolean {
         this.pending.delete(recipient.id)
         const line = text.trim().slice(0, 400)
         if (turn.source === 'whisper' && line !== NPC_HUM) {
-            this.whispers.send(npc, recipient, line, now, {
+            return this.whispers.send(npc, recipient, line, now, {
                 language: language ?? this.room.localeFor(recipient.id),
                 keepOriginalForRecipient: true,
             })
-            return
         }
         const event =
             turn.source === 'panel'
@@ -310,5 +310,6 @@ export class RoomNpcConversations {
             dialogue.speechId = event.speechId
         }
         this.room.publishEvents([event])
+        return true
     }
 }

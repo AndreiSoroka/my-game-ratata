@@ -1,19 +1,54 @@
-import { WORLD_DIRECTIONS } from '@my-game-ratata/contracts'
+import { type Vector2, WORLD_DIRECTIONS } from '@my-game-ratata/contracts'
 
 import type { AgentDecisionResult } from '../game/agentDecisions'
 import type { GameCharacter } from '../game/character'
 import { snapshotCharacterRoute } from '../game/characterRoute'
 import type { CompanionService } from '../game/companions'
 import { distance } from '../game/math'
+import { visibilityRadius } from '../game/queries'
 import { regionalExit, regionalRoute } from '../game/regionalNavigation'
 import type { GameRoom } from '../game/room'
+import { npcAiDecisionError } from './actions'
 import type { NpcAiGuide } from './guideState'
 import type { NpcAiActorState } from './runtimeState'
 import { rememberNpcScouting } from './scouting'
 
+export interface GuideView {
+    visible: boolean
+    range: number
+    position?: Vector2
+}
+
+export function guideProximity(
+    room: GameRoom,
+    requester: GameCharacter | undefined,
+    actor: GameCharacter,
+    now: number
+): GuideView {
+    if (
+        requester === undefined ||
+        !requester.alive ||
+        requester.locationId !== actor.locationId
+    ) {
+        return { visible: false, range: Infinity }
+    }
+    const range = distance(actor.position, requester.position)
+    const visible =
+        range <= visibilityRadius(actor, requester, 80, now) &&
+        room
+            .navigationFor(actor)
+            .hasLineOfSight(actor.position, requester.position)
+    return visible
+        ? {
+              visible: true,
+              range,
+              position: { ...requester.position },
+          }
+        : { visible: false, range: Infinity }
+}
+
 export function planGuideLeg(
     room: GameRoom,
-    state: NpcAiActorState,
     actor: GameCharacter,
     guide: NpcAiGuide,
     now: number
@@ -45,7 +80,6 @@ export function planGuideLeg(
     }
     guide.locationId = actor.locationId
     guide.legDeadline = now + 120_000
-    state.pending = undefined
     return undefined
 }
 
@@ -67,12 +101,34 @@ export function moveGuide(
     if (result.accepted) {
         const destination =
             snapshotCharacterRoute(actor)?.route?.points.at(-1)?.position
-        if (destination !== undefined) {
+        if (destination !== undefined && guide.decision.type === 'guide') {
             guide.destination = { ...destination }
         }
         room.adventureForWorkers().closeConversations(actor.id)
     }
     return result
+}
+
+export function moveTripLeg(
+    room: GameRoom,
+    companions: CompanionService,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    guide: NpcAiGuide,
+    now: number
+): AgentDecisionResult {
+    const error =
+        guide.exit === undefined
+            ? npcAiDecisionError(
+                  actor,
+                  state.config.role,
+                  { type: 'move_to', target: guide.destination },
+                  room.navigationFor(actor)
+              )
+            : undefined
+    return error === undefined
+        ? moveGuide(room, companions, state, actor, guide, now)
+        : { accepted: false, error, events: [] }
 }
 
 /** A transition is accepted only after this guide physically selected and reached that adjacent exit. */
@@ -93,8 +149,10 @@ export function receiveGuideCrossing(
     companions.decide(actor, { type: 'cancel_control' }, room, now, state.token)
     guide.locationId = actor.locationId
     guide.destination = { ...actor.position }
-    guide.awaitingPartner = true
-    guide.waitingSince = now
+    if (guide.decision.type === 'guide') {
+        guide.awaitingPartner = true
+        guide.waitingSince = now
+    }
     guide.exit = undefined
     guide.crossingGraceUntil = undefined
     guide.legDeadline = now + 120_000

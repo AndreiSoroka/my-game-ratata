@@ -3,6 +3,7 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { CharacterMemory } from './characterMemory'
 import { memoryForCharacter } from './characterMinds'
+import { stopNpcSelfTravelEscort } from './guide'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import type { NpcAiSessionActions } from './session'
 export function prepareNpcActor(
@@ -29,12 +30,7 @@ export function prepareNpcActor(
         state.awaitingFreshRequest = true
         return undefined
     }
-    if (
-        state.dialogue !== undefined &&
-        !requesterAvailable(room.getCharacter(state.dialogue.senderId))
-    ) {
-        sessions.cancel(state, now)
-    }
+    cancelDepartedConversation(room, sessions, state, now)
     if (
         state.task?.requesterId != null &&
         !requesterAvailable(room.getCharacter(state.task.requesterId))
@@ -49,6 +45,48 @@ export function prepareNpcActor(
     }
     state.controlRevision = companions.controlRevision(actor)
     return actor
+}
+
+function cancelDepartedConversation(
+    room: GameRoom,
+    sessions: NpcAiSessionActions,
+    state: NpcAiActorState,
+    now: number
+): void {
+    const speakerId = state.dialogue?.senderId
+    if (
+        speakerId !== undefined &&
+        !requesterAvailable(room.getCharacter(speakerId))
+    ) {
+        if (state.guide?.decision.type === 'travel_to') {
+            sessions.cancelInference(state, now)
+            stopNpcSelfTravelEscort(state.guide, speakerId)
+        } else {
+            sessions.cancel(state, now)
+        }
+    }
+}
+
+export function archiveNpcAiPerson(
+    sessions: NpcAiSessionActions,
+    state: NpcAiActorState,
+    id: string,
+    now: number
+): void {
+    const inbox = state.inbox.filter((event) => event.senderId !== id)
+    if (
+        state.dialogue?.senderId === id ||
+        state.task?.requesterId === id ||
+        state.task?.targetId === id
+    ) {
+        if (state.guide?.decision.type === 'travel_to') {
+            sessions.cancelInference(state, now)
+        } else {
+            sessions.cancel(state, now)
+        }
+    }
+    stopNpcSelfTravelEscort(state.guide, id)
+    state.inbox = inbox
 }
 
 function requesterAvailable(actor: GameCharacter | undefined): boolean {

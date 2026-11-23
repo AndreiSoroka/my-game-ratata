@@ -26,7 +26,12 @@ export class RoomNpcContacts {
         private readonly room: GameRoom,
         private readonly adventure: AdventureService,
         whispers: WhisperService,
-        private readonly ai: () => NpcAiCoordinator | undefined
+        private readonly ai: () => NpcAiCoordinator | undefined,
+        private readonly onAddressedSpeech: (
+            speaker: GameCharacter,
+            recipient: GameCharacter,
+            event: NpcHeardSpeech
+        ) => NpcHeardSpeech
     ) {
         this.turns = new RoomNpcConversations(room, adventure, whispers)
     }
@@ -88,11 +93,12 @@ export class RoomNpcContacts {
             return
         }
         this.room.rememberNpcMeeting(actor, npc)
+        const heard = this.onAddressedSpeech(actor, npc, event)
         const ai = this.ai()
         const turn = this.turns.enqueue(
             actor,
             npc,
-            event,
+            heard,
             source,
             ai?.configured(npc.id) === true
         )

@@ -380,11 +380,11 @@ describe('validated external agent adapter', () => {
                 5_000
             ).accepted
         ).toBe(false)
-        const princess = npc('npc_princess_1')
-        target.locationId = princess.locationId
+        const noncombatant = npc('npc_magic_slime_1')
+        target.locationId = noncombatant.locationId
         expect(
             applyAgentDecision(
-                princess,
+                noncombatant,
                 { targetId: target.id, type: 'attack' },
                 context.world,
                 5_000

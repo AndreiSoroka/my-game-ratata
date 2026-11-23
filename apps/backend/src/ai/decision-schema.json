@@ -582,6 +582,81 @@
                 {
                     "type": "object",
                     "additionalProperties": false,
+                    "required": ["type", "targetKey", "inviteEscort"],
+                    "properties": {
+                        "type": { "type": "string", "enum": ["travel_to"] },
+                        "targetKey": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        },
+                        "inviteEscort": { "type": "boolean" }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["leave_companion"]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["propose_follow", "start_following"]
+                        },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "targetId"],
+                    "properties": {
+                        "type": { "type": "string", "enum": ["attack"] },
+                        "targetId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type", "target"],
+                    "properties": {
+                        "type": { "type": "string", "enum": ["attack"] },
+                        "target": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["kind", "id"],
+                            "properties": {
+                                "kind": { "type": "string", "enum": ["grave"] },
+                                "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
                     "required": ["type", "targetKey"],
                     "properties": {
                         "type": {

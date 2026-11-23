@@ -11,6 +11,7 @@ import { knowsAbility } from './abilityState'
 import type { AgentDecisionResult, CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { parseControlCommand } from './characterControl'
+import { canUseCombat } from './combatPermission'
 import { companionProfiles } from './companionProfiles'
 import { planMotherPrayer } from './motherPrayerPlan'
 import { canPerformSkillAction } from './skillProgression'
@@ -77,10 +78,7 @@ export function applyAgentAbility(
     ) {
         return rejected('Ability has not been learned')
     }
-    if (
-        actorRefusesCombat(actor) &&
-        abilityCanHarm(actor, message, world, now)
-    ) {
+    if (!canUseCombat(actor) && abilityCanHarm(actor, message, world, now)) {
         return rejected('This personality refuses combat')
     }
     const knownBefore = knowsAbility(actor, message.abilityId)
@@ -120,7 +118,7 @@ export function applyAgentControl(
     if (
         message.type === 'auto_attack' &&
         message.targetId !== null &&
-        actorRefusesCombat(actor)
+        !canUseCombat(actor)
     ) {
         return rejected('This personality refuses combat')
     }

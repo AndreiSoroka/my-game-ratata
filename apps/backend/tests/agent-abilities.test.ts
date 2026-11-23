@@ -105,7 +105,7 @@ it.each(['human', 'unknown', 'dead', 'offline', 'stun'] as const)(
 )
 it('a noncombat personality rejects actual attack targets while permitting a safe selected self-heal beside undead', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
-    Object.assign(actor, { id: 'npc_princess_1' })
+    Object.assign(actor, { id: 'npc_magic_slime_1' })
     actor.abilities.known.add('spark')
     actor.progression.constellations.opened.add('prayer.harm')
     actor.hp -= 10
@@ -144,7 +144,7 @@ it('a noncombat personality rejects actual attack targets while permitting a saf
 })
 it('allows a noncombat personality to devote a harmless prayer beside potential wave victims', () => {
     const actor = abilityHero('cleric', 'humanoid', 'scripted')
-    Object.assign(actor, { id: 'npc_princess_1' })
+    Object.assign(actor, { id: 'npc_magic_slime_1' })
     actor.progression.constellations.opened.add('prayer.harm')
     const undead = abilityHero('vanguard', 'undead', 'mob1')
     const { world, requestAbility } = port([actor, undead])

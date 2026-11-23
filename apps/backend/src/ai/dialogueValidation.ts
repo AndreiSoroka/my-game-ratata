@@ -5,11 +5,15 @@ import type { NpcAiDiagnostics } from './diagnostics'
 import { recordDialogueAction, speechRadius } from './dialogueResult'
 import { reportNpcRequestStatus } from './requestStatus'
 import type { NpcAiActorState } from './runtimeState'
+import { isNpcSelfDecision } from './selfDecisions'
 import { npcReplyNeedsTask } from './taskConsent'
 import type { NpcAiEvent, NpcAiReply } from './types'
 
 type Heard = Extract<NpcAiEvent, { kind: 'message' }>
 export function acceptsNpcTask(event: Heard, reply: NpcAiReply): boolean {
+    if (isNpcSelfDecision(reply.decision)) {
+        return false
+    }
     return (
         reply.taskAcceptance === 'accept' ||
         reply.taskAcceptance === 'replace' ||

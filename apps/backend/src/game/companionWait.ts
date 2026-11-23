@@ -1,8 +1,24 @@
-import type { CompanionRequest } from '@my-game-ratata/contracts'
+import type { CompanionRequest, Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { CompanionRuntime } from './companionMovement'
 import { sync } from './companionState'
+
+export function setCompanionWaitAnchor(
+    npc: GameCharacter,
+    state: CompanionRuntime,
+    ownerId: string,
+    anchor: { locationId: string; position: Vector2 }
+): void {
+    if (
+        state.order === 'wait' &&
+        state.leaderId === ownerId &&
+        anchor.locationId === npc.locationId
+    ) {
+        state.anchor = { ...anchor.position }
+        state.anchorLocation = anchor.locationId
+    }
+}
 
 export function rememberWaitBaseline(
     state: CompanionRuntime,

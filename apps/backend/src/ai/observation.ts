@@ -17,6 +17,7 @@ import type { NavigationService } from '../game/navigation'
 import { NPC_OBSERVATION_RADIUS, visibilityRadius } from '../game/queries'
 import { observeCity } from './cityObservation'
 import { knownGuidePlaces } from './guideTargets'
+import { observedCharacterAttack, observedGraves } from './observationCombat'
 import { environmentTargets } from './observationEnvironment'
 import { buildingTargets, landmarkTargets } from './observationPlaces'
 import {
@@ -54,8 +55,9 @@ export function buildNpcAiObservation(
         navigation.hasLineOfSight(actor.position, point)
     const characters = observedCharacters(world, actor, snapshot, visible, now)
     const nearby = [
-        ...characters.map((entry) => characterTarget(actor, entry)),
+        ...characters.map((entry) => characterTarget(actor, entry, navigation)),
         ...environmentTargets(snapshot, actor, navigation, visible),
+        ...observedGraves(snapshot, actor, role, navigation, visible),
     ]
         .sort(compareTargets)
         .slice(0, 32)
@@ -101,11 +103,35 @@ export function buildNpcAiObservation(
     return structuredClone(observation)
 }
 
+export function npcAiObservedAttackError(
+    world: NpcAiWorld,
+    actor: GameCharacter,
+    decision: Extract<AgentDecision, { type: 'attack' }>,
+    now: number
+): string | undefined {
+    const target = buildNpcAiObservation(
+        world,
+        actor,
+        'companion',
+        now
+    ).targets.find((entry) =>
+        decision.target !== undefined
+            ? entry.kind === 'grave' && entry.id === decision.target.id
+            : entry.kind === 'character' && entry.id === decision.targetId
+    )
+    return target?.commands.some((command) => command.type === 'attack') ===
+        true
+        ? undefined
+        : 'The selected attack target must be visible and in reach'
+}
+
 function characterTarget(
     actor: GameCharacter,
-    target: CharacterSnapshot
+    target: CharacterSnapshot,
+    navigation: NavigationService
 ): NpcAiTarget {
     const range = distance(actor.position, target.position)
+    const attack = observedCharacterAttack(actor, target, navigation)
     return {
         key: `character:${target.id}`,
         kind: 'character',
@@ -114,7 +140,10 @@ function characterTarget(
         position: { ...target.position },
         distance: range,
         interactionRange: CONVERSATION_REACH,
-        commands: characterIntentions(actor, target, range),
+        commands: [
+            ...characterIntentions(actor, target, range),
+            ...(attack === undefined ? [] : [attack]),
+        ],
         details: {
             controllerKind: target.controllerKind,
             connected: target.connected === true,

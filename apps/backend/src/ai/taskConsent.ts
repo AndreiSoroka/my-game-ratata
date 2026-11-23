@@ -1,6 +1,7 @@
 import { isNpcQuestDecision } from '../game/npcQuestCommands'
 import type { GameRoom } from '../game/room'
 import { type NpcAiActorState, npcAiBusyFor } from './runtimeState'
+import { isNpcSelfDecision } from './selfDecisions'
 import type {
     NpcAiContext,
     NpcAiReply,
@@ -32,6 +33,7 @@ export function npcReplyNeedsTask(reply: NpcAiReply): boolean {
     return (
         reply.companionOrder != null ||
         (decision !== null &&
+            !isNpcSelfDecision(decision) &&
             decision.type !== 'speak' &&
             !decision.type.startsWith('exchange_') &&
             !isNpcQuestDecision(decision))

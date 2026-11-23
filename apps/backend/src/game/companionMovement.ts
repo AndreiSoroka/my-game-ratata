@@ -26,6 +26,8 @@ export interface CompanionRuntime {
     leaderId: string | null
     leaderDeathSequence?: number
     metActors: Set<string>
+    followProposals?: Map<string, number>
+    refusedFollowing?: Set<string>
     order: CompanionOrder
     profile: CompanionProfile
     controlRevision?: number

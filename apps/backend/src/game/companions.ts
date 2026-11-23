@@ -1,6 +1,7 @@
 import type {
     CompanionClientMessage,
     GameEventPayload,
+    Vector2,
 } from '@my-game-ratata/contracts'
 
 import {
@@ -25,6 +26,7 @@ import {
 } from './companionCommand'
 export type { AssistanceContext, AssistanceResult } from './companionAssistance'
 import { supportCompanionLeader } from './companionAbilities'
+import { CompanionInitiative } from './companionInitiative'
 import {
     advanceCompanionIntent,
     type CompanionRuntime,
@@ -38,7 +40,7 @@ import {
     replyToCompanion,
     sync,
 } from './companionState'
-import { consumeCompanionWait } from './companionWait'
+import { consumeCompanionWait, setCompanionWaitAnchor } from './companionWait'
 import { ModelControlLeases } from './modelControlLeases'
 import { recruitableNpc } from './npcRoster'
 import type { GameRoom } from './room'
@@ -85,25 +87,37 @@ export class CompanionService {
     public setWaitAnchor(
         character: GameCharacter,
         ownerId: string,
-        anchor: {
-            locationId: string
-            position: import('@my-game-ratata/contracts').Vector2
-        }
+        anchor: { locationId: string; position: Vector2 }
     ): void {
-        const state = this.stateFor(character)
-        if (
-            state.order === 'wait' &&
-            state.leaderId === ownerId &&
-            anchor.locationId === character.locationId
-        ) {
-            state.anchor = { ...anchor.position }
-            state.anchorLocation = anchor.locationId
-        }
+        setCompanionWaitAnchor(
+            character,
+            this.stateFor(character),
+            ownerId,
+            anchor
+        )
     }
 
-    private readonly assistance = new CompanionAssistance((npc) =>
-        this.stateFor(npc)
+    private readonly stateFor = (
+        character: GameCharacter
+    ): CompanionRuntime => {
+        const existing = this.states.get(character.id)
+        if (existing !== undefined) {
+            return existing
+        }
+        const state = createCompanionRuntime(character)
+        this.states.set(character.id, state)
+        return state
+    }
+    private readonly assistance = new CompanionAssistance(this.stateFor)
+    private readonly initiative = new CompanionInitiative(
+        this.stateFor,
+        this.assistance
     )
+    public readonly checkSelfFollowing = this.initiative.checkSelfFollowing
+    public readonly hasFollowProposal = this.initiative.hasFollowProposal
+    public readonly noteFollowProposal = this.initiative.noteFollowProposal
+    public readonly recordFollowRefusal = this.initiative.recordFollowRefusal
+
     public readonly canAssist = this.assistance.canAssist
     public readonly claimAssistance = this.assistance.claimAssistance
     public readonly releaseAssistance = this.assistance.releaseAssistance
@@ -194,7 +208,7 @@ export class CompanionService {
         if (message.request === 'talk') {
             const text = this.dialogueText(actor, npc)
             state.metActors.add(actor.id)
-            return this.reply(npc, actor, state, text)
+            return replyToCompanion(npc, actor, state, text)
         }
         return scriptedCompanionOrderReply(
             actor,
@@ -294,16 +308,5 @@ export class CompanionService {
             this.leases.recordDecision(character, parsed, now, ownerToken)
         }
         return result
-    }
-
-    private readonly reply = replyToCompanion
-
-    private stateFor(character: GameCharacter): CompanionRuntime {
-        let state = this.states.get(character.id)
-        if (state === undefined) {
-            state = createCompanionRuntime(character)
-            this.states.set(character.id, state)
-        }
-        return state
     }
 }

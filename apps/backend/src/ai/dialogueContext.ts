@@ -5,8 +5,9 @@ import { isConversationOnly } from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
 import type { NpcConversationFeedback } from '../game/roomConversationDepartures'
 import { projectContracts } from './contractProjection'
-import { dialogueKey, type NpcAiDialogue } from './dialogue'
+import type { NpcAiDialogue } from './dialogue'
 import { dialogueConversationKey, taskConversationKey } from './dialogueMemory'
+import { hasTaskContext } from './dialogueResult'
 import { npcCityStoryContext } from './npcCityStoryContext'
 import { npcIdentityContext } from './npcIdentityInstructions'
 import { greetingOpportunity } from './npcInitiative'
@@ -39,7 +40,11 @@ export function npcDialogueContext(
             ? taskConversationKey(state.task)
             : dialogueConversationKey(dialogue)
     const taskContext = hasTaskContext(state)
-    const commandCapabilities = dialogueService.commandCapabilities(state, now)
+    const commandCapabilities = dialogueService.commandCapabilities(
+        state,
+        observation,
+        now
+    )
     const socialOpportunity =
         state.task?.background === 'greeting' &&
         state.task.targetId !== undefined
@@ -238,13 +243,6 @@ function refreshRequester(
             position: { ...requester.position },
         }
     }
-}
-function hasTaskContext(state: NpcAiActorState): boolean {
-    return (
-        state.dialogue === undefined ||
-        (dialogueKey(state.dialogue) === state.task?.audienceKey &&
-            state.task.requesterId === state.dialogue.senderId)
-    )
 }
 function dialogueMemory(state: NpcAiActorState, key: string): string {
     return state.dialogue === undefined && state.task?.background !== 'greeting'

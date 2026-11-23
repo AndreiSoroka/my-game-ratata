@@ -1,12 +1,18 @@
+import type { GameEventPayload } from '@my-game-ratata/contracts'
+
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { reconcileNpcAction } from './actionResolution'
+import { archiveNpcAiPerson } from './actorLifecycle'
+import { recordNpcAiAttackResolution } from './attackResolution'
 import { reviewNpcAiCity } from './cityReview'
 import { rememberAndGreet } from './coordinatorSocial'
 import { NpcAiTicks } from './coordinatorTicks'
 import { NpcAiDiagnostics } from './diagnostics'
 import { heardSpeechLanguage, receiveNpcSpeech } from './dialogueReception'
+import { respectSpokenFollowRefusal } from './followRefusal'
+import { stopNpcSelfTravelEscort } from './guide'
 import { npcReplyActivities, rememberHeardSpeech } from './memoryObservation'
 import { reviewNpcIdleActivity } from './npcAutonomy'
 import { buildNpcAiObservation } from './observation'
@@ -90,23 +96,20 @@ export class NpcAiCoordinator {
         return this.config.enabled && this.states.has(id)
     }
 
+    public readonly observeAttackResolution = (
+        actor: GameCharacter,
+        actionId: string,
+        events: readonly GameEventPayload[]
+    ): void => {
+        const state = this.states.get(actor.id)
+        if (state !== undefined) {
+            recordNpcAiAttackResolution(state, actor, actionId, events)
+        }
+    }
+
     public archivePerson(id: string, now: number): void {
         for (const state of this.states.values()) {
-            if (
-                state.dialogue?.senderId === id ||
-                state.task?.requesterId === id ||
-                state.task?.targetId === id
-            ) {
-                const inbox = state.inbox.filter(
-                    (event) => event.senderId !== id
-                )
-                this.sessions.cancel(state, now)
-                state.inbox = inbox
-            } else {
-                state.inbox = state.inbox.filter(
-                    (event) => event.senderId !== id
-                )
-            }
+            archiveNpcAiPerson(this.sessions, state, id, now)
         }
     }
 
@@ -127,13 +130,21 @@ export class NpcAiCoordinator {
     ): boolean {
         const state = this.states.get(targetId)
         const actor = this.room.getCharacter(targetId)
-        if (
-            actor?.soul.companion?.leaderId !== requester.id ||
-            state === undefined
-        ) {
+        if (actor === undefined || state === undefined) {
+            return false
+        }
+        if (stopNpcSelfTravelEscort(state.guide, requester.id)) {
+            if (state.dialogue?.senderId === requester.id) {
+                this.sessions.cancelInference(state, now)
+            }
+            this.companions.recordFollowRefusal(actor, requester.id)
+            return true
+        }
+        if (actor.soul.companion?.leaderId !== requester.id) {
             return false
         }
         this.sessions.cancel(state, now)
+        this.companions.recordFollowRefusal(actor, requester.id)
         return this.companions.releaseAssistance(requester.id, actor)
     }
 
@@ -142,6 +153,17 @@ export class NpcAiCoordinator {
         event: Extract<import('./types').NpcAiEvent, { kind: 'message' }>,
         targetId?: string
     ): void {
+        if (this.active) {
+            respectSpokenFollowRefusal(
+                this.room,
+                this.companions,
+                this.states.values(),
+                requester,
+                event,
+                targetId,
+                (npcId) => this.withdraw(requester, npcId, event.at)
+            )
+        }
         const hears = {
             ...event,
             language:

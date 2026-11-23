@@ -25,6 +25,9 @@ export function npcActionPaused(
             if (state.guide.waitingSince !== undefined) {
                 state.guide.waitingSince += now - state.tradePausedAt
             }
+            if (state.guide.escortMissingSince !== undefined) {
+                state.guide.escortMissingSince += now - state.tradePausedAt
+            }
         }
         state.tradePausedAt = undefined
     }

@@ -204,6 +204,10 @@ export function applyModelCompanionCommand(
     if (context.conversation === true) {
         state.metActors.add(actor.id)
     }
+    if (message.request === 'follow') {
+        state.refusedFollowing?.delete(actor.id)
+        state.followProposals?.delete(actor.id)
+    }
     return result
 }
 

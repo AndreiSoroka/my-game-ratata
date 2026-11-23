@@ -16,6 +16,7 @@ import {
 import { startCombatAction } from './combatActions'
 import { prepareTarget } from './combatAttackTarget'
 import { buildAttackZones, isInZones } from './combatGeometry'
+import { allowsSharedCombat } from './combatPermission'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveAbility } from './effectiveParameters'
 import { legalGraveTarget } from './graveCombat'
@@ -72,7 +73,7 @@ function techniqueReady(
         knowsAbility(actor, id) &&
         weapon.bladeCompatible &&
         !weapon.broken &&
-        actor.soul.companion?.canFight !== false &&
+        allowsSharedCombat(actor) &&
         now >= (actor.abilities.availableAt[id] ?? 0) &&
         actor.energy >= parameters.energy
     )

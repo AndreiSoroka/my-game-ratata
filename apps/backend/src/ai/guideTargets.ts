@@ -12,6 +12,7 @@ import type { GameRoom } from '../game/room'
 import { resolveRouteDestination } from '../game/routeDestination'
 import { knowledgeResidenceIds } from './knowledgeAudiences'
 import { knowledgeDirection } from './knowledgeCatalog'
+import { npcAiNavigationError } from './navigationPolicy'
 import type { NpcAiRole } from './types'
 
 export interface NpcGuideGoal {
@@ -20,8 +21,12 @@ export interface NpcGuideGoal {
     name: string
     locationId: string
     position?: Vector2
+    interior?: Vector2
 }
-export interface NpcKnownPlace extends Omit<NpcGuideGoal, 'position'> {
+export interface NpcKnownPlace extends Omit<
+    NpcGuideGoal,
+    'position' | 'interior'
+> {
     direction: string
 }
 const rememberedPlaces = new WeakMap<GameCharacter, Map<string, NpcGuideGoal>>()
@@ -39,6 +44,7 @@ function refreshPlaces(
             name: building.name,
             locationId: actor.locationId,
             position: { ...building.entry },
+            interior: { ...building.interior },
         }
         places.set(goal.key, goal)
     }
@@ -122,6 +128,7 @@ export function resolveNpcGuideGoal(
               name: legacy.name,
               locationId: actor.locationId,
               position: { ...legacy.entry },
+              interior: { ...legacy.interior },
           }
 }
 
@@ -150,6 +157,49 @@ export function npcGuideTargetError(
 }
 
 export const knownGuideTargetError = npcGuideTargetError
+
+export function npcSelfTravelTargetError(
+    room: Pick<GameRoom, 'navigationFor'>,
+    actor: GameCharacter,
+    role: NpcAiRole,
+    targetKey: string
+): string | undefined {
+    if (role !== 'companion') {
+        return 'Самостоятельное путешествие недоступно этому персонажу.'
+    }
+    const goal = resolveNpcGuideGoal(room, actor, targetKey)
+    if (goal === undefined) {
+        return 'Это место мне пока неизвестно.'
+    }
+    return goal.locationId === actor.locationId
+        ? npcSelfTravelLocalError(room, actor, goal)
+        : guideRouteError(room, actor, goal)
+}
+
+export function npcSelfTravelLocalError(
+    room: Pick<GameRoom, 'navigationFor'>,
+    actor: GameCharacter,
+    goal: NpcGuideGoal
+): string | undefined {
+    const entry = goal.position ?? actor.position
+    const navigation = room.navigationFor(actor)
+    if (
+        !canReachExact(navigation, actor.position, entry) ||
+        (goal.interior !== undefined &&
+            !canReachExact(navigation, entry, goal.interior))
+    ) {
+        return 'Сейчас не удаётся найти проходимую дорогу к этому месту.'
+    }
+    return npcAiNavigationError(actor, entry, navigation)
+}
+
+function canReachExact(
+    navigation: NavigationService,
+    from: Vector2,
+    to: Vector2
+): boolean {
+    return navigation.findPathWorld(from, to).length > 0
+}
 
 function guideRouteError(
     room: Pick<GameRoom, 'navigationFor'>,
