@@ -57,12 +57,14 @@ h2 {
 .character-tabs {
     display: flex;
     padding: 0 24px;
-    gap: 24px;
+    gap: clamp(12px, 2vw, 24px);
     border-bottom: 1px solid #53616a;
 }
 .character-tabs > :deep(button) {
-    padding: 14px 0 12px;
+    min-height: 56px;
+    padding: 12px 22px 10px;
     border-bottom: 2px solid transparent;
+    font-size: 16px;
 }
 .character-tabs > :deep(button[aria-selected='true']) {
     border-bottom-color: #e9c77d;
@@ -80,6 +82,12 @@ footer {
     color: #8c9ea8;
     font-size: 11px;
 }
+@media (max-width: 650px) {
+    .character-tabs > :deep(button) {
+        padding-inline: 12px;
+        font-size: clamp(12px, 3.6vw, 14px);
+    }
+}
 @media (max-width: 600px) {
     .character-backdrop {
         padding: 8px;
@@ -93,7 +101,6 @@ footer {
     }
     .character-tabs {
         padding: 0 14px;
-        gap: 18px;
     }
     .character-content {
         padding: 16px 12px;
@@ -105,7 +112,7 @@ footer {
         padding: 8px 14px;
     }
 }
-@media (max-width: 420px) {
+@media (max-width: 520px) {
     .character-tabs {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

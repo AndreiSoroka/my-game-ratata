@@ -3,7 +3,6 @@ import { fn } from 'storybook/test'
 import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
-import { UiButton } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 
 import { type CharacterTab, characterTabs } from '../model/characterTab'
@@ -76,20 +75,8 @@ export const Default: Story = {
                           'aria-hidden': 'true',
                       }),
             ],
-            close: ({ buttonAttrs }) => [
-                args.close === 'empty'
-                    ? h('div')
-                    : h(UiButton, buttonAttrs, () => h('span', { 'aria-hidden': true }, '×')),
-            ],
-            tab: ({ label, buttonAttrs }) => [
-                args.tabButton === 'empty'
-                    ? h('div')
-                    : h(
-                          UiButton,
-                          { ...buttonAttrs, highlighted: buttonAttrs['aria-selected'] },
-                          () => label
-                      ),
-            ],
+            ...(args.close === 'empty' && { close: () => [h('div')] }),
+            ...(args.tabButton === 'empty' && { tab: () => [h('div')] }),
             default: ({ tab }) => [
                 args.content === 'empty' ? h('div') : h('p', `Раздел «${labels[tab]}»`),
             ],

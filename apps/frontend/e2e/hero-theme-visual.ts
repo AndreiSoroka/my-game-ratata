@@ -67,5 +67,5 @@ export async function expectCharacterWindowAppearance(
     const rows = await tabs.evaluateAll(
         (items) => new Set(items.map((item) => item.getBoundingClientRect().top)).size
     )
-    expect(rows).toBe(viewport <= 420 ? 2 : 1)
+    expect(rows).toBe(viewport <= 520 ? 2 : 1)
 }

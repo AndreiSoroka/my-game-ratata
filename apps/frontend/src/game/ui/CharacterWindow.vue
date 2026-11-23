@@ -11,9 +11,7 @@ import CharacterCrafting from './CharacterCrafting.vue'
 import CharacterDevelopment from './CharacterDevelopment.vue'
 import CharacterQuests from './CharacterQuests.vue'
 import CharacterStats from './CharacterStats.vue'
-import CloseIcon from './CloseIcon.vue'
 import { isConfirmationKey, isTextEntry, permitsWorldMovement } from './keyboardOwnership'
-import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 
@@ -75,12 +73,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
     >
         <template #frame>
             <GameFrame variant="window" />
-        </template>
-        <template #close="{ buttonAttrs }">
-            <GameButton icon v-bind="buttonAttrs"><CloseIcon /></GameButton>
-        </template>
-        <template #tab="{ label, buttonAttrs }">
-            <GameButton v-bind="buttonAttrs">{{ label }}</GameButton>
         </template>
         <template #default="{ tab: activeTab }">
             <CharacterStats v-if="activeTab === 'stats'" :player="player" />

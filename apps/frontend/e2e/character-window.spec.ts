@@ -27,7 +27,14 @@ for (const viewport of [
         await page.keyboard.press('KeyP')
         const menu = page.getByRole('dialog', { name: 'Персонаж', exact: true })
         await expect(menu).toBeVisible()
-        await expect(menu.getByRole('tab', { name: 'Характеристики' })).toBeFocused()
+        const statistics = menu.getByRole('tab', { name: 'Характеристики' })
+        const development = menu.getByRole('tab', { name: 'Развитие' })
+        const close = menu.getByRole('button', { name: 'Закрыть персонажа' })
+        await expect(statistics).toHaveClass(/\bui-button\b/)
+        await expect(close).toHaveClass(/\bui-button\b/)
+        await expect(statistics).toBeFocused()
+        await expect(statistics).toHaveAttribute('data-highlighted', 'true')
+        await expect(development).toHaveAttribute('tabindex', '-1')
         await expect(menu).toContainText('≈')
         await expectCharacterWindowAppearance(menu, cleric)
         const bonuses = menu.getByRole('region', { name: 'Постоянные бонусы прошлого' })
@@ -36,10 +43,11 @@ for (const viewport of [
         await page.keyboard.press('KeyD')
         await page.keyboard.press('Digit2')
         await page.keyboard.press('ArrowRight')
-        await expect(menu.getByRole('tab', { name: 'Развитие' })).toHaveAttribute(
-            'aria-selected',
-            'true'
-        )
+        await expect(development).toHaveAttribute('aria-selected', 'true')
+        await expect(development).toHaveAttribute('data-highlighted', 'true')
+        await expect(development).toBeFocused()
+        await expect(statistics).toHaveAttribute('data-highlighted', 'false')
+        await expect(statistics).toHaveAttribute('tabindex', '-1')
         await expect(bonuses).toContainText('+20% опыта всех молитвенных школ')
         const graph = menu.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
@@ -66,10 +74,7 @@ for (const viewport of [
         await page.keyboard.press('KeyP')
         await expect(menu).toHaveCount(0)
         await page.keyboard.press('KeyP')
-        await expect(menu.getByRole('tab', { name: 'Развитие' })).toHaveAttribute(
-            'aria-selected',
-            'true'
-        )
+        await expect(development).toHaveAttribute('aria-selected', 'true')
         const backdrop = page.locator('.character-backdrop')
         const backdropColor = await backdrop.evaluate(
             (element) => getComputedStyle(element).backgroundColor
@@ -93,10 +98,10 @@ for (const viewport of [
         await page.getByRole('button', { name: 'Игровое меню', exact: true }).click()
         await page.getByRole('button', { name: 'Персонаж · P', exact: true }).click()
         await expect(menu).toBeVisible()
-        await expect(menu.getByRole('tab', { name: 'Развитие' })).toHaveAttribute(
-            'aria-selected',
-            'true'
-        )
+        await expect(development).toHaveAttribute('aria-selected', 'true')
+        await close.click()
+        await expect(menu).toHaveCount(0)
+        await expect(page.locator('canvas[data-game-canvas]')).toBeFocused()
     })
 }
 
