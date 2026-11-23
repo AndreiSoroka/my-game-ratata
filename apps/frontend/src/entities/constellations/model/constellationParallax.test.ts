@@ -55,25 +55,28 @@ it('retains the authored geometry at rest', () => {
     expect(projectConstellationStars(sky, viewport)).toBe(sky)
 })
 
-it('moves each constellation rigidly and interpolates links between constellations', () => {
+it('moves stars inside a constellation at different depths and interpolates both kinds of links', () => {
     const before = structuredClone(sky)
     const projected = projectConstellationStars(sky, { ...viewport, drag: { x: 60, y: 80 } })
 
     expect(projected.nodes[0]).toEqual(sky.nodes[0])
-    expect(projected.nodes[1]).toMatchObject({ x: 102.8, y: 150.4 })
-    expect(projected.nodes[2]).toMatchObject({ x: 152.8, y: 170.4 })
+    expect(projected.nodes[1]).toMatchObject({ x: 86, y: 128 })
+    expect(projected.nodes[2]).toEqual(sky.nodes[2])
     const route = projected.edges[0]!
     expect(route.crossLink).toBe(true)
-    expect(route.via![0]!.x).toBeCloseTo(28.56)
-    expect(route.via![0]!.y).toBeCloseTo(38.08)
-    expect(route.via![1]!.x).toBeCloseTo(106.256)
-    expect(route.via![1]!.y).toBeCloseTo(35.008)
-    expect(projected.edges[1]!.via).toEqual([{ x: 142.8, y: 160.4 }])
+    expect(route.via![0]!.x).toBeCloseTo(25.2)
+    expect(route.via![0]!.y).toBeCloseTo(33.6)
+    expect(route.via![1]!.x).toBeCloseTo(97.52)
+    expect(route.via![1]!.y).toBeCloseTo(23.36)
+    const internalBend = projected.edges[1]!.via![0]!
+    const endWeight = Math.hypot(40, 10) / (Math.hypot(40, 10) + Math.hypot(10, 10))
+    expect(internalBend.x).toBeCloseTo(150 - 24 * (1 - endWeight))
+    expect(internalBend.y).toBeCloseTo(170 - 32 * (1 - endWeight))
     expect(projected.edges[2]).toBe(sky.edges[2])
     expect(sky).toEqual(before)
 })
 
-it('gives constellations five stable pan rates even when their drift is capped', () => {
+it('keeps five root pan rates after long drags and when reversing direction', () => {
     const fullSky = {
         ...sky,
         nodes: constellationIds.map((id) => ({
@@ -84,15 +87,20 @@ it('gives constellations five stable pan rates even when their drift is capped',
     }
     const drag = { ...viewport, drag: { x: 100, y: 0 } }
     const projected = projectConstellationStars(fullSky, drag)
-    const panOffsets = [0, -3, -6, -9, -12]
+    const panOffsets = [0, -10, -20, -30, -40]
     expect(projected.nodes.map((node) => node.x)).toEqual(
         fullSky.nodes.map((_, index) => panOffsets[index % panOffsets.length])
     )
-    const capped = projectConstellationStars(fullSky, { ...drag, drag: { x: 500, y: 0 } })
-    const cappedOffsets = [0, -4, -8, -12, -16]
-    expect(capped.nodes.map((node) => node.x)).toEqual(
-        fullSky.nodes.map((_, index) => cappedOffsets[index % cappedOffsets.length])
-    )
+    const far = projectConstellationStars(fullSky, { ...drag, drag: { x: 500, y: 0 } })
+    const farther = projectConstellationStars(fullSky, { ...drag, drag: { x: 600, y: 0 } })
+    for (const [index, node] of far.nodes.entries()) {
+        const offset = panOffsets[index % panOffsets.length]!
+        expect(farther.nodes[index]!.x - node.x).toBeCloseTo(offset)
+    }
+    const reversed = projectConstellationStars(fullSky, { ...drag, drag: { x: -100, y: 0 } })
+    for (const [index, node] of reversed.nodes.entries()) {
+        expect(node.x).toBeCloseTo(-panOffsets[index % panOffsets.length]!)
+    }
     const reordered = projectConstellationStars(
         { ...fullSky, nodes: [...fullSky.nodes].reverse() },
         drag
@@ -100,7 +108,7 @@ it('gives constellations five stable pan rates even when their drift is capped',
     expect(reordered.nodes).toEqual([...projected.nodes].reverse())
 })
 
-it('uses the authored region center for rigid zoom and caps combined drift in screen pixels', () => {
+it('caps the zoom offset in screen pixels and adds pan independently', () => {
     const unitScale = 2.5
     const region = { x: 80, y: 100, width: 40, height: 50 }
     const regions = Object.fromEntries(
@@ -113,19 +121,35 @@ it('uses the authored region center for rigid zoom and caps combined drift in sc
     expect(zoomed.nodes[2]).toMatchObject({ x: 164, y: 185 })
     expect(zoomed.edges[1]!.via).toEqual([{ x: 154, y: 175 }])
 
-    const projected = projectConstellationStars(authoredSky, {
+    const farZoom = {
         ...viewport,
-        drag: { x: -600, y: 800 },
+        center: { x: -1500, y: -2000 },
         unitScale,
         zoomDelta: 1,
+    }
+    const capped = projectConstellationStars(authoredSky, farZoom)
+    const projected = projectConstellationStars(authoredSky, {
+        ...farZoom,
+        drag: { x: -600, y: 800 },
     })
     const original = sky.nodes[1]!
-    const root = projected.nodes[1]!
-    expect(root.x).toBeGreaterThan(original.x)
-    expect(root.y).toBeLessThan(original.y)
+    const root = capped.nodes[1]!
     expect(Math.hypot(root.x - original.x, root.y - original.y) / unitScale).toBeCloseTo(8)
-    expect(projected.nodes[2]!.x - root.x).toBeCloseTo(50)
-    expect(projected.nodes[2]!.y - root.y).toBeCloseTo(20)
+    expect(projected.nodes[1]!.x - root.x).toBeCloseTo(300)
+    expect(projected.nodes[1]!.y - root.y).toBeCloseTo(-400)
+    expect(projected.nodes[2]).toEqual(capped.nodes[2])
+})
+
+it('keeps the depth of a star when it is learned', () => {
+    const pan = { ...viewport, drag: { x: 250, y: 0 } }
+    const learned = {
+        ...sky,
+        nodes: sky.nodes.map((node) => ({ ...node, unlocked: true })),
+    }
+    expect(projectConstellationStars(learned, pan).nodes[2]).toEqual({
+        ...projectConstellationStars(sky, pan).nodes[2],
+        unlocked: true,
+    })
 })
 
 it('uses the same fallback anchor after nodes are reordered', () => {

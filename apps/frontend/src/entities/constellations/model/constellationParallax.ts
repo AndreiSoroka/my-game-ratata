@@ -7,9 +7,9 @@ import {
 } from '@my-game-ratata/contracts'
 
 const layerCount = 5
-const maximumDragReduction = 0.06
+const maximumDragReduction = 0.2
 const maximumZoomExpansion = 0.04
-const maximumOffsetPixels = 8
+const maximumZoomOffsetPixels = 8
 const depths = new Map(
     constellationIds.map((id, index) => [id, (index % layerCount) / (layerCount - 1)])
 )
@@ -29,39 +29,72 @@ export function projectConstellationStars(
     if (drag.x === 0 && drag.y === 0 && zoomDelta === 0) return snapshot
 
     const nodesById = new Map(snapshot.nodes.map((node) => [node.id, node]))
-    const offsets = constellationOffsets(snapshot, viewport)
+    const offsets = starOffsets(snapshot, viewport)
     return {
         ...snapshot,
         nodes: snapshot.nodes.map((node) => ({
             ...node,
-            ...translate(node, offsets.get(node.constellationId)!),
+            ...translate(node, offsets.get(node.id)!),
         })),
         edges: snapshot.edges.map((edge) => {
             const from = nodesById.get(edge.from)
             const to = nodesById.get(edge.to)
             if (!from || !to || !edge.via?.length) return edge
 
-            const start = offsets.get(from.constellationId)!
-            const end = offsets.get(to.constellationId)!
+            const start = offsets.get(from.id)!
+            const end = offsets.get(to.id)!
             return { ...edge, via: projectBends(from, to, edge.via, start, end) }
         }),
     }
 }
 
-function constellationOffsets(
+function starOffsets(
     snapshot: ConstellationSnapshot,
-    { drag, center, unitScale, zoomDelta }: ParallaxViewport
+    viewport: ParallaxViewport
+): Map<string, Vector2> {
+    const { drag, unitScale } = viewport
+    const zoomOffsets = constellationZoomOffsets(snapshot, viewport)
+    const panScale = unitScale * maximumDragReduction
+    return new Map(
+        snapshot.nodes.map((node) => {
+            const zoom = zoomOffsets.get(node.constellationId)
+            const depth = starDepth(node)
+            return [
+                node.id,
+                {
+                    x: (zoom?.x ?? 0) - drag.x * panScale * depth,
+                    y: (zoom?.y ?? 0) - drag.y * panScale * depth,
+                },
+            ]
+        })
+    )
+}
+
+function starDepth(node: ConstellationNodeSnapshot): number {
+    if (node.parents.length === 0) return depths.get(node.constellationId) ?? 0
+    // The wire ID is stable when a star changes from closed to learned.
+    let hash = 0
+    for (let index = 0; index < node.id.length; index++) {
+        hash = Math.imul(hash, 31) + node.id.charCodeAt(index)
+    }
+    return ((hash >>> 0) % layerCount) / (layerCount - 1)
+}
+
+function constellationZoomOffsets(
+    snapshot: ConstellationSnapshot,
+    { center, unitScale, zoomDelta }: ParallaxViewport
 ): Map<ConstellationId, Vector2> {
-    const zoomExpansion = maximumZoomExpansion * Math.max(-1, Math.min(1, zoomDelta))
-    const limit = maximumOffsetPixels * unitScale
     const offsets = new Map<ConstellationId, Vector2>()
+    if (zoomDelta === 0) return offsets
+    const zoomExpansion = maximumZoomExpansion * Math.max(-1, Math.min(1, zoomDelta))
+    const limit = maximumZoomOffsetPixels * unitScale
     for (const [id, node] of constellationAnchors(snapshot.nodes)) {
         const region = snapshot.layout?.regions[id]
         const anchor = region
             ? { x: region.x + region.width / 2, y: region.y + region.height / 2 }
             : node
-        const x = (anchor.x - center.x) * zoomExpansion - drag.x * unitScale * maximumDragReduction
-        const y = (anchor.y - center.y) * zoomExpansion - drag.y * unitScale * maximumDragReduction
+        const x = (anchor.x - center.x) * zoomExpansion
+        const y = (anchor.y - center.y) * zoomExpansion
         const distance = Math.hypot(x, y)
         const factor = (depths.get(id) ?? 0) * (distance > limit ? limit / distance : 1)
         offsets.set(id, { x: x * factor, y: y * factor })
