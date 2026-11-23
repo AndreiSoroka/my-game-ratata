@@ -10,7 +10,12 @@ import {
 } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
-import { prayerAreaOpacity, prayerAreaSources } from '../assets/prayerAreaAssets'
+import {
+    prayerAreaOpacity,
+    prayerAreaPulseAmplitude,
+    prayerAreaPulseDurationMs,
+    prayerAreaSources,
+} from '../assets/prayerAreaAssets'
 import { drawPrayerAreaOutline } from '../runtime/prayerAreaOutline'
 import { drawEffectSurface, type EffectSurface } from './effectPreview'
 
@@ -49,18 +54,30 @@ function prayerSample(abilityId: PrayerActionId, surface: EffectSurface): HTMLEl
     const stage = document.createElement('div')
     stage.className = 'prayer-areas-preview__stage'
     const terrain = sampleCanvas((context) => drawEffectSurface(context, surface))
+    const effect = document.createElement('div')
+    effect.className = 'prayer-areas-preview__effect'
+    effect.style.setProperty('--prayer-area-opacity', String(prayerAreaOpacity))
+    effect.style.setProperty(
+        '--prayer-area-opacity-min',
+        String(prayerAreaOpacity - prayerAreaPulseAmplitude)
+    )
+    effect.style.setProperty(
+        '--prayer-area-opacity-max',
+        String(prayerAreaOpacity + prayerAreaPulseAmplitude)
+    )
+    effect.style.animationDuration = `${prayerAreaPulseDurationMs}ms`
     const sprite = document.createElement('img')
     sprite.src = prayerAreaSources[abilityId]
     sprite.alt = ''
     sprite.style.width = `${(PRAYER_RULES.radius * 2 * 100) / sampleSize}%`
-    sprite.style.opacity = String(prayerAreaOpacity)
     const outline = sampleCanvas((context) =>
         drawPrayerAreaOutline(context, sampleSize / 2, sampleSize / 2, PRAYER_RULES.radius)
     )
     const caption = document.createElement('figcaption')
     caption.textContent =
         abilityId === 'pray' ? 'Молитва Угольной Матери' : ABILITY_DEFINITIONS[abilityId].name
-    stage.append(terrain, sprite, outline)
+    effect.append(sprite, outline)
+    stage.append(terrain, effect)
     figure.append(stage, caption)
     return figure
 }

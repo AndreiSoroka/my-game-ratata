@@ -23,6 +23,7 @@ const calls = vi.hoisted(() => ({
     inputs: vi.fn<() => void>(),
     removeInputs: vi.fn<() => void>(),
     send: vi.fn<(command: ClientMessage) => void>(),
+    frames: new Set<() => void>(),
     handlers: undefined as
         | {
               keyDown: (event: KeyboardEvent) => void
@@ -42,7 +43,15 @@ vi.mock('./runtimePresentation', () => ({
         return {
             canvas,
             loader: {},
-            engine: { start: calls.start, stop: calls.stop },
+            engine: {
+                start: calls.start,
+                stop: calls.stop,
+                on: (_event: string, callback: () => void) => calls.frames.add(callback),
+                off: (_event: string, callback: () => void) => calls.frames.delete(callback),
+                screen: {
+                    getWorldBounds: () => ({ left: 10, top: 20, right: 200, bottom: 100 }),
+                },
+            },
             audio: {
                 playMusic: calls.music,
                 stop: vi.fn<() => void>(),
@@ -92,6 +101,7 @@ vi.mock('./runtimeSocket', () => ({
 }))
 beforeEach(() => {
     vi.clearAllMocks()
+    calls.frames.clear()
     calls.load.mockResolvedValue({ buildings: [], tileWidth: 16 } as unknown as RenderedTiledMap)
     calls.start.mockResolvedValue()
 })
@@ -149,6 +159,29 @@ it('sends fresh movement when the same direction is pressed after a UI input rel
     } finally {
         game.stop()
     }
+})
+it('reports the ready camera view again after a server epoch change and stops observing on disposal', async () => {
+    const { game } = setup()
+    await startWorld(game)
+    calls.frames.forEach((callback) => callback())
+    expect(calls.send).toHaveBeenCalledWith({
+        type: 'set_viewport',
+        locationId: 'map-2-2',
+        bounds: { left: 0, top: 0, right: 224, bottom: 128 },
+    })
+    calls.send.mockClear()
+    calls.load.mockResolvedValueOnce({
+        buildings: [],
+        tileWidth: 24,
+    } as unknown as RenderedTiledMap)
+    initialize('new-world')
+    await vi.waitFor(() => expect(game.selectionTileSize).toBe(24))
+    calls.frames.forEach((callback) => callback())
+    expect(
+        calls.send.mock.calls.filter(([command]) => command.type === 'set_viewport')
+    ).toHaveLength(1)
+    game.stop()
+    expect(calls.frames.size).toBe(0)
 })
 it.each([
     { button: PointerButton.Left, pointerType: PointerType.Mouse },

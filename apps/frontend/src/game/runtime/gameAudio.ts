@@ -1,4 +1,5 @@
 import {
+    type FootstepSourceSnapshot,
     type GameEventPayload,
     isArrowAbility,
     type WorldSnapshot,
@@ -171,8 +172,12 @@ export class GameAudio {
             this.stopFootsteps()
             return
         }
+        const sources = new Map<string, FootstepSourceSnapshot>(
+            snapshot.footstepSources?.map((source) => [source.id, source])
+        )
+        for (const character of snapshot.characters) sources.set(character.id, character)
         const steps = this.footsteps.collect(
-            snapshot.characters,
+            [...sources.values()],
             localPlayerId,
             performance.now(),
             (point) => surfaceAt(map, point)

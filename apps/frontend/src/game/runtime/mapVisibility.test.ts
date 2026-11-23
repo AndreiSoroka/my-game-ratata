@@ -73,6 +73,63 @@ describe('interaction visibility uses reachable geometry', () => {
 })
 
 describe('resource obstacle reconciliation', () => {
+    it('keeps known offscreen obstacles while updating depletion and absence inside a partial view', () => {
+        const map = arena()
+        map.solid[1] = true
+        map.resourceBase = map.solid.slice()
+        const node: AdventureResourceNode = {
+            id: 'tree',
+            source: 'tree',
+            phase: 'ready',
+            kind: 'wood',
+            remaining: 8,
+            locationId: 'map-2-2',
+            position: center,
+            collisionBounds: { x: 48, y: 48, width: 48, height: 32 },
+        }
+        const away = { left: 128, top: 128, right: 192, bottom: 192 }
+        const nearby = { left: 32, top: 32, right: 112, bottom: 112 }
+        updateResourceVisibility(map, [node])
+        updateResourceVisibility(map, [], away)
+        expect(map.solid[3 * 12 + 3]).toBe(true)
+        expect(map.solid[1]).toBe(true)
+        updateResourceVisibility(
+            map,
+            [{ ...node, phase: 'stump', collisionBounds: footprint }],
+            nearby
+        )
+        expect(map.solid[3 * 12 + 3]).toBe(false)
+        expect(map.solid[4 * 12 + 4]).toBe(true)
+        updateResourceVisibility(map, [], away)
+        expect(map.solid[4 * 12 + 4]).toBe(true)
+        updateResourceVisibility(map, [], nearby)
+        expect(map.solid[4 * 12 + 4]).toBe(false)
+        expect(map.solid[1]).toBe(true)
+        updateResourceVisibility(map, [node], nearby)
+        expect(map.solid[3 * 12 + 3]).toBe(true)
+        const freshMap = arena()
+        updateResourceVisibility(freshMap, [], away)
+        expect(freshMap.solid.some(Boolean)).toBe(false)
+    })
+
+    it('updates changed collision bounds even while a resource stays in the same phase', () => {
+        const map = arena()
+        const node: AdventureResourceNode = {
+            id: 'tree',
+            source: 'tree',
+            phase: 'ready',
+            kind: 'wood',
+            remaining: 8,
+            locationId: 'map-2-2',
+            position: center,
+            collisionBounds: footprint,
+        }
+        updateResourceVisibility(map, [node])
+        updateResourceVisibility(map, [{ ...node, collisionBounds: { ...footprint, x: 96 } }])
+        expect(map.solid[4 * 12 + 4]).toBe(false)
+        expect(map.solid[4 * 12 + 6]).toBe(true)
+    })
+
     it('shrinks a tree to a stump, restores growth and never erases an unrelated wall', () => {
         const map = arena()
         map.solid[1] = true

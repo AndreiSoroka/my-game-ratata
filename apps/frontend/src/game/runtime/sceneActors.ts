@@ -132,6 +132,7 @@ export class SceneActors {
         this.routeWaypoints.dispose()
         this.interactionTarget.dispose()
         this.combatTarget.dispose()
+        this.mapVisibility?.resourceInterest?.clear()
         this.mapVisibility = this.playerPosition = undefined
         this.gravePositions.clear()
     }
@@ -151,6 +152,7 @@ export class SceneActors {
         this.routeWaypoints.clear()
         this.signReading.setMap(map.visibility)
         this.trainingAreas = map.training.areas
+        this.mapVisibility?.resourceInterest?.clear()
         this.mapVisibility = map.visibility
         this.playerPosition = undefined
         this.gravePositions.clear()
@@ -235,9 +237,10 @@ export class SceneActors {
             (snapshot.graves ?? []).map((grave) => [grave.id, grave.position])
         )
         const nodes = snapshot.adventure?.resourceNodes ?? []
-        this.depthProps.updateResources(nodes)
-        this.depthProps.updateGraves(snapshot.graves ?? [])
-        if (this.mapVisibility) updateResourceVisibility(this.mapVisibility, nodes)
+        this.depthProps.updateResources(nodes, snapshot.viewBounds)
+        this.depthProps.updateGraves(snapshot.graves ?? [], snapshot.viewBounds)
+        if (this.mapVisibility)
+            updateResourceVisibility(this.mapVisibility, nodes, snapshot.viewBounds)
     }
 
     private updateObserver(player: CharacterSnapshot | undefined, snapshot: WorldSnapshot): void {

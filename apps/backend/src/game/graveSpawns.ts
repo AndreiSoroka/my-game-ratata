@@ -16,6 +16,7 @@ import { GraveGuardians } from './graveGuardians'
 import { finalGravePosition } from './gravePlacement'
 import type { GraveCombatTarget, GraveDamageResult } from './graveRules'
 import {
+    createGraveSource,
     type GraveSource,
     restoreSource,
     snapshotSource,
@@ -127,19 +128,17 @@ export class GraveSpawns {
         if (this.sources.has(definition.id)) {
             return
         }
-        this.sources.set(definition.id, {
-            definition: structuredClone(definition),
-            children: new Set(initialChildren),
-            nextSpawnAt: now + firstDelay,
-            nextBirth: 1,
-            firstMasteryLevel,
-            reserveRevival,
-            retryAt: 0,
-            hpUnits: GRAVE_MAX_HP * 100,
-            phase: 'active',
-            restoresAt: null,
-            purificationReceipts: new Set(),
-        })
+        this.sources.set(
+            definition.id,
+            createGraveSource(
+                definition,
+                initialChildren,
+                now,
+                firstDelay,
+                firstMasteryLevel,
+                reserveRevival
+            )
+        )
     }
 
     public schedule(
@@ -168,6 +167,7 @@ export class GraveSpawns {
                 id,
                 locationId: character.locationId,
                 position,
+                buriedName: character.nickname,
             },
             [],
             now,

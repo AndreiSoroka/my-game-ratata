@@ -6,10 +6,11 @@ import {
     type GraveSourceDefinition,
 } from '@my-game-ratata/contracts'
 
+import { resolveBuriedName } from './graveNames'
 import type { GraveCombatTarget } from './graveRules'
 
 export interface GraveSource {
-    definition: GraveSourceDefinition
+    definition: GraveSourceDefinition & { buriedName: string }
     children: Set<string>
     nextSpawnAt: number
     nextBirth: number
@@ -21,6 +22,32 @@ export interface GraveSource {
     restoresAt: number | null
     purificationReceipts: Set<string>
     firstMasteryPath?: ConstellationId
+}
+
+export function createGraveSource(
+    definition: GraveSourceDefinition,
+    initialChildren: readonly string[],
+    now: number,
+    firstDelay: number,
+    firstMasteryLevel: number,
+    reserveRevival: boolean
+): GraveSource {
+    return {
+        definition: {
+            ...structuredClone(definition),
+            buriedName: resolveBuriedName(definition.id, definition.buriedName),
+        },
+        children: new Set(initialChildren),
+        nextSpawnAt: now + firstDelay,
+        nextBirth: 1,
+        firstMasteryLevel,
+        reserveRevival,
+        retryAt: 0,
+        hpUnits: GRAVE_MAX_HP * 100,
+        phase: 'active',
+        restoresAt: null,
+        purificationReceipts: new Set(),
+    }
 }
 
 export function restoreSource(source: GraveSource, now: number): void {

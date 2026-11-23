@@ -1,13 +1,20 @@
-import type { AdventureResourceNode, WorldGraveSnapshot } from '@my-game-ratata/contracts'
+import type {
+    AdventureResourceNode,
+    ViewportBounds,
+    WorldGraveSnapshot,
+} from '@my-game-ratata/contracts'
 import { Actor, Canvas, CollisionType, type Engine, vec } from 'excalibur'
 
 import { GraveViews } from './graveViews'
 import type { MapDepthProp } from './mapDepthProps'
 import type { HarvestGraphics } from './tiledMap'
+import { WorldInterestCache } from './worldInterest'
 
 export class DepthPropViews {
     private actors = new Map<string, Actor>()
     private resources = new Map<string, { actor: Actor; phase: string }>()
+    private readonly resourceInterest = new WorldInterestCache<AdventureResourceNode>()
+    private readonly graveInterest = new WorldInterestCache<WorldGraveSnapshot>()
     private readonly graves: GraveViews
     private graphics: HarvestGraphics | undefined
     public constructor(private readonly engine: Engine) {
@@ -28,17 +35,30 @@ export class DepthPropViews {
         this.graves.dispose()
         this.actors.clear()
         this.resources.clear()
+        this.resourceInterest.clear()
+        this.graveInterest.clear()
         this.graphics = undefined
     }
 
     /** Grave identity is independent of the emptied corpse container and character body. */
-    public updateGraves(graves: readonly WorldGraveSnapshot[]): void {
-        this.graves.update(graves, this.actors, this.graphics?.grave)
+    public updateGraves(graves: readonly WorldGraveSnapshot[], viewBounds?: ViewportBounds): void {
+        const update = this.graveInterest.update(graves, viewBounds)
+        for (const grave of update.nodes) {
+            const original = grave.propId === undefined ? undefined : this.actors.get(grave.propId)
+            if (original) original.graphics.isVisible = true
+        }
+        this.graves.update(update.nodes, this.actors, this.graphics?.grave)
+        this.hideAbsentProps(update.removed, viewBounds)
     }
 
-    public updateResources(nodes: readonly AdventureResourceNode[]): void {
+    public updateResources(
+        nodes: readonly AdventureResourceNode[],
+        viewBounds?: ViewportBounds
+    ): void {
+        const update = this.resourceInterest.update(nodes, viewBounds)
+        this.hideAbsentProps(update.removed, viewBounds)
         const active = new Set<string>()
-        for (const node of nodes) {
+        for (const node of update.nodes) {
             if (this.syncResource(node)) active.add(node.id)
         }
         for (const [id, entry] of this.resources) {
@@ -46,6 +66,17 @@ export class DepthPropViews {
                 entry.actor.kill()
                 this.resources.delete(id)
             }
+        }
+    }
+
+    private hideAbsentProps(
+        nodes: ReadonlyArray<{ propId?: string }>,
+        viewBounds?: ViewportBounds
+    ): void {
+        if (viewBounds === undefined) return
+        for (const node of nodes) {
+            const original = node.propId === undefined ? undefined : this.actors.get(node.propId)
+            if (original) original.graphics.isVisible = false
         }
     }
 

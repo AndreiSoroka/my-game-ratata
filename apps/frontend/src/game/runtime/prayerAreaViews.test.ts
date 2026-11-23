@@ -4,7 +4,7 @@ import {
     prayerActionIds,
 } from '@my-game-ratata/contracts'
 import type { Engine, ImageSource } from 'excalibur'
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
 import { type PrayerAreaImages, PrayerAreaViews } from './prayerAreaViews'
@@ -26,7 +26,13 @@ interface AreaGraphic {
 
 interface AreaActor {
     readonly options: { z: number; anchor: { x: number; y: number }; collisionType: string }
-    readonly graphics: { use: ReturnType<typeof vi.fn<(graphic: AreaGraphic) => void>> }
+    readonly graphics: {
+        use: ReturnType<typeof vi.fn<(graphic: AreaGraphic) => void>>
+        opacity: number
+    }
+    readonly on: ReturnType<
+        typeof vi.fn<(event: 'preupdate', handler: (event: { elapsed: number }) => void) => void>
+    >
     readonly kill: ReturnType<typeof vi.fn<() => void>>
     pos: { x: number; y: number }
     scale: { x: number; y: number }
@@ -34,7 +40,9 @@ interface AreaActor {
 
 vi.mock('excalibur', () => ({
     Actor: class {
-        public readonly graphics = { use: vi.fn<(graphic: AreaGraphic) => void>() }
+        public readonly graphics = { use: vi.fn<(graphic: AreaGraphic) => void>(), opacity: 1 }
+        public readonly on =
+            vi.fn<(event: 'preupdate', handler: (event: { elapsed: number }) => void) => void>()
         public readonly kill = vi.fn<() => void>()
         public constructor(public readonly options: AreaActor['options']) {}
     },
@@ -50,7 +58,10 @@ vi.mock('excalibur', () => ({
 
 type SpriteOptions = Parameters<ImageSource['toSprite']>[0]
 
-function setup() {
+afterEach(() => vi.unstubAllGlobals())
+
+function setup(reducedMotion = false) {
+    vi.stubGlobal('matchMedia', () => ({ matches: reducedMotion }))
     const add = vi.fn<(actor: AreaActor) => void>()
     const images = new Map(
         prayerActionIds.map((id) => [
@@ -107,7 +118,6 @@ it('selects the five distinct action sprites for channels first seen after they 
     for (const [index, id] of prayerActionIds.entries()) {
         expect(images.get(id)?.toSprite).toHaveBeenCalledExactlyOnceWith({
             destSize: { width: 96, height: 96 },
-            opacity: 0.9,
         })
         const actor = add.mock.calls[index]![0]
         expect(actor.graphics.use).toHaveBeenCalledOnce()
@@ -124,6 +134,42 @@ it('selects the five distinct action sprites for channels first seen after they 
         expect(actor.pos).toEqual({ x: 120, y: 150 })
         expect(actor.scale).toEqual({ x: 1, y: 1 })
     }
+})
+
+it('softly pulses each caster on scene updates without changing its shared graphic', () => {
+    const { views, add, images } = setup()
+    views.sync([caster('first', 'pray'), caster('second', 'pray')], 1500)
+    const first = add.mock.calls[0]![0]
+    const second = add.mock.calls[1]![0]
+    expect(first.graphics.use.mock.calls[0]![0]).toBe(second.graphics.use.mock.calls[0]![0])
+    expect(images.get('pray')?.toSprite).toHaveBeenCalledOnce()
+    expect(first.graphics.opacity).toBeCloseTo(0.24)
+    expect(second.graphics.opacity).toBeCloseTo(0.24)
+    expect(first.on.mock.calls[0]![0]).toBe('preupdate')
+    const update = first.on.mock.calls[0]![1]
+    update({ elapsed: 400 })
+    expect(first.graphics.opacity).toBeCloseTo(0.32)
+    expect(second.graphics.opacity).toBeCloseTo(0.24)
+    views.sync([caster('first', 'pray'), caster('second', 'pray')], 2000)
+    expect(first.graphics.opacity).toBeCloseTo(0.32)
+    update({ elapsed: 400 })
+    expect(first.graphics.opacity).toBeCloseTo(0.4)
+    update({ elapsed: 800 })
+    expect(first.graphics.opacity).toBeCloseTo(0.24)
+    update({ elapsed: 1600 * 500 + 800 })
+    expect(first.graphics.opacity).toBeCloseTo(0.4)
+})
+
+it('keeps prayer areas quietly static with reduced motion and removes them on teardown', () => {
+    const { views, add } = setup(true)
+    views.sync([caster('priest', 'pray')], 1500)
+    const area = add.mock.calls[0]![0]
+    expect(area.graphics.opacity).toBeCloseTo(0.32)
+    expect(area.on).not.toHaveBeenCalled()
+    views.sync([caster('priest', 'pray_road')], 2000)
+    expect(area.graphics.opacity).toBeCloseTo(0.32)
+    views.clear()
+    expect(area.kill).toHaveBeenCalledOnce()
 })
 
 it('uses twice the frozen cast radius as the diameter, follows the caster and reuses its view', () => {

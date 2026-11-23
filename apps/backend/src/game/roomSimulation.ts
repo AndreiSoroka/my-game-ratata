@@ -16,13 +16,15 @@ import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
-import { type RoomSocket, send } from './roomMessaging'
+import { type RoomSocket, send, sendSnapshot } from './roomMessaging'
 import { characterMovementIntent, travelRoomCharacter } from './roomTravel'
+import { socketViewport } from './roomViewport'
 import { advanceSavvaTerritory, SAVVA_ID } from './savvaTerritory'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
+import { projectViewport } from './viewportProjection'
 import { pauseWorkerActivity } from './workerActivityState'
-import { centerLocationId, type WorldLocations } from './worldLocations'
+import type { WorldLocations } from './worldLocations'
 
 export interface SimulationContext {
     companions: CompanionService
@@ -119,12 +121,14 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))
     for (const [ws, id] of context.connections) {
-        const locationId =
-            id === undefined ? centerLocationId : characters.get(id)?.locationId
-        send(ws, {
-            snapshot: context.snapshot(now, locationId, id),
-            type: 'snapshot',
-        })
+        if (id === undefined) {
+            continue
+        }
+        const locationId = characters.get(id)?.locationId
+        const viewport = socketViewport(ws, id, locationId)
+        sendSnapshot(ws, () =>
+            projectViewport(context.snapshot(now, locationId, id), viewport, id)
+        )
     }
 }
 

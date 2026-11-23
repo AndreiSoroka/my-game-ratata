@@ -1,12 +1,18 @@
+import type { ClientMessage } from '@my-game-ratata/contracts'
+
 import type { PlantingPreview } from './plantingPreview'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
 import { createRuntimePresentation } from './runtimePresentation'
+import { RuntimeViewport } from './runtimeViewport'
 import type { RenderedTiledMap } from './tiledMap'
 
 export type RuntimePresentation = ReturnType<typeof createRuntimePresentation> & {
     removeInputs: () => void
+    viewport: RuntimeViewport
 }
 interface PresentationLifecycle {
+    send: (message: ClientMessage) => void
+    viewportLocation: () => string | undefined
     inputs: Parameters<typeof installRuntimeInputs>[2]
     mounted: (view: RuntimePresentation) => void
     current: (view: RuntimePresentation) => boolean
@@ -23,8 +29,11 @@ export async function initializeRuntimePresentation(
     const created = createRuntimePresentation(container, map)
     created.canvas.style.visibility = 'hidden'
     planting.initialize(created.engine)
+    const viewport = new RuntimeViewport(lifecycle.send, lifecycle.viewportLocation)
+    viewport.start(created.engine)
     const view = {
         ...created,
+        viewport,
         removeInputs: installRuntimeInputs(created.engine, created.canvas, lifecycle.inputs),
     }
     lifecycle.mounted(view)
@@ -47,6 +56,7 @@ export function disposeRuntimePresentation(
     planting: PlantingPreview
 ): void {
     if (!view) return
+    view.viewport.stop()
     view.removeInputs()
     view.audio.stop()
     view.sceneActors.dispose()
@@ -57,6 +67,7 @@ export function disposeRuntimePresentation(
 
 export function suspendRuntimePresentation(view: RuntimePresentation | undefined): void {
     if (!view) return
+    view.viewport.reset()
     view.audio.suspendWorld()
     view.canvas.style.visibility = 'hidden'
     view.sceneActors.clearDamage()

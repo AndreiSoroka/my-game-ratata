@@ -4,6 +4,7 @@ import { GameCharacter } from '../src/game/character'
 import { CompanionService } from '../src/game/companions'
 import type { CharacterController } from '../src/game/controllers'
 import { GraveSpawns } from '../src/game/graveSpawns'
+import { normalizeNickname } from '../src/game/identity'
 import { NavigationService } from '../src/game/navigation'
 import { RoomLife } from '../src/game/roomLife'
 import type { RoomSocket } from '../src/game/roomMessaging'
@@ -22,10 +23,14 @@ export function graveNavigation(id = 'grave-test') {
     })
 }
 
-export function graveHero(id = 'fallen', locationId = 'map-3-2') {
+export function graveHero(
+    id = 'fallen',
+    locationId = 'map-3-2',
+    nickname = id
+) {
     return new GameCharacter({
         id,
-        nickname: id,
+        nickname,
         locationId,
         archetype: 'human',
         controllerKind: 'network_player',
@@ -53,15 +58,15 @@ export function graveFixture() {
     return { service, navigation, characters, created, context }
 }
 
-export function roomLifeFixture() {
-    const hero = graveHero()
+export function roomLifeFixture(nickname = 'fallen') {
+    const hero = graveHero('fallen', 'map-3-2', nickname)
     const characters = new Map([[hero.id, hero]])
     const socket = { send: () => undefined } as unknown as RoomSocket
     const connections = new Map<RoomSocket, string | undefined>([
         [socket, hero.id],
     ])
     const controllers = new Map<string, CharacterController>()
-    const nicknames = new Map([[hero.nickname, hero.id]])
+    const nicknames = new Map([[normalizeNickname(hero.nickname), hero.id]])
     const gold = new Map([[hero.id, 37]])
     const world = new WorldLocations(graveNavigation(), {
         drainGold(id) {

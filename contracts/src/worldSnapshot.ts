@@ -11,6 +11,7 @@ import type { MagicEffectSnapshot, PortalEndpointSnapshot } from './magic'
 import type { PartySnapshot } from './party'
 import type { AutomationSnapshot } from './scenarios'
 import type { SocialSnapshot } from './social'
+import type { ViewportBounds } from './viewport'
 import type { WorldLocation } from './world'
 
 export interface HeardFootstepSnapshot {
@@ -19,7 +20,16 @@ export interface HeardFootstepSnapshot {
     expiresAt: number
 }
 
+/** Audio-only authorized sources; clients must not render or select these actors. */
+export type FootstepSourceSnapshot = Pick<
+    CharacterSnapshot,
+    'id' | 'alive' | 'position' | 'velocity' | 'archetype' | 'movement'
+>
+
 export interface WorldSnapshot {
+    /** Expanded server interest bounds. Missing spatial entries outside these are omitted, not removed. */
+    viewBounds?: ViewportBounds
+    footstepSources?: FootstepSourceSnapshot[]
     serverEpoch?: string
     social?: SocialSnapshot
     automation?: AutomationSnapshot

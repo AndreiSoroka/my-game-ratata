@@ -24,4 +24,18 @@ bun run dev:backend
 
 In a second terminal, run `bun run dev:frontend` and open [the local game](http://127.0.0.1:5173).
 
+For Wi-Fi play, stop previous launches and run `bun run dev:lan` from the repository
+root. It starts the backend on port 3000 and the frontend on port 4173, both on
+`0.0.0.0`. Other devices on the same network open `http://<computer-ip>:4173`;
+`Ctrl+C` stops both processes. Restarting the backend resets the in-memory world.
+The LAN backend runs without a file watcher, so source edits do not restart a
+shared game session; restart it explicitly to apply server changes.
+
+Game updates use negotiated WebSocket compression and only include world objects
+inside each camera's view plus 15% on every side. Inventory, quests, party and
+dialogue data remain available independently of the camera. Slow connections skip
+obsolete snapshots while their send queue drains; action results remain reliable.
+The map itself is still loaded once per location. HTTPS is not required for these
+optimizations.
+
 See the [playable world guide](docs/playable-world.md) for controls and gameplay. Run `bun run check` to verify the project.

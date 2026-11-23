@@ -20,7 +20,7 @@ const now = 10_000
 
 describe('shared finalization and corpse ownership', () => {
     it('keeps downed possessions protected, then finalizes once at timeout and spawns after another 30 seconds', () => {
-        const f = roomLifeFixture()
+        const f = roomLifeFixture('Алексей Игнатьевич')
         const item = createItemInstance('herbs', 4)
         const weapon = createItemInstance('simple_sword')
         f.hero.inventory.push(item)
@@ -36,6 +36,9 @@ describe('shared finalization and corpse ownership', () => {
         ).toBe(false)
         f.advance(now + 60_000)
         expect(f.characters.has(f.hero.id)).toBe(false)
+        expect(f.life.graves(f.hero.locationId)).toMatchObject([
+            { id: `final:${f.hero.id}`, buriedName: 'Алексей Игнатьевич' },
+        ])
         expect(f.connections.get(f.socket)).toBeUndefined()
         expect(f.nicknames.size).toBe(0)
         expect(f.gold.get(f.hero.id)).toBe(0)
@@ -325,6 +328,12 @@ describe('socket-authorized abandon life command', () => {
         expect(inits).toHaveLength(2)
         expect(inits[1]?.playerId).not.toBe(first.actor.id)
         expect(room.snapshot(now, CENTER_LOCATION_ID).graves).toHaveLength(1)
+        expect(
+            room.snapshot(now, CENTER_LOCATION_ID).graves?.[0]
+        ).toMatchObject({
+            id: `final:${first.actor.id}`,
+            buriedName: 'First',
+        })
         expect(room.snapshot(now, 'map-3-2').graves).toEqual([])
     })
 })

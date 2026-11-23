@@ -1,4 +1,8 @@
-import type { CharacterSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    CharacterSnapshot,
+    FootstepSourceSnapshot,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import type { Sound } from 'excalibur'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -51,6 +55,52 @@ afterEach(() => {
 })
 
 describe('footstep audio lifecycle', () => {
+    it('keeps a walking stride audible across viewport entry and exit without adding duplicate character views', () => {
+        const now = vi.spyOn(performance, 'now').mockReturnValue(0)
+        vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+        const player = setup()
+        const listener = snapshot(8).characters[0]!
+        listener.velocity = { x: 0, y: 0 }
+        const walker = (x: number): FootstepSourceSnapshot => ({
+            id: 'outside-view',
+            alive: true,
+            archetype: 'human',
+            position: { x, y: 8 },
+            velocity: { x: 90, y: 0 },
+        })
+        const world: WorldSnapshot = {
+            ...snapshot(8),
+            characters: [listener],
+            footstepSources: [walker(60)],
+        }
+        try {
+            player.observeWorld(world, 'hero')
+            now.mockReturnValue(300)
+            world.footstepSources = [walker(90)]
+            player.observeWorld(world, 'hero')
+            expect(audio.play).toHaveBeenCalledExactlyOnceWith(
+                expect.objectContaining({
+                    actorId: 'outside-view',
+                    surface: 'wood',
+                })
+            )
+            expect(world.characters).toEqual([listener])
+
+            now.mockReturnValue(600)
+            world.characters = [listener, walker(120) as CharacterSnapshot]
+            player.observeWorld(world, 'hero')
+            expect(audio.play).toHaveBeenCalledTimes(2)
+
+            now.mockReturnValue(900)
+            world.characters = [listener]
+            world.footstepSources = [walker(150)]
+            player.observeWorld(world, 'hero')
+            expect(audio.play).toHaveBeenCalledTimes(3)
+            expect(world.characters).toEqual([listener])
+        } finally {
+            player.stop()
+        }
+    })
     it('stops active steps on death or missing listener and retains the map for revival', () => {
         const now = vi.spyOn(performance, 'now')
         vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)

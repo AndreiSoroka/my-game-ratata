@@ -26,17 +26,43 @@
     text-align: center;
 }
 
-.prayer-areas-preview__stage {
+.prayer-areas-preview__stage,
+.prayer-areas-preview__effect {
     display: grid;
     place-items: center;
     image-rendering: pixelated;
 }
 
-.prayer-areas-preview__stage > * {
+.prayer-areas-preview__stage > *,
+.prayer-areas-preview__effect > * {
     grid-area: 1 / 1;
     height: auto;
 }
 
 .prayer-areas-preview__stage canvas {
     width: 100%;
+}
+
+.prayer-areas-preview__effect {
+    width: 100%;
+    opacity: var(--prayer-area-opacity);
+    animation-name: prayer-area-pulse;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes prayer-area-pulse {
+    0%,
+    100% {
+        opacity: var(--prayer-area-opacity-min);
+    }
+    50% {
+        opacity: var(--prayer-area-opacity-max);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .prayer-areas-preview__effect {
+        animation: none;
+    }
 }

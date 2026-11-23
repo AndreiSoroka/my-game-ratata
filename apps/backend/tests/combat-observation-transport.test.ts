@@ -116,7 +116,7 @@ it('sends the failed prayer caption only to the caster and strips the audience',
 })
 
 describe('serialized WebSocket combat privacy', () => {
-    it('applies one projection to owner, foreign observer and a socket that has not joined', () => {
+    it('projects joined snapshots and combat events without streaming unjoined state', () => {
         vi.useFakeTimers()
         const { room, join } = observationRoom()
         const owner = join('Privacy owner')
@@ -144,23 +144,28 @@ describe('serialized WebSocket combat privacy', () => {
             expectOwnerSegments(own)
             expect(own?.abilities?.barrier).not.toHaveProperty('remaining')
             expect(own?.resourceChecks).toBeDefined()
+            const snapshot = receivedSnapshot(foreign.messages)
+            const target = snapshot.characters.find(
+                (entry) => entry.id === actor.id
+            )
+            expect(target?.health).toEqual({ kind: 'percent', percent: 37 })
+            expect(target?.resources).toEqual({
+                mana: { kind: 'percent', percent: 100, hasCapacity: true },
+                energy: { kind: 'percent', percent: 37, hasCapacity: true },
+            })
+            expect(target).not.toHaveProperty('resourceChecks')
+            expect(JSON.stringify(target)).not.toMatch(
+                /"(?:current|maxMana|maxEnergy)"/
+            )
+            expect(target?.abilities?.barrier).not.toHaveProperty('remaining')
+            expect(
+                anonymous.messages.some(
+                    (message) =>
+                        message.type === 'snapshot' ||
+                        message.type === 'world_init'
+                )
+            ).toBe(false)
             for (const observer of [foreign, anonymous]) {
-                const snapshot = receivedSnapshot(observer.messages)
-                const target = snapshot.characters.find(
-                    (entry) => entry.id === actor.id
-                )
-                expect(target?.health).toEqual({ kind: 'percent', percent: 37 })
-                expect(target?.resources).toEqual({
-                    mana: { kind: 'percent', percent: 100, hasCapacity: true },
-                    energy: { kind: 'percent', percent: 37, hasCapacity: true },
-                })
-                expect(target).not.toHaveProperty('resourceChecks')
-                expect(JSON.stringify(target)).not.toMatch(
-                    /"(?:current|maxMana|maxEnergy)"/
-                )
-                expect(target?.abilities?.barrier).not.toHaveProperty(
-                    'remaining'
-                )
                 const relevant = receivedEvents(observer.messages).filter(
                     (event) => event.targetId === actor.id
                 )

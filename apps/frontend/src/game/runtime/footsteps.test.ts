@@ -1,10 +1,10 @@
-import type { ProgressionSnapshot } from '@my-game-ratata/contracts'
+import type { FootstepSourceSnapshot, ProgressionSnapshot } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
-import { footstepGain, FootstepPlanner, type WalkingActor } from './footsteps'
+import { footstepGain, FootstepPlanner } from './footsteps'
 import { readFootstepMap, surfaceAt } from './mapSurfaces'
 
-function walker(id: string, x: number, moving = true): WalkingActor {
+function walker(id: string, x: number, moving = true): FootstepSourceSnapshot {
     return {
         id,
         alive: true,
@@ -176,7 +176,9 @@ describe('learned stealth audio', () => {
     it('keeps level growth from silently changing footstep volume', () => {
         const volume = (level: number, mode: 'sneaking' | 'walking') => {
             const planner = new FootstepPlanner()
-            const actor = (x: number): WalkingActor => ({
+            const actor = (
+                x: number
+            ): FootstepSourceSnapshot & { progression: ProgressionSnapshot } => ({
                 ...walker('me', x),
                 movement: { mode, dashCooldownMsLeft: 0, dashing: false },
                 progression: { masteries: [{ id: 'shadow', level }] } as ProgressionSnapshot,

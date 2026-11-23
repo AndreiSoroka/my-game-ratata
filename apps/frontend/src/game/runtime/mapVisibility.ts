@@ -1,5 +1,12 @@
-import type { AdventureResourceNode, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
+import type {
+    AdventureResourceNode,
+    Vector2,
+    ViewportBounds,
+    WorldObjectBounds,
+} from '@my-game-ratata/contracts'
 import { interactionApproachPoints } from '@my-game-ratata/contracts'
+
+import { WorldInterestCache } from './worldInterest'
 
 export interface MapVisibility {
     width: number
@@ -9,6 +16,7 @@ export interface MapVisibility {
     solid: boolean[]
     resourceBase?: boolean[]
     resourceSignature?: string
+    resourceInterest?: WorldInterestCache<AdventureResourceNode>
 }
 interface VisibilitySource {
     width: number
@@ -54,10 +62,17 @@ export function readMapVisibility(map: VisibilitySource): MapVisibility {
 /** Mirrors server-authored obstacle states; client does not decide depletion or growth. */
 export function updateResourceVisibility(
     map: MapVisibility,
-    nodes: readonly AdventureResourceNode[]
+    nodes: readonly AdventureResourceNode[],
+    viewBounds?: ViewportBounds
 ): void {
-    const sources = nodes.filter((node) => node.source !== undefined)
-    const signature = sources.map((node) => `${node.id}:${node.phase}`).join('|')
+    map.resourceInterest ??= new WorldInterestCache<AdventureResourceNode>()
+    const sources = map.resourceInterest.update(
+        nodes.filter((node) => node.source !== undefined),
+        viewBounds
+    ).nodes
+    const signature = JSON.stringify(
+        sources.map((node) => [node.id, node.phase, node.collisionBounds])
+    )
     if (signature === map.resourceSignature) return
     map.resourceSignature = signature
     map.resourceBase ??= map.solid.slice()

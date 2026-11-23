@@ -13,6 +13,7 @@ import {
     handleCharacterMessage,
 } from './roomClientMessages'
 import { type RoomSocket, send, sendError } from './roomMessaging'
+import { setSocketViewport } from './roomViewport'
 
 function dispatchRawRoomMessage(
     ws: RoomSocket,
@@ -69,6 +70,10 @@ function dispatchRoomClientMessage(
     const player = context.characters.get(context.connections.get(ws) ?? '')
     if (player === undefined) {
         sendError(ws, 'not_joined', 'Join the room before sending input')
+        return
+    }
+    if (message.type === 'set_viewport') {
+        setSocketViewport(ws, player.id, player.locationId, message)
         return
     }
     if (message.type === 'set_locale') {

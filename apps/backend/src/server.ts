@@ -117,6 +117,7 @@ export function createWebSocketHandlers(
     ref: RoomRef
 ): Bun.WebSocketHandler<RoomSocketData> {
     return {
+        perMessageDeflate: true,
         close(ws) {
             activeRoom(ref)?.handleClose(ws)
         },

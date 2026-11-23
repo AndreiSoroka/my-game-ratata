@@ -53,7 +53,9 @@ function volumeAt(distance: number): number {
 
 function lineVolume(context: NpcVoiceContext, line: VoiceLine): number {
     const characters = context.snapshot?.characters
-    const speaker = characters?.find((character) => character.id === line.actorId)
+    const speaker =
+        characters?.find((character) => character.id === line.actorId) ??
+        context.snapshot?.footstepSources?.find((source) => source.id === line.actorId)
     const listener = characters?.find((character) => character.id === context.playerId)
     if (!speaker?.alive || !listener?.alive) return 0
     return volumeAt(

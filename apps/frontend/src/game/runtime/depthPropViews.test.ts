@@ -1,4 +1,9 @@
-import type { Vector2, WorldGraveSnapshot, WorldSnapshot } from '@my-game-ratata/contracts'
+import type {
+    AdventureResourceNode,
+    Vector2,
+    WorldGraveSnapshot,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import type { Engine } from 'excalibur'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -45,12 +50,75 @@ function fixture() {
 }
 const grave: WorldGraveSnapshot = {
     id: 'grave:person',
+    buriedName: 'Мирослав',
     locationId: 'map-2-2',
     position: { x: 120, y: 160 },
     phase: 'active',
     health: { kind: 'exact', current: 100, max: 100 },
     material: 'stone',
 }
+
+it('retains omitted resource art, updates its phase on reentry and removes it only inside the view', () => {
+    const { actors, view, bitmap, graphics } = fixture()
+    view.setProps(
+        [{ id: 'authored-tree', bitmap, x: 64, y: 48, baseY: 80, width: 16, height: 16 }],
+        graphics
+    )
+    const original = actors[0]!
+    const tree: AdventureResourceNode = {
+        id: 'tree',
+        propId: 'authored-tree',
+        source: 'tree',
+        phase: 'ready',
+        kind: 'wood',
+        remaining: 8,
+        locationId: 'map-2-2',
+        position: { x: 72, y: 72 },
+    }
+    const nearby = { left: 32, top: 32, right: 112, bottom: 112 }
+    const away = { left: 256, top: 256, right: 512, bottom: 512 }
+    view.updateResources([tree])
+    view.updateResources([], away)
+    expect(original.graphics.isVisible).toBe(true)
+    view.updateResources([{ ...tree, phase: 'stump', remaining: 0 }], nearby)
+    const stump = actors[1]!
+    expect(original.graphics.isVisible).toBe(false)
+    view.updateResources([], away)
+    expect(stump.kill).not.toHaveBeenCalled()
+    view.updateResources([tree], nearby)
+    expect(stump.kill).toHaveBeenCalledOnce()
+    expect(original.graphics.isVisible).toBe(true)
+    view.updateResources([], nearby)
+    expect(original.graphics.isVisible).toBe(false)
+    view.updateResources([tree], nearby)
+    expect(original.graphics.isVisible).toBe(true)
+})
+
+it('drops cached resource state on map disposal and retains full-list removal behavior', () => {
+    const { actors, view, graphics } = fixture()
+    const tree: AdventureResourceNode = {
+        id: 'planted',
+        source: 'tree',
+        phase: 'growing',
+        kind: 'wood',
+        remaining: 0,
+        locationId: 'map-2-2',
+        position: { x: 72, y: 72 },
+    }
+    const away = { left: 256, top: 256, right: 512, bottom: 512 }
+    view.updateResources([tree])
+    const old = actors[0]!
+    view.updateResources([], away)
+    expect(old.kill).not.toHaveBeenCalled()
+    view.setProps([], graphics)
+    expect(old.kill).toHaveBeenCalledOnce()
+    view.updateResources([], away)
+    expect(actors).toHaveLength(1)
+    view.updateResources([tree])
+    const current = actors[1]!
+    view.updateResources([])
+    expect(current.kill).toHaveBeenCalledOnce()
+})
 
 it.each(['apple', 'pine'] as const)(
     'renders a %s tree fallback with its own profile art',
@@ -79,6 +147,42 @@ it.each(['apple', 'pine'] as const)(
         expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 0)
     }
 )
+
+it('preserves purified authored graves outside partial views and applies current phases on reentry', () => {
+    const { actors, view, bitmap, graphics } = fixture()
+    const props = [{ id: 'authored', bitmap, x: 112, y: 146, baseY: 160, width: 16, height: 16 }]
+    view.setProps(props, graphics)
+    const original = actors[0]!
+    const authored = { ...grave, propId: 'authored' }
+    const purified: WorldGraveSnapshot = {
+        ...authored,
+        phase: 'purified',
+        health: { kind: 'exact', current: 0, max: 100 },
+    }
+    const nearby = { left: 96, top: 128, right: 160, bottom: 192 }
+    const away = { left: 256, top: 256, right: 512, bottom: 512 }
+    view.updateGraves([purified])
+    expect(original.graphics.isVisible).toBe(false)
+    view.updateGraves([], away)
+    view.updateGraves([], away)
+    expect(original.graphics.isVisible).toBe(false)
+    view.updateGraves([purified], nearby)
+    expect(original.graphics.isVisible).toBe(false)
+    view.updateGraves([authored], nearby)
+    expect(original.graphics.isVisible).toBe(true)
+    view.updateGraves([], nearby)
+    expect(original.graphics.isVisible).toBe(false)
+    view.updateGraves([authored], nearby)
+    expect(original.graphics.isVisible).toBe(true)
+    view.updateGraves([purified], nearby)
+    view.updateGraves([])
+    expect(original.graphics.isVisible).toBe(true)
+    view.updateGraves([purified])
+    view.setProps(props, graphics)
+    expect(original.kill).toHaveBeenCalledOnce()
+    view.updateGraves([], away)
+    expect(actors[1]!.graphics.isVisible).not.toBe(false)
+})
 
 describe('dynamic grave presentation', () => {
     it('uses the existing grave atlas bitmap, sorts at ground contact and retains identity after loot disappears', () => {

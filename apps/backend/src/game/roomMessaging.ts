@@ -1,4 +1,8 @@
-import type { GameEventPayload, ServerMessage } from '@my-game-ratata/contracts'
+import type {
+    GameEventPayload,
+    ServerMessage,
+    WorldSnapshot,
+} from '@my-game-ratata/contracts'
 import type { ServerWebSocket } from 'bun'
 
 import type { GameCharacter } from './character'
@@ -14,7 +18,19 @@ export interface RoomSocketData {
 export type RoomSocket = ServerWebSocket<RoomSocketData>
 
 export function send(ws: RoomSocket, message: ServerMessage): void {
-    ws.send(JSON.stringify(message))
+    ws.send(JSON.stringify(message), true)
+}
+
+/** Full snapshots replace older state; never queue more behind a slow connection. */
+export function sendSnapshot(
+    ws: RoomSocket,
+    snapshot: () => WorldSnapshot
+): void {
+    const transport: Partial<RoomSocket> = ws
+    if ((transport.getBufferedAmount?.() ?? 0) > 0) {
+        return
+    }
+    send(ws, { snapshot: snapshot(), type: 'snapshot' })
 }
 
 export function sendError(ws: RoomSocket, code: string, message: string): void {
@@ -32,7 +48,7 @@ export function broadcast(
     const payload = JSON.stringify(message)
 
     for (const ws of connections) {
-        ws.send(payload)
+        ws.send(payload, true)
     }
 }
 

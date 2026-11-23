@@ -93,6 +93,21 @@ function nearbyLeia(room: GameRoom) {
     return leia
 }
 
+it('sends the remembered grave name with observer health and keeps snapshots detached', () => {
+    const f = fixture()
+    f.actor.exactCombatNumbers = false
+    const snapshot = f.grave()
+    if (snapshot === undefined) {
+        throw new Error('Missing grave snapshot')
+    }
+    const buriedName = snapshot.buriedName
+    expect(buriedName.trim().length).toBeGreaterThan(0)
+    expect(snapshot.health).toEqual({ kind: 'percent', percent: 100 })
+    expect(snapshot).not.toHaveProperty('hp')
+    snapshot.buriedName = 'Подменённое имя'
+    expect(f.grave()?.buriedName).toBe(buriedName)
+})
+
 function leiaModelFixture() {
     const provider = controlledNpcProvider()
     const config = parseNpcAiConfig(

@@ -67,6 +67,7 @@ import type {
     ProgressionSnapshot,
 } from './progression'
 export * from './progression'
+export type * from './viewport'
 export * from './world'
 export type * from './worldSnapshot'
 import type { CharacterLifeSnapshot, HeroClass } from './life'
@@ -296,6 +297,7 @@ export interface EquipmentActionClientMessage {
 export type ChatClientMessage = import('./social').ChatClientMessage
 
 export type ClientMessage =
+    | import('./viewport').SetViewportClientMessage
     | import('./social').SpeechActivityCommand
     | { type: 'set_locale'; locale: import('./locales').GameLocale }
     | { type: 'set_personal_hostility'; targetId: string; hostile: boolean }

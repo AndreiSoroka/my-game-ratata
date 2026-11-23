@@ -76,6 +76,7 @@ describe('observer combat information', () => {
         const { observer, target, view } = observationFixture()
         const grave: GraveCombatTarget = {
             id: 'grave',
+            buriedName: 'Игнат',
             locationId: trainingLocationId,
             position: { x: 100, y: 100 },
             material: 'stone',
@@ -88,6 +89,7 @@ describe('observer combat information', () => {
             percent: 37,
         })
         expect(observeGraveCombat(grave, view)).not.toHaveProperty('hp')
+        expect(observeGraveCombat(grave, view).buriedName).toBe('Игнат')
         observer.exactCombatNumbers = true
         target.abilities.barrier = {
             expiresAt: 5000,

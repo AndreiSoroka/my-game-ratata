@@ -27,6 +27,7 @@ import {
     sendError,
 } from './roomMessaging'
 import { createRoomPlayerFactory } from './roomPlayer'
+import { clearSocketViewport } from './roomViewport'
 import type { WorldLocations } from './worldLocations'
 
 interface JoinContext {
@@ -114,6 +115,7 @@ export function joinRoom(
     locale: GameLocale = 'ru'
 ): void {
     const now = context.now ?? Date.now
+    clearSocketViewport(ws)
     const nicknameKey = normalizeNickname(nickname)
     if (createOnlyNameTaken(context.characters, nicknameKey, createOnly)) {
         sendError(
@@ -246,6 +248,7 @@ export function leaveRoom(
     closeConversations?: (characterId: string) => void,
     now = Date.now()
 ): void {
+    clearSocketViewport(socket)
     const playerId = connections.get(socket)
     connections.delete(socket)
     if (

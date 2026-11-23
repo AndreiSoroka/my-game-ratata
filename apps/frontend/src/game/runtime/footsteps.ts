@@ -1,11 +1,11 @@
-import { type CharacterSnapshot, MOVEMENT_RULES, type Vector2 } from '@my-game-ratata/contracts'
+import {
+    type FootstepSourceSnapshot,
+    MOVEMENT_RULES,
+    type Vector2,
+} from '@my-game-ratata/contracts'
 
 import type { FootstepSurface } from './mapSurfaces'
 
-export type WalkingActor = Pick<
-    CharacterSnapshot,
-    'id' | 'alive' | 'position' | 'velocity' | 'archetype' | 'movement' | 'progression'
->
 export interface Footstep {
     actorId: string
     surface: FootstepSurface
@@ -22,13 +22,13 @@ interface Stride {
     distance: number
     step: number
 }
-export const footstepHearingRadius = 240
+export const footstepHearingRadius = MOVEMENT_RULES.playerFootstepHearingRadius
 
-export function footstepGain(distance: number, radius = footstepHearingRadius): number {
+export function footstepGain(distance: number, radius: number = footstepHearingRadius): number {
     return Math.max(0, 1 - Math.max(0, distance) / radius) ** 2
 }
 
-function noiseMultiplier(actor: WalkingActor): number {
+function noiseMultiplier(actor: FootstepSourceSnapshot): number {
     if (actor.movement?.dashing) return MOVEMENT_RULES.dashNoiseMultiplier
     if (actor.movement?.mode === 'sneaking') {
         return MOVEMENT_RULES.sneakNoiseMultiplier
@@ -44,7 +44,7 @@ export class FootstepPlanner {
     }
 
     public collect(
-        actors: WalkingActor[],
+        actors: FootstepSourceSnapshot[],
         listenerId: string | undefined,
         now: number,
         surface: (point: Vector2) => FootstepSurface
@@ -83,7 +83,7 @@ export class FootstepPlanner {
             .slice(0, 6)
     }
 
-    private advanceStride(actor: WalkingActor, now: number): boolean {
+    private advanceStride(actor: FootstepSourceSnapshot, now: number): boolean {
         const previous = this.strides.get(actor.id)
         const moved =
             previous === undefined
@@ -118,7 +118,7 @@ export class FootstepPlanner {
         return shouldPlay
     }
 
-    private consumeStep(stride: Stride, now: number, actor: WalkingActor): boolean {
+    private consumeStep(stride: Stride, now: number, actor: FootstepSourceSnapshot): boolean {
         const interval = strideInterval(actor)
         const minimumDistance = stride.firstStep ? 10 : 26
         const minimumInterval = stride.firstStep ? Math.min(110, interval) : interval
@@ -140,7 +140,7 @@ export class FootstepPlanner {
     }
 }
 
-function strideInterval(actor: WalkingActor): number {
+function strideInterval(actor: FootstepSourceSnapshot): number {
     if (actor.movement?.dashing) return 150
     if (actor.movement?.mode === 'sneaking') return 400
     return 240

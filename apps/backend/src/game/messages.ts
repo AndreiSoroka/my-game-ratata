@@ -13,6 +13,7 @@ import { parseExtraCommand } from './extraCommands'
 import { parseAbandonLife, parseJoin, parseLocale } from './identityMessages'
 import { parsePortalBoundary } from './portalCommand'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
+import { parseViewportCommand } from './viewportCommand'
 import { parseSocialBoundary } from './whisperCommands'
 import { parsePickupCommand } from './worldPickup'
 
@@ -53,8 +54,9 @@ export function parseClientMessage(raw: string): ParseResult {
     if (record === undefined) {
         return { error: 'Message must be an object' }
     }
-    if (record['type'] === 'use_portal') {
-        return parsePortalBoundary(record)
+    const location = parseLocationBoundary(record)
+    if (location !== undefined) {
+        return location
     }
     if (record['type'] === 'set_personal_hostility') {
         return parsePersonalHostility(record)
@@ -88,6 +90,19 @@ export function parseClientMessage(raw: string): ParseResult {
             : { error: 'Invalid automatic control command' }
     }
     return parseRecord(record)
+}
+
+function parseLocationBoundary(
+    record: Record<string, unknown>
+): ParseResult | undefined {
+    switch (record['type']) {
+        case 'use_portal':
+            return parsePortalBoundary(record)
+        case 'set_viewport':
+            return parseViewportCommand(record)
+        default:
+            return undefined
+    }
 }
 
 function parseRecord(record: Record<string, unknown>): ParseResult {

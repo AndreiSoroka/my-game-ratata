@@ -126,6 +126,8 @@ export class RatataGame {
 
     private startPresentation(map: RenderedTiledMap, mapId: string): Promise<void> {
         return initializeRuntimePresentation(this.options.container, map, this.planting, {
+            send: this.send,
+            viewportLocation: () => (this.isMapReady ? this.mapId : undefined),
             inputs: {
                 keyDown: this.handleKeyDown,
                 keyUp: this.handleKeyUp,
@@ -230,9 +232,8 @@ export class RatataGame {
         return this.connected && !this.stopped && this.maps.isReady
     }
 
-    public getBuildings(): BuildingEntrance[] {
-        return this.isMapReady ? this.buildingEntrances.read(this.snapshot?.location?.id) : []
-    }
+    public readonly getBuildings = (): BuildingEntrance[] =>
+        this.isMapReady ? this.buildingEntrances.read(this.snapshot?.location?.id) : []
 
     public sendCommand(message: ClientMessage): void {
         if (message.type === 'movement_mode') this.movementControls.acceptMode(message.mode)

@@ -11,10 +11,15 @@ import {
     type Engine,
     GraphicsGroup,
     type ImageSource,
+    type PreUpdateEvent,
     vec,
 } from 'excalibur'
 
-import { prayerAreaOpacity } from '../assets/prayerAreaAssets'
+import {
+    prayerAreaOpacity,
+    prayerAreaPulseAmplitude,
+    prayerAreaPulseDurationMs,
+} from '../assets/prayerAreaAssets'
 import { drawPrayerAreaOutline } from './prayerAreaOutline'
 
 export type PrayerAreaImages = ReadonlyMap<PrayerActionId, ImageSource>
@@ -47,6 +52,8 @@ function activePrayerCast(character: CharacterSnapshot, serverTime: number) {
 export class PrayerAreaViews {
     private readonly views = new Map<string, PrayerAreaView>()
     private readonly graphics = new Map<PrayerActionId, GraphicsGroup>()
+    private readonly reducedMotion =
+        typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
     private readonly outline = new Canvas({
         width: spriteDiameter + outlinePadding * 2,
         height: spriteDiameter + outlinePadding * 2,
@@ -116,7 +123,6 @@ export class PrayerAreaViews {
 
         const sprite = image.toSprite({
             destSize: { width: spriteDiameter, height: spriteDiameter },
-            opacity: prayerAreaOpacity,
         })
         const graphic = new GraphicsGroup({
             members: [
@@ -141,6 +147,18 @@ export class PrayerAreaViews {
             z: -99,
         })
         actor.graphics.use(graphic)
+        actor.graphics.opacity = prayerAreaOpacity
+        if (!this.reducedMotion) {
+            let elapsedMs = 0
+            actor.graphics.opacity = prayerAreaOpacity - prayerAreaPulseAmplitude
+            actor.on('preupdate', (event: PreUpdateEvent) => {
+                elapsedMs = (elapsedMs + event.elapsed) % prayerAreaPulseDurationMs
+                actor.graphics.opacity =
+                    prayerAreaOpacity -
+                    prayerAreaPulseAmplitude *
+                        Math.cos((elapsedMs * 2 * Math.PI) / prayerAreaPulseDurationMs)
+            })
+        }
         const view = { actor, abilityId, radius }
         this.views.set(id, view)
         this.engine.add(actor)

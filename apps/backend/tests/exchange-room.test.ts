@@ -155,6 +155,10 @@ it('pauses a stationary route beyond its failure timeout and revalidates it on e
     const exchangeId = room.social.exchanges.snapshot(alice.actor.id)?.id ?? ''
     expect(room.social.exchanges.isPaused(alice.actor.id)).toBe(true)
     expect(room.social.exchanges.isPaused(bob.actor.id)).toBe(false)
+    // This test observes authoritative movement, so avoid serializing 600 unused snapshots
+    // while advancing the logical timeout. Reliable exchange events still get delivered.
+    Object.assign(alice.socket, { getBufferedAmount: () => 1 })
+    Object.assign(bob.socket, { getBufferedAmount: () => 1 })
     alice.send({ type: 'move_input', axis: { x: 1, y: 0 } })
     vi.advanceTimersByTime(15_000)
     expect(alice.actor.position).toEqual(position)

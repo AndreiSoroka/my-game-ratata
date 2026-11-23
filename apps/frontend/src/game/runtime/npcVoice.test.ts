@@ -206,6 +206,33 @@ it('uses the latest positions at playback and fades to 3 percent at the edge', (
     expect(synthesis.speak).toHaveBeenCalledTimes(3)
 })
 
+it('voices an authorized nearby speaker outside the viewport using only the audio source position', () => {
+    const { context, player, synthesis } = setup()
+    const world = snapshot(48)
+    const speaker = world.characters[1]!
+    world.characters = [world.characters[0]!]
+    context.snapshot = {
+        ...world,
+        footstepSources: [
+            {
+                id: speaker.id,
+                alive: speaker.alive,
+                position: speaker.position,
+                velocity: speaker.velocity,
+                archetype: speaker.archetype,
+            },
+        ],
+    }
+    player.receive(speech())
+    expect(synthesis.speak.mock.lastCall?.[0].volume).toBeCloseTo(0.3467)
+    expect(context.snapshot.characters).toHaveLength(1)
+    completeLatest(synthesis)
+
+    context.snapshot.footstepSources![0]!.alive = false
+    player.receive(speech(2))
+    expect(synthesis.speak).toHaveBeenCalledTimes(1)
+})
+
 it('preempts ambient speech with a dialogue and keeps the newest pending dialogue', () => {
     const { player, synthesis } = setup()
     player.receive(speech(1, { text: 'Фон' }))

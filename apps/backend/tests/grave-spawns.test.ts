@@ -17,11 +17,12 @@ const interval = GRAVE_SPAWN_INTERVAL_MS
 describe('final player identity graves', () => {
     it('waits 30 server seconds after finalization, copies the actual map, and records each identity once', () => {
         const f = graveFixture()
-        const hero = graveHero()
+        const hero = graveHero('fallen', 'map-3-2', 'Алексей Странник')
         hero.applyDamage(hero.hp, now)
         f.service.schedule(hero, now, f.navigation)
         f.service.update(now + 30_000, f.context)
         expect(f.created).toHaveLength(0)
+        expect(f.service.get(`final:${hero.id}`)).toBeUndefined()
         retireCharacter(hero)
         f.service.schedule(hero, now + 60_000, f.navigation)
         f.service.schedule(hero, now + 70_000, f.navigation)
@@ -30,6 +31,7 @@ describe('final player identity graves', () => {
                 id: `final:${hero.id}`,
                 locationId: hero.locationId,
                 position: hero.position,
+                buriedName: 'Алексей Странник',
             },
         ])
         hero.locationId = CENTER_LOCATION_ID

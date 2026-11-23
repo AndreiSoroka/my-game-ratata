@@ -125,17 +125,20 @@ export function drawPrayerGraphic(
     }
 }
 function drawCastArc(ctx: Context, phase: number): void {
-    ctx.globalAlpha = 0.25
+    ctx.save()
+    ctx.globalAlpha = 0.15
+    ctx.lineWidth = 1
     ctx.beginPath()
     ctx.arc(0, 0, 20, 0, Math.PI * 2)
     ctx.stroke()
-    ctx.globalAlpha = 1
-    ctx.lineWidth = 3
+    ctx.globalAlpha = 0.55
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.arc(0, 0, 20, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * phase)
     ctx.stroke()
     const angle = -Math.PI / 2 + Math.PI * 2 * phase
-    star(ctx, Math.cos(angle) * 20, Math.sin(angle) * 20)
+    star(ctx, Math.cos(angle) * 20, Math.sin(angle) * 20, 2)
+    ctx.restore()
 }
 function drawRevival(ctx: Context): void {
     for (const x of [-18, 18]) {

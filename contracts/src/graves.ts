@@ -41,10 +41,12 @@ export interface GraveSourceDefinition {
     locationId: string
     position: Vector2
     propId?: string
+    buriedName?: string
 }
 
 /** A dynamic grave marker; its loot container and spawned actors are independent. */
 export interface WorldGraveSnapshot extends GraveSourceDefinition {
+    buriedName: string
     phase: 'active' | 'ruined' | 'purified'
     material: 'stone'
     purification?: { completed: number; required: number }

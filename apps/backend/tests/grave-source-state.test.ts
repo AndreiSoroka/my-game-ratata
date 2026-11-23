@@ -2,7 +2,7 @@ import {
     GRAVE_RESTORE_MS,
     GRAVE_SPAWN_INTERVAL_MS,
 } from '@my-game-ratata/contracts'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { graveFixture } from './graveTestHelpers'
 
@@ -14,12 +14,21 @@ const source = {
     propId: 'grave-prop',
 }
 
+function readGrave(fixture: ReturnType<typeof graveFixture>, id = source.id) {
+    const grave = fixture.service.get(id)
+    if (grave === undefined) {
+        throw new Error(`Missing grave ${id}`)
+    }
+    return grave
+}
+
 describe('grave material state', () => {
     it('tracks exact hundredths, rejects invalid damage and snapshots every source without mutation', () => {
         const f = graveFixture()
         f.service.register(source, [], now)
         expect(f.service.get(source.id)).toEqual({
             ...source,
+            buriedName: readGrave(f).buriedName,
             hp: 100,
             maxHp: 100,
             material: 'stone',
@@ -78,6 +87,7 @@ describe('grave material state', () => {
         f.service.update(deadline, f.context)
         expect(f.service.get(source.id)).toEqual({
             ...source,
+            buriedName: readGrave(f).buriedName,
             hp: 100,
             maxHp: 100,
             material: 'stone',
@@ -89,6 +99,86 @@ describe('grave material state', () => {
         expect(f.created).toHaveLength(0)
         f.service.update(deadline + GRAVE_SPAWN_INTERVAL_MS, f.context)
         expect(f.created).toHaveLength(1)
+    })
+})
+
+describe('buried identity', () => {
+    it('resolves and remembers a stable generated name without consuming gameplay randomness', () => {
+        const f = graveFixture()
+        const other = graveFixture()
+        const random = vi.spyOn(Math, 'random')
+        f.service.register(source, [], now)
+        other.service.register(source, [], now + 1)
+        const buriedName = readGrave(f).buriedName
+        expect(buriedName.trim().length).toBeGreaterThan(0)
+        expect(readGrave(other).buriedName).toBe(buriedName)
+        const snapshot = f.service.snapshot(source.locationId)[0]
+        if (snapshot === undefined) {
+            throw new Error('Missing grave snapshot')
+        }
+        snapshot.buriedName = 'Подменённое имя'
+        snapshot.position.x = -100
+        f.service.register({ ...source, buriedName: 'Другое имя' }, [], now + 2)
+        expect(f.service.get(source.id)).toMatchObject({
+            buriedName,
+            position: source.position,
+        })
+        expect(f.service.snapshot(source.locationId)[0]?.buriedName).toBe(
+            buriedName
+        )
+        expect(source).not.toHaveProperty('buriedName')
+        expect(random).not.toHaveBeenCalled()
+    })
+
+    it('copies an authored identity once and uses a generated name for blank authored text', () => {
+        const f = graveFixture()
+        const named = { ...source, buriedName: 'Игнат из Новогорода' }
+        f.service.register(named, [], now)
+        named.buriedName = 'Подмена после регистрации'
+        f.service.register(
+            { ...named, buriedName: 'Ещё одна подмена' },
+            [],
+            now + 1
+        )
+        expect(readGrave(f).buriedName).toBe('Игнат из Новогорода')
+        f.service.register(
+            { ...source, id: 'blank-name', buriedName: '  ' },
+            [],
+            now
+        )
+        expect(
+            readGrave(f, 'blank-name').buriedName.trim().length
+        ).toBeGreaterThan(0)
+    })
+
+    it('retains its name through births, ruin, restoration and irreversible purification', () => {
+        const f = graveFixture()
+        f.service.register(source, [], now, 0)
+        const buriedName = readGrave(f).buriedName
+        f.service.update(now, f.context)
+        expect(f.created).toHaveLength(1)
+        expect(readGrave(f).buriedName).toBe(buriedName)
+        f.service.damage(source.id, 100, now + 1)
+        expect(f.service.get(source.id)).toMatchObject({
+            phase: 'ruined',
+            buriedName,
+        })
+        f.service.update(now + 1 + GRAVE_RESTORE_MS, f.context)
+        expect(f.service.get(source.id)).toMatchObject({
+            phase: 'active',
+            buriedName,
+        })
+        f.service.purify(source.id, now + 2 + GRAVE_RESTORE_MS)
+        f.service.register(
+            { ...source, buriedName: 'Новое имя' },
+            [],
+            now + 3 + GRAVE_RESTORE_MS
+        )
+        f.service.update(now + 100_000_000, f.context)
+        expect(f.service.get(source.id)).toMatchObject({
+            phase: 'purified',
+            buriedName,
+        })
     })
 })
 
