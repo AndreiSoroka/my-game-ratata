@@ -1,3 +1,5 @@
+import { QUICK_SHOT_RULES } from '@my-game-ratata/contracts'
+
 import { resolveBladeBonuses } from './constellationBladeBonuses'
 import {
     manaRestMultipliers,
@@ -71,12 +73,17 @@ function resolveArrowBonuses(activeIds: ReadonlySet<string>) {
         shotDamageMultiplier:
             1 + (10 * stages('damage') + 5 * learned('damage3')) / 100,
         shotRangeCells: stages('range'),
-        shotEnergyDiscount: learned('economy') + learned('economy2'),
+        shotEnergyDiscount:
+            QUICK_SHOT_RULES.energyDiscount * learned('economy') +
+            learned('economy2'),
         shotTempoMultiplier:
             1 - (10 * learned('tempo') + 5 * learned('tempo2')) / 100,
         shotCritBonus:
             (3 * learned('critical') + 2 * learned('critical2')) / 100,
-        shotSeriesDamage: 0.05 * stages('series'),
+        shotSeriesDamage:
+            (QUICK_SHOT_RULES.seriesDamagePercent * learned('series1') +
+                5 * learned('series2')) /
+            100,
         shotWhileMoving: activeIds.has('arrow.moving_shot'),
         movingShotDamage: 0.05 * stages('moving_damage'),
         movingShotCritBonus: 0.02 * stages('moving_critical'),

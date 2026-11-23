@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { snapshotAbilities } from '../src/game/abilityState'
 import { snapshotAbilityUsage } from '../src/game/abilityUsage'
-import { attemptAbilityAttack } from '../src/game/combat'
+import {
+    attemptAbilityAttack,
+    resolvePendingAttackHit,
+} from '../src/game/combat'
 import { observeCharacterCombat } from '../src/game/combatObservation'
 import { NavigationService } from '../src/game/navigation'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
@@ -17,10 +20,10 @@ describe('public effective ability usage', () => {
         )
         expect(usage.shot).toEqual({
             mana: 0,
-            energy: 9,
+            energy: 8,
             cooldownMs: 495,
             range: 120,
-            windupMs: 50,
+            windupMs: 200,
             cycleMs: 200,
             movementMs: 200,
         })
@@ -41,22 +44,24 @@ describe('public effective ability usage', () => {
             windupMs: 2700,
         })
         const energy = actor.energy
-        expect(
-            attemptAbilityAttack(
-                {
-                    actor,
-                    now: 1000,
-                    targets: [],
-                    tileSize: 24,
-                    respawnDelayMsFor: () => 15000,
-                },
-                'shot'
-            )
-        ).toHaveLength(1)
+        const attack = {
+            actor,
+            now: 1000,
+            targets: [],
+            tileSize: 24,
+            respawnDelayMsFor: () => 15000,
+        }
+        expect(attemptAbilityAttack(attack, 'shot')).toHaveLength(1)
         expect(actor.energy).toBe(energy - (usage.shot?.energy ?? 0))
         expect(actor.abilities.availableAt.shot).toBe(
             1000 + (usage.shot?.cooldownMs ?? 0)
         )
+        resolvePendingAttackHit({ ...attack, now: 1200 })
+        actor.progression.constellations.opened.add('arrow.economy2')
+        expect(
+            attemptAbilityAttack({ ...attack, now: 1495 }, 'shot')
+        ).toHaveLength(1)
+        expect(actor.energy).toBe(energy - 8 - 7)
         for (const values of Object.values(usage)) {
             expect(Object.keys(values).sort()).toEqual([
                 'cooldownMs',

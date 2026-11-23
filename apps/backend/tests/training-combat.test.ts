@@ -133,13 +133,15 @@ describe('training attack abilities', () => {
                 kind: 'attack',
                 abilityId: id,
             })
-            expect(f.hit(1000 + ABILITY_DEFINITIONS[id].windupMs)).toEqual([
+            expect(
+                f.hit(1000 + ABILITY_DEFINITIONS[id].windupMs)
+            ).toContainEqual(
                 expect.objectContaining({
                     kind: 'damage',
                     amount: id === 'shot' ? 6 : 5,
                     hitQuality: 'strong',
-                }),
-            ])
+                })
+            )
             expect(f.actor.mana).toBe(mana - ABILITY_DEFINITIONS[id].mana)
             expect(f.actor.energy).toBe(energy - ABILITY_DEFINITIONS[id].energy)
             expect(

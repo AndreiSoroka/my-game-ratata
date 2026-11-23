@@ -127,7 +127,7 @@ export const constellationStaticEffectEnglish: Readonly<
         'Quick shot critical chance increases by another 2 percentage points.',
     ],
     'arrow.series1': [
-        'After a qualifying Quick shot hit, the next Quick shot against the same target within one second deals 5% more damage.',
+        'After a qualifying Quick shot hit, the next Quick shot against the same target within 3 seconds deals 10% more damage.',
     ],
     'arrow.series2': [
         'The Quick shot combo bonus against the same target increases by another 5 percentage points.',

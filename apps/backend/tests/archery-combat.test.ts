@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { parseAbilityCommand } from '../src/game/abilityCommands'
+import { GameCharacter } from '../src/game/character'
 import {
     attemptAbilityAttack,
     resolvePendingAttackHit,
@@ -165,25 +166,68 @@ describe('archery targeting and action phases', () => {
 })
 
 describe('quick shot movement and learned effects', () => {
+    it('finishes a stationary aim before releasing or resuming held movement, even on a late tick', () => {
+        const { actor, target, at, walk } = archerDuel()
+        target.position = { x: 100, y: 145 }
+        actor.setMoveInput({ x: 1, y: 0 })
+        const [start] = attemptAbilityAttack(at(1000), 'shot')
+        expect(start).toMatchObject({ phase: 'started', durationMs: 200 })
+        expect(start?.projectile).toBeUndefined()
+        walk(1050, 50)
+        expect(actor.position.x).toBe(100)
+        expect(resolvePendingAttackHit(at(1199))).toEqual([])
+        walk(1250, 50)
+        expect(actor.position.x).toBe(100)
+        const release = resolvePendingAttackHit(at(1250))
+        expect(release[0]).toMatchObject({
+            actionId: start?.actionId,
+            phase: 'completed',
+            projectile: {
+                origin: { x: 100, y: 100 },
+                endpoint: target.position,
+            },
+        })
+        expect(damage(release)).toBeGreaterThan(0)
+        walk(1300, 50)
+        expect(actor.position.x).toBeGreaterThan(100)
+    })
+
+    it('reports interrupted aim without a projectile, damage or refund when stunned', () => {
+        const { actor, at } = archerDuel()
+        const energy = actor.energy
+        const [start] = attemptAbilityAttack(at(1000), 'shot')
+        actor.stunUntil = 1300
+        expect(resolvePendingAttackHit(at(1200))).toEqual([
+            expect.objectContaining({
+                kind: 'attack',
+                phase: 'interrupted',
+                abilityId: 'shot',
+                actionId: start?.actionId,
+            }),
+        ])
+        expect(actor.energy).toBe(energy - 10)
+        expect(actor.abilities.availableAt.shot).toBe(1550)
+    })
+
     it('keeps the paid attack cycle and shoots from the moved position along the original facing', () => {
         const { actor, target, at, stars, walk } = archerDuel()
         target.position = { x: 100, y: 145 }
-        actor.setMoveInput({ x: 1, y: 0 })
-        attemptAbilityAttack(at(1000), 'shot')
-        walk(1050, 50)
-        expect(actor.position.x).toBe(100)
-        resolvePendingAttackHit(at(1050))
-
         stars('moving_shot')
-        const [start] = attemptAbilityAttack(at(1550), 'shot')
-        expect(start).toMatchObject({ phase: 'started', durationMs: 50 })
-        expect(actor.combat.readyAt).toBe(1750)
-        walk(1600, 50)
+        actor.setMoveInput({ x: 1, y: 0 })
+        const [start] = attemptAbilityAttack(at(1000), 'shot')
+        expect(start).toMatchObject({ phase: 'started', durationMs: 200 })
+        expect(start?.projectile).toBeUndefined()
+        expect(actor.combat.readyAt).toBe(1200)
+        const paidEnergy = actor.energy
+        expect(handleMovementCommand(actor, { type: 'dash' }, 1050)).toEqual([])
+        expect(actor.energy).toBe(paidEnergy)
+        walk(1050, 50)
         expect(actor.position.x).toBeCloseTo(
             100 + effectiveMoveSpeed(actor) * 0.05
         )
         expect(actor.facing).toBe('right')
-        const events = resolvePendingAttackHit(at(1600))
+        expect(resolvePendingAttackHit(at(1199))).toEqual([])
+        const events = resolvePendingAttackHit(at(1200))
         expect(events[0]).toMatchObject({
             phase: 'completed',
             projectile: {
@@ -215,7 +259,7 @@ describe('quick shot movement and learned effects', () => {
             deltaMs: 50,
         })
         expect(actor.position.x).toBe(111)
-        resolvePendingAttackHit(at(1050))
+        resolvePendingAttackHit(at(1200))
         expect(actor.movement.dashAvailableAt).toBe(3000)
         expect(actor.combat.arrowStep).toBeUndefined()
 
@@ -224,10 +268,12 @@ describe('quick shot movement and learned effects', () => {
             { type: 'movement_mode', mode: 'sneaking' },
             1500
         )
-        expect(attemptAbilityAttack(at(1550), 'shot')[0]?.phase).toBeUndefined()
-        walk(1600, 50)
-        expect(actor.position.x).toBe(111)
-        resolvePendingAttackHit(at(1600))
+        actor.setMoveInput({ x: 0, y: -1 })
+        const position = { ...actor.position }
+        expect(attemptAbilityAttack(at(1550), 'shot')[0]?.phase).toBe('started')
+        walk(1760, 50)
+        expect(actor.position).toEqual(position)
+        resolvePendingAttackHit(at(1760))
         actor.setMoveInput({ x: 0, y: 0 })
         expect(
             handleMovementCommand(actor, { type: 'dash' }, 3000)
@@ -243,6 +289,46 @@ describe('quick shot movement and learned effects', () => {
 })
 
 describe('archery specializations', () => {
+    it.each([
+        { elapsed: 3000, sameTarget: true, amount: 8 },
+        { elapsed: 3001, sameTarget: true, amount: 7 },
+        { elapsed: 3000, sameTarget: false, amount: 7 },
+    ])(
+        'checks the series window at impact ($elapsed ms, same target: $sameTarget)',
+        ({ elapsed, sameTarget, amount }) => {
+            const { actor, target, at, stars } = archerDuel()
+            stars('damage1', 'damage2', 'series1')
+            attemptAbilityAttack(at(1000), 'shot')
+            expect(damage(resolvePendingAttackHit(at(1200)))).toBe(7)
+
+            const next = sameTarget
+                ? target
+                : new GameCharacter({
+                      id: 'other-foe',
+                      nickname: 'Другой противник',
+                      archetype: 'human',
+                      heroClass: 'vanguard',
+                      controllerKind: 'mob1',
+                      faction: 'monsters',
+                      spawnPosition: { ...target.position },
+                  })
+            next.config.combat.dodgeChance = 0
+            next.reputation.peaceful = -100
+            actor.energy = 100
+            const attack = {
+                ...at(1000 + elapsed),
+                targetId: next.id,
+                targets: [next],
+            }
+            expect(attemptAbilityAttack(attack, 'shot')).toHaveLength(1)
+            expect(
+                damage(
+                    resolvePendingAttackHit({ ...attack, now: 1200 + elapsed })
+                )
+            ).toBe(amount)
+        }
+    )
+
     it('uses learned range, opener and moving follow-up bonuses on the next paid shot', () => {
         const { actor, target, at, stars, walk } = archerDuel()
         stars(
@@ -282,11 +368,11 @@ describe('archery specializations', () => {
         actor.setMoveInput({ x: 1, y: 0 })
         attemptAbilityAttack(at(2600), 'shot')
         walk(2650, 50)
-        expect(damage(resolvePendingAttackHit(at(2650)))).toBe(8)
+        expect(damage(resolvePendingAttackHit(at(2800)))).toBe(8)
         expect(actor.movement.dashAvailableAt).toBe(3700)
-        expect(actor.combat.arrowStep).toEqual({ until: 3250, multiplier: 1.1 })
+        expect(actor.combat.arrowStep).toEqual({ until: 3400, multiplier: 1.1 })
         const position = actor.position.x
-        walk(2700, 50)
+        walk(2850, 50)
         expect(actor.position.x - position).toBeCloseTo(
             effectiveMoveSpeed(actor) * 0.055
         )
@@ -296,17 +382,17 @@ describe('archery specializations', () => {
         const { actor, target, at, stars } = archerDuel()
         stars('damage1', 'damage2', 'series1', 'series2')
         attemptAbilityAttack(at(1000), 'shot')
-        expect(damage(resolvePendingAttackHit(at(1050)))).toBe(7)
+        expect(damage(resolvePendingAttackHit(at(1200)))).toBe(7)
         attemptAbilityAttack(at(1550), 'shot')
-        expect(damage(resolvePendingAttackHit(at(1600)))).toBe(8)
+        expect(damage(resolvePendingAttackHit(at(1750)))).toBe(8)
         attemptAbilityAttack(at(2100), 'shot')
         target.position.y = 200
-        expect(damage(resolvePendingAttackHit(at(2150)))).toBeUndefined()
+        expect(damage(resolvePendingAttackHit(at(2300)))).toBeUndefined()
         target.position.y = 112
         Object.assign(target, { trainingTarget: { areaId: 'range' } })
         const experience = actor.progression.masteries.arrow.experience
         attemptAbilityAttack(at(2650), 'shot')
-        expect(damage(resolvePendingAttackHit(at(2700)))).toBe(7)
+        expect(damage(resolvePendingAttackHit(at(2850)))).toBe(7)
         expect(actor.progression.masteries.arrow.experience).toBe(experience)
         expect(actor.combat.lastUsefulArrowHit).toBeUndefined()
     })

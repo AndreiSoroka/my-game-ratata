@@ -79,6 +79,7 @@ describe('all non-prayer effect explanations', () => {
         expect(description('blade.damage1').summary).toContain('100%')
         expect(description('blade.damage1').notes.join(' ')).toContain('уклонение')
         expect(description('arrow.damage2').notes.join(' ')).toContain('+20%')
+        expect(description('arrow.economy').formulas).toEqual(['10 − 2 = 8'])
         expect(description('life.hp4').summary).toContain('100%')
         expect(description('life.hp4').notes.join(' ')).toContain('не повышает')
         expect(description('shadow.sight').summary).toContain('геометрическим')

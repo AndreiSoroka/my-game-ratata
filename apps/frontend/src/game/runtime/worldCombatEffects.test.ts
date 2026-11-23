@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import type { Engine } from 'excalibur'
 import { beforeEach, expect, it, vi } from 'vitest'
 
@@ -94,10 +95,38 @@ it('aims a projectile at the typed grave without manufacturing a character targe
     expect(world).toHaveBeenCalledWith(target)
     expect(rendered.views).toHaveLength(1)
     expect(rendered.views[0]).toMatchObject({ pos: { x: 100, y: 85 }, rotation: 0 })
-    frame(25)
+    const halfway = ABILITY_DEFINITIONS.shot.windupMs / 2
+    frame(halfway)
     expect(rendered.views[0]?.pos).toEqual({ x: 125, y: 85 })
-    frame(25)
+    frame(halfway)
     expect(rendered.views[0]?.dead).toBe(true)
+    effects.dispose()
+})
+
+it('keeps Quick Shot aim over the moving archer and launches from the server position', () => {
+    const { actor, effects, world, frame } = setup()
+    const attack = {
+        kind: 'attack',
+        actorId: actor.id,
+        abilityId: 'shot',
+        actionId: 'aim:1',
+        target: { kind: 'grave', id: 'stone' },
+    } as const
+    effects.receive({ ...attack, phase: 'started', durationMs: 200 })
+    expect(world).not.toHaveBeenCalled()
+    expect(rendered.views).toHaveLength(1)
+    expect(rendered.views[0]?.pos).toEqual({ x: 100, y: 85 })
+    actor.position = { x: 110, y: 105 }
+    frame(100)
+    expect(rendered.views[0]?.pos).toEqual({ x: 110, y: 86 })
+
+    effects.receive({
+        ...attack,
+        phase: 'completed',
+        projectile: { origin: { x: 112, y: 105 }, endpoint: { x: 150, y: 105 } },
+    })
+    expect(rendered.views[0]?.dead).toBe(true)
+    expect(rendered.views[1]?.pos).toEqual({ x: 112, y: 90 })
     effects.dispose()
 })
 

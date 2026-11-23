@@ -5,6 +5,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { rememberObservedCrossing } from './characterControl'
+import { quickShotBlocksMovement } from './combatArchery'
 import { canWalkDuringPrayer } from './combatMovement'
 import { magicBlocksMovement } from './magicState'
 import { rememberPursuitExit } from './pursuitTravel'
@@ -41,6 +42,7 @@ export function travelRoomCharacter(
     if (
         !character.alive ||
         character.tags.has('offline') ||
+        quickShotBlocksMovement(character) ||
         (character.isActionLocked(now) && !canWalkDuringPrayer(character)) ||
         magicBlocksMovement(character, now) ||
         character.stunUntil > now

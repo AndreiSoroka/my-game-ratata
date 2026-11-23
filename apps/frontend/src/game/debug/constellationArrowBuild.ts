@@ -1,4 +1,4 @@
-import type { ArrowAbilityId } from '@my-game-ratata/contracts'
+import { type ArrowAbilityId, QUICK_SHOT_RULES } from '@my-game-ratata/contracts'
 
 import type { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
 import { resolveArrowParameters } from '../../../../backend/src/game/effectiveArrowParameters'
@@ -50,6 +50,7 @@ function quickShot(
             ),
             row('Дальность Быстрого выстрела', distance),
             row('Цена Быстрого выстрела, EN', parameters.energy),
+            row('Прицеливание, мс', parameters.windupMs),
             row('Кулдаун Быстрого выстрела, мс', parameters.cooldownMs),
             row('Бонус критического шанса Быстрого выстрела', bonusPoints(bonuses.shotCritBonus)),
             row('Остановка при ходьбе, мс', parameters.movementMs),
@@ -67,7 +68,10 @@ function quickShot(
 function quickShotConditions(bonuses: Bonuses): ConstellationBuildSummary['rows'] {
     return [
         ...(bonuses.shotSeriesDamage > 0
-            ? [row('Урон в серии Быстрых выстрелов', bonusPercent(bonuses.shotSeriesDamage))]
+            ? [
+                  row('Урон в серии Быстрых выстрелов', bonusPercent(bonuses.shotSeriesDamage)),
+                  row('Окно серии Быстрых выстрелов, мс', QUICK_SHOT_RULES.seriesWindowMs),
+              ]
             : []),
         ...(bonuses.movingShotDamage > 0
             ? [row('Урон на ходу', bonusPercent(bonuses.movingShotDamage))]

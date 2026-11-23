@@ -10,7 +10,7 @@ import {
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { channelEnded, combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
-import { combatEffectPose, isMeleeEffect } from './combatEffectPose'
+import { aimEffectPosition, combatEffectPose, isMeleeEffect } from './combatEffectPose'
 import { hitColors, hitQuality } from './combatHitLabel'
 import { CombatParticles } from './combatParticles'
 import { EFFECT_BUDGET } from './effectBudget'
@@ -244,7 +244,10 @@ export class CombatEffects {
         if (cue) {
             const target = this.cueTarget(cue)
             if (!target) return false
-            this.animateVisual(effect, cue, target, progress)
+            if (cue.kind === 'aim') {
+                const { x, y, z } = aimEffectPosition(target, this.reduced ? 0 : progress)
+                Object.assign(effect.actor, { pos: vec(x, y), z })
+            } else this.animateVisual(effect, cue, target, progress)
         } else if (!this.reduced)
             effect.actor.pos = vec(effect.from.x, effect.from.y - progress * 8)
         return true

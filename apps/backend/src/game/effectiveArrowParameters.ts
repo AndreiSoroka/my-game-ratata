@@ -44,7 +44,8 @@ export function resolveArrowParameters(
     return {
         ...definition,
         cycleMs: 200,
-        movementMs: modifiers.shotWhileMoving && walking ? 0 : 200,
+        movementMs:
+            modifiers.shotWhileMoving && walking ? 0 : definition.windupMs,
         range: (4 + modifiers.shotRangeCells) * tileWidth,
         energy: definition.energy - modifiers.shotEnergyDiscount,
         cooldownMs: Math.round(

@@ -50,7 +50,7 @@ describe('effective shared constellation parameters', () => {
             respawnDelayMsFor: () => 15000,
         }
         expect(attemptAbilityAttack(context, 'shot')).toHaveLength(1)
-        expect(actor.energy).toBe(energy - 9)
+        expect(actor.energy).toBe(energy - 8)
         expect(actor.abilities.availableAt.shot).toBe(1495)
     })
 

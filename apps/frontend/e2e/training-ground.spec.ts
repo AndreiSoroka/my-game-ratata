@@ -1,7 +1,10 @@
 import {
+    ABILITY_DEFINITIONS,
+    type ArrowAbilityId,
     CENTER_LOCATION_ID,
     type GameEventPayload,
     type HeroClass,
+    isArrowAbility,
     readTrainingMapData,
     type ServerMessage,
     type Vector2,
@@ -96,7 +99,7 @@ for (const mobile of [false, true]) {
     }, info) => {
         test.setTimeout(150_000)
         const hits: GameEventPayload[] = []
-        const sniperPhases: GameEventPayload[] = []
+        const arrowPhases: GameEventPayload[] = []
         let socketUrl = ''
         page.on('websocket', (socket) => {
             if (new URL(socket.url()).pathname !== '/ws' || socketUrl) return
@@ -116,9 +119,9 @@ for (const mobile of [false, true]) {
                 if (
                     message.type === 'event' &&
                     message.event?.kind === 'attack' &&
-                    message.event.abilityId === 'sniper_shot'
+                    isArrowAbility(message.event.abilityId)
                 )
-                    sniperPhases.push(message.event)
+                    arrowPhases.push(message.event)
             })
         })
         await page.setViewportSize(
@@ -126,6 +129,7 @@ for (const mobile of [false, true]) {
         )
         const name = `yard-${info.project.name}-${mobile}`
         const yard = await join(page, name)
+        const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(page.getByRole('button', { name: /^2: Быстрый выстрел/ })).toBeVisible()
         await expect(page.getByRole('button', { name: /^3: Снайперский выстрел/ })).toBeVisible()
@@ -139,13 +143,14 @@ for (const mobile of [false, true]) {
             `character:${dummyId}`
         )
         const before = await dummyState(page)
-        const firstHit = hits.length
         await page.keyboard.press('Digit2')
-        await expect.poll(() => hits.length).toBeGreaterThan(firstHit)
-        expect(hits[firstHit]?.amount).toBeGreaterThan(0)
-        expect(hits[firstHit]?.hitQuality).toMatch(/weak|normal|strong|critical/)
+        const quickHit = await expectArrowHit(playerId, 'shot', arrowPhases, hits)
+        expect(quickHit?.hitQuality).toMatch(/weak|normal|strong|critical/)
         expect(await dummyState(page)).toEqual(before)
-        await fireSniperAtDummy(page, sniperPhases, hits)
+        await waitForAttackIdle(page)
+        await page.getByRole('button', { name: /^3: Снайперский выстрел/ }).click()
+        await expectArrowHit(playerId, 'sniper_shot', arrowPhases, hits)
+        await waitForAttackIdle(page)
         expect(await dummyState(page)).toEqual(before)
         await page.screenshot({ path: info.outputPath('training-inside.png') })
         await page.screenshot({ path: `/tmp/ratata-training-${mobile ? 'mobile' : 'desktop'}.png` })
@@ -207,26 +212,28 @@ for (const mobile of [false, true]) {
     })
 }
 
-async function fireSniperAtDummy(
-    page: Page,
+async function expectArrowHit(
+    playerId: string | undefined,
+    abilityId: ArrowAbilityId,
     phases: GameEventPayload[],
     hits: GameEventPayload[]
-): Promise<void> {
-    const playerId = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
-    await waitForAttackIdle(page)
-    await page.getByRole('button', { name: /^3: Снайперский выстрел/ }).click()
-    const localPhases = () => phases.filter((event) => event.actorId === playerId)
+): Promise<GameEventPayload | undefined> {
+    const localPhases = () =>
+        phases.filter((event) => event.actorId === playerId && event.abilityId === abilityId)
     await expect
         .poll(() => localPhases().map((event) => event.phase))
         .toEqual(['started', 'completed'])
     const [started, completed] = localPhases()
-    expect(started).toMatchObject({ targetId: dummyId, durationMs: 700 })
+    expect(started).toMatchObject({
+        targetId: dummyId,
+        actionId: expect.any(String),
+        durationMs: ABILITY_DEFINITIONS[abilityId].windupMs,
+    })
     expect(completed).toMatchObject({ actionId: started!.actionId })
     expect(completed?.projectile).toBeDefined()
-    await expect
-        .poll(() => hits.find((event) => event.actionId === started?.actionId)?.amount)
-        .toBeGreaterThan(0)
-    await waitForAttackIdle(page)
+    const hit = () => hits.find((event) => event.actionId === started?.actionId)
+    await expect.poll(() => hit()?.amount).toBeGreaterThan(0)
+    return hit()
 }
 
 async function activateBlade(

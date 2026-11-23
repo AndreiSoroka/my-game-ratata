@@ -9,7 +9,7 @@ export const constellationEnglishArrow: Readonly<Record<string, StarText>> = {
         'Horizon',
         'Quick shot reaches one additional tile farther.',
     ],
-    'arrow.economy': ['Efficient shot', 'Quick shot costs 1 less EN.'],
+    'arrow.economy': ['Efficient shot', 'Quick shot costs 2 less EN.'],
     'arrow.tempo': [
         'Swift arrow',
         'The interval between Quick shots is 10% shorter.',

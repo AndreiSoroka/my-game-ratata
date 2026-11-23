@@ -1,7 +1,7 @@
 import '../../assets/base.css'
 import '../ui/rpgControls.css'
 
-import type { DeityId } from '@my-game-ratata/contracts'
+import { ABILITY_DEFINITIONS, type DeityId } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { effectPreview, type EffectSurface } from './effectPreview'
@@ -66,24 +66,35 @@ export const Barrier: Story = {
 export const Projectiles: Story = {
     render: () =>
         effectPreview('hearth', [
-            { kind: 'arrow', label: 'Быстрый выстрел · 50 мс' },
+            { kind: 'arrow', label: 'Быстрый выстрел' },
             { kind: 'spark', label: 'Искра · 200 мс' },
             { kind: 'fireball', label: 'Огненный шар · 400 мс' },
             { kind: 'bone', label: 'Костяной удар' },
         ]),
 }
 
+function archerShot(ability: 'shot' | 'sniper_shot', surface: EffectSurface): HTMLElement {
+    return effectPreview(
+        'hearth',
+        [
+            {
+                kind: 'aim',
+                label: `Прицеливание · ${ABILITY_DEFINITIONS[ability].windupMs} мс`,
+                origin: true,
+            },
+            { kind: 'arrow', label: 'Выпуск стрелы', rotation: -Math.PI / 5 },
+        ],
+        surface
+    )
+}
+
 export const ArcherShots: Story = {
     name: 'Снайперский выстрел',
-    render: ({ surface }) =>
-        effectPreview(
-            'hearth',
-            [
-                { kind: 'aim', label: 'Прицеливание', origin: true },
-                { kind: 'arrow', label: 'Выпуск стрелы', rotation: -Math.PI / 5 },
-            ],
-            surface
-        ),
+    render: ({ surface }) => archerShot('sniper_shot', surface),
+}
+export const QuickShot: Story = {
+    name: 'Быстрый выстрел',
+    render: ({ surface }) => archerShot('shot', surface),
 }
 
 export const HearthLightStone: Story = {

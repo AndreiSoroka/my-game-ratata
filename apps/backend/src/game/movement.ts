@@ -9,7 +9,11 @@ import {
     type EnergyRecoveryRate,
     regenerateCharacter,
 } from './characterRecovery'
-import { interruptSniperOnMove, markArrowWalking } from './combatArchery'
+import {
+    interruptSniperOnMove,
+    markArrowWalking,
+    quickShotBlocksMovement,
+} from './combatArchery'
 import {
     canWalkDuringPrayer,
     combatMovementTime,
@@ -72,9 +76,10 @@ export function advanceCharacter(
         return undefined
     }
     if (
-        character.isActionLocked(now) &&
-        !feared &&
-        !canWalkDuringPrayer(character)
+        quickShotBlocksMovement(character) ||
+        (character.isActionLocked(now) &&
+            !feared &&
+            !canWalkDuringPrayer(character))
     ) {
         character.velocity = zeroVector()
         character.movement.dashUntil = 0

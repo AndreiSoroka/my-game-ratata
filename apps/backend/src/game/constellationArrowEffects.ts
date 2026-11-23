@@ -1,4 +1,7 @@
-import type { ArrowAbilityId } from '@my-game-ratata/contracts'
+import {
+    type ArrowAbilityId,
+    QUICK_SHOT_RULES,
+} from '@my-game-ratata/contracts'
 
 import type { resolveConstellationBonuses } from './constellationBonuses'
 import {
@@ -79,10 +82,11 @@ function appendShot(
         )
     }
     if (b.shotSeriesDamage > 0) {
+        const seconds = String(QUICK_SHOT_RULES.seriesWindowMs / 1000)
         effects.push(
             effectRow(
-                `После полезного попадания следующий Быстрый выстрел по той же цели в течение секунды наносит на ${percent(b.shotSeriesDamage)}% больше урона.`,
-                `After a qualifying hit, the next Quick shot against the same target within one second deals ${percent(b.shotSeriesDamage)}% more damage.`
+                `После полезного попадания следующий Быстрый выстрел по той же цели в течение ${seconds} секунд наносит на ${percent(b.shotSeriesDamage)}% больше урона.`,
+                `After a qualifying hit, the next Quick shot against the same target within ${seconds} seconds deals ${percent(b.shotSeriesDamage)}% more damage.`
             )
         )
     }

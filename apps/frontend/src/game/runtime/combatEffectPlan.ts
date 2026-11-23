@@ -83,14 +83,15 @@ function attackCues(
     if (!isArrowAbility(event.abilityId) || event.phase === undefined)
         return [attackCue(event, actor, base)]
     if (event.phase === 'completed' && event.projectile) return [attackCue(event, actor, base)]
-    if (event.phase !== 'started' || event.abilityId !== 'sniper_shot') return []
+    if (event.phase !== 'started') return []
     return [
         {
-            ...base,
             kind: 'aim',
             fromId: actor.id,
             targetId: actor.id,
-            duration: event.durationMs ?? ABILITY_DEFINITIONS.sniper_shot.windupMs,
+            deity: base.deity,
+            color: base.color,
+            duration: event.durationMs ?? ABILITY_DEFINITIONS[event.abilityId].windupMs,
             aimActionId: event.actionId,
             count: 0,
         },

@@ -65,7 +65,9 @@ it('keeps ranger basic attacks in melee and Shot separate, with normal weapon we
         abilityId: 'shot',
         targetId: f.target.id,
     })
-    expect(resolvePendingAttackHit(f.attack(1050))[0]?.kind).toBe('damage')
+    expect(resolvePendingAttackHit(f.attack(1200))).toContainEqual(
+        expect.objectContaining({ kind: 'damage', targetId: f.target.id })
+    )
     expect(sword.durability).toBe(200)
     f.target.position.x = 112
     const melee = attemptAttack(f.attack(2000, f.target.id))
@@ -101,16 +103,23 @@ it('fires toward current facing without selecting a nearer enemy behind the rang
                 },
             ],
         },
-        projectile: {
-            origin: { x: 100, y: 100 },
-            endpoint: { x: 164, y: 100 },
-        },
+        phase: 'started',
+        durationMs: ABILITY_DEFINITIONS.shot.windupMs,
     })
     expect(f.actor.facing).toBe('right')
     expect(f.actor.energy).toBe(
         f.actor.config.resources.maxEnergy - ABILITY_DEFINITIONS.shot.energy
     )
-    const hits = resolvePendingAttackHit(f.attack(1050))
+    expect(resolvePendingAttackHit(f.attack(1199))).toEqual([])
+    const hits = resolvePendingAttackHit(f.attack(1200))
+    expect(hits[0]).toMatchObject({
+        actionId,
+        phase: 'completed',
+        projectile: {
+            origin: { x: 100, y: 100 },
+            endpoint: { x: 150, y: 100 },
+        },
+    })
     expect(hits).toContainEqual(
         expect.objectContaining({ kind: 'damage', targetId: f.target.id })
     )
@@ -136,13 +145,13 @@ it.each(['behind', 'outside-width', 'beyond-range', 'wall'] as const)(
         }
         const before = structuredClone(f.actor.progression.masteries)
         expect(f.shot()[0]?.kind).toBe('attack')
-        expect(resolvePendingAttackHit(f.attack(1050))).toEqual([
+        expect(resolvePendingAttackHit(f.attack(1200))).toContainEqual(
             expect.objectContaining({
                 kind: 'miss',
                 hitQuality: 'miss',
                 abilityId: 'shot',
-            }),
-        ])
+            })
+        )
         expect(f.target.hp).toBe(f.target.maxHp)
         expect(f.actor.progression.masteries).toEqual(before)
     }
@@ -152,7 +161,9 @@ it('still aims at an explicitly selected target and rejects unknown, depleted or
     f.target.position.x = 60
     expect(f.shot(1000, f.target.id)[0]?.targetId).toBe(f.target.id)
     expect(f.actor.facing).toBe('left')
-    expect(resolvePendingAttackHit(f.attack(1050))[0]?.kind).toBe('damage')
+    expect(resolvePendingAttackHit(f.attack(1200))).toContainEqual(
+        expect.objectContaining({ kind: 'damage', targetId: f.target.id })
+    )
     const energy = f.actor.energy
     expect(f.shot(1100).every((event) => event.kind === 'notice')).toBe(true)
     expect(f.actor.energy).toBe(energy)
@@ -211,9 +222,9 @@ it('approaches into melee for automatic basic attack but repeats empty forward S
     ).toBe(true)
     f.actor.facing = 'right'
     advanceCharacterControl(f.actor, world, 2000)
-    resolvePendingAttackHit(f.attack(2050))
+    resolvePendingAttackHit(f.attack(2200))
     advanceCharacterControl(f.actor, world, 2550)
-    resolvePendingAttackHit(f.attack(2600))
+    resolvePendingAttackHit(f.attack(2750))
     expect(events.filter((event) => event.kind === 'attack')).toHaveLength(2)
     expect(f.actor.facing).toBe('right')
     expect(f.target.hp).toBe(f.target.maxHp)

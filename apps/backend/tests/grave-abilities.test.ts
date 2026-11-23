@@ -28,13 +28,15 @@ it.each(['targeted', 'forward'] as const)(
             mode === 'targeted' ? f.reference : null
         )
         expect(start[0]?.kind).toBe('attack')
-        const hit = f.hit()
-        expect(hit[0]).toMatchObject({
-            kind: 'world_damage',
-            target: f.reference,
-            abilityId: 'shot',
-            amount: 0.3,
-        })
+        const hit = f.hit(1200)
+        expect(hit).toContainEqual(
+            expect.objectContaining({
+                kind: 'world_damage',
+                target: f.reference,
+                abilityId: 'shot',
+                amount: 0.3,
+            })
+        )
         expect(f.actor.energy).toBe(110)
         expect(sword.durability).toBe(200)
         expect(f.actor.progression.masteries).toEqual(masteries)
@@ -47,7 +49,7 @@ it.each([106, 120])(
         const f = graveCombatFixture()
         const enemy = f.enemy(enemyX)
         attemptAbilityAttack({ ...f.attack(), target: undefined }, 'shot')
-        const events = f.hit()
+        const events = f.hit(1200)
         expect(
             events.filter(
                 (event) =>
@@ -88,13 +90,13 @@ it.each(['behind', 'wall', 'width', 'range'] as const)(
                 'shot'
             )[0]?.kind
         ).toBe('attack')
-        expect(f.hit()).toEqual([
+        expect(f.hit(1200)).toContainEqual(
             expect.objectContaining({
                 kind: 'miss',
                 hitQuality: 'miss',
                 abilityId: 'shot',
-            }),
-        ])
+            })
+        )
         expect(f.service.get('grave')?.hp).toBe(100)
         expect(f.actor.progression.masteries).toEqual(masteries)
     }
@@ -268,13 +270,13 @@ it('automatic forward Shot damages stone without practice, silently waits for re
         )
     ).toBe(true)
     advanceCharacterControl(f.actor, f.world, 1000)
-    f.hit()
+    f.hit(1200)
     advanceCharacterControl(f.actor, f.world, 1550)
     expect(snapshotControl(f.actor).waiting).toBe('resources')
     expect(f.events).toHaveLength(1)
     f.actor.energy = 10
     advanceCharacterControl(f.actor, f.world, 1600)
-    f.hit(1650)
+    f.hit(1800)
     expect(f.service.get('grave')?.hp).toBe(99.4)
     expect(f.actor.progression.masteries).toEqual(masteries)
     expect(
@@ -282,7 +284,7 @@ it('automatic forward Shot damages stone without practice, silently waits for re
             f.actor,
             { type: 'auto_action', action: null },
             f.world,
-            1700
+            1850
         )
     ).toBe(true)
     advanceCharacterControl(f.actor, f.world, 2200)

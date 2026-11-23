@@ -1,3 +1,5 @@
+import { ABILITY_DEFINITIONS, QUICK_SHOT_RULES } from '@my-game-ratata/contracts'
+
 import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
 import type {
     ConstellationChanceFormula,
@@ -91,7 +93,14 @@ const deterministic: Record<string, DeterministicEffect> = {
             'Две звезды дают две клетки. Видимость и геометрия попадания не заменяются случайным броском.',
         ],
     },
-    'arrow.economy': { formulas: [chanceFormula('Цена Быстрого выстрела, EN', '10 − 1 = 9')] },
+    'arrow.economy': {
+        formulas: [
+            chanceFormula(
+                'Цена Быстрого выстрела, EN',
+                `${ABILITY_DEFINITIONS.shot.energy} − ${QUICK_SHOT_RULES.energyDiscount} = ${ABILITY_DEFINITIONS.shot.energy - QUICK_SHOT_RULES.energyDiscount}`
+            ),
+        ],
+    },
     'arrow.tempo': {
         formulas: [chanceFormula('Кулдаун Быстрого выстрела, мс', '550 × 0.90 = 495')],
         notes: [

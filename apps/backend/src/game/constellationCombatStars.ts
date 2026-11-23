@@ -1,3 +1,5 @@
+import { QUICK_SHOT_RULES } from '@my-game-ratata/contracts'
+
 import { star } from './constellationDefinition'
 
 export const combatStars = [
@@ -117,7 +119,7 @@ export const combatStars = [
         'arrow',
         'economy',
         'Экономный выстрел',
-        'Быстрый выстрел стоит на 1 EN меньше.'
+        `Быстрый выстрел стоит на ${String(QUICK_SHOT_RULES.energyDiscount)} EN меньше.`
     ),
     star(
         'arrow',

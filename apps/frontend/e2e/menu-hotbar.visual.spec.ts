@@ -95,16 +95,25 @@ test('production hotbar assignment opens and dismisses at 320px', async ({ page 
     await expect(picker).toHaveCount(0)
 })
 
-test('Archer shot phases stay distinguishable in the effect preview', async ({ page }, info) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto(
-        '/iframe.html?id=combat-authoritative-effect-shapes--archer-shots&viewMode=story'
-    )
-    await expect(page.getByRole('img', { name: 'Прицеливание' })).toBeVisible()
-    await expect(page.getByRole('img', { name: 'Выпуск стрелы' })).toBeVisible()
-    await readyUiStory(page)
-    await page.screenshot({ path: info.outputPath('archer-shot-phases-390.png') })
-})
+for (const [story, durationMs] of [
+    ['archer-shots', 700],
+    ['quick-shot', 200],
+] as const) {
+    test(`${story} aim and release stay distinguishable in the effect preview`, async ({
+        page,
+    }, info) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await page.goto(
+            `/iframe.html?id=combat-authoritative-effect-shapes--${story}&viewMode=story`
+        )
+        await expect(
+            page.getByRole('img', { name: `Прицеливание · ${durationMs} мс` })
+        ).toBeVisible()
+        await expect(page.getByRole('img', { name: 'Выпуск стрелы' })).toBeVisible()
+        await readyUiStory(page)
+        await page.screenshot({ path: info.outputPath(`${story}-phases-390.png`) })
+    })
+}
 
 for (const width of [1280, 390, 320]) {
     test(`production game menu at ${width}px`, async ({ page }) => {

@@ -13,7 +13,6 @@ import {
     arrowPhaseEvent,
     arrowReleaseEvents,
     canAimSniperAt,
-    isPhasedArrow,
 } from './combatArchery'
 import { resolveContactBatch, usesAttackWeapon } from './combatContacts'
 import {
@@ -51,7 +50,7 @@ export function resolvePendingAttackHit(
         return []
     }
     if (!availableToAttack(actor, now) || !validPendingWeapon(actor, attack)) {
-        return isPhasedArrow(attack.arrow)
+        return attack.arrow !== undefined
             ? [arrowPhaseEvent(actor, attack, 'interrupted')]
             : []
     }

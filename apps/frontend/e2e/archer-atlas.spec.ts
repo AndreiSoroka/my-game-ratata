@@ -15,9 +15,14 @@ for (const width of [390, 1280]) {
         await expect(star('sniper_shot')).toHaveAttribute('data-enabled', 'true')
         await expect(star('moving_shot')).toHaveAttribute('data-enabled', 'false')
 
-        await selectBuildStar(page, 'arrow.sniper_shot')
+        await selectBuildStar(page, 'arrow.root')
         await setBuildPanelsOpen(page, true)
         await expect(page.getByTestId('debug-mastery-level')).toHaveText('0')
+        await expect(buildMetric(page, 'Цена Быстрого выстрела, EN')).toHaveText('10')
+        await expect(buildMetric(page, 'Прицеливание, мс')).toHaveText('200')
+        await expect(buildMetric(page, 'Остановка при ходьбе, мс')).toHaveText('200')
+
+        await selectBuildStar(page, 'arrow.sniper_shot')
         await expect(buildMetric(page, 'Прицеливание, мс')).toHaveText('700')
         await expect(buildMetric(page, 'Дальность Снайперского выстрела')).toHaveText('10 клеток')
 
@@ -25,7 +30,11 @@ for (const width of [390, 1280]) {
         await expect(buildMetric(page, 'Прицеливание, мс')).toHaveText('550')
         await expect(buildMetric(page, 'Дальность Снайперского выстрела')).toHaveText('12 клеток')
         await selectBuildStar(page, 'arrow.root')
+        await expect(buildMetric(page, 'Цена Быстрого выстрела, EN')).toHaveText('7')
+        await expect(buildMetric(page, 'Прицеливание, мс')).toHaveText('200')
         await expect(buildMetric(page, 'Остановка при ходьбе, мс')).toHaveText('0')
+        await expect(buildMetric(page, 'Урон в серии Быстрых выстрелов')).toHaveText('+15%')
+        await expect(buildMetric(page, 'Окно серии Быстрых выстрелов, мс')).toHaveText('3000')
         await expect(buildMetric(page, 'Урон при Смене позиции')).toHaveText('+20%')
 
         await page.getByTestId('debug-class').selectOption('vanguard')

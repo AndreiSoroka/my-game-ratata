@@ -3,6 +3,7 @@ import {
     type AttackGeometry,
     forwardShot,
     type GameEventPayload,
+    QUICK_SHOT_RULES,
     SHOT_HALF_WIDTH,
     type Vector2,
 } from '@my-game-ratata/contracts'
@@ -12,7 +13,7 @@ import type { ArrowAttack, PendingAttackHit } from './characterState'
 import { type AttackContext, isLegalAttackTarget } from './combat'
 import { forwardAttackZones } from './combatGeometry'
 import { constellationModifiers } from './constellationModifiers'
-import { distance } from './math'
+import { distance, zeroVector } from './math'
 import { visibilityRadius } from './queries'
 
 export function canAimSniperAt(
@@ -48,6 +49,13 @@ export function startArrowAttack(
     )
     const previousHit = actor.combat.lastUsefulArrowHit
     delete actor.combat.lastUsefulArrowHit
+    if (abilityId === 'sniper_shot') {
+        actor.clearPath()
+        actor.setMoveInput(zeroVector())
+    }
+    if (!mobile) {
+        actor.velocity = zeroVector()
+    }
     return {
         abilityId,
         origin,
@@ -88,10 +96,6 @@ export function sniperAttackGeometry(
     return { kind: 'circle', center: { ...center }, radius }
 }
 
-export function isPhasedArrow(arrow: ArrowAttack | undefined): boolean {
-    return arrow?.abilityId === 'sniper_shot' || arrow?.mobile === true
-}
-
 export function arrowPhaseEvent(
     actor: GameCharacter,
     attack: PendingAttackHit,
@@ -117,13 +121,14 @@ export function arrowReleaseEvents(
 ): GameEventPayload[] {
     const { actor, navigation } = context
     const { arrow } = attack
-    if (arrow === undefined || !isPhasedArrow(arrow)) {
+    if (arrow === undefined) {
         return []
     }
     const origin = arrow.mobile ? { ...actor.position } : arrow.origin
-    const aim = arrow.mobile
-        ? quickShotAim(arrow, origin, target?.position)
-        : (target?.position ?? arrow.aim)
+    const aim =
+        arrow.abilityId === 'shot'
+            ? quickShotAim(arrow, origin, target?.position)
+            : (target?.position ?? arrow.aim)
     const endpoint = navigation?.visibleLineEndpoint(origin, aim) ?? aim
     return [
         {
@@ -195,6 +200,15 @@ export function markArrowWalking(actor: GameCharacter, walking: boolean): void {
     }
 }
 
+export function quickShotBlocksMovement(actor: GameCharacter): boolean {
+    // Movement runs before hit resolution, even on a tick past the aim deadline.
+    const arrow = actor.pendingAttack?.arrow
+    return (
+        arrow?.abilityId === 'shot' &&
+        (!arrow.mobile || actor.movement.mode !== 'walking')
+    )
+}
+
 export function holdQuickShotDuringSneak(
     actor: GameCharacter,
     now: number
@@ -251,7 +265,9 @@ function quickFollowupDamage(
     }
     const elapsed = now - previous.at
     if (previous.abilityId === 'shot') {
-        return elapsed <= 1000 ? mods.shotSeriesDamage : 0
+        return elapsed <= QUICK_SHOT_RULES.seriesWindowMs
+            ? mods.shotSeriesDamage
+            : 0
     }
     return arrow.moved && elapsed <= 4000 ? mods.movingShotFollowupDamage : 0
 }

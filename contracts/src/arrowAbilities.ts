@@ -7,6 +7,12 @@ export function isArrowAbility(value: unknown): value is ArrowAbilityId {
     return value === 'shot' || value === 'sniper_shot'
 }
 
+export const QUICK_SHOT_RULES = {
+    energyDiscount: 2,
+    seriesDamagePercent: 10,
+    seriesWindowMs: 3000,
+} as const
+
 export const arrowAbilityDefinitions = {
     shot: {
         name: 'Быстрый выстрел',
@@ -14,7 +20,7 @@ export const arrowAbilityDefinitions = {
         energy: 10,
         cooldownMs: 550,
         range: 64,
-        windupMs: 50,
+        windupMs: 200,
         damage: 4,
         maxDamage: 7,
     },

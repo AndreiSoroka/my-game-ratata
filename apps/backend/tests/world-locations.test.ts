@@ -1,4 +1,5 @@
 import type {
+    HeroClass,
     ServerMessage,
     Vector2,
     WorldInitServerMessage,
@@ -150,6 +151,43 @@ describe('generated Novogorod region', () => {
             expect(actor.position).not.toEqual(before.position)
         }
     )
+})
+
+it('releases a stationary Quick Shot before held movement can cross the map edge', () => {
+    const room = openRoom()
+    const client = socket()
+    const init = join(room, client, 'Archer at the edge', 'ranger')
+    const player = findPlayer(room, init)
+    const axis = { x: 1, y: 0 }
+    const edge = edgePoint(room.navigation, axis)
+    player.position = edge
+    player.facing = 'left'
+    room.handleMessage(
+        asSocket(client),
+        JSON.stringify({ type: 'move_input', axis })
+    )
+    room.handleMessage(
+        asSocket(client),
+        JSON.stringify({ type: 'use_ability', abilityId: 'shot' })
+    )
+    const actionId = player.pendingAttack?.actionId
+    expect(actionId).toBeDefined()
+
+    room.start()
+    vi.advanceTimersByTime(200)
+    expect(player.locationId).toBe(CENTER_LOCATION_ID)
+    expect(player.position).toEqual(edge)
+    const release = client.sent.find(
+        (message) =>
+            message.type === 'event' &&
+            message.event.actionId === actionId &&
+            message.event.phase === 'completed'
+    )
+    expect(release).toMatchObject({
+        event: { abilityId: 'shot', projectile: { origin: edge } },
+    })
+    vi.advanceTimersByTime(50)
+    expect(player.locationId).toBe('map-3-2')
 })
 
 describe('game room location and life integration', () => {
@@ -414,12 +452,13 @@ function asSocket(value: FakeSocket): RoomSocket {
 function join(
     room: GameRoom,
     value: FakeSocket,
-    nickname: string
+    nickname: string,
+    heroClass?: HeroClass
 ): WorldInitServerMessage {
     room.handleOpen(asSocket(value))
     room.handleMessage(
         asSocket(value),
-        JSON.stringify({ nickname, type: 'join' })
+        JSON.stringify({ nickname, type: 'join', heroClass })
     )
     const init = value.sent.find((message) => message.type === 'world_init')
     if (init === undefined) {

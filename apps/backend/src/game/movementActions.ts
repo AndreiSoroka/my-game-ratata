@@ -133,6 +133,7 @@ export function movementActionAllowed(
         canPerformSkillAction(character, now, {
             interruptWalkingPrayer: true,
         }) &&
+        character.pendingAttack?.arrow?.abilityId !== 'shot' &&
         !magicBlocksMovement(character, now) &&
         now >= character.movement.dashAvailableAt &&
         character.energy >= effectiveDashCost(character, now)

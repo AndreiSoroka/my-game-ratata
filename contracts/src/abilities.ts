@@ -4,7 +4,11 @@ import { bladeAbilityIds, type BladeAttackAbilityId } from './bladeAbilities'
 import type { PrayerParametersSnapshot } from './prayerPreviewTypes'
 
 export { ABILITY_DEFINITIONS } from './abilityDefinitions'
-export { type ArrowAbilityId, isArrowAbility } from './arrowAbilities'
+export {
+    type ArrowAbilityId,
+    isArrowAbility,
+    QUICK_SHOT_RULES,
+} from './arrowAbilities'
 export * from './ashRites'
 export * from './bladeAbilities'
 export type { PrayerParametersSnapshot } from './prayerPreviewTypes'

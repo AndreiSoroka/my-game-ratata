@@ -1,3 +1,5 @@
+import { isArrowAbility } from '@my-game-ratata/contracts'
+
 import { abilityName, tGame } from '@/shared/lib/i18n'
 
 import { abilityUsage } from './abilityUsage'
@@ -33,21 +35,21 @@ function rangedActionTooltip(
     props: HotbarProps
 ): string | undefined {
     if (binding?.kind !== 'ability') return undefined
-    if (binding.id === 'sniper_shot') {
+    if (isArrowAbility(binding.id)) {
         const shot = abilityUsage(props.player, binding.id)
-        return tGame('game.world.aimingShot', {
+        const parameters = {
             ability: abilityName(binding.id),
             energy: shot.energy,
             seconds: shot.windupMs / 1000,
-        })
+        }
+        return binding.id === 'shot' && !hostileTarget(props)
+            ? tGame('game.world.forwardShot', {
+                  ...parameters,
+                  direction: { up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing],
+              })
+            : tGame('game.world.aimingShot', parameters)
     }
     if (hostileTarget(props)) return undefined
-    if (binding.id === 'shot')
-        return tGame('game.world.forwardShot', {
-            ability: abilityName('shot'),
-            direction: { up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing],
-            energy: abilityUsage(props.player, 'shot').energy,
-        })
     if (binding.id === 'spark')
         return tGame('game.world.forwardSpark', {
             direction: { up: '↑', down: '↓', left: '←', right: '→' }[props.player.facing],

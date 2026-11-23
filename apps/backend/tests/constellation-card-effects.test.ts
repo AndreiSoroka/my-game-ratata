@@ -115,11 +115,20 @@ it('includes only the applicable learned modifiers of both shots and both fireba
     const shot = requiredEffects('arrow.root')
     expect(shot).toContain('Урон Быстрого выстрела увеличен на 25%.')
     expect(shot).toContain('Дальность Быстрого выстрела увеличена на 2 клетки.')
+    expect(shot).toContain('Быстрый выстрел расходует на 3 EN меньше.')
+    expect(shot).toContain(
+        'После полезного попадания следующий Быстрый выстрел по той же цели в течение 3 секунд наносит на 15% больше урона.'
+    )
     expect(shot).toContain(
         'После полезного боевого заклинания следующий Быстрый выстрел на 10% сильнее в течение 5 секунд.'
     )
     expect(shot.join(' ')).not.toMatch(
         /Лечение|могил|Барьер|Искры|огненных шаров/
+    )
+    expect(
+        requiredEffects('arrow.root', new Set(['arrow.root', 'arrow.series1']))
+    ).toContain(
+        'После полезного попадания следующий Быстрый выстрел по той же цели в течение 3 секунд наносит на 10% больше урона.'
     )
     const sniper = requiredEffects('arrow.sniper_shot')
     expect(sniper).toContain(

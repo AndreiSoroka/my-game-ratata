@@ -75,6 +75,47 @@ function fixture(heroClass: 'cleric' | 'ranger' = 'cleric') {
     return { room, actor, send, grave, graveHp, messages }
 }
 
+it('delays a Quick Shot while held movement pauses, then releases it from the aimed position', () => {
+    const f = fixture('ranger')
+    const position = { ...f.actor.position }
+    const events = () =>
+        f.messages.flatMap((message) =>
+            message.type === 'event' ? [message.event] : []
+        )
+    f.room.start()
+    try {
+        f.send({ type: 'move_input', axis: { x: 0, y: 1 } })
+        f.send({ type: 'use_ability', abilityId: 'shot', target })
+        expect(f.actor.getMoveInput()).toEqual({ x: 0, y: 1 })
+        const start = events().find(
+            (event) => event.kind === 'attack' && event.phase === 'started'
+        )
+        expect(start).toMatchObject({ abilityId: 'shot', durationMs: 200 })
+        expect(start?.projectile).toBeUndefined()
+
+        vi.advanceTimersByTime(150)
+        expect(f.actor.position).toEqual(position)
+        expect(f.graveHp()).toBe(100)
+        vi.advanceTimersByTime(50)
+        expect(f.actor.position).toEqual(position)
+        expect(events()).toContainEqual(
+            expect.objectContaining({
+                actionId: start?.actionId,
+                phase: 'completed',
+                projectile: {
+                    origin: position,
+                    endpoint: { x: 104, y: 72 },
+                },
+            })
+        )
+        expect(f.graveHp()).toBeLessThan(100)
+        vi.advanceTimersByTime(50)
+        expect(f.actor.position.y).toBeGreaterThan(position.y)
+    } finally {
+        f.room.stop()
+    }
+})
+
 describe('ordinary socket commands resolve grave actions in the real room', () => {
     it.each([
         { type: 'attack', target },

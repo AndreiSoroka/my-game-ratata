@@ -286,7 +286,7 @@ cooldown. The status explains its movement and casting restrictions. Earned comb
 stacks are shown only to their owner. Attack animation phases and training guides
 consume server timing and geometry; client animation does not decide a hit.
 
-Without a selected target, Quick Shot and Spark fire in the facing direction. Sniper Shot requires a visible target. A walking command interrupts the aim and keeps the spent energy and cooldown. At Arrow mastery level 4, Quick Shot can be fired at ordinary walking speed. The server supplies the hit geometry and release timing used by the world guides and effects. [Ranged attacks](../knowledge/combat/ranged.md) · [Magic](../knowledge/combat/magic.md)
+Without a selected target, Quick Shot and Spark fire in the facing direction. Quick Shot spends 10 energy and pauses movement for 200 ms of aim. The Moving Shot skill at Arrow mastery level 4 lets the archer keep walking at ordinary speed while aiming and releasing. Economical Shot reduces the cost to 8 energy. Hold Target gives the next Quick Shot against the same target 10% more damage if it lands within three seconds of a useful Quick Shot hit. Sniper Shot requires a visible target. A walking command interrupts its aim and keeps the spent energy and cooldown. The server supplies the hit geometry and release timing used by the world guides and effects. [Ranged attacks](../knowledge/combat/ranged.md) · [Magic](../knowledge/combat/magic.md)
 
 Click **×** to clear an assigned slot, or press Shift+1–4 and choose **Очистить слот** in the assignment dialog. Clearing removes the binding, keeps all items in the inventory and returns keyboard focus to the game world.
 

@@ -85,8 +85,8 @@ export const worldMessages = {
     followNamed: ['Следовать за {name}', 'Follow {name}'],
     forward: ['Вперёд', 'Forward'],
     forwardShot: [
-        '{ability} вперёд {direction} · {energy} EN',
-        '{ability} forward {direction} · {energy} EN',
+        '{ability} вперёд {direction} · {energy} EN · прицеливание {seconds} с',
+        '{ability} forward {direction} · {energy} EN · aim {seconds} s',
     ],
     forwardSpark: [
         'Искра вперёд {direction} · {mana} MP · {energy} EN',

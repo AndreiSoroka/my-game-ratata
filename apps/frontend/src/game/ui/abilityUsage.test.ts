@@ -9,7 +9,7 @@ import ActionHotbar from './ActionHotbar.vue'
 
 const parameters = {
     pray: { mana: 5, energy: 0, cooldownMs: 2700, range: 64, windupMs: 2700 },
-    shot: { mana: 0, energy: 9, cooldownMs: 495, range: 96, windupMs: 50 },
+    shot: { mana: 0, energy: 8, cooldownMs: 495, range: 96, windupMs: 185 },
     spark: { mana: 5, energy: 4, cooldownMs: 800, range: 112, windupMs: 200 },
 }
 
@@ -49,7 +49,7 @@ describe('authoritative ability usage metadata', () => {
         try {
             const rows = wrapper.findAll('li').map((row) => row.text().replace(/\s+/g, ' '))
             expect(rows).toContain('Молитва · 5 MP · 0 EN · 2.7 с')
-            expect(rows).toContain('Быстрый выстрел · 0 MP · 9 EN · 0.495 с')
+            expect(rows).toContain('Быстрый выстрел · 0 MP · 8 EN · 0.495 с')
             expect(rows).toContain('Искра · 5 MP · 4 EN · 0.8 с')
             expect(wrapper.find('p').exists()).toBe(false)
         } finally {
@@ -64,7 +64,7 @@ describe('authoritative ability usage metadata', () => {
         })
         try {
             expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('aria-description')).toContain(
-                '9 EN'
+                '8 EN · прицеливание 0.185 с'
             )
             expect(wrapper.emitted('shotPreviewChange')?.at(-1)?.[0]).toMatchObject({
                 origin: { x: 0, y: 0 },
@@ -74,7 +74,7 @@ describe('authoritative ability usage metadata', () => {
             const shot = wrapper
                 .findAll('.hotbar-picker button')
                 .find((button) => button.text().includes('Быстрый выстрел'))
-            expect(shot?.text()).toContain('9 EN')
+            expect(shot?.text()).toContain('8 EN')
             const spark = wrapper
                 .findAll('.hotbar-picker button')
                 .find((button) => button.text().includes('Искра'))
@@ -93,6 +93,20 @@ describe('authoritative ability usage metadata', () => {
                 origin: { x: 0, y: 0 },
                 endpoint: { x: 112, y: 0 },
             })
+        } finally {
+            wrapper.unmount()
+        }
+    })
+    it('shows the server aim duration when Quick Shot has a target', () => {
+        const player = observedPlayer()
+        const target = characterFixture('enemy', { relationship: 'hostile' })
+        const wrapper = mount(ActionHotbar, {
+            props: { player, target, characters: [player, target], blocked: false },
+        })
+        try {
+            expect(wrapper.findAll('.hotbar-slot')[1]!.attributes('aria-description')).toBe(
+                'Быстрый выстрел · 8 EN · прицеливание 0.185 с'
+            )
         } finally {
             wrapper.unmount()
         }

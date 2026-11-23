@@ -2,7 +2,6 @@ import {
     type AttackAbilityId,
     type AttackGeometry,
     forwardAbilityAttack,
-    forwardShot,
     type GameEventPayload,
     HUMAN_MELEE_RULES,
     isArrowAbility,
@@ -19,7 +18,6 @@ import { type AttackContext, availableToStartAttack } from './combat'
 import { startCombatAction } from './combatActions'
 import {
     canAimSniperAt,
-    isPhasedArrow,
     sniperAttackGeometry,
     startArrowAttack,
 } from './combatArchery'
@@ -35,7 +33,6 @@ import {
     effectiveAttackEnergyCost,
     effectiveAttackPhases,
 } from './effectiveParameters'
-import { zeroVector } from './math'
 import { recordPaidResources } from './resourcePractice'
 
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
@@ -150,16 +147,10 @@ function payAbilityAttack(
     arrow: ArrowAttack | undefined
 ): GameEventPayload {
     const { actor, now } = context
-    const phased = isPhasedArrow(arrow)
     const before = { energy: actor.energy, mana: actor.mana }
     actor.energy -= definition.energy
     actor.mana -= definition.mana
     actor.abilities.availableAt[id] = now + definition.cooldownMs
-    if (id === 'sniper_shot') {
-        actor.clearPath()
-        actor.setMoveInput(zeroVector())
-        actor.velocity = zeroVector()
-    }
     const event = startCombatAction(
         actor,
         now,
@@ -180,24 +171,25 @@ function payAbilityAttack(
                       ? 'ranged_physical'
                       : 'melee_physical',
         },
-        phased
+        arrow !== undefined
             ? { ...definition, animationMs: definition.windupMs }
             : definition,
         geometry
     )
-    if (phased) {
+    if (arrow !== undefined) {
         event.phase = 'started'
         event.durationMs = definition.windupMs
-    } else if (projectileWithoutTarget(context, id)) {
-        event.projectile =
-            id === 'shot'
-                ? forwardShot(actor.position, actor.facing, definition.range)
-                : forwardAbilityAttack(
-                      actor.position,
-                      actor.facing,
-                      id,
-                      definition.range
-                  )
+    } else if (
+        id === 'spark' &&
+        context.targetId === undefined &&
+        context.target === undefined
+    ) {
+        event.projectile = forwardAbilityAttack(
+            actor.position,
+            actor.facing,
+            id,
+            definition.range
+        )
     }
     return event
 }
@@ -255,15 +247,5 @@ function ready({ actor, now }: AttackContext): boolean {
     return (
         availableToStartAttack(actor, now) &&
         actor.soul.companion?.canFight !== false
-    )
-}
-function projectileWithoutTarget(
-    context: AttackContext,
-    id: AttackAbilityId
-): id is 'shot' | 'spark' {
-    return (
-        (id === 'shot' || id === 'spark') &&
-        context.targetId === undefined &&
-        context.target === undefined
     )
 }
