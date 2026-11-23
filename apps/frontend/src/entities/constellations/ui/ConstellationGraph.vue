@@ -26,7 +26,6 @@ const {
     svg,
     zoom,
     dragOffset,
-    parallaxZoom,
     dimensions,
     viewBox,
     visibleBounds,
@@ -45,10 +44,8 @@ const {
 const displayedSky = computed(() => {
     const { x, y, width, height } = visibleBounds.value
     return projectConstellationStars(props.constellation, {
-        drag: dragOffset.value,
         center: { x: x + width / 2, y: y + height / 2 },
-        unitScale: unitScale.value,
-        zoomDelta: parallaxZoom.value,
+        zoom: zoom.value,
     })
 })
 const nodeById = computed(() => new Map(props.constellation.nodes.map((node) => [node.id, node])))

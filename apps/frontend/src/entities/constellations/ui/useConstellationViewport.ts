@@ -10,9 +10,12 @@ import { constellationViewportFocus } from './constellationViewportFocus'
 export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
     const svg = ref<SVGSVGElement>()
     const zoom = ref(1)
-    const parallaxZoom = computed(() => Math.log2(zoom.value))
     const dimensions = ref({ width: 700, height: 450 })
     const bounds = computed(() => snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
+    const mapCenter = computed(() => ({
+        x: bounds.value.x + bounds.value.width / 2,
+        y: bounds.value.y + bounds.value.height / 2,
+    }))
     const baseScale = computed(() =>
         Math.max(
             bounds.value.width / dimensions.value.width,
@@ -40,11 +43,15 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         zoom.value = 1
         setOffset({ x: 0, y: 0 })
     }
-    function centerOn(point: { x: number; y: number }): void {
+    function centerOn(point: Vector2): Vector2 {
         setOffset({
-            x: point.x - bounds.value.x - bounds.value.width / 2,
-            y: point.y - bounds.value.y - bounds.value.height / 2,
+            x: point.x - mapCenter.value.x,
+            y: point.y - mapCenter.value.y,
         })
+        return {
+            x: mapCenter.value.x + offset.value.x,
+            y: mapCenter.value.y + offset.value.y,
+        }
     }
     const { focusPath, focusStar } = constellationViewportFocus({
         snapshot,
@@ -62,7 +69,6 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     return {
         svg,
         zoom,
-        parallaxZoom,
         dragOffset,
         dimensions,
         viewBox,

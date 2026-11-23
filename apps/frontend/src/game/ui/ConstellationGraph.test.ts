@@ -201,7 +201,7 @@ it('preserves selected stars on reveal, then clears selection for a new identity
     view.unmount()
 })
 
-it('fits the complete received path and its local route instead of zooming by another path spacing', async () => {
+it('fits the projected received path and its local route independently of other path spacing', async () => {
     const sky = constellationFixture(true)
     const root = { ...sky.nodes.find((node) => node.id === sky.layout!.centerNodeId)!, x: 0, y: 0 }
     const child = { ...sky.nodes.find((node) => node.parents.includes(root.id))!, x: 2000, y: 0 }
@@ -217,9 +217,28 @@ it('fits the complete received path and its local route instead of zooming by an
         .split(' ')
         .map(Number)
     const scale = width! / 700
-    expect(x! + width! / 2).toBeCloseTo(1000)
-    expect(y! + height! / 2).toBeCloseTo(300)
-    for (const point of [root, child, bend]) {
+    const points = view
+        .get('polyline')
+        .attributes('points')!
+        .split(' ')
+        .map((point) => {
+            const [x, y] = point.split(',').map(Number)
+            return { x: x!, y: y! }
+        })
+    expect(points).toHaveLength(3)
+    const projectedCenter = {
+        x:
+            (Math.min(...points.map((point) => point.x)) +
+                Math.max(...points.map((point) => point.x))) /
+            2,
+        y:
+            (Math.min(...points.map((point) => point.y)) +
+                Math.max(...points.map((point) => point.y))) /
+            2,
+    }
+    expect(Math.abs(x! + width! / 2 - projectedCenter.x)).toBeLessThan(scale)
+    expect(Math.abs(y! + height! / 2 - projectedCenter.y)).toBeLessThan(scale)
+    for (const point of points) {
         expect(point.x - x!).toBeGreaterThanOrEqual(35 * scale)
         expect(x! + width! - point.x).toBeGreaterThanOrEqual(35 * scale)
         expect(point.y - y!).toBeGreaterThanOrEqual(35 * scale)

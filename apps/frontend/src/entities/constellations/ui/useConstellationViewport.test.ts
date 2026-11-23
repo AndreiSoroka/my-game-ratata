@@ -111,33 +111,34 @@ it.each([
     expect(center().y - edge.y).toBeCloseTo(y * 10 * viewport.unitScale.value)
 })
 
-it('uses camera coordinates for parallax across focus, zoom, return trips and reset', () => {
+it('uses actual camera coordinates for background pan across focus, zoom and reset', () => {
     const { viewport, drag, center } = mountViewport()
     const initial = viewport.viewBox.value
+    const overviewScale = viewport.unitScale.value
+    const overviewCenter = center()
     viewport.focusStar(sky.nodes[1]!)
     expect(center()).toEqual({ x: 600, y: 100 })
-    expect(viewport.parallaxZoom.value).toBeGreaterThan(0)
     expect(viewport.dragOffset.value.x).not.toBe(0)
-    const focused = { pan: viewport.dragOffset.value, zoom: viewport.parallaxZoom.value }
+    const focused = { pan: viewport.dragOffset.value, unitScale: viewport.unitScale.value }
     drag(25, -30)
     drag(-25, 30)
     expect(viewport.dragOffset.value.x).toBeCloseTo(focused.pan.x)
     expect(viewport.dragOffset.value.y).toBeCloseTo(focused.pan.y)
     viewport.scale(2)
     expect(viewport.dragOffset.value.x).toBeCloseTo(focused.pan.x * 2)
-    expect(viewport.parallaxZoom.value).toBeCloseTo(focused.zoom + 1)
+    expect(viewport.unitScale.value).toBeCloseTo(focused.unitScale / 2)
     viewport.scale(0.5)
     viewport.focusStar(sky.nodes[1]!)
     expect(viewport.dragOffset.value).toEqual(focused.pan)
-    expect(viewport.parallaxZoom.value).toEqual(focused.zoom)
+    expect(viewport.unitScale.value).toEqual(focused.unitScale)
     viewport.reset()
     expect(viewport.viewBox.value).toEqual(initial)
     expect(viewport.dragOffset.value.x).toBeCloseTo(0)
     expect(viewport.dragOffset.value.y).toBeCloseTo(0)
-    expect(viewport.parallaxZoom.value).toBe(0)
+    expect(center()).toEqual(overviewCenter)
+    expect(viewport.unitScale.value).toBe(overviewScale)
     viewport.focusPath(sky.nodes[0]!)
-    expect(center()).toEqual({ x: 500, y: 25 })
-    expect(viewport.parallaxZoom.value).toBeGreaterThan(0)
+    expect(center()).not.toEqual(overviewCenter)
     expect(viewport.dragOffset.value.x).not.toBe(0)
 })
 
@@ -147,12 +148,17 @@ it('reclamps updated maps, preserves the edge on resize and cleans up its observ
     const smaller = { ...bounds, width: 300, height: 200 }
     state.value = { ...sky, layout: { ...sky.layout!, bounds: smaller } }
     expect(center()).toEqual({ x: smaller.x + smaller.width, y: smaller.y + smaller.height })
+    const beforeResize = viewport.unitScale.value
     resize(320, 700)
+    expect(viewport.unitScale.value).not.toBe(beforeResize)
     viewport.scale(2)
     expect(center()).toEqual({ x: smaller.x + smaller.width, y: smaller.y + smaller.height })
     drag(10, 10)
     expect(center().x).toBeLessThan(smaller.x + smaller.width)
     expect(center().y).toBeLessThan(smaller.y + smaller.height)
+    viewport.reset()
+    expect(center()).toEqual({ x: 250, y: -200 })
+    expect(viewport.unitScale.value).toBeCloseTo(300 / 320)
     unmounts.pop()!()
     expect(disconnect).toHaveBeenCalledOnce()
 })
@@ -166,13 +172,14 @@ it('constrains focus targets and supports pinch zoom without changing the camera
     viewport.down(pointer('pointerdown', 200, 100, 2))
     viewport.move(pointer('pointermove', 250, 100, 2))
     expect(viewport.zoom.value).toBeCloseTo(before * 1.5)
-    expect(viewport.parallaxZoom.value).toBeCloseTo(Math.log2(before * 1.5))
     expect(center()).toEqual({ x: bounds.x, y: bounds.y + bounds.height })
 })
 
 it('limits maps without layout metadata using the existing fallback bounds', () => {
     const { viewport, drag, center } = mountViewport({ ...sky, layout: undefined })
     const overview = viewport.visibleBounds.value
+    expect(center()).toEqual({ x: 315, y: 65 })
+    expect(viewport.unitScale.value).toBeCloseTo(850 / 700)
     drag(10_000, 10_000)
     expect(center().x).toBeCloseTo(-110)
     expect(center().y).toBeCloseTo(-130)
