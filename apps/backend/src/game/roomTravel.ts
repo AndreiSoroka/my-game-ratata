@@ -8,6 +8,7 @@ import { rememberObservedCrossing } from './characterControl'
 import { quickShotBlocksMovement } from './combatArchery'
 import { canWalkDuringPrayer } from './combatMovement'
 import { magicBlocksMovement } from './magicState'
+import { mobFleeTravelIntent } from './mobFlee'
 import { rememberPursuitExit } from './pursuitTravel'
 import type { WorldLocations } from './worldLocations'
 
@@ -16,6 +17,10 @@ export function characterMovementIntent(
     now: number,
     deltaMs: number
 ): Vector2 {
+    const flee = mobFleeTravelIntent(character, now)
+    if (flee !== undefined) {
+        return flee
+    }
     if (
         character.movement.dashUntil > now - deltaMs &&
         character.movement.dashStartedAt < now

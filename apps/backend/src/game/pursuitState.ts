@@ -40,14 +40,31 @@ export interface PursuitState {
 }
 export const pursuits = new WeakMap<GameCharacter, PursuitState>()
 export const territories = new WeakMap<GameCharacter, CharacterTerritory>()
+const roamingHomes = new WeakMap<GameCharacter, PursuitState['home']>()
 
 export function pursuitHome(actor: GameCharacter): PursuitState['home'] {
+    const roamingHome = roamingHomes.get(actor)
     return (
-        territories.get(actor) ?? {
-            locationId: actor.spawnLocationId,
-            position: actor.spawnPosition,
-        }
+        territories.get(actor) ??
+        (roamingHome?.locationId === actor.locationId
+            ? roamingHome
+            : {
+                  locationId: actor.spawnLocationId,
+                  position: actor.spawnPosition,
+              })
     )
+}
+
+export function settlePursuitHome(actor: GameCharacter): void {
+    clearPursuit(actor)
+    if (actor.locationId === actor.spawnLocationId) {
+        roamingHomes.delete(actor)
+    } else {
+        roamingHomes.set(actor, {
+            locationId: actor.locationId,
+            position: { ...actor.position },
+        })
+    }
 }
 
 export function clearPursuit(actor: GameCharacter): void {

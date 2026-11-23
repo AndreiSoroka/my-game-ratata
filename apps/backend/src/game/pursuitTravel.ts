@@ -9,6 +9,7 @@ import type { PortalPassage } from './cityPortals'
 import { available } from './crimeRules'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
+import { canMobFleeTravel, recordMobFleeArrival } from './mobFlee'
 import type { NavigationService } from './navigation'
 import {
     pursuits,
@@ -123,6 +124,9 @@ export function canPursuitTravel(
     to: string,
     now: number
 ): boolean {
+    if (canMobFleeTravel(actor, to, now)) {
+        return true
+    }
     const state = pursuits.get(actor)
     if (state === undefined) {
         return !territories.has(actor)
@@ -174,6 +178,9 @@ function cityBornMonster(actor: GameCharacter, state: PursuitState): boolean {
 }
 
 export function recordPursuitEntry(actor: GameCharacter, now: number): void {
+    if (recordMobFleeArrival(actor, now)) {
+        return
+    }
     const state = pursuits.get(actor)
     if (state === undefined) {
         return

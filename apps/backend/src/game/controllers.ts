@@ -4,12 +4,18 @@ import { advanceAshSkeleton } from './ashSkeletonController'
 import { type GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { lastHeardPoint } from './hearing'
-import { distance, normalize } from './math'
+import { distance } from './math'
 import {
     coordinatedTarget,
     isActiveObserver,
     reportedThreatPosition,
 } from './mobAggro'
+import {
+    advanceMobFleeExit,
+    cancelMobFleeExit,
+    planMobFlee,
+    shouldFlee,
+} from './mobFlee'
 import { tryPursuitDash } from './mobPursuit'
 import { MobSpacing } from './mobSpacing'
 import type { NavigationService, TileCoordinate } from './navigation'
@@ -51,6 +57,7 @@ export class Mob1Controller implements CharacterController {
     public update(character: GameCharacter, room: GameRoom, now: number): void {
         if (!canDecide(character)) {
             if (!isActiveObserver(character)) {
+                cancelMobFleeExit(character)
                 clearPursuit(character)
             } else {
                 refreshPursuitObservation(character, room, now)
@@ -62,6 +69,9 @@ export class Mob1Controller implements CharacterController {
         }
 
         const navigation = room.navigationFor(character)
+        if (advanceMobFleeExit(character, navigation, now)) {
+            return
+        }
         const decision = advancePursuit(
             character,
             coordinatedTarget(character, room, now),
@@ -233,7 +243,7 @@ export class Mob1Controller implements CharacterController {
             return
         }
 
-        character.setPath(this.buildFleePath(character, target, navigation))
+        planMobFlee(character, target.position, navigation, now)
         this.lastPlanAt = now
     }
 
@@ -254,32 +264,6 @@ export class Mob1Controller implements CharacterController {
         }
 
         this.nextWanderAt = now + 2000 + Math.floor(this.random() * 3000)
-    }
-
-    private buildFleePath(
-        character: GameCharacter,
-        target: GameCharacter,
-        navigation: NavigationService
-    ): Vector2[] {
-        const direction = normalize({
-            x: character.position.x - target.position.x,
-            y: character.position.y - target.position.y,
-        })
-        const angles = [0, 35, -35, 70, -70, 140, -140]
-
-        for (const angle of angles) {
-            const candidate = rotate(direction, angle)
-            const path = navigation.findPathWorld(character.position, {
-                x: character.position.x + candidate.x * 80,
-                y: character.position.y + candidate.y * 80,
-            })
-
-            if (path.length > 0) {
-                return path
-            }
-        }
-
-        return []
     }
 
     private pickWanderTile(
@@ -310,25 +294,6 @@ export class Mob1Controller implements CharacterController {
         this.seed = (this.seed * 1_664_525 + 1_013_904_223) % 4_294_967_296
 
         return this.seed / 4_294_967_296
-    }
-}
-
-function shouldFlee(character: GameCharacter, target: GameCharacter): boolean {
-    return (
-        (character.hp / character.maxHp <= 0.35 ||
-            !character.canSpendAttackResources()) &&
-        distance(character.position, target.position) < 80
-    )
-}
-
-function rotate(vector: Vector2, degrees: number): Vector2 {
-    const radians = (degrees * Math.PI) / 180
-    const cos = Math.cos(radians)
-    const sin = Math.sin(radians)
-
-    return {
-        x: vector.x * cos - vector.y * sin,
-        y: vector.x * sin + vector.y * cos,
     }
 }
 

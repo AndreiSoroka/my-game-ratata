@@ -58,7 +58,8 @@ export function regionalExit(
     from: Vector2,
     locationId: string,
     nextLocationId: string,
-    navigation: NavigationService
+    navigation: NavigationService,
+    preferredPoint?: Vector2
 ): RegionalExit | undefined {
     const direction = regionalDirection(locationId, nextLocationId)
     if (direction === undefined) {
@@ -71,10 +72,11 @@ export function regionalExit(
     const gate = navigation.grid.landmarks?.find(
         (landmark) => landmark.direction === direction
     )
-    const preferred = gate?.position ?? {
-        x: (width * tileWidth) / 2,
-        y: (height * tileHeight) / 2,
-    }
+    const preferred = preferredPoint ??
+        gate?.position ?? {
+            x: (width * tileWidth) / 2,
+            y: (height * tileHeight) / 2,
+        }
     const candidates = Array.from(
         { length: Math.max(0, length - 2) },
         (_, offset) => {
