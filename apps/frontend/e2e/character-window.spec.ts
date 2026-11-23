@@ -70,10 +70,15 @@ for (const viewport of [
             'aria-selected',
             'true'
         )
+        const backdrop = page.locator('.character-backdrop')
+        const backdropColor = await backdrop.evaluate(
+            (element) => getComputedStyle(element).backgroundColor
+        )
         await menu.getByRole('tab', { name: 'Квесты', exact: true }).click()
         await expect(menu.getByRole('region', { name: 'Активные квесты' })).toContainText(
             'Активных квестов нет'
         )
+        await expect(backdrop).toHaveCSS('background-color', backdropColor)
         await expect(menu).not.toHaveAttribute('aria-modal', 'true')
         await expectReadingMovement(page)
         await menu.getByRole('tab', { name: 'Ремесло', exact: true }).click()

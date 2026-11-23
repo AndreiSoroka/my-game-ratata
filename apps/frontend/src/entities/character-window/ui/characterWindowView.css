@@ -40,7 +40,6 @@ h2 {
     color: #f1d69a;
 }
 .character-backdrop--reading {
-    background: transparent;
     pointer-events: none;
 }
 .character-backdrop--reading .character-window {
