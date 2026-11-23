@@ -7,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import type { PendingAttackHit } from './characterState'
 import {
     arrowAttackGeometry,
@@ -26,7 +27,7 @@ import type { GraveCombatContext } from './graveRules'
 import { activeMagicChannel, magicAttackWindingUp } from './magicState'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { canPerceivePrayerCaster, prayerAuraEffects } from './prayerAuras'
+import { prayerAuraEffects } from './prayerAuras'
 export { attemptAbilityAttack, attemptAttack } from './combatAttack'
 
 export interface AttackContext {
@@ -119,7 +120,7 @@ function characterContacts(
             (area ||
                 attack.targetId === undefined ||
                 target.id === attack.targetId) &&
-            legalContactTarget(context, attack, target) &&
+            legalContactTarget(context, attack, target, area) &&
             isInAttackGeometry(target.position, geometry)
     )
     candidates.sort(
@@ -132,9 +133,13 @@ function characterContacts(
 function legalContactTarget(
     context: AttackContext,
     attack: PendingAttackHit,
-    target: GameCharacter
+    target: GameCharacter,
+    area: boolean
 ): boolean {
-    const targetedContext = { ...context, targetId: attack.targetId }
+    const targetedContext = {
+        ...context,
+        targetId: area ? undefined : attack.targetId,
+    }
     return attack.arrow?.abilityId === 'sniper_shot'
         ? canAimSniperAt(targetedContext, target, attack.arrow.origin)
         : isLegalAttackTarget(context.actor, target, targetedContext)
@@ -235,7 +240,13 @@ export function isLegalAttackTarget(
         actor.locationId === target.locationId &&
         canAttackCharacter(actor, target, context.now) &&
         (context.targetId === undefined ||
-            canPerceivePrayerCaster(actor, target, context.now)) &&
+            canObserveRoomCharacter(
+                actor,
+                target,
+                context.navigation,
+                context.now,
+                origin
+            )) &&
         (context.navigation?.hasLineOfSight(origin, target.position) ?? true)
     )
 }

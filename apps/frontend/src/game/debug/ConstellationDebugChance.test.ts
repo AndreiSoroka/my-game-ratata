@@ -48,6 +48,7 @@ it.each([
     ['prayer.root', /55\s*%/],
     ['prayer.revive', /55/],
     ['prayer.harm', /75\s*%/],
+    ['theft.root', /Успех 35%, поимка 12%, тихий промах 53%/],
 ])('shows effect probabilities and examples for %s', (nodeId, expected) => {
     const view = mount(ConstellationDebugChance, { props: { nodeId: String(nodeId) } })
     expect(view.text()).toMatch(expected)
@@ -59,8 +60,9 @@ it.each([
 it.each([
     'blade.damage1',
     'blade.critical',
-    'shadow.luck1',
-    'shadow.luck2',
+    'theft.luck1',
+    'theft.luck2',
+    'theft.composure3',
     'blade.root',
     'magic.root',
     'shadow.root',

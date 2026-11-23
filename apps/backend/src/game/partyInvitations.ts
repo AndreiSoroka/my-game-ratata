@@ -1,8 +1,10 @@
 import type { PartyInvitationSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import type { GuildService } from './guild'
 import { interactionRangeText } from './interactionRangeText'
+import type { NavigationService } from './navigation'
 import type { NoticeStore } from './notices'
 import {
     nearbyPlayers,
@@ -27,7 +29,7 @@ export function inviteToParty(
     targetId: string,
     now: number,
     context: PartyInviteContext,
-    tileWidth?: number
+    navigation?: NavigationService
 ): string {
     const {
         characters,
@@ -39,8 +41,11 @@ export function inviteToParty(
         newPartyId,
     } = context
     const target = characters.get(targetId)
-    if (!nearbyPlayers(actor, target)) {
-        return `Пригласи другого живого игрока ${interactionRangeText(PARTY_INVITATION_RANGE, tileWidth)} в своей локации.`
+    if (
+        !nearbyPlayers(actor, target) ||
+        !canObserveRoomCharacter(actor, target, navigation, now)
+    ) {
+        return `Пригласи другого живого игрока ${interactionRangeText(PARTY_INVITATION_RANGE, navigation?.grid.tileWidth)} в своей локации.`
     }
     const pending = pendingPartyInvitation(
         invitations.values(),

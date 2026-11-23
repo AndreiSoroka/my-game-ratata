@@ -324,6 +324,7 @@ describe('shared undead perception and fear', () => {
                 [],
                 1,
                 1000,
+                context.navigation,
                 undead.id
             ).characters.map((c) => c.id)
         ).not.toContain(source.id)
@@ -334,6 +335,7 @@ describe('shared undead perception and fear', () => {
                 [],
                 1,
                 1000,
+                context.navigation,
                 living.id
             ).characters.map((c) => c.id)
         ).toContain(source.id)
@@ -413,9 +415,10 @@ describe('shared undead perception and fear', () => {
 
 describe('opposed theft advantage', () => {
     it.each([
-        [true, false, [0.4, 0.99, 0.99, 0], 'stolen'],
-        [false, true, [0.99, 0.4], 'caught'],
+        [true, false, [0.1, 0.99, 0.99, 0], 'stolen'],
+        [false, true, [0.99, 0.1], 'caught'],
         [true, true, [0.99, 0.99, 0], 'stolen'],
+        [true, true, [0.1, 0.99], 'caught'],
     ] as const)(
         'handles thief=%s and victim=%s',
         (thiefBlessed, victimBlessed, rolls, expected) => {

@@ -22,10 +22,13 @@ export function theftCharacter(
         spawnPosition: position,
     })
 }
-export function theftFixture(tileWidth = 16) {
+export function theftFixture(
+    tileWidth = 16,
+    victimKind: GameCharacter['controllerKind'] = 'network_player'
+) {
     const actor = theftCharacter('thief')
     actor.movement.mode = 'sneaking'
-    const victim = theftCharacter('victim', { x: 112, y: 100 })
+    const victim = theftCharacter('victim', { x: 112, y: 100 }, victimKind)
     victim.inventory.push(createItemInstance('food'))
     const characters = [actor, victim]
     const navigation = new NavigationService({

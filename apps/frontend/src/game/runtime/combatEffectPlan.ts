@@ -16,7 +16,7 @@ import {
 
 import { abilityName, gameLocale, tGame, tLocalized } from '@/shared/lib/i18n'
 
-import { combatHitLabel } from './combatHitLabel'
+import { combatHitLabel, hitColors, hitQuality } from './combatHitLabel'
 import { BARRIER_COLOR, type EffectShape, FIRE_COLOR, SPARK_COLOR } from './effectGraphics'
 import { deityColors } from './prayerGraphics'
 import { isFloatingNotice } from './runtimeQueries'
@@ -36,6 +36,33 @@ export interface EffectCue {
     channel?: boolean
     aimActionId?: string
     count?: number
+}
+
+export function isCompletedPrayer(event: GameEventPayload): boolean {
+    return event.kind === 'cast' && event.phase === 'completed' && isPrayerAction(event.abilityId)
+}
+
+export function captionCharacterId(event: GameEventPayload): string | undefined {
+    if (event.target && event.kind !== 'attack') return undefined
+    return event.kind === 'attack' || isCompletedPrayer(event)
+        ? event.actorId
+        : (event.targetId ?? event.actorId)
+}
+
+export function captionColor(
+    event: GameEventPayload,
+    actor: CharacterSnapshot | undefined
+): string {
+    if (event.kind === 'miss' || event.kind === 'notice') return hitColors.miss
+    return event.kind === 'world_damage'
+        ? hitColors[hitQuality(event)]
+        : event.kind === 'heal'
+          ? '#a9ea8e'
+          : deityColors[
+                isPrayerAction(event.abilityId)
+                    ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
+                    : (actor?.progression?.deity.id ?? 'hearth')
+            ]
 }
 
 export function channelEnded(

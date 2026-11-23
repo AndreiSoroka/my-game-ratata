@@ -26,7 +26,7 @@ function requiredCard(actor: ReturnType<typeof abilityHero>, id: string) {
 }
 
 describe('effect-only known card copy', () => {
-    it('keeps acquisition instructions out of five general roots and both fireball cards', () => {
+    it('keeps acquisition instructions out of general roots and both fireball cards', () => {
         const actor = abilityHero('vanguard')
         const ids = [
             'blade.root',
@@ -34,6 +34,7 @@ describe('effect-only known card copy', () => {
             'arrow.root',
             'life.root',
             'shadow.root',
+            'theft.root',
             'magic.fireball',
             'magic.greater_fireball',
         ]
@@ -46,7 +47,7 @@ describe('effect-only known card copy', () => {
         const cards = snapshotConstellations(actor).nodes.filter((node) =>
             visibleIds.has(node.id)
         )
-        expect(cards).toHaveLength(7)
+        expect(cards).toHaveLength(8)
         for (const card of cards) {
             expect(card.unlocked).toBe(true)
             expect(card.description).toEqual(expect.any(String))
@@ -88,7 +89,7 @@ describe('earned constellation metadata', () => {
         const actor = abilityHero('vanguard')
         const snapshot = snapshotConstellations(actor)
         const roots = snapshot.nodes.filter((node) => node.parents.length === 0)
-        expect(roots).toHaveLength(10)
+        expect(roots).toHaveLength(11)
         for (const node of snapshot.nodes) {
             expect(node.id).toMatch(/^node-\d+$/)
             if (node.unlocked) {
@@ -97,6 +98,8 @@ describe('earned constellation metadata', () => {
             for (const field of [
                 'name',
                 'description',
+                'nameMessage',
+                'descriptionMessage',
                 'kind',
                 'effectType',
                 'effects',
@@ -146,6 +149,43 @@ describe('earned constellation metadata', () => {
         expect(next?.descriptionMessage).toBeUndefined()
         expect(next?.kind).toBeUndefined()
         expect(next?.effectType).toBeUndefined()
+    })
+})
+
+describe('Stealth and Thievery constellation text', () => {
+    it('provides localized text for both roots and all eighteen learned stars', () => {
+        const actor = abilityHero('vanguard')
+        const nodes = fullConstellationCatalog.filter(
+            ({ constellationId }) =>
+                constellationId === 'shadow' || constellationId === 'theft'
+        )
+        expect(nodes).toHaveLength(20)
+        for (const node of nodes) {
+            actor.progression.constellations.opened.add(node.id)
+        }
+        const cardsById = new Map(
+            snapshotConstellations(actor).nodes.map((node) => [node.id, node])
+        )
+        for (const node of nodes) {
+            const card = cardsById.get(constellationWireId(node.id))
+            expect(card).toMatchObject({
+                unlocked: true,
+                name: node.name,
+                description: node.description,
+            })
+            expect(card?.nameMessage?.params?.['text']).toMatch(/^[A-Za-z]/)
+            expect(card?.descriptionMessage?.params?.['text']).toMatch(
+                /^[A-Za-z]/
+            )
+        }
+        expect(
+            cardsById.get(constellationWireId('shadow.root'))?.nameMessage
+                ?.params?.['text']
+        ).toBe('Stealth')
+        expect(
+            cardsById.get(constellationWireId('theft.root'))?.nameMessage
+                ?.params?.['text']
+        ).toBe('Thievery')
     })
 })
 

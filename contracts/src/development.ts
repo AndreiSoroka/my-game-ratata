@@ -5,6 +5,7 @@ export const constellationIds = [
     'arrow',
     'life',
     'shadow',
+    'theft',
     'prayer_road',
     'prayer_lantern',
     'prayer_grave',

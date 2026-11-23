@@ -23,6 +23,8 @@ export const MOVEMENT_RULES = {
     dashNoiseMultiplier: 4,
     investigationMs: 4_000,
     occludedNoiseMultiplier: 0.5,
+    playerFootstepHearingRadius: 240,
+    heardFootstepMs: 850,
 } as const
 
 export const SURFACE_NOISE_MULTIPLIERS: Record<GroundSurface, number> = {

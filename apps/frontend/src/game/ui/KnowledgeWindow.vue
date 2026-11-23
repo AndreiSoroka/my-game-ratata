@@ -95,7 +95,10 @@ const descriptions: Record<ConstellationId, string> = {
         return tGame('game.knowledge.lifeExperience')
     },
     get shadow() {
-        return tGame('game.knowledge.shadowExperience')
+        return tGame('game.knowledge.stealthExperience')
+    },
+    get theft() {
+        return tGame('game.knowledge.theftExperience')
     },
 }
 function distance(character: CharacterSnapshot): number {

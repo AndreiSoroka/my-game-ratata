@@ -204,7 +204,7 @@ const evidencePaths: Readonly<Partial<Record<string, ConstellationId>>> = {
     moving_shot: 'arrow',
     vitality: 'life',
     stealth: 'shadow',
-    theft: 'shadow',
+    theft: 'theft',
     prayer: 'prayer',
     blade: 'blade',
     magic: 'magic',

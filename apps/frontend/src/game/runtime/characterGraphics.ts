@@ -15,6 +15,8 @@ export class CharacterGraphics {
         now: number,
         hurtElapsed?: number
     ): void {
+        actor.graphics.opacity =
+            !snapshot.alive || snapshot.movement?.mode === 'sneaking' ? 0.55 : 1
         if (snapshot.visualId === 'training_dummy') {
             actor.graphics.use(this.dummy)
             actor.graphics.flipHorizontal = false
@@ -31,7 +33,6 @@ export class CharacterGraphics {
         const sprite = sheet.getSprite(graphic.frame, graphic.row)
         actor.graphics.use(snapshot.tags.includes('state.lich') ? this.lichSprite(sprite) : sprite)
         actor.graphics.flipHorizontal = graphic.flipHorizontal
-        actor.graphics.opacity = snapshot.alive ? 1 : 0.55
     }
 
     private lichSprite(sprite: Sprite): Sprite {

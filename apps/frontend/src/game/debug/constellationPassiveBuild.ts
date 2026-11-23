@@ -13,6 +13,8 @@ type Rows = ConstellationBuildSummary['rows']
 type Builder = (bonuses: Bonuses) => Rows
 const additive = (label: string, value: number) => [row(label, `+${percent(value)}`)]
 const reduction = (label: string, value: number) => [row(label, `−${percent(value)}`)]
+const theftEnergy = (b: Bonuses) => row('Расход энергии кражи', `−${b.theftEnergyDiscount} EN`)
+const theftTempo = (b: Bonuses) => row('Общий кулдаун кражи', `−${b.theftCooldownDiscount} мс`)
 const contributions: Record<string, Builder> = {
     'blade.damage1': (b) => additive('Усиление урона мечом', b.swordDamageMultiplier - 1),
     'blade.damage2': (b) => additive('Усиление урона мечом', b.swordDamageMultiplier - 1),
@@ -90,25 +92,49 @@ const contributions: Record<string, Builder> = {
     'life.rest': (b) =>
         additive('Дополнительное восстановление энергии на месте', b.restEnergyRegenBonus),
     'life.work': (b) => reduction('Расход энергии на полевые работы', 1 - b.workEnergyMultiplier),
-    'shadow.speed': (b) => additive('Усиление скорости крадучись', b.sneakSpeedMultiplier - 1),
-    'shadow.noise1': (b) => reduction('Шум движения крадучись', 1 - b.sneakNoiseMultiplier),
-    'shadow.noise2': (b) => reduction('Шум движения крадучись', 1 - b.sneakNoiseMultiplier),
-    'shadow.sight': (b) =>
-        reduction('Дистанция обнаружения крадущегося', 1 - b.sneakSightMultiplier),
-    'shadow.economy': (b) => [row('Расход энергии кражи', `−${b.theftEnergyDiscount} EN`)],
-    'shadow.luck1': (b) => [
-        row(
-            'Бонус получения предмета при незамеченности',
-            `+${number(b.theftChanceBonus * 100)} п.п.`
-        ),
-    ],
-    'shadow.luck2': (b) => [
-        row(
-            'Бонус получения предмета при незамеченности',
-            `+${number(b.theftChanceBonus * 100)} п.п.`
-        ),
-    ],
-    'shadow.tempo': (b) => [row('Общий кулдаун кражи', `−${b.theftCooldownDiscount} мс`)],
+    ...Object.fromEntries(
+        ['shadow.speed', 'shadow.speed2', 'shadow.speed3'].map((id): [string, Builder] => [
+            id,
+            (b) => additive('Усиление скорости крадучись', b.sneakSpeedMultiplier - 1),
+        ])
+    ),
+    ...Object.fromEntries(
+        ['shadow.noise1', 'shadow.noise2', 'shadow.noise3'].map((id): [string, Builder] => [
+            id,
+            (b) => reduction('Шум движения крадучись', 1 - b.sneakNoiseMultiplier),
+        ])
+    ),
+    ...Object.fromEntries(
+        ['shadow.sight', 'shadow.sight2', 'shadow.sight3'].map((id): [string, Builder] => [
+            id,
+            (b) => reduction('Дистанция обнаружения крадущегося', 1 - b.sneakSightMultiplier),
+        ])
+    ),
+    ...Object.fromEntries(
+        [1, 2, 3].flatMap((rank): Array<[string, Builder]> => [
+            [
+                `theft.luck${rank}`,
+                (b) => [
+                    row(
+                        'Бонус получения предмета при незамеченности',
+                        `+${number(b.theftChanceBonus * 100)} п.п.`
+                    ),
+                ],
+            ],
+            [
+                `theft.composure${rank}`,
+                (b) => [
+                    row(
+                        'Риск поимки со спины',
+                        `−${number(b.theftRearDetectionReduction * 100)} п.п.`
+                    ),
+                ],
+            ],
+        ])
+    ),
+    'theft.economy': (b) => [theftEnergy(b)],
+    'theft.tempo': (b) => [theftTempo(b)],
+    'theft.rhythm': (b) => [theftEnergy(b), theftTempo(b)],
     'magic.runic_echo': () => [
         row('Усиление следующего Быстрого выстрела', '+10%'),
         row('Время на Быстрый выстрел', '5000 мс'),

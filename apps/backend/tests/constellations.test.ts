@@ -117,7 +117,7 @@ describe('server-owned constellation discovery', () => {
     it('sends only roots and opaque neighboring unknown stars, with pure snapshots', () => {
         const actor = hero()
         const snapshot = snapshotConstellations(actor)
-        expect(snapshot.paths).toHaveLength(10)
+        expect(snapshot.paths).toHaveLength(11)
         const hidden = snapshot.nodes.filter(
             (node) =>
                 node.constellationId === 'blade' &&

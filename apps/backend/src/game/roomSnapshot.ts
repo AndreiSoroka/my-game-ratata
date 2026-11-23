@@ -6,13 +6,14 @@ import type {
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import { observeGraveCombat } from './combatObservation'
+import { heardFootsteps } from './hearing'
 import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
+import type { GameRoom } from './room'
 import type { RoomLife } from './roomLife'
 import { charactersInLocation } from './roomQueries'
 import { projectRoomCharacter } from './roomSnapshotCharacter'
 import type { RoomSocial } from './roomSocial'
-import type { ScenarioService } from './scenarios'
 import { serverEpoch } from './serverEpoch'
 import type { TheftService } from './theft'
 import type { WorldLocations } from './worldLocations'
@@ -32,7 +33,7 @@ export interface SnapshotContext {
 
 export function createRoomSnapshotter(
     context: () => SnapshotContext,
-    scenarios: ScenarioService
+    room: GameRoom
 ) {
     return (
         now = Date.now(),
@@ -44,7 +45,13 @@ export function createRoomSnapshotter(
         const observer =
             playerId === undefined ? undefined : state.characters.get(playerId)
         if (observer !== undefined) {
-            snapshot.automation = scenarios.snapshot(observer, now)
+            snapshot.automation = room.scenarios.snapshot(observer, now)
+            if (observer.locationId === locationId) {
+                const footsteps = heardFootsteps(room, observer, now)
+                if (footsteps.length > 0) {
+                    snapshot.heardFootsteps = footsteps
+                }
+            }
         }
         return snapshot
     }
@@ -71,6 +78,7 @@ export function roomSnapshot(
         location.inventory.snapshotChests(now, observer),
         context.tick,
         now,
+        location.navigation,
         playerId
     )
     const portals = context.world.portals.snapshot(locationId, now)

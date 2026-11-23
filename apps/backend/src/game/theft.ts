@@ -1,7 +1,6 @@
 import {
     type CharacterTheftSnapshot,
     type GameEventPayload,
-    MASTERY_REWARDS,
     THEFT_RULES,
     type TheftClientMessage,
     type TheftResult,
@@ -24,12 +23,12 @@ import { canPerceivePrayerCaster } from './prayerAuras'
 import { spendUsefulEnergy } from './resourcePractice'
 import type { GameRoom } from './room'
 import {
-    awardMasteries,
     canPerformSkillAction,
     captureMasteryFactors,
 } from './skillProgression'
 import { rollTheft } from './theftChecks'
 import { privateTheftNotice } from './theftEvents'
+import { practiceTheft } from './theftPractice'
 
 interface TheftState {
     availableAt: number
@@ -118,12 +117,13 @@ export class TheftService {
             THEFT_RULES.cooldownMs -
             constellationModifiers(actor).theftCooldownDiscount
         state.pairs.set(target.id, context.now + THEFT_RULES.pairCooldownMs)
-        let outcome = rollTheft(
+        const rolledOutcome = rollTheft(
             actor,
             target,
             context.random ?? Math.random,
             context.now
         )
+        let outcome = rolledOutcome
         if (
             outcome === 'stolen' &&
             transferInventoryItem(
@@ -152,22 +152,14 @@ export class TheftService {
         const events = [privateTheftNotice(actor.id, text, target.id)]
         if (outcome === 'stolen') {
             resetMartyrStreak(actor)
+        }
+        if (outcome === rolledOutcome && outcome !== 'caught') {
             events.push(
-                ...awardMasteries(
-                    actor,
-                    [
-                        {
-                            constellationId: 'shadow',
-                            experience: MASTERY_REWARDS.theftSuccess,
-                        },
-                    ],
-                    {
-                        now: context.now,
-                        random: context.random,
-                        factors,
-                        evidence: ['theft', 'stealth'],
-                    }
-                ).map((event) => ({ ...event, audienceIds: [actor.id] }))
+                ...practiceTheft(actor, target, outcome, {
+                    now: context.now,
+                    random: context.random,
+                    factors,
+                })
             )
         }
         if (outcome === 'caught') {
@@ -199,11 +191,15 @@ export class TheftService {
     public snapshot(
         actorId: string,
         viewerId: string | undefined,
-        now: number
+        now: number,
+        actor?: GameCharacter
     ): CharacterTheftSnapshot {
         const state = this.states.get(actorId)
         const own = actorId === viewerId
         return {
+            ...(own && actor !== undefined
+                ? { energyCost: effectiveTheftCost(actor) }
+                : {}),
             cooldownMsLeft: own
                 ? Math.max(0, (state?.availableAt ?? 0) - now)
                 : 0,
@@ -266,11 +262,13 @@ function attemptRestriction(
     if (now < (state.pairs.get(target.id) ?? 0)) {
         return 'Эта цель насторожена. Подожди минуту перед новой попыткой.'
     }
-    if (actor.energy < effectiveTheftCost(actor)) {
-        return 'Для попытки нужно 10 сил.'
+    const cost = effectiveTheftCost(actor)
+    if (actor.energy < cost) {
+        return `Для попытки нужно ${String(cost)} сил.`
     }
     return undefined
 }
+
 function stealableItem(
     target: GameCharacter
 ): InventoryItemInstance | undefined {

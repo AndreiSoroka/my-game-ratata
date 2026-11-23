@@ -64,6 +64,10 @@ describe('stealth practice through meaningful movement', () => {
             expect(actor.progression.masteries.shadow.experience).toBe(
                 parseMasteryExperience('15')
             )
+            expect(actor.progression.masteries.theft.experience).toBe(0n)
+            expect(
+                actor.progression.constellations.opened.has('theft.root')
+            ).toBe(false)
             expect(
                 actor
                     .snapshot(3000)
@@ -152,7 +156,9 @@ describe('stealth practice through meaningful movement', () => {
         pass()
         expect(actor.progression.masteries.shadow.experience).toBe(0n)
     })
+})
 
+describe('learned stealth talents', () => {
     it('only learned stars improve perception and noise, and resets mastery on permanent death', () => {
         const { actor, observer, navigation } = fixture()
         actor.position = { x: 168, y: 152 }

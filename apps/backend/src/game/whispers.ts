@@ -9,6 +9,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import type { NavigationService } from './navigation'
 import { canHearSpeech } from './socialSpeech'
 
@@ -53,17 +54,17 @@ export class WhisperService {
         target: GameCharacter | undefined,
         now: number
     ): target is GameCharacter {
+        if (
+            target === undefined ||
+            !actor.soul.canSpeak ||
+            !target.soul.canSpeak
+        ) {
+            return false
+        }
+        const navigation = this.world.navigationFor(actor)
         return (
-            target !== undefined &&
-            actor.soul.canSpeak &&
-            target.soul.canSpeak &&
-            canHearSpeech(
-                target,
-                actor,
-                this.world.navigationFor(actor),
-                now,
-                WHISPER_RANGE
-            )
+            canObserveRoomCharacter(actor, target, navigation, now) &&
+            canHearSpeech(target, actor, navigation, now, WHISPER_RANGE)
         )
     }
 

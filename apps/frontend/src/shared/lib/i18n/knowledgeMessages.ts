@@ -115,10 +115,6 @@ export const knowledgeMessages = {
     script: ['Сценарий', 'Script'],
     sec: ['сек.', 'sec.'],
     selectedStar: ['Выбранная звезда', 'Selected star'],
-    shadowExperience: [
-        'Опыт за скрытное перемещение рядом с врагами и успешные кражи предметов. C — тихий ход, F — взаимодействие.',
-        'Experience for sneaking near enemies and successful theft. C to sneak, F to interact.',
-    ],
     signsFromOtherGods: ['Знамения других богов', 'Signs from other gods'],
     skyZoom: ['Масштаб небосвода', 'Sky zoom'],
     spaceTogglesSelectedStar: [
@@ -128,9 +124,17 @@ export const knowledgeMessages = {
     spark: ['Искра', 'Spark'],
     sparkWithIcon: ['✧ Искра', '✧ Spark'],
     spellTarget: ['Цель заклинаний', 'Spell target'],
+    stealthExperience: [
+        'Опыт за незамеченное перемещение крадучись рядом с наблюдателями. C переключает тихий ход.',
+        'Earn experience by sneaking past observers without being seen. Press C to toggle sneaking.',
+    ],
     studentMagicLevel: ['Ученику требуется Магия 3.', 'The student needs Magic level 3.'],
     studentNearby: ['Ученик рядом', 'Student nearby'],
     teachFirebolt: ['Научить огненной стреле', 'Teach Firebolt'],
+    theftExperience: [
+        'Опыт за кражу предмета и за тихий промах по NPC с доступным предметом. Откройте взаимодействие клавишей F в тихом ходе.',
+        'Earn experience for stealing an item or failing unnoticed against an NPC carrying a stealable item. Press F to interact while sneaking.',
+    ],
     undeadExperience: [
         'Опыт за победы над противниками и наследие павших.',
         'Experience for victories and the legacy of the fallen.',

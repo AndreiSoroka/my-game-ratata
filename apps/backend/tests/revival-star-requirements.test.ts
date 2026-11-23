@@ -78,6 +78,18 @@ const authoredLevelGates = new Map([
     ['prayer.aura_domain', 12],
     ['prayer.revive_master', 12],
     ['prayer.revive_angelic', 12],
+    ['shadow.speed2', 3],
+    ['shadow.speed3', 6],
+    ['shadow.noise2', 3],
+    ['shadow.noise3', 6],
+    ['shadow.sight2', 3],
+    ['shadow.sight3', 6],
+    ['theft.luck2', 3],
+    ['theft.luck3', 6],
+    ['theft.composure2', 3],
+    ['theft.composure3', 6],
+    ['theft.tempo', 3],
+    ['theft.rhythm', 6],
     ['undead.arcane_frame', 3],
     ['undead.hollow_bones', 3],
     ['undead.hollow_bones2', 6],
@@ -118,7 +130,7 @@ const authoredLevelGates = new Map([
 ])
 
 describe('individually authored constellation requirements', () => {
-    it('removes depth-based gates from every ordinary random star', () => {
+    it('uses the authored level gates for random stars', () => {
         for (const star of fullConstellationCatalog.filter(
             (entry) =>
                 entry.acquisition === 'random' &&

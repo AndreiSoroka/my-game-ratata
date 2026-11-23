@@ -6,10 +6,10 @@ import type {
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import { constellationModifiers } from './constellationModifiers'
 import { canPurifyGrave } from './gravePrayer'
 import { distance } from './math'
-import { canPerceivePrayerCaster } from './prayerAuras'
 import { prayerTargetNearby, validPrayerIntent } from './prayerContext'
 
 export interface MotherPrayerTarget {
@@ -229,6 +229,6 @@ function chosenTargetPerceives(
     return (
         target === undefined ||
         intent.targetId === undefined ||
-        canPerceivePrayerCaster(actor, target, context.now)
+        canObserveRoomCharacter(actor, target, context.navigation, context.now)
     )
 }

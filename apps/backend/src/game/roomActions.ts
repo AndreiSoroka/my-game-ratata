@@ -9,6 +9,7 @@ import { handleAbilityCommand } from './abilityCommands'
 import type { AbilityContext } from './abilityContext'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import type { CompanionService } from './companions'
 import { isAdventureCommand } from './extraCommands'
 import { handleMovementCommand } from './movementActions'
@@ -70,7 +71,7 @@ export function handleRoomAction(
             message,
             context.allCharacters,
             now,
-            context.navigation.grid.tileWidth
+            context.navigation
         )
     }
     if (message.type === 'companion_request') {
@@ -202,7 +203,12 @@ function companionAction(
         }
         return events
     }
-    return context.companions.handle(player, message, characters, now, {
+    const visible = characters.filter(
+        (candidate) =>
+            candidate.id !== message.targetId ||
+            canObserveRoomCharacter(player, candidate, context.navigation, now)
+    )
+    return context.companions.handle(player, message, visible, now, {
         questCompleted: (actorId, questId) =>
             context.adventure.hasCompletedQuest(actorId, questId),
         hasLineOfSight: (actor, npc) =>

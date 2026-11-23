@@ -7,7 +7,13 @@ export function updateRuntimeDebug(
     view:
         | {
               engine: Engine
-              sceneActors: Pick<SceneActors, 'buildingCoverStates' | 'prayerAreaStates'>
+              sceneActors: Pick<
+                  SceneActors,
+                  | 'buildingCoverStates'
+                  | 'prayerAreaStates'
+                  | 'characterOpacity'
+                  | 'heardFootstepIds'
+              >
           }
         | undefined,
     snapshot: WorldSnapshot | undefined,
@@ -28,6 +34,8 @@ export function updateRuntimeDebug(
                   },
                   captureFrame: async () => (engine ? (await engine.screenshot()).src : undefined),
                   prayerAreas: () => view?.sceneActors.prayerAreaStates() ?? [],
+                  characterOpacity: (id: string) => view?.sceneActors.characterOpacity(id),
+                  heardFootstepIds: () => view?.sceneActors.heardFootstepIds() ?? [],
               }
             : {}),
         worldToPage: (point) => {

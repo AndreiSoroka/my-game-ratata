@@ -41,9 +41,14 @@ describe('each passive owns only its authored effect', () => {
         expect(values('arrow.range2')).toEqual({
             'Добавка к дальности Быстрого выстрела': '+1 клетка',
         })
-        expect(values('shadow.noise2')).toEqual({ 'Шум движения крадучись': '−15%' })
-        expect(values('shadow.luck2')).toEqual({
-            'Бонус получения предмета при незамеченности': '+3 п.п.',
+        expect(values('shadow.noise2')).toEqual({ 'Шум движения крадучись': '−10%' })
+        expect(values('theft.luck2')).toEqual({
+            'Бонус получения предмета при незамеченности': '+2 п.п.',
+        })
+        expect(values('theft.composure3')).toEqual({ 'Риск поимки со спины': '−2 п.п.' })
+        expect(values('theft.rhythm')).toEqual({
+            'Расход энергии кражи': '−1 EN',
+            'Общий кулдаун кражи': '−1000 мс',
         })
         expect(values('life.hp1')).toEqual({
             'Оценка текущего и максимального здоровья': 'шаг 25',

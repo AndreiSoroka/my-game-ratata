@@ -80,6 +80,19 @@ it('blocks reciprocal and repeated invitations without creating a second party o
     ).toEqual([leader.id, friend.id])
 })
 
+it('requires sight of a crouching player for a new invitation by ID', () => {
+    const { party, leader, friend, command, invite } = fixture()
+    friend.position.x = leader.position.x + 50
+    friend.movement.mode = 'sneaking'
+    leader.facing = 'left'
+    command(leader, { type: 'party_invite', targetId: friend.id })
+    expect(party.snapshot(friend.id).invitations).toEqual([])
+    expect(party.snapshot(leader.id).partyId).toBeNull()
+
+    leader.facing = 'right'
+    expect(invite(leader, friend).toId).toBe(friend.id)
+})
+
 it('accepting one invitation removes other pending invitations for the joining character', () => {
     const { party, leader, friend, other, invite, command } = fixture()
     const accepted = invite(leader, friend)

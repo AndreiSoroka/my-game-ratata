@@ -14,6 +14,8 @@ declare global {
             setCameraZoom?: (zoom: number) => boolean
             captureFrame?: () => Promise<string | undefined>
             prayerAreas?: () => PrayerAreaState[]
+            characterOpacity?: (id: string) => number | undefined
+            heardFootstepIds?: () => number[]
         }
     }
 }

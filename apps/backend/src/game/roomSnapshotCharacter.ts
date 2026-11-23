@@ -52,7 +52,7 @@ export function projectRoomCharacter(
                 ? (character.control ?? { mode: 'none', targetId: null })
                 : { mode: 'none', targetId: null },
         inventory: character.id === playerId ? character.inventory : [],
-        theft: context.theft.snapshot(character.id, playerId, view.now),
+        theft: context.theft.snapshot(character.id, playerId, view.now, actor),
     }
 }
 

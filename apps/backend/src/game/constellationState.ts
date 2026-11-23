@@ -32,6 +32,7 @@ export function createConstellationState(): CharacterConstellations {
             arrow: 0,
             life: 0,
             shadow: 0,
+            theft: 0,
             prayer_road: 0,
             prayer_lantern: 0,
             prayer_grave: 0,

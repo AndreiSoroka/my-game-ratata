@@ -98,6 +98,20 @@ it('uses inclusive 48 and 80 unit boundaries and never hears across locations', 
     expect(canHearSpeech(f.b, f.a, f.navigation, 0)).toBe(false)
 })
 
+it('rejects a whisper addressed by ID to a hidden crouching recipient', () => {
+    const { a, b, whispers, heard } = fixture()
+    b.position = { x: a.position.x + 44, y: a.position.y }
+    b.movement.mode = 'sneaking'
+    a.facing = 'left'
+    const message = { type: 'whisper', targetId: b.id, text: 'Привет' } as const
+    expect(whispers.handle(a, message, 10_000)).toBe(false)
+    expect(heard).toEqual([])
+
+    a.facing = 'right'
+    expect(whispers.handle(a, message, 10_001)).toBe(true)
+    expect(heard).toEqual(['a:b:Привет'])
+})
+
 it('parses bounded private speech and validates a public selection hint', () => {
     expect(
         parseClientMessage(

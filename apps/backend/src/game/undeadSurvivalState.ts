@@ -25,6 +25,7 @@ const imprintAspect: Partial<Record<ConstellationId, ImprintAspect>> = {
     life: 'hp',
     arrow: 'energy',
     shadow: 'energy',
+    theft: 'energy',
 }
 const imprintAmount: Record<ImprintAspect, number> = {
     hp: 10,

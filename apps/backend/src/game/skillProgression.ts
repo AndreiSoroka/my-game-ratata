@@ -219,7 +219,7 @@ function applyMasteryAward(
     )
     mastery.experience += micros
     state.evidence[id] = (state.evidence[id] ?? 0) + 1
-    if (id === 'blade' || id === 'life' || id === 'shadow') {
+    if (id === 'blade' || id === 'life' || id === 'shadow' || id === 'theft') {
         state.opened.add(`${id}.root`)
     }
     const events: GameEventPayload[] = []

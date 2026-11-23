@@ -266,7 +266,7 @@ export class GameRoom {
             social: this.social,
             magicEffects: this.magicEffectsFor,
         }),
-        this.scenarios
+        this
     )
 
     public readonly handleMessage = roomClientDispatch.createRoomMessageHandler(

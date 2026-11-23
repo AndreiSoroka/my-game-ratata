@@ -5,6 +5,7 @@ import type {
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import {
     chooseDeity,
     learnFireball,
@@ -13,7 +14,6 @@ import {
 } from './magicLearning'
 import type { NavigationService } from './navigation'
 import { pray } from './prayer'
-import { canPerceivePrayerCaster } from './prayerAuras'
 import { canPerformSkillAction } from './skillProgression'
 import { castSpell } from './spellCasting'
 
@@ -95,7 +95,12 @@ function validInteractionTarget(
 ): boolean {
     return (
         target !== undefined &&
-        canPerceivePrayerCaster(actor, target, context.now) &&
+        canObserveRoomCharacter(
+            actor,
+            target,
+            context.navigation,
+            context.now
+        ) &&
         context.navigation.hasLineOfSight(actor.position, target.position)
     )
 }

@@ -20,9 +20,13 @@ export class InteractionTargetViews {
     private readonly ground = new Actor({ anchor: vec(0.5, 0.5) })
     private readonly name = createWorldNameLabel()
     private shape = ''
+    private key: string | undefined
     private disposed = false
 
-    public constructor(engine: Engine) {
+    public constructor(
+        engine: Engine,
+        private readonly characterVisible: (id: string) => boolean = () => true
+    ) {
         this.name.graphics.anchor = vec(0.5, 1)
         this.clear()
         engine.add(this.ground)
@@ -31,10 +35,11 @@ export class InteractionTargetViews {
     }
 
     public set(target: TargetHighlight | undefined): void {
-        if (this.disposed || !target) {
+        if (this.disposed || !target || !this.visible(target)) {
             this.clear()
             return
         }
+        this.key = target.key
         if (this.setCompound(target)) return
         const bounds =
             target.kind === 'character'
@@ -90,8 +95,20 @@ export class InteractionTargetViews {
     }
 
     public clear(): void {
+        this.key = undefined
         this.frame.graphics.isVisible = this.ground.graphics.isVisible = false
         this.name.graphics.isVisible = false
+    }
+
+    public forgetCharacter(id: string): void {
+        if (this.key === `character:${id}`) this.clear()
+    }
+
+    private visible(target: TargetHighlight): boolean {
+        const prefix = 'character:'
+        return (
+            !target.key.startsWith(prefix) || this.characterVisible(target.key.slice(prefix.length))
+        )
     }
 
     public dispose(): void {

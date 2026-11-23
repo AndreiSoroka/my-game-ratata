@@ -6,13 +6,13 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import { availableToStartAttack } from './combat'
 import { startCombatAction } from './combatActions'
 import { effectiveAbility } from './effectiveParameters'
 import { legalGraveTarget } from './graveCombat'
 import { ensureMagicCombat } from './magicCombat'
 import { distance, facingDirection, normalize } from './math'
-import { canPerceivePrayerCaster } from './prayerAuras'
 import type { ProgressionContext } from './progressionCommands'
 import { recordResourceSpend } from './resourcePractice'
 import { captureMasteryFactors } from './skillProgression'
@@ -134,7 +134,12 @@ function aimAtCharacter(
         target.locationId !== actor.locationId ||
         target.tags.has('offline') ||
         target.tags.has('state.retired') ||
-        !canPerceivePrayerCaster(actor, target, context.now) ||
+        !canObserveRoomCharacter(
+            actor,
+            target,
+            context.navigation,
+            context.now
+        ) ||
         !context.navigation.hasLineOfSight(actor.position, target.position) ||
         distance(actor.position, target.position) > range
     ) {

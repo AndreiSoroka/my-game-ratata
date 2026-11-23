@@ -1,4 +1,5 @@
 import type { GameCharacter } from '../game/character'
+import { canObserveRoomCharacter } from '../game/characterSight'
 import { canRequest } from '../game/companionState'
 import type { GameRoom } from '../game/room'
 import { canPerformSkillAction } from '../game/skillProgression'
@@ -117,14 +118,16 @@ export function canAddressNpcAi(
     actor: GameCharacter | undefined,
     now: number
 ): actor is GameCharacter {
+    if (!canRequest(requester, actor)) {
+        return false
+    }
+    const navigation = room.navigationFor(actor)
     return (
-        canRequest(requester, actor) &&
         actor.soul.canSpeak &&
         canPerformSkillAction(requester, now) &&
         canPerformSkillAction(actor, now) &&
-        room
-            .navigationFor(actor)
-            .hasLineOfSight(actor.position, requester.position)
+        canObserveRoomCharacter(requester, actor, navigation, now) &&
+        navigation.hasLineOfSight(actor.position, requester.position)
     )
 }
 

@@ -3,7 +3,8 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility, type PrayerCast } from './abilityState'
 import type { GameCharacter } from './character'
-import { canPerceivePrayerCaster, prayerAuraEffects } from './prayerAuras'
+import { canObserveRoomCharacter } from './characterSight'
+import { prayerAuraEffects } from './prayerAuras'
 import { cancelPrayerCast } from './prayerCancellation'
 import { validPrayerIntent } from './prayerContext'
 export type ActivePrayerCast = Extract<
@@ -97,7 +98,7 @@ function plannedCharacterAvailable(
               )
     if (
         target !== undefined &&
-        !pinnedTargetVisible(actor, cast, target, context.now)
+        !pinnedTargetVisible(actor, cast, target, context)
     ) {
         return false
     }
@@ -112,11 +113,11 @@ function pinnedTargetVisible(
     actor: GameCharacter,
     cast: ActivePrayerCast,
     target: GameCharacter,
-    now: number
+    context: AbilityContext
 ): boolean {
     return (
         cast.intent.targetId === undefined ||
-        canPerceivePrayerCaster(actor, target, now)
+        canObserveRoomCharacter(actor, target, context.navigation, context.now)
     )
 }
 

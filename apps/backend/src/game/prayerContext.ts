@@ -10,6 +10,7 @@ import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { canTargetByFaction } from './factions'
@@ -161,7 +162,12 @@ function visiblePrayerIntent(
     )
     return (
         selected === undefined ||
-        canPerceivePrayerCaster(actor, selected, context.now)
+        canObserveRoomCharacter(
+            actor,
+            selected,
+            context.navigation,
+            context.now
+        )
     )
 }
 

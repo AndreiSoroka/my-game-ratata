@@ -6,8 +6,8 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter, usesStealthSight } from './characterSight'
 import type { CombatObserver } from './combatObservation'
-import { canPerceivePrayerCaster } from './prayerAuras'
 import { visibilityRadius } from './queries'
 
 /** This projection never mutates the numeric domain event used by simulation services. */
@@ -32,19 +32,48 @@ export function observeCombatEvent(
             ? { amount }
             : {}),
     }
-    if (!eventActorVisible(event, view)) {
-        delete visible.actorId
-        delete visible.actionId
-        delete visible.projectile
+    return projectObservedDetails(event, visible, view)
+}
+
+function projectObservedDetails(
+    source: GameEventPayload,
+    visible: GameEventPayload,
+    view: CombatObserver
+): GameEventPayload | undefined {
+    if (!eventActorVisible(source, view)) {
+        const speaker =
+            source.kind === 'chat'
+                ? view.getCharacter(source.actorId ?? '')
+                : undefined
+        if (speaker !== undefined && usesStealthSight(speaker, view.now)) {
+            return undefined
+        }
+        redactActor(visible, source.audienceIds !== undefined)
     }
     if (
-        event.kind === 'water_drink' &&
+        visible.kind === 'water_drink' &&
         view.observer?.exactCombatNumbers !== true
     ) {
         visible.text = authoredRussian('world.drinkObserved')
         visible.textMessage = authoredMessage('world.drinkObserved')
     }
     return visible
+}
+
+function redactActor(event: GameEventPayload, privateText: boolean): void {
+    delete event.actorId
+    delete event.actionId
+    delete event.attackGeometry
+    delete event.position
+    delete event.projectile
+    delete event.speakerName
+    delete event.speechId
+    delete event.voice
+    delete event.language
+    if (!privateText && event.kind !== 'chat') {
+        delete event.text
+        delete event.textMessage
+    }
 }
 
 function eventActorVisible(
@@ -66,13 +95,18 @@ function eventCharacterVisible(
     id: string | undefined,
     view: CombatObserver
 ): boolean {
-    if (id === undefined || view.observer === undefined) {
+    if (id === undefined) {
         return true
     }
     const character = view.getCharacter(id)
     return (
         character === undefined ||
-        canPerceivePrayerCaster(view.observer, character, view.now)
+        canObserveRoomCharacter(
+            view.observer,
+            character,
+            view.navigation,
+            view.now
+        )
     )
 }
 

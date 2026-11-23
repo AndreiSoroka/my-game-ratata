@@ -14,7 +14,7 @@ function chanceStory(nodeId: string): HTMLElement {
 export const Prayer: Story = { render: () => chanceStory('prayer.root') }
 export const Resurrection: Story = { render: () => chanceStory('prayer.revive') }
 export const CriticalStrike: Story = { render: () => chanceStory('blade.critical') }
-export const Theft: Story = { render: () => chanceStory('shadow.luck1') }
+export const Theft: Story = { render: () => chanceStory('theft.root') }
 export const ConstantBonus: Story = { render: () => chanceStory('blade.damage1') }
 
 export const RoadPrayer: Story = { render: () => chanceStory('prayer_road.root') }

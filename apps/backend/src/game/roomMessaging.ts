@@ -2,7 +2,9 @@ import type { GameEventPayload, ServerMessage } from '@my-game-ratata/contracts'
 import type { ServerWebSocket } from 'bun'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import { resolveChatText } from './chat'
+import type { NavigationService } from './navigation'
 import { createSpeechEvent } from './speechReceipts'
 
 export interface RoomSocketData {
@@ -49,12 +51,17 @@ export function broadcastChat(
     connections: Iterable<[RoomSocket, string | undefined]>,
     characters: ReadonlyMap<string, GameCharacter>,
     actor: GameCharacter,
-    text: string
+    text: string,
+    navigation?: NavigationService
 ): void {
     const speech = createSpeechEvent(actor, text)
+    const now = Date.now()
     for (const [ws, playerId] of connections) {
         const observer =
             playerId === undefined ? undefined : characters.get(playerId)
+        if (!canObserveRoomCharacter(observer, actor, navigation, now)) {
+            continue
+        }
         const visibleText = resolveChatText(actor, observer, text)
 
         send(ws, {
@@ -62,7 +69,7 @@ export function broadcastChat(
                 ...speech,
                 text: visibleText,
             },
-            serverTime: Date.now(),
+            serverTime: now,
             type: 'event',
         })
     }

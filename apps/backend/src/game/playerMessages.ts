@@ -50,7 +50,12 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
     if (message.type === 'attack') {
         cancelCharacterControl(player)
         if (message.targetId === undefined && message.target === undefined) {
-            faceNearestTarget(player, context.characters.values(), 48)
+            faceNearestTarget(
+                player,
+                context.characters.values(),
+                48,
+                context.navigation
+            )
         }
         context.requestAttack(player, message.targetId, message.target)
         return
@@ -91,7 +96,8 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
             context.connections,
             context.characters,
             player,
-            message.text
+            message.text,
+            context.navigation
         )
     }
 }

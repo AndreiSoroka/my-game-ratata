@@ -43,6 +43,44 @@ async function enableInspectedStar(page: Page, id: string): Promise<void> {
     await selectBuildStar(page, id)
     await page.getByTestId('selected-star-toggle').click()
 }
+
+test('stealth and theft have separate constellations, practice and chance examples', async ({
+    page,
+}) => {
+    await page.goto('/?debug=constellations&class=vanguard&seed=stealth-and-theft')
+    const graph = page.getByRole('group', { name: 'Созвездия развития' })
+    await expect(graph.locator('[data-node-id^="shadow."]')).toHaveCount(10)
+    await expect(graph.locator('[data-node-id^="theft."]')).toHaveCount(10)
+
+    await selectBuildStar(page, 'shadow.root')
+    const card = page.getByTestId('selected-star-card')
+    await expect(card.getByRole('heading')).toHaveText('Скрытность')
+    const mastery = page.getByTestId('debug-mastery-summary')
+    await mastery.locator(':scope > summary').click()
+    const rewards = mastery.getByTestId('debug-mastery-reward').locator('option')
+    await expect(rewards).toHaveCount(1)
+    await expect(rewards.first()).toContainText('15 XP')
+
+    await selectBuildStar(page, 'theft.root')
+    await expect(card.getByRole('heading')).toHaveText('Воровство')
+    await expect(rewards).toHaveCount(2)
+    await expect(rewards.first()).toContainText('70 XP')
+    await expect(rewards.last()).toContainText('25 XP')
+
+    const chance = page.getByTestId('debug-effect-chance')
+    await chance.locator(':scope > summary').click()
+    await chance.getByText('Готовые примеры расчёта', { exact: true }).click()
+    const rear = chance.getByRole('row', { name: /Со спины/ })
+    await expect(rear).toContainText('Успех 35%, поимка 12%, тихий промах 53%')
+
+    await page.getByTestId('debug-build-all').click()
+    await expect(rear).toContainText('Успех 43,95%, поимка 8%, тихий промах 48,05%')
+    await selectBuildStar(page, 'theft.composure3')
+    await expect(card.getByRole('heading')).toHaveText('Рука в тени')
+    await expect(page.locator('[data-required-path="theft"]')).toHaveAttribute('data-required', '6')
+    await expect(page.locator('[data-required-path="shadow"]')).toHaveCount(0)
+})
+
 async function assertOwnPrayerModifiers(page: Page): Promise<void> {
     for (const [id, increase] of [
         ['prayer.gift1', 130],

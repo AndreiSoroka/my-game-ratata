@@ -52,7 +52,32 @@ export function removeBundle(engine: Engine, bundle: CharacterBundle): void {
     engine.remove(bundle.hpFill)
 }
 
-export function updateBundleHealth(
+export function syncCharacterBundle(
+    engine: Engine,
+    bundles: Map<string, CharacterBundle>,
+    snapshot: CharacterSnapshot,
+    isLocalPlayer: boolean,
+    visible: boolean
+): CharacterBundle {
+    const bundle = bundles.get(snapshot.id) ?? addBundle(engine, bundles, snapshot.id)
+    bundle.snapshot = snapshot
+    positionBundle(bundle, snapshot)
+    bundle.label.text = characterName(snapshot.id, snapshot.nickname)
+    bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
+    updateBundleHealth(bundle, snapshot, isLocalPlayer)
+    for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill])
+        actor.graphics.isVisible = visible
+    return bundle
+}
+
+function addBundle(engine: Engine, bundles: Map<string, CharacterBundle>, id: string) {
+    const bundle = createBundle()
+    bundles.set(id, bundle)
+    for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill]) engine.add(actor)
+    return bundle
+}
+
+function updateBundleHealth(
     bundle: CharacterBundle,
     snapshot: CharacterSnapshot,
     isLocalPlayer: boolean
@@ -72,16 +97,7 @@ export function updateBundleHealth(
     bundle.hpFill.graphics.opacity = opacity
 }
 
-export function updateBundleName(
-    bundle: CharacterBundle,
-    snapshot: CharacterSnapshot,
-    isLocalPlayer: boolean
-): void {
-    bundle.label.text = characterName(snapshot.id, snapshot.nickname)
-    bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
-}
-
-export function positionBundle(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {
+function positionBundle(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {
     const overhead = characterOverhead(snapshot.visualId)
     bundle.body.pos = vec(snapshot.position.x, snapshot.position.y)
     bundle.body.z = snapshot.position.y

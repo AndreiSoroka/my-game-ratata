@@ -79,7 +79,7 @@ export function snapshotProgression(
     }
 }
 
-/** Attained mastery levels are public; pending practice and earned perception are private. */
+/** Public capabilities exclude theft practice, exact XP and earned perception. */
 export function publicProgression(
     progression: ProgressionSnapshot
 ): ProgressionSnapshot {
@@ -98,13 +98,15 @@ export function publicProgression(
             successChance: null,
             changesInMs: null,
         },
-        masteries: progression.masteries.map((mastery) => ({
-            ...mastery,
-            experience: '0',
-            experienceToNext: '0',
-            totalExperience: '0',
-            pendingOpenings: 0,
-            conflictMultiplier: 1,
-        })),
+        masteries: progression.masteries
+            .filter((mastery) => mastery.id !== 'theft')
+            .map((mastery) => ({
+                ...mastery,
+                experience: '0',
+                experienceToNext: '0',
+                totalExperience: '0',
+                pendingOpenings: 0,
+                conflictMultiplier: 1,
+            })),
     }
 }

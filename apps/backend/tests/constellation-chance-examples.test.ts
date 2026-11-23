@@ -1,9 +1,10 @@
+import {
+    resolveStealthTheftBonuses,
+    resolveTheftChances,
+} from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
-import {
-    criticalChance,
-    theftEffectChances,
-} from '../../frontend/src/game/debug/constellationChanceMath'
+import { criticalChance } from '../../frontend/src/game/debug/constellationChanceMath'
 import type { PendingAttackHit } from '../src/game/characterState'
 import { resolveAttackDamage } from '../src/game/combatDamage'
 import { defendContact } from '../src/game/combatDefense'
@@ -87,32 +88,51 @@ describe('debug chance examples agree with authoritative rules', () => {
 
 describe('debug skill effect examples agree with authoritative rules', () => {
     it.each([
-        [1, 1, false, 0],
-        [1, 1, true, 0],
-        [1, 1, false, 0.03],
-        [1, 1, false, 0.06],
-        [10, 10, false, 0.06],
+        { front: false, stars: [], overall: 0.35 },
+        { front: true, stars: [], overall: 0.16 },
+        {
+            front: false,
+            stars: [
+                'theft.luck1',
+                'theft.luck2',
+                'theft.luck3',
+                'theft.composure1',
+                'theft.composure2',
+                'theft.composure3',
+            ],
+            overall: 0.4395090909,
+        },
+        {
+            front: true,
+            stars: [
+                'theft.luck1',
+                'theft.luck2',
+                'theft.luck3',
+                'theft.composure1',
+                'theft.composure2',
+                'theft.composure3',
+            ],
+            overall: 0.224,
+        },
     ] as const)(
-        'matches real detection and conditional item rolls for S=%s T=%s front=%s bonus=%s',
-        (stealth, theft, front, bonus) => {
-            const chance = theftEffectChances(front, bonus)
+        'matches real detection and item rolls (front or side: $front, overall: $overall)',
+        ({ front, stars, overall }) => {
+            const chance = resolveTheftChances(
+                front,
+                resolveStealthTheftBonuses(new Set(stars))
+            )
+            expect(chance.unnoticed).toBeCloseTo(overall)
             expect(
-                theftOutcome(stealth, theft, front, bonus, [
-                    chance.detected - 1e-8,
-                    0,
-                ])
+                theftOutcome(front, stars, [chance.detected - 1e-8, 0])
             ).toBe('caught')
             expect(
-                theftOutcome(stealth, theft, front, bonus, [
+                theftOutcome(front, stars, [
                     chance.detected,
                     chance.success - 1e-8,
                 ])
             ).toBe('stolen')
             expect(
-                theftOutcome(stealth, theft, front, bonus, [
-                    chance.detected,
-                    chance.success,
-                ])
+                theftOutcome(front, stars, [chance.detected, chance.success])
             ).toBe('failed')
         }
     )
@@ -178,20 +198,14 @@ function criticalRoll(
         .critical
 }
 function theftOutcome(
-    stealth: number,
-    theft: number,
     front: boolean,
-    bonus: number,
+    stars: readonly string[],
     rolls: number[]
 ) {
     const fixture = theftFixture()
-    fixture.actor.progression.masteries.shadow.level = Math.max(stealth, theft)
     fixture.victim.facing = front ? 'left' : 'right'
-    if (bonus > 0) {
-        fixture.actor.progression.constellations.opened.add('shadow.luck1')
-    }
-    if (bonus > 0.03) {
-        fixture.actor.progression.constellations.opened.add('shadow.luck2')
+    for (const star of stars) {
+        fixture.actor.progression.constellations.opened.add(star)
     }
     fixture.attempt(rolls)
     return fixture.service.snapshot(fixture.actor.id, fixture.actor.id, 1000)

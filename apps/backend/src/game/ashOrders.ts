@@ -20,9 +20,9 @@ import {
 } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
+import { canObserveRoomCharacter } from './characterSight'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
-import { canPerceivePrayerCaster } from './prayerAuras'
 import { transferMasteryExperience } from './skillProgression'
 
 export class AshOrders {
@@ -186,7 +186,12 @@ function alliedSkeleton(
         target === undefined ||
         !availableSkeleton(actor, target) ||
         distance(actor.position, target.position) > range ||
-        !canPerceivePrayerCaster(actor, target, context.now) ||
+        !canObserveRoomCharacter(
+            actor,
+            target,
+            context.navigation,
+            context.now
+        ) ||
         !context.navigation.hasLineOfSight(actor.position, target.position) ||
         canTargetByFaction(actor, target, context.now) ||
         canTargetByFaction(target, actor, context.now)

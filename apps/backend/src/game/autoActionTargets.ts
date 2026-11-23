@@ -12,6 +12,7 @@ type CharacterAutoAction = Exclude<
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import { isTargetInAttackRange } from './combat'
 import { canAttackCharacter } from './combatTargets'
 import { companionProfiles } from './companionProfiles'
@@ -108,6 +109,12 @@ export function visibleTarget(
         return false
     }
     return (
+        canObserveRoomCharacter(
+            actor,
+            target,
+            context.navigation,
+            context.now
+        ) &&
         distance(actor.position, target.position) <=
             visibilityRadius(actor, target, 240, context.now) &&
         context.navigation.hasLineOfSight(actor.position, target.position)

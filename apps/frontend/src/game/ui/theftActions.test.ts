@@ -43,6 +43,9 @@ describe('theft context actions', () => {
         expect(theftActions(state, player, state.characters)[0]?.label).toContain('50 с')
         state.serverTime = 150_000
         expect(theftActions(state, player, state.characters)[0]?.disabled).toBe(false)
+        expect(theftActions(state, player, state.characters)[0]?.label).toContain('10 EN')
+        player.theft!.energyCost = 8
+        expect(theftActions(state, player, state.characters)[0]?.label).toContain('8 EN')
         target.position.x = 29
         expect(theftActions(state, player, state.characters)).toEqual([])
     })

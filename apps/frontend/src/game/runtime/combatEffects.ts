@@ -1,21 +1,24 @@
 import {
     type CharacterSnapshot,
     type GameEventPayload,
-    isPrayerAction,
     PRAYER_RULES,
-    PRAYER_SCHOOL_DEFINITIONS,
-    prayerSchoolId,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
-import { channelEnded, combatEffectCues, type EffectCue, eventCaption } from './combatEffectPlan'
+import {
+    captionCharacterId,
+    captionColor,
+    channelEnded,
+    combatEffectCues,
+    type EffectCue,
+    eventCaption,
+    isCompletedPrayer,
+} from './combatEffectPlan'
 import { aimEffectPosition, combatEffectPose, isMeleeEffect } from './combatEffectPose'
-import { hitColors, hitQuality } from './combatHitLabel'
 import { CombatParticles } from './combatParticles'
 import { EFFECT_BUDGET } from './effectBudget'
 import { BARRIER_COLOR, EffectGraphics } from './effectGraphics'
-import { deityColors } from './prayerGraphics'
 
 type EffectTarget = Pick<CharacterSnapshot, 'position'>
 
@@ -25,6 +28,7 @@ interface Effect {
     duration: number
     from: { x: number; y: number }
     cue?: EffectCue
+    labelCharacterId?: string
     prayerCompletion?: Pick<GameEventPayload, 'actorId' | 'abilityId'>
     particles?: ReturnType<CombatParticles['burst']>
 }
@@ -53,7 +57,8 @@ export class CombatEffects {
     }
     public receive(event: GameEventPayload): void {
         const actor = this.character(event.actorId ?? '')
-        const target = this.eventTarget(event)
+        const targetId = captionCharacterId(event)
+        const target = this.eventTarget(event, targetId)
         this.stopEndedEffect(event)
         if (!target) return
         if (event.kind === 'notice' && event.noticeKind === 'prayer_unanswered')
@@ -65,8 +70,13 @@ export class CombatEffects {
                 target,
                 caption,
                 captionColor(event, actor),
+                targetId,
                 isCompletedPrayer(event) ? event : undefined
             )
+    }
+    private eventTarget(event: GameEventPayload, id: string | undefined): EffectTarget | undefined {
+        if (event.target && event.kind !== 'attack') return this.worldTarget(event.target)
+        return this.character(id ?? '')
     }
     public sync(characters: CharacterSnapshot[]): void {
         const active = new Set(
@@ -82,13 +92,17 @@ export class CombatEffects {
         }
         this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
     }
-    private eventTarget(event: GameEventPayload): EffectTarget | undefined {
-        if (event.target && event.kind !== 'attack') return this.worldTarget(event.target)
-        return this.character(
-            event.kind === 'attack' || isCompletedPrayer(event)
-                ? (event.actorId ?? '')
-                : (event.targetId ?? event.actorId ?? '')
-        )
+    public forgetCharacter(id: string): void {
+        this.effects = this.effects.filter((effect) => {
+            const cue = effect.cue
+            const attached =
+                cue &&
+                !cue.projectile &&
+                (cue.fromId === id || (!cue.target && cue.targetId === id))
+            if (effect.labelCharacterId !== id && !attached) return true
+            this.remove(effect)
+            return false
+        })
     }
     private pruneBarriers(active: Set<string>): void {
         for (const [id, view] of this.barriers) {
@@ -168,7 +182,7 @@ export class CombatEffects {
         const from = this.character(cue.fromId),
             target = this.cueTarget(cue)
         if (!from || !target) return
-        if (!this.admitWave(cue)) return
+        if (cue.wave && !this.admitWave(cue)) return
         const pose = combatEffectPose(cue, from, target, this.reduced)
         const actor = new Actor({
             anchor: vec(0.5, 0.5),
@@ -198,6 +212,7 @@ export class CombatEffects {
         target: EffectTarget,
         text: string,
         color: string,
+        labelCharacterId: string | undefined,
         prayerCompletion?: Effect['prayerCompletion']
     ): void {
         const actor = new Label({
@@ -218,6 +233,7 @@ export class CombatEffects {
             started: this.now,
             duration: 1000,
             from: { x: actor.pos.x, y: actor.pos.y },
+            labelCharacterId,
             prayerCompletion,
         })
         actor.actions.fade(0, 1000)
@@ -233,7 +249,6 @@ export class CombatEffects {
         this.particles.release(effect.particles)
     }
     private admitWave(cue: EffectCue): boolean {
-        if (!cue.wave) return true
         if ((this.waves.get(cue.fromId) ?? -1000) + 400 > this.now) return false
         this.waves.set(cue.fromId, this.now)
         return true
@@ -288,21 +303,4 @@ export class CombatEffects {
             return keep
         })
     }
-}
-
-function isCompletedPrayer(event: GameEventPayload): boolean {
-    return event.kind === 'cast' && event.phase === 'completed' && isPrayerAction(event.abilityId)
-}
-
-function captionColor(event: GameEventPayload, actor: CharacterSnapshot | undefined): string {
-    if (event.kind === 'miss' || event.kind === 'notice') return hitColors.miss
-    return event.kind === 'world_damage'
-        ? hitColors[hitQuality(event)]
-        : event.kind === 'heal'
-          ? '#a9ea8e'
-          : deityColors[
-                isPrayerAction(event.abilityId)
-                    ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
-                    : (actor?.progression?.deity.id ?? 'hearth')
-            ]
 }

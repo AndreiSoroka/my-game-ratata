@@ -1,4 +1,5 @@
 import type {
+    GameEventPayload,
     GroundSurface,
     MovementMode,
     Vector2,
@@ -6,13 +7,20 @@ import type {
 import { describe, expect, it, vi } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
+import { isLegalAttackTarget } from '../src/game/combat'
+import { prepareTarget } from '../src/game/combatAttackTarget'
+import { observeCombatEvent } from '../src/game/combatEventObservation'
 import { Mob1Controller } from '../src/game/controllers'
-import { lastHeardPoint, recordMovementNoise } from '../src/game/hearing'
+import {
+    heardFootsteps,
+    lastHeardPoint,
+    recordMovementNoise,
+} from '../src/game/hearing'
 import { advanceCharacter } from '../src/game/movement'
 import { handleMovementCommand } from '../src/game/movementActions'
 import type { MovementNoise } from '../src/game/movementNoise'
 import { NavigationService } from '../src/game/navigation'
-import { findVisibleTarget } from '../src/game/queries'
+import { createSnapshot, findVisibleTarget } from '../src/game/queries'
 import type { GameRoom } from '../src/game/room'
 
 function character(id: string, point: Vector2, hostile = false): GameCharacter {
@@ -324,5 +332,164 @@ describe('stealth sight remains physical and directional', () => {
         expect(
             findVisibleTarget(characters, navigation, listener, 112, 1_200)
         ).toBeUndefined()
+    })
+})
+
+describe('stealth in the player world view', () => {
+    it.each([false, true])(
+        'projects crouched characters by observer (NPC: %s)',
+        (npc) => {
+            const { source, listener, navigation } = setup()
+            const croucher = npc ? listener : source
+            croucher.position = { x: 140, y: 200 }
+            croucher.movement.mode = 'sneaking'
+            const approaching = character('approaching', { x: 200, y: 200 })
+            const turnedAway = character('turned-away', approaching.position)
+            approaching.facing = 'left'
+            turnedAway.facing = 'right'
+            const characters = [croucher, approaching, turnedAway]
+            const view = (observer?: GameCharacter, now = 2_000) =>
+                createSnapshot(
+                    characters,
+                    [],
+                    [],
+                    1,
+                    now,
+                    navigation,
+                    observer?.id
+                ).characters.find((entry) => entry.id === croucher.id)
+
+            expect(view(approaching)).toMatchObject({
+                movement: { mode: 'sneaking' },
+            })
+            expect(view(turnedAway)).toBeUndefined()
+            expect(view()).toBeUndefined()
+            expect(view(croucher)).toBeDefined()
+            navigation.grid.solid[12 * 50 + 10] = true
+            expect(view(approaching)).toBeUndefined()
+            navigation.grid.solid[12 * 50 + 10] = false
+            croucher.position.x = 173
+            expect(view(turnedAway)).toBeDefined()
+
+            croucher.position.x = 90
+            expect(view(approaching)).toBeUndefined()
+            croucher.lastAttackAt = 1_500
+            expect(view(turnedAway, 2_499)).toBeDefined()
+            expect(view(turnedAway, 2_500)).toBeUndefined()
+            croucher.movement.mode = 'walking'
+            expect(view(turnedAway, 2_500)).toBeDefined()
+        }
+    )
+
+    it('rejects a hidden named attack before facing the target and preserves physical contact', () => {
+        const { listener, source, navigation } = setup()
+        listener.facing = 'right'
+        source.position = { x: 140, y: 200 }
+        source.movement.mode = 'sneaking'
+        const context = {
+            actor: listener,
+            navigation,
+            now: 2_000,
+            respawnDelayMsFor: () => 0,
+            targets: [source],
+            tileSize: 16,
+        }
+        expect(prepareTarget({ ...context, targetId: source.id })).toBe(false)
+        expect(listener.facing).toBe('right')
+        expect(isLegalAttackTarget(listener, source, context)).toBe(true)
+        listener.facing = 'left'
+        expect(prepareTarget({ ...context, targetId: source.id })).toBe(true)
+    })
+
+    it('omits the hidden actor and any aim or origin information from public combat feedback', () => {
+        const { listener, source, navigation, room } = setup()
+        listener.facing = 'right'
+        source.position = { x: 140, y: 200 }
+        source.movement.mode = 'sneaking'
+        const event: GameEventPayload = {
+            kind: 'damage',
+            actorId: source.id,
+            targetId: listener.id,
+            actionId: `${source.id}:1`,
+            position: source.position,
+            projectile: {
+                origin: source.position,
+                endpoint: listener.position,
+            },
+            attackGeometry: {
+                kind: 'circle',
+                center: source.position,
+                radius: 64,
+            },
+        }
+        const view = {
+            observer: listener,
+            navigation,
+            getCharacter: room.getCharacter,
+            now: 2_000,
+        }
+        expect(observeCombatEvent(event, view)).toEqual({
+            kind: 'damage',
+            targetId: listener.id,
+        })
+        expect(
+            observeCombatEvent({ ...event, targetId: source.id }, view)
+        ).toBeUndefined()
+        expect(event.actorId).toBe(source.id)
+    })
+})
+
+describe('heard player footsteps', () => {
+    it('creates a short anonymous marker from real movement only for the player who hears a hidden step', () => {
+        const { source, navigation, room, characters, step, noises } =
+            moving('sneaking')
+        source.position.x = 150
+        const nearby = character('nearby', { x: 200, y: 200 })
+        const inSight = character('in-sight', nearby.position)
+        const outOfRange = character('out-of-range', { x: 300, y: 200 })
+        const elsewhere = character('elsewhere', nearby.position)
+        elsewhere.locationId = 'map-2-2'
+        nearby.facing = 'right'
+        inSight.facing = 'left'
+        outOfRange.facing = 'right'
+        elsewhere.facing = 'right'
+        characters.push(nearby, inSight, outOfRange, elsewhere)
+        source.setMoveInput({ x: 0, y: 0 })
+        step(1_200, 200)
+        expect(heardFootsteps(room, nearby, 1_200)).toEqual([])
+
+        source.setMoveInput({ x: -1, y: 0 })
+        step(1_400, 400)
+        expect(noises).toHaveLength(1)
+        const position = { x: 144, y: 208 }
+        expect(heardFootsteps(room, nearby, 1_400)).toEqual([
+            { id: 1, position, expiresAt: 2_250 },
+        ])
+        for (const observer of [inSight, outOfRange, elsewhere, source]) {
+            expect(heardFootsteps(room, observer, 1_400)).toEqual([])
+        }
+        source.position.x -= 16
+        expect(heardFootsteps(room, nearby, 2_249)).toEqual([
+            { id: 1, position, expiresAt: 2_250 },
+        ])
+        const noise = noises[0]
+        if (noise === undefined) {
+            throw new Error('Expected a step from actual movement')
+        }
+        recordMovementNoise(room, { ...noise, emittedAt: 2_250 }, [nearby])
+        expect(heardFootsteps(room, nearby, 2_250)).toEqual([])
+        navigation.grid.solid[12 * 50 + 10] = true
+        recordMovementNoise(room, { ...noise, emittedAt: 2_300 }, [nearby])
+        expect(heardFootsteps(room, nearby, 2_300)).toEqual([])
+        navigation.grid.solid[12 * 50 + 10] = false
+        recordMovementNoise(room, { ...noise, emittedAt: 2_300 }, [nearby])
+        expect(heardFootsteps(room, nearby, 2_300)).toEqual([
+            { id: 2, position, expiresAt: 3_150 },
+        ])
+        source.position.x = 140
+        nearby.facing = 'left'
+        expect(heardFootsteps(room, nearby, 2_350)).toEqual([])
+        nearby.facing = 'right'
+        expect(heardFootsteps(room, nearby, 2_400)).toEqual([])
     })
 })

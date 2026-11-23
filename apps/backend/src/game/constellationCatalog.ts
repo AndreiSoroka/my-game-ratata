@@ -7,6 +7,7 @@ import { combatStars } from './constellationCombatStars'
 import type { ConstellationStar } from './constellationDefinition'
 import { magicStars } from './constellationMagicStars'
 import { otherStars } from './constellationOtherStars'
+import { stealthTheftStars } from './constellationStealthTheftStars'
 
 export { type ConstellationStar, star } from './constellationDefinition'
 
@@ -46,10 +47,17 @@ export const constellationPaths = [
     },
     {
         id: 'shadow',
-        name: 'Тень',
+        name: 'Скрытность',
         description:
-            'Вы умеете скрывать своё присутствие и действовать незаметно.',
+            'Крадучись, вы двигаетесь тише, а наблюдатели замечают вас с меньшего расстояния. Подход со спины заметить труднее.',
         color: '#c4b2d7',
+    },
+    {
+        id: 'theft',
+        name: 'Воровство',
+        description:
+            'Крадучись, вы можете вытащить предмет из чужого кармана. Со спины риск поимки ниже и шанс вытащить вещь выше.',
+        color: '#d7bf8f',
     },
     {
         id: 'prayer_road',
@@ -93,4 +101,5 @@ export const constellationStars: ConstellationStar[] = [
     ...combatStars,
     ...magicStars,
     ...otherStars,
+    ...stealthTheftStars,
 ]

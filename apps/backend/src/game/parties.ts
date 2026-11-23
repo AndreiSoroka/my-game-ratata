@@ -13,6 +13,7 @@ import {
     type NegotiatedWorkerReward,
     type WorkerGuildGateway,
 } from './guild'
+import type { NavigationService } from './navigation'
 import { NoticeStore } from './notices'
 import { answerPartyInvitation } from './partyAnswers'
 import { createPartyGuildAction, findGuildContact } from './partyGuildCommands'
@@ -152,7 +153,7 @@ export class PartyService {
         message: PartyClientMessage,
         characters: Iterable<GameCharacter>,
         now: number,
-        tileWidth?: number
+        navigation?: NavigationService
     ): GameEventPayload[] {
         this.update(characters, now)
         if (!available(actor)) {
@@ -163,7 +164,7 @@ export class PartyService {
         }
         switch (message.type) {
             case 'party_invite':
-                return this.invite(actor, message.targetId, now, tileWidth)
+                return this.invite(actor, message.targetId, now, navigation)
             case 'party_answer':
                 return this.answer(
                     actor,
@@ -246,7 +247,7 @@ export class PartyService {
         actor: GameCharacter,
         targetId: string,
         now: number,
-        tileWidth?: number
+        navigation?: NavigationService
     ): GameEventPayload[] {
         return this.tell(
             actor.id,
@@ -265,7 +266,7 @@ export class PartyService {
                     newInvitationId: () =>
                         `invitation_${String(this.nextInvitation++)}`,
                 },
-                tileWidth
+                navigation
             )
         )
     }

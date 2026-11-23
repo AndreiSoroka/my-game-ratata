@@ -44,6 +44,7 @@ function fixture() {
     const observer = join('observer')
     thief.character.position = { x: 100, y: 100 }
     victim.character.position = { x: 112, y: 100 }
+    observer.character.position = { x: 100, y: 120 }
     victim.character.inventory.push(createItemInstance('food'))
     thief.send({ type: 'movement_mode', mode: 'sneaking' })
     for (const connection of [thief, victim, observer]) {
@@ -57,11 +58,62 @@ afterEach(() => {
     vi.restoreAllMocks()
 })
 
+it('applies the same crouch visibility to players in one party', () => {
+    const { room, thief, observer } = fixture()
+    const view = () =>
+        room.snapshot(
+            Date.now(),
+            observer.character.locationId,
+            observer.character.id
+        )
+    observer.send({ type: 'party_invite', targetId: thief.character.id })
+    const invitation = view().party?.invitations[0]
+    if (invitation === undefined) {
+        throw new Error('Missing invitation')
+    }
+    thief.send({
+        type: 'party_answer',
+        invitationId: invitation.id,
+        accept: true,
+    })
+
+    thief.character.position = { x: 160, y: 120 }
+    observer.character.facing = 'left'
+    const hidden = view()
+    expect(
+        hidden.party?.members.some(({ id }) => id === thief.character.id)
+    ).toBe(true)
+    expect(hidden.characters.some(({ id }) => id === thief.character.id)).toBe(
+        false
+    )
+
+    observer.character.facing = 'right'
+    expect(view().characters.some(({ id }) => id === thief.character.id)).toBe(
+        true
+    )
+})
+
+it('publishes the discounted attempt cost to the thief only', () => {
+    const { room, thief, observer } = fixture()
+    const actor = thief.character
+    actor.progression.masteries.theft.level = 6
+    for (const id of ['root', 'economy', 'tempo', 'rhythm']) {
+        actor.progression.constellations.opened.add(`theft.${id}`)
+    }
+    const costFor = (viewerId: string) =>
+        room
+            .snapshot(Date.now(), actor.locationId, viewerId)
+            .characters.find(({ id }) => id === actor.id)?.theft?.energyCost
+
+    expect(costFor(actor.id)).toBe(8)
+    expect(costFor(observer.character.id)).toBeUndefined()
+})
+
 describe('unnoticed theft privacy through real room sockets', () => {
     it('sends result and skill-up only to the thief, strips recipient metadata, and hides others inventories/results', () => {
         const { room, thief, victim, observer } = fixture()
         const item = victim.character.inventory[0]
-        thief.character.progression.masteries.shadow.experience =
+        thief.character.progression.masteries.theft.experience =
             parseMasteryExperience('99')
         vi.spyOn(Math, 'random')
             .mockReturnValueOnce(0.99)
@@ -109,6 +161,13 @@ describe('unnoticed theft privacy through real room sockets', () => {
                 (character) => character.id === thief.character.id
             )?.inventory
         ).toEqual([])
+        expect(
+            publicView.characters
+                .find((character) => character.id === thief.character.id)
+                ?.progression?.masteries.some(
+                    (mastery) => mastery.id === 'theft'
+                )
+        ).toBe(false)
         expect(
             publicView.characters.find(
                 (character) => character.id === thief.character.id
@@ -225,14 +284,14 @@ describe('pending skill practice stays private in room snapshots', () => {
                 .mockReturnValueOnce(outcome === 'stolen' ? 0 : 0.99)
             thief.send({ type: 'steal', targetId: victim.character.id })
             const owner = progression(thief.character.id)
-            const ownShadow = owner?.masteries.find(
-                (mastery) => mastery.id === 'shadow'
+            const ownTheft = owner?.masteries.find(
+                (mastery) => mastery.id === 'theft'
             )
             if (outcome === 'failed') {
-                expect(ownShadow?.experience).toBe('0')
+                expect(ownTheft?.experience).toBe('0')
             }
             if (outcome === 'stolen') {
-                expect(Number(ownShadow?.experience)).toBeGreaterThan(0)
+                expect(Number(ownTheft?.experience)).toBeGreaterThan(0)
             }
             for (const viewerId of [
                 victim.character.id,
@@ -253,8 +312,8 @@ describe('pending skill practice stays private in room snapshots', () => {
                     )?.level
                 ).toBe(3)
             }
-            expect(masteries.shadow.experience > 0n).toBe(outcome === 'stolen')
-            expect(Number(ownShadow?.experienceToNext)).toBeGreaterThan(0)
+            expect(masteries.theft.experience > 0n).toBe(outcome === 'stolen')
+            expect(Number(ownTheft?.experienceToNext)).toBeGreaterThan(0)
         }
     )
 })

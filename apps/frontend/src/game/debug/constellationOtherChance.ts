@@ -4,19 +4,18 @@ import type { ConstellationStar } from '../../../../backend/src/game/constellati
 import { UNDEAD_ARROW_CATCH_CHANCE } from '../../../../backend/src/game/constellationUndeadTacticsStars'
 import { describeBladeEffectChance } from './constellationBladeChance'
 import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
-import { chancePercent, criticalChance, theftEffectChances } from './constellationChanceMath'
+import { chancePercent, criticalChance } from './constellationChanceMath'
 import type { ConstellationEffectChance } from './constellationChanceTypes'
 import { describeDeterministicOtherChance } from './constellationOtherChanceDetails'
 import { describeOtherRootChance } from './constellationOtherChanceRoots'
+import { describeStealthTheftChance } from './constellationStealthChance'
 
 const specialDescriptions: Record<string, () => ConstellationEffectChance> = {
+    'magic.root': () => describeOtherRootChance('magic.root'),
+    'arrow.root': () => describeOtherRootChance('arrow.root'),
+    'life.root': () => describeOtherRootChance('life.root'),
     'arrow.critical': describeArrowCritical,
-    'shadow.root': () => describeTheft('shadow.root'),
-    'shadow.luck1': () => describeTheft('shadow.luck1'),
-    'shadow.luck2': () => describeTheft('shadow.luck2'),
-    'shadow.noise1': describeNoise,
-    'shadow.noise2': describeNoise,
-    'shadow.sight': describeSight,
+    'arrow.sniper_shot': describeSniperChance,
     'magic.fireball': () => describeFireball('magic.fireball'),
     'magic.greater_fireball': () => describeFireball('magic.greater_fireball'),
     'magic.runic_echo': describeRunicEcho,
@@ -49,22 +48,21 @@ function describeArrowCatch(): ConstellationEffectChance {
 const targetDodge = 'Итоговое уклонение цели в процентах.'
 const baseCritical =
     'Базовый критический шанс атакующего в процентах; экипировка сейчас не добавляет крит.'
-const clamp = 'Ограничение результата нижней и верхней границами — первыми двумя аргументами.'
 
 /** Explanations of resolved effects, deliberately separate from acquiring a star. */
 export function describeOtherEffectChance(
     node: ConstellationStar,
     active?: ReadonlySet<string>
 ): ConstellationEffectChance {
+    if (node.constellationId === 'shadow' || node.constellationId === 'theft') {
+        return describeStealthTheftChance(node, active)
+    }
     const blade = describeBladeEffectChance(node, active)
     if (blade !== undefined) return blade
     const deterministic = describeDeterministicOtherChance(node.id)
     if (deterministic !== undefined) return deterministic
     const special = specialDescriptions[node.id]
     if (special !== undefined) return special()
-    if (['magic.root', 'arrow.root', 'life.root'].includes(node.id))
-        return describeOtherRootChance(node.id)
-    if (node.id === 'arrow.sniper_shot') return describeSniperChance()
     if (
         node.constellationId === 'undead' ||
         (node.constellationId === 'arrow' && node.results?.length)
@@ -129,106 +127,6 @@ function describeArrowCritical(): ConstellationEffectChance {
             chanceFormula('Шанс критического попадания до Барьера, %', '(1 − D / 100) × C', {
                 D: targetDodge,
                 C: 'Итоговый шанс крита после бонуса и ограничения, в процентах.',
-            }),
-        ]
-    )
-}
-
-function describeTheft(id: string): ConstellationEffectChance {
-    const bonus = id === 'shadow.luck2' ? 0.06 : id === 'shadow.luck1' ? 0.03 : 0
-    const behind = theftEffectChances(false, bonus)
-    const front = theftEffectChances(true, bonus)
-    return withChanceFormulas(
-        {
-            deterministic: true,
-            summary:
-                bonus === 0
-                    ? 'Кража имеет два броска: сначала обнаружение, затем получение предмета, если вас не обнаружили.'
-                    : 'Бонус применяется в 100% допустимых попыток, но сама кража остаётся двухэтапной случайной проверкой.',
-            examples: [
-                {
-                    label: 'Сзади',
-                    value: `Обнаружение ${chancePercent(behind.detected)}; получение при незамеченности ${chancePercent(behind.success)}; незаметная кража ${chancePercent(behind.unnoticed)}.`,
-                },
-                {
-                    label: 'Спереди',
-                    value: `Обнаружение ${chancePercent(front.detected)}; получение при незамеченности ${chancePercent(front.success)}; незаметная кража ${chancePercent(front.unnoticed)}.`,
-                },
-            ],
-            notes: [
-                `В примерах бонус удачи — ${bonus * 100} п.п. Одна звезда удачи даёт 3 п.п.; обе вместе — 6 п.п. Бонус добавляется к U, а не к общему исходу, и не уменьшает D.`,
-                'Сначала проверяются живая цель, дистанция, видимость, ресурсы, кулдауны, свободное место и существующий доступный предмет. Отвергнутая команда не делает этих бросков.',
-            ],
-        },
-        theftFormulas()
-    )
-}
-
-function theftFormulas() {
-    const outcomes = {
-        D: 'Шанс обнаружения в процентах.',
-        U: 'Шанс получить предмет при незамеченности, в процентах.',
-    }
-    return [
-        chanceFormula('Шанс обнаружения, %', 'clamp(10, 90, 68 + F)', {
-            F: '12 при попытке спереди от цели; −8 в остальных случаях.',
-            clamp,
-        }),
-        chanceFormula(
-            'Шанс получить предмет, если не обнаружили, %',
-            'clamp(5, 90, 30.5 + A + B)',
-            {
-                A: '0 спереди от цели; 10 в остальных случаях.',
-                B: 'Бонус удачи в процентных пунктах: 0 без звёзд, 3 с одной, 6 с обеими.',
-                clamp,
-            }
-        ),
-        chanceFormula('Шанс незаметно украсть, %', '(1 − D / 100) × U', outcomes),
-        chanceFormula('Шанс быть пойманным, %', 'D', { D: outcomes.D }),
-        chanceFormula('Шанс тихой неудачи, %', '(1 − D / 100) × (100 − U)', outcomes),
-    ]
-}
-
-function describeNoise(): ConstellationEffectChance {
-    return withChanceFormulas(
-        {
-            deterministic: true,
-            summary:
-                '100%: при настоящих шагах крадучись громкость уменьшается без случайного броска.',
-            examples: [],
-            notes: [
-                'Вместе две звезды тишины уменьшают этот множитель на 30%, не на 27,75%.',
-                'Поверхность и препятствия учитываются отдельно. Стояние не создаёт шагов, а рывок использует собственную громкость без этого тихого множителя.',
-            ],
-        },
-        [
-            chanceFormula(
-                'Радиус шума при движении крадучись, пиксели',
-                '64 × M × 0.18 × (1 − 0.15 × N)',
-                {
-                    M: 'Множитель громкости поверхности.',
-                    N: 'Число изученных звёзд тишины: 1 или 2.',
-                }
-            ),
-        ]
-    )
-}
-
-function describeSight(): ConstellationEffectChance {
-    return withChanceFormulas(
-        {
-            deterministic: true,
-            summary:
-                '100%: радиус обнаружения уменьшается по геометрическим правилам, а не по шансу невидимости.',
-            examples: [],
-            notes: [
-                'Нужно двигаться крадучись, не находиться в рывке и не атаковать в последнюю секунду. Сохраняются проверки прямой видимости; это не гарантирует незаметность.',
-            ],
-        },
-        [
-            chanceFormula('Радиус обнаружения цели, пиксели', 'min(R, max(28, R × F × 0.90))', {
-                R: 'Исходный радиус зрения наблюдателя в мировых пикселях.',
-                F: 'Множитель угла к взгляду наблюдателя: 0.65 спереди, 0.35 сзади, 0.50 сбоку.',
             }),
         ]
     )

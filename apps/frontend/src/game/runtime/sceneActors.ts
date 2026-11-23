@@ -14,18 +14,12 @@ import type { CharacterId } from '../assets/characterCatalog'
 import { type BellImages, BellViews } from './bellViews'
 import { BuildingViews } from './buildingViews'
 import { CharacterGraphics } from './characterGraphics'
-import {
-    type CharacterBundle,
-    createBundle,
-    positionBundle,
-    removeBundle,
-    updateBundleHealth,
-    updateBundleName,
-} from './characterViewBundle'
+import { type CharacterBundle, removeBundle, syncCharacterBundle } from './characterViewBundle'
 import { CombatEffects } from './combatEffects'
 import { CorpseViews } from './corpseViews'
 import { DamageFeedback } from './damageFeedback'
 import { DepthPropViews } from './depthPropViews'
+import { FootstepViews } from './footstepViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
 import type { MagicViews } from './magicViews'
 import {
@@ -63,6 +57,7 @@ export class SceneActors {
     private serverClockOffset = 0
     private localPlayerId: string | undefined
     private readonly statusViews: StatusViews
+    private readonly footsteps: FootstepViews
     private readonly combatEffects: CombatEffects
     private readonly damageFeedback: DamageFeedback
     private readonly signReading: SignReadingViews
@@ -82,8 +77,9 @@ export class SceneActors {
         this.bells = new BellViews(engine, bellImages)
         this.characterGraphics = new CharacterGraphics(sheets)
         this.guides = new TrainingGuides(engine)
-        this.combatTarget = new InteractionTargetViews(engine)
-        this.interactionTarget = new InteractionTargetViews(engine)
+        const characterVisible = (id: string) => this.isCharacterVisible(id)
+        this.combatTarget = new InteractionTargetViews(engine, characterVisible)
+        this.interactionTarget = new InteractionTargetViews(engine, characterVisible)
         this.signReading = new SignReadingViews(engine)
         this.routeWaypoints = new RouteWaypointViews(engine)
         this.buildingViews = new BuildingViews(engine)
@@ -91,6 +87,7 @@ export class SceneActors {
         this.corpseViews = new CorpseViews(engine, sheets)
         this.worldActors = new WorldSceneActors(engine, itemImages, chestImage, farmImage)
         this.statusViews = new StatusViews(engine)
+        this.footsteps = new FootstepViews(engine, itemImages.get('boots'))
         this.combatEffects = new CombatEffects(
             engine,
             (id) => (this.isCharacterVisible(id) ? this.bundles.get(id)?.snapshot : undefined),
@@ -117,6 +114,7 @@ export class SceneActors {
         this.magicViews.clear()
         this.prayerAreas.clear()
         this.statusViews.clear()
+        this.footsteps.clear()
     }
     public dispose(): void {
         this.bells.clear()
@@ -129,6 +127,7 @@ export class SceneActors {
         this.magicViews.dispose()
         this.prayerAreas.clear()
         this.statusViews.dispose()
+        this.footsteps.dispose()
         this.signReading.dispose()
         this.routeWaypoints.dispose()
         this.interactionTarget.dispose()
@@ -168,9 +167,7 @@ export class SceneActors {
         this.serverClockOffset = snapshot.serverTime - performance.now()
         this.removeMissing(snapshot.characters)
         const player = snapshot.characters.find((character) => character.id === localPlayerId)
-        this.playerPosition =
-            player?.alive && !player.tags.includes('offline') ? player.position : undefined
-        if (!this.playerPosition) this.interactionTarget.clear()
+        this.updateObserver(player, snapshot)
         this.routeWaypoints.updateSnapshot(snapshot, player, this.isPositionVisible)
         this.buildingViews.update(player?.position)
         this.magicViews.sync(snapshot, this.isPositionVisible)
@@ -182,7 +179,15 @@ export class SceneActors {
         )
 
         for (const character of snapshot.characters) {
-            this.updateCharacter(character, character.id === localPlayerId)
+            const isLocal = character.id === localPlayerId
+            const bundle = syncCharacterBundle(
+                this.engine,
+                this.bundles,
+                character,
+                isLocal,
+                isLocal || this.isPositionVisible(character.position)
+            )
+            this.updateGraphic(bundle.body, character)
         }
 
         const visibleCharacters = snapshot.characters.filter((character) =>
@@ -221,6 +226,9 @@ export class SceneActors {
     }
 
     public readonly prayerAreaStates = () => this.prayerAreas.states()
+    public readonly heardFootstepIds = () => this.footsteps.ids()
+    public readonly characterOpacity = (id: string) =>
+        this.isCharacterVisible(id) ? this.bundles.get(id)?.body.graphics.opacity : undefined
 
     private updateResourceViews(snapshot: WorldSnapshot): void {
         this.gravePositions = new Map(
@@ -230,6 +238,13 @@ export class SceneActors {
         this.depthProps.updateResources(nodes)
         this.depthProps.updateGraves(snapshot.graves ?? [])
         if (this.mapVisibility) updateResourceVisibility(this.mapVisibility, nodes)
+    }
+
+    private updateObserver(player: CharacterSnapshot | undefined, snapshot: WorldSnapshot): void {
+        this.playerPosition =
+            player?.alive && !player.tags.includes('offline') ? player.position : undefined
+        if (!this.playerPosition) this.interactionTarget.clear()
+        this.footsteps.sync(snapshot, this.playerPosition !== undefined, this.mapBounds.bottom + 32)
     }
 
     public setShotPreview(path: ProjectilePath | undefined): void {
@@ -273,32 +288,7 @@ export class SceneActors {
     }
 
     public isCharacterVisible(id: string): boolean {
-        return this.bundles.get(id)?.body.graphics.isVisible ?? true
-    }
-
-    private updateCharacter(snapshot: CharacterSnapshot, isLocalPlayer: boolean): void {
-        const bundle = this.getBundle(snapshot)
-        bundle.snapshot = snapshot
-        positionBundle(bundle, snapshot)
-        updateBundleName(bundle, snapshot, isLocalPlayer)
-        this.updateGraphic(bundle.body, snapshot)
-        updateBundleHealth(bundle, snapshot, isLocalPlayer)
-        const visible = isLocalPlayer || !this.buildingViews.hidesCharacter(snapshot.position)
-        for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill])
-            actor.graphics.isVisible = visible
-    }
-
-    private getBundle(snapshot: CharacterSnapshot): CharacterBundle {
-        const existing = this.bundles.get(snapshot.id)
-
-        if (existing !== undefined) return existing
-
-        const bundle = createBundle()
-        this.bundles.set(snapshot.id, bundle)
-        for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill])
-            this.engine.add(actor)
-
-        return bundle
+        return this.bundles.get(id)?.body.graphics.isVisible ?? false
     }
 
     private updateGraphic(actor: Actor, snapshot: CharacterSnapshot): void {
@@ -321,6 +311,9 @@ export class SceneActors {
         for (const [id, bundle] of this.bundles) {
             if (!liveIds.has(id)) {
                 this.damageFeedback.forget(id)
+                this.combatEffects.forgetCharacter(id)
+                this.combatTarget.forgetCharacter(id)
+                this.interactionTarget.forgetCharacter(id)
                 removeBundle(this.engine, bundle)
                 this.bundles.delete(id)
             }

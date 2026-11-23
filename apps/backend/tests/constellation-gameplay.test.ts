@@ -126,7 +126,7 @@ describe('effective shared constellation parameters', () => {
         const navigation = abilityContext([actor], 1000).navigation
         actor.progression.constellations.opened.add('life.move')
         actor.progression.constellations.opened.add('life.dash')
-        actor.progression.constellations.opened.add('shadow.economy')
+        actor.progression.constellations.opened.add('theft.economy')
         expect(effectiveMoveSpeed(actor)).toBe(94.5)
         expect(effectiveDashCost(actor)).toBe(27)
         expect(effectiveTheftCost(actor)).toBe(9)

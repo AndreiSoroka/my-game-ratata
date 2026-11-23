@@ -1,4 +1,4 @@
-import type { HeroClass } from '@my-game-ratata/contracts'
+import { constellationIds, type HeroClass } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { generateConstellationLayout } from '../../../../backend/src/game/constellationLayout'
@@ -10,7 +10,7 @@ const options = { heroClass: 'cleric' as HeroClass, seed: 'debug-preview-test' }
 describe('standalone constellation debug data', () => {
     it('reveals the complete authored catalog with canonical identities and actual geometry', () => {
         const snapshot = buildConstellationDebugSnapshot(options)
-        expect(snapshot.paths).toHaveLength(10)
+        expect(snapshot.paths.map(({ id }) => id)).toEqual([...constellationIds])
         expect(snapshot.nodes).toHaveLength(fullConstellationCatalog.length)
         expect(snapshot.edges).toHaveLength(
             fullConstellationCatalog.reduce((count, node) => count + node.parents.length, 0)

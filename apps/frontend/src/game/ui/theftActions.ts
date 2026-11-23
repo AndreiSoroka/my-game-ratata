@@ -56,7 +56,7 @@ function stealRequirement(player: CharacterSnapshot, wait: number): string {
     if (player.movement?.mode !== 'sneaking') return tGame('game.world.sneakShortcut')
     return wait > 0
         ? tGame('game.world.availableIn', { seconds: String(Math.ceil(wait / 1000)) })
-        : `${String(THEFT_RULES.energyCost)} EN`
+        : `${String(player.theft?.energyCost ?? THEFT_RULES.energyCost)} EN`
 }
 
 export function guardActions(

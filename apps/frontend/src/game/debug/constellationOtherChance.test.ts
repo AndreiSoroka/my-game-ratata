@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
-import { chancePercent, criticalChance, theftEffectChances } from './constellationChanceMath'
+import { chancePercent, criticalChance } from './constellationChanceMath'
 import { describeOtherEffectChance } from './constellationOtherChance'
 
 afterEach(() => vi.restoreAllMocks())
@@ -83,7 +83,7 @@ describe('all non-prayer effect explanations', () => {
         expect(description('life.hp4').summary).toContain('100%')
         expect(description('life.hp4').notes.join(' ')).toContain('не повышает')
         expect(description('shadow.sight').summary).toContain('геометрическим')
-        expect(description('shadow.noise2').notes.join(' ')).toContain('30%')
+        expect(description('shadow.noise2').notes.join(' ')).toContain('35%')
         expect(description('undead.hollow_bones2')).toMatchObject({
             deterministic: true,
             notes: [expect.stringContaining('35% суммарно')],
@@ -118,24 +118,16 @@ describe('chance formula boundaries and examples', () => {
     })
 
     it('keeps detection, conditional success and total theft probability separate', () => {
-        const first = theftEffectChances(false, 0.03)
-        expect(first.detected).toBeCloseTo(0.6)
-        expect(first.success).toBeCloseTo(0.435)
-        expect(first.unnoticed).toBeCloseTo(0.174)
-        expect(first.detected + first.unnoticed + first.failedUnnoticed).toBeCloseTo(1)
-        expect(theftEffectChances(false, 0.06).unnoticed).toBeCloseTo(0.186)
-        expect(theftEffectChances(true, 0).unnoticed).toBeCloseTo(0.061)
-        expect(theftEffectChances(false, 100).success).toBe(0.9)
-        expect(theftEffectChances(false, 100).detected).toBeCloseTo(0.6)
-        expect(theftEffectChances(true, -100).success).toBe(0.05)
-        expect(theftEffectChances(true, -100).detected).toBeCloseTo(0.8)
-        expect(description('shadow.luck1').examples[0]?.value).toContain('17,4%')
-        expect(description('shadow.luck2').examples[0]?.value).toContain('18,6%')
-        expect(description('shadow.luck1').formulas).toContain('(1 − D / 100) × U')
-        expect(description('shadow.luck1').formulaDetails?.[0]?.variables).toContainEqual({
-            symbol: 'F',
-            description: '12 при попытке спереди от цели; −8 в остальных случаях.',
-        })
+        const root = description('theft.root')
+        expect(root.examples.map(({ value }) => value)).toEqual([
+            'Успех 35%, поимка 12%, тихий промах 53%.',
+            'Успех 16%, поимка 20%, тихий промах 64%.',
+        ])
+        expect(description('theft.luck1').examples[0]?.value).toContain('36,76%')
+        expect(description('theft.luck2').examples[0]?.value).toContain('38,52%')
+        expect(description('theft.composure3').examples[0]?.value).toContain('поимка 8%')
+        expect(root.formulas).toContain('(1 − D / 100) × U')
+        expect(root.formulas).toContain('(1 − D / 100) × (100 − U)')
         expect(chancePercent(0.0475)).toBe('4,75%')
     })
 

@@ -9,7 +9,6 @@ export const constellationEnglishArcana: Readonly<Record<string, StarText>> = {
         'Life',
         'You understand your body better and learn to conserve your strength.',
     ],
-    'shadow.root': ['Shadow', 'You can hide your presence and act unnoticed.'],
     'magic.spark_damage': ['Bright spark', 'Spark deals 10% more damage.'],
     'magic.spark_range': ['Long thread', 'Spark reaches one tile farther.'],
     'magic.spark_economy': ['Fine weaving', 'Spark costs 1 less MP.'],
@@ -110,32 +109,6 @@ export const constellationEnglishArcana: Readonly<Record<string, StarText>> = {
     ],
     'life.move': ['Light step', 'Movement speed increases by 5%.'],
     'life.dash': ['Second wind', 'Dashing costs 10% less energy.'],
-    'shadow.speed': ['Smooth step', 'You move 10% faster while sneaking.'],
-    'shadow.noise1': [
-        'Quiet footfall',
-        'You make 15% less noise while sneaking.',
-    ],
-    'shadow.noise2': [
-        'Soundless',
-        'You make another 15% less noise while sneaking.',
-    ],
-    'shadow.sight': [
-        'Melt into the shadows',
-        'You can sneak 10% closer before being detected.',
-    ],
-    'shadow.economy': ['Nimble fingers', 'Theft costs 1 less EN.'],
-    'shadow.luck1': [
-        'Unnoticed touch',
-        'The chance of stealing without detection rises by 3 percentage points.',
-    ],
-    'shadow.luck2': [
-        'Art of pickpocketing',
-        'The chance of stealing without detection rises by another 3 percentage points.',
-    ],
-    'shadow.tempo': [
-        'Quick hands',
-        'The shared theft cooldown is one second shorter. The individual target cooldown still applies.',
-    ],
     'magic.fireball': [
         'Firebolt',
         'Firebolt explodes at the selected point and burns everyone in the area.',

@@ -5,11 +5,12 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { constellationModifiers } from './constellationModifiers'
+import { canObserveRoomCharacter, visibilityRadius } from './characterSight'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import { canPerceivePrayerCaster } from './prayerAuras'
+
+export { visibilityRadius } from './characterSight'
 
 export function createSnapshot(
     characters: Iterable<GameCharacter>,
@@ -17,6 +18,7 @@ export function createSnapshot(
     chests: Iterable<WorldChestSnapshot>,
     tick: number,
     now: number,
+    navigation: NavigationService,
     observerId?: string
 ): WorldSnapshot {
     const candidates = [...characters]
@@ -24,10 +26,8 @@ export function createSnapshot(
     return {
         chests: [...chests],
         characters: candidates
-            .filter(
-                (character) =>
-                    observer === undefined ||
-                    canPerceivePrayerCaster(observer, character, now)
+            .filter((character) =>
+                canObserveRoomCharacter(observer, character, navigation, now)
             )
             .map((character) =>
                 character.snapshot(now, character.id === observerId)
@@ -73,6 +73,7 @@ export function faceNearestTarget(
     actor: GameCharacter,
     characters: Iterable<GameCharacter>,
     radius: number,
+    navigation: NavigationService,
     now = Date.now()
 ): void {
     const target = [...characters]
@@ -81,7 +82,7 @@ export function faceNearestTarget(
                 character.id !== actor.id &&
                 character.alive &&
                 character.trainingTarget === undefined &&
-                canPerceivePrayerCaster(actor, character, now)
+                canObserveRoomCharacter(actor, character, navigation, now)
         )
         .filter((character) => canTargetByFaction(actor, character))
         .map((character) => ({
@@ -97,45 +98,4 @@ export function faceNearestTarget(
             y: target.position.y - actor.position.y,
         })
     }
-}
-
-export function visibilityRadius(
-    observer: GameCharacter,
-    target: GameCharacter,
-    radius: number,
-    now: number,
-    origin = observer.position
-): number {
-    if (!canPerceivePrayerCaster(observer, target, now)) {
-        return -1
-    }
-    if (
-        target.movement.mode !== 'sneaking' ||
-        target.movement.dashUntil > now ||
-        target.lastAttackAt + 1_000 > now
-    ) {
-        return radius
-    }
-    const vector = {
-        x: target.position.x - origin.x,
-        y: target.position.y - origin.y,
-    }
-    const facing = {
-        up: { x: 0, y: -1 },
-        down: { x: 0, y: 1 },
-        left: { x: -1, y: 0 },
-        right: { x: 1, y: 0 },
-    }[observer.facing]
-    const length = Math.max(1, Math.hypot(vector.x, vector.y))
-    const dot = (vector.x * facing.x + vector.y * facing.y) / length
-    const factor = dot >= 0.4 ? 0.65 : dot <= -0.4 ? 0.35 : 0.5
-    return Math.min(
-        radius,
-        Math.max(
-            28,
-            radius *
-                factor *
-                constellationModifiers(target).sneakSightMultiplier
-        )
-    )
 }

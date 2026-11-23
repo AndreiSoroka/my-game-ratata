@@ -123,7 +123,7 @@ export const constellationEnglishUndead: Readonly<Record<string, StarText>> = {
     ],
     'undead.imprint': [
         'Imprint of the path',
-        'The first skeleton raised at a hero’s grave gains a bonus based on their strongest mastery. Blade and Life grant 10 HP, Arrow and Shadow grant 20 energy, and other constellations increase natural energy recovery by 15%.',
+        'The first skeleton raised at a hero’s grave gains a bonus based on their strongest mastery. Blade and Life grant 10 HP. Arrow, Stealth and Thievery grant 20 energy. Other constellations increase natural energy recovery by 15%.',
     ],
     'undead.second_oath': [
         'Second oath',

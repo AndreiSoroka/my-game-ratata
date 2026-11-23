@@ -4,6 +4,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import type { NavigationService } from './navigation'
 import { canHearSpeech, speechAvailable } from './socialSpeech'
 
@@ -138,12 +139,16 @@ export class SpeechActivityService {
         if (channel === 'whisper' && observer.id !== targetId) {
             return false
         }
-        return canHearSpeech(
-            observer,
-            actor,
-            this.world.navigationFor(actor),
-            now,
-            channel === 'whisper' ? 48 : 80
+        const navigation = this.world.navigationFor(actor)
+        return (
+            canObserveRoomCharacter(observer, actor, navigation, now) &&
+            canHearSpeech(
+                observer,
+                actor,
+                navigation,
+                now,
+                channel === 'whisper' ? 48 : 80
+            )
         )
     }
 

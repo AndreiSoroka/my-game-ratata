@@ -1,4 +1,7 @@
-import { QUICK_SHOT_RULES } from '@my-game-ratata/contracts'
+import {
+    QUICK_SHOT_RULES,
+    resolveStealthTheftBonuses,
+} from '@my-game-ratata/contracts'
 
 import { resolveBladeBonuses } from './constellationBladeBonuses'
 import {
@@ -52,14 +55,7 @@ export function resolveConstellationBonuses(
             : 1,
         restEnergyRegenBonus: 0.3 * learned('life.rest'),
         workEnergyMultiplier: 1 - 0.1 * learned('life.work'),
-        sneakSpeedMultiplier: 1 + 0.1 * learned('shadow.speed'),
-        sneakNoiseMultiplier:
-            1 - 0.15 * (learned('shadow.noise1') + learned('shadow.noise2')),
-        sneakSightMultiplier: 1 - 0.1 * learned('shadow.sight'),
-        theftEnergyDiscount: learned('shadow.economy'),
-        theftChanceBonus:
-            0.03 * (learned('shadow.luck1') + learned('shadow.luck2')),
-        theftCooldownDiscount: 1000 * learned('shadow.tempo'),
+        ...resolveStealthTheftBonuses(activeIds),
         ...prayerBonuses(activeIds, lastLightEligible),
         deityInsight: rank('prayer.omen', 4),
         otherDeityInsight: rank('prayer.others', 4),
