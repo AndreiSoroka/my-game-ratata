@@ -1,4 +1,4 @@
-import type { ConstellationSnapshot } from '@my-game-ratata/contracts'
+import type { ConstellationPathSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { renderVueStory } from '@/shared/lib/storybook'
@@ -87,6 +87,42 @@ const sky: ConstellationSnapshot = {
     ],
 }
 
+const depthPaths = [
+    { id: 'blade', name: 'Клинок', color: '#f5d098', unlocked: true },
+    { id: 'magic', name: 'Магия', color: '#bccbff', unlocked: true },
+    { id: 'prayer', name: 'Молитва', color: '#f0d6ab', unlocked: true },
+    { id: 'arrow', name: 'Стрела', color: '#c9d7a0', unlocked: true },
+    { id: 'life', name: 'Жизнь', color: '#ecc5a9', unlocked: true },
+] satisfies ConstellationPathSnapshot[]
+const layeredSky: ConstellationSnapshot = {
+    version: 1,
+    paths: depthPaths,
+    nodes: [
+        ...depthPaths.map(({ id, name }, index) => ({
+            id,
+            name,
+            constellationId: id,
+            x: (index - 2) * 135,
+            y: 0,
+            parents: [],
+            unlocked: true,
+        })),
+        {
+            id: 'devotion',
+            constellationId: 'prayer',
+            x: 54,
+            y: -70,
+            parents: ['prayer'],
+            unlocked: true,
+            name: 'Преданность',
+        },
+    ],
+    edges: [
+        { from: 'prayer', to: 'devotion', via: [{ x: 16, y: -40 }] },
+        { from: 'devotion', to: 'life', via: [{ x: 145, y: -100 }], crossLink: true },
+    ],
+}
+
 type Args = {
     constellation: ConstellationSnapshot
     selectedId?: string
@@ -114,3 +150,6 @@ const meta = {
 export default meta
 export const Default: StoryObj<Args> = {}
 export const Debug: StoryObj<Args> = { args: { debug: true } }
+export const FiveDepths: StoryObj<Args> = {
+    args: { constellation: layeredSky, selectedId: 'prayer' },
+}

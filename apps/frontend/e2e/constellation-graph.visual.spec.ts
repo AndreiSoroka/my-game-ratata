@@ -1,4 +1,5 @@
-import { expect, type Locator, test } from '@playwright/test'
+import type { Vector2 } from '@my-game-ratata/contracts'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
 
@@ -119,24 +120,47 @@ function opacity(locator: Locator) {
     })
 }
 
-const layerStars = ['grave', 'strike', 'parry', 'arrow', 'blade']
+const layerRoots = ['blade', 'magic', 'prayer', 'arrow', 'life']
+const skyPan = { x: 100, y: 30 }
 
-test('five foreground depths move independently on pan and zoom and keep lines attached', async ({
+test('five constellation layers keep their stars, lines and labels together on pan and zoom', async ({
     page,
 }) => {
-    await page.goto(graphStory)
+    await page.goto(
+        '/iframe.html?id=entities-constellations-constellationgraph--five-depths&viewMode=story'
+    )
     const graph = page.getByRole('group', { name: 'Созвездия развития' })
     const zoomIn = page.getByRole('button', { name: 'Приблизить небосвод' })
     const reset = page.getByRole('button', { name: 'Показать весь небосвод' })
     const background = graph.locator('.constellation-background__layer')
+    await expect(graph.locator('.constellation-label').filter({ hasText: 'Молитва' })).toBeVisible()
     await expect(background).toHaveCount(5)
     const initialBackgroundTransform = (await background.first().getAttribute('patternTransform'))!
     const before = await skyProjection(graph)
 
+    await panSky(page, graph)
+    const panned = await skyProjection(graph)
+    for (const [layer, id] of layerRoots.entries()) {
+        const rate = 1 - 0.015 * layer
+        expectMovement(before.stars[id]!.screen, panned.stars[id]!.screen, {
+            x: skyPan.x * rate,
+            y: skyPan.y * rate,
+        })
+    }
+    expectGroupPan(before, panned)
+    expectAttachedLink(panned)
+    expect(panned.cross[1]).not.toEqual(before.cross[1])
+    await reset.click()
+    expect(await skyProjection(graph)).toEqual(before)
+
     await zoomIn.click()
     const zoomed = await skyProjection(graph)
-    expect(zoomed.stars.grave!.world).toEqual(before.stars.grave!.world)
-    expect(zoomed.stars.blade!.world).not.toEqual(before.stars.blade!.world)
+    expect(zoomed.stars.blade!.world).toEqual(before.stars.blade!.world)
+    expect(zoomed.stars.life!.world).not.toEqual(before.stars.life!.world)
+    const zoomMovement = displacement(before.stars.prayer!.world, zoomed.stars.prayer!.world)
+    expectMovement(before.stars.devotion!.world, zoomed.stars.devotion!.world, zoomMovement)
+    for (const [index, point] of before.inner.entries())
+        expectMovement(point.world, zoomed.inner[index]!.world, zoomMovement)
     expectAttachedLink(zoomed)
     const scales = await background.evaluateAll((layers) =>
         layers.map(
@@ -145,34 +169,54 @@ test('five foreground depths move independently on pan and zoom and keep lines a
     )
     expect(scales[0]).toBeGreaterThan(1)
     expect(scales.at(-1)).toBeGreaterThan(scales[0]!)
+    await panSky(page, graph)
+    const zoomPanned = await skyProjection(graph)
+    expectGroupPan(zoomed, zoomPanned)
+    expectAttachedLink(zoomPanned)
+
+    await graph.getByRole('button', { name: 'Молитва', exact: true }).press('Enter')
+    const focused = await skyProjection(graph)
+    expect(focused.cross).toEqual(before.cross)
+    expect(focused.stars.prayer!.world).toEqual(before.stars.prayer!.world)
     await reset.click()
     await expect(background.first()).toHaveAttribute('patternTransform', initialBackgroundTransform)
     expect(await skyProjection(graph)).toEqual(before)
-
-    const bounds = (await graph.boundingBox())!
-    await page.mouse.move(bounds.x + 30, bounds.y + bounds.height - 20)
-    await page.mouse.down()
-    await page.mouse.move(bounds.x + 130, bounds.y + bounds.height - 20, { steps: 5 })
-    await page.mouse.up()
-    const after = await skyProjection(graph)
-    for (const [layer, id] of layerStars.entries()) {
-        expect(after.stars[id]!.screen - before.stars[id]!.screen).toBeCloseTo(100 - 1.5 * layer, 1)
-    }
-    expectAttachedLink(after)
-    expect(after.link[1]).not.toEqual(before.link[1])
-
-    await graph.getByRole('button', { name: 'Клинок', exact: true }).press('Enter')
-    const focused = await skyProjection(graph)
-    expect(focused.link).toEqual(before.link)
-    expect(focused.stars.blade!.world).toEqual(before.stars.blade!.world)
-    await reset.click()
-    expect(await skyProjection(graph)).toEqual(before)
 })
 
-function expectAttachedLink(projection: Awaited<ReturnType<typeof skyProjection>>) {
+type SkyProjection = Awaited<ReturnType<typeof skyProjection>>
+
+async function panSky(page: Page, graph: Locator): Promise<void> {
+    const bounds = (await graph.boundingBox())!
+    const x = bounds.x + 30
+    const y = bounds.y + bounds.height - 50
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + skyPan.x, y + skyPan.y, { steps: 5 })
+    await page.mouse.up()
+}
+
+function displacement(before: Vector2, after: Vector2): Vector2 {
+    return { x: after.x - before.x, y: after.y - before.y }
+}
+
+function expectMovement(before: Vector2, after: Vector2, expected: Vector2): void {
+    const movement = displacement(before, after)
+    expect(movement.x).toBeCloseTo(expected.x, 1)
+    expect(movement.y).toBeCloseTo(expected.y, 1)
+}
+
+function expectGroupPan(before: SkyProjection, after: SkyProjection): void {
+    const movement = displacement(before.stars.prayer!.screen, after.stars.prayer!.screen)
+    expectMovement(before.stars.devotion!.screen, after.stars.devotion!.screen, movement)
+    expectMovement(before.label, after.label, movement)
+    for (const [index, point] of before.inner.entries())
+        expectMovement(point.screen, after.inner[index]!.screen, movement)
+}
+
+function expectAttachedLink(projection: SkyProjection) {
     for (const [end, node] of [
-        [projection.link[0], 'slash'],
-        [projection.link.at(-1), 'grave'],
+        [projection.cross[0], 'devotion'],
+        [projection.cross.at(-1), 'life'],
     ] as const) {
         expect(end!.x).toBeCloseTo(projection.stars[node]!.world.x, 4)
         expect(end!.y).toBeCloseTo(projection.stars[node]!.world.y, 4)
@@ -182,21 +226,35 @@ function expectAttachedLink(projection: Awaited<ReturnType<typeof skyProjection>
 function skyProjection(graph: Locator) {
     return graph.evaluate(
         (element, ids) => {
-            const stars: Record<string, { screen: number; world: { x: number; y: number } }> = {}
+            const stars: Record<string, { screen: Vector2; world: Vector2 }> = {}
             for (const id of ids) {
                 const node = element.querySelector<SVGGElement>(`[data-node-id="${id}"]`)!
                 const { e: x, f: y } = node.transform.baseVal.getItem(0).matrix
-                stars[id] = { screen: node.getScreenCTM()!.e, world: { x, y } }
+                const { e, f } = node.getScreenCTM()!
+                stars[id] = { screen: { x: e, y: f }, world: { x, y } }
             }
-            const points = element.querySelector<SVGPolylineElement>(
+            const inner = element.querySelector<SVGPolylineElement>(
+                'polyline:not(.constellation-edge--cross-link)'
+            )!
+            const matrix = inner.getScreenCTM()!
+            const cross = element.querySelector<SVGPolylineElement>(
                 '.constellation-edge--cross-link'
             )!.points
+            const label = [...element.querySelectorAll('.constellation-label')].find(
+                (node) => node.textContent?.trim() === 'Молитва'
+            )!
+            const { x, y } = label.getBoundingClientRect()
             return {
                 stars,
-                link: Array.from(points, ({ x, y }) => ({ x, y })),
+                inner: Array.from(inner.points, ({ x, y }) => {
+                    const screen = new DOMPoint(x, y).matrixTransform(matrix)
+                    return { world: { x, y }, screen: { x: screen.x, y: screen.y } }
+                }),
+                cross: Array.from(cross, ({ x, y }) => ({ x, y })),
+                label: { x, y },
             }
         },
-        [...layerStars, 'slash']
+        [...layerRoots, 'devotion']
     )
 }
 
