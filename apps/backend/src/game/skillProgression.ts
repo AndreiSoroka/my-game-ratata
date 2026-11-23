@@ -4,6 +4,7 @@ import {
     constellationIds,
     type DeityId,
     type GameEventPayload,
+    isMotherPrayer,
     MASTERY_NAMES,
     masteryConflict,
     masteryThreshold,
@@ -19,14 +20,22 @@ import { canWalkDuringPrayer } from './combatMovement'
 import {
     createConstellationState,
     finishConstellationAction,
+    reconcileConstellationLevels,
     syncAbilityConstellations,
 } from './constellations'
 import type { CharacterConstellations } from './constellationState'
 import { activeMagicChannel, magicAttackWindingUp } from './magicState'
 
+export {
+    debitMasteryExperience,
+    retainMasteryExperience,
+    transferMasteryExperience,
+} from './masteryLoss'
+
 export interface MasteryPractice {
     level: number
     experience: bigint
+    highestLevel?: number
 }
 export interface CharacterProgression {
     constellations: CharacterConstellations
@@ -36,6 +45,7 @@ export interface CharacterProgression {
     magicChaptersRead: number
     prayerAvailableAt: number
     spellAvailableAt: number
+    ashManaGiftAvailableAt: number
 }
 export function createProgression(): CharacterProgression {
     return {
@@ -48,6 +58,7 @@ export function createProgression(): CharacterProgression {
         magicChaptersRead: 0,
         prayerAvailableAt: 0,
         spellAvailableAt: 0,
+        ashManaGiftAvailableAt: 0,
     }
 }
 export function captureMasteryLevels(
@@ -75,7 +86,7 @@ export function canUseResurrection(
     return (
         actor.abilities.known.has(abilityId) &&
         profileForPrayer(abilityId).reviveTypes.length > 0 &&
-        (actor.heroClass === 'cleric' ||
+        ((isMotherPrayer(abilityId) && actor.heroClass === 'cleric') ||
             actor.progression.masteries[
                 PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)]
                     .constellationId
@@ -147,7 +158,11 @@ function applyMasteryAwards(
     const events = awards.flatMap(({ id, micros }) =>
         applyMasteryAward(actor, id, micros)
     )
-    syncAbilityConstellations(actor)
+    if (actor.progression.constellations.dormant.size > 0) {
+        reconcileConstellationLevels(actor)
+    } else {
+        syncAbilityConstellations(actor)
+    }
     return [
         ...events,
         ...finishConstellationAction(actor, {
@@ -159,7 +174,7 @@ function applyMasteryAwards(
         }),
     ]
 }
-function canReceiveMastery(
+export function canReceiveMastery(
     actor: GameCharacter,
     receiptId: string | undefined
 ): boolean {
@@ -198,6 +213,10 @@ function applyMasteryAward(
 ): GameEventPayload[] {
     const state = actor.progression.constellations
     const mastery = actor.progression.masteries[id]
+    const previousHighestLevel = Math.max(
+        mastery.highestLevel ?? 0,
+        mastery.level
+    )
     mastery.experience += micros
     state.evidence[id] = (state.evidence[id] ?? 0) + 1
     if (id === 'blade' || id === 'life' || id === 'shadow') {
@@ -207,7 +226,9 @@ function applyMasteryAward(
     while (mastery.experience >= masteryThreshold(mastery.level)) {
         mastery.experience -= masteryThreshold(mastery.level)
         mastery.level += 1
-        state.credits[id] += 1
+        if (mastery.level > previousHighestLevel) {
+            state.credits[id] += 1
+        }
         events.push({
             actorId: actor.id,
             kind: 'skill_up',

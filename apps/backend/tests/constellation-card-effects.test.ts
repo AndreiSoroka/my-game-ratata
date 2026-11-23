@@ -88,9 +88,9 @@ describe('earned effects of active constellation cards', () => {
         ).toBeUndefined()
         expect(
             resolveConstellationCardEffects('prayer_grave.root', all)
-        ).toEqual([
-            'Возвращает павших товарищей из числа нежити, чья душа ещё не покинула этот мир.',
-        ])
+        ).toContain(
+            'Возвращает павших товарищей из числа нежити, чья душа ещё не покинула этот мир.'
+        )
         const missingOwnRevival = new Set(all)
         missingOwnRevival.delete('prayer_grave.revive')
         expect(
@@ -98,7 +98,9 @@ describe('earned effects of active constellation cards', () => {
                 'prayer_grave.root',
                 missingOwnRevival
             )
-        ).toBeUndefined()
+        ).not.toContain(
+            'Возвращает павших товарищей из числа нежити, чья душа ещё не покинула этот мир.'
+        )
         expect(
             resolveConstellationCardEffects('prayer.root', missingOwnRevival)
         ).toContain(revival)
@@ -142,7 +144,7 @@ it('includes only the applicable learned modifiers of both shots and both fireba
     }
     expect(
         fullConstellationCatalog.filter((node) => node.effectType === 'active')
-    ).toHaveLength(18)
+    ).toHaveLength(23)
     for (const node of fullConstellationCatalog.filter(
         (entry) => entry.effectType === 'active'
     )) {

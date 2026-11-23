@@ -5,6 +5,7 @@ import type { CityWorldState } from './cityWorldState'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import type { NavigationService } from './navigation'
+import { spawnNecromancer } from './necromancerSpawn'
 import {
     initializeNpcIdentityProfiles,
     resolveNpcIdentitySeed,
@@ -24,6 +25,7 @@ import { createLocationEnemies } from './worldSpawns'
 export interface GraveRegistration {
     source: GraveSourceDefinition
     initialChildren: readonly string[]
+    reserveRevival?: boolean
 }
 
 export function spawnRoomCharacters(
@@ -45,6 +47,7 @@ export function spawnRoomCharacters(
             location.navigation,
             location.description
         )
+        const necromancer = spawnNecromancer(location)
         for (const source of location.navigation.grid.encounters?.graves ??
             []) {
             graves.push({
@@ -52,12 +55,14 @@ export function spawnRoomCharacters(
                 initialChildren: enemies
                     .filter((enemy) => enemy.graveSourceId === source.id)
                     .map(({ character }) => character.id),
+                ...(necromancer === undefined ? {} : { reserveRevival: true }),
             })
         }
         for (const { character, controller } of [
             ...(locationId === centerLocationId
                 ? [createFriendlyGirl(location.navigation, suffix)]
                 : []),
+            ...(necromancer === undefined ? [] : [necromancer]),
             ...enemies,
         ]) {
             registerRoomCharacter(

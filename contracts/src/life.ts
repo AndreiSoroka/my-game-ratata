@@ -6,6 +6,8 @@ export interface CharacterLifeSnapshot {
     retired: boolean
     reviveMsLeft: number
     reviveUntil: number
+    /** Private server countdown for the owner of a bound heart. */
+    lichReturnMsLeft?: number
 }
 
 export const HERO_REVIVAL_WINDOW_MS = 60_000

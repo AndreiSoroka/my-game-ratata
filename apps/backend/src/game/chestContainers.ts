@@ -8,6 +8,7 @@ import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import {
     chestOpenRefusal,
+    chestPickup,
     chestRefusalNotice,
     type WorldChest,
 } from './chestInteraction'
@@ -31,6 +32,13 @@ export class ChestContainers {
         private readonly locationId: string,
         private readonly wallet?: CorpseWallet
     ) {}
+
+    public ritualChest(id: string): WorldChest | undefined {
+        const chest = this.chests.get(id)
+        return chest?.kind === undefined || chest.kind === 'chest'
+            ? chest
+            : undefined
+    }
 
     public handle(
         actor: GameCharacter,
@@ -221,16 +229,7 @@ export class ChestContainers {
         if (item === undefined) {
             return chestRefusalNotice(actor.id, 'В сумке нет свободного места.')
         }
-        resetMartyrStreak(actor)
-        return [
-            {
-                actorId: actor.id,
-                chestId: chest.id,
-                itemId: item.itemId,
-                audienceIds: [actor.id],
-                kind: 'item_pickup',
-            },
-        ]
+        return [chestPickup(actor, chest, item)]
     }
 
     private take(
@@ -292,14 +291,7 @@ export class ChestContainers {
             if (item === undefined) {
                 continue
             }
-            resetMartyrStreak(actor)
-            events.push({
-                actorId: actor.id,
-                chestId: chest.id,
-                itemId: item.itemId,
-                audienceIds: [actor.id],
-                kind: 'item_pickup',
-            })
+            events.push(chestPickup(actor, chest, item))
         }
         if (chest.contents.length > 0) {
             events.push(

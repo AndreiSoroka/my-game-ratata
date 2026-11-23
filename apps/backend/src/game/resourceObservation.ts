@@ -1,5 +1,6 @@
 import {
     abilityIds,
+    ASH_RULES,
     type CharacterResourceChecks,
     type ExactHealthSnapshot,
     FARM_SOW_ENERGY,
@@ -171,6 +172,15 @@ export function resourceChecks(
                 },
             ])
         ) as CharacterResourceChecks['prayers'],
+        ...(hasStar(character, 'prayer_grave.heal_second')
+            ? {
+                  ashSecondHeal:
+                      check(
+                          prayerManaCost('restore', 'pray_grave') +
+                              ASH_RULES.extraHealMana
+                      ) === 'ready',
+              }
+            : {}),
         dash: check(0, effectiveDashCost(character, now)),
         sow: check(0, sowEnergyCost),
         sowEnergyCost,

@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { activeConstellationStars } from './constellations'
 import { deityMood } from './deities'
 
 export function characterResurrectionParameters(
@@ -15,7 +16,7 @@ export function characterResurrectionParameters(
 ) {
     return resolveResurrectionParameters(
         abilityId,
-        actor.progression.constellations.opened,
+        activeConstellationStars(actor),
         deityMood(
             PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)].deityId,
             now

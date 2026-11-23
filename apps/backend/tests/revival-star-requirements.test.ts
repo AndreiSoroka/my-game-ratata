@@ -120,7 +120,9 @@ const authoredLevelGates = new Map([
 describe('individually authored constellation requirements', () => {
     it('removes depth-based gates from every ordinary random star', () => {
         for (const star of fullConstellationCatalog.filter(
-            (entry) => entry.acquisition === 'random'
+            (entry) =>
+                entry.acquisition === 'random' &&
+                entry.constellationId !== 'prayer_grave'
         )) {
             expect(star.minimumLevel, star.id).toBe(
                 authoredLevelGates.get(star.id) ?? 1

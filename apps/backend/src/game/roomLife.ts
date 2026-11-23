@@ -1,12 +1,14 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
+import { AshRites } from './ashRites'
 import type { GameCharacter } from './character'
 import { PolicyController } from './companionControllers'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import type { GraveCombatContext } from './graveRules'
 import { GraveSpawns } from './graveSpawns'
+import { LichReturns } from './lichReturns'
 import { resourceOccupants } from './roomEconomy'
 import { advanceRoomLives, finalizeRoomLife } from './roomLifecycle'
 import type { RoomSocket } from './roomMessaging'
@@ -21,6 +23,8 @@ import { applyEncounterDifficulty } from './worldSpawns'
 
 export class RoomLife {
     private readonly deathSpawns = new GraveSpawns()
+    private readonly lichReturns: LichReturns
+    public readonly ashRites: AshRites
     public readonly graveRules: GraveCombatContext = {
         get: (id) => this.deathSpawns.get(id),
         list: (locationId) => this.deathSpawns.snapshot(locationId),
@@ -37,8 +41,22 @@ export class RoomLife {
         private readonly nicknames: Map<string, string>,
         private readonly world: () => WorldLocations,
         private readonly companions: CompanionService,
-        private readonly onEvents: (events: GameEventPayload[]) => void
-    ) {}
+        private readonly onEvents: (events: GameEventPayload[]) => void,
+        private readonly onFinalDefeat?: (
+            actor: GameCharacter,
+            now: number
+        ) => void
+    ) {
+        this.lichReturns = new LichReturns(world, characters, onEvents)
+        this.ashRites = new AshRites(
+            world,
+            characters,
+            controllers,
+            companions,
+            (actor, message, context) =>
+                this.useHeart(actor, message.targetId, context)
+        )
+    }
 
     public graves(locationId: string) {
         return this.deathSpawns.snapshot(locationId)
@@ -48,8 +66,15 @@ export class RoomLife {
         graves: readonly GraveRegistration[],
         now: number
     ): void {
-        for (const { source, initialChildren } of graves) {
-            this.deathSpawns.register(source, initialChildren, now)
+        for (const { source, initialChildren, reserveRevival } of graves) {
+            this.deathSpawns.register(
+                source,
+                initialChildren,
+                now,
+                undefined,
+                undefined,
+                reserveRevival
+            )
         }
         this.deathSpawns.assignGuardians(this.characters)
     }
@@ -58,12 +83,21 @@ export class RoomLife {
         return finalizeRoomLife(this.context(now), actor, true)
     }
 
+    public useHeart(
+        actor: GameCharacter,
+        chestId: string,
+        context: AbilityContext
+    ): GameEventPayload[] {
+        return this.lichReturns.bind(actor, chestId, context)
+    }
+
     public advance(
         now: number,
         abilityContextFor: (actor: GameCharacter, at: number) => AbilityContext
     ): void {
         advanceRoomLives({
             ...this.context(now),
+            delayRetirement: (actor, at) => this.lichReturns.advance(actor, at),
             abilityContextFor: (actor, at) => ({
                 ...abilityContextFor(actor, at),
                 graves: this.graveRules,
@@ -114,6 +148,8 @@ export class RoomLife {
                 at: number,
                 abandoned: boolean
             ) => {
+                this.lichReturns.cancel(actor)
+                this.onFinalDefeat?.(actor, at)
                 const inheritedMasteryLevel = captureSkeletonInheritance(actor)
                 const inheritedMasteryPath =
                     captureSkeletonInheritanceProfile(actor)?.mastery

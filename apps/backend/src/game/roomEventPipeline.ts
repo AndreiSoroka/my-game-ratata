@@ -1,0 +1,112 @@
+import type { GameEventPayload } from '@my-game-ratata/contracts'
+
+import { archiveRoomConversations } from '../ai/memoryLifecycle'
+import type { AdventureService } from './adventure'
+import type { GameCharacter } from './character'
+import { canTargetByFaction, combatFaction } from './factions'
+import type { PartyService } from './parties'
+import { publishRoomEvents } from './roomEvents'
+import type { RoomSocket } from './roomMessaging'
+import { connectionsInLocation } from './roomQueries'
+import type { RoomSocial } from './roomSocial'
+import { rewardSkeletonKill } from './skeletonKillReward'
+import type { WorldLocations } from './worldLocations'
+
+interface EventPipelineOptions {
+    archivePerson: (id: string, now: number) => void
+    hasModelLease: (actor: GameCharacter, now: number) => boolean
+    world: () => WorldLocations
+}
+
+/** Fallen guards are observed immediately. Only their final defeat advances objectives. */
+export class RoomEventPipeline {
+    private readonly fallen = new WeakMap<
+        GameCharacter,
+        { sequence: number; event: GameEventPayload; hostile: boolean }
+    >()
+
+    public constructor(
+        private readonly characters: Map<string, GameCharacter>,
+        private readonly connections: Map<RoomSocket, string | undefined>,
+        private readonly adventure: AdventureService,
+        private readonly parties: PartyService,
+        private readonly social: RoomSocial,
+        private readonly options: EventPipelineOptions
+    ) {}
+
+    public publish(events: GameEventPayload[]): void {
+        if (events.length === 0) {
+            return
+        }
+        const objectiveEvents = events.filter(
+            (event) => !this.deferDefeat(event)
+        )
+        archiveRoomConversations(
+            events,
+            this.characters.values(),
+            this.options.archivePerson
+        )
+        this.social.observe(objectiveEvents)
+        publishRoomEvents(
+            events,
+            this.characters,
+            this.adventure,
+            this.parties,
+            (id) =>
+                connectionsInLocation(
+                    this.connections,
+                    this.characters,
+                    id
+                ).keys(),
+            this.connections,
+            this.options.world(),
+            this.options.hasModelLease,
+            objectiveEvents
+        )
+    }
+
+    public finalDefeat(actor: GameCharacter, now: number): void {
+        const defeat = this.fallen.get(actor)
+        if (defeat?.sequence !== actor.deathSequence) {
+            return
+        }
+        this.fallen.delete(actor)
+        const events = [defeat.event]
+        const find = (id: string) => this.characters.get(id)
+        const world = this.options.world()
+        this.social.observe(events)
+        this.adventure.observe(
+            events,
+            find,
+            (target) => world.get(target.locationId).navigation
+        )
+        this.parties.observe(events, find)
+        const killer = find(defeat.event.actorId ?? '')
+        if (killer !== undefined && defeat.hostile) {
+            this.publish(rewardSkeletonKill(killer, actor, now))
+        }
+    }
+
+    private deferDefeat(event: GameEventPayload): boolean {
+        if (event.kind !== 'death' || event.targetId === undefined) {
+            return false
+        }
+        const actor = this.characters.get(event.targetId)
+        if (actor?.mortal !== true || actor.archetype !== 'skeleton') {
+            return false
+        }
+        if (this.fallen.get(actor)?.sequence !== actor.deathSequence) {
+            const killer = this.characters.get(event.actorId ?? '')
+            const hostile =
+                killer !== undefined &&
+                combatFaction(killer) !== combatFaction(actor) &&
+                canTargetByFaction(killer, actor)
+            this.fallen.set(actor, {
+                sequence: actor.deathSequence,
+                event,
+                hostile,
+            })
+        }
+        return true
+    }
+}

@@ -79,7 +79,8 @@ function activeHarmProfile(
         return undefined
     const abilityId = preview.abilityId ?? 'pray'
     const profile = profileForPrayer(abilityId)
-    return snapshotPrayerParameters(player, abilityId).harm === true && profile.harmTypes.length > 0
+    return snapshotPrayerParameters(player, abilityId).harm === true &&
+        (abilityId === 'pray_grave' || profile.harmTypes.length > 0)
         ? profile
         : undefined
 }

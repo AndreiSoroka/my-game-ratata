@@ -3,6 +3,7 @@ import type { GraveSourceDefinition, Vector2 } from '@my-game-ratata/contracts'
 export interface AuthoredEncounters {
     graves: GraveSourceDefinition[]
     slimeHabitats: Vector2[]
+    ashRefuge?: { home: Vector2; chestId: string; chest: Vector2 }
 }
 export interface EncounterMapObject {
     x: number
@@ -31,7 +32,12 @@ export function readEncounterData(
     const habitatLayer = map.layers.find(
         (layer) => layer.name === 'Slime habitats'
     )
-    if (graveLayer === undefined && habitatLayer === undefined) {
+    const refugeLayer = map.layers.find((layer) => layer.name === 'Ash refuge')
+    if (
+        [graveLayer, habitatLayer, refugeLayer].every(
+            (layer) => layer === undefined
+        )
+    ) {
         return undefined
     }
     const ids = new Set<string>()
@@ -67,7 +73,44 @@ export function readEncounterData(
         }
         return { x: object.x, y: object.y }
     })
-    return { graves, slimeHabitats }
+    const ashRefuge =
+        refugeLayer === undefined
+            ? undefined
+            : readAshRefuge(refugeLayer.objects ?? [], map, locationId)
+    return {
+        graves,
+        slimeHabitats,
+        ...(ashRefuge === undefined ? {} : { ashRefuge }),
+    }
+}
+
+function readAshRefuge(
+    objects: EncounterMapObject[],
+    map: EncounterMap,
+    locationId: string
+) {
+    const home = objects.filter(({ type }) => type === 'ash_home')
+    const chests = objects.filter(({ type }) => type === 'ash_chest')
+    const [point] = home
+    const [chest] = chests
+    const chestId = chest === undefined ? undefined : property(chest, 'chestId')
+    if (
+        home.length !== 1 ||
+        chests.length !== 1 ||
+        point === undefined ||
+        chest === undefined ||
+        typeof chestId !== 'string' ||
+        chestId.length === 0 ||
+        !validPoint(point, map) ||
+        !validPoint(chest, map)
+    ) {
+        throw new Error(`Invalid Ash refuge in ${locationId}`)
+    }
+    return {
+        home: { x: point.x, y: point.y },
+        chestId,
+        chest: { x: chest.x, y: chest.y },
+    }
 }
 
 function sourceId(

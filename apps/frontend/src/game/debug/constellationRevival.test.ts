@@ -65,7 +65,7 @@ it('combines the active prayer without changing healing or mixing conditional an
     })
     expect(calculate('prayer_grave.root').metrics).toContainEqual({
         label: 'Шанс воскрешения',
-        value: '55%',
+        value: '70%',
     })
     expect(metric('prayer_grave.revive', 'Ресурсы после воскрешения')).toContain('50% максимума')
 })

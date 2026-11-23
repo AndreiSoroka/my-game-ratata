@@ -13,6 +13,7 @@ export interface MapLandmarkDefinition {
     position: Vector2
     direction?: WorldDirection
     destinationLocationId?: string
+    ashClue?: string
 }
 interface LandmarkMap {
     width: number
@@ -70,8 +71,22 @@ export function readMapLandmarks(
             if (kind === 'gate') {
                 readGate(landmark, properties, locationId)
             }
+            if (properties.has('ashClue')) {
+                landmark.ashClue = readAshClue(properties.get('ashClue'))
+            }
             return landmark
         })
+}
+
+function readAshClue(value: unknown): string {
+    if (
+        typeof value !== 'string' ||
+        value.trim().length === 0 ||
+        value.length > 140
+    ) {
+        throw new Error('Invalid authored Ash clue')
+    }
+    return value.trim()
 }
 
 function invalidPosition(point: Vector2, map: LandmarkMap): boolean {

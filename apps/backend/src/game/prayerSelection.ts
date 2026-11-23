@@ -1,4 +1,5 @@
 import {
+    ASH_RULES,
     isMotherPrayer,
     type PrayerActionId,
     type PrayerIntent,
@@ -9,6 +10,7 @@ import {
 
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
+import { planAshSecondaryHeal } from './ashPrayerTargets'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
 import { canPurifyGrave } from './gravePrayer'
@@ -21,6 +23,7 @@ import {
 import {
     prayerHarmTargets,
     prayerResourceMissing,
+    previewHarmTargets,
     validPrayerIntent,
 } from './prayerContext'
 import { prayerAvailableAt, prayerParameters } from './prayerParameters'
@@ -84,9 +87,23 @@ export function resolvePrayerIntent(
     if (grave !== undefined) {
         return { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } }
     }
-    return prayerHarmTargets(actor, context, abilityId).length > 0
-        ? { mode: 'harm' }
-        : { mode: 'devotion' }
+    return automaticHarmIntent(actor, context, ordered, abilityId)
+}
+
+function automaticHarmIntent(
+    actor: GameCharacter,
+    context: AbilityContext,
+    ordered: readonly GameCharacter[],
+    abilityId: PrayerActionId
+): PrayerIntent {
+    const threats = prayerHarmTargets(actor, context, abilityId)
+    if (abilityId === 'pray_grave') {
+        const nearest = ordered.find((candidate) => threats.includes(candidate))
+        return nearest === undefined
+            ? { mode: 'devotion' }
+            : { mode: 'harm', targetId: nearest.id }
+    }
+    return threats.length > 0 ? { mode: 'harm' } : { mode: 'devotion' }
 }
 
 function nearbyPrayerGrave(
@@ -119,16 +136,18 @@ export function previewPrayer(
         selectedTargetId,
         abilityId
     )
-    const targets =
-        intent.mode === 'devotion'
-            ? []
-            : prayerHarmTargets(actor, context, abilityId)
+    const targets = previewHarmTargets(actor, context, intent, abilityId)
     const parameters = prayerParameters(
         actor,
         context.navigation.grid.tileWidth,
-        abilityId
+        abilityId,
+        intent.mode
     )
-    const manaCost = prayerManaCost(intent.mode, abilityId)
+    const baseCost = prayerManaCost(intent.mode, abilityId)
+    const secondary =
+        planAshSecondaryHeal(actor, intent, context, abilityId, baseCost) !==
+        undefined
+    const manaCost = baseCost + (secondary ? ASH_RULES.extraHealMana : 0)
     if (isMotherPrayer(abilityId)) {
         return previewMother(
             actor,
@@ -146,6 +165,9 @@ export function previewPrayer(
         radius: parameters.radius,
         durationMs: intent.mode === 'devotion' ? 400 : parameters.durationMs,
         harmfulTargets: targets.length,
+        ...(abilityId !== 'pray_grave' || intent.mode === 'devotion'
+            ? {}
+            : { targetCount: secondary ? 2 : 1 }),
         includesSelf: targets.some((target) => target.id === actor.id),
         includesAllies: targets.some(
             (target) =>

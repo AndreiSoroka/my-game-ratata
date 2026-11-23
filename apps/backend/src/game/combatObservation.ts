@@ -46,15 +46,8 @@ export function observeCharacterCombat(
     delete description.resourceChecks
     delete description.characterSheet
     delete description.stats
-    if (view.observer?.id !== snapshot.id && description.combat !== undefined) {
-        description.combat = { ...description.combat }
-        delete description.combat.combo
-    }
-    if (
-        view.observer?.id !== snapshot.id &&
-        description.progression !== undefined
-    ) {
-        description.progression = publicProgression(description.progression)
+    if (view.observer?.id !== snapshot.id) {
+        stripPrivateCombat(description)
     }
     return {
         ...description,
@@ -73,6 +66,20 @@ export function observeCharacterCombat(
         },
         ...privateSheet(target, view),
         ...observedAbilities(snapshot.abilities, target, view),
+    }
+}
+
+function stripPrivateCombat(description: CharacterSnapshot): void {
+    if (description.combat !== undefined) {
+        description.combat = { ...description.combat }
+        delete description.combat.combo
+    }
+    if (description.life?.lichReturnMsLeft !== undefined) {
+        description.life = { ...description.life }
+        delete description.life.lichReturnMsLeft
+    }
+    if (description.progression !== undefined) {
+        description.progression = publicProgression(description.progression)
     }
 }
 
@@ -105,7 +112,24 @@ function observedHealth(
     const segments = healthSegments(owner)
     return segments !== undefined && health.kind === 'exact'
         ? observeSegmentedHealth(health, segments)
-        : { kind: 'percent', percent: healthPercent(health) }
+        : publicHealthBand(health)
+}
+
+/** The health projection for a character already checked for visibility. */
+export function observeForeignHealth(
+    observer: GameCharacter,
+    target: GameCharacter
+): HealthSnapshot {
+    const health: HealthSnapshot = {
+        kind: 'exact',
+        current: target.hp,
+        max: target.maxHp,
+    }
+    return observer.exactCombatNumbers ? health : publicHealthBand(health)
+}
+
+function publicHealthBand(health: HealthSnapshot): HealthSnapshot {
+    return { kind: 'percent', percent: healthPercent(health) }
 }
 
 function privateSheet(

@@ -2,6 +2,7 @@ import {
     ABILITY_DEFINITIONS,
     type AbilityDefinition,
     type AbilityId,
+    ASH_RULES,
     type BladeTechniqueParameters,
     CITY_PORTAL_MANA_FRACTION,
     isArcaneAbility,
@@ -17,7 +18,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { resolveCharacterStats } from './characterStats'
-import { constellationModifiers } from './constellationModifiers'
+import { ashParameters, constellationModifiers } from './constellationModifiers'
 import { resolveArrowParameters } from './effectiveArrowParameters'
 import { effectiveMaxMana } from './effectiveResources'
 import { hasEquippedSword } from './skillProgression'
@@ -34,6 +35,9 @@ export function effectiveAbility(
         movementMs: number
     } {
     const definition = { ...ABILITY_DEFINITIONS[id] }
+    if (id === 'ash_raise') {
+        definition.windupMs = ashParameters(actor).raiseWindupMs
+    }
     if (isBladeAbility(id)) {
         return {
             ...definition,
@@ -186,7 +190,9 @@ export function effectiveDashCost(
     const discount =
         roadPrayerDashRemainingMs(actor, now) > 0
             ? ROAD_PRAYER_RULES.dashDiscount
-            : 0
+            : (actor.movement.ashPrayerDashUntil ?? now) > now
+              ? ASH_RULES.dashDiscount
+              : 0
     return Math.max(
         0,
         MOVEMENT_RULES.dashEnergy *

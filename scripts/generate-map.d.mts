@@ -16,6 +16,7 @@ export function generateWorldMap(
     definition: GeneratedLocationDefinition,
     options?: {
         seed?: string | number
+        ashRefugeSeed?: string | number
         style?: CityLayoutStyle
         forceCityFallback?: boolean
     }

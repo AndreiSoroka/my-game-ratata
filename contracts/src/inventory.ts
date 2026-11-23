@@ -8,6 +8,7 @@ export const itemIds = [
     'old_sword',
     'simple_sword',
     'slime_heart',
+    'lich_heart',
     'bone',
     'herbs',
     'fiber',
@@ -66,6 +67,13 @@ export interface ItemDefinition {
 }
 
 export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
+    lich_heart: {
+        id: 'lich_heart',
+        name: 'Сердце лича',
+        maxStack: 1,
+        description:
+            'Сердце в пепельной печати. Связь держится, пока оно лежит в своём сундуке.',
+    },
     bone: {
         id: 'bone',
         name: 'Кость',

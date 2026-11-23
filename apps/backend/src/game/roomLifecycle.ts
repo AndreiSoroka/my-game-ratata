@@ -20,6 +20,7 @@ interface LifeContext {
     nicknames: Map<string, string>
     now: number
     onEvents: (events: GameEventPayload[]) => void
+    delayRetirement?: (character: GameCharacter, now: number) => boolean
     abilityContextFor?: (actor: GameCharacter, now: number) => AbilityContext
     beforeRetire?: (
         character: GameCharacter,
@@ -45,7 +46,9 @@ export function advanceRoomLives(context: LifeContext): void {
         )
     }
     for (const character of characters.values()) {
-        finalizeRoomLife(context, character)
+        if (context.delayRetirement?.(character, now) !== true) {
+            finalizeRoomLife(context, character)
+        }
     }
 }
 
@@ -79,6 +82,9 @@ export function finalizeRoomLife(
     }
     context.characters.delete(character.id)
     context.controllers.delete(character.id)
-    context.nicknames.delete(normalizeNickname(character.nickname))
+    const nickname = normalizeNickname(character.nickname)
+    if (context.nicknames.get(nickname) === character.id) {
+        context.nicknames.delete(nickname)
+    }
     return true
 }

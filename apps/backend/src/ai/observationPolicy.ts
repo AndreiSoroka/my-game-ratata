@@ -16,6 +16,8 @@ const roleConstraints: Record<NpcAiRole, string> = {
         'Coordinate city help through validated quest proposals, finite municipal quest funding and existing worker requests. Cannot mint goods or refill funds.',
     companion:
         'Accept one requester at a time. Companion follow and consent use ordinary game rules.',
+    necromancer:
+        'Choose only from the supplied local tactics. The server rechecks each action.',
 }
 
 export function filterNpcAiTargets(

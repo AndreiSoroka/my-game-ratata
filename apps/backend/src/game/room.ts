@@ -1,12 +1,13 @@
-import { type ClientMessage } from '@my-game-ratata/contracts'
+import {
+    type ClientMessage,
+    type GameEventPayload,
+} from '@my-game-ratata/contracts'
 
-import { archiveRoomConversations } from '../ai/memoryLifecycle'
 import * as roomAi from '../ai/roomAi'
 export type { GameRoomOptions } from '../ai/roomAi'
 import { AdventureService } from './adventure'
 import { adventureWorldOptions } from './adventureWorld'
 import type { GameCharacter } from './character'
-import { type attemptAttack } from './combat'
 import { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { createRoomScavenger } from './mobScavenging'
@@ -18,7 +19,7 @@ import { createRoomChestActions } from './roomChests'
 import * as roomClientDispatch from './roomClientDispatch'
 import { createRoomControlRequester } from './roomControl'
 import * as roomEconomy from './roomEconomy'
-import { publishRoomEvents } from './roomEvents'
+import { RoomEventPipeline } from './roomEventPipeline'
 import { createDefaultRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
 import { RoomLife } from './roomLife'
@@ -62,7 +63,8 @@ export class GameRoom {
         this.playerIdsByNickname,
         () => this.world,
         this.companions,
-        (events) => this.publishEvents(events)
+        (events) => this.publishEvents(events),
+        (actor, now) => this.events.finalDefeat(actor, now)
     )
     private readonly theft = new TheftService()
     public readonly workerRequests = new WorkerRequestService()
@@ -73,6 +75,19 @@ export class GameRoom {
         this.parties,
         () => this.npcAi,
         () => this.characters.values()
+    )
+    private readonly events = new RoomEventPipeline(
+        this.characters,
+        this.connections,
+        this.adventure,
+        this.parties,
+        this.social,
+        {
+            archivePerson: (id, now) => this.npcAi?.archivePerson(id, now),
+            hasModelLease: (actor, now) =>
+                this.companions.hasActiveLease(actor, now, this),
+            world: () => this.world,
+        }
     )
     private lastTickAt = Date.now()
     private timer: ReturnType<typeof setInterval> | undefined
@@ -195,16 +210,12 @@ export class GameRoom {
         (events) => this.publishEvents(events)
     )
 
-    private readonly connectionsIn = (locationId: string) =>
-        roomQueries.connectionsInLocation(
-            this.connections,
-            this.characters,
-            locationId
-        )
-
     public readonly findVisibleTarget = roomQueries.createRoomTargetFinder(
         () => this.characters,
         (actor) => this.navigationFor(actor)
+    )
+    public readonly raisableCorpseFor = roomQueries.createNearbyCorpseFinder(
+        () => this.world
     )
 
     private readonly combat = createRoomCombatActions(
@@ -213,6 +224,7 @@ export class GameRoom {
         (events) => this.publishEvents(events),
         {
             graves: this.life.graveRules,
+            useAshRite: this.life.ashRites.use,
             sameParty: this.parties.sameParty.bind(this.parties),
             exchangePaused: (actorId) =>
                 this.social.exchanges.isPaused(actorId),
@@ -288,6 +300,7 @@ export class GameRoom {
         this.lastTickAt = now
         this.tickIndex += 1
         this.npcAi?.beforeTick(now)
+        this.publishEvents(this.life.ashRites.advance(now))
 
         advanceRoomSimulation({
             companions: this.companions,
@@ -309,21 +322,7 @@ export class GameRoom {
         this.npcAi?.afterTick(now)
     }
 
-    public publishEvents(events: ReturnType<typeof attemptAttack>): void {
-        archiveRoomConversations(events, this.characters.values(), (id, now) =>
-            this.npcAi?.archivePerson(id, now)
-        )
-        this.social.observe(events)
-        publishRoomEvents(
-            events,
-            this.characters,
-            this.adventure,
-            this.parties,
-            (locationId) => this.connectionsIn(locationId).keys(),
-            this.connections,
-            this.world,
-            (character, now) =>
-                this.companions.hasActiveLease(character, now, this)
-        )
+    public publishEvents(events: GameEventPayload[]): void {
+        this.events.publish(events)
     }
 }

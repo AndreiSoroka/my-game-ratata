@@ -28,8 +28,9 @@ const ids = {
     mira: 'npc_friendly_girl_1',
     kaplya: 'npc_magic_slime_1',
     vera: 'npc_cleric_1',
+    savva: 'npc_necromancer_1',
 } as const
-const keys: NpcIdentityKey[] = ['mira', 'kaplya', 'vera']
+const keys = ['mira', 'kaplya', 'vera'] as const
 
 function actor(
     id: string,
@@ -86,10 +87,13 @@ describe('authored NPC identity catalogue', () => {
         expect(changed.version).toBe(original.version)
     })
 
-    it('contains exactly five short, distinct histories for each of the three profiles', () => {
+    it('retains five distinct histories for the original profiles and validates Savva', () => {
         expect(Object.keys(npcIdentityDefinitions).sort()).toEqual(
-            [...keys].sort()
+            [...keys, 'savva'].sort()
         )
+        expect(() =>
+            validateNpcIdentityDefinition(npcIdentityDefinitions.savva)
+        ).not.toThrow()
         for (const key of keys) {
             const definition = npcIdentityDefinitions[key]
             expect(() =>
@@ -332,13 +336,13 @@ describe('identity lifetime and gameplay authority', () => {
 })
 
 describe('room-level identity and speech independence', () => {
-    it('prepares only the three authored NPCs before model control without touching human biographies', () => {
+    it('prepares the authored NPCs before model control without touching human biographies', () => {
         const room = new GameRoom(undefined, {
             npcIdentitySeed: 'identity-world',
             npcSpeechSeed: 'speech-world',
         })
         try {
-            for (const key of keys) {
+            for (const key of [...keys, 'savva'] as const) {
                 const character = room.getCharacter(ids[key])
                 expect(character?.npcIdentityKey).toBe(key)
                 expect(character?.npcIdentityProfile).toEqual(

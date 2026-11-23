@@ -1,4 +1,5 @@
 import {
+    ASH_RULES,
     type GameEventPayload,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerActionId,
@@ -7,17 +8,21 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
-import type { RoadPrayerCastState } from './abilityState'
+import { nextPrayerReceipt, type RoadPrayerCastState } from './abilityState'
 import type { GameCharacter } from './character'
+import { ashParameters } from './constellationModifiers'
 import { constellationModifiers } from './constellations'
-import { miracleChance } from './deities'
+import { ashHealingChance, miracleChance } from './deities'
+import { effectiveMaxMana } from './effectiveResources'
 import { resetMartyrStreak } from './martyr'
 import { unansweredPrayer } from './prayerFeedback'
 import { applyPrayerGifts } from './prayerGifts'
 import { applyPrayerGraves } from './prayerGraves'
-import { applyPrayerWave } from './prayerWave'
+import { applyAshBrand, applyPrayerWave } from './prayerWave'
 import { characterResurrectionParameters } from './resurrection'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
+
+type CompletedGift = ReturnType<typeof applyPrayerGifts>
 
 /** Freeze modifiers and conflict factors before resolving the completed cast and its awards. */
 export function completePrayer(
@@ -28,44 +33,44 @@ export function completePrayer(
     quality: number,
     receiptId?: string,
     abilityId: PrayerActionId = 'pray',
-    road?: RoadPrayerCastState
+    road?: RoadPrayerCastState,
+    secondaryTargetId?: string
 ): GameEventPayload[] {
     if (intent.mode === 'devotion') {
         return []
     }
     // Capture modifiers and low-health evidence before any healing or learning.
-    const school = PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)]
     const factors = captureMasteryFactors(actor)
-    const modifiers = constellationModifiers(actor)
     const resurrection =
         intent.mode === 'revive'
             ? characterResurrectionParameters(actor, abilityId, context.now)
             : undefined
     const lowHpGift = wasLowHpGift(actor, abilityId)
-    const castReceipt =
-        receiptId ??
-        `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`
+    const castReceipt = receiptId ?? nextPrayerReceipt(actor)
     const answered =
         roll <
         (resurrection?.successChance ??
-            miracleChance(actor, context.now, school.deityId))
+            giftAnswerChance(actor, intent, abilityId, context.now))
     const gift = applyPrayerGifts(
         actor,
         intent,
         context,
         answered,
-        quality * (abilityId === 'pray' ? modifiers.prayerGiftMultiplier : 1),
+        quality * giftPower(actor, abilityId),
         abilityId,
         factors,
         resurrection,
-        road
+        road,
+        secondaryTargetId
     )
-    const wave = applyPrayerWave(
+    const wave = resolveHarm(
         actor,
+        intent,
         context,
+        abilityId,
         roll,
-        quality * modifiers.prayerHarmMultiplier,
-        abilityId
+        quality,
+        answered
     )
     const graves = applyPrayerGraves(
         actor,
@@ -76,6 +81,7 @@ export function completePrayer(
         abilityId
     )
     const events = [...gift.events, ...wave.events, ...graves.events]
+    applyAshHealingPerks(actor, abilityId, intent, gift, context.now)
     if (events.length === 0 && (road === undefined || !answered)) {
         events.push(unansweredPrayer(actor.id, abilityId))
     }
@@ -99,6 +105,81 @@ export function completePrayer(
             ),
         }),
     ]
+}
+
+function giftAnswerChance(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    abilityId: PrayerActionId,
+    now: number
+): number {
+    return abilityId === 'pray_grave' && intent.mode === 'restore'
+        ? ashHealingChance(actor, now)
+        : miracleChance(
+              actor,
+              now,
+              PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)].deityId
+          )
+}
+
+function giftPower(actor: GameCharacter, abilityId: PrayerActionId): number {
+    if (abilityId === 'pray') {
+        return constellationModifiers(actor).prayerGiftMultiplier
+    }
+    return abilityId === 'pray_grave' ? ashParameters(actor).healPower : 1
+}
+
+function resolveHarm(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    context: AbilityContext,
+    abilityId: PrayerActionId,
+    roll: number,
+    quality: number,
+    answered: boolean
+) {
+    return abilityId === 'pray_grave' && intent.mode === 'harm'
+        ? applyAshBrand(actor, intent.targetId, context, answered, quality)
+        : applyPrayerWave(
+              actor,
+              context,
+              roll,
+              quality * constellationModifiers(actor).prayerHarmMultiplier,
+              abilityId
+          )
+}
+
+function applyAshHealingPerks(
+    actor: GameCharacter,
+    abilityId: PrayerActionId,
+    intent: PrayerIntent,
+    gift: CompletedGift,
+    now: number
+): void {
+    if (
+        abilityId !== 'pray_grave' ||
+        intent.mode !== 'restore' ||
+        !gift.meaningful
+    ) {
+        return
+    }
+    const { dash, mana } = ashParameters(actor)
+    if (dash) {
+        actor.movement.ashPrayerDashUntil =
+            now + ASH_RULES.dashDiscountDurationMs
+    }
+    if (
+        mana &&
+        gift.meaningfulAllyHeal &&
+        now >= actor.progression.ashManaGiftAvailableAt
+    ) {
+        actor.mana = Math.min(
+            effectiveMaxMana(actor),
+            actor.mana + ASH_RULES.manaGift
+        )
+        actor.progression.ashManaGiftAvailableAt =
+            now + ASH_RULES.manaGiftCooldownMs
+    }
 }
 
 function prayerReward(abilityId: PrayerActionId, experience: number) {

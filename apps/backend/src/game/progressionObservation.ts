@@ -10,6 +10,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { activeConstellationStars } from './constellations'
 import { snapshotConstellations } from './constellationSnapshot'
 import { snapshotDeity, snapshotOtherDeities } from './deities'
 import { readCachedConstellationLayout } from './personalConstellationSky'
@@ -36,7 +37,7 @@ export function snapshotProgression(
             resurrection: resurrectionUnlocked
                 ? resolveResurrectionParameters(
                       'pray',
-                      actor.progression.constellations.opened,
+                      activeConstellationStars(actor),
                       deity.mood
                   ).successChance
                 : null,

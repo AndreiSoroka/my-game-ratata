@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { arrowExpansionStars } from './constellationArrowStars'
+import { ashStars } from './constellationAshStars'
 import {
     constellationPaths,
     type ConstellationStar,
@@ -178,6 +179,7 @@ const authoredNodes = [
     ...arrowExpansionStars,
     ...roots.filter((node) => node.constellationId === 'undead'),
     ...undeadStars,
+    ...ashStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(

@@ -2,11 +2,13 @@ import {
     isMotherPrayer,
     type PrayerActionId,
     type PrayerIntent,
+    type PrayerMode,
     profileForPrayer,
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
 import { knowsAbility } from './abilityState'
+import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
@@ -43,7 +45,8 @@ export function prayerTargetNearby(
     actor: GameCharacter,
     target: GameCharacter,
     context: AbilityContext,
-    abilityId: PrayerActionId = 'pray'
+    abilityId: PrayerActionId = 'pray',
+    mode: PrayerMode = 'restore'
 ): boolean {
     return (
         !target.tags.has('offline') &&
@@ -53,7 +56,8 @@ export function prayerTargetNearby(
             prayerParameters(
                 actor,
                 context.navigation.grid.tileWidth,
-                abilityId
+                abilityId,
+                mode
             ).radius &&
         (actor.id === target.id ||
             context.navigation.hasLineOfSight(actor.position, target.position))
@@ -70,10 +74,23 @@ export function revivalTargetEligible(
         canUseResurrection(actor, abilityId) &&
         !target.alive &&
         target.reviveUntil > context.now &&
-        target.faction === actor.faction &&
+        compatibleRevivalAllegiance(actor, target, context.now, abilityId) &&
         profileForPrayer(abilityId).reviveTypes.includes(target.creatureType) &&
-        prayerTargetNearby(actor, target, context, abilityId)
+        prayerTargetNearby(actor, target, context, abilityId, 'revive')
     )
+}
+
+export function compatibleRevivalAllegiance(
+    actor: GameCharacter,
+    target: GameCharacter,
+    now: number,
+    abilityId: PrayerActionId
+): boolean {
+    return abilityId === 'pray_grave'
+        ? ashSummoner(target) === undefined &&
+              !canTargetByFaction(actor, target, now) &&
+              !canTargetByFaction(target, actor, now)
+        : target.faction === actor.faction
 }
 
 export function prayerHarmTargets(
@@ -94,8 +111,11 @@ export function prayerHarmTargets(
     return [...characters.values()].filter(
         (target) =>
             target.alive &&
-            types.includes(target.creatureType) &&
-            prayerTargetNearby(actor, target, context, abilityId)
+            (abilityId === 'pray_grave'
+                ? canTargetByFaction(actor, target, context.now) &&
+                  canPerceivePrayerCaster(actor, target, context.now)
+                : types.includes(target.creatureType)) &&
+            prayerTargetNearby(actor, target, context, abilityId, 'harm')
     )
 }
 
@@ -191,7 +211,8 @@ export function prayerGiftTargets(
     actor: GameCharacter,
     intent: PrayerIntent,
     context: AbilityContext,
-    abilityId: PrayerActionId = 'pray'
+    abilityId: PrayerActionId = 'pray',
+    secondaryTargetId?: string
 ): GameCharacter[] {
     if (intent.mode === 'devotion' || intent.mode === 'revive') {
         return []
@@ -205,7 +226,9 @@ export function prayerGiftTargets(
         ? [...context.characters, actor]
         : [...context.characters, actor].filter(
               (target) =>
-                  intent.mode === 'restore' && target.id === intent.targetId
+                  intent.mode === 'restore' &&
+                  (target.id === intent.targetId ||
+                      target.id === secondaryTargetId)
           )
     return [
         ...new Map(candidates.map((target) => [target.id, target])).values(),
@@ -225,6 +248,9 @@ function validHarmPrayer(
     abilityId: PrayerActionId
 ): boolean {
     const targets = prayerHarmTargets(actor, context, abilityId)
+    if (abilityId === 'pray_grave' && targetId === undefined) {
+        return false
+    }
     return targetId === undefined
         ? targets.length > 0
         : targets.some((target) => target.id === targetId)
@@ -238,4 +264,22 @@ function prayerRecipient(
     return targetId === actor.id
         ? actor
         : context.characters.find((candidate) => candidate.id === targetId)
+}
+
+export function previewHarmTargets(
+    actor: GameCharacter,
+    context: AbilityContext,
+    intent: PrayerIntent,
+    abilityId: PrayerActionId
+): GameCharacter[] {
+    if (intent.mode === 'devotion') {
+        return []
+    }
+    const targets = prayerHarmTargets(actor, context, abilityId)
+    if (abilityId === 'pray_grave') {
+        return intent.mode === 'harm'
+            ? targets.filter((target) => target.id === intent.targetId)
+            : []
+    }
+    return targets
 }

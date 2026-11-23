@@ -1,5 +1,5 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
-import type { Actor, SpriteSheet } from 'excalibur'
+import { type Actor, Color, type Sprite, type SpriteSheet } from 'excalibur'
 
 import { characterCatalog, type CharacterId } from '../assets/characterCatalog'
 import { characterFrame } from './characterFrame'
@@ -7,6 +7,7 @@ import { trainingDummyGraphic } from './trainingDummyGraphic'
 
 export class CharacterGraphics {
     private readonly dummy = trainingDummyGraphic()
+    private readonly lichSprites = new WeakMap<Sprite, Sprite>()
     public constructor(private readonly sheets: Map<CharacterId, SpriteSheet>) {}
     public update(
         actor: Actor,
@@ -27,8 +28,18 @@ export class CharacterGraphics {
             hurtElapsed
         )
         if (!sheet || !graphic) return
-        actor.graphics.use(sheet.getSprite(graphic.frame, graphic.row))
+        const sprite = sheet.getSprite(graphic.frame, graphic.row)
+        actor.graphics.use(snapshot.tags.includes('state.lich') ? this.lichSprite(sprite) : sprite)
         actor.graphics.flipHorizontal = graphic.flipHorizontal
         actor.graphics.opacity = snapshot.alive ? 1 : 0.55
+    }
+
+    private lichSprite(sprite: Sprite): Sprite {
+        const cached = this.lichSprites.get(sprite)
+        if (cached !== undefined) return cached
+        const tinted = sprite.clone()
+        tinted.tint = Color.fromHex('#a0caff')
+        this.lichSprites.set(sprite, tinted)
+        return tinted
     }
 }

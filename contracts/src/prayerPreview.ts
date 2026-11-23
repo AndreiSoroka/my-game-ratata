@@ -6,12 +6,14 @@ import {
     prayerSchoolId,
 } from './abilities'
 import { ABILITY_DEFINITIONS } from './abilities'
+import { ASH_RULES } from './ash'
 import type { CharacterSnapshot } from './index'
 import {
     PRAYER_SCHOOL_DEFINITIONS,
     prayerManaCost,
     profileForPrayer,
 } from './prayer'
+import { previewModeGeometry } from './prayerPreviewParameters'
 import {
     choosePrayerPreviewTargets,
     type PrayerPreviewOptions,
@@ -63,7 +65,7 @@ export function previewPrayerFromSnapshots(
     return {
         abilityId,
         intent,
-        manaCost: previewManaCost(context, intent.mode),
+        manaCost: previewManaCost(context, intent.mode, targets.length),
         ...(context.parameters.cost === undefined
             ? {}
             : { cost: context.parameters.cost }),
@@ -83,12 +85,23 @@ export function previewPrayerFromSnapshots(
         ),
     }
 }
-function previewManaCost(context: PreviewContext, mode: PrayerMode): number {
+function previewManaCost(
+    context: PreviewContext,
+    mode: PrayerMode,
+    targetCount: number
+): number {
     if (mode === 'devotion') {
         return context.parameters.hasAuras === true ||
             (context.parameters.cost?.healingManaFraction ?? 0) > 0
             ? context.parameters.manaCost
             : 0
+    }
+    if (
+        context.abilityId === 'pray_grave' &&
+        mode === 'restore' &&
+        targetCount === 2
+    ) {
+        return context.parameters.manaCost + ASH_RULES.extraHealMana
     }
     return mode === 'revive'
         ? prayerManaCost(mode, context.abilityId)
@@ -129,14 +142,15 @@ function unavailableReason(
 }
 
 function previewParameters(context: PreviewContext, mode: PrayerMode) {
+    const geometry = previewModeGeometry(context, mode)
     return {
-        radius: context.parameters.radius,
+        radius: geometry.radius,
         durationMs:
             mode === 'devotion' &&
             context.parameters.hasAuras !== true &&
             (context.parameters.cost?.healingManaFraction ?? 0) <= 0
                 ? 400
-                : context.parameters.durationMs,
+                : geometry.durationMs,
     }
 }
 

@@ -10,7 +10,8 @@ it('describes all prayer nodes with independent readable complete mathematical l
     const prayers = fullConstellationCatalog.filter((node) =>
         node.constellationId.startsWith('prayer')
     )
-    expect(prayers).toHaveLength(49)
+    expect(prayers).toHaveLength(87)
+    expect(prayers.filter((node) => node.constellationId === 'prayer_grave')).toHaveLength(40)
     for (const node of prayers) {
         const result = description(node.id)
         expect(result.summary.length).toBeGreaterThan(0)
@@ -18,7 +19,7 @@ it('describes all prayer nodes with independent readable complete mathematical l
         for (const formula of result.formulaDetails!) {
             expect(formula.expression).not.toMatch(/[А-Яа-яЁё]/)
             for (const symbol of formula.expression.match(/[A-Za-z]+/g) ?? []) {
-                if (['min', 'max', 'round', 'ceil', 'mod'].includes(symbol)) continue
+                if (['min', 'max', 'round', 'ceil', 'floor', 'mod'].includes(symbol)) continue
                 expect(
                     formula.variables.some(
                         (entry) => entry.symbol === symbol && entry.description.length > 0
@@ -29,6 +30,39 @@ it('describes all prayer nodes with independent readable complete mathematical l
         expect(result.notes.join(' ')).not.toMatch(/Чудесах 1|уровни Веры|miracles|faith\)/)
     }
     expect(JSON.stringify(fullConstellationCatalog)).toBe(before)
+})
+
+it('applies Ash healing and revival ranks to distinct outcomes', () => {
+    const active = new Set([
+        'prayer_grave.root',
+        'prayer_grave.heal_chance1',
+        'prayer_grave.heal_chance2',
+        'prayer_grave.revive',
+        'prayer_grave.revive_chance1',
+        'prayer_grave.revive_chance2',
+        'prayer_grave.revive_chance3',
+        'prayer_grave.revive_hp1',
+        'prayer_grave.revive_hp2',
+        'prayer_grave.revive_hp3',
+    ])
+    const describe = (id: string) => {
+        const node = fullConstellationCatalog.find((star) => star.id === id)
+        if (node === undefined) throw new Error(`Missing test star: ${id}`)
+        return describePrayerEffectChance(node, active)
+    }
+    const root = describe('prayer_grave.root')
+    expect(root?.formulas).toContain('min(95, B + 6)')
+    expect(root?.formulas).toContain('min(95, B + 15)')
+    expect(root?.formulas).toContain('max(1, ceil(N × 0,8))')
+    expect(root?.examples.slice(3).map(({ value }) => value)).toEqual([
+        'Успех 95%.',
+        'Успех 70%.',
+        'Успех 40%.',
+    ])
+    expect(describe('prayer_grave.revive')).toEqual(description('prayer_grave.revive'))
+    expect(describe('prayer_grave.brand')?.formulas[0]).toBe('B')
+    expect(describe('prayer_grave.raise')?.deterministic).toBe(true)
+    expect(describe('prayer_grave.heart')?.formulas).toContain('floor(X × 0,70)')
 })
 it('reports the song multiplier separately from the final Road Prayer roll', () => {
     const root = description('prayer_road.root')

@@ -16,7 +16,7 @@ export function minimumConstellationLevel(
     if (node === undefined) {
         throw new Error(`Unknown constellation star: ${nodeId}`)
     }
-    return (nodeId.endsWith('.revive') && heroClass === 'cleric') ||
+    return (nodeId === 'prayer.revive' && heroClass === 'cleric') ||
         startsWithSniperShot(nodeId, heroClass)
         ? 0
         : node.minimumLevel

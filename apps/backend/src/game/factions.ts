@@ -1,3 +1,4 @@
+import { ashSkeletonOrder } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { hasRetaliationRight } from './crimeRelations'
 
@@ -10,13 +11,34 @@ export function canTargetByFaction(
         return false
     }
 
+    const order = ashSkeletonOrder(actor)
+    if (actor.archetype === 'skeleton' && target.creatureType === 'ooze') {
+        return order?.kind === 'hunt_slimes' && target.faction === 'monsters'
+    }
+
     if (hasRetaliationRight(actor, target, now)) {
         return true
     }
 
-    if (actor.faction === target.faction) {
+    if (hasAshAffinity(actor, target) || hasAshAffinity(target, actor)) {
         return false
     }
 
-    return target.reputationWith(actor.faction) <= 0
+    const faction = combatFaction(actor)
+    if (faction === combatFaction(target)) {
+        return false
+    }
+
+    return target.reputationWith(faction) <= 0
+}
+
+function hasAshAffinity(actor: GameCharacter, target: GameCharacter): boolean {
+    return (
+        target.creatureType === 'undead' &&
+        (actor.ashPact || ashSkeletonOrder(actor)?.ownerAshPact === true)
+    )
+}
+
+export function combatFaction(actor: GameCharacter) {
+    return ashSkeletonOrder(actor)?.ownerFaction ?? actor.faction
 }

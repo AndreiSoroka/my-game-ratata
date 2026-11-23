@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import {
     CENTER_LOCATION_ID,
     GRID_SIZE,
+    WESTERN_RUINS_LOCATION_ID,
     WORLD_LOCATION_DEFINITIONS,
 } from '../contracts/src/world.ts'
 import { generateWorldMap } from './generate-map.mjs'
@@ -106,12 +107,12 @@ for (let row = 0; row < GRID_SIZE; row++)
         const definition = WORLD_LOCATION_DEFINITIONS.find(
             (entry) => entry.id === id
         )
-        const map = generateWorldMap(
-            definition,
-            id === CENTER_LOCATION_ID && process.env.GAME_WORLD_SEED
-                ? { seed: process.env.GAME_WORLD_SEED }
-                : {}
-        )
+        const worldSeed = process.env.GAME_WORLD_SEED
+        const options = {}
+        if (worldSeed && id === CENTER_LOCATION_ID) options.seed = worldSeed
+        if (worldSeed && id === WESTERN_RUINS_LOCATION_ID)
+            options.ashRefugeSeed = worldSeed
+        const map = generateWorldMap(definition, options)
         const data = JSON.stringify(map) + '\n'
         fs.writeFileSync(path.join(mapRoot, `${id}.json`), data)
         if (id === CENTER_LOCATION_ID)

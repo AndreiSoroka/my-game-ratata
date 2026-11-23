@@ -14,6 +14,7 @@ const actors = [
     { actorId: 'npc_friendly_girl_1', role: 'city_coordinator' },
     { actorId: 'npc_magic_slime_1', role: 'companion' },
     { actorId: 'npc_cleric_1', role: 'advisor' },
+    { actorId: 'npc_necromancer_1', role: 'necromancer' },
 ]
 
 describe('NPC AI configuration', () => {

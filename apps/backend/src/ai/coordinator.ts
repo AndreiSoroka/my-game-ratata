@@ -57,6 +57,9 @@ export class NpcAiCoordinator {
             diagnostics
         )
         for (const npc of config.npcs) {
+            if (npc.role === 'necromancer') {
+                continue
+            }
             this.states.set(
                 npc.actorId,
                 createNpcAiState(npc, room.getCharacter(npc.actorId))
@@ -215,6 +218,7 @@ export class NpcAiCoordinator {
         if (!this.active) {
             return
         }
+        this.scheduler.beforeTick(now)
         const incoming = [...this.states.values()].some((state) =>
             state.inbox.some((event) => event.system !== true)
         )

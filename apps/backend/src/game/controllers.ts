@@ -1,5 +1,6 @@
 import { PURSUIT_RULES, type Vector2 } from '@my-game-ratata/contracts'
 
+import { advanceAshSkeleton } from './ashSkeletonController'
 import { type GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
 import { lastHeardPoint } from './hearing'
@@ -22,6 +23,7 @@ export interface Mob1ControllerOptions {
 }
 
 export interface CharacterController {
+    readonly observesWhileCasting?: boolean
     update(character: GameCharacter, room: GameRoom, now: number): void
 }
 
@@ -53,6 +55,9 @@ export class Mob1Controller implements CharacterController {
             } else {
                 refreshPursuitObservation(character, room, now)
             }
+            return
+        }
+        if (advanceAshSkeleton(character, room, now)) {
             return
         }
 

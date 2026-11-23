@@ -5,9 +5,14 @@ import type {
     Vector2,
 } from '@my-game-ratata/contracts'
 
+import type {
+    NecromancerModelContext,
+    NecromancerModelDecision,
+} from '../game/necromancerTactics'
 import type { NpcAiObservation } from './observation'
 
-export type NpcAiRole = 'city_coordinator' | 'companion' | 'advisor'
+export type NpcAiRole =
+    'city_coordinator' | 'companion' | 'advisor' | 'necromancer'
 
 export interface NpcAiModelSettings {
     cliPath: string
@@ -202,4 +207,9 @@ export interface NpcAiProvider {
         settings: NpcAiModelSettings,
         signal: AbortSignal
     ): Promise<NpcAiReply>
+    decideNecromancer?(
+        context: NecromancerModelContext,
+        settings: NpcAiModelSettings,
+        signal: AbortSignal
+    ): Promise<NecromancerModelDecision>
 }

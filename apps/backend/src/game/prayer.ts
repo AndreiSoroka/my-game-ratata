@@ -1,4 +1,5 @@
 import {
+    ASH_RULES,
     type GameEventPayload,
     isMotherPrayer,
     type PrayerActionId,
@@ -7,6 +8,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
+import { secondaryAshPrayerTarget } from './ashPrayerTargets'
 import type { GameCharacter } from './character'
 import { beginRevive } from './characterLife'
 import { constellationModifiers } from './constellationModifiers'
@@ -136,7 +138,8 @@ function startOtherRevival(
                 prayerParameters(
                     actor,
                     context.navigation.grid.tileWidth,
-                    abilityId
+                    abilityId,
+                    'revive'
                 ).durationMs,
         },
     ]
@@ -213,10 +216,23 @@ function finishOtherPrayer(
     cast: ActivePrayerCast,
     context: AbilityContext
 ): GameEventPayload[] {
-    const cost =
+    const baseCost =
         cast.road === undefined
             ? prayerManaCost(cast.intent.mode, cast.abilityId)
             : 0
+    const secondaryTargetId =
+        cast.ashSecondaryTargetId !== undefined &&
+        actor.mana >= baseCost + ASH_RULES.extraHealMana
+            ? secondaryAshPrayerTarget(
+                  actor,
+                  cast.intent,
+                  context,
+                  cast.ashSecondaryTargetId
+              )?.id
+            : undefined
+    const cost =
+        baseCost +
+        (secondaryTargetId === undefined ? 0 : ASH_RULES.extraHealMana)
     if (actor.mana < cost) {
         return cancelPrayerCast(actor, context.now)
     }
@@ -225,7 +241,14 @@ function finishOtherPrayer(
     const roll = prayerCheckSample(random, advantage)
     releasePrayerCast(actor, context.now)
     actor.mana -= cost
-    setPrayerAvailableAt(actor, cast.abilityId, context.now)
+    setPrayerAvailableAt(
+        actor,
+        cast.abilityId,
+        context.now +
+            (cast.abilityId === 'pray_grave' && cast.intent.mode === 'harm'
+                ? ASH_RULES.brandCooldownMs
+                : 0)
+    )
     const outcome = resolveMiracle(actor, context.now, () => roll, cast.patron)
     return [
         {
@@ -243,7 +266,8 @@ function finishOtherPrayer(
             outcome.quality,
             cast.receiptId,
             cast.abilityId,
-            cast.road
+            cast.road,
+            secondaryTargetId
         ),
     ]
 }

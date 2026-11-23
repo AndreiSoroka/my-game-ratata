@@ -78,10 +78,9 @@ it('filters paths and uses cryptographic seeds for a new map', async () => {
         .mockReturnValue('00000000-0000-4000-8000-000000000001')
     const view = mount(ConstellationDebug, { props: { syncUrl: false } })
     await view.get('[data-testid="debug-path"]').setValue('prayer_grave')
-    expect(view.findAll('[data-star-id]').map((node) => node.attributes('data-star-id'))).toEqual([
-        'prayer_grave.root',
-        'prayer_grave.revive',
-    ])
+    const stars = view.findAll('[data-star-id]').map((node) => node.attributes('data-star-id'))
+    expect(stars).toHaveLength(40)
+    expect(stars.every((id) => id?.startsWith('prayer_grave.'))).toBe(true)
     await view.get('[data-testid="debug-regenerate"]').trigger('click')
     expect(random).toHaveBeenCalledOnce()
     expect(view.get('[data-testid="debug-seed"]').element).toHaveProperty(

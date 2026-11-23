@@ -9,6 +9,7 @@ import type {
 export * from './abilities'
 export * from './combat'
 import type { AttackZone } from './combat'
+export * from './ash'
 export * from './combatAim'
 export * from './development'
 export * from './discipline'
@@ -118,6 +119,7 @@ export const characterVisualIds = [
     'female_player',
     'male_mage',
     'male_player_2',
+    'necromancer',
     'player',
     'skeleton',
     'skeleton_mace',
@@ -227,6 +229,10 @@ export interface WorldChestSnapshot {
     propId?: string
     bounds?: WorldObjectBounds
     corpse?: CorpseAppearance
+    /** Finalized remains available for a shared Ash ritual. */
+    raisable?: true
+    /** The corpse has only ritual remains. Ordinary loot has already been taken. */
+    ashOnly?: true
     id: string
     itemCount: number
     position: Vector2

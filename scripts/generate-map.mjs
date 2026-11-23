@@ -2,6 +2,7 @@ import {
     CENTER_LOCATION_ID,
     GRID_SIZE,
     REGION_NAME,
+    WESTERN_RUINS_LOCATION_ID,
     WORLD_LOCATION_DEFINITIONS,
 } from '../contracts/src/world.ts'
 import { addNovogorod } from './generate-city.mjs'
@@ -59,6 +60,74 @@ export function hashSeed(value) {
     return seed
 }
 
+function createAshRefuge(seed) {
+    const corners = [
+        { x: 20, y: 20, inward: 1, chest: 'chest_forest_2' },
+        { x: 74, y: 20, inward: 1, chest: 'chest_forest_3' },
+        { x: 20, y: 60, inward: -1, chest: 'chest_forest_4' },
+        { x: 74, y: 60, inward: -1, chest: 'chest_forest_5' },
+    ]
+    const { x, y, inward, chest } =
+        corners[hashSeed(`ash-refuge:${String(seed)}`) % corners.length]
+    const markers = [
+        ['home', 'Убежище Саввы', x, y + inward * 3],
+        ['chest', 'Сундук в убежище', x, y],
+        [
+            'headstone',
+            'Плита с именами',
+            x - 2,
+            y + inward * 3,
+            'На надгробной плите читается имя дозорного Мирона.',
+        ],
+        [
+            'grave',
+            'Старая могила',
+            55,
+            38,
+            'На пряжке в старой могиле выбито имя дозорного Радомира.',
+        ],
+        [
+            'collapse',
+            'Обвалившийся проход',
+            x + 2,
+            y + inward * 4,
+            'В записи Глеба сказано, что сторожевой колокол так и не подал сигнал о смене дозора.',
+        ],
+    ]
+    return {
+        id: 21,
+        name: 'Ash refuge',
+        type: 'objectgroup',
+        visible: false,
+        opacity: 1,
+        draworder: 'topdown',
+        objects: markers.map(([kind, name, tileX, tileY, clue], index) => ({
+            id: 69000 + index,
+            type:
+                kind === 'home' || kind === 'chest'
+                    ? `ash_${kind}`
+                    : 'landmark',
+            name,
+            x: tileX * 16 + 8,
+            y: tileY * 16 + 8,
+            width: 0,
+            height: 0,
+            point: true,
+            rotation: 0,
+            visible: true,
+            properties: [
+                { name: 'kind', type: 'string', value: `ash_${kind}` },
+                ...(kind === 'chest'
+                    ? [{ name: 'chestId', type: 'string', value: chest }]
+                    : []),
+                ...(clue === undefined
+                    ? []
+                    : [{ name: 'ashClue', type: 'string', value: clue }]),
+            ],
+        })),
+    }
+}
+
 export function generateWorldMap(definition, options = {}) {
     const { column, row } = definition
     const index = row * GRID_SIZE + column
@@ -67,6 +136,7 @@ export function generateWorldMap(definition, options = {}) {
     const treeCount = biome.trees
     const lakeRadius = biome.lakes
     const ruinCount = biome.ruins
+    const westernRuins = definition.id === WESTERN_RUINS_LOCATION_ID
     const generationSeed = options.seed ?? 20261106 + index * 1709
     let seed =
         typeof generationSeed === 'number'
@@ -263,22 +333,27 @@ export function generateWorldMap(definition, options = {}) {
         return true
     }
     // Ruins have two broad entrances; rooms are never sealed.
-    for (const [cx, cy] of [
-        [74, 20],
-        [20, 60],
-        [74, 60],
-    ].slice(0, ruinCount)) {
+    function ruin(cx, cy, decorate) {
         for (let y = cy - 7; y <= cy + 7; y++)
             for (let x = cx - 9; x <= cx + 9; x++) {
                 const wall =
                     x === cx - 9 || x === cx + 9 || y === cy - 7 || y === cy + 7
                 const gate = Math.abs(x - cx) <= 2 || Math.abs(y - cy) <= 2
-                if (wall && !gate && !reserved[at(x, y)] && !water[at(x, y)]) {
+                const cell = at(x, y)
+                if (
+                    wall &&
+                    !gate &&
+                    !reserved[cell] &&
+                    !water[cell] &&
+                    !solid[cell] &&
+                    !objects[cell]
+                ) {
                     structures[at(x, y)] =
                         gid.walls + (y === cy - 7 ? 2 : 4 * 8 + 2)
                     solid[at(x, y)] = 1
                 }
                 if (
+                    decorate &&
                     !wall &&
                     !water[at(x, y)] &&
                     !roads[at(x, y)] &&
@@ -287,6 +362,13 @@ export function generateWorldMap(definition, options = {}) {
                     plants[at(x, y)] = gid.plains + 9 * 6 + 2
                 }
             }
+    }
+    for (const [cx, cy] of [
+        [74, 20],
+        [20, 60],
+        [74, 60],
+    ].slice(0, ruinCount)) {
+        ruin(cx, cy, true)
     }
     if (definition.biome === 'outskirts')
         addHamlets({
@@ -342,6 +424,7 @@ export function generateWorldMap(definition, options = {}) {
                 ]
             }
         }
+    if (westernRuins) ruin(20, 20, false)
     // Signposts orient explorers at the main junction and the four approaches.
     for (const [x, y] of [
         [45, 36],
@@ -415,6 +498,9 @@ export function generateWorldMap(definition, options = {}) {
     )
     interactions.push(...cityInteractions)
     const depthProps = createDepthProps(settlementContext, definition.id)
+    const ashRefuge = westernRuins
+        ? createAshRefuge(options.ashRefugeSeed ?? generationSeed)
+        : undefined
     const layer = (id, layerName, data, visible = true, collision = false) => ({
         data,
         height,
@@ -452,6 +538,7 @@ export function generateWorldMap(definition, options = {}) {
                 definition,
                 depthProps
             ),
+            ...(ashRefuge === undefined ? [] : [ashRefuge]),
             ...(training.length
                 ? [
                       {
@@ -560,8 +647,14 @@ export function generateWorldMap(definition, options = {}) {
                       },
                   ]),
         ],
-        nextlayerid: anchors.length ? 22 : training.length ? 20 : 19,
-        nextobjectid: anchors.length ? 70000 : training.length ? 40002 : 40000,
+        nextlayerid:
+            anchors.length || ashRefuge ? 22 : training.length ? 20 : 19,
+        nextobjectid:
+            anchors.length || ashRefuge
+                ? 70000
+                : training.length
+                  ? 40002
+                  : 40000,
         orientation: 'orthogonal',
         properties: [
             { name: 'locationName', type: 'string', value: name },

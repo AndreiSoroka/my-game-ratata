@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { codexNpcArguments, parseCodexResult } from './codexCliProtocol'
+import { codexNpcArguments, parseCodexOutput } from './codexCliProtocol'
 import { cliEnvironment } from './npcCliProcess'
 import { NpcCliProvider, type NpcCliProviderOptions } from './npcCliProvider'
 
@@ -31,8 +31,7 @@ export class CodexCliProvider extends NpcCliProvider {
                         schemaPath
                     )
                 },
-                parse: (stdout, onUsage) =>
-                    parseCodexResult(stdout, onUsage).reply,
+                parse: parseCodexOutput,
                 exitReason,
             },
             options

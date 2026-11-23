@@ -31,6 +31,15 @@ import { distance, facingDirection } from './math'
 
 export type UtilitySpell = 'chains' | 'city_portal' | 'blink' | 'dispel_magic'
 
+export function isUtilitySpell(id: string): id is UtilitySpell {
+    return (
+        id === 'chains' ||
+        id === 'city_portal' ||
+        id === 'blink' ||
+        id === 'dispel_magic'
+    )
+}
+
 export function castUtilitySpell(
     actor: GameCharacter,
     id: UtilitySpell,

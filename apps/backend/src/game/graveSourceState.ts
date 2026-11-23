@@ -14,6 +14,7 @@ export interface GraveSource {
     nextSpawnAt: number
     nextBirth: number
     firstMasteryLevel: number
+    reserveRevival: boolean
     retryAt: number
     phase: GraveCombatTarget['phase']
     hpUnits: number

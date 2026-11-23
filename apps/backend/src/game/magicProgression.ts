@@ -14,6 +14,9 @@ export function syncMagicConstellation(actor: GameCharacter): void {
     }
     if (opened.has('magic.root') && canLearnDiscipline(known, 'magic')) {
         const level = actor.progression.masteries.magic.level
+        if (opened.has('magic.fireball') && level >= 3) {
+            known.add('fireball')
+        }
         if (known.has('fireball') && level >= 10) {
             known.add('greater_fireball')
         }

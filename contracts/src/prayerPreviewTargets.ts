@@ -3,6 +3,12 @@ import type { WorldGraveSnapshot } from './graves'
 import { healthNeedsRestoration } from './health'
 import type { CharacterSnapshot } from './index'
 import { PRAYER_SCHOOL_DEFINITIONS } from './prayer'
+import {
+    harmPermitsTarget,
+    previewDistance,
+    previewModeGeometry,
+    previewTargetLimit,
+} from './prayerPreviewParameters'
 import type { PreviewContext } from './prayerPreviewTypes'
 import { resourceNeedsRestoration } from './resources'
 export type { PrayerPreviewOptions, PreviewContext } from './prayerPreviewTypes'
@@ -44,20 +50,16 @@ function forcedSelfIntent(
         ? { mode: 'restore', targetId: context.player.id }
         : selected
 }
-function distance(
+function nearby(
     context: PreviewContext,
-    target: Pick<CharacterSnapshot, 'position'>
-): number {
-    return Math.hypot(
-        context.player.position.x - target.position.x,
-        context.player.position.y - target.position.y
-    )
-}
-function nearby(context: PreviewContext, target: CharacterSnapshot): boolean {
+    target: CharacterSnapshot,
+    mode: PrayerMode
+): boolean {
     return (
         !target.tags.includes('offline') &&
         target.life?.retired !== true &&
-        distance(context, target) <= context.parameters.radius &&
+        previewDistance(context, target) <=
+            previewModeGeometry(context, mode).radius &&
         (target.id === context.player.id ||
             (context.options.canReach?.(target) ?? true))
     )
@@ -81,7 +83,7 @@ function eligibleGift(
         target.id === context.player.id ||
         (context.options.canAid?.(target) ??
             target.faction === context.player.faction)
-    if (!nearby(context, target) || !ally) {
+    if (!nearby(context, target, mode) || !ally) {
         return false
     }
     if (mode === 'revive') {
@@ -101,8 +103,8 @@ function harmTargets(context: PreviewContext): CharacterSnapshot[] {
         .filter(
             (target) =>
                 target.alive &&
-                nearby(context, target) &&
-                context.profile.harmTypes.includes(target.creatureType)
+                nearby(context, target, 'harm') &&
+                harmPermitsTarget(context, target)
         )
         .sort((a, b) => distanceOrder(context, a, b))
 }
@@ -209,11 +211,7 @@ function previewTargets(
         context.abilityId === 'pray_woven'
             ? result
             : result.filter((target) => target.mode === intent.mode)
-    return matching.slice(
-        0,
-        context.parameters.targetLimit ??
-            (context.abilityId === 'pray_woven' ? 2 : 1)
-    )
+    return matching.slice(0, previewTargetLimit(context, intent.mode))
 }
 function addPrimaryTarget(
     intent: Exclude<PrayerIntent, { mode: 'devotion' }>,
@@ -264,7 +262,7 @@ function distanceOrder(
     a: Pick<CharacterSnapshot, 'id' | 'position'>,
     b: Pick<CharacterSnapshot, 'id' | 'position'>
 ): number {
-    const delta = distance(context, a) - distance(context, b)
+    const delta = previewDistance(context, a) - previewDistance(context, b)
     return delta !== 0 ? delta : a.id.localeCompare(b.id)
 }
 function eligibleRevival(

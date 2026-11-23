@@ -31,6 +31,7 @@ export interface CharacterMovementState {
     stepLocationId: string
     dashResourceSpend?: ResourceSpendReceipt
     roadPrayerDashUntil?: number
+    ashPrayerDashUntil?: number
 }
 
 export function createMovementState(): CharacterMovementState {
@@ -75,6 +76,7 @@ export function handleMovementCommand(
     state.mode = 'walking'
     const spent = character.drainEnergy(effectiveDashCost(character, now))
     delete state.roadPrayerDashUntil
+    delete state.ashPrayerDashUntil
     const receipt = recordResourceSpend(character, 'energy', spent)
     if (receipt !== undefined) {
         state.dashResourceSpend = receipt

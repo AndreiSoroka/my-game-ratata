@@ -1,14 +1,17 @@
 import {
     ABILITY_DEFINITIONS,
+    type AbilityId,
     type DeityMood,
     GRAVE_PURIFY_STEPS,
     PRAYER_SCHOOL_DEFINITIONS,
     type PrayerActionId,
     prayerSchoolId,
+    resolveAshParameters,
     ROAD_PRAYER_RULES,
 } from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../backend/src/game/constellationBonuses'
+import { resolveConstellationCardEffects } from '../../../../backend/src/game/constellationCardEffects'
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
 import { prayerMoodQuality } from '../../../../backend/src/game/prayerProbability'
 import { chancePercent, successWithAdvantage } from './constellationChanceMath'
@@ -52,10 +55,12 @@ export function calculatePrayerBuild(
         return { available: activeIds.has(nodeId), ...describePrayerPassive(nodeId, context) }
     if (!activeIds.has(root) || !activeIds.has(nodeId))
         return { available: false, effects: [], metrics: [] }
+    if (context.ability === 'pray_grave')
+        return ashBuild(nodeId, node?.activationAbilityId, activeIds, context)
     const bonuses = resolveConstellationBonuses(activeIds, context.lowHealthEligible)
     const mother = prayerSchoolId(context.ability) === 'pray'
-    const metrics = commonMetrics(context, bonuses)
-    metrics.push(...restorationMetrics(context, bonuses))
+    const metrics = commonMetrics(context, bonuses, 0)
+    metrics.push(...restorationMetrics(context, bonuses, 1))
     const effects = [healingTargets(context.ability, bonuses.targetLimit)]
     if (mother)
         metrics.push({
@@ -64,22 +69,63 @@ export function calculatePrayerBuild(
         })
     if (mother) appendMotherEffects(effects, metrics, activeIds, bonuses, context)
     if (context.ability === 'pray_road') appendRoadEffects(effects, metrics, activeIds, context)
-    const reviveId = revivalNode(context.ability)
-    if (reviveId !== undefined && activeIds.has(reviveId)) {
-        const revival = revivalBuild(activeIds, context)
-        effects.push(...revival.effects)
-        metrics.push(...revival.metrics)
+    if (mother && activeIds.has('prayer.revive')) {
+        appendRevival(effects, metrics, activeIds, context)
     }
     return { available: true, effects, metrics }
 }
+function ashBuild(
+    nodeId: string,
+    rite: AbilityId | undefined,
+    activeIds: ReadonlySet<string>,
+    context: PrayerBuildContext
+): PrayerBuildResult {
+    const ash = resolveAshParameters(activeIds)
+    const effects = resolveConstellationCardEffects(nodeId, activeIds) ?? []
+    if (rite !== undefined && rite !== 'pray_grave') {
+        const definition = ABILITY_DEFINITIONS[rite]
+        const metrics = [{ label: 'Цена обряда', value: `${definition.mana} MP` }]
+        if (rite === 'ash_raise') {
+            metrics.push(
+                { label: 'Подготовка', value: `${ash.raiseWindupMs} мс` },
+                { label: 'Откат', value: `${definition.cooldownMs / 1000} с` }
+            )
+        }
+        return { available: true, effects, metrics }
+    }
+    const bonuses = resolveConstellationBonuses(activeIds, context.lowHealthEligible)
+    const metrics = commonMetrics(context, bonuses, ash.healRadiusCells)
+    const maximumTargets = ash.healSecond ? 2 : 1
+    effects.unshift(healingTargets(context.ability, maximumTargets))
+    metrics.push(...restorationMetrics(context, bonuses, ash.healPower), {
+        label: 'Максимум целей исцеления',
+        value: String(maximumTargets),
+    })
+    appendInsight(effects, metrics, 'Знание Хранителя Праха', ash.omenRank)
+    if (activeIds.has('prayer_grave.revive')) {
+        appendRevival(effects, metrics, activeIds, context)
+    }
+    return { available: true, effects, metrics }
+}
+function appendRevival(
+    effects: string[],
+    metrics: PrayerBuildResult['metrics'],
+    activeIds: ReadonlySet<string>,
+    context: PrayerBuildContext
+): void {
+    const revival = revivalBuild(activeIds, context)
+    effects.push(...revival.effects)
+    metrics.push(...revival.metrics)
+}
 function commonMetrics(
     context: PrayerBuildContext,
-    bonuses: Bonuses
+    bonuses: Bonuses,
+    ashRadiusCells: number
 ): PrayerBuildResult['metrics'] {
     const definition = ABILITY_DEFINITIONS[context.ability]
     const mother = prayerSchoolId(context.ability) === 'pray'
     const metrics = [
-        radiusMetric(context, bonuses),
+        radiusMetric(context, mother ? bonuses.prayerRadiusCells : ashRadiusCells),
         {
             label: 'Время молитвы',
             value: `${Math.round(definition.windupMs * (mother ? bonuses.prayerDurationMultiplier : 1))} мс`,
@@ -94,22 +140,23 @@ function commonMetrics(
     ]
     return metrics
 }
-function radiusMetric(context: PrayerBuildContext, bonuses: Bonuses) {
+function radiusMetric(context: PrayerBuildContext, cells: number) {
     return {
         label: 'Радиус',
         value: constellationDistance(
             ABILITY_DEFINITIONS[context.ability].range,
-            prayerSchoolId(context.ability) === 'pray' ? bonuses.prayerRadiusCells : 0,
+            cells,
             context.tileWidth
         ),
     }
 }
 function restorationMetrics(
     context: PrayerBuildContext,
-    bonuses: Bonuses
+    bonuses: Bonuses,
+    ashHealPower: number
 ): PrayerBuildResult['metrics'] {
     const mother = prayerSchoolId(context.ability) === 'pray'
-    const multiplier = mother ? bonuses.prayerGiftMultiplier : 1
+    const multiplier = mother ? bonuses.prayerGiftMultiplier : ashHealPower
     const amount = Math.round(context.basePower * (prayerMoodQuality[context.mood] * multiplier))
     return [
         {
@@ -124,11 +171,6 @@ function restorationMetrics(
         },
     ]
 }
-function revivalNode(ability: PrayerActionId): string | undefined {
-    if (prayerSchoolId(ability) === 'pray') return 'prayer.revive'
-    return ability === 'pray_grave' ? 'prayer_grave.revive' : undefined
-}
-
 function appendRoadEffects(
     effects: string[],
     metrics: PrayerBuildResult['metrics'],
@@ -240,7 +282,10 @@ function appendInsight(
 function healingTargets(ability: PrayerActionId, targetLimit: number): string {
     if (prayerSchoolId(ability) === 'pray')
         return `Лечение: себя и подходящих союзников в радиусе, не более ${targetLimit} целей.`
-    if (ability === 'pray_grave') return 'Лечение нежити: себя или одного подходящего союзника.'
+    if (ability === 'pray_grave')
+        return targetLimit === 2
+            ? 'Лечение нежити: до двух подходящих целей.'
+            : 'Лечение нежити: себя или одного подходящего союзника.'
     return ability === 'pray_road'
         ? 'Разовый дар энергии получает клирик или один подходящий союзник.'
         : 'Восстановление маны: себе или одному подходящему союзнику.'

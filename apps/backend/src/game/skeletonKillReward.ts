@@ -5,6 +5,7 @@ import {
     masteryTotalExperience,
 } from '@my-game-ratata/contracts'
 
+import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { awardUndeadExperience } from './skeletonProgression'
 import { recoverAfterUndeadKill } from './undeadSurvivalRecovery'
@@ -24,6 +25,7 @@ export function rewardSkeletonKill(
 ): GameEventPayload[] {
     if (
         actor.archetype !== 'skeleton' ||
+        ashSummoner(target) !== undefined ||
         !actor.alive ||
         actor.trainingTarget !== undefined ||
         actor.tags.has('offline') ||

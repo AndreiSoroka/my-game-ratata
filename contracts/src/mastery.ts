@@ -36,6 +36,8 @@ export const MASTERY_REWARDS = Object.freeze({
     graveStep: 10,
     graveFinal: 150,
     resurrection: 200,
+    ashRaise: 70,
+    ashBrand: 40,
     swordHit: 15,
     shotHit: 20,
     sparkHit: 25,
@@ -60,6 +62,8 @@ const rewardLabels: Record<MasteryRewardId, string> = {
     graveStep: 'Успешный шаг очищения могилы',
     graveFinal: 'Последний очищающий шаг',
     resurrection: 'Воскрешение товарища',
+    ashRaise: 'Подъём одного прислужника из останков',
+    ashBrand: 'Полезный урон Пепельной печати',
     swordHit: 'Полезный удар клинком',
     shotHit: 'Полезное попадание стрелой',
     sparkHit: 'Полезное попадание Искрой',
@@ -100,7 +104,7 @@ const pathRewards: Record<ConstellationId, readonly MasteryRewardId[]> = {
     shadow: ['stealthMove', 'theftSuccess'],
     prayer_road: ['resourceRecovery'],
     prayer_lantern: ['resourceRecovery'],
-    prayer_grave: ['healing', 'resurrection'],
+    prayer_grave: ['healing', 'resurrection', 'ashRaise', 'ashBrand'],
     undead: [],
 }
 export function masteryRewardsForConstellation(id: ConstellationId) {

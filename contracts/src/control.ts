@@ -1,4 +1,9 @@
-import type { AbilityId, PrayerActionId, PrayerIntent } from './abilities'
+import type {
+    AbilityId,
+    AshRiteId,
+    PrayerActionId,
+    PrayerIntent,
+} from './abilities'
 import type { Vector2 } from './index'
 
 export type CharacterRelationship = 'self' | 'friendly' | 'hostile'
@@ -13,7 +18,7 @@ export type CharacterAutoAction =
     | { kind: 'attack'; targetId: string; target?: never; once: true }
     | {
           kind: 'ability'
-          abilityId: Exclude<AbilityId, PrayerActionId>
+          abilityId: Exclude<AbilityId, PrayerActionId | AshRiteId>
           targetId?: string
           target?: import('./graves').WorldCombatTarget
       }

@@ -5,6 +5,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
+import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import type { GuildRewardPromise } from './guildRewards'
 import { resetMartyrStreak } from './martyr'
@@ -109,6 +110,7 @@ export const guildQuests: GuildQuestDefinition[] = [
 export function questDeath(target: GameCharacter): boolean {
     return (
         !target.alive &&
+        ashSummoner(target) === undefined &&
         target.faction === 'monsters' &&
         target.controllerKind !== 'network_player'
     )

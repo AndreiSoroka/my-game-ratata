@@ -35,6 +35,11 @@ const seconds = computed(() =>
         )
     )
 )
+const heartSeconds = computed(() =>
+    props.character?.life?.lichReturnMsLeft === undefined
+        ? undefined
+        : Math.ceil(props.character.life.lichReturnMsLeft / 1000)
+)
 onMounted(() => panel.value?.focus())
 function key(event: KeyboardEvent): void {
     if (event.code === 'Tab') {
@@ -65,8 +70,19 @@ function key(event: KeyboardEvent): void {
             </p>
             <h2 :id="headingId">{{ defeated ? 'Ваш герой погиб' : 'Вы пали в бою' }}</h2>
             <template v-if="!defeated">
-                <p class="death-overlay__countdown">{{ seconds }} <span>секунд</span></p>
-                <p>Клирик ещё может вернуть вас к жизни. Позовите союзника и дождитесь помощи.</p>
+                <template v-if="seconds > 0 || heartSeconds === undefined">
+                    <p class="death-overlay__countdown">{{ seconds }} <span>секунд</span></p>
+                    <p>
+                        Клирик ещё может вернуть вас к жизни. Позовите союзника и дождитесь помощи.
+                    </p>
+                </template>
+                <p v-if="heartSeconds !== undefined">
+                    {{
+                        heartSeconds > 0
+                            ? `Сердце лича позовёт через ${heartSeconds} с.`
+                            : 'Сердце лича ждёт свободного места рядом с сундуком.'
+                    }}
+                </p>
                 <p :id="detailId">
                     Если начать сначала, этого героя уже нельзя будет воскресить. Вещи и золото
                     останутся в его теле. Вы выберете нового героя без прежнего опыта и заданий.

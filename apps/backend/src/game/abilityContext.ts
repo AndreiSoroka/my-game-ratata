@@ -1,4 +1,5 @@
 import type {
+    AshRiteMessage,
     AttackAbilityId,
     GameEventPayload,
     WorldCombatTarget,
@@ -9,6 +10,13 @@ import type { GraveCombatContext } from './graveRules'
 import type { MagicCombat } from './magicCombat'
 import type { NavigationService } from './navigation'
 export interface AbilityContext {
+    useAshRite?:
+        | ((
+              actor: GameCharacter,
+              message: AshRiteMessage,
+              context: AbilityContext
+          ) => GameEventPayload[])
+        | undefined
     graves?: GraveCombatContext | undefined
     characters: readonly GameCharacter[]
     navigation: NavigationService

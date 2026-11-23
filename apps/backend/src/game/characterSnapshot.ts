@@ -50,15 +50,7 @@ export function createCharacterSnapshot(
             controlSource: character.soul.controlSource,
             kind: character.soul.kind,
         },
-        life: {
-            retired:
-                character.tags.has('state.retired') ||
-                shouldRetireCharacter(character, now),
-            reviveMsLeft: character.alive
-                ? 0
-                : Math.max(0, character.reviveUntil - now),
-            reviveUntil: character.reviveUntil,
-        },
+        life: snapshotLife(character, now, includePrivate),
         id: character.id,
         inventory: character.inventory.map(snapshotItem),
         nickname: character.nickname,
@@ -85,6 +77,27 @@ export function createCharacterSnapshot(
             character.equipment.weapon === undefined
                 ? 'skeleton_swordless'
                 : character.visualId,
+    }
+}
+
+function snapshotLife(
+    character: GameCharacter,
+    now: number,
+    includePrivate: boolean
+) {
+    const heartDeadline = character.alive ? undefined : character.lichReturnAt
+    return {
+        retired:
+            character.tags.has('state.retired') ||
+            (heartDeadline === undefined &&
+                shouldRetireCharacter(character, now)),
+        reviveMsLeft: character.alive
+            ? 0
+            : Math.max(0, character.reviveUntil - now),
+        reviveUntil: character.reviveUntil,
+        ...(includePrivate && heartDeadline !== undefined
+            ? { lichReturnMsLeft: Math.max(0, heartDeadline - now) }
+            : {}),
     }
 }
 

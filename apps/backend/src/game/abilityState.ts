@@ -28,6 +28,7 @@ interface PrayerCastBase {
     receiptId: string
     startedAt: number
     completesAt: number
+    radius?: number
     patron: GameCharacter['progression']['patron']
     mother?: MotherPrayerCastState
     plan?: MotherPrayerPlan
@@ -43,6 +44,7 @@ export type PrayerCast = PrayerCastBase &
               locationId: string
               hpAtStart: number
               walkWhileCasting?: boolean
+              ashSecondaryTargetId?: string
               road?: RoadPrayerCastState
           }
     )
@@ -96,6 +98,9 @@ export function createAbilityState(
 }
 export function knowsAbility(actor: GameCharacter, id: AbilityId): boolean {
     return actor.abilities.known.has(id)
+}
+export function nextPrayerReceipt(actor: GameCharacter): string {
+    return `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`
 }
 export function clearAbilityEffects(actor: GameCharacter): void {
     clearMagicChannel(actor)
@@ -175,6 +180,7 @@ function castAreaRadius(cast: PrayerCast): number {
     return (
         cast.plan?.radius ??
         recoveryRadius ??
+        cast.radius ??
         ABILITY_DEFINITIONS[cast.abilityId].range
     )
 }

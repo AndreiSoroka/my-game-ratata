@@ -18,6 +18,14 @@
             "actorId": "npc_cleric_1",
             "role": "advisor",
             "mode": "dialogue_only"
+        },
+        {
+            "actorId": "npc_necromancer_1",
+            "role": "necromancer",
+            "settings": {
+                "reasoningEffort": "low",
+                "timeoutMs": 12000
+            }
         }
     ]
 }

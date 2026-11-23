@@ -6,6 +6,7 @@ import {
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { ashChestActions } from './ashActions'
 import type { InteractionAction } from './nearbyInteractionActions'
 
 export function chestActions(
@@ -24,16 +25,21 @@ export function chestActions(
         .sort((a, b) => a.distance - b.distance)[0]?.item
     return chest
         ? [
-              {
-                  id: `chest:${chest.id}`,
-                  label:
-                      chest.kind === 'corpse'
-                          ? `Обыскать: ${chest.title?.replace(/^Тело: /, '') ?? 'тело'}`
-                          : chest.kind === 'barrel'
-                            ? 'Открыть бочку'
-                            : 'Открыть сундук',
-                  command: { type: 'open_chest', chestId: chest.id },
-              },
+              ...(!chest.ashOnly
+                  ? [
+                        {
+                            id: `chest:${chest.id}`,
+                            label:
+                                chest.kind === 'corpse'
+                                    ? `Обыскать: ${chest.title?.replace(/^Тело: /, '') ?? 'тело'}`
+                                    : chest.kind === 'barrel'
+                                      ? 'Открыть бочку'
+                                      : 'Открыть сундук',
+                            command: { type: 'open_chest' as const, chestId: chest.id },
+                        },
+                    ]
+                  : []),
+              ...ashChestActions(player, chest),
           ]
         : []
 }

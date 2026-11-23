@@ -99,7 +99,10 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
         ['prayer_lantern', 12, 'MP'],
         ['prayer_grave', 6, 'HP нежити'],
     ] as const)('isolates Mother modifiers from %s', (path, power, resource) => {
-        const result = calculate(full, `${path}.root`, 'benevolent', true)
+        const withoutAshModifiers = new Set(
+            [...full].filter((id) => !id.startsWith('prayer_grave.') || id === 'prayer_grave.root')
+        )
+        const result = calculate(withoutAshModifiers, `${path}.root`, 'benevolent', true)
         const label = resource.startsWith('HP') ? 'Лечение' : `Восстановление ${resource}`
         expect(metric(result, label)).toContain(`${Math.round(power * 1.3)} ${resource}`)
         expect(metric(result, 'Радиус')).toBe('3 клетки')
@@ -120,6 +123,23 @@ describe('fixed prayer power and cumulative learned modifiers', () => {
             expect(metric(revival, 'Лечение')).toBeUndefined()
         }
     })
+})
+
+it('applies the full Ash healing build independently of Mother prayer bonuses', () => {
+    const result = calculate(full, 'prayer_grave.root', 'benevolent', true)
+    expect(metric(result, 'Лечение')).toBe('11 HP нежити')
+    expect(metric(result, 'Радиус')).toBe('5 клеток')
+    expect(metric(result, 'Максимум целей исцеления')).toBe('2')
+    expect(result.metrics).toContainEqual({ label: 'Шанс лечения нежити', value: '86%' })
+})
+
+it('combines Ash revival ranks at the root while its unlock keeps the base roll', () => {
+    const root = calculate(full, 'prayer_grave.root')
+    expect(root.metrics).toContainEqual({ label: 'Шанс воскрешения', value: '70%' })
+    expect(metric(root, 'HP после воскрешения')).toContain('80% максимума')
+    const unlock = calculate(full, 'prayer_grave.revive')
+    expect(unlock.metrics).toEqual([{ label: 'Шанс воскрешения', value: '55%' }])
+    expect(unlock.substitution).toContain('P = 55%')
 })
 
 it('includes the chant at the root and lists only learned Road Prayer enhancements', () => {

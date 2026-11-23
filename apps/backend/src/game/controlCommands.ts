@@ -4,6 +4,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { parseAbilityCommand } from './abilityCommands'
+import { isAshRiteMessage } from './ashRiteCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseGatherAction, parsePlantAction } from './forestCommands'
 export function parseControlCommand(
@@ -73,12 +74,7 @@ function parseAutomaticAbility(
 ): CharacterAutoAction | undefined {
     const message = parseAbilityCommand({
         type: 'use_ability',
-        abilityId:
-            record['kind'] === 'prayer'
-                ? record['abilityId'] === undefined
-                    ? 'pray'
-                    : record['abilityId']
-                : record['abilityId'],
+        abilityId: automaticAbilityId(record),
         targetId: record['targetId'],
         target: record['target'],
         intent: record['intent'],
@@ -95,7 +91,11 @@ function parseAutomaticAbility(
             intent: message.intent,
         }
     }
-    if (record['kind'] !== 'ability' || 'intent' in message) {
+    if (
+        record['kind'] !== 'ability' ||
+        'intent' in message ||
+        isAshRiteMessage(message)
+    ) {
         return undefined
     }
     return {
@@ -106,4 +106,10 @@ function parseAutomaticAbility(
             : { targetId: message.targetId }),
         ...(message.target === undefined ? {} : { target: message.target }),
     }
+}
+
+function automaticAbilityId(record: Record<string, unknown>): unknown {
+    return record['kind'] === 'prayer' && record['abilityId'] === undefined
+        ? 'pray'
+        : record['abilityId']
 }

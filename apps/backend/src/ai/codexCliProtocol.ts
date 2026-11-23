@@ -59,6 +59,13 @@ export function parseCodexResult(
 ): {
     reply: NpcAiReply
 } {
+    return { reply: parseNpcAiReply(parseCodexOutput(stdout, onUsage)) }
+}
+
+export function parseCodexOutput(
+    stdout: string,
+    onUsage: (usage: Record<string, number>) => void
+): unknown {
     let finalMessage: string | undefined
     let complete = false
     let usage: Record<string, number> | undefined
@@ -89,8 +96,7 @@ export function parseCodexResult(
     if (usage !== undefined) {
         onUsage(usage)
     }
-    const reply = parseNpcAiReply(JSON.parse(finalMessage) as unknown)
-    return { reply }
+    return JSON.parse(finalMessage) as unknown
 }
 
 function completedMessage(event: Record<string, unknown>): string | undefined {

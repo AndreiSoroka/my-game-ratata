@@ -108,7 +108,10 @@ function candidatePositions(
 ): Record<string, SkyPoint> | undefined {
     const transformed = []
     for (const component of components) {
-        const positions = variedComponent(component, random, !fallback)
+        // Ash keeps its four authored sectors while the field as a whole rotates and scales.
+        const varyBranches =
+            !fallback && !component.ids.includes('prayer_grave.root')
+        const positions = variedComponent(component, random, varyBranches)
         if (
             !fallback &&
             constellationGeometryProblem(

@@ -19,34 +19,36 @@ export function publishRoomEvents(
     socketsIn: (locationId: string) => Iterable<RoomSocket>,
     connections: ReadonlyMap<RoomSocket, string | undefined>,
     world?: WorldLocations,
-    hasModelLease?: (character: GameCharacter, now: number) => boolean
+    hasModelLease?: (character: GameCharacter, now: number) => boolean,
+    objectiveEvents = events
 ): void {
     if (world !== undefined && events.some((event) => event.kind === 'death')) {
-        events = [
-            ...events,
-            ...events.flatMap((event) => {
-                const target =
-                    event.kind === 'death' && event.targetId !== undefined
-                        ? characters.get(event.targetId)
-                        : undefined
-                return target === undefined
-                    ? []
-                    : world
-                          .get(target.locationId)
-                          .inventory.dropLootForDeaths([event], (id) =>
-                              characters.get(id)
-                          )
-            }),
-        ]
+        const drops = events.flatMap((event) => {
+            const target =
+                event.kind === 'death' && event.targetId !== undefined
+                    ? characters.get(event.targetId)
+                    : undefined
+            return target === undefined
+                ? []
+                : world
+                      .get(target.locationId)
+                      .inventory.dropLootForDeaths([event], (id) =>
+                          characters.get(id)
+                      )
+        })
+        events = [...events, ...drops]
+        objectiveEvents = [...objectiveEvents, ...drops]
     }
     adventure.observe(
-        events,
+        objectiveEvents,
         (id) => characters.get(id),
         world === undefined
             ? undefined
             : (actor) => world.get(actor.locationId).navigation
     )
-    const partyEvents = parties.observe(events, (id) => characters.get(id))
+    const partyEvents = parties.observe(objectiveEvents, (id) =>
+        characters.get(id)
+    )
     for (const event of [...events, ...partyEvents]) {
         stampSpeechEvent(event, characters.get(event.actorId ?? ''))
         const recipients =

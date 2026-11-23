@@ -10,7 +10,7 @@ import { activeBarrier } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
 import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
-import { canTargetByFaction } from './factions'
+import { canTargetByFaction, combatFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelMagicChannel } from './magicState'
 import { recordMartyrHostileDamage, resetMartyrStreak } from './martyr'
@@ -148,7 +148,7 @@ function guardedHpDamage(
 function hostileDamage({ actor, target, now }: CharacterDamageInput): boolean {
     return (
         actor.id !== target.id &&
-        actor.faction !== target.faction &&
+        combatFaction(actor) !== combatFaction(target) &&
         canTargetByFaction(actor, target, now)
     )
 }
@@ -292,7 +292,7 @@ function finishDamageDeath(
     target.abilities.casting = null
     target.queueRespawn(now, input.respawnDelayMs)
     events.push({ kind: 'death', actorId: actor.id, targetId: target.id })
-    if (hostile) {
+    if (hostile && !(target.mortal && target.archetype === 'skeleton')) {
         events.push(...rewardSkeletonKill(actor, target, now, input.random))
     }
 }

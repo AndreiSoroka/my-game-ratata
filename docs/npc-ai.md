@@ -1,6 +1,6 @@
 # NPC reasoning through Codex CLI or Claude Code
 
-Mira, Kaplya and Sister Vera use Codex CLI or Claude Code to choose ordinary
+Mira, Kaplya, Sister Vera and Savva use Codex CLI or Claude Code to choose ordinary
 character intentions when a supported CLI is available. The backend owns the event
 queue, controller lease, action results and session memory. Model calls run outside
 the simulation tick.
@@ -119,6 +119,23 @@ identity replacement and cancellation invalidate late replies.
 
 ## Current character behavior
 
+- **Savva** searches the Western Ruins for traces of three dead guards. His refuge
+  is chosen by the world seed. A local controller continues walking, fighting or
+  withdrawing while a model turn is in flight. The model selects an available
+  plan from an observer-scoped summary. Savva keeps a session journal, including
+  a favorite skeleton and occasional remarks drawn from accepted decisions.
+  An accepted combat reply can include a short line in the same call. Encounter
+  and low-health remarks also run during movement, casting and pending advice.
+- Savva has a separate limit of eight model calls per rolling hour and two per
+  fight, with at least 30 seconds between combat calls. Peaceful reviews require
+  completed activity and are spaced at least five minutes apart. Player health
+  is observed at the usual precision and remains scoped to visible players.
+- Savva can order three allied skeletons. Skeletons pursue wild slimes when
+  ordered to hunt them. Ash can restore an undead ally, raise a temporary
+  skeleton, or transfer the caster's experience to strengthen an ally. A ninth
+  level Ash caster can bind a heart in a chest. After the ordinary soul window
+  ends, a heart still in place returns the same identity ten minutes from death
+  with 70% of each mastery’s XP. These states live in the running world session.
 - **Mira** reviews authorized city stock, actual worker requests and worker idle
   reasons. She can inspect residents, walk through the city and offer validated
   quests to connected players. Idle review results are remembered rather than

@@ -2,9 +2,11 @@ import {
     type DeityId,
     type DeityMood,
     type DeitySnapshot,
+    RESURRECTION_SUCCESS_CAP,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { ashParameters } from './constellationModifiers'
 import { constellationModifiers } from './constellations'
 import { prayerAnswerChance, prayerMoodQuality } from './prayerProbability'
 
@@ -77,6 +79,17 @@ export function resolveMiracle(
     }
 }
 
+export function ashHealingChance(
+    character: GameCharacter,
+    now: number
+): number {
+    return Math.min(
+        RESURRECTION_SUCCESS_CAP,
+        miracleChance(character, now, 'grave') +
+            ashParameters(character).healChanceBonus
+    )
+}
+
 export function snapshotDeity(
     character: GameCharacter,
     now: number,
@@ -84,7 +97,14 @@ export function snapshotDeity(
 ): DeitySnapshot {
     const modifiers = constellationModifiers(character)
     const insight =
-        id === 'hearth' ? modifiers.deityInsight : modifiers.otherDeityInsight
+        id === 'hearth'
+            ? modifiers.deityInsight
+            : id === 'grave'
+              ? Math.max(
+                    modifiers.otherDeityInsight,
+                    ashParameters(character).omenRank
+                )
+              : modifiers.otherDeityInsight
     const mood = deityMood(id, now)
     return {
         id,
@@ -103,7 +123,12 @@ export function snapshotDeity(
                     ? 'hint'
                     : 'vague',
         mood: insight >= 2 ? mood : null,
-        successChance: insight >= 3 ? miracleChance(character, now, id) : null,
+        successChance:
+            insight >= 3
+                ? id === 'grave'
+                    ? ashHealingChance(character, now)
+                    : miracleChance(character, now, id)
+                : null,
         changesInMs:
             insight >= 4 ? deityMoodCycleMs - (now % deityMoodCycleMs) : null,
     }

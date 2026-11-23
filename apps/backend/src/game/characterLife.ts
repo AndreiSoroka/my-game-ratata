@@ -9,14 +9,21 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { AbilityContext } from './abilityContext'
-import { clearAbilityEffects, createAbilityState } from './abilityState'
+import {
+    clearAbilityEffects,
+    createAbilityState,
+    nextPrayerReceipt,
+} from './abilityState'
 import type { GameCharacter } from './character'
 import { resolveMiracle } from './deities'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
 import { advancePrayerCast, beginPrayerCast } from './prayer'
 import { cancelPrayerCast } from './prayerCancellation'
-import { revivalTargetEligible } from './prayerContext'
+import {
+    compatibleRevivalAllegiance,
+    revivalTargetEligible,
+} from './prayerContext'
 import { completePrayer } from './prayerEffects'
 import { prayerParameters, setPrayerAvailableAt } from './prayerParameters'
 import { characterResurrectionParameters } from './resurrection'
@@ -99,32 +106,24 @@ export function beginRevive(
             (event) => event.kind === 'cast' && event.phase === 'started'
         )
     }
+    const parameters = prayerParameters(
+        caster,
+        context?.navigation.grid.tileWidth,
+        abilityId,
+        'revive'
+    )
     caster.abilities.casting = {
         abilityId,
-        receiptId: `${caster.id}:prayer:${String(++caster.abilities.prayerSequence)}`,
-        completesAt:
-            now +
-            prayerParameters(
-                caster,
-                context?.navigation.grid.tileWidth,
-                abilityId
-            ).durationMs,
+        receiptId: nextPrayerReceipt(caster),
+        completesAt: now + parameters.durationMs,
         startedAt: now,
         targetId: target.id,
+        radius: parameters.radius,
         patron: PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)].deityId,
     }
     caster.abilities.lastPrayerAbilityId = abilityId
-    caster.lockAction(
-        now,
-        prayerParameters(caster, context?.navigation.grid.tileWidth, abilityId)
-            .durationMs
-    )
-    caster.setAnimation(
-        'attack',
-        now,
-        prayerParameters(caster, context?.navigation.grid.tileWidth, abilityId)
-            .durationMs
-    )
+    caster.lockAction(now, parameters.durationMs)
+    caster.setAnimation('attack', now, parameters.durationMs)
     return true
 }
 
@@ -237,13 +236,14 @@ function canRevive(
         !target.alive &&
         !target.tags.has('state.retired') &&
         target.reviveUntil > now &&
-        target.faction === caster.faction &&
+        compatibleRevivalAllegiance(caster, target, now, abilityId) &&
         target.locationId === caster.locationId &&
         distance(caster.position, target.position) <=
             prayerParameters(
                 caster,
                 context?.navigation.grid.tileWidth,
-                abilityId
+                abilityId,
+                'revive'
             ).radius
     )
 }

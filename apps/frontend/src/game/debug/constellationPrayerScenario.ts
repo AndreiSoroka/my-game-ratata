@@ -2,7 +2,9 @@ import {
     type ConstellationId,
     type DeityMood,
     type PrayerAbilityId,
+    resolveAshParameters,
     resolveResurrectionParameters,
+    RESURRECTION_SUCCESS_CAP,
 } from '@my-game-ratata/contracts'
 
 import { fullConstellationCatalog } from '../../../../backend/src/game/constellationNodes'
@@ -91,7 +93,7 @@ export function calculatePrayerScenario(
     if (school === undefined) return undefined
     const { mood } = settings
     const example = exampleSettings(settings)
-    const answer = prayerAnswerChance(mood)
+    const answer = exampleAnswer(school.id, nodeId, mood, activeIds)
     const node = fullConstellationCatalog.find((entry) => entry.id === nodeId)!
     const info = prayerSchoolInfo[school.id]
     const build =
@@ -116,6 +118,17 @@ export function calculatePrayerScenario(
         ...(build === undefined ? {} : { build }),
         substitution: `P = ${chancePercent(answer)}; Q = ${number(prayerMoodQuality[mood])}`,
     }
+}
+function exampleAnswer(
+    ability: PrayerAbilityId,
+    nodeId: string,
+    mood: DeityMood,
+    activeIds?: ReadonlySet<string>
+): number {
+    const base = prayerAnswerChance(mood)
+    return ability === 'pray_grave' && nodeId === 'prayer_grave.root' && activeIds !== undefined
+        ? Math.min(RESURRECTION_SUCCESS_CAP, base + resolveAshParameters(activeIds).healChanceBonus)
+        : base
 }
 function exampleSettings(settings: PrayerScenarioSettings) {
     return {
@@ -200,6 +213,9 @@ function ownOutcomeMetrics(
         return [{ label: 'Ангельское при успешном воскрешении', value: chance(0.3) }]
     if (nodeId === 'prayer.harm')
         return [{ label: 'Шанс кары', value: chance(prayerHarmChance(answer)) }]
+    if (nodeId === 'prayer_grave.brand')
+        return [{ label: 'Шанс Пепельной печати', value: chance(answer) }]
+    if (node.activationAbilityId?.startsWith('ash_')) return []
     if (nodeId === 'prayer.concentration')
         return [{ label: 'Защита от прерывания ударом', value: chance(0.5) }]
     if (node.effectType === 'passive') return []

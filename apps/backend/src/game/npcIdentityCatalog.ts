@@ -1,4 +1,4 @@
-export type NpcIdentityKey = 'mira' | 'kaplya' | 'vera'
+export type NpcIdentityKey = 'mira' | 'kaplya' | 'vera' | 'savva'
 export type NpcSelfReference = 'feminine' | 'masculine' | 'neuter'
 export type NpcGender = 'female' | 'male' | 'sexless'
 export type NpcInterjectionPosition = 'start' | 'middle' | 'end'
@@ -32,6 +32,24 @@ export interface NpcIdentityDefinition {
 export const npcIdentityDefinitions: Readonly<
     Record<NpcIdentityKey, NpcIdentityDefinition>
 > = {
+    savva: {
+        key: 'savva',
+        name: 'Савва',
+        gender: 'male',
+        selfReference: 'masculine',
+        description: 'Некромант Западных руин, служитель Хранителя Праха.',
+        responsibilities: [
+            'Ищет имена трёх мёртвых стражей и причину их незаконченного дозора.',
+            'Заботится о нежити, изучает Прах и раздумывает о пути лича.',
+        ],
+        backstories: [
+            {
+                id: 'unfinished_watch',
+                title: 'Незаконченный дозор',
+                text: 'Савва некогда переписывал кладбищенские книги. В Западных руинах он нашёл три безымянных следа и заметил, что скелеты всё ещё обходят старую ограду.',
+            },
+        ],
+    },
     mira: {
         key: 'mira',
         name: 'Мира',

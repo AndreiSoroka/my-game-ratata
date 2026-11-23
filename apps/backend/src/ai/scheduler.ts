@@ -1,5 +1,6 @@
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
+import { NpcAiCallBudget } from './callBudget'
 import type { CharacterKnowledge } from './characterKnowledge'
 import { npcCommandProblem } from './commandValidation'
 import type { NpcAiDiagnostics } from './diagnostics'
@@ -7,18 +8,19 @@ import { npcDialogueContext } from './dialogueContext'
 import { prepareKnowledgeCatalog } from './knowledgeCatalog'
 import { npcKnowledgeInformation } from './knowledgeInformation'
 import { characterKnowledgeScope } from './knowledgeScope'
+import { NecromancerTurns } from './necromancerTurns'
 import { reportNpcRequestStatus } from './requestStatus'
 import { createRoomKnowledge } from './roomKnowledge'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
-import { continuationAvailable } from './schedulerPolicy'
+import { continuationAvailable, prioritizeNpcAiStates } from './schedulerPolicy'
 import type { NpcAiSessionActions } from './session'
 import { invokeNpcAiTurn } from './turn'
 import type { NpcAiConfig, NpcAiProvider } from './types'
 
 export class NpcAiScheduler {
     private readonly knowledge: CharacterKnowledge
-    private readonly calls: number[] = []
-    private readonly backgroundCalls: number[] = []
+    private readonly budget: NpcAiCallBudget
+    private readonly necromancerTurns: NecromancerTurns
     private busy = false
     private scheduled = false
 
@@ -35,10 +37,16 @@ export class NpcAiScheduler {
         private readonly nextId: (kind: string) => string
     ) {
         this.knowledge = createRoomKnowledge(room)
-        prepareKnowledgeCatalog(
+        this.budget = new NpcAiCallBudget(config.limits.maxCallsPerHour)
+        this.necromancerTurns = new NecromancerTurns(
             room,
-            config.npcs.map((npc) => npc.actorId)
+            companions,
+            config,
+            provider,
+            clock,
+            nextId
         )
+        prepareKnowledgeCatalog(room, [...states.keys()])
     }
 
     public schedule(): void {
@@ -62,15 +70,33 @@ export class NpcAiScheduler {
                     !state.awaitingFreshRequest &&
                     npcAiActorAvailable(state.actor)
             )
-            states.sort(
-                (a, b) =>
-                    Number(b.inbox.length > 0 || b.task?.requesterId != null) -
-                    Number(a.inbox.length > 0 || a.task?.requesterId != null)
-            )
+            states.sort(prioritizeNpcAiStates)
             const state = states[0]
             if (state !== undefined) {
                 this.begin(state, now)
+            } else {
+                this.beginNecromancer(now)
             }
+        })
+    }
+
+    public beforeTick(now: number): void {
+        this.necromancerTurns.maintain(now)
+    }
+
+    private beginNecromancer(now: number): void {
+        if (this.budget.limit(now, true) !== undefined) {
+            return
+        }
+        const turn = this.necromancerTurns.begin(now)
+        if (turn === undefined) {
+            return
+        }
+        this.busy = true
+        this.budget.spend(now, true)
+        void turn.finally(() => {
+            this.busy = false
+            this.schedule()
         })
     }
 
@@ -116,10 +142,10 @@ export class NpcAiScheduler {
             now
         )
         this.busy = true
-        this.calls.push(now)
-        if (state.dialogue === undefined && state.task?.requesterId == null) {
-            this.backgroundCalls.push(now)
-        }
+        this.budget.spend(
+            now,
+            state.dialogue === undefined && state.task?.requesterId == null
+        )
         reportNpcRequestStatus(
             this.room,
             this.diagnostics,
@@ -192,15 +218,9 @@ export class NpcAiScheduler {
         state: NpcAiActorState,
         at: number
     ): boolean {
-        this.trimCalls(at)
         const background =
             state.dialogue === undefined && state.task?.requesterId == null
-        return (
-            this.calls.length < this.config.limits.maxCallsPerHour &&
-            (!background ||
-                this.backgroundCalls.length <
-                    Math.floor((this.config.limits.maxCallsPerHour * 2) / 3))
-        )
+        return this.budget.limit(at, background) === undefined
     }
 
     private reserveInformationCall(state: NpcAiActorState): boolean {
@@ -208,20 +228,20 @@ export class NpcAiScheduler {
         if (!this.informationCallAvailable(state, at)) {
             return false
         }
-        this.calls.push(at)
-        if (state.dialogue === undefined && state.task?.requesterId == null) {
-            this.backgroundCalls.push(at)
-        }
+        this.budget.spend(
+            at,
+            state.dialogue === undefined && state.task?.requesterId == null
+        )
         return true
     }
 
     public stop(): void {
+        this.necromancerTurns.stop()
         this.knowledge.stop()
         void this.diagnostics.flush()
     }
 
     private withinLimits(state: NpcAiActorState, now: number): boolean {
-        this.trimCalls(now)
         if (!this.withinCallBudget(state, now)) {
             return false
         }
@@ -240,30 +260,17 @@ export class NpcAiScheduler {
         return true
     }
 
-    private trimCalls(now: number): void {
-        for (const calls of [this.calls, this.backgroundCalls]) {
-            while (calls[0] !== undefined && calls[0] <= now - 3_600_000) {
-                calls.shift()
-            }
-        }
-    }
-
     private withinCallBudget(state: NpcAiActorState, now: number): boolean {
         const background =
             state.inbox.length === 0 && state.task?.requesterId == null
-        if (
-            background &&
-            this.backgroundCalls.length >=
-                Math.floor((this.config.limits.maxCallsPerHour * 2) / 3)
-        ) {
-            this.recordLimit(state, 'background_call_limit', now)
-            this.sessions.finish(state, now, 3_600_000)
-            state.nextAt = (this.backgroundCalls[0] ?? now) + 3_600_000
-            state.reviewAt = state.nextAt
-            return false
+        const limit = this.budget.limit(now, background)
+        if (limit === undefined) {
+            return true
         }
-        if (this.calls.length >= this.config.limits.maxCallsPerHour) {
-            this.recordLimit(state, 'hourly_call_limit', now)
+        this.recordLimit(state, limit.reason, now)
+        if (limit.reason === 'background_call_limit') {
+            this.sessions.finish(state, now, 3_600_000)
+        } else {
             for (const message of state.inbox) {
                 reportNpcRequestStatus(
                     this.room,
@@ -281,11 +288,10 @@ export class NpcAiScheduler {
                 'Я пока исчерпала время на размышления. Попробуем позже.',
                 now
             )
-            state.nextAt = (this.calls[0] ?? now) + 3_600_000
-            state.reviewAt = state.nextAt
-            return false
         }
-        return true
+        state.nextAt = limit.until
+        state.reviewAt = state.nextAt
+        return false
     }
 
     private recordLimit(

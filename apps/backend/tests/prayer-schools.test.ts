@@ -162,7 +162,7 @@ it('uses the fixed school deity and mood without a mastery-level chance bonus', 
 })
 
 it.each(['pray_road', 'pray_lantern', 'pray_grave'] as const)(
-    '%s has no healing passives, wave or grave purification',
+    '%s does not inherit the Mother prayer modifiers or purification',
     (abilityId) => {
         const f = gravePrayerFixture()
         known(f.actor, abilityId)
@@ -182,6 +182,7 @@ it.each(['pray_road', 'pray_lantern', 'pray_grave'] as const)(
             area: false,
             harm: false,
             ...(abilityId === 'pray_road' ? { energyRecoveryRadius: 48 } : {}),
+            ...(abilityId === 'pray_grave' ? { targetLimit: 1 } : {}),
         })
         const beforeMana = f.actor.mana
         const random = vi.fn(() => 0)

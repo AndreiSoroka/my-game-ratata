@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { ConstellationStar } from '../../../../backend/src/game/constellationCatalog'
+import { describeAshEffectChance } from './constellationAshChance'
 import { chanceFormula, withChanceFormulas } from './constellationChanceFormula'
 import type {
     ConstellationChanceFormula,
@@ -31,6 +32,7 @@ export function describePrayerEffectChance(
 ): ConstellationEffectChance | undefined {
     const ability = prayerAbilityForConstellation(node.constellationId)
     if (ability === undefined) return undefined
+    if (ability === 'pray_grave') return describeAshEffectChance(node, activeIds)
     const description =
         node.kind === 'root'
             ? rootChance(ability, activeIds)
@@ -146,14 +148,9 @@ function roadPassiveChance(node: ConstellationStar): PrayerDescription {
     }
 }
 function revivalForRoot(ability: PrayerAbilityId, activeIds?: ReadonlySet<string>) {
-    if (!activeIds) return undefined
-    const id =
-        ability === 'pray'
-            ? 'prayer.revive'
-            : ability === 'pray_grave'
-              ? 'prayer_grave.revive'
-              : undefined
-    return id && activeIds.has(id) ? rootRevivalChance(ability, activeIds) : undefined
+    return ability === 'pray' && activeIds?.has('prayer.revive')
+        ? rootRevivalChance(ability, activeIds)
+        : undefined
 }
 function deterministic(
     summary: string,

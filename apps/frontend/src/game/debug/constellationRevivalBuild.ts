@@ -2,6 +2,7 @@ import {
     ABILITY_DEFINITIONS,
     prayerManaCost,
     prayerSchoolId,
+    resolveAshParameters,
     resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
@@ -20,10 +21,13 @@ export function revivalBuild(
 ): Pick<PrayerBuildResult, 'effects' | 'metrics'> {
     const parameters = resolveResurrectionParameters(context.ability, activeIds, context.mood)
     const bonuses = resolveConstellationBonuses(activeIds, context.lowHealthEligible)
-    const duration = Math.round(
-        ABILITY_DEFINITIONS[context.ability].windupMs *
-            (prayerSchoolId(context.ability) === 'pray' ? bonuses.prayerDurationMultiplier : 1)
-    )
+    const ashDurationBonus =
+        context.ability === 'pray_grave' ? resolveAshParameters(activeIds).reviveFasterMs : 0
+    const duration =
+        Math.round(
+            ABILITY_DEFINITIONS[context.ability].windupMs *
+                (prayerSchoolId(context.ability) === 'pray' ? bonuses.prayerDurationMultiplier : 1)
+        ) - ashDurationBonus
     const minimum = parameters.minimumResource > 0 ? '; минимум 1 каждого ресурса' : ''
     const metrics = [
         row('Цена воскрешения', `${prayerManaCost('revive', context.ability)} MP за цель`),

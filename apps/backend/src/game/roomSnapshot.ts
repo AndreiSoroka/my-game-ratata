@@ -68,7 +68,7 @@ export function roomSnapshot(
     const snapshot = createSnapshot(
         charactersInLocation(context.characters, locationId).values(),
         location.inventory.snapshotItems(),
-        location.inventory.snapshotChests(),
+        location.inventory.snapshotChests(now, observer),
         context.tick,
         now,
         playerId

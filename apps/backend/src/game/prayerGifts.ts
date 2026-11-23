@@ -14,6 +14,7 @@ import {
     consumeHealingProvenance,
     type RoadPrayerCastState,
 } from './abilityState'
+import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { restoreCharacter } from './characterRecovery'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
@@ -38,16 +39,24 @@ export function applyPrayerGifts(
     abilityId: PrayerActionId = 'pray',
     factors?: Record<ConstellationId, number>,
     resurrection?: ResurrectionParameters,
-    road?: RoadPrayerCastState
+    road?: RoadPrayerCastState,
+    secondaryTargetId?: string
 ) {
     const recipients =
         intent.mode === 'revive'
             ? context.characters.filter(
                   (target) => target.id === intent.targetId
               )
-            : prayerGiftTargets(actor, intent, context, abilityId)
+            : prayerGiftTargets(
+                  actor,
+                  intent,
+                  context,
+                  abilityId,
+                  secondaryTargetId
+              )
     const events: GameEventPayload[] = []
     let meaningful = false
+    let meaningfulAllyHeal = false
     let experience = 0
     for (const target of recipients) {
         if (!succeeds) {
@@ -67,6 +76,11 @@ export function applyPrayerGifts(
         events.push(...gift.events)
         meaningful ||= gift.meaningful
         if (gift.meaningful) {
+            meaningfulAllyHeal ||= usefulAllyHealing(
+                actor,
+                target,
+                gift.hpRecovery
+            )
             experience +=
                 intent.mode === 'revive'
                     ? MASTERY_REWARDS.resurrection
@@ -86,8 +100,17 @@ export function applyPrayerGifts(
     return {
         events,
         meaningful: meaningful || recoveryExperience > 0,
+        meaningfulAllyHeal,
         experience: Math.max(experience, recoveryExperience),
     }
+}
+
+function usefulAllyHealing(
+    actor: GameCharacter,
+    target: GameCharacter,
+    hpRecovery: boolean
+): boolean {
+    return target !== actor && hpRecovery
 }
 
 function meaningfulGiftAttempt(
@@ -142,7 +165,7 @@ export function applyPrayerGift(
         return { events: [], meaningful: false, hpRecovery: false }
     }
     const lifeEvents: GameEventPayload[] = []
-    let meaningful = target.trainingTarget === undefined
+    let meaningful = prayerGiftTrains(target, abilityId)
     if (profile.resource === 'hp') {
         meaningful =
             consumeHealingProvenance(target, amount, missing) > 0 && meaningful
@@ -187,6 +210,16 @@ export function applyPrayerGift(
             },
         ],
     }
+}
+
+function prayerGiftTrains(
+    target: GameCharacter,
+    abilityId: PrayerActionId
+): boolean {
+    return (
+        target.trainingTarget === undefined &&
+        (abilityId !== 'pray_grave' || ashSummoner(target) === undefined)
+    )
 }
 
 function reviveGift(

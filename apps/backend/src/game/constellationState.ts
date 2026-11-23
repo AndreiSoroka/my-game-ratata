@@ -2,6 +2,7 @@ import type { ConstellationId } from '@my-game-ratata/contracts'
 
 export interface CharacterConstellations {
     opened: Set<string>
+    dormant: Set<string>
     credits: Record<ConstellationId, number>
     evidence: Record<string, number>
     receipts: Set<string>
@@ -23,6 +24,7 @@ export interface CharacterConstellations {
 export function createConstellationState(): CharacterConstellations {
     return {
         opened: new Set(),
+        dormant: new Set(),
         credits: {
             blade: 0,
             magic: 0,

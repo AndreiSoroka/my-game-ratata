@@ -4,7 +4,15 @@ import {
     type GameEventPayload,
 } from '@my-game-ratata/contracts'
 
+import { syncAshConstellation } from './ashConstellationProgression'
 import type { GameCharacter } from './character'
+import {
+    activeConstellationStars,
+    discoverLifeBreath,
+    hasStar,
+    refreshConstellationActivity,
+    removeDormantAbilities,
+} from './constellationActivity'
 import { type ConstellationStar } from './constellationCatalog'
 import { fullConstellationCatalog } from './constellationNodes'
 import {
@@ -13,14 +21,20 @@ import {
     starterConstellationStars,
 } from './constellationRequirements'
 import { syncMagicConstellation } from './magicProgression'
-import { captureMasteryLevels } from './skillProgression'
+import { canReceiveMastery, captureMasteryLevels } from './skillProgression'
 
+export {
+    activeConstellationStars,
+    discoverLifeBreath,
+    hasStar,
+} from './constellationActivity'
 export { constellationModifiers } from './constellationModifiers'
 export { snapshotConstellations } from './constellationSnapshot'
 export { createConstellationState } from './constellationState'
 
-export function hasStar(actor: GameCharacter, id: string): boolean {
-    return actor.progression.constellations.opened.has(id)
+export function reconcileConstellationLevels(actor: GameCharacter): void {
+    refreshConstellationActivity(actor)
+    syncAbilityConstellations(actor)
 }
 
 export function initializeConstellations(actor: GameCharacter): void {
@@ -72,12 +86,14 @@ export function syncAbilityConstellations(actor: GameCharacter): void {
     ] as const) {
         if (
             known.has(ability) &&
-            (actor.heroClass === 'cleric' ||
-                actor.progression.masteries[path].level >= 5)
+            actor.progression.masteries[path].level >=
+                minimumConstellationLevel(`${path}.revive`, actor.heroClass)
         ) {
             actor.progression.constellations.opened.add(`${path}.revive`)
         }
     }
+    syncAshConstellation(actor)
+    removeDormantAbilities(actor)
 }
 
 function syncBladeAbilities(actor: GameCharacter): void {
@@ -102,7 +118,7 @@ export function finishConstellationAction(
     actor: GameCharacter,
     action: ConstellationAction
 ): GameEventPayload[] {
-    if (!canResolveDiscoveries(actor)) {
+    if (!canReceiveMastery(actor, undefined)) {
         return []
     }
     const state = actor.progression.constellations
@@ -115,8 +131,9 @@ export function finishConstellationAction(
     discoverLastLight(actor, action)
     discoverLifeBreath(actor)
     syncAbilityConstellations(actor)
+    const active = new Set(activeConstellationStars(actor))
     const requirementContext = {
-        opened: state.opened,
+        opened: active,
         levels: captureMasteryLevels(actor),
         knownAbilities: actor.abilities.known,
         ...(actor.heroClass === undefined
@@ -129,6 +146,7 @@ export function finishConstellationAction(
         const candidates = fullConstellationCatalog.filter(
             (node) =>
                 state.credits[node.constellationId] > 0 &&
+                !state.opened.has(node.id) &&
                 canDiscoverConstellationStar(node, requirementContext)
         )
         if (candidates.length === 0) {
@@ -136,6 +154,7 @@ export function finishConstellationAction(
         }
         const node = chooseStar(actor, candidates, action.random ?? Math.random)
         state.opened.add(node.id)
+        active.add(node.id)
         if (node.id === 'life.energy2') {
             discoverLifeBreath(actor)
         }
@@ -149,31 +168,6 @@ export function finishConstellationAction(
     discoverLastLight(actor, action)
     syncAbilityConstellations(actor)
     return []
-}
-
-function canResolveDiscoveries(actor: GameCharacter): boolean {
-    return (
-        actor.alive &&
-        actor.trainingTarget === undefined &&
-        !actor.tags.has('offline') &&
-        !actor.tags.has('state.retired')
-    )
-}
-
-export function discoverLifeBreath(actor: GameCharacter): boolean {
-    const state = actor.progression.constellations
-    const baseEnergy = actor.config.resources.maxEnergy
-    if (
-        state.opened.has('life.breath') ||
-        !state.opened.has('life.energy2') ||
-        baseEnergy <= 0 ||
-        state.lifeEnergy.recovered + 1e-9 < 3 * baseEnergy ||
-        !canResolveDiscoveries(actor)
-    ) {
-        return false
-    }
-    state.opened.add('life.breath')
-    return true
 }
 
 function acceptActionReceipt(

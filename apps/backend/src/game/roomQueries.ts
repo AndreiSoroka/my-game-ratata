@@ -1,8 +1,11 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
+
 import type { GameCharacter } from './character'
+import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { findVisibleTarget } from './queries'
 import type { RoomSocket } from './roomMessaging'
-import { centerLocationId } from './worldLocations'
+import { centerLocationId, type WorldLocations } from './worldLocations'
 
 export function hasConnectedPlayerInLocation(
     characters: Iterable<GameCharacter>,
@@ -48,6 +51,23 @@ export function createRoomTargetFinder(
             radius,
             now
         )
+}
+
+export function createNearbyCorpseFinder(world: () => WorldLocations) {
+    return (actor: GameCharacter, now: number): string | undefined => {
+        const { navigation, inventory } = world().get(actor.locationId)
+        const byDistance = inventory.deathLoot
+            .raisableCorpses(now)
+            .map((chest) => ({
+                chest,
+                range: distance(actor.position, chest.position),
+            }))
+            .filter(({ range }) => range <= ABILITY_DEFINITIONS.ash_raise.range)
+            .sort((a, b) => a.range - b.range)
+        return byDistance.find(({ chest }) =>
+            navigation.hasLineOfSight(actor.position, chest.position)
+        )?.chest.id
+    }
 }
 
 export function connectionsInLocation(

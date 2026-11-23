@@ -25,12 +25,14 @@ export function createSkeleton(
     navigation: NavigationService,
     idSuffix = '',
     spawnTile?: TileCoordinate,
-    respawnPolicy: 'automatic' | 'none' = 'automatic'
+    respawnPolicy: 'automatic' | 'none' = 'automatic',
+    mortal = false
 ): SpawnedCharacter {
     const skeleton = new Character({
         archetype: 'skeleton',
         creatureType: 'undead',
         controllerKind: 'mob1',
+        mortal,
         respawnPolicy,
         locationId: spawnLocationId(navigation),
         faction: 'monsters',

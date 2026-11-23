@@ -1,8 +1,12 @@
 import {
+    ASH_RULES,
+    type AshRiteId,
     isArcaneAbility,
     isArrowAbility,
+    isAshRiteId,
     isBladeAbility,
     isFireSpell,
+    resolveAshParameters,
     resolveResurrectionParameters,
 } from '@my-game-ratata/contracts'
 
@@ -73,6 +77,10 @@ function appendActiveEffects(
         )
         return
     }
+    if (isAshRiteId(ability)) {
+        effects.push(...ashRiteCardEffects(ability, context.learned))
+        return
+    }
     switch (ability) {
         case 'pray':
             appendHealingPrayer(effects, context, false)
@@ -85,11 +93,7 @@ function appendActiveEffects(
             appendHealingPrayer(effects, context, true)
             break
         case 'pray_grave':
-            if (context.learned.has('prayer_grave.revive')) {
-                effects.push(
-                    'Возвращает павших товарищей из числа нежити, чья душа ещё не покинула этот мир.'
-                )
-            }
+            appendAshPrayer(effects, context.learned)
             break
         case 'pray_road':
             appendDescription(effects, context.learned, 'prayer_road.walk')
@@ -102,6 +106,51 @@ function appendActiveEffects(
             throw new Error(
                 `Missing active card effects: ${ability ?? 'undefined'}`
             )
+    }
+}
+
+function ashRiteCardEffects(
+    ability: AshRiteId,
+    learned: ReadonlySet<string>
+): string[] {
+    if (ability === 'ash_raise') {
+        const ash = resolveAshParameters(learned)
+        return [
+            `Прислужники: до ${String(ash.raiseSlots)} одновременно, ${String(ash.raiseDurationMs / 1000)} с, ${percent(ash.raiseHpFraction)}% HP при подъёме.`,
+            `Обряд: ${String(ash.raiseWindupMs)} мс и ${String(ASH_RULES.raiseMana)} MP.`,
+        ]
+    }
+    const node = fullConstellationCatalog.find(
+        (candidate) => candidate.activationAbilityId === ability
+    )
+    return node === undefined ? [] : [node.description]
+}
+
+function appendAshPrayer(
+    effects: string[],
+    learned: ReadonlySet<string>
+): void {
+    const ash = resolveAshParameters(learned)
+    if (learned.has('prayer_grave.revive')) {
+        effects.push(
+            'Возвращает павших товарищей из числа нежити, чья душа ещё не покинула этот мир.'
+        )
+    }
+    if (ash.healPower > 1) {
+        effects.push(`Лечение усилено на ${percent(ash.healPower - 1)}%.`)
+    }
+    if (ash.healChanceBonus > 0) {
+        effects.push(
+            `Шанс исцеления выше на ${percent(ash.healChanceBonus)} п.п.`
+        )
+    }
+    if (ash.healRadiusCells > 0) {
+        effects.push(
+            `Радиус исцеления больше на ${cells(ash.healRadiusCells)}.`
+        )
+    }
+    for (const id of ['brand', 'heal_walk', 'heal_second', 'dash', 'mana']) {
+        appendDescription(effects, learned, `prayer_grave.${id}`)
     }
 }
 function appendHealingPrayer(

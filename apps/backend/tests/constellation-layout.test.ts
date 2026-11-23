@@ -12,10 +12,10 @@ const centers = ['blade', 'magic', 'prayer', 'arrow', 'undead'] as const
 
 describe('personal planar skies', () => {
     it('keeps the full catalogue and certified components', () => {
-        expect(fullConstellationCatalog).toHaveLength(192)
+        expect(fullConstellationCatalog).toHaveLength(230)
         expect(
             fullConstellationCatalog.flatMap((node) => node.parents)
-        ).toHaveLength(209)
+        ).toHaveLength(247)
         expect(skyComponents(fullConstellationCatalog)).toHaveLength(10)
     })
 

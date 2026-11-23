@@ -1,5 +1,4 @@
 import {
-    archetypeCreatureTypes,
     type AttackZone,
     CENTER_LOCATION_ID,
     type CharacterAnimationAction,
@@ -11,7 +10,6 @@ import {
     type CharacterVisualId,
     type CreatureType,
     type HeroClass,
-    isCreatureType,
     type Vector2,
 } from '@my-game-ratata/contracts'
 
@@ -19,9 +17,11 @@ import { createAbilityState } from './abilityState'
 import type { CharacterConfig } from './characterConfig'
 import { applyCharacterDamage } from './characterDamage'
 import {
+    createCharacterReputation,
     defaultFactionFor,
     defaultVisualIdFor,
     type GameCharacterOptions,
+    resolveCreatureType,
 } from './characterIdentity'
 import {
     regenerateCharacter,
@@ -67,7 +67,11 @@ export class GameCharacter {
     /** Earned by server rules only; no client command grants this capability. */
     public exactCombatNumbers = false
     public readonly abilities: ReturnType<typeof createAbilityState>
-    public readonly creatureType: CreatureType
+    private readonly baseCreatureType: CreatureType
+    public lich = false
+    public lichHeartBound = false
+    public lichReturnAt: number | undefined
+    public readonly ashPact: boolean
     public readonly archetype: CharacterArchetype
     public readonly config: CharacterConfig
     public readonly controllerKind: CharacterControllerKind
@@ -129,12 +133,8 @@ export class GameCharacter {
             options.trainingTarget === undefined
                 ? undefined
                 : { ...options.trainingTarget }
-        const creatureType =
-            options.creatureType ?? archetypeCreatureTypes[options.archetype]
-        if (!isCreatureType(creatureType)) {
-            throw new Error('Unknown creature type')
-        }
-        this.creatureType = creatureType
+        this.baseCreatureType = resolveCreatureType(options)
+        this.ashPact = Boolean(options.ashPact)
         this.soul = createCharacterSoul(options)
         this.locationId = options.locationId ?? CENTER_LOCATION_ID
         this.spawnLocationId = this.locationId
@@ -158,16 +158,17 @@ export class GameCharacter {
         this.baseMaxHp = this.config.combat.maxHp
         this.nickname = options.nickname
         this.position = { ...options.spawnPosition }
-        this.reputation = {
-            monsters: -100,
-            ...options.reputation,
-        }
+        this.reputation = createCharacterReputation(options.reputation)
         this.spawnPosition = { ...options.spawnPosition }
         this.visualId =
             options.visualId ?? defaultVisualIdFor(options.archetype)
         bindNpcIdentityKey(this, options.npcIdentityKey)
         initializeConstellations(this)
         this.hp = this.maxHp
+    }
+
+    public get creatureType(): CreatureType {
+        return this.lich ? 'undead' : this.baseCreatureType
     }
 
     public get maxHp(): number {

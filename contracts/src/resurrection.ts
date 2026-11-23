@@ -1,4 +1,5 @@
 import { isMotherPrayer, type PrayerActionId } from './abilities'
+import { resolveAshParameters } from './ash'
 import type { DeityMood } from './progression'
 
 export interface ResurrectionParameters {
@@ -31,9 +32,16 @@ export function resolveResurrectionParameters(
     mood: DeityMood
 ): ResurrectionParameters {
     if (!isMotherPrayer(abilityId)) {
+        const ash =
+            abilityId === 'pray_grave'
+                ? resolveAshParameters(openedIds)
+                : undefined
         return {
-            successChance: PRAYER_MOOD_BASE_CHANCE[mood],
-            hpFraction: 0.5,
+            successChance: Math.min(
+                RESURRECTION_SUCCESS_CAP,
+                PRAYER_MOOD_BASE_CHANCE[mood] + (ash?.reviveChanceBonus ?? 0)
+            ),
+            hpFraction: ash?.reviveHpFraction ?? 0.5,
             resourceFraction: 0.5,
             angelicChance: 0,
             minimumResource: 0,

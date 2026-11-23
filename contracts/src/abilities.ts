@@ -1,15 +1,13 @@
-import {
-    arrowAbilityDefinitions,
-    type ArrowAbilityId,
-    arrowAbilityIds,
-} from './arrowAbilities'
-import {
-    bladeAbilityDefinitions,
-    bladeAbilityIds,
-    type BladeAttackAbilityId,
-} from './bladeAbilities'
+import { type ArrowAbilityId, arrowAbilityIds } from './arrowAbilities'
+import { type AshRiteId, ashRiteIds, type AshRiteMessage } from './ashRites'
+import { bladeAbilityIds, type BladeAttackAbilityId } from './bladeAbilities'
+import type { PrayerParametersSnapshot } from './prayerPreviewTypes'
+
+export { ABILITY_DEFINITIONS } from './abilityDefinitions'
 export { type ArrowAbilityId, isArrowAbility } from './arrowAbilities'
+export * from './ashRites'
 export * from './bladeAbilities'
+export type { PrayerParametersSnapshot } from './prayerPreviewTypes'
 
 export const prayerAbilityIds = [
     'pray',
@@ -42,6 +40,7 @@ export function isPrayerAbility(value: unknown): value is PrayerAbilityId {
 }
 export const abilityIds = [
     ...prayerActionIds,
+    ...ashRiteIds,
     ...bladeAbilityIds,
     'spark',
     'barrier',
@@ -135,27 +134,15 @@ export interface CharacterAbilitiesSnapshot {
 export type AbilityClientMessage =
     | {
           type: 'use_ability'
-          abilityId: Exclude<AbilityId, PrayerActionId>
+          abilityId: Exclude<AbilityId, PrayerActionId | AshRiteId>
           targetId?: string
           target?: import('./graves').WorldCombatTarget
       }
     | { type: 'use_ability'; abilityId: PrayerActionId; intent: PrayerIntent }
+    | AshRiteMessage
     | { type: 'learn_ability'; abilityId: LearnAbilityId; targetId: string }
     | { type: 'cancel_prayer' }
     | { type: 'cancel_magic' }
-export interface PrayerParametersSnapshot {
-    radius: number
-    durationMs: number
-    manaCost: number
-    area: boolean
-    harm: boolean
-    targetLimit?: number
-    wardRank?: number
-    hasAuras?: boolean
-    aurasSuppressed?: boolean
-    energyRecoveryRadius?: number
-    cost?: PrayerCostSnapshot
-}
 export interface AbilityDefinition {
     cycleMs?: number
     movementMs?: number
@@ -168,129 +155,6 @@ export interface AbilityDefinition {
     stunMs?: number
     damage?: number
     maxDamage?: number
-}
-export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
-    ...bladeAbilityDefinitions,
-    pray: {
-        name: 'Молитва',
-        mana: 5,
-        energy: 0,
-        cooldownMs: 3000,
-        range: 48,
-        windupMs: 3000,
-    },
-    pray_woven: {
-        name: 'Сплетённая молитва',
-        mana: 5,
-        energy: 0,
-        cooldownMs: 3000,
-        range: 48,
-        windupMs: 3000,
-    },
-    pray_road: {
-        name: 'Молитва странника',
-        mana: 5,
-        energy: 0,
-        cooldownMs: 3000,
-        range: 48,
-        windupMs: 3000,
-    },
-    pray_lantern: {
-        name: 'Молитва ясности',
-        mana: 5,
-        energy: 0,
-        cooldownMs: 3000,
-        range: 48,
-        windupMs: 3000,
-    },
-    pray_grave: {
-        name: 'Молитва праха',
-        mana: 5,
-        energy: 0,
-        cooldownMs: 3000,
-        range: 48,
-        windupMs: 3000,
-    },
-    spark: {
-        name: 'Искра',
-        mana: 6,
-        energy: 5,
-        cooldownMs: 800,
-        range: 80,
-        windupMs: 200,
-        damage: 3,
-        maxDamage: 6,
-    },
-    barrier: {
-        name: 'Барьер',
-        mana: 4,
-        energy: 0,
-        cooldownMs: 10000,
-        range: 0,
-        windupMs: 0,
-    },
-    ...arrowAbilityDefinitions,
-    skeleton_strike: {
-        name: 'Костяной удар',
-        mana: 0,
-        energy: 24,
-        cooldownMs: 8000,
-        range: 19.2,
-        windupMs: 600,
-        stunMs: 800,
-    },
-    fireball: {
-        name: 'Огненная стрела',
-        mana: 15,
-        energy: 0,
-        cooldownMs: 5000,
-        range: 160,
-        windupMs: 400,
-        damage: 10,
-        maxDamage: 40,
-    },
-    greater_fireball: {
-        name: 'Большой огненный шар',
-        mana: 40,
-        energy: 0,
-        cooldownMs: 8000,
-        range: 192,
-        windupMs: 400,
-        damage: 50,
-        maxDamage: 120,
-    },
-    chains: {
-        name: 'Оковы',
-        mana: 5,
-        energy: 0,
-        cooldownMs: 18000,
-        range: 0,
-        windupMs: 0,
-    },
-    blink: {
-        name: 'Мерцание',
-        mana: 10,
-        energy: 0,
-        cooldownMs: 8000,
-        range: 0,
-        windupMs: 0,
-    },
-    dispel_magic: {
-        name: 'Рассеивание',
-        mana: 12,
-        energy: 0,
-        cooldownMs: 12000,
-        range: 0,
-        windupMs: 0,
-    },
-    city_portal: {
-        name: 'Портал',
-        mana: 0,
-        energy: 0,
-        cooldownMs: 120000,
-        range: 0,
-        windupMs: 10000,
-    },
 }
 export const BARRIER_RULES = { durationMs: 5000 } as const
 export const PRAYER_RULES = {

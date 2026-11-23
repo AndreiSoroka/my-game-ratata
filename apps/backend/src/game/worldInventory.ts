@@ -29,13 +29,14 @@ import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
 import { recordVitalityRecovery } from './vitalityPractice'
+import { snapshotWorldContainers } from './worldContainerSnapshot'
 import { WorldDeathLoot } from './worldDeathLoot'
 import { dropPosition, healFood, isPointInZones } from './worldInventoryHelpers'
 import { type LooseWorldItem, pickupWorldItem } from './worldPickup'
 
 export class WorldInventory {
     public readonly containers: ChestContainers
-    private readonly deathLoot: WorldDeathLoot
+    public readonly deathLoot: WorldDeathLoot
     private readonly chests: Map<string, WorldChest>
     private readonly looseItems = new Map<string, LooseWorldItem>()
     private nextLooseItemIndex = 1
@@ -132,9 +133,10 @@ export class WorldInventory {
     public finalizeDeath(
         actor: GameCharacter,
         now: number,
-        abandoned = false
+        abandoned = false,
+        options?: Parameters<WorldDeathLoot['finalize']>[3]
     ): GameEventPayload[] {
-        return this.deathLoot.finalize(actor, now, abandoned)
+        return this.deathLoot.finalize(actor, now, abandoned, options)
     }
 
     public openChestById(
@@ -177,20 +179,17 @@ export class WorldInventory {
         }))
     }
 
-    public snapshotChests(): WorldChestSnapshot[] {
-        return [...this.chests.values()].map((chest) => ({
-            ...(chest.kind !== undefined
-                ? { kind: chest.kind, title: chest.title, corpse: chest.corpse }
-                : {}),
-            ...(chest.propId === undefined ? {} : { propId: chest.propId }),
-            ...(chest.bounds === undefined
-                ? {}
-                : { bounds: { ...chest.bounds } }),
-            id: chest.id,
-            itemCount: chest.contents.length,
-            position: chest.position,
-            state: chest.opened ? 'open' : 'closed',
-        }))
+    public snapshotChests(
+        now = Date.now(),
+        observer?: GameCharacter
+    ): WorldChestSnapshot[] {
+        return snapshotWorldContainers(
+            this.chests,
+            this.deathLoot,
+            this.navigation,
+            now,
+            observer?.locationId === this.locationId ? observer : undefined
+        )
     }
 
     private eatInventoryItem(

@@ -4,6 +4,7 @@ import {
     type CharacterSnapshot,
     type ClientMessage,
     isArrowAbility,
+    isAshRiteId,
     isBladeAbility,
     isPrayerAction,
     type PrayerActionId,
@@ -15,6 +16,7 @@ import {
 import type { ComputedRef, Ref } from 'vue'
 
 import type { PrayerPreviewHighlight } from '../runtime/prayerPreviewPresentation'
+import { ashHotbarCommand, ashHotbarReason } from './ashActions'
 import {
     activateGuard,
     bladeAbilityUnavailable,
@@ -95,6 +97,7 @@ function abilityUnavailable(
 }
 
 function abilityTargetReason(id: AbilityId, props: HotbarProps): string | undefined {
+    if (isAshRiteId(id)) return ashHotbarReason(id, props.player, props.target)
     if (id === 'sniper_shot' && (props.grave || !livingAttackTarget(props)))
         return 'Выберите живую цель: E'
     return !isBladeAbility(id) &&
@@ -120,6 +123,7 @@ function actionFor(
 ): Extract<CharacterAutoAction, { kind: 'ability' | 'prayer' }> | undefined {
     if (isPrayerAction(binding.id))
         return intent ? { kind: 'prayer', abilityId: binding.id, intent } : undefined
+    if (isAshRiteId(binding.id)) return undefined
     if (binding.id === 'sniper_shot') {
         const target = props.grave ? undefined : livingAttackTarget(props)
         return target ? { kind: 'ability', abilityId: binding.id, targetId: target.id } : undefined
@@ -181,6 +185,21 @@ export function createActivator(
     unavailable: (binding: HotbarBinding | null) => string | undefined
 ) {
     const { bindings, food, known, preview } = state
+    function activateKnownAbility(
+        binding: Extract<HotbarBinding, { kind: 'ability' }>,
+        index: number
+    ): void {
+        if (!known.value.includes(binding.id)) return
+        if (isAshRiteId(binding.id)) {
+            const command = ashHotbarCommand(binding.id, props.target)
+            if (command && !unavailable(binding)) emit('command', command)
+            return
+        }
+        const action = bindingAction(binding, props, preview)
+        if (!action) return
+        if (!unavailable(binding)) emit('command', singleCommand(action))
+        gestures.remember(index, action)
+    }
     return function activate(index: number): void {
         const binding = actionableBinding(bindings.value[index], props)
         if (!binding) return
@@ -196,11 +215,7 @@ export function createActivator(
             activateAttack(props, emit, gestures, index, unavailable(binding))
             return
         }
-        if (!known.value.includes(binding.id)) return
-        const action = bindingAction(binding, props, preview)
-        if (!action) return
-        if (!unavailable(binding)) emit('command', singleCommand(action))
-        gestures.remember(index, action)
+        activateKnownAbility(binding, index)
     }
 }
 function activateAttack(

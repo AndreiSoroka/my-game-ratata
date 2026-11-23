@@ -230,6 +230,7 @@ describe('known prayer school cards', () => {
         actor.abilities.known.add('pray_road')
         actor.abilities.known.add('pray_lantern')
         actor.abilities.known.add('pray_grave')
+        actor.progression.masteries.prayer_grave.level = 5
         syncAbilityConstellations(actor)
         const snapshot = snapshotConstellations(actor)
         for (const [path, name] of [
@@ -274,7 +275,7 @@ describe('known prayer school cards', () => {
             fullConstellationCatalog.filter(
                 (node) => node.constellationId === 'prayer_grave'
             )
-        ).toHaveLength(2)
+        ).toHaveLength(40)
     })
 })
 
@@ -292,6 +293,11 @@ it('marks only standalone hotbar bindings active, never enhancement prerequisite
         ['prayer_road.root', 'pray_road'],
         ['prayer_lantern.root', 'pray_lantern'],
         ['prayer_grave.root', 'pray_grave'],
+        ['prayer_grave.raise', 'ash_raise'],
+        ['prayer_grave.orders', 'ash_order'],
+        ['prayer_grave.donate', 'ash_gift'],
+        ['prayer_grave.sacrifice', 'ash_sacrifice'],
+        ['prayer_grave.heart', 'ash_heart'],
         ['magic.chains', 'chains'],
         ['magic.blink', 'blink'],
         ['magic.dispel_magic', 'dispel_magic'],

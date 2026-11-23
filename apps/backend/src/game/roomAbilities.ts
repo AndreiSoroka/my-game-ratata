@@ -21,6 +21,7 @@ import { resolveRespawnDelayMs } from './roomSimulation'
 import type { WorldLocations } from './worldLocations'
 
 interface RoomAbilityOptions {
+    useAshRite?: NonNullable<AbilityContext['useAshRite']>
     graves: NonNullable<AbilityContext['graves']>
     sameParty: NonNullable<AbilityContext['sameParty']>
     exchangePaused: (actorId: string) => boolean
@@ -63,6 +64,7 @@ export function createRoomCombatActions(
         canOpenPortal,
         openPortal,
         requestAbilityAttack,
+        useAshRite: options.useAshRite,
     })
     return {
         ...portalActions,

@@ -32,6 +32,7 @@ export function createLocationEnemies(
     }
     const result: LocationEnemy[] = []
     const graves = navigation.grid.encounters?.graves ?? []
+    const reserveRevival = navigation.grid.encounters?.ashRefuge !== undefined
     for (const [index, tile] of encounterTiles
         .slice(0, difficulty.enemyCount)
         .entries()) {
@@ -52,7 +53,13 @@ export function createLocationEnemies(
                     continue
                 }
                 spawn = {
-                    ...createSkeleton(navigation, suffix, sourceTile, 'none'),
+                    ...createSkeleton(
+                        navigation,
+                        suffix,
+                        sourceTile,
+                        'none',
+                        reserveRevival
+                    ),
                     graveSourceId: source.id,
                 }
             } else {

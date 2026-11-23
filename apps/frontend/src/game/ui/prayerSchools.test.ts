@@ -171,3 +171,93 @@ it('binds four separate slots and pins the school in single and repeated prayer 
         view.unmount()
     }
 })
+
+it('casts only the selected hostile at the fixed Ash Brand range through the ordinary hotbar', async () => {
+    const player = allPrayers()
+    player.abilities!.prayers!.pray_grave!.harm = true
+    player.abilities!.prayers!.pray_grave!.targetLimit = 2
+    const enemy = characterFixture('ash-brand', {
+        creatureType: 'ooze',
+        faction: 'monsters',
+        relationship: 'hostile',
+        position: { x: player.position.x + 40, y: player.position.y },
+    })
+    const other = { ...enemy, id: 'other' }
+    const friend = { ...enemy, id: 'friendly', relationship: 'friendly' as const }
+    const far = {
+        ...enemy,
+        id: 'far',
+        position: { x: player.position.x + 70, y: player.position.y },
+    }
+    const characters = [enemy, other, friend, far]
+    const options = { abilityId: 'pray_grave' as const }
+    expect(previewPrayerFromSnapshots(player, characters, enemy.id, options)).toMatchObject({
+        intent: { mode: 'harm', targetId: enemy.id },
+        harmfulTargetIds: [enemy.id],
+        radius: 48,
+        durationMs: 1500,
+    })
+    for (const excluded of [friend, far]) {
+        expect(previewPrayerFromSnapshots(player, characters, excluded.id, options).intent).toEqual(
+            { mode: 'devotion' }
+        )
+    }
+    const view = mount(ActionHotbar, {
+        props: { player, target: enemy, characters, blocked: false },
+    })
+    try {
+        await view.vm.edit(0)
+        await view.findAll('.hotbar-picker [data-dialog-action]')[3]!.trigger('click')
+        view.vm.activate(0)
+        expect(view.emitted('command')?.at(-1)).toEqual([
+            {
+                type: 'use_ability',
+                abilityId: 'pray_grave',
+                intent: { mode: 'harm', targetId: enemy.id },
+            },
+        ])
+    } finally {
+        view.unmount()
+    }
+})
+
+it('previews Ash revival with its own reach and shows the second heal only when affordable', () => {
+    const player = allPrayers()
+    const prayers = player.abilities!.prayers!
+    prayers.pray_grave!.ashRevival = { radius: 64, durationMs: 2700 }
+    prayers.pray_grave!.targetLimit = 2
+    player.progression!.resurrectionSchools = ['pray_grave']
+    const dead = characterFixture('fallen', {
+        alive: false,
+        creatureType: 'undead',
+        position: { x: player.position.x + 63, y: player.position.y },
+        life: { retired: false, reviveMsLeft: 60_000, reviveUntil: 60_000 },
+    })
+    const options = { abilityId: 'pray_grave' as const }
+    expect(previewPrayerFromSnapshots(player, [dead], dead.id, options)).toMatchObject({
+        intent: { mode: 'revive', targetId: dead.id },
+        manaCost: 20,
+        radius: 64,
+        durationMs: 2700,
+    })
+    dead.position.x += 2
+    expect(previewPrayerFromSnapshots(player, [dead], dead.id, options).intent).toEqual({
+        mode: 'devotion',
+    })
+    const living = [1, 2].map((id) =>
+        characterFixture(String(id), {
+            creatureType: 'undead',
+            health: { kind: 'percent', percent: 50 },
+        })
+    )
+    player.resourceChecks!.ashSecondHeal = false
+    expect(previewPrayerFromSnapshots(player, living, living[0]!.id, options)).toMatchObject({
+        manaCost: 5,
+        targetCount: 1,
+    })
+    player.resourceChecks!.ashSecondHeal = true
+    expect(previewPrayerFromSnapshots(player, living, living[0]!.id, options)).toMatchObject({
+        manaCost: 10,
+        targetCount: 2,
+    })
+})

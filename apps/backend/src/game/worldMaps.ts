@@ -5,12 +5,14 @@ import path from 'node:path'
 import {
     CENTER_LOCATION_ID,
     type MapSummary,
+    WESTERN_RUINS_LOCATION_ID,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
 import {
     type CityLayoutStyle,
     generateCity,
+    generateWorldMap,
 } from '../../../../scripts/generate-map.mjs'
 import { createAdventureResourceNodes } from './adventureResourceData'
 import type { AdventureServiceOptions } from './adventureWorld'
@@ -60,16 +62,22 @@ export class WorldMaps {
             throw new Error('Invalid world epoch')
         }
         const mapRoot = options.mapRoot ?? resolveMapRoot()
-        for (const { id } of WORLD_LOCATION_DEFINITIONS) {
+        for (const definition of WORLD_LOCATION_DEFINITIONS) {
+            const { id } = definition
             const source = readMap(
                 id === CENTER_LOCATION_ID
                     ? generateCity(this.seed, options.cityStyle)
-                    : JSON.parse(
-                          fs.readFileSync(
-                              path.join(mapRoot, `${id}.json`),
-                              'utf8'
-                          )
-                      )
+                    : id === WESTERN_RUINS_LOCATION_ID &&
+                        options.mapRoot === undefined
+                      ? generateWorldMap(definition, {
+                            ashRefugeSeed: this.seed,
+                        })
+                      : JSON.parse(
+                            fs.readFileSync(
+                                path.join(mapRoot, `${id}.json`),
+                                'utf8'
+                            )
+                        )
             )
             const body = JSON.stringify(source)
             const revision = createHash('sha256').update(body).digest('hex')

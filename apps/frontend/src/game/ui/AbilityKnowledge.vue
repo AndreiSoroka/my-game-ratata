@@ -7,6 +7,7 @@ import {
     type ConstellationId,
     isArcaneAbility,
     isArrowAbility,
+    isAshRiteId,
     isPrayerAbility,
     type LearnAbilityId,
     PRAYER_SCHOOL_DEFINITIONS,
@@ -43,7 +44,8 @@ const known = computed(() =>
             (props.constellationId === 'magic' && isArcaneAbility(id)) ||
             learnable.value.includes(id as LearnAbilityId) ||
             (props.constellationId === 'arrow' && isArrowAbility(id)) ||
-            (props.constellationId === 'prayer' && id === 'pray_woven')
+            (props.constellationId === 'prayer' && id === 'pray_woven') ||
+            (props.constellationId === 'prayer_grave' && isAshRiteId(id))
     )
 )
 const canLearnMagic = computed(() =>

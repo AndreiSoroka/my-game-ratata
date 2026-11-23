@@ -103,10 +103,11 @@ export function parseNpcAiConfig(
         if (
             role !== 'city_coordinator' &&
             role !== 'companion' &&
-            role !== 'advisor'
+            role !== 'advisor' &&
+            role !== 'necromancer'
         ) {
             throw invalid(
-                'npc.role must be city_coordinator, companion or advisor'
+                'npc.role must be city_coordinator, companion, advisor or necromancer'
             )
         }
         return {

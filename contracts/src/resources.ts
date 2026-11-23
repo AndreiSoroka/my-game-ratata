@@ -13,6 +13,8 @@ export type ResourceCheck = 'ready' | 'mana' | 'energy'
 
 /** Private affordability hints; commands always validate the current server state. */
 export interface CharacterResourceChecks {
+    /** Owner-only affordability for the optional second target of Ash healing. */
+    ashSecondHeal?: boolean
     abilities: Record<Exclude<AbilityId, PrayerActionId>, ResourceCheck>
     prayers: Record<PrayerActionId, Record<PrayerMode, ResourceCheck>>
     dash: ResourceCheck

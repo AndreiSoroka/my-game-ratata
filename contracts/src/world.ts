@@ -2,6 +2,7 @@ import type { MapSummary } from './index'
 
 export const GRID_SIZE = 5
 export const CENTER_LOCATION_ID = 'map-2-2'
+export const WESTERN_RUINS_LOCATION_ID = 'map-0-2'
 export const REGION_NAME = 'Земли Новогорода'
 export type WorldBiome = 'city' | 'outskirts' | 'wilds'
 export type WorldDirection = 'north' | 'east' | 'south' | 'west'

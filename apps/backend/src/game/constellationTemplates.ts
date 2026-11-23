@@ -1,4 +1,5 @@
 import { arrowTemplatePositions } from './constellationArrowTemplate'
+import { ashTemplatePositions } from './constellationAshStars'
 import { bladeTemplatePositions } from './constellationBladeTemplate'
 import type { SkyPoint } from './constellationGeometry'
 import { undeadTemplatePositions } from './constellationUndeadTemplate'
@@ -106,8 +107,7 @@ export const constellationTemplatePositions = freezeTemplate({
     'prayer_road.shoulder': { x: 550, y: -30 },
     'prayer_road.bard': { x: -220, y: 230 },
     'prayer_lantern.root': { x: 0, y: 0 },
-    'prayer_grave.root': { x: 0, y: 0 },
-    'prayer_grave.revive': { x: 250, y: -150 },
+    ...ashTemplatePositions,
     'undead.root': { x: -340, y: 0 },
     ...undeadTemplatePositions,
 })

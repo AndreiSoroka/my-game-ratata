@@ -1,8 +1,7 @@
-import decisionSchema from './decision-schema.json'
 import { cliEnvironment } from './npcCliProcess'
-import { isObject, numericUsage, parseNpcAiReply } from './npcCliProtocol'
+import { isObject, numericUsage } from './npcCliProtocol'
 import { NpcCliProvider, type NpcCliProviderOptions } from './npcCliProvider'
-import type { NpcAiModelSettings, NpcAiReply } from './types'
+import type { NpcAiModelSettings } from './types'
 
 // Claude's structured-output grammar limits complex unions and constraints.
 const replyEnvelopeSchema = JSON.stringify({
@@ -27,7 +26,8 @@ export class ClaudeCliProvider extends NpcCliProvider {
                     ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
                     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
                 }),
-                instructionSuffix: `Return the complete NPC reply as JSON text in the structured output field replyJson. The decoded reply must match this schema:\n${JSON.stringify(decisionSchema)}`,
+                instructionSuffix: (schema) =>
+                    `Return the complete NPC reply as JSON text in the structured output field replyJson. The decoded reply must match this schema:\n${schema}`,
                 arguments: claudeNpcArguments,
                 parse: parseClaudeResult,
                 exitReason,
@@ -73,7 +73,7 @@ function claudeNpcArguments(
 function parseClaudeResult(
     stdout: string,
     onUsage: (usage: Record<string, number>) => void
-): NpcAiReply {
+): unknown {
     const result = parseJson(stdout)
     if (!isObject(result)) {
         throw new Error('Invalid Claude Code CLI result')
@@ -93,7 +93,7 @@ function parseClaudeResult(
             'Claude Code CLI ended without a completed structured reply'
         )
     }
-    return parseNpcAiReply(parseJson(envelope['replyJson']))
+    return parseJson(envelope['replyJson'])
 }
 
 function parseJson(text: string): unknown {

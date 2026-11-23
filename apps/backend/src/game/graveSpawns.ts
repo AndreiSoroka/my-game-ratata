@@ -20,6 +20,7 @@ import {
     restoreSource,
     snapshotSource,
 } from './graveSourceState'
+import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { createSkeleton, type SpawnedCharacter } from './spawns'
 import { rememberInheritedPath } from './undeadSurvivalState'
@@ -120,7 +121,8 @@ export class GraveSpawns {
         initialChildren: readonly string[],
         now: number,
         firstDelay = GRAVE_SPAWN_INTERVAL_MS,
-        firstMasteryLevel = 0
+        firstMasteryLevel = 0,
+        reserveRevival = false
     ): void {
         if (this.sources.has(definition.id)) {
             return
@@ -131,6 +133,7 @@ export class GraveSpawns {
             nextSpawnAt: now + firstDelay,
             nextBirth: 1,
             firstMasteryLevel,
+            reserveRevival,
             retryAt: 0,
             hpUnits: GRAVE_MAX_HP * 100,
             phase: 'active',
@@ -210,7 +213,8 @@ export class GraveSpawns {
                 navigation,
                 `_grave_${entry.id}_${String(birth)}`,
                 navigation.worldToTile(position),
-                'none'
+                'none',
+                source.reserveRevival
             )
             // The factory receives the actual location grid and a checked tile.
             spawn.character.locationId = entry.locationId
@@ -250,7 +254,12 @@ export class GraveSpawns {
         let living = 0
         for (const id of source.children) {
             const child = context.characters.get(id)
-            if (child?.alive === true) {
+            if (
+                child?.alive === true ||
+                (source.reserveRevival &&
+                    child !== undefined &&
+                    now < child.reviveUntil)
+            ) {
                 living++
             } else if (
                 child === undefined ||
@@ -291,9 +300,7 @@ function safePosition(
         }
     }
     candidates.sort(
-        (a, b) =>
-            distanceSquared(a, entry.position) -
-            distanceSquared(b, entry.position)
+        (a, b) => distance(a, entry.position) - distance(b, entry.position)
     )
     return candidates.find((point) =>
         occupied.every((bounds) => !overlapsSpawn(point, bounds))
@@ -307,8 +314,4 @@ function overlapsSpawn(point: Vector2, bounds: WorldObjectBounds): boolean {
         point.y + 8 > bounds.y &&
         point.y - 8 < bounds.y + bounds.height
     )
-}
-
-function distanceSquared(a: Vector2, b: Vector2): number {
-    return (a.x - b.x) ** 2 + (a.y - b.y) ** 2
 }

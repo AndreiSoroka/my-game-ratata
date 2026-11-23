@@ -172,6 +172,9 @@ function abilityCanHarm(
     if (message.intent.mode === 'devotion') {
         return false
     }
+    if (message.abilityId === 'pray_grave') {
+        return message.intent.mode === 'harm'
+    }
     if (!isMotherPrayer(message.abilityId)) {
         return false
     }

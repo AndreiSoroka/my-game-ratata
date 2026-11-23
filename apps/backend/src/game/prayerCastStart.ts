@@ -11,8 +11,10 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { type AbilityContext, abilityNotice } from './abilityContext'
-import { knowsAbility } from './abilityState'
+import { knowsAbility, nextPrayerReceipt } from './abilityState'
+import { planAshSecondaryHeal } from './ashPrayerTargets'
 import type { GameCharacter } from './character'
+import { ashParameters } from './constellationModifiers'
 import { hasStar } from './constellations'
 import {
     motherPrayerAuraState,
@@ -63,10 +65,26 @@ export function beginPrayerCast(
     const parameters = prayerParameters(
         actor,
         context.navigation.grid.tileWidth,
-        abilityId
+        abilityId,
+        intent.mode
     )
     const durationMs = plan?.durationMs ?? parameters.durationMs
-    installCast(actor, intent, context.now, abilityId, parameters, plan)
+    const secondaryTargetId = planAshSecondaryHeal(
+        actor,
+        intent,
+        context,
+        abilityId,
+        parameters.manaCost
+    )
+    installCast(
+        actor,
+        intent,
+        context.now,
+        abilityId,
+        parameters,
+        plan,
+        secondaryTargetId
+    )
     if (plan !== undefined) {
         actor.mana = Math.max(0, actor.mana - plan.manaCost)
     } else if (abilityId === 'pray_road') {
@@ -118,10 +136,10 @@ function installCast(
     now: number,
     abilityId: PrayerActionId,
     parameters: PrayerParametersSnapshot,
-    plan: MotherPrayerPlan | undefined
+    plan: MotherPrayerPlan | undefined,
+    secondaryTargetId?: string
 ): void {
-    const walkWhileCasting =
-        abilityId === 'pray_road' && hasStar(actor, 'prayer_road.walk')
+    const walkWhileCasting = walkingChannel(actor, intent, abilityId)
     if (walkWhileCasting) {
         actor.movement.mode = 'walking'
     } else {
@@ -133,13 +151,17 @@ function installCast(
         abilityId,
         intent: structuredClone(intent),
         targetId: plan?.targets[0]?.id ?? intentTarget(actor, intent),
-        receiptId: `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`,
+        receiptId: nextPrayerReceipt(actor),
         startedAt: now,
         completesAt: now + (plan?.durationMs ?? parameters.durationMs),
         patron: PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(abilityId)].deityId,
         origin: { ...actor.position },
         locationId: actor.locationId,
         hpAtStart: actor.hp,
+        radius: parameters.radius,
+        ...(secondaryTargetId === undefined
+            ? {}
+            : { ashSecondaryTargetId: secondaryTargetId }),
         ...(walkWhileCasting ? { walkWhileCasting } : {}),
         ...(parameters.energyRecoveryRadius === undefined
             ? {}
@@ -155,6 +177,19 @@ function installCast(
             ? {}
             : { plan, mother: motherPrayerAuraState(actor, plan) }),
     }
+}
+
+function walkingChannel(
+    actor: GameCharacter,
+    intent: PrayerIntent,
+    abilityId: PrayerActionId
+): boolean {
+    return (
+        (abilityId === 'pray_road' && hasStar(actor, 'prayer_road.walk')) ||
+        (abilityId === 'pray_grave' &&
+            intent.mode === 'restore' &&
+            ashParameters(actor).healWalking)
+    )
 }
 
 function intentTarget(actor: GameCharacter, intent: PrayerIntent): string {

@@ -11,8 +11,10 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { breakHeartSeal } from './heartSeals'
 import type { InventoryItemInstance } from './inventory'
 import { createItemInstance } from './inventory'
+import { resetMartyrStreak } from './martyr'
 import { clamp, distance } from './math'
 import type { NavigationService } from './navigation'
 import { overlaps } from './resourcePlacement'
@@ -91,6 +93,11 @@ export function chestRefusalNotice(
 }
 
 export interface WorldChest {
+    ashRemains?: {
+        readyAt: number
+        expiresAt: number
+        death?: { actor: GameCharacter; sequence: number }
+    }
     kind?: ContainerKind
     propId?: string
     bounds?: WorldObjectBounds
@@ -101,6 +108,22 @@ export interface WorldChest {
     id: string
     opened: boolean
     position: Vector2
+}
+
+export function chestPickup(
+    actor: GameCharacter,
+    chest: WorldChest,
+    item: InventoryItemInstance
+): GameEventPayload {
+    breakHeartSeal(chest, item.instanceId)
+    resetMartyrStreak(actor)
+    return {
+        kind: 'item_pickup',
+        actorId: actor.id,
+        chestId: chest.id,
+        itemId: item.itemId,
+        audienceIds: [actor.id],
+    }
 }
 
 export function revealChestContents(
@@ -114,6 +137,7 @@ export function revealChestContents(
     const contents = chest.contents.splice(0)
     chest.opened = true
     for (const [index, item] of contents.entries()) {
+        breakHeartSeal(chest, item.instanceId)
         drop(item, dropPosition(chest.position, index))
     }
     return [{ actorId: actor.id, chestId: chest.id, kind: 'chest_open' }]
