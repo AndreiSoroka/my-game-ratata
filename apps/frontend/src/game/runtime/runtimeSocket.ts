@@ -12,9 +12,8 @@ import type {
 import { CONTRACT_PROTOCOL_VERSION } from '@my-game-ratata/contracts'
 import { watch, type WatchHandle } from 'vue'
 
-import { tGame } from '@/shared/lib/i18n'
-
 import { resolveBackendHttpUrl, resolveBackendWebSocketUrl } from '@/shared/api'
+import { tGame } from '@/shared/lib/i18n'
 
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
