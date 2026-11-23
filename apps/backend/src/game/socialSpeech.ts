@@ -1,3 +1,5 @@
+import { PUBLIC_SPEECH_RADIUS } from '@my-game-ratata/contracts'
+
 import type { GameCharacter } from './character'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -17,7 +19,7 @@ export function canHearSpeech(
     speaker: GameCharacter,
     navigation: NavigationService,
     now: number,
-    radius = 80
+    radius = PUBLIC_SPEECH_RADIUS
 ): boolean {
     return (
         listener.id !== speaker.id &&

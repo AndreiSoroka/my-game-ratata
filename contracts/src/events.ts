@@ -65,6 +65,8 @@ export interface GameEventPayload {
     projectile?: ProjectilePath
     /** New utterance receipt; repeated text receives a new value. */
     speechId?: number
+    /** Live NPC speech projected only to an authorized listener. */
+    voice?: 'dialogue' | 'ambient'
     abilityId?: AbilityId
     damageKind?: DamageKind
     critical?: boolean

@@ -10,6 +10,11 @@ import {
     setAudioMuted,
     subscribeAudioMute,
 } from '../runtime/audioPreference'
+import {
+    isNpcVoiceEnabled,
+    setNpcVoiceEnabled,
+    subscribeNpcVoiceEnabled,
+} from '../runtime/npcVoicePreference'
 import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = withDefaults(
@@ -27,6 +32,7 @@ const emit = defineEmits<{
 const panel = ref<HTMLElement>()
 const menu = ref<MenuPanelHandle>()
 const muted = ref(isAudioMuted())
+const npcVoiceEnabled = ref(isNpcVoiceEnabled())
 const forcedMute = isAudioMuteForced()
 const items = computed<readonly MenuItem[]>(() => [
     { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },
@@ -41,11 +47,22 @@ const items = computed<readonly MenuItem[]>(() => [
         pressed: muted.value,
         disabled: forcedMute,
     },
+    {
+        id: 'npc-voice',
+        label: `Озвучка NPC: ${npcVoiceEnabled.value ? 'включена' : 'выключена'}`,
+        ariaLabel: 'Озвучка NPC',
+        pressed: npcVoiceEnabled.value,
+        disabled: forcedMute,
+    },
     { id: 'leave', label: 'Выйти из игры', variant: 'danger', dividerBefore: true },
 ])
 function activate(id: string): void {
     if (id === 'sound') {
         if (!forcedMute) setAudioMuted(!muted.value)
+        return
+    }
+    if (id === 'npc-voice') {
+        if (!forcedMute) setNpcVoiceEnabled(!npcVoiceEnabled.value)
         return
     }
     switch (id) {
@@ -72,7 +89,11 @@ function activate(id: string): void {
 const unsubscribeAudio = subscribeAudioMute((value) => {
     muted.value = value
 })
+const unsubscribeNpcVoice = subscribeNpcVoiceEnabled((value) => {
+    npcVoiceEnabled.value = value
+})
 onBeforeUnmount(unsubscribeAudio)
+onBeforeUnmount(unsubscribeNpcVoice)
 useEscapeOwner({ active: () => true, escape: () => emit('resume'), element: panel, priority: 200 })
 function keydown(event: KeyboardEvent): void {
     if (event.defaultPrevented) return

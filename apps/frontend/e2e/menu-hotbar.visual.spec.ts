@@ -106,6 +106,10 @@ for (const width of [1280, 390, 320]) {
             'data-focus-ring',
             'false'
         )
+        const npcVoice = menu.getByRole('button', { name: 'Озвучка NPC' })
+        await expect(npcVoice).toBeVisible()
+        await expect(npcVoice).toHaveText('Озвучка NPC: выключена')
+        await expect(npcVoice).toBeDisabled()
         await expect(menu.getByText('В этом режиме звук отключён.')).toHaveCount(0)
         await expect(menu.locator('.menu-panel__divider')).toHaveAttribute(
             'data-fantasy-divider',

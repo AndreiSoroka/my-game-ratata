@@ -18,7 +18,7 @@ import { CONVERSATION_REACH } from './conversationSessions'
 import { interactionRangeText } from './interactionRangeText'
 import type { NavigationService } from './navigation'
 import { setNotice } from './notices'
-import { createSpeechEvent } from './speechReceipts'
+import { createDialogueSpeechEvent } from './speechReceipts'
 import { trophyProgress } from './trophyQuest'
 export function interactAdventureNpc(
     actor: GameCharacter,
@@ -129,10 +129,7 @@ function sayDialogue(
     state: PlayerAdventure,
     text: string
 ): GameEventPayload[] {
-    const event = createSpeechEvent(npc, text, {
-        targetId: actor.id,
-        audienceIds: [actor.id],
-    })
+    const event = createDialogueSpeechEvent(npc, actor, text)
     if (state.dialogue !== null) {
         state.dialogue.speechId = event.speechId
     }

@@ -1,7 +1,9 @@
+import { PUBLIC_SPEECH_RADIUS } from '@my-game-ratata/contracts'
+
 import { type GameCharacter } from './character'
 import { distance } from './math'
 
-export const chatVisibleRadius = 80
+export const chatVisibleRadius = PUBLIC_SPEECH_RADIUS
 
 export function resolveChatText(
     speaker: GameCharacter,

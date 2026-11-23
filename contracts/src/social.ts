@@ -1,6 +1,8 @@
 import type { ExchangeSnapshot } from './exchange'
 import type { NpcQuestSocialSnapshot } from './npcQuests'
 
+export const PUBLIC_SPEECH_RADIUS = 80
+
 export type SpeechChannel = 'say' | 'whisper'
 
 export interface SpeechFocus {

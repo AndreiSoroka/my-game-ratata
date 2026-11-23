@@ -5,10 +5,12 @@ import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import { garbleText } from './chat'
 import { type CombatObserver, observeCombatEvent } from './combatObservation'
+import { CONVERSATION_REACH } from './conversationSessions'
+import type { NavigationService } from './navigation'
 import type { PartyService } from './parties'
 import { type RoomSocket, send } from './roomMessaging'
 import { canHearSpeech } from './socialSpeech'
-import { stampSpeechEvent } from './speechReceipts'
+import { isDialogueSpeech, stampSpeechEvent } from './speechReceipts'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
 export function publishRoomEvents(
@@ -107,33 +109,27 @@ function deliverObservedEvent(
         const observer =
             observerId === undefined ? undefined : characters.get(observerId)
         const now = Date.now()
+        const navigation =
+            observer === undefined
+                ? undefined
+                : world?.get(observer.locationId).navigation
         const visibleEvent = observeCombatEvent(event, {
             observer,
             getCharacter: (id) => characters.get(id),
-            navigation:
-                observer === undefined
-                    ? undefined
-                    : world?.get(observer.locationId).navigation,
+            navigation,
             now,
             ...(hasModelLease === undefined ? {} : { hasModelLease }),
         })
         if (visibleEvent !== undefined) {
-            projectPublicSpeech(
-                visibleEvent,
-                event,
-                observer,
-                characters,
-                world,
-                now
-            )
             if (visibleEvent.kind === 'chat') {
-                const speaker = characters.get(event.actorId ?? '')
-                if (
-                    speaker !== undefined &&
-                    visibleEvent.actorId !== undefined
-                ) {
-                    visibleEvent.speakerName = speaker.nickname
-                }
+                projectSpeech(
+                    visibleEvent,
+                    event,
+                    observer,
+                    characters.get(event.actorId ?? ''),
+                    navigation,
+                    now
+                )
             }
             send(socket, {
                 type: 'event',
@@ -144,34 +140,62 @@ function deliverObservedEvent(
     }
 }
 
-function projectPublicSpeech(
+function projectSpeech(
     visible: GameEventPayload,
     source: GameEventPayload,
     observer: GameCharacter | undefined,
-    characters: ReadonlyMap<string, GameCharacter>,
-    world: WorldLocations | undefined,
+    speaker: GameCharacter | undefined,
+    navigation: NavigationService | undefined,
     now: number
 ): void {
+    delete visible.voice
+    if (speaker === undefined) {
+        return
+    }
+    if (visible.actorId !== undefined) {
+        visible.speakerName = speaker.nickname
+    }
     if (
-        source.kind !== 'chat' ||
-        source.audienceIds !== undefined ||
         source.text === undefined ||
         observer === undefined ||
-        observer.id === source.actorId ||
-        world === undefined
+        observer.id === speaker.id ||
+        navigation === undefined
     ) {
         return
     }
-    const speaker = characters.get(source.actorId ?? '')
+    const voice = npcVoiceKind(source, speaker, source.text)
     if (
-        speaker !== undefined &&
         !canHearSpeech(
             observer,
             speaker,
-            world.get(observer.locationId).navigation,
-            now
+            navigation,
+            now,
+            voice === 'dialogue' ? CONVERSATION_REACH : undefined
         )
     ) {
-        visible.text = garbleText(source.text)
+        if (source.audienceIds === undefined) {
+            visible.text = garbleText(source.text)
+        }
+        return
     }
+    if (voice !== undefined && visible.actorId !== undefined) {
+        visible.voice = voice
+        visible.locationId = speaker.locationId
+    }
+}
+
+function npcVoiceKind(
+    source: GameEventPayload,
+    speaker: GameCharacter,
+    text: string
+): GameEventPayload['voice'] {
+    if (
+        speaker.controllerKind === 'network_player' ||
+        source.channel === 'whisper' ||
+        source.speechId === undefined ||
+        text.trim() === ''
+    ) {
+        return undefined
+    }
+    return isDialogueSpeech(source) ? 'dialogue' : 'ambient'
 }

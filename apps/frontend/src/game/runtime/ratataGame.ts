@@ -97,6 +97,7 @@ export class RatataGame {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
                     this.maps.stop()
+                    this.view?.audio.suspendWorld()
                     if (this.view) this.view.canvas.style.visibility = 'hidden'
                     this.chat.stopActivity()
                     this.view?.sceneActors?.clearDamage()
@@ -245,7 +246,7 @@ export class RatataGame {
         this.maps.observe(runtimeMapRequest(snapshot, this.initialMap))
         if (this.isMapReady) this.view?.sceneActors?.update(snapshot, this.localPlayerId)
         this.options.onSnapshot(snapshot, this.localPlayerId)
-        if (this.isMapReady) this.view?.audio?.playMovementSound(snapshot, this.localPlayerId)
+        if (this.isMapReady) this.view?.audio.observeWorld(snapshot, this.localPlayerId)
         updateRuntimeDebug(this.view, this.snapshot, this.localPlayerId)
     }
 
@@ -257,7 +258,7 @@ export class RatataGame {
         this.chat.cancel()
         this.releaseInputs()
         this.view?.sceneActors?.setInteractionTarget(undefined)
-        this.view?.audio?.pauseMovement()
+        this.view?.audio?.suspendWorld()
         this.view?.sceneActors?.clearDamage()
         if (this.view) this.view.canvas.style.visibility = 'hidden'
         this.options.onMapError?.(null)
@@ -265,11 +266,12 @@ export class RatataGame {
     }
 
     private resumeMap(): void {
-        if (this.stopped) return
-        if (this.view) this.view.canvas.style.visibility = ''
+        if (this.stopped || !this.view || !this.snapshot) return
+        this.view.canvas.style.visibility = ''
         this.options.onMapError?.(null)
         this.options.onStatus('Connected')
-        if (this.snapshot) this.view?.sceneActors?.update(this.snapshot, this.localPlayerId)
+        this.view.sceneActors.update(this.snapshot, this.localPlayerId)
+        this.view.audio.observeWorld(this.snapshot, this.localPlayerId)
     }
 
     private applyMap(mapId: string, map: RenderedTiledMap): void {

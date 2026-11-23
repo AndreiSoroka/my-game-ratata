@@ -1,3 +1,4 @@
+import type { GameEventPayload, ServerMessage } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { clickVisibleCharacter, selectedWorldTarget } from './world-target-ui'
@@ -52,11 +53,27 @@ async function openGuardMenuWithMouse(page: Page, name: string): Promise<void> {
     await clickVisibleCharacter(page, 'npc_guard_1', 2)
 }
 
+function captureNpcDialogue(page: Page): GameEventPayload[] {
+    const lines: GameEventPayload[] = []
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', ({ payload }) => {
+            if (typeof payload !== 'string') return
+            const message = JSON.parse(payload) as ServerMessage
+            if (message.type === 'event' && message.event.voice === 'dialogue') {
+                lines.push(message.event)
+            }
+        })
+    })
+    return lines
+}
+
 for (const mobile of [false, true]) {
     test(`keeps a private complete dialogue in one keyboard-accessible bubble (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,
     }, info) => {
         test.setTimeout(60_000)
+        const voicedDialogue = captureNpcDialogue(page)
         await page.setViewportSize(
             mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
         )
@@ -132,6 +149,14 @@ for (const mobile of [false, true]) {
         await expect(speechBadge.locator('.soul-speech-icon')).toBeVisible()
         const speech = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.adventure!.dialogue!
+        )
+        expect(voicedDialogue).toContainEqual(
+            expect.objectContaining({
+                actorId: speech.npcId,
+                kind: 'chat',
+                speechId: speech.speechId,
+                text: speech.text,
+            })
         )
         await expect(page.locator('.speech-text')).toHaveText(speech.text)
         await expect(page.getByText(speech.text, { exact: true })).toHaveCount(1)

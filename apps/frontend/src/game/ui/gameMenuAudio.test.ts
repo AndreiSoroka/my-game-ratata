@@ -2,11 +2,14 @@ import { mount } from '@vue/test-utils'
 import { afterEach, expect, it } from 'vitest'
 
 import { isAudioMuted, setAudioMuted } from '../runtime/audioPreference'
+import { isNpcVoiceEnabled, setNpcVoiceEnabled } from '../runtime/npcVoicePreference'
 import GameMenu from './GameMenu.vue'
 
 afterEach(() => {
     window.history.replaceState({}, '', '/')
     setAudioMuted(false)
+    setNpcVoiceEnabled(false)
+    window.localStorage.removeItem('ratata:npc-voice-enabled')
 })
 it('offers an accessible persistent sound toggle in ordinary play', async () => {
     setAudioMuted(false)
@@ -34,14 +37,44 @@ it('offers an accessible persistent sound toggle in ordinary play', async () => 
 })
 it('keeps test sessions silent even when the saved preference enables audio', () => {
     setAudioMuted(false)
+    setNpcVoiceEnabled(true)
     window.history.replaceState({}, '', '/?test=1')
     const wrapper = mount(GameMenu)
     try {
         const button = wrapper.get('[aria-label="Без звука"]')
+        const voice = wrapper.get('[aria-label="Озвучка NPC"]')
         expect(button.attributes('disabled')).toBeDefined()
         expect(button.attributes('aria-pressed')).toBe('true')
+        expect(voice.attributes('disabled')).toBeDefined()
+        expect(isNpcVoiceEnabled()).toBe(true)
         expect(wrapper.text()).not.toContain('В этом режиме звук отключён.')
     } finally {
         wrapper.unmount()
+    }
+})
+it('persists NPC voice opt-in independently of the master mute setting', async () => {
+    const wrapper = mount(GameMenu)
+    try {
+        const button = wrapper.get('[aria-label="Озвучка NPC"]')
+        expect(button.attributes('aria-pressed')).toBe('false')
+        await button.trigger('click')
+        expect(button.attributes('aria-pressed')).toBe('true')
+        expect(isNpcVoiceEnabled()).toBe(true)
+        expect(window.localStorage.getItem('ratata:npc-voice-enabled')).toBe('true')
+        await wrapper.get('[aria-label="Без звука"]').trigger('click')
+        expect(isAudioMuted()).toBe(true)
+        expect(isNpcVoiceEnabled()).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
+    const reopened = mount(GameMenu)
+    try {
+        const button = reopened.get('[aria-label="Озвучка NPC"]')
+        expect(button.attributes('aria-pressed')).toBe('true')
+        await button.trigger('click')
+        expect(button.attributes('aria-pressed')).toBe('false')
+        expect(isNpcVoiceEnabled()).toBe(false)
+    } finally {
+        reopened.unmount()
     }
 })

@@ -46,9 +46,9 @@ vi.mock('./runtimePresentation', () => ({
             audio: {
                 playMusic: calls.music,
                 stop: vi.fn<() => void>(),
-                pauseMovement: vi.fn<() => void>(),
+                suspendWorld: vi.fn<() => void>(),
                 setMap: vi.fn<(...args: unknown[]) => void>(),
-                playMovementSound: vi.fn<(...args: unknown[]) => void>(),
+                observeWorld: vi.fn<(...args: unknown[]) => void>(),
             },
             sceneActors: {
                 dispose: calls.dispose,

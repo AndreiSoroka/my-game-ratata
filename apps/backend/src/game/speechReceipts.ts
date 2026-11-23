@@ -4,6 +4,7 @@ import type { GameCharacter } from './character'
 
 const serials = new WeakMap<GameCharacter, number>()
 const addressedSpeech = new WeakMap<GameEventPayload, string>()
+const dialogueSpeech = new WeakSet<GameEventPayload>()
 
 /** Server-only attribution preserves the ordinary public audience. */
 export function attributeNpcSpeech(
@@ -38,6 +39,23 @@ export function createSpeechEvent(
         speechId: nextSpeechId(speaker),
         ...audience,
     }
+}
+
+export function createDialogueSpeechEvent(
+    speaker: GameCharacter,
+    listener: GameCharacter,
+    text: string
+): GameEventPayload & { speechId: number } {
+    const event = createSpeechEvent(speaker, text, {
+        targetId: listener.id,
+        audienceIds: [listener.id],
+    })
+    dialogueSpeech.add(event)
+    return event
+}
+
+export function isDialogueSpeech(event: GameEventPayload): boolean {
+    return dialogueSpeech.has(event)
 }
 
 /** Stamping once also preserves the receipt when an already resolved event is replayed. */
