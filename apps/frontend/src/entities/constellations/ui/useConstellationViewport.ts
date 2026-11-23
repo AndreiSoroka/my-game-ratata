@@ -3,17 +3,14 @@ import type {
     ConstellationSnapshot,
     Vector2,
 } from '@my-game-ratata/contracts'
-import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue'
 
 import { constellationViewportFocus } from './constellationViewportFocus'
 
 export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
     const svg = ref<SVGSVGElement>()
     const zoom = ref(1)
-    const referenceZoom = ref(1)
-    const parallaxZoom = computed(() => Math.log2(zoom.value / referenceZoom.value))
-    const offset = ref<Vector2>({ x: 0, y: 0 })
-    const dragOffset = ref<Vector2>({ x: 0, y: 0 })
+    const parallaxZoom = computed(() => Math.log2(zoom.value))
     const dimensions = ref({ width: 700, height: 450 })
     const bounds = computed(() => snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
     const baseScale = computed(() =>
@@ -23,6 +20,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         )
     )
     const unitScale = computed(() => baseScale.value / zoom.value)
+    const { offset, dragOffset, setOffset } = viewportCamera(bounds, unitScale)
     const visibleBounds = computed(() =>
         viewportBounds(bounds.value, dimensions.value, unitScale.value, offset.value)
     )
@@ -34,23 +32,19 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         svg,
         zoom,
         offset,
-        dragOffset,
+        setOffset,
         () => maximumZoom.value,
         () => unitScale.value
     )
     function reset(): void {
         zoom.value = 1
-        referenceZoom.value = 1
-        offset.value = { x: 0, y: 0 }
-        dragOffset.value = { x: 0, y: 0 }
+        setOffset({ x: 0, y: 0 })
     }
     function centerOn(point: { x: number; y: number }): void {
-        referenceZoom.value = zoom.value
-        dragOffset.value = { x: 0, y: 0 }
-        offset.value = {
+        setOffset({
             x: point.x - bounds.value.x - bounds.value.width / 2,
             y: point.y - bounds.value.y - bounds.value.height / 2,
-        }
+        })
     }
     const { focusPath, focusStar } = constellationViewportFocus({
         snapshot,
@@ -83,6 +77,29 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     }
 }
 
+function viewportCamera(
+    bounds: Readonly<Ref<{ width: number; height: number }>>,
+    unitScale: Readonly<Ref<number>>
+) {
+    const offset = ref<Vector2>({ x: 0, y: 0 })
+    // Derive both foreground and background pan from the actual constrained camera.
+    const dragOffset = computed(() => ({
+        x: -offset.value.x / unitScale.value,
+        y: -offset.value.y / unitScale.value,
+    }))
+    function setOffset(next: Vector2): void {
+        // A center on the map edge leaves exactly half the viewport beyond that edge.
+        offset.value = {
+            x: Math.max(-bounds.value.width / 2, Math.min(bounds.value.width / 2, next.x)),
+            y: Math.max(-bounds.value.height / 2, Math.min(bounds.value.height / 2, next.y)),
+        }
+    }
+    watch([() => bounds.value.width, () => bounds.value.height], () => setOffset(offset.value), {
+        flush: 'sync',
+    })
+    return { offset, dragOffset, setOffset }
+}
+
 function formatViewBox({ x, y, width, height }: ReturnType<typeof viewportBounds>): string {
     return `${x} ${y} ${width} ${height}`
 }
@@ -103,8 +120,8 @@ function outsideViewport(
 function viewportGestures(
     svg: Ref<SVGSVGElement | undefined>,
     zoom: Ref<number>,
-    offset: Ref<Vector2>,
-    dragOffset: Ref<Vector2>,
+    offset: Readonly<Ref<Vector2>>,
+    setOffset: (next: Vector2) => void,
     maximumZoom: () => number,
     unitScale: () => number
 ) {
@@ -141,11 +158,10 @@ function viewportGestures(
                 dragged = true
                 svg.value?.setPointerCapture?.(event.pointerId)
             }
-            offset.value = {
+            setOffset({
                 x: offset.value.x - dx * unitScale(),
                 y: offset.value.y - dy * unitScale(),
-            }
-            dragOffset.value = { x: dragOffset.value.x + dx, y: dragOffset.value.y + dy }
+            })
         }
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
     }

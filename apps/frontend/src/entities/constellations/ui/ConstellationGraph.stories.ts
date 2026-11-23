@@ -1,4 +1,9 @@
-import type { ConstellationPathSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
+import {
+    constellationIds,
+    type ConstellationLayoutSnapshot,
+    type ConstellationPathSnapshot,
+    type ConstellationSnapshot,
+} from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
 import { renderVueStory } from '@/shared/lib/storybook'
@@ -97,6 +102,19 @@ const depthPaths = [
 const layeredSky: ConstellationSnapshot = {
     version: 1,
     paths: depthPaths,
+    layout: {
+        bounds: { x: -400, y: -250, width: 800, height: 500 },
+        regions: Object.fromEntries(
+            constellationIds.map((id) => {
+                const index = depthPaths.findIndex((path) => path.id === id)
+                return [
+                    id,
+                    { x: (Math.max(0, index) - 2) * 135 - 120, y: -160, width: 240, height: 320 },
+                ]
+            })
+        ) as ConstellationLayoutSnapshot['regions'],
+        minimumNodeSpacing: 48,
+    },
     nodes: [
         ...depthPaths.map(({ id, name }, index) => ({
             id,
@@ -116,10 +134,23 @@ const layeredSky: ConstellationSnapshot = {
             unlocked: true,
             name: 'Преданность',
         },
+        ...Array.from({ length: 5 }, (_, index) => ({
+            id: `prayer.depth-${index}`,
+            constellationId: 'prayer' as const,
+            x: -100 + index * 50,
+            y: 80,
+            parents: ['prayer'],
+            unlocked: true,
+            name: `Слой ${index + 1}`,
+        })),
     ],
     edges: [
         { from: 'prayer', to: 'devotion', via: [{ x: 16, y: -40 }] },
         { from: 'devotion', to: 'life', via: [{ x: 145, y: -100 }], crossLink: true },
+        ...Array.from({ length: 5 }, (_, index) => ({
+            from: 'prayer',
+            to: `prayer.depth-${index}`,
+        })),
     ],
 }
 

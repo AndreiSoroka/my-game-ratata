@@ -121,79 +121,155 @@ function opacity(locator: Locator) {
 }
 
 const layerRoots = ['blade', 'magic', 'prayer', 'arrow', 'life']
+const layerChildren = Array.from({ length: 5 }, (_, index) => `prayer.depth-${index}`)
 const skyPan = { x: 100, y: 30 }
+const layeredBounds = { x: -400, y: -250, width: 800, height: 500 }
+const layeredStory =
+    '/iframe.html?id=entities-constellations-constellationgraph--five-depths&viewMode=story'
 
-test('five depths move stars at different speeds and keep lines and labels attached', async ({
-    page,
-}) => {
-    await page.goto(
-        '/iframe.html?id=entities-constellations-constellationgraph--five-depths&viewMode=story'
-    )
-    const graph = page.getByRole('group', { name: 'Созвездия развития' })
-    const zoomIn = page.getByRole('button', { name: 'Приблизить небосвод' })
-    const reset = page.getByRole('button', { name: 'Показать весь небосвод' })
-    const background = graph.locator('.constellation-background__layer')
-    await expect(graph.locator('.constellation-label').filter({ hasText: 'Молитва' })).toBeVisible()
-    await expect(background).toHaveCount(5)
-    const initialBackgroundTransform = (await background.first().getAttribute('patternTransform'))!
-    const before = await skyProjection(graph)
+for (const width of [390, 1280]) {
+    test(`five depths stay bounded through repeated zoom and pan at ${width}px`, async ({
+        page,
+    }, info) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto(layeredStory)
+        const graph = page.getByRole('group', { name: 'Созвездия развития' })
+        const zoomIn = page.getByRole('button', { name: 'Приблизить небосвод' })
+        const zoomOut = page.getByRole('button', { name: 'Отдалить небосвод' })
+        const reset = page.getByRole('button', { name: 'Показать весь небосвод' })
+        const background = graph.locator('.constellation-background__layer')
+        await expect(
+            graph.locator('.constellation-label').filter({ hasText: 'Молитва' })
+        ).toBeVisible()
+        await expect(background).toHaveCount(5)
+        const before = await skyProjection(graph)
 
-    await panSky(page, graph)
-    const panned = await skyProjection(graph)
-    for (const [layer, id] of layerRoots.entries()) {
-        const rate = 1 - 0.05 * layer
-        expectMovement(before.stars[id]!.screen, panned.stars[id]!.screen, {
-            x: skyPan.x * rate,
-            y: skyPan.y * rate,
-        })
-    }
-    expectMovement(before.stars.devotion!.screen, panned.stars.devotion!.screen, skyPan)
-    expectLabelAttached(before, panned)
-    expectAttachedLinks(panned)
-    expect(panned.inner[1]!.world).not.toEqual(before.inner[1]!.world)
-    expect(panned.cross[1]).not.toEqual(before.cross[1])
-    await reset.click()
-    expect(await skyProjection(graph)).toEqual(before)
-
-    await zoomIn.click()
-    const zoomed = await skyProjection(graph)
-    expect(zoomed.stars.blade!.world).toEqual(before.stars.blade!.world)
-    expect(zoomed.stars.life!.world).not.toEqual(before.stars.life!.world)
-    const zoomMovement = displacement(before.stars.prayer!.world, zoomed.stars.prayer!.world)
-    expectMovement(before.stars.devotion!.world, zoomed.stars.devotion!.world, zoomMovement)
-    for (const [index, point] of before.inner.entries())
-        expectMovement(point.world, zoomed.inner[index]!.world, zoomMovement)
-    expectAttachedLinks(zoomed)
-    const scales = await background.evaluateAll((layers) =>
-        layers.map(
-            (layer) => (layer as SVGPatternElement).patternTransform.baseVal.getItem(0).matrix.a
+        await panSky(page, graph)
+        const panned = await skyProjection(graph)
+        for (const [layer, id] of layerRoots.entries()) {
+            const rate = 1 - 0.0075 * layer
+            expectMovement(before.stars[id]!.screen, panned.stars[id]!.screen, {
+                x: skyPan.x * rate,
+                y: skyPan.y * rate,
+            })
+        }
+        const childOffsets = layerChildren.map((id) =>
+            Math.round((panned.stars[id]!.world.x - before.stars[id]!.world.x) * 1000)
         )
-    )
-    expect(scales[0]).toBeGreaterThan(1)
-    expect(scales.at(-1)).toBeGreaterThan(scales[0]!)
-    await panSky(page, graph)
-    const zoomPanned = await skyProjection(graph)
-    expectLabelAttached(zoomed, zoomPanned)
-    expectAttachedLinks(zoomPanned)
+        expect(new Set(childOffsets).size).toBe(5)
+        expectLabelAttached(before, panned)
+        expectBoundedProjection(before, panned)
+        expectAttachedLinks(panned)
 
-    await graph.getByRole('button', { name: 'Молитва', exact: true }).press('Enter')
-    const focused = await skyProjection(graph)
-    expect(focused.cross).toEqual(before.cross)
-    expect(focused.stars.prayer!.world).toEqual(before.stars.prayer!.world)
-    await reset.click()
-    await expect(background.first()).toHaveAttribute('patternTransform', initialBackgroundTransform)
-    expect(await skyProjection(graph)).toEqual(before)
-})
+        for (let cycle = 0; cycle < 6; cycle++) {
+            await zoomIn.click()
+            await zoomIn.click()
+            await panSky(page, graph, { x: 80, y: 25 })
+            expectBoundedProjection(before, await skyProjection(graph))
+            await zoomOut.click()
+            await zoomOut.click()
+            const projection = await skyProjection(graph)
+            expectBoundedProjection(before, projection)
+            expectAttachedLinks(projection)
+        }
+        await page.screenshot({ path: info.outputPath(`five-depths-repeated-${width}.png`) })
+        await reset.click()
+        expectSameProjection(await skyProjection(graph), before)
+        await panSky(page, graph)
+        expectSameProjection(await skyProjection(graph), panned)
+
+        await zoomIn.click()
+        const scales = await background.evaluateAll((layers) =>
+            layers.map(
+                (layer) => (layer as SVGPatternElement).patternTransform.baseVal.getItem(0).matrix.a
+            )
+        )
+        expect(scales[0]).toBeGreaterThan(1)
+        expect(scales.at(-1)).toBeGreaterThan(scales[0]!)
+        await panSky(page, graph, { x: 40, y: 20 })
+        await panSky(page, graph, { x: -40, y: -20 })
+        await zoomOut.click()
+        expectSameProjection(await skyProjection(graph), panned)
+
+        await reset.click()
+        await graph.getByRole('button', { name: 'Молитва', exact: true }).press('Enter')
+        const focused = await skyProjection(graph)
+        expectBoundedProjection(before, focused)
+        expectAttachedLinks(focused)
+        expect(focused.stars.life!.world).not.toEqual(before.stars.life!.world)
+        await graph.getByRole('button', { name: 'Молитва', exact: true }).press('Enter')
+        expectSameProjection(await skyProjection(graph), focused)
+        await page.screenshot({ path: info.outputPath(`five-depths-focused-${width}.png`) })
+        await reset.click()
+        expectSameProjection(await skyProjection(graph), before)
+    })
+
+    test(`camera stops at all map edges and reverses immediately at ${width}px`, async ({
+        page,
+    }, info) => {
+        await page.setViewportSize({ width, height: 844 })
+        await page.goto(layeredStory)
+        const graph = page.getByRole('group', { name: 'Созвездия развития' })
+        await expect(graph).toBeVisible()
+        const zoomIn = page.getByRole('button', { name: 'Приблизить небосвод' })
+        const zoomOut = page.getByRole('button', { name: 'Отдалить небосвод' })
+        const reset = page.getByRole('button', { name: 'Показать весь небосвод' })
+        const before = await skyProjection(graph)
+        for (const target of [
+            { x: -400, y: 0 },
+            { x: 400, y: 0 },
+            { x: 0, y: -250 },
+            { x: 0, y: 250 },
+            { x: -400, y: -250 },
+            { x: 400, y: -250 },
+            { x: 400, y: 250 },
+            { x: -400, y: 250 },
+        ]) {
+            await reset.click()
+            for (let step = 0; step < 3; step++) await zoomIn.click()
+            const frame = (await graph.boundingBox())!
+            const start = { x: frame.x + 30, y: frame.y + frame.height - 50 }
+            const direction = { x: -Math.sign(target.x), y: -Math.sign(target.y) }
+            const end = { x: start.x + direction.x * 10_000, y: start.y + direction.y * 10_000 }
+            await page.mouse.move(start.x, start.y)
+            await page.mouse.down()
+            await page.mouse.move(end.x, end.y, { steps: 3 })
+            const stopped = await skyProjection(graph)
+            expectCameraCenter(stopped, target)
+            expectCameraWithinMap(stopped)
+            expectBoundedProjection(before, stopped)
+            await page.mouse.move(end.x + direction.x * 100, end.y + direction.y * 100)
+            expectSameProjection(await skyProjection(graph), stopped)
+            await page.mouse.move(end.x + direction.x * 90, end.y + direction.y * 90)
+            const reversed = await skyProjection(graph)
+            expectCameraCenter(reversed, {
+                x: target.x + (direction.x * 10) / stopped.scale,
+                y: target.y + (direction.y * 10) / stopped.scale,
+            })
+            expectCameraWithinMap(reversed)
+            await page.mouse.up()
+        }
+        await page.setViewportSize({ width: width === 390 ? 1280 : 390, height: 740 })
+        expectCameraWithinMap(await skyProjection(graph))
+        for (let step = 0; step < 3; step++) await zoomOut.click()
+        const resized = await skyProjection(graph)
+        expectCameraWithinMap(resized)
+        expectBoundedProjection(before, resized)
+        await page.screenshot({ path: info.outputPath(`five-depths-boundary-${width}.png`) })
+        await reset.click()
+        expectCameraCenter(await skyProjection(graph), { x: 0, y: 0 })
+    })
+}
 
 type SkyProjection = Awaited<ReturnType<typeof skyProjection>>
 
-async function panSky(page: Page, graph: Locator): Promise<void> {
+async function panSky(page: Page, graph: Locator, pan = skyPan): Promise<void> {
     const bounds = (await graph.boundingBox())!
     const x = bounds.x + 30
     const y = bounds.y + bounds.height - 50
     await page.mouse.move(x, y)
     await page.mouse.down()
-    await page.mouse.move(x + skyPan.x, y + skyPan.y, { steps: 5 })
+    await page.mouse.move(x + pan.x, y + pan.y, { steps: 5 })
     await page.mouse.up()
 }
 
@@ -208,8 +284,57 @@ function expectMovement(before: Vector2, after: Vector2, expected: Vector2): voi
 }
 
 function expectLabelAttached(before: SkyProjection, after: SkyProjection): void {
+    expect(before.label).not.toBeNull()
+    expect(after.label).not.toBeNull()
     const movement = displacement(before.stars.prayer!.screen, after.stars.prayer!.screen)
-    expectMovement(before.label, after.label, movement)
+    expectMovement(before.label!, after.label!, movement)
+}
+
+function expectBoundedProjection(authored: SkyProjection, projection: SkyProjection): void {
+    for (const [id, star] of Object.entries(projection.stars)) {
+        const movement = displacement(authored.stars[id]!.world, star.world)
+        expect(Math.hypot(movement.x, movement.y) * projection.scale).toBeLessThanOrEqual(8.01)
+    }
+}
+
+function expectSameProjection(actual: SkyProjection, expected: SkyProjection): void {
+    for (const [id, star] of Object.entries(actual.stars)) {
+        expect(star.world.x).toBeCloseTo(expected.stars[id]!.world.x, 4)
+        expect(star.world.y).toBeCloseTo(expected.stars[id]!.world.y, 4)
+    }
+    for (const [index, point] of actual.cross.entries()) {
+        expect(point.x).toBeCloseTo(expected.cross[index]!.x, 4)
+        expect(point.y).toBeCloseTo(expected.cross[index]!.y, 4)
+    }
+    expect(actual.background).toEqual(expected.background)
+    expectCameraCenter(actual, {
+        x: expected.camera.x + expected.camera.width / 2,
+        y: expected.camera.y + expected.camera.height / 2,
+    })
+    expect(actual.camera.width).toBeCloseTo(expected.camera.width, 4)
+    expect(actual.camera.height).toBeCloseTo(expected.camera.height, 4)
+}
+
+function expectCameraCenter(projection: SkyProjection, expected: Vector2): void {
+    expect(projection.camera.x + projection.camera.width / 2).toBeCloseTo(expected.x, 4)
+    expect(projection.camera.y + projection.camera.height / 2).toBeCloseTo(expected.y, 4)
+}
+
+function expectCameraWithinMap(projection: SkyProjection): void {
+    const { x, y, width, height } = projection.camera
+    const center = { x: x + width / 2, y: y + height / 2 }
+    expect(center.x).toBeGreaterThanOrEqual(layeredBounds.x - 0.001)
+    expect(center.x).toBeLessThanOrEqual(layeredBounds.x + layeredBounds.width + 0.001)
+    expect(center.y).toBeGreaterThanOrEqual(layeredBounds.y - 0.001)
+    expect(center.y).toBeLessThanOrEqual(layeredBounds.y + layeredBounds.height + 0.001)
+    expect(Math.max(0, layeredBounds.x - x)).toBeLessThanOrEqual(width / 2 + 0.001)
+    expect(Math.max(0, x + width - layeredBounds.x - layeredBounds.width)).toBeLessThanOrEqual(
+        width / 2 + 0.001
+    )
+    expect(Math.max(0, layeredBounds.y - y)).toBeLessThanOrEqual(height / 2 + 0.001)
+    expect(Math.max(0, y + height - layeredBounds.y - layeredBounds.height)).toBeLessThanOrEqual(
+        height / 2 + 0.001
+    )
 }
 
 function expectAttachedLinks(projection: SkyProjection) {
@@ -241,21 +366,26 @@ function skyProjection(graph: Locator) {
             const cross = element.querySelector<SVGPolylineElement>(
                 '.constellation-edge--cross-link'
             )!.points
-            const label = [...element.querySelectorAll('.constellation-label')].find(
-                (node) => node.textContent?.trim() === 'Молитва'
-            )!
-            const { x, y } = label.getBoundingClientRect()
+            const label = [...element.querySelectorAll('.constellation-label')]
+                .find((node) => node.textContent?.trim() === 'Молитва')
+                ?.getBoundingClientRect()
+            const { x, y, width, height } = (element as SVGSVGElement).viewBox.baseVal
             return {
                 stars,
+                scale: matrix.a,
+                camera: { x, y, width, height },
+                background: [...element.querySelectorAll('.constellation-background__layer')].map(
+                    (layer) => layer.getAttribute('patternTransform')
+                ),
                 inner: Array.from(inner.points, ({ x, y }) => {
                     const screen = new DOMPoint(x, y).matrixTransform(matrix)
                     return { world: { x, y }, screen: { x: screen.x, y: screen.y } }
                 }),
                 cross: Array.from(cross, ({ x, y }) => ({ x, y })),
-                label: { x, y },
+                label: label ? { x: label.x, y: label.y } : null,
             }
         },
-        [...layerRoots, 'devotion']
+        [...layerRoots, ...layerChildren, 'devotion']
     )
 }
 
