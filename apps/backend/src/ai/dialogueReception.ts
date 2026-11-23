@@ -186,7 +186,11 @@ function heardSpeechFor(
     if (focus !== undefined) {
         heard.focus = focus
     }
-    return heard
+    return status !== undefined &&
+        state.actor !== undefined &&
+        heard.socialReaction === undefined
+        ? status.room.social.society.observeDialogue(state.actor, heard)
+        : heard
 }
 
 function replacePendingSpeech(state: NpcAiActorState, heard: Heard): boolean {

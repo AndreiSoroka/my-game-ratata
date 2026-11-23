@@ -75,6 +75,15 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             reacting.has(actor.id) ||
             room.findVisibleTarget(actor, 240, now) !== undefined
     )
+    room.social.society.prepareMeetings(
+        now,
+        (actor) =>
+            reacting.has(actor.id) ||
+            conversations.has(actor.id) ||
+            room.scenarios.busy(actor.id) ||
+            room.social.exchanges.isPaused(actor.id) ||
+            context.companions.blocksScenario(actor, now, room)
+    )
     for (const character of characters.values()) {
         if (magicChannelFor(character) !== undefined) {
             const abilityContext = room.abilityContextFor(character, now)
@@ -166,6 +175,10 @@ function advanceControllers(
         }
         if (advanceCharacterControl(character, room, now)) {
             pauseWorkerActivity(character, 'control', now)
+            continue
+        }
+        if (room.social.society.controlsVisit(character)) {
+            pauseWorkerActivity(character, 'conversation', now)
             continue
         }
         room.scenarios.advancePolicy(character, controller, room, now)

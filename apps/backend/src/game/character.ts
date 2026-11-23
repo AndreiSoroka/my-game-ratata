@@ -35,6 +35,7 @@ import {
     createPendingAttackHit,
     type PendingAttackHit,
 } from './characterState'
+import { CharacterTemperament } from './characterTemperament'
 import { movementInputLocked } from './combatMovement'
 import { createCombatState } from './combatState'
 import { initializeConstellations } from './constellations'
@@ -59,6 +60,7 @@ import {
 } from './skillProgression'
 
 export class GameCharacter {
+    public readonly temperament: CharacterTemperament
     public readonly npcIdentityKey?: NpcIdentityKey
     public readonly npcIdentityProfile?: NpcIdentityProfile
     /** Server-owned presentation data is absent from public soul snapshots. */
@@ -130,16 +132,15 @@ export class GameCharacter {
     public constructor(options: GameCharacterOptions) {
         this.lifeStartedAt = options.spawnedAt ?? Date.now()
         this.animationStartedAt = this.lifeStartedAt
-        this.trainingTarget =
-            options.trainingTarget === undefined
-                ? undefined
-                : { ...options.trainingTarget }
+        const target = options.trainingTarget
+        this.trainingTarget = target === undefined ? undefined : { ...target }
         this.baseCreatureType = resolveCreatureType(options)
         this.ashPact = Boolean(options.ashPact)
         this.soul = createCharacterSoul(options)
         this.locationId = options.locationId ?? CENTER_LOCATION_ID
         this.spawnLocationId = this.locationId
         this.archetype = options.archetype
+        this.temperament = new CharacterTemperament(options.id, this.archetype)
         this.heroClass =
             options.heroClass ??
             (options.archetype === 'human' ? 'vanguard' : undefined)
@@ -150,8 +151,7 @@ export class GameCharacter {
         this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
         this.connected = options.controllerKind === 'network_player'
-        this.faction =
-            options.faction ?? defaultFactionFor(options.controllerKind)
+        this.faction = options.faction ?? defaultFactionFor(this.controllerKind)
         this.energy = this.config.resources.maxEnergy
         this.hp = this.config.combat.maxHp
         this.id = options.id
@@ -161,8 +161,7 @@ export class GameCharacter {
         this.position = { ...options.spawnPosition }
         this.reputation = createCharacterReputation(options.reputation)
         this.spawnPosition = { ...options.spawnPosition }
-        this.visualId =
-            options.visualId ?? defaultVisualIdFor(options.archetype)
+        this.visualId = options.visualId ?? defaultVisualIdFor(this.archetype)
         bindNpcIdentityKey(this, options.npcIdentityKey)
         initializeConstellations(this)
         this.hp = this.maxHp

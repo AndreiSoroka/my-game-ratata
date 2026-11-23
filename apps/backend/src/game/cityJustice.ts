@@ -6,7 +6,7 @@ import {
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import type { CrimeEvidence } from './crimeEvidence'
+import type { CrimeEvidence, CrimeOffense } from './crimeEvidence'
 import {
     available,
     cityCleric,
@@ -29,29 +29,25 @@ export interface JusticeContext {
     adventure?: AdventureService
 }
 
-export function reportTheft(
+export function reportCrime(
     actor: GameCharacter,
     thiefId: string,
     evidence: CrimeEvidence,
-    context: JusticeContext
+    context: JusticeContext,
+    offense?: CrimeOffense
 ): GameEventPayload[] {
     const characters = [...context.characters]
     const thief = characters.find((candidate) => candidate.id === thiefId)
-    const proof = evidence.get(actor.id, thiefId)
-    const guard = characters.find(
-        (candidate) =>
-            candidate.id !== thiefId &&
-            cityGuard(candidate) &&
-            nearbyOfficial(actor, candidate, THEFT_RULES.reportRange, context)
+    const proof = evidence.reportable(actor.id, thiefId, context.now, offense)
+    const guard = characters.find((candidate) =>
+        nearbyReportGuard(actor, candidate, thiefId, context)
     )
     if (
         !canSpeakToOfficial(actor, context.now) ||
         guard === undefined ||
         thief === undefined ||
         thief.tags.has('state.retired') ||
-        proof === undefined ||
-        proof.reported ||
-        proof.expiresAt <= context.now
+        proof === undefined
     ) {
         return [
             privateTheftNotice(
@@ -73,6 +69,82 @@ export function reportTheft(
             'По официальной жалобе ты внесён в чёрный список Новогорода. Стража задерживает силой, торговцы отказывают. Отпущение у Сестры Веры стоит 30 золотых.'
         ),
     ]
+}
+
+export function reachableCityGuard(
+    actor: GameCharacter,
+    accusedId: string,
+    context: JusticeContext
+): GameCharacter | undefined {
+    if (actor.locationId !== CENTER_LOCATION_ID || !actor.soul.canSpeak) {
+        return undefined
+    }
+    return [...context.characters].find(
+        (guard) =>
+            isReportGuard(actor, guard, accusedId) &&
+            (withinOfficialReach(
+                actor,
+                guard,
+                THEFT_RULES.reportRange,
+                context
+            ) ||
+                context.navigation.findPathWorld(
+                    actor.position,
+                    reportPosition(actor, guard, context)
+                ).length > 0)
+    )
+}
+
+export function isReportGuard(
+    actor: GameCharacter,
+    guard: GameCharacter | undefined,
+    accusedId: string
+): guard is GameCharacter {
+    return (
+        canReceiveReport(guard) &&
+        guard.id !== actor.id &&
+        guard.id !== accusedId &&
+        cityGuard(guard)
+    )
+}
+
+export function nearbyReportGuard(
+    actor: GameCharacter,
+    guard: GameCharacter,
+    accusedId: string,
+    context: JusticeContext
+): boolean {
+    return (
+        isReportGuard(actor, guard, accusedId) &&
+        withinOfficialReach(actor, guard, THEFT_RULES.reportRange, context)
+    )
+}
+
+export function reportPosition(
+    actor: GameCharacter,
+    guard: GameCharacter,
+    context: JusticeContext
+) {
+    return distance(actor.position, guard.position) <=
+        visibilityRadius(
+            actor,
+            guard,
+            THEFT_RULES.guardSightRadius,
+            context.now
+        ) && context.navigation.hasLineOfSight(actor.position, guard.position)
+        ? guard.position
+        : guard.spawnPosition
+}
+
+export function canReceiveReport(
+    guard: GameCharacter | undefined
+): guard is GameCharacter {
+    return (
+        available(guard) &&
+        !humanControlled(guard) &&
+        guard.soul.canSpeak &&
+        guard.locationId === CENTER_LOCATION_ID
+    )
 }
 
 export function absolve(
@@ -181,10 +253,18 @@ function nearbyOfficial(
 ): boolean {
     return (
         official.id !== actor.id &&
-        available(official) &&
-        !humanControlled(official) &&
-        official.soul.canSpeak &&
-        official.locationId === CENTER_LOCATION_ID &&
+        canReceiveReport(official) &&
+        withinOfficialReach(actor, official, range, context)
+    )
+}
+
+function withinOfficialReach(
+    actor: GameCharacter,
+    official: GameCharacter,
+    range: number,
+    context: JusticeContext
+): boolean {
+    return (
         distance(actor.position, official.position) <= range &&
         context.navigation.hasLineOfSight(actor.position, official.position)
     )

@@ -68,11 +68,79 @@ it('validates exchange socket commands, keeps offers private, and commits a shar
     ).toBe(true)
     expect(room.adventureForWorkers().walletFor(alice.actor.id).gold).toBe(5)
     const receipt = room.social.exchanges.snapshot(bob.actor.id)?.receiptId
+    const history = room.social.society.history
+    const location = alice.actor.locationId
+    const received = history.knownIncidents(bob.actor.id, location)
+    expect(received).toMatchObject([
+        { kind: 'honest_exchange', actorId: alice.actor.id, firsthand: true },
+    ])
+    expect(history.knownIncidents(alice.actor.id, location)).toMatchObject([
+        { kind: 'honest_exchange', actorId: bob.actor.id, firsthand: true },
+    ])
+    expect(history.knownIncidents(bystander.actor.id, location)).toEqual([])
+    const reputation = history.knownReputation(
+        bob.actor.id,
+        location,
+        alice.actor.id
+    )
+    expect(reputation).toEqual({ honesty: 6, usefulness: 2, danger: 0 })
     alice.send({ type: 'exchange_accept', exchangeId, revision })
     expect(room.social.exchanges.snapshot(bob.actor.id)?.receiptId).toBe(
         receipt
     )
     expect(room.adventureForWorkers().walletFor(alice.actor.id).gold).toBe(5)
+    expect(history.knownIncidents(bob.actor.id, location)).toEqual(received)
+    expect(
+        history.knownReputation(bob.actor.id, location, alice.actor.id)
+    ).toEqual(reputation)
+})
+
+it('credits the giver of a settled gift once and ignores a rapid round trip of the same item', () => {
+    const game = openScenarioRoom()
+    room = game
+    const alice = joinScenarioRoom(game, 'First giver')
+    const bob = joinScenarioRoom(game, 'Second giver')
+    walkToScenarioPoint(bob, alice.actor.position)
+    const sword = createItemInstance('simple_sword')
+    alice.actor.inventory.push(sword)
+    const history = game.social.society.history
+    const location = alice.actor.locationId
+
+    const gift = (giver: typeof alice, receiver: typeof bob) => {
+        giver.send({ type: 'exchange_invite', targetId: receiver.actor.id })
+        const exchange = () => game.social.exchanges.snapshot(giver.actor.id)
+        const exchangeId = exchange()?.id ?? ''
+        receiver.send({ type: 'exchange_answer', exchangeId, accept: true })
+        giver.send({
+            type: 'exchange_offer',
+            exchangeId,
+            revision: exchange()?.revision ?? 0,
+            gold: 0,
+            items: [{ instanceId: sword.instanceId, quantity: 1 }],
+        })
+        const revision = exchange()?.revision ?? 0
+        giver.send({ type: 'exchange_accept', exchangeId, revision })
+        receiver.send({ type: 'exchange_accept', exchangeId, revision })
+        expect(exchange()?.status).toBe('completed')
+        return exchange()?.receiptId
+    }
+
+    const receipt = gift(alice, bob)
+    expect(history.knownIncidents(bob.actor.id, location)).toMatchObject([
+        { kind: 'help', actorId: alice.actor.id, targetId: bob.actor.id },
+    ])
+    expect(history.knownIncidents(alice.actor.id, location)).toEqual([])
+    expect(
+        history.knownReputation(bob.actor.id, location, alice.actor.id)
+    ).toEqual({ honesty: 1, usefulness: 6, danger: 0 })
+    expect(gift(bob, alice)).not.toBe(receipt)
+    expect(alice.actor.inventory).toContainEqual(sword)
+    expect(history.knownIncidents(alice.actor.id, location)).toEqual([])
+    expect(history.knownIncidents(bob.actor.id, location)).toHaveLength(1)
+
+    vi.setSystemTime(Date.now() + 5 * 60_000)
+    gift(alice, bob)
+    expect(history.knownIncidents(bob.actor.id, location)).toHaveLength(2)
 })
 
 it('pauses a stationary route beyond its failure timeout and revalidates it on exchange close', () => {

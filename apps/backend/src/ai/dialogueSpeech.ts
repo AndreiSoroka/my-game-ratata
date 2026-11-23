@@ -22,14 +22,10 @@ export function speakNpcDialogue(
     now: number
 ): void {
     const actor = state.actor
-    if (actor !== undefined && event.conversationId !== undefined) {
-        recordInquiry(
-            room,
-            actor,
-            event,
-            text,
-            room.social.npcSpeech.turns.reply(actor, event, text, now)
-        )
+    if (
+        actor !== undefined &&
+        handledByDialogueTurn(room, actor, event, text, now)
+    ) {
         return
     }
     const target = room.getCharacter(event.senderId)
@@ -71,13 +67,13 @@ export function speakNpcDialogue(
                     : speech
             )
         )
-        recordInquiry(room, actor, event, text, result.accepted)
+        recordDeliveredDialogue(room, actor, event, text, result.accepted)
     } else if (event.channel === 'whisper' || event.legacy === true) {
         const heard = room.social.whispers.send(actor, target, text, now, {
             language,
             keepOriginalForRecipient: true,
         })
-        recordInquiry(room, actor, event, text, heard)
+        recordDeliveredDialogue(room, actor, event, text, heard)
     } else {
         room.publishEvents([
             attributeNpcSpeech(
@@ -85,11 +81,31 @@ export function speakNpcDialogue(
                 target.id
             ),
         ])
-        room.social.recordExchangeInquiry(actor, event, text)
+        recordDeliveredDialogue(room, actor, event, text, true)
     }
 }
 
-function recordInquiry(
+function handledByDialogueTurn(
+    room: GameRoom,
+    actor: GameCharacter,
+    event: Heard,
+    text: string,
+    now: number
+): boolean {
+    if (
+        room.social.society.warnings.suppressModelReply(actor, event, text, now)
+    ) {
+        return true
+    }
+    if (event.conversationId === undefined) {
+        return false
+    }
+    const delivered = room.social.npcSpeech.turns.reply(actor, event, text, now)
+    recordDeliveredDialogue(room, actor, event, text, delivered)
+    return true
+}
+
+function recordDeliveredDialogue(
     room: GameRoom,
     actor: GameCharacter,
     event: Heard,
@@ -97,6 +113,7 @@ function recordInquiry(
     delivered: boolean
 ): void {
     if (delivered) {
+        room.social.society.warnings.settle(actor, event, text)
         room.social.recordExchangeInquiry(actor, event, text)
     }
 }

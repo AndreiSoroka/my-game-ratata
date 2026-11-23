@@ -60,4 +60,26 @@ describe('crime feedback', () => {
             wrapper.unmount()
         }
     })
+    it('shows assault evidence as a formal report without offering an emergency theft call', () => {
+        const player = characterFixture('victim')
+        player.theft!.accusations = [
+            {
+                thiefId: 'assailant',
+                thiefName: 'Нападавший',
+                offense: 'attack',
+                expiresAt: 400_000,
+                canCallGuards: false,
+                reported: false,
+            },
+        ]
+        const wrapper = mount(TheftAlert, { props: { player, serverTime: 140_000 } })
+        try {
+            expect(wrapper.text()).toContain('Есть свидетельство нападения')
+            expect(wrapper.text()).toContain('официальной жалобы')
+            expect(wrapper.text()).not.toContain('Экстренный зов')
+            expect(wrapper.find('button').exists()).toBe(false)
+        } finally {
+            wrapper.unmount()
+        }
+    })
 })

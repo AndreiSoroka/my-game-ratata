@@ -4,7 +4,12 @@ import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { reconcileNpcAction } from './actionResolution'
-import { archiveNpcAiPerson } from './actorLifecycle'
+import {
+    archiveNpcAiPerson,
+    cancelNpcActorSession,
+    cancelPausedNpcConversation,
+    hasNpcControllerLease,
+} from './actorLifecycle'
 import { recordNpcAiAttackResolution } from './attackResolution'
 import { reviewNpcAiCity } from './cityReview'
 import { queueNpcCombatReactions } from './combatReactions'
@@ -12,8 +17,10 @@ import { rememberAndGreet } from './coordinatorSocial'
 import { NpcAiTicks } from './coordinatorTicks'
 import { NpcAiDiagnostics } from './diagnostics'
 import { heardSpeechLanguage, receiveNpcSpeech } from './dialogueReception'
-import { respectSpokenFollowRefusal } from './followRefusal'
-import { stopNpcSelfTravelEscort } from './guide'
+import {
+    respectSpokenFollowRefusal,
+    withdrawNpcCompanion,
+} from './followRefusal'
 import { npcReplyActivities, rememberHeardSpeech } from './memoryObservation'
 import { reviewNpcIdleActivity } from './npcAutonomy'
 import { buildNpcAiObservation } from './observation'
@@ -115,13 +122,7 @@ export class NpcAiCoordinator {
     }
 
     public canControl(id: string, now: number): boolean {
-        const state = this.states.get(id)
-        return (
-            state?.actor !== undefined &&
-            state.token !== undefined &&
-            state.config.mode !== 'dialogue_only' &&
-            this.companions.isModelControlOwner(state.actor, state.token, now)
-        )
+        return hasNpcControllerLease(this.companions, this.states.get(id), now)
     }
 
     public withdraw(
@@ -131,22 +132,18 @@ export class NpcAiCoordinator {
     ): boolean {
         const state = this.states.get(targetId)
         const actor = this.room.getCharacter(targetId)
-        if (actor === undefined || state === undefined) {
-            return false
-        }
-        if (stopNpcSelfTravelEscort(state.guide, requester.id)) {
-            if (state.dialogue?.senderId === requester.id) {
-                this.sessions.cancelInference(state, now)
-            }
-            this.companions.recordFollowRefusal(actor, requester.id)
-            return true
-        }
-        if (actor.soul.companion?.leaderId !== requester.id) {
-            return false
-        }
-        this.sessions.cancel(state, now)
-        this.companions.recordFollowRefusal(actor, requester.id)
-        return this.companions.releaseAssistance(requester.id, actor)
+        return (
+            actor !== undefined &&
+            state !== undefined &&
+            withdrawNpcCompanion(
+                this.companions,
+                this.sessions,
+                state,
+                actor,
+                requester.id,
+                now
+            )
+        )
     }
 
     public hear(
@@ -215,34 +212,15 @@ export class NpcAiCoordinator {
 
     public cancelActor(id: string, now: number): void {
         const state = this.states.get(id)
-        if (state === undefined) {
-            return
+        if (state !== undefined) {
+            cancelNpcActorSession(this.room, this.sessions, state, now)
         }
-        for (const event of [state.dialogue, ...state.inbox]) {
-            if (event !== undefined) {
-                this.room.social.npcSpeech.fail(event, now)
-            }
-        }
-        this.sessions.cancel(state, now)
     }
 
     public suspendAutonomy(now: number): void {
         this.scheduler.interruptAdvice()
         for (const state of this.states.values()) {
-            const dialogue = state.dialogue
-            if (
-                dialogue !== undefined &&
-                state.actor !== undefined &&
-                (this.room.getCharacter(dialogue.senderId)?.connected !==
-                    true ||
-                    !this.room.social.npcSpeech.turns.available(
-                        state.actor,
-                        dialogue,
-                        now
-                    ))
-            ) {
-                this.sessions.cancelInference(state, now)
-            }
+            cancelPausedNpcConversation(this.room, this.sessions, state, now)
             this.ticks.yieldBackground(state, now)
             state.idleSince = undefined
         }

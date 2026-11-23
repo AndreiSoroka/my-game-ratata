@@ -1,4 +1,8 @@
-import { THEFT_RULES, type Vector2 } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    THEFT_RULES,
+    type Vector2,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
@@ -16,6 +20,22 @@ export interface CrimeResponse {
     mode: 'fight' | 'flee'
     lastKnown: Vector2
     lastPlanAt: number
+}
+
+export function fallbackCaughtTheftResponse(
+    victim: GameCharacter,
+    thief: GameCharacter,
+    respond: (mode: CrimeResponse['mode']) => void,
+    callGuards: () => GameEventPayload[]
+): GameEventPayload[] {
+    if (humanControlled(victim)) {
+        return []
+    }
+    const fighter =
+        victim.soul.companion?.leaderId !== thief.id &&
+        (victim.soul.companion?.canFight ?? victim.faction === 'monsters')
+    respond(fighter ? 'fight' : 'flee')
+    return victim.soul.canSpeak && !fighter ? callGuards() : []
 }
 
 export function advanceCrimeResponse(
@@ -43,7 +63,7 @@ export function advanceCrimeResponse(
                 navigation.findPathWorld(actor.position, response.lastKnown)
             )
         }
-        const target = decision.target
+        const target = attackableResponseTarget(actor, decision.target)
         if (target !== undefined) {
             actor.updateFacing({
                 x: target.position.x - actor.position.x,
@@ -86,7 +106,7 @@ function visibleThief(
     )
 }
 
-function escapePoint(
+export function escapePoint(
     actor: GameCharacter,
     threat: Vector2,
     room: GameRoom
@@ -126,6 +146,9 @@ export function advanceReturningResponses(
     controlled: Set<string>
 ): void {
     for (const id of returning) {
+        if (controlled.has(id)) {
+            continue
+        }
         const actor = all.get(id)
         if (
             !available(actor) ||
@@ -135,7 +158,15 @@ export function advanceReturningResponses(
             returning.delete(id)
             continue
         }
-        const target = advancePursuit(actor, undefined, room, now).target
+        if (actor.soul.controlSource === 'model') {
+            returning.delete(id)
+            pursuits.delete(actor)
+            continue
+        }
+        const target = attackableResponseTarget(
+            actor,
+            advancePursuit(actor, undefined, room, now).target
+        )
         if (pursuits.has(actor)) {
             controlled.add(id)
         }
@@ -145,4 +176,11 @@ export function advanceReturningResponses(
             room.requestAttack(actor, now, target.id)
         }
     }
+}
+
+function attackableResponseTarget(
+    actor: GameCharacter,
+    target: GameCharacter | undefined
+): GameCharacter | undefined {
+    return actor.soul.companion?.leaderId === target?.id ? undefined : target
 }

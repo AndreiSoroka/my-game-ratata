@@ -9,6 +9,7 @@ import type { AdventureService } from './adventure'
 import type { AgentDecisionResult } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { ExchangeService } from './exchange'
+import type { ExchangeSettlement } from './exchangeState'
 import {
     considersItems,
     NpcExchangeDiscussion,
@@ -18,6 +19,9 @@ import { npcDialogueMode } from './npcRoster'
 import type { GameRoom } from './room'
 import type { NpcHeardSpeech } from './roomNpcConversations'
 import type { createSocialWake } from './roomSocialWake'
+import { socialKey } from './socialScores'
+
+const exchangeReputationIntervalMs = 5 * 60_000
 
 export function isExchange(message: {
     type: string
@@ -118,6 +122,7 @@ function createExchangeService(
             npcDialogueMode(actor.id) !== 'passive',
         canControlAI: (actor, now) => ai()?.canControl(actor.id, now) === true,
         walletFor: (id) => adventure.walletFor(id),
+        onSettled: recordExchangeReputation(room),
         onInvite: (actorId, partnerId, _id, now) =>
             wake(
                 partnerId,
@@ -136,6 +141,54 @@ function createExchangeService(
             }
         },
     })
+}
+
+function recordExchangeReputation(room: GameRoom) {
+    const creditedUntil = new Map<string, number>()
+    return ({ receiptId, participants, at }: ExchangeSettlement): void => {
+        for (const [pair, until] of creditedUntil) {
+            if (until > at) {
+                break
+            }
+            creditedUntil.delete(pair)
+        }
+        const [first, second] = participants
+        const pair = socialKey(...[first.actor.id, second.actor.id].sort())
+        if (creditedUntil.has(pair)) {
+            return
+        }
+        const history = room.social.society.history
+        const kind =
+            first.contributed && second.contributed ? 'honest_exchange' : 'help'
+        let credited = false
+        for (const [contributor, partner] of [
+            [first, second],
+            [second, first],
+        ] as const) {
+            if (contributor.contributed) {
+                const actorId = contributor.actor.id
+                const targetId = partner.actor.id
+                const locationId = contributor.actor.locationId
+                credited =
+                    history.record(
+                        {
+                            id: socialKey('exchange', receiptId, actorId),
+                            kind,
+                            actorId,
+                            targetId,
+                            locationId,
+                            at,
+                            severity: 1,
+                            visibility: 'participants',
+                        },
+                        [targetId]
+                    ) || credited
+            }
+        }
+        if (credited) {
+            creditedUntil.set(pair, at + exchangeReputationIntervalMs)
+        }
+    }
 }
 
 function decideSocialExchange(

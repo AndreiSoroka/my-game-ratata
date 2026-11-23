@@ -17,6 +17,7 @@ export interface PendingNpcReply {
     source: NpcConversationSource
     dueAt: number
     humAt?: number
+    awaitingWarning?: true
     deadline: number
 }
 
@@ -35,7 +36,8 @@ export class NpcReplyQueue {
         source: NpcConversationSource,
         at: number,
         wallNow: number,
-        performModel: boolean
+        performModel: boolean,
+        awaitingWarning = false
     ): PendingNpcReply {
         const turn: PendingNpcReply = {
             id: `npc-dialogue:${String(++this.sequence)}`,
@@ -47,7 +49,10 @@ export class NpcReplyQueue {
             source,
             dueAt: at + humDelayMs,
             deadline: wallNow + replyLimitMs,
-            ...(performModel ? {} : { humAt: at + humDelayMs }),
+            ...(performModel || awaitingWarning
+                ? {}
+                : { humAt: at + humDelayMs }),
+            ...(awaitingWarning ? { awaitingWarning: true } : {}),
         }
         const turns =
             this.pending.get(recipient.id) ??

@@ -31,6 +31,11 @@ export const worldMessages = {
         '{number}: {label}. Shift+{shortcut} — назначить',
         '{number}: {label}. Shift+{shortcut} to assign',
     ],
+    assaultEvidence: [
+        '· свидетельство нападения действует ещё',
+        '· assault evidence lasts another',
+    ],
+    assaultEvidenceAvailable: ['Есть свидетельство нападения', 'Assault evidence available'],
     attemptedTheftSpotted: ['Замечена попытка кражи', 'Attempted theft spotted'],
     availableIn: ['через {seconds} с', 'in {seconds} s'],
     awaken: ['Пробудить', 'Awaken'],
@@ -75,6 +80,10 @@ export const worldMessages = {
     effectCount: ['Всего: {count}', 'Total: {count}'],
     emptyContainer: ['Контейнер пуст.', 'The container is empty.'],
     endingLife: ['Завершаем жизнь…', 'Ending this life…'],
+    emergencyGuardCallWindow: [
+        'Экстренный зов доступен первые',
+        'You can call for help during the first',
+    ],
     enter: ['Войти', 'Enter'],
     equippedItemsStayOnYour: [
         'Надетые вещи остаются на персонаже.',

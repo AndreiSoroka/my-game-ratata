@@ -1,6 +1,7 @@
 import { ashSkeletonOrder } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { hasRetaliationRight } from './crimeRelations'
+import { hasPersonalHostility } from './personalHostility'
 
 export function canTargetByFaction(
     actor: GameCharacter,
@@ -22,6 +23,10 @@ export function canTargetByFaction(
 
     if (hasAshAffinity(actor, target) || hasAshAffinity(target, actor)) {
         return false
+    }
+
+    if (hasPersonalHostility(actor, target, now)) {
+        return true
     }
 
     const faction = combatFaction(actor)

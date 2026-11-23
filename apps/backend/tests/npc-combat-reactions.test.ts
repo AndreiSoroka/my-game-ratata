@@ -6,6 +6,8 @@ import { defaultNpcAiSettings, parseNpcAiConfig } from '../src/ai/config'
 import { createNpcAiState } from '../src/ai/runtimeState'
 import { resolveCharacterDamage } from '../src/game/abilityDamage'
 import type { GameCharacter } from '../src/game/character'
+import { hasRetaliationRight } from '../src/game/crimeRelations'
+import { damageEvent } from '../src/game/damageEvents'
 import { npcAiRoster } from '../src/game/npcRoster'
 import { GameRoom } from '../src/game/room'
 import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
@@ -70,10 +72,12 @@ it('starts a genuine temporary model turn for a witnessed hit and cools down per
 
 it('ignores private, unconfirmed, distant, hidden, and cross-location damage observations', async () => {
     const f = setup()
+    let occurrence = 0
     const publish = (event: Partial<GameEventPayload>) =>
         f.room.publishEvents([
             {
                 kind: 'damage',
+                eventId: `fixture-hit:${String(++occurrence)}`,
                 actorId: f.alice.actor.id,
                 targetId: f.bob.actor.id,
                 amount: 2,
@@ -123,6 +127,94 @@ it('ignores private, unconfirmed, distant, hidden, and cross-location damage obs
     expect(f.provider.turns).toHaveLength(0)
 })
 
+it('records distinct damage occurrences from one action and never rerolls copied or unreceipted hits', () => {
+    const f = setup(false)
+    const reaction = vi.spyOn(f.savva.temperament, 'react')
+    const emitHit = () => ({
+        ...damageEvent(
+            {
+                actor: f.alice.actor,
+                target: f.savva,
+                now: f.room.gameplayNow(),
+                amount: 2,
+                damageKind: 'physical',
+                respawnDelayMs: 1_000,
+            },
+            2,
+            false
+        ),
+        actionId: 'same-action',
+    })
+    const first = emitHit()
+    const second = emitHit()
+    expect(first.eventId).toEqual(expect.any(String))
+    expect(second.eventId).toEqual(expect.any(String))
+    expect(second.eventId).not.toBe(first.eventId)
+
+    const incidents = () =>
+        f.room.social.society.history
+            .knownIncidents(f.savva.id, f.savva.locationId)
+            .filter((incident) => incident.kind === 'attack')
+    f.room.publishEvents([first, second])
+    expect(incidents()).toHaveLength(2)
+    expect(reaction).toHaveBeenCalledTimes(2)
+    const initial = incidents()
+    vi.setSystemTime(11_000)
+    const withoutReceipt = { ...first }
+    delete withoutReceipt.eventId
+    f.room.publishEvents([
+        structuredClone(first),
+        { ...second },
+        withoutReceipt,
+    ])
+    expect(incidents()).toEqual(initial)
+    expect(reaction).toHaveBeenCalledTimes(2)
+
+    const projected = f.bob.sent.flatMap((message) =>
+        message.type === 'event' && message.event.kind === 'damage'
+            ? [message.event]
+            : []
+    )
+    expect(projected.length).toBeGreaterThan(0)
+    for (const event of projected) {
+        expect(event).not.toHaveProperty('amount')
+        expect(event).not.toHaveProperty('eventId')
+    }
+})
+
+it('lets bystanders notice a public hit without manufacturing assault evidence from unclassified damage', async () => {
+    const f = setup()
+    const { actor: attacker } = f.alice
+    const { actor: victim } = f.bob
+    const now = f.room.gameplayNow()
+    f.room.publishEvents([
+        {
+            kind: 'damage',
+            eventId: 'unclassified-hit',
+            actorId: attacker.id,
+            targetId: victim.id,
+            amount: 2,
+        },
+    ])
+    expect(
+        f.room.social.society.history.knownIncidents(
+            victim.id,
+            victim.locationId
+        )
+    ).toEqual([])
+    expect(
+        f.room
+            .snapshot(now, victim.locationId, victim.id)
+            .characters.find((entry) => entry.id === victim.id)?.theft
+            ?.accusations
+    ).toEqual([])
+    expect(hasRetaliationRight(attacker, victim, now)).toBe(false)
+    await vi.advanceTimersByTimeAsync(75)
+    expect(f.provider.turns[0]?.context.events).toMatchObject([
+        { kind: 'combat_hit' },
+    ])
+})
+
 it('queues the same reaction for all five active NPC profiles', () => {
     const f = setup()
     const states = Object.entries(npcAiRoster)
@@ -148,6 +240,7 @@ it('queues the same reaction for all five active NPC profiles', () => {
         [
             {
                 kind: 'damage',
+                eventId: 'witnessed-hit-receipt',
                 actorId: f.alice.actor.id,
                 targetId: f.bob.actor.id,
                 amount: 2,
@@ -184,6 +277,40 @@ it('lets addressed player speech interrupt a combat turn without delivering the 
     f.provider.turns[1]?.resolve(npcReply(null, { speech: 'Приветствую.' }))
     await vi.advanceTimersByTimeAsync(100)
     expect(lines(f.alice.sent)).toEqual(['Приветствую.'])
+})
+
+it('drops a bystander reply when that NPC commits to a physical conflict response', async () => {
+    const f = setup()
+    f.hit()
+    await vi.advanceTimersByTimeAsync(75)
+    const turn = required(f.provider.turns[0])
+    const conflict = required(f.room.social.society.conflicts)
+    conflict.apply(
+        f.savva,
+        f.alice.actor,
+        'attack',
+        {
+            id: 'observed-threat',
+            kind: 'threat',
+            locationId: f.savva.locationId,
+        },
+        f.room.gameplayNow()
+    )
+    expect(conflict.hasPhysicalReaction(f.savva, f.room.gameplayNow())).toBe(
+        true
+    )
+    expect(
+        f.room.decideForAgent(f.savva.id, {
+            type: 'move',
+            axis: { x: 1, y: 0 },
+        }).accepted
+    ).toBe(false)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(turn.signal.aborted).toBe(true)
+    expect(f.savva.soul.controlSource).toBe('script')
+    turn.resolve(npcReply(null, { speech: 'Запоздалая реплика свидетеля.' }))
+    await vi.advanceTimersByTimeAsync(250)
+    expect(lines(f.alice.sent)).not.toContain('Запоздалая реплика свидетеля.')
 })
 
 it('rejects an action or lookup in a combat reply without a second model call', async () => {

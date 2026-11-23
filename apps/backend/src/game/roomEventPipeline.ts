@@ -53,7 +53,6 @@ export class RoomEventPipeline {
             now
         )
         this.social.observe(objectiveEvents)
-        this.options.observeCombat(events, now)
         publishRoomEvents(
             events,
             this.characters,
@@ -72,6 +71,7 @@ export class RoomEventPipeline {
             this.options.speechTranslations(),
             now
         )
+        this.options.observeCombat(events, now)
     }
 
     public finalDefeat(actor: GameCharacter, now: number): void {

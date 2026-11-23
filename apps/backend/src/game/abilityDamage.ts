@@ -9,7 +9,8 @@ import { MASTERY_REWARDS } from '@my-game-ratata/contracts'
 import { activeBarrier } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
-import { grantRetaliation, hasDirectRetaliationRight } from './crimeRelations'
+import { grantRetaliation, hasRetaliationRight } from './crimeRelations'
+import { damageEvent } from './damageEvents'
 import { canTargetByFaction, combatFaction } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelMagicChannel } from './magicState'
@@ -31,6 +32,7 @@ import {
 } from './undeadSurvivalCombat'
 import { undeadDamageMultiplier } from './undeadTactics'
 import { recordVitalityDamage } from './vitalityPractice'
+
 export interface DamageResolution {
     /** Resolved contact used for weapon wear, independent of target HP loss. */
     impactDamage: number
@@ -85,13 +87,20 @@ export function resolveCharacterDamage(
     if (hostile && result.absorbed > 0) {
         resetMartyrStreak(actor)
     }
-    markNonhostileContact(input, hostile)
+    const authorizedRetaliation = hasRetaliationRight(actor, target, now)
+    markNonhostileContact(input, hostile, authorizedRetaliation)
     result.hpDamage = guardedHpDamage(input, result.absorbed, hostile)
     if (result.hpDamage <= 0) {
         finishDefenderPractice(input, result, hostile, factors)
         return result
     }
-    applyHpDamage(input, result, hostile, auraEffects.advantage)
+    applyHpDamage(
+        input,
+        result,
+        hostile,
+        auraEffects.advantage,
+        authorizedRetaliation
+    )
     finishDefenderPractice(input, result, hostile, factors)
     finishDamageDeath(input, result.events, hostile)
     return result
@@ -120,13 +129,10 @@ function scaleIncomingDamage(
 
 function markNonhostileContact(
     { actor, target, now }: CharacterDamageInput,
-    hostile: boolean
+    hostile: boolean,
+    authorizedRetaliation: boolean
 ): void {
-    if (
-        actor.id !== target.id &&
-        !hostile &&
-        !hasDirectRetaliationRight(actor, target, now)
-    ) {
+    if (actor.id !== target.id && !hostile && !authorizedRetaliation) {
         grantRetaliation(target, actor, now + 30_000)
     }
 }
@@ -157,7 +163,8 @@ function applyHpDamage(
     input: CharacterDamageInput,
     result: DamageResolution,
     hostile: boolean,
-    advantage: boolean
+    advantage: boolean,
+    authorizedRetaliation: boolean
 ): void {
     const { actor, target, now } = input
     const tainted = Math.min(
@@ -189,7 +196,9 @@ function applyHpDamage(
         }
     }
     result.impactDamage = result.hpDamage
-    result.events.push(damageEvent(input, result.hpDamage))
+    result.events.push(
+        damageEvent(input, result.hpDamage, authorizedRetaliation)
+    )
 }
 function finishDefenderPractice(
     input: CharacterDamageInput,
@@ -210,19 +219,6 @@ function finishDefenderPractice(
     }
 }
 
-function damageEvent(
-    input: CharacterDamageInput,
-    amount: number
-): GameEventPayload {
-    return {
-        kind: 'damage',
-        actorId: input.actor.id,
-        targetId: input.target.id,
-        amount,
-        damageKind: input.damageKind,
-        hitQuality: input.hitQuality ?? 'normal',
-    }
-}
 function canReceiveDamage({ target, amount }: CharacterDamageInput): boolean {
     return (
         target.alive &&

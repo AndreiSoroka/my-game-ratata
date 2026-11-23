@@ -1,7 +1,4 @@
-import {
-    PUBLIC_SPEECH_RADIUS,
-    type SpeechActivitySnapshot,
-} from '@my-game-ratata/contracts'
+import type { SpeechActivitySnapshot } from '@my-game-ratata/contracts'
 
 import type { NpcAiEvent } from '../ai/types'
 import type { AdventureService } from './adventure'
@@ -13,8 +10,11 @@ import {
 } from './npcReplyQueue'
 import type { GameRoom } from './room'
 import { RoomConversationDepartures } from './roomConversationDepartures'
-import { createNpcReplyPublisher, NPC_HUM } from './roomNpcReplySpeech'
-import { canConverseWithNpc } from './socialSpeech'
+import {
+    createNpcReplyPublisher,
+    createNpcReplyRecipient,
+    NPC_HUM,
+} from './roomNpcReplySpeech'
 import type { WhisperService } from './whispers'
 
 export type NpcHeardSpeech = Extract<NpcAiEvent, { kind: 'message' }>
@@ -25,10 +25,13 @@ export class RoomNpcConversations {
     public readonly departures: RoomConversationDepartures
     private readonly pending = new NpcReplyQueue()
     private readonly publishReply: ReturnType<typeof createNpcReplyPublisher>
+    private readonly currentRecipient: ReturnType<
+        typeof createNpcReplyRecipient
+    >
 
     public constructor(
         private readonly room: GameRoom,
-        private readonly adventure: AdventureService,
+        adventure: AdventureService,
         whispers: WhisperService
     ) {
         this.departures = new RoomConversationDepartures(room)
@@ -37,6 +40,7 @@ export class RoomNpcConversations {
             adventure,
             whispers,
         })
+        this.currentRecipient = createNpcReplyRecipient(room, adventure)
     }
 
     public enqueue(
@@ -46,6 +50,9 @@ export class RoomNpcConversations {
         source: PrivateConversationSource,
         useModel: boolean
     ): NpcHeardSpeech | undefined {
+        if (this.room.social.society.warnings.isSettled(npc, event)) {
+            return undefined
+        }
         const wallNow = this.room.realNow()
         const performModel =
             useModel && this.pending.allowRequest(recipient.id, wallNow)
@@ -65,14 +72,17 @@ export class RoomNpcConversations {
         npcs: GameCharacter[],
         event: NpcHeardSpeech
     ): Array<{ npc: GameCharacter; speech: NpcHeardSpeech }> {
+        const eligible = npcs.filter(
+            (npc) => !this.room.social.society.warnings.isSettled(npc, event)
+        )
         const wallNow = this.room.realNow()
         if (
-            npcs.length === 0 ||
+            eligible.length === 0 ||
             !this.pending.allowRequest(recipient.id, wallNow)
         ) {
             return []
         }
-        return npcs.map((npc) => ({
+        return eligible.map((npc) => ({
             npc,
             speech: this.recordTurn(
                 recipient,
@@ -108,19 +118,28 @@ export class RoomNpcConversations {
                 this.discard(recipient.id, previous, speaker)
             }
         }
+        const awaitingWarning = this.room.social.society.warnings.isPending(
+            npc,
+            event
+        )
         const turn = this.pending.add(
             recipient,
             npc,
             source,
             event.at,
             wallNow,
-            performModel
+            performModel,
+            awaitingWarning
         )
-        return {
+        const heard = {
             ...event,
             conversationId: turn.id,
             replyDeadline: turn.deadline,
         }
+        if (awaitingWarning) {
+            this.room.social.society.warnings.bindTurn(npc, heard)
+        }
+        return heard
     }
 
     public close(
@@ -174,6 +193,9 @@ export class RoomNpcConversations {
         const turn = [...this.pending.forRecipient(recipientId)].find(
             (entry) => entry.id === id
         )
+        if (turn?.awaitingWarning === true) {
+            return
+        }
         if (turn?.source === 'say') {
             this.pending.remove(recipientId, turn)
         } else if (turn !== undefined) {
@@ -250,7 +272,7 @@ export class RoomNpcConversations {
                     : now >= turn.humAt
             ) {
                 this.pending.remove(recipientId, turn)
-                if (turn.source !== 'say') {
+                if (turn.source !== 'say' && turn.awaitingWarning !== true) {
                     this.publishReply(npc, recipient, turn.source, NPC_HUM, now)
                 }
             }
@@ -273,32 +295,5 @@ export class RoomNpcConversations {
                 at: this.room.gameplayNow(),
             })
         }
-    }
-
-    private currentRecipient(
-        recipientId: string,
-        turn: PendingNpcReply,
-        npc: GameCharacter | undefined,
-        now: number
-    ): GameCharacter | undefined {
-        const recipient = this.room.getCharacter(recipientId)
-        if (
-            npc?.deathSequence !== turn.deathSequence ||
-            npc.locationId !== turn.locationId ||
-            recipient?.deathSequence !== turn.recipientDeathSequence ||
-            (turn.source === 'panel' &&
-                this.adventure.walletFor(recipientId).dialogue?.npcId !==
-                    npc.id) ||
-            !canConverseWithNpc(
-                recipient,
-                npc,
-                this.room.navigationFor(npc),
-                now,
-                turn.source === 'say' ? PUBLIC_SPEECH_RADIUS : 48
-            )
-        ) {
-            return undefined
-        }
-        return recipient
     }
 }

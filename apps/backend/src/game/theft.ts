@@ -10,6 +10,7 @@ import type { GameCharacter } from './character'
 import type { JusticeContext } from './cityJustice'
 import { constellationModifiers } from './constellationModifiers'
 import { CrimeService } from './crime'
+import type { CrimeOffense } from './crimeEvidence'
 import { effectiveTheftCost } from './effectiveParameters'
 import { interactionRangeText } from './interactionRangeText'
 import {
@@ -18,15 +19,11 @@ import {
     transferInventoryItem,
 } from './inventory'
 import { resetMartyrStreak } from './martyr'
-import { distance } from './math'
-import { canPerceivePrayerCaster } from './prayerAuras'
+import { NpcConflictResponses } from './npcConflictResponses'
 import { spendUsefulEnergy } from './resourcePractice'
 import type { GameRoom } from './room'
-import {
-    canPerformSkillAction,
-    captureMasteryFactors,
-} from './skillProgression'
-import { rollTheft } from './theftChecks'
+import { captureMasteryFactors } from './skillProgression'
+import { rollTheft, validTheftTarget } from './theftChecks'
 import { privateTheftNotice } from './theftEvents'
 import { practiceTheft } from './theftPractice'
 
@@ -40,8 +37,20 @@ export interface TheftContext extends JusticeContext {
 }
 
 export class TheftService {
+    public onCaught?: (
+        thief: GameCharacter,
+        victim: GameCharacter,
+        context: TheftContext
+    ) => GameEventPayload[] | undefined
+    public reconsider?: (
+        now: number,
+        busy: (actor: GameCharacter) => boolean
+    ) => void
+    public onAbsolved?: (offender: GameCharacter) => void
+
     private readonly states = new Map<string, TheftState>()
     private readonly crimes = new CrimeService()
+    public readonly reactions = new NpcConflictResponses()
 
     public handle(
         actor: GameCharacter,
@@ -53,7 +62,10 @@ export class TheftService {
             return this.crimes.report(actor, message.targetId, context)
         }
         if (message.type === 'absolve') {
-            return this.crimes.absolve(actor, message.targetId, context)
+            return this.crimes.absolve(actor, message.targetId, context, () => {
+                this.reactions.clearRelatedCrimes(actor)
+                this.onAbsolved?.(actor)
+            })
         }
         if (message.type === 'call_guards') {
             return this.callGuards(actor, message.targetId, context)
@@ -62,7 +74,7 @@ export class TheftService {
         const target = characters.find(
             (candidate) => candidate.id === message.targetId
         )
-        if (!validTarget(actor, target, context)) {
+        if (!validTheftTarget(actor, target, context)) {
             return [
                 privateTheftNotice(
                     actor.id,
@@ -168,7 +180,8 @@ export class TheftService {
                     actor,
                     target,
                     context.characters,
-                    context.now
+                    context.now,
+                    () => this.onCaught?.(actor, target, context)
                 )
             )
         }
@@ -217,7 +230,39 @@ export class TheftService {
         characters: Iterable<GameCharacter>,
         now: number
     ): Set<string> {
-        return this.crimes.update(room, characters, now)
+        const all = [...characters]
+        const controlled = this.crimes.update(room, all, now)
+        this.reconsider?.(
+            now,
+            (actor) =>
+                controlled.has(actor.id) ||
+                room.social.exchanges.isPaused(actor.id)
+        )
+        this.reactions.update(
+            room,
+            all,
+            now,
+            controlled,
+            (actor, targetId, context, offense) =>
+                this.crimes.report(actor, targetId, context, offense)
+        )
+        return controlled
+    }
+
+    public recordAssault(
+        attacker: GameCharacter,
+        victim: GameCharacter,
+        now: number
+    ): void {
+        this.crimes.recordAssault(attacker, victim, now)
+    }
+
+    public reportExpiry(
+        witnessId: string,
+        offenderId: string,
+        offense: CrimeOffense
+    ): number | undefined {
+        return this.crimes.reportExpiry(witnessId, offenderId, offense)
     }
 
     private stateFor(actorId: string): TheftState {
@@ -231,25 +276,6 @@ export class TheftService {
     }
 }
 
-function validTarget(
-    actor: GameCharacter,
-    target: GameCharacter | undefined,
-    context: TheftContext
-): target is GameCharacter {
-    return (
-        canPerformSkillAction(actor, context.now) &&
-        actor.movement.mode === 'sneaking' &&
-        actor.movement.dashUntil <= context.now &&
-        target !== undefined &&
-        target.id !== actor.id &&
-        target.alive &&
-        !target.tags.has('offline') &&
-        target.locationId === actor.locationId &&
-        canPerceivePrayerCaster(actor, target, context.now) &&
-        distance(actor.position, target.position) <= THEFT_RULES.range &&
-        context.navigation.hasLineOfSight(actor.position, target.position)
-    )
-}
 function attemptRestriction(
     actor: GameCharacter,
     target: GameCharacter,

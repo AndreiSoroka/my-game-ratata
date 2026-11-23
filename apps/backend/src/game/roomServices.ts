@@ -4,6 +4,7 @@ import { adventureWorldOptions } from './adventureWorld'
 import type { GameCharacter } from './character'
 import type { CompanionService } from './companions'
 import { createRoomScavenger } from './mobScavenging'
+import { NpcConflict } from './npcConflict'
 import type { GameRoom } from './room'
 import { RoomEventPipeline } from './roomEventPipeline'
 import type { RoomLife } from './roomLife'
@@ -69,6 +70,7 @@ export function createRoomServices(options: Options): RoomServices {
     const social = new RoomSocial(room, adventure, parties, ai, () =>
         characters.values()
     )
+    const observeCombat = createCombatObserver(options, social)
     const events = new RoomEventPipeline(
         characters,
         connections,
@@ -79,7 +81,7 @@ export function createRoomServices(options: Options): RoomServices {
             archivePerson: (id, now) => ai()?.archivePerson(id, now),
             hasModelLease: (actor, now) =>
                 companions.hasActiveLease(actor, now, room),
-            observeCombat: (events, now) => ai()?.observeCombat(events, now),
+            observeCombat,
             world,
             now: room.gameplayNow,
             speechTranslations: () => room.speechTranslations,
@@ -115,5 +117,20 @@ export function createRoomServices(options: Options): RoomServices {
             }),
             room
         ),
+    }
+}
+
+function createCombatObserver(options: Options, social: RoomSocial) {
+    const { room, theft, characters, ai } = options
+    const conflict = new NpcConflict(room, theft, social.society.history, () =>
+        characters.values()
+    )
+    social.society.conflicts = conflict
+    theft.onCaught = conflict.onCaught
+    theft.reconsider = conflict.reconsider
+    theft.onAbsolved = conflict.clearEvidence
+    return (events: Parameters<NpcConflict['onCombat']>[0], now: number) => {
+        const fresh = conflict.onCombat(events, now)
+        ai()?.observeCombat(fresh, now)
     }
 }

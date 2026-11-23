@@ -43,7 +43,11 @@ export function prepareNpcAiTurns(
     const wall = room.realNow()
     for (const state of states) {
         const actor = state.actor
-        if (!npcAiActorAvailable(actor)) {
+        if (
+            !npcAiActorAvailable(actor) ||
+            room.social.society.conflicts?.hasPhysicalReaction(actor, now) ===
+                true
+        ) {
             continue
         }
         state.inbox = state.inbox.filter(

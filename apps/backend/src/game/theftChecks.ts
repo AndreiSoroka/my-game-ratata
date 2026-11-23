@@ -1,12 +1,19 @@
 import {
     resolveTheftChances,
+    THEFT_RULES,
     type TheftResult,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { JusticeContext } from './cityJustice'
 import { constellationModifiers } from './constellationModifiers'
-import { facingDirection } from './math'
-import { hasPrayerAdvantage, prayerCheckSample } from './prayerAuras'
+import { distance, facingDirection } from './math'
+import {
+    canPerceivePrayerCaster,
+    hasPrayerAdvantage,
+    prayerCheckSample,
+} from './prayerAuras'
+import { canPerformSkillAction } from './skillProgression'
 
 export function rollTheft(
     actor: GameCharacter,
@@ -43,5 +50,25 @@ function approachesFromRear(
     const distance = Math.hypot(dx, dy)
     return (
         distance > 0 && (dx * direction.x + dy * direction.y) / distance <= -0.4
+    )
+}
+
+export function validTheftTarget(
+    actor: GameCharacter,
+    target: GameCharacter | undefined,
+    context: JusticeContext
+): target is GameCharacter {
+    return (
+        canPerformSkillAction(actor, context.now) &&
+        actor.movement.mode === 'sneaking' &&
+        actor.movement.dashUntil <= context.now &&
+        target !== undefined &&
+        target.id !== actor.id &&
+        target.alive &&
+        !target.tags.has('offline') &&
+        target.locationId === actor.locationId &&
+        canPerceivePrayerCaster(actor, target, context.now) &&
+        distance(actor.position, target.position) <= THEFT_RULES.range &&
+        context.navigation.hasLineOfSight(actor.position, target.position)
     )
 }

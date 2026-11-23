@@ -81,6 +81,7 @@ export type NpcAiEvent =
           position: Vector2
           at: number
           focus?: SpeechFocus
+          socialReaction?: import('../game/societyDialogue').HeardSocialReaction
           exchangeOffer?: import('../game/npcExchangeDiscussion').NpcExchangeOffer
           actorPosition?: Vector2
           actorLocationId?: string
@@ -131,6 +132,7 @@ export type NpcAiFact =
       }
 
 export interface NpcAiContext extends NpcConversationFeedback {
+    temperament?: import('./socialContext').NpcTemperamentContext
     cityStory?: import('./npcCityStoryContext').NpcCityStoryContext
     socialOpportunity?: import('./npcInitiative').NpcGreetingOpportunity
     commandCapabilities?: {

@@ -35,6 +35,21 @@ export interface ExchangeEnvironment {
         inviteeId: string,
         now: number
     ): void
+    onSettled?(settlement: ExchangeSettlement): void
+}
+
+interface ExchangeSettlementParticipant {
+    readonly actor: GameCharacter
+    readonly contributed: boolean
+}
+
+export interface ExchangeSettlement {
+    readonly receiptId: string
+    readonly participants: readonly [
+        ExchangeSettlementParticipant,
+        ExchangeSettlementParticipant,
+    ]
+    readonly at: number
 }
 export interface ExchangeOffer {
     refusal?: { id: string; reason: string }

@@ -27,12 +27,14 @@ import {
     projectCharacterInteractions,
 } from './roomSocialViews'
 import { createSocialWake } from './roomSocialWake'
+import { RoomSociety } from './roomSociety'
 import { createWhisperObserver } from './roomWhisperObserver'
 import { TradeNotifications } from './tradeNotifications'
 import { WhisperService } from './whispers'
 import { workerActivity } from './workerActivity'
 
 export class RoomSocial {
+    public readonly society: RoomSociety
     public readonly whispers: WhisperService
     public readonly exchanges: ExchangeService
     public readonly exchangeAcceptanceProblem: ReturnType<
@@ -56,6 +58,7 @@ export class RoomSocial {
         private readonly ai: () => NpcAiCoordinator | undefined,
         actors: () => Iterable<GameCharacter>
     ) {
+        this.society = new RoomSociety(room, actors)
         this.wake = createSocialWake(room, ai)
         this.communication = new RoomCommunication(room, ai)
         this.exchange = createRoomExchange(room, adventure, ai, this.wake)
@@ -274,6 +277,7 @@ export class RoomSocial {
         this.communication.report(requesterId, status)
     }
     public stop(): void {
+        this.society.stopVisit()
         this.exchanges.stop()
         this.quests.stop()
         this.questDialogues.stop()

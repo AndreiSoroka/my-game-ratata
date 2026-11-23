@@ -86,19 +86,33 @@ export class RoomNpcContacts {
             )
             return
         }
-        this.room.rememberNpcMeeting(actor, npc)
-        const heard = this.onAddressedSpeech(actor, npc, event)
         const ai = this.ai()
-        const turn = this.turns.enqueue(
+        const model = ai?.configured(npc.id) === true
+        const heard = this.observeAddressedSpeech(
             actor,
             npc,
-            heard,
-            source,
-            ai?.configured(npc.id) === true
+            { ...event, channel: 'whisper' },
+            model
         )
+        const turn = this.turns.enqueue(actor, npc, heard, source, model)
         if (turn !== undefined) {
             ai?.hear(actor, turn, npc.id)
         }
+    }
+
+    /** Shared by the private and Nearby routes after exact addressee and hearing checks. */
+    public observeAddressedSpeech(
+        actor: GameCharacter,
+        npc: GameCharacter,
+        event: NpcHeardSpeech,
+        model: boolean
+    ): NpcHeardSpeech {
+        this.room.rememberNpcMeeting(actor, npc)
+        return this.room.social.society.observeDialogue(
+            npc,
+            this.onAddressedSpeech(actor, npc, event),
+            model
+        )
     }
 
     public fail(event: NpcHeardSpeech, now: number): void {

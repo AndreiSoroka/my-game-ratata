@@ -120,6 +120,14 @@ function settleExchange(
     session.settledOffers = [settledOffers[0], settledOffers[1]]
     session.receiptId = `${session.id}:${String(session.revision)}`
     closeExchange(session, env, 'completed', 'Обмен завершён.')
+    env.onSettled?.({
+        receiptId: session.receiptId,
+        participants: [
+            { actor: a, contributed: left.items.length > 0 || left.gold > 0 },
+            { actor: b, contributed: right.items.length > 0 || right.gold > 0 },
+        ],
+        at: now,
+    })
     return { accepted: true, error: null }
 }
 

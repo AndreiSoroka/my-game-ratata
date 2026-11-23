@@ -22,6 +22,7 @@ import {
     npcSelfDecisionProblem,
     soloTravelPromiseProblem,
 } from './selfDecisions'
+import { socialReactionProblem } from './socialContext'
 import { npcSelfReferenceProblem } from './speechSelfReference'
 import type { NpcReplyProblem } from './turnInformation'
 import type { NpcAiReply } from './types'
@@ -71,6 +72,7 @@ function npcWorldCommandProblem(
         taskClaimProblem(room, state, actor, reply) ??
         companionProblem(room, companions, state, actor, reply, now) ??
         soloTravelPromiseProblem(state, reply) ??
+        socialReactionProblem(room, state, reply) ??
         decisionProblem(room, companions, state, actor, reply, now) ??
         npcQuestPresentationProblem(room, state, actor, reply, now)
     )

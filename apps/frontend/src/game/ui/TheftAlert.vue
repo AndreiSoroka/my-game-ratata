@@ -15,19 +15,40 @@ const accusations = computed(
             (accusation) => accusation.expiresAt > props.serverTime && !accusation.reported
         ) ?? []
 )
+const hasAssault = computed(() => accusations.value.some((proof) => proof.offense === 'attack'))
+const hasTheft = computed(() => accusations.value.some((proof) => proof.offense !== 'attack'))
 </script>
 <template>
     <aside
         v-if="accusations.length"
         class="theft-alert game-frame-host"
         role="region"
-        :aria-label="tGame('game.world.attemptedTheftSpotted')"
+        :aria-label="
+            tGame(
+                hasAssault
+                    ? 'game.world.assaultEvidenceAvailable'
+                    : 'game.world.attemptedTheftSpotted'
+            )
+        "
     >
         <GameFrame variant="panel" />
-        <strong role="alert">{{ tGame('game.world.youSpottedAttemptedTheft') }}</strong>
+        <strong role="alert">{{
+            tGame(
+                hasAssault
+                    ? 'game.world.assaultEvidenceAvailable'
+                    : 'game.world.youSpottedAttemptedTheft'
+            )
+        }}</strong>
         <div v-for="accusation in accusations" :key="accusation.thiefId">
             <p>
-                {{ accusation.thiefName }} {{ tGame('game.world.evidence') }}
+                {{ accusation.thiefName }}
+                {{
+                    tGame(
+                        accusation.offense === 'attack'
+                            ? 'game.world.assaultEvidence'
+                            : 'game.world.evidence'
+                    )
+                }}
                 {{ Math.ceil((accusation.expiresAt - serverTime) / 1000) }}
                 {{ tGame('game.knowledge.s') }}
             </p>
@@ -39,11 +60,15 @@ const accusations = computed(
                 {{ tGame('game.world.callGuardsNow') }}
             </GameButton>
         </div>
-        <small
-            >{{ tGame('game.world.forFormalReportApproachGuard') }}
-            {{ THEFT_RULES.accusationMs / 1000 }} {{ tGame('game.world.secondsEvidenceLastsFor') }}
-            {{ THEFT_RULES.evidenceMs / 60_000 }} {{ tGame('game.world.minutes') }}</small
-        >
+        <small>
+            {{ tGame('game.world.forFormalReportApproachGuard') }}
+            <template v-if="hasTheft">
+                {{ tGame('game.world.emergencyGuardCallWindow') }}
+                {{ THEFT_RULES.accusationMs / 1000 }}
+                {{ tGame('game.world.secondsEvidenceLastsFor') }}
+                {{ THEFT_RULES.evidenceMs / 60_000 }} {{ tGame('game.world.minutes') }}
+            </template>
+        </small>
     </aside>
 </template>
 <style scoped>

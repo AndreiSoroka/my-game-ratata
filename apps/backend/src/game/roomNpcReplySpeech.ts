@@ -1,9 +1,13 @@
-import type { GameLocale } from '@my-game-ratata/contracts'
+import {
+    type GameLocale,
+    PUBLIC_SPEECH_RADIUS,
+} from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import type { NpcConversationSource } from './npcReplyQueue'
+import type { NpcConversationSource, PendingNpcReply } from './npcReplyQueue'
 import type { GameRoom } from './room'
+import { canConverseWithNpc } from './socialSpeech'
 import {
     attributeNpcSpeech,
     createDialogueSpeechEvent,
@@ -12,6 +16,37 @@ import {
 import type { WhisperService } from './whispers'
 
 export const NPC_HUM = 'М-м-м-м-м…'
+
+export function createNpcReplyRecipient(
+    room: GameRoom,
+    adventure: AdventureService
+) {
+    return (
+        recipientId: string,
+        turn: PendingNpcReply,
+        npc: GameCharacter | undefined,
+        now: number
+    ): GameCharacter | undefined => {
+        const recipient = room.getCharacter(recipientId)
+        if (
+            npc?.deathSequence !== turn.deathSequence ||
+            npc.locationId !== turn.locationId ||
+            recipient?.deathSequence !== turn.recipientDeathSequence ||
+            (turn.source === 'panel' &&
+                adventure.walletFor(recipientId).dialogue?.npcId !== npc.id) ||
+            !canConverseWithNpc(
+                recipient,
+                npc,
+                room.navigationFor(npc),
+                now,
+                turn.source === 'say' ? PUBLIC_SPEECH_RADIUS : 48
+            )
+        ) {
+            return undefined
+        }
+        return recipient
+    }
+}
 
 interface ReplyDestination {
     room: GameRoom

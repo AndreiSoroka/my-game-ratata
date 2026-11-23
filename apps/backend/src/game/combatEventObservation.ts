@@ -32,6 +32,9 @@ export function observeCombatEvent(
             ? { amount }
             : {}),
     }
+    if (visible.kind === 'damage') {
+        delete visible.eventId
+    }
     return projectObservedDetails(event, visible, view)
 }
 

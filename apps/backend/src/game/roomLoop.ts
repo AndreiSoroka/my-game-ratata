@@ -43,6 +43,11 @@ export class RoomLoop {
     }
 
     private advance(): void {
+        const context = this.context()
+        context.room.social.society.background(
+            this.clock.realNow(),
+            this.clock.now()
+        )
         if (this.clock.paused) {
             return
         }
@@ -50,7 +55,6 @@ export class RoomLoop {
         const deltaMs = Math.max(1, Math.min(250, now - this.lastTickAt))
         this.lastTickAt = now
         this.tick += 1
-        const context = this.context()
         const ai = this.ai()
         context.room.social.npcSpeech.turns.advance(now)
         ai?.beforeTick(now)

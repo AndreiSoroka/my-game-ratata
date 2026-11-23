@@ -17,6 +17,8 @@ export interface TheftResult {
 export interface TheftAccusation {
     thiefId: string
     thiefName: string
+    /** Legacy theft evidence may omit the offense. */
+    offense?: 'theft' | 'attack'
     expiresAt: number
     canCallGuards: boolean
     reported: boolean

@@ -9,22 +9,23 @@ import type { GameCharacter } from './character'
 import {
     absolve,
     type JusticeContext,
-    reportTheft,
+    reportCrime,
     visibleCityCriminal,
 } from './cityJustice'
-import { CrimeEvidence } from './crimeEvidence'
+import { CrimeEvidence, type CrimeOffense } from './crimeEvidence'
 import { grantRetaliation, revokeRetaliation } from './crimeRelations'
 import { activeResponse, validAccusation } from './crimeResponseRules'
 import {
     advanceCrimeResponse,
     advanceReturningResponses,
     type CrimeResponse,
+    fallbackCaughtTheftResponse,
 } from './crimeResponses'
 import { available, cityGuard, humanControlled } from './crimeRules'
 import { distance } from './math'
 import { pursuits, returnFromPursuit } from './pursuitState'
 import type { GameRoom } from './room'
-import { privateTheftNotice } from './theftEvents'
+import { caughtTheftNotices, privateTheftNotice } from './theftEvents'
 
 export class CrimeService {
     private readonly evidence = new CrimeEvidence()
@@ -37,44 +38,21 @@ export class CrimeService {
         thief: GameCharacter,
         victim: GameCharacter,
         characters: Iterable<GameCharacter>,
-        now: number
+        now: number,
+        reaction?: () => GameEventPayload[] | undefined
     ): GameEventPayload[] {
         this.evidence.record(thief, victim, now)
         grantRetaliation(victim, thief, now + THEFT_RULES.retaliationMs)
-        const events = [
-            privateTheftNotice(
-                victim.id,
-                `${thief.nickname} пытался обокрасть тебя. Можно защищаться и позвать стражу.`,
-                thief.id
-            ),
-        ]
-        if (humanControlled(victim)) {
-            return events
-        }
-        const fighter =
-            victim.soul.companion?.canFight ?? victim.faction === 'monsters'
-        this.respond(
-            victim,
-            thief,
-            fighter ? 'fight' : 'flee',
-            now,
-            thief.position
-        )
-        if (victim.soul.canSpeak) {
-            events.push(
-                privateTheftNotice(
-                    thief.id,
-                    'Попытку кражи заметили.',
-                    victim.id
-                )
+        const chosen =
+            reaction?.() ??
+            fallbackCaughtTheftResponse(
+                victim,
+                thief,
+                (mode) =>
+                    this.respond(victim, thief, mode, now, thief.position),
+                () => this.callGuards(victim, thief.id, characters, now)
             )
-            if (!fighter) {
-                events.push(
-                    ...this.callGuards(victim, thief.id, characters, now)
-                )
-            }
-        }
-        return events
+        return [...caughtTheftNotices(thief, victim), ...chosen]
     }
 
     public callGuards(
@@ -139,9 +117,16 @@ export class CrimeService {
     public report(
         actor: GameCharacter,
         thiefId: string,
-        context: JusticeContext
+        context: JusticeContext,
+        offense?: CrimeOffense
     ): GameEventPayload[] {
-        const events = reportTheft(actor, thiefId, this.evidence, context)
+        const events = reportCrime(
+            actor,
+            thiefId,
+            this.evidence,
+            context,
+            offense
+        )
         const thief = [...context.characters].find(
             (candidate) => candidate.id === thiefId
         )
@@ -151,14 +136,33 @@ export class CrimeService {
         return events
     }
 
+    public recordAssault(
+        attacker: GameCharacter,
+        victim: GameCharacter,
+        now: number
+    ): void {
+        this.evidence.record(attacker, victim, now, 'attack')
+    }
+
+    public reportExpiry(
+        actorId: string,
+        targetId: string,
+        offense: CrimeOffense
+    ): number | undefined {
+        const proof = this.evidence.get(actorId, targetId, offense)
+        return proof?.reported === false ? proof.expiresAt : undefined
+    }
+
     public absolve(
         actor: GameCharacter,
         clericId: string,
-        context: JusticeContext
+        context: JusticeContext,
+        onCleared?: () => void
     ): GameEventPayload[] {
-        return absolve(actor, clericId, context, () =>
+        return absolve(actor, clericId, context, () => {
             this.clear(actor, context.characters)
-        )
+            onCleared?.()
+        })
     }
 
     public isBlacklisted(actorId: string): boolean {

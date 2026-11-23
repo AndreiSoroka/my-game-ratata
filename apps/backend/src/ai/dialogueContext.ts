@@ -17,6 +17,7 @@ import { npcSpeechLanguageContext } from './npcSpeechLanguage'
 import { buildNpcAiObservation, type NpcAiObservation } from './observation'
 import { updateNpcAiSocialCapabilities } from './observationPolicy'
 import type { NpcAiActorState } from './runtimeState'
+import { npcTemperamentContext } from './socialContext'
 import { npcTaskConsent } from './taskConsent'
 import type { NpcAiContext, NpcAiEvent } from './types'
 
@@ -72,6 +73,7 @@ function conversationalContext(
             ? taskConversationKey(state.task)
             : dialogueConversationKey(dialogue)
     const taskContext = hasTaskContext(state)
+    const temperament = npcTemperamentContext(room, state, actor, now)
     const commandCapabilities = dialogueService.commandCapabilities(
         state,
         observation,
@@ -96,6 +98,7 @@ function conversationalContext(
         actorId: actor.id,
         role: state.config.role,
         personality: actor.soul.personality,
+        temperament,
         ...npcSpeechLanguageContext(room, state, observation, actor, now),
         ...feedback,
         ...(socialOpportunity === undefined ? {} : { socialOpportunity }),

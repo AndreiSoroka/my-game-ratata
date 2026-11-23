@@ -68,6 +68,50 @@ function cancelDepartedConversation(
     }
 }
 
+export function cancelPausedNpcConversation(
+    room: GameRoom,
+    sessions: NpcAiSessionActions,
+    state: NpcAiActorState,
+    now: number
+): void {
+    const { actor, dialogue } = state
+    if (
+        actor !== undefined &&
+        dialogue !== undefined &&
+        (room.getCharacter(dialogue.senderId)?.connected !== true ||
+            !room.social.npcSpeech.turns.available(actor, dialogue, now))
+    ) {
+        sessions.cancelInference(state, now)
+    }
+}
+
+export function cancelNpcActorSession(
+    room: GameRoom,
+    sessions: NpcAiSessionActions,
+    state: NpcAiActorState,
+    now: number
+): void {
+    for (const event of [state.dialogue, ...state.inbox]) {
+        if (event !== undefined) {
+            room.social.npcSpeech.fail(event, now)
+        }
+    }
+    sessions.cancel(state, now)
+}
+
+export function hasNpcControllerLease(
+    companions: CompanionService,
+    state: NpcAiActorState | undefined,
+    now: number
+): boolean {
+    return (
+        state?.actor !== undefined &&
+        state.token !== undefined &&
+        state.config.mode !== 'dialogue_only' &&
+        companions.isModelControlOwner(state.actor, state.token, now)
+    )
+}
+
 export function archiveNpcAiPerson(
     sessions: NpcAiSessionActions,
     state: NpcAiActorState,

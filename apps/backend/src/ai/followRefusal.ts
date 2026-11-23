@@ -3,8 +3,33 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech } from '../game/socialSpeech'
 import { speechRadius } from './dialogueResult'
+import { stopNpcSelfTravelEscort } from './guide'
 import type { NpcAiActorState } from './runtimeState'
+import type { NpcAiSessionActions } from './session'
 import type { NpcAiEvent } from './types'
+
+export function withdrawNpcCompanion(
+    companions: CompanionService,
+    sessions: NpcAiSessionActions,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    requesterId: string,
+    now: number
+): boolean {
+    if (stopNpcSelfTravelEscort(state.guide, requesterId)) {
+        if (state.dialogue?.senderId === requesterId) {
+            sessions.cancelInference(state, now)
+        }
+        companions.recordFollowRefusal(actor, requesterId)
+        return true
+    }
+    if (actor.soul.companion?.leaderId !== requesterId) {
+        return false
+    }
+    sessions.cancel(state, now)
+    companions.recordFollowRefusal(actor, requesterId)
+    return companions.releaseAssistance(requesterId, actor)
+}
 
 export function respectSpokenFollowRefusal(
     room: GameRoom,

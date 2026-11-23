@@ -178,6 +178,7 @@ export class GameRoom {
         const occupied = [...this.connections.values()].some(
             (id) => this.characters.get(id ?? '')?.connected === true
         )
+        this.social.society.presence(occupied)
         const { paused, resumed, suspended } = this.clock.setMode(
             this.emptyWorldMode,
             occupied

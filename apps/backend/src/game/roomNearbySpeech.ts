@@ -116,7 +116,7 @@ function receiveNearby(
     event: NpcHeardSpeech,
     targetIds: readonly string[] | undefined
 ): void {
-    if (actor.controllerKind !== 'network_player' || ai === undefined) {
+    if (actor.controllerKind !== 'network_player') {
         return
     }
     const candidates =
@@ -124,13 +124,12 @@ function receiveNearby(
             ? room.charactersFor(actor)
             : targetIds.map((id) => room.getCharacter(id))
     const navigation = room.navigationFor(actor)
-    const listeners = candidates.filter(
+    const audibleNpcs = candidates.filter(
         (npc): npc is GameCharacter =>
             npc !== undefined &&
             npc.controllerKind !== 'network_player' &&
             npc.soul.controlSource !== 'human' &&
             npc.trainingTarget === undefined &&
-            ai.configured(npc.id) &&
             canConverseWithNpc(
                 npc,
                 actor,
@@ -139,18 +138,34 @@ function receiveNearby(
                 PUBLIC_SPEECH_RADIUS
             )
     )
-    const addressed = targetIds !== undefined && listeners.length === 1
+    const listeners = audibleNpcs.filter(
+        (npc) => ai?.configured(npc.id) === true
+    )
+    const recipient =
+        targetIds !== undefined && audibleNpcs.length === 1
+            ? audibleNpcs[0]
+            : undefined
     const speech: NpcHeardSpeech = {
         ...event,
-        nearby: addressed ? 'addressed' : 'broadcast',
-        ambiguous: listeners.length > 1,
+        nearby: recipient === undefined ? 'broadcast' : 'addressed',
+        ambiguous:
+            listeners.length > 1 ||
+            (targetIds !== undefined && audibleNpcs.length > 1),
     }
-    for (const turn of room.social.npcSpeech.turns.enqueueNearby(
-        actor,
-        listeners,
-        speech
-    )) {
-        room.rememberNpcMeeting(actor, turn.npc)
-        ai.hear(actor, turn.speech, turn.npc.id)
+    const contacts = room.social.npcSpeech
+    const heard =
+        recipient === undefined
+            ? speech
+            : contacts.observeAddressedSpeech(
+                  actor,
+                  recipient,
+                  speech,
+                  listeners.includes(recipient)
+              )
+    for (const turn of contacts.turns.enqueueNearby(actor, listeners, heard)) {
+        if (recipient === undefined) {
+            room.rememberNpcMeeting(actor, turn.npc)
+        }
+        ai?.hear(actor, turn.speech, turn.npc.id)
     }
 }

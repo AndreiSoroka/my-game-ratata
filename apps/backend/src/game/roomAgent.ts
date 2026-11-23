@@ -33,6 +33,8 @@ function decideForRoomAgent(
     const now = room.gameplayNow()
     const parsed = parseAgentDecision(decision)
     if (
+        room.social.society.conflicts?.hasPhysicalReaction(actor, now) ===
+            true ||
         npcDialogueMode(actor.id) === 'passive' ||
         (parsed?.type === 'speak' && scriptedResident(actor.id)) ||
         (actor.id === 'npc_magic_slime_1' &&

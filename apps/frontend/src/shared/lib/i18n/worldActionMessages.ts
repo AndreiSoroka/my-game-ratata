@@ -64,8 +64,8 @@ export const worldActionMessages = {
         'Leave defensive stance first',
     ],
     forFormalReportApproachGuard: [
-        'Для официальной жалобы подойдите к стражнику в городе и нажмите F. Экстренный зов доступен первые',
-        'For a formal report, approach a guard in the city and press F. You can call for help during the first',
+        'Для официальной жалобы подойдите к стражнику в городе и нажмите F.',
+        'For a formal report, approach a guard in the city and press F.',
     ],
     graveDurability: ['Прочность могилы', 'Grave durability'],
     insufficientEnergy: ['Недостаточно энергии', 'Not enough energy'],

@@ -345,6 +345,30 @@ it('uses the selected character alone and does not fall back from a named human 
     })
 })
 
+it('lets a scripted guard react to an addressed threat while a broadcast grants no personal grievance', () => {
+    const alice = joinScenarioRoom(room, 'Conversation Alice')
+    const guard = character(room, guardId)
+    placeNear(room, guardId, alice.actor)
+    const decide = guard.temperament.react.bind(guard.temperament)
+    const reaction = vi
+        .spyOn(guard.temperament, 'react')
+        .mockImplementation((request, now) => ({
+            ...decide(request, now),
+            action: 'warn',
+        }))
+    const threat = 'Я тебя ударю.'
+    alice.send({ type: 'chat', text: threat })
+    expect(reaction).not.toHaveBeenCalled()
+
+    alice.send({ type: 'chat', targetId: guardId, text: threat })
+    expect(reaction).toHaveBeenCalledTimes(1)
+    expect(speech(alice.sent, guardId)).toEqual(['Держись подальше.'])
+    expect(
+        room.social.society.history.knownIncidents(guard.id, guard.locationId)
+    ).toMatchObject([{ actorId: alice.actor.id, kind: 'threat' }])
+    expect(provider.turns).toHaveLength(0)
+})
+
 it('drops a public model reply after the player is no longer in the same location', async () => {
     const alice = joinScenarioRoom(room, 'Conversation Alice')
     placeNear(room, merchantId, alice.actor)
