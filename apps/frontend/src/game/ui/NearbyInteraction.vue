@@ -68,6 +68,14 @@ const actions = computed(() =>
           )
         : (target.value?.actions ?? [])
 )
+const directAction = computed(() => {
+    const options = target.value?.actions
+    if (options?.length !== 1) return undefined
+    const action = options[0]
+    return action && !action.disabled && action.command.type !== 'set_personal_hostility'
+        ? action
+        : undefined
+})
 let openedLocation: string | undefined
 let openedName = ''
 function closeMenu(): void {
@@ -114,8 +122,8 @@ function openMenu(expectedKey?: string): void {
     if (!selected || !props.player || !canOpenFor(expectedKey ?? selected.key)) return
     stopMovement(props.player)
     if (grave.value) emit('selectGrave', grave.value.id)
-    if (selected.actions.length === 1 && !selected.actions[0]!.disabled) {
-        emit('command', selected.actions[0]!.command)
+    if (directAction.value) {
+        emit('command', directAction.value.command)
         document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
         return
     }

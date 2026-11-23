@@ -7,6 +7,7 @@ import type {
 import type { Vector2 } from './index'
 
 export type CharacterRelationship = 'self' | 'friendly' | 'hostile'
+export const PERSONAL_HOSTILITY_RANGE = 48
 
 export type CharacterAutoAction =
     | {

@@ -7,6 +7,7 @@ import {
     warningOpenings,
 } from '../game/npcWarningSpeech'
 import type { GameRoom } from '../game/room'
+import { savvaHumanTrust } from '../game/savvaTerritory'
 import type {
     KnownSocialIncident,
     SocialRelationship,
@@ -64,8 +65,9 @@ export function npcTemperamentContext(
             ? {}
             : {
                   speaker: {
-                      relationship: history.relationship(
-                          actor.id,
+                      relationship: speakerRelationship(
+                          room,
+                          actor,
                           speakerId,
                           now
                       ),
@@ -84,6 +86,29 @@ export function npcTemperamentContext(
                 ?.nickname,
         })),
     }
+}
+
+function speakerRelationship(
+    room: GameRoom,
+    actor: GameCharacter,
+    speakerId: string,
+    now: number
+): SocialRelationship {
+    const relationship = room.social.society.history.relationship(
+        actor.id,
+        speakerId,
+        now
+    )
+    const speaker = room.getCharacter(speakerId)
+    return speaker === undefined
+        ? relationship
+        : {
+              ...relationship,
+              trust: Math.max(
+                  -100,
+                  relationship.trust + savvaHumanTrust(actor, speaker)
+              ),
+          }
 }
 
 function warningContext(

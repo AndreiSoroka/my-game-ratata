@@ -56,6 +56,9 @@ export function parseClientMessage(raw: string): ParseResult {
     if (record['type'] === 'use_portal') {
         return parsePortalBoundary(record)
     }
+    if (record['type'] === 'set_personal_hostility') {
+        return parsePersonalHostility(record)
+    }
     const social = parseSocialBoundary(record)
     if (social !== undefined) {
         return social
@@ -116,6 +119,17 @@ function parseRecord(record: Record<string, unknown>): ParseResult {
         default:
             return parseExtraCommand(record)
     }
+}
+
+function parsePersonalHostility(record: Record<string, unknown>): ParseResult {
+    const targetId = record['targetId']
+    const hostile = record['hostile']
+    return typeof targetId === 'string' &&
+        targetId.length > 0 &&
+        targetId.length <= 100 &&
+        typeof hostile === 'boolean'
+        ? { message: { type: 'set_personal_hostility', targetId, hostile } }
+        : { error: 'Invalid personal hostility command' }
 }
 
 function parseMoveInput(record: Record<string, unknown>): ParseResult {

@@ -3,6 +3,7 @@ import type {
     QuestObjective,
 } from '@my-game-ratata/contracts'
 
+import { creditsDefeat } from './damageEvents'
 import { creditOwnerId, nearKill, questDeath } from './guildRules'
 import { itemQuantity } from './inventory'
 import {
@@ -98,7 +99,7 @@ export function observeQuestDeath(
     event: GameEventPayload,
     environment: NpcQuestEnvironment
 ): void {
-    if (job.view.status !== 'active' || event.kind !== 'death') {
+    if (job.view.status !== 'active' || !creditsDefeat(event)) {
         return
     }
     const target = environment.getCharacter(event.targetId ?? '')

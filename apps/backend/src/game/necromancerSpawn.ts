@@ -5,6 +5,7 @@ import { chestHasLineOfSight } from './chestInteraction'
 import { distance } from './math'
 import { NecromancerController } from './necromancerController'
 import { initializeNpcProgression } from './npcProgression'
+import { registerSavvaTerritory, SAVVA_ID } from './savvaTerritory'
 import type { SpawnedCharacter } from './spawns'
 import type { LocationState } from './worldLocations'
 
@@ -43,7 +44,7 @@ export function spawnNecromancer(
         )
     }
     const character = new GameCharacter({
-        id: 'npc_necromancer_1',
+        id: SAVVA_ID,
         nickname: 'Савва',
         npcIdentityKey: 'savva',
         archetype: 'human',
@@ -62,6 +63,7 @@ export function spawnNecromancer(
     initializeNpcProgression(character)
     character.maxHp = 100
     character.hp = character.maxHp
+    registerSavvaTerritory(character, refuge.home)
 
     const mound = landmarks.find(({ kind }) => kind === 'ash_grave')
     if (mound !== undefined) {

@@ -115,6 +115,9 @@ export class NpcAiTicks {
         actor: GameCharacter,
         now: number
     ): boolean {
+        const pendingPersuasion = state.pendingPersuasion
+        state.pendingPersuasion = undefined
+        pendingPersuasion?.(now)
         const draft = state.finalizing
         if (draft === undefined) {
             return true

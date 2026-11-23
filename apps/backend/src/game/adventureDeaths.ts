@@ -3,6 +3,7 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import { isQuestTrophyTarget } from './adventureContent'
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
+import { creditsDefeat } from './damageEvents'
 import { setNotice } from './notices'
 export function observeAdventureEvents(
     events: GameEventPayload[],
@@ -15,7 +16,7 @@ export function observeAdventureEvents(
         if (event.kind === 'permadeath' && event.actorId !== undefined) {
             retire(event.actorId)
         }
-        if (event.kind === 'death') {
+        if (creditsDefeat(event)) {
             observeAdventureDeath(
                 event,
                 findCharacter,

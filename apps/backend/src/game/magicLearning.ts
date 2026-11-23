@@ -13,6 +13,7 @@ import {
 import { type AbilityContext, abilityNotice } from './abilityContext'
 import { knowsAbility } from './abilityState'
 import type { GameCharacter } from './character'
+import { hasAttackRelationship } from './combatTargets'
 import {
     finishConstellationAction,
     syncAbilityConstellations,
@@ -41,6 +42,8 @@ export function canInteractWith(
         !target.tags.has('offline') &&
         target.locationId === actor.locationId &&
         target.faction === actor.faction &&
+        !hasAttackRelationship(actor, target, now) &&
+        !hasAttackRelationship(target, actor, now) &&
         distance(actor.position, target.position) <= 64
     )
 }

@@ -13,13 +13,15 @@ import {
     canWitnessPoint,
     publicCombatHit,
 } from './combatWitnesses'
+import { damageRetaliation } from './crimeRelations'
 import { escapePoint } from './crimeResponses'
 import { available, humanControlled } from './crimeRules'
-import { combatFaction } from './factions'
+import { isPveOpponent } from './factions'
 import { distance } from './math'
 import type { NpcConflictIdentity } from './npcConflictResponses'
 import { NPC_OBSERVATION_RADIUS } from './queries'
 import type { GameRoom } from './room'
+import { savvaHumanTrust } from './savvaTerritory'
 import type { SocialHistory } from './socialHistory'
 import type { SocialIncident, SocialSeverity } from './socialHistoryTypes'
 import { canHearSpeech } from './socialSpeech'
@@ -55,6 +57,11 @@ export function chooseObservedConflict(
         random?: (() => number) | undefined
     }
 ): ReactionAction {
+    const relationship = history.relationship(
+        actor.id,
+        offender.id,
+        options.now
+    )
     return actor.temperament.react(
         {
             incidentId: incident.id,
@@ -64,7 +71,11 @@ export function chooseObservedConflict(
             revision: options.revision,
             available: options.actions,
             context: {
-                ...history.relationship(actor.id, offender.id, options.now),
+                ...relationship,
+                trust: Math.max(
+                    -100,
+                    relationship.trust + savvaHumanTrust(actor, offender)
+                ),
                 ...history.knownReputation(
                     actor.id,
                     incident.locationId,
@@ -86,8 +97,15 @@ export function observedAttack(
     event: GameEventPayload,
     now: number
 ) {
-    const hit = publicCombatHit(room, event)
-    if (hit === undefined || !socialAttack(hit.attacker, hit.target)) {
+    const hit =
+        damageRetaliation(event) === false
+            ? publicCombatHit(room, event)
+            : undefined
+    if (
+        hit === undefined ||
+        hit.attacker === hit.target ||
+        isPveOpponent(hit.attacker, hit.target)
+    ) {
         return undefined
     }
     const { attacker, target: victim, amount, impact } = hit
@@ -152,15 +170,6 @@ function visibleAllies(
                 canUseCombat(candidate) &&
                 canWitnessCombatant(actor, candidate, navigation, 96, now)
         ).length
-}
-
-function socialAttack(attacker: GameCharacter, victim: GameCharacter): boolean {
-    return (
-        attacker !== victim &&
-        combatFaction(attacker) === 'peaceful' &&
-        victim.soul.canSpeak &&
-        victim.faction === 'peaceful'
-    )
 }
 
 function damageSeverity(damage: number, maxHp: number): SocialSeverity {
@@ -268,6 +277,7 @@ export function availableConflictActions(
     }
     if (
         observed.visible &&
+        actor.soul.canSpeak &&
         canHearSpeech(offender, actor, room.navigationFor(actor), now, 64)
     ) {
         actions.push('warn')

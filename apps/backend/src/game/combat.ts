@@ -140,6 +140,9 @@ function legalContactTarget(
         ...context,
         targetId: area ? undefined : attack.targetId,
     }
+    if (area) {
+        return isAttackContactAvailable(context.actor, target, targetedContext)
+    }
     return attack.arrow?.abilityId === 'sniper_shot'
         ? canAimSniperAt(targetedContext, target, attack.arrow.origin)
         : isLegalAttackTarget(context.actor, target, targetedContext)
@@ -234,11 +237,23 @@ export function isLegalAttackTarget(
     origin = actor.position
 ): boolean {
     return (
+        canAttackCharacter(actor, target, context.now) &&
+        isAttackContactAvailable(actor, target, context, origin)
+    )
+}
+
+export function isAttackContactAvailable(
+    actor: GameCharacter,
+    target: GameCharacter,
+    context: AttackContext,
+    origin = actor.position
+): boolean {
+    return (
+        actor !== target &&
         target.alive &&
         !target.tags.has('offline') &&
         !target.tags.has('state.retired') &&
         actor.locationId === target.locationId &&
-        canAttackCharacter(actor, target, context.now) &&
         (context.targetId === undefined ||
             canObserveRoomCharacter(
                 actor,

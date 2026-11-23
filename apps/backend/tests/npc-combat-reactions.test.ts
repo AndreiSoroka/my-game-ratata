@@ -10,6 +10,7 @@ import { hasRetaliationRight } from '../src/game/crimeRelations'
 import { damageEvent } from '../src/game/damageEvents'
 import { npcAiRoster } from '../src/game/npcRoster'
 import { GameRoom } from '../src/game/room'
+import { savvaEntryTiles } from '../src/game/savvaTerritoryVisits'
 import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
@@ -362,10 +363,27 @@ function setup(proactive = true) {
     const alice = joinScenarioRoom(game, 'Alice')
     const bob = joinScenarioRoom(game, 'Bob')
     const savva = required(game.getCharacter(savvaId))
+    const navigation = game.navigationFor(savva)
+    const home = required(navigation.grid.encounters?.ashRefuge?.home)
+    const neutralTile = required(
+        navigation.findWalkableTileNear(
+            navigation.worldToTile(home),
+            (tile) => {
+                const point = navigation.tileToWorld(tile)
+                return (
+                    Math.hypot(point.x - home.x, point.y - home.y) >
+                    (savvaEntryTiles + 1) * navigation.grid.tileWidth
+                )
+            }
+        )
+    )
+    const neutralPoint = navigation.tileToWorld(neutralTile)
     function placeParticipants(): void {
+        savva.clearPath()
+        savva.position = { ...neutralPoint }
         for (const actor of [alice.actor, bob.actor]) {
             actor.locationId = savva.locationId
-            actor.position = { ...savva.position }
+            actor.position = { ...neutralPoint }
         }
     }
     placeParticipants()

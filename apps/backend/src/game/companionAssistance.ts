@@ -4,6 +4,7 @@ import { evaluateAssistancePolicy } from './assistancePolicy'
 import type { GameCharacter } from './character'
 import type { CompanionRuntime } from './companionMovement'
 import { canRequest, release, sync } from './companionState'
+import { canTargetByFaction } from './factions'
 import { interactionRangeText } from './interactionRangeText'
 import { canPerformSkillAction } from './skillProgression'
 
@@ -179,6 +180,7 @@ function assistanceAvailable(
 ): boolean {
     return (
         canRequest(actor, npc) &&
+        !canTargetByFaction(npc, actor, now) &&
         context.hasLineOfSight(actor, npc) &&
         canPerformSkillAction(actor, now) &&
         canPerformSkillAction(npc, now)

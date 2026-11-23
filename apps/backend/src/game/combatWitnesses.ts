@@ -1,11 +1,39 @@
-import type { GameEventPayload, Vector2 } from '@my-game-ratata/contracts'
+import {
+    type GameEventPayload,
+    THEFT_RULES,
+    type Vector2,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { visibilityRadius } from './characterSight'
+import { grantRetaliation } from './crimeRelations'
+import { combatFaction } from './factions'
 import { visibleBuildingPoint } from './mapBuildings'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import type { GameRoom } from './room'
+import type { TheftService } from './theft'
+
+export type CombatContactObserver = (
+    attacker: GameCharacter,
+    victim: GameCharacter,
+    now: number
+) => void
+
+export function recordCivicAssault(
+    theft: TheftService,
+    attacker: GameCharacter,
+    victim: GameCharacter,
+    now: number
+): void {
+    if (
+        combatFaction(attacker) === 'peaceful' &&
+        combatFaction(victim) === 'peaceful'
+    ) {
+        grantRetaliation(victim, attacker, now + THEFT_RULES.retaliationMs)
+        theft.recordAssault(attacker, victim, now)
+    }
+}
 
 export function publicCombatHit(room: GameRoom, event: GameEventPayload) {
     if (!isPublicDamage(event)) {

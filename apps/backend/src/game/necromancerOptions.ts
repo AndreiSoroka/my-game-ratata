@@ -72,10 +72,11 @@ function environmentChoices(
     }
     const peace: NecromancerOption[] = [{ tactic: 'study' }, { tactic: 'rest' }]
     if (scene.playerId !== undefined && !offeredHelp.has(scene.playerId)) {
-        peace.push(
-            { tactic: 'offer_help', targetId: scene.playerId },
-            { tactic: 'keep_distance' }
-        )
+        const visitor = room.getCharacter(scene.playerId)
+        if (visitor !== undefined && isNecromancerAlly(actor, visitor)) {
+            peace.push({ tactic: 'offer_help', targetId: scene.playerId })
+        }
+        peace.push({ tactic: 'keep_distance' })
     }
     if (
         questChest !== undefined &&
@@ -85,6 +86,18 @@ function environmentChoices(
         peace.push({ tactic: 'heart', targetId: questChest })
     }
     return peace
+}
+
+function isNecromancerAlly(
+    actor: GameCharacter,
+    visitor: GameCharacter
+): boolean {
+    return (
+        actor.soul.companion?.leaderId === visitor.id ||
+        visitor.soul.companion?.leaderId === actor.id ||
+        ashSummoner(visitor) === actor.id ||
+        ashSkeletonOrder(visitor)?.ownerId === actor.id
+    )
 }
 
 function visibleSlimeHunts(

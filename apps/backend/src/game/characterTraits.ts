@@ -45,6 +45,15 @@ const authoredRanges: Readonly<Record<string, TraitRanges>> = {
         lawfulness: [40, 65],
         newsSharing: [15, 36],
     },
+    npc_necromancer_1: {
+        temper: [62, 78],
+        selfControl: [62, 82],
+        aggression: [66, 83],
+        courage: [67, 86],
+        kindness: [15, 35],
+        resentment: [72, 91],
+        newsSharing: [5, 20],
+    },
     npc_tailor_1: {
         temper: [10, 30],
         selfControl: [70, 92],

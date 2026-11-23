@@ -16,6 +16,7 @@ import {
 } from './necromancerTactics'
 import { pursuits } from './pursuitState'
 import type { GameRoom } from './room'
+import { savvaTerritorialTarget } from './savvaTerritory'
 
 export const retreatHealthFraction = 0.55
 
@@ -34,11 +35,14 @@ export function needsNecromancerSafety(
     )
 }
 
-export function imminentNecromancerThreat(
+function imminentNecromancerThreat(
     actor: GameCharacter,
     threat: GameCharacter,
     now: number
 ): boolean {
+    if (savvaTerritorialTarget(actor) === threat) {
+        return true
+    }
     const separation = distance(actor.position, threat.position)
     return (
         separation <= ABILITY_DEFINITIONS.pray_grave.range &&

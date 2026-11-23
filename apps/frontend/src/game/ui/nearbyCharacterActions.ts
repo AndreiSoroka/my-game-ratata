@@ -3,6 +3,7 @@ import {
     type CharacterSnapshot,
     COMPANION_REQUEST_RANGE,
     type PartySnapshot,
+    PERSONAL_HOSTILITY_RANGE,
     prayerAbilityIds,
     profileForPrayer,
     snapshotPrayerParameters,
@@ -31,6 +32,27 @@ export function characterActions(
         ...requests,
         ...teacherActions(target, player),
         ...prayerLearningActions(target, player),
+    ]
+}
+
+export function hostilityActions(
+    target: CharacterSnapshot,
+    player: CharacterSnapshot
+): InteractionAction[] {
+    if (
+        !target.alive ||
+        target.life?.retired ||
+        target.trainingTarget ||
+        interactionDistance(player, target) > PERSONAL_HOSTILITY_RANGE
+    )
+        return []
+    const hostile = target.personalHostile !== true
+    return [
+        {
+            id: `personal-hostility:${target.id}`,
+            label: tGame(hostile ? 'game.world.declareEnemy' : 'game.world.clearHostility'),
+            command: { type: 'set_personal_hostility', targetId: target.id, hostile },
+        },
     ]
 }
 

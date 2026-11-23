@@ -1,6 +1,7 @@
 import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { creditsDefeat } from './damageEvents'
 import {
     canAdvanceJob,
     contributorsFor,
@@ -23,7 +24,7 @@ export class GuildKillCredit {
             if (event.kind === 'respawn' && event.actorId !== undefined) {
                 this.deaths.delete(event.actorId)
             }
-            if (event.kind === 'death') {
+            if (creditsDefeat(event)) {
                 this.creditDeath(event, find, group, jobs)
             }
         }

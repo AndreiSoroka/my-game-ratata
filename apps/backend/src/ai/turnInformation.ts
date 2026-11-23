@@ -2,12 +2,14 @@ import type { KnowledgeResult } from './characterKnowledge'
 import type { DeepMemoryResult } from './characterMemory'
 import type { NpcKnowledgeScope } from './knowledgeScope'
 import type { NpcAiActorState } from './runtimeState'
+import { narrateSavvaPersuasion } from './savvaDialogue'
 import { npcReplyIssue, NpcReplyRejected } from './taskConsent'
 import type {
     NpcAiContext,
     NpcAiReply,
     NpcInformationRequest,
     NpcReplyIssue,
+    SavvaPersuasionResult,
 } from './types'
 
 export interface TurnInformation {
@@ -19,6 +21,7 @@ export interface TurnInformation {
     lookup?: (personId: string) => Promise<DeepMemoryResult>
     search?: (query: string) => Promise<KnowledgeResult>
     scope?: () => NpcKnowledgeScope
+    attemptPersuasion?: () => Promise<SavvaPersuasionResult | undefined>
 }
 export interface NpcReplyProblem {
     code: NpcReplyIssue
@@ -31,6 +34,8 @@ function lookupOnly(reply: NpcAiReply): boolean {
         reply.speech == null &&
         reply.offerService == null &&
         reply.companionOrder == null &&
+        (reply.informationRequest?.type !== 'savva_persuasion' ||
+            reply.personMemoryUpdate == null) &&
         task === 'none'
     )
 }
@@ -62,6 +67,17 @@ export async function resolveTurnInformation(
         )
     }
     assertCurrent(information)
+    if (request.type === 'savva_persuasion') {
+        return narrateSavvaPersuasion(
+            input,
+            information,
+            decide,
+            aborted,
+            (context, final) =>
+                lookupOnly({ ...final, speech: null }) &&
+                replyProblem(context, final, information) === undefined
+        )
+    }
     assertLookupAvailable(request, input, information)
     if (information.reserveCall?.() !== true) {
         throw new Error('Information lookup call budget exhausted')
@@ -222,7 +238,7 @@ function assertCurrent(information: TurnInformation): void {
 }
 
 function assertLookupAvailable(
-    request: NpcInformationRequest,
+    request: Exclude<NpcInformationRequest, { type: 'savva_persuasion' }>,
     input: NpcAiContext,
     information: TurnInformation
 ): void {
@@ -237,7 +253,7 @@ function assertLookupAvailable(
 }
 
 async function lookupContext(
-    request: NpcInformationRequest,
+    request: Exclude<NpcInformationRequest, { type: 'savva_persuasion' }>,
     state: NpcAiActorState,
     information: TurnInformation
 ): Promise<Partial<NpcAiContext>> {

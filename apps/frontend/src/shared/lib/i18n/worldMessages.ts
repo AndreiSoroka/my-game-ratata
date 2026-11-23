@@ -58,6 +58,8 @@ export const worldMessages = {
     chestLower: ['сундук', 'chest'],
     chestPrepositional: ['сундуке', 'chest'],
     chooseAction: ['Выбрать действие', 'Choose action'],
+    clearHostility: ['Снять свою враждебность', 'Clear personal hostility'],
+    declareEnemy: ['Объявить врагом', 'Declare enemy'],
     choosePlot: ['Выберите участок', 'Choose a plot'],
     cityAffairs: ['Городские дела', 'City affairs'],
     cleansing: ['Очищение:', 'Cleansing:'],

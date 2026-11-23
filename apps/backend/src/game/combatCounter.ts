@@ -1,6 +1,7 @@
 import {
     type GameEventPayload,
     resolveCombatWeapon,
+    THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -8,13 +9,15 @@ import type { PendingAttackHit } from './characterState'
 import {
     type AttackContext,
     availableToAttack,
-    isLegalAttackTarget,
+    isAttackContactAvailable,
 } from './combat'
 import { resolveContactBatch } from './combatContacts'
 import { buildAttackZones, isInZones } from './combatGeometry'
 import { nextCombatActionId } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
+import { grantRetaliation } from './crimeRelations'
 import { effectiveAttackEnergyCost } from './effectiveParameters'
+import { isPveOpponent } from './factions'
 import { resolveFacing } from './math'
 import { recordPaidResources } from './resourcePractice'
 
@@ -44,10 +47,13 @@ export function resolveCounterAttack(
     )
     if (
         !counterActorReady(actor, now, cost) ||
-        !isLegalAttackTarget(actor, target, context) ||
+        !isAttackContactAvailable(actor, target, context) ||
         !isInZones(target, zones)
     ) {
         return []
+    }
+    if (target.trainingTarget === undefined && !isPveOpponent(target, actor)) {
+        grantRetaliation(actor, target, now + THEFT_RULES.retaliationMs)
     }
     const before = { energy: actor.energy, mana: actor.mana }
     actor.energy -= cost

@@ -9,6 +9,7 @@ import { recordMovementNoise } from './hearing'
 import { advanceMagicChannel } from './magicAbilities'
 import { magicChannelFor } from './magicState'
 import { advanceCharacter } from './movement'
+import { observeNecromancerScene } from './necromancerTactics'
 import type { PartyService } from './parties'
 import { validatePrayerChannel } from './prayer'
 import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
@@ -17,6 +18,7 @@ import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
 import { type RoomSocket, send } from './roomMessaging'
 import { characterMovementIntent, travelRoomCharacter } from './roomTravel'
+import { advanceSavvaTerritory, SAVVA_ID } from './savvaTerritory'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
 import { pauseWorkerActivity } from './workerActivityState'
@@ -68,13 +70,8 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     }
     const reacting = context.theft.update(room, characters.values(), now)
     room.scenarios.reconcile(characters, now)
-    const conversations = room.adventureForWorkers().reconcileConversations(
-        characters.values(),
-        (actor) => room.navigationFor(actor),
-        (actor) =>
-            reacting.has(actor.id) ||
-            room.findVisibleTarget(actor, 240, now) !== undefined
-    )
+    advanceSavvaTerritory(room, now)
+    const conversations = reconcileRoomConversations(context, reacting)
     room.social.society.prepareMeetings(
         now,
         (actor) =>
@@ -129,6 +126,21 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             type: 'snapshot',
         })
     }
+}
+
+function reconcileRoomConversations(
+    { room, now, characters }: SimulationContext,
+    reacting: ReadonlySet<string>
+) {
+    return room.adventureForWorkers().reconcileConversations(
+        characters.values(),
+        (actor) => room.navigationFor(actor),
+        (actor) =>
+            reacting.has(actor.id) ||
+            (actor.id === SAVVA_ID
+                ? observeNecromancerScene(actor, room, now).threat !== undefined
+                : room.findVisibleTarget(actor, 240, now) !== undefined)
+    )
 }
 
 function advanceControllers(

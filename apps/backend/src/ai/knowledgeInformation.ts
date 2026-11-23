@@ -5,6 +5,7 @@ import type { CharacterKnowledge } from './characterKnowledge'
 import { projectContracts } from './contractProjection'
 import { characterKnowledgeScope } from './knowledgeScope'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
+import { prepareSavvaPersuasion } from './savvaDialogue'
 import type { TurnInformation } from './turnInformation'
 
 interface KnowledgeTurn {
@@ -20,7 +21,10 @@ interface KnowledgeTurn {
 /** Both lookup ports are bound to this exact living identity and control generation. */
 export function npcKnowledgeInformation(
     turn: KnowledgeTurn
-): Pick<TurnInformation, 'current' | 'lookup' | 'search' | 'scope'> {
+): Pick<
+    TurnInformation,
+    'current' | 'lookup' | 'search' | 'scope' | 'attemptPersuasion'
+> {
     const { state, actor, room, knowledge } = turn
     const mind = state.mind
     const retirementRevision = mind.retirementRevision
@@ -51,8 +55,16 @@ export function npcKnowledgeInformation(
         }
         return result
     }
+    const attemptPersuasion = prepareSavvaPersuasion(
+        room,
+        state,
+        actor,
+        current,
+        turn.clock()
+    )
     return {
         current,
+        ...(attemptPersuasion === undefined ? {} : { attemptPersuasion }),
         scope: () => characterKnowledgeScope(actor, false),
         search: (searchQuery) =>
             guarded(() =>

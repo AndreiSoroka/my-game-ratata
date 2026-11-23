@@ -72,6 +72,33 @@ it('offers the exact local portal within reach and removes the action at expiry'
     expect(select(state)).toBeUndefined()
 })
 
+it('changes only the explicitly selected living character’s personal hostility', () => {
+    const { snapshot, select } = setup()
+    const ally = characterFixture('ally', { position: { x: 132, y: 100 } })
+    const neighbor = characterFixture('neighbor', { position: { x: 116, y: 100 } })
+    snapshot.characters.push(ally, neighbor)
+    const hostility = (key?: string) =>
+        select(snapshot, snapshot.characters, undefined, key)?.actions.find(
+            ({ command }) => command.type === 'set_personal_hostility'
+        )?.command
+
+    expect(hostility()).toBeUndefined()
+    expect(hostility('character:ally')).toEqual({
+        type: 'set_personal_hostility',
+        targetId: ally.id,
+        hostile: true,
+    })
+    ally.personalHostile = true
+    ally.relationship = 'hostile'
+    expect(hostility('character:ally')).toEqual({
+        type: 'set_personal_hostility',
+        targetId: ally.id,
+        hostile: false,
+    })
+    ally.alive = false
+    expect(hostility('character:ally')).toBeUndefined()
+})
+
 describe('one facing interaction target', () => {
     it('selects the sign ahead even when a sign of the same kind is closer behind', () => {
         const { player, snapshot, select } = setup()

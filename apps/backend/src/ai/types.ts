@@ -182,6 +182,8 @@ export interface NpcAiContext extends NpcConversationFeedback {
         query?: string
     }
     informationResults?: import('./characterMemory').DeepMemoryResult
+    savvaPersuasion?: SavvaPersuasionContext
+    learnedPrayers?: Array<import('./savvaDialogue').LearnedPrayerFact>
     taskConsent?: NpcTaskConsent
     speechStyle?: import('./npcSpeechInstructions').NpcSpeechContext
     selfIdentity?: import('./npcIdentityInstructions').NpcSelfIdentityContext
@@ -215,6 +217,17 @@ export type NpcReplyIssue =
 export type NpcInformationRequest =
     | { type: 'deep_memory'; personId: string }
     | { type: 'knowledge_search'; query: string }
+    | { type: 'savva_persuasion' }
+
+export interface SavvaPersuasionResult {
+    roll: number
+    success: boolean
+}
+
+export type SavvaPersuasionContext =
+    | { stage: 'available' }
+    | ({ stage: 'resolved' } & SavvaPersuasionResult)
+    | { stage: 'unavailable' }
 
 export interface NpcAiReply {
     offerService?: import('../game/npcRoster').NpcServiceOffer | null

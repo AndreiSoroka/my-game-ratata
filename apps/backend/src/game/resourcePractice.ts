@@ -2,7 +2,7 @@ import type { ConstellationId } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
-import { canTargetByFaction } from './factions'
+import { isPveOpponent } from './factions'
 import {
     recordLifeEnergyRecovery,
     recordLifeEnergySpend,
@@ -128,8 +128,7 @@ export function confirmCombatResourceSpend(
         result.trainableDamage > 0 ||
         (result.absorbed > 0 &&
             target.trainingTarget === undefined &&
-            actor.faction !== target.faction &&
-            canTargetByFaction(actor, target, now))
+            isPveOpponent(actor, target))
     ) {
         for (const receipt of receipts) {
             confirmResourceSpend(receipt)

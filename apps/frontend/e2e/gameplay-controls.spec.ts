@@ -1,5 +1,7 @@
+import { healthPercent } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { selectSocialTarget } from './social-helpers'
 import { selectedWorldTarget } from './world-target-ui'
 
 test.describe('shared gameplay controls', () => {
@@ -50,80 +52,156 @@ test.describe('shared gameplay controls', () => {
             expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(mobile ? 390 : 1280)
         })
     }
-
-    test('forms a party, rejects reciprocal invites and cancels follow on manual input', async ({
-        browser,
-    }, info) => {
-        const firstContext = await browser.newContext()
-        const secondContext = await browser.newContext()
-        const first = await firstContext.newPage()
-        const second = await secondContext.newPage()
-        try {
-            await join(first, `party-a-${info.workerIndex}`, 'cleric')
-            await join(second, `party-b-${info.workerIndex}`, 'vanguard')
-            const firstId = await first.evaluate(
-                () => window.__ratataTest!.getState().localPlayerId!
-            )
-            const secondId = await second.evaluate(
-                () => window.__ratataTest!.getState().localPlayerId!
-            )
-            await first.evaluate(
-                (targetId) => window.__ratataTest!.send({ type: 'party_invite', targetId }),
-                secondId
-            )
-            await expect
-                .poll(() =>
-                    second.evaluate(
-                        () => window.__ratataTest!.getState().snapshot?.party?.invitations.length
-                    )
-                )
-                .toBe(1)
-            await second.evaluate(
-                (targetId) => window.__ratataTest!.send({ type: 'party_invite', targetId }),
-                firstId
-            )
-            await expect
-                .poll(() =>
-                    second.evaluate(
-                        () => window.__ratataTest!.getState().snapshot?.party?.invitations.length
-                    )
-                )
-                .toBe(1)
-            await second.evaluate(() => {
-                const invitationId =
-                    window.__ratataTest!.getState().snapshot!.party!.invitations[0]!.id
-                window.__ratataTest!.send({ type: 'party_answer', invitationId, accept: true })
-            })
-            const party = first.getByLabel('Мой отряд')
-            await expect(party.getByRole('button', { pressed: false })).toHaveCount(2)
-            await expect(first.getByRole('img', { name: 'Лидер', exact: true })).toHaveCount(1)
-            await expect(party).not.toContainText('100%')
-            await expect(first.locator('.party-member__hp > span').first()).toHaveAttribute(
-                'style',
-                'width: 100%;'
-            )
-            await first.evaluate(
-                (targetId) => window.__ratataTest!.send({ type: 'follow', targetId }),
-                secondId
-            )
-            await expect
-                .poll(() =>
-                    first.evaluate(() => window.__ratataTest!.getState().player?.control?.mode)
-                )
-                .toBe('follow')
-            await first.keyboard.press('KeyW')
-            await expect
-                .poll(() =>
-                    first.evaluate(() => window.__ratataTest!.getState().player?.control?.mode)
-                )
-                .toBe('none')
-            await leaveParty(first)
-        } finally {
-            await firstContext.close()
-            await secondContext.close()
-        }
-    })
 })
+
+test('forms a party, cancels follow on manual input and allows a deliberate hit on an ally', async ({
+    browser,
+}, info) => {
+    test.setTimeout(60_000)
+    const firstContext = await browser.newContext()
+    const secondContext = await browser.newContext()
+    const first = await firstContext.newPage()
+    const second = await secondContext.newPage()
+    try {
+        await join(first, `party-a-${info.workerIndex}`, 'cleric')
+        await join(second, `party-b-${info.workerIndex}`, 'vanguard')
+        const firstId = await first.evaluate(() => window.__ratataTest!.getState().localPlayerId!)
+        const secondId = await second.evaluate(() => window.__ratataTest!.getState().localPlayerId!)
+        await first.evaluate(
+            (targetId) => window.__ratataTest!.send({ type: 'party_invite', targetId }),
+            secondId
+        )
+        await expect
+            .poll(() =>
+                second.evaluate(
+                    () => window.__ratataTest!.getState().snapshot?.party?.invitations.length
+                )
+            )
+            .toBe(1)
+        await second.evaluate(
+            (targetId) => window.__ratataTest!.send({ type: 'party_invite', targetId }),
+            firstId
+        )
+        await expect
+            .poll(() =>
+                second.evaluate(
+                    () => window.__ratataTest!.getState().snapshot?.party?.invitations.length
+                )
+            )
+            .toBe(1)
+        await second.evaluate(() => {
+            const invitationId = window.__ratataTest!.getState().snapshot!.party!.invitations[0]!.id
+            window.__ratataTest!.send({ type: 'party_answer', invitationId, accept: true })
+        })
+        const party = first.getByLabel('Мой отряд')
+        await expect(party.getByRole('button', { pressed: false })).toHaveCount(2)
+        await expect(first.getByRole('img', { name: 'Лидер', exact: true })).toHaveCount(1)
+        await expect(party).not.toContainText('100%')
+        await expect(first.locator('.party-member__hp > span').first()).toHaveAttribute(
+            'style',
+            'width: 100%;'
+        )
+        await first.evaluate(
+            (targetId) => window.__ratataTest!.send({ type: 'follow', targetId }),
+            secondId
+        )
+        await expect
+            .poll(() => first.evaluate(() => window.__ratataTest!.getState().player?.control?.mode))
+            .toBe('follow')
+        await first.keyboard.press('KeyW')
+        await expect
+            .poll(() => first.evaluate(() => window.__ratataTest!.getState().player?.control?.mode))
+            .toBe('none')
+        await hitPartyMember(first, second, secondId, party)
+        await leaveParty(first)
+    } finally {
+        await firstContext.close()
+        await secondContext.close()
+    }
+})
+
+test('can declare a peaceable city resident an enemy and hit them', async ({ page }, info) => {
+    const resident = 'npc_merchant_1'
+    await join(page, `city-combat-${info.workerIndex}`, 'vanguard')
+    const snapshot = () =>
+        page.evaluate(
+            (id) =>
+                window
+                    .__ratataTest!.getState()
+                    .snapshot?.characters.find((actor) => actor.id === id),
+            resident
+        )
+    const before = (await snapshot())!
+    expect(before.relationship).toBe('friendly')
+    expect(
+        await page.evaluate(
+            (position) => window.__ratataTest!.navigate(position, { tolerance: 22 }),
+            before.position
+        )
+    ).toMatchObject({ status: 'arrived' })
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    await selectSocialTarget(page, resident)
+    await page.keyboard.press('KeyF')
+    await page.getByRole('menuitem', { name: 'Объявить врагом', exact: true }).click()
+    await expect.poll(snapshot).toMatchObject({ personalHostile: true })
+    await page.keyboard.press('Digit1')
+    await page.keyboard.press('Digit1')
+    await expect
+        .poll(async () => healthPercent((await snapshot())!.health), { timeout: 10_000 })
+        .toBeLessThan(healthPercent(before.health))
+    await page.keyboard.press('Escape')
+})
+
+async function hitPartyMember(first: Page, second: Page, targetId: string, party: Locator) {
+    await first.bringToFront()
+    expect(
+        await first.evaluate(
+            (id) =>
+                window.__ratataTest!.navigate(
+                    { targetKey: `character:${id}` },
+                    { tolerance: 24, timeoutMs: 15_000 }
+                ),
+            targetId
+        )
+    ).toMatchObject({ status: 'arrived' })
+    const ally = party.getByRole('button', { name: /party-b-/u })
+    await ally.click()
+    await expect(selectedWorldTarget(first)).toHaveAttribute(
+        'data-selected-target-key',
+        `character:${targetId}`
+    )
+    const target = () =>
+        first.evaluate(
+            (id) =>
+                window
+                    .__ratataTest!.getState()
+                    .snapshot?.characters.find((actor) => actor.id === id),
+            targetId
+        )
+    await first.locator('canvas[data-game-canvas=true]').focus()
+    await first.keyboard.press('KeyF')
+    const declare = first.getByRole('menuitem', { name: 'Объявить врагом', exact: true })
+    await expect(declare).toBeVisible()
+    expect(await target()).toMatchObject({ relationship: 'friendly' })
+    await declare.click()
+    await expect.poll(target).toMatchObject({ personalHostile: true, relationship: 'hostile' })
+
+    await first.keyboard.press('KeyF')
+    await first.getByRole('menuitem', { name: 'Снять свою враждебность', exact: true }).click()
+    await expect.poll(target).toMatchObject({ relationship: 'friendly' })
+    await first.keyboard.press('KeyF')
+    await declare.click()
+    await expect.poll(target).toMatchObject({ personalHostile: true })
+
+    const health = async () =>
+        healthPercent(await second.evaluate(() => window.__ratataTest!.getState().player!.health))
+    const before = await health()
+    await first.keyboard.press('Digit1')
+    await first.keyboard.press('Digit1')
+    await expect.poll(health, { timeout: 10_000 }).toBeLessThan(before)
+    await first.keyboard.press('Escape')
+    await expect(party.getByRole('button', { name: /party-b-/u })).toBeVisible()
+}
 
 async function leaveParty(page: Page): Promise<void> {
     const party = page.getByLabel('Мой отряд')

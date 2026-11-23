@@ -5,6 +5,34 @@ import type { GameCharacter } from './character'
 import { markDamageRetaliation } from './crimeRelations'
 
 const damageSequences = new WeakMap<GameCharacter, number>()
+const uncreditedDefeats = new WeakMap<GameCharacter, number>()
+const defeatCredit = Symbol('defeatCredit')
+type CombatDeath = GameEventPayload & { [defeatCredit]?: boolean }
+
+export function combatDeathEvent(
+    actor: GameCharacter,
+    target: GameCharacter,
+    hostile: boolean
+): GameEventPayload {
+    if (!hostile) {
+        uncreditedDefeats.set(target, target.deathSequence)
+    }
+    const event: CombatDeath = {
+        kind: 'death',
+        actorId: actor.id,
+        targetId: target.id,
+        ...(hostile ? {} : { [defeatCredit]: false }),
+    }
+    return event
+}
+
+export function creditsDefeat(event: CombatDeath): boolean {
+    return event.kind === 'death' && event[defeatCredit] !== false
+}
+
+export function canAwardDefeatTrophy(target: GameCharacter): boolean {
+    return uncreditedDefeats.get(target) !== target.deathSequence
+}
 
 /** A contact receipt identifies one damage occurrence, independently of its attack action. */
 export function damageEvent(

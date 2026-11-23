@@ -19,6 +19,7 @@ import type {
 
 export interface NpcAiActorState {
     idleSince?: number | undefined
+    pendingPersuasion?: ((now: number) => void) | undefined
     finalizing?:
         | {
               reply: NpcAiReply
@@ -173,6 +174,7 @@ export function interruptInference(state: NpcAiActorState): void {
         reason: { code: 'cancelled', detail: 'Разговор завершён.' },
     })
     state.finalizing = undefined
+    state.pendingPersuasion = undefined
     state.generation += 1
     state.controller?.abort()
     state.ready = undefined

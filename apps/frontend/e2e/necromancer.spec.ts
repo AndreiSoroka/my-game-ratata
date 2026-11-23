@@ -1,4 +1,8 @@
-import { type Vector2, WESTERN_RUINS_LOCATION_ID } from '@my-game-ratata/contracts'
+import {
+    type MovementMode,
+    type Vector2,
+    WESTERN_RUINS_LOCATION_ID,
+} from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
 import { selectedWorldTarget } from './world-target-ui'
@@ -9,10 +13,8 @@ interface RuinsMap {
 
 const savvaId = 'npc_necromancer_1'
 
-test('chats with Savva in Nearby and learns the Ash prayer through his interaction menu', async ({
-    page,
-}, info) => {
-    test.setTimeout(120_000)
+test('chats with Savva and learns the Ash prayer before hostilities', async ({ page }, info) => {
+    test.setTimeout(150_000)
     await page.goto('/?test=1')
     await page.waitForFunction(() => Boolean(window.__ratataTest))
     await page.addStyleTag({ content: '.test-panel { display: none !important }' })
@@ -39,22 +41,29 @@ test('chats with Savva in Nearby and learns the Ash prayer through his interacti
         },
         { timeout: 65_000 }
     )
-    for (let crossing = 0; crossing < 2; crossing += 1) {
-        const travel = await page.evaluate(() =>
-            window.__ratataTest!.travel('west', { timeoutMs: 30_000 })
-        )
-        expect(travel).toMatchObject({ status: 'arrived' })
-    }
-    await expect
-        .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot?.location?.id))
-        .toBe(WESTERN_RUINS_LOCATION_ID)
-
+    await travelToRuins(page)
     const map: RuinsMap = await (await ruinsMap).json()
     const refuge = map.layers
         .find(({ name }) => name === 'Ash refuge')
         ?.objects?.find(({ type }) => type === 'ash_home')
     expect(refuge).toBeDefined()
-    await approachFromEast(page, { x: refuge!.x, y: refuge!.y })
+    await changeMovement(page, 'sneaking')
+    await approachTeacher(page, refuge!)
+    await learnAshPrayer(page)
+})
+
+async function travelToRuins(page: Page): Promise<void> {
+    for (let crossing = 0; crossing < 2; crossing += 1) {
+        expect(
+            await page.evaluate(() => window.__ratataTest!.travel('west', { timeoutMs: 30_000 }))
+        ).toMatchObject({ status: 'arrived' })
+    }
+    await expect
+        .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot?.location?.id))
+        .toBe(WESTERN_RUINS_LOCATION_ID)
+}
+
+async function learnAshPrayer(page: Page): Promise<void> {
     await expect
         .poll(() =>
             page.evaluate(
@@ -66,7 +75,8 @@ test('chats with Savva in Nearby and learns the Ash prayer through his interacti
             )
         )
         .toMatchObject({ visualId: 'necromancer', relationship: 'friendly' })
-    await followTeacher(page, savvaId)
+    await changeMovement(page, 'walking')
+    await waitForLesson(page)
 
     const chat = page.locator('.game-chat')
     await chat.getByRole('button', { name: 'Развернуть историю чата' }).click()
@@ -84,7 +94,7 @@ test('chats with Savva in Nearby and learns the Ash prayer through his interacti
     await chat.getByRole('button', { name: 'Личные', exact: true }).click()
     await expect(replies).toHaveCount(0)
     await page.locator('canvas[data-game-canvas=true]').focus()
-    await followTeacher(page, savvaId)
+    await waitForLesson(page)
     await page.keyboard.press('KeyF')
     await expect(page.getByRole('menuitem', { name: /^Поговорить:/u })).toHaveCount(0)
     const lesson = page.getByRole('menuitem', { name: 'Изучить: Молитва праха', exact: true })
@@ -101,39 +111,74 @@ test('chats with Savva in Nearby and learns the Ash prayer through his interacti
     const sourceImage = await page.request.get('/game/assets/characters/necromancer.png')
     expect(sourceImage.ok()).toBe(true)
     expect(sourceImage.headers()['content-type']).toContain('image/png')
-})
+
+    await chat.getByRole('button', { name: 'Рядом', exact: true }).click({ timeout: 5_000 })
+}
 
 async function greetNearby(page: Page): Promise<void> {
+    await sendNearby(page, 'привет')
+}
+
+async function sendNearby(page: Page, text: string): Promise<void> {
     await page.locator('canvas[data-game-canvas=true]').focus()
     await page.keyboard.press('Enter')
     const input = page.getByRole('textbox', { name: 'Сообщение в чат' })
-    await input.fill('привет')
+    await input.fill(text)
     await input.press('Enter')
     await expect(input).toHaveCount(0)
 }
 
-async function approachFromEast(page: Page, den: Vector2): Promise<void> {
-    const eastPoint = await page.evaluate((point) => {
-        const entrant = window.__ratataTest!.getState().player!
-        return { x: entrant.position.x - 32, y: point.y }
-    }, den)
-    const east = await page.evaluate(
-        (position) => window.__ratataTest!.navigate(position, { timeoutMs: 15_000, tolerance: 24 }),
-        eastPoint
-    )
-    expect(east).toMatchObject({ status: 'arrived' })
-    await page.evaluate(() =>
-        window.__ratataTest!.send({ type: 'movement_mode', mode: 'sneaking' })
-    )
+async function approachTeacher(page: Page, home: Vector2): Promise<void> {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+        if (await canLearnPrayer(page)) return
+        const { player, teacher } = await page.evaluate((id) => {
+            const state = window.__ratataTest!.getState()
+            return {
+                player: state.player!.position,
+                teacher: state.snapshot!.characters.find((actor) => actor.id === id)!.position,
+            }
+        }, savvaId)
+        const from = Math.atan2(player.y - home.y, player.x - home.x)
+        const deltaX = teacher.x - home.x
+        const deltaY = teacher.y - home.y
+        const teacherRadius = Math.hypot(deltaX, deltaY)
+        const to = teacherRadius > 8 ? Math.atan2(deltaY, deltaX) : from
+        const turn = Math.atan2(Math.sin(to - from), Math.cos(to - from))
+        const ringSteps = Math.ceil(Math.abs(turn) / (Math.PI / 4))
+        if (ringSteps > 1) {
+            for (let step = 0; step <= ringSteps; step += 1) {
+                const angle = from + (turn * step) / ringSteps
+                await navigateTo(page, onRing(home, angle, 64), 9)
+            }
+        }
+        if (teacherRadius >= 80) {
+            await navigateTo(page, teacher, 24)
+        } else {
+            await navigateTo(page, onRing(home, to, Math.max(43, teacherRadius + 12)), 7)
+        }
+    }
+}
+
+function onRing(home: Vector2, angle: number, radius: number): Vector2 {
+    return { x: home.x + radius * Math.cos(angle), y: home.y + radius * Math.sin(angle) }
+}
+
+async function changeMovement(page: Page, mode: MovementMode): Promise<void> {
+    await page.evaluate((mode) => window.__ratataTest!.send({ type: 'movement_mode', mode }), mode)
     await page.waitForFunction(
-        () => window.__ratataTest?.getState().player?.movement?.mode === 'sneaking'
+        (mode) => window.__ratataTest?.getState().player?.movement?.mode === mode,
+        mode,
+        { timeout: 5_000 }
     )
+}
+
+async function navigateTo(page: Page, position: Vector2, tolerance: number): Promise<void> {
     const reached = await page.evaluate(
-        (position) => window.__ratataTest!.navigate(position, { timeoutMs: 45_000, tolerance: 20 }),
-        den
+        ({ position, tolerance }) =>
+            window.__ratataTest!.navigate(position, { timeoutMs: 45_000, tolerance }),
+        { position, tolerance }
     )
     expect(reached).toMatchObject({ status: 'arrived' })
-    expect(await page.evaluate(() => window.__ratataTest!.getState().player?.alive)).toBe(true)
 }
 
 async function selectSavva(page: Page): Promise<void> {
@@ -146,43 +191,24 @@ async function selectSavva(page: Page): Promise<void> {
     await expect(selected).toHaveAttribute('data-selected-target-name', 'Савва')
 }
 
-async function followTeacher(page: Page, id: string): Promise<void> {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-        const navigation = await page.evaluate(async (actorId) => {
-            const api = window.__ratataTest!
-            const observation = api.observe().targets.find((target) => target.id === actorId)
-            if (
-                observation?.actions.some(
-                    ({ command }) =>
-                        command.type === 'learn_ability' && command.abilityId === 'pray_grave'
-                )
-            )
-                return undefined
-            const actor = api.getState().snapshot?.characters.find((entry) => entry.id === actorId)
-            if (!actor?.alive) throw new Error('Savva is unavailable')
-            const destination = observation ? { targetKey: observation.key } : actor.position
-            return api.navigate(destination, { tolerance: 24, timeoutMs: 20_000 })
-        }, id)
-        if (navigation === undefined) return
-        expect(['arrived', 'target_lost']).toContain(navigation.status)
-    }
-    await expect
-        .poll(() =>
-            page.evaluate(
-                (actorId) =>
-                    window
-                        .__ratataTest!.observe()
-                        .targets.some(
-                            (target) =>
-                                target.id === actorId &&
-                                target.actions.some(
-                                    ({ command }) =>
-                                        command.type === 'learn_ability' &&
-                                        command.abilityId === 'pray_grave'
-                                )
-                        ),
-                id
-            )
-        )
-        .toBe(true)
+function canLearnPrayer(page: Page): Promise<boolean> {
+    return page.evaluate(
+        (actorId) =>
+            window
+                .__ratataTest!.observe()
+                .targets.some(
+                    (target) =>
+                        target.id === actorId &&
+                        target.actions.some(
+                            ({ command }) =>
+                                command.type === 'learn_ability' &&
+                                command.abilityId === 'pray_grave'
+                        )
+                ),
+        savvaId
+    )
+}
+
+async function waitForLesson(page: Page): Promise<void> {
+    await expect.poll(() => canLearnPrayer(page), { timeout: 15_000 }).toBe(true)
 }

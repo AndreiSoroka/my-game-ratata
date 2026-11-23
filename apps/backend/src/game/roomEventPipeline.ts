@@ -3,7 +3,8 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import { archiveRoomConversations } from '../ai/memoryLifecycle'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import { canTargetByFaction, combatFaction } from './factions'
+import { creditsDefeat } from './damageEvents'
+import { isPveOpponent } from './factions'
 import type { PartyService } from './parties'
 import { publishRoomEvents } from './roomEvents'
 import type { RoomSocket } from './roomMessaging'
@@ -44,7 +45,7 @@ export class RoomEventPipeline {
         }
         const now = (this.options.now ?? Date.now)()
         const objectiveEvents = events.filter(
-            (event) => !this.deferDefeat(event, now)
+            (event) => !this.deferDefeat(event)
         )
         archiveRoomConversations(
             events,
@@ -96,7 +97,7 @@ export class RoomEventPipeline {
         }
     }
 
-    private deferDefeat(event: GameEventPayload, now: number): boolean {
+    private deferDefeat(event: GameEventPayload): boolean {
         if (event.kind !== 'death' || event.targetId === undefined) {
             return false
         }
@@ -108,8 +109,8 @@ export class RoomEventPipeline {
             const killer = this.characters.get(event.actorId ?? '')
             const hostile =
                 killer !== undefined &&
-                combatFaction(killer) !== combatFaction(actor) &&
-                canTargetByFaction(killer, actor, now)
+                creditsDefeat(event) &&
+                isPveOpponent(killer, actor)
             this.fallen.set(actor, {
                 sequence: actor.deathSequence,
                 event,

@@ -238,8 +238,7 @@ function castDispel(
         if (chains) {
             events.push(...cancelMagicChannel(target, now))
         }
-        useful ||=
-            (barrier || chains) && hostileMagicContact(actor, target, now)
+        useful ||= (barrier || chains) && hostileMagicContact(actor, target)
     }
     if (useful) {
         events.push(

@@ -121,9 +121,31 @@ export function createRoomServices(options: Options): RoomServices {
 }
 
 function createCombatObserver(options: Options, social: RoomSocial) {
-    const { room, theft, characters, ai } = options
-    const conflict = new NpcConflict(room, theft, social.society.history, () =>
-        characters.values()
+    const { room, theft, characters, ai, companions } = options
+    const conflict = new NpcConflict(
+        room,
+        theft,
+        social.society.history,
+        () => characters.values(),
+        (attacker, victim, now) => {
+            if (attacker === victim) {
+                return
+            }
+            if (victim.soul.companion?.leaderId === attacker.id) {
+                companions.releaseAssistance(attacker.id, victim)
+            }
+            const exchange = social.exchanges.snapshot(victim.id)
+            if (
+                exchange?.status === 'active' ||
+                exchange?.status === 'invited'
+            ) {
+                social.exchanges.handle(
+                    victim,
+                    { type: 'exchange_cancel', exchangeId: exchange.id },
+                    now
+                )
+            }
+        }
     )
     social.society.conflicts = conflict
     theft.onCaught = conflict.onCaught

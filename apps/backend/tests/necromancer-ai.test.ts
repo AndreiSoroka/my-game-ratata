@@ -112,11 +112,14 @@ it('keeps the local route moving during advice, then applies the selected plan a
     expect(turn.context.playerHealth[0]?.id).toBe(visitor.id)
     expect(turn.context.playerHealth[0]?.health.kind).toBe('percent')
     expect(turn.context.self.maxHp).toBe(savva.maxHp)
+    expect(
+        turn.context.options.some(({ tactic }) => tactic === 'offer_help')
+    ).toBe(false)
     expect(savva.soul.controlSource).toBe('model')
     await advance(500)
     expect(savva.position).not.toEqual(start)
     expect(turns).toHaveLength(1)
-    expect(speech()).toEqual([])
+    expect(speech()).toEqual(['Стой. Не подходи ближе к моему убежищу.'])
     const rest = turn.context.options.findIndex(
         ({ tactic }) => tactic === 'rest'
     )

@@ -10,8 +10,8 @@ import { activeBarrier } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
 import { grantRetaliation, hasRetaliationRight } from './crimeRelations'
-import { damageEvent } from './damageEvents'
-import { canTargetByFaction, combatFaction } from './factions'
+import { combatDeathEvent, damageEvent } from './damageEvents'
+import { isPveOpponent } from './factions'
 import { wearHitEquipment } from './itemDurability'
 import { cancelMagicChannel } from './magicState'
 import { recordMartyrHostileDamage, resetMartyrStreak } from './martyr'
@@ -67,7 +67,8 @@ export function resolveCharacterDamage(
         return result
     }
     const { actor, target, now } = input
-    const hostile = target.trainingTarget === undefined && hostileDamage(input)
+    const hostile =
+        target.trainingTarget === undefined && isPveOpponent(actor, target)
     const auraEffects =
         input.targetAuraEffects ?? prayerAuraEffects(target, now)
     input = scaleIncomingDamage(input, hostile, auraEffects)
@@ -148,14 +149,6 @@ function guardedHpDamage(
         hostile
             ? guardUndeadHp(target, actor, remaining, damageKind, now)
             : remaining
-    )
-}
-
-function hostileDamage({ actor, target, now }: CharacterDamageInput): boolean {
-    return (
-        actor.id !== target.id &&
-        combatFaction(actor) !== combatFaction(target) &&
-        canTargetByFaction(actor, target, now)
     )
 }
 
@@ -287,7 +280,7 @@ function finishDamageDeath(
     target.abilities.barrier = null
     target.abilities.casting = null
     target.queueRespawn(now, input.respawnDelayMs)
-    events.push({ kind: 'death', actorId: actor.id, targetId: target.id })
+    events.push(combatDeathEvent(actor, target, hostile))
     if (hostile && !(target.mortal && target.archetype === 'skeleton')) {
         events.push(...rewardSkeletonKill(actor, target, now, input.random))
     }

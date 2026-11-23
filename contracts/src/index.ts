@@ -179,6 +179,7 @@ export interface CharacterSnapshot {
     trainingTarget?: { areaId: string }
     connected?: boolean
     relationship?: CharacterRelationship
+    personalHostile?: boolean
     control?: CharacterControlSnapshot
     combat?: import('./combat').CharacterCombatSnapshot
     basicAttackKind?: BasicAttackKind
@@ -297,6 +298,7 @@ export type ChatClientMessage = import('./social').ChatClientMessage
 export type ClientMessage =
     | import('./social').SpeechActivityCommand
     | { type: 'set_locale'; locale: import('./locales').GameLocale }
+    | { type: 'set_personal_hostility'; targetId: string; hostile: boolean }
     | WhisperClientMessage
     | ExchangeClientMessage
     | NpcQuestClientMessage

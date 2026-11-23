@@ -1,6 +1,7 @@
 import type { GameRoom } from '../game/room'
 import { npcCombatReactionStillAvailable } from './combatReactions'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
+import { savvaPersuasionOffer } from './savvaDialogue'
 
 export function prioritizeNpcAiStates(
     a: NpcAiActorState,
@@ -43,11 +44,7 @@ export function prepareNpcAiTurns(
     const wall = room.realNow()
     for (const state of states) {
         const actor = state.actor
-        if (
-            !npcAiActorAvailable(actor) ||
-            room.social.society.conflicts?.hasPhysicalReaction(actor, now) ===
-                true
-        ) {
+        if (!npcAiActorAvailable(actor)) {
             continue
         }
         state.inbox = state.inbox.filter(
@@ -55,6 +52,13 @@ export function prepareNpcAiTurns(
                 room.getCharacter(event.senderId)?.connected === true &&
                 room.social.npcSpeech.turns.available(actor, event, now)
         )
+        if (
+            room.social.society.conflicts?.hasPhysicalReaction(actor, now) ===
+                true &&
+            !prioritizePersuasion(room, state, actor, now)
+        ) {
+            continue
+        }
         const continuation =
             room.allowsAutonomousNpcAi() &&
             (state.budgetUntil ?? 0) <= wall &&
@@ -64,6 +68,21 @@ export function prepareNpcAiTurns(
         }
     }
     return candidates.sort(prioritizeNpcAiStates)
+}
+
+function prioritizePersuasion(
+    room: GameRoom,
+    state: NpcAiActorState,
+    actor: import('../game/character').GameCharacter,
+    now: number
+): boolean {
+    const next = state.inbox.findIndex(
+        (event) => savvaPersuasionOffer(room, actor, event, now) !== undefined
+    )
+    if (next > 0) {
+        state.inbox.unshift(...state.inbox.splice(next, 1))
+    }
+    return next !== -1
 }
 
 function runnableTurn(

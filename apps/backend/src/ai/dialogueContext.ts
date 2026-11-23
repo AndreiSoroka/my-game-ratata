@@ -17,6 +17,7 @@ import { npcSpeechLanguageContext } from './npcSpeechLanguage'
 import { buildNpcAiObservation, type NpcAiObservation } from './observation'
 import { updateNpcAiSocialCapabilities } from './observationPolicy'
 import type { NpcAiActorState } from './runtimeState'
+import { savvaDialogueFacts } from './savvaDialogue'
 import { npcTemperamentContext } from './socialContext'
 import { npcTaskConsent } from './taskConsent'
 import type { NpcAiContext, NpcAiEvent } from './types'
@@ -99,6 +100,7 @@ function conversationalContext(
         role: state.config.role,
         personality: actor.soul.personality,
         temperament,
+        ...savvaDialogueFacts(room, state, actor, now),
         ...npcSpeechLanguageContext(room, state, observation, actor, now),
         ...feedback,
         ...(socialOpportunity === undefined ? {} : { socialOpportunity }),

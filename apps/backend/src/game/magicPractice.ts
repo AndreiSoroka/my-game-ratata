@@ -5,19 +5,15 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { canTargetByFaction } from './factions'
+import { isPveOpponent } from './factions'
 import { chainsAt } from './magicState'
 import { awardMasteries } from './skillProgression'
 
 export function hostileMagicContact(
     caster: GameCharacter,
-    target: GameCharacter,
-    now: number
+    target: GameCharacter
 ): boolean {
-    return (
-        caster.faction !== target.faction &&
-        canTargetByFaction(caster, target, now)
-    )
+    return isPveOpponent(caster, target)
 }
 
 export function recordChainsMovementBlock(
@@ -27,7 +23,7 @@ export function recordChainsMovementBlock(
 ): GameEventPayload[] {
     const events: GameEventPayload[] = []
     for (const { caster, channel } of chainsAt(actor, now, position)) {
-        if (channel.practiced || !hostileMagicContact(caster, actor, now)) {
+        if (channel.practiced || !hostileMagicContact(caster, actor)) {
             continue
         }
         channel.practiced = true

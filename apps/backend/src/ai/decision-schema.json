@@ -946,6 +946,17 @@
                 {
                     "type": "object",
                     "additionalProperties": false,
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["savva_persuasion"]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
                     "required": ["type", "personId"],
                     "properties": {
                         "type": {

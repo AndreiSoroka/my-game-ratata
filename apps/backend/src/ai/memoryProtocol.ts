@@ -52,7 +52,16 @@ export function parseInformation(
 }
 
 function informationRequest(value: unknown): NpcInformationRequest {
-    if (!record(value) || Object.keys(value).length !== 2) {
+    if (!record(value)) {
+        throw new Error('Invalid information request')
+    }
+    if (
+        value['type'] === 'savva_persuasion' &&
+        Object.keys(value).length === 1
+    ) {
+        return { type: 'savva_persuasion' }
+    }
+    if (Object.keys(value).length !== 2) {
         throw new Error('Invalid information request')
     }
     if (value['type'] === 'deep_memory' && id(value['personId'])) {

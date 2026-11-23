@@ -91,7 +91,9 @@ export function npcAiCapabilities(
         constraints: [
             role === 'companion'
                 ? 'May guide a consenting requester to known locations and landmarks across the region through ordinary roads and borders. Plain waypoints stay on the current map; regional guide selects validated adjacent exits. Following remains available. Combat still follows this character’s capabilities and peaceful personality.'
-                : 'City coordinators stay within the city; advisors explain without travelling. Combat is refused by these peaceful NPC profiles.',
+                : role === 'necromancer'
+                  ? 'Savva guards his refuge and may fight through the separate tactics controller.'
+                  : 'City coordinators stay within the city; advisors explain without travelling. Combat is refused by these peaceful NPC profiles.',
             roleConstraints[role],
             'May choose ordinary waypoints from earned visible information. No dedicated avoid-enemies routing or conditional danger-trigger intention is exposed to this AI controller. Shared combat and flee controllers exist elsewhere in the game.',
         ],

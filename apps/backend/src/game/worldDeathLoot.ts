@@ -10,6 +10,7 @@ import type { GameCharacter } from './character'
 import { canAbandonLife, shouldRetireCharacter } from './characterLife'
 import type { WorldChest } from './chestInteraction'
 import type { CorpseWallet } from './corpseWallet'
+import { canAwardDefeatTrophy } from './damageEvents'
 import { createItemInstance } from './inventory'
 
 /** Corpses outlive rendered characters; resolved receipts outlive emptied corpses. */
@@ -130,7 +131,9 @@ export class WorldDeathLoot {
             ...target.inventory,
             ...Object.values(target.equipment),
         ]
-        const trophy = trophyFor(target)
+        const trophy = canAwardDefeatTrophy(target)
+            ? trophyFor(target)
+            : undefined
         if (trophy !== undefined) {
             contents.push(createItemInstance(trophy))
         }

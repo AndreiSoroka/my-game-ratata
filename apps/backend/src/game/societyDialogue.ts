@@ -8,6 +8,7 @@ import type { NpcConflict } from './npcConflict'
 import { afterNpcSpokenName } from './npcSpeechNames'
 import type { GameRoom } from './room'
 import type { NpcHeardSpeech } from './roomNpcConversations'
+import { savvaHumanTrust } from './savvaTerritory'
 import type { SocialHistory } from './socialHistory'
 import { canHearSpeech } from './socialSpeech'
 
@@ -120,6 +121,10 @@ export function chooseHeardSocialReaction(
         context: {
             ...relationship,
             ...reputation,
+            trust: Math.max(
+                -100,
+                relationship.trust + savvaHumanTrust(npc, speaker)
+            ),
             healthFraction: npc.hp / Math.max(1, npc.maxHp),
             threat: trigger === 'threat' ? 45 : 0,
         },

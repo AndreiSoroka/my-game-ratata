@@ -2,9 +2,12 @@ import { type GameEventPayload, THEFT_RULES } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { ReactionAction } from './characterReactions'
-import { canWitnessCombatant, publicCombatHit } from './combatWitnesses'
-import { damageRetaliation, grantRetaliation } from './crimeRelations'
-import { combatFaction } from './factions'
+import {
+    canWitnessCombatant,
+    type CombatContactObserver,
+    publicCombatHit,
+    recordCivicAssault,
+} from './combatWitnesses'
 import {
     availableConflictActions,
     canFight,
@@ -33,7 +36,8 @@ export class NpcConflict {
         private readonly room: GameRoom,
         private readonly theft: TheftService,
         private readonly history: SocialHistory,
-        private readonly characters: () => Iterable<GameCharacter>
+        private readonly characters: () => Iterable<GameCharacter>,
+        private readonly interrupt: CombatContactObserver
     ) {}
 
     public readonly onCaught = (
@@ -58,6 +62,7 @@ export class NpcConflict {
                 hit !== undefined &&
                 claimReaction(this.seenHits, hit.target, hit.id)
             ) {
+                this.interrupt(hit.attacker, hit.target, now)
                 this.onDamage(event, now)
                 fresh.push(event)
             }
@@ -163,9 +168,6 @@ export class NpcConflict {
     }
 
     private onDamage(event: GameEventPayload, now: number): void {
-        if (damageRetaliation(event) !== false) {
-            return
-        }
         const observation = observedAttack(
             this.room,
             this.characters(),
@@ -180,10 +182,7 @@ export class NpcConflict {
         if (!this.history.record(incident, witnesses) || !victimSawAttacker) {
             return
         }
-        if (combatFaction(attacker) === combatFaction(victim)) {
-            grantRetaliation(victim, attacker, now + THEFT_RULES.retaliationMs)
-            this.theft.recordAssault(attacker, victim, now)
-        }
+        recordCivicAssault(this.theft, attacker, victim, now)
         this.room.publishEvents(this.choose(victim, attacker, incident) ?? [])
     }
 
@@ -263,6 +262,7 @@ export class NpcConflict {
             visible,
             lastKnown,
             reportAvailable: () =>
+                actor.soul.canSpeak &&
                 (trigger === 'theft' || trigger === 'attack') &&
                 this.reportOpportunity(actor, offender, trigger, now) !==
                     undefined,

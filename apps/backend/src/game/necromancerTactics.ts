@@ -13,6 +13,7 @@ import type { NecromancerBark } from './necromancerSpeech'
 import { visibilityRadius } from './queries'
 import type { GameRoom } from './room'
 import type { NpcConversationFeedback } from './roomConversationDepartures'
+import { isNecromancerThreat, savvaTerritorialTarget } from './savvaTerritory'
 
 export type NecromancerTactic =
     | 'study'
@@ -102,7 +103,11 @@ export function observeNecromancerScene(
     now: number
 ): NecromancerScene {
     const visible = visibleNecromancerNeighbors(actor, room, now)
-    const threat = necromancerThreats(actor, visible, now)[0]
+    const territorial = savvaTerritorialTarget(actor)
+    const threat =
+        territorial !== undefined && visible.includes(territorial)
+            ? territorial
+            : necromancerThreats(actor, visible, now)[0]
     const navigation = room.navigationFor(actor)
     let cover: NecromancerScene['cover'] | null = null
     return {
@@ -174,7 +179,7 @@ export function necromancerThreats(
     now: number
 ): GameCharacter[] {
     return visible.filter(
-        (target) => target.alive && canTargetByFaction(actor, target, now)
+        (target) => target.alive && isNecromancerThreat(actor, target, now)
     )
 }
 

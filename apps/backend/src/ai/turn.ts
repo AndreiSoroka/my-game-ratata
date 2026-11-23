@@ -28,7 +28,7 @@ export async function invokeNpcAiTurn(
     state.controller = controller
     const timeout = setTimeout(
         () => controller.abort(),
-        turnTimeout(state, wallNow())
+        turnTimeout(state, context, wallNow())
     )
     let onAbort: (() => void) | undefined
     const aborted = new Promise<never>((_resolve, reject) => {
@@ -86,13 +86,20 @@ export async function invokeNpcAiTurn(
         if (state.controller === controller) {
             state.controller = undefined
             state.finalizing = undefined
+            state.pendingPersuasion = undefined
         }
     }
 }
 
-function turnTimeout(state: NpcAiActorState, wallNow: number): number {
+function turnTimeout(
+    state: NpcAiActorState,
+    context: NpcAiContext,
+    wallNow: number
+): number {
     const remaining = (state.dialogue?.replyDeadline ?? Infinity) - wallNow
-    return Math.max(0, Math.min(state.config.settings.timeoutMs, remaining))
+    const calls = context.savvaPersuasion?.stage === 'available' ? 2 : 1
+    const modelTimeout = state.config.settings.timeoutMs * calls
+    return Math.max(0, Math.min(modelTimeout, remaining))
 }
 
 function failedTurn(

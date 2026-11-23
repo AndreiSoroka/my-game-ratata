@@ -31,6 +31,7 @@ import {
     characterActions,
     civicServiceActions,
     followActions,
+    hostilityActions,
     partyActions,
     reviveActions,
     socialActions,
@@ -74,7 +75,7 @@ export function nearbyInteractionTarget(
 ): InteractionTarget | undefined {
     if (!player.alive || player.tags.includes('offline')) return undefined
     const candidates = [
-        ...characterTargets(snapshot, player, characters),
+        ...characterTargets(snapshot, player, characters, targetKey),
         ...portalTargets(snapshot, player),
         ...graveTargets(snapshot, player),
         ...objectTargets(snapshot, player),
@@ -142,7 +143,8 @@ function targetVisible(
 function characterTargets(
     snapshot: WorldSnapshot,
     player: CharacterSnapshot,
-    characters: CharacterSnapshot[]
+    characters: CharacterSnapshot[],
+    targetKey?: string
 ): TargetCandidate[] {
     return characters
         .filter((character) => character.id !== player.id && !character.tags.includes('offline'))
@@ -195,6 +197,9 @@ function characterTargets(
                     ...reviveActions(one, player),
                     ...partyActions(one, player, snapshot.party),
                     ...followActions(one, player),
+                    ...(targetKey === `character:${character.id}`
+                        ? hostilityActions(character, player)
+                        : []),
                 ],
             }
         })

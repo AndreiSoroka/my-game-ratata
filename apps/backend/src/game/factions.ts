@@ -1,7 +1,7 @@
 import { ashSkeletonOrder } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { hasRetaliationRight } from './crimeRelations'
-import { hasPersonalHostility } from './personalHostility'
+import { hasGroupHostility, hasPersonalHostility } from './personalHostility'
 
 export function canTargetByFaction(
     actor: GameCharacter,
@@ -12,21 +12,37 @@ export function canTargetByFaction(
         return false
     }
 
-    const order = ashSkeletonOrder(actor)
-    if (actor.archetype === 'skeleton' && target.creatureType === 'ooze') {
-        return order?.kind === 'hunt_slimes' && target.faction === 'monsters'
-    }
-
-    if (hasRetaliationRight(actor, target, now)) {
+    if (
+        hasRetaliationRight(actor, target, now) ||
+        hasPersonalHostility(actor, target, now) ||
+        hasGroupHostility(actor, target)
+    ) {
         return true
     }
+    return factionEnemy(actor, target)
+}
 
+/** Practice and objective credit come only from intrinsic opposing allegiances. */
+export function isPveOpponent(
+    actor: GameCharacter,
+    target: GameCharacter
+): boolean {
+    return (
+        actor !== target &&
+        combatFaction(actor) !== combatFaction(target) &&
+        factionEnemy(actor, target)
+    )
+}
+
+function factionEnemy(actor: GameCharacter, target: GameCharacter): boolean {
+    if (actor.archetype === 'skeleton' && target.creatureType === 'ooze') {
+        return (
+            ashSkeletonOrder(actor)?.kind === 'hunt_slimes' &&
+            target.faction === 'monsters'
+        )
+    }
     if (hasAshAffinity(actor, target) || hasAshAffinity(target, actor)) {
         return false
-    }
-
-    if (hasPersonalHostility(actor, target, now)) {
-        return true
     }
 
     const faction = combatFaction(actor)

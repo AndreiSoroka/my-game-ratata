@@ -10,9 +10,10 @@ import {
     type CombatObserver,
     observeCharacterCombat,
 } from './combatObservation'
+import { hasAttackRelationship } from './combatTargets'
 import { roadPrayerDashRemainingMs } from './effectiveParameters'
-import { canTargetByFaction } from './factions'
 import { recruitableNpc } from './npcRoster'
+import { hasDeclaredHostility } from './personalHostility'
 import { prayerAuraEffects } from './prayerAuras'
 import { hasRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { SnapshotContext } from './roomSnapshot'
@@ -47,7 +48,7 @@ export function projectRoomCharacter(
                   },
               }
             : {}),
-        relationship: relationshipFor(view.observer, actor, playerId, view.now),
+        ...projectRelationship(view.observer, actor, playerId, view.now),
         control:
             character.id === playerId
                 ? (character.control ?? { mode: 'none', targetId: null })
@@ -124,21 +125,27 @@ function observedPrayerAuraEffects(
     return ids
 }
 
-function relationshipFor(
+function projectRelationship(
     observer: GameCharacter | undefined,
     target: GameCharacter | undefined,
     playerId: string | undefined,
     now: number
-): CharacterRelationship {
+): { relationship: CharacterRelationship; personalHostile?: boolean } {
     if (target === undefined) {
-        return 'friendly'
+        return { relationship: 'friendly' }
     }
     if (target.id === playerId) {
-        return 'self'
+        return { relationship: 'self' }
     }
-    return observer !== undefined && canTargetByFaction(observer, target, now)
-        ? 'hostile'
-        : 'friendly'
+    if (
+        observer !== undefined &&
+        hasAttackRelationship(observer, target, now)
+    ) {
+        return hasDeclaredHostility(observer, target)
+            ? { relationship: 'hostile', personalHostile: true }
+            : { relationship: 'hostile' }
+    }
+    return { relationship: 'friendly' }
 }
 
 function observedWorkerActivity(

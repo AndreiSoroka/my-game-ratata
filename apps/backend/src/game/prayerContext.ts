@@ -11,6 +11,7 @@ import { knowsAbility } from './abilityState'
 import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { canObserveRoomCharacter } from './characterSight'
+import { hasAttackRelationship } from './combatTargets'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
 import { canTargetByFaction } from './factions'
@@ -113,7 +114,7 @@ export function prayerHarmTargets(
         (target) =>
             target.alive &&
             (abilityId === 'pray_grave'
-                ? canTargetByFaction(actor, target, context.now) &&
+                ? hasAttackRelationship(actor, target, context.now) &&
                   canPerceivePrayerCaster(actor, target, context.now)
                 : types.includes(target.creatureType)) &&
             prayerTargetNearby(actor, target, context, abilityId, 'harm')

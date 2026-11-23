@@ -15,7 +15,7 @@ import type { GameCharacter } from './character'
 import { canObserveRoomCharacter } from './characterSight'
 import { isTargetInAttackRange } from './combat'
 import { canUseCombat } from './combatPermission'
-import { canAttackCharacter } from './combatTargets'
+import { canAttackCharacter, hasAttackRelationship } from './combatTargets'
 import { companionProfiles } from './companionProfiles'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
@@ -39,9 +39,11 @@ export function legalPrayerTarget(
     if (action.intent.mode === 'harm') {
         return (
             target.alive &&
-            profileForPrayer(abilityId).harmTypes.includes(
-                target.creatureType
-            ) &&
+            (abilityId === 'pray_grave'
+                ? hasAttackRelationship(actor, target, context.now)
+                : profileForPrayer(abilityId).harmTypes.includes(
+                      target.creatureType
+                  )) &&
             prayerParameters(
                 actor,
                 context.navigation.grid.tileWidth,
