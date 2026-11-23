@@ -12,6 +12,7 @@ import type { NavigationService } from './navigation'
 import type { NecromancerBark } from './necromancerSpeech'
 import { visibilityRadius } from './queries'
 import type { GameRoom } from './room'
+import type { NpcConversationFeedback } from './roomConversationDepartures'
 
 export type NecromancerTactic =
     | 'study'
@@ -27,6 +28,7 @@ export type NecromancerTactic =
     | 'protect'
     | 'wander'
     | 'hunt'
+    | 'hunt_slime'
     | 'offer_help'
     | 'keep_distance'
     | 'favorite'
@@ -39,7 +41,7 @@ export interface NecromancerOption {
     targetId?: string
 }
 
-export interface NecromancerModelContext {
+export interface NecromancerModelContext extends NpcConversationFeedback {
     actorId: string
     phase: 'peace' | 'combat'
     self: { hp: number; maxHp: number; mana: number }
@@ -58,6 +60,7 @@ export interface NecromancerModelDecision {
     choice: number
     note: string
     bark?: NecromancerBark
+    speech?: string | null
 }
 
 export interface NecromancerJournalEntry extends NecromancerOption {

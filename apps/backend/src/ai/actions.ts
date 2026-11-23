@@ -36,7 +36,7 @@ export function npcAiDecisionError(
     }
     switch (decision.type) {
         case 'use_ability':
-            return bladeAbilityError(actor, decision)
+            return combatAbilityError(actor, decision)
         case 'move_to':
             return movementError(actor, role, decision, navigation)
         case 'interact':
@@ -70,15 +70,19 @@ function outsideCoordinatorCity(
     )
 }
 
-function bladeAbilityError(
+function combatAbilityError(
     actor: GameCharacter,
     decision: Extract<AgentDecision, { type: 'use_ability' }>
 ): string | undefined {
     if (
-        !isBladeAbility(decision.abilityId) ||
+        (!isBladeAbility(decision.abilityId) &&
+            decision.abilityId !== 'shot') ||
         !knowsAbility(actor, decision.abilityId)
     ) {
-        return 'This blade technique has not been learned'
+        return 'This combat technique has not been learned'
+    }
+    if (decision.abilityId === 'shot' && decision.targetId === undefined) {
+        return 'A shot by this controller must target a visible opponent'
     }
     return decision.abilityId !== 'defensive_stance' &&
         actorRefusesCombat(actor)
@@ -143,8 +147,8 @@ function advisorDecisionError(
     role: NpcAiRole,
     decision: AgentDecision
 ): string | undefined {
-    return role === 'advisor' &&
+    return (role === 'advisor' || role === 'necromancer') &&
         !['speak', 'wait', 'cancel_control'].includes(decision.type)
-        ? 'This advisor may answer from knowledge, but does not replace its scripted controller'
+        ? `This ${role} conversation may answer from knowledge without taking over the character controller`
         : undefined
 }

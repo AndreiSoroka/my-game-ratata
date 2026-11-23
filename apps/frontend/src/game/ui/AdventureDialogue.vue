@@ -23,6 +23,7 @@ import { useEscapeOwner } from './uiEscapeOwners'
 import { activateFocusedButton } from './uiKeyboard'
 import WorkshopOrders from './WorkshopOrders.vue'
 const props = defineProps<{ adventure: AdventureSnapshot; characters: CharacterSnapshot[] }>()
+defineSlots<{ composer: () => unknown }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const panel = ref<HTMLElement>()
 const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
@@ -34,17 +35,12 @@ const dialogueName = computed(() => {
         : tLocalized(dialogue.npcNameMessage, characterName(dialogue.npcId, dialogue.npcName))
 })
 const rewardMode = ref<QuestRewardMode>('party_equal')
-const dialogueKey = computed(() =>
-    props.adventure.dialogue
-        ? `${props.adventure.dialogue.npcId}:${props.adventure.dialogue.speechId ?? props.adventure.dialogue.text}`
-        : ''
-)
 type QuestChoice = 'accept_quest' | 'turn_in_trophies'
-const pendingQuest = ref<{ choiceId: QuestChoice; dialogueKey: string; questId: string }>()
+const pendingQuest = ref<{ choiceId: QuestChoice; npcId: string; questId: string }>()
 const questDecision = computed(() => {
     const pending = pendingQuest.value
     const { dialogue, quest } = props.adventure
-    if (!pending || pending.dialogueKey !== dialogueKey.value || pending.questId !== quest.id)
+    if (!pending || pending.npcId !== dialogue?.npcId || pending.questId !== quest.id)
         return undefined
     const expectedStatus = pending.choiceId === 'accept_quest' ? 'available' : 'ready'
     return quest.status === expectedStatus &&
@@ -62,7 +58,7 @@ const viewTitle = computed(() =>
               orders: tGame('game.conversation.orders'),
           }[view.value]
 )
-function focusFirstAction(choiceId?: QuestChoice): void {
+function focusFirstAction(id?: QuestChoice): void {
     void nextTick(() => {
         if (questDecision.value) return
         const actions = Array.from(
@@ -70,9 +66,9 @@ function focusFirstAction(choiceId?: QuestChoice): void {
                 '[data-dialogue-action]:not(:disabled)'
             ) ?? []
         )
-        const action = actions.find((item) => item.dataset['dialogueAction'] === choiceId)
-        const nextFocus = action ?? actions[0]
-        nextFocus?.focus()
+        const target = actions.find((item) => item.dataset['dialogueAction'] === id) ?? actions[0]
+        if (target) target.focus()
+        else panel.value?.querySelector<HTMLElement>('input[data-dialogue-focus]')?.focus()
     })
 }
 function closeQuestDecision(): void {
@@ -96,9 +92,11 @@ watch(questDecision, (choiceId) => {
 function choose(choiceId: string): void {
     if (questDecision.value) return
     if (choiceId === 'accept_quest' || choiceId === 'turn_in_trophies') {
+        const npcId = props.adventure.dialogue?.npcId
+        if (!npcId) return
         pendingQuest.value = {
             choiceId,
-            dialogueKey: dialogueKey.value,
+            npcId,
             questId: props.adventure.quest.id,
         }
         return
@@ -115,7 +113,10 @@ function backToConversation(): void {
     focusFirstAction()
 }
 watch(
-    () => `${props.adventure.dialogue?.npcId}:${props.adventure.dialogue?.initialView}`,
+    () => {
+        const { npcId, initialView, speechId } = props.adventure.dialogue ?? {}
+        return `${npcId}:${initialView}:${initialView ? speechId : ''}`
+    },
     () => {
         view.value = props.adventure.dialogue?.initialView ?? 'conversation'
     },
@@ -155,7 +156,7 @@ function handleKeys(event: KeyboardEvent): void {
     buttons[(current + direction + buttons.length) % buttons.length]?.focus()
 }
 watch(
-    dialogueKey,
+    () => props.adventure.dialogue?.npcId,
     (key, oldKey) => {
         if (!key) {
             const canvas = document.querySelector<HTMLCanvasElement>('[data-game-canvas]')
@@ -182,7 +183,7 @@ watch(
         aria-modal="false"
         :inert="questDecision ? true : undefined"
         :aria-describedby="
-            !isSign
+            !isSign && adventure.dialogue.text
                 ? speechBubbleId(adventure.dialogue.npcId, adventure.dialogue.speechId)
                 : undefined
         "
@@ -212,9 +213,10 @@ watch(
         <p v-if="view === 'conversation' && isSign" class="adventure-dialogue__text">
             {{ tLocalized(adventure.dialogue.textMessage, adventure.dialogue.text) }}
         </p>
-        <small v-if="!isSign" class="dialogue-speech-help">{{
-            tGame('game.conversation.pageupPagedownReadTabSelect')
-        }}</small>
+        <small v-if="!isSign && adventure.dialogue.text" class="dialogue-speech-help">
+            {{ tGame('game.conversation.pageupPagedownReadTabSelect') }}
+        </small>
+        <slot v-if="view === 'conversation'" name="composer" />
         <div v-if="view === 'conversation'" class="adventure-choices">
             <QuestRewardSummary
                 v-if="adventure.dialogue.choices.some((choice) => choice.id === 'quest_progress')"

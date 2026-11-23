@@ -4,10 +4,12 @@ import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { NpcAiDialogue } from './dialogue'
+import { replySpeech } from './dialogueResult'
 import { completeNpcBackgroundPresentation } from './questPresentation'
 import { reportNpcRequestStatus } from './requestStatus'
 import {
     enqueueNpcAiEvent,
+    interruptInference,
     npcAiActorAvailable,
     type NpcAiActorState,
 } from './runtimeState'
@@ -58,6 +60,7 @@ export class NpcAiSessionActions {
         if (state.config.mode === 'dialogue_only') {
             reply = {
                 ...reply,
+                speech: replySpeech(reply),
                 decision: null,
                 taskAcceptance: 'none',
                 companionOrder: null,
@@ -90,13 +93,15 @@ export class NpcAiSessionActions {
         }
         rememberNpcReply(state, reply.memory)
         state.retry = 0
-        if (!conversational && state.task.concluding === true) {
-            concludingTaskSpeech(this.dialogue, state, reply, now)
-            this.finish(state, now, reply.waitMs)
-            return
-        }
-        if (!conversational && reply.speech != null) {
-            taskSpeech(this.dialogue, state, reply.speech, now)
+        if (!conversational) {
+            if (state.task.concluding === true) {
+                concludingTaskSpeech(this.dialogue, state, reply, now)
+                this.finish(state, now, reply.waitMs)
+                return
+            }
+            if (reply.speech != null) {
+                taskSpeech(this.dialogue, state, reply.speech, now)
+            }
         }
         if (reply.decision === null) {
             this.wait(state, reply, now)
@@ -127,6 +132,9 @@ export class NpcAiSessionActions {
         now: number
     ): void {
         if (state.retry >= 1) {
+            if (state.dialogue !== undefined) {
+                this.room.social.npcSpeech.fail(state.dialogue, now)
+            }
             reportNpcRequestStatus(
                 this.room,
                 this.diagnostics,
@@ -157,14 +165,10 @@ export class NpcAiSessionActions {
             issue === 'speech_language'
                 ? 'Не удалось подготовить ответ на языке разговора.'
                 : 'Сейчас не получилось начать поручение.'
-        const task =
-            event === undefined
-                ? state.task
-                : { id: event.id, request: event.text }
         this.diagnostics.record({
             actorId: state.config.actorId,
-            taskId: task?.id ?? '',
-            request: task?.request ?? '',
+            taskId: event?.id ?? state.task?.id ?? '',
+            request: event?.text ?? state.task?.request ?? '',
             category: 'action_rejected',
             reason: issue,
             at: now,
@@ -179,6 +183,7 @@ export class NpcAiSessionActions {
             event
         )
         if (event !== undefined) {
+            this.room.social.npcSpeech.fail(event, now)
             state.dialogue = undefined
             state.retry = 0
             if (state.task === null) {
@@ -255,11 +260,6 @@ export class NpcAiSessionActions {
     }
 
     public cancel(state: NpcAiActorState, now: number): void {
-        state.finalizing?.resolve({
-            code: 'command_unavailable',
-            reason: { code: 'cancelled', detail: 'Поручение отменено.' },
-        })
-        state.finalizing = undefined
         reportNpcRequestStatus(
             this.room,
             this.diagnostics,
@@ -268,17 +268,13 @@ export class NpcAiSessionActions {
             now,
             'Поручение отменено.'
         )
-        state.generation += 1
-        state.controller?.abort()
-        state.ready = undefined
+        interruptInference(state)
         state.pending = undefined
         state.guide = undefined
         state.task = null
         state.events = []
         state.inbox = []
-        state.dialogue = undefined
         state.reportedDiagnostics.clear()
-        state.turnControlRevision = undefined
         this.release(state, now)
     }
 
@@ -302,5 +298,12 @@ export class NpcAiSessionActions {
             )
         }
         state.token = undefined
+    }
+
+    public cancelInference(state: NpcAiActorState, now: number): void {
+        interruptInference(state)
+        if (state.task === null) {
+            this.release(state, now)
+        }
     }
 }

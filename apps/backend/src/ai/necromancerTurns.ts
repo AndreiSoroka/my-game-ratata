@@ -29,7 +29,8 @@ export class NecromancerTurns {
         private readonly config: NpcAiConfig,
         private readonly provider: NpcAiProvider,
         private readonly clock: () => number,
-        private readonly nextId: (kind: string) => string
+        private readonly nextId: (kind: string) => string,
+        private readonly wallClock = Date.now
     ) {
         this.configured = config.npcs.filter(
             (npc) => npc.role === 'necromancer' && npc.mode !== 'dialogue_only'
@@ -48,8 +49,9 @@ export class NecromancerTurns {
             if (actor === undefined) {
                 continue
             }
+            const wall = this.wallClock()
             const calls = (this.calls.get(actor.id) ?? []).filter(
-                (at) => at > now - 3_600_000
+                (at) => at > wall - 3_600_000
             )
             if (calls.length >= 8) {
                 continue
@@ -64,15 +66,8 @@ export class NecromancerTurns {
                 continue
             }
             controller.reserve(offer)
-            this.calls.set(actor.id, [...calls, now])
-            return this.launch(
-                actor,
-                token,
-                controller,
-                offer,
-                npc.settings,
-                now
-            )
+            this.calls.set(actor.id, [...calls, wall])
+            return this.launch(actor, token, controller, offer, npc.settings)
         }
         return undefined
     }
@@ -81,7 +76,7 @@ export class NecromancerTurns {
         const actor = this.room.getCharacter(id)
         return actor !== undefined &&
             actor.alive &&
-            this.room.hasConnectedPlayerInLocation(actor.locationId)
+            this.room.allowsAutonomousNpcAi()
             ? actor
             : undefined
     }
@@ -91,8 +86,7 @@ export class NecromancerTurns {
         token: string,
         controller: NecromancerController,
         offer: NecromancerOffer,
-        defaults: NpcAiModelSettings,
-        now: number
+        defaults: NpcAiModelSettings
     ): Promise<void> {
         const abort = new AbortController()
         const settings = {
@@ -103,7 +97,7 @@ export class NecromancerTurns {
             actor,
             token,
             abort,
-            deadline: now + settings.timeoutMs,
+            deadline: this.wallClock() + settings.timeoutMs,
             locationId: actor.locationId,
             deathSequence: actor.deathSequence,
         }
@@ -118,7 +112,12 @@ export class NecromancerTurns {
             })
             const reply = await Promise.race([
                 this.provider.decideNecromancer?.(
-                    offer.context,
+                    {
+                        ...offer.context,
+                        ...this.room.social.npcSpeech.turns.departures.take(
+                            actor
+                        ),
+                    },
                     settings,
                     abort.signal
                 ),
@@ -150,7 +149,7 @@ export class NecromancerTurns {
         const running = this.running
         if (
             running !== undefined &&
-            (now >= running.deadline ||
+            (this.wallClock() >= running.deadline ||
                 !this.valid(running) ||
                 !this.companions.renewModelControl(
                     running.actor,
@@ -168,6 +167,16 @@ export class NecromancerTurns {
         }
     }
 
+    public interrupt(): void {
+        this.stop()
+        for (const npc of this.configured) {
+            const actor = this.room.getCharacter(npc.actorId)
+            if (actor !== undefined) {
+                necromancerController(actor)?.discardPendingAdvice()
+            }
+        }
+    }
+
     private cancel(running: RunningTurn, now: number): void {
         running.abort.abort()
         this.companions.releaseModelControl(
@@ -181,6 +190,7 @@ export class NecromancerTurns {
     private valid(running: RunningTurn): boolean {
         const { actor } = running
         return (
+            this.room.allowsAutonomousNpcAi() &&
             this.room.getCharacter(actor.id) === actor &&
             actor.alive &&
             actor.deathSequence === running.deathSequence &&

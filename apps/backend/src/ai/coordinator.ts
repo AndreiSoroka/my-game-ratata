@@ -1,8 +1,3 @@
-import type {
-    CompanionClientMessage,
-    CompanionRequest,
-} from '@my-game-ratata/contracts'
-
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
@@ -11,16 +6,11 @@ import { reviewNpcAiCity } from './cityReview'
 import { rememberAndGreet } from './coordinatorSocial'
 import { NpcAiTicks } from './coordinatorTicks'
 import { NpcAiDiagnostics } from './diagnostics'
-import {
-    heardSpeechLanguage,
-    legacyNpcRequest,
-    receiveNpcSpeech,
-} from './dialogueReception'
+import { heardSpeechLanguage, receiveNpcSpeech } from './dialogueReception'
 import { npcReplyActivities, rememberHeardSpeech } from './memoryObservation'
 import { reviewNpcIdleActivity } from './npcAutonomy'
 import { buildNpcAiObservation } from './observation'
 import {
-    canAddressNpcAi,
     createNpcAiState,
     npcAiActorAvailable,
     type NpcAiActorState,
@@ -61,12 +51,13 @@ export class NpcAiCoordinator {
             diagnostics
         )
         for (const npc of config.npcs) {
-            if (npc.role === 'necromancer') {
-                continue
-            }
+            const dialogueConfig =
+                npc.role === 'necromancer'
+                    ? { ...npc, mode: 'dialogue_only' as const }
+                    : npc
             this.states.set(
                 npc.actorId,
-                createNpcAiState(npc, room.getCharacter(npc.actorId))
+                createNpcAiState(dialogueConfig, room.getCharacter(npc.actorId))
             )
         }
         this.scheduler = new NpcAiScheduler(
@@ -93,33 +84,6 @@ export class NpcAiCoordinator {
             this.sessions.cancel(state, this.clock())
         }
         this.scheduler.stop()
-    }
-
-    public talk(
-        requester: GameCharacter,
-        message: CompanionClientMessage,
-        now: number
-    ): boolean {
-        const state = this.states.get(message.targetId)
-        const actor = this.room.getCharacter(message.targetId)
-        const text = message.text?.trim()
-        if (
-            !this.active ||
-            state === undefined ||
-            text === undefined ||
-            text.length === 0
-        ) {
-            return false
-        }
-        if (!canAddressNpcAi(this.room, requester, actor, now)) {
-            return false
-        }
-        this.hear(
-            requester,
-            legacyNpcRequest(requester, text, this.id('request'), now),
-            actor.id
-        )
-        return true
     }
 
     public configured(id: string): boolean {
@@ -200,31 +164,43 @@ export class NpcAiCoordinator {
         this.scheduler.schedule()
     }
 
-    public dismiss(
-        requester: GameCharacter,
-        targetId: string,
-        now: number,
-        request: CompanionRequest = 'dismiss'
-    ): void {
-        const state = this.states.get(targetId)
-        if (
-            state?.task?.requesterId !== requester.id ||
-            !canAddressNpcAi(this.room, requester, state.actor, now)
-        ) {
+    public replyActivities() {
+        return npcReplyActivities(this.states.values())
+    }
+
+    public cancelActor(id: string, now: number): void {
+        const state = this.states.get(id)
+        if (state === undefined) {
             return
         }
-        const capabilities = this.companions.capabilities(state.actor)
-        if (
-            (request === 'follow' && !capabilities.canFollow) ||
-            (request === 'help' && !capabilities.canFight)
-        ) {
-            return
+        for (const event of [state.dialogue, ...state.inbox]) {
+            if (event !== undefined) {
+                this.room.social.npcSpeech.fail(event, now)
+            }
         }
         this.sessions.cancel(state, now)
     }
 
-    public replyActivities() {
-        return npcReplyActivities(this.states.values())
+    public suspendAutonomy(now: number): void {
+        this.scheduler.interruptAdvice()
+        for (const state of this.states.values()) {
+            const dialogue = state.dialogue
+            if (
+                dialogue !== undefined &&
+                state.actor !== undefined &&
+                (this.room.getCharacter(dialogue.senderId)?.connected !==
+                    true ||
+                    !this.room.social.npcSpeech.turns.available(
+                        state.actor,
+                        dialogue,
+                        now
+                    ))
+            ) {
+                this.sessions.cancelInference(state, now)
+            }
+            this.ticks.yieldBackground(state, now)
+            state.idleSince = undefined
+        }
     }
 
     public beforeTick(now: number): void {
@@ -233,9 +209,13 @@ export class NpcAiCoordinator {
         }
         this.scheduler.beforeTick(now)
         const incoming = [...this.states.values()].some((state) =>
-            state.inbox.some((event) => event.system !== true)
+            state.inbox.some(
+                (event) =>
+                    event.system !== true || event.conversationId !== undefined
+            )
         )
         if (incoming) {
+            this.scheduler.interruptAdvice()
             for (const state of this.states.values()) {
                 this.ticks.yieldBackground(state, now)
             }
@@ -249,6 +229,8 @@ export class NpcAiCoordinator {
         if (!this.active) {
             return
         }
+        const proactive =
+            this.config.proactive !== false && this.room.allowsAutonomousNpcAi()
         const observe = now >= this.nextObservation
         if (observe) {
             this.nextObservation = now + 250
@@ -257,7 +239,7 @@ export class NpcAiCoordinator {
             if (!npcAiActorAvailable(state.actor)) {
                 continue
             }
-            if (observe) {
+            if (observe && state.config.mode !== 'dialogue_only') {
                 const observation = buildNpcAiObservation(
                     this.room,
                     state.actor,
@@ -269,7 +251,7 @@ export class NpcAiCoordinator {
                     state,
                     observation,
                     now,
-                    this.config.proactive !== false,
+                    proactive,
                     (kind) => this.id(kind)
                 )
             }
@@ -284,6 +266,7 @@ export class NpcAiCoordinator {
             )
             if (
                 state.config.role === 'city_coordinator' &&
+                proactive &&
                 now >= state.inspectAt
             ) {
                 reviewNpcAiCity(
@@ -295,7 +278,7 @@ export class NpcAiCoordinator {
                     (kind) => this.id(kind)
                 )
             }
-            if (this.config.proactive !== false) {
+            if (proactive) {
                 reviewNpcIdleActivity(this.room, state, now, (kind) =>
                     this.id(kind)
                 )

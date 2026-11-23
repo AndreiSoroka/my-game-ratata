@@ -29,6 +29,7 @@ function lookupOnly(reply: NpcAiReply): boolean {
     return (
         reply.decision === null &&
         reply.speech == null &&
+        reply.offerService == null &&
         reply.companionOrder == null &&
         task === 'none'
     )

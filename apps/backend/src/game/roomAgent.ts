@@ -1,9 +1,22 @@
-import type { AgentDecisionResult } from './agentDecisions'
+import { type AgentDecisionResult, parseAgentDecision } from './agentDecisions'
 import { observeCombatEvents } from './combatObservation'
 import type { CompanionService } from './companions'
+import { kaplyaSafetyActive, visibleKaplyaThreat } from './companionSafety'
+import { npcDialogueMode, scriptedResident } from './npcRoster'
 import type { GameRoom } from './room'
 
-export function decideForRoomAgent(
+export function createRoomAgentRequester(
+    room: GameRoom,
+    companions: CompanionService,
+    paused: () => boolean
+) {
+    return (actorId: string, decision: unknown): AgentDecisionResult =>
+        paused()
+            ? { accepted: false, error: 'Игровой мир на паузе.', events: [] }
+            : decideForRoomAgent(room, companions, actorId, decision)
+}
+
+function decideForRoomAgent(
     room: GameRoom,
     companions: CompanionService,
     actorId: string,
@@ -17,7 +30,22 @@ export function decideForRoomAgent(
             events: [],
         }
     }
-    const result = companions.decide(actor, decision, room, Date.now())
+    const now = room.gameplayNow()
+    const parsed = parseAgentDecision(decision)
+    if (
+        npcDialogueMode(actor.id) === 'passive' ||
+        (parsed?.type === 'speak' && scriptedResident(actor.id)) ||
+        (actor.id === 'npc_magic_slime_1' &&
+            (kaplyaSafetyActive(actor) ||
+                visibleKaplyaThreat(actor, room, now) !== undefined))
+    ) {
+        return {
+            accepted: false,
+            error: 'NPC role or current safety policy owns this action',
+            events: [],
+        }
+    }
+    const result = companions.decide(actor, decision, room, now)
     room.publishEvents(result.events)
     return {
         ...result,
@@ -25,7 +53,7 @@ export function decideForRoomAgent(
             observer: actor,
             getCharacter: (id) => room.getCharacter(id),
             navigation: room.navigationFor(actor),
-            now: Date.now(),
+            now,
             hasModelLease: (character, now) =>
                 companions.hasActiveLease(character, now, room),
         }),

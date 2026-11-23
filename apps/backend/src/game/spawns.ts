@@ -15,6 +15,7 @@ import {
 import { createItemInstance, equipDirect } from './inventory'
 import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService, TileCoordinate } from './navigation'
+import { initializeNpcProgression } from './npcProgression'
 
 export interface SpawnedCharacter {
     character: GameCharacter
@@ -114,6 +115,7 @@ export function createFriendlyGirl(
                   }),
         visualId: 'female_player',
     })
+    initializeNpcProgression(girl)
 
     return {
         character: girl,

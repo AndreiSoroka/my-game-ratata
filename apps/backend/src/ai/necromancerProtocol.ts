@@ -5,11 +5,12 @@ import { isObject } from './npcCliProtocol'
 export const necromancerDecisionSchema = JSON.stringify({
     type: 'object',
     additionalProperties: false,
-    required: ['choice', 'note', 'bark'],
+    required: ['choice', 'note', 'bark', 'speech'],
     properties: {
         choice: { type: 'integer', minimum: 0, maximum: 31 },
         note: { type: 'string', maxLength: 140 },
         bark: { type: 'string', enum: ['none', ...necromancerBarks] },
+        speech: { type: ['string', 'null'], maxLength: 140 },
     },
 })
 
@@ -19,15 +20,13 @@ export function parseNecromancerDecision(
     if (
         !isObject(input) ||
         Object.keys(input).some(
-            (key) => !['choice', 'note', 'bark'].includes(key)
+            (key) => !['choice', 'note', 'bark', 'speech'].includes(key)
         ) ||
-        typeof input['choice'] !== 'number' ||
-        !Number.isInteger(input['choice']) ||
-        input['choice'] < 0 ||
-        input['choice'] > 31 ||
+        !validChoice(input['choice']) ||
         typeof input['note'] !== 'string' ||
         input['note'].length > 140 ||
-        !validBark(input['bark'])
+        !validBark(input['bark']) ||
+        !validSpeech(input['speech'])
     ) {
         throw new Error('Invalid necromancer decision')
     }
@@ -35,7 +34,21 @@ export function parseNecromancerDecision(
         choice: input['choice'],
         note: input['note'],
         ...(isNecromancerBark(input['bark']) ? { bark: input['bark'] } : {}),
+        ...(input['speech'] === undefined ? {} : { speech: input['speech'] }),
     }
+}
+
+function validChoice(value: unknown): value is number {
+    return (
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= 31
+    )
+}
+
+function validSpeech(value: unknown): value is string | null | undefined {
+    return value == null || (typeof value === 'string' && value.length <= 140)
 }
 
 function validBark(value: unknown): boolean {

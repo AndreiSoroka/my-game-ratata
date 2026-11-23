@@ -130,7 +130,8 @@ export class AdventureService {
     public snapshot(
         playerId: string,
         locationId: string = CENTER_LOCATION_ID,
-        actor?: GameCharacter
+        actor?: GameCharacter,
+        now = this.now()
     ): AdventureSnapshot {
         return adventureSnapshot({
             playerId,
@@ -140,7 +141,7 @@ export class AdventureService {
             economy: this.economy,
             resources: this.resources,
             worldObjects: this.worldObjects,
-            now: this.now(),
+            now,
             cities: this.cities,
         })
     }
@@ -181,7 +182,8 @@ export class AdventureService {
         cities: this.cities,
         now: () => this.now(),
     })
-    public readonly interact = this.interactions.interact
+    public readonly interact = this.interactions.interactEvents
+    public readonly interactResult = this.interactions.interact
     public readonly trade = this.interactions.trade
     public readonly refreshTradeAccess = this.interactions.refresh
 

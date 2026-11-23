@@ -4,7 +4,6 @@ import {
     type GameEventPayload,
     npcQuestMessage,
     type NpcRequestStatus,
-    type SocialSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { NpcAiCoordinator } from '../ai/coordinator'
@@ -13,15 +12,20 @@ import type { AgentDecisionResult } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { ExchangeService } from './exchange'
 import { isNpcQuestClient, isNpcQuestDecision } from './npcQuestCommands'
-import { configureNpcQuestDialogue } from './npcQuestDialogue'
 import { NpcQuestService } from './npcQuests'
 import type { NpcQuestDecisionContext } from './npcQuestTypes'
+import { npcDialogueMode } from './npcRoster'
 import type { PartyService } from './parties'
 import type { GameRoom } from './room'
 import { RoomCommunication } from './roomCommunication'
+import { RoomNpcContacts } from './roomNpcContacts'
 import { RoomQuestDialogues } from './roomQuestDialogues'
 import { decideSocialExchange, isExchange } from './roomSocialExchange'
 import { handleSocialSpeech } from './roomSocialSpeech'
+import {
+    createRoomSocialSnapshot,
+    projectCharacterInteractions,
+} from './roomSocialViews'
 import { createSocialWake } from './roomSocialWake'
 import { createWhisperObserver } from './roomWhisperObserver'
 import { TradeNotifications } from './tradeNotifications'
@@ -34,6 +38,7 @@ export class RoomSocial {
     public readonly quests: NpcQuestService
     private readonly questDialogues: RoomQuestDialogues
     private readonly communication: RoomCommunication
+    public readonly npcSpeech: RoomNpcContacts
     private readonly wake: ReturnType<typeof createSocialWake>
     private readonly tradeViews = new TradeNotifications()
 
@@ -50,7 +55,8 @@ export class RoomSocial {
             getCharacter: (id) => room.getCharacter(id),
             navigationFor: (actor) => room.navigationFor(actor),
             heard: createWhisperObserver(
-                ai,
+                (actor, event, targetId) =>
+                    this.npcSpeech.receive(actor, event, targetId),
                 () => this.questDialogues.turnIns,
                 (actor, listener) =>
                     adventure.cities.observeSpeech(actor.id, listener.id)
@@ -58,10 +64,13 @@ export class RoomSocial {
             translate: (...args) =>
                 room.speechTranslations.privateSpeech(...args),
         })
+        this.npcSpeech = new RoomNpcContacts(room, adventure, this.whispers, ai)
         this.exchanges = new ExchangeService({
             getCharacter: (id) => room.getCharacter(id),
             navigationFor: (actor) => room.navigationFor(actor),
-            aiDialogue: (actor) => this.ai()?.configured(actor.id) === true,
+            aiDialogue: (actor) =>
+                this.ai()?.configured(actor.id) === true &&
+                npcDialogueMode(actor.id) !== 'passive',
             canControlAI: (actor, now) =>
                 this.ai()?.canControl(actor.id, now) === true,
             walletFor: (id) => adventure.walletFor(id),
@@ -90,7 +99,9 @@ export class RoomSocial {
             characters: actors,
             getCharacter: (id) => room.getCharacter(id),
             navigationFor: (actor) => room.navigationFor(actor),
-            canIssue: (actor) => this.ai()?.configured(actor.id) === true,
+            canIssue: (actor) =>
+                this.ai()?.configured(actor.id) === true &&
+                npcDialogueMode(actor.id) !== 'passive',
         })
         this.questDialogues = new RoomQuestDialogues({
             room,
@@ -101,11 +112,13 @@ export class RoomSocial {
             whispers: this.whispers,
             actors,
         })
-        configureNpcQuestDialogue(
-            adventure,
+        this.snapshot = createRoomSocialSnapshot(
+            this.exchanges,
             this.quests,
-            room.workerRequests,
-            (id) => room.getCharacter(id)
+            this.questDialogues.turnIns,
+            this.communication,
+            this.npcSpeech.turns,
+            this.whispers
         )
     }
 
@@ -114,17 +127,16 @@ export class RoomSocial {
         message: ClientMessage,
         now: number
     ): boolean {
+        if (this.npcSpeech.handle(actor, message, now)) {
+            return true
+        }
         if (message.type === 'quest_turn_in_confirm') {
-            const result = this.questDialogues.turnIns.confirm(
+            this.questDialogues.confirm(
                 actor,
                 message.confirmationId,
                 message.accept,
                 now
             )
-            this.room.publishEvents(result.events)
-            if (!result.accepted) {
-                this.notice(actor, result.error ?? 'Сдача недоступна.')
-            }
             return true
         }
         if (this.communication.handle(actor, message, now)) {
@@ -158,15 +170,25 @@ export class RoomSocial {
             }
             return true
         }
-        if (isNpcQuestClient(message)) {
-            const result = this.quests.handle(actor, message, now)
-            this.room.publishEvents(result.events)
-            if (!result.accepted) {
-                this.notice(actor, result.error ?? 'Договор недоступен.')
-            }
-            return true
+        return this.handleQuestCommand(actor, message, now)
+    }
+
+    private handleQuestCommand(
+        actor: GameCharacter,
+        message: ClientMessage,
+        now: number
+    ): boolean {
+        if (!isNpcQuestClient(message)) {
+            return false
         }
-        return false
+        const result = this.quests.handle(actor, message, now)
+        this.room.publishEvents(result.events)
+        if (!result.accepted) {
+            this.notice(actor, result.error ?? 'Договор недоступен.')
+        } else if (message.type === 'quest_inquire') {
+            this.npcSpeech.inquire(actor, result.events, now)
+        }
+        return true
     }
 
     public isDecision(decision: AgentDecision): boolean {
@@ -220,37 +242,13 @@ export class RoomSocial {
     }
 
     public interactions(actor: GameCharacter) {
-        return {
-            aiDialogue: this.ai()?.configured(actor.id) === true,
-            whisper: actor.soul.canSpeak,
-            exchange:
-                actor.soul.canSpeak &&
-                (actor.controllerKind === 'network_player'
-                    ? actor.connected
-                    : this.ai()?.configured(actor.id) === true),
-        }
+        return projectCharacterInteractions(
+            actor,
+            this.ai()?.configured(actor.id) === true
+        )
     }
 
-    public snapshot(actor: GameCharacter, now: number): SocialSnapshot {
-        const exchange = this.exchanges.snapshot(actor.id)
-        const questView = this.quests.snapshot(actor.id, now)
-        const questTurnIn = this.questDialogues.turnIns.snapshot(actor, now)
-        const partnerId =
-            questView.questOffer?.issuerId ??
-            questTurnIn?.issuerId ??
-            (exchange !== null &&
-            ['active', 'invited'].includes(exchange.status)
-                ? exchange.partnerId
-                : undefined)
-        return {
-            exchange,
-            privateMessages: this.whispers.heardMessages(actor.id, true),
-            ...this.communication.snapshot(actor, now),
-            whisper: this.whispers.snapshot(actor, now, partnerId, true),
-            ...questView,
-            questTurnIn,
-        }
-    }
+    public readonly snapshot: ReturnType<typeof createRoomSocialSnapshot>
 
     public conversation(issuerId: string, recipientId: string, now: number) {
         return this.questDialogues.conversation(issuerId, recipientId, now)
@@ -280,6 +278,13 @@ export class RoomSocial {
     }
 
     public observe(events: GameEventPayload[]): void {
+        for (const event of events) {
+            if (event.kind === 'death' || event.kind === 'permadeath') {
+                this.npcSpeech.turns.close(
+                    event.kind === 'death' ? event.targetId : event.actorId
+                )
+            }
+        }
         this.quests.observe(events)
     }
 

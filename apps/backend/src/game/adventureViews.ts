@@ -105,6 +105,16 @@ export function resolvedAdventureAction(
     navigation: NavigationService | undefined,
     now: number
 ): AdventureActionResult {
+    if (message.type === 'interact') {
+        return service.interactResult(
+            actor,
+            message.targetId,
+            characters,
+            navigation,
+            now,
+            message.service
+        )
+    }
     const fingerprint = () =>
         JSON.stringify({
             inventory: actor.inventory,

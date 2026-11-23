@@ -1,11 +1,12 @@
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
 import App from '../../App.vue'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
 import { developmentCharacterFixture } from '../testing/developmentFixture'
+import { stubReadyGameServer } from '../testing/stubReadyGameServer'
 
 const runtime = vi.hoisted(() => ({
     snapshot: undefined as ((snapshot: WorldSnapshot, playerId: string) => void) | undefined,
@@ -36,7 +37,9 @@ vi.mock('../runtime/ratataGame', () => ({
         }
     },
 }))
+beforeEach(stubReadyGameServer)
 afterEach(() => {
+    vi.unstubAllGlobals()
     vi.useRealTimers()
     runtime.snapshot = undefined
     runtime.playUiSound.mockClear()

@@ -86,7 +86,7 @@ function observeActor(url: URL, room: GameRoom): Response | undefined {
         )
     }
     prepareConstellationLayout(actor)
-    return Response.json(room.snapshot(Date.now(), actor.locationId, actor.id))
+    return Response.json(room.snapshot(undefined, actor.locationId, actor.id))
 }
 
 function observeState(url: URL, room: GameRoom): Response {
@@ -98,5 +98,5 @@ function observeState(url: URL, room: GameRoom): Response {
     if (!room.hasLocation(location)) {
         return Response.json({ error: 'Unknown location' }, { status: 400 })
     }
-    return Response.json(room.snapshot(Date.now(), location))
+    return Response.json(room.snapshot(undefined, location))
 }

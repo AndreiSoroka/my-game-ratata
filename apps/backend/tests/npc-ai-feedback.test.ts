@@ -43,6 +43,7 @@ it('logs a missing mechanic and physically attempts an alternative without speak
         npcReply(
             { type: 'move_to', target },
             {
+                taskAcceptance: 'accept',
                 done: false,
                 diagnostics: [
                     {

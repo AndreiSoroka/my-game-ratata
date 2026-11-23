@@ -161,7 +161,14 @@ describe('isolated Claude Code NPC provider', () => {
             expect.stringContaining('player-provided text')
         )
         expect(instructions).toContain('You are not a coding assistant')
-        expect(instructions).toContain('"required":["decision","memory"')
+        const schema: unknown = JSON.parse(
+            instructions.trim().split('\n').at(-1) ?? ''
+        )
+        expect(schema).toHaveProperty('required')
+        const { required } = schema as { required: string[] }
+        expect(required).toContain('decision')
+        expect(required).toContain('memory')
+        expect(required).toContain('offerService')
         expect(logs[0]).toMatchObject({
             outcome: 'completed',
             usage: { input_tokens: 300, output_tokens: 50 },

@@ -1,58 +1,53 @@
-import type { GameEventPayload, GameLocale } from '@my-game-ratata/contracts'
+import {
+    DEFAULT_WORLD_EMPTY_MODE,
+    type GameEventPayload,
+    type GameLocale,
+    type WorldEmptyMode,
+} from '@my-game-ratata/contracts'
 
 import * as roomAi from '../ai/roomAi'
 export type { GameRoomOptions } from '../ai/roomAi'
-import { AdventureService } from './adventure'
-import { adventureWorldOptions } from './adventureWorld'
 import type { GameCharacter } from './character'
 import { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
-import { createRoomScavenger } from './mobScavenging'
 import { loadNavigationService } from './navigation'
 import { seedNpcPockets } from './npcPockets'
 import { createRoomCombatActions } from './roomAbilities'
-import { decideForRoomAgent } from './roomAgent'
+import { createRoomAgentRequester } from './roomAgent'
 import { createRoomChestActions } from './roomChests'
 import * as roomClientDispatch from './roomClientDispatch'
 import { createRoomControlRequester } from './roomControl'
 import * as roomEconomy from './roomEconomy'
-import { RoomEventPipeline } from './roomEventPipeline'
 import { createDefaultRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
 import { RoomLife } from './roomLife'
+import { RoomLoop, roomTickMs } from './roomLoop'
 import { type RoomSocket } from './roomMessaging'
 import * as roomQueries from './roomQueries'
 import * as roomScenarios from './roomScenarios'
-import { advanceRoomSimulation } from './roomSimulation'
-import { createRoomSnapshotter } from './roomSnapshot'
-import { RoomSocial } from './roomSocial'
-import { createRoomTheftRequester } from './roomTheft'
-import { configureRoomQuests, createRoomParties } from './roomWorkerRequests'
+import { createRoomServices, type RoomServices } from './roomServices'
+import { configureRoomQuests } from './roomWorkerRequests'
 import { createRoomWorld, initializeRoomCharacters } from './roomWorldSetup'
 import { RoomSpeechTranslations } from './speechTranslation'
 import { TheftService } from './theft'
 import { WorkerRequestService } from './workerRequests'
+import { WorldClock } from './worldClock'
 import { type WorldLocations } from './worldLocations'
 
-const tickMs = 50
-
 export class GameRoom {
+    private readonly clock: WorldClock
+    private emptyWorldMode: WorldEmptyMode
+    public readonly gameplayNow = (): number => this.clock.now()
+    public readonly realNow = (): number => this.clock.realNow()
     private readonly characters = new Map<string, GameCharacter>()
     private readonly connections = new Map<RoomSocket, string | undefined>()
     public readonly speechTranslations: RoomSpeechTranslations
     private readonly controllers = new Map<string, CharacterController>()
     private readonly playerIdsByNickname = new Map<string, string>()
     private readonly world: WorldLocations
-    private readonly adventure = new AdventureService(
-        adventureWorldOptions(() => this.world)
-    )
+    private readonly adventure: RoomServices['adventure']
     private readonly companions = new CompanionService()
-    public readonly scenarios = roomScenarios.createRoomScenarioService(
-        this,
-        this.companions,
-        () => this.characters.values(),
-        this.adventure
-    )
+    public readonly scenarios: RoomServices['scenarios']
     public readonly scenarioEnvironment =
         roomScenarios.createScenarioEnvironment(() => this.world)
     private readonly life = new RoomLife(
@@ -67,31 +62,10 @@ export class GameRoom {
     )
     private readonly theft = new TheftService()
     public readonly workerRequests = new WorkerRequestService()
-    private readonly parties = createRoomParties(this, this.adventure)
-    public readonly social = new RoomSocial(
-        this,
-        this.adventure,
-        this.parties,
-        () => this.npcAi,
-        () => this.characters.values()
-    )
-    private readonly events = new RoomEventPipeline(
-        this.characters,
-        this.connections,
-        this.adventure,
-        this.parties,
-        this.social,
-        {
-            archivePerson: (id, now) => this.npcAi?.archivePerson(id, now),
-            hasModelLease: (actor, now) =>
-                this.companions.hasActiveLease(actor, now, this),
-            world: () => this.world,
-            speechTranslations: () => this.speechTranslations,
-        }
-    )
-    private lastTickAt = Date.now()
-    private timer: ReturnType<typeof setInterval> | undefined
-    private tickIndex = 0
+    private readonly parties: RoomServices['parties']
+    public readonly social: RoomServices['social']
+    private readonly events: RoomServices['events']
+    private readonly loop: RoomLoop
     private readonly npcAi: ReturnType<typeof roomAi.createNpcAiCoordinator>
 
     public constructor(
@@ -103,6 +77,29 @@ export class GameRoom {
             this.getCharacter,
             options.speechTranslator
         )
+        this.clock = new WorldClock(options.worldClock ?? Date.now)
+        this.emptyWorldMode = options.emptyWorldMode ?? DEFAULT_WORLD_EMPTY_MODE
+        this.clock.setMode(this.emptyWorldMode, false)
+        const session = createRoomServices({
+            room: this,
+            characters: this.characters,
+            connections: this.connections,
+            world: () => this.world,
+            companions: this.companions,
+            life: this.life,
+            theft: this.theft,
+            ai: () => this.npcAi,
+            tick: () => this.loop.tick,
+        })
+        this.adventure = session.adventure
+        this.scenarios = session.scenarios
+        this.parties = session.parties
+        this.social = session.social
+        this.events = session.events
+        this.requestTheft = session.requestTheft
+        this.requestScavenge = session.requestScavenge
+        this.requestAutomation = session.requestAutomation
+        this.snapshot = session.snapshot
         this.world = createRoomWorld(navigation, this.adventure, options)
         configureRoomQuests(this, this.adventure, this.parties, this.characters)
         const graves = initializeRoomCharacters({
@@ -114,8 +111,9 @@ export class GameRoom {
             adventure: this.adventure,
             options,
             onRegistered: this.refreshPrayerAuraEnvironment,
+            now: this.gameplayNow,
         })
-        this.life.registerGraves(graves, Date.now())
+        this.life.registerGraves(graves, this.gameplayNow())
         seedNpcPockets(this.characters.values())
         this.refreshPrayerAuraEnvironment()
         roomScenarios.registerWandererScenarios(
@@ -128,25 +126,22 @@ export class GameRoom {
             this.companions,
             options
         )
+        this.loop = new RoomLoop(
+            this.clock,
+            () => this.simulationFrame(),
+            () => this.npcAi,
+            this.refreshPresence
+        )
     }
 
     public start(): void {
-        if (this.timer !== undefined) {
-            return
-        }
-
-        this.timer = setInterval(() => this.tick(), tickMs)
-        this.npcAi?.start()
+        this.loop.start()
     }
 
     public stop(): void {
         this.speechTranslations.stop()
         this.social.stop()
-        this.npcAi?.stop()
-        if (this.timer !== undefined) {
-            clearInterval(this.timer)
-            this.timer = undefined
-        }
+        this.loop.stop()
     }
 
     public handleOpen(ws: RoomSocket): void {
@@ -159,8 +154,41 @@ export class GameRoom {
             this.characters,
             ws,
             this.world.closeChestViews.bind(this.world),
-            this.adventure.closeConversations.bind(this.adventure)
+            this.closeConversations,
+            this.gameplayNow()
         )
+        this.refreshPresence()
+    }
+
+    private readonly closeConversations = (id: string): void => {
+        this.adventure.closeConversations(id)
+        this.social.npcSpeech.turns.close(id)
+    }
+
+    public setEmptyWorldMode(mode: WorldEmptyMode): void {
+        this.emptyWorldMode = mode
+        this.refreshPresence()
+    }
+
+    public allowsAutonomousNpcAi(): boolean {
+        return this.clock.allowsAutonomy
+    }
+
+    private readonly refreshPresence = (): boolean => {
+        const occupied = [...this.connections.values()].some(
+            (id) => this.characters.get(id ?? '')?.connected === true
+        )
+        const { paused, resumed, suspended } = this.clock.setMode(
+            this.emptyWorldMode,
+            occupied
+        )
+        if (resumed) {
+            this.loop.resume()
+        }
+        if (suspended) {
+            this.npcAi?.suspendAutonomy(this.gameplayNow())
+        }
+        return paused
     }
 
     public readonly hasLocation = (locationId: string): boolean =>
@@ -175,48 +203,43 @@ export class GameRoom {
         return this.speechTranslations.localeFor(actorId)
     }
 
-    public readonly hasConnectedPlayerInLocation = (
-        locationId: string
-    ): boolean =>
-        roomQueries.hasConnectedPlayerInLocation(
-            this.characters.values(),
-            locationId
-        )
-
     public readonly adventureForWorkers = () => this.adventure
     public readonly requestAdventure = roomEconomy.createAdventureRequester(
         () => this.adventure,
         () => [...this.characters.values()],
-        (actor) => this.navigationFor(actor)
+        (actor) => this.navigationFor(actor),
+        this.gameplayNow
     )
     public readonly requestInventoryAction =
         roomEconomy.createInventoryRequester(() => this.world)
 
-    public decideForAgent(actorId: string, decision: unknown) {
-        return decideForRoomAgent(this, this.companions, actorId, decision)
+    public readonly decideForAgent = createRoomAgentRequester(
+        this,
+        this.companions,
+        () => this.clock.paused
+    )
+
+    public cancelNpcModelTurn(actorId: string, now: number): void {
+        this.npcAi?.cancelActor(actorId, now)
     }
 
-    public readonly notifyNpcAi = roomAi.createNpcAiRequestReceiver(
-        () => this.npcAi
-    )
+    public rememberNpcMeeting(actor: GameCharacter, npc: GameCharacter): void {
+        this.companions.rememberMeeting(actor, npc)
+    }
 
-    public readonly requestTheft = createRoomTheftRequester(
-        this.theft,
-        this.adventure,
-        this.characters,
-        (actor) => this.navigationFor(actor)
-    )
+    public readonly requestTheft: RoomServices['requestTheft']
 
     public readonly chestActions = createRoomChestActions(() => this.world)
-    public readonly requestPickup = createRoomItemPicker(() => this.world)
-    public readonly requestScavenge = createRoomScavenger(
+    public readonly requestPickup = createRoomItemPicker(
         () => this.world,
-        (events) => this.publishEvents(events)
+        this.gameplayNow
     )
+    public readonly requestScavenge: RoomServices['requestScavenge']
 
     public readonly findVisibleTarget = roomQueries.createRoomTargetFinder(
         () => this.characters,
-        (actor) => this.navigationFor(actor)
+        (actor) => this.navigationFor(actor),
+        this.gameplayNow
     )
     public readonly raisableCorpseFor = roomQueries.createNearbyCorpseFinder(
         () => this.world
@@ -229,11 +252,11 @@ export class GameRoom {
         {
             graves: this.life.graveRules,
             useAshRite: this.life.ashRites.use,
-            sameParty: this.parties.sameParty.bind(this.parties),
+            sameParty: (left, right) => this.parties.sameParty(left, right),
             exchangePaused: (actorId) =>
                 this.social.exchanges.isPaused(actorId),
-            closeConversations: (actorId) =>
-                this.adventure.closeConversations(actorId),
+            closeConversations: this.closeConversations,
+            now: this.gameplayNow,
         }
     )
     public readonly requestAttack = this.combat.requestAttack
@@ -249,25 +272,8 @@ export class GameRoom {
     public readonly refreshPrayerAuraEnvironment = this.combat.bindActors
     public readonly requestControl = createRoomControlRequester(this)
 
-    public readonly requestAutomation = roomScenarios.createScenarioRequester(
-        this,
-        this.scenarios
-    )
-
-    public readonly snapshot = createRoomSnapshotter(
-        () => ({
-            adventure: this.adventure,
-            theft: this.theft,
-            characters: this.characters,
-            parties: this.parties,
-            tick: this.tickIndex,
-            world: this.world,
-            life: this.life,
-            social: this.social,
-            magicEffects: this.magicEffectsFor,
-        }),
-        this
-    )
+    public readonly requestAutomation: RoomServices['requestAutomation']
+    public readonly snapshot: RoomServices['snapshot']
 
     public readonly handleMessage = roomClientDispatch.createRoomMessageHandler(
         () => ({
@@ -276,50 +282,42 @@ export class GameRoom {
             theft: this.theft,
             characters: this.characters,
             parties: this.parties,
-            companions: this.companions,
             world: this.world,
             connections: this.connections,
-            join: this.join,
-            abandon: (actor) => this.life.abandon(actor, Date.now()),
-        })
+            join: (...args) => this.join(...args),
+            abandon: (actor) => this.life.abandon(actor, this.gameplayNow()),
+        }),
+        this.refreshPresence
     )
 
     private readonly join = createDefaultRoomJoiner({
-        closeConversations: (id) => this.adventure.closeConversations(id),
+        closeConversations: this.closeConversations,
         characters: this.characters,
         connections: this.connections,
         controllers: this.controllers,
         nicknames: this.playerIdsByNickname,
         room: this,
+        onAttached: this.refreshPresence,
         world: () => this.world,
-        tickMs,
+        tickMs: roomTickMs,
     })
 
-    private tick(now = Date.now()): void {
-        const deltaMs = Math.max(1, Math.min(250, now - this.lastTickAt))
-        this.lastTickAt = now
-        this.tickIndex += 1
-        this.npcAi?.beforeTick(now)
-        this.publishEvents(this.life.ashRites.advance(now))
-
-        advanceRoomSimulation({
+    private simulationFrame() {
+        return {
             companions: this.companions,
             characters: this.characters,
             connections: this.connections,
             controllers: this.controllers,
             theft: this.theft,
-            deltaMs,
             nicknames: this.playerIdsByNickname,
             life: this.life,
-            now,
-            onEvents: (events) => this.publishEvents(events),
+            onEvents: (events: GameEventPayload[]) =>
+                this.publishEvents(events),
             parties: this.parties,
             room: this,
-            snapshot: (time, locationId, playerId) =>
-                this.snapshot(time, locationId, playerId),
+            snapshot: this.snapshot,
             world: this.world,
-        })
-        this.npcAi?.afterTick(now)
+        }
     }
 
     public publishEvents(events: GameEventPayload[]): void {

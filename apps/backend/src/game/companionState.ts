@@ -43,6 +43,8 @@ export function release(
     state: CompanionRuntime
 ): void {
     state.leaderId = null
+    delete state.leaderDeathSequence
+    delete state.regionalLeg
     state.order = 'idle'
     state.waitMode = undefined
     state.waitDeparted = false

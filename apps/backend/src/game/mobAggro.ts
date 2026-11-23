@@ -30,8 +30,8 @@ export function coordinatedTarget(
         return undefined
     }
     const reports = reportsFor(room, now)
-    const visible = room.findVisibleTarget(actor, policy.sightRadius)
-    if (validTarget(actor, visible, policy.sightRadius)) {
+    const visible = room.findVisibleTarget(actor, policy.sightRadius, now)
+    if (validTarget(actor, visible, policy.sightRadius, now)) {
         const previous = reports.get(actor.id)
         if (
             previous === undefined ||
@@ -72,7 +72,7 @@ export function reportedThreatPosition(
             target !== undefined &&
             isActiveObserver(target) &&
             target.locationId === actor.locationId &&
-            canTargetByFaction(actor, target) &&
+            canTargetByFaction(actor, target, now) &&
             distance(actor.position, report.targetPosition) <=
                 policy.pursuitRadius &&
             distance(actor.spawnPosition, report.targetPosition) <=
@@ -98,7 +98,8 @@ function reportsFor(room: GameRoom, now: number): Map<string, ThreatReport> {
 function validTarget(
     actor: GameCharacter,
     target: GameCharacter | undefined,
-    radius: number
+    radius: number,
+    now: number
 ): target is GameCharacter {
     // The home leash bounds investigation of reports, not combat with a visible opponent.
     // Applying it here leaves a monster harmless at point-blank range after a chase.
@@ -107,7 +108,7 @@ function validTarget(
         target.alive &&
         !target.tags.has('offline') &&
         target.locationId === actor.locationId &&
-        canTargetByFaction(actor, target) &&
+        canTargetByFaction(actor, target, now) &&
         distance(actor.position, target.position) <= radius
     )
 }

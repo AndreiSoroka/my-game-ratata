@@ -82,34 +82,41 @@ it('learns merchant stock through an ordinary physical trip and loses the live v
     const room = openRoom()
     const actor = npc(room, 'npc_magic_slime_1')
     const merchant = npc(room, 'npc_merchant_1')
-    room.start()
-    for (let elapsed = 0; elapsed < 20_000; elapsed += 500) {
-        if (
-            Math.hypot(
-                actor.position.x - merchant.position.x,
-                actor.position.y - merchant.position.y
-            ) <= 40 &&
-            room
-                .navigationFor(actor)
-                .hasLineOfSight(actor.position, merchant.position)
-        ) {
-            break
-        }
-        expect(
-            room.decideForAgent(actor.id, {
-                type: 'move_to',
-                target: { ...merchant.position },
-            }).accepted
-        ).toBe(true)
-        vi.advanceTimersByTime(500)
+    const navigation = room.navigationFor(actor)
+    const shop = navigation.grid.buildings?.find(
+        (building) => building.name === 'Лавка Саввы'
+    )
+    if (shop === undefined) {
+        throw new Error('Missing authored shop')
     }
+    // Arrange the fixture outside the doorway. Entry, inspection and exit still use normal commands.
+    const outside = {
+        x: shop.entry.x,
+        y: shop.bounds.y + shop.bounds.height + navigation.grid.tileHeight / 2,
+    }
+    actor.position = { ...outside }
+    room.start()
+    const observe = () =>
+        buildNpcAiObservation(room, actor, 'companion', Date.now())
+    expect(observe().targets.some((target) => target.id === merchant.id)).toBe(
+        false
+    )
     expect(
-        Math.hypot(
-            actor.position.x - merchant.position.x,
-            actor.position.y - merchant.position.y
-        )
-    ).toBeLessThanOrEqual(40)
-    const before = buildNpcAiObservation(room, actor, 'companion', Date.now())
+        room.decideForAgent(actor.id, {
+            type: 'interact',
+            targetId: merchant.id,
+        }).accepted
+    ).toBe(false)
+    expect(
+        room.decideForAgent(actor.id, {
+            type: 'move_to',
+            target: shop.interior,
+        }).accepted
+    ).toBe(true)
+    vi.advanceTimersByTime(2_000)
+    expect(actor.position).toEqual(shop.interior)
+
+    const before = observe()
     expect(before.market).toBeUndefined()
     expect(
         before.targets.find((target) => target.id === merchant.id)?.commands
@@ -120,22 +127,19 @@ it('learns merchant stock through an ordinary physical trip and loses the live v
             targetId: merchant.id,
         }).accepted
     ).toBe(true)
-    const after = buildNpcAiObservation(room, actor, 'companion', Date.now())
+    const after = observe()
     expect(after.market).toMatchObject({ cityId: CENTER_LOCATION_ID })
     expect(after.market?.rows.some((row) => row.itemId === 'food')).toBe(true)
     expect(after.dialogue?.npcId).toBe(merchant.id)
-    const shop = after.targets.find(
-        (target) => target.kind === 'building' && target.name === 'Лавка Саввы'
-    )
-    expect(shop).toBeDefined()
     expect(
         room.decideForAgent(actor.id, {
             type: 'move_to',
-            target: shop?.position,
+            target: outside,
         }).accepted
     ).toBe(true)
     vi.advanceTimersByTime(2_000)
-    const left = buildNpcAiObservation(room, actor, 'companion', Date.now())
+    expect(actor.position).toEqual(outside)
+    const left = observe()
     expect(left.market).toBeUndefined()
     expect(left.shop).toBeUndefined()
 })

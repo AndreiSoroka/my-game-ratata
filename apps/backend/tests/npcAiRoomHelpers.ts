@@ -53,7 +53,7 @@ export function openNpcAiRoom(
 ) {
     const config = parseNpcAiConfig(
         {
-            proactive: false,
+            proactive: roles.includes('city_coordinator'),
             npcs: roles.map((role) => ({
                 actorId:
                     role === 'companion'
@@ -114,18 +114,22 @@ export async function approachNpcAi(
     player: ReturnType<typeof joinScenarioRoom>,
     npc: GameCharacter
 ): Promise<void> {
-    player.send({ type: 'move_to', target: { ...npc.position } })
-    await waitForNpcAi(
-        () =>
-            Math.hypot(
-                player.actor.position.x - npc.position.x,
-                player.actor.position.y - npc.position.y
-            ) <= 40 &&
-            room
-                .navigationFor(player.actor)
-                .hasLineOfSight(player.actor.position, npc.position)
-    )
-    player.send({ type: 'cancel_control' })
+    const navigation = room.navigationFor(player.actor)
+    const contact = navigation
+        .findPathWorld(player.actor.position, npc.position)
+        .find(
+            (point) =>
+                Math.hypot(
+                    point.x - npc.position.x,
+                    point.y - npc.position.y
+                ) <= 36 && navigation.hasLineOfSight(point, npc.position)
+        )
+    if (contact === undefined) {
+        throw new Error('Missing reachable conversation contact in the fixture')
+    }
+    // These tests exercise the NPC action path after the player reaches the initial contact.
+    player.actor.position = { ...contact }
+    await advanceNpcAi()
 }
 
 export function requestNpcAi(
@@ -150,7 +154,7 @@ export function merchantErrandDecision(context: NpcAiContext): NpcAiReply {
             return npcAiReply(
                 {
                     type: 'speak',
-                    text: 'У Саввы есть дорожная еда. Я проверила лавку.',
+                    text: 'У Саввы есть дорожная еда. Я узнало это в лавке.',
                 },
                 true,
                 'Проверила ассортимент у Саввы.'
@@ -180,5 +184,12 @@ export function merchantErrandDecision(context: NpcAiContext): NpcAiReply {
     if (interior === undefined) {
         throw new Error('Missing public shop landmark')
     }
-    return npcAiReply({ type: 'move_to', target: interior })
+    const approach = npcAiReply({ type: 'move_to', target: interior })
+    return context.events.some((event) => event.kind === 'message')
+        ? {
+              ...approach,
+              taskAcceptance: 'accept',
+              speech: 'Схожу в лавку к Савве.',
+          }
+        : approach
 }

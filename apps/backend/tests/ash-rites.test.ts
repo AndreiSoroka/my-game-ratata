@@ -198,7 +198,9 @@ describe('skeleton orders and gifts', () => {
                 now
             )
         expect(canTargetByFaction(one, slime, now)).toBe(false)
-        expect(command(one, 'hunt_slimes')).toMatchObject([{ kind: 'chat' }])
+        expect(command(one, 'hunt_slimes')).toMatchObject([
+            { kind: 'cast', abilityId: 'ash_order' },
+        ])
         expect(canTargetByFaction(one, slime, now)).toBe(true)
         command(two, 'guard')
         command(three, 'guard')
@@ -206,7 +208,9 @@ describe('skeleton orders and gifts', () => {
         expect(ashSkeletonOrder(four)).toBeUndefined()
         command(one, 'wander')
         expect(canTargetByFaction(one, slime, now)).toBe(false)
-        expect(command(four, 'guard')).toMatchObject([{ kind: 'chat' }])
+        expect(command(four, 'guard')).toMatchObject([
+            { kind: 'cast', abilityId: 'ash_order' },
+        ])
     })
 
     it('transfers both prices once and retains the chosen HP bonus after a true revival', () => {
@@ -257,7 +261,7 @@ it('keeps wild undead friendly when a pact holder commands or raises a skeleton'
             { abilityId: 'ash_order', targetId: bound.id, order: 'guard' },
             now
         )
-    ).toMatchObject([{ kind: 'chat' }])
+    ).toMatchObject([{ kind: 'cast', abilityId: 'ash_order' }])
     expect(canTargetByFaction(bound, wild, now)).toBe(false)
     expect(canTargetByFaction(wild, bound, now)).toBe(false)
     f.inventory.deathLoot.seedRemains(bonesId, origin)

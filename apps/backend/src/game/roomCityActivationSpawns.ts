@@ -18,6 +18,7 @@ interface ActivationEnvironment {
     speechSeed: string
     identitySeed: string
     onRegistered?: () => void
+    now?: () => number
 }
 
 /** Authored activation content uses the same character factories and controller policy as startup. */
@@ -32,7 +33,7 @@ export function bindCityActivationSpawns(
         for (const entry of createSupportNpcs(
             environment.navigation,
             environment.companions,
-            { onlyIds: absent }
+            { onlyIds: absent, spawnedAt: (environment.now ?? Date.now)() }
         )) {
             if (!registerRoomCharacter(entry, environment, cityId)) {
                 continue

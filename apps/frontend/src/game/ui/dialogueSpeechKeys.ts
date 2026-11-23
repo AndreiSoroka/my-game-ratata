@@ -2,6 +2,8 @@ import type { AdventureDialogue } from '@my-game-ratata/contracts'
 
 import { speechBubbleId } from './speechReceipts'
 
+const focusTargets = '[data-dialogue-action]:not(:disabled), [data-dialogue-focus]:not(:disabled)'
+
 function speechText(dialogue: AdventureDialogue): HTMLElement | null {
     return (
         document
@@ -25,9 +27,7 @@ export function dialogueSpeechKeys(
         return true
     }
     if (event.code !== 'Tab') return false
-    const actions = Array.from(
-        panel?.querySelectorAll<HTMLElement>('[data-dialogue-action]:not(:disabled)') ?? []
-    )
+    const actions = Array.from(panel?.querySelectorAll<HTMLElement>(focusTargets) ?? [])
     const cycle = [...actions, speech]
     const current = cycle.findIndex((element) => element === document.activeElement)
     const direction = event.shiftKey ? -1 : 1
@@ -43,9 +43,7 @@ export function returnFromSpeech(event: KeyboardEvent, id: string): void {
         return
     }
     if (event.code !== 'Tab') return
-    const actions = Array.from(
-        panel?.querySelectorAll<HTMLElement>('[data-dialogue-action]:not(:disabled)') ?? []
-    )
+    const actions = Array.from(panel?.querySelectorAll<HTMLElement>(focusTargets) ?? [])
     const target = event.shiftKey ? actions.at(-1) : actions[0]
     if (target) {
         event.preventDefault()

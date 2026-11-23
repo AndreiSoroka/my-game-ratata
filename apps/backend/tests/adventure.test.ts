@@ -194,7 +194,10 @@ describe('adventure trade and identity', () => {
         })
         const nextHero = character('new-identity')
         service.interact(nextHero, mira.id, [mira])
-        expect(service.snapshot(nextHero.id).dialogue?.text).toContain('Я Мира')
+        expect(service.snapshot(nextHero.id).dialogue).toMatchObject({
+            npcId: mira.id,
+            text: '',
+        })
         expect(service.snapshot(nextHero.id).gold).toBe(0)
     })
 })

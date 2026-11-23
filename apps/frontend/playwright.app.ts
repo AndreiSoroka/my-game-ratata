@@ -9,6 +9,7 @@ export function createAppPlaywrightConfig(
     const graveOnly = options.graveOnly ?? false
     const offset = options.portOffset ?? 0
     const backendPort = readPortEnv('E2E_BACKEND_PORT', 3500, offset)
+    const adminPort = readPortEnv('E2E_ADMIN_PORT', 4500, offset)
     const frontendPort = readPortEnv('E2E_FRONTEND_PORT', 5500, offset)
     const phase = graveOnly
         ? `graves${options.graveViewport === undefined ? '' : `-${options.graveViewport}`}`
@@ -56,13 +57,19 @@ export function createAppPlaywrightConfig(
         webServer: [
             {
                 // No watch: a source/test-file write must not reset an ongoing test world.
-                command: `PORT=${String(backendPort)} bun run --cwd ../backend start`,
-                env: backendEnvironment(),
+                command: 'bun run --cwd ../backend start:e2e',
+                env: {
+                    ...backendEnvironment(),
+                    PORT: String(backendPort),
+                    GAME_LOCAL_ADMIN_PORT: String(adminPort),
+                    GAME_LOCAL_ADMIN_ORIGIN: `http://127.0.0.1:${String(frontendPort)}`,
+                },
                 port: backendPort,
                 reuseExistingServer: false,
             },
             {
                 command: `VITE_GAME_AUDIO_MUTED=1 VITE_BACKEND_WS_URL=ws://127.0.0.1:${String(backendPort)}/ws bun run dev -- --port ${String(frontendPort)}`,
+                env: { VITE_LOCAL_ADMIN_URL: `http://127.0.0.1:${String(adminPort)}` },
                 port: frontendPort,
                 reuseExistingServer: false,
             },
@@ -73,7 +80,6 @@ export function createAppPlaywrightConfig(
 function backendEnvironment(): Record<string, string> {
     // Ordinary UI cases start with an active bell. Story cases can override the world seed.
     return {
-        GAME_AI_ENABLED: '0',
         GAME_SPEECH_TRANSLATION: process.env['E2E_REAL_TRANSLATION'] === '1' ? '1' : '0',
         GAME_WORLD_SEED: process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026',
     }

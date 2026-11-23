@@ -38,17 +38,22 @@ interface DispatchContext extends ClientContext {
     ): void
     abandon(actor: GameCharacter): void
 }
-export function createRoomMessageHandler(context: () => DispatchContext) {
+export function createRoomMessageHandler(
+    context: () => DispatchContext,
+    onDispatched: () => void
+) {
     return (ws: RoomSocket, raw: unknown): void =>
-        dispatchRawRoomMessage(ws, raw, (message) =>
+        dispatchRawRoomMessage(ws, raw, (message) => {
             dispatchRoomClientMessage(context(), ws, message)
-        )
+            onDispatched()
+        })
 }
 
 function dispatchRoomClientMessage(
     context: DispatchContext,
     ws: RoomSocket,
-    message: ClientMessage
+    message: ClientMessage,
+    now = context.room.gameplayNow()
 ): void {
     if (message.type === 'join') {
         context.join(
@@ -76,11 +81,7 @@ function dispatchRoomClientMessage(
     }
     if (message.type === 'use_portal') {
         context.room.publishEvents(
-            context.room.requestPortalUse(
-                player,
-                message.endpointId,
-                Date.now()
-            )
+            context.room.requestPortalUse(player, message.endpointId, now)
         )
         return
     }
@@ -90,12 +91,12 @@ function dispatchRoomClientMessage(
             message,
             context.adventure,
             context.room.navigationFor(player),
-            Date.now()
+            now
         )
         if (preview !== undefined) {
             send(ws, preview)
         }
         return
     }
-    handleCharacterMessage(context, player, message)
+    handleCharacterMessage(context, player, message, now)
 }

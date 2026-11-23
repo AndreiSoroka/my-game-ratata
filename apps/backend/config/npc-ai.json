@@ -15,6 +15,46 @@
             "role": "companion"
         },
         {
+            "actorId": "npc_princess_1",
+            "role": "companion"
+        },
+        {
+            "actorId": "npc_veteran_1",
+            "role": "companion"
+        },
+        {
+            "actorId": "npc_merchant_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_herbalist_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_weaver_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_cartographer_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_scholar_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_tailor_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_smith_1",
+            "role": "advisor"
+        },
+        {
+            "actorId": "npc_baker_1",
+            "role": "advisor"
+        },
+        {
             "actorId": "npc_cleric_1",
             "role": "advisor",
             "mode": "dialogue_only"

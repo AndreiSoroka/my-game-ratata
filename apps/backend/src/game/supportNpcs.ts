@@ -17,12 +17,12 @@ import { ClericController } from './clericController'
 import { CompanionController } from './companionControllers'
 import { companionProfiles, companionSoul } from './companionProfiles'
 import type { CompanionService } from './companions'
-import { syncAbilityConstellations } from './constellations'
 import { NetworkPlayerController } from './controllers'
 import { createItemInstance, equipDirect } from './inventory'
 import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService, TileCoordinate } from './navigation'
 import type { NpcIdentityKey } from './npcIdentityCatalog'
+import { initializeNpcProgression } from './npcProgression'
 import type { SpawnedCharacter } from './spawns'
 
 interface SupportDefinition {
@@ -113,10 +113,7 @@ const definitions: SupportDefinition[] = [
 export function createSupportNpcs(
     navigation: NavigationService,
     companions: CompanionService,
-    options: {
-        onlyIds?: readonly string[]
-        cityState?: (locationId: string) => CityBellState | undefined
-    } = {}
+    options: SupportSpawnOptions = {}
 ): SpawnedCharacter[] {
     return eligibleDefinitions(options).map((definition) => {
         const profile = companionProfiles[definition.id]
@@ -132,6 +129,9 @@ export function createSupportNpcs(
             id: definition.id,
             mortal: profile !== undefined,
             nickname: definition.nickname,
+            ...(options.spawnedAt === undefined
+                ? {}
+                : { spawnedAt: options.spawnedAt }),
             soul: companionSoul(definition.id),
             spawnPosition: citySpawnPosition(
                 navigation,
@@ -147,7 +147,10 @@ export function createSupportNpcs(
         if (definition.id === 'npc_cleric_1') {
             character.tags.add('cleric')
         }
-        initializeKnownPrayers(character, definition.knownPrayers)
+        for (const prayer of definition.knownPrayers ?? []) {
+            character.abilities.known.add(prayer)
+        }
+        initializeNpcProgression(character)
         if (definition.id === 'npc_scholar_1') {
             character.tags.add('scholar')
         }
@@ -164,20 +167,34 @@ export function createSupportNpcs(
         }
         return {
             character,
-            controller:
-                artisanRecipes(definition.id).length > 0
-                    ? new ArtisanController()
-                    : definition.heroClass === 'cleric'
-                      ? new ClericController()
-                      : profile === undefined
-                        ? new NetworkPlayerController()
-                        : new CompanionController(companions),
+            controller: supportController(
+                definition,
+                companions,
+                profile !== undefined
+            ),
         }
     })
 }
 
+function supportController(
+    definition: SupportDefinition,
+    companions: CompanionService,
+    hasProfile: boolean
+): SpawnedCharacter['controller'] {
+    if (artisanRecipes(definition.id).length > 0) {
+        return new ArtisanController()
+    }
+    if (definition.heroClass === 'cleric') {
+        return new ClericController()
+    }
+    return hasProfile
+        ? new CompanionController(companions)
+        : new NetworkPlayerController()
+}
+
 interface SupportSpawnOptions {
     onlyIds?: readonly string[]
+    spawnedAt?: number
     cityState?: (locationId: string) => CityBellState | undefined
 }
 function eligibleDefinitions(
@@ -197,19 +214,6 @@ function eligibleDefinitions(
                 : options.cityState?.(required.locationId)
         return actual === undefined || actual === required?.state
     })
-}
-
-function initializeKnownPrayers(
-    character: GameCharacter,
-    prayers: readonly PrayerAbilityId[] = []
-): void {
-    if (prayers.length === 0) {
-        return
-    }
-    for (const id of prayers) {
-        character.abilities.known.add(id)
-    }
-    syncAbilityConstellations(character)
 }
 
 /** Authored public service homes, not live actor positions. */

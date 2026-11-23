@@ -24,7 +24,7 @@ function fixture(id = 'npc_magic_slime_1') {
     }
     const state = createNpcAiState(npc, actor)
     const presence = vi
-        .spyOn(room, 'hasConnectedPlayerInLocation')
+        .spyOn(room, 'allowsAutonomousNpcAi')
         .mockReturnValue(true)
     let sequence = 0
     const review = (at: number) =>

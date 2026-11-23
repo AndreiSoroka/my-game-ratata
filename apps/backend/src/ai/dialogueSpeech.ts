@@ -19,6 +19,10 @@ export function speakNpcDialogue(
     now: number
 ): void {
     const actor = state.actor
+    if (actor !== undefined && event.conversationId !== undefined) {
+        room.social.npcSpeech.turns.reply(actor, event, text, now)
+        return
+    }
     const target = room.getCharacter(event.senderId)
     if (
         actor === undefined ||

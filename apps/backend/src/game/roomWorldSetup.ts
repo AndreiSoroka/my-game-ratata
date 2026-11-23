@@ -40,6 +40,7 @@ interface SpawnEnvironment {
     companions: CompanionService
     options: GameRoomOptions
     onRegistered: () => void
+    now: () => number
 }
 
 export function initializeRoomCharacters(environment: SpawnEnvironment) {
@@ -64,6 +65,11 @@ export function initializeRoomCharacters(environment: SpawnEnvironment) {
         identitySeed,
         adventure.cities
     )
+    const spawnedAt = environment.now()
+    for (const character of characters.values()) {
+        character.lifeStartedAt = spawnedAt
+        character.animationStartedAt = spawnedAt
+    }
     bindCityActivationSpawns({ ...environment, speechSeed, identitySeed })
     return graves
 }

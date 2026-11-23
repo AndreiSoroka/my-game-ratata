@@ -1,13 +1,17 @@
 import type { PrivateSpeechSnapshot } from '@my-game-ratata/contracts'
 
 import { memoryForCharacter } from '../ai/characterMinds'
-import type { NpcAiCoordinator } from '../ai/coordinator'
 import type { GameCharacter } from './character'
 import type { QuestTurnInService } from './questTurnIn'
+import type { NpcHeardSpeech } from './roomNpcConversations'
 
 /** WhisperService invokes this only after validating the ordinary speaking pair. */
 export function createWhisperObserver(
-    ai: () => NpcAiCoordinator | undefined,
+    hear: (
+        actor: GameCharacter,
+        event: NpcHeardSpeech,
+        targetId: string
+    ) => void,
     turnIns: () => QuestTurnInService,
     onDelivered?: (actor: GameCharacter, listener: GameCharacter) => void
 ) {
@@ -33,7 +37,7 @@ export function createWhisperObserver(
             }
         }
         turnIns().heard(actor, listener, message.text, message.id, message.at)
-        ai()?.hear(
+        hear(
             actor,
             {
                 kind: 'message',

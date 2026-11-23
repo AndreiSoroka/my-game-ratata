@@ -28,6 +28,8 @@ export const conversationMessages = {
     partnerUnavailable: ['Собеседник недоступен', 'Partner unavailable'],
     privateChannel: ['Личные', 'Private'],
     privateConversation: ['Приватный разговор', 'Private conversation'],
+    npcReply: ['Реплика собеседнику', 'Message to your conversation partner'],
+    npcThinking: ['Собеседник обдумывает ответ…', 'Your conversation partner is thinking…'],
     repairs: ['Ремонт', 'Repairs'],
     send: ['Отправить', 'Send'],
     sendEnter: ['Отправить · Enter', 'Send · Enter'],

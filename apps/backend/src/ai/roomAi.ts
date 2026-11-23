@@ -1,7 +1,5 @@
-import type { ClientMessage, GameEventPayload } from '@my-game-ratata/contracts'
-import type { CityBellState } from '@my-game-ratata/contracts'
+import type { CityBellState, WorldEmptyMode } from '@my-game-ratata/contracts'
 
-import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import type { SpeechTranslator } from '../game/speechTranslation'
@@ -11,6 +9,8 @@ import type { NpcAiDiagnostics } from './diagnostics'
 import type { NpcAiConfig, NpcAiProvider } from './types'
 
 export interface GameRoomOptions {
+    emptyWorldMode?: WorldEmptyMode
+    worldClock?: () => number
     worldMaps?: WorldMaps
     worldSeed?: string
     initialBellState?: CityBellState
@@ -38,44 +38,7 @@ export function createNpcAiCoordinator(
               companions,
               ai.config,
               ai.provider,
-              ai.clock,
+              ai.clock ?? room.gameplayNow,
               ai.diagnostics
           )
-}
-
-export function deliverNpcAiRequest(
-    ai: NpcAiCoordinator | undefined,
-    actor: GameCharacter,
-    message: ClientMessage,
-    events: GameEventPayload[],
-    now: number
-): void {
-    if (ai === undefined || message.type !== 'companion_request') {
-        return
-    }
-    if (message.request === 'talk') {
-        if (
-            events.some(
-                (event) =>
-                    event.kind === 'chat' &&
-                    event.actorId === message.targetId &&
-                    event.targetId === actor.id
-            )
-        ) {
-            ai.talk(actor, message, now)
-        }
-    } else {
-        ai.dismiss(actor, message.targetId, now, message.request)
-    }
-}
-
-export function createNpcAiRequestReceiver(
-    current: () => NpcAiCoordinator | undefined
-) {
-    return (
-        actor: GameCharacter,
-        message: ClientMessage,
-        events: GameEventPayload[],
-        now: number
-    ): void => deliverNpcAiRequest(current(), actor, message, events, now)
 }

@@ -1,8 +1,4 @@
-import type {
-    AssistancePolicy,
-    CharacterVisualId,
-    CreatureType,
-} from '@my-game-ratata/contracts'
+import type { CharacterVisualId, CreatureType } from '@my-game-ratata/contracts'
 
 import type { TileCoordinate } from './navigation'
 
@@ -17,7 +13,6 @@ interface CityResident {
     visualId: CharacterVisualId
     greeting: string
     personality: string
-    assistancePolicy?: AssistancePolicy
     idleRouteTiles?: readonly TileCoordinate[]
 }
 
@@ -38,9 +33,7 @@ export const cityResidents: CityResident[] = [
         visualId: 'male_player_2',
         greeting:
             'Прохор. Дома нет, срочных дел тоже. Давай познакомимся — после разговора могу помочь с простой работой.',
-        personality:
-            'Бродит по городским улицам. Помогает знакомым, но не сражается.',
-        assistancePolicy: { kind: 'met' },
+        personality: 'Бродит по городским улицам.',
         idleRouteTiles: [
             { x: 39, y: 48 },
             { x: 45, y: 48 },
@@ -64,12 +57,7 @@ export const cityResidents: CityResident[] = [
         visualId: 'female_player',
         greeting:
             'Я Дарья. Пока скитаюсь по Новогороду. Помоги Мире собрать сердца для колокола памяти — тогда помогу и тебе.',
-        personality:
-            'Бродит по городу без работы. Доверяет тем, кто помог колоколу памяти; в бой не идёт.',
-        assistancePolicy: {
-            kind: 'quest_completed',
-            questId: 'hearts-for-the-border-bell',
-        },
+        personality: 'Бродит по городу без работы.',
         idleRouteTiles: [
             { x: 36, y: 53 },
             { x: 36, y: 59 },

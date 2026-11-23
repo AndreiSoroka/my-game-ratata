@@ -1,4 +1,6 @@
 import type { GameCharacter } from '../game/character'
+import { kaplyaSafetyActive } from '../game/companionSafety'
+import { isConversationOnly } from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
 import { canHearSpeech, speechAvailable } from '../game/socialSpeech'
 import type { CharacterMemory } from './characterMemory'
@@ -55,7 +57,7 @@ export function selectNpcGreeting(
     observation: NpcAiObservation,
     now: number
 ): NpcGreetingOpportunity | undefined {
-    if (!greetingStateIdle(state)) {
+    if (!allowsGreeting(room, state) || !greetingStateIdle(state)) {
         return undefined
     }
     if ((nextAttempts.get(state.mind) ?? 0) > now) {
@@ -104,6 +106,7 @@ export function npcGreetingStillAvailable(
     now: number
 ): boolean {
     if (
+        !allowsGreeting(room, state) ||
         state.dialogue !== undefined ||
         state.inbox.length > 0 ||
         (state.task !== null &&
@@ -122,6 +125,14 @@ export function npcGreetingStillAvailable(
         now
     ).targets.some(
         (target) => target.kind === 'character' && target.id === targetId
+    )
+}
+
+function allowsGreeting(room: GameRoom, state: NpcAiActorState): boolean {
+    return (
+        !isConversationOnly(state.config.role, state.config.mode) &&
+        room.allowsAutonomousNpcAi() &&
+        (state.actor === undefined || !kaplyaSafetyActive(state.actor))
     )
 }
 

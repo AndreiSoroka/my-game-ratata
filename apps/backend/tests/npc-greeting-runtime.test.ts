@@ -2,10 +2,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { memoryForCharacter } from '../src/ai/characterMinds'
 import type { NpcAiContext, NpcAiReply } from '../src/ai/types'
+import type { GameCharacter } from '../src/game/character'
 import type { GameRoom } from '../src/game/room'
 import {
     advanceNpcAi,
-    approachNpcAi,
     existingNpc,
     openNpcAiRoom,
     recordedNpcAiProvider,
@@ -37,6 +37,13 @@ const answer = (speech: string | null = null, memory = ''): NpcAiReply => ({
 const opportunities = (contexts: NpcAiContext[]) =>
     contexts.filter((context) => context.socialOpportunity !== undefined)
 
+function arrangeConversationContact(
+    player: GameCharacter,
+    npc: GameCharacter
+): void {
+    player.position = { ...npc.position }
+}
+
 it('initiates a real first greeting and another after ten conversation-free minutes without inventing player speech', async () => {
     const recorded = recordedNpcAiProvider((context) =>
         answer(
@@ -50,12 +57,13 @@ it('initiates a real first greeting and another after ten conversation-free minu
     config.proactive = true
     const player = joinScenarioRoom(room, 'First Guest')
     const npc = existingNpc(room)
-    await approachNpcAi(room, player, npc)
+    arrangeConversationContact(player.actor, npc)
     await waitForNpcAi(
         () =>
             opportunities(recorded.contexts).length === 1 &&
             memoryForCharacter(npc).lastConversationAt(player.actor.id) !==
-                undefined
+                undefined,
+        2_000
     )
     const firstAt = memoryForCharacter(npc).lastConversationAt(player.actor.id)
     if (firstAt === undefined) {
@@ -77,7 +85,8 @@ it('initiates a real first greeting and another after ten conversation-free minu
         () =>
             opportunities(recorded.contexts).length === 2 &&
             memoryForCharacter(npc).lastConversationAt(player.actor.id) !==
-                firstAt
+                firstAt,
+        2_000
     )
     expect(opportunities(recorded.contexts)[1]?.socialOpportunity?.reason).toBe(
         'conversation_pause'
@@ -87,27 +96,25 @@ it('initiates a real first greeting and another after ten conversation-free minu
 })
 
 it('archives a permanently dead hero and greets a new same-named identity without its old conversation', async () => {
+    const rememberedSpeech = 'Наш разговор остался в памяти.'
     const recorded = recordedNpcAiProvider((context) =>
         context.socialOpportunity === undefined
-            ? answer(
-                  'Запомнил наш разговор.',
-                  'С этим героем искали западную окраину.'
-              )
+            ? answer(rememberedSpeech, 'С этим героем искали западную окраину.')
             : answer('Привет! Кажется, мы ещё не говорили.')
     )
     const { room, config } = openNpcAiRoom(recorded.provider)
     rooms.push(room)
     const old = joinScenarioRoom(room, 'andrei')
     const npc = existingNpc(room)
-    await approachNpcAi(room, old, npc)
+    arrangeConversationContact(old.actor, npc)
     requestNpcAi(old, npc, 'Мы искали западную окраину.')
     await waitForNpcAi(
         () =>
             memoryForCharacter(npc)
                 .deep(old.actor.id)
-                .messages?.some(
-                    (entry) => entry.text === 'Запомнил наш разговор.'
-                ) === true
+                .messages?.some((entry) => entry.text === rememberedSpeech) ===
+            true,
+        2_000
     )
     old.actor.applyDamage(old.actor.maxHp, Date.now())
     old.send({ type: 'abandon_life' })
@@ -119,11 +126,14 @@ it('archives a permanently dead hero and greets a new same-named identity withou
     const fresh = joinScenarioRoom(room, 'andrei')
     expect(fresh.actor.id).not.toBe(old.actor.id)
     config.proactive = true
-    await approachNpcAi(room, fresh, npc)
-    await waitForNpcAi(() =>
-        opportunities(recorded.contexts).some(
-            (context) => context.socialOpportunity?.targetId === fresh.actor.id
-        )
+    arrangeConversationContact(fresh.actor, npc)
+    await waitForNpcAi(
+        () =>
+            opportunities(recorded.contexts).some(
+                (context) =>
+                    context.socialOpportunity?.targetId === fresh.actor.id
+            ),
+        2_000
     )
     const context = opportunities(recorded.contexts).find(
         (input) => input.socialOpportunity?.targetId === fresh.actor.id
@@ -166,16 +176,19 @@ it('cancels a delayed reply to a retired identity rather than delivering it to a
     rooms.push(room)
     const old = joinScenarioRoom(room, 'same-name')
     const npc = existingNpc(room)
-    await approachNpcAi(room, old, npc)
+    arrangeConversationContact(old.actor, npc)
     requestNpcAi(old, npc, 'Подожди с ответом')
-    await waitForNpcAi(() => recorded.contexts.length === 1)
+    await waitForNpcAi(() => recorded.contexts.length === 1, 2_000)
     old.actor.applyDamage(old.actor.maxHp, Date.now())
     old.send({ type: 'abandon_life' })
     expect(recorded.signals[0]?.aborted).toBe(true)
     const fresh = joinScenarioRoom(room, 'same-name')
     config.proactive = true
-    await approachNpcAi(room, fresh, npc)
-    await waitForNpcAi(() => opportunities(recorded.contexts).length === 1)
+    arrangeConversationContact(fresh.actor, npc)
+    await waitForNpcAi(
+        () => opportunities(recorded.contexts).length === 1,
+        2_000
+    )
     delayed.resolve(
         answer('Мы уже искали западную окраину.', 'Старое узнавание')
     )

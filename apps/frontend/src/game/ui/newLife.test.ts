@@ -1,9 +1,10 @@
 import type { ClientMessage, HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '../../App.vue'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
+import { stubReadyGameServer } from '../testing/stubReadyGameServer'
 
 const runtime = vi.hoisted(() => ({
     defeat: undefined as (() => void) | undefined,
@@ -51,7 +52,9 @@ vi.mock('../runtime/ratataGame', () => ({
     },
 }))
 
+beforeEach(stubReadyGameServer)
 afterEach(() => {
+    vi.unstubAllGlobals()
     runtime.defeat = undefined
     runtime.starts = 0
     runtime.stop.mockClear()

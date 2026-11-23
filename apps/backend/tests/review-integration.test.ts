@@ -5,7 +5,6 @@ import { handleAbilityCommand } from '../src/game/abilityCommands'
 import { resolveCharacterDamage } from '../src/game/abilityDamage'
 import { AdventureService } from '../src/game/adventure'
 import { advanceRevive } from '../src/game/characterLife'
-import { CompanionService } from '../src/game/companions'
 import { PartyService } from '../src/game/parties'
 import { applyPlayerMessage } from '../src/game/playerMessages'
 import { handleRoomAction } from '../src/game/roomActions'
@@ -192,7 +191,6 @@ it('legacy revive shares prayer cooldown and cannot start until the normal bound
             theft: new TheftService(),
             adventure: new AdventureService(),
             parties: new PartyService(),
-            companions: new CompanionService(),
             inventory: new WorldInventory(context.navigation),
         })
     expect(action(3999)).toContainEqual(

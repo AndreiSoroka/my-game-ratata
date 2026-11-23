@@ -34,7 +34,7 @@ it.each(bladeAbilityIds)(
     }
 )
 
-it('limits the model schema and parser to the five declared blade techniques', () => {
+it('limits untargeted model attacks to the five declared blade techniques', () => {
     const schema = decisionSchema as {
         properties: {
             decision: {
@@ -60,6 +60,27 @@ it('limits the model schema and parser to the five declared blade techniques', (
             abilityId: 'imagined_technique',
         })
     ).toBeUndefined()
+})
+
+it('allows a targeted basic shot only if known and permitted by the NPC', () => {
+    const bran = actor('npc_veteran_1')
+    const decision = {
+        type: 'use_ability' as const,
+        abilityId: 'shot' as const,
+        targetId: 'visible-slime',
+    }
+    expect(parseNpcAiReply(npcReply(decision)).decision).toEqual(decision)
+    expect(npcAiDecisionError(bran, 'companion', decision)).toContain(
+        'not been learned'
+    )
+    bran.abilities.known.add('shot')
+    expect(npcAiDecisionError(bran, 'companion', decision)).toBeUndefined()
+    expect(
+        npcAiDecisionError(bran, 'companion', {
+            type: 'use_ability',
+            abilityId: 'shot',
+        })
+    ).toContain('visible opponent')
 })
 
 it('exposes the intention only for an earned and permitted capability while preserving peaceful profiles', () => {

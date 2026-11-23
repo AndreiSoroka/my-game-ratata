@@ -20,8 +20,8 @@ describe('socket identity switches preserve separate simulation presence', () =>
     it('detaches the previous identity as an Echo, closes its dialogue and keeps its scenario when the same socket joins another name', () => {
         const room = openScenarioRoom(),
             first = joinScenarioRoom(room, 'Before Switch')
-        const npc = approachScenarioNpc(room, first, 'npc_wanderer_1')
-        first.send({ type: 'interact', targetId: npc.id })
+        const npc = approachScenarioNpc(room, first, 'npc_merchant_1')
+        first.send({ type: 'interact', targetId: npc.id, service: 'shop' })
         expect(
             room.snapshot(Date.now(), first.actor.locationId, first.actor.id)
                 .adventure?.dialogue?.npcId

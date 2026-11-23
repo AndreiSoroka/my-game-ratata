@@ -20,7 +20,7 @@ import GameFrame from './primitives/GameFrame.vue'
 import { speechBubbleId } from './speechReceipts'
 import { useEscapeOwner } from './uiEscapeOwners'
 const props = defineProps<{
-    game?: RatataGame
+    game?: Pick<RatataGame, 'projectCharacter'>
     snapshot?: WorldSnapshot
     player: CharacterSnapshot
 }>()
@@ -97,11 +97,22 @@ watch(
     },
     { immediate: true }
 )
+const speechActivity = computed(() => props.snapshot?.social?.speechActivity ?? [])
+const pendingNpcReplies = computed(() => {
+    const npcIds = new Set(
+        props.snapshot?.characters
+            .filter((actor) => actor.interactions?.dialogueMode)
+            .map((actor) => actor.id)
+    )
+    return new Set(
+        speechActivity.value.map(({ actorId }) => actorId).filter((id) => npcIds.has(id))
+    )
+})
 const bubbles = computed(() => {
     void frame.value
     const conversation = dialogue.value?.kind !== 'sign' ? dialogue.value : undefined
     const entries = ambient.value.filter((entry) => entry.id !== conversation?.npcId)
-    if (conversation)
+    if (conversation?.text.trim())
         entries.push({
             id: conversation.npcId,
             receipt: conversation.speechId ?? 'active',
@@ -114,43 +125,47 @@ const bubbles = computed(() => {
                 ? {}
                 : { workerActivity: conversation.workerActivity }),
         })
-    return entries.flatMap((entry) => {
-        const anchor = props.game?.projectCharacter(entry.id)
-        const character = props.snapshot?.characters.find((candidate) => candidate.id === entry.id)
-        if (!anchor || !character) return []
-        const width = Math.min(360, anchor.width - 24)
-        const x = Math.max(12, Math.min(anchor.width - width - 12, anchor.x - width / 2))
-        const height = heights.value.get(speechBubbleId(entry.id, entry.receipt)) ?? 0
-        const below = anchor.y - height - 12 < 12 && 'lowerY' in anchor
-        const y = Math.max(
-            12,
-            Math.min(
-                anchor.height - height - 12,
-                below ? anchor.lowerY + 12 : anchor.y - height - 12
+    return entries
+        .filter(({ id }) => !pendingNpcReplies.value.has(id))
+        .flatMap((entry) => {
+            const anchor = props.game?.projectCharacter(entry.id)
+            const character = props.snapshot?.characters.find(
+                (candidate) => candidate.id === entry.id
             )
-        )
-        return [
-            {
-                ...entry,
-                text: speechDisplayText(entry),
-                language: entry.textMessage === undefined ? entry.language : gameLocale.value,
-                name: characterName(character.id, character.nickname),
-                active: entry.id === conversation?.npcId,
-                below,
-                style: {
-                    left: `${x}px`,
-                    top: `${y}px`,
-                    width: `${width}px`,
-                    '--speech-tail': `${Math.max(14, Math.min(width - 14, anchor.x - x))}px`,
+            if (!anchor || !character) return []
+            const width = Math.min(360, anchor.width - 24)
+            const x = Math.max(12, Math.min(anchor.width - width - 12, anchor.x - width / 2))
+            const height = heights.value.get(speechBubbleId(entry.id, entry.receipt)) ?? 0
+            const below = anchor.y - height - 12 < 12 && 'lowerY' in anchor
+            const y = Math.max(
+                12,
+                Math.min(
+                    anchor.height - height - 12,
+                    below ? anchor.lowerY + 12 : anchor.y - height - 12
+                )
+            )
+            return [
+                {
+                    ...entry,
+                    text: speechDisplayText(entry),
+                    language: entry.textMessage === undefined ? entry.language : gameLocale.value,
+                    name: characterName(character.id, character.nickname),
+                    active: entry.id === conversation?.npcId,
+                    below,
+                    style: {
+                        left: `${x}px`,
+                        top: `${y}px`,
+                        width: `${width}px`,
+                        '--speech-tail': `${Math.max(14, Math.min(width - 14, anchor.x - x))}px`,
+                    },
                 },
-            },
-        ]
-    })
+            ]
+        })
 })
 const typing = computed(() => {
     void frame.value
     const speaking = new Set(bubbles.value.map((bubble) => bubble.id))
-    return (props.snapshot?.social?.speechActivity ?? []).flatMap((entry) => {
+    return speechActivity.value.flatMap((entry) => {
         if (speaking.has(entry.actorId)) return []
         const actor = props.snapshot?.characters.find((character) => character.id === entry.actorId)
         const anchor = props.game?.projectCharacter(entry.actorId)

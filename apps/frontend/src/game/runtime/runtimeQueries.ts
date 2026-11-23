@@ -10,7 +10,7 @@ export function isDialogueCharacter(character: CharacterSnapshot): boolean {
         character.alive &&
         character.faction === 'peaceful' &&
         character.controllerKind !== 'network_player' &&
-        character.soul?.canSpeak === true
+        (character.soul?.canSpeak === true || character.interactions?.dialogueMode === 'scripted')
     )
 }
 

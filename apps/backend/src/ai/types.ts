@@ -10,6 +10,7 @@ import type {
     NecromancerModelContext,
     NecromancerModelDecision,
 } from '../game/necromancerTactics'
+import type { NpcConversationFeedback } from '../game/roomConversationDepartures'
 import type { NpcAiObservation } from './observation'
 
 export type NpcAiRole =
@@ -67,6 +68,8 @@ export type NpcAiEvent =
           ambiguous?: boolean
           legacy?: boolean
           system?: boolean
+          conversationId?: string
+          replyDeadline?: number
           claimedBy?: string
           id: string
           senderId: string
@@ -117,12 +120,15 @@ export type NpcAiFact =
           workerActivity?: import('@my-game-ratata/contracts').WorkerActivitySnapshot
       }
 
-export interface NpcAiContext {
+export interface NpcAiContext extends NpcConversationFeedback {
     cityStory?: import('./npcCityStoryContext').NpcCityStoryContext
     socialOpportunity?: import('./npcInitiative').NpcGreetingOpportunity
     commandCapabilities?: {
         canFollow: boolean
         canFight: boolean
+        serviceOffers?: ReadonlyArray<
+            import('../game/npcRoster').NpcServiceOffer
+        >
         movementScope: 'city' | 'region' | 'none'
         orders: Partial<
             Record<
@@ -188,6 +194,7 @@ export type NpcInformationRequest =
     | { type: 'knowledge_search'; query: string }
 
 export interface NpcAiReply {
+    offerService?: import('../game/npcRoster').NpcServiceOffer | null
     informationRequest?: NpcInformationRequest | null
     personMemoryUpdate?: import('./characterMemory').PersonMemoryUpdate | null
     speech?: string | null

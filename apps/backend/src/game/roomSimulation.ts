@@ -22,7 +22,7 @@ import type { TheftService } from './theft'
 import { pauseWorkerActivity } from './workerActivityState'
 import { centerLocationId, type WorldLocations } from './worldLocations'
 
-interface SimulationContext {
+export interface SimulationContext {
     companions: CompanionService
     characters: Map<string, GameCharacter>
     connections: Map<RoomSocket, string | undefined>
@@ -123,17 +123,21 @@ function advanceControllers(
     const { characters, controllers, room, now } = context
     for (const [id, controller] of controllers) {
         const character = characters.get(id)
-        if (room.social.exchanges.isPaused(id)) {
-            if (character !== undefined) {
-                pauseWorkerActivity(character, 'exchange', now)
-            }
+        if (character === undefined) {
             room.scenarios.defer(id, now)
             continue
         }
-        if (character === undefined || reacting.has(id)) {
-            if (character !== undefined) {
-                pauseWorkerActivity(character, 'reaction', now)
-            }
+        if (context.companions.prepareSafety(character, room, now)) {
+            room.scenarios.defer(id, now)
+            continue
+        }
+        if (room.social.exchanges.isPaused(id)) {
+            pauseWorkerActivity(character, 'exchange', now)
+            room.scenarios.defer(id, now)
+            continue
+        }
+        if (reacting.has(id)) {
+            pauseWorkerActivity(character, 'reaction', now)
             room.scenarios.defer(id, now)
             continue
         }

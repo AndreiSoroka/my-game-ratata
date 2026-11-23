@@ -11,13 +11,13 @@ import type { NpcAiRole } from './types'
 
 const roleConstraints: Record<NpcAiRole, string> = {
     advisor:
-        'Answer questions from own learned knowledge. Dialogue only: never control movement, combat or property.',
+        'Answer the current conversation from own learned knowledge and offer an authorized service when requested.',
     city_coordinator:
         'Coordinate city help through validated quest proposals, finite municipal quest funding and existing worker requests. Cannot mint goods or refill funds.',
     companion:
         'Accept one requester at a time. Companion follow and consent use ordinary game rules.',
     necromancer:
-        'Choose only from the supplied local tactics. The server rechecks each action.',
+        'Use speech in conversation. Movement and combat use the separate local tactical choices.',
 }
 
 export function filterNpcAiTargets(
@@ -59,19 +59,20 @@ export function npcAiCapabilities(
     dialogue: AdventureDialogue | null,
     actor?: GameCharacter
 ): NonNullable<NpcAiObservation['capabilities']> {
+    const conversationOnly = role === 'advisor' || role === 'necromancer'
     return {
         intentions: [
             ...new Set([
                 'speak',
                 'wait',
-                'cancel_control',
+                ...(conversationOnly ? [] : ['cancel_control']),
                 ...(actor !== undefined && hasBladeIntention(actor, role)
                     ? ['use_ability']
                     : []),
-                'quest_propose',
-                ...(role === 'advisor'
+                ...(conversationOnly
                     ? []
                     : [
+                          'quest_propose',
                           'worker_quest_propose',
                           'quest_invitation_answer',
                           'guide',
@@ -82,7 +83,9 @@ export function npcAiCapabilities(
                 ...targets.flatMap((target) =>
                     target.commands.map((command) => command.type)
                 ),
-                ...(dialogue === null ? [] : ['dialogue_choice']),
+                ...(dialogue === null || conversationOnly
+                    ? []
+                    : ['dialogue_choice']),
             ]),
         ],
         constraints: [

@@ -1,9 +1,11 @@
 # NPC reasoning through Codex CLI or Claude Code
 
-Mira, Kaplya, Sister Vera and Savva use Codex CLI or Claude Code to choose ordinary
-character intentions when a supported CLI is available. The backend owns the event
-queue, controller lease, action results and session memory. Model calls run outside
-the simulation tick.
+Mira, the necromancer Savva, Kaplya, Leia and Bran can choose ordinary character
+intentions through Codex CLI or Claude Code. Merchant Savva, Zlata, Mila, Nestor,
+Aren, Tikhon, Ignat, Sister Vera and Elisey use the model for addressed dialogue
+and recommendations about their own services. Scripted residents hum after a
+two-second pause. The backend owns the event queue, controller lease, action
+results and session memory. Model calls run outside the simulation tick.
 Every resulting action still uses `GameCharacter` and the shared authoritative
 movement, collision, conversation and life-cycle rules.
 
@@ -26,24 +28,28 @@ Start the backend as usual.
 bun run dev:backend
 ```
 
-NPC AI is enabled by default. With the bundled settings, the backend searches for
-`codex` first and uses `claude` if `codex` is absent. Set `GAME_AI_PROVIDER=codex`
-or `GAME_AI_PROVIDER=claude` to pick a CLI explicitly. When no usable executable
-is available, the backend starts with scripted NPCs. Set `GAME_AI_ENABLED=0` to
-always use scripted NPCs. When AI is enabled, the backend logs the provider it
-found or reports that no CLI is available.
+The backend verifies actual structured model replies before starting the world.
+It checks Codex first and checks the full configuration on Claude if Codex
+fails. Set `GAME_AI_PROVIDER=codex` or `GAME_AI_PROVIDER=claude`
+to pick a CLI explicitly. During startup the entrance screen shows the check in
+progress or **ИИ недоступен**. The backend retries a failed check after 30 seconds
+and allows players to join when the checks succeed.
 
 The CLI signs in through its own authentication flow on the backend machine.
 For hosted use of Claude Code, Anthropic requires players to authenticate with
 their own eligible credentials. [Anthropic's terms for running Claude Code in a product](https://code.claude.com/docs/en/legal-and-compliance#can-customers-offer-claude-code-in-their-products).
 
 Start the frontend as described in [Playable world](playable-world.md). Speak
-normally within 80 world units and line of sight. The current E selection is a
-hint, followed by your companion. Otherwise one listener responds, or several may
-ask whom you mean. An NPC explicitly agrees before accepting or replacing an
-errand. Small talk preserves its route and task budget. AI follow/help/guard/wait/dismiss
-requests use chat and existing consent rules. Q toggles selection between yourself
-and no target.
+within 80 world units and line of sight. Select the intended NPC or address them
+by name. Use the fuller names **Торговец Савва** and **Некромант Савва** to pick
+between the two. An NPC explicitly agrees before accepting or replacing an
+errand. Use chat or the interaction menu to ask Kaplya, Leia or Bran to follow.
+Q toggles selection between yourself and no target.
+If a conversation ends before the answer, the NPC and nearby characters who
+can see both participants observe the departure. Their social snapshots show
+the participants and time. The same facts reach an AI character on its next
+scheduled request. The observation describes the contact and leaves speech
+with its original audience.
 
 Use **Шёпот** within 48 units for a private conversation. **Обменяться** opens a
 voluntary two-sided offer and the same private chat. Real unequipped items, stack
@@ -58,6 +64,37 @@ persistence disabled. It receives a compact earned observation through stdin and
 returns a structured decision. The separate external agent MCP bridge cannot
 override an active exclusive NPC controller lease. [External agent MCP bridge](playable-world.md#external-agent-mcp).
 
+## World mode and Admin access
+
+On the machine running the backend, open the local frontend and expand
+**Дополнительные настройки**. **Admin** uses the backend's dedicated loopback
+listener, `http://127.0.0.1:3001` by default. The default frontend origins are
+`http://127.0.0.1:5173` and `http://localhost:5173`. For a different local port, set
+`GAME_LOCAL_ADMIN_ORIGIN` to the exact frontend origin. If you change
+`GAME_LOCAL_ADMIN_PORT`, set `VITE_LOCAL_ADMIN_URL` to the matching local URL.
+
+For remote access, configure `GAME_ADMIN_ORIGIN` with the exact HTTPS frontend
+origin. Serve the backend using `GAME_SERVER_TLS_CERT` and `GAME_SERVER_TLS_KEY`,
+or terminate TLS at a trusted proxy. In the latter case, bind `GAME_SERVER_HOST`
+to a private backend interface and set `GAME_ADMIN_TLS_PROXY_IP` to the proxy's
+actual private peer address. Configure the proxy to overwrite
+`X-Forwarded-Proto` with its connection scheme. Keep the dedicated loopback
+Admin port off the proxy.
+The code rate limit uses the socket peer, so a proxy shares a peer limit.
+
+The server prints a four-character code on interactive startup. Type `admin-code`
+in that terminal to generate another. For background processes, run
+`bun run admin:code` with the control socket path printed at startup, using the
+backend's OS account. For the built backend, use `bun dist/backend/adminCode.js`
+with the same path. The code lasts two minutes, works once and expires after
+five failed entries. The Admin session lasts 30 minutes in the current browser page.
+
+Select whether new autonomous calls wait for a connected player, the whole world
+continues while empty, or the whole world pauses while empty. The default waits
+for players before starting autonomous model calls. A full pause preserves
+remaining gameplay durations for the next successful join. The setting lasts
+until the server process restarts.
+
 ## Configuration
 
 Edit [`apps/backend/config/npc-ai.json`](../apps/backend/config/npc-ai.json).
@@ -69,11 +106,11 @@ set its path when starting the backend.
 GAME_AI_PROVIDER=codex GAME_AI_CONFIG=/absolute/path/npc-ai.local.json bun run dev:backend
 ```
 
-`GAME_AI_CONFIG` replaces the default file. Relative paths resolve against the
-backend process's current working directory (`apps/backend` when started through
-`bun run dev:backend`). A custom file defaults to Codex settings. Set
-`GAME_AI_PROVIDER=claude` to apply it to Claude Code. The override is ignored while
-AI is disabled.
+`GAME_AI_CONFIG` overrides model settings and limits for the authored roster.
+Relative paths resolve against the backend process's current working directory
+(`apps/backend` when started through `bun run dev:backend`). During automatic
+selection each provider uses its own defaults and the overrides from the file.
+Set `GAME_AI_PROVIDER` if the overrides target a specific CLI or model.
 
 | Setting                      | Default                                 | Meaning                                                                |
 | ---------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
@@ -87,7 +124,7 @@ AI is disabled.
 | `limits.reviewIntervalMs`    | `60000`                                 | Mira's regular autonomous review interval                              |
 | `limits.retryDelayMs`        | `5000`                                  | Delay before the single retry of a failed call                         |
 
-Each `npcs` entry has `actorId`, `role` and optional `settings` overriding the
+An optional `npcs` entry has `actorId` and `settings` overriding the
 global model settings. This Codex configuration keeps Mira on the default timeout
 and gives Kaplya a shorter one.
 
@@ -100,22 +137,18 @@ and gives Kaplya a shorter one.
     },
     "npcs": [
         {
-            "actorId": "npc_friendly_girl_1",
-            "role": "city_coordinator"
-        },
-        {
             "actorId": "npc_magic_slime_1",
-            "role": "companion",
             "settings": { "timeoutMs": 45000 }
         }
     ]
 }
 ```
 
-The CLI account needs access to the configured model. Provider failures receive at
-most one retry with the configured model. Repeated failures release the lease and
-restore scripted behavior. A room stop aborts pending CLI processes. Death,
-identity replacement and cancellation invalidate late replies.
+The CLI account needs access to the configured model. Interactive turns have a
+60-second total budget, including queue time and any retry. A failed addressed
+turn ends in a hum if the conversation is still current. A room stop aborts
+pending CLI processes. Death, identity replacement and cancellation invalidate
+late replies.
 
 ## Current character behavior
 
@@ -124,10 +157,10 @@ identity replacement and cancellation invalidate late replies.
   withdrawing while a model turn is in flight. The model selects an available
   plan from an observer-scoped summary. Savva keeps a session journal, including
   a favorite skeleton and occasional remarks drawn from accepted decisions.
-  An accepted combat reply can include a short line in the same call. Encounter
-  and low-health remarks also run during movement, casting and pending advice.
-- Savva has a separate limit of eight model calls per rolling hour and two per
-  fight, with at least 30 seconds between combat calls. Peaceful reviews require
+  An accepted combat reply can include a short line in the same call. The model
+  can choose to hunt a visible hostile slime and earn ordinary combat experience.
+- Savva has a separate limit of eight model calls per rolling real hour and two per
+  fight, with at least 30 seconds of game time between combat calls. Peaceful reviews require
   completed activity and are spaced at least five minutes apart. Player health
   is observed at the usual precision and remains scoped to visible players.
 - Savva can order three allied skeletons. Skeletons pursue wild slimes when
@@ -142,10 +175,13 @@ identity replacement and cancellation invalidate late replies.
   holding workers in repeated conversations.
 - **Kaplya** converses and accepts peaceful errands. For a merchant errand she
   physically enters the shop, interacts, retains observed offers, returns and
-  answers. Errands own movement temporarily; existing following between locations
-  remains available after consent.
-- Both use the same `GameCharacter` rules. No generated prose creates property,
-  progress, damage, consent or rewards. Movement scope is a role capability: companions can travel across the region, while the city coordinator stays in the city.
+  answers. Kaplya can follow between locations after consent. It flees visible
+  enemies and tries to walk back to Novogorod when its leader dies.
+- **Leia** supports allies with the Wayfarer's Prayer while walking. **Bran**
+  can use his sword at close range and a basic shot from farther away.
+- Every actor uses the same `GameCharacter` rules. The server resolves actions
+  and rewards through ordinary commands. Companions can cross locations, and
+  Mira's autonomous routes stay inside the city.
 
 ## Quest proposals and rewards
 

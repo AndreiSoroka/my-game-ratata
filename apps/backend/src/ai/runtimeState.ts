@@ -53,6 +53,7 @@ export interface NpcAiActorState {
         | undefined
     retry: number
     nextAt: number
+    budgetUntil?: number
     reviewAt: number
     inspectAt: number
     cityFingerprint: string | undefined
@@ -151,4 +152,18 @@ export function enqueueNpcAiEvent(
     if (state.events.length > 16) {
         state.events.shift()
     }
+}
+
+export function interruptInference(state: NpcAiActorState): void {
+    state.finalizing?.resolve({
+        code: 'command_unavailable',
+        reason: { code: 'cancelled', detail: 'Разговор завершён.' },
+    })
+    state.finalizing = undefined
+    state.generation += 1
+    state.controller?.abort()
+    state.ready = undefined
+    state.dialogue = undefined
+    state.retry = 0
+    state.turnControlRevision = undefined
 }

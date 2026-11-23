@@ -135,7 +135,8 @@ describe('shared companion movement and combat', () => {
         const context = worldFor([actor, guard, target], target)
         const start = { ...guard.position }
         service.update(guard, context.world, 5_000)
-        expect(guard.soul.companion?.order).toBe('guard')
+        expect(guard.soul.companion?.order).toBe('idle')
+        expect(guard.soul.companion?.leaderId).toBeNull()
         expect(target.hp).toBe(target.maxHp)
         advanceCharacter({
             character: guard,

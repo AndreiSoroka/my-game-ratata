@@ -44,6 +44,9 @@ export function reconcileConversations(
             state.dialogue = null
             continue
         }
+        if (dialogue.initialView === undefined) {
+            continue
+        }
         npc.setMoveInput({ x: 0, y: 0 })
         npc.clearPath()
         if (!held.has(npc.id)) {

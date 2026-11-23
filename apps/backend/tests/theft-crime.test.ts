@@ -159,7 +159,10 @@ describe('civilian theft responses', () => {
         )
         expect(
             events.some(
-                (event) => event.actorId === guard.id && event.kind === 'chat'
+                (event) =>
+                    event.actorId === actor.id &&
+                    event.targetId === guard.id &&
+                    event.kind === 'notice'
             )
         ).toBe(true)
         const reactions = service.update(room, characters, 1_050)
@@ -204,7 +207,12 @@ describe('guard accusations are proven, bounded and private', () => {
         expect(service.snapshot(actor.id, actor.id, 1_100).wantedMsLeft).toBe(0)
         victim.locationId = actor.locationId
         expect(
-            call(victim, 1_100).some((event) => event.actorId === guard.id)
+            call(victim, 1_100).some(
+                (event) =>
+                    event.kind === 'notice' &&
+                    event.actorId === victim.id &&
+                    event.targetId === guard.id
+            )
         ).toBe(true)
         expect(call(victim, 1_101)).toEqual([])
         expect(
@@ -380,7 +388,14 @@ describe('crime respects human control independently of controller kind', () => 
                 now: 1_100,
             }
         )
-        expect(call.some((event) => event.actorId === guard.id)).toBe(true)
+        expect(
+            call.some(
+                (event) =>
+                    event.kind === 'notice' &&
+                    event.actorId === victim.id &&
+                    event.targetId === guard.id
+            )
+        ).toBe(true)
         expect(service.update(room, characters, 1_150).has(victim.id)).toBe(
             false
         )

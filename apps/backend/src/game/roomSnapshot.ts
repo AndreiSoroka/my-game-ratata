@@ -36,7 +36,7 @@ export function createRoomSnapshotter(
     room: GameRoom
 ) {
     return (
-        now = Date.now(),
+        now = room.gameplayNow(),
         locationId = centerLocationId,
         playerId?: string
     ): WorldSnapshot => {
@@ -104,7 +104,8 @@ export function roomSnapshot(
                   adventure: context.adventure.snapshot(
                       playerId,
                       locationId,
-                      context.characters.get(playerId)
+                      context.characters.get(playerId),
+                      now
                   ),
                   party: context.parties.snapshot(playerId),
                   ...(observer === undefined || context.social === undefined

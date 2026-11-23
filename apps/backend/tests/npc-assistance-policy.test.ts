@@ -68,7 +68,7 @@ describe('authored assistance conditions', () => {
         const service = new CompanionService()
         const actor = character('hero', true),
             other = character('stranger', true),
-            helper = character('npc_wanderer_1')
+            helper = character('npc_princess_1')
         const context = {
             questCompleted: () => false,
             hasLineOfSight: () => true,
@@ -92,7 +92,7 @@ describe('authored assistance conditions', () => {
         ).toBe(true)
     })
 
-    it('does not replace the story condition with a conversation or a different quest', () => {
+    it('keeps a wanderer on the authored routine even after conversation and story completion', () => {
         const service = new CompanionService(),
             actor = character('hero', true),
             helper = character('npc_wanderer_2')
@@ -117,7 +117,7 @@ describe('authored assistance conditions', () => {
                 },
                 5000
             ).accepted
-        ).toBe(true)
+        ).toBe(false)
     })
 })
 

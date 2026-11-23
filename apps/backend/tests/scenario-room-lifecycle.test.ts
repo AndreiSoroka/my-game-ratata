@@ -21,14 +21,18 @@ describe('ordinary resurrection preserves scenario progress', () => {
     it('continues after a shared prayer without repeating a successful gathering step', () => {
         const room = openScenarioRoom(),
             owner = joinScenarioRoom(room, 'Returning Gatherer')
+        const nodes = room
+            .adventureForWorkers()
+            .resourceSnapshot(owner.actor.locationId)
+            .filter((node) => node.kind === 'herbs')
+        const herbPatch = nodes.find((node) => node.remaining > 0)
+        if (herbPatch === undefined) {
+            throw new Error('Missing authored herb source')
+        }
+        owner.actor.position = { ...herbPatch.position }
         const herbsBefore = new Map(
-            room
-                .adventureForWorkers()
-                .resourceSnapshot(owner.actor.locationId)
-                .filter((node) => node.kind === 'herbs')
-                .map((node) => [node.id, node.remaining])
+            nodes.map((node) => [node.id, node.remaining])
         )
-        expect(herbsBefore.size).toBeGreaterThan(0)
         owner.send({ type: 'marker_create', name: 'This identity' })
         owner.save(
             roomScenario('gather-once', [
@@ -58,7 +62,7 @@ describe('ordinary resurrection preserves scenario progress', () => {
             interruption: 'death',
         })
         const cleric = joinScenarioRoom(room, 'Rescuer', 'cleric')
-        walkToScenarioPoint(cleric, { ...owner.actor.position })
+        cleric.actor.position = { ...owner.actor.position }
         vi.spyOn(Math, 'random').mockReturnValue(0)
         cleric.send({
             type: 'use_ability',

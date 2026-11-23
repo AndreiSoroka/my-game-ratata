@@ -5,11 +5,12 @@ import { fileURLToPath } from 'node:url'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AdventureService } from '../src/game/adventure'
-import { GameCharacter } from '../src/game/character'
+import { parseNpcAiConfig } from '../src/ai/config'
 import { loadNavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
 import { playerSpawn } from '../src/game/spawns'
+import { npcReply } from './npcAiRuntimeFixture'
+import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 interface Building {
     name: string
@@ -31,7 +32,10 @@ const buildings =
     map.layers.find((layer) => layer.name === 'Buildings')?.objects ?? []
 
 beforeEach(() => vi.stubGlobal('Bun', { env: {} }))
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+})
 
 function point(building: Building, kind: 'entry' | 'interior') {
     const coordinate = (axis: string) =>
@@ -113,41 +117,65 @@ describe('inhabited city interiors', () => {
         }
     })
 
-    it('lets a nearby resident speak without receiving merchant privileges', () => {
-        const room = new GameRoom(loadNavigationService())
+    it('lets a nearby smith answer through the model and retain only smith services', async () => {
+        vi.useFakeTimers()
+        vi.setSystemTime(1_000)
+        const room = new GameRoom(loadNavigationService(), {
+            ai: {
+                config: parseNpcAiConfig(
+                    { npcs: [{ actorId: 'npc_smith_1', role: 'advisor' }] },
+                    true
+                ),
+                provider: {
+                    decide: () =>
+                        Promise.resolve(
+                            npcReply(null, {
+                                speech: 'Привет. Я кузнец Игнат.',
+                            })
+                        ),
+                },
+            },
+        })
         const npc = room.getCharacter('npc_smith_1')
         if (npc === undefined) {
             throw new Error('Missing smith')
         }
-        const hero = new GameCharacter({
-            id: 'visitor',
-            nickname: 'Visitor',
-            archetype: 'human',
-            controllerKind: 'network_player',
-            faction: 'peaceful',
-            spawnPosition: { x: npc.position.x, y: npc.position.y + 16 },
-        })
-        const service = new AdventureService()
-        const events = service.interact(hero, npc.id, [npc])
-        expect(events).toContainEqual(
-            expect.objectContaining({ kind: 'chat', actorId: npc.id })
-        )
-        expect(service.snapshot(hero.id).dialogue).toMatchObject({
-            npcId: npc.id,
-            canTrade: true,
-        })
-        expect(service.snapshot(hero.id).dialogue?.choices).toContainEqual({
-            id: 'repair',
-            label: 'Почини моё снаряжение',
-            labelMessage: { key: 'authored.dialogue.repair' },
-        })
-        expect(service.snapshot(hero.id).dialogue?.text).toContain('Игнат')
-        service.grantGoldOnce(hero.id, 100, 'test-payment')
-        service.trade(hero, 'food', [npc])
-        expect(service.snapshot(hero.id).gold).toBe(100)
-        expect(hero.inventory).toHaveLength(0)
-        npc.soul.canSpeak = false
-        expect(service.interact(hero, npc.id, [npc])).toEqual([])
-        expect(service.snapshot(hero.id).notice).toContain('Подойди')
+        const visitor = joinScenarioRoom(room, 'Visitor')
+        const hero = visitor.actor
+        // This test exercises contacts and services after both actors are inside the smithy.
+        hero.position = { ...npc.position }
+        const service = room.adventureForWorkers()
+        room.start()
+        try {
+            visitor.send({ type: 'interact', targetId: npc.id })
+            await vi.advanceTimersByTimeAsync(150)
+            expect(
+                visitor.sent.find(
+                    (message) =>
+                        message.type === 'event' &&
+                        message.event.kind === 'chat' &&
+                        message.event.actorId === npc.id
+                )
+            ).toBeDefined()
+            expect(service.snapshot(hero.id).dialogue).toMatchObject({
+                npcId: npc.id,
+                canTrade: true,
+                text: 'Привет. Я кузнец Игнат.',
+            })
+            expect(service.snapshot(hero.id).dialogue?.choices).toContainEqual({
+                id: 'repair',
+                label: 'Почини моё снаряжение',
+                labelMessage: { key: 'authored.dialogue.repair' },
+            })
+            service.grantGoldOnce(hero.id, 100, 'test-payment')
+            service.trade(hero, 'food', [npc])
+            expect(service.snapshot(hero.id).gold).toBe(100)
+            expect(hero.inventory).toHaveLength(0)
+            npc.soul.canSpeak = false
+            expect(service.interact(hero, npc.id, [npc])).toEqual([])
+            expect(service.snapshot(hero.id).notice).toContain('Подойди')
+        } finally {
+            room.stop()
+        }
     })
 })

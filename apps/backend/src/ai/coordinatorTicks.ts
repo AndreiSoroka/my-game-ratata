@@ -22,9 +22,13 @@ export class NpcAiTicks {
 
     public yieldBackground(state: NpcAiActorState, now: number): void {
         if (
-            state.controller === undefined ||
+            (state.controller === undefined &&
+                state.ready === undefined &&
+                state.finalizing === undefined) ||
             state.dialogue !== undefined ||
-            state.task?.requesterId != null
+            state.task?.requesterId != null ||
+            state.pending !== undefined ||
+            state.guide !== undefined
         ) {
             return
         }
@@ -44,6 +48,13 @@ export class NpcAiTicks {
         )
         if (actor === undefined) {
             return
+        }
+        const dialogue = state.dialogue
+        if (
+            dialogue?.conversationId !== undefined &&
+            !this.room.social.npcSpeech.turns.available(actor, dialogue, now)
+        ) {
+            this.sessions.cancelInference(state, now)
         }
         this.preemptBackground(state, now)
         if (!this.finalize(state, actor, now)) {
@@ -95,7 +106,13 @@ export class NpcAiTicks {
         state.finalizing = undefined
         if (
             this.controlChanged(state, actor) ||
-            state.mind.retirementRevision !== draft.retirementRevision
+            state.mind.retirementRevision !== draft.retirementRevision ||
+            (state.dialogue !== undefined &&
+                !this.room.social.npcSpeech.turns.available(
+                    actor,
+                    state.dialogue,
+                    now
+                ))
         ) {
             this.cancelChanged(state, now)
             draft.resolve({

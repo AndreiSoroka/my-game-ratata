@@ -119,7 +119,7 @@ it('acknowledges a fresh request immediately when the hourly allowance is exhaus
     )
 })
 
-it('records an out-of-range reply as undelivered without speaking across the map', async () => {
+it('cancels a pending reply when the speaker leaves range', async () => {
     const f = setup()
     f.talk('Подскажешь дорогу?')
     await f.advance()
@@ -128,23 +128,13 @@ it('records an out-of-range reply as undelivered without speaking across the map
         target: { x: f.actor.position.x + 200, y: f.actor.position.y },
     })
     await f.advance(1600)
+    expect(f.provider.turns[0]?.signal.aborted).toBe(true)
     const text = 'Ответ после ухода.'
     f.provider.turns[0]?.resolve(
         npcReply(null, { speech: text, taskAcceptance: 'none' })
     )
     await f.advance()
     expect(f.speech().some((event) => event.text === text)).toBe(false)
-    await f.diagnostics.flush()
-    expect(
-        f
-            .entries()
-            .some(
-                (entry) =>
-                    entry['category'] === 'request_status' &&
-                    typeof entry['reason'] === 'string' &&
-                    entry['reason'].startsWith('undelivered:')
-            )
-    ).toBe(true)
 })
 
 it('guides with an ordinary route and pauses when the requester does not follow', async () => {
@@ -300,6 +290,7 @@ it('does not execute a model action computed before an until-return control tran
     const before = { ...f.actor.position }
     f.alice.actor.position = { x: before.x + 100, y: before.y }
     await f.advance()
+    expect(f.provider.turns[1]?.signal.aborted).toBe(true)
     f.alice.actor.position = { x: before.x + 20, y: before.y }
     await f.advance()
     expect(f.actor.soul.companion?.order).toBe('follow')
@@ -310,17 +301,7 @@ it('does not execute a model action computed before an until-return control tran
         )
     )
     await f.advance()
-    await f.diagnostics.flush()
-    expect(
-        f
-            .entries()
-            .some(
-                (entry) =>
-                    entry['category'] === 'request_status' &&
-                    typeof entry['reason'] === 'string' &&
-                    entry['reason'].startsWith('cancelled:')
-            )
-    ).toBe(true)
+    expect(f.actor.position).toEqual(before)
     expect(f.provider.turns).toHaveLength(2)
 })
 

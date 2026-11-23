@@ -1,6 +1,5 @@
 import {
     authoredMessage,
-    authoredPhrase,
     type AuthoredTextKey,
     type GameEventPayload,
     workshopFor,
@@ -13,13 +12,15 @@ import {
     applyAdventureChoice,
     type PlayerAdventure,
 } from './adventureState'
-import { refreshTradeDialogue } from './adventureTrading'
+import {
+    type AdventureActionResult,
+    refreshTradeDialogue,
+} from './adventureTrading'
 import type { GameCharacter } from './character'
 import { CONVERSATION_REACH } from './conversationSessions'
 import { interactionRangeText } from './interactionRangeText'
 import type { NavigationService } from './navigation'
 import { setAuthoredNotice, setNotice } from './notices'
-import { createDialogueSpeechEvent } from './speechReceipts'
 import { trophyProgress } from './trophyQuest'
 export function interactAdventureNpc(
     actor: GameCharacter,
@@ -30,24 +31,24 @@ export function interactAdventureNpc(
     navigation?: NavigationService,
     service?: 'shop' | 'orders' | 'repair',
     text?: string
-): GameEventPayload[] {
+): AdventureActionResult {
     const npc = resolveAdventureNpc(actor, npcId, locationNPCs, now, navigation)
 
     if (npc === undefined) {
         if (navigation === undefined) {
-            return rejectDialogue(state, 'notice.conversationUnavailable')
+            return rejectInteraction(state, 'notice.conversationUnavailable')
         }
         const reach = CONVERSATION_REACH / navigation.grid.tileWidth
-        setNotice(
+        const error = setNotice(
             state,
             `Подойди к живому собеседнику ${interactionRangeText(CONVERSATION_REACH, navigation.grid.tileWidth)}.`,
             authoredMessage('notice.conversationReach', { reach })
         )
-        return []
+        return { accepted: false, error, events: [] }
     }
 
     if (!serviceAvailable(npcId, service)) {
-        return rejectDialogue(state, 'notice.serviceUnavailable')
+        return rejectInteraction(state, 'notice.serviceUnavailable')
     }
     setNotice(state, null)
     state.dialogue = adventureDialogue(
@@ -60,7 +61,7 @@ export function interactAdventureNpc(
         state.dialogue.initialView = service
     }
     refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
-    if (actor.controllerKind === 'network_player') {
+    if (actor.controllerKind === 'network_player' && service !== undefined) {
         npc.setMoveInput({ x: 0, y: 0 })
         npc.clearPath()
         npc.updateFacing({
@@ -68,7 +69,7 @@ export function interactAdventureNpc(
             y: actor.position.y - npc.position.y,
         })
     }
-    return sayDialogue(actor, npc, state, state.dialogue.text)
+    return { accepted: true, error: null, events: [] }
 }
 
 export function chooseAdventureReply(
@@ -110,18 +111,28 @@ export function chooseAdventureReply(
     }
 
     applyAdventureChoice(state, choiceId, actor, context)
-    const text =
-        choiceId === 'ask_dragon'
-            ? authoredPhrase('dialogue.dragons')
-            : undefined
+    const { text, textMessage, speechId } = state.dialogue ?? {}
     state.dialogue = adventureDialogue(
         npc.id,
         npc.nickname,
         trophyProgress(state, actor),
-        text
+        text === undefined
+            ? undefined
+            : { text, ...(textMessage === undefined ? {} : { textMessage }) }
     )
+    if (speechId !== undefined) {
+        state.dialogue.speechId = speechId
+    }
     refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
-    return sayDialogue(actor, npc, state, state.dialogue.text)
+    return []
+}
+
+function rejectInteraction(
+    state: PlayerAdventure,
+    notice: AuthoredTextKey
+): AdventureActionResult {
+    const error = setAuthoredNotice(state, notice)
+    return { accepted: false, error, events: [] }
 }
 
 function rejectDialogue(
@@ -131,22 +142,6 @@ function rejectDialogue(
     setAuthoredNotice(state, notice)
     return []
 }
-function sayDialogue(
-    actor: GameCharacter,
-    npc: GameCharacter,
-    state: PlayerAdventure,
-    text: string
-): GameEventPayload[] {
-    const event = createDialogueSpeechEvent(npc, actor, text)
-    if (state.dialogue !== null) {
-        state.dialogue.speechId = event.speechId
-        if (state.dialogue.textMessage !== undefined) {
-            event.textMessage = state.dialogue.textMessage
-        }
-    }
-    return [event]
-}
-
 function serviceAvailable(
     npcId: string,
     service: 'shop' | 'orders' | 'repair' | undefined

@@ -1,14 +1,22 @@
-import type {
-    CompanionOrder,
-    CompanionWaitMode,
-    Vector2,
+import {
+    type CompanionOrder,
+    type CompanionWaitMode,
+    type GameEventPayload,
+    type Vector2,
+    WORLD_DIRECTIONS,
 } from '@my-game-ratata/contracts'
 
 import type { CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
+import { sightForCompanion, tryCompanionShot } from './companionAbilities'
 import type { CompanionProfile } from './companionProfiles'
 import { distance } from './math'
+import {
+    type RegionalExit,
+    regionalExit,
+    regionalRoute,
+} from './regionalNavigation'
 
 export interface CompanionRuntime {
     anchor: Vector2
@@ -16,6 +24,7 @@ export interface CompanionRuntime {
     lastPlanAt: number
     lastReply: string | null
     leaderId: string | null
+    leaderDeathSequence?: number
     metActors: Set<string>
     order: CompanionOrder
     profile: CompanionProfile
@@ -24,6 +33,12 @@ export interface CompanionRuntime {
     waitDeparted?: boolean
     waitResumeOrder?: 'follow' | 'idle'
     waitResumeLeaderId?: string | null
+    regionalLeg?: {
+        from: string
+        to: string
+        exit: RegionalExit | undefined
+        plannedAt: number
+    }
 }
 
 export function advanceCompanionIntent(
@@ -32,37 +47,43 @@ export function advanceCompanionIntent(
     state: CompanionRuntime,
     world: CompanionWorld,
     now: number
-): void {
+): GameEventPayload[] {
     if (advanceCompanionWait(character, leader, state, world, now)) {
-        return
+        return []
     }
     if (leader !== undefined && needsCrossing(character, leader, state)) {
-        followToLocation(character, leader, state, world, now)
-        return
+        advanceCompanionTravel(character, leader.locationId, state, world, now)
+        return []
     }
     const target = state.profile.canFight
         ? world.findVisibleTarget(
               character,
-              state.profile.stationary ? 64 : 112
+              sightForCompanion(character, state, world),
+              now
           )
         : undefined
-    if (target !== undefined && engage(character, target, state, world, now)) {
-        return
+    const engagement =
+        target === undefined
+            ? undefined
+            : engage(character, target, state, world, now)
+    if (engagement !== undefined) {
+        return engagement
     }
     if (holdsPosition(state)) {
         character.setMoveInput({ x: 0, y: 0 })
         character.clearPath()
-        return
+        return []
     }
     if (
         leader !== undefined &&
         distance(character.position, leader.position) > 28
     ) {
         planPath(character, leader.position, state, world, now)
-        return
+        return []
     }
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()
+    return []
 }
 
 function advanceCompanionWait(
@@ -147,7 +168,7 @@ function engage(
     state: CompanionRuntime,
     world: CompanionWorld,
     now: number
-): boolean {
+): GameEventPayload[] | undefined {
     character.updateFacing({
         x: target.position.x - character.position.x,
         y: target.position.y - character.position.y,
@@ -162,51 +183,59 @@ function engage(
         character.setMoveInput({ x: 0, y: 0 })
         character.clearPath()
         world.requestAttack(character, now, target.id)
-        return true
+        return []
+    }
+    const shot = tryCompanionShot(character, target, world, now)
+    if (shot !== undefined) {
+        return shot
     }
     if (state.profile.stationary || state.order === 'guard') {
-        return false
+        return undefined
     }
     planPath(character, target.position, state, world, now)
-    return true
+    return []
 }
 
-function followToLocation(
+export function advanceCompanionTravel(
     character: GameCharacter,
-    leader: GameCharacter,
+    destination: string,
     state: CompanionRuntime,
     world: CompanionWorld,
     now: number
 ): void {
-    const from = /^map-(\d+)-(\d+)$/.exec(character.locationId)
-    const to = /^map-(\d+)-(\d+)$/.exec(leader.locationId)
-    if (from === null || to === null) {
-        return
-    }
-    const dx = Math.sign(Number(to[1]) - Number(from[1]))
-    const dy = dx === 0 ? Math.sign(Number(to[2]) - Number(from[2])) : 0
     const navigation = world.navigationFor(character)
-    const { tileWidth, tileHeight, worldWidth, worldHeight } =
-        navigation.summary
-    const edge = {
-        x:
-            dx < 0
-                ? tileWidth / 2
-                : dx > 0
-                  ? worldWidth - tileWidth / 2
-                  : worldWidth / 2 + tileWidth / 2,
-        y:
-            dy < 0
-                ? tileHeight / 2
-                : dy > 0
-                  ? worldHeight - tileHeight / 2
-                  : worldHeight / 2 + tileHeight / 2,
+    let leg = state.regionalLeg
+    if (
+        leg?.from !== character.locationId ||
+        leg.to !== destination ||
+        (leg.exit === undefined && now >= leg.plannedAt + 1_000)
+    ) {
+        const next = regionalRoute(character.locationId, destination)?.[1]
+        leg = {
+            from: character.locationId,
+            to: destination,
+            plannedAt: now,
+            exit:
+                next === undefined
+                    ? undefined
+                    : regionalExit(
+                          character.position,
+                          character.locationId,
+                          next,
+                          navigation
+                      ),
+        }
+        state.regionalLeg = leg
     }
-    if (distance(character.position, edge) <= 1) {
-        character.setMoveInput({ x: dx, y: dy })
+    if (leg.exit === undefined) {
+        character.setPath([])
         return
     }
-    planPath(character, edge, state, world, now)
+    if (distance(character.position, leg.exit.point) <= 1) {
+        character.setMoveInput(WORLD_DIRECTIONS[leg.exit.direction])
+        return
+    }
+    planPath(character, leg.exit.point, state, world, now)
 }
 
 function planPath(

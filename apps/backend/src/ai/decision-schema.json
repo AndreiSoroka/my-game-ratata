@@ -2,6 +2,7 @@
     "type": "object",
     "additionalProperties": false,
     "required": [
+        "offerService",
         "decision",
         "memory",
         "done",
@@ -15,6 +16,10 @@
         "personMemoryUpdate"
     ],
     "properties": {
+        "offerService": {
+            "type": ["string", "null"],
+            "enum": ["shop", "orders", "repair", "study", "prayer", null]
+        },
         "decision": {
             "anyOf": [
                 {
@@ -790,7 +795,8 @@
                                 "wide_swing",
                                 "circular_swing",
                                 "lunge",
-                                "pommel_strike"
+                                "pommel_strike",
+                                "shot"
                             ]
                         },
                         "targetId": {

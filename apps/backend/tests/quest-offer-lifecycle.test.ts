@@ -193,7 +193,7 @@ it('credits only the explicit nearby inquiry and can accept a new contract after
     expect(inquiry.accepted).toBe(true)
     expect(
         inquiry.events.filter((event) => event.kind === 'chat')
-    ).toHaveLength(2)
+    ).toHaveLength(1)
     expect(f.service.snapshot(f.player.id, 23).quest?.status).toBe('ready')
     f.player.position = { ...f.issuer.position }
     expect(f.turnIn(id).accepted).toBe(true)

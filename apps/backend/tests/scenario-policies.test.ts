@@ -77,8 +77,8 @@ afterEach(() => {
 })
 
 describe('common scheduler ownership over retained NPC policies', () => {
-    it.each(['scenario', 'paused_scenario', 'conversation', 'control'])(
-        'does not run the worker fallback while %s owns the actor',
+    it.each(['scenario', 'paused_scenario', 'simple_interaction', 'control'])(
+        'preserves worker movement ownership for %s',
         (hold) => {
             vi.stubGlobal('Bun', { env: {} })
             vi.useFakeTimers()
@@ -106,7 +106,7 @@ describe('common scheduler ownership over retained NPC policies', () => {
                 if (hold === 'paused_scenario') {
                     room.scenarios.pause(worker)
                 }
-            } else if (hold === 'conversation') {
+            } else if (hold === 'simple_interaction') {
                 const sent: ServerMessage[] = []
                 const socket = {
                     send: (payload: string) =>
@@ -131,8 +131,8 @@ describe('common scheduler ownership over retained NPC policies', () => {
                 )
                 expect(
                     room.snapshot(1000, player.locationId, player.id).adventure
-                        ?.dialogue?.npcId
-                ).toBe(worker.id)
+                        ?.dialogue
+                ).toBeNull()
             } else {
                 expect(
                     room.decideForAgent(worker.id, {
@@ -144,11 +144,14 @@ describe('common scheduler ownership over retained NPC policies', () => {
             room.start()
             vi.advanceTimersByTime(100)
             room.stop()
-            expect(
-                policy.mock.calls.filter(
-                    ([character]) => character.id === worker.id
-                )
-            ).toHaveLength(0)
+            const workerTicks = policy.mock.calls.filter(
+                ([character]) => character.id === worker.id
+            )
+            if (hold === 'simple_interaction') {
+                expect(workerTicks.length).toBeGreaterThan(0)
+            } else {
+                expect(workerTicks).toHaveLength(0)
+            }
         }
     )
 })

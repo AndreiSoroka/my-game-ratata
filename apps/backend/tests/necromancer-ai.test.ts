@@ -17,6 +17,7 @@ import {
 } from '../src/game/necromancerTactics'
 import { GameRoom } from '../src/game/room'
 import { WorldMaps } from '../src/game/worldMaps'
+import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 let room: GameRoom | undefined
@@ -26,7 +27,10 @@ afterEach(() => {
     vi.useRealTimers()
 })
 
-function fixture() {
+function fixture(
+    decide: NpcAiProvider['decide'] = () =>
+        Promise.reject(new Error('Expected a compact advice turn'))
+) {
     vi.useFakeTimers()
     vi.setSystemTime(120_000)
     const turns: Array<{
@@ -35,8 +39,7 @@ function fixture() {
         resolve: (reply: NecromancerModelDecision) => void
     }> = []
     const provider: NpcAiProvider = {
-        decide: () =>
-            Promise.reject(new Error('Expected a compact advice turn')),
+        decide,
         decideNecromancer(context, _settings, signal) {
             const { promise, resolve } =
                 Promise.withResolvers<NecromancerModelDecision>()
@@ -68,7 +71,8 @@ function fixture() {
             character.tags.add('offline')
         }
     }
-    const { actor: visitor, sent } = joinScenarioRoom(game, 'Тихий Гость')
+    const visitorSession = joinScenarioRoom(game, 'Тихий Гость')
+    const { actor: visitor, sent } = visitorSession
     const navigation = game.navigationFor(savva)
     const neighbor = navigation.walkableNeighbors(
         navigation.worldToTile(savva.position)
@@ -92,7 +96,7 @@ function fixture() {
                 : []
         )
     }
-    return { advance, game, savva, visitor, turns, speech }
+    return { advance, game, savva, visitor, visitorSession, turns, speech }
 }
 
 it('keeps the local route moving during advice, then applies the selected plan and records it', async () => {
@@ -112,7 +116,7 @@ it('keeps the local route moving during advice, then applies the selected plan a
     await advance(500)
     expect(savva.position).not.toEqual(start)
     expect(turns).toHaveLength(1)
-    expect(speech()).toContain('Ты ранен. У старой плиты безопаснее.')
+    expect(speech()).toEqual([])
     const rest = turn.context.options.findIndex(
         ({ tactic }) => tactic === 'rest'
     )
@@ -151,6 +155,49 @@ it('shares authored clues only after Savva reaches the corresponding landmark', 
     vi.setSystemTime(Date.now() + 300_000)
     await advance(350)
     expect(turns[1]?.context.findings).toEqual(clues.slice(0, 1))
+})
+
+it('gives the next tactical call only the fact that an earlier private reply went unheard', async () => {
+    const dialogue = controlledNpcProvider()
+    const { advance, game, savva, visitor, visitorSession, turns } = fixture(
+        dialogue.decide
+    )
+    visitor.position = { ...savva.position }
+    const privateQuestion = 'Я слышал про спрятанный перстень.'
+    const privateReply = 'Я расскажу про перстень только тебе.'
+    visitorSession.send({
+        type: 'whisper',
+        targetId: savva.id,
+        text: privateQuestion,
+    })
+    await advance(150)
+    expect(dialogue.turns).toHaveLength(1)
+    expect(turns).toHaveLength(0)
+
+    game.handleClose(visitorSession.socket)
+    const bystander = joinScenarioRoom(game, 'Другой Гость')
+    bystander.actor.locationId = savva.locationId
+    bystander.actor.position = { ...savva.position }
+    bystander.actor.hp = 9
+    dialogue.turns[0]?.resolve(npcReply(null, { speech: privateReply }))
+    await advance(350)
+
+    expect(dialogue.turns[0]?.signal.aborted).toBe(true)
+    expect(turns).toHaveLength(1)
+    const tactical = turns[0]?.context
+    expect(tactical?.conversationDepartures?.[0]).toMatchObject({
+        npcId: savva.id,
+        listenerId: visitor.id,
+        listenerName: visitor.nickname,
+    })
+    expect(tactical?.playerHealth.map(({ id }) => id)).not.toContain(visitor.id)
+    expect(JSON.stringify(tactical)).not.toContain(privateQuestion)
+    expect(JSON.stringify(tactical)).not.toContain(privateReply)
+    expect(JSON.stringify(visitorSession.sent)).not.toContain(privateReply)
+    const published = JSON.stringify(bystander.sent)
+    expect(published).not.toContain('conversationDepartures')
+    expect(published).not.toContain(privateQuestion)
+    expect(published).not.toContain(privateReply)
 })
 
 it('continues local combat while awaiting advice and speaks its bounded reply during a combat action', async () => {
@@ -203,21 +250,23 @@ it('continues local combat while awaiting advice and speaks its bounded reply du
     savva.lockAction(Date.now(), 4_000)
     turn.resolve({
         choice: turn.context.options.findIndex(
-            ({ tactic }) => tactic === 'fight'
+            ({ tactic }) => tactic === 'hunt_slime'
         ),
         note: 'Слизень ещё рядом.',
         bark: 'warning',
+        speech: 'Осторожно, слизень рядом с тропой.',
     })
     await advance(450)
     expect(necromancerController(savva)?.journal.at(-1)).toMatchObject({
-        tactic: 'fight',
+        tactic: 'hunt_slime',
     })
-    expect(speech()).toContain('Берегись! Здесь ещё есть враги.')
+    expect(speech()).toContain('Осторожно, слизень рядом с тропой.')
+    expect(speech()).not.toContain('Слизень ещё рядом.')
     expect(savva.actionLockUntil).toBe(actionUntil)
     expect(turns).toHaveLength(1)
 })
 
-it('accepts only authored model barks with no public model-generated free text', () => {
+it('validates model-authored speech separately from the private tactical note and tone', () => {
     expect(
         parseNecromancerDecision({ choice: 0, note: '', bark: 'cover' })
     ).toEqual({
@@ -226,10 +275,16 @@ it('accepts only authored model barks with no public model-generated free text',
         bark: 'cover',
     })
     expect(
-        parseNecromancerDecision({ choice: 0, note: '', bark: 'none' })
+        parseNecromancerDecision({
+            choice: 0,
+            note: '',
+            bark: 'none',
+            speech: 'Осторожно!',
+        })
     ).toEqual({
         choice: 0,
         note: '',
+        speech: 'Осторожно!',
     })
     expect(() =>
         parseNecromancerDecision({

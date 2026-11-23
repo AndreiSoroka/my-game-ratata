@@ -174,6 +174,7 @@ export function npcReplyActivities(states: Iterable<NpcAiActorState>) {
         [state.dialogue, ...state.inbox].flatMap((event) =>
             event === undefined ||
             event.system === true ||
+            event.conversationId !== undefined ||
             state.actor?.alive !== true
                 ? []
                 : [

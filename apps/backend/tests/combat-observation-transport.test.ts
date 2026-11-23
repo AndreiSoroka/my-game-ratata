@@ -286,11 +286,12 @@ describe('serialized agent combat action results', () => {
         async (exact) => {
             const { room } = observationRoom()
             try {
-                const actor = requireActor(room.getCharacter('npc_cleric_1'))
-                const target = requireActor(room.getCharacter('npc_veteran_1'))
+                const actor = requireActor(room.getCharacter('npc_veteran_1'))
+                const target = requireActor(room.getCharacter('npc_princess_1'))
                 actor.position = { x: 400, y: 400 }
                 target.position = { ...actor.position }
                 actor.exactCombatNumbers = exact
+                actor.abilities.known.add('pray')
                 actor.progression.patron = 'hearth'
                 target.hp -= 15
                 const before = target.hp

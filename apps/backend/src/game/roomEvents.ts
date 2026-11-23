@@ -34,7 +34,8 @@ export function publishRoomEvents(
     world?: WorldLocations,
     hasModelLease?: (character: GameCharacter, now: number) => boolean,
     objectiveEvents = events,
-    speechTranslations?: RoomSpeechTranslations
+    speechTranslations?: RoomSpeechTranslations,
+    now = Date.now()
 ): void {
     if (world !== undefined && events.some((event) => event.kind === 'death')) {
         const drops = events.flatMap((event) => {
@@ -76,11 +77,12 @@ export function publishRoomEvents(
             connections,
             world,
             hasModelLease,
-            speechTranslations
+            speechTranslations,
+            now
         )
     }
     if (world !== undefined) {
-        rememberRoomSpeech([...events, ...partyEvents], characters, world)
+        rememberRoomSpeech([...events, ...partyEvents], characters, world, now)
     }
 }
 
@@ -97,7 +99,8 @@ function eventLocation(
 function rememberRoomSpeech(
     events: GameEventPayload[],
     characters: Map<string, GameCharacter>,
-    world: WorldLocations
+    world: WorldLocations,
+    now: number
 ): void {
     rememberPublishedSpeech(
         {
@@ -106,7 +109,7 @@ function rememberRoomSpeech(
         },
         events,
         characters.values(),
-        Date.now()
+        now
     )
 }
 interface ObservedSpeech {
@@ -144,7 +147,8 @@ function deliverObservedEvent(
     connections: ReadonlyMap<RoomSocket, string | undefined>,
     world: WorldLocations | undefined,
     hasModelLease: CombatObserver['hasModelLease'],
-    speechTranslations: RoomSpeechTranslations | undefined
+    speechTranslations: RoomSpeechTranslations | undefined,
+    now: number
 ): void {
     const speech = describeSpeech(event, characters)
     const translationRecipients: SpeechRecipient[] = []
@@ -157,23 +161,21 @@ function deliverObservedEvent(
                 observer === undefined
                     ? undefined
                     : world?.get(observer.locationId).navigation,
-            now: Date.now(),
+            now,
             ...(hasModelLease === undefined ? {} : { hasModelLease }),
         }
         const visible = observeCombatEvent(event, view)
         if (visible === undefined) {
             continue
         }
-        if (visible.kind === 'chat') {
-            const eligible = projectSpeech(visible, event, speech, view)
-            if (eligible && observer !== undefined) {
-                const recipient = speechTranslations?.recipient(
-                    socket,
-                    observer
-                )
-                if (recipient !== undefined) {
-                    translationRecipients.push(recipient)
-                }
+        if (
+            visible.kind === 'chat' &&
+            projectSpeech(visible, event, speech, view) &&
+            observer !== undefined
+        ) {
+            const recipient = speechTranslations?.recipient(socket, observer)
+            if (recipient !== undefined) {
+                translationRecipients.push(recipient)
             }
         }
         send(socket, { type: 'event', serverTime: view.now, event: visible })

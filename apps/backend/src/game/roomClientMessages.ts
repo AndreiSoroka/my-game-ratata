@@ -1,9 +1,10 @@
-import type { ClientMessage } from '@my-game-ratata/contracts'
-import type { AutomationCommand } from '@my-game-ratata/contracts'
+import type {
+    AutomationCommand,
+    ClientMessage,
+} from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import type { CompanionService } from './companions'
 import type { PartyService } from './parties'
 import { applyPlayerMessage } from './playerMessages'
 import type { GameRoom } from './room'
@@ -20,38 +21,34 @@ export interface ClientContext {
     theft: TheftService
     characters: Map<string, GameCharacter>
     parties: PartyService
-    companions: CompanionService
     world: WorldLocations
     connections: Map<RoomSocket, string | undefined>
 }
 export function handleCharacterMessage(
     context: ClientContext,
     player: GameCharacter,
-    message: ClientMessage
+    message: ClientMessage,
+    now = context.room.gameplayNow()
 ): void {
     const { room, characters, world, connections } = context
-    if (room.social.handle(player, message, Date.now())) {
+    if (room.social.handle(player, message, now)) {
         return
     }
     if (room.social.exchanges.isPaused(player.id)) {
         return
     }
-    if (handleAutomation(player, message, room)) {
+    if (handleAutomation(player, message, room, now)) {
         return
     }
     if (manualScenarioOverride(message)) {
         room.scenarios.pause(player)
     }
-    if (handleRoomControl(player, message, room, Date.now())) {
+    if (handleRoomControl(player, message, room, now)) {
         return
     }
-    if (message.type === 'companion_request' && message.request !== 'talk') {
-        room.notifyNpcAi(player, message, [], Date.now())
-    }
-    const events = roomCharacterAction(context, player, message)
+    const events = roomCharacterAction(context, player, message, now)
     if (events !== undefined) {
         room.publishEvents(events)
-        room.notifyNpcAi(player, message, events, Date.now())
         return
     }
     if (!player.alive) {
@@ -65,11 +62,12 @@ export function handleCharacterMessage(
             player.locationId
         ),
         message,
+        now,
         navigation: room.navigationFor(player),
         player,
         onRouteStart: () => room.scenarios.pause(player),
         requestAttack: (actor, targetId, target) => {
-            room.requestAttack(actor, Date.now(), targetId, target)
+            room.requestAttack(actor, now, targetId, target)
         },
         sendEvents: (events) => {
             room.publishEvents(events)
@@ -105,7 +103,8 @@ function manualScenarioOverride(message: ClientMessage): boolean {
 function handleAutomation(
     player: GameCharacter,
     message: ClientMessage,
-    room: GameRoom
+    room: GameRoom,
+    now: number
 ): boolean {
     if (!isAutomationCommand(message.type)) {
         return false
@@ -113,7 +112,7 @@ function handleAutomation(
     const result = room.requestAutomation(
         player,
         message as AutomationCommand,
-        Date.now()
+        now
     )
     if (result.error !== null) {
         room.publishEvents([
@@ -131,11 +130,11 @@ function handleAutomation(
 function roomCharacterAction(
     context: ClientContext,
     player: GameCharacter,
-    message: ClientMessage
+    message: ClientMessage,
+    now: number
 ) {
-    const { room, adventure, theft, characters, parties, companions, world } =
-        context
-    const abilityContext = room.abilityContextFor(player, Date.now())
+    const { room, adventure, theft, characters, parties, world } = context
+    const abilityContext = room.abilityContextFor(player, now)
     return handleRoomAction({
         ...abilityContext,
         adventure,
@@ -145,7 +144,6 @@ function roomCharacterAction(
         characters: [
             ...charactersInLocation(characters, player.locationId).values(),
         ],
-        companions,
         inventory: world.get(player.locationId).inventory,
         message,
         player,

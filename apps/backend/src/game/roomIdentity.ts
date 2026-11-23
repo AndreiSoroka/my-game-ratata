@@ -45,6 +45,8 @@ interface JoinContext {
     snapshotFor: (character: GameCharacter) => WorldSnapshot
     closeConversations?: (characterId: string) => void
     onJoined?: (socket: RoomSocket, locale: GameLocale) => void
+    onAttached?: () => void
+    now?: () => number
     tickMs: number
 }
 
@@ -67,12 +69,13 @@ export function createRoomJoiner(
                 ...context,
                 onJoined: (socket, locale) =>
                     context.room.speechTranslations.joined(socket, locale),
+                now: context.room.gameplayNow,
                 closeChestViews: (id) => context.world().closeChestViews(id),
                 mapFor: (character) =>
                     context.room.navigationFor(character).summary,
                 snapshotFor: (character) =>
                     context.room.snapshot(
-                        Date.now(),
+                        context.room.gameplayNow(),
                         character.locationId,
                         character.id
                     ),
@@ -95,7 +98,8 @@ export function createDefaultRoomJoiner(
             context.characters,
             context.nicknames,
             () => context.room.navigation,
-            () => context.room.refreshPrayerAuraEnvironment()
+            () => context.room.refreshPrayerAuraEnvironment(),
+            context.room.gameplayNow
         ),
     })
 }
@@ -109,6 +113,7 @@ export function joinRoom(
     createOnly?: boolean,
     locale: GameLocale = 'ru'
 ): void {
+    const now = context.now ?? Date.now
     const nicknameKey = normalizeNickname(nickname)
     if (createOnlyNameTaken(context.characters, nicknameKey, createOnly)) {
         sendError(
@@ -130,7 +135,7 @@ export function joinRoom(
         )
         return
     }
-    releasePreviousIdentity(context, ws, existingPlayerId)
+    detachPreviousHero(context, ws, existingPlayerId, now())
     const existingCharacter =
         existingPlayerId === undefined
             ? undefined
@@ -142,10 +147,11 @@ export function joinRoom(
     character.tags.delete('offline')
     character.connected = true
     setCharacterControlSource(character, 'human')
-    stopAndPublish(character, context.connections.keys())
+    stopAndPublish(character, context.connections.keys(), now())
     context.controllers.set(character.id, new NetworkPlayerController())
     context.connections.set(ws, character.id)
     context.onJoined?.(ws, locale)
+    context.onAttached?.()
     send(ws, {
         map: context.mapFor(character),
         playerId: character.id,
@@ -154,31 +160,38 @@ export function joinRoom(
         tickMs: context.tickMs,
         type: 'world_init',
     })
-    broadcastEvent(context.connections.keys(), {
-        actorId: character.id,
-        kind: 'join',
-    })
+    broadcastEvent(
+        context.connections.keys(),
+        {
+            actorId: character.id,
+            kind: 'join',
+        },
+        now()
+    )
 }
 
-function releasePreviousIdentity(
+function detachPreviousHero(
     context: JoinContext,
     ws: RoomSocket,
-    nextPlayerId: string | undefined
+    existingPlayerId: string | undefined,
+    now: number
 ): void {
     const existingId = context.connections.get(ws)
     if (
-        existingId === undefined ||
-        isPlayerConnected(context.connections, existingId, ws)
+        existingId !== undefined &&
+        !isPlayerConnected(context.connections, existingId, ws)
     ) {
-        return
-    }
-    context.closeChestViews?.(existingId)
-    context.closeConversations?.(existingId)
-    const character = context.characters.get(existingId)
-    stopAndPublish(character, context.connections.keys())
-    if (character !== undefined && existingId !== nextPlayerId) {
-        character.connected = false
-        setCharacterControlSource(character, 'script')
+        context.closeChestViews?.(existingId)
+        context.closeConversations?.(existingId)
+        const existingCharacter = context.characters.get(existingId)
+        stopAndPublish(existingCharacter, context.connections.keys(), now)
+        if (
+            existingCharacter !== undefined &&
+            existingId !== existingPlayerId
+        ) {
+            existingCharacter.connected = false
+            setCharacterControlSource(existingCharacter, 'script')
+        }
     }
 }
 
@@ -230,7 +243,8 @@ export function leaveRoom(
     characters: ReadonlyMap<string, GameCharacter>,
     socket: RoomSocket,
     closeChestViews: (actorId: string) => void,
-    closeConversations?: (characterId: string) => void
+    closeConversations?: (characterId: string) => void,
+    now = Date.now()
 ): void {
     const playerId = connections.get(socket)
     connections.delete(socket)
@@ -243,19 +257,24 @@ export function leaveRoom(
     closeChestViews(playerId)
     closeConversations?.(playerId)
     const player = characters.get(playerId)
-    stopAndPublish(player, connections.keys())
+    stopAndPublish(player, connections.keys(), now)
     if (player !== undefined) {
         player.connected = false
         setCharacterControlSource(player, 'script')
     }
-    broadcastEvent(connections.keys(), { actorId: playerId, kind: 'leave' })
+    broadcastEvent(
+        connections.keys(),
+        { actorId: playerId, kind: 'leave' },
+        now
+    )
 }
 
 function stopAndPublish(
     character: GameCharacter | undefined,
-    sockets: Iterable<RoomSocket>
+    sockets: Iterable<RoomSocket>,
+    now: number
 ): void {
-    for (const event of stopCharacterMovement(character)) {
-        broadcastEvent(sockets, event)
+    for (const event of stopCharacterMovement(character, now)) {
+        broadcastEvent(sockets, event, now)
     }
 }

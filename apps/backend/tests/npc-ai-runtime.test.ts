@@ -8,7 +8,7 @@ import {
     npcReply,
     npcRuntimeFixture,
 } from './npcAiRuntimeFixture'
-import { approachScenarioNpc, joinScenarioRoom } from './scenarioRoomHelpers'
+import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 const fixtures: Array<ReturnType<typeof npcRuntimeFixture>> = []
 
@@ -30,6 +30,7 @@ afterEach(async () => {
 function setup(...args: Parameters<typeof npcRuntimeFixture>) {
     const fixture = npcRuntimeFixture(...args)
     fixtures.push(fixture)
+    fixture.alice.actor.position = { ...fixture.actor.position }
     return fixture
 }
 
@@ -38,7 +39,14 @@ describe('NPC runtime cancellation and deadlines', () => {
         const provider = controlledNpcProvider()
         const f = setup(provider.decide)
         f.talk()
-        await f.advance(6000)
+        await f.advance()
+        expect(provider.turns).toHaveLength(1)
+        const started = Date.now()
+        // A heartbeat just before the five-second lease expires must extend it.
+        vi.setSystemTime(started + 4_000)
+        await f.advance(50)
+        vi.setSystemTime(started + 6_000)
+        await f.advance(50)
         expect(provider.turns).toHaveLength(1)
         expect(provider.turns[0]?.signal.aborted).toBe(false)
         expect(f.actor.soul.kind).toBe('spark')
@@ -51,15 +59,15 @@ describe('NPC runtime cancellation and deadlines', () => {
         expect(f.actor.getMoveInput()).toEqual({ x: 0, y: 0 })
     })
 
-    it('preserves a pending reply and queues newer speech until the model can consider it', async () => {
+    it('supersedes a pending reply when the same player sends newer speech', async () => {
         const provider = controlledNpcProvider()
         const f = setup(provider.decide)
         f.talk('Первое поручение.')
         await f.advance()
         f.talk('Второе поручение.')
         await f.advance()
-        expect(provider.turns).toHaveLength(1)
-        expect(provider.turns[0]?.signal.aborted).toBe(false)
+        expect(provider.turns).toHaveLength(2)
+        expect(provider.turns[0]?.signal.aborted).toBe(true)
         provider.turns[0]?.resolve(
             npcReply(
                 { type: 'speak', text: 'Первое поручение понятно.' },
@@ -79,7 +87,7 @@ describe('NPC runtime cancellation and deadlines', () => {
             f
                 .speech()
                 .some((event) => event.text === 'Первое поручение понятно.')
-        ).toBe(true)
+        ).toBe(false)
         expect(
             f.speech().filter((event) => event.text === 'Вот новый ответ.')
         ).toHaveLength(1)
@@ -152,7 +160,7 @@ describe('NPC runtime scheduling, privacy and feedback', () => {
         f.talk('Поручение Алисы.')
         await f.advance()
         const bob = joinScenarioRoom(f.room, 'AI runtime rival')
-        approachScenarioNpc(f.room, bob, kaplyaId)
+        bob.actor.position = { ...f.actor.position }
         bob.send({
             type: 'companion_request',
             request: 'talk',
@@ -197,9 +205,23 @@ describe('NPC runtime scheduling, privacy and feedback', () => {
     })
 
     it('ends a repeated unproductive task at its decision limit and records the server reason', async () => {
-        const decide = vi.fn(() =>
-            Promise.resolve(npcReply(null, { done: false, waitMs: 1000 }))
-        )
+        const decide = vi.fn((context: NpcAiContext) => {
+            const first = context.events.some(
+                (event) => event.kind === 'message'
+            )
+            return Promise.resolve(
+                npcReply(null, {
+                    done: false,
+                    waitMs: 1000,
+                    ...(first
+                        ? {
+                              taskAcceptance: 'accept',
+                              speech: 'Возьмусь за поручение.',
+                          }
+                        : {}),
+                })
+            )
+        })
         const f = setup(decide, { maxDecisionsPerTask: 2 })
         f.talk()
         await f.advance(2500)
@@ -270,7 +292,7 @@ describe('NPC runtime private memory and diagnostic feedback', () => {
         f.talk('Личное поручение Алисы.')
         await f.advance()
         const bob = joinScenarioRoom(f.room, 'AI runtime Bob')
-        approachScenarioNpc(f.room, bob, kaplyaId)
+        bob.actor.position = { ...f.actor.position }
         bob.send({
             type: 'companion_request',
             targetId: kaplyaId,

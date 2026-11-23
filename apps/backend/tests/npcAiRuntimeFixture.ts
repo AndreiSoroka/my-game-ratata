@@ -4,8 +4,9 @@ import { vi } from 'vitest'
 import { parseNpcAiConfig } from '../src/ai/config'
 import { NpcAiDiagnostics } from '../src/ai/diagnostics'
 import type { NpcAiContext, NpcAiProvider, NpcAiReply } from '../src/ai/types'
+import { distance } from '../src/game/math'
 import { GameRoom } from '../src/game/room'
-import { approachScenarioNpc, joinScenarioRoom } from './scenarioRoomHelpers'
+import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 export const kaplyaId = 'npc_magic_slime_1'
 export const miraId = 'npc_friendly_girl_1'
@@ -49,7 +50,7 @@ export function npcRuntimeFixture(
     })
     const config = parseNpcAiConfig(
         {
-            proactive: false,
+            proactive: limits.includeMira === true,
             defaults: { timeoutMs: limits.timeoutMs ?? 10_000 },
             limits: {
                 maxDecisionsPerTask: limits.maxDecisionsPerTask ?? 12,
@@ -71,7 +72,24 @@ export function npcRuntimeFixture(
     })
     room.start()
     const alice = joinScenarioRoom(room, 'AI runtime Alice')
-    const actor = approachScenarioNpc(room, alice, kaplyaId)
+    const actor = room.getCharacter(kaplyaId)
+    if (actor === undefined) {
+        throw new Error('Missing Kaplya fixture')
+    }
+    // Arrange initial contact at the first reachable tile of the ordinary approach.
+    // Each test still submits its conversation, follow, guide or travel commands through the socket.
+    const navigation = room.navigationFor(alice.actor)
+    const contact = navigation
+        .findPathWorld(alice.actor.position, actor.position)
+        .find(
+            (point) =>
+                distance(point, actor.position) <= 36 &&
+                navigation.hasLineOfSight(point, actor.position)
+        )
+    if (contact === undefined) {
+        throw new Error('Kaplya fixture has no reachable conversation point')
+    }
+    alice.actor.position = { ...contact }
     return {
         room,
         actor,

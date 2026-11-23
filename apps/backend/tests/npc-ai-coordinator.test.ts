@@ -50,7 +50,7 @@ it('physically visits the merchant, learns earned stock, returns and privately r
             (message) =>
                 message.type === 'event' &&
                 message.event.text ===
-                    'У Саввы есть дорожная еда. Я проверила лавку.'
+                    'У Саввы есть дорожная еда. Я узнало это в лавке.'
         )
     )
     expect(recorded.contexts).toHaveLength(4)
@@ -106,7 +106,7 @@ it('physically visits the merchant, learns earned stock, returns and privately r
             (message) =>
                 message.type === 'event' &&
                 message.event.text ===
-                    'У Саввы есть дорожная еда. Я проверила лавку.'
+                    'У Саввы есть дорожная еда. Я узнало это в лавке.'
         )
     ).toBe(false)
     expect(
@@ -156,6 +156,7 @@ it('wakes autonomous Mira for actual city consumption before the next periodic r
         'city_coordinator',
     ])
     rooms.push(room)
+    joinScenarioRoom(room, 'City activity observer')
     config.limits.reviewIntervalMs = 3_600_000
     await waitForNpcAi(() => recorded.contexts.length === 1)
     await advanceNpcAi(100)

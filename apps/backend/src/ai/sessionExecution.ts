@@ -80,7 +80,7 @@ export class NpcAiExecution {
         }
         if (result.accepted && decision.type === 'interact') {
             rememberNpcMerchant(this.room, state, actor, decision, now)
-            rememberNpcInspection(state, decision.targetId, result.events, now)
+            rememberNpcInspection(this.room, state, decision.targetId, now)
         }
         enqueueNpcAiEvent(state, resolvedNpcEvent(id, decision, result, now))
         if (reply.done && result.accepted) {

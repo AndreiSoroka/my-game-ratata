@@ -73,6 +73,19 @@ export function containsBuildingPoint(
     )
 }
 
+/** A roof hides its residents until the observer enters the same building. */
+export function visibleBuildingPoint(
+    buildings: readonly MapBuildingDefinition[],
+    observer: Vector2,
+    target: Vector2
+): boolean {
+    return buildings.every(
+        (building) =>
+            !containsBuildingPoint(building.bounds, target) ||
+            containsBuildingPoint(building.bounds, observer)
+    )
+}
+
 function numberProperty(
     object: BuildingObject,
     name: string,

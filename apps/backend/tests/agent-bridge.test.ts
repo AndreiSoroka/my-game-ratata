@@ -197,10 +197,23 @@ describe('optional local NPC control bridge', () => {
     })
 })
 
-it('accepts a bounded 64-step scenario larger than the old single-action body limit', async () => {
+it('keeps passive NPC actions under their conversation role', async () => {
     const response = await handleAgentRequest(
         request('/agent/act', {
             actorId: 'npc_smith_1',
+            decision: { type: 'move_to', target: { x: 30, y: 30 } },
+        }),
+        room,
+        token
+    )
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({ accepted: false })
+})
+
+it('accepts a bounded 64-step scenario larger than the old single-action body limit', async () => {
+    const response = await handleAgentRequest(
+        request('/agent/act', {
+            actorId: 'npc_veteran_1',
             decision: {
                 type: 'scenario_save',
                 scenario: {

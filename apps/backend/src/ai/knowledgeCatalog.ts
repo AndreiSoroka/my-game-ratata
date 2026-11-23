@@ -65,7 +65,7 @@ export function characterKnowledge(
             id: `person:${actor.id}`,
             group: 'world.common',
             source: 'authored:profile',
-            text: profile.greeting,
+            text: profile.personality,
         })
     }
     entries.push(...discoveredKnowledge(actor))

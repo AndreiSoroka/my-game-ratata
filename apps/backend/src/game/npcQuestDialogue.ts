@@ -33,13 +33,12 @@ export function extendNpcQuestDialogue(
     adventure: AdventureService,
     actor: GameCharacter,
     state: PlayerAdventure,
-    events: GameEventPayload[],
     now: number
-): GameEventPayload[] {
+): void {
     const source = sources.get(adventure)
     const dialogue = state.dialogue
     if (source === undefined || dialogue === null) {
-        return events
+        return
     }
     const requests =
         actor.controllerKind !== 'network_player'
@@ -65,26 +64,12 @@ export function extendNpcQuestDialogue(
             ? undefined
             : workerActivity(npc, adventure, source.workers, now)
     if (activity !== undefined) {
-        dialogue.text += ` ${activity.text}`
         const textMessage = npcQuestMessage(activity.text)
         dialogue.workerActivity = {
             ...activity,
             ...(textMessage === undefined ? {} : { textMessage }),
         }
     }
-    return activity === undefined
-        ? events
-        : events.map((event) =>
-              event.kind === 'chat' &&
-              event.actorId === npc?.id &&
-              event.targetId === actor.id
-                  ? {
-                        ...event,
-                        text: dialogue.text,
-                        workerActivity: dialogue.workerActivity ?? activity,
-                    }
-                  : event
-          )
 }
 
 export function chooseNpcQuestDialogue(

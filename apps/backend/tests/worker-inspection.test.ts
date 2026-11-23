@@ -7,7 +7,7 @@ import { PartyService } from '../src/game/parties'
 import { workerActivity } from '../src/game/workerActivity'
 import { WorkerSimulation } from './workerRequestFixture'
 
-it('gives a nearby model and human the same structured earned status without holding the model inspection open', () => {
+it('records nearby inspections independently of speech and preserves the worker path', () => {
     const f = new WorkerSimulation('farmer')
     f.publish()
     const parties = new PartyService(f.adventure.grantQuestGoldOnce)
@@ -42,18 +42,15 @@ it('gives a nearby model and human the same structured earned status without hol
         f.room.navigationFor(observer),
         f.now
     )
-    const event = result.events.find((entry) => entry.kind === 'chat')
     expect(result.accepted).toBe(true)
-    expect(event?.audienceIds).toEqual([observer.id])
-    expect(event?.workerActivity).toEqual(
+    expect(result.events.some((event) => event.kind === 'chat')).toBe(false)
+    expect(
         workerActivity(f.worker, f.adventure, f.requests, f.now)
-    )
-    expect(event?.workerActivity).toMatchObject({
+    ).toMatchObject({
         reason: 'request',
         stage: 'waiting',
         danger: { status: 'reported' },
     })
-    expect(event?.text).toContain(event?.workerActivity?.text)
     f.adventure.reconcileConversations(f.characters.values(), (actor) =>
         f.room.navigationFor(actor)
     )
@@ -70,11 +67,10 @@ it('gives a nearby model and human the same structured earned status without hol
         f.room.navigationFor(f.player),
         f.now
     )
-    expect(
-        human.events.find((entry) => entry.kind === 'chat')?.workerActivity
-    ).toEqual(event?.workerActivity)
+    expect(human.accepted).toBe(true)
+    expect(human.events.some((event) => event.kind === 'chat')).toBe(false)
     expect(
         f.adventure.snapshot(f.player.id, f.player.locationId, f.player)
-            .dialogue?.text
-    ).toContain(event?.workerActivity?.text)
+            .dialogue
+    ).toMatchObject({ npcId: f.worker.id, text: '' })
 })

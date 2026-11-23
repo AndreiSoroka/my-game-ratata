@@ -156,27 +156,6 @@ export class CityWorldState {
             ? undefined
             : this.snapshot(city.definition.cityId)
     }
-
-    public scriptedGuideGreeting(
-        guideId: string,
-        characterId: string
-    ): string | undefined {
-        const city = this.guideState(guideId)
-        if (city === undefined) {
-            return undefined
-        }
-        const introduction =
-            this.introduction(guideId, characterId) === undefined
-                ? ''
-                : 'Твоя Искра пробудилась в оставленном теле и подняла его из могильной земли. Другие тоже пробуждаются в разных телах; среди них могут найтись товарищи. Нашему городу нужны порядок и помощь перед угрозами миру, и я надеюсь на твою добровольную помощь. '
-        const guidance =
-            city.bellState === 'silent'
-                ? 'Колокол памяти пока молчит. Если хочешь помочь городу, поговори с Мирой в гильдии искателей.'
-                : city.bellState === 'prepared'
-                  ? 'Колокол памяти уже подготовлен и находится здесь, внутри часовни. К нему можно подойти и прикоснуться.'
-                  : 'Колокол памяти звучит, городские мастерские и торговля работают. Я рядом, если нужна помощь или совет о молитвах.'
-        return `${introduction}${guidance}`
-    }
 }
 
 function choice(seed: string, domain: string, id: string): boolean {

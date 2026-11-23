@@ -12,7 +12,11 @@ import { NecromancerTurns } from './necromancerTurns'
 import { reportNpcRequestStatus } from './requestStatus'
 import { createRoomKnowledge } from './roomKnowledge'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
-import { continuationAvailable, prioritizeNpcAiStates } from './schedulerPolicy'
+import {
+    prepareNpcReplyCommit,
+    prepareNpcTurnEligibility,
+} from './schedulerCommit'
+import { isBackgroundNpcTurn, prepareNpcAiTurns } from './schedulerPolicy'
 import type { NpcAiSessionActions } from './session'
 import { invokeNpcAiTurn } from './turn'
 import type { NpcAiConfig, NpcAiProvider } from './types'
@@ -44,7 +48,8 @@ export class NpcAiScheduler {
             config,
             provider,
             clock,
-            nextId
+            nextId,
+            room.realNow
         )
         prepareKnowledgeCatalog(room, [...states.keys()])
     }
@@ -60,18 +65,11 @@ export class NpcAiScheduler {
                 return
             }
             const now = this.clock()
-            const states = [...this.states.values()].filter(
-                (state) =>
-                    (continuationAvailable(this.room, state) ||
-                        state.inbox.length > 0) &&
-                    state.ready === undefined &&
-                    state.controller === undefined &&
-                    state.nextAt <= now &&
-                    !state.awaitingFreshRequest &&
-                    npcAiActorAvailable(state.actor)
-            )
-            states.sort(prioritizeNpcAiStates)
-            const state = states[0]
+            const state = prepareNpcAiTurns(
+                this.room,
+                this.states.values(),
+                now
+            )[0]
             if (state !== undefined) {
                 this.begin(state, now)
             } else {
@@ -84,8 +82,16 @@ export class NpcAiScheduler {
         this.necromancerTurns.maintain(now)
     }
 
+    public interruptAdvice(): void {
+        this.necromancerTurns.interrupt()
+    }
+
     private beginNecromancer(now: number): void {
-        if (this.budget.limit(now, true) !== undefined) {
+        const wall = this.room.realNow()
+        if (
+            !this.room.allowsAutonomousNpcAi() ||
+            this.budget.limit(wall, true) !== undefined
+        ) {
             return
         }
         const turn = this.necromancerTurns.begin(now)
@@ -93,7 +99,7 @@ export class NpcAiScheduler {
             return
         }
         this.busy = true
-        this.budget.spend(now, true)
+        this.budget.spend(wall, true)
         void turn.finally(() => {
             this.busy = false
             this.schedule()
@@ -139,13 +145,11 @@ export class NpcAiScheduler {
             this.sessions.dialogue,
             state,
             state.actor,
-            now
+            now,
+            this.room.social.npcSpeech.turns.departures.take(state.actor)
         )
         this.busy = true
-        this.budget.spend(
-            now,
-            state.dialogue === undefined && state.task?.requesterId == null
-        )
+        this.budget.spend(this.room.realNow(), isBackgroundNpcTurn(state))
         reportNpcRequestStatus(
             this.room,
             this.diagnostics,
@@ -161,17 +165,24 @@ export class NpcAiScheduler {
         actor: import('../game/character').GameCharacter,
         context: import('./types').NpcAiContext
     ): void {
+        const eligible = prepareNpcTurnEligibility(
+            this.room,
+            state,
+            actor,
+            this.clock
+        )
+        const current = () => this.current() && eligible()
         void invokeNpcAiTurn(
             state,
             {
                 ...context,
                 knowledgeScope: characterKnowledgeScope(
                     actor,
-                    this.informationCallAvailable(state, this.clock())
+                    this.informationCallAvailable(state)
                 ),
             },
             this.provider,
-            () => this.current(),
+            current,
             {
                 ...npcKnowledgeInformation({
                     state,
@@ -179,10 +190,11 @@ export class NpcAiScheduler {
                     room: this.room,
                     companions: this.companions,
                     knowledge: this.knowledge,
-                    current: this.current,
+                    current,
                     clock: this.clock,
                 }),
-                reserveCall: () => this.reserveInformationCall(state),
+                reserveCall: () =>
+                    current() && this.reserveInformationCall(state),
                 validateReply: (reply) =>
                     npcCommandProblem(
                         this.room,
@@ -199,39 +211,30 @@ export class NpcAiScheduler {
                         actor,
                         this.clock()
                     ),
-                commitReply: (reply) =>
-                    new Promise((resolve) => {
-                        state.finalizing = {
-                            reply,
-                            resolve,
-                            retirementRevision: state.mind.retirementRevision,
-                        }
-                    }),
-            }
+                commitReply: prepareNpcReplyCommit(state, current),
+            },
+            this.room.realNow
         ).finally(() => {
             this.busy = false
             this.schedule()
         })
     }
 
-    private informationCallAvailable(
-        state: NpcAiActorState,
-        at: number
-    ): boolean {
-        const background =
-            state.dialogue === undefined && state.task?.requesterId == null
-        return this.budget.limit(at, background) === undefined
+    private informationCallAvailable(state: NpcAiActorState): boolean {
+        return (
+            this.budget.limit(
+                this.room.realNow(),
+                isBackgroundNpcTurn(state)
+            ) === undefined
+        )
     }
 
     private reserveInformationCall(state: NpcAiActorState): boolean {
-        const at = this.clock()
-        if (!this.informationCallAvailable(state, at)) {
+        const at = this.room.realNow()
+        if (!this.informationCallAvailable(state)) {
             return false
         }
-        this.budget.spend(
-            at,
-            state.dialogue === undefined && state.task?.requesterId == null
-        )
+        this.budget.spend(at, isBackgroundNpcTurn(state))
         return true
     }
 
@@ -263,7 +266,7 @@ export class NpcAiScheduler {
     private withinCallBudget(state: NpcAiActorState, now: number): boolean {
         const background =
             state.inbox.length === 0 && state.task?.requesterId == null
-        const limit = this.budget.limit(now, background)
+        const limit = this.budget.limit(this.room.realNow(), background)
         if (limit === undefined) {
             return true
         }
@@ -272,6 +275,7 @@ export class NpcAiScheduler {
             this.sessions.finish(state, now, 3_600_000)
         } else {
             for (const message of state.inbox) {
+                this.room.social.npcSpeech.fail(message, now)
                 reportNpcRequestStatus(
                     this.room,
                     this.diagnostics,
@@ -289,8 +293,7 @@ export class NpcAiScheduler {
                 now
             )
         }
-        state.nextAt = limit.until
-        state.reviewAt = state.nextAt
+        state.budgetUntil = limit.until
         return false
     }
 

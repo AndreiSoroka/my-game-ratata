@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { socialMenu } from './social-helpers'
 import { abandonGuildContract, openObservedWorkerOffer } from './worker-contract-helpers'
+import { enterBuilding, walkTo } from './world-navigation'
 
 const scenarios = [
     {
@@ -131,31 +132,7 @@ async function openQuestJournal(page: Page): Promise<Locator> {
 }
 
 async function approachMira(page: Page): Promise<void> {
-    await expect
-        .poll(() =>
-            page.evaluate(() =>
-                window
-                    .__ratataTest!.observe()
-                    .targets.some(
-                        (target) =>
-                            target.kind === 'building' && target.name === 'Гильдия искателей'
-                    )
-            )
-        )
-        .toBe(true)
-    const entrance = await page.evaluate(
-        () =>
-            window
-                .__ratataTest!.observe()
-                .targets.find(
-                    (target) => target.kind === 'building' && target.name === 'Гильдия искателей'
-                )!.key
-    )
-    const entered = await page.evaluate(
-        (targetKey) => window.__ratataTest!.navigate({ targetKey }, { timeoutMs: 30_000 }),
-        entrance
-    )
-    expect(entered.status, entered.reason).toBe('arrived')
+    await enterBuilding(page, 'Гильдия искателей')
     await expect
         .poll(() =>
             page.evaluate(() =>
@@ -170,11 +147,7 @@ async function approachMira(page: Page): Promise<void> {
             .__ratataTest!.observe()
             .targets.find((target) => target.kind === 'character' && target.name === 'Mira')!
     )
-    const approached = await page.evaluate(
-        (targetKey) => window.__ratataTest!.navigate({ targetKey }, { timeoutMs: 30_000 }),
-        mira.key
-    )
-    expect(approached.status, approached.reason).toBe('arrived')
+    await walkTo(page, mira.position, 32)
     const opened = await page.evaluate(
         (targetId) =>
             window.__ratataTest!.act(

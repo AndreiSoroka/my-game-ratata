@@ -4,12 +4,12 @@ import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { characterActions, followActions, socialActions } from './nearbyCharacterActions'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
 
-it('hides AI companion orders while keeping self follow, whisper and exchange on the exact target', () => {
+it('keeps self follow, whisper and exchange on the exact non-companion AI target', () => {
     const player = characterFixture('self')
     const npc = characterFixture('ai', {
         position: { x: 20, y: 0 },
         controllerKind: 'scripted',
-        interactions: { aiDialogue: true, whisper: true, exchange: true, companionRequests: 'own' },
+        interactions: { aiDialogue: true, dialogueMode: 'active', whisper: true, exchange: true },
         soul: {
             kind: 'echo',
             controlSource: 'script',

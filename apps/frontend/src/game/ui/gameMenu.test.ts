@@ -1,12 +1,13 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import App from '../../App.vue'
 import type { UiSoundId } from '../assets/soundCatalog'
 import type { RatataGameOptions } from '../runtime/runtimeOptions'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { clickWithPointer } from '../testing/clickWithPointer'
+import { stubReadyGameServer } from '../testing/stubReadyGameServer'
 import ActionHotbar from './ActionHotbar.vue'
 
 const runtime = vi.hoisted(() => ({
@@ -66,7 +67,9 @@ vi.mock('../runtime/ratataGame', () => ({
         }
     },
 }))
+beforeEach(stubReadyGameServer)
 afterEach(() => {
+    vi.unstubAllGlobals()
     vi.clearAllMocks()
     runtime.options = undefined
     runtime.pendingStart = undefined

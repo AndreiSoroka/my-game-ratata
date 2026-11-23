@@ -12,12 +12,13 @@ import type { WorldLocations } from './worldLocations'
 export function createAdventureRequester(
     service: () => AdventureService,
     characters: () => GameCharacter[],
-    navigation: (actor: GameCharacter) => NavigationService
+    navigation: (actor: GameCharacter) => NavigationService,
+    clock = Date.now
 ) {
     return (
         actor: GameCharacter,
         message: AdventureClientMessage,
-        now = Date.now()
+        now = clock()
     ) =>
         service().handleResult(
             actor,

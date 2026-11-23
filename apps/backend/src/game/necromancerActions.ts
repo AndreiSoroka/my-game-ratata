@@ -12,15 +12,16 @@ import {
 import type { GameCharacter } from './character'
 import { chestHasLineOfSight } from './chestInteraction'
 import { isTargetInAttackRange } from './combat'
+import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import { handleMovementCommand } from './movementActions'
 import type {
     NecromancerLandmark,
     NecromancerOption,
+    NecromancerScene,
 } from './necromancerTactics'
 import { validPrayerIntent } from './prayerContext'
 import type { GameRoom } from './room'
-import { createSpeechEvent } from './speechReceipts'
 
 const orders = {
     guard: 'guard',
@@ -107,7 +108,9 @@ export function performNecromancerTactic(
             now
         )
         room.publishEvents(events)
-        return events.some((event) => event.kind === 'chat')
+        return events.some(
+            (event) => event.kind === 'cast' && event.abilityId === 'ash_order'
+        )
     }
     return false
 }
@@ -135,31 +138,6 @@ function castAshPrayer(
     return events.some(
         (event) => event.kind === 'cast' && event.phase === 'started'
     )
-}
-
-export function necromancerOffersHelp(
-    actor: GameCharacter,
-    room: GameRoom,
-    targetId: string | undefined,
-    woundedVisitor: string | undefined,
-    alreadyHelped: Set<string>
-): boolean {
-    if (
-        targetId === undefined ||
-        woundedVisitor !== targetId ||
-        alreadyHelped.has(targetId)
-    ) {
-        return false
-    }
-    alreadyHelped.add(targetId)
-    room.publishEvents([
-        createSpeechEvent(
-            actor,
-            'По ранам вижу, тебе нелегко. Возле старой плиты можно перевести дух.',
-            { targetId, audienceIds: [targetId] }
-        ),
-    ])
-    return true
 }
 
 export function advanceNecromancerHeartRite(
@@ -232,6 +210,36 @@ export function fightAsNecromancer(
         return
     }
     moveNecromancer(actor, room, target.position, false, now)
+}
+
+export function performNecromancerCombatIntent(
+    actor: GameCharacter,
+    room: GameRoom,
+    scene: NecromancerScene,
+    threat: GameCharacter,
+    plan: NecromancerOption,
+    now: number
+): boolean {
+    if (plan.tactic === 'fight' && plan.targetId === threat.id) {
+        fightAsNecromancer(actor, room, threat, now)
+        return true
+    }
+    if (plan.tactic !== 'hunt_slime') {
+        return false
+    }
+    const slime = scene.visible.find(
+        (target) =>
+            target.id === plan.targetId &&
+            target.alive &&
+            target.creatureType === 'ooze' &&
+            target.faction === 'monsters' &&
+            canTargetByFaction(actor, target, now)
+    )
+    if (slime === undefined) {
+        return false
+    }
+    fightAsNecromancer(actor, room, slime, now)
+    return true
 }
 
 export function moveNecromancer(

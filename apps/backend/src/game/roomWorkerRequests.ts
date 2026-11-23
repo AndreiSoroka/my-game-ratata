@@ -86,7 +86,7 @@ export function configureRoomQuests(
         room.workerRequests.allowsWork(actor.id, message)
     )
     adventure.setQuestRewardMembers((actorId) => {
-        parties.update(characters.values(), Date.now())
+        parties.update(characters.values(), room.gameplayNow())
         return parties.rewardMembers(actorId)
     })
 }

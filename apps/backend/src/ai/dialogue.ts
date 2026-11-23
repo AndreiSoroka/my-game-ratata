@@ -127,6 +127,22 @@ export class NpcAiDialogue {
         rememberDialogueReply(state, event, reply)
         if (text !== null) {
             this.speak(state, event, text, now)
+        } else if (
+            reply.decision !== null ||
+            reply.companionOrder != null ||
+            reply.offerService != null
+        ) {
+            this.room.social.npcSpeech.turns.reply(actor, event, '', now)
+        } else {
+            this.room.social.npcSpeech.fail(event, now)
+        }
+        if (reply.offerService != null) {
+            this.room.social.npcSpeech.offerService(
+                actor,
+                event.senderId,
+                reply.offerService,
+                now
+            )
         }
         const socialHandled =
             reply.decision !== null &&

@@ -100,7 +100,7 @@ export class GameCharacter {
     public readonly spawnPosition: Vector2
     public readonly visualId: CharacterVisualId
     public animationAction: CharacterAnimationAction = 'idle'
-    public animationStartedAt = Date.now()
+    public animationStartedAt: number
     public animationUntil = 0
     public alive = true
     public deathSequence = 0
@@ -129,6 +129,7 @@ export class GameCharacter {
 
     public constructor(options: GameCharacterOptions) {
         this.lifeStartedAt = options.spawnedAt ?? Date.now()
+        this.animationStartedAt = this.lifeStartedAt
         this.trainingTarget =
             options.trainingTarget === undefined
                 ? undefined

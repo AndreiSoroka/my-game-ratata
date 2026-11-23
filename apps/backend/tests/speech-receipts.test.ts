@@ -3,7 +3,7 @@ import {
     PUBLIC_SPEECH_RADIUS,
     type ServerMessage,
 } from '@my-game-ratata/contracts'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
@@ -12,9 +12,17 @@ import { NavigationService } from '../src/game/navigation'
 import { PartyService } from '../src/game/parties'
 import { publishRoomEvents } from '../src/game/roomEvents'
 import { broadcastChat, type RoomSocket } from '../src/game/roomMessaging'
-import { createSpeechEvent } from '../src/game/speechReceipts'
+import {
+    createDialogueSpeechEvent,
+    createSpeechEvent,
+} from '../src/game/speechReceipts'
 import { WorldLocations } from '../src/game/worldLocations'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+import {
+    controlledNpcProvider,
+    npcReply,
+    npcRuntimeFixture,
+} from './npcAiRuntimeFixture'
 
 function socket() {
     const sent: ServerMessage[] = []
@@ -51,7 +59,6 @@ function speechRoom(npc: GameCharacter, observers: GameCharacter[]) {
     const adventure = new AdventureService()
     const parties = new PartyService()
     return {
-        adventure,
         navigation,
         publish(events: GameEventPayload[]) {
             publishRoomEvents(
@@ -74,31 +81,43 @@ function speechRoom(npc: GameCharacter, observers: GameCharacter[]) {
     }
 }
 
-it('repeated equal dialogue choices get fresh receipts while snapshots remain stable', () => {
-    const service = new AdventureService({ now: () => 1000 })
-    const actor = abilityHero()
-    const npc = speaker()
-    const initial = service.interact(actor, npc.id, [npc])[0]
-    const first = service.choose(actor, 'ask_dragon', [npc])[0]
-    const firstSnapshot = service.snapshot(
-        actor.id,
-        actor.locationId,
-        actor
-    ).dialogue
-    const secondSnapshot = service.snapshot(
-        actor.id,
-        actor.locationId,
-        actor
-    ).dialogue
-    expect(initial?.speechId).toBe(1)
-    expect(first?.speechId).toBe(2)
-    expect(firstSnapshot?.speechId).toBe(first?.speechId)
-    expect(secondSnapshot).toEqual(firstSnapshot)
-    const second = service.choose(actor, 'ask_dragon', [npc])[0]
-    expect(second?.text).toBe(first?.text)
-    expect(second?.speechId).toBe(3)
-    expect(service.snapshot(actor.id).dialogue?.speechId).toBe(second?.speechId)
-    expect(second?.audienceIds).toEqual([actor.id])
+it('repeated equal model replies get fresh receipts while snapshots remain stable', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000)
+    vi.stubGlobal('Bun', { env: {} })
+    const provider = controlledNpcProvider()
+    const f = npcRuntimeFixture(provider.decide)
+    const text = 'Помогу разобраться в Новогороде.'
+    const snapshot = () =>
+        f.room.snapshot(undefined, f.alice.actor.locationId, f.alice.actor.id)
+            .adventure?.dialogue
+    try {
+        for (const [index, line] of [
+            'Поможешь?',
+            'Подскажешь ещё раз?',
+        ].entries()) {
+            f.talk(line)
+            await f.advance()
+            provider.turns[index]?.resolve(npcReply(null, { speech: text }))
+            await f.advance()
+            const receipt = index + 1
+            expect(f.speech().at(-1)).toMatchObject({
+                text,
+                speechId: receipt,
+                targetId: f.alice.actor.id,
+                voice: 'dialogue',
+            })
+            const observed = snapshot()
+            expect(observed).toMatchObject({ text, speechId: receipt })
+            expect(snapshot()).toEqual(observed)
+        }
+        expect(f.speech()).toHaveLength(2)
+    } finally {
+        f.room.stop()
+        await f.diagnostics.flush()
+        vi.useRealTimers()
+        vi.unstubAllGlobals()
+    }
 })
 
 it('publication stamps an utterance once and preserves its private audience and repeated-text identity', () => {
@@ -288,16 +307,15 @@ it('marks a live Adventure dialogue for its recipient only and removes the voice
     const recipient = abilityHero()
     const other = abilityHero()
     const room = speechRoom(npc, [recipient, other])
-    const dialogue = room.adventure.interact(
+    const dialogue = createDialogueSpeechEvent(
+        npc,
         recipient,
-        npc.id,
-        [npc],
-        room.navigation
+        'Поговорим о Новогороде.'
     )
 
-    room.publish(dialogue)
+    room.publish([dialogue])
     recipient.position.x += 60
-    room.publish(dialogue)
+    room.publish([dialogue])
 
     const messages = room.heard(recipient)
     expect(messages).toHaveLength(2)

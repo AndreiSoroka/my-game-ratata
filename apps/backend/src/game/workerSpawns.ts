@@ -9,6 +9,7 @@ import { EconomyWorkerController } from './economyWorkers'
 import { createItemInstance, equipDirect } from './inventory'
 import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService } from './navigation'
+import { initializeNpcProgression } from './npcProgression'
 import type { SpawnedCharacter } from './spawns'
 import { walkableNear } from './workerNavigation'
 export type WorkerJob = 'lumberjack' | 'miner' | 'farmer'
@@ -83,6 +84,7 @@ export function createEconomyWorkers(
             },
         })
         character.tags.add(`worker.${definition.job}`)
+        initializeNpcProgression(character)
         character.tags.add(`worker.city.${CENTER_LOCATION_ID}`)
         equipDirect(character.equipment, createItemInstance('boots'))
         if (definition.tool !== undefined) {

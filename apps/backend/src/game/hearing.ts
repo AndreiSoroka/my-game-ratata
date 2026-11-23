@@ -163,7 +163,7 @@ export function lastHeardPoint(
     if (
         !activeSource(actor, noise.locationId) ||
         !activeSource(source, noise.locationId) ||
-        !canTargetByFaction(actor, source) ||
+        !canTargetByFaction(actor, source, now) ||
         now - noise.emittedAt >= MOVEMENT_RULES.investigationMs
     ) {
         heard?.delete(actor.id)
@@ -180,7 +180,7 @@ function canHear(
 ): boolean {
     if (
         !activeSource(listener, noise.locationId) ||
-        !canTargetByFaction(listener, source) ||
+        !canTargetByFaction(listener, source, noise.emittedAt) ||
         distance(listener.spawnPosition, noise.position) >
             WILDERNESS_AGGRO_POLICY.spawnLeashRadius
     ) {

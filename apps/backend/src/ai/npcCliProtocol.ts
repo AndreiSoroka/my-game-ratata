@@ -1,6 +1,7 @@
 import { isBladeAbility } from '@my-game-ratata/contracts'
 
 import { parseAgentDecision } from '../game/agentDecisionParsing'
+import { type NpcServiceOffer, npcServiceOffers } from '../game/npcRoster'
 import { parseInformation } from './memoryProtocol'
 import { parseSocialReply } from './socialReplyParsing'
 import type { NpcAiDiagnostic, NpcAiReply } from './types'
@@ -16,7 +17,8 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
     if (
         decision === undefined ||
         (decision?.type === 'use_ability' &&
-            !isBladeAbility(decision.abilityId)) ||
+            !isBladeAbility(decision.abilityId) &&
+            decision.abilityId !== 'shot') ||
         (decision !== null && !allowedDecisionTypes.has(decision.type))
     ) {
         throw new Error('Invalid NPC AI reply')
@@ -24,13 +26,26 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
     const fields = parseReplyFields(input)
     const diagnostics = parseDiagnostics(input['diagnostics'])
     const social = parseSocialReply(input)
+    const offerService = parseServiceOffer(input['offerService'])
     return {
         decision,
         ...fields,
         ...social,
         ...parseInformation(input),
+        ...(offerService === undefined ? {} : { offerService }),
         ...(diagnostics === undefined ? {} : { diagnostics }),
     }
+}
+
+function parseServiceOffer(input: unknown): NpcServiceOffer | null | undefined {
+    if (input === undefined || input === null) {
+        return input
+    }
+    const service = npcServiceOffers.find((candidate) => candidate === input)
+    if (service === undefined) {
+        throw new Error('Invalid NPC AI service offer')
+    }
+    return service
 }
 
 /** Strict model schemas represent an absent optional replacement as null. */
@@ -120,6 +135,7 @@ const replyFields = new Set([
     'waitMode',
     'informationRequest',
     'personMemoryUpdate',
+    'offerService',
 ])
 
 const allowedDecisionTypes = new Set([

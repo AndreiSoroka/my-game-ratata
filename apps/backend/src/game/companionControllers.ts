@@ -4,6 +4,8 @@ import type { CharacterController } from './controllers'
 import type { GameRoom } from './room'
 
 export class CompanionController implements CharacterController {
+    public readonly observesWhileCasting = true
+
     public constructor(private readonly service: CompanionService) {}
 
     public update(character: GameCharacter, room: GameRoom, now: number): void {

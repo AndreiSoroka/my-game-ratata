@@ -16,6 +16,7 @@ import { available } from './crimeRules'
 import { magicBlocksMovement } from './magicState'
 import { cancelMovementMode } from './movementActions'
 import { loadNavigationService, NavigationService } from './navigation'
+import { npcModelRole } from './npcRoster'
 import { returnFromPursuit } from './pursuitState'
 import {
     canPursuitTravel,
@@ -120,8 +121,8 @@ export class WorldLocations {
         now = Date.now()
     ): string | undefined {
         const current = this.get(character.locationId)
-        const direction = exitDirection(
-            character.position,
+        const direction = characterExitDirection(
+            character,
             intent,
             current.navigation
         )
@@ -176,6 +177,8 @@ export class WorldLocations {
         )
         if (
             passage === undefined ||
+            (npcModelRole(character.id) === 'city_coordinator' &&
+                passage.destination.locationId !== CENTER_LOCATION_ID) ||
             !available(character) ||
             character.trainingTarget !== undefined ||
             character.stunUntil > now ||
@@ -253,4 +256,14 @@ function exitDirection(
         return { x: 0, y: 1 }
     }
     return undefined
+}
+
+function characterExitDirection(
+    character: GameCharacter,
+    intent: Vector2,
+    navigation: NavigationService
+): Vector2 | undefined {
+    return npcModelRole(character.id) === 'city_coordinator'
+        ? undefined
+        : exitDirection(character.position, intent, navigation)
 }

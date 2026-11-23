@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { memoryForCharacter } from '../src/ai/characterMinds'
 import {
     controlledNpcProvider,
     kaplyaId,
@@ -26,6 +27,15 @@ it('preempts another NPC background model call for a real player request', async
     const provider = controlledNpcProvider()
     const f = npcRuntimeFixture(provider.decide, { includeMira: true })
     fixture = f
+    const memory = memoryForCharacter(f.actor)
+    memory.observe(
+        f.alice.actor.id,
+        f.alice.actor.nickname,
+        f.alice.actor.position,
+        f.actor.locationId,
+        Date.now()
+    )
+    memory.recordConversation(f.alice.actor.id, Date.now())
     await f.advance()
     expect(provider.turns[0]?.context.actorId).toBe(miraId)
     expect(provider.turns[0]?.context.task?.requesterId).toBeNull()
@@ -45,6 +55,10 @@ it('preempts another NPC background model call for a real player request', async
     )
     await f.advance()
     expect(
-        f.speech().some((event) => event.text === 'Поздний городской обзор.')
+        f.alice.sent.some(
+            (message) =>
+                message.type === 'event' &&
+                message.event.text === 'Поздний городской обзор.'
+        )
     ).toBe(false)
 })

@@ -123,6 +123,13 @@ describe('story quest reward choice', () => {
             const modal = '[aria-modal="true"][aria-label="Сдать поручение"]'
             await wrapper.get(action).trigger('click')
             expect(wrapper.get(modal).text()).toContain('Поровну группе')
+            await wrapper.setProps({
+                adventure: {
+                    ...ready,
+                    dialogue: { ...ready.dialogue!, text: 'Новая реплика', speechId: 41 },
+                },
+            })
+            expect(wrapper.find(modal).exists()).toBe(true)
             await wrapper.get(modal).trigger('keydown', { code: 'Escape' })
             await flushPromises()
             expect(wrapper.find(modal).exists()).toBe(false)
@@ -146,6 +153,27 @@ describe('story quest reward choice', () => {
             wrapper.unmount()
         }
     })
+})
+
+it('reopens the same service only on a fresh offer', async () => {
+    const offer = { ...adventure.dialogue!, initialView: 'shop' as const, speechId: 1 }
+    const wrapper = mount(AdventureDialogue, {
+        props: { adventure: { ...adventure, dialogue: offer }, characters: [] },
+    })
+    try {
+        const shop = '[aria-label="Торговля"]'
+        const back = '.adventure-shop button:last-child'
+        expect(wrapper.find(shop).exists()).toBe(true)
+        await wrapper.get(back).trigger('click')
+        await wrapper.setProps({ adventure: { ...adventure, dialogue: { ...offer } } })
+        expect(wrapper.find(shop).exists()).toBe(false)
+        await wrapper.setProps({
+            adventure: { ...adventure, dialogue: { ...offer, speechId: 2 } },
+        })
+        expect(wrapper.find(shop).exists()).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
 })
 
 describe('conversation and shop navigation', () => {

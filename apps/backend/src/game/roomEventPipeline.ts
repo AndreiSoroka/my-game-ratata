@@ -18,6 +18,7 @@ interface EventPipelineOptions {
     hasModelLease: (actor: GameCharacter, now: number) => boolean
     world: () => WorldLocations
     speechTranslations: () => RoomSpeechTranslations
+    now?: () => number
 }
 
 /** Fallen guards are observed immediately. Only their final defeat advances objectives. */
@@ -40,13 +41,15 @@ export class RoomEventPipeline {
         if (events.length === 0) {
             return
         }
+        const now = (this.options.now ?? Date.now)()
         const objectiveEvents = events.filter(
-            (event) => !this.deferDefeat(event)
+            (event) => !this.deferDefeat(event, now)
         )
         archiveRoomConversations(
             events,
             this.characters.values(),
-            this.options.archivePerson
+            this.options.archivePerson,
+            now
         )
         this.social.observe(objectiveEvents)
         publishRoomEvents(
@@ -64,7 +67,8 @@ export class RoomEventPipeline {
             this.options.world(),
             this.options.hasModelLease,
             objectiveEvents,
-            this.options.speechTranslations()
+            this.options.speechTranslations(),
+            now
         )
     }
 
@@ -90,7 +94,7 @@ export class RoomEventPipeline {
         }
     }
 
-    private deferDefeat(event: GameEventPayload): boolean {
+    private deferDefeat(event: GameEventPayload, now: number): boolean {
         if (event.kind !== 'death' || event.targetId === undefined) {
             return false
         }
@@ -103,7 +107,7 @@ export class RoomEventPipeline {
             const hostile =
                 killer !== undefined &&
                 combatFaction(killer) !== combatFaction(actor) &&
-                canTargetByFaction(killer, actor)
+                canTargetByFaction(killer, actor, now)
             this.fallen.set(actor, {
                 sequence: actor.deathSequence,
                 event,

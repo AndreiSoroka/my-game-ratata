@@ -61,14 +61,13 @@ export class CrimeService {
             thief.position
         )
         if (victim.soul.canSpeak) {
-            events.push({
-                kind: 'chat',
-                actorId: victim.id,
-                targetId: thief.id,
-                text: fighter
-                    ? 'Руки прочь от моих вещей!'
-                    : 'Держите вора! Стража!',
-            })
+            events.push(
+                privateTheftNotice(
+                    thief.id,
+                    'Попытку кражи заметили.',
+                    victim.id
+                )
+            )
             if (!fighter) {
                 events.push(
                     ...this.callGuards(victim, thief.id, characters, now)
@@ -121,12 +120,12 @@ export class CrimeService {
         grantRetaliation(guard, thief, now + THEFT_RULES.retaliationMs)
         this.respond(guard, thief, 'fight', now, proof.position)
         return [
-            {
-                kind: 'chat',
-                actorId: guard.id,
-                targetId: thief.id,
-                text: `${thief.nickname}, остановись! Разберёмся с обвинением в краже.`,
-            },
+            privateTheftNotice(actor.id, 'Стража вызвана.', guard.id),
+            privateTheftNotice(
+                thief.id,
+                'Стража Новогорода получила сообщение о краже.',
+                guard.id
+            ),
         ]
     }
 

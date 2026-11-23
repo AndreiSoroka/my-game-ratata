@@ -17,7 +17,7 @@ import { canvasMessages } from './canvasMessages'
 import { characterMessages } from './characterMessages'
 import { chatMessages } from './chatMessages'
 import { conversationMessages } from './conversationMessages'
-import { joinMessages, menuMessages } from './coreMessages'
+import { joinMessages, menuMessages, worldSettingsMessages } from './coreMessages'
 import {
     abilityMessages,
     backgroundDescriptions,
@@ -66,6 +66,7 @@ const messages = {
     quests: questsMessages,
     trade: tradeMessages,
     world: { ...worldMessages, ...worldActionMessages },
+    worldSettings: worldSettingsMessages,
 }
 
 export const gameLocales = ['ru', 'en'] as const

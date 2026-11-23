@@ -113,14 +113,16 @@ describe('one facing interaction target', () => {
                 position: { x, y: 100 },
                 controllerKind: 'scripted',
                 interactions: {
-                    aiDialogue: false,
+                    aiDialogue: true,
+                    dialogueMode: 'active',
                     whisper: false,
                     exchange: false,
                     companionRequests: 'available',
+                    companionCanFight: true,
                 },
                 soul: {
                     kind: 'spark',
-                    controlSource: 'script',
+                    controlSource: 'model',
                     canSpeak: true,
                 },
             })
@@ -138,6 +140,30 @@ describe('one facing interaction target', () => {
             target.actions.every((a) => 'targetId' in a.command && a.command.targetId === 'ahead')
         ).toBe(true)
     })
+    it.each(['passive', 'scripted'] as const)(
+        'allows addressing a %s NPC without offering companion orders',
+        (dialogueMode) => {
+            const { snapshot, select } = setup()
+            const canSpeak = dialogueMode === 'passive'
+            snapshot.characters.push(
+                characterFixture('resident', {
+                    position: { x: 124, y: 100 },
+                    controllerKind: 'scripted',
+                    soul: { kind: 'echo', controlSource: 'script', canSpeak },
+                    interactions: {
+                        dialogueMode,
+                        aiDialogue: canSpeak,
+                        whisper: false,
+                        exchange: false,
+                    },
+                })
+            )
+
+            const commands = select()?.actions.map(({ command }) => command)
+            expect(commands).toContainEqual({ type: 'interact', targetId: 'resident' })
+            expect(commands?.some(({ type }) => type === 'companion_request')).toBe(false)
+        }
+    )
     it('pins an exact target, never substituting a newly closer neighbor', () => {
         const { snapshot, select } = setup()
         snapshot.adventure.worldObjects = [object('first', 132), object('other', 140)]
@@ -169,12 +195,14 @@ it('keeps companion requests in sight out to 64 pixels using the viewer’s acti
     const npc = characterFixture('resident', {
         position: { x: 164, y: 100 },
         controllerKind: 'scripted',
-        soul: { kind: 'echo', controlSource: 'script', canSpeak: true },
+        soul: { kind: 'spark', controlSource: 'model', canSpeak: true },
         interactions: {
-            aiDialogue: false,
+            aiDialogue: true,
+            dialogueMode: 'active',
             whisper: true,
             exchange: true,
             companionRequests: 'available',
+            companionCanFight: true,
         },
     })
     snapshot.characters.push(npc)
@@ -196,6 +224,10 @@ it('keeps companion requests in sight out to 64 pixels using the viewer’s acti
         { command: follow, disabled: true },
         { command: help, disabled: true },
     ])
+
+    npc.interactions!.companionCanFight = false
+    expect(select()?.actions).toMatchObject([{ command: follow, disabled: true }])
+
     npc.position.x = 165
     expect(select()).toBeUndefined()
 })

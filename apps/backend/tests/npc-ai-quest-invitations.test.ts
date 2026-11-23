@@ -32,7 +32,7 @@ function setup(maxCallsPerHour = 120) {
     const diagnostics = new NpcAiDiagnostics({ sink: () => Promise.resolve() })
     const config = parseNpcAiConfig(
         {
-            proactive: false,
+            proactive: true,
             defaults: { timeoutMs: 10_000 },
             limits: { maxCallsPerHour, reviewIntervalMs: 60_000 },
             npcs: [{ actorId: miraId, role: 'city_coordinator' }],
@@ -54,6 +54,16 @@ function setup(maxCallsPerHour = 120) {
     }
     // Unit fixture placement: the check exercises dialogue commits, not navigation.
     alice.actor.position = { x: actor.position.x, y: actor.position.y + 16 }
+    // A greeting was already exchanged, so the fixture can exercise the city review.
+    const memory = memoryForCharacter(actor)
+    memory.observe(
+        alice.actor.id,
+        alice.actor.nickname,
+        alice.actor.position,
+        actor.locationId,
+        Date.now()
+    )
+    memory.recordConversation(alice.actor.id, Date.now())
     const draft: QuestDraft = {
         title: 'Обойти город',
         description: 'Осмотреть Новогород и вернуться.',
@@ -112,7 +122,13 @@ async function stage(f: ReturnType<typeof setup>) {
     await f.advance()
     const invitation = f.invitation()
     if (invitation === null) {
-        throw new Error('Expected a spoken pending invitation')
+        const context = f.provider.turns.at(-1)?.context
+        throw new Error(
+            `Expected a spoken pending invitation: ${JSON.stringify({
+                events: f.provider.turns[0]?.context.events,
+                correction: context?.replyCorrection?.reason,
+            })}`
+        )
     }
     return invitation
 }
@@ -311,12 +327,5 @@ it('rechecks contact after the asynchronous answer before publishing speech or c
     expect(f.speech().some((e) => e.text === 'Вот условия, посмотри.')).toBe(
         false
     )
-    expect(f.provider.turns.at(-1)?.context.replyCorrection).toMatchObject({
-        code: 'command_unavailable',
-    })
-    f.provider.turns
-        .at(-1)
-        ?.resolve(npcReply(null, { speech: null, taskAcceptance: 'none' }))
-    await f.advance()
-    expect(f.provider.turns).toHaveLength(3)
+    expect(f.provider.turns).toHaveLength(2)
 })

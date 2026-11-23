@@ -31,7 +31,7 @@ export function necromancerOptions(
     now: number
 ): NecromancerOption[] {
     return [
-        ...environmentChoices(actor, scene, preferences),
+        ...environmentChoices(actor, room, scene, preferences, now),
         ...localNecromancerOptions(actor, room, scene, now),
         ...nearbyAlliedSkeletons(actor, scene, now).flatMap((skeleton) => [
             ...orderChoices(actor, scene, skeleton),
@@ -54,8 +54,10 @@ export function localNecromancerOptions(
 
 function environmentChoices(
     actor: GameCharacter,
+    room: GameRoom,
     scene: NecromancerScene,
-    { offeredHelp, questChest }: NecromancerPreferences
+    { offeredHelp, questChest }: NecromancerPreferences,
+    now: number
 ): NecromancerOption[] {
     if (scene.threat !== undefined) {
         const combat: NecromancerOption[] = [
@@ -65,6 +67,7 @@ function environmentChoices(
         if (scene.cover?.concealed === true) {
             combat.push({ tactic: 'hide' })
         }
+        combat.push(...visibleSlimeHunts(actor, room, scene, now))
         return combat
     }
     const peace: NecromancerOption[] = [{ tactic: 'study' }, { tactic: 'rest' }]
@@ -82,6 +85,29 @@ function environmentChoices(
         peace.push({ tactic: 'heart', targetId: questChest })
     }
     return peace
+}
+
+function visibleSlimeHunts(
+    actor: GameCharacter,
+    room: GameRoom,
+    scene: NecromancerScene,
+    now: number
+): NecromancerOption[] {
+    const navigation = room.navigationFor(actor)
+    return scene.visible
+        .filter(
+            (target) =>
+                target.alive &&
+                target.creatureType === 'ooze' &&
+                target.faction === 'monsters' &&
+                canTargetByFaction(actor, target, now)
+        )
+        .slice(0, 3)
+        .flatMap((target) =>
+            navigation.findPathWorld(actor.position, target.position).length > 0
+                ? [{ tactic: 'hunt_slime', targetId: target.id }]
+                : []
+        )
 }
 
 function prayerChoices(

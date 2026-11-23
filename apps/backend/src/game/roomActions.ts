@@ -9,8 +9,6 @@ import { handleAbilityCommand } from './abilityCommands'
 import type { AbilityContext } from './abilityContext'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import { canObserveRoomCharacter } from './characterSight'
-import type { CompanionService } from './companions'
 import { isAdventureCommand } from './extraCommands'
 import { handleMovementCommand } from './movementActions'
 import { handleDashWithFeedback } from './movementFeedback'
@@ -26,7 +24,6 @@ interface ActionContext extends AbilityContext {
     allCharacters: Iterable<GameCharacter>
     parties: PartyService
     characters: GameCharacter[]
-    companions: CompanionService
     inventory: WorldInventory
     message: ClientMessage
     player: GameCharacter
@@ -60,9 +57,9 @@ export function handleRoomAction(
             player,
             message,
             characters,
-            context.navigation
+            context.navigation,
+            now
         )
-        rememberConversation(context, events)
         return events
     }
     if (isPartyCommand(message)) {
@@ -73,9 +70,6 @@ export function handleRoomAction(
             now,
             context.navigation
         )
-    }
-    if (message.type === 'companion_request') {
-        return companionAction(context, message)
     }
     if (isProgressionCommand(message)) {
         const events = handleProgressionCommand(player, message, context)
@@ -115,28 +109,6 @@ function isPartyCommand(message: ClientMessage): message is PartyClientMessage {
     ].includes(message.type)
 }
 
-function rememberConversation(
-    context: ActionContext,
-    events: GameEventPayload[]
-): void {
-    const { message, player, characters, companions } = context
-    if (message.type !== 'interact') {
-        return
-    }
-    const replied = events.some(
-        (event) =>
-            event.kind === 'chat' &&
-            event.actorId === message.targetId &&
-            event.targetId === player.id
-    )
-    if (replied) {
-        companions.rememberMeeting(
-            player,
-            characters.find((character) => character.id === message.targetId)
-        )
-    }
-}
-
 function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
     const { message, player, characters } = context
     if (message.type === 'revive') {
@@ -166,53 +138,4 @@ function abilityAction(context: ActionContext): GameEventPayload[] | undefined {
     }
 
     return undefined
-}
-
-function companionAction(
-    context: ActionContext,
-    message: Extract<ClientMessage, { type: 'companion_request' }>
-): GameEventPayload[] {
-    const { player, characters, now } = context
-    if (message.request === 'talk') {
-        const npc = characters.find(
-            (character) => character.id === message.targetId
-        )
-        const events = context.adventure.interact(
-            player,
-            message.targetId,
-            characters,
-            context.navigation,
-            now,
-            undefined,
-            npc === undefined
-                ? undefined
-                : context.companions.dialogueText(player, npc)
-        )
-        if (
-            events.some(
-                (event) =>
-                    event.kind === 'chat' && event.actorId === message.targetId
-            )
-        ) {
-            context.companions.rememberMeeting(
-                player,
-                characters.find(
-                    (character) => character.id === message.targetId
-                )
-            )
-        }
-        return events
-    }
-    const visible = characters.filter(
-        (candidate) =>
-            candidate.id !== message.targetId ||
-            canObserveRoomCharacter(player, candidate, context.navigation, now)
-    )
-    return context.companions.handle(player, message, visible, now, {
-        questCompleted: (actorId, questId) =>
-            context.adventure.hasCompletedQuest(actorId, questId),
-        hasLineOfSight: (actor, npc) =>
-            context.navigation.hasLineOfSight(actor.position, npc.position),
-        tileWidthFor: () => context.navigation.grid.tileWidth,
-    })
 }

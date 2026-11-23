@@ -11,7 +11,7 @@ import {
 import type { GameCharacter } from './character'
 import { canObserveRoomCharacter } from './characterSight'
 import type { NavigationService } from './navigation'
-import { canHearSpeech } from './socialSpeech'
+import { canConverseWithNpc, canHearSpeech } from './socialSpeech'
 
 export const WHISPER_RANGE = 48
 
@@ -62,9 +62,14 @@ export class WhisperService {
             return false
         }
         const navigation = this.world.navigationFor(actor)
+        const check =
+            actor.controllerKind === 'network_player' &&
+            target.controllerKind === 'network_player'
+                ? canHearSpeech
+                : canConverseWithNpc
         return (
             canObserveRoomCharacter(actor, target, navigation, now) &&
-            canHearSpeech(target, actor, navigation, now, WHISPER_RANGE)
+            check(target, actor, navigation, now, WHISPER_RANGE)
         )
     }
 

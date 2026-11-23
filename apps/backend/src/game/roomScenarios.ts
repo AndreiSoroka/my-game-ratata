@@ -3,6 +3,7 @@ import type { AutomationCommand } from '@my-game-ratata/contracts'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import type { CompanionService } from './companions'
+import { recruitableNpc } from './npcRoster'
 import type { GameRoom } from './room'
 import { ScenarioService } from './scenarios'
 import { createWandererScenario } from './wandererScenarios'
@@ -15,6 +16,7 @@ export function createRoomScenarioService(
     adventure: AdventureService
 ): ScenarioService {
     const context = {
+        modelConsent: true,
         tileWidthFor: (actor: GameCharacter) =>
             room.navigationFor(actor).grid.tileWidth,
         questCompleted: (actorId: string, questId: string) =>
@@ -24,13 +26,24 @@ export function createRoomScenarioService(
                 .navigationFor(actor)
                 .hasLineOfSight(actor.position, npc.position),
     }
+    const hasConsent = (ownerId: string, actor: GameCharacter) =>
+        recruitableNpc(actor.id) && companions.hasConsent(ownerId, actor)
+    const requireConsent = (owner: GameCharacter, actor: GameCharacter) =>
+        hasConsent(owner.id, actor)
+            ? undefined
+            : {
+                  accepted: false,
+                  error: 'Попросите спутника согласиться в разговоре.',
+              }
     return new ScenarioService({
         characters,
         canAssign: (owner, actor, now) =>
+            requireConsent(owner, actor) ??
             companions.canAssist(owner, actor, context, now),
         claim: (owner, actor, now) =>
+            requireConsent(owner, actor) ??
             companions.claimAssistance(owner, actor, context, now),
-        hasConsent: (ownerId, actor) => companions.hasConsent(ownerId, actor),
+        hasConsent,
         release: (ownerId, actor) => {
             companions.releaseAssistance(ownerId, actor)
         },
@@ -68,7 +81,7 @@ export function registerWandererScenarios(
             room.navigationFor(character)
         )
         if (definition !== undefined) {
-            scenarios.registerDefault(character, definition, Date.now())
+            scenarios.registerDefault(character, definition, room.gameplayNow())
         }
     }
 }

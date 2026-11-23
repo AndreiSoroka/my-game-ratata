@@ -20,16 +20,16 @@ import {
     checkCompanionCommand,
     type CompanionCommandCheck,
     createCompanionRuntime,
-    scriptedCompanionDenial,
     scriptedCompanionGreeting,
+    scriptedCompanionOrderReply,
 } from './companionCommand'
-import { applyCompanionOrder } from './companionOrders'
 export type { AssistanceContext, AssistanceResult } from './companionAssistance'
+import { supportCompanionLeader } from './companionAbilities'
 import {
     advanceCompanionIntent,
     type CompanionRuntime,
 } from './companionMovement'
-import { consentReply } from './companionProfiles'
+import { prepareCompanionSafety } from './companionSafety'
 import {
     availableLeader,
     canRequest,
@@ -40,6 +40,8 @@ import {
 } from './companionState'
 import { consumeCompanionWait } from './companionWait'
 import { ModelControlLeases } from './modelControlLeases'
+import { recruitableNpc } from './npcRoster'
+import type { GameRoom } from './room'
 
 export class CompanionService {
     private readonly states = new Map<string, CompanionRuntime>()
@@ -194,44 +196,14 @@ export class CompanionService {
             state.metActors.add(actor.id)
             return this.reply(npc, actor, state, text)
         }
-        return this.handleRequest(npc, actor, state, message, now, assistance)
-    }
-
-    private handleRequest(
-        npc: GameCharacter,
-        actor: GameCharacter,
-        state: CompanionRuntime,
-        message: CompanionClientMessage,
-        now: number,
-        assistance?: AssistanceContext
-    ): GameEventPayload[] {
-        const result = this.checkOrder(actor, npc, message, now, assistance)
-        if (!result.accepted) {
-            const text = scriptedCompanionDenial(
-                state.profile,
-                message.request,
-                result.reason
-            )
-            return this.reply(npc, actor, state, text)
-        }
-        if (message.request === 'dismiss') {
-            release(npc, state)
-            return this.reply(
-                npc,
-                actor,
-                state,
-                'Хорошо. Дальше каждый выбирает свою дорогу. Береги себя.'
-            )
-        }
-        if (message.request === 'talk') {
-            return []
-        }
-        applyCompanionOrder(npc, actor, state, message, now)
-        return this.reply(
-            npc,
+        return scriptedCompanionOrderReply(
             actor,
+            npc,
             state,
-            consentReply(state.profile, state.order)
+            message,
+            this.assistance,
+            now,
+            assistance
         )
     }
 
@@ -258,16 +230,40 @@ export class CompanionService {
                 : world.getCharacter(state.leaderId)
         if (state.leaderId !== null && !availableLeader(leader)) {
             release(character, state)
-            return this.reply(
-                character,
-                undefined,
-                state,
-                'Наш путь прервался. Я не пойду за безмолвным следом и буду решать сама.'
-            )
+            return []
         }
-        advanceCompanionIntent(character, leader, state, world, now)
+        const support = supportCompanionLeader(
+            character,
+            leader,
+            state,
+            world,
+            now
+        )
+        const actions = advanceCompanionIntent(
+            character,
+            leader,
+            state,
+            world,
+            now
+        )
         sync(character, state)
-        return []
+        return [...support, ...actions]
+    }
+
+    public prepareSafety(
+        character: GameCharacter,
+        room: GameRoom,
+        now: number
+    ): boolean {
+        return (
+            recruitableNpc(character.id) &&
+            prepareCompanionSafety(
+                character,
+                this.stateFor(character),
+                room,
+                now
+            )
+        )
     }
 
     public decide(

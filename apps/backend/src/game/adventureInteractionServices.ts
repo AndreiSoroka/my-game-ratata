@@ -30,38 +30,37 @@ export function createAdventureInteractions(context: Context) {
             state.cityTradeBlockedReason
         )
     }
-    return {
-        interact: (
-            actor: GameCharacter,
-            npcId: string,
-            characters: GameCharacter[],
-            navigation?: NavigationService,
-            now = context.now(),
-            service?: 'shop' | 'orders' | 'repair',
-            text?: string
-        ): GameEventPayload[] => {
-            const state = context.stateFor(actor.id)
-            setCityRefusal(state, context.cities.tradeRefusal(actor.locationId))
-            const events = extendNpcQuestDialogue(
-                context.service,
-                actor,
-                state,
-                interactAdventureNpc(
-                    actor,
-                    npcId,
-                    characters,
-                    state,
-                    now,
-                    navigation,
-                    service,
-                    text ??
-                        context.cities.scriptedGuideGreeting(npcId, actor.id)
-                ),
-                now
-            )
+    const interact = (
+        actor: GameCharacter,
+        npcId: string,
+        characters: GameCharacter[],
+        navigation?: NavigationService,
+        now = context.now(),
+        service?: 'shop' | 'orders' | 'repair',
+        text?: string
+    ) => {
+        const state = context.stateFor(actor.id)
+        setCityRefusal(state, context.cities.tradeRefusal(actor.locationId))
+        const result = interactAdventureNpc(
+            actor,
+            npcId,
+            characters,
+            state,
+            now,
+            navigation,
+            service,
+            text
+        )
+        if (result.accepted) {
+            extendNpcQuestDialogue(context.service, actor, state, now)
             refresh(actor)
-            return events
-        },
+        }
+        return result
+    }
+    return {
+        interact,
+        interactEvents: (...args: Parameters<typeof interact>) =>
+            interact(...args).events,
         trade: (
             actor: GameCharacter,
             itemId: AdventureTradeItemId,

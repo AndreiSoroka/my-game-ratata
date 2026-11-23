@@ -14,6 +14,8 @@ import { watch, type WatchHandle } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 
+import { resolveBackendHttpUrl, resolveBackendWebSocketUrl } from '@/shared/api'
+
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
     onError: (message: string) => void
@@ -41,7 +43,7 @@ export class RuntimeSocket {
         if (this.handlers.isStopped()) return
         this.close()
         this.handlers.onStatus('Connecting')
-        const socket = new WebSocket(resolveWebSocketUrl())
+        const socket = new WebSocket(resolveBackendWebSocketUrl())
         this.initialized = false
         this.socket = socket
         if (this.handlers.getLocale)
@@ -152,22 +154,8 @@ function errorText(message: Extract<ServerMessage, { type: 'error' }>): string {
     }
 }
 
-function resolveWebSocketUrl(): string {
-    const envUrl = import.meta.env.VITE_BACKEND_WS_URL
-
-    if (envUrl !== undefined && envUrl.length > 0) {
-        return envUrl
-    }
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-
-    return `${protocol}//${window.location.hostname}:3000/ws`
-}
-
 /** Dynamic map JSON is served by the game server; tilesets stay on the frontend. */
 export function resolveWorldMapUrl(asset: string): string {
     if (asset.startsWith('/game/map/')) return new URL(asset, window.location.origin).href
-    const backend = new URL(resolveWebSocketUrl())
-    backend.protocol = backend.protocol === 'wss:' ? 'https:' : 'http:'
-    return new URL(asset, backend.origin).href
+    return resolveBackendHttpUrl(asset).href
 }

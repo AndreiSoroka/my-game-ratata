@@ -12,6 +12,7 @@ import {
 } from './combatObservation'
 import { roadPrayerDashRemainingMs } from './effectiveParameters'
 import { canTargetByFaction } from './factions'
+import { recruitableNpc } from './npcRoster'
 import { prayerAuraEffects } from './prayerAuras'
 import { hasRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { SnapshotContext } from './roomSnapshot'
@@ -70,8 +71,10 @@ function interactionsFor(
     if (
         viewerId !== undefined &&
         companion !== null &&
-        !interactions.aiDialogue
+        interactions.aiDialogue &&
+        recruitableNpc(actor.id)
     ) {
+        interactions.companionCanFight = companion.canFight
         interactions.companionRequests =
             companion.leaderId === null
                 ? 'available'

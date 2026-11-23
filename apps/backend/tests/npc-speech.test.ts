@@ -91,7 +91,7 @@ function fixture() {
     }
 }
 
-it('honours an authored Cyrillic name before a selected companion without guessing substrings', () => {
+it('honours an authored Cyrillic name in undirected speech without guessing substrings', () => {
     const f = fixture()
     const mira = new GameCharacter({
         id: 'npc_friendly_girl_1',
@@ -119,7 +119,7 @@ it('honours an authored Cyrillic name before a selected companion without guessi
         f.states,
         f.human,
         { ...f.event(), text: 'Мира, расскажи о городе.' },
-        f.first.id,
+        undefined,
         true
     )
     expect(state.inbox).toHaveLength(1)

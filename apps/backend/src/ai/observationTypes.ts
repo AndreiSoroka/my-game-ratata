@@ -89,6 +89,7 @@ export interface NpcAiObservation {
         market?: MarketSnapshot
         requests: WorkRequestSnapshot[]
         municipalQuestGold?: number
+        residentHomes?: Array<{ id: string; name: string; position: Vector2 }>
         workers?: Array<{
             id: string
             name: string

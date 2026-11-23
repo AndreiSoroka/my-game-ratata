@@ -31,19 +31,21 @@ interface PlayerMessageContext {
         target?: WorldCombatTarget
     ) => void
     sendEvents: (events: GameEventPayload[]) => void
+    now?: number
     worldInventory: WorldInventory
 }
 
 export function applyPlayerMessage(context: PlayerMessageContext): void {
     const { message, player } = context
+    const now = context.now ?? Date.now()
 
     if (message.type === 'move_input') {
-        applyMovementInput(context, message)
+        applyMovementInput(context, message, now)
         return
     }
 
     if (message.type === 'move_to') {
-        applyRouteMessage(context, message)
+        applyRouteMessage(context, message, now)
         return
     }
 
@@ -54,7 +56,8 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
                 player,
                 context.characters.values(),
                 48,
-                context.navigation
+                context.navigation,
+                now
             )
         }
         context.requestAttack(player, message.targetId, message.target)
@@ -63,14 +66,14 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
 
     if (isChestCommand(message)) {
         context.sendEvents(
-            context.worldInventory.containers.handle(player, message)
+            context.worldInventory.containers.handle(player, message, now)
         )
         return
     }
 
     if (message.type === 'pickup_item') {
         context.sendEvents(
-            context.worldInventory.pickupItem(player, message.worldItemId)
+            context.worldInventory.pickupItem(player, message.worldItemId, now)
         )
         return
     }
@@ -80,34 +83,38 @@ export function applyPlayerMessage(context: PlayerMessageContext): void {
             context.worldInventory.applyInventoryAction(
                 player,
                 message.action,
-                message.itemInstanceId
+                message.itemInstanceId,
+                now
             )
         )
         return
     }
 
     if (message.type === 'equipment_action') {
-        context.sendEvents(context.worldInventory.unequip(player, message.slot))
+        context.sendEvents(
+            context.worldInventory.unequip(player, message.slot, now)
+        )
         return
     }
 
-    if (message.type === 'chat' && player.soul.canSpeak) {
+    if (message.type === 'chat') {
         broadcastChat(
             context.connections,
             context.characters,
             player,
             message.text,
-            context.navigation
+            context.navigation,
+            now
         )
     }
 }
 
 function applyRouteMessage(
     context: PlayerMessageContext,
-    message: Extract<ClientMessage, { type: 'move_to' }>
+    message: Extract<ClientMessage, { type: 'move_to' }>,
+    now: number
 ): void {
     const { player, navigation, sendEvents } = context
-    const now = Date.now()
     const events: GameEventPayload[] = []
     const result = enqueueCharacterRoute(
         player,
@@ -137,10 +144,10 @@ function applyRouteMessage(
 
 function applyMovementInput(
     context: PlayerMessageContext,
-    message: Extract<ClientMessage, { type: 'move_input' }>
+    message: Extract<ClientMessage, { type: 'move_input' }>,
+    now: number
 ): void {
     const { player } = context
-    const now = Date.now()
     context.sendEvents([
         ...cancelPrayerForMovement(player, message.axis, now),
         ...cancelMagicForMovement(player, message.axis, now),

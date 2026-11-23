@@ -5,22 +5,17 @@ import type {
     Vector2,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import {
-    CENTER_LOCATION_ID,
-    interactionApproachPoints,
-} from '@my-game-ratata/contracts'
+import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
 import { adventureNpcRoles } from '../game/adventureContent'
 import { resolveAdventureNpc } from '../game/adventureNpc'
 import type { GameCharacter } from '../game/character'
 import { CONVERSATION_REACH } from '../game/conversationSessions'
-import {
-    containsBuildingPoint,
-    type MapBuildingDefinition,
-} from '../game/mapBuildings'
+import { visibleBuildingPoint } from '../game/mapBuildings'
 import { distance } from '../game/math'
 import type { NavigationService } from '../game/navigation'
-import { visibilityRadius } from '../game/queries'
+import { NPC_OBSERVATION_RADIUS, visibilityRadius } from '../game/queries'
+import { observeCity } from './cityObservation'
 import { knownGuidePlaces } from './guideTargets'
 import { environmentTargets } from './observationEnvironment'
 import { buildingTargets, landmarkTargets } from './observationPlaces'
@@ -43,7 +38,6 @@ export type {
 } from './observationTypes'
 import type { NpcAiRole } from './types'
 
-const observationRadius = 240
 /** A model receives the actor's earned projection, never the debugging snapshot. */
 export function buildNpcAiObservation(
     world: NpcAiWorld,
@@ -55,7 +49,7 @@ export function buildNpcAiObservation(
     const navigation = world.navigationFor(actor)
     const buildings = navigation.grid.buildings ?? []
     const visible = (point: Vector2): boolean =>
-        distance(actor.position, point) <= observationRadius &&
+        distance(actor.position, point) <= NPC_OBSERVATION_RADIUS &&
         visibleBuildingPoint(buildings, actor.position, point) &&
         navigation.hasLineOfSight(actor.position, point)
     const characters = observedCharacters(world, actor, snapshot, visible, now)
@@ -107,34 +101,11 @@ export function buildNpcAiObservation(
     return structuredClone(observation)
 }
 
-/** A roof hides its residents until the observer has entered that same building. */
-function visibleBuildingPoint(
-    buildings: readonly MapBuildingDefinition[],
-    observer: Vector2,
-    target: Vector2
-): boolean {
-    return buildings.every(
-        (building) =>
-            !containsBuildingPoint(building.bounds, target) ||
-            containsBuildingPoint(building.bounds, observer)
-    )
-}
-
 function characterTarget(
     actor: GameCharacter,
     target: CharacterSnapshot
 ): NpcAiTarget {
     const range = distance(actor.position, target.position)
-    const commands: AgentDecision[] = [moveTo(target.position)]
-    if (
-        range <= CONVERSATION_REACH &&
-        target.alive &&
-        target.soul?.canSpeak === true &&
-        target.controllerKind !== 'network_player' &&
-        target.faction === 'peaceful'
-    ) {
-        commands.push({ type: 'interact', targetId: target.id })
-    }
     return {
         key: `character:${target.id}`,
         kind: 'character',
@@ -143,7 +114,7 @@ function characterTarget(
         position: { ...target.position },
         distance: range,
         interactionRange: CONVERSATION_REACH,
-        commands,
+        commands: characterIntentions(actor, target, range),
         details: {
             controllerKind: target.controllerKind,
             connected: target.connected === true,
@@ -159,6 +130,35 @@ function characterTarget(
             canSpeak: target.soul?.canSpeak ?? false,
         },
     }
+}
+
+function characterIntentions(
+    actor: GameCharacter,
+    target: CharacterSnapshot,
+    range: number
+): AgentDecision[] {
+    const commands: AgentDecision[] = [moveTo(target.position)]
+    if (
+        target.alive &&
+        target.relationship === 'hostile' &&
+        actor.abilities.known.has('shot')
+    ) {
+        commands.push({
+            type: 'use_ability',
+            abilityId: 'shot',
+            targetId: target.id,
+        })
+    }
+    if (
+        range <= CONVERSATION_REACH &&
+        target.alive &&
+        target.soul?.canSpeak === true &&
+        target.controllerKind !== 'network_player' &&
+        target.faction === 'peaceful'
+    ) {
+        commands.push({ type: 'interact', targetId: target.id })
+    }
+    return commands
 }
 
 function currentDialogue(
@@ -221,7 +221,7 @@ function observedCharacters(
             !target.tags.has('offline') &&
             !target.tags.has('state.retired') &&
             distance(actor.position, entry.position) <=
-                visibilityRadius(actor, target, observationRadius, now) &&
+                visibilityRadius(actor, target, NPC_OBSERVATION_RADIUS, now) &&
             visible(entry.position)
         )
     })
@@ -250,42 +250,5 @@ function observeSelf(
             ? {}
             : { resourceChecks: own.resourceChecks }),
         gold: snapshot.adventure?.gold ?? 0,
-    }
-}
-
-function observeCity(
-    world: NpcAiWorld,
-    actor: GameCharacter,
-    role: NpcAiRole,
-    now: number,
-    targets: NpcAiTarget[]
-): Pick<NpcAiObservation, 'city'> {
-    if (
-        role !== 'city_coordinator' ||
-        actor.locationId !== CENTER_LOCATION_ID
-    ) {
-        return {}
-    }
-    const market = world
-        .adventureForWorkers()
-        .economy.snapshot(CENTER_LOCATION_ID, now)
-    return {
-        city: {
-            ...(market === undefined ? {} : { market }),
-            requests: world.workerRequests.list(CENTER_LOCATION_ID),
-            ...(world.social === undefined
-                ? {}
-                : {
-                      municipalQuestGold: world.social.quests.cityFund(
-                          actor.locationId
-                      ),
-                  }),
-            workers: targets.flatMap((target) => {
-                const activity = world.social?.workerActivity(target.id, now)
-                return activity === undefined
-                    ? []
-                    : [{ id: target.id, name: target.name, activity }]
-            }),
-        },
     }
 }

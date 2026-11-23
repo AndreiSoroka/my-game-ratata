@@ -7,17 +7,73 @@ import type {
 } from '@my-game-ratata/contracts'
 import { vi } from 'vitest'
 
+import { parseNpcAiConfig } from '../src/ai/config'
+import type { GameRoomOptions } from '../src/ai/roomAi'
 import type { GameCharacter } from '../src/game/character'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
 
-export function openScenarioRoom() {
+export function openScenarioRoom(ai?: GameRoomOptions['ai']) {
     vi.stubGlobal('Bun', { env: {} })
     vi.useFakeTimers()
     vi.setSystemTime(1000)
-    const room = new GameRoom()
+    const room = new GameRoom(undefined, ai === undefined ? {} : { ai })
     room.start()
     return room
+}
+
+export function openCompanionScenarioRoom(): GameRoom {
+    return openScenarioRoom({
+        config: parseNpcAiConfig(
+            {
+                proactive: false,
+                npcs: [{ actorId: 'npc_veteran_1', role: 'companion' }],
+            },
+            true
+        ),
+        provider: {
+            decide: (context) =>
+                Promise.resolve({
+                    decision: null,
+                    taskAcceptance:
+                        context.commandCapabilities?.orders.follow?.allowed ===
+                        true
+                            ? 'accept'
+                            : 'decline',
+                    companionOrder:
+                        context.commandCapabilities?.orders.follow?.allowed ===
+                        true
+                            ? 'follow'
+                            : null,
+                    speech: 'Согласен идти вместе.',
+                    memory: '',
+                    done: true,
+                    waitMs: 0,
+                }),
+        },
+    })
+}
+
+export async function enlistScenarioCompanion(
+    room: GameRoom,
+    owner: ReturnType<typeof joinScenarioRoom>
+): Promise<GameCharacter> {
+    const helper = room.getCharacter('npc_veteran_1')
+    if (helper === undefined) {
+        throw new Error('Missing veteran')
+    }
+    // Start the scenario fixture in conversation reach; the order still goes through the socket.
+    owner.actor.position = { ...helper.position }
+    owner.send({
+        type: 'companion_request',
+        request: 'follow',
+        targetId: helper.id,
+    })
+    await vi.advanceTimersByTimeAsync(250)
+    if (helper.soul.companion?.leaderId !== owner.actor.id) {
+        throw new Error('The scenario fixture did not obtain modeled consent')
+    }
+    return helper
 }
 
 export function joinScenarioRoom(

@@ -12,6 +12,8 @@ import type { NavigationService } from './navigation'
 
 export { visibilityRadius } from './characterSight'
 
+export const NPC_OBSERVATION_RADIUS = 240
+
 export function createSnapshot(
     characters: Iterable<GameCharacter>,
     items: Iterable<WorldItemSnapshot>,
@@ -84,7 +86,7 @@ export function faceNearestTarget(
                 character.trainingTarget === undefined &&
                 canObserveRoomCharacter(actor, character, navigation, now)
         )
-        .filter((character) => canTargetByFaction(actor, character))
+        .filter((character) => canTargetByFaction(actor, character, now))
         .map((character) => ({
             character,
             distance: distance(actor.position, character.position),

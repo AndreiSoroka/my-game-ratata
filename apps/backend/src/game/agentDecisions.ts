@@ -13,6 +13,7 @@ import type {
     TheftClientMessage,
 } from '@my-game-ratata/contracts'
 
+import type { AbilityContext } from './abilityContext'
 import {
     applyAgentAbility,
     applyAgentControl,
@@ -57,6 +58,7 @@ export interface CompanionWorld {
         now: number
     ): AgentDecisionResult
     charactersFor?(actor: GameCharacter): readonly GameCharacter[]
+    abilityContextFor?(actor: GameCharacter, now: number): AbilityContext
     requestAbility?(
         actor: GameCharacter,
         message: AbilityClientMessage,
@@ -97,7 +99,8 @@ export interface CompanionWorld {
     ): GameEventPayload[]
     findVisibleTarget(
         character: GameCharacter,
-        radius: number
+        radius: number,
+        now?: number
     ): GameCharacter | undefined
     getCharacter(id: string): GameCharacter | undefined
     navigationFor(character: GameCharacter): NavigationService

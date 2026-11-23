@@ -6,6 +6,8 @@ import { parseNpcAiConfig } from '../src/ai/config'
 import { createNpcAiState } from '../src/ai/runtimeState'
 import { NpcAiSessionActions } from '../src/ai/session'
 import { CompanionService } from '../src/game/companions'
+import { visibleBuildingPoint } from '../src/game/mapBuildings'
+import { distance } from '../src/game/math'
 import {
     controlledNpcProvider,
     npcReply,
@@ -27,11 +29,15 @@ afterEach(async () => {
     vi.unstubAllGlobals()
 })
 
-async function beginGuide() {
+async function beginGuide(startNearGuild = false) {
     const provider = controlledNpcProvider()
     const f = npcRuntimeFixture(provider.decide)
     fixtures.push(f)
     const request = 'Покажи гильдию.'
+    if (startNearGuild) {
+        placeNearGuild(f)
+    }
+    const start = { ...f.actor.position }
     f.talk(request)
     await f.advance()
     const guild = provider.turns[0]?.context.observation.targets.find(
@@ -51,7 +57,39 @@ async function beginGuide() {
             }
         )
     )
-    return { ...f, provider, guild, request }
+    return { ...f, provider, guild, request, start }
+}
+
+function placeNearGuild(f: ReturnType<typeof npcRuntimeFixture>): void {
+    const navigation = f.room.navigationFor(f.actor)
+    const buildings = navigation.grid.buildings ?? []
+    const guild = buildings.find((building) =>
+        building.name.includes('Гильдия')
+    )
+    if (guild === undefined) {
+        throw new Error('Missing guild fixture')
+    }
+    const nearby = navigation.findWalkableTileNear(
+        navigation.worldToTile(guild.entry),
+        (tile) => {
+            const point = navigation.tileToWorld(tile)
+            return (
+                distance(point, guild.entry) >= 4 &&
+                distance(point, guild.entry) <= 40 &&
+                navigation.hasLineOfSight(point, guild.entry) &&
+                visibleBuildingPoint(buildings, point, guild.entry) &&
+                visibleBuildingPoint(buildings, guild.entry, point) &&
+                navigation.findPathWorld(point, guild.entry).length > 0
+            )
+        }
+    )
+    if (nearby === undefined) {
+        throw new Error('The guild fixture has no nearby open route')
+    }
+    // Arrange contact close to the destination. The guide must still walk there.
+    const near = navigation.tileToWorld(nearby)
+    f.actor.position = { ...near }
+    f.alice.actor.position = { ...near }
 }
 
 async function advanceGuideWait(
@@ -141,16 +179,17 @@ it('closes a lost-requester guide once and needs a fresh request before another 
 it.each([false, true])(
     'concludes an arrived guide once, rejecting a model restart: %s',
     async (restart) => {
-        const f = await beginGuide()
+        const f = await beginGuide(true)
+        f.alice.send({ type: 'follow', targetId: f.actor.id })
         for (
             let elapsed = 0;
-            elapsed < 25_000 && f.provider.turns.length < 2;
-            elapsed += 200
+            elapsed < 2_500 && f.provider.turns.length < 2;
+            elapsed += 100
         ) {
-            f.alice.send({ type: 'move_to', target: { ...f.actor.position } })
-            await f.advance(200)
+            await f.advance(100)
         }
         expect(f.provider.turns).toHaveLength(2)
+        expect(f.actor.position).not.toEqual(f.start)
         const closing = f.provider.turns[1]
         expect(closing?.context.task?.concluding).toBe(true)
         expect(
@@ -200,7 +239,8 @@ it.each([false, true])(
                 })
             )
         }
-        await f.advance(2000)
+        vi.setSystemTime(Date.now() + 1_900)
+        await f.advance(100)
         expect(f.provider.turns).toHaveLength(restart ? 3 : 2)
         expect(f.actor.position).toEqual(atGuild)
         if (restart) {

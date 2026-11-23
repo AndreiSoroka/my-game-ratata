@@ -16,6 +16,7 @@ export function applyCompanionOrder(
     state.lastPlanAt = now - 300
     state.controlRevision = (state.controlRevision ?? 0) + 1
     state.leaderId = actor.id
+    state.leaderDeathSequence = actor.deathSequence
     state.order =
         message.request === 'guard' || state.profile.stationary
             ? 'guard'

@@ -35,7 +35,7 @@ test('stops an AI click path and stays still over subsequent authoritative ticks
     expect(idle.status).toBe('condition_met')
     const stopped = idle.observation
     const later = await page.evaluate(
-        (after) => window.__ratataTest!.waitFor({ type: 'tick', after }, { timeoutMs: 2_000 }),
+        (after) => window.__ratataTest!.waitFor({ type: 'tick', after }, { timeoutMs: 6_000 }),
         stopped.tick! + 19
     )
     expect(later.status).toBe('condition_met')

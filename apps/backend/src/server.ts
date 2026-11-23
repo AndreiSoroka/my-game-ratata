@@ -1,5 +1,6 @@
 import {
     CONTRACT_PROTOCOL_VERSION,
+    type GameReadiness,
     type ServiceHealth,
 } from '@my-game-ratata/contracts'
 import type { ServerWebSocket } from 'bun'
@@ -7,6 +8,7 @@ import type { ServerWebSocket } from 'bun'
 import { handleAgentRequest } from './agentBridge'
 import type { GameRoom } from './game/room'
 import type { RoomSocketData } from './game/roomMessaging'
+import type { WorldAdmin } from './worldAdmin'
 import { worldMapResponse } from './worldMapResponse'
 
 const jsonHeaders = {
@@ -27,9 +29,25 @@ type FetchHandler = (
     server?: Bun.Server<RoomSocketData>
 ) => Response | undefined | Promise<Response>
 
-export function createFetchHandler(room?: GameRoom): FetchHandler {
+type RoomRef = GameRoom | (() => GameRoom | undefined)
+
+interface ServerOptions {
+    readiness?: () => GameReadiness['state']
+    admin?: WorldAdmin
+    tls?: boolean
+}
+
+function activeRoom(ref?: RoomRef): GameRoom | undefined {
+    return typeof ref === 'function' ? ref() : ref
+}
+
+export function createFetchHandler(
+    ref?: RoomRef,
+    options: ServerOptions = {}
+): FetchHandler {
     return (request, server) => {
         const url = new URL(request.url)
+        const room = activeRoom(ref)
 
         if (url.pathname.startsWith('/world/maps/')) {
             return worldMapResponse(request, room)
@@ -45,8 +63,23 @@ export function createFetchHandler(room?: GameRoom): FetchHandler {
             })
         }
 
+        if (url.pathname === '/ready') {
+            return readinessResponse(
+                request.method,
+                readReadiness(room, options.readiness)
+            )
+        }
+
+        if (url.pathname.startsWith('/admin/') && options.admin !== undefined) {
+            return options.admin.handle(request, {
+                ingress: 'public',
+                peer: server?.requestIP(request)?.address,
+                tls: options.tls === true,
+            })
+        }
+
         if (url.pathname === '/ws') {
-            return upgradeWebSocket(request, server, room)
+            return websocketResponse(request, server, room, options.readiness)
         }
 
         return Response.json(
@@ -61,21 +94,60 @@ export function createFetchHandler(room?: GameRoom): FetchHandler {
     }
 }
 
+function readReadiness(
+    room: GameRoom | undefined,
+    readiness: ServerOptions['readiness']
+): GameReadiness['state'] {
+    return readiness?.() ?? (room === undefined ? 'checking' : 'ready')
+}
+
+function websocketResponse(
+    request: Request,
+    server: Bun.Server<RoomSocketData> | undefined,
+    room: GameRoom | undefined,
+    readiness: ServerOptions['readiness']
+): Response | undefined {
+    if (room === undefined && readiness !== undefined) {
+        return readinessResponse('GET', readiness())
+    }
+    return upgradeWebSocket(request, server, room)
+}
+
 export function createWebSocketHandlers(
-    room: GameRoom
+    ref: RoomRef
 ): Bun.WebSocketHandler<RoomSocketData> {
     return {
         close(ws) {
-            room.handleClose(ws)
+            activeRoom(ref)?.handleClose(ws)
         },
         data: {} as RoomSocketData,
         message(ws, message) {
-            room.handleMessage(ws, message)
+            activeRoom(ref)?.handleMessage(ws, message)
         },
         open(ws) {
-            room.handleOpen(ws)
+            activeRoom(ref)?.handleOpen(ws)
         },
     }
+}
+
+function readinessResponse(
+    method: string,
+    state: GameReadiness['state']
+): Response {
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store',
+    }
+    if (method !== 'GET') {
+        return new Response(null, {
+            status: 405,
+            headers: { ...headers, Allow: 'GET' },
+        })
+    }
+    return Response.json({ state } satisfies GameReadiness, {
+        headers,
+        status: state === 'ready' ? 200 : 503,
+    })
 }
 
 function upgradeWebSocket(

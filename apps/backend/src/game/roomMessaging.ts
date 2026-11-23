@@ -38,11 +38,12 @@ export function broadcast(
 
 export function broadcastEvent(
     connections: Iterable<RoomSocket>,
-    event: GameEventPayload
+    event: GameEventPayload,
+    now = Date.now()
 ): void {
     broadcast(connections, {
         event,
-        serverTime: Date.now(),
+        serverTime: now,
         type: 'event',
     })
 }
@@ -52,10 +53,13 @@ export function broadcastChat(
     characters: ReadonlyMap<string, GameCharacter>,
     actor: GameCharacter,
     text: string,
-    navigation?: NavigationService
+    navigation?: NavigationService,
+    now = Date.now()
 ): void {
+    if (!actor.soul.canSpeak) {
+        return
+    }
     const speech = createSpeechEvent(actor, text)
-    const now = Date.now()
     for (const [ws, playerId] of connections) {
         const observer =
             playerId === undefined ? undefined : characters.get(playerId)

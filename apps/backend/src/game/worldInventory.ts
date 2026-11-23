@@ -70,7 +70,7 @@ export class WorldInventory {
             case 'eat':
                 return this.eatInventoryItem(player, itemInstanceId, now)
             case 'equip':
-                return this.equipInventoryItem(player, itemInstanceId)
+                return this.equipInventoryItem(player, itemInstanceId, now)
             case 'drop':
                 return this.dropInventoryItem(player, itemInstanceId)
             case 'stash':
@@ -107,7 +107,7 @@ export class WorldInventory {
         }
         const item = unequipItem(player.inventory, player.equipment, slot)
         if (item !== undefined && slot === 'weapon') {
-            invalidateWeaponAction(player, Date.now())
+            invalidateWeaponAction(player, now)
         }
 
         if (item === undefined) {
@@ -234,7 +234,8 @@ export class WorldInventory {
 
     private equipInventoryItem(
         player: GameCharacter,
-        itemInstanceId: string
+        itemInstanceId: string,
+        now: number
     ): GameEventPayload[] {
         const item = equipInventoryItem(
             player.inventory,
@@ -246,7 +247,7 @@ export class WorldInventory {
             return []
         }
         if (player.equipment.weapon?.instanceId === item.instanceId) {
-            invalidateWeaponAction(player, Date.now())
+            invalidateWeaponAction(player, now)
         }
         resetMartyrStreak(player)
         return [{ actorId: player.id, itemId: item.itemId, kind: 'item_equip' }]

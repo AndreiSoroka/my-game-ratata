@@ -1,3 +1,4 @@
+import { resolveAdventureNpc } from './adventureNpc'
 import type { GameCharacter } from './character'
 import { inspectQuest } from './npcQuestProgress'
 import type { NpcQuestResult } from './npcQuests'
@@ -39,21 +40,15 @@ export function inquireNpcQuest(
     ) {
         return rejected()
     }
-    const events = context.environment.adventure.interact(
+    const contact = resolveAdventureNpc(
         actor,
         target.id,
-        [...context.environment.characters()],
-        context.environment.navigationFor(actor),
-        now
+        [target],
+        now,
+        context.environment.navigationFor(actor)
     )
-    const answered = events.some(
-        (event) =>
-            event.kind === 'chat' &&
-            event.actorId === target.id &&
-            event.targetId === actor.id
-    )
-    if (!answered) {
-        return rejected('Собеседник пока не ответил на вопрос по поручению.')
+    if (contact === undefined) {
+        return rejected()
     }
     inspectQuest(
         job,
@@ -70,7 +65,7 @@ export function inquireNpcQuest(
             `Я по поручению ${job.view.issuerName}: ${job.view.title}. Как обстоят дела?`,
         { targetId: target.id, audienceIds: [actor.id, target.id] }
     )
-    return { accepted: true, error: null, events: [question, ...events] }
+    return { accepted: true, error: null, events: [question] }
 }
 function rejected(
     error = 'Подойди к нужному собеседнику по действующему поручению.'

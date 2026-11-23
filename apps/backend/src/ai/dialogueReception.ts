@@ -60,6 +60,11 @@ function hearingCandidates(
     return [...states.values()].filter(
         (state) =>
             state.actor !== undefined &&
+            (targetId === undefined || state.actor.id === targetId) &&
+            (state.config.mode !== 'dialogue_only' ||
+                (state.actor.id === targetId &&
+                    (event.system !== true ||
+                        event.conversationId !== undefined))) &&
             (event.channel !== 'whisper' || state.actor.id === targetId) &&
             canHearSpeech(
                 state.actor,
@@ -78,7 +83,9 @@ function chooseListeners(
 ): NpcAiActorState[] {
     const named = candidates.find((state) => namedAtStart(state, event.text))
     const selected =
-        named ?? candidates.find((state) => state.actor?.id === targetId)
+        targetId === undefined
+            ? named
+            : candidates.find((state) => state.actor?.id === targetId)
     const companion = candidates.find(
         (state) => state.actor?.soul.companion?.leaderId === requester.id
     )
@@ -141,22 +148,19 @@ function queueSpeech(
     ) {
         return
     }
-    if (state.awaitingFreshRequest && event.system === true) {
+    if (
+        state.awaitingFreshRequest &&
+        event.system === true &&
+        event.conversationId === undefined
+    ) {
         return
     }
-    if (event.system !== true) {
+    if (event.system !== true || event.conversationId !== undefined) {
         state.awaitingFreshRequest = false
     }
-    const heard: Heard = { ...event, ambiguous }
-    rememberNpcAddressedSpeech(state, heard)
-    if (state.actor !== undefined) {
-        heard.actorPosition = { ...state.actor.position }
-        heard.actorLocationId = state.actor.locationId
-    }
-    delete heard.focus
-    const focus = visibleFocus(state, event, status)
-    if (focus !== undefined) {
-        heard.focus = focus
+    const heard = heardSpeechFor(state, event, ambiguous, status)
+    if (replacePendingSpeech(state, heard)) {
+        return
     }
     if (state.inbox.length >= 8) {
         dropOldest(state, event.at, status)
@@ -184,6 +188,42 @@ function queueSpeech(
         )
     }
 }
+function heardSpeechFor(
+    state: NpcAiActorState,
+    event: Heard,
+    ambiguous: boolean,
+    status?: ReceptionStatus
+): Heard {
+    const heard: Heard = { ...event, ambiguous }
+    rememberNpcAddressedSpeech(state, heard)
+    if (state.actor !== undefined) {
+        heard.actorPosition = { ...state.actor.position }
+        heard.actorLocationId = state.actor.locationId
+    }
+    delete heard.focus
+    const focus = visibleFocus(state, event, status)
+    if (focus !== undefined) {
+        heard.focus = focus
+    }
+    return heard
+}
+
+function replacePendingSpeech(state: NpcAiActorState, heard: Heard): boolean {
+    if (heard.conversationId !== undefined) {
+        const replaceAt = state.inbox.findIndex(
+            (item) =>
+                item.conversationId !== undefined &&
+                item.senderId === heard.senderId
+        )
+        if (replaceAt !== -1) {
+            state.inbox.splice(replaceAt, 1, heard)
+            state.nextAt = heard.at
+            return true
+        }
+    }
+    return false
+}
+
 function visibleFocus(
     state: NpcAiActorState,
     event: Heard,
@@ -220,6 +260,7 @@ function dropOldest(
 ): void {
     const dropped = state.inbox.shift()
     if (dropped !== undefined && status !== undefined) {
+        status.room.social.npcSpeech.fail(dropped, now)
         reportNpcRequestStatus(
             status.room,
             status.diagnostics,
@@ -229,24 +270,5 @@ function dropOldest(
             'Очередь переполнена; сообщение не обработано.',
             dropped
         )
-    }
-}
-
-export function legacyNpcRequest(
-    requester: GameCharacter,
-    text: string,
-    id: string,
-    now: number
-): Heard {
-    return {
-        kind: 'message',
-        id,
-        senderId: requester.id,
-        text,
-        locationId: requester.locationId,
-        position: { ...requester.position },
-        at: now,
-        channel: 'whisper',
-        legacy: true,
     }
 }

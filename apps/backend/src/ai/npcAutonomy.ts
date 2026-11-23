@@ -1,5 +1,7 @@
 import type { GameCharacter } from '../game/character'
 import { snapshotControl } from '../game/characterControl'
+import { kaplyaSafetyActive } from '../game/companionSafety'
+import { isConversationOnly } from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
 import {
     enqueueNpcAiEvent,
@@ -18,7 +20,8 @@ export function npcSociallyFree(
     if (
         !npcAiActorAvailable(actor) ||
         !actor.soul.canSpeak ||
-        state.config.mode === 'dialogue_only'
+        isConversationOnly(state.config.role, state.config.mode) ||
+        kaplyaSafetyActive(actor)
     ) {
         return false
     }
@@ -80,10 +83,7 @@ export function reviewNpcIdleActivity(
     if (actor === undefined) {
         return
     }
-    if (
-        !npcSociallyFree(room, state, now) ||
-        !room.hasConnectedPlayerInLocation(actor.locationId)
-    ) {
+    if (!npcSociallyFree(room, state, now) || !room.allowsAutonomousNpcAi()) {
         state.idleSince = undefined
         return
     }
@@ -124,7 +124,7 @@ export function npcSelfActivityInterrupted(
     return (
         task?.background === 'self_activity' &&
         (actor === undefined ||
-            !room.hasConnectedPlayerInLocation(actor.locationId) ||
+            abandonedBackground(room, state) ||
             state.inbox.length > 0 ||
             now >= (task.deadline ?? Infinity) ||
             (task.steps >= 3 &&
@@ -132,5 +132,13 @@ export function npcSelfActivityInterrupted(
                 state.controller === undefined &&
                 state.ready === undefined &&
                 state.finalizing === undefined))
+    )
+}
+
+function abandonedBackground(room: GameRoom, state: NpcAiActorState): boolean {
+    return (
+        !room.allowsAutonomousNpcAi() &&
+        state.pending === undefined &&
+        state.guide === undefined
     )
 }

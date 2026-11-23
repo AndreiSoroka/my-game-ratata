@@ -81,7 +81,10 @@ onBeforeUnmount(() => heightAnimation?.cancel())
 
 <template>
     <section class="join-screen" aria-labelledby="join-title">
-        <RegionLore class="join-screen__lore" />
+        <div class="join-screen__lore">
+            <RegionLore />
+            <slot name="settings" />
+        </div>
         <form
             ref="form"
             class="join-panel game-frame-host"
@@ -143,6 +146,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                     {{ tGame('game.join.enter') }}
                 </UiButton>
             </div>
+            <slot name="readiness" />
             <fieldset class="class-choices" aria-describedby="class-description class-hint">
                 <legend>{{ tGame('game.join.background') }}</legend>
                 <div class="class-grid">

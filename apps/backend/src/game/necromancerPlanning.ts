@@ -1,7 +1,7 @@
 import type { GameCharacter } from './character'
 import { observeForeignHealth } from './combatObservation'
 import { distance } from './math'
-import { isNecromancerBark, type NecromancerBark } from './necromancerSpeech'
+import type { NecromancerRemark } from './necromancerSpeech'
 import {
     type NecromancerJournalEntry,
     type NecromancerModelContext,
@@ -14,7 +14,13 @@ import {
 import type { GameRoom } from './room'
 
 const combatQuietMs = 8_000
-const combatTactics = new Set(['fight', 'hide', 'retreat', 'magic'])
+const combatTactics = new Set([
+    'fight',
+    'hunt_slime',
+    'hide',
+    'retreat',
+    'magic',
+])
 
 type Phase = NecromancerModelContext['phase']
 
@@ -147,12 +153,16 @@ export class NecromancerPlanning {
         this.pending = { offer, reply }
     }
 
+    public discardPendingAdvice(): void {
+        this.pending = undefined
+    }
+
     public accept(
         actor: GameCharacter,
         scene: NecromancerScene,
         options: () => NecromancerOption[],
         now: number
-    ): NecromancerBark | undefined {
+    ): NecromancerRemark | undefined {
         const pending = this.pending
         this.pending = undefined
         if (
@@ -188,9 +198,7 @@ export class NecromancerPlanning {
         } else {
             this.plan = option
         }
-        return scene.threat !== undefined && isNecromancerBark(reply.bark)
-            ? reply.bark
-            : undefined
+        return acceptedRemark(option, reply.speech)
     }
 
     private currentOffer(
@@ -207,6 +215,19 @@ export class NecromancerPlanning {
             (offer.context.phase === 'combat') === (scene.threat !== undefined)
         )
     }
+}
+
+function acceptedRemark(
+    option: NecromancerOption,
+    speech: string | null | undefined
+): NecromancerRemark | undefined {
+    const text = speech?.replace(/\s+/gu, ' ').trim().slice(0, 140)
+    if (text === undefined || text.length === 0) {
+        return undefined
+    }
+    return option.tactic === 'offer_help' && option.targetId !== undefined
+        ? { text, targetId: option.targetId }
+        : { text }
 }
 
 function freshScene(

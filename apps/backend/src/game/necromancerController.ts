@@ -3,9 +3,8 @@ import type { CharacterController } from './controllers'
 import {
     advanceNecromancerHeartRite,
     approachStudyLandmark,
-    fightAsNecromancer,
     moveNecromancer,
-    necromancerOffersHelp,
+    performNecromancerCombatIntent,
     performNecromancerTactic,
 } from './necromancerActions'
 import {
@@ -63,13 +62,13 @@ export class NecromancerController implements CharacterController {
         const scene = observeNecromancerScene(actor, room, now)
         this.scene = scene
         this.planning.observe(scene, now)
-        const bark = this.planning.accept(
+        const remark = this.planning.accept(
             actor,
             scene,
             () => this.options(actor, room, scene, now),
             now
         )
-        this.speech.advance(actor, room, scene, now, bark)
+        this.speech.advance(actor, room, scene, now, remark)
         if (
             !actor.isActionLocked(now) &&
             actor.movement.dashUntil <= now &&
@@ -127,6 +126,10 @@ export class NecromancerController implements CharacterController {
         this.planning.queueReply(offer, reply)
     }
 
+    public discardPendingAdvice(): void {
+        this.planning.discardPendingAdvice()
+    }
+
     private options(
         actor: GameCharacter,
         room: GameRoom,
@@ -178,13 +181,6 @@ export class NecromancerController implements CharacterController {
             return
         }
         this.study(actor, room, now)
-        this.speech.thinkAloud(
-            actor,
-            room,
-            scene,
-            this.journal.at(-1)?.note,
-            now
-        )
     }
 
     private applyPlan(
@@ -223,13 +219,13 @@ export class NecromancerController implements CharacterController {
         }
         if (plan.tactic === 'offer_help') {
             this.planning.plan = undefined
-            return necromancerOffersHelp(
-                actor,
-                room,
-                plan.targetId,
-                scene.playerId,
-                this.offeredHelp
-            )
+            if (
+                plan.targetId !== undefined &&
+                plan.targetId === scene.playerId
+            ) {
+                this.offeredHelp.add(plan.targetId)
+            }
+            return true
         }
         return this.applyTargetedPlan(actor, room, plan, now)
     }
@@ -260,11 +256,18 @@ export class NecromancerController implements CharacterController {
             )
             return true
         }
-        if (plan?.tactic === 'fight' && plan.targetId === threat.id) {
-            fightAsNecromancer(actor, room, threat, now)
-            return true
-        }
-        return this.applyTargetedPlan(actor, room, plan, now)
+        return (
+            (plan !== undefined &&
+                performNecromancerCombatIntent(
+                    actor,
+                    room,
+                    scene,
+                    threat,
+                    plan,
+                    now
+                )) ||
+            this.applyTargetedPlan(actor, room, plan, now)
+        )
     }
 
     private applyTargetedPlan(

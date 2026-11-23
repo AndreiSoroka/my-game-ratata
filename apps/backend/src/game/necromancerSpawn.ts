@@ -2,9 +2,9 @@ import { WESTERN_RUINS_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import { GameCharacter } from './character'
 import { chestHasLineOfSight } from './chestInteraction'
-import { syncAbilityConstellations } from './constellations'
 import { distance } from './math'
 import { NecromancerController } from './necromancerController'
+import { initializeNpcProgression } from './npcProgression'
 import type { SpawnedCharacter } from './spawns'
 import type { LocationState } from './worldLocations'
 
@@ -59,7 +59,7 @@ export function spawnNecromancer(
     character.progression.patron = 'grave'
     character.abilities.known.add('pray_grave')
     character.progression.masteries.prayer_grave.level = 5
-    syncAbilityConstellations(character)
+    initializeNpcProgression(character)
     character.maxHp = 100
     character.hp = character.maxHp
 

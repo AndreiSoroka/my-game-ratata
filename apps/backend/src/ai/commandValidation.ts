@@ -1,11 +1,17 @@
 import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
+import {
+    isConversationOnly,
+    npcCanOfferService,
+    npcServiceOffers,
+} from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
 import { npcAiDecisionError } from './actions'
 import { npcDecisionAudienceError } from './decisionAudience'
 import { npcDecisionExchangeError } from './decisionExchange'
 import { npcAssistanceContext } from './dialogueOrders'
 import { npcGuideTargetError } from './guideTargets'
+import { npcRoleProblem } from './npcRoleValidation'
 import {
     npcSpeechLanguageProblem,
     replySpeechLanguage,
@@ -30,40 +36,60 @@ export function npcCommandCapabilities(
     const partner = room.getCharacter(
         state.dialogue?.senderId ?? state.task?.requesterId ?? ''
     )
+    const dialogueOnly = isConversationOnly(
+        state.config.role,
+        state.config.mode
+    )
+    const serviceOffers = npcServiceOffers.filter((service) =>
+        npcCanOfferService(actor.id, service)
+    )
+    return {
+        canFight: !dialogueOnly && canFight,
+        canFollow: !dialogueOnly && canFollow,
+        serviceOffers,
+        movementScope: dialogueOnly
+            ? 'none'
+            : state.config.role === 'city_coordinator'
+              ? 'city'
+              : 'region',
+        orders: dialogueOnly
+            ? {}
+            : allowedOrders(room, companions, actor, partner, now),
+    }
+}
+
+function allowedOrders(
+    room: GameRoom,
+    companions: CompanionService,
+    actor: GameCharacter,
+    partner: GameCharacter | undefined,
+    now: number
+): NonNullable<NpcAiContext['commandCapabilities']>['orders'] {
+    if (partner === undefined) {
+        return {}
+    }
     const orders: NonNullable<NpcAiContext['commandCapabilities']>['orders'] =
         {}
-    if (partner !== undefined) {
-        for (const request of [
-            'follow',
-            'help',
-            'guard',
-            'wait',
-            'dismiss',
-        ] as const) {
-            const check = companions.checkOrder(
-                partner,
-                actor,
-                { type: 'companion_request', targetId: actor.id, request },
-                now,
-                npcAssistanceContext(room)
-            )
-            orders[request] = check.accepted
-                ? { allowed: true }
-                : { allowed: false, reason: check.reason }
-        }
+    const context = npcAssistanceContext(room)
+    for (const request of [
+        'follow',
+        'help',
+        'guard',
+        'wait',
+        'dismiss',
+    ] as const) {
+        const check = companions.checkOrder(
+            partner,
+            actor,
+            { type: 'companion_request', targetId: actor.id, request },
+            now,
+            context
+        )
+        orders[request] = check.accepted
+            ? { allowed: true }
+            : { allowed: false, reason: check.reason }
     }
-    return {
-        canFight,
-        canFollow,
-        movementScope:
-            state.config.mode === 'dialogue_only' ||
-            state.config.role === 'advisor'
-                ? 'none'
-                : state.config.role === 'city_coordinator'
-                  ? 'city'
-                  : 'region',
-        orders,
-    }
+    return orders
 }
 
 /** Pure validation, repeated on the simulation tick immediately before commit. */
@@ -84,6 +110,7 @@ export function npcCommandProblem(
         (language === 'ru'
             ? npcSelfReferenceProblem(actor, reply, speechAudience(room, state))
             : undefined) ??
+        npcRoleProblem(room, state, actor, reply, now) ??
         backgroundProblem(state, reply) ??
         taskClaimProblem(room, state, actor, reply) ??
         companionProblem(room, companions, state, actor, reply, now) ??

@@ -7,7 +7,7 @@ import {
     npcReply,
     npcRuntimeFixture,
 } from './npcAiRuntimeFixture'
-import { approachScenarioNpc, joinScenarioRoom } from './scenarioRoomHelpers'
+import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 const fixtures: Array<ReturnType<typeof npcRuntimeFixture>> = []
 function required<T>(value: T | undefined | null): T {
@@ -33,12 +33,13 @@ function setup() {
     const provider = controlledNpcProvider()
     const fixture = npcRuntimeFixture(provider.decide)
     fixtures.push(fixture)
+    // Arrange both listeners in reach of the same NPC so only audience differs.
+    fixture.alice.actor.position = { ...fixture.actor.position }
     return { ...fixture, provider }
 }
 function addBob(fixture: ReturnType<typeof setup>) {
     const bob = joinScenarioRoom(fixture.room, 'Audience Bob')
-    approachScenarioNpc(fixture.room, bob, kaplyaId)
-    approachScenarioNpc(fixture.room, fixture.alice, kaplyaId)
+    bob.actor.position = { ...fixture.actor.position }
     return bob
 }
 function draft(): QuestDraft {

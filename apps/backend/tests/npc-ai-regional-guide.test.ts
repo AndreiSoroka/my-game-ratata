@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { npcAiDecisionError } from '../src/ai/actions'
 import { knownGuideTargetError } from '../src/ai/guideTargets'
 import { npcReply } from './npcAiRuntimeFixture'
-import { regionalGuideFixture } from './npcRegionalGuideFixture'
+import { guideRoadY, regionalGuideFixture } from './npcRegionalGuideFixture'
 
 const fixtures: Array<ReturnType<typeof regionalGuideFixture>> = []
 beforeEach(() => {
@@ -28,18 +28,18 @@ it.each([false, true])(
         const start = { ...f.actor.position }
         await f.begin()
         if (playerFirst) {
-            f.alice.send({ type: 'move_to', target: { x: 8, y: 648 } })
+            f.alice.send({ type: 'move_to', target: { x: 8, y: guideRoadY } })
         }
-        await f.advance(1500)
+        await f.advance(1000)
         expect(f.actor.locationId).toBe('map-1-2')
         expect(f.actor.position).not.toEqual(start)
         if (!playerFirst) {
             expect(f.alice.actor.locationId).toBe('map-2-2')
             expect(f.actor.hasPath()).toBe(false)
             expect(f.provider.turns).toHaveLength(1)
-            f.alice.send({ type: 'move_to', target: { x: 8, y: 648 } })
+            f.alice.send({ type: 'move_to', target: { x: 8, y: guideRoadY } })
         }
-        await f.advance(1500)
+        await f.advance(1000)
         expect(f.alice.actor.locationId).toBe('map-1-2')
         expect(f.provider.turns).toHaveLength(2)
         expect(f.closing()?.task?.concluding).toBe(true)
@@ -80,16 +80,19 @@ it('waits after each regional hop and follows a multi-hop route without a model 
     expect(f.provider.turns).toHaveLength(1)
     for (
         let elapsed = 0;
-        elapsed < 30_000 && f.provider.turns.length === 1;
-        elapsed += 100
+        elapsed < 10_000 && f.closing()?.task?.concluding !== true;
+        elapsed += 250
     ) {
-        const target =
-            f.alice.actor.locationId === f.actor.locationId
-                ? { ...f.actor.position }
-                : { x: 8, y: 648 }
-        f.alice.send({ type: 'move_to', target })
-        await f.advance(100)
+        const { actor: player } = f.alice
+        const behindGuide = player.position.x > f.actor.position.x + 16
+        const stillCrossing = player.locationId !== f.actor.locationId
+        f.alice.send({
+            type: 'move_input',
+            axis: { x: behindGuide || stillCrossing ? -1 : 0, y: 0 },
+        })
+        await f.advance(250)
     }
+    f.alice.send({ type: 'move_input', axis: { x: 0, y: 0 } })
     expect(f.actor.locationId).toBe('map-0-2')
     expect(f.alice.actor.locationId).toBe('map-0-2')
     expect(f.provider.turns).toHaveLength(2)
@@ -114,7 +117,7 @@ it('allows companion work outside the city while keeping Mira and pacifist actio
         npcAiDecisionError(
             f.actor,
             'companion',
-            { type: 'move_to', target: { x: 120, y: 648 } },
+            { type: 'move_to', target: { x: 120, y: guideRoadY } },
             f.room.navigationFor(f.actor)
         )
     ).toBeUndefined()

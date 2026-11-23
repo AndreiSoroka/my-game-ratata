@@ -6,6 +6,7 @@ import type {
 
 import type { SoulProfile } from './characterSoul'
 import { cityResidents } from './cityResidents'
+import { recruitableNpc } from './npcRoster'
 
 export interface CompanionProfile {
     dialogueNames?: readonly string[]
@@ -32,28 +33,14 @@ export const residentProfile: CompanionProfile = {
 
 export const companionProfiles: Record<string, CompanionProfile> = {
     ...Object.fromEntries(
-        cityResidents.map(
-            ({
-                id,
+        cityResidents.map(({ id, greeting, personality }) => [
+            id,
+            {
+                ...residentProfile,
                 greeting,
                 personality,
-                assistancePolicy,
-                idleRouteTiles,
-            }) => [
-                id,
-                {
-                    ...residentProfile,
-                    greeting,
-                    personality,
-                    ...(assistancePolicy === undefined
-                        ? {}
-                        : { assistancePolicy }),
-                    ...(idleRouteTiles === undefined
-                        ? {}
-                        : { canFollow: true, stationary: false }),
-                },
-            ]
-        )
+            },
+        ])
     ),
     npc_friendly_girl_1: {
         ...residentProfile,
@@ -66,24 +53,24 @@ export const companionProfiles: Record<string, CompanionProfile> = {
     npc_princess_1: {
         dialogueNames: ['Лея', 'Leia'],
         canFight: false,
-        canFollow: true,
+        canFollow: recruitableNpc('npc_princess_1'),
         needsIntroduction: true,
         stationary: false,
         assistancePolicy: { kind: 'met' },
         personality:
-            'Любопытная принцесса Лея выбирает друзей сама. Хочет увидеть мир, но отказывается сражаться.',
+            'Любопытная принцесса Лея выбирает друзей сама. Хочет увидеть мир. Путь странника позволяет ей возвращать силы спутникам на ходу.',
         greeting:
             'Я Лея. Корона не обязывает меня сидеть взаперти. Сначала познакомимся: я выбираю спутников сама.',
     },
     npc_veteran_1: {
         dialogueNames: ['Бран', 'Bran'],
         canFight: true,
-        canFollow: true,
+        canFollow: recruitableNpc('npc_veteran_1'),
         needsIntroduction: false,
         stationary: false,
         assistancePolicy: { kind: 'always' },
         personality:
-            'Ветеран Бран прямолинеен, бережёт товарищей и отвечает за согласие собственным словом.',
+            'Ветеран Бран прямолинеен, бережёт товарищей и отвечает за согласие собственным словом. Прикрывает спутников мечом вблизи и выстрелами издали.',
         greeting:
             'Бран. Если идём вместе — прикрою. Но я товарищ, а не чья-то собственность.',
     },
@@ -101,12 +88,12 @@ export const companionProfiles: Record<string, CompanionProfile> = {
     },
     npc_magic_slime_1: {
         canFight: false,
-        canFollow: true,
+        canFollow: recruitableNpc('npc_magic_slime_1'),
         needsIntroduction: false,
         stationary: false,
         assistancePolicy: { kind: 'always' },
         personality:
-            'Капля — бесполое говорящее слизистое существо, искусственно созданное магами. Его сознание позднее пробудил отзвук Колокола памяти. Оно дружелюбно, любит исследовать лужи и добровольно помогать, но не любит насилие.',
+            'Капля — бесполое говорящее слизистое существо, искусственно созданное магами и пробуждённое Колоколом памяти. Любит лужи и добровольно помогает новичкам, объясняя известные ему правила мира. Избегает боя и знает дорогу домой в Новогород.',
         greeting: 'Буль! Я Капля. Поговорим?',
     },
 }
@@ -126,6 +113,10 @@ export const serviceDialogueNames: Readonly<Record<string, readonly string[]>> =
 
 /** Public service descriptions do not make their bearers recruitable companions. */
 const servicePersonalities: Readonly<Record<string, string>> = {
+    npc_merchant_1:
+        'Торговец Савва ведёт городскую лавку, ценит ясные условия и опирается на текущий ассортимент. Обсуждает покупку и продажу у прилавка.',
+    npc_scholar_1:
+        'Учёный Арен хранит библиотеку Новогорода, терпеливо объясняет основы магии и ведёт занятия в библиотеке.',
     npc_cleric_1:
         'Сестра Вера — клирик часовни Новогорода. Она терпелива и участлива, поддерживает собеседника и старается понять его просьбу. Знает и преподаёт только молитвы Угольной Матери и Безымянного Путника. Признаёт границы помощи, не обещает неизбежного чуда и не уходит в походы за собеседником.',
 }

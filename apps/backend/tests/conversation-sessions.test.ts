@@ -21,7 +21,7 @@ function fixture() {
         })
     const first = actor('first'),
         second = actor('second'),
-        npc = actor('npc_wanderer_1', false)
+        npc = actor('npc_merchant_1', false)
     const characters = [first, second, npc]
     const navigation = new NavigationService({
         id: 'conversation',
@@ -32,8 +32,15 @@ function fixture() {
         solidLayerNames: [],
         solid: Array<boolean>(400).fill(false),
     })
-    const open = (player = first) =>
-        service.interact(player, npc.id, characters, navigation, 5000)
+    const open = (player = first, shop = true) =>
+        service.interact(
+            player,
+            npc.id,
+            characters,
+            navigation,
+            5000,
+            shop ? 'shop' : undefined
+        )
     const reconcile = (threat = false) =>
         service.reconcileConversations(
             characters,
@@ -64,6 +71,15 @@ describe('validated NPC conversations', () => {
         expect(f.reconcile().has(f.npc.id)).toBe(true)
         f.service.choose(f.second, 'leave', f.characters, f.navigation, 5000)
         expect(f.reconcile().has(f.npc.id)).toBe(false)
+    })
+
+    it('keeps a text conversation available while the NPC continues its path', () => {
+        const f = fixture()
+        f.npc.setPath([{ x: 160, y: 80 }])
+        f.open(f.first, false)
+        expect(f.reconcile().size).toBe(0)
+        expect(f.npc.hasPath()).toBe(true)
+        expect(f.service.snapshot(f.first.id).dialogue?.npcId).toBe(f.npc.id)
     })
 
     it.each([

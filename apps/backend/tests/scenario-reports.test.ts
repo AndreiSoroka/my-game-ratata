@@ -5,9 +5,9 @@ import { GameCharacter } from '../src/game/character'
 import type { GameRoom } from '../src/game/room'
 import { ScenarioReports } from '../src/game/scenarioReports'
 import {
-    approachScenarioNpc,
+    enlistScenarioCompanion,
     joinScenarioRoom,
-    openScenarioRoom,
+    openCompanionScenarioRoom,
     roomScenario,
     waitForScenario,
 } from './scenarioRoomHelpers'
@@ -22,20 +22,25 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 
-function setup() {
-    const room = openScenarioRoom()
+async function setup() {
+    const room = openCompanionScenarioRoom()
     rooms.push(room)
     const owner = joinScenarioRoom(room, 'Report owner')
-    const helper = approachScenarioNpc(room, owner, 'npc_wanderer_1')
-    owner.send({ type: 'interact', targetId: helper.id })
-    owner.send({ type: 'dialogue_choice', choiceId: 'close' })
+    const helper = await enlistScenarioCompanion(room, owner)
+    room.scenarios.registerDefault(
+        helper,
+        roomScenario(`idle-${helper.id}`, [
+            { id: 'rest', kind: 'wait', durationMs: 30_000 },
+        ]),
+        Date.now()
+    )
     const report = () =>
         owner.view().helpers.find((entry) => entry.actorId === helper.id)?.run
     return { room, owner, helper, report }
 }
 
-it('retains failed finite helper results while restoring the NPC’s default routine', () => {
-    const { room, owner, helper, report } = setup()
+it('retains failed finite helper results while restoring the NPC’s default routine', async () => {
+    const { room, owner, helper, report } = await setup()
     owner.save(
         roomScenario('failed-search', [
             { id: 'search', kind: 'search', target: 'enemy' },
@@ -71,7 +76,7 @@ it('retains failed finite helper results while restoring the NPC’s default rou
     expect(report()?.results[0]?.reason).toBe(originalReason)
 
     const stranger = joinScenarioRoom(room, 'Report stranger')
-    approachScenarioNpc(room, stranger, helper.id)
+    stranger.actor.position = { ...helper.position }
     expect(
         stranger.view().helpers.find((entry) => entry.actorId === helper.id)
             ?.run
@@ -81,8 +86,8 @@ it('retains failed finite helper results while restoring the NPC’s default rou
     ).toBeUndefined()
 })
 
-it('replaces an old report on accepted reassignment and never shows a new owner’s run to the old owner', () => {
-    const { room, owner, helper, report } = setup()
+it('replaces an old report on accepted reassignment and never shows a new owner’s run to the old owner', async () => {
+    const { room, owner, helper, report } = await setup()
     owner.save(
         roomScenario('first', [{ id: 'wait', kind: 'wait', durationMs: 0 }])
     )
@@ -92,7 +97,7 @@ it('replaces an old report on accepted reassignment and never shows a new owner�
         targetId: helper.id,
     })
     waitForScenario(() => report()?.status === 'completed')
-    approachScenarioNpc(room, owner, helper.id)
+    await enlistScenarioCompanion(room, owner)
     owner.save(
         roomScenario('second', [
             { id: 'wait-again', kind: 'wait', durationMs: 30_000 },
@@ -112,9 +117,7 @@ it('replaces an old report on accepted reassignment and never shows a new owner�
     expect(report()).toMatchObject({ scenarioId: 'second', status: 'stopped' })
 
     const nextOwner = joinScenarioRoom(room, 'Next report owner')
-    approachScenarioNpc(room, nextOwner, helper.id)
-    nextOwner.send({ type: 'interact', targetId: helper.id })
-    nextOwner.send({ type: 'dialogue_choice', choiceId: 'close' })
+    await enlistScenarioCompanion(room, nextOwner)
     nextOwner.save(
         roomScenario('private-new-task', [
             { id: 'new', kind: 'wait', durationMs: 30_000 },

@@ -27,17 +27,13 @@ export function characterActions(
     if (distance > 48) return requests
     return [
         ...merchantServiceActions(target),
-        ...(!target.interactions?.aiDialogue
-            ? [
-                  {
-                      id: `talk:${target.id}`,
-                      label: tGame('game.world.talkTo', {
-                          name: characterName(target.id, target.nickname),
-                      }),
-                      command: { type: 'interact' as const, targetId: target.id },
-                  },
-              ]
-            : []),
+        {
+            id: `talk:${target.id}`,
+            label: tGame('game.world.talkTo', {
+                name: characterName(target.id, target.nickname),
+            }),
+            command: { type: 'interact', targetId: target.id },
+        },
         ...requests,
         ...teacherActions(target, player),
         ...prayerLearningActions(target, player),
@@ -45,7 +41,7 @@ export function characterActions(
 }
 function companionActions(target: CharacterSnapshot): InteractionAction[] {
     const availability = target.interactions?.companionRequests
-    if (!availability || target.interactions?.aiDialogue) return []
+    if (!availability) return []
     const occupied = availability === 'occupied'
     const actions: InteractionAction[] = [
         {
@@ -56,15 +52,16 @@ function companionActions(target: CharacterSnapshot): InteractionAction[] {
             disabled: occupied,
             command: { type: 'companion_request', targetId: target.id, request: 'follow' },
         },
-        {
+    ]
+    if (target.interactions?.companionCanFight === true)
+        actions.push({
             id: `help:${target.id}`,
             label: tGame('game.world.askCombatHelp', {
                 name: characterName(target.id, target.nickname),
             }),
             disabled: occupied,
             command: { type: 'companion_request', targetId: target.id, request: 'help' },
-        },
-    ]
+        })
     if (availability === 'own')
         actions.push(
             {

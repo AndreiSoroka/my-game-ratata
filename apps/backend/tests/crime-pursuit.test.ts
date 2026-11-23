@@ -38,7 +38,16 @@ it('lets the stationary guard follow a witnessed criminal into one neighboring w
     const f = guardFixture()
     expect(companionProfiles['npc_guard_1']?.stationary).toBe(true)
     expect(companionProfiles['npc_guard_1']?.canFollow).toBe(false)
-    expect(f.call()).toHaveLength(1)
+    expect(f.call()).toEqual([
+        expect.objectContaining({
+            kind: 'notice',
+            audienceIds: [f.victim.id],
+        }),
+        expect.objectContaining({
+            kind: 'notice',
+            audienceIds: [f.target.id],
+        }),
+    ])
     f.target.setMoveInput(f.direction)
     for (
         let step = 0;

@@ -49,7 +49,16 @@ export function trophyDialogue(
         ? dialogue
         : {
               ...dialogue,
-              ...adventureDialogue(dialogue.npcId, dialogue.npcName, progress),
+              choices: [
+                  ...adventureDialogue(
+                      dialogue.npcId,
+                      dialogue.npcName,
+                      progress
+                  ).choices,
+                  ...dialogue.choices.filter(({ id }) =>
+                      id.startsWith('worker-contract:')
+                  ),
+              ],
           }
 }
 

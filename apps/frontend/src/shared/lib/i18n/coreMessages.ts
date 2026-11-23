@@ -53,3 +53,49 @@ export const joinMessages = {
     prayerBonus: ['+20% опыта всех молитвенных школ', '+20% experience in all prayer schools'],
     masteryBonus: ['+20% опыта созвездия «{name}»', '+20% experience in the {name} constellation'],
 } as const
+
+export const worldSettingsMessages = {
+    aiChecking: ['Проверяем доступность ИИ…', 'Checking AI availability…'],
+    aiUnavailable: ['ИИ недоступен. Повторяем проверку.', 'AI is unavailable. Retrying.'],
+    serverConnection: [
+        'Не удалось связаться с игровым сервером.',
+        'Could not reach the game server.',
+    ],
+    advanced: ['Дополнительные настройки', 'Advanced settings'],
+    title: ['Настройки мира', 'World settings'],
+    close: ['Закрыть настройки мира', 'Close world settings'],
+    localChecking: [
+        'Проверяем доступ с машины сервера…',
+        'Checking access from the server machine…',
+    ],
+    remoteHttps: ['Удалённый вход в Admin доступен по HTTPS.', 'Remote Admin access uses HTTPS.'],
+    terminalCode: ['Код из терминала сервера', 'Server terminal code'],
+    checkingCode: ['Проверяем…', 'Checking…'],
+    checkCode: ['Проверить код', 'Verify code'],
+    invalidCode: [
+        'Код не принят. Проверьте код или получите новый в терминале сервера.',
+        'Code rejected. Check it or get a new code in the server terminal.',
+    ],
+    sessionExpired: ['Сессия Admin завершилась.', 'The Admin session expired.'],
+    loadFailed: ['Не удалось загрузить режим мира.', 'Could not load the world mode.'],
+    saveFailed: ['Не удалось сохранить режим мира.', 'Could not save the world mode.'],
+    loading: ['Загружаем режим мира…', 'Loading world mode…'],
+    emptyWorld: ['Когда в мире нет игроков', 'When there are no players in the world'],
+    online_ai: ['ИИ ждёт игрока', 'AI waits for players'],
+    online_aiDescription: [
+        'Игровые действия и таймеры идут. ИИ планирует, пока кто-то в мире.',
+        'Actions and timers continue. AI makes plans while someone is in the world.',
+    ],
+    always: ['Мир живёт без игроков', 'The world runs without players'],
+    alwaysDescription: [
+        'Игровые действия, таймеры и автономный ИИ продолжаются.',
+        'Actions, timers and autonomous AI continue.',
+    ],
+    paused_when_empty: ['Мир на паузе без игроков', 'The world pauses without players'],
+    paused_when_emptyDescription: [
+        'Симуляция и игровые сроки продолжаются после входа игрока.',
+        'Simulation and deadlines resume when a player joins.',
+    ],
+    saving: ['Сохраняем…', 'Saving…'],
+    save: ['Сохранить', 'Save'],
+} as const

@@ -1,7 +1,9 @@
 import { ITEM_DEFINITIONS, type ItemId } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from '../game/character'
+import { isConversationOnly } from '../game/npcRoster'
 import type { GameRoom } from '../game/room'
+import type { NpcConversationFeedback } from '../game/roomConversationDepartures'
 import { projectContracts } from './contractProjection'
 import { dialogueKey, type NpcAiDialogue } from './dialogue'
 import { dialogueConversationKey, taskConversationKey } from './dialogueMemory'
@@ -21,7 +23,8 @@ export function npcDialogueContext(
     dialogueService: NpcAiDialogue,
     state: NpcAiActorState,
     actor: GameCharacter,
-    now: number
+    now: number,
+    feedback: NpcConversationFeedback = {}
 ): NpcAiContext {
     const observation = buildNpcAiObservation(
         room,
@@ -47,7 +50,7 @@ export function npcDialogueContext(
     observation.itemDefinitions = observedItemDefinitions(observation)
     updateNpcAiSocialCapabilities(observation)
     if (
-        state.config.mode === 'dialogue_only' &&
+        isConversationOnly(state.config.role, state.config.mode) &&
         observation.capabilities !== undefined
     ) {
         observation.capabilities.intentions = ['speak', 'wait']
@@ -57,6 +60,7 @@ export function npcDialogueContext(
         role: state.config.role,
         personality: actor.soul.personality,
         ...npcSpeechLanguageContext(room, state, observation, actor, now),
+        ...feedback,
         ...(socialOpportunity === undefined ? {} : { socialOpportunity }),
         ...personalContext(actor, state),
         ...npcCityStoryContext(room, actor, currentPerson(state)),

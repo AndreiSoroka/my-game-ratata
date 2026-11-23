@@ -1,4 +1,7 @@
-import type { CompanionClientMessage } from '@my-game-ratata/contracts'
+import type {
+    CompanionClientMessage,
+    GameEventPayload,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import {
@@ -11,10 +14,12 @@ import { applyCompanionOrder } from './companionOrders'
 import {
     type CompanionProfile,
     companionProfiles,
+    consentReply,
     refusalFor,
     residentProfile,
 } from './companionProfiles'
-import { canRequest, release, sync } from './companionState'
+import { canRequest, release, replyToCompanion, sync } from './companionState'
+import { recruitableNpc } from './npcRoster'
 
 export interface CompanionDenial {
     code:
@@ -78,7 +83,13 @@ export function checkCompanionCommand(
     if (message.request === 'dismiss') {
         return { accepted: true }
     }
-    const willingness = profileDenial(actor, state, message, context)
+    if (!recruitableNpc(npc.id)) {
+        return deny(
+            'cannot_follow',
+            'Этот персонаж не принимает поручения спутника.'
+        )
+    }
+    const willingness = profileDenial(actor, npc, state, message, context)
     if (willingness !== undefined) {
         return { accepted: false, reason: willingness }
     }
@@ -123,6 +134,7 @@ function ownershipDenial(
 
 function profileDenial(
     actor: GameCharacter,
+    npc: GameCharacter,
     state: CompanionRuntime,
     message: CompanionClientMessage,
     context?: AssistanceContext
@@ -133,7 +145,11 @@ function profileDenial(
             'Этот персонаж не соглашается следовать за игроком; он может самостоятельно заниматься доступными ему местными делами.'
         ).reason
     }
-    if (message.request === 'help' && !state.profile.canFight) {
+    if (
+        message.request === 'help' &&
+        !state.profile.canFight &&
+        !(npc.id === 'npc_princess_1' && npc.abilities.known.has('pray_road'))
+    ) {
         return deny('cannot_fight', 'Этот персонаж не участвует в сражениях.')
             .reason
     }
@@ -211,4 +227,56 @@ export function scriptedCompanionGreeting(
     return state.metActors.has(actor.id)
         ? `Помню тебя, ${actor.nickname}. ${state.leaderId === actor.id ? 'Я рядом по собственной воле.' : state.profile.greeting}`
         : state.profile.greeting
+}
+
+/** Standalone scenario fixtures can inject a local scripted companion actor. */
+export function scriptedCompanionOrderReply(
+    actor: GameCharacter,
+    npc: GameCharacter,
+    state: CompanionRuntime,
+    message: CompanionClientMessage,
+    assistance: CompanionAssistance,
+    now: number,
+    context?: AssistanceContext
+): GameEventPayload[] {
+    const result = checkCompanionCommand(
+        actor,
+        npc,
+        state,
+        message,
+        assistance,
+        now,
+        context
+    )
+    if (!result.accepted) {
+        return replyToCompanion(
+            npc,
+            actor,
+            state,
+            scriptedCompanionDenial(
+                state.profile,
+                message.request,
+                result.reason
+            )
+        )
+    }
+    if (message.request === 'dismiss') {
+        release(npc, state)
+        return replyToCompanion(
+            npc,
+            actor,
+            state,
+            'Хорошо. Дальше каждый выбирает свою дорогу. Береги себя.'
+        )
+    }
+    if (message.request === 'talk') {
+        return []
+    }
+    applyCompanionOrder(npc, actor, state, message, now)
+    return replyToCompanion(
+        npc,
+        actor,
+        state,
+        consentReply(state.profile, state.order)
+    )
 }

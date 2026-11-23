@@ -91,6 +91,17 @@ export class AshOrders {
         cancelCharacterControl(target)
         target.clearPath()
         target.clearPendingAttackHit()
+        if (actor.controllerKind !== 'network_player') {
+            return [
+                {
+                    kind: 'cast',
+                    phase: 'completed',
+                    actorId: actor.id,
+                    targetId: target.id,
+                    abilityId: 'ash_order',
+                },
+            ]
+        }
         return [
             {
                 kind: 'chat',

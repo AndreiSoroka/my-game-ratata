@@ -2,22 +2,30 @@ import { expect, type Page } from '@playwright/test'
 
 /** Wait for a worker's real report, then request its offer through observed dialogue. */
 export async function openObservedWorkerOffer(page: Page): Promise<void> {
+    const clerkId = await page.evaluate(
+        () => window.__ratataTest!.getState().snapshot!.adventure!.dialogue!.npcId
+    )
     await expect
         .poll(
             () =>
-                page.evaluate(() =>
-                    window
-                        .__ratataTest!.getState()
-                        .snapshot?.party?.jobs.some((job) => job.workRequest !== undefined)
+                page.evaluate(
+                    (id) =>
+                        window
+                            .__ratataTest!.getState()
+                            .snapshot?.party?.jobs.some(
+                                ({ workRequest }) =>
+                                    workRequest?.clerkId === id && workRequest.stage === 'waiting'
+                            ),
+                    clerkId
                 ),
             { timeout: 60_000 }
         )
         .toBe(true)
-    await page.evaluate(async () => {
-        const api = window.__ratataTest!
-        const npcId = api.observe().adventure!.dialogue!.npcId
-        await api.act({ type: 'interact', targetId: npcId })
-    })
+    await page.evaluate(
+        (targetId) => window.__ratataTest!.send({ type: 'interact', targetId }),
+        clerkId
+    )
+    await expect(page.getByRole('button', { name: /^Обращение:/ })).not.toHaveCount(0)
     const proposal = await page.evaluate(async () => {
         const api = window.__ratataTest!
         const action = api

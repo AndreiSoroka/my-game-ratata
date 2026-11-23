@@ -4,7 +4,6 @@ import {
     type AdventureQuestStatus,
     type AdventureShopOffer,
     authoredMessage,
-    authoredPhrase,
     authoredRussian,
     type AuthoredTextKey,
     type CityBellState,
@@ -91,7 +90,6 @@ export function adventureDialogue(
         ...(role.repair === true
             ? [adventureChoice('repair', 'dialogue.repair')]
             : []),
-        adventureChoice('ask_dragon', 'dialogue.askDragon'),
         adventureChoice('trade', 'dialogue.trade'),
         adventureChoice('leave', 'dialogue.leave'),
     ]
@@ -104,10 +102,7 @@ export function adventureDialogue(
         choices,
         npcId,
         npcName,
-        ...(override ??
-            (role.smith === true
-                ? authoredPhrase('dialogue.smith')
-                : dialogueSpeech(progress, role.quest))),
+        ...(override ?? { text: '' }),
         title: authoredRussian(title),
         titleMessage: authoredMessage(title),
     }
@@ -132,26 +127,6 @@ function questDialogueChoices(
         case 'cancelled':
             return []
     }
-}
-
-function dialogueSpeech(progress: AdventureProgress, offersQuest: boolean) {
-    if (progress.wardRestored) {
-        return authoredPhrase('dialogue.restored')
-    }
-
-    if (!offersQuest) {
-        return authoredPhrase('dialogue.merchant')
-    }
-
-    if (
-        progress.questStatus === 'cancelled' &&
-        progress.bellState === 'prepared'
-    ) {
-        return authoredPhrase('dialogue.cancelledPrepared')
-    }
-    return authoredPhrase(`dialogue.${progress.questStatus}`, {
-        trophies: progress.trophies,
-    })
 }
 
 export function adventureChoice(

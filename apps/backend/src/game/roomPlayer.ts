@@ -9,13 +9,15 @@ interface PlayerOptions {
     nicknameKey: string
     archetype: GameCharacter['archetype']
     heroClass: HeroClass | undefined
+    spawnedAt?: number
 }
 
 export function createRoomPlayerFactory(
     characters: Map<string, GameCharacter>,
     nicknames: Map<string, string>,
     navigation: () => NavigationService,
-    configure: (actor: GameCharacter) => void
+    configure: (actor: GameCharacter) => void,
+    now = Date.now
 ) {
     let index = 0
     return (
@@ -29,7 +31,7 @@ export function createRoomPlayerFactory(
             nicknames,
             navigation(),
             ++index,
-            { nickname, nicknameKey, archetype, heroClass }
+            { nickname, nicknameKey, archetype, heroClass, spawnedAt: now() }
         )
         configure(character)
         return character
@@ -52,6 +54,9 @@ export function createRoomPlayer(
             ? {}
             : { heroClass: options.heroClass }),
         nickname: options.nickname,
+        ...(options.spawnedAt === undefined
+            ? {}
+            : { spawnedAt: options.spawnedAt }),
     })
     characters.set(character.id, character)
     nicknames.set(options.nicknameKey, character.id)

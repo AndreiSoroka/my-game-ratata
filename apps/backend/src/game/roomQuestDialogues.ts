@@ -9,13 +9,13 @@ import type { AdventureService } from './adventure'
 import { adventureNpcRoles } from './adventureContent'
 import type { GameCharacter } from './character'
 import type { ExchangeService } from './exchange'
+import { configureNpcQuestDialogue } from './npcQuestDialogue'
 import type { NpcQuestService } from './npcQuests'
 import type { PartyService } from './parties'
 import { conversationContracts } from './questConversation'
 import { QuestTurnInService } from './questTurnIn'
 import type { GameRoom } from './room'
 import { canHearSpeech } from './socialSpeech'
-import { createSpeechEvent } from './speechReceipts'
 import type { WhisperService } from './whispers'
 
 interface DialogueEnvironment {
@@ -38,6 +38,32 @@ export class RoomQuestDialogues {
             characters: environment.actors,
             navigationFor: (actor) => environment.room.navigationFor(actor),
         })
+        configureNpcQuestDialogue(
+            environment.adventure,
+            environment.quests,
+            environment.room.workerRequests,
+            (id) => environment.room.getCharacter(id)
+        )
+    }
+
+    public confirm(
+        actor: GameCharacter,
+        id: string,
+        accept: boolean,
+        now: number
+    ): void {
+        const result = this.turnIns.confirm(actor, id, accept, now)
+        this.environment.room.publishEvents(result.events)
+        if (!result.accepted) {
+            this.environment.room.publishEvents([
+                {
+                    kind: 'notice',
+                    actorId: actor.id,
+                    audienceIds: [actor.id],
+                    text: result.error ?? 'Сдача недоступна.',
+                },
+            ])
+        }
     }
 
     public stop(): void {
@@ -108,7 +134,7 @@ export class RoomQuestDialogues {
                 }
                 for (const job of this.contracts(issuer.id, player.id, now)) {
                     this.record(player, issuer, job, now)
-                    this.thank(player, issuer, job, now)
+                    this.reportCompletion(player, job)
                 }
             }
         }
@@ -198,11 +224,9 @@ export class RoomQuestDialogues {
         })
     }
 
-    private thank(
+    private reportCompletion(
         player: GameCharacter,
-        issuer: GameCharacter,
-        job: NpcQuestSnapshot,
-        now: number
+        job: NpcQuestSnapshot
     ): void {
         const receipt = job.receiptId
         if (job.status !== 'completed' || receipt === undefined) {
@@ -213,30 +237,17 @@ export class RoomQuestDialogues {
             return
         }
         this.seenCompletions.add(key)
-        const text =
-            'Спасибо за помощь! Поручение выполнено, награда передана. Хочешь ещё поручение?'
+        const text = 'Договор сдан, награда передана.'
         const textMessage = npcQuestMessage(text)
-        if (
-            !this.environment.whispers.send(issuer, player, text, now, {
+        this.environment.room.publishEvents([
+            {
+                kind: 'notice',
+                actorId: player.id,
+                audienceIds: [player.id],
+                text,
                 ...(textMessage === undefined ? {} : { textMessage }),
-            }) &&
-            canHearSpeech(
-                player,
-                issuer,
-                this.environment.room.navigationFor(player),
-                now
-            )
-        ) {
-            this.environment.room.publishEvents([
-                {
-                    ...createSpeechEvent(issuer, text, {
-                        targetId: player.id,
-                        audienceIds: [player.id],
-                    }),
-                    ...(textMessage === undefined ? {} : { textMessage }),
-                },
-            ])
-        }
+            },
+        ])
     }
 }
 

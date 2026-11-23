@@ -3,6 +3,7 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import type { CityWorldState } from './cityWorldState'
 import type { NavigationService } from './navigation'
+import { NPC_HUM } from './roomNpcConversations'
 import { canHearSpeech } from './socialSpeech'
 import { addressedSpeechPartner } from './speechReceipts'
 
@@ -18,7 +19,11 @@ export function observeCityIntroductions(
         return
     }
     for (const event of events) {
-        if (event.kind !== 'chat' || (event.text?.trim() ?? '') === '') {
+        if (
+            event.kind !== 'chat' ||
+            event.text === NPC_HUM ||
+            (event.text?.trim() ?? '') === ''
+        ) {
             continue
         }
         const pair = heardPair(event, findCharacter, navigationFor, now)

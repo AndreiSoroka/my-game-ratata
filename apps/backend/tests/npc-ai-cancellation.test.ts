@@ -29,7 +29,7 @@ afterEach(async () => {
     vi.unstubAllGlobals()
 })
 
-it('queues a new message while the previous turn is pending and changes work only after consent', async () => {
+it('replaces a pending addressed turn and discards its late reply', async () => {
     let resolveOld: ((reply: NpcAiReply) => void) | undefined
     const recorded = recordedNpcAiProvider((context) =>
         context.events.some(
@@ -53,11 +53,11 @@ it('queues a new message while the previous turn is pending and changes work onl
     await waitForNpcAi(() => recorded.contexts.length === 1)
     requestNpcAi(player, kaplya, 'Новое поручение')
     await advanceNpcAi(100)
-    expect(recorded.contexts).toHaveLength(1)
-    expect(recorded.signals[0]?.aborted).toBe(false)
+    await waitForNpcAi(() => recorded.contexts.length === 2)
+    expect(recorded.signals[0]?.aborted).toBe(true)
     resolveOld?.({
         ...npcAiReply(
-            { type: 'speak', text: 'Первую реплику услышала.' },
+            { type: 'speak', text: 'Первую реплику услышало.' },
             true
         ),
         taskAcceptance: 'none',
@@ -72,7 +72,13 @@ it('queues a new message while the previous turn is pending and changes work onl
     expect(recorded.contexts[1]?.events).toContainEqual(
         expect.objectContaining({ text: 'Новое поручение' })
     )
-    expect(recorded.signals[0]?.aborted).toBe(false)
+    expect(
+        player.sent.some(
+            (message) =>
+                message.type === 'event' &&
+                message.event.text === 'Первую реплику услышало.'
+        )
+    ).toBe(false)
     expect(kaplya.soul.controlSource).toBe('script')
 })
 
@@ -133,11 +139,12 @@ it('queues another listener without exposing the private answer or conversation 
     ).toBe(false)
 }, 15_000)
 
-it('retries provider failure once, releases control and reports a private UI failure without NPC speech', async () => {
+it('retries provider failure once, releases control and reports provider failure and sends one private hum', async () => {
     const recorded = recordedNpcAiProvider(() => {
         throw new Error('Unavailable test provider')
     })
-    const { room, diagnostics } = openNpcAiRoom(recorded.provider)
+    const { room, config, diagnostics } = openNpcAiRoom(recorded.provider)
+    config.limits.retryDelayMs = 250
     rooms.push(room)
     const player = joinScenarioRoom(room, 'Alice')
     const kaplya = existingNpc(room)
@@ -171,8 +178,16 @@ it('retries provider failure once, releases control and reports a private UI fai
     expect(diagnostics.some((line) => line.includes('provider_error'))).toBe(
         true
     )
-    await advanceNpcAi(10_000)
+    await advanceNpcAi(2_000)
     expect(recorded.contexts).toHaveLength(2)
+    expect(
+        player.sent.filter(
+            (message) =>
+                message.type === 'event' &&
+                message.event.kind === 'chat' &&
+                message.event.text === 'М-м-м-м-м…'
+        )
+    ).toHaveLength(1)
 }, 15_000)
 
 it('stops pending model work with the room and ignores its later output', async () => {

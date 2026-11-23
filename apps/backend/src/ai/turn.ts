@@ -16,7 +16,8 @@ export async function invokeNpcAiTurn(
     context: NpcAiContext,
     provider: NpcAiProvider,
     current: () => boolean,
-    information: TurnInformation = {}
+    information: TurnInformation = {},
+    wallNow = Date.now
 ): Promise<void> {
     const generation = state.generation
     const memory = state.mind
@@ -27,7 +28,7 @@ export async function invokeNpcAiTurn(
     state.controller = controller
     const timeout = setTimeout(
         () => controller.abort(),
-        state.config.settings.timeoutMs
+        turnTimeout(state, wallNow())
     )
     let onAbort: (() => void) | undefined
     const aborted = new Promise<never>((_resolve, reject) => {
@@ -87,6 +88,11 @@ export async function invokeNpcAiTurn(
             state.finalizing = undefined
         }
     }
+}
+
+function turnTimeout(state: NpcAiActorState, wallNow: number): number {
+    const remaining = (state.dialogue?.replyDeadline ?? Infinity) - wallNow
+    return Math.max(0, Math.min(state.config.settings.timeoutMs, remaining))
 }
 
 function failedTurn(

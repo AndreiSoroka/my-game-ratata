@@ -30,6 +30,7 @@ interface RoomAbilityOptions {
     sameParty: NonNullable<AbilityContext['sameParty']>
     exchangePaused: (actorId: string) => boolean
     closeConversations: (actorId: string) => void
+    now?: () => number
 }
 
 export function createRoomCombatActions(
@@ -84,7 +85,7 @@ export function createRoomCombatActions(
         contextFor,
         requestAttack: (
             actor: GameCharacter,
-            now = Date.now(),
+            now = (options.now ?? Date.now)(),
             targetId?: string,
             target?: WorldCombatTarget
         ): void =>

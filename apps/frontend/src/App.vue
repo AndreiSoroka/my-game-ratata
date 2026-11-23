@@ -2,13 +2,14 @@
 import type { HeroClass, WorldSnapshot } from '@my-game-ratata/contracts'
 import { ref } from 'vue'
 
+import { GameplayAdventurePanel, JoinGameScreen } from '@/app/layouts'
+import { useStartGameReadiness } from '@/pages/start-game'
 import { provideDarkPanelTheme } from '@/shared/ui/theme'
 
 import { useHeroName } from './game/names/useHeroName'
 import type { RatataGame } from './game/runtime/ratataGame'
 import TestControlPanel from './game/testing/TestControlPanel.vue'
 import { useGameTestControls } from './game/testing/useGameTestControls'
-import AdventurePanel from './game/ui/AdventurePanel.vue'
 import { startAppRuntime } from './game/ui/appRuntime'
 import AutomationPanels from './game/ui/AutomationPanels.vue'
 import ChestContainer from './game/ui/ChestContainer.vue'
@@ -19,7 +20,6 @@ import GameWindows from './game/ui/GameWindows.vue'
 import { heroClassTheme } from './game/ui/heroClassThemes'
 import { provideHotbarSession } from './game/ui/hotbarSession'
 import InventoryHud from './game/ui/InventoryHud.vue'
-import JoinGamePanel from './game/ui/JoinGamePanel.vue'
 import MapLoadError from './game/ui/MapLoadError.vue'
 import NearbyInteraction from './game/ui/NearbyInteraction.vue'
 import { createTransientNotices } from './game/ui/transientNotices'
@@ -48,6 +48,7 @@ const isPositionVisible: RatataGame['isInteractionVisible'] = (position, bounds,
     game.value?.isInteractionVisible(position, bounds, range) ?? false
 const isJoining = ref(false)
 const isStarted = ref(false)
+const { status: readiness, canEnter: canEnterWorld } = useStartGameReadiness(() => !isStarted.value)
 const localPlayerId = ref<string>()
 const snapshot = ref<WorldSnapshot>()
 const status = ref('Ready')
@@ -163,6 +164,7 @@ const { leaveSession, cleanupFailedJoin } = useAppSession({
 })
 
 async function joinGame(): Promise<void> {
+    if (!(await canEnterWorld())) return
     await startAppRuntime({
         ...runtimeState,
         container: () => gameHost.value,
@@ -182,11 +184,12 @@ async function joinGame(): Promise<void> {
 
 <template>
     <main class="app-shell">
-        <JoinGamePanel
+        <JoinGameScreen
             v-if="!isStarted"
             v-model:nickname="nickname"
             v-model:hero-class="heroClass"
-            :can-join="nickname.trim().length > 0 && !isJoining"
+            :joining="isJoining"
+            :readiness="readiness"
             :error-message="errorMessage"
             @join="joinGame"
             @nickname-edited="heroName.edited"
@@ -250,13 +253,12 @@ async function joinGame(): Promise<void> {
                     @target-change="game?.setInteractionTarget($event)"
                     @select-grave="gameplay?.selectGrave($event)"
                 />
-                <AdventurePanel
-                    v-if="snapshot?.adventure && localCharacter"
-                    :adventure="snapshot.adventure"
+                <GameplayAdventurePanel
+                    v-if="snapshot && localCharacter"
+                    :snapshot="snapshot"
                     :characters="visibleCharacters"
                     :inventory-open="inventoryOpen || chestPending"
                     :player="localCharacter"
-                    :server-time="snapshot.serverTime"
                     @command="game?.sendCommand($event)"
                 />
                 <AutomationPanels

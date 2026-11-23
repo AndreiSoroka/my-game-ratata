@@ -30,6 +30,15 @@ export interface SpeechActivitySnapshot {
     kind: 'typing' | 'thinking'
 }
 
+export interface ConversationDeparture {
+    id: string
+    npcId: string
+    npcName: string
+    listenerId: string
+    listenerName: string
+    at: number
+}
+
 export type NpcRequestState =
     | 'heard'
     | 'queued'
@@ -55,6 +64,8 @@ export interface NpcRequestStatus {
 
 export interface CharacterInteractions {
     aiDialogue: boolean
+    dialogueMode?: 'active' | 'passive' | 'scripted'
+    companionCanFight?: boolean
     whisper: boolean
     exchange: boolean
     /** Which companion actions this viewer can request. */
@@ -96,6 +107,7 @@ export interface WhisperSnapshot {
 }
 
 export interface SocialSnapshot extends NpcQuestSocialSnapshot {
+    conversationDepartures?: ConversationDeparture[]
     privateMessages?: HeardPrivateSpeech[]
     speechActivity?: SpeechActivitySnapshot[]
     requestStatuses?: NpcRequestStatus[]

@@ -103,20 +103,13 @@ export function rememberNpcMerchant(
 }
 
 export function rememberNpcInspection(
+    room: GameRoom,
     state: NpcAiActorState,
     targetId: string,
-    events: Array<import('@my-game-ratata/contracts').GameEventPayload>,
     now: number
 ): void {
-    const information = events.flatMap((event) =>
-        event.kind === 'chat' &&
-        event.actorId === targetId &&
-        event.targetId === state.actor?.id &&
-        event.text !== undefined
-            ? [event.text]
-            : []
-    )
-    if (information.length === 0) {
+    const workerActivity = room.social.workerActivity(targetId, now)
+    if (workerActivity === undefined) {
         return
     }
     state.facts = state.facts.filter(
@@ -126,18 +119,8 @@ export function rememberNpcInspection(
         kind: 'inspection',
         targetId,
         observedAt: now,
-        information,
-        ...(() => {
-            const workerActivity = events.find(
-                (event) =>
-                    event.actorId === targetId &&
-                    event.targetId === state.actor?.id &&
-                    event.workerActivity !== undefined
-            )?.workerActivity
-            return workerActivity === undefined
-                ? {}
-                : { workerActivity: structuredClone(workerActivity) }
-        })(),
+        information: [workerActivity.text],
+        workerActivity: structuredClone(workerActivity),
     })
     state.facts = state.facts.slice(-8)
 }

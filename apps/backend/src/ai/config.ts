@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 import authoredConfig from '../../config/npc-ai.json'
+import { npcAiRoster } from '../game/npcRoster'
 import type { NpcAiActorConfig, NpcAiConfig, NpcAiModelSettings } from './types'
 
 export const defaultNpcAiSettings: NpcAiModelSettings = {
@@ -12,12 +13,6 @@ export const defaultNpcAiSettings: NpcAiModelSettings = {
     timeoutMs: 60_000,
 }
 
-const defaultClaudeSettings: NpcAiModelSettings = {
-    ...defaultNpcAiSettings,
-    cliPath: 'claude',
-    model: 'sonnet',
-}
-
 export const defaultNpcAiLimits: NpcAiConfig['limits'] = {
     maxCallsPerHour: 120,
     maxDecisionsPerTask: 12,
@@ -25,58 +20,86 @@ export const defaultNpcAiLimits: NpcAiConfig['limits'] = {
     retryDelayMs: 5_000,
 }
 
-function npcAiEnabled(env: Record<string, string | undefined>): boolean {
-    return (env['GAME_AI_ENABLED'] ?? '1') === '1'
-}
-
 export async function loadNpcAiConfig(
     env: Record<string, string | undefined> = process.env,
     defaultSettings = defaultNpcAiSettings
 ): Promise<NpcAiConfig> {
-    const enabled = npcAiEnabled(env)
-    const path = enabled ? env['GAME_AI_CONFIG'] : undefined
+    const path = env['GAME_AI_CONFIG']
     const input: unknown =
         path === undefined
             ? authoredConfig
-            : JSON.parse(await readFile(resolve(path), 'utf8'))
-    return parseNpcAiConfig(input, enabled, defaultSettings)
+            : mergeNpcSettings(
+                  JSON.parse(await readFile(resolve(path), 'utf8'))
+              )
+    const config = parseNpcAiConfig(input, true, defaultSettings)
+    validateNpcRoster(config)
+    return config
 }
 
-export async function loadNpcAiStartupConfig(
-    env: Record<string, string | undefined>,
-    findExecutable: (command: string) => string | null
-): Promise<{ provider: 'codex' | 'claude'; config: NpcAiConfig } | undefined> {
-    if (!npcAiEnabled(env)) {
-        return undefined
+function mergeNpcSettings(input: unknown): Record<string, unknown> {
+    const custom = object(input, 'root')
+    const overrides = npcOverrides(custom['npcs'] ?? [])
+    return {
+        defaults: custom['defaults'],
+        limits: {
+            ...authoredConfig.limits,
+            ...object(custom['limits'] ?? {}, 'limits'),
+        },
+        npcs: authoredConfig.npcs.map((npc) => ({
+            ...npc,
+            settings: { ...npc.settings, ...overrides.get(npc.actorId) },
+        })),
     }
+}
 
-    const requested = env['GAME_AI_PROVIDER']
+function npcOverrides(
+    rawOverrides: unknown
+): Map<string, Record<string, unknown>> {
     if (
-        requested !== undefined &&
-        requested !== 'codex' &&
-        requested !== 'claude'
+        !Array.isArray(rawOverrides) ||
+        rawOverrides.length > authoredConfig.npcs.length
     ) {
-        throw invalid('GAME_AI_PROVIDER must be codex or claude')
+        throw invalid('npcs must list overrides for authored actors')
     }
-    // An existing custom file uses Codex settings unless the operator selects Claude.
-    const provider =
-        requested ??
-        (env['GAME_AI_CONFIG'] === undefined &&
-        findExecutable('codex') === null &&
-        findExecutable('claude') !== null
-            ? 'claude'
-            : 'codex')
-    const config = await loadNpcAiConfig(
-        env,
-        provider === 'claude' ? defaultClaudeSettings : defaultNpcAiSettings
-    )
-    const npcs = config.npcs.flatMap((npc) => {
-        const cliPath = findExecutable(npc.settings.cliPath)
-        return cliPath === null
-            ? []
-            : [{ ...npc, settings: { ...npc.settings, cliPath } }]
-    })
-    return { provider, config: { ...config, npcs } }
+    const overrides = new Map<string, Record<string, unknown>>()
+    for (const input of rawOverrides) {
+        const npc = object(input, 'npc')
+        const id = text(npc['actorId'], 'npc.actorId', 100)
+        const expected = Object.hasOwn(npcAiRoster, id)
+            ? npcAiRoster[id]
+            : undefined
+        if (
+            expected === undefined ||
+            overrides.has(id) ||
+            (npc['role'] !== undefined && npc['role'] !== expected.role) ||
+            (npc['mode'] !== undefined && npc['mode'] !== expected.mode)
+        ) {
+            throw invalid(
+                `npc override must match the authored role and mode of ${id}`
+            )
+        }
+        overrides.set(id, object(npc['settings'] ?? {}, 'npc.settings'))
+    }
+    return overrides
+}
+
+function validateNpcRoster(config: NpcAiConfig): void {
+    if (
+        config.npcs.length !== Object.keys(npcAiRoster).length ||
+        config.npcs.some(({ actorId, role, mode }) => {
+            const expected = Object.hasOwn(npcAiRoster, actorId)
+                ? npcAiRoster[actorId]
+                : undefined
+            return (
+                expected?.role !== role ||
+                expected.mode !== (mode ?? 'controller')
+            )
+        })
+    ) {
+        throw invalid(
+            'bundled NPC AI configuration must match the authored roster'
+        )
+    }
 }
 
 export function parseNpcAiConfig(
