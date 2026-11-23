@@ -29,6 +29,10 @@ The packed atlas is copied unchanged. The twelve active wheat beds have stable s
 
 The restored project already contains Mystic Woods environment and character artwork. This change retains those files and uses the existing Mystic Woods grass, complete trees and furniture, wooden floor, and connected wooden fence posts. Kenney's CC0 license applies only to the added Tiny Town assets; it does not replace the terms of the existing asset packs.
 
+The start screen credits [Mystic Woods by Game Endeavor](https://game-endeavor.itch.io/mystic-woods) with a transparent cutout from the [original title banner](https://img.itch.zone/aW1nLzc2OTY0NTMucG5n/original/RUderv.png) and credits [Kenney](https://kenney.nl/) with the unchanged Yellow badge from [Kenney Badges](https://kenney.nl/badges).
+
+The repository link uses the white Invertocat from the [GitHub Brand Toolkit](https://brand.github.com/foundations/logo).
+
 ## Map generation
 
 Run `node scripts/generate-world.mjs` from the repository root. The generator reads the shared 25-location definitions from `contracts/src/world.ts`, uses fixed seeds and writes the 96×80-tile maps under `apps/frontend/public/game/map/`. `map1.json` is an exact alias of the central `map-2-2.json`.

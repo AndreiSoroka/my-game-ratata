@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import type { HeroClass } from '@my-game-ratata/contracts'
-import {
-    GRID_SIZE,
-    HERO_BACKGROUND_DEFINITIONS,
-    heroClasses,
-    REGION_NAME,
-} from '@my-game-ratata/contracts'
+import { HERO_BACKGROUND_DEFINITIONS, heroClasses } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 
 import { ChatComposerFrame } from '@/entities/chats'
+import { RegionLore } from '@/entities/region-lore'
 import { UiButton, UiInput } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, provideDarkPanelTheme } from '@/shared/ui/theme'
@@ -16,6 +12,7 @@ import { darkPanelThemeStyle, provideDarkPanelTheme } from '@/shared/ui/theme'
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import HeroClassIcon from './HeroClassIcon.vue'
 import { heroClassTheme } from './heroClassThemes'
+import JoinAssetCredits from './JoinAssetCredits.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
 import RefreshIcon from './RefreshIcon.vue'
@@ -76,20 +73,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
 
 <template>
     <section class="join-screen" aria-labelledby="join-title">
-        <div class="join-lore">
-            <p class="join-lore__eyebrow">
-                {{ REGION_NAME.toUpperCase() }} · {{ GRID_SIZE * GRID_SIZE }} ЛОКАЦИЙ
-            </p>
-            <h2>Новогород<br />и дальние земли</h2>
-            <p class="join-lore__story">
-                За стенами Новогорода сходятся торговые пути. В городе ждут ремесленники, учёные и
-                попутчики. Чем дальше от ворот, тем опаснее становятся земли.
-            </p>
-            <p class="join-lore__invitation">
-                Искра живёт в персонаже, пока с ним связан разум. Эхо следует привычкам и повторяет
-                знакомые дела. Собирайте свои сценарии и договаривайтесь о помощи.
-            </p>
-        </div>
+        <RegionLore class="join-screen__lore" />
         <form
             ref="form"
             class="join-panel game-frame-host"
@@ -186,6 +170,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
             </p>
             <p v-if="errorMessage" class="join-error" role="alert">{{ errorMessage }}</p>
         </form>
+        <JoinAssetCredits class="join-screen__credits" />
     </section>
 </template>
 

@@ -11,14 +11,14 @@ export default defineConfig([
         rules: { 'fsd/typo-in-layer-name': 'off' },
     },
     {
-        // The character-window slice owns one window and uses its singular name.
-        files: ['./src/entities/character-window/**'],
+        // These slices describe a single window and a region's lore.
+        files: ['./src/entities/{character-window,region-lore}/**'],
         rules: { 'fsd/inconsistent-naming': 'off' },
     },
     {
         // Steiger misses consumers in the game adapters and the temporarily excluded widgets.
         files: [
-            './src/entities/{character-window,chats,constellations,exchanges,menus,player-effects,player-vitals,quests,quick-actions}/**',
+            './src/entities/{character-window,chats,constellations,exchanges,menus,player-effects,player-vitals,quests,quick-actions,region-lore}/**',
             './src/widgets/constellation-atlas/**',
         ],
         rules: { 'fsd/insignificant-slice': 'off' },
