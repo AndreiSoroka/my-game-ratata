@@ -13,6 +13,7 @@ export {
     type UiButtonStateColors,
     type UiButtonVariant,
 } from './button'
+export { DarkWindowFrame } from './dark-window-frame'
 export {
     type UiFieldProps,
     UiInput,

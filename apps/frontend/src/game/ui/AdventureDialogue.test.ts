@@ -1,4 +1,8 @@
-import type { AdventureSnapshot } from '@my-game-ratata/contracts'
+import {
+    type AdventureSnapshot,
+    type ClientMessage,
+    quoteMarketTrade,
+} from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
@@ -86,7 +90,7 @@ it('reopens the same service only on a fresh offer', async () => {
     })
     try {
         const shop = '[aria-label="Торговля"]'
-        const back = '.adventure-shop button:last-child'
+        const back = '.social-window-stack--shop footer button'
         expect(wrapper.find(shop).exists()).toBe(true)
         await wrapper.get(back).trigger('click')
         await wrapper.setProps({ adventure: { ...adventure, dialogue: { ...offer } } })
@@ -114,15 +118,21 @@ describe('conversation and shop navigation', () => {
                 .trigger('keydown', { code: 'KeyF', key: 'а' })
             await flushPromises()
             expect(wrapper.find('.adventure-choices').exists()).toBe(false)
-            expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(true)
-            const shopButtons = wrapper.findAll('.adventure-shop button')
+            expect(wrapper.find('.adventure-dialogue').exists()).toBe(false)
+            const shop = wrapper.get('[role="dialog"][aria-label="Товары · Савва"]')
+            expect(shop.find('[aria-label="Торговля"]').exists()).toBe(true)
+            const shopButtons = shop.findAll('.adventure-shop button')
+            const back = shop.get('footer button')
             expect(document.activeElement).toBe(shopButtons[0]?.element)
             expect(shopButtons[1]?.attributes('disabled')).toBeDefined()
             await shopButtons[0]?.trigger('keydown', { code: 'KeyF', key: 'а' })
             await shopButtons[0]?.trigger('keydown', { code: 'KeyS', key: 'ы' })
-            expect(document.activeElement).toBe(shopButtons[2]?.element)
-            await shopButtons[2]?.trigger('keydown', { code: 'Escape' })
+            expect(document.activeElement).toBe(back.element)
+            await back.trigger('keydown', { code: 'Escape' })
             expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(false)
+            expect(document.activeElement).toBe(
+                wrapper.get('[data-dialogue-action="trade"]').element
+            )
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'dialogue_choice', choiceId: 'trade' }],
                 [{ type: 'trade', itemId: 'food' }],
@@ -154,7 +164,9 @@ describe('conversation and shop navigation', () => {
             const offers = wrapper.findAll('.adventure-shop button')
             expect(offers[0]?.attributes('disabled')).toBeDefined()
             expect(offers[1]?.attributes('disabled')).toBeDefined()
-            expect(document.activeElement).toBe(offers[2]?.element)
+            expect(document.activeElement).toBe(
+                wrapper.get('.social-window-stack--shop footer button').element
+            )
             await offers[0]?.trigger('click')
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'dialogue_choice', choiceId: 'trade' }],
@@ -164,51 +176,163 @@ describe('conversation and shop navigation', () => {
             expect(
                 wrapper.findAll('.adventure-shop button')[0]?.attributes('disabled')
             ).toBeUndefined()
+            await wrapper.get('.social-window-stack--shop header button').trigger('click')
+            expect(wrapper.find('.social-window-stack--shop').exists()).toBe(false)
+            expect(wrapper.find('.adventure-dialogue').exists()).toBe(true)
         } finally {
             wrapper.unmount()
         }
     })
+})
 
-    it('reads a sign with one heading and confirms its focused close action with F without repeat', async () => {
-        const sign: AdventureSnapshot = {
-            ...adventure,
-            dialogue: {
-                kind: 'sign',
-                npcId: 'object:chapel',
-                npcName: 'Часовня памяти',
-                title: 'Часовня памяти',
-                text: 'Выбор покровителя. Сестра Вера отпускает грехи за 30 золотых.',
-                canTrade: false,
-                choices: [{ id: 'leave', label: 'Закрыть' }],
+it('sends a fresh server command for each quoted purchase from the market window', async () => {
+    const row = {
+        itemId: 'food',
+        label: 'Яблоко',
+        stock: 8,
+        target: 8,
+        capacity: 16,
+        basePrice: 4,
+        consumptionPer10Minutes: 0,
+        buyPrice: 4,
+        sellPrice: 2,
+        deliveredLast10Minutes: 0,
+        consumedLast10Minutes: 0,
+    } as const
+    const wrapper = mount(AdventureDialogue, {
+        attachTo: document.body,
+        props: {
+            characters: [],
+            adventure: {
+                ...adventure,
+                dialogue: { ...adventure.dialogue!, initialView: 'shop' },
+                market: { cityId: 'city', cityName: 'Новогород', revision: 1, rows: [row] },
             },
-        }
-        const wrapper = mount(AdventureDialogue, {
-            props: { adventure: sign, characters: [] },
-            attachTo: document.body,
-        })
-        try {
-            await flushPromises()
-            expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe(
-                'Табличка: Часовня памяти'
-            )
-            expect(wrapper.findAll('h2')).toHaveLength(1)
-            expect(wrapper.get('h2').text()).toBe('Часовня памяти')
-            expect(wrapper.get('.adventure-dialogue__text').text()).toBe(sign.dialogue!.text)
-            expect(wrapper.find('.soul-badge').exists()).toBe(false)
-            const close = wrapper.get('[data-dialogue-action]')
-            await close.trigger('keydown', { code: 'KeyF', key: 'а' })
-            await close.trigger('keydown', { code: 'KeyF', repeat: true })
-            expect(wrapper.emitted('command')).toEqual([
-                [{ type: 'dialogue_choice', choiceId: 'leave' }],
-            ])
-            await close.trigger('keydown', { code: 'Escape' })
-            expect(wrapper.emitted('command')?.at(-1)).toEqual([
-                { type: 'dialogue_choice', choiceId: 'close' },
-            ])
-        } finally {
-            wrapper.unmount()
-        }
+        },
     })
+    try {
+        await flushPromises()
+        const shop = wrapper.get('.social-window-stack--shop')
+        const quantity = shop.get('input[type="number"]')
+        const buyTab = shop.get('[role="tab"][aria-selected="true"]')
+        expect(document.activeElement).toBe(buyTab.element)
+        await buyTab.trigger('keydown', { code: 'Tab', key: 'Tab' })
+        expect(document.activeElement).toBe(quantity.element)
+        await quantity.setValue(2)
+        const buy = shop.get('.market-row button')
+        await buy.trigger('click')
+        await buy.trigger('click')
+        const requests = wrapper.emitted<[ClientMessage]>('command')?.flat()
+        expect(requests).toEqual([
+            expect.objectContaining({
+                type: 'market_trade',
+                npcId: 'merchant',
+                itemId: 'food',
+                side: 'buy',
+                quantity: 2,
+                expectedTotal: quoteMarketTrade(row, 'buy', 2),
+                requestId: expect.any(String),
+            }),
+            expect.objectContaining({ type: 'market_trade', requestId: expect.any(String) }),
+        ])
+        const [first, second] = requests ?? []
+        expect(
+            first?.type === 'market_trade' &&
+                second?.type === 'market_trade' &&
+                first.requestId !== second.requestId
+        ).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('sends the repair quote even when the service does not sell items', async () => {
+    const wrapper = mount(AdventureDialogue, {
+        props: {
+            characters: [],
+            adventure: {
+                ...adventure,
+                dialogue: {
+                    ...adventure.dialogue!,
+                    npcId: 'smith',
+                    initialView: 'repair',
+                    canTrade: false,
+                },
+                repairs: {
+                    npcId: 'smith',
+                    total: 10,
+                    items: [
+                        {
+                            instanceId: 'broken',
+                            itemId: 'simple_sword',
+                            label: 'Простой меч',
+                            durability: 0,
+                            maxDurability: 200,
+                            price: 10,
+                            equipped: true,
+                        },
+                    ],
+                },
+            },
+        },
+    })
+    try {
+        await wrapper.get('.repair-workshop > button').trigger('click')
+        expect(wrapper.emitted('command')).toEqual([
+            [
+                {
+                    type: 'repair_items',
+                    npcId: 'smith',
+                    instanceIds: ['broken'],
+                    expectedTotal: 10,
+                    requestId: expect.any(String),
+                },
+            ],
+        ])
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('reads a sign with one heading and confirms its focused close action with F without repeat', async () => {
+    const sign: AdventureSnapshot = {
+        ...adventure,
+        dialogue: {
+            kind: 'sign',
+            npcId: 'object:chapel',
+            npcName: 'Часовня памяти',
+            title: 'Часовня памяти',
+            text: 'Выбор покровителя. Сестра Вера отпускает грехи за 30 золотых.',
+            canTrade: false,
+            choices: [{ id: 'leave', label: 'Закрыть' }],
+        },
+    }
+    const wrapper = mount(AdventureDialogue, {
+        props: { adventure: sign, characters: [] },
+        attachTo: document.body,
+    })
+    try {
+        await flushPromises()
+        expect(wrapper.get('[role="dialog"]').attributes('aria-label')).toBe(
+            'Табличка: Часовня памяти'
+        )
+        expect(wrapper.findAll('h2')).toHaveLength(1)
+        expect(wrapper.get('h2').text()).toBe('Часовня памяти')
+        expect(wrapper.get('.adventure-dialogue__text').text()).toBe(sign.dialogue!.text)
+        expect(wrapper.find('.soul-badge').exists()).toBe(false)
+        const close = wrapper.get('[data-dialogue-action]')
+        await close.trigger('keydown', { code: 'KeyF', key: 'а' })
+        await close.trigger('keydown', { code: 'KeyF', repeat: true })
+        expect(wrapper.emitted('command')).toEqual([
+            [{ type: 'dialogue_choice', choiceId: 'leave' }],
+        ])
+        await close.trigger('keydown', { code: 'Escape' })
+        expect(wrapper.emitted('command')?.at(-1)).toEqual([
+            { type: 'dialogue_choice', choiceId: 'close' },
+        ])
+    } finally {
+        wrapper.unmount()
+    }
 })
 
 describe('speech bubble keyboard ownership', () => {

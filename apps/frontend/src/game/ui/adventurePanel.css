@@ -135,13 +135,6 @@
 .adventure-choices button {
     text-align: left;
 }
-.adventure-shop .city-market button {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    margin-top: 5px;
-}
-
 @media (max-width: 640px) {
     .adventure-window.game-frame-host {
         padding: 12px;

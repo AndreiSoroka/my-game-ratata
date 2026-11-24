@@ -48,8 +48,8 @@ const heading = computed(() =>
     gap: 8px;
     min-inline-size: 0;
     padding: 2px 8px;
-    border: 1px solid var(--ui-light-panel-divider);
-    background: var(--ui-light-panel-parchment);
+    border: 1px solid var(--quest-item-list-border, var(--ui-light-panel-divider));
+    background: var(--quest-item-list-surface, var(--ui-light-panel-parchment));
     overflow-wrap: anywhere;
 }
 .quest-item-list__reward-note {

@@ -1,9 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
-import { QuestOfferPanel } from '@/entities/quests'
-
-import QuestRewardSummary from './QuestRewardSummary.vue'
+import { QuestOfferPanel, QuestRewardSummary } from '@/entities/quests'
 
 describe('quest reward presentation', () => {
     it('distinguishes the total budget from the observer’s actual received share', () => {

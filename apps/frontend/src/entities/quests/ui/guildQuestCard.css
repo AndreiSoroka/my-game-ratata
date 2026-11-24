@@ -1,0 +1,141 @@
+.quest-card {
+    --quest-card-border: var(--ui-themed-panel-accent, var(--ui-dark-panel-border));
+    --quest-card-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
+    --quest-panel-title: var(--ui-dark-panel-title);
+    --quest-panel-muted: color-mix(
+        in srgb,
+        var(--ui-dark-panel-text) 78%,
+        var(--quest-card-surface)
+    );
+    --quest-item-list-border: var(--ui-dark-panel-divider);
+    --quest-item-list-surface: color-mix(
+        in srgb,
+        var(--quest-card-surface) 92%,
+        var(--quest-card-border)
+    );
+    display: grid;
+    gap: 10px;
+    margin-block-start: 16px;
+    padding: clamp(7px, 2vw, 14px);
+    min-inline-size: 0;
+    background: linear-gradient(
+        155deg,
+        var(--quest-item-list-surface),
+        var(--quest-card-surface) 55%
+    );
+    color: var(--ui-dark-panel-text);
+    font:
+        13px/1.45 system-ui,
+        sans-serif;
+    overflow-wrap: anywhere;
+}
+
+.quest-card-heading,
+.quest-card-objective,
+.quest-card-reward,
+.quest-card-progress {
+    display: grid;
+    gap: 6px;
+    min-inline-size: 0;
+}
+
+.quest-card-heading h2 {
+    margin: 0;
+    color: var(--quest-panel-title);
+    font: 500 clamp(16px, 3vw, 20px) / 1.25 var(--ratata-font-family, sans-serif);
+}
+
+.quest-card :where(p, dl, ul) {
+    margin: 0;
+}
+
+.quest-card-status {
+    color: var(--ui-dark-panel-positive);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.quest-card-status--blocked {
+    color: var(--ui-dark-panel-warning);
+}
+
+.quest-card-hint {
+    color: var(--quest-panel-muted);
+}
+
+.quest-card-progress p,
+.guild-contributions li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 8px;
+}
+
+.quest-card-progress strong,
+.quest-request-facts dd {
+    color: var(--quest-panel-title);
+    font-weight: 600;
+}
+
+.quest-card-progress strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.guild-contributions {
+    display: grid;
+    gap: 4px;
+    list-style: none;
+    padding: 5px 0 0;
+}
+
+.guild-contributions strong {
+    color: var(--quest-panel-muted);
+    font-weight: 500;
+}
+
+.quest-request-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12ch), 1fr));
+    gap: 8px 12px;
+    padding-block-end: 4px;
+}
+
+.quest-request-facts dt {
+    color: var(--quest-panel-muted);
+    font-size: 12px;
+}
+
+.quest-request-facts dd {
+    margin: 0;
+}
+
+.quest-card-reason {
+    padding: 6px 8px;
+    border-inline-start: 2px solid var(--quest-card-border);
+    background: var(--quest-item-list-surface);
+}
+
+.quest-card-reward {
+    padding-block-start: 8px;
+    border-block-start: 1px solid var(--ui-dark-panel-divider);
+}
+
+.quest-card-reward > *,
+.quest-card-items {
+    margin-block: 0;
+}
+
+.quest-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.quest-card-actions:empty {
+    display: none;
+}
+
+.quest-card-actions button {
+    min-inline-size: 0;
+    font-size: 15px;
+}

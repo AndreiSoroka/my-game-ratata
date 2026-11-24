@@ -24,6 +24,7 @@ export const tradeMessages = {
     changesNotSent: ['Изменения ещё не отправлены', 'Changes have not been sent'],
     cityBuysSells: ['Город покупает / продаёт', 'City buys / sells'],
     cityDemand: ['Спрос города', 'City demand'],
+    scrollDemandTable: ['Прокрутите таблицу по горизонтали', 'Scroll the table sideways'],
     cityMarket: ['Городской рынок', 'City market'],
     cityNeeds: ['· потребности города', '· city needs'],
     clearItems: ['Очистить', 'Clear'],

@@ -12,6 +12,7 @@ export const conversationMessages = {
     forJourney: ['В дорогу', 'For the journey'],
     gold: ['золотых', 'gold'],
     goods: ['Товары', 'Goods'],
+    goodsWith: ['Товары · {name}', 'Goods · {name}'],
     messageYourPartner: ['Сообщение собеседнику', 'Message to your partner'],
     nearbyChannel: ['Рядом', 'Nearby'],
     newMessages: ['Новые сообщения ↓', 'New messages ↓'],

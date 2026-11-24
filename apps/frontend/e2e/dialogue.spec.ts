@@ -62,11 +62,16 @@ for (const mobile of [false, true]) {
 
         const services = await openMerchantMenu(page, mobile)
         await services.getByRole('menuitem', { name: /^Купить:/u }).click()
-        await expect(page.getByRole('heading', { name: 'Товары', exact: true })).toBeVisible()
-        const trade = page.getByRole('region', { name: 'Торговля', exact: true })
-        await expect(trade).toBeVisible()
-        await expect(trade.getByRole('button', { name: 'Вернуться к разговору' })).toBeEnabled()
+        const shop = page.getByRole('dialog', { name: /^Товары · /u })
+        const conversation = page.getByRole('dialog', { name: /^Разговор:/u })
+        await expect(shop).toBeInViewport({ ratio: 1 })
+        await expect(shop.getByRole('region', { name: 'Торговля', exact: true })).toBeVisible()
+        await expect(shop.getByRole('button', { name: 'Вернуться к разговору' })).toBeEnabled()
+        await expect(conversation).toHaveCount(0)
         await expect(page.getByRole('textbox', { name: 'Реплика собеседнику' })).toHaveCount(0)
+        await page.keyboard.press('Escape')
+        await expect(shop).toHaveCount(0)
+        await expect(conversation).toBeVisible()
     })
 }
 

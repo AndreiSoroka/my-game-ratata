@@ -6,9 +6,9 @@ import type {
     ClientMessage,
 } from '@my-game-ratata/contracts'
 
+import { craftOrderPaymentText, craftOrderStatusLabels } from '@/entities/shops'
 import { itemName, tGame, tLocalized } from '@/shared/lib/i18n'
 
-import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
 import GameButton from './primitives/GameButton.vue'
 
 const props = defineProps<{ adventure: AdventureSnapshot; alive: boolean }>()

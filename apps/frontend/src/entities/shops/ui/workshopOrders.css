@@ -1,0 +1,103 @@
+.workshop-orders {
+    --workshop-accent: var(--ui-themed-panel-accent, var(--ui-dark-panel-border));
+    --workshop-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
+    --workshop-raised: color-mix(in srgb, var(--workshop-surface) 93%, var(--workshop-accent));
+    display: grid;
+    gap: 8px;
+    min-inline-size: 0;
+    padding: clamp(4px, 1.25vw, 10px);
+    background: var(--workshop-surface);
+    color: var(--ui-dark-panel-text);
+    font:
+        14px/1.45 system-ui,
+        sans-serif;
+    overflow-wrap: anywhere;
+}
+
+.workshop-orders__header,
+.workshop-order-row,
+.workshop-order-row__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.workshop-orders__header,
+.workshop-order-row {
+    justify-content: space-between;
+}
+
+.workshop-orders h3,
+.workshop-orders h4 {
+    margin: 0;
+    color: var(--ui-dark-panel-title);
+    font: 600 16px/1.35 var(--ratata-font-family, system-ui);
+}
+
+.workshop-orders h4 {
+    font-size: 14px;
+}
+
+.workshop-orders__header strong,
+.workshop-orders__gold {
+    color: var(--ui-light-button-selected-edge);
+}
+
+.workshop-orders p {
+    margin: 0;
+}
+
+.workshop-orders__body {
+    display: grid;
+    gap: 8px;
+    max-block-size: 55dvh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--workshop-accent) transparent;
+}
+
+.workshop-order-row {
+    padding: 8px;
+    background: var(--workshop-raised);
+}
+
+.workshop-order-row__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-inline-size: 0;
+}
+
+.workshop-order-row__item strong {
+    color: var(--ui-dark-panel-title);
+    font-size: 15px;
+}
+
+.workshop-order-row__status,
+.workshop-orders__terms {
+    font-size: 12px;
+}
+
+.workshop-orders__terms {
+    color: color-mix(in srgb, var(--ui-dark-panel-text) 83%, var(--workshop-surface));
+}
+
+.workshop-order-row__status--ready {
+    color: var(--ui-dark-panel-positive);
+}
+
+.workshop-orders :deep(.ui-button) {
+    --ui-button-panel-padding: 4px 6px;
+    min-block-size: 34px;
+    max-inline-size: 100%;
+    font-size: 12px;
+}
+
+.order-confirm {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    background: var(--workshop-raised);
+}

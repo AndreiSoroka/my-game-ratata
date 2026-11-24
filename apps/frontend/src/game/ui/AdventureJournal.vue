@@ -7,14 +7,13 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, useId } from 'vue'
 
+import { GuildQuestCard, QuestRewardSummary } from '@/entities/quests'
+import { craftOrderPaymentText, craftOrderStatusLabels } from '@/entities/shops'
 import { itemName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
-import { craftOrderPaymentText, craftOrderStatusLabels } from './craftOrderLabels'
-import GuildQuestCard from './GuildQuestCard.vue'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
-import QuestRewardSummary from './QuestRewardSummary.vue'
 const props = defineProps<{
     adventure: AdventureSnapshot
     party?: PartySnapshot
@@ -126,7 +125,7 @@ const statuses: Record<AdventureQuestStatus, string> = {
             :job="party.activeJob"
             :player-id="playerId"
             :can-abandon="Boolean(canAbandon)"
-            @command="emit('command', $event)"
+            @abandon="emit('command', { type: 'guild_abandon', instanceId: $event })"
         />
         <section
             v-if="adventure.craftOrders?.length"

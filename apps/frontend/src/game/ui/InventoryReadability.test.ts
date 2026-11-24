@@ -1,9 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { ItemCondition } from '@/entities/items'
+
 import { characterFixture } from '../testing/characterFixture'
 import InventoryOverlay from './InventoryOverlay.vue'
-import ItemCondition from './ItemCondition.vue'
 describe('inventory gold and condition', () => {
     it('shows zero gold, a readable equipped condition and updates from snapshots', async () => {
         const character = characterFixture('self', {

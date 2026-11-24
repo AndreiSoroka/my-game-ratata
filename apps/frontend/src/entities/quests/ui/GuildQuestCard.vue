@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import {
-    type ClientMessage,
-    type GuildQuestSnapshot,
-    npcQuestMessage,
-} from '@my-game-ratata/contracts'
-import { computed, useId } from 'vue'
+import { type GuildQuestSnapshot, npcQuestMessage } from '@my-game-ratata/contracts'
+import { computed } from 'vue'
 
-import { characterName, itemName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
+import { characterName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
+import { darkPanelButtonColors, GameBar, UiButton } from '@/shared/ui/common'
+import { FantasyBorder, FantasyDivider } from '@/shared/ui/external'
+import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
-import { itemAssetCatalog } from '../assets/itemCatalog'
-import ItemIcon from './ItemIcon.vue'
-import GameButton from './primitives/GameButton.vue'
-import GameFrame from './primitives/GameFrame.vue'
+import QuestItemList from './QuestItemList.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 
 const props = defineProps<{
@@ -19,10 +15,16 @@ const props = defineProps<{
     playerId?: string
     canAbandon?: boolean
 }>()
-const emit = defineEmits<{ command: [message: ClientMessage] }>()
-const progressId = useId()
+const emit = defineEmits<{ abandon: [instanceId: string] }>()
+const theme = useDarkPanelTheme()
 const request = computed(() => props.job.workRequest)
-const trophy = computed(() => request.value && itemAssetCatalog[request.value.requiredTrophyItemId])
+const rewardItems = computed(
+    () =>
+        props.job.rewardItems?.map(({ itemId, quantity }) => ({
+            itemId,
+            quantity: quantity ?? 1,
+        })) ?? []
+)
 const stageLabels = {
     get reporting() {
         return tGame('game.quests.workerReports')
@@ -72,15 +74,33 @@ const progressLabel = computed(() =>
 </script>
 
 <template>
-    <article
-        class="quest-card guild-active game-frame-host"
+    <FantasyBorder
+        class="quest-card"
+        role="article"
+        :border="theme?.border ?? 'border-026'"
+        color="var(--quest-card-border)"
+        :style="darkPanelThemeStyle(theme)"
         :aria-label="tGame('game.quests.sharedContract')"
     >
-        <GameFrame variant="panel" />
-        <span class="quest-card-status">{{ status }}</span>
-        <h2>{{ tLocalized(job.titleMessage, job.title) }}</h2>
-        <p>{{ tLocalized(job.descriptionMessage, job.description) }}</p>
-        <template v-if="request">
+        <header class="quest-card-heading">
+            <span
+                class="quest-card-status"
+                :class="{
+                    'quest-card-status--blocked':
+                        request?.reason || job.status === 'reward_missing',
+                }"
+                >{{ status }}</span
+            >
+            <h2>{{ tLocalized(job.titleMessage, job.title) }}</h2>
+            <p>{{ tLocalized(job.descriptionMessage, job.description) }}</p>
+        </header>
+        <FantasyDivider
+            divider="divider-002"
+            ends="both"
+            color="var(--quest-card-border)"
+            aria-hidden="true"
+        />
+        <div v-if="request" class="quest-card-objective">
             <dl class="quest-request-facts">
                 <div>
                     <dt>{{ tGame('game.quests.questGiverGuildQuest') }}</dt>
@@ -109,22 +129,23 @@ const progressLabel = computed(() =>
             <p v-if="request.proofAccepted" class="quest-card-hint">
                 {{ tGame('game.quests.trophyAcceptedAnotherVerificationTrip') }}
             </p>
-            <p v-else-if="trophy" class="quest-trophy">
-                <img :src="trophy.src" :alt="itemName(request.requiredTrophyItemId)" />
-                <span
-                    >{{ tGame('game.quests.forReport') }}
-                    {{ itemName(request.requiredTrophyItemId) }}
-                    {{ tGame('game.quests.trophyFoundEarlierCounts') }}</span
-                >
-            </p>
+            <template v-else>
+                <p>{{ tGame('game.quests.forReport') }}</p>
+                <QuestItemList
+                    class="quest-card-items"
+                    :items="[{ itemId: request.requiredTrophyItemId, quantity: 1 }]"
+                    :show-heading="false"
+                />
+                <p class="quest-card-hint">{{ tGame('game.quests.trophyFoundEarlierCounts') }}</p>
+            </template>
             <p class="quest-card-hint">
                 {{ tGame('game.quests.waitForWorkerCompleteOne') }}
             </p>
             <p v-if="request.reason" class="quest-card-reason" role="status">
                 {{ tLocalized(npcQuestMessage(request.reason), request.reason) }}
             </p>
-        </template>
-        <template v-else>
+        </div>
+        <div v-else class="quest-card-objective">
             <p class="quest-card-hint">
                 {{
                     job.id === 'survey_frontier'
@@ -132,10 +153,20 @@ const progressLabel = computed(() =>
                         : tGame('game.quests.combatContribution')
                 }}
             </p>
-            <label :for="progressId"
-                >{{ progressLabel }}: {{ job.progress }} / {{ job.goal }}</label
-            >
-            <progress :id="progressId" :value="job.progress" :max="job.goal" />
+            <div class="quest-card-progress">
+                <p>
+                    {{ progressLabel }} <strong>{{ job.progress }} / {{ job.goal }}</strong>
+                </p>
+                <GameBar
+                    :label="progressLabel"
+                    :value="job.progress"
+                    :max="job.goal"
+                    :height="8"
+                    color="var(--ui-dark-panel-positive)"
+                    track-color="var(--ui-dark-bar-track)"
+                    :shadow="false"
+                />
+            </div>
             <ul v-if="job.participants.length" class="guild-contributions">
                 <li v-for="participant in job.participants" :key="participant.id">
                     <span>{{ participant.nickname }}</span>
@@ -145,24 +176,25 @@ const progressLabel = computed(() =>
                     >
                 </li>
             </ul>
-        </template>
-        <QuestRewardSummary
-            :total="job.rewardGold"
-            :mode="job.rewardMode"
-            :shares="job.rewardShares"
-            :player-id="playerId"
-            :completed="job.status === 'completed'"
-        />
-        <ul v-if="job.rewardItems?.length" class="quest-reward-items">
-            <li v-for="item in job.rewardItems" :key="item.instanceId">
-                <ItemIcon :item="item" /><span
-                    >{{ item.quantity ?? 1 }} {{ tGame('game.quests.pcsWhoeverTurnsItIn') }}</span
-                >
-            </li>
-        </ul>
-        <p v-if="job.rewardNotice" class="quest-card-reason" role="status">
-            {{ tLocalized(job.rewardNoticeMessage, job.rewardNotice) }}
-        </p>
+        </div>
+        <div class="quest-card-reward">
+            <QuestRewardSummary
+                :total="job.rewardGold"
+                :mode="job.rewardMode"
+                :shares="job.rewardShares"
+                :player-id="playerId"
+                :completed="job.status === 'completed'"
+            />
+            <QuestItemList
+                class="quest-card-items"
+                :items="rewardItems"
+                kind="reward"
+                :show-heading="false"
+            />
+            <p v-if="job.rewardNotice" class="quest-card-reason" role="status">
+                {{ tLocalized(job.rewardNoticeMessage, job.rewardNotice) }}
+            </p>
+        </div>
         <template
             v-if="
                 job.status === 'active' || job.status === 'ready' || job.status === 'reward_missing'
@@ -171,104 +203,23 @@ const progressLabel = computed(() =>
             <p class="quest-card-hint">
                 {{ tGame('game.character.askQuestGiverAboutNext') }}
             </p>
-            <div class="guild-reward quest-card-actions">
-                <GameButton
+            <footer class="quest-card-actions">
+                <UiButton
+                    appearance="panel"
+                    panel="panel-001"
+                    :colors="darkPanelButtonColors"
                     :disabled="!canAbandon"
-                    @click="emit('command', { type: 'guild_abandon', instanceId: job.instanceId })"
+                    @click="emit('abandon', job.instanceId)"
                 >
                     {{
                         request
                             ? tGame('game.quests.declineWorkerRequest')
                             : tGame('game.quests.declineContract')
                     }}
-                </GameButton>
-            </div>
+                </UiButton>
+            </footer>
         </template>
-    </article>
+    </FantasyBorder>
 </template>
 
-<style scoped>
-.quest-card {
-    position: relative;
-    border-top: 1px solid #526049;
-    padding-top: 12px;
-    margin-top: 16px;
-    font:
-        12px/1.5 system-ui,
-        sans-serif;
-}
-.quest-card h2 {
-    margin: 6px 0;
-    font-size: 18px;
-}
-.quest-card-status {
-    color: #a2c192;
-    font-size: 11px;
-}
-.quest-card-hint {
-    color: #b4c0ac;
-}
-.quest-card progress {
-    display: block;
-    width: 100%;
-    height: 8px;
-    accent-color: #d3bb7c;
-}
-.guild-contributions {
-    list-style: none;
-    padding: 0;
-}
-.guild-contributions li {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 8px;
-}
-.quest-request-facts {
-    display: grid;
-    gap: 5px;
-}
-.quest-request-facts div {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.quest-request-facts dt {
-    color: #b4c0ac;
-}
-.quest-request-facts dd {
-    margin: 0;
-}
-.quest-trophy {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.quest-trophy img {
-    width: 24px;
-    height: 24px;
-    image-rendering: pixelated;
-}
-.quest-card-reason {
-    padding: 8px;
-    border-left: 2px solid #d3bb7c;
-    background: #353d2a;
-}
-.quest-card-actions {
-    display: flex;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
-}
-.quest-reward-items {
-    padding: 0;
-    list-style: none;
-}
-.quest-reward-items li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 8px 0;
-}
-</style>
+<style scoped src="./guildQuestCard.css"></style>

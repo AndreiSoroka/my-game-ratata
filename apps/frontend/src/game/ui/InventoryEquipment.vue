@@ -6,11 +6,11 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { ItemCondition } from '@/entities/items'
 import { tGame, weaponName } from '@/shared/lib/i18n'
 import { ItemSlot } from '@/shared/ui/common'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
-import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'

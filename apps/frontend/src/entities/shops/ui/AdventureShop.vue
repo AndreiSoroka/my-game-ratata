@@ -9,10 +9,9 @@ defineProps<{
     offers: readonly AdventureShopOffer[]
     gold: number
     blockedReason?: string | undefined
-    buttonAttrs?: Record<string, unknown>
 }>()
 defineSlots<{ market?: () => unknown }>()
-const emit = defineEmits<{ buy: [itemId: AdventureTradeItemId]; back: [] }>()
+const emit = defineEmits<{ buy: [itemId: AdventureTradeItemId] }>()
 </script>
 
 <template>
@@ -26,10 +25,11 @@ const emit = defineEmits<{ buy: [itemId: AdventureTradeItemId]; back: [] }>()
                     {{ tGame('game.conversation.gold') }}
                 </span>
             </h3>
+            <p v-if="offers.length === 0">{{ tGame('game.trade.noGoods') }}</p>
             <UiButton
                 v-for="offer in offers"
                 :key="offer.itemId"
-                v-bind="buttonAttrs"
+                data-dialogue-action
                 appearance="panel"
                 panel="panel-001"
                 :colors="darkPanelButtonColors"
@@ -44,25 +44,18 @@ const emit = defineEmits<{ buy: [itemId: AdventureTradeItemId]; back: [] }>()
                 </span>
             </UiButton>
         </slot>
-        <UiButton
-            v-bind="buttonAttrs"
-            appearance="panel"
-            panel="panel-001"
-            :colors="darkPanelButtonColors"
-            class="adventure-shop__action"
-            @click="emit('back')"
-        >
-            {{ tGame('game.conversation.backConversation') }}
-        </UiButton>
     </section>
 </template>
 
 <style scoped>
 .adventure-shop {
-    margin-block-start: 18px;
-    padding-block-start: 12px;
-    border-block-start: 1px solid var(--ui-dark-panel-divider);
+    min-inline-size: 0;
     color: var(--ui-dark-panel-text);
+}
+
+.trade-refusal {
+    color: var(--ui-dark-panel-warning);
+    overflow-wrap: anywhere;
 }
 
 .adventure-shop__summary {

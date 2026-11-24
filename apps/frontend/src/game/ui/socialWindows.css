@@ -37,6 +37,9 @@
 .social-window-stack--exchange {
     inline-size: min(100%, 1040px);
 }
+.social-window-stack--shop {
+    inline-size: min(100%, 580px);
+}
 .quest-window {
     inline-size: min(100%, 520px);
 }
@@ -78,7 +81,7 @@
     margin: 0 0 8px;
     font-size: 15px;
 }
-.social-surface--exchange {
+:is(.social-surface--exchange, .social-surface--shop) {
     inset: 3vh 16px;
     align-items: center;
 }
@@ -174,7 +177,7 @@
     .social-notices {
         width: min(260px, calc(100% - 24px));
     }
-    .social-surface--exchange {
+    :is(.social-surface--exchange, .social-surface--shop) {
         inset: 8px;
     }
 }

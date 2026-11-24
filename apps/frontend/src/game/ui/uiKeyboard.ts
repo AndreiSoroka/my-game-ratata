@@ -43,6 +43,28 @@ export function activateFocusedButton(
     return true
 }
 
+export function navigateDialogueActions(
+    event: KeyboardEvent,
+    panel: HTMLElement | undefined
+): void {
+    if (event.target instanceof HTMLInputElement || activateFocusedButton(event, panel)) return
+    const direction = ['ArrowDown', 'KeyS'].includes(event.code)
+        ? 1
+        : ['ArrowUp', 'KeyW'].includes(event.code)
+          ? -1
+          : 0
+    if (!direction) return
+    const buttons = Array.from(
+        panel?.querySelectorAll<HTMLButtonElement>(
+            '[data-dialogue-action]:not(:disabled):not([tabindex="-1"])'
+        ) ?? []
+    )
+    if (!buttons.length) return
+    event.preventDefault()
+    const current = buttons.findIndex((button) => button === document.activeElement)
+    buttons[(current + direction + buttons.length) % buttons.length]?.focus()
+}
+
 export function focusPanelSurface(event: PointerEvent, panel: HTMLElement | undefined): void {
     const target = event.target
     if (

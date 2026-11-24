@@ -37,7 +37,7 @@ async function expectExchangeLayout(dialog: Locator): Promise<void> {
     const frame = dialog.locator('.exchange-window-frame')
     const header = frame.locator('header').first()
     const participants = frame.locator('.exchange-participants')
-    const body = frame.locator('.exchange-window-frame__body')
+    const body = frame.locator('.dark-window-frame__body')
     const footer = frame.locator('.exchange-actions')
     const whisper = dialog.getByRole('region', { name: 'Приватный разговор' })
     await expect(header.getByRole('heading', { name: /^Обмен · Капля/ })).toBeVisible()
@@ -249,7 +249,7 @@ test('exchange keeps the header and actions visible while offers scroll', async 
     const dialog = page.getByRole('dialog', { name: /^Обмен:/ })
     const frame = dialog.locator('.exchange-window-frame')
     const title = frame.getByRole('heading', { name: /^Обмен · Капля/ })
-    const body = frame.locator('.exchange-window-frame__body')
+    const body = frame.locator('.dark-window-frame__body')
     const footer = frame.locator('.exchange-actions')
     await expectExchangeLayout(dialog)
     const [titleBefore, footerBefore] = await Promise.all([

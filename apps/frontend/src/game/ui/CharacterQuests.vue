@@ -2,13 +2,12 @@
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
+import { GuildQuestCard, QuestRewardSummary } from '@/entities/quests'
 import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import { activeQuests, questStatusLabel } from './activeQuests'
-import GuildQuestCard from './GuildQuestCard.vue'
 import ItemIcon from './ItemIcon.vue'
 import GameButton from './primitives/GameButton.vue'
-import QuestRewardSummary from './QuestRewardSummary.vue'
 import QuestTerms from './QuestTerms.vue'
 
 const props = defineProps<{
@@ -86,10 +85,11 @@ const leader = computed(
                 </template>
                 <template v-else-if="selected.source === 'guild'">
                     <GuildQuestCard
+                        class="quest-detail__guild-card"
                         :job="selected.quest"
                         :player-id="player.id"
                         :can-abandon="leader && player.alive"
-                        @command="emit('command', $event)"
+                        @abandon="emit('command', { type: 'guild_abandon', instanceId: $event })"
                     />
                 </template>
                 <template v-else>
@@ -165,10 +165,8 @@ const leader = computed(
 .quest-detail h2 {
     font-size: 20px;
 }
-.quest-detail :deep(.quest-card) {
-    border: 0;
-    margin: 0;
-    padding: 0;
+.quest-detail__guild-card {
+    margin-block-start: 0;
 }
 .quest-detail button {
     padding: 8px 12px;

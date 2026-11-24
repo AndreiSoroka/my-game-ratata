@@ -15,6 +15,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
+import { ItemCondition } from '@/entities/items'
 import { tGame } from '@/shared/lib/i18n'
 import { ItemSlot } from '@/shared/ui/common'
 
@@ -23,7 +24,6 @@ import { gameUiSoundKey } from './gameUiSound'
 import InventoryEquipment from './InventoryEquipment.vue'
 import InventoryItemDetails from './InventoryItemDetails.vue'
 import { inventoryKey } from './inventoryKeyboard'
-import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'

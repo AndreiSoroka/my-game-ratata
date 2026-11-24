@@ -28,7 +28,6 @@ interface StoryArgs {
     blockedReason?: string
     market: keyof typeof marketExamples
     onBuy: (itemId: AdventureTradeItemId) => void
-    onBack: () => void
 }
 
 const meta = {
@@ -42,7 +41,6 @@ const meta = {
         blockedReason: '',
         market: 'none',
         onBuy: fn().mockName('buy'),
-        onBack: fn().mockName('back'),
     },
     argTypes: {
         offers: { control: 'object' },
@@ -56,7 +54,6 @@ const meta = {
             options: ['none', 'empty', 'example'],
         },
         onBuy: { control: false },
-        onBack: { control: false },
     },
     render({ market, ...props }) {
         const renderMarket = marketExamples[market]

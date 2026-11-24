@@ -10,8 +10,13 @@ import { isConfirmationKey } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
+import { navigateDialogueActions } from './uiKeyboard'
 
-const props = defineProps<{ title: string; modal?: boolean; layout?: 'exchange' | 'quest' }>()
+const props = defineProps<{
+    title: string
+    modal?: boolean
+    layout?: 'exchange' | 'quest' | 'shop'
+}>()
 const emit = defineEmits<{ close: [] }>()
 defineSlots<{ default: () => unknown; below?: () => unknown }>()
 const panel = ref<HTMLElement>()
@@ -30,6 +35,10 @@ function repeatConfirmation(event: KeyboardEvent): boolean {
     )
 }
 function key(event: KeyboardEvent): void {
+    if (props.layout === 'shop') {
+        navigateDialogueActions(event, panel.value)
+        if (event.defaultPrevented) return
+    }
     if (repeatConfirmation(event)) {
         event.preventDefault()
         return
@@ -39,7 +48,7 @@ function key(event: KeyboardEvent): void {
         panel.value?.querySelectorAll<HTMLElement>(
             'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'
         ) ?? []
-    )
+    ).filter((field) => field.getAttribute('tabindex') !== '-1')
     if (!fields.length) return
     const index = fields.indexOf(document.activeElement as HTMLElement)
     event.preventDefault()
@@ -53,7 +62,13 @@ function key(event: KeyboardEvent): void {
 }
 onMounted(async () => {
     await nextTick()
-    panel.value?.focus()
+    const firstAction =
+        props.layout === 'shop'
+            ? panel.value?.querySelector<HTMLButtonElement>(
+                  '[data-dialogue-action]:not(:disabled):not([tabindex="-1"])'
+              )
+            : undefined
+    ;(firstAction ?? panel.value)?.focus()
 })
 </script>
 <template>
@@ -63,6 +78,7 @@ onMounted(async () => {
             'social-surface--modal': modal,
             'social-surface--exchange': layout === 'exchange',
             'social-surface--quest': layout === 'quest',
+            'social-surface--shop': layout === 'shop',
         }"
         @pointerdown.self="modal && $event.preventDefault()"
     >
@@ -71,6 +87,7 @@ onMounted(async () => {
             class="social-window-stack"
             :class="{
                 'social-window-stack--exchange': layout === 'exchange',
+                'social-window-stack--shop': layout === 'shop',
                 'quest-window': layout === 'quest',
             }"
             role="dialog"
@@ -80,7 +97,7 @@ onMounted(async () => {
             @keydown.stop="key"
             @keyup.stop
         >
-            <slot v-if="layout === 'quest' || layout === 'exchange'" />
+            <slot v-if="layout" />
             <div v-else class="social-window game-frame-host">
                 <GameFrame variant="window" />
                 <header class="social-window__header">

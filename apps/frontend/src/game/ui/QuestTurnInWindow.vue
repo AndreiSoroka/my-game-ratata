@@ -7,11 +7,10 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
-import { QuestItemList, QuestTurnInPanel } from '@/entities/quests'
+import { QuestItemList, QuestRewardSummary, QuestTurnInPanel } from '@/entities/quests'
 import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import PrivateConversation from './PrivateConversation.vue'
-import QuestRewardSummary from './QuestRewardSummary.vue'
 import { questObjectiveText } from './questTermsText'
 import SocialWindow from './SocialWindow.vue'
 

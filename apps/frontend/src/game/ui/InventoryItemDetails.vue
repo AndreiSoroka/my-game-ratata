@@ -6,9 +6,9 @@ import {
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
+import { ItemCondition } from '@/entities/items'
 import { itemDescription, tGame } from '@/shared/lib/i18n'
 
-import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
 import GameButton from './primitives/GameButton.vue'
 const props = defineProps<{ item: ItemInstanceSnapshot; hasNearbyChest: boolean }>()
