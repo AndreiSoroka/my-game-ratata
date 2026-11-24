@@ -1,4 +1,4 @@
-import { type MarketSnapshot, quoteMarketTrade } from '@my-game-ratata/contracts'
+import type { MarketSnapshot } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
@@ -25,19 +25,33 @@ const market: MarketSnapshot = {
     ],
 }
 describe('city economy panels', () => {
-    it('quotes the whole batch and emits the selected market trade', async () => {
-        const wrapper = mount(CityMarket, { props: { market, gold: 50 } })
+    it('shows who pays the tax and emits the quoted totals after tax', async () => {
+        const wrapper = mount(CityMarket, { props: { market, gold: 9 } })
+        const button = wrapper.get('.market-row button')
+        expect(wrapper.text()).toContain('Городской налог 20% округляется вверх. Платит торговец.')
+        expect(button.text()).toBe('Купить 1 · 9 ◈')
+        const tax = wrapper.get('.market-row__tax--included')
+        expect(tax.text()).toBe('Из них 2 ◈ — налог')
+        expect(button.attributes('aria-describedby')).toBe(tax.attributes('id'))
+        await button.trigger('click')
         await wrapper.get('input').setValue(2)
-        expect(wrapper.findAll('.market-row button')[0]?.attributes('disabled')).toBeDefined()
+        expect(button.attributes('disabled')).toBeDefined()
+        expect(wrapper.find('.market-row__tax--included').exists()).toBe(false)
         await wrapper.get('[role="tab"][aria-selected="false"]').trigger('click')
-        await wrapper.get('.market-row button').trigger('click')
+        expect(wrapper.text()).toContain(
+            'Городской налог 20% округляется вверх и удерживается из выручки.'
+        )
+        expect(button.text()).toContain('Продать 2 · 10 ◈')
+        expect(button.get('.market-row__tax').text()).toBe('Налог · 3 ◈')
+        await button.trigger('click')
         expect(wrapper.emitted('trade')).toEqual([
+            [{ side: 'buy', itemId: 'wood', quantity: 1, expectedTotal: 9 }],
             [
                 {
                     side: 'sell',
                     itemId: 'wood',
                     quantity: 2,
-                    expectedTotal: quoteMarketTrade(market.rows[0]!, 'sell', 2),
+                    expectedTotal: 10,
                 },
             ],
         ])
@@ -86,7 +100,7 @@ describe('city economy panels', () => {
                     capacity: 24,
                     basePrice: 1,
                     consumptionPer10Minutes: 1,
-                    buyPrice: 2,
+                    buyPrice: 3,
                     sellPrice: 1,
                     deliveredLast10Minutes: 3,
                     consumedLast10Minutes: 1,
@@ -96,7 +110,7 @@ describe('city economy panels', () => {
         const wrapper = mount(CityDemandReport, { props: { market: heating } })
         const cells = wrapper.findAll('tbody tr td').map((cell) => cell.text())
         expect(wrapper.text()).toContain('Хворост')
-        expect(cells).toEqual(['6 / 12 / 24', '1', '1 / 2 ◈', '3 / 1'])
+        expect(cells).toEqual(['6 / 12 / 24', '1', '1 / 3 ◈', '3 / 1'])
         wrapper.unmount()
     })
 })

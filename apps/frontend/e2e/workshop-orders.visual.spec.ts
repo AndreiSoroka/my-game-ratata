@@ -30,3 +30,14 @@ test('WorkshopOrders explains the deposit before placing an order', async ({ pag
     await confirmation.getByRole('button', { name: 'Назад', exact: true }).click()
     await expect(order).toBeVisible()
 })
+
+test('WorkshopOrders shows the merchant tax on available stock', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.goto(uiStoryUrl('entities-shops-workshoporders--in-stock'))
+    const workshop = page.getByRole('region', { name: 'Заказы ремесленнику' })
+    await expect(workshop.getByRole('button', { name: /^Купить.*25 ◈/u })).toBeEnabled()
+    await expect(workshop.getByText('Налог торговца · 5 ◈')).toBeVisible()
+    await readyUiStory(page)
+    await expectUiFits(workshop, 320)
+    await expect(workshop).toHaveScreenshot('workshop-orders-in-stock-320.png')
+})

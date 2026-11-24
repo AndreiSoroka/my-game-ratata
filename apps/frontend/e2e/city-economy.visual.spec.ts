@@ -10,7 +10,7 @@ test('CityDemandReport keeps heating figures scrollable on a narrow screen', asy
     await expect(report.getByText('Прокрутите таблицу по горизонтали')).toBeVisible()
     const fuel = report.getByRole('row').filter({ hasText: 'Хворост' })
     await expect(fuel.getByRole('rowheader').locator('.ui-item-slot img')).toBeVisible()
-    await expect(fuel.getByRole('cell')).toHaveText(['6 / 12 / 24', '2', '1 / 2 ◈', '3 / 1'])
+    await expect(fuel.getByRole('cell')).toHaveText(['6 / 12 / 24', '2', '1 / 3 ◈', '3 / 1'])
     await readyUiStory(page)
     await expectUiFits(report, 320)
     const scroll = report.locator('.city-demand__scroll')

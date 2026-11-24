@@ -79,6 +79,30 @@ it('publishes only in the clerk’s authorized city review and reserves a quarte
     expect(f.service.cityFund(CENTER_LOCATION_ID)).toBe(before)
 })
 
+it('replenishes the treasury and publication budget once when trade tax settles', () => {
+    const f = npcQuestFixture()
+    const decision = {
+        type: 'quest_board_publish' as const,
+        draft: f.draft({ rewardGold: 76 }),
+    }
+    const before = f.service.cityFund(CENTER_LOCATION_ID)
+    const settleTax = f.adventure.questFunding.tradeTaxCredit(
+        CENTER_LOCATION_ID,
+        1
+    )
+    expect(settleTax).toBeDefined()
+    expect(f.service.cityFund(CENTER_LOCATION_ID)).toBe(before)
+    expect(f.service.decide(f.issuer, decision, 10, review).accepted).toBe(
+        false
+    )
+
+    settleTax?.()
+    settleTax?.()
+    expect(f.service.cityFund(CENTER_LOCATION_ID)).toBe(before + 1)
+    expect(f.service.decide(f.issuer, decision, 10, review).accepted).toBe(true)
+    expect(f.service.cityFund(CENTER_LOCATION_ID)).toBe(before + 1 - 76)
+})
+
 it('allows only one claimant even if two players have open offers', () => {
     const f = npcQuestFixture()
     const decision = { type: 'quest_board_publish' as const, draft: f.draft() }

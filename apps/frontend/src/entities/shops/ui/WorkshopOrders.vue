@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { WorkshopOffer, WorkshopSnapshot } from '@my-game-ratata/contracts'
+import {
+    marketTradeTax,
+    type WorkshopOffer,
+    type WorkshopSnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, ref } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
@@ -111,7 +115,16 @@ function cancel(orderId: string): void {
                             <p class="workshop-orders__terms">
                                 {{ tGame('game.trade.inStockWorkshopOrders') }} {{ offer.stock }}
                                 {{ tGame('game.trade.fullPriceWorkshopOrders') }}
-                                <span class="workshop-orders__gold">{{ offer.fullPrice }} ◈</span>
+                                <span class="workshop-orders__gold"
+                                    >{{ offer.fullPrice }}&nbsp;◈</span
+                                >
+                            </p>
+                            <p v-if="offer.stock > 0" class="workshop-orders__terms">
+                                {{
+                                    tGame('game.trade.cityTaxMerchantAmount', {
+                                        tax: marketTradeTax(offer.fullPrice),
+                                    })
+                                }}
                             </p>
                         </div>
                     </div>

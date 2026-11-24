@@ -85,7 +85,11 @@ export class AdventureService {
             this.cities
         )
         this.now = options.now ?? Date.now
-        this.economy = new CityEconomyService(this.now())
+        this.economy = new CityEconomyService(
+            this.now(),
+            undefined,
+            this.questFunding
+        )
         this.farmSupply = new CityFarmSupply(this.economy, (locationId, now) =>
             this.farmSnapshot(locationId, now)
         )

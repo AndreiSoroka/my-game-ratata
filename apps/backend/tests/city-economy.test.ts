@@ -2,6 +2,7 @@ import {
     CENTER_LOCATION_ID,
     type MarketItemId,
     quoteMarketTrade,
+    quoteMarketTradeBreakdown,
 } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
@@ -18,6 +19,7 @@ import {
     equipDirect,
 } from '../src/game/inventory'
 import { NavigationService } from '../src/game/navigation'
+import { QuestFunding } from '../src/game/questFunding'
 
 function character(id = 'hero', scripted = false): GameCharacter {
     return new GameCharacter({
@@ -58,15 +60,18 @@ it('prices every stock boundary with a spread, including batch splits and reserv
     for (let stock = 0; stock <= template.capacity; stock += 1) {
         const source = { ...template, stock }
         for (let amount = 1; amount <= Math.min(stock, 8); amount += 1) {
-            const cost = required(quoteMarketTrade(source, 'buy', amount))
-            const recovered = required(
-                quoteMarketTrade(
+            const buy = required(
+                quoteMarketTradeBreakdown(source, 'buy', amount)
+            )
+            const sell = required(
+                quoteMarketTradeBreakdown(
                     { ...source, stock: stock - amount },
                     'sell',
                     amount
                 )
             )
-            expect(cost).toBeGreaterThan(recovered)
+            expect(buy.total).toBeGreaterThan(sell.total)
+            expect(buy.total - buy.tax).toBeGreaterThanOrEqual(sell.subtotal)
             const split = Array.from({ length: amount }, (_, index) =>
                 required(
                     quoteMarketTrade(
@@ -76,7 +81,7 @@ it('prices every stock boundary with a spread, including batch splits and reserv
                     )
                 )
             ).reduce((sum, value) => sum + value, 0)
-            expect(split).toBe(cost)
+            expect(split).toBe(buy.total)
         }
         if (stock < source.capacity) {
             const proceeds = required(quoteMarketTrade(source, 'sell', 1))
@@ -131,15 +136,16 @@ it('consumes evenly on server deadlines, catches up without debt, and snapshots 
 })
 
 it('transfers actual instances atomically and keeps cities independent', () => {
-    const economy = new CityEconomyService(0, [
-        CENTER_LOCATION_ID,
-        'second-city',
-    ])
+    const cities = [CENTER_LOCATION_ID, 'second-city']
+    const funding = new QuestFunding(cities)
+    const economy = new CityEconomyService(0, cities, funding)
     const actor = character()
     const wallet = createAdventureState()
     const wood = createItemInstance('wood')
     actor.inventory.push(wood)
     const initial = row(economy, 'wood')
+    const openingQuestGold = funding.availableGold(CENTER_LOCATION_ID)
+    const otherQuestGold = funding.availableGold('second-city')
     const sale = {
         type: 'market_trade' as const,
         npcId: 'merchant',
@@ -153,6 +159,8 @@ it('transfers actual instances atomically and keeps cities independent', () => {
     expect(actor.inventory).toHaveLength(0)
     expect(row(economy, 'wood').stock).toBe(initial.stock + 1)
     expect(row(economy, 'wood', 0, 'second-city').stock).toBe(initial.stock)
+    expect(funding.availableGold(CENTER_LOCATION_ID)).toBe(openingQuestGold + 1)
+    expect(funding.availableGold('second-city')).toBe(otherQuestGold)
     wallet.gold = 100
     actor.inventory = Array.from({ length: 50 }, () =>
         createItemInstance('food')
@@ -172,6 +180,7 @@ it('transfers actual instances atomically and keeps cities independent', () => {
             .accepted
     ).toBe(false)
     expect(row(economy, 'wood').stock).toBe(before)
+    expect(funding.availableGold(CENTER_LOCATION_ID)).toBe(openingQuestGold + 1)
 })
 
 it('rejects the second buyer of a finite last unit and the second seller at reserve cap', () => {
@@ -253,7 +262,7 @@ it('rejects the second buyer of a finite last unit and the second seller at rese
     expect(countInventoryItem(other.inventory, 'wood')).toBe(1)
 })
 
-it('deduplicates trade and repair, rejecting stale price, crime, distance and wall', () => {
+it('funds city quests once per purchase and rejects stale price, crime, distance and wall', () => {
     const service = new AdventureService({
         now: () => 0,
         resourceNodes: [],
@@ -264,6 +273,9 @@ it('deduplicates trade and repair, rejecting stale price, crime, distance and wa
         smith = character('npc_smith_1', true)
     const navigation = grid()
     service.grantGoldOnce(actor.id, 100, 'seed')
+    const cityQuestGold = () =>
+        service.questFunding.availableGold(CENTER_LOCATION_ID)
+    const openingQuestGold = cityQuestGold()
     const market = required(service.economy.snapshot(CENTER_LOCATION_ID, 0))
     const offer = required(market.rows.find((entry) => entry.itemId === 'axe'))
     const buy = {
@@ -275,17 +287,34 @@ it('deduplicates trade and repair, rejecting stale price, crime, distance and wa
         expectedTotal: required(offer.buyPrice),
         requestId: 'buy',
     }
+    expect(buy.expectedTotal).toBe(25)
+    expect(
+        service.handleResult(
+            actor,
+            { ...buy, expectedTotal: 24, requestId: 'stale' },
+            [merchant],
+            navigation,
+            0
+        ).accepted
+    ).toBe(false)
+    expect(cityQuestGold()).toBe(openingQuestGold)
+    expect(service.snapshot(actor.id).gold).toBe(100)
+    expect(actor.inventory).toHaveLength(0)
     expect(
         service.handleResult(actor, buy, [merchant], navigation, 0).accepted
     ).toBe(true)
     const snapshot = service.snapshot(actor.id, actor.locationId, actor)
+    expect(snapshot.gold).toBe(75)
+    expect(cityQuestGold()).toBe(openingQuestGold + 5)
     expect(
         service.handleResult(actor, buy, [merchant], navigation, 0).accepted
     ).toBe(true)
     expect(actor.inventory).toHaveLength(1)
-    expect(service.snapshot(actor.id, actor.locationId, actor).noticeId).toBe(
-        snapshot.noticeId
-    )
+    expect(service.snapshot(actor.id, actor.locationId, actor)).toMatchObject({
+        gold: snapshot.gold,
+        noticeId: snapshot.noticeId,
+    })
+    expect(cityQuestGold()).toBe(openingQuestGold + 5)
     const axe = required(actor.inventory[0])
     axe.durability = 0
     const quote = repairSnapshot(actor)
@@ -337,6 +366,7 @@ it('deduplicates trade and repair, rejecting stale price, crime, distance and wa
             0
         ).accepted
     ).toBe(false)
+    expect(cityQuestGold()).toBe(openingQuestGold + 5)
 })
 
 it('repairs equipment and inventory together atomically; no coins or condition change on bad quote', () => {

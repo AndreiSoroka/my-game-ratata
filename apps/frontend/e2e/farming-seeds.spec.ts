@@ -1,5 +1,7 @@
-import { FARM_SUPPLY_CHESTS, quoteMarketTrade } from '@my-game-ratata/contracts'
+import { FARM_PLOTS, FARM_SUPPLY_CHESTS, quoteMarketTrade } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
+
+import { waitForBrushwood } from './world-navigation'
 
 const farmDirections: Record<string, 'north' | 'east' | 'west'> = {
     chromium: 'north',
@@ -23,33 +25,11 @@ for (const mobile of [false, true]) {
         )
         await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
         expect(await seedCount(page)).toBe(0)
+        await waitForBrushwood(page, mobile)
         await gatherBrushwood(page)
         await buySeed(page)
         expect(await seedCount(page)).toBe(1)
-        const direction = farmDirections[info.project.name]!
-        const journey = await page.evaluate(
-            (direction) => window.__ratataTest!.travel(direction, { timeoutMs: 30_000 }),
-            direction
-        )
-        expect(journey.status, journey.reason).toBe('arrived')
-        const bare = await page.evaluate(() =>
-            window
-                .__ratataTest!.getState()
-                .snapshot!.adventure!.farmPlots.find((plot) => plot.phase === 'bare')
-        )
-        expect(bare).toBeDefined()
-        expect(
-            (
-                await page.evaluate(
-                    (position) =>
-                        window.__ratataTest!.navigate(position, {
-                            timeoutMs: 20_000,
-                            tolerance: 32,
-                        }),
-                    bare!.position
-                )
-            ).status
-        ).toBe('arrived')
+        const bare = await approachBarePlot(page, info.project.name)
         const droppedId = await dropSeed(page)
         expect(droppedId).toBeDefined()
         expect(await seedCount(page)).toBe(0)
@@ -69,7 +49,7 @@ for (const mobile of [false, true]) {
                     .snapshot!.adventure!.farmPlots.find((plot) => plot.id === plotId),
                 notice: api.getState().snapshot!.adventure!.notice,
             }
-        }, bare!.id)
+        }, bare.id)
         expect(rejected.action?.disabled).toBe(true)
         expect(rejected.action?.label).toContain('в рюкзаке: 0 · нет семян')
         expect(rejected.notice).toContain('сем')
@@ -100,7 +80,7 @@ for (const mobile of [false, true]) {
                 plot: state.snapshot!.adventure!.farmPlots.find((plot) => plot.id === plotId),
                 notice: state.snapshot!.adventure!.notice,
             }
-        }, bare!.id)
+        }, bare.id)
         expect(sow.action?.label).toContain('1 семя · 5 EN · в рюкзаке: 1')
         expect(sow.plot?.phase, sow.notice ?? 'No sowing result').toBe('growing')
         expect(await seedCount(page)).toBe(0)
@@ -110,6 +90,38 @@ for (const mobile of [false, true]) {
             path: info.outputPath(`farming-seeds-${mobile ? 'mobile' : 'desktop'}.png`),
         })
     })
+}
+
+async function approachBarePlot(page: Page, projectName: string) {
+    const journey = await page.evaluate(
+        (direction) => window.__ratataTest!.travel(direction, { timeoutMs: 30_000 }),
+        farmDirections[projectName]!
+    )
+    expect(journey.status, journey.reason).toBe('arrived')
+    const approachPlot = FARM_PLOTS.find((plot) => plot.locationId === journey.locationId)
+    expect(approachPlot).toBeDefined()
+    const farm = await page.evaluate(
+        (position) => window.__ratataTest!.navigate(position, { timeoutMs: 25_000, tolerance: 32 }),
+        approachPlot!.position
+    )
+    expect(farm.status, farm.reason).toBe('arrived')
+    await page.waitForFunction(() =>
+        window
+            .__ratataTest!.getState()
+            .snapshot!.adventure!.farmPlots.some((plot) => plot.phase === 'bare')
+    )
+    const bare = await page.evaluate(() =>
+        window
+            .__ratataTest!.getState()
+            .snapshot!.adventure!.farmPlots.find((plot) => plot.phase === 'bare')
+    )
+    expect(bare).toBeDefined()
+    const approach = await page.evaluate(
+        (position) => window.__ratataTest!.navigate(position, { timeoutMs: 20_000, tolerance: 32 }),
+        bare!.position
+    )
+    expect(approach.status, approach.reason).toBe('arrived')
+    return bare!
 }
 
 async function lifeUnlocked(page: Page): Promise<boolean | undefined> {

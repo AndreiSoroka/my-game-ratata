@@ -46,7 +46,10 @@ function openWorkshop(snapshot: WorkshopSnapshot, gold: number, market?: MarketS
 describe('workshop order payment', () => {
     it('uses the current market quote to buy an item in stock', async () => {
         const wrapper = openWorkshop(
-            { ...workshop, offers: [{ ...workshop.offers[0]!, stock: 1, canOrder: false }] },
+            {
+                ...workshop,
+                offers: [{ ...workshop.offers[0]!, stock: 1, fullPrice: 30, canOrder: false }],
+            },
             40,
             {
                 cityId: 'map-2-2',
@@ -70,6 +73,7 @@ describe('workshop order payment', () => {
                 ],
             }
         )
+        expect(wrapper.get('.workshop-orders').text()).toContain('Налог торговца · 6 ◈')
         await wrapper.get('.workshop-orders button').trigger('click')
         expect(wrapper.emitted('command')?.[0]?.[0]).toMatchObject({
             type: 'market_trade',

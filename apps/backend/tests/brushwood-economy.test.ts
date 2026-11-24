@@ -2,6 +2,7 @@ import {
     CENTER_LOCATION_ID,
     type MarketRow,
     quoteMarketTrade,
+    quoteMarketTradeBreakdown,
 } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
@@ -37,7 +38,7 @@ function brushwood(economy: CityEconomyService, now = 0): MarketRow {
     return row
 }
 
-it('keeps finite brushwood stock and existing scarcity prices with read-only snapshots', () => {
+it('keeps finite brushwood stock, read-only snapshots and positive proceeds on a taxed sale', () => {
     const economy = new CityEconomyService(0)
     const row = brushwood(economy)
     expect(row).toMatchObject({
@@ -46,9 +47,14 @@ it('keeps finite brushwood stock and existing scarcity prices with read-only sna
         capacity: 24,
         basePrice: 1,
         consumptionPer10Minutes: 1,
+        buyPrice: 3,
         sellPrice: 1,
     })
-    expect(quoteMarketTrade({ ...row, stock: 0 }, 'sell', 1)).toBe(2)
+    expect(quoteMarketTradeBreakdown({ ...row, stock: 0 }, 'sell', 1)).toEqual({
+        subtotal: 2,
+        tax: 1,
+        total: 1,
+    })
     expect(brushwood(economy, 12_000_000).stock).toBe(6)
     economy.update(599_999)
     expect(brushwood(economy).stock).toBe(6)
@@ -168,7 +174,7 @@ it('does not accumulate heating debt while empty or consume new deliveries on sn
     expect(brushwood(economy, 9_600_000).stock).toBe(2)
 })
 
-it('deduplicates ordinary brushwood requests and rejects a competing stale last-unit sale', () => {
+it('funds city quests once per brushwood sale and rejects a competing last-unit sale', () => {
     const service = new AdventureService({
         now: () => 0,
         resourceNodes: [],
@@ -190,6 +196,9 @@ it('deduplicates ordinary brushwood requests and rejects a competing stale last-
         createItemInstance('brushwood', 9),
         createItemInstance('brushwood', 8)
     )
+    const cityQuestGold = () =>
+        service.questFunding.availableGold(CENTER_LOCATION_ID)
+    const openingQuestGold = cityQuestGold()
     const fill = {
         type: 'market_trade' as const,
         npcId: merchant.id,
@@ -204,17 +213,32 @@ it('deduplicates ordinary brushwood requests and rejects a competing stale last-
         service.handleResult(actor, fill, [merchant], navigation, 0).accepted
     ).toBe(true)
     const gold = service.snapshot(actor.id).gold
+    expect(gold).toBe(27)
+    expect(cityQuestGold()).toBe(openingQuestGold + 7)
     expect(
         service.handleResult(actor, fill, [merchant], navigation, 0).accepted
     ).toBe(true)
     expect(brushwood(service.economy).stock).toBe(23)
     expect(service.snapshot(actor.id).gold).toBe(gold)
+    expect(cityQuestGold()).toBe(openingQuestGold + 7)
+    expect(
+        service.handleResult(
+            actor,
+            { ...fill, quantity: 1, expectedTotal: 1, requestId: 'no-goods' },
+            [merchant],
+            navigation,
+            0
+        ).accepted
+    ).toBe(false)
+    expect(cityQuestGold()).toBe(openingQuestGold + 7)
     actor.inventory.push(createItemInstance('brushwood'))
     other.inventory.push(createItemInstance('brushwood'))
     const last = { ...fill, quantity: 1, expectedTotal: 1, requestId: 'last' }
     expect(
         service.handleResult(actor, last, [merchant], navigation, 0).accepted
     ).toBe(true)
+    expect(service.snapshot(actor.id).gold).toBe(gold + 1)
+    expect(cityQuestGold()).toBe(openingQuestGold + 8)
     expect(
         service.handleResult(
             other,
@@ -226,4 +250,5 @@ it('deduplicates ordinary brushwood requests and rejects a competing stale last-
     ).toBe(false)
     expect(countInventoryItem(other.inventory, 'brushwood')).toBe(1)
     expect(brushwood(service.economy).stock).toBe(24)
+    expect(cityQuestGold()).toBe(openingQuestGold + 8)
 })

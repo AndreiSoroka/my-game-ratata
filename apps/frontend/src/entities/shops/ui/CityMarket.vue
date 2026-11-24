@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import {
+    MARKET_TAX_RATE_PERCENT,
     type MarketRow,
     type MarketSide,
     type MarketSnapshot,
-    quoteMarketTrade,
+    quoteMarketTradeBreakdown,
 } from '@my-game-ratata/contracts'
-import { ref, useId, useTemplateRef } from 'vue'
+import { computed, ref, useId, useTemplateRef } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
 import { itemAssetCatalog } from '@/shared/lib/item-assets'
@@ -26,6 +27,12 @@ const theme = useDarkPanelTheme()
 const sides = ['buy', 'sell'] as const
 const side = ref<MarketSide>('buy')
 const quantity = ref(1)
+const quotedRows = computed(() =>
+    props.market.rows.map((row) => ({
+        row,
+        quote: quoteMarketTradeBreakdown(row, side.value, quantity.value),
+    }))
+)
 const tabs = useTemplateRef<HTMLDivElement>('tabs')
 const instanceId = useId()
 const panelId = `${instanceId}-market-panel`
@@ -54,10 +61,6 @@ function tabKey(event: KeyboardEvent): void {
     tabs.value?.querySelector<HTMLElement>(`[id="${tabId(side.value)}"]`)?.focus()
 }
 
-function total(row: MarketRow): number | null {
-    return quoteMarketTrade(row, side.value, quantity.value)
-}
-
 function canTrade(expectedTotal: number | null): expectedTotal is number {
     return (
         !props.blocked &&
@@ -66,8 +69,7 @@ function canTrade(expectedTotal: number | null): expectedTotal is number {
     )
 }
 
-function trade(row: MarketRow): void {
-    const expectedTotal = total(row)
+function trade(row: MarketRow, expectedTotal: number | null): void {
     if (!canTrade(expectedTotal)) return
     emit('trade', { side: side.value, itemId: row.itemId, quantity: quantity.value, expectedTotal })
 }
@@ -117,6 +119,13 @@ function trade(row: MarketRow): void {
             role="tabpanel"
             :aria-labelledby="tabId(side)"
         >
+            <p class="city-market__tax-policy">
+                {{
+                    tGame(side === 'buy' ? 'game.trade.cityTaxBuy' : 'game.trade.cityTaxSell', {
+                        rate: MARKET_TAX_RATE_PERCENT,
+                    })
+                }}
+            </p>
             <label class="market-quantity">
                 {{ tGame('game.trade.quantity') }}
                 <FantasyBorder
@@ -134,7 +143,7 @@ function trade(row: MarketRow): void {
                 border="border-004"
                 color="var(--city-market-accent)"
             >
-                <div v-for="row in market.rows" :key="row.itemId" class="market-row">
+                <div v-for="{ row, quote } in quotedRows" :key="row.itemId" class="market-row">
                     <div class="market-row__item">
                         <ItemSlot size="compact" :src="itemAssetCatalog[row.itemId].src" />
                         <span>
@@ -146,157 +155,51 @@ function trade(row: MarketRow): void {
                             >
                         </span>
                     </div>
-                    <UiButton
-                        data-dialogue-action
-                        appearance="panel"
-                        panel="panel-001"
-                        :colors="darkPanelButtonColors"
-                        :disabled="!canTrade(total(row))"
-                        @click="trade(row)"
-                    >
-                        {{
-                            total(row) === null
-                                ? tGame(
-                                      side === 'buy' ? 'game.trade.noGoods' : 'game.trade.noBuyer'
-                                  )
-                                : `${tGame(side === 'buy' ? 'game.trade.buy' : 'game.trade.sell')} ${quantity} · ${total(row)} ◈`
-                        }}
-                    </UiButton>
+                    <div class="market-row__action">
+                        <UiButton
+                            data-dialogue-action
+                            appearance="panel"
+                            panel="panel-001"
+                            :colors="darkPanelButtonColors"
+                            :disabled="!canTrade(quote?.total ?? null)"
+                            :aria-describedby="
+                                side === 'buy' && quote
+                                    ? `${instanceId}-${row.itemId}-tax`
+                                    : undefined
+                            "
+                            @click="trade(row, quote?.total ?? null)"
+                        >
+                            <template v-if="quote !== null">
+                                <span>
+                                    {{
+                                        tGame(side === 'buy' ? 'game.trade.buy' : 'game.trade.sell')
+                                    }}
+                                    {{ quantity }} · {{ quote.total }} ◈
+                                </span>
+                                <small v-if="side === 'sell'" class="market-row__tax">
+                                    {{ tGame('game.trade.cityTaxAmount', { tax: quote.tax }) }}
+                                </small>
+                            </template>
+                            <template v-else>
+                                {{
+                                    tGame(
+                                        side === 'buy' ? 'game.trade.noGoods' : 'game.trade.noBuyer'
+                                    )
+                                }}
+                            </template>
+                        </UiButton>
+                        <small
+                            v-if="side === 'buy' && quote"
+                            :id="`${instanceId}-${row.itemId}-tax`"
+                            class="market-row__tax market-row__tax--included"
+                        >
+                            {{ tGame('game.trade.cityTaxIncluded', { tax: quote.tax }) }}
+                        </small>
+                    </div>
                 </div>
             </FantasyBorder>
         </div>
     </section>
 </template>
 
-<style scoped>
-.city-market,
-.city-market__panel {
-    display: grid;
-    gap: 6px;
-    min-inline-size: 0;
-}
-
-.city-market {
-    --city-market-accent: var(--ui-themed-panel-accent, var(--ui-dark-panel-border));
-    --city-market-surface: var(--ui-themed-panel-surface, var(--ui-dark-panel-surface));
-    padding: 4px 2px;
-    background: var(--city-market-surface);
-    color: var(--ui-dark-panel-text);
-    font:
-        14px/1.35 system-ui,
-        sans-serif;
-}
-
-.city-market__summary {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 4px 12px;
-}
-
-.city-market__summary h3 {
-    margin: 0;
-    color: var(--ui-dark-panel-title);
-    font: 600 clamp(15px, 3vw, 19px)/1.25 var(--ratata-font-family, system-ui);
-}
-
-.city-market__summary p {
-    margin: 0;
-    color: var(--ui-light-button-selected-edge);
-    font-size: 12px;
-}
-
-.market-tabs {
-    display: flex;
-    gap: 4px;
-    border-block-end: 1px solid var(--ui-dark-panel-divider);
-}
-
-.market-tabs .ui-button {
-    margin-block-end: -1px;
-    border-block-end: 2px solid transparent;
-}
-
-.market-tabs .ui-button[aria-selected='true'] {
-    border-block-end-color: var(--ui-light-button-selected-edge);
-}
-
-.market-quantity {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.market-quantity__field {
-    display: inline-flex;
-    background: color-mix(in srgb, var(--city-market-surface) 90%, var(--city-market-accent));
-    color-scheme: dark;
-}
-
-.market-quantity__field:focus-within {
-    outline: 1px solid var(--ui-dark-panel-title);
-    outline-offset: 2px;
-}
-
-.market-quantity input {
-    box-sizing: border-box;
-    inline-size: 62px;
-    padding: 3px 4px;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font:
-        16px/1.25 system-ui,
-        sans-serif;
-}
-
-.market-quantity input:focus {
-    outline: none;
-}
-
-.city-market__stock {
-    padding-inline: 2px;
-    background: color-mix(in srgb, var(--city-market-surface) 94%, var(--city-market-accent));
-}
-
-.market-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-    align-items: center;
-    gap: 6px;
-    padding-block: 4px;
-}
-
-.market-row + .market-row {
-    border-block-start: 1px solid var(--ui-dark-panel-divider);
-}
-
-.market-row__item {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 6px;
-    overflow-wrap: anywhere;
-}
-
-.market-row__item small {
-    display: block;
-    font-size: 11px;
-}
-
-.market-row__item strong {
-    color: var(--ui-dark-panel-title);
-}
-
-.market-row__empty-stock {
-    color: var(--ui-dark-panel-warning);
-}
-
-.market-tabs .ui-button,
-.market-row .ui-button {
-    --ui-button-panel-padding: 0 5px;
-    min-block-size: 36px;
-    font-size: 13px;
-}
-</style>
+<style scoped src="./cityMarket.css"></style>

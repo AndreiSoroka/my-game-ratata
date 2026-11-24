@@ -52,6 +52,15 @@ type Story = StoryObj<StoryArgs>
 
 export const Default: Story = {}
 
+export const InStock: Story = {
+    args: {
+        workshop: {
+            ...workshop,
+            offers: workshop.offers.map((offer) => ({ ...offer, stock: 1 })),
+        },
+    },
+}
+
 export const WaitingMaterials: Story = {
     args: {
         workshop: {

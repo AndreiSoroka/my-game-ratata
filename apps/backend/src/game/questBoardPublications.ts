@@ -1,8 +1,4 @@
-import {
-    getWorldLocationDefinition,
-    type LocalizedMessage,
-    type QuestDraft,
-} from '@my-game-ratata/contracts'
+import type { LocalizedMessage, QuestDraft } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { npcQuestObjectiveMessage } from './npcQuestObjectiveText'
@@ -105,17 +101,15 @@ export class QuestBoardPublications {
         reward: number,
         postings: PublicQuestPosting[]
     ): boolean {
-        const initialGold =
-            getWorldLocationDefinition(cityId)?.municipalQuestGold ?? 300
+        const funding = this.environment.adventure.questFunding
         const reserved = postings.reduce(
             (sum, posting) => sum + posting.draft.rewardGold,
             0
         )
         const spent = this.spentByCity.get(cityId) ?? 0
         return (
-            spent + reserved + reward <= Math.floor(initialGold / 4) &&
-            this.environment.adventure.questFunding.availableGold(cityId) >=
-                reward
+            spent + reserved + reward <= funding.publicationBudget(cityId) &&
+            funding.availableGold(cityId) >= reward
         )
     }
 

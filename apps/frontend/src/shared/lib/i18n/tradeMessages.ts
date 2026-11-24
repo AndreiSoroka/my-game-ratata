@@ -27,6 +27,17 @@ export const tradeMessages = {
     scrollDemandTable: ['Прокрутите таблицу по горизонтали', 'Scroll the table sideways'],
     cityMarket: ['Городской рынок', 'City market'],
     cityNeeds: ['· потребности города', '· city needs'],
+    cityTaxAmount: ['Налог · {tax} ◈', 'Tax · {tax} ◈'],
+    cityTaxIncluded: ['Из них {tax} ◈ — налог', 'Includes {tax} ◈ in tax'],
+    cityTaxMerchantAmount: ['Налог торговца · {tax} ◈', 'Merchant tax · {tax} ◈'],
+    cityTaxBuy: [
+        'Городской налог {rate}% округляется вверх. Платит торговец.',
+        'The merchant pays {rate}% city tax, rounded up.',
+    ],
+    cityTaxSell: [
+        'Городской налог {rate}% округляется вверх и удерживается из выручки.',
+        'The city deducts {rate}% tax from your sale proceeds, rounded up.',
+    ],
     clearItems: ['Очистить', 'Clear'],
     close: ['Закрыть', 'Close'],
     collectPayRemaining: ['Получить · доплатить', 'Collect · pay remaining'],

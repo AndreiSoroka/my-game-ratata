@@ -26,7 +26,7 @@ export const cityMarketExample: MarketSnapshot = {
             capacity: 48,
             basePrice: 4,
             consumptionPer10Minutes: 4,
-            buyPrice: 2,
+            buyPrice: 3,
             sellPrice: 1,
             deliveredLast10Minutes: 6,
             consumedLast10Minutes: 4,

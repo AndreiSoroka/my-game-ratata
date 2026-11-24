@@ -1,5 +1,7 @@
-import type { PlantTreePreview } from '@my-game-ratata/contracts'
+import { type PlantTreePreview, quoteMarketTrade } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
+
+import { waitForBrushwood } from './world-navigation'
 
 // Finite shared sources can require a second approach around an entire building.
 const resourceNavigationTimeoutMs = 40_000
@@ -33,6 +35,7 @@ for (const mobile of [false, true]) {
         await expect(canvas).toBeVisible()
         await collapseTestControls(page)
         await verifySaplingBindings(page)
+        await waitForBrushwood(page, mobile)
         const source = await page.evaluate(() => {
             const state = window.__ratataTest!.getState()
             return state
@@ -164,37 +167,36 @@ async function acquireSapling(page: Page): Promise<void> {
             )
         ).status
     ).toBe('arrived')
-    for (let index = 0; index < 2; index += 1) {
-        const result = await page.evaluate(async (index) => {
-            const api = window.__ratataTest!
-            const before = api.getState().snapshot!.adventure!.gold
-            const receipt = api.getState().snapshot!.adventure!.noticeId ?? -1
-            const price = api
-                .getState()
-                .snapshot!.adventure!.market!.rows.find(
-                    (row) => row.itemId === 'brushwood'
-                )!.sellPrice!
-            await api.act(
-                {
-                    type: 'market_trade',
-                    npcId: 'npc_merchant_1',
-                    side: 'sell',
-                    itemId: 'brushwood',
-                    quantity: 1,
-                    expectedTotal: price,
-                    requestId: `forest-sell-${index}`,
-                },
-                { until: { type: 'notice', after: receipt } }
-            )
-            return {
-                before,
-                after: api.getState().snapshot!.adventure!.gold,
-                price,
-                notice: api.getState().snapshot!.adventure!.notice,
-            }
-        }, index)
-        expect(result.after - result.before, result.notice ?? 'No sale receipt').toBe(result.price)
-    }
+    const brushwood = await page.evaluate(() =>
+        window
+            .__ratataTest!.getState()
+            .snapshot!.adventure!.market!.rows.find((row) => row.itemId === 'brushwood')!
+    )
+    const price = quoteMarketTrade(brushwood, 'sell', 2)
+    expect(price).not.toBeNull()
+    const result = await page.evaluate(async (price) => {
+        const api = window.__ratataTest!
+        const before = api.getState().snapshot!.adventure!.gold
+        const receipt = api.getState().snapshot!.adventure!.noticeId ?? -1
+        await api.act(
+            {
+                type: 'market_trade',
+                npcId: 'npc_merchant_1',
+                side: 'sell',
+                itemId: 'brushwood',
+                quantity: 2,
+                expectedTotal: price!,
+                requestId: 'forest-sell-brushwood',
+            },
+            { until: { type: 'notice', after: receipt } }
+        )
+        return {
+            before,
+            after: api.getState().snapshot!.adventure!.gold,
+            notice: api.getState().snapshot!.adventure!.notice,
+        }
+    }, price)
+    expect(result.after - result.before, result.notice ?? 'No sale receipt').toBe(price)
     const bought = await page.evaluate(async () => {
         const api = window.__ratataTest!
         const price = api

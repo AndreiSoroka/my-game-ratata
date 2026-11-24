@@ -1,6 +1,19 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 import { expect, type Page } from '@playwright/test'
 
+export async function waitForBrushwood(page: Page, mobile: boolean): Promise<void> {
+    if (mobile) {
+        expect(await page.evaluate(() => window.__ratataGameDebug?.setCameraZoom?.(1))).toBe(true)
+    }
+    await page.waitForFunction(() =>
+        window
+            .__ratataTest!.getState()
+            .snapshot!.adventure!.resourceNodes.some(
+                (node) => node.source === 'branches' && node.phase === 'ready'
+            )
+    )
+}
+
 export async function enterBuilding(page: Page, name: string): Promise<void> {
     const entry = await approachBuilding(page, name)
     await walkTo(page, entry, 4)

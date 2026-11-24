@@ -24,13 +24,14 @@ import {
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
-import { marketCapacity, rejected, validateTrade } from './cityMarketRules'
+import { marketCapacity, prepareTrade, rejected } from './cityMarketRules'
 import {
     addInventoryItems,
     countInventoryItem,
     createItemInstance,
     type InventoryItemInstance,
 } from './inventory'
+import { QuestFunding } from './questFunding'
 import { canPerformSkillAction } from './skillProgression'
 
 export interface MarketResult {
@@ -80,7 +81,8 @@ export class CityEconomyService {
         now = Date.now(),
         cityIds: readonly string[] = WORLD_LOCATION_DEFINITIONS.filter(
             (location) => location.biome === 'city'
-        ).map((location) => location.id)
+        ).map((location) => location.id),
+        private readonly questFunding = new QuestFunding(cityIds)
     ) {
         for (const cityId of cityIds) {
             const inventory: InventoryItemInstance[] = []
@@ -216,9 +218,15 @@ export class CityEconomyService {
         if (city === undefined || row === undefined) {
             return rejected('В этой локации нет городского рынка.')
         }
-        const total = validateTrade(wallet, message, row)
-        if (typeof total === 'string') {
-            return rejected(total)
+        const plan = prepareTrade(
+            wallet,
+            message,
+            row,
+            this.questFunding,
+            actor.locationId
+        )
+        if (typeof plan === 'string') {
+            return rejected(plan)
         }
         const buying = message.side === 'buy'
         const source = buying ? city.inventory : actor.inventory
@@ -239,7 +247,8 @@ export class CityEconomyService {
             )
         }
         resetMartyrStreak(actor)
-        wallet.gold += buying ? -total : total
+        wallet.gold += buying ? -plan.total : plan.total
+        plan.creditTax()
         city.revision += 1
         if (!buying) {
             city.history.push({
