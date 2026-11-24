@@ -29,6 +29,11 @@ describe('NPC AI configuration', () => {
             serviceTier: 'default',
             timeoutMs: 60_000,
         })
+        expect(config.limits).toMatchObject({
+            maxCallsPerMinute: 20,
+            maxCallsPer10Minutes: 100,
+        })
+        expect(config.limits).not.toHaveProperty('maxCallsPerHour')
         expect(
             Object.fromEntries(
                 config.npcs.map(({ actorId, role, mode }) => [
@@ -102,7 +107,8 @@ describe('NPC AI model settings', () => {
             serviceTier: 'fast',
         })
         expect(config.limits).toEqual({
-            maxCallsPerHour: 120,
+            maxCallsPerMinute: 20,
+            maxCallsPer10Minutes: 100,
             maxDecisionsPerTask: 12,
             reviewIntervalMs: 60_000,
             retryDelayMs: 5_000,
@@ -119,16 +125,21 @@ describe('NPC AI model settings', () => {
                 path,
                 JSON.stringify({
                     defaults: { model: 'custom-cli-model' },
+                    limits: {
+                        maxCallsPerMinute: 8,
+                        maxCallsPer10Minutes: 60,
+                        maxCallsPerHour: 180,
+                    },
                     npcs: actors,
                 })
             )
-            expect(
-                (
-                    await loadNpcAiConfig({
-                        GAME_AI_CONFIG: path,
-                    })
-                ).defaults.model
-            ).toBe('custom-cli-model')
+            const config = await loadNpcAiConfig({ GAME_AI_CONFIG: path })
+            expect(config.defaults.model).toBe('custom-cli-model')
+            expect(config.limits).toMatchObject({
+                maxCallsPerMinute: 8,
+                maxCallsPer10Minutes: 60,
+                maxCallsPerHour: 180,
+            })
             const startup = await loadNpcAiProviderConfig(
                 'claude',
                 { GAME_AI_CONFIG: path },
@@ -156,6 +167,8 @@ describe('NPC AI model settings', () => {
         { defaults: { reasoningEffort: 'invented' }, npcs: actors },
         { defaults: { timeoutMs: -1 }, npcs: actors },
         { defaults: { serviceTier: 'unlimited' }, npcs: actors },
+        { limits: { maxCallsPerMinute: 0 }, npcs: actors },
+        { limits: { maxCallsPer10Minutes: 10.5 }, npcs: actors },
         { limits: { maxCallsPerHour: 0 }, npcs: actors },
         { limits: { maxDecisionsPerTask: 3.5 }, npcs: actors },
         { npcs: [actors[0], actors[0]] },

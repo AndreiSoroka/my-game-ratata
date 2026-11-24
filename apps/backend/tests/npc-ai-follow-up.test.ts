@@ -6,6 +6,7 @@ import {
     npcReply,
     npcRuntimeFixture,
 } from './npcAiRuntimeFixture'
+import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 const fixtures: Array<ReturnType<typeof npcRuntimeFixture>> = []
 beforeEach(() => {
@@ -26,6 +27,39 @@ function setup(limits: Parameters<typeof npcRuntimeFixture>[1] = {}) {
     const f = npcRuntimeFixture(provider.decide, limits)
     fixtures.push(f)
     return { ...f, provider }
+}
+
+async function answerFirstRequest(f: ReturnType<typeof setup>) {
+    f.talk('Первое сообщение.')
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+    f.provider.turns[0]?.resolve(npcReply(null, { speech: 'Буль!' }))
+    await f.advance()
+}
+
+async function expectBudgetFailure(
+    f: ReturnType<typeof setup>,
+    request: string
+) {
+    await f.diagnostics.flush()
+    expect(f.entries()).toContainEqual(
+        expect.objectContaining({
+            category: 'request_status',
+            request,
+            reason: 'failed:Лимит размышлений исчерпан. Попробуй позже.',
+        })
+    )
+}
+
+function secondPlayerTalks(f: ReturnType<typeof setup>, request: string) {
+    const bob = joinScenarioRoom(f.room, 'AI runtime Bob')
+    bob.actor.position = { ...f.alice.actor.position }
+    bob.send({
+        type: 'companion_request',
+        request: 'talk',
+        targetId: f.actor.id,
+        text: request,
+    })
 }
 
 it('keeps ordinary following moving while a conversational model reply is pending', async () => {
@@ -100,23 +134,169 @@ it('corrects once then rejects a repeated physical reply without consent and rep
 
 it('acknowledges a fresh request immediately when the hourly allowance is exhausted', async () => {
     const f = setup({ maxCallsPerHour: 1 })
-    f.talk('Первое сообщение.')
+    await answerFirstRequest(f)
+    const request = 'Второе сообщение.'
+    f.talk(request)
     await f.advance()
-    f.provider.turns[0]?.resolve(
-        npcReply(null, { speech: 'Буль!', taskAcceptance: 'none' })
-    )
-    await f.advance()
-    f.talk('Второе сообщение.')
+    expect(f.provider.turns).toHaveLength(1)
+    await expectBudgetFailure(f, request)
+})
+
+it('keeps a fresh request queued when the next minute slot is less than ten seconds away', async () => {
+    const f = setup({ maxCallsPerMinute: 1 })
+    await answerFirstRequest(f)
+
+    vi.setSystemTime(55_000)
+    const request = 'Второе сообщение.'
+    f.talk(request)
     await f.advance()
     expect(f.provider.turns).toHaveLength(1)
     await f.diagnostics.flush()
     expect(f.entries()).toContainEqual(
-        expect.objectContaining({
-            request: 'Второе сообщение.',
-            category: 'request_status',
-            reason: 'failed:Лимит размышлений исчерпан. Попробуй позже.',
-        })
+        expect.objectContaining({ request, reason: 'queued' })
     )
+    expect(
+        f
+            .entries()
+            .some(
+                (entry) =>
+                    entry['request'] === request &&
+                    typeof entry['reason'] === 'string' &&
+                    entry['reason'].startsWith('failed:')
+            )
+    ).toBe(false)
+
+    vi.setSystemTime(60_000)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+
+    vi.setSystemTime(61_500)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+    expect(f.provider.turns[1]?.context.events).toContainEqual(
+        expect.objectContaining({ text: request })
+    )
+    f.provider.turns[1]?.resolve(npcReply(null, { speech: 'Вот мой ответ.' }))
+    await f.advance()
+    expect(
+        f.speech().filter((event) => event.text === 'Вот мой ответ.')
+    ).toHaveLength(1)
+})
+
+it('rejects a long minute wait and never starts the rejected request when the slot opens', async () => {
+    const f = setup({ maxCallsPerMinute: 1 })
+    await answerFirstRequest(f)
+
+    const request = 'Жду ответа.'
+    f.talk(request)
+    await f.advance()
+    await expectBudgetFailure(f, request)
+    vi.setSystemTime(61_500)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+    f.talk('Теперь попробуем снова.')
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+})
+
+it('expires a minute wait when the provider is still busy after ten seconds', async () => {
+    const f = setup({ maxCallsPerMinute: 2, timeoutMs: 60_000 })
+    await answerFirstRequest(f)
+
+    vi.setSystemTime(55_000)
+    f.talk('Займись вторым вопросом.')
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+    const request = 'Вопрос второго собеседника.'
+    secondPlayerTalks(f, request)
+    await f.advance()
+    await f.diagnostics.flush()
+    expect(f.entries()).toContainEqual(
+        expect.objectContaining({ request, reason: 'queued' })
+    )
+
+    for (const wall of [59_000, 63_000, 65_500]) {
+        vi.setSystemTime(wall)
+        await f.advance()
+    }
+    await expectBudgetFailure(f, request)
+    expect(f.provider.turns[1]?.signal.aborted).toBe(false)
+    f.provider.turns[1]?.resolve(npcReply(null, { speech: 'Буль!' }))
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+})
+
+it('rejects immediately while the last admitted turn keeps both windows full', async () => {
+    const f = setup({
+        maxCallsPerMinute: 1,
+        maxCallsPer10Minutes: 1,
+        timeoutMs: 60_000,
+    })
+    f.talk('Первое сообщение.')
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+
+    const request = 'Жду ответа после всплеска.'
+    secondPlayerTalks(f, request)
+    await f.advance()
+    await expectBudgetFailure(f, request)
+    expect(f.provider.turns[0]?.signal.aborted).toBe(false)
+    f.provider.turns[0]?.resolve(npcReply(null, { speech: 'Буль!' }))
+    await f.advance()
+    vi.setSystemTime(61_500)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+    vi.setSystemTime(601_500)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(1)
+    f.talk('Теперь попробуем снова.')
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+})
+
+it('charges a correction against the same minute quota as the initial reply', async () => {
+    const f = setup({ maxCallsPerMinute: 2 })
+    f.alice.send({
+        type: 'chat',
+        text: 'Подойди к гильдии.',
+        targetId: f.actor.id,
+    })
+    await f.advance()
+    const before = f.actor.position
+    f.provider.turns[0]?.resolve(
+        npcReply(
+            { type: 'move_to', target: { x: before.x + 32, y: before.y } },
+            { taskAcceptance: 'none', done: false }
+        )
+    )
+    await f.advance()
+    expect(f.provider.turns[1]?.context.replyCorrection?.code).toBe(
+        'task_consent_required'
+    )
+    f.provider.turns[1]?.resolve(npcReply(null, { speech: 'Буль!' }))
+    await f.advance()
+
+    const request = 'Следующий вопрос.'
+    f.talk(request)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+    await expectBudgetFailure(f, request)
+})
+
+it('charges a provider retry against the same ten-minute quota as the initial attempt', async () => {
+    const f = setup({ maxCallsPer10Minutes: 2, timeoutMs: 1_000 })
+    f.talk('Сколько будет дважды два?')
+    await f.advance(2_000)
+    expect(f.provider.turns).toHaveLength(2)
+    expect(f.provider.turns[0]?.signal.aborted).toBe(true)
+    f.provider.turns[1]?.resolve(npcReply(null, { speech: 'Четыре!' }))
+    await f.advance()
+
+    const request = 'Следующий вопрос.'
+    f.talk(request)
+    await f.advance()
+    expect(f.provider.turns).toHaveLength(2)
+    await expectBudgetFailure(f, request)
 })
 
 it('cancels a pending reply when the speaker leaves range', async () => {

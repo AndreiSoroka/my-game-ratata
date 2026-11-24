@@ -1,3 +1,4 @@
+import type { GameCharacter } from '../game/character'
 import type { CompanionService } from '../game/companions'
 import type { GameRoom } from '../game/room'
 import { NpcAiCallBudget } from './callBudget'
@@ -15,10 +16,18 @@ import { reportNpcRequestStatus } from './requestStatus'
 import { createRoomKnowledge } from './roomKnowledge'
 import { npcAiActorAvailable, type NpcAiActorState } from './runtimeState'
 import {
+    NpcAiCallAdmission,
+    recordNpcTaskLimit,
+} from './schedulerCallAdmission'
+import {
     prepareNpcReplyCommit,
     prepareNpcTurnEligibility,
 } from './schedulerCommit'
-import { isBackgroundNpcTurn, prepareNpcAiTurns } from './schedulerPolicy'
+import {
+    isBackgroundNpcTurn,
+    npcNearPlayer,
+    prepareNpcAiTurns,
+} from './schedulerPolicy'
 import type { NpcAiSessionActions } from './session'
 import { invokeNpcAiTurn } from './turn'
 import type { NpcAiConfig, NpcAiProvider } from './types'
@@ -26,6 +35,7 @@ import type { NpcAiConfig, NpcAiProvider } from './types'
 export class NpcAiScheduler {
     private readonly knowledge: CharacterKnowledge
     private readonly budget: NpcAiCallBudget
+    private readonly admission: NpcAiCallAdmission
     private readonly necromancerTurns: NecromancerTurns
     private busy = false
     private scheduled = false
@@ -43,7 +53,13 @@ export class NpcAiScheduler {
         private readonly nextId: (kind: string) => string
     ) {
         this.knowledge = createRoomKnowledge(room)
-        this.budget = new NpcAiCallBudget(config.limits.maxCallsPerHour)
+        this.budget = new NpcAiCallBudget(config.limits)
+        this.admission = new NpcAiCallAdmission(
+            room,
+            this.budget,
+            sessions,
+            diagnostics
+        )
         this.necromancerTurns = new NecromancerTurns(
             room,
             companions,
@@ -57,26 +73,34 @@ export class NpcAiScheduler {
     }
 
     public schedule(): void {
-        if (this.scheduled || this.busy || !this.current()) {
+        if (this.scheduled || !this.current()) {
             return
         }
         this.scheduled = true
         queueMicrotask(() => {
             this.scheduled = false
-            if (!this.current() || this.busy) {
+            if (!this.current()) {
                 return
             }
             const now = this.clock()
-            const state = prepareNpcAiTurns(
+            const wall = this.room.realNow()
+            this.admission.reviewInboxes(this.states.values(), wall, now)
+            if (this.busy) {
+                return
+            }
+            const scarce = this.budget.isScarce(wall)
+            const states = prepareNpcAiTurns(
                 this.room,
                 this.states.values(),
-                now
-            )[0]
-            if (state !== undefined) {
-                this.begin(state, now)
-            } else {
-                this.beginNecromancer(now)
+                now,
+                scarce
+            )
+            for (const state of states) {
+                if (this.begin(state, now, wall)) {
+                    return
+                }
             }
+            this.beginNecromancer(now, wall, scarce)
         })
     }
 
@@ -88,15 +112,14 @@ export class NpcAiScheduler {
         this.necromancerTurns.interrupt()
     }
 
-    private beginNecromancer(now: number): void {
-        const wall = this.room.realNow()
+    private beginNecromancer(now: number, wall: number, scarce: boolean): void {
         if (
             !this.room.allowsAutonomousNpcAi() ||
             this.budget.limit(wall, true) !== undefined
         ) {
             return
         }
-        const turn = this.necromancerTurns.begin(now)
+        const turn = this.necromancerTurns.begin(now, scarce)
         if (turn === undefined) {
             return
         }
@@ -108,10 +131,14 @@ export class NpcAiScheduler {
         })
     }
 
-    private begin(state: NpcAiActorState, now: number): void {
+    private begin(state: NpcAiActorState, now: number, wall: number): boolean {
         const actor = state.actor
-        if (!npcAiActorAvailable(actor) || !this.withinLimits(state, now)) {
-            return
+        if (
+            !npcAiActorAvailable(actor) ||
+            !this.admission.allows(state, wall, now) ||
+            !this.withinDecisionLimit(state, now)
+        ) {
+            return false
         }
         const combat =
             state.task?.background === 'combat_reaction' &&
@@ -126,9 +153,11 @@ export class NpcAiScheduler {
                 this.nextId
             )
         ) {
-            return
+            return false
         }
         state.dialogue = state.inbox.shift()
+        this.admission.started(state.dialogue)
+        delete state.budgetUntil
         markNpcCombatReactionStarted(state, this.room.realNow())
         state.controlRevision = this.companions.controlRevision(actor)
         state.turnControlRevision = state.controlRevision
@@ -154,11 +183,12 @@ export class NpcAiScheduler {
             now
         )
         this.launch(state, actor, context, combat)
+        return true
     }
 
     private launch(
         state: NpcAiActorState,
-        actor: import('../game/character').GameCharacter,
+        actor: GameCharacter,
         context: import('./types').NpcAiContext,
         combat: boolean
     ): void {
@@ -176,7 +206,12 @@ export class NpcAiScheduler {
                 ...context,
                 knowledgeScope: characterKnowledgeScope(
                     actor,
-                    !combat && this.informationCallAvailable(state)
+                    !combat &&
+                        this.informationCallAvailable(
+                            state,
+                            actor,
+                            this.room.realNow()
+                        )
                 ),
             },
             this.provider,
@@ -192,7 +227,9 @@ export class NpcAiScheduler {
                     clock: this.clock,
                 }),
                 reserveCall: () =>
-                    !combat && current() && this.reserveInformationCall(state),
+                    !combat &&
+                    current() &&
+                    this.reserveInformationCall(state, actor),
                 validateReply: (reply) =>
                     npcCommandProblem(
                         this.room,
@@ -218,18 +255,26 @@ export class NpcAiScheduler {
         })
     }
 
-    private informationCallAvailable(state: NpcAiActorState): boolean {
+    private informationCallAvailable(
+        state: NpcAiActorState,
+        actor: GameCharacter,
+        at: number
+    ): boolean {
+        const background = isBackgroundNpcTurn(state)
         return (
-            this.budget.limit(
-                this.room.realNow(),
-                isBackgroundNpcTurn(state)
-            ) === undefined
+            this.budget.limit(at, background) === undefined &&
+            (!background ||
+                !this.budget.isScarce(at) ||
+                npcNearPlayer(this.room, actor))
         )
     }
 
-    private reserveInformationCall(state: NpcAiActorState): boolean {
+    private reserveInformationCall(
+        state: NpcAiActorState,
+        actor: GameCharacter
+    ): boolean {
         const at = this.room.realNow()
-        if (!this.informationCallAvailable(state)) {
+        if (!this.informationCallAvailable(state, actor, at)) {
             return false
         }
         this.budget.spend(at, isBackgroundNpcTurn(state))
@@ -238,19 +283,17 @@ export class NpcAiScheduler {
 
     public stop(): void {
         this.necromancerTurns.stop()
+        this.admission.clear()
         this.knowledge.stop()
         void this.diagnostics.flush()
     }
 
-    private withinLimits(state: NpcAiActorState, now: number): boolean {
-        if (!this.withinCallBudget(state, now)) {
-            return false
-        }
+    private withinDecisionLimit(state: NpcAiActorState, now: number): boolean {
         if (
             state.inbox.length === 0 &&
             (state.task?.steps ?? 0) >= this.config.limits.maxDecisionsPerTask
         ) {
-            this.recordLimit(state, 'decision_limit', now)
+            recordNpcTaskLimit(this.diagnostics, state, 'decision_limit', now)
             this.sessions.finishWithNotice(
                 state,
                 'Не получилось закончить поручение за отведённое время.',
@@ -259,54 +302,5 @@ export class NpcAiScheduler {
             return false
         }
         return true
-    }
-
-    private withinCallBudget(state: NpcAiActorState, now: number): boolean {
-        const background =
-            state.inbox.length === 0 && state.task?.requesterId == null
-        const limit = this.budget.limit(this.room.realNow(), background)
-        if (limit === undefined) {
-            return true
-        }
-        this.recordLimit(state, limit.reason, now)
-        if (limit.reason === 'background_call_limit') {
-            this.sessions.finish(state, now, 3_600_000)
-        } else {
-            for (const message of state.inbox) {
-                this.room.social.npcSpeech.fail(message, now)
-                reportNpcRequestStatus(
-                    this.room,
-                    this.diagnostics,
-                    state,
-                    'failed',
-                    now,
-                    'Лимит размышлений исчерпан. Попробуй позже.',
-                    message
-                )
-            }
-            state.inbox = []
-            this.sessions.finishWithNotice(
-                state,
-                'Я пока исчерпала время на размышления. Попробуем позже.',
-                now
-            )
-        }
-        state.budgetUntil = limit.until
-        return false
-    }
-
-    private recordLimit(
-        state: NpcAiActorState,
-        reason: string,
-        at: number
-    ): void {
-        this.diagnostics.record({
-            actorId: state.config.actorId,
-            taskId: state.inbox[0]?.id ?? state.task?.id ?? '',
-            request: state.inbox[0]?.text ?? state.task?.request ?? '',
-            category: 'task_limit',
-            reason,
-            at,
-        })
     }
 }

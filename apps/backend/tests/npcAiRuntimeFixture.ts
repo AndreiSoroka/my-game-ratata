@@ -36,6 +36,8 @@ export function npcRuntimeFixture(
     decide: NpcAiProvider['decide'],
     limits: {
         maxDecisionsPerTask?: number
+        maxCallsPerMinute?: number
+        maxCallsPer10Minutes?: number
         maxCallsPerHour?: number
         timeoutMs?: number
         includeMira?: boolean
@@ -54,7 +56,9 @@ export function npcRuntimeFixture(
             defaults: { timeoutMs: limits.timeoutMs ?? 10_000 },
             limits: {
                 maxDecisionsPerTask: limits.maxDecisionsPerTask ?? 12,
-                maxCallsPerHour: limits.maxCallsPerHour ?? 120,
+                maxCallsPerMinute: limits.maxCallsPerMinute,
+                maxCallsPer10Minutes: limits.maxCallsPer10Minutes,
+                maxCallsPerHour: limits.maxCallsPerHour,
                 retryDelayMs: 500,
                 reviewIntervalMs: 60_000,
             },

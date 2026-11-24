@@ -30,7 +30,9 @@ export interface NpcAiConfig {
     enabled: boolean
     defaults: NpcAiModelSettings
     limits: {
-        maxCallsPerHour: number
+        maxCallsPerMinute: number
+        maxCallsPer10Minutes: number
+        maxCallsPerHour?: number
         maxDecisionsPerTask: number
         reviewIntervalMs: number
         retryDelayMs: number

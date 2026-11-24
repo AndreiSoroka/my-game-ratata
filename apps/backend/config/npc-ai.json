@@ -1,6 +1,7 @@
 {
     "limits": {
-        "maxCallsPerHour": 120,
+        "maxCallsPerMinute": 20,
+        "maxCallsPer10Minutes": 100,
         "maxDecisionsPerTask": 12,
         "reviewIntervalMs": 60000,
         "retryDelayMs": 5000

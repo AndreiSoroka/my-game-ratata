@@ -14,7 +14,8 @@ export const defaultNpcAiSettings: NpcAiModelSettings = {
 }
 
 export const defaultNpcAiLimits: NpcAiConfig['limits'] = {
-    maxCallsPerHour: 120,
+    maxCallsPerMinute: 20,
+    maxCallsPer10Minutes: 100,
     maxDecisionsPerTask: 12,
     reviewIntervalMs: 60_000,
     retryDelayMs: 5_000,
@@ -115,7 +116,7 @@ export function parseNpcAiConfig(
         throw invalid('proactive must be a boolean')
     }
     const defaults = settings(record['defaults'], defaultSettings)
-    const limits = object(record['limits'] ?? {}, 'limits')
+    const limits = parseNpcAiLimits(record['limits'] ?? {})
     const rawNpcs = record['npcs']
     if (!Array.isArray(rawNpcs) || rawNpcs.length > 16) {
         throw invalid('npcs must be an array with at most 16 entries')
@@ -147,35 +148,57 @@ export function parseNpcAiConfig(
         enabled: enabled === true,
         proactive: record['proactive'] !== false,
         defaults,
-        limits: {
-            maxCallsPerHour: integer(
-                limits['maxCallsPerHour'] ?? defaultNpcAiLimits.maxCallsPerHour,
-                'limits.maxCallsPerHour',
-                1,
-                10_000
-            ),
-            maxDecisionsPerTask: integer(
-                limits['maxDecisionsPerTask'] ??
-                    defaultNpcAiLimits.maxDecisionsPerTask,
-                'limits.maxDecisionsPerTask',
-                1,
-                64
-            ),
-            reviewIntervalMs: integer(
-                limits['reviewIntervalMs'] ??
-                    defaultNpcAiLimits.reviewIntervalMs,
-                'limits.reviewIntervalMs',
-                1_000,
-                3_600_000
-            ),
-            retryDelayMs: integer(
-                limits['retryDelayMs'] ?? defaultNpcAiLimits.retryDelayMs,
-                'limits.retryDelayMs',
-                0,
-                300_000
-            ),
-        },
+        limits,
         npcs,
+    }
+}
+
+function parseNpcAiLimits(input: unknown): NpcAiConfig['limits'] {
+    const limits = object(input, 'limits')
+    const hourlyLimit = limits['maxCallsPerHour']
+    return {
+        maxCallsPerMinute: integer(
+            limits['maxCallsPerMinute'] ?? defaultNpcAiLimits.maxCallsPerMinute,
+            'limits.maxCallsPerMinute',
+            1,
+            10_000
+        ),
+        maxCallsPer10Minutes: integer(
+            limits['maxCallsPer10Minutes'] ??
+                defaultNpcAiLimits.maxCallsPer10Minutes,
+            'limits.maxCallsPer10Minutes',
+            1,
+            10_000
+        ),
+        ...(hourlyLimit == null
+            ? {}
+            : {
+                  maxCallsPerHour: integer(
+                      hourlyLimit,
+                      'limits.maxCallsPerHour',
+                      1,
+                      10_000
+                  ),
+              }),
+        maxDecisionsPerTask: integer(
+            limits['maxDecisionsPerTask'] ??
+                defaultNpcAiLimits.maxDecisionsPerTask,
+            'limits.maxDecisionsPerTask',
+            1,
+            64
+        ),
+        reviewIntervalMs: integer(
+            limits['reviewIntervalMs'] ?? defaultNpcAiLimits.reviewIntervalMs,
+            'limits.reviewIntervalMs',
+            1_000,
+            3_600_000
+        ),
+        retryDelayMs: integer(
+            limits['retryDelayMs'] ?? defaultNpcAiLimits.retryDelayMs,
+            'limits.retryDelayMs',
+            0,
+            300_000
+        ),
     }
 }
 

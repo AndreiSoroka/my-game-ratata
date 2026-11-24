@@ -6,6 +6,7 @@ import {
 } from '../game/necromancerController'
 import type { NecromancerOffer } from '../game/necromancerPlanning'
 import type { GameRoom } from '../game/room'
+import { npcNearPlayer } from './schedulerPolicy'
 import type { NpcAiConfig, NpcAiModelSettings, NpcAiProvider } from './types'
 
 interface RunningTurn {
@@ -37,7 +38,7 @@ export class NecromancerTurns {
         )
     }
 
-    public begin(now: number): Promise<void> | undefined {
+    public begin(now: number, scarce = false): Promise<void> | undefined {
         if (
             this.config.proactive === false ||
             this.provider.decideNecromancer === undefined
@@ -45,7 +46,7 @@ export class NecromancerTurns {
             return undefined
         }
         for (const npc of this.configured) {
-            const actor = this.availableActor(npc.actorId)
+            const actor = this.availableActor(npc.actorId, scarce)
             if (actor === undefined) {
                 continue
             }
@@ -72,11 +73,15 @@ export class NecromancerTurns {
         return undefined
     }
 
-    private availableActor(id: string): GameCharacter | undefined {
+    private availableActor(
+        id: string,
+        scarce: boolean
+    ): GameCharacter | undefined {
         const actor = this.room.getCharacter(id)
         return actor !== undefined &&
             actor.alive &&
-            this.room.allowsAutonomousNpcAi()
+            this.room.allowsAutonomousNpcAi() &&
+            (!scarce || npcNearPlayer(this.room, actor))
             ? actor
             : undefined
     }

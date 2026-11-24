@@ -117,17 +117,19 @@ Relative paths resolve against the backend process's current working directory
 selection each provider uses its own defaults and the overrides from the file.
 Set `GAME_AI_PROVIDER` if the overrides target a specific CLI or model.
 
-| Setting                      | Default                                 | Meaning                                                                |
-| ---------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
-| `defaults.cliPath`           | `codex` or `claude`                     | Executable path or name found through `PATH`                           |
-| `defaults.model`             | `gpt-6-luna` (Codex), `sonnet` (Claude) | Model used for every invocation                                        |
-| `defaults.reasoningEffort`   | `medium`                                | Reasoning effort. Claude Code uses `max` when configured with `ultra`. |
-| `defaults.serviceTier`       | `default`                               | Codex speed setting with optional `fast` tier                          |
-| `defaults.timeoutMs`         | `60000`                                 | Maximum time for one CLI response                                      |
-| `limits.maxCallsPerHour`     | `120`                                   | Shared rolling-hour call limit, including retries                      |
-| `limits.maxDecisionsPerTask` | `12`                                    | Maximum model decisions for one task                                   |
-| `limits.reviewIntervalMs`    | `60000`                                 | Mira's regular autonomous review interval                              |
-| `limits.retryDelayMs`        | `5000`                                  | Delay before the single retry of a failed call                         |
+| Setting                       | Default                                 | Meaning                                                                |
+| ----------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| `defaults.cliPath`            | `codex` or `claude`                     | Executable path or name found through `PATH`                           |
+| `defaults.model`              | `gpt-6-luna` (Codex), `sonnet` (Claude) | Model used for every invocation                                        |
+| `defaults.reasoningEffort`    | `medium`                                | Reasoning effort. Claude Code uses `max` when configured with `ultra`. |
+| `defaults.serviceTier`        | `default`                               | Codex speed setting with optional `fast` tier                          |
+| `defaults.timeoutMs`          | `60000`                                 | Maximum time for one CLI response                                      |
+| `limits.maxCallsPerMinute`    | `20`                                    | Shared rolling-minute call limit                                       |
+| `limits.maxCallsPer10Minutes` | `100`                                   | Shared rolling ten-minute call limit                                   |
+| `limits.maxCallsPerHour`      | Unset                                   | Optional additional rolling-hour call limit for existing overrides     |
+| `limits.maxDecisionsPerTask`  | `12`                                    | Maximum model decisions for one task                                   |
+| `limits.reviewIntervalMs`     | `60000`                                 | Mira's regular autonomous review interval                              |
+| `limits.retryDelayMs`         | `5000`                                  | Delay before the single retry of a failed call                         |
 
 An optional `npcs` entry has `actorId` and `settings` overriding the
 global model settings. This Codex configuration keeps Mira on the default timeout
@@ -323,10 +325,22 @@ uses the shared companion controller rather than repeated model waypoints.
 Dead NPCs abort queued/in-flight work and stop using AI. Revival never resumes an
 old task or delayed result; a fresh player request or a newly eligible proactive
 opportunity may start a new turn.
-The 120-call hourly budget reserves an interactive portion: at most 80 background
-calls at the default limit. Blocked fresh requests receive an immediate private
-status. Nearby typing/thinking dots represent pending replies, not an active
-Spark or an autonomous background review.
+
+The room tracks model calls over rolling windows of one and ten minutes of real
+time. The default totals are 20 and 100 calls, including follow-ups, repairs and
+retries. Background work can use at most two thirds of each total, which gives
+13 and 66 calls by default. An explicitly configured hourly limit also applies.
+
+At 30% or less of the ten-minute total remaining, ordinary background work waits
+unless a living connected player is within 240 world pixels of its NPC in the same
+location. The distance restriction lifts when 40% is available again. Task
+deadlines continue while waiting, and direct conversation and accepted player
+errands retain priority.
+
+At the minute limit, a fresh message may wait up to ten seconds for a call slot
+if at least ten seconds will still remain before the original reply deadline.
+Requests blocked by a longer window receive an immediate private status. Nearby
+typing and thinking dots show the status of pending player replies.
 
 Trade offers have separate proposal revisions and exact request acknowledgements.
 A partner update cannot discard a local draft. Only submitted terms are visible
@@ -372,7 +386,7 @@ JSON rather than a CLI tool:
 ```
 
 There is one shared information lookup (`deep_memory` or `knowledge_search`) and
-at most two model invocations per input. Both invocations consume the normal hourly
+at most two model invocations per input. Both invocations consume the shared rolling
 call budget and share the original timeout and cancellation generation. Neither
 lookup can accompany speech, task acceptance or a game action. A second lookup is
 rejected. `informationResults` supplies the summary and relevant
