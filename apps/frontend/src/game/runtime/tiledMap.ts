@@ -10,8 +10,15 @@ import { type MapDepthProp, readDepthProps } from './mapDepthProps'
 import type { TiledLandmark } from './mapLandmarks'
 import { type FootstepMap, readFootstepMap } from './mapSurfaces'
 import { type MapVisibility, readMapVisibility } from './mapVisibility'
+import { type AnimatedWater, readWaterAnimation } from './mapWaterAnimation'
 import { drawConnectedTerrain } from './terrainAutotile'
-import { fetchJson, type LoadedTileset, loadTileset, type TiledTilesetRef } from './tiledMapAssets'
+import {
+    fetchJson,
+    findTileset,
+    type LoadedTileset,
+    loadTileset,
+    type TiledTilesetRef,
+} from './tiledMapAssets'
 
 interface TiledLayer {
     data?: number[]
@@ -36,6 +43,7 @@ interface TiledMap {
 
 export interface RenderedTiledMap {
     ambientTerrain?: AmbientTerrain
+    animatedWater?: AnimatedWater
     training: TrainingMapData
     bitmap: HTMLCanvasElement
     buildings: MapBuilding[]
@@ -82,6 +90,7 @@ export async function loadRenderedTiledMap(
         : []
 
     return {
+        animatedWater: readWaterAnimation(map, tilesets, waterTileset),
         ambientTerrain: readAmbientTerrain(
             map,
             waterTileset && {
@@ -284,8 +293,4 @@ function renderDepthProp(
     tiles.forEach((gid, index) => {
         if (gid !== 0) drawTile(context, propMap, gid, index, tilesets)
     })
-}
-
-function findTileset(gid: number, tilesets: LoadedTileset[]): LoadedTileset | undefined {
-    return [...tilesets].reverse().find((tileset) => gid >= tileset.firstgid)
 }

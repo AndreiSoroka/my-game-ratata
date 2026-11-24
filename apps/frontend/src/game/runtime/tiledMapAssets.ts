@@ -18,6 +18,17 @@ export interface LoadedTileset {
     tileset: TiledTileset
 }
 
+export function findTileset(
+    gid: number,
+    tilesets: readonly LoadedTileset[]
+): LoadedTileset | undefined {
+    for (let index = tilesets.length - 1; index >= 0; index--) {
+        const tileset = tilesets[index]!
+        if (gid >= tileset.firstgid) return tileset
+    }
+    return undefined
+}
+
 export async function loadTileset(
     baseUrl: string,
     reference: TiledTilesetRef
@@ -40,7 +51,7 @@ export async function fetchJson<T>(url: URL): Promise<T> {
     return (await response.json()) as T
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
         const image = new Image()
         image.addEventListener('load', () => {

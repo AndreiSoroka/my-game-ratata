@@ -3,6 +3,10 @@ import { expect, test } from '@playwright/test'
 import type {} from './harness'
 
 const webgl2 = { webgl2: true, lost: false, lostEvents: 0, preserve: false }
+const animatedShoreColors = [
+    [80, 54, 37],
+    [33, 17, 13],
+]
 
 test.beforeEach(async ({ page }) => {
     await page.goto('/e2e/engine/')
@@ -27,6 +31,54 @@ test('renders moving, depth-sorted particles and uploads changed raster pixels',
         ],
     })
     expect(result.visible).toBeGreaterThan(0)
+})
+
+test('animates the shoreline of shipped ponds and lakes in WebGL2', async ({ page }) => {
+    const result = await page.evaluate(() => window.engineHarness.water())
+    expect(result).toMatchObject({
+        ...webgl2,
+        fractional: { outsideShoreline: 0, shore: animatedShoreColors },
+        dry: { oldActorRemoved: true, hasWaterOverlay: false, differentPixels: 0 },
+    })
+    expect(result.fractional.animatedStrongPixels).toBeGreaterThan(
+        result.fractional.expectedStrongPixels * 0.75
+    )
+    for (const basin of [result.pond, result.lake]) {
+        expect(basin.shore).toEqual(animatedShoreColors)
+        expect(basin.insideCorner).toEqual(animatedShoreColors)
+        expect(basin.center[0]).toEqual(basin.center[1])
+        expect(basin.land[0]).toEqual(basin.land[1])
+        expect(basin.loopDifferentPixels).toBe(0)
+        expect(basin.foreground).toEqual([255, 0, 255])
+    }
+})
+
+test('keeps the shore static after an atlas failure and retries when revisiting', async ({
+    page,
+}) => {
+    let attempts = 0
+    await page.route(/\/water4\.png(?:\?|$)/, async (route) => {
+        attempts++
+        if (attempts === 1) {
+            await route.fulfill({ status: 503 })
+        } else {
+            await route.continue()
+        }
+    })
+    const result = await page.evaluate(() => window.engineHarness.waterFallback())
+    expect(result).toEqual({
+        failedFrames: 1,
+        staticDifferentPixels: 0,
+        hadOverlay: false,
+        retriedShore: animatedShoreColors,
+    })
+    expect(attempts).toBe(2)
+})
+
+test('holds the still shoreline when reduced motion is requested', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const result = await page.evaluate(() => window.engineHarness.waterReducedMotion())
+    expect(result.differentPixels).toBe(0)
 })
 
 test('plays isolated real tracks and restores one music track when visible', async ({ page }) => {

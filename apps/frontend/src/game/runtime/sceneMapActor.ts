@@ -2,16 +2,19 @@ import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
 import { MapBackdrop } from './mapBackdrop'
 import { mapCameraStrategy } from './mapCamera'
+import { SceneWaterAnimation } from './sceneWaterAnimation'
 import type { RenderedTiledMap } from './tiledMap'
 
 export class SceneMapView {
     private readonly backdrop: MapBackdrop
+    private readonly water: SceneWaterAnimation
     private actor: Actor | undefined
     private cameraStrategy: ReturnType<typeof mapCameraStrategy> | undefined
     private followedActor: Actor | undefined
 
     public constructor(private readonly engine: Engine) {
         this.backdrop = new MapBackdrop(engine)
+        this.water = new SceneWaterAnimation(engine)
     }
 
     public setMap(map: RenderedTiledMap): void {
@@ -21,6 +24,7 @@ export class SceneMapView {
         this.followedActor = undefined
         this.actor = createSceneMapActor(map)
         this.engine.add(this.actor)
+        this.water.setMap(this.actor, map.animatedWater)
     }
 
     public follow(actor: Actor): void {
@@ -34,6 +38,7 @@ export class SceneMapView {
     }
 
     public dispose(): void {
+        this.water.dispose()
         this.actor?.kill()
         this.actor = undefined
         this.backdrop.dispose()

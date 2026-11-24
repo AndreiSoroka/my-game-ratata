@@ -1,4 +1,16 @@
 /** Mystic Woods ground atlases use a 3×3 border plus four concave-corner tiles. */
+export const interiorTerrainTile = 8
+export const terrainQuarterSize = 8
+
+export interface TerrainQuarter {
+    sourceX: number
+    sourceY: number
+    x: number
+    y: number
+    width: number
+    height: number
+}
+
 export function terrainAtlasStart(gid: number): number | undefined {
     if (gid >= 38 && gid < 62) return 38
     if (gid >= 110 && gid < 134) return 110
@@ -35,7 +47,7 @@ export function terrainQuadrants(
         if (!side && !end) return outer
         if (!end) return horizontal
         if (!side) return vertical
-        return has(dx, dy) ? 8 : inner
+        return has(dx, dy) ? interiorTerrainTile : inner
     }
     return [
         corner(-1, -1, 1, 2, 7, 11),
@@ -43,6 +55,33 @@ export function terrainQuadrants(
         corner(-1, 1, 13, 14, 7, 5),
         corner(1, 1, 15, 14, 9, 4),
     ]
+}
+
+export function terrainQuarters(
+    data: readonly number[],
+    width: number,
+    height: number,
+    index: number,
+    tileWidth: number,
+    tileHeight: number
+): (TerrainQuarter & { tile: number })[] | undefined {
+    const quadrants = terrainQuadrants(data, width, height, index)
+    if (!quadrants) return undefined
+    const x = (index % width) * tileWidth
+    const y = Math.floor(index / width) * tileHeight
+    return quadrants.map((tile, quadrant) => {
+        const column = quadrant % 2
+        const row = Math.floor(quadrant / 2)
+        return {
+            tile,
+            sourceX: (tile % 6) * 16 + column * terrainQuarterSize,
+            sourceY: Math.floor(tile / 6) * 16 + row * terrainQuarterSize,
+            x: x + (column * tileWidth) / 2,
+            y: y + (row * tileHeight) / 2,
+            width: tileWidth / 2,
+            height: tileHeight / 2,
+        }
+    })
 }
 
 export function drawConnectedTerrain(
@@ -55,24 +94,20 @@ export function drawConnectedTerrain(
     tileWidth = 16,
     tileHeight = 16
 ): boolean {
-    const quadrants = terrainQuadrants(data, width, height, index)
-    if (!quadrants) return false
-    const x = (index % width) * tileWidth,
-        y = Math.floor(index / width) * tileHeight
-    quadrants.forEach((tile, quadrant) => {
-        const dx = (quadrant % 2) * 8,
-            dy = Math.floor(quadrant / 2) * 8
+    const quarters = terrainQuarters(data, width, height, index, tileWidth, tileHeight)
+    if (!quarters) return false
+    for (const quarter of quarters) {
         context.drawImage(
             image,
-            (tile % 6) * 16 + dx,
-            Math.floor(tile / 6) * 16 + dy,
-            8,
-            8,
-            x + (dx / 16) * tileWidth,
-            y + (dy / 16) * tileHeight,
-            tileWidth / 2,
-            tileHeight / 2
+            quarter.sourceX,
+            quarter.sourceY,
+            terrainQuarterSize,
+            terrainQuarterSize,
+            quarter.x,
+            quarter.y,
+            quarter.width,
+            quarter.height
         )
-    })
+    }
     return true
 }
