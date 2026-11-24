@@ -36,6 +36,7 @@ import {
     type PendingAttackHit,
 } from './characterState'
 import { CharacterTemperament } from './characterTemperament'
+import { recordSparkInterruption } from './combatInterruption'
 import { movementInputLocked } from './combatMovement'
 import { createCombatState } from './combatState'
 import { initializeConstellations } from './constellations'
@@ -289,6 +290,7 @@ export class GameCharacter {
     }
 
     public clearPendingAttackHit(): void {
+        recordSparkInterruption(this)
         this.pendingAttack = undefined
     }
 

@@ -30,11 +30,11 @@ describe('public effective ability usage', () => {
         expect(usage.spark).toEqual({
             mana: 5,
             energy: 5,
-            cooldownMs: 800,
+            cooldownMs: 1200,
             range: 104,
-            windupMs: 200,
-            cycleMs: 200,
-            movementMs: 200,
+            windupMs: 1200,
+            cycleMs: 1200,
+            movementMs: 1200,
         })
         expect(usage.pray).toEqual({
             mana: 5,

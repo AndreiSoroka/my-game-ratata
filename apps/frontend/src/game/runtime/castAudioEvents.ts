@@ -2,6 +2,28 @@ import { type AbilityId, type GameEventPayload, isPrayerAction } from '@my-game-
 
 export type CastSound = 'magicCast' | 'prayerWhisper' | 'sparkFlight'
 
+export function eventReceipt(
+    event: GameEventPayload,
+    sound: CastSound,
+    serverTime: number
+): string {
+    const identity = event.actionId ?? event.eventId ?? serverTime
+    return JSON.stringify(['event', event.actorId, event.kind, event.abilityId, sound, identity])
+}
+
+export function endedSparkWhisperReceipt(
+    event: GameEventPayload,
+    serverTime: number
+): string | undefined {
+    if (
+        event.abilityId === 'spark' &&
+        isMagicCastAttack(event) &&
+        (event.phase === 'completed' || event.phase === 'interrupted') &&
+        event.actionId !== undefined
+    )
+        return eventReceipt(event, 'magicCast', serverTime)
+}
+
 export function isMagicCastAttack(event: GameEventPayload): boolean {
     return (
         event.kind === 'attack' &&
@@ -30,7 +52,7 @@ export function instantSound(event: GameEventPayload): CastSound | undefined {
 function magicAttackSound(event: GameEventPayload): CastSound | undefined {
     if (!isMagicCastAttack(event)) return undefined
     if (event.abilityId === 'spark') {
-        // Spark's current server event is unphased and starts the visible projectile immediately.
+        if (event.phase === 'started') return 'magicCast'
         return event.phase === undefined || (event.phase === 'completed' && event.projectile)
             ? 'sparkFlight'
             : undefined

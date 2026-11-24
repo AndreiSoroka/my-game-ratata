@@ -5,6 +5,7 @@ import {
     materialDamage,
     type MaterialImpact,
     resolveCombatWeapon,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -19,13 +20,14 @@ import type { NavigationService } from './navigation'
 export function legalGraveTarget(
     actor: GameCharacter,
     grave: GraveCombatTarget | undefined,
-    navigation: NavigationService | undefined
+    navigation: NavigationService | undefined,
+    origin: Vector2 = actor.position
 ): grave is GraveCombatTarget {
     return (
         grave?.phase === 'active' &&
         grave.hp > 0 &&
         grave.locationId === actor.locationId &&
-        (navigation?.hasLineOfSight(actor.position, grave.position) ?? true)
+        (navigation?.hasLineOfSight(origin, grave.position) ?? true)
     )
 }
 
@@ -41,19 +43,23 @@ export function findGraveHit(
         attack.target === undefined
             ? context.graves.list(context.actor.locationId)
             : [context.graves.get(attack.target.id)]
+    const origin = attack.sparkPath?.origin ?? context.actor.position
     return candidates
         .filter(
             (grave): grave is GraveCombatTarget =>
-                legalGraveTarget(context.actor, grave, context.navigation) &&
+                legalGraveTarget(
+                    context.actor,
+                    grave,
+                    context.navigation,
+                    origin
+                ) &&
                 isInZones(grave, context.actor.attackZones) &&
                 (attack.maxRange === undefined ||
-                    distance(context.actor.position, grave.position) <=
-                        attack.maxRange)
+                    distance(origin, grave.position) <= attack.maxRange)
         )
         .sort(
             (a, b) =>
-                distance(context.actor.position, a.position) -
-                distance(context.actor.position, b.position)
+                distance(origin, a.position) - distance(origin, b.position)
         )[0]
 }
 

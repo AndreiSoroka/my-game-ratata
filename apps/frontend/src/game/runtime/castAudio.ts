@@ -8,7 +8,14 @@ import {
 } from '@my-game-ratata/contracts'
 import { AudioContextFactory, type SoundTrack } from 'excalibur'
 
-import { type CastSound, instantSound, isChannelEnd, removedActor } from './castAudioEvents'
+import {
+    type CastSound,
+    endedSparkWhisperReceipt,
+    eventReceipt,
+    instantSound,
+    isChannelEnd,
+    removedActor,
+} from './castAudioEvents'
 import { footstepGain } from './footsteps'
 import type { FootstepMap } from './mapSurfaces'
 import type { WorldAmbienceSounds } from './worldAmbienceSounds'
@@ -35,6 +42,7 @@ interface CastView {
 interface Voice {
     track: SoundTrack
     channel?: Channel
+    receipt?: string
 }
 
 interface CastAudioOptions {
@@ -122,6 +130,7 @@ export class CastAudio {
             if (view) this.reconcileVoices(view, serverTime)
             return
         }
+        this.stopEndedWhisper(event, actorId, serverTime)
         const sound = instantSound(event)
         if (sound && view) this.playInstant(view, event, actorId, sound, serverTime)
     }
@@ -156,6 +165,13 @@ export class CastAudio {
         this.clockOffset = -Infinity
     }
 
+    private stopEndedWhisper(event: GameEventPayload, actorId: string, serverTime: number): void {
+        const receipt = endedSparkWhisperReceipt(event, serverTime)
+        if (!receipt) return
+        if (this.voices.get(actorId)?.receipt === receipt) this.stopVoice(actorId)
+        remember(this.heard, receipt, serverTime + instantReceiptMs)
+    }
+
     private playInstant(
         view: CastView,
         event: GameEventPayload,
@@ -163,8 +179,7 @@ export class CastAudio {
         sound: CastSound,
         serverTime: number
     ): void {
-        const identity = event.actionId ?? event.eventId ?? serverTime
-        const receipt = JSON.stringify(['event', actorId, event.kind, event.abilityId, identity])
+        const receipt = eventReceipt(event, sound, serverTime)
         if (this.heard.has(receipt)) return
         remember(this.heard, receipt, serverTime + instantReceiptMs)
         const source = view.sources.get(actorId)
@@ -172,7 +187,7 @@ export class CastAudio {
         this.reconcileVoices(view, serverTime)
         if (!this.hasSlot(view, actorId)) return
         const track = this.sounds.play(sound, { volume: source.gain })
-        if (track) this.voices.set(actorId, { track })
+        if (track) this.voices.set(actorId, { track, receipt })
     }
 
     private playChannel(

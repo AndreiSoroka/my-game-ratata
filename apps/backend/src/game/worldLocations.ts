@@ -10,6 +10,7 @@ import {
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import { CityPortals, type PortalPassage } from './cityPortals'
+import { sparkBlocksTravel } from './combatMovement'
 import { clearCombatTransient } from './combatState'
 import type { CorpseWallet } from './corpseWallet'
 import { available } from './crimeRules'
@@ -184,6 +185,7 @@ export class WorldLocations {
             character.trainingTarget !== undefined ||
             character.stunUntil > now ||
             character.isActionLocked(now) ||
+            sparkBlocksTravel(character) ||
             character.combat.defensiveStance ||
             magicBlocksMovement(character, now) ||
             !this.portals.reachable(character, passage)
@@ -213,10 +215,10 @@ export class WorldLocations {
     ): string {
         this.closeChestViews(character.id)
         markPositionDiscontinuity(character)
+        character.clearPendingAttackHit()
         character.position = { ...position }
         character.locationId = next.description.id
         character.clearPath()
-        character.clearPendingAttackHit()
         clearCombatTransient(character, now)
         character.attackZones = []
         character.attackZoneUntil = 0

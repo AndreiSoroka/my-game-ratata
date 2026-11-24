@@ -186,7 +186,9 @@ test('plays Spark flight, cast, prayer and death cues and the shoreline loop', a
         stoppedOnMute: true,
         stalePrayerStopped: true,
         noWindupBuzz: true,
-        noCasterWhisper: true,
+        castWhispersOnce: true,
+        sparkWhisperStopsAtRelease: true,
+        whisperGains: [expect.closeTo(0.144, 3), expect.closeTo(0.096, 3)],
         instantOneShot: true,
         prayerOneShot: true,
         magicChannels: {

@@ -19,7 +19,12 @@ import {
 } from '../src/game/combat'
 import { GraveSpawns } from '../src/game/graveSpawns'
 import { createItemInstance } from '../src/game/inventory'
+import { advanceCharacter } from '../src/game/movement'
+import { handleMovementCommand } from '../src/game/movementActions'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+
+const sparkHitAt = 1000 + ABILITY_DEFINITIONS.spark.windupMs
+const nextSparkAt = 1000 + ABILITY_DEFINITIONS.spark.cooldownMs
 
 function setup() {
     const actor = abilityHero('arcanist'),
@@ -99,6 +104,8 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
     expect(typeof actionId).toBe('string')
     expect(event).toEqual({
         kind: 'attack',
+        phase: 'started',
+        durationMs: 1200,
         actorId: f.actor.id,
         abilityId: 'spark',
         attackOrigin: 'ability',
@@ -115,17 +122,22 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
                 },
             ],
         },
-        projectile: {
-            origin: { x: 100, y: 100 },
-            endpoint: { x: 180, y: 100 },
-            halfWidth: 16,
-        },
     })
     expect(f.actor.facing).toBe('right')
     expect(f.actor.mana).toBe(64)
     expect(f.actor.energy).toBe(95)
-    expect(resolvePendingAttackHit(f.attack(1199))).toEqual([])
-    expect(resolvePendingAttackHit(f.attack(1200))).toEqual([
+    expect(resolvePendingAttackHit(f.attack(sparkHitAt - 1))).toEqual([])
+    expect(resolvePendingAttackHit(f.attack(sparkHitAt))).toEqual([
+        expect.objectContaining({
+            kind: 'attack',
+            phase: 'completed',
+            actionId,
+            projectile: {
+                origin: { x: 100, y: 100 },
+                endpoint: { x: 180, y: 100 },
+                halfWidth: 16,
+            },
+        }),
         expect.objectContaining({
             kind: 'miss',
             hitQuality: 'miss',
@@ -133,6 +145,69 @@ it('casts forward Spark into empty space with its own costs and a server-pinned 
         }),
     ])
     expect(f.actor.progression.masteries).toEqual(skills)
+})
+
+it.each(['character', 'grave'] as const)(
+    'releases a missed Spark along its original %s aim, capped at range',
+    (kind) => {
+        const f = setup()
+        const aim = { x: 180, y: 116 }
+        const grave = { kind: 'grave', id: 'aimed-grave' } as const
+        const reference =
+            kind === 'character' ? { targetId: f.target.id } : { target: grave }
+        f.target.position = { ...aim }
+        f.graves.register(
+            { id: grave.id, locationId: f.actor.locationId, position: aim },
+            [],
+            0
+        )
+        expect(f.spark(1000, reference)[0]).toMatchObject({
+            kind: 'attack',
+            phase: 'started',
+        })
+
+        f.target.position.x = 225
+        f.graves.damage(grave.id, 100, sparkHitAt - 1)
+
+        const events = resolvePendingAttackHit(f.attack(sparkHitAt))
+        const release = events.find((event) => event.phase === 'completed')
+        if (release?.projectile === undefined) {
+            throw new Error('Missing Spark release')
+        }
+        const { origin, endpoint } = release.projectile
+        expect(origin).toEqual({ x: 100, y: 100 })
+        expect(
+            Math.hypot(endpoint.x - origin.x, endpoint.y - origin.y)
+        ).toBeCloseTo(ABILITY_DEFINITIONS.spark.range)
+        expect((endpoint.y - origin.y) / (endpoint.x - origin.x)).toBeCloseTo(
+            0.2
+        )
+        expect(events).toContainEqual(expect.objectContaining({ kind: 'miss' }))
+    }
+)
+
+it('holds the caster in place until Spark releases and rejects dash during the channel', () => {
+    const f = setup()
+    f.spark()
+    f.actor.setMoveInput({ x: -1, y: 0 })
+    const advance = (now: number) =>
+        advanceCharacter({
+            character: f.actor,
+            now,
+            deltaMs: 50,
+            navigation: f.context.navigation,
+        })
+    advance(sparkHitAt - 25)
+    expect(f.actor.position).toEqual({ x: 100, y: 100 })
+    expect(
+        handleMovementCommand(f.actor, { type: 'dash' }, sparkHitAt - 1)
+    ).toEqual([])
+    expect(f.actor.movement.dashUntil).toBe(0)
+    advance(sparkHitAt)
+    expect(f.actor.position).toEqual({ x: 100, y: 100 })
+    resolvePendingAttackHit(f.attack(sparkHitAt))
+    advance(sparkHitAt + 50)
+    expect(f.actor.position.x).toBeLessThan(100)
 })
 
 it.each([
@@ -144,7 +219,7 @@ it.each([
     const f = setup()
     f.target.position = { x, y }
     f.spark()
-    const events = resolvePendingAttackHit(f.attack(1200))
+    const events = resolvePendingAttackHit(f.attack(sparkHitAt))
     expect(events.some((event) => event.kind === 'damage')).toBe(hit)
 })
 
@@ -152,16 +227,18 @@ it('stops Spark at walls and rejects missing resources before costs', () => {
     const f = setup()
     vi.spyOn(f.context.navigation, 'hasLineOfSight').mockReturnValue(false)
     expect(f.spark()[0]?.kind).toBe('attack')
-    expect(resolvePendingAttackHit(f.attack(1200))).toEqual([
+    expect(resolvePendingAttackHit(f.attack(sparkHitAt))).toContainEqual(
         expect.objectContaining({
             kind: 'miss',
             hitQuality: 'miss',
             abilityId: 'spark',
-        }),
-    ])
+        })
+    )
     const mana = f.actor.mana
     f.actor.energy = 0
-    expect(f.spark(1800).every((event) => event.kind === 'notice')).toBe(true)
+    expect(f.spark(nextSparkAt).every((event) => event.kind === 'notice')).toBe(
+        true
+    )
     expect(f.actor.mana).toBe(mana)
     expect(f.actor.pendingAttack).toBeUndefined()
 })
@@ -179,14 +256,16 @@ it('hits only the nearest legal world or character target and never trains on st
     )
     const skills = structuredClone(f.actor.progression.masteries)
     f.spark()
-    expect(resolvePendingAttackHit(f.attack(1200))).toContainEqual(
+    expect(resolvePendingAttackHit(f.attack(sparkHitAt))).toContainEqual(
         expect.objectContaining({ kind: 'world_damage', amount: 1.25 })
     )
     expect(f.target.hp).toBe(f.target.maxHp)
     expect(f.actor.progression.masteries).toEqual(skills)
     f.target.position.x = 110
-    f.spark(1800)
-    const events = resolvePendingAttackHit(f.attack(2000))
+    f.spark(nextSparkAt)
+    const events = resolvePendingAttackHit(
+        f.attack(nextSparkAt + ABILITY_DEFINITIONS.spark.windupMs)
+    )
     expect(events.filter((event) => event.kind === 'damage')).toHaveLength(1)
     expect(events.some((event) => event.kind === 'world_damage')).toBe(false)
     expect(f.graves.get('near-grave')?.hp).toBe(98.75)
@@ -200,7 +279,9 @@ it('keeps magic usable with a broken weapon while basic attacks require repair',
     f.target.position.x = 112
     expect(attemptAttack(f.attack(1000, f.target.id))).toEqual([])
     expect(f.spark(1000, { targetId: f.target.id })[0]?.kind).toBe('attack')
-    expect(resolvePendingAttackHit(f.attack(1200))[0]?.kind).toBe('damage')
+    expect(resolvePendingAttackHit(f.attack(sparkHitAt))).toContainEqual(
+        expect.objectContaining({ kind: 'damage' })
+    )
     expect(sword.durability).toBe(0)
 })
 
@@ -232,13 +313,18 @@ it('repeats untargeted Spark and waits silently for mana without gaining practic
         )
     ).toBe(true)
     advanceCharacterControl(f.actor, world, 1000)
-    resolvePendingAttackHit(f.attack(1200))
-    advanceCharacterControl(f.actor, world, 1800)
-    resolvePendingAttackHit(f.attack(2000))
+    resolvePendingAttackHit(f.attack(sparkHitAt))
+    advanceCharacterControl(f.actor, world, nextSparkAt)
+    resolvePendingAttackHit(
+        f.attack(nextSparkAt + ABILITY_DEFINITIONS.spark.windupMs)
+    )
     expect(events.filter((event) => event.kind === 'attack')).toHaveLength(2)
     f.actor.mana = 0
-    advanceCharacterControl(f.actor, world, 2600)
-    advanceCharacterControl(f.actor, world, 2650)
+    advanceCharacterControl(
+        f.actor,
+        world,
+        nextSparkAt + ABILITY_DEFINITIONS.spark.cooldownMs
+    )
     expect(snapshotControl(f.actor).waiting).toBe('resources')
     expect(events.filter((event) => event.kind === 'notice')).toHaveLength(0)
     expect(f.actor.progression.masteries).toEqual(skills)

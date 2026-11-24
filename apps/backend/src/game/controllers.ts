@@ -3,7 +3,7 @@ import { PURSUIT_RULES, type Vector2 } from '@my-game-ratata/contracts'
 import { advanceAshSkeleton } from './ashSkeletonController'
 import { type GameCharacter } from './character'
 import { isTargetInAttackRange } from './combat'
-import { lastHeardPoint } from './hearing'
+import { lastHeardCombatNoise, lastHeardPoint } from './hearing'
 import { distance } from './math'
 import {
     coordinatedTarget,
@@ -43,6 +43,7 @@ export class Mob1Controller implements CharacterController {
     private readonly spacing = new MobSpacing()
     private readonly options: Mob1ControllerOptions
     private lastPlanAt = 0
+    private combatInvestigationPoint: Vector2 | undefined
     private nextWanderAt = 0
     private seed: number
 
@@ -79,6 +80,9 @@ export class Mob1Controller implements CharacterController {
             now
         )
         const target = decision.target
+        if (decision.handled) {
+            this.combatInvestigationPoint = undefined
+        }
         if (decision.returning) {
             if (target !== undefined) {
                 character.clearPath()
@@ -152,6 +156,22 @@ export class Mob1Controller implements CharacterController {
         navigation: NavigationService,
         now: number
     ): void {
+        const sound = lastHeardCombatNoise(character, room, now)
+        if (sound !== undefined && insideTerritory(character, sound.position)) {
+            if (
+                this.combatInvestigationPoint === undefined ||
+                distance(this.combatInvestigationPoint, sound.position) > 0
+            ) {
+                character.clearPath()
+            }
+            this.combatInvestigationPoint = sound.position
+            this.investigate(character, sound.position, navigation, now)
+            return
+        }
+        if (this.combatInvestigationPoint !== undefined) {
+            this.combatInvestigationPoint = undefined
+            character.clearPath()
+        }
         const point =
             lastHeardPoint(character, room, now) ??
             reportedThreatPosition(character, room, now)

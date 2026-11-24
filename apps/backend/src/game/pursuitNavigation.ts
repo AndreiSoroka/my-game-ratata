@@ -7,9 +7,14 @@ import {
 
 import type { GameCharacter } from './character'
 import { portalReach } from './cityPortals'
+import { lastHeardCombatNoise } from './hearing'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
-import type { ObservedExit, PursuitState } from './pursuitState'
+import {
+    insideTerritory,
+    type ObservedExit,
+    type PursuitState,
+} from './pursuitState'
 import { regionalExit, regionalRoute } from './regionalNavigation'
 import type { GameRoom } from './room'
 
@@ -25,6 +30,37 @@ export function planPursuit(
     }
     state.lastPlanAt = now
     actor.setPath(navigation.findPathWorld(actor.position, point))
+}
+
+export function investigateCombatNoise(
+    actor: GameCharacter,
+    state: PursuitState,
+    room: GameRoom,
+    now: number
+): boolean {
+    const sound = lastHeardCombatNoise(actor, room, now)
+    if (
+        sound === undefined ||
+        sound.emittedAt < state.lastSeenAt ||
+        !insideTerritory(actor, sound.position) ||
+        (state.foreign !== undefined &&
+            distance(state.foreign.entry, sound.position) >
+                PURSUIT_RULES.foreignRadius)
+    ) {
+        return false
+    }
+    if (distance(actor.position, sound.position) <= 8) {
+        actor.clearPath()
+    } else {
+        planPursuit(
+            actor,
+            sound.position,
+            state,
+            room.navigationFor(actor),
+            now
+        )
+    }
+    return true
 }
 
 /** Arrival can use a walkable neighbor when the grave occupies its own anchor tile. */

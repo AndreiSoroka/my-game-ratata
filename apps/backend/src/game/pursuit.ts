@@ -13,6 +13,7 @@ import {
     approachPursuitExit,
     approachRegionalHome,
     homeExit,
+    investigateCombatNoise,
     planHomeArrival,
     planPursuit,
 } from './pursuitNavigation'
@@ -180,6 +181,9 @@ function investigateExit(
         if (approachPortal(actor, exit.endpointId, state, room, now)) {
             return { handled: true, returning: false }
         }
+    }
+    if (exit === undefined && investigateCombatNoise(actor, state, room, now)) {
+        return { handled: true, returning: false }
     }
     if (
         exit !== undefined ||

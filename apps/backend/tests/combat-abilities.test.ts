@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { handleAbilityCommand } from '../src/game/abilityCommands'
@@ -10,6 +11,8 @@ import { canTargetByFaction } from '../src/game/factions'
 import { createItemInstance } from '../src/game/inventory'
 import { previewPrayer } from '../src/game/prayerContext'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+
+const spark = ABILITY_DEFINITIONS.spark
 
 function encounter() {
     const actor = abilityHero('arcanist')
@@ -48,9 +51,16 @@ describe('resolved shared attack abilities', () => {
             targetId: target.id,
         })
         expect(actor.mana).toBe(mana - 6)
-        expect(resolvePendingAttackHit({ ...attack, now: 1199 })).toEqual([])
+        const hitAt = attack.now + spark.windupMs
+        const nextAt = attack.now + spark.cooldownMs
+        expect(resolvePendingAttackHit({ ...attack, now: hitAt - 1 })).toEqual(
+            []
+        )
         expect(
-            resolvePendingAttackHit({ ...attack, now: 1200 })
+            attemptAbilityAttack({ ...attack, now: nextAt - 1 }, 'spark')
+        ).toEqual([])
+        expect(
+            resolvePendingAttackHit({ ...attack, now: hitAt })
         ).toContainEqual(
             expect.objectContaining({
                 kind: 'damage',
@@ -58,11 +68,8 @@ describe('resolved shared attack abilities', () => {
                 amount: 5,
             })
         )
-        expect(attemptAbilityAttack({ ...attack, now: 1799 }, 'spark')).toEqual(
-            []
-        )
         expect(
-            attemptAbilityAttack({ ...attack, now: 1800 }, 'spark')
+            attemptAbilityAttack({ ...attack, now: nextAt }, 'spark')
         ).toHaveLength(1)
     })
     it('does not spend for an unreachable target or an empty mana pool', () => {
@@ -86,14 +93,21 @@ describe('resolved shared attack abilities', () => {
         target.hp = 2
         attemptAbilityAttack(attack, 'spark')
         expect(
-            resolvePendingAttackHit({ ...attack, now: 1200 })
+            resolvePendingAttackHit({
+                ...attack,
+                now: attack.now + spark.windupMs,
+            })
         ).toContainEqual(expect.objectContaining({ kind: 'absorb', amount: 5 }))
         expect(target.hp).toBe(2)
-        attemptAbilityAttack({ ...attack, now: 1800 }, 'spark')
-        const events = resolvePendingAttackHit({ ...attack, now: 2000 })
+        const nextAt = attack.now + spark.cooldownMs
+        attemptAbilityAttack({ ...attack, now: nextAt }, 'spark')
+        const hitAt = nextAt + spark.windupMs
+        const events = resolvePendingAttackHit({ ...attack, now: hitAt })
         expect(events.filter((event) => event.kind === 'death')).toHaveLength(1)
         expect(target.alive).toBe(false)
-        expect(resolvePendingAttackHit({ ...attack, now: 2001 })).toEqual([])
+        expect(resolvePendingAttackHit({ ...attack, now: hitAt + 1 })).toEqual(
+            []
+        )
         expect(actor.progression.masteries.magic.experience).toBeGreaterThan(0n)
     })
     it('pins a harmful prayer target and does not replace a stale selection', () => {

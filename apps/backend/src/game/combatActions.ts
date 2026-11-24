@@ -15,6 +15,7 @@ export interface AttackPhases {
     animationMs?: number
 }
 export type StartedCombatAction = GameEventPayload & { actionId: string }
+
 export function startCombatAction(
     actor: GameCharacter,
     now: number,

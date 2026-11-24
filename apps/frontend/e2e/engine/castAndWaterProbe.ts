@@ -103,13 +103,10 @@ function exerciseWorldCues(
     const [sparkFlight, magic, prayer, water, death] = expectedClips.map((file) =>
         clips.get(file)!
     ) as [Sound, Sound, Sound, Sound, Sound]
-    audio.playEventSound({ ...spark, phase: 'started' }, serverTime)
-    const noWindupBuzz = sparkFlight.playingCount() === 0
-    audio.playEventSound(spark, serverTime)
-    audio.playEventSound(spark, serverTime)
+    const sparkCues = exerciseSparkCues(audio, magic, sparkFlight)
     const playing = [sparkFlight, prayer, water].map((sound) => sound.playingCount())
     const tracks = [sparkFlight, prayer, water].map((sound) => sound.instances[0]!)
-    const noCasterWhisper = magic.playingCount() === 0
+    const whisperGains = [magic, prayer].map((sound) => sound.output.gain.value)
 
     audio.playEventSound(
         { kind: 'cast', phase: 'interrupted', actorId: prayerId, abilityId: 'pray' },
@@ -132,13 +129,34 @@ function exerciseWorldCues(
         waterLoop: tracks[2]?.loop,
         stoppedOnMute: deathVoice?.isStopped && tracks.every((track) => track.isStopped),
         stalePrayerStopped,
-        noWindupBuzz,
-        noCasterWhisper,
+        ...sparkCues,
+        whisperGains,
         instantOneShot: tracks[0]?.loop === false,
         prayerOneShot: tracks[1]?.loop === false,
         magicChannels,
         deathVoiceSurvivesInvalidation,
         durations: [sparkFlight, magic, prayer, water, death].map((sound) => sound.data.duration),
+    }
+}
+
+function exerciseSparkCues(audio: GameAudio, magic: Sound, sparkFlight: Sound) {
+    const started = { ...spark, phase: 'started' } as const
+    audio.playEventSound(started, serverTime)
+    audio.playEventSound(started, serverTime)
+    const sparkWhisper = magic.instances.find((track) => track.isPlaying)
+    const castWhispersOnce = magic.playingCount() === 1 && sparkWhisper?.loop === false
+    const noWindupBuzz = sparkFlight.playingCount() === 0
+    const released = {
+        ...spark,
+        phase: 'completed',
+        projectile: { origin: { x: 64, y: 88 }, endpoint: { x: 144, y: 88 } },
+    } as const
+    audio.playEventSound(released, serverTime + 100)
+    audio.playEventSound(released, serverTime + 100)
+    return {
+        castWhispersOnce,
+        noWindupBuzz,
+        sparkWhisperStopsAtRelease: sparkWhisper?.isStopped && magic.playingCount() === 0,
     }
 }
 

@@ -4,9 +4,10 @@ import { resolveCharacterDamage } from '../src/game/abilityDamage'
 import { AdventureService } from '../src/game/adventure'
 import type { GameCharacter } from '../src/game/character'
 import type { PendingAttackHit } from '../src/game/characterState'
-import { attemptAttack } from '../src/game/combat'
+import { attemptAbilityAttack, attemptAttack } from '../src/game/combat'
 import { applyAttackStun, resolveAttackDamage } from '../src/game/combatDamage'
 import { defendContact } from '../src/game/combatDefense'
+import { takeSparkInterruptions } from '../src/game/combatInterruption'
 import { observeCombatEvent } from '../src/game/combatObservation'
 import { advanceCharacter } from '../src/game/movement'
 import { NavigationService } from '../src/game/navigation'
@@ -366,52 +367,72 @@ describe('shared undead perception and fear', () => {
         expect(attemptAttack({ ...base, targetId: source.id })).toEqual([])
         expect(attemptAttack(base)).not.toEqual([])
     })
-
-    it.each(['network_player', 'scripted'] as const)(
-        'slows and forces %s undead to leave while preventing reentry',
-        (kind) => {
-            const { source, undead, context } = fixture()
-            channel(source, {
-                radius: 50,
-                wardRank: 4,
-                wardTargetIds: [undead.id],
-            })
-            Object.assign(undead, { controllerKind: kind })
-            undead.position = { x: 140, y: 100 }
-            undead.setMoveInput({ x: -1, y: 0 })
-            undead.lockAction(1000, 5000)
-            advanceCharacter({
-                character: undead,
-                navigation: context.navigation,
-                now: 2000,
-                deltaMs: 1000,
-            })
-            expect(undead.position.x).toBeGreaterThan(140)
-            expect(undead.position.x).toBeLessThanOrEqual(
-                140 + undead.config.moveSpeed * 0.1
-            )
-            expect(
-                attemptAttack({
-                    actor: undead,
-                    targets: [source],
-                    now: 2000,
-                    tileSize: 16,
-                    navigation: context.navigation,
-                    respawnDelayMsFor: () => 10000,
-                })
-            ).toEqual([])
-            undead.position = { x: 160, y: 100 }
-            undead.actionLockUntil = 0
-            advanceCharacter({
-                character: undead,
-                navigation: context.navigation,
-                now: 3000,
-                deltaMs: 1000,
-            })
-            expect(undead.position.x).toBeGreaterThan(150)
-        }
-    )
 })
+
+it.each(['network_player', 'scripted'] as const)(
+    'slows and forces %s undead to leave while preventing reentry',
+    (kind) => {
+        const { source, undead, context } = fixture()
+        Object.assign(undead, { controllerKind: kind })
+        undead.abilities.known.add('spark')
+        undead.mana = 6
+        const spark = attemptAbilityAttack(
+            {
+                actor: undead,
+                now: 1000,
+                targets: [],
+                tileSize: 16,
+                respawnDelayMsFor: () => 10_000,
+            },
+            'spark'
+        )[0]
+        expect(spark?.phase).toBe('started')
+        channel(source, {
+            radius: 50,
+            wardRank: 4,
+            wardTargetIds: [undead.id],
+        })
+        undead.position = { x: 140, y: 100 }
+        undead.setMoveInput({ x: -1, y: 0 })
+        undead.lockAction(1000, 5000)
+        advanceCharacter({
+            character: undead,
+            navigation: context.navigation,
+            now: 2000,
+            deltaMs: 1000,
+        })
+        expect(takeSparkInterruptions([undead])).toEqual([
+            expect.objectContaining({
+                kind: 'attack',
+                phase: 'interrupted',
+                actionId: spark?.actionId,
+            }),
+        ])
+        expect(undead.position.x).toBeGreaterThan(140)
+        expect(undead.position.x).toBeLessThanOrEqual(
+            140 + undead.config.moveSpeed * 0.1
+        )
+        expect(
+            attemptAttack({
+                actor: undead,
+                targets: [source],
+                now: 2000,
+                tileSize: 16,
+                navigation: context.navigation,
+                respawnDelayMsFor: () => 10000,
+            })
+        ).toEqual([])
+        undead.position = { x: 160, y: 100 }
+        undead.actionLockUntil = 0
+        advanceCharacter({
+            character: undead,
+            navigation: context.navigation,
+            now: 3000,
+            deltaMs: 1000,
+        })
+        expect(undead.position.x).toBeGreaterThan(150)
+    }
+)
 
 describe('opposed theft advantage', () => {
     it.each([

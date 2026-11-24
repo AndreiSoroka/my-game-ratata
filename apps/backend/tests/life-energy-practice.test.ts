@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { createAdventureState } from '../src/game/adventureState'
@@ -98,11 +99,14 @@ describe('Life energy practice', () => {
         attemptAbilityAttack(attack, 'spark')
         restoreEnergy(actor, 5, 1100)
         expect(state.lifeEnergy.recovered).toBe(295)
-        resolvePendingAttackHit({ ...attack, now: 1200 })
+        const releaseAt = attack.now + ABILITY_DEFINITIONS.spark.windupMs
+        resolvePendingAttackHit({ ...attack, now: releaseAt })
         expect(state.lifeEnergy.recovered).toBe(300)
         expect(state.opened.has('life.breath')).toBe(true)
         expect(actor.progression.masteries.life.experience).toBe(40_000_000n)
-        expect(resolvePendingAttackHit({ ...attack, now: 1201 })).toEqual([])
+        expect(
+            resolvePendingAttackHit({ ...attack, now: releaseAt + 1 })
+        ).toEqual([])
         expect(actor.progression.masteries.life.experience).toBe(40_000_000n)
     })
 
@@ -113,8 +117,9 @@ describe('Life energy practice', () => {
         attemptAbilityAttack(attack, 'spark')
         target.position.y = 300
         restoreEnergy(actor, 5, 1100)
-        resolvePendingAttackHit({ ...attack, now: 1200 })
-        handleMovementCommand(actor, { type: 'dash' }, 2000)
+        const releaseAt = attack.now + ABILITY_DEFINITIONS.spark.windupMs
+        resolvePendingAttackHit({ ...attack, now: releaseAt })
+        handleMovementCommand(actor, { type: 'dash' }, releaseAt + 100)
         actor.drainEnergy(10)
         restoreEnergy(actor, 100, 3000)
         expect(state.lifeEnergy.recovered).toBe(0)

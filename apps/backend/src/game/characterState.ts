@@ -5,6 +5,7 @@ import type {
     AttackGeometry,
     AttackOrigin,
     CharacterFacing,
+    ProjectilePath,
     SpellSkillId,
     Vector2,
     WorldCombatTarget,
@@ -38,6 +39,7 @@ export interface PendingAttackHit {
     geometry?: AttackGeometry
     weaponAttack?: boolean
     arrow?: ArrowAttack
+    sparkPath?: ProjectilePath
     comboBonus?: number
     stunDurationMs?: number
     resourceSpends?: ResourceSpendReceipt[] | undefined

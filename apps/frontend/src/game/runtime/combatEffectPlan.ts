@@ -107,17 +107,20 @@ function attackCues(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (!isArrowAbility(event.abilityId) || event.phase === undefined)
+    if (
+        (!isArrowAbility(event.abilityId) && event.abilityId !== 'spark') ||
+        event.phase === undefined
+    )
         return [attackCue(event, actor, base)]
     if (event.phase === 'completed' && event.projectile) return [attackCue(event, actor, base)]
     if (event.phase !== 'started') return []
     return [
         {
-            kind: 'aim',
+            kind: event.abilityId === 'spark' ? 'sparkCharge' : 'aim',
             fromId: actor.id,
             targetId: actor.id,
             deity: base.deity,
-            color: base.color,
+            color: event.abilityId === 'spark' ? SPARK_COLOR : base.color,
             duration: event.durationMs ?? ABILITY_DEFINITIONS[event.abilityId].windupMs,
             aimActionId: event.actionId,
             count: 0,

@@ -4,6 +4,7 @@ import {
     authoredPhrase,
     type AuthoredTextKey,
     type GameEventPayload,
+    type Vector2,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
@@ -11,6 +12,12 @@ import type { GameCharacter } from './character'
 import type { GraveCombatContext } from './graveRules'
 import type { MagicCombat } from './magicCombat'
 import type { NavigationService } from './navigation'
+
+export type OnProjectileRelease = (
+    actor: GameCharacter,
+    origin: Vector2
+) => void
+
 export interface AbilityContext {
     useAshRite?:
         | ((
@@ -24,6 +31,7 @@ export interface AbilityContext {
     navigation: NavigationService
     now: number
     random?: () => number
+    onProjectileRelease?: OnProjectileRelease | undefined
     sameParty?: (firstId: string, secondId: string) => boolean
     magic?: MagicCombat
     canOpenPortal?: (actor: GameCharacter, now: number) => boolean

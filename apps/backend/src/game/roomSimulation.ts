@@ -2,9 +2,10 @@ import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { resolvePendingAttackHit } from './combat'
+import { takeSparkInterruptions } from './combatInterruption'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
-import { recordMovementNoise } from './hearing'
+import { recordMovementNoise, recordProjectileNoise } from './hearing'
 import { idleSideStep } from './idleNpcSpacing'
 import { advanceMagicChannel } from './magicAbilities'
 import { magicChannelFor } from './magicState'
@@ -125,10 +126,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         now,
         context.deltaMs
     )
-    for (const character of characters.values()) {
-        resolveWorldAttack(character, context)
-    }
-    context.onEvents(room.advanceMagicProjectiles(now))
+    resolveWorldCombat(context)
     context.life.advance(now, (actor, at) => room.abilityContextFor(actor, at))
     stops?.apply()
     room.refreshPrayerAuraEnvironment()
@@ -214,11 +212,27 @@ function advanceWorldCharacter(
     }
 }
 
+function resolveWorldCombat(context: SimulationContext): void {
+    const { characters, room, now, onEvents } = context
+    for (const character of characters.values()) {
+        resolveWorldAttack(character, context)
+    }
+    onEvents(
+        room.advanceMagicProjectiles(now, (actor, origin) =>
+            recordProjectileNoise(room, actor, origin, now)
+        )
+    )
+    const interruptions = takeSparkInterruptions(characters.values())
+    if (interruptions.length > 0) {
+        onEvents(interruptions)
+    }
+}
+
 function resolveWorldAttack(
     character: GameCharacter,
     context: SimulationContext
 ): void {
-    const { characters, world, now, onEvents } = context
+    const { characters, room, world, now, onEvents } = context
     const pending = character.pendingAttack
     const location = world.get(character.locationId)
     const targets = [...characters.values()].filter(
@@ -235,6 +249,12 @@ function resolveWorldAttack(
         navigation: location.navigation,
         tileSize: location.navigation.grid.tileWidth,
     })
+    const released = hitEvents.find(
+        (event) => event.kind === 'attack' && event.phase === 'completed'
+    )?.projectile
+    if (released !== undefined) {
+        recordProjectileNoise(room, character, released.origin, now)
+    }
     if (
         pending?.actionId !== undefined &&
         character.pendingAttack !== pending

@@ -1,7 +1,8 @@
-import { PURSUIT_RULES } from '@my-game-ratata/contracts'
+import { MOVEMENT_RULES, PURSUIT_RULES } from '@my-game-ratata/contracts'
 import { expect, it, vi } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
+import { recordProjectileNoise } from '../src/game/hearing'
 import { advanceCharacter } from '../src/game/movement'
 import { advancePursuit } from '../src/game/pursuit'
 import { pursuits, returnFromPursuit } from '../src/game/pursuitState'
@@ -108,6 +109,67 @@ it('does not observe a wall-hidden crossing', () => {
         f.now()
     )
     expect(pursuits.get(f.actor)?.crossing).toBeUndefined()
+})
+
+it.each([true, false])(
+    'uses combat noise only if it is newer than sight (newer: %s)',
+    (newer) => {
+        const f = pursuitFixture()
+        const seenAt = f.now()
+        const lastSeen = { ...f.target.position }
+        const source = { x: f.actor.position.x, y: f.actor.position.y + 48 }
+        expect(advancePursuit(f.actor, f.target, f.room, seenAt).target).toBe(
+            f.target
+        )
+        vi.spyOn(
+            f.room.navigationFor(f.actor),
+            'hasLineOfSight'
+        ).mockReturnValue(false)
+        recordProjectileNoise(
+            f.room,
+            f.target,
+            source,
+            seenAt + (newer ? 50 : -50)
+        )
+
+        expect(
+            advancePursuit(f.actor, undefined, f.room, seenAt + 100)
+        ).toEqual({
+            handled: true,
+            returning: false,
+        })
+        expect(f.actor.remainingPath().at(-1)).toEqual(
+            newer ? source : lastSeen
+        )
+    }
+)
+
+it('stops at the heard point and returns once the noise expires past the sight deadline', () => {
+    const f = pursuitFixture()
+    const seenAt = f.now()
+    const heardAt = seenAt + 2_000
+    const expiresAt = heardAt + MOVEMENT_RULES.investigationMs
+    const source = { x: f.actor.position.x, y: f.actor.position.y + 48 }
+    expect(advancePursuit(f.actor, f.target, f.room, seenAt).target).toBe(
+        f.target
+    )
+    vi.spyOn(f.room.navigationFor(f.actor), 'hasLineOfSight').mockReturnValue(
+        false
+    )
+    recordProjectileNoise(f.room, f.target, source, heardAt)
+    advancePursuit(f.actor, undefined, f.room, heardAt)
+    expect(f.actor.remainingPath().at(-1)).toEqual(source)
+
+    f.actor.position = { x: source.x, y: source.y - 8 }
+    const sightDeadline = seenAt + PURSUIT_RULES.observedExitMs
+    expect(
+        advancePursuit(f.actor, undefined, f.room, sightDeadline).returning
+    ).toBe(false)
+    expect(f.actor.hasPath()).toBe(false)
+    expect(
+        advancePursuit(f.actor, undefined, f.room, expiresAt).returning
+    ).toBe(true)
+    expect(f.actor.remainingPath().at(-1)).toEqual(f.actor.spawnPosition)
 })
 
 it('still observes a visible exit while its own dash temporarily suspends path replanning', () => {

@@ -104,6 +104,7 @@ function pendingAction(
         actor.abilities.casting !== null ||
         activeMagicChannel(actor, now) !== undefined ||
         actor.isActionLocked(now) ||
+        actor.pendingAttack?.sparkPath !== undefined ||
         (action.kind === 'attack' &&
             action.once === true &&
             actor.pendingAttack !== undefined)

@@ -80,7 +80,11 @@ interface GraveMap {
     layers: { name: string; objects?: (Vector2 & { type: string })[] }[]
 }
 
-export async function travelParty(pages: Page[], direction: 'west' | 'south'): Promise<Vector2> {
+export async function travelParty(
+    pages: Page[],
+    direction: 'west' | 'south',
+    timeoutMs = 30_000
+): Promise<Vector2> {
     const cleric = pages[0]!
     const locationId = await cleric.evaluate(
         (direction) =>
@@ -95,20 +99,20 @@ export async function travelParty(pages: Page[], direction: 'west' | 'south'): P
                 const path = new URL(response.url()).pathname
                 return path.startsWith('/world/maps/') && path.endsWith(`/${locationId!}.json`)
             },
-            { timeout: 65_000 }
+            { timeout: timeoutMs * 2 + 5_000 }
         )
         .catch(() => undefined)
     const results = await Promise.all(
         pages.map((participant) =>
             participant.evaluate(
-                async ({ direction, locationId }) => {
+                async ({ direction, locationId, timeoutMs }) => {
                     const api = window.__ratataTest!
-                    const result = await api.travel(direction, { timeoutMs: 30_000 })
+                    const result = await api.travel(direction, { timeoutMs })
                     return result.status === 'blocked' && api.getState().location?.id !== locationId
-                        ? api.travel(direction, { timeoutMs: 30_000 })
+                        ? api.travel(direction, { timeoutMs })
                         : result
                 },
-                { direction, locationId }
+                { direction, locationId, timeoutMs }
             )
         )
     )

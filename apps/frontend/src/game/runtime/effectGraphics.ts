@@ -4,7 +4,16 @@ import { Canvas } from 'excalibur'
 import { drawPrayerGraphic, type PrayerShape } from './prayerGraphics'
 
 export type EffectShape =
-    PrayerShape | 'aim' | 'arrow' | 'spark' | 'fireball' | 'slash' | 'bone' | 'barrier' | 'shards'
+    | PrayerShape
+    | 'aim'
+    | 'arrow'
+    | 'spark'
+    | 'sparkCharge'
+    | 'fireball'
+    | 'slash'
+    | 'bone'
+    | 'barrier'
+    | 'shards'
 export const SPARK_COLOR = '#8cbbff'
 export const BARRIER_COLOR = '#96beed'
 export const FIRE_COLOR = '#ffa75b'
@@ -55,6 +64,15 @@ function spark(ctx: Context): void {
     ctx.lineTo(-7, -9)
     ctx.lineTo(-3, -5)
     ctx.stroke()
+}
+function sparkCharge(ctx: Context): void {
+    ctx.strokeStyle = SPARK_COLOR
+    ctx.beginPath()
+    ctx.arc(0, -12, 7, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.fillStyle = '#eee5ff'
+    ctx.fillRect(-4, -13, 8, 2)
+    ctx.fillRect(-1, -16, 2, 8)
 }
 function fireball(ctx: Context): void {
     ctx.fillStyle = '#d56236'
@@ -140,6 +158,7 @@ export function drawEffectGraphic(
         aim,
         arrow,
         spark,
+        sparkCharge,
         fireball,
         barrier,
         shards,

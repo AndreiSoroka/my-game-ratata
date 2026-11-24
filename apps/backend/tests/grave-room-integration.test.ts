@@ -1,4 +1,5 @@
 import {
+    ABILITY_DEFINITIONS,
     CENTER_LOCATION_ID,
     type ClientMessage,
     GRAVE_PURIFY_CAST_MS,
@@ -360,7 +361,11 @@ describe('ordinary socket commands resolve grave actions in the real room', () =
             f.send(command)
             expect(f.graveHp()).toBe(100)
             f.room.start()
-            vi.advanceTimersByTime(600)
+            vi.advanceTimersByTime(
+                command.type === 'use_ability' && command.abilityId === 'spark'
+                    ? ABILITY_DEFINITIONS.spark.windupMs + 50
+                    : 600
+            )
             f.room.stop()
             expect(
                 f.graveHp(),

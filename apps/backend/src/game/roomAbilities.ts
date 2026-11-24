@@ -9,6 +9,7 @@ import {
     type AbilityContext,
     abilityNotice,
     authoredAbilityNotice,
+    type OnProjectileRelease,
 } from './abilityContext'
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
@@ -222,12 +223,16 @@ function roomMagicEnvironment(
         },
         magicEffectsFor: (locationId: string, now: number) =>
             magic.effectsFor(locationId, now),
-        advanceMagicProjectiles: (now: number) =>
+        advanceMagicProjectiles: (
+            now: number,
+            onRelease?: OnProjectileRelease
+        ) =>
             magic.advance(now, (locationId) => ({
                 characters: charactersIn(locationId),
                 graves,
                 navigation: world().get(locationId).navigation,
                 now,
+                onProjectileRelease: onRelease,
                 respawnDelayMsFor: resolveRespawnDelayMs,
             })),
     }

@@ -1,4 +1,5 @@
 import {
+    ABILITY_DEFINITIONS,
     type ConstellationId,
     constellationIds,
     MASTERY_REWARDS,
@@ -73,9 +74,10 @@ describe('meaningful non-prayer mastery awards', () => {
         (kind) => {
             const { actor, attack } = encounter(kind)
             attemptAbilityAttack(attack, 'spark')
-            resolvePendingAttackHit({ ...attack, now: 1200 })
+            const releaseAt = attack.now + ABILITY_DEFINITIONS.spark.windupMs
+            resolvePendingAttackHit({ ...attack, now: releaseAt })
             expect(total(actor, 'magic')).toBe(parseMasteryExperience('30'))
-            resolvePendingAttackHit({ ...attack, now: 1201 })
+            resolvePendingAttackHit({ ...attack, now: releaseAt + 1 })
             expect(total(actor, 'magic')).toBe(parseMasteryExperience('30'))
         }
     )
@@ -85,7 +87,8 @@ describe('practice evidence keeps discovery weights', () => {
     it('retains relevant practice weights without awarding Spark XP twice', () => {
         const { actor, attack } = encounter()
         attemptAbilityAttack(attack, 'spark')
-        resolvePendingAttackHit({ ...attack, now: 1200 })
+        const releaseAt = attack.now + ABILITY_DEFINITIONS.spark.windupMs
+        resolvePendingAttackHit({ ...attack, now: releaseAt })
         expect(total(actor, 'magic')).toBe(parseMasteryExperience('30'))
         expect(actor.progression.constellations.evidence['arcana']).toBe(1)
         const neutral = abilityHero('arcanist')
@@ -94,7 +97,7 @@ describe('practice evidence keeps discovery weights', () => {
             candidate.progression.constellations.credits.magic = 1
             finishConstellationAction(candidate, {
                 constellationIds: ['magic'],
-                now: 2000,
+                now: releaseAt + 800,
                 random: () => 0.6,
             })
         }

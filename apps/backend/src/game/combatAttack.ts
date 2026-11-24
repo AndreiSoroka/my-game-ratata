@@ -7,6 +7,7 @@ import {
     isArrowAbility,
     isBladeAttackAbility,
     isItemBroken,
+    type ProjectilePath,
 } from '@my-game-ratata/contracts'
 
 import { knowsAbility } from './abilityState'
@@ -34,6 +35,7 @@ import {
     effectiveAttackEnergyCost,
     effectiveAttackPhases,
 } from './effectiveParameters'
+import { moveToward } from './math'
 import { recordPaidResources } from './resourcePractice'
 
 export function attemptAttack(context: AttackContext): GameEventPayload[] {
@@ -115,7 +117,9 @@ export function attemptAbilityAttack(
               selected
           )
         : undefined
-    return [payAbilityAttack(context, id, definition, geometry, arrow)]
+    return [
+        payAbilityAttack(context, id, definition, geometry, arrow, selected),
+    ]
 }
 
 function prepareAbilityGeometry(
@@ -145,13 +149,18 @@ function payAbilityAttack(
     id: AttackAbilityId,
     definition: ReturnType<typeof effectiveAbility>,
     geometry: AttackGeometry,
-    arrow: ArrowAttack | undefined
+    arrow: ArrowAttack | undefined,
+    selected: GameCharacter | undefined
 ): GameEventPayload {
     const { actor, now } = context
     const before = { energy: actor.energy, mana: actor.mana }
     actor.energy -= definition.energy
     actor.mana -= definition.mana
     actor.abilities.availableAt[id] = now + definition.cooldownMs
+    const sparkPath =
+        id === 'spark'
+            ? startSparkPath(context, definition.range, selected)
+            : undefined
     const event = startCombatAction(
         actor,
         now,
@@ -160,6 +169,7 @@ function payAbilityAttack(
             targetId: context.targetId,
             target: context.target,
             ...(arrow === undefined ? {} : { arrow }),
+            ...(sparkPath === undefined ? {} : { sparkPath }),
             abilityId: id,
             weaponAttack: id === 'skeleton_strike',
             canStun: id === 'skeleton_strike',
@@ -177,22 +187,32 @@ function payAbilityAttack(
             : definition,
         geometry
     )
-    if (arrow !== undefined) {
+    if (arrow !== undefined || sparkPath !== undefined) {
         event.phase = 'started'
         event.durationMs = definition.windupMs
-    } else if (
-        id === 'spark' &&
-        context.targetId === undefined &&
-        context.target === undefined
-    ) {
-        event.projectile = forwardAbilityAttack(
-            actor.position,
-            actor.facing,
-            id,
-            definition.range
-        )
     }
     return event
+}
+
+function startSparkPath(
+    { actor, graves, target }: AttackContext,
+    range: number,
+    selected: GameCharacter | undefined
+): ProjectilePath {
+    const path = forwardAbilityAttack(
+        actor.position,
+        actor.facing,
+        'spark',
+        range
+    )
+    const aim =
+        target === undefined
+            ? selected?.position
+            : graves?.get(target.id)?.position
+    if (aim !== undefined) {
+        path.endpoint = moveToward(path.origin, aim, range)
+    }
+    return path
 }
 
 function canStartArrow(
@@ -220,6 +240,7 @@ function abilityStartReady(
 ): boolean {
     return (
         !(id === 'skeleton_strike' && brokenWeapon(context.actor)) &&
+        !(id === 'spark' && context.actor.movement.dashUntil > context.now) &&
         ready(context) &&
         abilityReady(context.actor, id, context.now) &&
         prepareTarget(context)

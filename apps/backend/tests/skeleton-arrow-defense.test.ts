@@ -35,7 +35,12 @@ function damageFrom(
             : attemptAbilityAttack(context, attack)
     expect(events).toHaveLength(1)
     const hpBefore = skeleton.hp
-    expect(resolvePendingAttackHit({ ...context, now: 1250 })).toContainEqual(
+    if (actor.pendingAttack === undefined) {
+        throw new Error('Expected a pending attack')
+    }
+    expect(
+        resolvePendingAttackHit({ ...context, now: actor.pendingAttack.hitAt })
+    ).toContainEqual(
         expect.objectContaining({ kind: 'damage', targetId: skeleton.id })
     )
     return hpBefore - skeleton.hp

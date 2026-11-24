@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import { expect, it, vi } from 'vitest'
 
 import {
@@ -109,8 +110,11 @@ it('uses arcane stone resistance and normal costs for Spark after its own windup
         abilityId: 'spark',
         target: f.reference,
     })
-    expect(f.hit(1199)).toEqual([])
-    expect(f.hit(1200)[0]).toMatchObject({
+    const releaseAt = 1000 + ABILITY_DEFINITIONS.spark.windupMs
+    expect(f.hit(releaseAt - 1)).toEqual([])
+    expect(
+        f.hit(releaseAt).find((event) => event.kind === 'world_damage')
+    ).toMatchObject({
         kind: 'world_damage',
         amount: 1.25,
         damageKind: 'arcane',
@@ -332,7 +336,7 @@ it.each([
             ...(world ? {} : { target: undefined, targetId: enemy.id }),
         }
         expect(attemptAbilityAttack(context, 'spark')[0]?.kind).toBe('attack')
-        const now = 1203 + late
+        const now = 1003 + ABILITY_DEFINITIONS.spark.windupMs + late
         advanceCharacter({
             character: f.actor,
             now,
@@ -340,7 +344,9 @@ it.each([
             navigation: f.context.navigation,
         })
         expect(f.actor.attackZones).not.toEqual([])
-        expect(f.hit(now)[0]?.kind).toBe(world ? 'world_damage' : 'damage')
+        expect(f.hit(now)).toContainEqual(
+            expect.objectContaining({ kind: world ? 'world_damage' : 'damage' })
+        )
         expect(f.hit(now)).toEqual([])
         f.actor.tickTimedState(now + 50)
         expect(f.actor.attackZones).toEqual([])
@@ -357,7 +363,7 @@ it.each([
     {
         first: 'spark' as const,
         next: 'fireball' as const,
-        windup: 200,
+        windup: ABILITY_DEFINITIONS.spark.windupMs,
         amount: 1.25,
     },
 ])(

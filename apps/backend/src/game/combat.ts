@@ -21,6 +21,7 @@ import {
     isInAttackGeometry,
     isInZones,
 } from './combatGeometry'
+import { sparkPhaseEvent } from './combatInterruption'
 import { canAttackCharacter } from './combatTargets'
 import { findGraveHit, legalGraveTarget } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
@@ -51,9 +52,7 @@ export function resolvePendingAttackHit(
         return []
     }
     if (!availableToAttack(actor, now) || !validPendingWeapon(actor, attack)) {
-        return attack.arrow !== undefined
-            ? [arrowPhaseEvent(actor, attack, 'interrupted')]
-            : []
+        return interruptedAttack(actor, attack)
     }
     const geometry = pendingGeometry(context, attack)
     const area = isAreaAttack(attack)
@@ -64,7 +63,7 @@ export function resolvePendingAttackHit(
     if (graves.length > 0 && !area) {
         targets.length = 0
     }
-    const release = arrowReleaseEvents(context, attack, targets[0] ?? graves[0])
+    const release = releaseEvents(context, attack, targets[0] ?? graves[0])
     if (targets.length === 0 && graves.length === 0) {
         return [...release, missedAttack(actor, attack)]
     }
@@ -72,6 +71,39 @@ export function resolvePendingAttackHit(
         ...release,
         ...resolveContactBatch(context, attack, targets, graves),
     ]
+}
+function interruptedAttack(
+    actor: GameCharacter,
+    attack: PendingAttackHit
+): GameEventPayload[] {
+    if (attack.sparkPath !== undefined) {
+        return [sparkPhaseEvent(actor, attack, 'interrupted')]
+    }
+    return attack.arrow !== undefined
+        ? [arrowPhaseEvent(actor, attack, 'interrupted')]
+        : []
+}
+function releaseEvents(
+    context: AttackContext,
+    attack: PendingAttackHit,
+    contact: { position: Vector2 } | undefined
+): GameEventPayload[] {
+    return attack.sparkPath === undefined
+        ? arrowReleaseEvents(context, attack, contact)
+        : [releaseSpark(context, attack, attack.sparkPath, contact?.position)]
+}
+function releaseSpark(
+    { actor, navigation }: AttackContext,
+    attack: PendingAttackHit,
+    path: NonNullable<PendingAttackHit['sparkPath']>,
+    contact: Vector2 | undefined
+): GameEventPayload {
+    const aim = contact ?? path.endpoint
+    const endpoint = navigation?.visibleLineEndpoint(path.origin, aim) ?? aim
+    return {
+        ...sparkPhaseEvent(actor, attack, 'completed'),
+        projectile: { ...path, endpoint: { ...endpoint } },
+    }
 }
 function isAreaAttack(attack: PendingAttackHit): boolean {
     return (
@@ -111,6 +143,7 @@ function characterContacts(
         return []
     }
     const { actor } = context
+    const origin = attack.sparkPath?.origin ?? actor.position
     const candidates = [
         ...new Map(
             context.targets.map((target) => [target.id, target])
@@ -124,9 +157,7 @@ function characterContacts(
             isInAttackGeometry(target.position, geometry)
     )
     candidates.sort(
-        (a, b) =>
-            distance(actor.position, a.position) -
-            distance(actor.position, b.position)
+        (a, b) => distance(origin, a.position) - distance(origin, b.position)
     )
     return area ? candidates : candidates.slice(0, 1)
 }
@@ -145,7 +176,12 @@ function legalContactTarget(
     }
     return attack.arrow?.abilityId === 'sniper_shot'
         ? canAimSniperAt(targetedContext, target, attack.arrow.origin)
-        : isLegalAttackTarget(context.actor, target, targetedContext)
+        : isLegalAttackTarget(
+              context.actor,
+              target,
+              targetedContext,
+              attack.sparkPath?.origin
+          )
 }
 function graveContacts(context: AttackContext, geometry: AttackGeometry) {
     return (context.graves?.list(context.actor.locationId) ?? []).filter(
@@ -160,10 +196,11 @@ function singleGrave(
     target?: GameCharacter
 ) {
     const grave = findGraveHit(context, attack)
+    const origin = attack.sparkPath?.origin ?? context.actor.position
     return grave !== undefined &&
         (target === undefined ||
-            distance(context.actor.position, grave.position) <
-                distance(context.actor.position, target.position))
+            distance(origin, grave.position) <
+                distance(origin, target.position))
         ? [grave]
         : []
 }

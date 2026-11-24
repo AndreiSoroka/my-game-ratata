@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { handleAbilityCommand } from '../src/game/abilityCommands'
@@ -156,5 +157,8 @@ function cast(actor: GameCharacter, target: GameCharacter, spell: TestSpell) {
     }
     expect(attemptAbilityAttack(attack, 'spark')).toHaveLength(1)
     expect(practiceResourceMissing(actor, 'mana')).toBe(0)
-    return resolvePendingAttackHit({ ...attack, now: 1200 })
+    return resolvePendingAttackHit({
+        ...attack,
+        now: attack.now + ABILITY_DEFINITIONS.spark.windupMs,
+    })
 }

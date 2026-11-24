@@ -304,7 +304,7 @@ it.each(['fireball', 'greater_fireball'] as const)(
     }
 )
 
-it('plays only the flight buzz for a confirmed Spark and deduplicates its launch', () => {
+it('whispers during Spark windup and plays one buzz on release', () => {
     const test = setup()
     test.observe(epoch, [caster('me', 0), caster('mage', 80)])
     const spark = {
@@ -316,18 +316,68 @@ it('plays only the flight buzz for a confirmed Spark and deduplicates its launch
     } as const
     const projectile = { origin: { x: 80, y: 0 }, endpoint: { x: 0, y: 0 } }
     expect(isMagicCastAttack(spark)).toBe(true)
-    test.audio.receive({ ...spark, phase: 'started' }, epoch + 1)
-    test.audio.receive({ ...spark, phase: 'interrupted' }, epoch + 2)
-    test.audio.receive({ ...spark, phase: 'completed' }, epoch + 3)
-    expect(test.sounds.play).not.toHaveBeenCalled()
+    const started = { ...spark, phase: 'started' } as const
+    const released = { ...spark, phase: 'completed', projectile } as const
+    test.audio.receive(started, epoch + 1)
+    test.audio.receive(started, epoch + 2)
+    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('magicCast', { volume: 0.25 })
 
-    test.audio.receive(spark, epoch + 4)
-    test.tracks[0]?.stop()
-    test.audio.receive({ ...spark, phase: 'completed', projectile }, epoch + 5)
-    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('sparkFlight', { volume: 0.25 })
-
-    test.audio.receive({ ...spark, actionId: 'spark:2', phase: 'completed', projectile }, epoch + 6)
+    test.audio.receive(released, epoch + 3)
+    expect(test.tracks[0]?.isStopped).toBe(true)
     expect(test.sounds.play).toHaveBeenNthCalledWith(2, 'sparkFlight', { volume: 0.25 })
+
+    test.tracks[1]?.stop()
+    test.audio.receive(released, epoch + 4)
+    test.audio.receive(started, epoch + 5)
+    expect(test.sounds.play).toHaveBeenCalledTimes(2)
+    test.audio.receive({ ...spark, actionId: 'spark:2' }, epoch + 6)
+    expect(test.sounds.play).toHaveBeenNthCalledWith(3, 'sparkFlight', { volume: 0.25 })
+})
+
+it('silences interrupted Spark and protects a later cast from stale terminal events', () => {
+    const test = setup()
+    test.observe(epoch, [caster('me', 0)])
+    const spark = {
+        kind: 'attack',
+        actorId: 'me',
+        abilityId: 'spark',
+        delivery: 'magic',
+    } as const
+    const first = { ...spark, actionId: 'spark:1', phase: 'started' } as const
+    const interrupted = { ...first, phase: 'interrupted' } as const
+    test.audio.receive(first, epoch + 1)
+    test.audio.receive(interrupted, epoch + 2)
+    expect(test.tracks[0]?.isStopped).toBe(true)
+
+    const second = { ...first, actionId: 'spark:2' }
+    test.audio.receive(second, epoch + 3)
+    test.audio.receive(interrupted, epoch + 4)
+    expect(test.tracks[1]?.isStopped).toBe(false)
+
+    test.audio.receive({ ...second, phase: 'completed' }, epoch + 5)
+    expect(test.tracks[1]?.isStopped).toBe(true)
+    expect(test.sounds.play).toHaveBeenCalledTimes(2)
+})
+
+it('silences a caster who dies during the Spark whisper', () => {
+    const test = setup()
+    test.observe(epoch, [caster('me', 0), caster('mage', 32)])
+    test.audio.receive(
+        {
+            kind: 'attack',
+            actorId: 'mage',
+            actionId: 'spark:1',
+            abilityId: 'spark',
+            delivery: 'magic',
+            phase: 'started',
+        },
+        epoch + 1
+    )
+
+    test.audio.receive({ kind: 'death', actorId: 'skeleton', targetId: 'mage' }, epoch + 2)
+
+    expect(test.tracks[0]?.isStopped).toBe(true)
+    expect(test.sounds.play).toHaveBeenCalledTimes(1)
 })
 
 it('plays instant devotion but leaves ordinary completed prayers, barriers removed by dispel and misses silent', () => {

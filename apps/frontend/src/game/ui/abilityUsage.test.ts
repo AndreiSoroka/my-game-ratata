@@ -30,7 +30,7 @@ function observedPlayer() {
 describe('authoritative ability usage metadata', () => {
     it('keeps old fixtures compatible and does not expose damage through the fallback', () => {
         const usage = abilityUsage(characterFixture('legacy'), 'spark')
-        expect(usage).toEqual({ mana: 6, energy: 5, cooldownMs: 800, range: 80, windupMs: 200 })
+        expect(usage).toEqual({ mana: 6, energy: 5, cooldownMs: 1200, range: 80, windupMs: 1200 })
         expect(usage).not.toHaveProperty('damage')
         expect(usage).not.toHaveProperty('maxDamage')
         expect(forwardShot({ x: 1, y: 2 }, 'right').endpoint).toEqual({

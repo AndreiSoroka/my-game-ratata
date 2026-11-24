@@ -63,6 +63,7 @@ export function advanceFireProjectile(
             return { events: [] }
         }
         projectile.launched = true
+        context.onProjectileRelease?.(actor, projectile.position)
     }
     const distanceAtTick = Math.min(
         projectile.range,
@@ -74,14 +75,11 @@ export function advanceFireProjectile(
     const step = contact ?? clear
     projectile.position = positionAlong(projectile, step)
     projectile.traveled += step
-    if (
+    const hasImpact =
         contact !== undefined ||
         clear < remainingStep ||
         projectile.traveled + 1e-8 >= projectile.range
-    ) {
-        return explode(projectile, context)
-    }
-    return undefined
+    return hasImpact ? explode(projectile, context) : undefined
 }
 
 function clearFlightDistance(

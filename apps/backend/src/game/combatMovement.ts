@@ -11,6 +11,11 @@ export function canWalkDuringPrayer(actor: GameCharacter): boolean {
     )
 }
 
+/** A release due this tick still belongs to the map where it began. */
+export function sparkBlocksTravel(actor: GameCharacter): boolean {
+    return actor.pendingAttack?.sparkPath !== undefined
+}
+
 export function movementInputLocked(actor: GameCharacter): boolean {
     return (
         actor.alive &&

@@ -235,20 +235,31 @@ it.each([10_000, 50_000])(
     }
 )
 
-it('animates an untargeted Spark along its pinned forward path after the caster turns', () => {
+it('charges Spark until release, then animates its pinned path after the caster turns', () => {
     const { actor, effects, frame } = setup()
-    effects.receive({
+    const cast = {
         kind: 'attack',
         actorId: actor.id,
         abilityId: 'spark',
+        actionId: 'spark:1',
+    } as const
+    const windup = ABILITY_DEFINITIONS.spark.windupMs
+    effects.receive({ ...cast, phase: 'started', durationMs: windup })
+    frame(windup - 1)
+    expect(rendered.views).toHaveLength(1)
+    expect(rendered.views[0]?.dead).toBe(false)
+    effects.receive({
+        ...cast,
+        phase: 'completed',
         projectile: { origin: { x: 100, y: 100 }, endpoint: { x: 180, y: 100 }, halfWidth: 16 },
     })
-    expect(rendered.views[0]).toMatchObject({ pos: { x: 100, y: 85 }, rotation: 0 })
+    expect(rendered.views[0]?.dead).toBe(true)
+    expect(rendered.views[1]).toMatchObject({ pos: { x: 100, y: 85 }, rotation: 0 })
     actor.facing = 'up'
     actor.position = { x: 300, y: 300 }
-    frame(100)
-    expect(rendered.views[0]?.pos).toEqual({ x: 140, y: 85 })
-    frame(100)
-    expect(rendered.views[0]?.dead).toBe(true)
+    frame(40)
+    expect(rendered.views[1]?.pos).toEqual({ x: 140, y: 85 })
+    frame(40)
+    expect(rendered.views[1]?.dead).toBe(true)
     effects.dispose()
 })

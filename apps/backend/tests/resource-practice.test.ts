@@ -1,3 +1,4 @@
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { handleAbilityCommand } from '../src/game/abilityCommands'
@@ -17,6 +18,8 @@ import {
     recordUsefulResourceSpend,
 } from '../src/game/resourcePractice'
 import { abilityContext, abilityHero } from './abilityTestHelpers'
+
+const spark = ABILITY_DEFINITIONS.spark
 
 function encounter() {
     const actor = abilityHero('arcanist')
@@ -46,7 +49,7 @@ describe('meaningful resource recovery', () => {
         const { actor, attack } = encounter()
         attemptAbilityAttack(attack, 'spark')
         expect(practiceResourceMissing(actor, 'mana')).toBe(0)
-        resolvePendingAttackHit({ ...attack, now: 1200 })
+        resolvePendingAttackHit({ ...attack, now: attack.now + spark.windupMs })
         expect(practiceResourceMissing(actor, 'mana')).toBe(6)
         expect(practiceResourceMissing(actor, 'energy')).toBe(5)
         expect(consumeResourceRecovery(actor, 'mana', 6, 6)).toBe(6)
@@ -58,11 +61,15 @@ describe('meaningful resource recovery', () => {
         const { actor, target, attack } = encounter()
         attemptAbilityAttack(attack, 'spark')
         target.position.y = 300
-        resolvePendingAttackHit({ ...attack, now: 1200 })
+        resolvePendingAttackHit({ ...attack, now: attack.now + spark.windupMs })
         expect(practiceResourceMissing(actor, 'mana')).toBe(0)
         const forward = { ...attack, targetId: undefined }
-        attemptAbilityAttack({ ...forward, now: 2000 }, 'spark')
-        resolvePendingAttackHit({ ...forward, now: 2200 })
+        const nextSparkAt = attack.now + spark.cooldownMs
+        attemptAbilityAttack({ ...forward, now: nextSparkAt }, 'spark')
+        resolvePendingAttackHit({
+            ...forward,
+            now: nextSparkAt + spark.windupMs,
+        })
         expect(practiceResourceMissing(actor, 'mana')).toBe(0)
     })
 
@@ -71,7 +78,7 @@ describe('meaningful resource recovery', () => {
         attemptAbilityAttack(attack, 'spark')
         actor.config.resources.manaRegenIdle = 100
         actor.applyRegen(100, false, true, 1100)
-        resolvePendingAttackHit({ ...attack, now: 1200 })
+        resolvePendingAttackHit({ ...attack, now: attack.now + spark.windupMs })
         expect(actor.mana).toBe(actor.config.resources.maxMana)
         expect(practiceResourceMissing(actor, 'mana')).toBe(0)
     })

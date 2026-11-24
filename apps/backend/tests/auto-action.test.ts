@@ -12,7 +12,7 @@ import { abilityHero } from './abilityTestHelpers'
 import { autoActionFixture as fixture } from './autoActionTestFixture'
 
 describe('automatic action scheduling through shared rules', () => {
-    it('enables without casting, waits silently for resources and honors the exact cooldown', () => {
+    it('enables without casting, waits silently for resources and honors the full windup', () => {
         const f = fixture('arcanist')
         f.hostile()
         f.actor.mana = 0
@@ -34,15 +34,18 @@ describe('automatic action scheduling through shared rules', () => {
             f.events.filter((event) => event.kind === 'attack')
         ).toHaveLength(1)
         expect(f.actor.mana).toBe(100 - ABILITY_DEFINITIONS.spark.mana)
-        f.resolveHit(1200 + ABILITY_DEFINITIONS.spark.windupMs)
-        f.tick(1200 + ABILITY_DEFINITIONS.spark.cooldownMs - 1)
-        expect(snapshotControl(f.actor).waiting).toBe('cooldown')
+        const releaseAt = 1200 + ABILITY_DEFINITIONS.spark.windupMs
+        f.tick(releaseAt - 1)
+        expect(snapshotControl(f.actor).waiting).toBe('action')
         expect(
             f.events.filter((event) => event.kind === 'attack')
         ).toHaveLength(1)
+        f.resolveHit(releaseAt)
         f.tick(1200 + ABILITY_DEFINITIONS.spark.cooldownMs)
         expect(
-            f.events.filter((event) => event.kind === 'attack')
+            f.events.filter(
+                (event) => event.kind === 'attack' && event.phase === 'started'
+            )
         ).toHaveLength(2)
         expect(f.events.some((event) => event.kind === 'notice')).toBe(false)
     })

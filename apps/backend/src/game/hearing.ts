@@ -14,7 +14,17 @@ import type { NavigationService } from './navigation'
 import type { GameRoom } from './room'
 import { undeadHearingMultiplier } from './undeadTactics'
 
-const heardByRoom = new WeakMap<GameRoom, Map<string, MovementNoise>>()
+type AudibleNoise = Omit<MovementNoise, 'surface'>
+type HearingKind = 'movement' | 'combat'
+
+interface HeardNoise extends AudibleNoise {
+    listenerLife: number
+}
+
+const heardByRoom: Record<
+    HearingKind,
+    WeakMap<GameRoom, WeakMap<GameCharacter, HeardNoise>>
+> = { combat: new WeakMap(), movement: new WeakMap() }
 const playerHearingByRoom = new WeakMap<
     GameRoom,
     WeakMap<GameCharacter, PlayerHearing>
@@ -22,6 +32,7 @@ const playerHearingByRoom = new WeakMap<
 const maxHeardFootsteps = 4
 const footstepCellSize = 32
 const footstepIntervalMs = 900
+const projectileNoiseRadius = 192
 
 interface HeardFootstep {
     source: GameCharacter
@@ -45,16 +56,9 @@ export function recordMovementNoise(
     if (!activeSource(source, noise.locationId)) {
         return
     }
-    const heard = heardByRoom.get(room) ?? new Map<string, MovementNoise>()
-    heardByRoom.set(room, heard)
     const sneaking = usesStealthSight(source, noise.emittedAt)
     for (const listener of characters) {
-        if (canHear(listener, source, noise, room)) {
-            heard.set(listener.id, {
-                ...noise,
-                position: { ...noise.position },
-            })
-        }
+        recordHeardNoise(room, listener, source, noise, 'movement')
         if (
             sneaking &&
             listener !== source &&
@@ -63,6 +67,49 @@ export function recordMovementNoise(
             recordPlayerFootstep(room, listener, source, noise)
         }
     }
+}
+
+export function recordProjectileNoise(
+    room: GameRoom,
+    source: GameCharacter,
+    origin: Vector2,
+    now: number
+): void {
+    if (!activeSource(source, source.locationId)) {
+        return
+    }
+    const noise: AudibleNoise = {
+        actorId: source.id,
+        emittedAt: now,
+        locationId: source.locationId,
+        position: origin,
+        radius: projectileNoiseRadius,
+    }
+    for (const listener of room.charactersFor(source)) {
+        if (listener.archetype === 'skeleton') {
+            recordHeardNoise(room, listener, source, noise, 'combat')
+        }
+    }
+}
+
+function recordHeardNoise(
+    room: GameRoom,
+    listener: GameCharacter,
+    source: GameCharacter,
+    noise: AudibleNoise,
+    kind: HearingKind
+): void {
+    if (!canHear(listener, source, noise, room, kind)) {
+        return
+    }
+    const byListener =
+        heardByRoom[kind].get(room) ?? new WeakMap<GameCharacter, HeardNoise>()
+    heardByRoom[kind].set(room, byListener)
+    byListener.set(listener, {
+        ...noise,
+        position: { ...noise.position },
+        listenerLife: listener.deathSequence,
+    })
 }
 
 export function heardFootsteps(
@@ -154,29 +201,52 @@ export function lastHeardPoint(
     room: GameRoom,
     now: number
 ): Vector2 | undefined {
-    const heard = heardByRoom.get(room)
-    const noise = heard?.get(actor.id)
+    const noise = lastHeardNoise(actor, room, now, 'movement')
+    return noise === undefined ? undefined : { ...noise.position }
+}
+
+export function lastHeardCombatNoise(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number
+): Pick<HeardNoise, 'position' | 'emittedAt'> | undefined {
+    const noise = lastHeardNoise(actor, room, now, 'combat')
+    return noise === undefined
+        ? undefined
+        : { position: { ...noise.position }, emittedAt: noise.emittedAt }
+}
+
+function lastHeardNoise(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number,
+    kind: HearingKind
+): HeardNoise | undefined {
+    const memory = heardByRoom[kind].get(room)
+    const noise = memory?.get(actor)
     if (noise === undefined) {
         return undefined
     }
     const source = room.getCharacter(noise.actorId)
     if (
         !activeSource(actor, noise.locationId) ||
-        !activeSource(source, noise.locationId) ||
-        !canTargetByFaction(actor, source, now) ||
+        (kind === 'movement' && !activeSource(source, noise.locationId)) ||
+        (kind === 'combat' && actor.deathSequence !== noise.listenerLife) ||
+        (source !== undefined && !canTargetByFaction(actor, source, now)) ||
         now - noise.emittedAt >= MOVEMENT_RULES.investigationMs
     ) {
-        heard?.delete(actor.id)
+        memory?.delete(actor)
         return undefined
     }
-    return { ...noise.position }
+    return noise
 }
 
 function canHear(
     listener: GameCharacter,
     source: GameCharacter,
-    noise: MovementNoise,
-    room: GameRoom
+    noise: AudibleNoise,
+    room: GameRoom,
+    kind: HearingKind
 ): boolean {
     if (
         !activeSource(listener, noise.locationId) ||
@@ -190,13 +260,15 @@ function canHear(
         distance(listener.position, noise.position) <=
         noise.radius *
             occlusionMultiplier(listener, noise, room.navigationFor(listener)) *
-            undeadHearingMultiplier(listener, source)
+            (kind === 'movement'
+                ? undeadHearingMultiplier(listener, source)
+                : 1)
     )
 }
 
 function occlusionMultiplier(
     listener: GameCharacter,
-    noise: MovementNoise,
+    noise: AudibleNoise,
     navigation: NavigationService
 ): number {
     return navigation.hasLineOfSight(listener.position, noise.position)

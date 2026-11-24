@@ -276,6 +276,7 @@ async function waitForAttackIdle(page: Page): Promise<void> {
 async function join(page: Page, name: string, heroClass: HeroClass = 'ranger') {
     await page.goto('/?test=1')
     await page.waitForFunction(() => Boolean(window.__ratataTest))
+    await page.addStyleTag({ content: '.test-panel { display: none !important }' })
     const cityMap = page.waitForResponse((response) => {
         const path = new URL(response.url()).pathname
         return path.startsWith('/world/maps/') && path.endsWith(`/${CENTER_LOCATION_ID}.json`)
