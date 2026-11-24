@@ -72,7 +72,10 @@ export function createEconomyWorkers(
                           navigation,
                           'service.workshop',
                           definition.tile,
-                          { x: (index - 1) * navigation.grid.tileWidth, y: 0 }
+                          {
+                              x: (index - 1) * navigation.grid.tileWidth,
+                              y: index === 1 ? navigation.grid.tileHeight : 0,
+                          }
                       ),
             visualId:
                 definition.job === 'farmer' ? 'female_player' : 'male_player_2',

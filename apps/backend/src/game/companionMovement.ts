@@ -8,6 +8,7 @@ import {
 
 import type { CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
+import { findStandingApproach } from './characterSpacing'
 import { isTargetInAttackRange } from './combat'
 import { sightForCompanion, tryCompanionShot } from './companionAbilities'
 import type { CompanionProfile } from './companionProfiles'
@@ -78,14 +79,43 @@ export function advanceCompanionIntent(
     }
     if (
         leader !== undefined &&
-        distance(character.position, leader.position) > 28
+        followLeader(character, leader, state, world, now)
     ) {
-        planPath(character, leader.position, state, world, now)
         return []
     }
     character.setMoveInput({ x: 0, y: 0 })
     character.clearPath()
     return []
+}
+
+function followLeader(
+    actor: GameCharacter,
+    leader: GameCharacter,
+    state: CompanionRuntime,
+    world: CompanionWorld,
+    now: number
+): boolean {
+    const radius = 28
+    const approach = findStandingApproach(
+        actor,
+        leader,
+        world,
+        radius,
+        now - state.lastPlanAt < 300
+    )
+    if (approach.kind === 'followingPath') {
+        return true
+    }
+    if (approach.kind !== 'approaching') {
+        const outOfRange = distance(actor.position, leader.position) > radius
+        if (outOfRange) {
+            planPath(actor, leader.position, state, world, now)
+        }
+        return outOfRange
+    }
+    actor.setPath(approach.path)
+    state.lastPlanAt = now
+    return true
 }
 
 function advanceCompanionWait(

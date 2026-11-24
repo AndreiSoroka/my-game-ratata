@@ -1,11 +1,11 @@
 import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { advanceCharacterControl } from './characterControl'
 import { resolvePendingAttackHit } from './combat'
 import type { CompanionService } from './companions'
 import type { CharacterController } from './controllers'
 import { recordMovementNoise } from './hearing'
+import { idleSideStep } from './idleNpcSpacing'
 import { advanceMagicChannel } from './magicAbilities'
 import { magicChannelFor } from './magicState'
 import { advanceCharacter } from './movement'
@@ -14,6 +14,7 @@ import type { PartyService } from './parties'
 import { validatePrayerChannel } from './prayer'
 import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { GameRoom } from './room'
+import { advanceControllers } from './roomControllers'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
 import type { RoomSocket } from './roomMessaging'
@@ -27,7 +28,6 @@ import {
 import { advanceSavvaTerritory, SAVVA_ID } from './savvaTerritory'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
-import { pauseWorkerActivity } from './workerActivityState'
 import type { WorldLocations } from './worldLocations'
 
 export interface SimulationContext {
@@ -94,7 +94,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
             context.onEvents(advanceMagicChannel(character, abilityContext))
         }
     }
-    advanceControllers(context, reacting, conversations)
+    const yielding = advanceControllers(context, reacting, conversations)
     stops?.observeCombat()
     const roadRecovery = trackRoadPrayerRecovery(characters.values(), onEvents)
     const motionDeadlines = new Map<string, number>()
@@ -102,6 +102,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         advanceWorldCharacter(
             character,
             context,
+            yielding,
             roadRecovery?.observe(character),
             ({ continuationUntil }) => {
                 if (continuationUntil !== undefined) {
@@ -151,63 +152,10 @@ function reconcileRoomConversations(
     )
 }
 
-function advanceControllers(
-    context: SimulationContext,
-    reacting: ReadonlySet<string>,
-    conversations: ReadonlySet<string>
-): void {
-    const { characters, controllers, room, now } = context
-    for (const [id, controller] of controllers) {
-        const character = characters.get(id)
-        if (character === undefined) {
-            room.scenarios.defer(id, now)
-            continue
-        }
-        if (context.companions.prepareSafety(character, room, now)) {
-            room.scenarios.defer(id, now)
-            continue
-        }
-        if (room.social.exchanges.isPaused(id)) {
-            pauseWorkerActivity(character, 'exchange', now)
-            room.scenarios.defer(id, now)
-            continue
-        }
-        if (reacting.has(id)) {
-            pauseWorkerActivity(character, 'reaction', now)
-            room.scenarios.defer(id, now)
-            continue
-        }
-        if (context.companions.blocksScenario(character, now, room)) {
-            pauseWorkerActivity(character, 'control', now)
-            room.scenarios.defer(id, now)
-            advanceCharacterControl(character, room, now)
-            continue
-        }
-        if (
-            room.scenarios.advance(character, room, now, conversations.has(id))
-        ) {
-            pauseWorkerActivity(character, 'scenario', now)
-            continue
-        }
-        if (conversations.has(id)) {
-            pauseWorkerActivity(character, 'conversation', now)
-            continue
-        }
-        if (advanceCharacterControl(character, room, now)) {
-            pauseWorkerActivity(character, 'control', now)
-            continue
-        }
-        if (room.social.society.controlsVisit(character)) {
-            pauseWorkerActivity(character, 'conversation', now)
-            continue
-        }
-        room.scenarios.advancePolicy(character, controller, room, now)
-    }
-}
-
 function advanceWorldCharacter(
     character: GameCharacter,
     context: SimulationContext,
+    yielding: ReadonlySet<string>,
     onEnergyRegen?: Parameters<typeof advanceCharacter>[0]['onEnergyRegen'],
     onMotionResolved?: Parameters<
         typeof advanceCharacter
@@ -217,10 +165,20 @@ function advanceWorldCharacter(
     const intent = characterMovementIntent(character, now, deltaMs)
     const before = { ...character.position }
     const navigation = world.get(character.locationId).navigation
+    const idleDestination = yielding.has(character.id)
+        ? idleSideStep(
+              character,
+              context.room.charactersFor(character),
+              yielding,
+              navigation,
+              now
+          )
+        : undefined
     const event = advanceCharacter({
         character,
         deltaMs,
         now,
+        ...(idleDestination === undefined ? {} : { idleDestination }),
         ...(onMotionResolved === undefined ? {} : { onMotionResolved }),
         navigation,
         onEvents,

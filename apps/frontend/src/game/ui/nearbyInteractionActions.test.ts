@@ -99,6 +99,36 @@ it('changes only the explicitly selected living character’s personal hostility
     expect(hostility('character:ally')).toBeUndefined()
 })
 
+it('skips a closer target that cannot be selected', () => {
+    const { player, snapshot } = setup()
+    const hidden = characterFixture('hidden', { position: { x: 108, y: 100 } })
+    const visible = characterFixture('visible', { position: { x: 124, y: 100 } })
+    const characters = [hidden, visible]
+    const canSelect = (key: string) => key !== `character:${hidden.id}`
+    expect(
+        nearbyInteractionTarget(
+            snapshot,
+            player,
+            characters,
+            undefined,
+            undefined,
+            false,
+            canSelect
+        )?.key
+    ).toBe(`character:${visible.id}`)
+    expect(
+        nearbyInteractionTarget(
+            snapshot,
+            player,
+            characters,
+            undefined,
+            `character:${hidden.id}`,
+            true,
+            canSelect
+        )
+    ).toBeUndefined()
+})
+
 describe('one facing interaction target', () => {
     it('selects the sign ahead even when a sign of the same kind is closer behind', () => {
         const { player, snapshot, select } = setup()

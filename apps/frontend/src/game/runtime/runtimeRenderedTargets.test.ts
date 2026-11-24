@@ -22,6 +22,17 @@ describe('rendered character targeting', () => {
         ).toBeUndefined()
         expect(actor.position).toEqual({ x: 50, y: 50 })
     })
+    it('selects the nearest painted body in depth when sprites overlap', () => {
+        const rear = characterFixture('rear', { position: { x: 64, y: 64 } })
+        const front = characterFixture('front', { position: { x: 64, y: 80 } })
+        const snapshot = worldFixture([rear, front])
+        const point = { x: 64, y: 52 }
+
+        expect(characterAt(snapshot, undefined, point, () => true)).toBe('front')
+        expect(characterAt(snapshot, undefined, point, (id) => id !== 'front')).toBe('rear')
+        expect(characterAt(snapshot, 'front', point, () => true)).toBe('rear')
+        expect(characterAt(snapshot, undefined, { x: 82, y: 64 }, () => true)).toBeUndefined()
+    })
     it('uses the rendered position for viewport intersection while range remains server-owned', () => {
         const player = characterFixture('self', { position: { x: 80, y: 80 } })
         const npc = characterFixture('npc', { position: { x: 110, y: 80 } })

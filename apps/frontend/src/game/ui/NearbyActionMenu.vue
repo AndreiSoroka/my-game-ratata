@@ -14,8 +14,10 @@ const props = defineProps<{
     open: boolean
     actions: readonly NearbyAction[]
     contextLabel?: string
+    targetKey?: string
+    canSwitchCharacter?: boolean
 }>()
-const emit = defineEmits<{ select: [id: string]; close: [] }>()
+const emit = defineEmits<{ select: [id: string]; close: []; switchCharacter: [reverse: boolean] }>()
 const playUiSound = inject(gameUiSoundKey)
 const menu = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
@@ -60,7 +62,23 @@ function menuKey(event: KeyboardEvent): string {
         ({ KeyW: 'w', KeyS: 's' } as Record<string, string>)[event.code] ?? event.key.toLowerCase()
     )
 }
+function handleCharacterKey(event: KeyboardEvent): boolean {
+    const horizontal = event.code || event.key
+    if (!['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(horizontal)) return false
+    if (
+        props.canSwitchCharacter &&
+        !event.isComposing &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+    ) {
+        event.preventDefault()
+        emit('switchCharacter', horizontal === 'ArrowLeft' || horizontal === 'KeyA')
+    }
+    return true
+}
 function handleKey(event: KeyboardEvent): void {
+    if (handleCharacterKey(event)) return
     const key = menuKey(event)
     if (key === 'tab') {
         restoreOnClose = false
@@ -99,14 +117,13 @@ watch(
     { immediate: true }
 )
 watch(
-    () => props.actions,
-    async () => {
-        if (!props.open) {
-            return
-        }
+    [() => props.actions, () => props.targetKey],
+    async ([, key], [, previousKey]) => {
+        if (!props.open) return
         await nextTick()
-        const current = enabled.value.find((action) => action.id === activeId.value)
-        focusAction(current?.id ?? enabled.value[0]?.id)
+        if (!props.open || props.targetKey !== key) return
+        const active = key === previousKey && enabled.value.some(({ id }) => id === activeId.value)
+        focusAction(active ? activeId.value : enabled.value[0]?.id)
     },
     { deep: true }
 )
@@ -156,6 +173,9 @@ onBeforeUnmount(returnFocus)
             </p>
         </div>
         <p class="nearby-action-panel__hint">
+            <template v-if="canSwitchCharacter">
+                {{ tGame('game.world.switchNearbyCharacter') }} ·
+            </template>
             {{ tGame('game.world.wSSelectFEnter') }}
         </p>
     </section>

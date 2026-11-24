@@ -129,6 +129,16 @@ const servicePersonalities: Readonly<Record<string, string>> = {
         'Сестра Вера — клирик часовни Новогорода. Она терпелива и участлива, поддерживает собеседника и старается понять его просьбу. Знает и преподаёт только молитвы Угольной Матери и Безымянного Путника. Признаёт границы помощи, не обещает неизбежного чуда и не уходит в походы за собеседником.',
 }
 
+const stationaryServiceNpcs = new Set([
+    'npc_merchant_1',
+    'npc_scholar_1',
+    'npc_cleric_1',
+])
+
+export function stationaryNpc(id: string): boolean {
+    return companionProfiles[id]?.stationary ?? stationaryServiceNpcs.has(id)
+}
+
 export function companionSoul(id: string): Partial<SoulProfile> {
     const profile = companionProfiles[id] ?? residentProfile
     return {

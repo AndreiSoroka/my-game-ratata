@@ -39,6 +39,7 @@ export interface MovementContext {
     deltaMs: number
     navigation: NavigationService
     now: number
+    idleDestination?: Vector2
     onNoise?: (noise: MovementNoise) => void
     onEvents?: (events: GameEventPayload[]) => void
     onEnergyRegen?: (rate: EnergyRecoveryRate) => void

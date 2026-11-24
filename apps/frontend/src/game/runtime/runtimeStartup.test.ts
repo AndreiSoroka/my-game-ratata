@@ -73,6 +73,7 @@ vi.mock('./runtimePresentation', () => ({
                 update: vi.fn<(...args: unknown[]) => void>(),
                 addMap: vi.fn<(...args: unknown[]) => void>(),
                 setInteractionTarget: vi.fn<(...args: unknown[]) => void>(),
+                setCombatTarget: vi.fn<(...args: unknown[]) => void>(),
                 clearDamage: vi.fn<(...args: unknown[]) => void>(),
                 beginStop: (requestId: number) => {
                     calls.beginStop(requestId)

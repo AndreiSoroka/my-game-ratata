@@ -240,6 +240,7 @@ export const worldMessages = {
     stopRoute: ['Остановить маршрут', 'Stop route'],
     storyOver: ['ИСТОРИЯ ЗАВЕРШЕНА', 'THE STORY IS OVER'],
     stump: ['Пень', 'Stump'],
+    switchNearbyCharacter: ['←→ / A D — персонаж', '←→ / A D to switch character'],
     switchSidesWSSelect: [
         '←→ — сторона · ↑↓ / W S — выбор · F / Enter — переложить · Esc — закрыть. Стопки переносятся целиком. Непоместившиеся останутся',
         '←→ to switch sides · ↑↓ / W S to select · F / Enter to move · Esc to close. Stacks move together. Items that do not fit stay here.',

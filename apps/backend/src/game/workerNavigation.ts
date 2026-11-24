@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { findStandingApproach } from './characterSpacing'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { resourceReachable } from './resourcePlacement'
@@ -90,6 +91,26 @@ export function approach(
         )
     )
     return false
+}
+
+export function approachCharacter(
+    actor: GameCharacter,
+    room: GameRoom,
+    target: GameCharacter
+): boolean {
+    const radius = 36
+    if (actor.locationId === target.locationId) {
+        const approach = findStandingApproach(actor, target, room, radius)
+        if (approach.kind === 'arrived') {
+            stop(actor)
+            return true
+        }
+        if (approach.kind === 'approaching') {
+            actor.setPath(approach.path)
+            return false
+        }
+    }
+    return approach(actor, room, target.locationId, target.position, radius)
 }
 
 export function walkableNear(

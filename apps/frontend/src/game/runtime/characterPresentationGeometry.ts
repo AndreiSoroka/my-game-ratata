@@ -1,6 +1,10 @@
-import type { CharacterVisualId } from '@my-game-ratata/contracts'
+import type { CharacterVisualId, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 
 import { characterCatalog } from '../assets/characterCatalog'
+
+export function characterTargetBounds(position: Vector2): WorldObjectBounds {
+    return { x: position.x - 12, y: position.y - 29, width: 24, height: 32 }
+}
 
 /** Frame-relative overhead geometry is shared by canvas nameplates and DOM speech. */
 export function characterOverhead(visualId: CharacterVisualId) {

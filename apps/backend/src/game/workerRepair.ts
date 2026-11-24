@@ -5,7 +5,7 @@ import type { GameCharacter } from './character'
 import type { GameRoom } from './room'
 import { recordWorkerActivity } from './workerActivityState'
 import { executeWorkerAdventure } from './workerCommands'
-import { approach } from './workerNavigation'
+import { approachCharacter } from './workerNavigation'
 
 /** Returns the next ordinary decision delay while maintenance owns the policy. */
 export function repairWorker(
@@ -30,10 +30,7 @@ export function repairWorker(
         },
         now
     )
-    if (
-        smith?.alive !== true ||
-        !approach(actor, room, smith.locationId, smith.position)
-    ) {
+    if (smith?.alive !== true || !approachCharacter(actor, room, smith)) {
         return 500
     }
     const quote = repairSnapshot(actor)

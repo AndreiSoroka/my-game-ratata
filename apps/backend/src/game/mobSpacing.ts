@@ -1,21 +1,13 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import {
+    characterClearance as clearance,
+    sideStepDestination,
+    stepAsideDistance as stepAside,
+} from './characterSpacing'
 import { distance, normalize } from './math'
 import type { NavigationService } from './navigation'
-
-const clearance = 16
-const stepAside = 24
-const directions = [
-    { x: 1, y: 0 },
-    { x: 1, y: 1 },
-    { x: 0, y: 1 },
-    { x: -1, y: 1 },
-    { x: -1, y: 0 },
-    { x: -1, y: -1 },
-    { x: 0, y: -1 },
-    { x: 1, y: -1 },
-] as const
 
 /** A controller yields with ordinary movement; it never pushes or relocates another actor. */
 export class MobSpacing {
@@ -63,57 +55,13 @@ export class MobSpacing {
                 ? [other.position, planned]
                 : [other.position]
         })
-        const destination = this.destination(actor, points, navigation)
+        const destination = sideStepDestination(actor, points, navigation)
         if (destination === undefined) {
             return false
         }
         actor.setPath([destination])
         this.replanAt = now + 300
         return true
-    }
-
-    private destination(
-        actor: GameCharacter,
-        occupied: Vector2[],
-        navigation: NavigationService
-    ): Vector2 | undefined {
-        let offset = 0
-        for (const char of actor.id) {
-            offset = (offset + char.charCodeAt(0)) % directions.length
-        }
-        let best: { position: Vector2; score: number } | undefined
-        for (const candidate of [
-            ...directions.slice(offset),
-            ...directions.slice(0, offset),
-        ]) {
-            const direction = normalize(candidate)
-            const delta = {
-                x: direction.x * stepAside,
-                y: direction.y * stepAside,
-            }
-            const position = {
-                x: actor.position.x + delta.x,
-                y: actor.position.y + delta.y,
-            }
-            if (
-                distance(
-                    navigation.moveWithCollision(actor.position, delta),
-                    position
-                ) > 0.01
-            ) {
-                continue
-            }
-            const score = Math.min(
-                ...occupied.map((point) => distance(point, position))
-            )
-            if (
-                score >= clearance &&
-                (best === undefined || score > best.score)
-            ) {
-                best = { position, score }
-            }
-        }
-        return best?.position
     }
 }
 

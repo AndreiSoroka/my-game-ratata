@@ -64,7 +64,6 @@ export function syncCharacterBundle(
     bundle.snapshot = snapshot
     positionCharacterBundle(bundle, position, snapshot)
     bundle.label.text = characterName(snapshot.id, snapshot.nickname)
-    bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
     updateBundleHealth(bundle, snapshot, isLocalPlayer)
     for (const actor of [bundle.body, bundle.label, bundle.hpBack, bundle.hpFill])
         actor.graphics.isVisible = visible

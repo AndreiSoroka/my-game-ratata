@@ -238,9 +238,9 @@ export function selectableWorldTargets(
         )
 }
 
-/** The caller supplies distance-ordered eligible targets; self is outside this cycle. */
+/** Move one step through the caller's ordered list of eligible targets. */
 export function nextWorldTarget(
-    targets: readonly WorldSelectionTarget[],
+    targets: readonly Pick<WorldSelectionTarget, 'key'>[],
     currentKey: string | undefined,
     reverse = false
 ): string | undefined {

@@ -11,7 +11,12 @@ import type { GameRoom } from './room'
 import { recordWorkerActivity } from './workerActivityState'
 import { executeWorkerAdventure } from './workerCommands'
 import { recordFarmPlotIntent } from './workerFarmActivity'
-import { approach, sourceCost, stop } from './workerNavigation'
+import {
+    approach,
+    approachCharacter,
+    sourceCost,
+    stop,
+} from './workerNavigation'
 export class WorkerFarm {
     public remaining = 0
     public target: WorkerWorkTarget | undefined
@@ -210,7 +215,7 @@ export class WorkerFarm {
             },
             now
         )
-        if (!approach(actor, room, supplier.locationId, supplier.position)) {
+        if (!approachCharacter(actor, room, supplier)) {
             if (hasNoRoute(actor)) {
                 this.finish(actor, room, now, {
                     reason: 'route',

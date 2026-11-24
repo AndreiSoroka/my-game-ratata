@@ -176,6 +176,114 @@ describe('interaction menu invalidation', () => {
     )
 })
 
+describe('switching characters in the F menu', () => {
+    it('selects overlapping and off-axis characters with arrows and physical A/D', async () => {
+        const player = characterFixture('self', { theft: undefined })
+        const first = resident('first', 20)
+        const second = resident('second', 20)
+        const behind = { ...resident('behind', -20), position: { x: 10, y: -20 } }
+        const hidden = { ...resident('hidden', 20), position: { x: 2, y: 20 } }
+        const obscured = { ...resident('obscured', 20), position: { x: 4, y: 20 } }
+        const hostile = characterFixture('hostile', {
+            controllerKind: 'mob1',
+            position: { x: 6, y: 20 },
+            faction: 'monsters',
+        })
+        const selectTarget = vi.fn<(key: string) => boolean>(() => true)
+        const wrapper = interaction(player, [behind, hostile, second, hidden, first, obscured])
+        try {
+            await wrapper.setProps({
+                selectTarget,
+                canSelectTarget: (key) => key !== `character:${hidden.id}`,
+                isPositionVisible: (position) => position.x !== obscured.position.x,
+            })
+            wrapper.vm.openMenu()
+            await flushPromises()
+            expect(wrapper.get('h2').text()).toBe(first.nickname)
+            expect(selectTarget).toHaveBeenLastCalledWith(`character:${first.id}`)
+            expect(wrapper.text()).toContain('←→ / A D')
+
+            const press = async (code: string, key = code, repeat = false) => {
+                const focused = wrapper.get('[role="menuitem"][tabindex="0"]')
+                expect(document.activeElement).toBe(focused.element)
+                await focused.trigger('keydown', { code, key, repeat })
+                await flushPromises()
+            }
+            await press('ArrowRight')
+            expect(wrapper.get('h2').text()).toBe(second.nickname)
+            await press('KeyD', 'в')
+            expect(wrapper.get('h2').text()).toBe(behind.nickname)
+            await wrapper.setProps({ selectedKey: `character:${behind.id}` })
+            expect(wrapper.get('h2').text()).toBe(behind.nickname)
+            await press('ArrowRight')
+            expect(wrapper.get('h2').text()).toBe(first.nickname)
+            await press('ArrowLeft')
+            expect(wrapper.get('h2').text()).toBe(behind.nickname)
+            await press('KeyA', 'ф')
+            expect(wrapper.get('h2').text()).toBe(second.nickname)
+            expect(selectTarget).toHaveBeenLastCalledWith(`character:${second.id}`)
+            expect(
+                wrapper.get('[role="menuitem"][tabindex="0"]').attributes('data-action-id')
+            ).toBe('whisper:second')
+            await press('KeyF', 'а', true)
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'move_input', axis: { x: 0, y: 0 } }],
+            ])
+            await press('KeyF', 'а')
+            expect(wrapper.emitted('command')?.at(-1)).toEqual([
+                { type: 'whisper_open', targetId: second.id },
+            ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
+
+    it('opens a single character action with alternatives and executes it directly when alone', async () => {
+        const player = characterFixture('self', { theft: undefined })
+        const first = characterFixture('first', {
+            controllerKind: 'scripted',
+            position: { x: 0, y: 20 },
+        })
+        const second = characterFixture('second', {
+            controllerKind: 'scripted',
+            position: { x: 0, y: 24 },
+        })
+        const wrapper = interaction(player, [first, second])
+        try {
+            wrapper.vm.openMenu()
+            await flushPromises()
+            expect(wrapper.get('h2').text()).toBe(first.nickname)
+            expect(wrapper.findAll('[role="menuitem"]')).toHaveLength(1)
+            await wrapper.get('[aria-label="Закрыть действия"]').trigger('click')
+            expect(wrapper.emitted('command')).toHaveLength(1)
+            await wrapper.setProps({ characters: [first] })
+            wrapper.vm.openMenu()
+            expect(wrapper.emitted('command')?.at(-1)).toEqual([
+                { type: 'follow', targetId: first.id },
+            ])
+            expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+        } finally {
+            wrapper.unmount()
+        }
+    })
+
+    it('closes an automatically opened menu if the character leaves the facing sector', async () => {
+        const player = characterFixture('self')
+        const first = resident('first', 20)
+        const wrapper = interaction(player, [first])
+        try {
+            wrapper.vm.openMenu()
+            await wrapper.setProps({ selectedKey: `character:${first.id}` })
+            expect(wrapper.get('h2').text()).toBe(first.nickname)
+            expect(wrapper.text()).not.toContain('←→ / A D')
+            await wrapper.setProps({ characters: [resident(first.id, -20)] })
+            expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+        } finally {
+            wrapper.unmount()
+        }
+    })
+})
+
 describe('world item and farm interaction', () => {
     it('acts on the explicitly selected item behind the hero and never falls back from an unavailable target', async () => {
         const player = characterFixture('self')

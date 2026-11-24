@@ -1,5 +1,7 @@
 import type { Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 
+import { characterTargetBounds } from './characterPresentationGeometry'
+
 interface SelectionFootprint {
     kind: string
     position: Vector2
@@ -23,12 +25,7 @@ export function selectionIntersectsViewport(
         : [
               target.bounds ??
                   (target.kind === 'character'
-                      ? {
-                            x: target.position.x - 12,
-                            y: target.position.y - 29,
-                            width: 24,
-                            height: 32,
-                        }
+                      ? characterTargetBounds(target.position)
                       : {
                             x: target.position.x - 8,
                             y: target.position.y - 8,

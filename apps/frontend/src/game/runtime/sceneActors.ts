@@ -152,8 +152,7 @@ export class SceneActors {
         this.clearDamage()
         this.corpseViews.dispose()
         this.depthProps.dispose()
-        this.interactionTarget.clear()
-        this.combatTarget.clear()
+        this.clearTargetHighlights()
         this.routeWaypoints.clear()
         this.signReading.setMap(map.visibility)
         this.trainingAreas = map.training.areas
@@ -173,7 +172,7 @@ export class SceneActors {
         localPlayerId: string | undefined,
         reference?: SnapshotReference
     ): void {
-        if (this.localPlayerId !== localPlayerId) this.interactionTarget.clear()
+        if (this.localPlayerId !== localPlayerId) this.clearTargetHighlights()
         this.localPlayerId = localPlayerId
         this.updateResourceViews(snapshot)
         const player = snapshot.characters.find((character) => character.id === localPlayerId)
@@ -236,6 +235,7 @@ export class SceneActors {
     public readonly heardFootstepIds = () => this.footsteps.ids()
     public readonly characterOpacity = (id: string) =>
         this.isCharacterVisible(id) ? this.characters.body(id)?.graphics.opacity : undefined
+    public readonly characterNameOpacity = (id: string) => this.characters.nameOpacity(id)
 
     public readonly renderedCharacters = () => this.characters.rendered()
     public readonly resetMotion = () => this.characters.resetMotion()
@@ -258,8 +258,13 @@ export class SceneActors {
     private updateObserver(player: CharacterSnapshot | undefined, snapshot: WorldSnapshot): void {
         this.playerPosition =
             player?.alive && !player.tags.includes('offline') ? player.position : undefined
-        if (!this.playerPosition) this.interactionTarget.clear()
+        if (!this.playerPosition) this.clearTargetHighlights()
         this.footsteps.sync(snapshot, this.playerPosition !== undefined, this.mapBounds.bottom + 32)
+    }
+
+    private clearTargetHighlights(): void {
+        this.interactionTarget.clear()
+        this.setCombatTarget(undefined)
     }
 
     public setShotPreview(path: ProjectilePath | undefined): void {
@@ -276,6 +281,7 @@ export class SceneActors {
 
     public setCombatTarget(target: TargetHighlight | undefined): void {
         this.combatTarget.set(target)
+        this.characters.setNameFocus(this.combatTarget.characterId)
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {

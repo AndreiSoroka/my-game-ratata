@@ -38,7 +38,7 @@ export function nextPosition(
             y: input.y * step,
         })
     }
-    return advancePath(character, navigation, step)
+    return advancePath(character, navigation, step, context.idleDestination)
 }
 
 export function movementSpeed(character: GameCharacter): number {
@@ -53,9 +53,11 @@ export function movementSpeed(character: GameCharacter): number {
 function advancePath(
     character: GameCharacter,
     navigation: NavigationService,
-    step: number
+    step: number,
+    idleDestination: Vector2 | undefined
 ): Vector2 {
-    const target = character.nextPathPoint()
+    const waypoint = character.nextPathPoint()
+    const target = waypoint ?? idleDestination
     if (target === undefined) {
         return { ...character.position }
     }
@@ -64,9 +66,9 @@ function advancePath(
         x: next.x - character.position.x,
         y: next.y - character.position.y,
     })
-    if (distance(moved, target) <= 1) {
+    if (waypoint !== undefined && distance(moved, waypoint) <= 1) {
         character.completePathPoint()
-        return target
+        return waypoint
     }
     return moved
 }

@@ -14,7 +14,12 @@ import type { TargetHighlight } from '../runtime/interactionTargetViews'
 import { gameUiSoundKey } from './gameUiSound'
 import GraveDetails from './GraveDetails.vue'
 import NearbyActionMenu from './NearbyActionMenu.vue'
-import { nearbyInteractionTarget } from './nearbyInteractionActions'
+import {
+    type InteractionTarget,
+    nearbyCharacterInteractionTargets,
+    nearbyInteractionTarget,
+} from './nearbyInteractionActions'
+import { nextWorldTarget } from './worldTargetSelection'
 
 const props = defineProps<{
     snapshot: WorldSnapshot | undefined
@@ -24,6 +29,7 @@ const props = defineProps<{
     selectedGraveId?: string
     selectedKey?: string
     canSelectTarget?: (key: string) => boolean
+    selectTarget?: (key: string) => boolean
     blocked: boolean
     isPositionVisible?: (position: Vector2, bounds?: WorldObjectBounds, range?: number) => boolean
 }>()
@@ -33,58 +39,74 @@ const emit = defineEmits<{
     selectGrave: [id: string]
 }>()
 const playUiSound = inject(gameUiSoundKey)
-const open = ref(false)
-const openedKey = ref<string>()
-const openedActions = ref<{ id: string; signature: string }[]>([])
+const opened = ref<{
+    key: string
+    name: string
+    playerId: string
+    locationId?: string
+    ignoreFacing: boolean
+    actions: { id: string; signature: string }[]
+}>()
+const selectionKey = computed(
+    () =>
+        props.selectedKey ??
+        (props.selectedGraveId
+            ? `grave:${props.selectedGraveId}`
+            : props.selectedId
+              ? `character:${props.selectedId}`
+              : undefined)
+)
+function resolveTarget(key?: string, ignoreFacing = false): InteractionTarget | undefined {
+    if (!props.snapshot || !props.player) return undefined
+    return nearbyInteractionTarget(
+        props.snapshot,
+        props.player,
+        props.characters,
+        props.isPositionVisible,
+        key,
+        ignoreFacing,
+        props.canSelectTarget
+    )
+}
 const target = computed(() => {
-    const candidate =
-        props.snapshot && props.player
-            ? nearbyInteractionTarget(
-                  props.snapshot,
-                  props.player,
-                  props.characters,
-                  props.isPositionVisible,
-                  open.value
-                      ? openedKey.value
-                      : props.selectedKey
-                        ? props.selectedKey
-                        : props.selectedGraveId
-                          ? `grave:${props.selectedGraveId}`
-                          : props.selectedId
-                            ? `character:${props.selectedId}`
-                            : undefined,
-                  Boolean(props.selectedKey || props.selectedId || props.selectedGraveId)
-              )
-            : undefined
-    return candidate && props.canSelectTarget?.(candidate.key) !== false ? candidate : undefined
+    const menu = opened.value
+    return menu
+        ? resolveTarget(menu.key, menu.ignoreFacing)
+        : resolveTarget(selectionKey.value, Boolean(selectionKey.value))
 })
 const grave = computed(() =>
     props.snapshot?.graves?.find((entry) => `grave:${entry.id}` === target.value?.key)
 )
 const actions = computed(() =>
-    open.value
-        ? openedActions.value.flatMap(
+    opened.value
+        ? opened.value.actions.flatMap(
               (entry) => target.value?.actions.filter((action) => action.id === entry.id) ?? []
           )
         : (target.value?.actions ?? [])
 )
+const alternateCharacters = computed(() => {
+    if (!props.snapshot || !props.player || target.value?.kind !== 'character') return []
+    return nearbyCharacterInteractionTargets(
+        props.snapshot,
+        props.player,
+        props.characters,
+        props.isPositionVisible,
+        props.canSelectTarget
+    ).filter((candidate) => candidate.key !== target.value?.key)
+})
 const directAction = computed(() => {
     const options = target.value?.actions
-    if (options?.length !== 1) return undefined
+    if (options?.length !== 1 || alternateCharacters.value.length > 0) return undefined
     const action = options[0]
     return action && !action.disabled && action.command.type !== 'set_personal_hostility'
         ? action
         : undefined
 })
-let openedLocation: string | undefined
-let openedName = ''
 function closeMenu(): void {
-    open.value = false
-    openedKey.value = undefined
-    openedActions.value = []
+    opened.value = undefined
 }
 function dismissMenu(): void {
-    if (!open.value) return
+    if (!opened.value) return
     closeMenu()
     playUiSound?.('uiClose')
 }
@@ -97,7 +119,7 @@ function stopMovement(player: CharacterSnapshot): void {
 }
 const canOpen = computed(
     () =>
-        !open.value &&
+        !opened.value &&
         !props.blocked &&
         Boolean(props.player?.alive) &&
         Boolean(target.value?.actions.length)
@@ -106,7 +128,7 @@ const prompt = computed(() => {
     const selected = target.value
     if (!canOpen.value || !selected) return undefined
     const actionLabel =
-        selected.actions.length === 1
+        selected.actions.length === 1 && alternateCharacters.value.length === 0
             ? selected.actions[0]?.label
             : tGame('game.world.chooseAction')
     const targetLabel = `F ${selected.name}`
@@ -120,36 +142,66 @@ function canOpenFor(key: string): boolean {
 function openMenu(expectedKey?: string): void {
     const selected = target.value
     if (!selected || !props.player || !canOpenFor(expectedKey ?? selected.key)) return
+    const explicit = selected.key === selectionKey.value
+    const direct = directAction.value
+    if (!direct && !selectMenuTarget(selected, explicit)) return
     stopMovement(props.player)
     if (grave.value) emit('selectGrave', grave.value.id)
-    if (directAction.value) {
-        emit('command', directAction.value.command)
+    if (direct) {
+        emit('command', direct.command)
         document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
         return
     }
-    openedLocation = props.snapshot?.location?.id
-    openedKey.value = selected.key
-    openedName = selected.name
-    openedActions.value = selected.actions.map((action) => ({
-        id: action.id,
-        signature: JSON.stringify(action.command),
-    }))
-    open.value = true
+    pinTarget(selected, props.player.id, explicit)
     playUiSound?.('uiOpen')
 }
+function selectMenuTarget(target: InteractionTarget, explicit: boolean): boolean {
+    return explicit || target.kind !== 'character' || props.selectTarget?.(target.key) !== false
+}
+function pinTarget(target: InteractionTarget, playerId: string, ignoreFacing: boolean): void {
+    opened.value = {
+        key: target.key,
+        name: target.name,
+        playerId,
+        locationId: props.snapshot?.location?.id,
+        ignoreFacing,
+        actions: target.actions.map((action) => ({
+            id: action.id,
+            signature: JSON.stringify(action.command),
+        })),
+    }
+}
+function switchCharacter(reverse: boolean): void {
+    const current = target.value
+    const player = props.player
+    if (current?.kind !== 'character' || !player || !isCurrentTarget()) return
+    const ordered = [...alternateCharacters.value, current].sort(
+        (a, b) =>
+            a.position.x - b.position.x || a.position.y - b.position.y || a.key.localeCompare(b.key)
+    )
+    const next = nextWorldTarget(ordered, current.key, reverse)
+    if (!next || next === current.key) return
+    const selected = resolveTarget(next, true)
+    if (!selected || props.selectTarget?.(selected.key) === false) return
+    pinTarget(selected, player.id, true)
+    playUiSound?.('uiSelect')
+}
 function isCurrentTarget(): boolean {
+    const menu = opened.value
     return (
+        menu !== undefined &&
         !props.blocked &&
-        Boolean(props.player?.alive) &&
-        props.snapshot?.location?.id === openedLocation &&
-        props.canSelectTarget?.(openedKey.value ?? '') !== false &&
-        target.value?.key === openedKey.value
+        props.player?.alive === true &&
+        props.player.id === menu.playerId &&
+        props.snapshot?.location?.id === menu.locationId &&
+        props.canSelectTarget?.(menu.key) !== false &&
+        target.value?.key === menu.key
     )
 }
 function select(id: string): void {
-    if (!open.value) return
+    if (!opened.value) return
     const action = actions.value.find((entry) => entry.id === id)
-    const original = openedActions.value.find((entry) => entry.id === id)
+    const original = opened.value.actions.find((entry) => entry.id === id)
     if (!isCurrentTarget() || !action || JSON.stringify(action.command) !== original?.signature) {
         closeMenu()
         return
@@ -160,10 +212,16 @@ function select(id: string): void {
     emit('command', action.command)
 }
 watch(
-    [() => props.snapshot?.location?.id, () => props.player?.alive, () => props.blocked, target],
+    [
+        () => props.snapshot?.location?.id,
+        () => props.player?.id,
+        () => props.player?.alive,
+        () => props.blocked,
+        target,
+    ],
     () => {
-        if (!open.value) return
-        const changedAction = openedActions.value.some(
+        if (!opened.value) return
+        const changedAction = opened.value.actions.some(
             (entry) =>
                 !target.value?.actions.some(
                     (action) =>
@@ -173,6 +231,10 @@ watch(
         if (!isCurrentTarget() || changedAction) closeMenu()
     }
 )
+watch(selectionKey, (key) => {
+    const openedKey = opened.value?.key
+    if (openedKey?.startsWith('character:') && openedKey !== key) closeMenu()
+})
 watch(
     [target, () => props.blocked, () => props.selectedKey],
     () => {
@@ -198,10 +260,13 @@ defineExpose({ canOpenFor, openMenu, prompt })
 </script>
 <template>
     <NearbyActionMenu
-        :open="open"
+        :open="Boolean(opened)"
         :actions="actions"
-        :context-label="target?.name ?? openedName"
+        :context-label="target?.name ?? opened?.name"
+        :target-key="opened?.key"
+        :can-switch-character="alternateCharacters.length > 0"
         @select="select"
+        @switch-character="switchCharacter"
         @close="dismissMenu"
     >
         <GraveDetails

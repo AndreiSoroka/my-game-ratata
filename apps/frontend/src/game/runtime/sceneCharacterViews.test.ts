@@ -129,4 +129,52 @@ describe('scene character presentation scheduling', () => {
         views.dispose()
         expect(off).toHaveBeenCalledExactlyOnceWith('preupdate', expect.any(Function))
     })
+
+    it('dims only other names and applies the focus to newly rendered characters', () => {
+        const { views } = setup()
+        const npc = characterFixture('npc')
+        const other = characterFixture('other')
+        const hero = characterFixture('hero')
+        const deceased = characterFixture('deceased', { alive: false })
+        try {
+            views.sync(worldFixture([npc, other, hero], 1050), hero.id, () => true)
+            views.setNameFocus(npc.id)
+            expect(views.nameOpacity(npc.id)).toBe(1)
+            expect(views.nameOpacity(other.id)).toBe(0.35)
+            expect(views.nameOpacity(hero.id)).toBe(0)
+            expect(views.body(other.id)?.graphics.opacity).toBe(1)
+
+            views.sync(worldFixture([npc, other, hero, deceased], 1100), hero.id, () => true)
+            expect(views.nameOpacity(deceased.id)).toBeCloseTo(0.55 * 0.35)
+            views.setNameFocus(other.id)
+            expect(views.nameOpacity(other.id)).toBe(1)
+            expect(views.nameOpacity(npc.id)).toBe(0.35)
+
+            views.setNameFocus(undefined)
+            expect(views.nameOpacity(npc.id)).toBe(1)
+            expect(views.nameOpacity(deceased.id)).toBe(0.55)
+        } finally {
+            views.dispose()
+        }
+    })
+
+    it('restores visible labels when the focused character disappears or is hidden', () => {
+        const { views } = setup()
+        const npc = characterFixture('npc')
+        const other = characterFixture('other')
+        try {
+            views.sync(worldFixture([npc, other], 1050), undefined, () => true)
+            views.setNameFocus(npc.id)
+            views.sync(worldFixture([other], 1100), undefined, () => true)
+            expect(views.nameOpacity(other.id)).toBe(1)
+
+            views.sync(worldFixture([npc, other], 1150), undefined, () => true)
+            views.setNameFocus(npc.id)
+            views.sync(worldFixture([npc, other], 1200), undefined, (actor) => actor.id !== npc.id)
+            expect(views.nameOpacity(npc.id)).toBeUndefined()
+            expect(views.nameOpacity(other.id)).toBe(1)
+        } finally {
+            views.dispose()
+        }
+    })
 })

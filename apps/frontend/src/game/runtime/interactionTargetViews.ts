@@ -1,8 +1,11 @@
 import type { CharacterRelationship, Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
+import { characterTargetBounds } from './characterPresentationGeometry'
 import { createWorldNameLabel } from './characterViewBundle'
 import { contourShapeKey, interactionContour } from './interactionContour'
+
+const characterKeyPrefix = 'character:'
 
 export interface TargetHighlight {
     key: string
@@ -20,7 +23,6 @@ export class InteractionTargetViews {
     private readonly ground = new Actor({ anchor: vec(0.5, 0.5) })
     private readonly name = createWorldNameLabel()
     private shape = ''
-    private key: string | undefined
     private target: TargetHighlight | undefined
     private disposed = false
 
@@ -43,11 +45,10 @@ export class InteractionTargetViews {
         }
         this.target = target
         target = this.displayedTarget(target)
-        this.key = target.key
         if (this.setCompound(target)) return
         const bounds =
             target.kind === 'character'
-                ? { x: target.position.x - 12, y: target.position.y - 29, width: 24, height: 32 }
+                ? characterTargetBounds(target.position)
                 : (target.bounds ?? {
                       x: target.position.x - 8,
                       y: target.position.y - 8,
@@ -75,8 +76,8 @@ export class InteractionTargetViews {
     }
 
     private displayedTarget(target: TargetHighlight): TargetHighlight {
-        const position =
-            target.kind === 'character' ? this.characterPosition(target.key.slice(10)) : undefined
+        const id = this.characterId
+        const position = id === undefined ? undefined : this.characterPosition(id)
         return position ? { ...target, position } : target
     }
 
@@ -105,10 +106,15 @@ export class InteractionTargetViews {
     }
 
     public clear(): void {
-        this.key = undefined
         this.target = undefined
         this.frame.graphics.isVisible = this.ground.graphics.isVisible = false
         this.name.graphics.isVisible = false
+    }
+
+    public get characterId(): string | undefined {
+        return this.target?.kind === 'character'
+            ? this.target.key.slice(characterKeyPrefix.length)
+            : undefined
     }
 
     public reposition(): void {
@@ -116,13 +122,13 @@ export class InteractionTargetViews {
     }
 
     public forgetCharacter(id: string): void {
-        if (this.key === `character:${id}`) this.clear()
+        if (this.target?.key === `character:${id}`) this.clear()
     }
 
     private visible(target: TargetHighlight): boolean {
-        const prefix = 'character:'
         return (
-            !target.key.startsWith(prefix) || this.characterVisible(target.key.slice(prefix.length))
+            !target.key.startsWith(characterKeyPrefix) ||
+            this.characterVisible(target.key.slice(characterKeyPrefix.length))
         )
     }
 

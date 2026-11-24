@@ -1,7 +1,7 @@
 import type { Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
 import { Color, DisplayMode, Engine, PointerScope, vec } from 'excalibur'
 
-import { characterOverhead } from './characterPresentationGeometry'
+import { characterOverhead, characterTargetBounds } from './characterPresentationGeometry'
 
 export function characterAt(
     snapshot: WorldSnapshot | undefined,
@@ -11,16 +11,19 @@ export function characterAt(
     positionFor: (id: string) => Vector2 | undefined = () => undefined
 ): string | undefined {
     return snapshot?.characters
-        .filter((actor) => actor.id !== playerId && visible(actor.id))
-        .map((actor) => {
-            const position = positionFor(actor.id) ?? actor.position
-            return {
-                id: actor.id,
-                distance: Math.hypot(position.x - point.x, position.y - point.y),
-            }
+        .filter((actor) => actor.id !== playerId)
+        .map((actor) => ({ id: actor.id, position: positionFor(actor.id) ?? actor.position }))
+        .filter(({ position }) => {
+            const { x, y, width, height } = characterTargetBounds(position)
+            return point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height
         })
-        .filter((actor) => actor.distance <= 24)
-        .sort((a, b) => a.distance - b.distance)[0]?.id
+        .sort(
+            (a, b) =>
+                b.position.y - a.position.y ||
+                Math.abs(a.position.x - point.x) - Math.abs(b.position.x - point.x) ||
+                a.id.localeCompare(b.id)
+        )
+        .find((actor) => visible(actor.id))?.id
 }
 export function projectCharacter(
     engine: Engine | undefined,

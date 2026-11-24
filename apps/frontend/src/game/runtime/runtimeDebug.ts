@@ -12,6 +12,7 @@ export function updateRuntimeDebug(
                   | 'buildingCoverStates'
                   | 'prayerAreaStates'
                   | 'characterOpacity'
+                  | 'characterNameOpacity'
                   | 'heardFootstepIds'
                   | 'renderedCharacters'
               >
@@ -36,6 +37,7 @@ export function updateRuntimeDebug(
                   captureFrame: async () => (engine ? (await engine.screenshot()).src : undefined),
                   prayerAreas: () => view?.sceneActors.prayerAreaStates() ?? [],
                   characterOpacity: (id: string) => view?.sceneActors.characterOpacity(id),
+                  characterNameOpacity: (id: string) => view?.sceneActors.characterNameOpacity(id),
                   heardFootstepIds: () => view?.sceneActors.heardFootstepIds() ?? [],
                   renderedCharacters: () => view?.sceneActors.renderedCharacters() ?? [],
               }

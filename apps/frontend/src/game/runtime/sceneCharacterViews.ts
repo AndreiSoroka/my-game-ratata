@@ -26,6 +26,8 @@ export class SceneCharacterViews {
     private readonly motion = new NetworkMotion()
     private readonly graphics: CharacterGraphics
     private readonly damage: DamageFeedback
+    private playerId: string | undefined
+    private focusedNameId: string | undefined
     private disposed = false
 
     public constructor(
@@ -56,9 +58,11 @@ export class SceneCharacterViews {
         reference?: SnapshotReference
     ): void {
         if (!document.hidden) this.motion.observe(snapshot, performance.now(), playerId, reference)
+        if (this.playerId !== playerId) this.focusedNameId = undefined
+        this.playerId = playerId
         this.removeMissing(snapshot.characters)
         for (const character of snapshot.characters) {
-            syncCharacterBundle(
+            const bundle = syncCharacterBundle(
                 this.engine,
                 this.bundles,
                 character,
@@ -66,8 +70,11 @@ export class SceneCharacterViews {
                 visible(character),
                 this.motion.position(character.id) ?? character.position
             )
+            this.updateNameOpacity(bundle)
             this.refreshGraphic(character.id)
         }
+        if (this.focusedNameId !== undefined && !this.visible(this.focusedNameId))
+            this.setNameFocus(undefined)
     }
 
     public receive(event: GameEventPayload, local: boolean): void {
@@ -90,6 +97,17 @@ export class SceneCharacterViews {
 
     public visible(id: string): boolean {
         return this.body(id)?.graphics.isVisible ?? false
+    }
+
+    public setNameFocus(id: string | undefined): void {
+        const focused = id !== undefined && this.visible(id) ? id : undefined
+        if (focused === this.focusedNameId) return
+        this.focusedNameId = focused
+        for (const bundle of this.bundles.values()) this.updateNameOpacity(bundle)
+    }
+
+    public nameOpacity(id: string): number | undefined {
+        return this.visible(id) ? this.bundles.get(id)?.label.graphics.opacity : undefined
     }
 
     public rendered(): { id: string; position: Vector2 }[] {
@@ -154,6 +172,15 @@ export class SceneCharacterViews {
         const time = performance.now()
         const snapshot = this.motion.presentation(id, time) ?? bundle?.snapshot
         if (bundle && snapshot) this.updateGraphic(bundle, snapshot, time)
+    }
+
+    private updateNameOpacity(bundle: CharacterBundle): void {
+        const actor = bundle.snapshot
+        if (!actor) return
+        const dimmed = this.focusedNameId !== undefined && this.focusedNameId !== actor.id
+        const opacity = actor.alive ? 1 : 0.55
+        bundle.label.graphics.opacity =
+            actor.id === this.playerId ? 0 : opacity * (dimmed ? 0.35 : 1)
     }
 
     private updateGraphic(

@@ -55,6 +55,7 @@ type InteractionVisibility = (
     bounds?: WorldObjectBounds,
     range?: number
 ) => boolean
+type CanSelectTarget = (key: string) => boolean
 
 export function nearbyInteractionActions(
     snapshot: WorldSnapshot,
@@ -71,7 +72,8 @@ export function nearbyInteractionTarget(
     characters: CharacterSnapshot[],
     isPositionVisible: InteractionVisibility = () => true,
     targetKey?: string,
-    ignoreFacing = false
+    ignoreFacing = false,
+    canSelectTarget?: CanSelectTarget
 ): InteractionTarget | undefined {
     if (!player.alive || player.tags.includes('offline')) return undefined
     const candidates = [
@@ -87,12 +89,40 @@ export function nearbyInteractionTarget(
     return facingInteractionTarget(
         candidates.filter(
             (candidate) =>
-                candidate.actions.length > 0 &&
-                targetVisible(candidate, player.position, isPositionVisible)
+                (targetKey === undefined || candidate.key === targetKey) &&
+                isAvailable(candidate, player, isPositionVisible, canSelectTarget)
         ),
         player,
         targetKey,
         ignoreFacing
+    )
+}
+
+export function nearbyCharacterInteractionTargets(
+    snapshot: WorldSnapshot,
+    player: CharacterSnapshot,
+    characters: CharacterSnapshot[],
+    isPositionVisible: InteractionVisibility = () => true,
+    canSelectTarget?: CanSelectTarget
+): InteractionTarget[] {
+    if (!player.alive || player.tags.includes('offline')) return []
+    return characterTargets(snapshot, player, characters).filter(
+        (candidate) =>
+            candidate.actions.some((action) => !action.disabled) &&
+            isAvailable(candidate, player, isPositionVisible, canSelectTarget)
+    )
+}
+
+function isAvailable(
+    candidate: TargetCandidate,
+    player: CharacterSnapshot,
+    visible: InteractionVisibility,
+    canSelectTarget?: CanSelectTarget
+): boolean {
+    return (
+        candidate.actions.length > 0 &&
+        targetVisible(candidate, player.position, visible) &&
+        canSelectTarget?.(candidate.key) !== false
     )
 }
 

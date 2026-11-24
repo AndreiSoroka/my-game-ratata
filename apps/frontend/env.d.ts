@@ -15,6 +15,7 @@ declare global {
             captureFrame?: () => Promise<string | undefined>
             prayerAreas?: () => PrayerAreaState[]
             characterOpacity?: (id: string) => number | undefined
+            characterNameOpacity?: (id: string) => number | undefined
             heardFootstepIds?: () => number[]
             renderedCharacters?: () => { id: string; position: { x: number; y: number } }[]
         }

@@ -13,7 +13,7 @@ import { recordWorkerActivity } from './workerActivityState'
 import { executeWorkerAdventure } from './workerCommands'
 import { deliveryKinds, workerDeliveryCount, WorkerFarm } from './workerFarm'
 import { WorkerGather } from './workerGather'
-import { approach, fleeWorker } from './workerNavigation'
+import { approachCharacter, fleeWorker } from './workerNavigation'
 import { repairWorker } from './workerRepair'
 import { resourceWorkTarget } from './workerRequestData'
 import { recordWorkerProbeWork } from './workerRequestWork'
@@ -108,7 +108,7 @@ export class EconomyWorkerController implements CharacterController {
             },
             now
         )
-        if (!approach(actor, room, merchant.locationId, merchant.position)) {
+        if (!approachCharacter(actor, room, merchant)) {
             return true
         }
         const itemId = row.itemId
