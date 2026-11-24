@@ -57,6 +57,62 @@ test('plays isolated real tracks and restores one music track when visible', asy
     expect(far?.[1]).toBe(1)
 })
 
+test('plays one attenuated portal loop and spaces real forest cues without overlaps', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() => window.engineHarness.ambience())
+    expect(result).toMatchObject({
+        startedWhileMuted: 0,
+        startedWithoutFreshSnapshot: 0,
+        portal: {
+            oneLoopForTwoPortals: true,
+            closestVolume: 1,
+            canceledFade: true,
+            expiredWithoutSnapshot: true,
+        },
+        forest: {
+            beforeDelay: 0,
+            duringFirstCue: 1,
+            beforeCooldown: 1,
+            afterCooldown: 2,
+            stoppedOnLeavingForest: true,
+        },
+        decoded: ['forest-bird-1.mp3', 'forest-bird-2.mp3', 'forest-wind.mp3', 'portal-hum.wav'],
+    })
+    expect(result.portal.duration).toBeCloseTo(4.5)
+    expect(result.portal.near).toBeGreaterThan(0.9)
+    expect(result.portal.far).toBeLessThan(0.16)
+    expect(result.portal.far).toBeGreaterThan(0.09)
+})
+
+test('keeps forced silent sessions from loading or playing eligible world ambience', async ({
+    page,
+}) => {
+    await page.goto('/e2e/engine/?test=1')
+    await page.getByRole('button', { name: 'Enable engine audio' }).click()
+    await expect(page.evaluate(() => window.engineHarness.silentAmbience())).resolves.toEqual({
+        requests: 0,
+        tracks: 0,
+    })
+})
+
+test('resumes a suspended audio context from a trusted gesture and plays the latest portal', async ({
+    page,
+}) => {
+    const unlock = page.getByRole('button', { name: 'Enable engine audio' })
+    const clickWhenReady = async () => {
+        await expect(unlock).toHaveAttribute('data-waiting-for-gesture', 'true')
+        await unlock.click()
+    }
+    const [result] = await Promise.all([
+        page.evaluate(() => window.engineHarness.gestureAmbience()),
+        clickWhenReady(),
+    ])
+    expect(result.before).toEqual({ state: 'suspended', tracks: 0 })
+    expect(result.after).toEqual({ state: 'running', tracks: 1 })
+    expect(result.volume).toBeCloseTo(1 / 9)
+})
+
 test('cancels application resources immediately and drains the old loader after reentry', async ({
     page,
 }) => {

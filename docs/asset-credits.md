@@ -45,6 +45,14 @@ Grass, concrete and wood footsteps use nine unchanged clips (three per material)
 
 Menus and reward confirmations use five original clips from **Interface Sounds 1.0**. Mastery level increases use `jingles_PIZZI04.ogg` from **Music Jingles 1.0**. Both Kenney packs use [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The original licenses and source records accompany the clips in `apps/frontend/public/game/assets/audio/kenney-interface/` and `apps/frontend/public/game/assets/audio/kenney-jingles/`. [Interface Sounds](https://kenney.nl/assets/interface-sounds) · [Music Jingles](https://kenney.nl/assets/music-jingles)
 
+## Portal and forest ambience
+
+`portal-hum.wav` is an original synthesized loop with three soft pulses across 4.5 seconds. The three forest clips use public Freesound previews released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). They were trimmed, filtered, given short fades and encoded as mono MP3s. All four files live in `apps/frontend/public/game/assets/audio/ambience/`.
+
+- `forest-bird-1.mp3` uses the first 2.48 seconds of [Turdus_merula_06.wav by tinga](https://freesound.org/people/tinga/sounds/189526/).
+- `forest-bird-2.mp3` uses the first 2.25 seconds of [Turdus_merula_19.wav by tinga](https://freesound.org/people/tinga/sounds/189549/).
+- `forest-wind.mp3` uses the gust from 40.5 to 46.5 seconds of [Forest, close up of trees rustling in the wind.wav by Anya_Media](https://freesound.org/people/Anya_Media/sounds/523389/).
+
 ## Project-authored ground tiles
 
 The flat paving, transparent soil-bed strips and dark doorway threshold are small vector tiles authored in `scripts/generate-ground.mjs`. Their SVG sources are saved under `apps/frontend/public/game/map/assets/Novogorod/`. They replace the raised-rock paving and opaque light-grass rectangles; they are not modified Kenney atlas images. The original Kenney and Mystic Woods source images remain unchanged.

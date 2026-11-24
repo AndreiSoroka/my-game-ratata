@@ -1,4 +1,4 @@
-import type { ClientMessage } from '@my-game-ratata/contracts'
+import type { ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { PlantingPreview } from './plantingPreview'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
@@ -22,10 +22,11 @@ interface PresentationLifecycle {
 export async function initializeRuntimePresentation(
     container: HTMLElement,
     map: RenderedTiledMap,
+    locationId: string,
     planting: PlantingPreview,
     lifecycle: PresentationLifecycle
 ): Promise<void> {
-    const created = createRuntimePresentation(container, map)
+    const created = createRuntimePresentation(container, map, locationId)
     const { run, canvas, engine, loader } = created
     const viewport = new RuntimeViewport(lifecycle.send, lifecycle.viewportLocation)
     const view = { ...created, viewport }
@@ -37,8 +38,10 @@ export async function initializeRuntimePresentation(
         run.addCleanup(() => lifecycle.removed(view))
         lifecycle.mounted(view)
         if (!(await run.start(loader)) || !run.active) return
-        if (lifecycle.current(view)) view.audio.playMusic()
-        else void run.cancel()
+        if (lifecycle.current(view)) {
+            view.audio.startWorldAmbience()
+            view.audio.playMusic()
+        } else void run.cancel()
     } catch (error) {
         void run.cancel()
         throw error
@@ -53,4 +56,12 @@ export function suspendRuntimePresentation(view: RuntimePresentation | undefined
     view.sceneActors.clearDamage()
     view.sceneActors.setInteractionTarget(undefined)
     view.sceneActors.setCombatTarget(undefined)
+}
+
+export function observeRuntimeAudio(
+    view: RuntimePresentation | undefined,
+    snapshot: WorldSnapshot,
+    playerId: string | undefined
+): void {
+    view?.audio.observeWorld(snapshot, playerId, view.sceneActors.isPositionVisible)
 }

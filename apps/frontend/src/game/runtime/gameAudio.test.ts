@@ -175,3 +175,29 @@ describe('footstep audio lifecycle', () => {
         }
     })
 })
+
+it('restores the current surface map when pending travel is cancelled without a map replacement', () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(0)
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    const player = setup()
+    try {
+        player.observeWorld(snapshot(8), 'hero')
+        player.suspendWorld()
+        now.mockReturnValue(300)
+        player.observeWorld(snapshot(38), 'hero')
+        now.mockReturnValue(600)
+        player.observeWorld(snapshot(68), 'hero')
+        expect(audio.play).not.toHaveBeenCalled()
+
+        player.resumeWorld()
+        player.observeWorld(snapshot(68), 'hero')
+        expect(audio.play).not.toHaveBeenCalled()
+        now.mockReturnValue(900)
+        player.observeWorld(snapshot(98), 'hero')
+        expect(audio.play).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ surface: 'wood' })
+        )
+    } finally {
+        player.stop()
+    }
+})

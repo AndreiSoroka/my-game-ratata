@@ -5,6 +5,14 @@ import { tLocalized } from '@/shared/lib/i18n'
 import type { RatataGameOptions } from './runtimeOptions'
 import { isFloatingNotice, isNoticeForPlayer } from './runtimeQueries'
 
+export function isLocalDeath(event: GameEventPayload, playerId: string | undefined): boolean {
+    return (
+        playerId !== undefined &&
+        ((event.kind === 'death' && event.targetId === playerId) ||
+            (event.kind === 'permadeath' && event.actorId === playerId))
+    )
+}
+
 export function runtimeEventFeedback(
     event: GameEventPayload,
     playerId: string | undefined,

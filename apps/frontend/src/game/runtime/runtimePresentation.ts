@@ -6,9 +6,14 @@ import { PrayerAreaViews } from './prayerAreaViews'
 import { createGameCanvas, createGameEngine } from './runtimeCharacterTargets'
 import { SceneActors } from './sceneActors'
 import type { RenderedTiledMap } from './tiledMap'
+import { WorldAmbience } from './worldAmbience'
 
 /** Construct the scene only once its map belongs to a still-active startup. */
-export function createRuntimePresentation(container: HTMLElement, map: RenderedTiledMap) {
+export function createRuntimePresentation(
+    container: HTMLElement,
+    map: RenderedTiledMap,
+    locationId: string
+) {
     // Keep the canvas parent available to Excalibur's FillContainer cleanup after detaching it.
     const surface = document.createElement('div')
     surface.className = 'game-canvas-surface'
@@ -19,9 +24,13 @@ export function createRuntimePresentation(container: HTMLElement, map: RenderedT
     const { engine } = run
     try {
         const resources = createCharacterResources()
-        const audio = new GameAudio(resources.sounds, resources.music.adventureBegins)
+        const audio = new GameAudio(
+            resources.sounds,
+            resources.music.adventureBegins,
+            new WorldAmbience(engine)
+        )
         run.addCleanup(() => audio.stop())
-        audio.setMap(map)
+        audio.setMap(map, locationId)
         const sceneActors = new SceneActors(
             engine,
             resources.sheets,

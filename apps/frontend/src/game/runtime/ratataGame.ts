@@ -21,7 +21,7 @@ import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { projectCharacter, projectPosition } from './runtimeCharacterTargets'
 import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
-import { runtimeEventFeedback } from './runtimeEventFeedback'
+import { isLocalDeath, runtimeEventFeedback } from './runtimeEventFeedback'
 import { handleRuntimeKeyDown } from './runtimeKeyDown'
 import { RuntimeMapLoading, runtimeMapRequest } from './runtimeMapLoading'
 import { RuntimeMovementControls } from './runtimeMovementControls'
@@ -29,6 +29,7 @@ import type { RatataGameOptions } from './runtimeOptions'
 import { createRuntimePointerHandlers } from './runtimePointer'
 import {
     initializeRuntimePresentation,
+    observeRuntimeAudio,
     type RuntimePresentation,
     suspendRuntimePresentation,
 } from './runtimePresentationLifecycle'
@@ -42,6 +43,7 @@ export class RatataGame {
     private localPlayerId: string | undefined
     private snapshot: WorldSnapshot | undefined
     private snapshotReference: SnapshotReference | undefined
+    private audioSnapshotValid = false
     private connected = false
     private stopped = false
     private mapId: string = CENTER_LOCATION_ID
@@ -93,8 +95,8 @@ export class RatataGame {
             onSpeechTranslation: options.onSpeechTranslation,
             getLocale: () => gameLocale.value,
             onSnapshot: (snapshot, reference) => this.applySnapshot(snapshot, reference),
-            onStreamReset: () => this.view?.sceneActors?.resetMotion(),
-            onSnapshotInvalidated: () => this.view?.sceneActors?.holdMotion(),
+            onStreamReset: () => this.invalidateAudioSnapshot('resetMotion'),
+            onSnapshotInvalidated: () => this.invalidateAudioSnapshot('holdMotion'),
             onPlantingPreview: (preview) => this.planting.receive(preview),
             onStatus: (status) => {
                 this.connected = status === 'Connected'
@@ -121,7 +123,7 @@ export class RatataGame {
     }
 
     private startPresentation(map: RenderedTiledMap, mapId: string): Promise<void> {
-        return initializeRuntimePresentation(this.options.container, map, this.planting, {
+        return initializeRuntimePresentation(this.options.container, map, mapId, this.planting, {
             send: this.send,
             viewportLocation: () => (this.isMapReady ? this.mapId : undefined),
             inputs: {
@@ -239,14 +241,21 @@ export class RatataGame {
     private applySnapshot(snapshot: WorldSnapshot, reference: SnapshotReference): void {
         this.snapshot = snapshot
         this.snapshotReference = reference
+        this.audioSnapshotValid = true
         const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
         if (!player?.alive) this.chat.cancel()
         if (this.movementControls.observe(player)) this.releaseInputs()
         this.maps.observe(runtimeMapRequest(snapshot, this.initialMap))
         if (this.isMapReady) this.view?.sceneActors?.update(snapshot, this.localPlayerId, reference)
         this.options.onSnapshot(snapshot, this.localPlayerId)
-        if (this.isMapReady) this.view?.audio.observeWorld(snapshot, this.localPlayerId)
+        if (this.isMapReady) observeRuntimeAudio(this.view, snapshot, this.localPlayerId)
         updateRuntimeDebug(this.view, this.snapshot, this.localPlayerId)
+    }
+
+    private invalidateAudioSnapshot(motion?: 'resetMotion' | 'holdMotion'): void {
+        if (motion) this.view?.sceneActors[motion]()
+        this.audioSnapshotValid = false
+        this.view?.audio.invalidateWorld()
     }
 
     public readonly retryMap = (): void => this.maps.retry()
@@ -265,12 +274,14 @@ export class RatataGame {
         this.options.onMapError?.(null)
         this.options.onStatus('Connected')
         this.view.sceneActors.update(this.snapshot, this.localPlayerId, this.snapshotReference)
-        this.view.audio.observeWorld(this.snapshot, this.localPlayerId)
+        this.view.audio.resumeWorld()
+        if (this.audioSnapshotValid)
+            observeRuntimeAudio(this.view, this.snapshot, this.localPlayerId)
     }
 
     private applyMap(mapId: string, map: RenderedTiledMap): void {
         this.selectionTileSize = map.tileWidth
-        this.view?.audio?.setMap(map)
+        this.view?.audio?.setMap(map, mapId)
         this.view?.sceneActors?.addMap(map)
         this.buildingEntrances.replace(mapId, map.buildings)
         this.mapId = mapId
@@ -314,6 +325,7 @@ export class RatataGame {
     }
 
     private handleServerEvent(event: GameEventPayload): void {
+        if (isLocalDeath(event, this.localPlayerId)) this.invalidateAudioSnapshot()
         this.options.onEvent?.(event)
         this.view?.audio?.playEventSound(event)
         if (this.isMapReady) this.view?.sceneActors?.showDamage(event)
