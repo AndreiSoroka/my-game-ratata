@@ -17,9 +17,7 @@ import QuestRewardSummary from './QuestRewardSummary.vue'
 const props = defineProps<{
     job: GuildQuestSnapshot
     playerId?: string
-    canAct?: boolean
     canAbandon?: boolean
-    actions?: 'all' | 'abandon'
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const progressId = useId()
@@ -165,40 +163,27 @@ const progressLabel = computed(() =>
         <p v-if="job.rewardNotice" class="quest-card-reason" role="status">
             {{ tLocalized(job.rewardNoticeMessage, job.rewardNotice) }}
         </p>
-        <div
-            v-if="job.status !== 'completed' && request?.stage !== 'cancelled'"
-            class="guild-reward quest-card-actions"
+        <template
+            v-if="
+                job.status === 'active' || job.status === 'ready' || job.status === 'reward_missing'
+            "
         >
-            <GameButton
-                v-if="actions !== 'abandon' && request?.stage === 'waiting'"
-                :disabled="!canAct"
-                @click="emit('command', { type: 'guild_report', instanceId: job.instanceId })"
-            >
-                {{
-                    request.proofAccepted
-                        ? tGame('game.quests.repeatVerification')
-                        : tGame('game.quests.submitTrophy')
-                }}
-            </GameButton>
-            <GameButton
-                v-if="actions !== 'abandon' && job.status === 'ready'"
-                :disabled="!canAct"
-                @click="emit('command', { type: 'guild_turn_in', instanceId: job.instanceId })"
-            >
-                {{ tGame('game.quests.turnInContract') }}
-            </GameButton>
-            <GameButton
-                v-if="request || actions === 'abandon'"
-                :disabled="!canAbandon"
-                @click="emit('command', { type: 'guild_abandon', instanceId: job.instanceId })"
-            >
-                {{
-                    request
-                        ? tGame('game.quests.declineWorkerRequest')
-                        : tGame('game.quests.declineContract')
-                }}
-            </GameButton>
-        </div>
+            <p class="quest-card-hint">
+                {{ tGame('game.character.askQuestGiverAboutNext') }}
+            </p>
+            <div class="guild-reward quest-card-actions">
+                <GameButton
+                    :disabled="!canAbandon"
+                    @click="emit('command', { type: 'guild_abandon', instanceId: job.instanceId })"
+                >
+                    {{
+                        request
+                            ? tGame('game.quests.declineWorkerRequest')
+                            : tGame('game.quests.declineContract')
+                    }}
+                </GameButton>
+            </div>
+        </template>
     </article>
 </template>
 

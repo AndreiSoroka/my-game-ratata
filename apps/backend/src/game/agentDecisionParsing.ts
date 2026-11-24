@@ -179,6 +179,7 @@ function parseSocialAgentDecision(
         return parseExchangeCommand(record)
     }
     if (
+        record['type'] === 'quest_board_publish' ||
         record['type'] === 'quest_propose' ||
         record['type'] === 'worker_quest_propose' ||
         record['type'] === 'quest_invitation_answer' ||

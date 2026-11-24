@@ -67,13 +67,13 @@ export function speakNpcDialogue(
                     : speech
             )
         )
-        recordDeliveredDialogue(room, actor, event, text, result.accepted)
+        recordDeliveredDialogue(room, actor, event, text, result.accepted, now)
     } else if (event.channel === 'whisper' || event.legacy === true) {
         const heard = room.social.whispers.send(actor, target, text, now, {
             language,
             keepOriginalForRecipient: true,
         })
-        recordDeliveredDialogue(room, actor, event, text, heard)
+        recordDeliveredDialogue(room, actor, event, text, heard, now)
     } else {
         room.publishEvents([
             attributeNpcSpeech(
@@ -81,7 +81,7 @@ export function speakNpcDialogue(
                 target.id
             ),
         ])
-        recordDeliveredDialogue(room, actor, event, text, true)
+        recordDeliveredDialogue(room, actor, event, text, true, now)
     }
 }
 
@@ -101,7 +101,7 @@ function handledByDialogueTurn(
         return false
     }
     const delivered = room.social.npcSpeech.turns.reply(actor, event, text, now)
-    recordDeliveredDialogue(room, actor, event, text, delivered)
+    recordDeliveredDialogue(room, actor, event, text, delivered, now)
     return true
 }
 
@@ -110,10 +110,19 @@ function recordDeliveredDialogue(
     actor: GameCharacter,
     event: Heard,
     text: string,
-    delivered: boolean
+    delivered: boolean,
+    now: number
 ): void {
     if (delivered) {
         room.social.society.warnings.settle(actor, event, text)
         room.social.recordExchangeInquiry(actor, event, text)
+        if (event.ambiguous !== true && event.system !== true) {
+            room.social.deliveredQuestQuestion(
+                actor,
+                event.senderId,
+                text.slice(0, 400),
+                now
+            )
+        }
     }
 }

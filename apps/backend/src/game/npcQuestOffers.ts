@@ -1,6 +1,7 @@
 import {
     DEFAULT_QUEST_REWARD_MODE,
     getWorldLocationDefinition,
+    type GuildQuestDefinition,
     ITEM_DEFINITIONS,
     type QuestDraft,
     type QuestObjective,
@@ -10,6 +11,7 @@ import {
 
 import { resolveAuthoredQuestDraft } from './authoredQuestOffers'
 import type { GameCharacter } from './character'
+import { guildQuests } from './guildRules'
 import { snapshotItem } from './inventory'
 import { npcQuestObjectiveMessage } from './npcQuestObjectiveText'
 import type { NpcQuestEnvironment, QuestOfferRecord } from './npcQuestTypes'
@@ -27,7 +29,8 @@ export function createQuestOffer(
     draft: QuestDraft,
     environment: NpcQuestEnvironment,
     id: string,
-    now: number
+    now: number,
+    boardOffer = false
 ): QuestOfferRecord | string {
     const authored = resolveAuthoredQuestDraft(
         issuer,
@@ -43,7 +46,8 @@ export function createQuestOffer(
               authored,
               environment,
               id,
-              now
+              now,
+              boardOffer
           )
 }
 
@@ -53,16 +57,13 @@ function createPreparedQuestOffer(
     draft: QuestDraft,
     environment: NpcQuestEnvironment,
     id: string,
-    now: number
+    now: number,
+    boardOffer: boolean
 ): QuestOfferRecord | string {
-    const target = environment.getCharacter(targetId)
-    if (target?.controllerKind !== 'network_player' || !target.connected) {
-        return 'Предложение с кнопкой «Взять» можно отправить только живому подключённому игроку.'
-    }
+    const target = contactedPlayer(issuer, targetId, environment, now)
     if (
-        target.id === issuer.id ||
-        !questContact(target, issuer, environment, now) ||
-        environment.canIssue?.(issuer) === false
+        target === undefined ||
+        (!boardOffer && environment.canIssue?.(issuer) === false)
     ) {
         return 'Не удаётся предложить задание этому собеседнику.'
     }
@@ -84,6 +85,7 @@ function createPreparedQuestOffer(
         return 'Обещанной вещи у заказчика нет.'
     }
     return {
+        ...(boardOffer ? { boardOffer: true } : {}),
         draft: structuredClone(draft),
         targetId,
         issuerDeath: issuer.deathSequence,
@@ -113,6 +115,64 @@ function createPreparedQuestOffer(
             expiresAt: now + 120_000,
         },
     }
+}
+
+export function createGuildBoardOffer(
+    issuer: GameCharacter,
+    targetId: string,
+    definition: GuildQuestDefinition,
+    environment: NpcQuestEnvironment,
+    id: string,
+    now: number
+): QuestOfferRecord | string {
+    const guildQuestId = guildQuests.find(
+        (quest) => quest.id === definition.id
+    )?.id
+    const target = contactedPlayer(issuer, targetId, environment, now)
+    if (target === undefined || guildQuestId === undefined) {
+        return 'Заказ недоступен. Проверьте условия у распорядителя.'
+    }
+    const { title, titleMessage, description, descriptionMessage, rewardGold } =
+        definition
+    return {
+        boardOffer: true,
+        boardGuildId: definition.id,
+        draft: null,
+        targetId,
+        issuerDeath: issuer.deathSequence,
+        view: {
+            id,
+            guildQuestId,
+            revision: 1,
+            issuerId: issuer.id,
+            issuerName: issuer.nickname,
+            title,
+            description,
+            ...(titleMessage === undefined ? {} : { titleMessage }),
+            ...(descriptionMessage === undefined ? {} : { descriptionMessage }),
+            objectives: [],
+            rewardGold,
+            rewardItems: [],
+            funding: 'city',
+            rewardMode: DEFAULT_QUEST_REWARD_MODE,
+            itemRecipient: 'submitter',
+            expiresAt: now + 120_000,
+        },
+    }
+}
+
+function contactedPlayer(
+    issuer: GameCharacter,
+    id: string,
+    environment: NpcQuestEnvironment,
+    now: number
+): GameCharacter | undefined {
+    const target = environment.getCharacter(id)
+    return target?.controllerKind === 'network_player' &&
+        id !== issuer.id &&
+        questContact(target, issuer, environment, now)
+        ? target
+        : undefined
 }
 
 export function createWorkerQuestOffer(
@@ -175,7 +235,7 @@ export function createWorkerQuestOffer(
     }
 }
 
-function objectiveLabel(
+export function objectiveLabel(
     objective: QuestObjective,
     environment: NpcQuestEnvironment,
     issuer: GameCharacter

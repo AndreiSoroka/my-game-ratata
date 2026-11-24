@@ -6,7 +6,8 @@ import type { RewardReservations } from './rewardReservations'
 export class NpcQuestLifecycle {
     public constructor(
         private readonly environment: NpcQuestEnvironment,
-        private readonly reservations: RewardReservations
+        private readonly reservations: RewardReservations,
+        private readonly onRelease?: (job: NpcQuestRecord) => void
     ) {}
 
     public refresh(job: NpcQuestRecord): void {
@@ -66,5 +67,6 @@ export class NpcQuestLifecycle {
         this.reservations.release(job.view.instanceId)
         this.environment.parties.contractSlots.release(job.view.instanceId)
         job.closeDeathListener?.()
+        this.onRelease?.(job)
     }
 }

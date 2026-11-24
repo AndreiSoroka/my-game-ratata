@@ -4,6 +4,7 @@ import './adventurePanel.css'
 import type { AdventureSnapshot, CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
 
 import AdventureDialogue from './AdventureDialogue.vue'
+import QuestBoardWindow from './QuestBoardWindow.vue'
 import TheftAlert from './TheftAlert.vue'
 import { activateFocusedButton } from './uiKeyboard'
 
@@ -31,8 +32,13 @@ const emit = defineEmits<{ command: [message: ClientMessage] }>()
             :server-time="serverTime"
             @command="emit('command', $event)"
         />
+        <QuestBoardWindow
+            v-if="!inventoryOpen && adventure.questBoard"
+            :board="adventure.questBoard"
+            @close="emit('command', { type: 'dialogue_choice', choiceId: 'close' })"
+        />
         <AdventureDialogue
-            v-if="!inventoryOpen"
+            v-else-if="!inventoryOpen && adventure.dialogue?.kind !== 'quest_board'"
             :adventure="adventure"
             :characters="characters"
             @command="emit('command', $event)"

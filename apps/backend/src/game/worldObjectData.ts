@@ -68,7 +68,8 @@ export function readWorldObjects(
             object.type !== 'sign' &&
             object.type !== 'barrel' &&
             object.type !== 'water' &&
-            object.type !== 'bell'
+            object.type !== 'bell' &&
+            object.type !== 'quest_board'
         ) {
             return []
         }
@@ -127,6 +128,9 @@ function worldObjectPresentation(
     name: string,
     text: string
 ) {
+    if (object.type === 'quest_board') {
+        return { nameMessage: authoredMessage('world.questBoard') }
+    }
     if (object.type !== 'sign') {
         const key = Object.hasOwn(objectNames, name)
             ? objectNames[name]

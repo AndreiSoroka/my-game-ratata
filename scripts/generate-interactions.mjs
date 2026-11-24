@@ -1,4 +1,7 @@
-import { CENTER_LOCATION_ID } from '../contracts/src/world.ts'
+import {
+    CENTER_LOCATION_ID,
+    QUEST_BOARD_OBJECT_ID,
+} from '../contracts/src/world.ts'
 import { signContent } from './generate-sign-text.mjs'
 import { createPondDrinkingAreas } from './generate-pond-interactions.mjs'
 
@@ -22,7 +25,11 @@ export function createWorldInteractions(ctx, location, landmarks) {
     const inside = (x, y) => x >= 0 && y >= 0 && x < width && y < height
     function add(type, x, y, w, h, name, text, geometry = {}) {
         const action =
-            type === 'sign' ? 'read' : type === 'barrel' ? 'open' : 'drink'
+            type === 'sign' || type === 'quest_board'
+                ? 'read'
+                : type === 'barrel'
+                  ? 'open'
+                  : 'drink'
         result.push({
             id: 2000 + result.length,
             name,
@@ -225,6 +232,34 @@ export function createWorldInteractions(ctx, location, landmarks) {
                 interactionAreas: pond.interactionAreas,
             }
         )
+    }
+    if (location.id === CENTER_LOCATION_ID) {
+        const guild = landmarks.find((landmark) =>
+            landmark.properties?.some(
+                ({ name, value }) => name === 'kind' && value === 'guild'
+            )
+        )
+        if (!guild)
+            throw new Error(
+                'Cannot place the quest board without an authored guild'
+            )
+        const x = Math.floor(guild.x / 16) - 2,
+            y = Math.floor(guild.y / 16),
+            index = at(x, y)
+        if (
+            !inside(x, y) ||
+            !reachable.has(index) ||
+            objects[index] ||
+            structures[index]
+        ) {
+            throw new Error(
+                'The guild quest board must have a free, reachable tile'
+            )
+        }
+        objects[index] = 512 + 83
+        add('quest_board', x, y, 1, 1, 'Доска заказов', 'Доска заказов', {
+            id: QUEST_BOARD_OBJECT_ID,
+        })
     }
     return result
 }

@@ -5,6 +5,7 @@ import type {
     Vector2,
 } from './index'
 import type { LocalizedMessage } from './locales'
+import type { GuildQuestId } from './party'
 import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 
 export type QuestObjective =
@@ -32,6 +33,7 @@ export interface QuestDraft {
 
 export interface QuestOfferSnapshot {
     authoredQuestId?: string
+    guildQuestId?: GuildQuestId
     introduction?: string
     fundingCityId?: string
     objectiveLabels?: string[]
@@ -87,7 +89,12 @@ export type NpcQuestClientMessage =
     | { type: 'npc_quest_turn_in'; instanceId: string }
     | { type: 'npc_quest_abandon'; instanceId: string }
     | { type: 'quest_inquire'; instanceId: string; objectiveIndex: number }
-    | { type: 'quest_turn_in_confirm'; confirmationId: string; accept: boolean }
+    | {
+          type: 'quest_turn_in_confirm'
+          confirmationId: string
+          accept: boolean
+          rewardMode?: QuestRewardMode
+      }
 
 export interface QuestOfferReplacement {
     offerId: string
@@ -95,6 +102,7 @@ export interface QuestOfferReplacement {
 }
 
 export type NpcQuestDecision =
+    | { type: 'quest_board_publish'; draft: QuestDraft }
     | {
           type: 'quest_invitation_answer'
           targetId: string
@@ -143,6 +151,7 @@ export interface QuestTurnInPromptSnapshot {
     expiresAt: number
     revision: number
     action?: 'report' | 'turn_in'
+    preAcceptance?: true
 }
 
 export interface QuestHistoryEntry {

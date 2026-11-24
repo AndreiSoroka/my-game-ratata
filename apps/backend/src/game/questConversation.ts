@@ -15,6 +15,7 @@ import { adventureNpcRoles, adventureQuest } from './adventureContent'
 import type { GameCharacter } from './character'
 import type { NpcQuestService } from './npcQuests'
 import type { PartyService } from './parties'
+import { availableItemQuantity } from './rewardReservations'
 
 export interface QuestConversationEnvironment {
     adventure: AdventureService
@@ -166,9 +167,7 @@ function storyContract(
     const instanceId = `story:${recipient.id}:${quest.id}`
     const itemId = quest.requiredItemId ?? adventureQuest.requiredItemId
     const complete = quest.status === 'completed'
-    const quantity = recipient.inventory
-        .filter((item) => item.itemId === itemId)
-        .reduce((sum, item) => sum + (item.quantity ?? 1), 0)
+    const quantity = availableItemQuantity(recipient.inventory, itemId)
     return {
         id: quest.id,
         instanceId,
@@ -225,4 +224,15 @@ export function conversationContracts(
         }
     }
     return contracts
+}
+
+export function questConversationJobs(
+    environment: QuestConversationEnvironment,
+    issuer: GameCharacter,
+    player: GameCharacter,
+    now: number
+) {
+    return conversationContracts(environment, issuer.id, player.id, now).filter(
+        (job) => ['active', 'ready', 'reward_missing'].includes(job.status)
+    )
 }

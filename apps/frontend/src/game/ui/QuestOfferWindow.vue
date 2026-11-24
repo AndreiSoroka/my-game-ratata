@@ -26,6 +26,13 @@ const props = defineProps<{
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const rewardMode = ref<QuestRewardMode>(props.offer.rewardMode)
 const initialRevision = ref(props.offer.revision)
+const usesGroupSlot = computed(() => props.offer.authoredQuestId !== 'hearts-for-the-border-bell')
+const groupOccupied = computed(() => usesGroupSlot.value && props.occupied)
+const cityFunded = computed(
+    () =>
+        props.offer.guildQuestId === undefined &&
+        (props.offer.funding === 'city' || props.offer.funding === 'worker')
+)
 const expired = computed(() => props.serverTime >= props.offer.expiresAt)
 const requiredItems = computed(() =>
     props.offer.objectives.filter((objective) => objective.kind === 'deliver')
@@ -41,7 +48,7 @@ watch(
     }
 )
 function answer(accept: boolean): void {
-    if (accept && (props.occupied || expired.value)) return
+    if (accept && (groupOccupied.value || expired.value)) return
     emit('command', {
         type: 'quest_offer_answer',
         offerId: props.offer.id,
@@ -60,11 +67,11 @@ function answer(accept: boolean): void {
     >
         <QuestOfferPanel
             v-model:reward-mode="rewardMode"
-            :confirm-disabled="occupied || expired"
+            :confirm-disabled="groupOccupied || expired"
             :required-items="requiredItems"
             :reward-gold="offer.rewardGold"
             :reward-items="rewardItems"
-            :reward-from-city="offer.funding === 'city' || offer.funding === 'worker'"
+            :reward-from-city="cityFunded"
             @confirm="answer(true)"
             @cancel="answer(false)"
         >
@@ -76,8 +83,10 @@ function answer(accept: boolean): void {
                 <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
                     {{ tGame('game.quests.questGiverChangedRewardReview') }}
                 </p>
-                <p class="social-muted">{{ tGame('game.quests.youCanHaveOneActive') }}</p>
-                <p v-if="occupied" class="social-status" role="status">
+                <p v-if="usesGroupSlot" class="social-muted">
+                    {{ tGame('game.quests.youCanHaveOneActive') }}
+                </p>
+                <p v-if="groupOccupied" class="social-status" role="status">
                     {{ tGame('game.quests.completeOrCancelYourCurrent') }}
                 </p>
                 <p v-if="expired" class="social-status" role="status">

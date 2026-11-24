@@ -1,4 +1,4 @@
-import type { ExchangeItemQuantity } from '@my-game-ratata/contracts'
+import type { ExchangeItemQuantity, ItemId } from '@my-game-ratata/contracts'
 
 import { type InventoryItemInstance, itemQuantity } from './inventoryItems'
 
@@ -46,6 +46,24 @@ export function availableInventoryQuantity(
         0,
         (item === undefined ? 0 : itemQuantity(item)) -
             reservedInventoryQuantity(inventory, instanceId, exceptId)
+    )
+}
+
+export function availableItemQuantity(
+    inventory: readonly InventoryItemInstance[],
+    itemId: ItemId
+): number {
+    return inventory.reduce(
+        (sum, item) =>
+            item.itemId === itemId
+                ? sum +
+                  Math.max(
+                      0,
+                      itemQuantity(item) -
+                          reservedInventoryQuantity(inventory, item.instanceId)
+                  )
+                : sum,
+        0
     )
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
     ClientMessage,
+    QuestRewardMode,
     QuestTurnInPromptSnapshot,
     WhisperSnapshot,
 } from '@my-game-ratata/contracts'
@@ -22,6 +23,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const pending = ref(false)
+const rewardMode = ref<QuestRewardMode>(props.prompt.rewardMode)
 const expired = computed(() => props.serverTime >= props.prompt.expiresAt)
 const objectives = computed(() =>
     Array.from(
@@ -37,20 +39,27 @@ const rewardItems = computed(() =>
 )
 const confirmLabel = computed(() => {
     if (pending.value) return tGame('game.quests.checking')
-    return props.prompt.action === 'report'
+    if (props.prompt.action !== 'report') return tGame('game.quests.turnIn')
+    return requiredItems.value.length
         ? tGame('game.quests.submitTrophy')
-        : tGame('game.quests.turnIn')
+        : tGame('game.quests.repeatVerification')
 })
 watch(
     () => props.prompt.id,
     () => {
         pending.value = false
+        rewardMode.value = props.prompt.rewardMode
     }
 )
 function answer(accept: boolean): void {
     if (pending.value || (accept && expired.value)) return
     pending.value = true
-    emit('command', { type: 'quest_turn_in_confirm', confirmationId: props.prompt.id, accept })
+    emit('command', {
+        type: 'quest_turn_in_confirm',
+        confirmationId: props.prompt.id,
+        accept,
+        ...(accept && props.prompt.preAcceptance ? { rewardMode: rewardMode.value } : {}),
+    })
 }
 </script>
 <template>
@@ -61,6 +70,8 @@ function answer(accept: boolean): void {
         @close="answer(false)"
     >
         <QuestTurnInPanel
+            v-model:reward-mode="rewardMode"
+            :choose-reward-mode="prompt.preAcceptance && prompt.rewardGold > 0"
             :confirm-label="confirmLabel"
             :confirm-disabled="pending || expired"
             :cancel-disabled="pending"
@@ -80,7 +91,10 @@ function answer(accept: boolean): void {
             <p v-if="prompt.action === 'report'" class="social-muted">
                 {{ tGame('game.quests.rewardIsPaidAfterWorker') }}
             </p>
-            <QuestRewardSummary :total="prompt.rewardGold" :mode="prompt.rewardMode" />
+            <QuestRewardSummary
+                :total="prompt.rewardGold"
+                :mode="prompt.preAcceptance ? undefined : prompt.rewardMode"
+            />
             <QuestItemList :items="rewardItems" kind="reward" :show-heading="false" />
             <p v-if="expired" class="social-status" role="status">
                 {{ tGame('game.quests.confirmationExpiredAskQuestGiver') }}

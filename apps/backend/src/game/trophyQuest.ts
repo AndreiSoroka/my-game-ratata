@@ -12,17 +12,23 @@ import type { GameCharacter } from './character'
 import { consumeInventoryItems, countInventoryItem } from './inventory'
 import { canConsumeInventoryItems } from './inventoryStacks'
 import { resetMartyrStreak } from './martyr'
+import { availableItemQuantity } from './rewardReservations'
 
 export function trophyProgress(
     state: PlayerAdventure,
     actor?: GameCharacter
 ): AdventureProgress {
-    const trophies = countInventoryItem(actor?.inventory ?? [], 'slime_heart')
+    const inventory = actor?.inventory ?? []
+    const trophies = countInventoryItem(inventory, 'slime_heart')
+    const deliverable =
+        state.cityBellState === undefined
+            ? trophies
+            : availableItemQuantity(inventory, 'slime_heart')
     return {
         kills: state.kills,
         trophies,
         questStatus:
-            state.questStatus === 'active' && trophies >= adventureQuest.goal
+            state.questStatus === 'active' && deliverable >= adventureQuest.goal
                 ? 'ready'
                 : state.questStatus,
         wardRestored: state.wardRestored,

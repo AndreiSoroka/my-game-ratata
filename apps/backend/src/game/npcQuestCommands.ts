@@ -46,11 +46,17 @@ export function parseNpcQuestCommand(
 function parseConfirmation(
     value: Record<string, unknown>
 ): NpcQuestClientMessage | undefined {
-    return id(value['confirmationId']) && typeof value['accept'] === 'boolean'
+    return id(value['confirmationId']) &&
+        typeof value['accept'] === 'boolean' &&
+        (value['rewardMode'] === undefined ||
+            isQuestRewardMode(value['rewardMode']))
         ? {
               type: 'quest_turn_in_confirm',
               confirmationId: value['confirmationId'],
               accept: value['accept'],
+              ...(isQuestRewardMode(value['rewardMode'])
+                  ? { rewardMode: value['rewardMode'] }
+                  : {}),
           }
         : undefined
 }
@@ -98,6 +104,29 @@ export function parseNpcQuestDecision(
     if (value['type'] === 'quest_inquire') {
         return parseInquiry(value)
     }
+    if (value['type'] === 'quest_board_publish') {
+        return parsePublication(value)
+    }
+    return parseTargetedQuestDecision(value)
+}
+
+function parsePublication(
+    value: Record<string, unknown>
+): NpcQuestDecision | undefined {
+    const draft = parseQuestDraft(value['draft'])
+    return draft !== undefined &&
+        draft.authoredId === undefined &&
+        draft.funding === 'city' &&
+        draft.rewardGold > 0 &&
+        draft.rewardItems.length === 0 &&
+        Object.keys(value).every((key) => key === 'type' || key === 'draft')
+        ? { type: 'quest_board_publish', draft }
+        : undefined
+}
+
+function parseTargetedQuestDecision(
+    value: Record<string, unknown>
+): NpcQuestDecision | undefined {
     const targetId = value['targetId']
     if (!id(targetId)) {
         return undefined
@@ -250,6 +279,7 @@ export function isNpcQuestDecision(
     decision: AgentDecision
 ): decision is NpcQuestDecision {
     return [
+        'quest_board_publish',
         'quest_propose',
         'quest_invitation_answer',
         'worker_quest_propose',

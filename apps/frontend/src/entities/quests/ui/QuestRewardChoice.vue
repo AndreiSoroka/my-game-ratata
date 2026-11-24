@@ -7,7 +7,7 @@ import { FantasyBorder } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
 const mode = defineModel<QuestRewardMode>({ required: true })
-defineProps<{ disabled?: boolean }>()
+defineProps<{ disabled?: boolean; chooseOnTurnIn?: boolean }>()
 const name = useId()
 const options: Array<{ value: QuestRewardMode; label: string }> = [
     {
@@ -98,7 +98,15 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
                     }}</span>
                 </FantasyBorder>
             </label>
-            <small>{{ tGame('game.quests.youChooseThisWhenYou') }}</small>
+            <small>
+                {{
+                    tGame(
+                        chooseOnTurnIn
+                            ? 'game.quests.rewardModeConfirmedAtTurnIn'
+                            : 'game.quests.youChooseThisWhenYou'
+                    )
+                }}
+            </small>
         </FantasyBorder>
     </fieldset>
 </template>

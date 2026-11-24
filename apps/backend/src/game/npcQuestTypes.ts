@@ -9,6 +9,7 @@ import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import type { NavigationService } from './navigation'
 import type { PartyService } from './parties'
+import type { PublicQuestPosting } from './questBoardPublications'
 import { canHearSpeech } from './socialSpeech'
 import type { WorkerRequestService } from './workerRequests'
 
@@ -26,6 +27,7 @@ export interface NpcQuestEnvironment {
 
 /** Server-owned execution context; never parsed from a model decision. */
 export interface NpcQuestDecisionContext {
+    cityReviewIntervalMs?: number
     freshDialogueTargetId?: string
     freshDialogueMessageId?: string
     freshDialogueAt?: number
@@ -38,6 +40,9 @@ export interface QuestOfferRecord {
     draft: QuestDraft | null
     targetId: string
     issuerDeath: number
+    boardOffer?: true
+    boardGuildId?: string
+    publication?: PublicQuestPosting
 }
 
 export interface NpcQuestRecord {
@@ -92,6 +97,22 @@ export function movementFingerprint(actor: GameCharacter): string {
     return `${actor.locationId}:${String(actor.position.x)}:${String(actor.position.y)}`
 }
 
+export function publicationAvailable(
+    posting: PublicQuestPosting,
+    environment: NpcQuestEnvironment,
+    now: number
+): boolean {
+    const issuer = environment.getCharacter(posting.issuerId)
+    return (
+        posting.status === 'open' &&
+        posting.expiresAt > now &&
+        questActorAvailable(issuer) &&
+        issuer.deathSequence === posting.issuerDeath &&
+        issuer.locationId === posting.cityId &&
+        environment.adventure.questFunding.reservations.valid(posting.id)
+    )
+}
+
 export function questOfferAvailable(
     offer: QuestOfferRecord,
     environment: NpcQuestEnvironment,
@@ -102,6 +123,12 @@ export function questOfferAvailable(
     return (
         issuer !== undefined &&
         recipient !== undefined &&
+        (offer.publication === undefined ||
+            publicationAvailable(offer.publication, environment, now)) &&
+        (offer.boardGuildId === undefined ||
+            environment.parties
+                .boardDefinitions(recipient.id)
+                .some((definition) => definition.id === offer.boardGuildId)) &&
         (offer.view.authoredQuestId === undefined ||
             environment.adventure.storyOfferError(
                 issuer,
@@ -118,4 +145,11 @@ export interface NpcQuestResult {
     accepted: boolean
     error: string | null
     events: GameEventPayload[]
+}
+
+export function questResult(
+    accepted: boolean,
+    error: string | null = null
+): NpcQuestResult {
+    return { accepted, error, events: [] }
 }

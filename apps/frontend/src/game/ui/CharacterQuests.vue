@@ -89,12 +89,8 @@ const leader = computed(
                         :job="selected.quest"
                         :player-id="player.id"
                         :can-abandon="leader && player.alive"
-                        actions="abandon"
                         @command="emit('command', $event)"
                     />
-                    <p class="quest-help">
-                        {{ tGame('game.character.askQuestGiverAboutNext') }}
-                    </p>
                 </template>
                 <template v-else>
                     <h2>{{ tLocalized(selected.quest.titleMessage, selected.quest.title) }}</h2>
@@ -126,7 +122,7 @@ const leader = computed(
                         :mode="selected.quest.rewardMode"
                     />
                     <p class="quest-help">
-                        {{ tGame('game.character.returnMiraAtNovogorodGuild') }}
+                        {{ tGame('game.quests.bellHeartDeliveryHelp') }}
                     </p>
                 </template>
             </article>

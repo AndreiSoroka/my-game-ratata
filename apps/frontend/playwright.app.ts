@@ -82,6 +82,7 @@ function backendEnvironment(): Record<string, string> {
     return {
         GAME_SPEECH_TRANSLATION: process.env['E2E_REAL_TRANSLATION'] === '1' ? '1' : '0',
         GAME_WORLD_SEED: process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026',
+        E2E_BOARD_DELIVERY: process.env['E2E_BOARD_DELIVERY'] ?? '0',
     }
 }
 

@@ -5,6 +5,12 @@ import type { NavigationService } from './navigation'
 
 export const CONVERSATION_REACH = 48
 
+type CanReadQuestBoard = (
+    actor: GameCharacter,
+    objectId: string,
+    navigation: NavigationService
+) => boolean
+
 export function closeConversationsFor(
     states: ReadonlyMap<string, PlayerAdventure>,
     characterId: string
@@ -21,7 +27,8 @@ export function reconcileConversations(
     states: ReadonlyMap<string, PlayerAdventure>,
     characters: Iterable<GameCharacter>,
     navigationFor: (actor: GameCharacter) => NavigationService,
-    urgentThreat: (npc: GameCharacter) => boolean = () => false
+    urgentThreat: (npc: GameCharacter) => boolean = () => false,
+    canReadQuestBoard?: CanReadQuestBoard
 ): Set<string> {
     const actors = new Map([...characters].map((actor) => [actor.id, actor]))
     const held = new Set<string>()
@@ -31,6 +38,16 @@ export function reconcileConversations(
             continue
         }
         const actor = actors.get(actorId)
+        if (dialogue.kind === 'quest_board') {
+            reconcileQuestBoard(
+                state,
+                actor,
+                dialogue.npcId,
+                navigationFor,
+                canReadQuestBoard
+            )
+            continue
+        }
         const npc = actors.get(dialogue.npcId)
         if (actor?.controllerKind !== 'network_player') {
             state.dialogue = null
@@ -47,17 +64,40 @@ export function reconcileConversations(
         if (dialogue.initialView === undefined) {
             continue
         }
-        npc.setMoveInput({ x: 0, y: 0 })
-        npc.clearPath()
-        if (!held.has(npc.id)) {
-            npc.updateFacing({
-                x: actor.position.x - npc.position.x,
-                y: actor.position.y - npc.position.y,
-            })
-        }
-        held.add(npc.id)
+        holdForConversation(actor, npc, held)
     }
     return held
+}
+
+function reconcileQuestBoard(
+    state: PlayerAdventure,
+    actor: GameCharacter | undefined,
+    objectId: string,
+    navigationFor: (actor: GameCharacter) => NavigationService,
+    canReadQuestBoard?: CanReadQuestBoard
+): void {
+    if (
+        actor === undefined ||
+        canReadQuestBoard?.(actor, objectId, navigationFor(actor)) !== true
+    ) {
+        state.dialogue = null
+    }
+}
+
+function holdForConversation(
+    actor: GameCharacter,
+    npc: GameCharacter,
+    held: Set<string>
+): void {
+    npc.setMoveInput({ x: 0, y: 0 })
+    npc.clearPath()
+    if (!held.has(npc.id)) {
+        npc.updateFacing({
+            x: actor.position.x - npc.position.x,
+            y: actor.position.y - npc.position.y,
+        })
+    }
+    held.add(npc.id)
 }
 
 function available(actor: GameCharacter | undefined): actor is GameCharacter {

@@ -17,7 +17,7 @@ import { createSpeechEvent } from './speechReceipts'
 export type NearbySpeechObserver = (
     speech: NpcHeardSpeech,
     targetIds: readonly string[] | undefined
-) => void
+) => boolean
 
 export function sayNearby(
     room: GameRoom,
@@ -51,8 +51,9 @@ export function sayNearby(
         position: { ...actor.position },
         at: now,
     }
-    onSpeech?.(speech, targets)
-    receiveNearby(room, ai, actor, speech, targets)
+    if (onSpeech?.(speech, targets) !== true) {
+        receiveNearby(room, ai, actor, speech, targets)
+    }
 }
 
 function characterFocusId(key: string | undefined): string | undefined {

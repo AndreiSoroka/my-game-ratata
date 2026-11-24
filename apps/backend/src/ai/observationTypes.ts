@@ -4,6 +4,7 @@ import type {
     AgentDecision,
     CharacterSnapshot,
     MarketSnapshot,
+    QuestDraft,
     Vector2,
     WorkRequestSnapshot,
     WorldSnapshot,
@@ -16,7 +17,15 @@ import type { WorkerRequestService } from '../game/workerRequests'
 
 export interface NpcAiWorld {
     social?: {
-        quests: Pick<import('../game/npcQuests').NpcQuestService, 'cityFund'>
+        quests: Pick<
+            import('../game/npcQuests').NpcQuestService,
+            'cityFund'
+        > & {
+            publications?: Pick<
+                import('../game/questBoardPublications').QuestBoardPublications,
+                'list'
+            >
+        }
         workerActivity(
             id: string,
             now: number
@@ -89,6 +98,9 @@ export interface NpcAiObservation {
     city?: {
         market?: MarketSnapshot
         requests: WorkRequestSnapshot[]
+        publishedOrders?: Array<
+            Pick<QuestDraft, 'title' | 'objectives' | 'rewardGold'>
+        >
         municipalQuestGold?: number
         residentHomes?: Array<{ id: string; name: string; position: Vector2 }>
         workers?: Array<{

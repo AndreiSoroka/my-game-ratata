@@ -87,7 +87,7 @@ export interface AdventureDialogue {
     initialView?: MerchantServiceView
     /** Stable across snapshot reads; changes when this dialogue is spoken again. */
     speechId?: number
-    kind?: 'conversation' | 'sign'
+    kind?: 'conversation' | 'sign' | 'quest_board'
     canTrade: boolean
     tradeBlockedReason?: string
     tradeBlockedReasonMessage?: LocalizedMessage
@@ -109,6 +109,26 @@ export interface AdventureShopOffer {
     price: number
 }
 
+export interface QuestBoardEntry {
+    id: string
+    revision: number
+    source: 'guild' | 'worker' | 'story' | 'published'
+    title: string
+    titleMessage?: LocalizedMessage
+    description: string
+    descriptionMessage?: LocalizedMessage
+    objectiveLabels?: string[]
+    objectiveMessages?: Array<LocalizedMessage | null>
+    rewardGold: number
+    status: 'available' | 'active' | 'ready'
+    expiresAt?: number
+}
+
+export interface QuestBoardSnapshot {
+    objectId: string
+    entries: QuestBoardEntry[]
+}
+
 export interface AdventureSnapshot {
     cityState?: CityStateSnapshot
     workshop?: import('./craftOrders').WorkshopSnapshot
@@ -116,6 +136,7 @@ export interface AdventureSnapshot {
     market?: import('./economy').MarketSnapshot
     repairs?: import('./economy').RepairSnapshot
     worldObjects?: WorldObjectSnapshot[]
+    questBoard?: QuestBoardSnapshot
     dialogue: AdventureDialogue | null
     farmPlots: FarmPlotSnapshot[]
     gold: number

@@ -120,12 +120,35 @@ export class AdventureService {
     public readonly workAvailableAt = this.forest.workAvailableAt
     public readonly reportWorkProblem = this.forest.reportWorkProblem
 
-    private readonly sessions = createAdventureSessions(this.players)
+    private readonly sessions = createAdventureSessions(
+        this.players,
+        (actor, objectId, navigation) =>
+            this.worldObjects.canReadQuestBoard(
+                actor,
+                objectId,
+                navigation,
+                this.now()
+            )
+    )
     public readonly reconcileConversations = this.sessions.reconcile
     public readonly closeConversations = this.sessions.close
     public readonly hasCompletedQuest = this.sessions.hasCompletedQuest
 
     public readonly farmSnapshot = this.forest.farmSnapshot
+
+    public canReadQuestBoard(
+        actor: GameCharacter,
+        objectId: string,
+        navigation: NavigationService,
+        now: number
+    ): boolean {
+        return this.worldObjects.canReadQuestBoard(
+            actor,
+            objectId,
+            navigation,
+            now
+        )
+    }
 
     public snapshot(
         playerId: string,
@@ -261,6 +284,19 @@ export class AdventureService {
         targetId: string,
         questId: string
     ) => this.cityStories.available(issuer, targetId, questId)
+    public readonly redeemStoryOffer = (
+        issuer: GameCharacter,
+        actor: GameCharacter,
+        questId: string,
+        rewardMode: import('@my-game-ratata/contracts').QuestRewardMode
+    ) =>
+        this.cityStories.redeem(
+            issuer,
+            actor,
+            questId,
+            rewardMode,
+            this.questRewardMembers(actor.id)
+        )
     public acceptStoryOffer(
         actor: GameCharacter,
         questId: string,

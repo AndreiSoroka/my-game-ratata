@@ -54,6 +54,21 @@ export function observeCity(
                       municipalQuestGold: world.social.quests.cityFund(
                           actor.locationId
                       ),
+                      publishedOrders: (
+                          world.social.quests.publications?.list(now) ?? []
+                      )
+                          .filter(
+                              (posting) => posting.cityId === actor.locationId
+                          )
+                          .map(
+                              ({
+                                  draft: { title, objectives, rewardGold },
+                              }) => ({
+                                  title,
+                                  objectives,
+                                  rewardGold,
+                              })
+                          ),
                   }),
             workers: targets.flatMap((target) => {
                 const activity = world.social?.workerActivity(target.id, now)

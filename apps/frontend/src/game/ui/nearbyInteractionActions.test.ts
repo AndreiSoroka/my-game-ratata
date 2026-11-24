@@ -40,6 +40,20 @@ function setup() {
         ) => nearbyInteractionTarget(state, player, people, visible, key),
     }
 }
+it('uses the selected board as a single read-only world interaction', () => {
+    const { snapshot, select } = setup()
+    const board = object('quest-board', 132, 100, 'quest_board')
+    snapshot.adventure.worldObjects = [board, object('closer-sign', 116)]
+    const target = select(snapshot, snapshot.characters, undefined, `world:${board.id}`)
+    expect(target?.actions).toEqual([
+        {
+            id: `world:${board.id}`,
+            label: 'Читать доску заказов',
+            command: { type: 'world_interact', objectId: board.id },
+        },
+    ])
+})
+
 it('offers the exact local portal within reach and removes the action at expiry', () => {
     const { player, snapshot, select } = setup()
     const expiresAt = snapshot.serverTime + 60_000
@@ -248,7 +262,7 @@ describe('one facing interaction target', () => {
     })
 })
 
-it('offers civic services at the coordinator and at the exact clerk with a waiting request', () => {
+it('keeps civic services at the coordinator while requests are handled through chat', () => {
     const { player, snapshot, select } = setup()
     const mira = characterFixture('npc_friendly_girl_1', {
         position: { x: 132, y: 100 },
@@ -279,10 +293,6 @@ it('offers civic services at the coordinator and at the exact clerk with a waiti
         { type: 'interact', targetId: mira.id, service: 'shop' },
         { type: 'interact', targetId: mira.id, service: 'city_affairs' },
     ])
-    expect(serviceCommands(clerk.id)).toEqual([
-        { type: 'interact', targetId: clerk.id, service: 'worker_requests' },
-    ])
-    state.party!.jobs = []
     expect(serviceCommands(clerk.id)).toEqual([])
 })
 

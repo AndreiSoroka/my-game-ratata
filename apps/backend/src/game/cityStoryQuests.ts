@@ -4,6 +4,7 @@ import {
     type CityBellState,
     DEFAULT_QUEST_REWARD_MODE,
     type QuestDraft,
+    type QuestRewardMode,
 } from '@my-game-ratata/contracts'
 
 import { adventureQuest } from './adventureContent'
@@ -138,7 +139,14 @@ export class CityStoryQuests {
             this.accept(state, actor, definition, context)
         }
         if (choiceId === 'turn_in_trophies') {
-            this.turnIn(state, actor, definition, context)
+            this.turnIn(
+                state,
+                actor,
+                definition,
+                context,
+                state.questRewardMode ?? DEFAULT_QUEST_REWARD_MODE,
+                'active'
+            )
         }
         if (choiceId === 'restore_ward') {
             setAuthoredNotice(state, 'story.restore')
@@ -166,18 +174,46 @@ export class CityStoryQuests {
         return true
     }
 
+    public redeem(
+        issuer: GameCharacter,
+        actor: GameCharacter,
+        questId: string,
+        rewardMode: QuestRewardMode,
+        memberIds: readonly string[]
+    ): boolean {
+        const definition = this.cities.byQuest(questId)
+        if (
+            definition === undefined ||
+            this.available(issuer, actor.id, questId) !== undefined
+        ) {
+            return false
+        }
+        const state = this.walletFor(actor.id)
+        this.turnIn(
+            state,
+            actor,
+            definition,
+            { memberIds },
+            rewardMode,
+            'available'
+        )
+        return state.questStatus === 'completed'
+    }
+
     private turnIn(
         state: PlayerAdventure,
         actor: GameCharacter,
         definition: CityStoryDefinition,
-        context: AdventureChoiceContext
+        context: AdventureChoiceContext,
+        rewardMode: QuestRewardMode,
+        expectedStatus: 'active' | 'available'
     ): void {
         if (this.cities.snapshot(definition.cityId)?.bellState !== 'silent') {
             this.synchronize(state)
             setAuthoredNotice(state, finished)
             return
         }
-        if (state.questStatus !== 'active') {
+        if (state.questStatus !== expectedStatus) {
             return
         }
         const items = selectHearts(actor, definition)
@@ -188,7 +224,7 @@ export class CityStoryQuests {
         const request = {
             receiptId: `city-story:${definition.cityId}:${definition.questId}`,
             totalGold: definition.rewardGold,
-            mode: state.questRewardMode ?? DEFAULT_QUEST_REWARD_MODE,
+            mode: rewardMode,
             submitterId: actor.id,
             memberIds: context.memberIds ?? [actor.id],
         }
@@ -220,6 +256,8 @@ export class CityStoryQuests {
             return
         }
         state.questStatus = 'completed'
+        state.questAccepted = true
+        state.questRewardMode = request.mode
         state.questRewardShares = result.shares
         state.rewardKeys.add(definition.questId)
         this.cities.prepare(definition.cityId)

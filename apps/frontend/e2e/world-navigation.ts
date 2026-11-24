@@ -2,6 +2,11 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 import { expect, type Page } from '@playwright/test'
 
 export async function enterBuilding(page: Page, name: string): Promise<void> {
+    const entry = await approachBuilding(page, name)
+    await walkTo(page, entry, 4)
+}
+
+export async function approachBuilding(page: Page, name: string): Promise<Vector2> {
     await page.waitForFunction(
         (name) =>
             window
@@ -18,7 +23,7 @@ export async function enterBuilding(page: Page, name: string): Promise<void> {
     }, name)
     // The city generator places these entrances on the building's south side.
     await walkTo(page, { x: entry.x, y: entry.y + 3 * tileWidth }, 8)
-    await walkTo(page, entry, 4)
+    return entry
 }
 
 export async function walkTo(

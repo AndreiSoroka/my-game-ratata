@@ -1,4 +1,6 @@
 import type {
+    GameLocale,
+    ItemId,
     NpcQuestSnapshot,
     QuestObjective,
     QuestTurnInPromptSnapshot,
@@ -10,7 +12,7 @@ import type { ExchangeService } from './exchange'
 import type { NavigationService } from './navigation'
 import type { NpcQuestService } from './npcQuests'
 import type { PartyService } from './parties'
-import { availableInventoryQuantity } from './rewardReservations'
+import { availableItemQuantity } from './rewardReservations'
 import { canHearSpeech } from './socialSpeech'
 import type { WhisperService } from './whispers'
 
@@ -23,8 +25,48 @@ export interface QuestTurnInEnvironment {
     getCharacter: (id: string) => GameCharacter | undefined
     characters: () => Iterable<GameCharacter>
     navigationFor: (actor: GameCharacter) => NavigationService
+    localeFor: (id: string) => GameLocale
 }
 export type QuestTurnInAction = 'report' | 'turn_in'
+
+export interface QuestContact {
+    issuerId: string
+    issuerDeath: number
+    playerDeath: number
+    locationId: string
+    expiresAt: number
+}
+
+export function questContactAt(
+    issuer: GameCharacter,
+    player: GameCharacter,
+    expiresAt: number
+): QuestContact {
+    return {
+        issuerId: issuer.id,
+        issuerDeath: issuer.deathSequence,
+        playerDeath: player.deathSequence,
+        locationId: player.locationId,
+        expiresAt,
+    }
+}
+
+export function currentQuestContact(
+    environment: QuestTurnInEnvironment,
+    player: GameCharacter,
+    contact: QuestContact,
+    now: number
+): GameCharacter | undefined {
+    const issuer = environment.getCharacter(contact.issuerId)
+    return issuer !== undefined &&
+        contact.expiresAt > now &&
+        player.deathSequence === contact.playerDeath &&
+        issuer.deathSequence === contact.issuerDeath &&
+        player.locationId === contact.locationId &&
+        turnInContact(environment, player, issuer, now)
+        ? issuer
+        : undefined
+}
 
 export function turnInContact(
     environment: QuestTurnInEnvironment,
@@ -35,6 +77,8 @@ export function turnInContact(
     return (
         player.controllerKind === 'network_player' &&
         player.connected &&
+        issuer.controllerKind !== 'network_player' &&
+        issuer.soul.controlSource !== 'human' &&
         canHearSpeech(
             player,
             issuer,
@@ -52,11 +96,11 @@ export function turnInContact(
     )
 }
 
-function hasDeliveries(
+export function hasDeliveries(
     player: GameCharacter,
     objectives: readonly QuestObjective[]
 ): boolean {
-    const required = new Map<string, number>()
+    const required = new Map<ItemId, number>()
     for (const objective of objectives) {
         if (objective.kind === 'deliver') {
             required.set(
@@ -67,17 +111,7 @@ function hasDeliveries(
     }
     return [...required].every(
         ([itemId, quantity]) =>
-            player.inventory
-                .filter((item) => item.itemId === itemId)
-                .reduce(
-                    (sum, item) =>
-                        sum +
-                        availableInventoryQuantity(
-                            player.inventory,
-                            item.instanceId
-                        ),
-                    0
-                ) >= quantity
+            availableItemQuantity(player.inventory, itemId) >= quantity
     )
 }
 
@@ -86,12 +120,11 @@ function workerAction(
     player: GameCharacter,
     job: NpcQuestSnapshot
 ): QuestTurnInAction | undefined {
-    const request = environment.parties
-        .questHistory(job.issuerId, player.id)
-        .find((entry) => entry.instanceId === job.instanceId)?.workRequest
-    if (request !== undefined && !request.proofAccepted) {
-        return request.stage === 'waiting' &&
-            hasDeliveries(player, job.objectives)
+    const active = environment.parties.boardActiveJob(player.id)
+    const request =
+        active?.instanceId === job.instanceId ? active.workRequest : undefined
+    if (request?.stage === 'waiting') {
+        return request.proofAccepted || hasDeliveries(player, job.objectives)
             ? 'report'
             : undefined
     }
@@ -143,6 +176,10 @@ export function createTurnInPrompt(
     action: QuestTurnInAction,
     now: number
 ): QuestTurnInPromptSnapshot {
+    const active = environment.parties.boardActiveJob(playerId)
+    const withoutTrophy =
+        active?.instanceId === job.instanceId &&
+        active.workRequest?.proofAccepted === true
     return {
         id: environment.adventure.questFunding.newId('quest-confirm'),
         instanceId: job.instanceId,
@@ -157,9 +194,11 @@ export function createTurnInPrompt(
         ...(job.descriptionMessage === undefined
             ? {}
             : { descriptionMessage: job.descriptionMessage }),
-        objectives: structuredClone(job.objectives),
-        objectiveLabels: structuredClone(job.objectiveLabels ?? []),
-        ...(job.objectiveMessages === undefined
+        objectives: withoutTrophy ? [] : structuredClone(job.objectives),
+        objectiveLabels: withoutTrophy
+            ? []
+            : structuredClone(job.objectiveLabels ?? []),
+        ...(job.objectiveMessages === undefined || withoutTrophy
             ? {}
             : { objectiveMessages: structuredClone(job.objectiveMessages) }),
         rewardGold: job.rewardGold,

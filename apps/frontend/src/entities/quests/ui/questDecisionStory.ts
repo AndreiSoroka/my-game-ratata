@@ -1,3 +1,4 @@
+import type { QuestRewardMode } from '@my-game-ratata/contracts'
 import type { Meta } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
 import { type Component, h } from 'vue'
@@ -10,8 +11,10 @@ import QuestItemList from './QuestItemList.vue'
 type QuestStage = 'offer' | 'turnIn'
 
 export interface QuestDecisionStoryArgs extends Required<QuestDecisionProps> {
-    default: 'details' | 'long' | 'empty'
+    default: 'details' | 'long' | 'empty' | 'delivery'
     status?: 'none' | 'empty' | 'occupied'
+    chooseRewardMode?: boolean
+    rewardMode?: QuestRewardMode
     onConfirm: () => void
     onCancel: () => void
 }
@@ -30,6 +33,7 @@ export const questDecisionControls: Meta<QuestDecisionStoryArgs>['argTypes'] = {
                 details: 'Условия поручения',
                 long: 'Подробные условия',
                 empty: 'Пустой div',
+                delivery: 'Готовая доставка',
             },
         },
         options: ['details', 'long', 'empty'],
@@ -75,6 +79,14 @@ const offerObjectives = [
 
 function questDetails(stage: QuestStage, content: QuestDecisionStoryArgs['default']) {
     if (content === 'empty') return h('div')
+    if (content === 'delivery')
+        return h('div', [
+            h('h3', 'Сердца для колокола памяти'),
+            h('p', 'Мира примет три слизневых сердца из рюкзака.'),
+            h('p', ['Заказчик: ', h('strong', 'Мира')]),
+            h(QuestItemList, { items: [{ itemId: 'slime_heart', quantity: 3 }] }),
+            h('p', [h('strong', 'Общая награда: 40 золотых')]),
+        ])
     const issuer =
         content === 'long'
             ? 'РаспорядительСеверныхОкрестностейИзДальнегоПоселения'

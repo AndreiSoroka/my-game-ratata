@@ -1,24 +1,17 @@
 <script setup lang="ts">
 import './socialWindows.css'
 
-import type {
-    CharacterSnapshot,
-    ClientMessage,
-    QuestRewardMode,
-    WorldSnapshot,
-} from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
-import { characterName, tGame } from '@/shared/lib/i18n'
+import { tGame } from '@/shared/lib/i18n'
 import { ExchangeInvitationWidget } from '@/widgets/exchanges'
 
 import ExchangeWindow from './ExchangeWindow.vue'
-import GuildQuestOfferWindow from './GuildQuestOfferWindow.vue'
 import { focusWorldInput } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import QuestTurnInWindow from './QuestTurnInWindow.vue'
-import { useGuildQuestOffer } from './useGuildQuestOffer'
 import WhisperWindow from './WhisperWindow.vue'
 
 const props = defineProps<{
@@ -41,17 +34,7 @@ const turnInVisible = computed(() => available.value && Boolean(social.value?.qu
 const visibleQuestOffer = computed(() =>
     available.value && !turnInVisible.value ? social.value?.questOffer : undefined
 )
-const hasServerQuestWindow = computed(() => turnInVisible.value || Boolean(visibleQuestOffer.value))
-const canShowGuildOffer = computed(
-    () => available.value && !hasServerQuestWindow.value && exchange.value?.status !== 'active'
-)
-const guild = useGuildQuestOffer({
-    available: () => canShowGuildOffer.value,
-    playerId: () => props.player.id,
-    snapshot: () => props.snapshot,
-})
-const guildOffer = guild.offer
-const hasQuestWindow = computed(() => hasServerQuestWindow.value || Boolean(guildOffer.value))
+const hasQuestWindow = computed(() => turnInVisible.value || Boolean(visibleQuestOffer.value))
 const canActOnInvitation = computed(() => available.value && !hasQuestWindow.value)
 const visibleExchange = computed(() => {
     const current = exchange.value
@@ -80,19 +63,23 @@ function prepare(): void {
     emit('command', { type: 'release_input' })
 }
 function command(message: ClientMessage): void {
-    if (message.type === 'guild_accept') {
-        if (guild.open(message.questId)) prepare()
-        return
-    }
     if (message.type === 'whisper_open') {
         whisperTarget.value = message.targetId
         prepare()
     }
+    if (
+        (message.type === 'quest_offer_answer' || message.type === 'quest_turn_in_confirm') &&
+        message.accept
+    )
+        whisperTarget.value = undefined
+    if (
+        message.type === 'quest_turn_in_confirm' &&
+        !message.accept &&
+        whisper.value?.available &&
+        whisper.value.partnerId === social.value?.questTurnIn?.issuerId
+    )
+        whisperTarget.value = whisper.value.partnerId
     emit('command', message)
-}
-function acceptGuildOffer(rewardMode: QuestRewardMode): void {
-    const message = guild.accept(rewardMode)
-    if (message) emit('command', message)
 }
 function showWhisper(): void {
     whisperTarget.value = whisper.value?.partnerId
@@ -173,7 +160,7 @@ watch(
     ],
     ([offerId, turnInId], previous) => {
         if (!offerId && !turnInId) {
-            if (available.value && previous?.some(Boolean)) restoreFocus()
+            if (available.value && previous?.some(Boolean) && !whisperVisible.value) restoreFocus()
             return
         }
         prepare()
@@ -184,9 +171,6 @@ watch(
     },
     { immediate: true }
 )
-watch(guildOffer, (current, previous) => {
-    if (!current && previous && canShowGuildOffer.value) restoreFocus()
-})
 watch(available, (value) => {
     if (!value) whisperTarget.value = undefined
 })
@@ -273,14 +257,6 @@ defineExpose({ command, hasOpenWindow })
             )
         "
         @command="command"
-    />
-    <GuildQuestOfferWindow
-        v-else-if="guildOffer"
-        :key="guildOffer.job.id"
-        :job="guildOffer.job"
-        :issuer-name="characterName(guildOffer.contact.npcId, guildOffer.contact.nickname)"
-        @confirm="acceptGuildOffer"
-        @cancel="guild.close"
     />
     <ExchangeWindow
         v-else-if="visibleExchange"

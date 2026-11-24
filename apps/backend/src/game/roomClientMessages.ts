@@ -31,6 +31,17 @@ export function handleCharacterMessage(
     now = context.room.gameplayNow()
 ): void {
     const { room, characters, world, connections } = context
+    if (requiresQuestChat(message)) {
+        room.publishEvents([
+            {
+                kind: 'notice',
+                actorId: player.id,
+                audienceIds: [player.id],
+                text: 'Поговори с заказчиком рядом, чтобы взять или сдать заказ.',
+            },
+        ])
+        return
+    }
     if (room.social.handle(player, message, now)) {
         return
     }
@@ -148,4 +159,19 @@ function roomCharacterAction(
         message,
         player,
     })
+}
+
+function requiresQuestChat(message: ClientMessage): boolean {
+    if (message.type === 'dialogue_choice') {
+        return (
+            ['accept_quest', 'turn_in_trophies'].includes(message.choiceId) ||
+            message.choiceId.startsWith('worker-contract:')
+        )
+    }
+    return [
+        'guild_accept',
+        'guild_turn_in',
+        'guild_report',
+        'npc_quest_turn_in',
+    ].includes(message.type)
 }

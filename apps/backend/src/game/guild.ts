@@ -54,8 +54,17 @@ export class GuildService {
         )
     }
 
-    public definitions() {
-        return [...guildQuests, ...(this.workers?.list() ?? [])]
+    public definitions(leaderId?: string) {
+        const definitions = [...guildQuests, ...(this.workers?.list() ?? [])]
+        if (leaderId === undefined) {
+            return definitions
+        }
+        const completed = this.completed.get(leaderId)
+        return definitions.filter((job) =>
+            job.workRequest === undefined
+                ? completed?.has(job.id) !== true
+                : job.workRequest.stage === 'waiting'
+        )
     }
 
     public contactAllowed(
@@ -122,24 +131,17 @@ export class GuildService {
         rewardMode: QuestRewardMode = DEFAULT_QUEST_REWARD_MODE,
         now = 0,
         terms?: NegotiatedWorkerReward,
-        issuerId?: string
+        issuerId?: string,
+        reporter?: GameCharacter
     ): string {
         this.lifecycle.reconcile(key)
-        const current = this.jobs.get(key)
-        if (
-            (current !== undefined && !current.completed) ||
-            this.slots.get(key) !== undefined
-        ) {
+        if (this.hasActiveJob(key)) {
             return 'Сначала завершите действующий договор.'
         }
-        const definition = this.definitions().find(
+        const definition = this.definitions(leader).find(
             (quest) => quest.id === questId
         )
-        if (
-            definition === undefined ||
-            (definition.workRequest === undefined &&
-                this.completed.get(leader)?.has(questId) === true)
-        ) {
+        if (definition === undefined) {
             return 'Этот договор уже выполнен этой личностью или недоступен.'
         }
         const id = this.newInstanceId()
@@ -157,6 +159,7 @@ export class GuildService {
             rewards: this.rewards,
             workers: this.workers,
             slots: this.slots,
+            reporter,
         })
         if (typeof job === 'string') {
             return job
@@ -164,7 +167,12 @@ export class GuildService {
         this.lifecycle.watchIssuer(job, now)
         this.jobs.set(key, job)
         this.history.set(id, job)
-        return 'Договор принят. Способ распределения награды закреплён; состав для выплаты определяется при сдаче.'
+        if (reporter !== undefined) {
+            this.lifecycle.reconcile(key)
+        }
+        return reporter === undefined
+            ? 'Договор принят. Способ распределения награды закреплён; состав для выплаты определяется при сдаче.'
+            : 'Доклад принят. Работник проверит участок и вернётся к распорядителю.'
     }
 
     private newInstanceId(): string {

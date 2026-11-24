@@ -36,7 +36,9 @@ export function createWhisperObserver(
                 })
             }
         }
-        turnIns().heard(actor, listener, message.text, message.id, message.at)
+        if (turnIns().heard(actor, listener, message.text, message.at)) {
+            return
+        }
         hear(
             actor,
             {

@@ -137,7 +137,7 @@ function assignItem(slot: number, itemId: 'food' | 'sapling'): void {
 let closingDialogue: string | undefined
 watch([() => props.snapshot.adventure?.dialogue, () => props.characters], () => {
     const dialogue = props.snapshot.adventure?.dialogue
-    if (!dialogue || dialogue.kind === 'sign') {
+    if (!dialogue || dialogue.kind === 'sign' || dialogue.kind === 'quest_board') {
         closingDialogue = undefined
         return
     }

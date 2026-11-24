@@ -9208,6 +9208,27 @@
                         { "name": "columns", "type": "int", "value": 1 },
                         { "name": "tiles", "type": "string", "value": "[595]" }
                     ]
+                },
+                {
+                    "id": 10201,
+                    "name": "prop",
+                    "type": "depth_prop",
+                    "x": 608,
+                    "y": 528,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "propId",
+                            "type": "string",
+                            "value": "map-2-2:prop:38:33"
+                        },
+                        { "name": "baseY", "type": "float", "value": 542 },
+                        { "name": "columns", "type": "int", "value": 1 },
+                        { "name": "tiles", "type": "string", "value": "[595]" }
+                    ]
                 }
             ]
         },
@@ -9996,6 +10017,30 @@
                             "name": "contents",
                             "type": "string",
                             "value": "[{\"itemId\":\"wood\",\"quantity\":1},{\"itemId\":\"fiber\",\"quantity\":1}]"
+                        }
+                    ]
+                },
+                {
+                    "id": 2029,
+                    "name": "Доска заказов",
+                    "type": "quest_board",
+                    "x": 608,
+                    "y": 528,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "novogorod:quest-board"
+                        },
+                        { "name": "action", "type": "string", "value": "read" },
+                        {
+                            "name": "text",
+                            "type": "string",
+                            "value": "Доска заказов"
                         }
                     ]
                 }

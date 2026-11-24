@@ -1,6 +1,6 @@
 # Network synchronization
 
-Client and server use protocol **0.16.0** and must be updated together. Reload old
+Client and server use protocol **0.17.0** and must be updated together. Reload old
 clients after restarting the server. The transport remains WebSocket over HTTP
 or HTTPS, with negotiated per-message compression; HTTP/3 is not required.
 
@@ -56,7 +56,7 @@ permissions and viewport. This command works while a joined character is dead
 or an exchange is open. Disconnect and socket replacement clear retry timers.
 
 Set `GAME_SNAPSHOT_DELTAS=0` before starting the backend to send only full frames
-within protocol 0.16.0. Compression and viewport filtering remain enabled. The
+within protocol 0.17.0. Compression and viewport filtering remain enabled. The
 flag does not restore compatibility with an older client.
 
 ## Server movement input timing

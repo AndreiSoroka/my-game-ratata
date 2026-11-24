@@ -94,6 +94,17 @@ export function npcQuestExecutionContext(
     }
 }
 
+export function npcBoardPublicationContext(
+    state: NpcAiActorState
+): Pick<NpcQuestDecisionContext, 'cityReviewIntervalMs'> {
+    const cityReviewIntervalMs = state.task?.cityReviewIntervalMs
+    return state.dialogue === undefined &&
+        state.config.role === 'city_coordinator' &&
+        cityReviewIntervalMs !== undefined
+        ? { cityReviewIntervalMs }
+        : {}
+}
+
 /** Identical preflight and commit checks cover dialogue and autonomous invitations. */
 export function npcQuestPresentationProblem(
     room: GameRoom,
@@ -102,6 +113,9 @@ export function npcQuestPresentationProblem(
     reply: NpcAiReply,
     now: number
 ): NpcReplyProblem | undefined {
+    if (reply.decision?.type === 'quest_board_publish') {
+        return questPublicationProblem(room, state, actor, reply.decision, now)
+    }
     if (!isQuestPresentation(reply.decision)) {
         return questRevisionProblem(room, actor, reply.decision, now)
     }
@@ -143,6 +157,24 @@ export function npcQuestPresentationProblem(
     return error === undefined
         ? undefined
         : unavailable('quest_presentation', error)
+}
+
+function questPublicationProblem(
+    room: GameRoom,
+    state: NpcAiActorState,
+    actor: GameCharacter,
+    decision: Extract<AgentDecision, { type: 'quest_board_publish' }>,
+    now: number
+): NpcReplyProblem | undefined {
+    const error = room.social.quests.previewDecision(
+        actor,
+        decision,
+        now,
+        npcBoardPublicationContext(state)
+    )
+    return error === undefined
+        ? undefined
+        : unavailable('quest_board_publication', error)
 }
 
 /** Background tasks have no requester. Address the actual validated proposal recipient. */

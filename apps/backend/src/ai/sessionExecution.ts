@@ -11,6 +11,7 @@ import { npcDecisionAudienceError } from './decisionAudience'
 import { npcDecisionExchangeError } from './decisionExchange'
 import type { NpcAiDiagnostics } from './diagnostics'
 import { beginNpcGuide } from './guide'
+import { npcBoardPublicationContext } from './questPresentation'
 import { reportNpcRequestStatus } from './requestStatus'
 import { enqueueNpcAiEvent, type NpcAiActorState } from './runtimeState'
 import {
@@ -197,7 +198,12 @@ export class NpcAiExecution {
             return { accepted: false, error: audienceError, events: [] }
         }
         if (this.room.social.isDecision(decision)) {
-            return this.room.social.decide(actor, decision, now)
+            return this.room.social.decide(
+                actor,
+                decision,
+                now,
+                npcBoardPublicationContext(state)
+            )
         }
         const error = npcAiDecisionError(
             actor,

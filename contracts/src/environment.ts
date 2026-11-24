@@ -3,7 +3,8 @@ import type { LocalizedMessage } from './locales'
 
 export * from './environmentGeometry'
 
-export type WorldObjectKind = 'sign' | 'barrel' | 'water' | 'bell'
+export type WorldObjectKind =
+    'sign' | 'barrel' | 'water' | 'bell' | 'quest_board'
 
 export interface WorldObjectBounds {
     x: number

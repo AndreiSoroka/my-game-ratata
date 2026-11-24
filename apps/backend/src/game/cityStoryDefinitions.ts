@@ -15,18 +15,18 @@ export interface CityStoryDefinition {
 }
 
 /** Novogorod's authored story is data on top of the shared city state mechanism. */
-export const cityStoryDefinitions: readonly CityStoryDefinition[] = [
-    {
-        cityId: CENTER_LOCATION_ID,
-        bellObjectId: 'novogorod:memory-bell',
-        guideId: 'npc_cleric_1',
-        issuerId: 'npc_friendly_girl_1',
-        activationNpcIds: ['npc_magic_slime_1'],
-        questId: 'hearts-for-the-border-bell',
-        requiredItemId: 'slime_heart',
-        quantity: 3,
-        rewardGold: 40,
-        title: authoredRussian('story.title'),
-        description: authoredRussian('story.cityDescription'),
-    },
-]
+export const novogorodStory: CityStoryDefinition = {
+    cityId: CENTER_LOCATION_ID,
+    bellObjectId: 'novogorod:memory-bell',
+    guideId: 'npc_cleric_1',
+    issuerId: 'npc_friendly_girl_1',
+    activationNpcIds: ['npc_magic_slime_1'],
+    questId: 'hearts-for-the-border-bell',
+    requiredItemId: 'slime_heart',
+    quantity: 3,
+    rewardGold: 40,
+    title: authoredRussian('story.title'),
+    description: authoredRussian('story.cityDescription'),
+}
+
+export const cityStoryDefinitions = [novogorodStory] as const

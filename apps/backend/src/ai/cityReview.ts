@@ -19,9 +19,8 @@ export function reviewNpcAiCity(
     ) {
         return
     }
-    const fingerprint = npcAiCityFingerprint(
-        buildNpcAiObservation(room, actor, state.config.role, now).city
-    )
+    const city = buildNpcAiObservation(room, actor, state.config.role, now).city
+    const fingerprint = cityReviewFingerprint(city)
     const changed =
         state.cityFingerprint !== undefined &&
         state.cityFingerprint !== fingerprint
@@ -33,9 +32,10 @@ export function reviewNpcAiCity(
     state.memory = state.conversations.get('city') ?? ''
     state.task = {
         id: nextId('city'),
+        cityReviewIntervalMs: intervalMs,
         requesterId: null,
         request:
-            'Разовый городской обзор: оцени реальные нужды и выбери следующий шаг. Можно навестить доступного жителя: используй видимого собеседника или общеизвестный адрес из city.residentHomes, подойди и проверь, кто сейчас на месте. Можно устно пригласить живого игрока обсудить существующее обращение или проверяемое задание: задай короткий вопрос и дождись его ответа, не открывай окно самостоятельно. Не создавай ресурсы или награды и не осматривай работника повторно без изменений. Закончи обзор, если больше нечего сделать.',
+            'Разовый городской обзор: оцени реальные нужды и выбери следующий шаг. Для новой реальной задачи можешь опубликовать заказ на городской доске через quest_board_publish: учти уже открытые заказы и свободное городское золото. Можно навестить доступного жителя: используй видимого собеседника или общеизвестный адрес из city.residentHomes, подойди и проверь, кто сейчас на месте. Можно устно пригласить живого игрока обсудить существующее обращение или проверяемое задание: задай короткий вопрос и дождись его ответа, не открывай окно самостоятельно. Не создавай ресурсы или награды и не осматривай работника повторно без изменений. Закончи обзор, если больше нечего сделать.',
         steps: 0,
     }
     enqueueNpcAiEvent(state, {
@@ -50,6 +50,24 @@ export function npcAiCityFingerprint(city: unknown): string {
     return JSON.stringify({ city }, (key, value: unknown) =>
         key === 'observedAt' || key === 'since' ? undefined : value
     )
+}
+
+function cityReviewFingerprint(
+    city: ReturnType<typeof buildNpcAiObservation>['city']
+): string {
+    const { publishedOrders, municipalQuestGold, ...activity } = city ?? {}
+    // The coordinator's own open reservations should not trigger another review.
+    const openReserve = (publishedOrders ?? []).reduce(
+        (gold, order) => gold + order.rewardGold,
+        0
+    )
+    return npcAiCityFingerprint({
+        ...activity,
+        municipalQuestGold:
+            municipalQuestGold === undefined
+                ? undefined
+                : municipalQuestGold + openReserve,
+    })
 }
 
 function cityReviewBusy(state: NpcAiActorState): boolean {

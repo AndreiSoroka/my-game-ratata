@@ -6,7 +6,7 @@ import { guildQuestFixture, workRequestFixture } from '../testing/questFixture'
 import AdventureJournal from './AdventureJournal.vue'
 
 describe('physical quest deliveries', () => {
-    it('counts bag hearts instead of kills and explains collection and delivery', () => {
+    it('counts only bag hearts and explains trading and chat turn-in', () => {
         const adventure = adventureFixture()
         adventure.quest = {
             ...adventure.quest,
@@ -21,11 +21,9 @@ describe('physical quest deliveries', () => {
             expect(wrapper.get('progress').attributes('value')).toBe('1')
             expect(wrapper.get('progress').attributes('max')).toBe('3')
             expect(wrapper.get('.journal-hearts').text()).toContain('1 / 3')
-            expect(wrapper.get('.journal-statistic').text()).toContain('7')
-            expect(wrapper.text()).toContain('подойдите к телу слизня')
-            expect(wrapper.text()).toContain('заберите сердце из окна добычи в рюкзак')
-            expect(wrapper.text()).toContain('здание гильдии Новогорода')
-            expect(wrapper.text()).toContain('В счётчик входят только сердца в вашем рюкзаке')
+            expect(wrapper.text()).not.toContain('Личных побед')
+            expect(wrapper.text()).toContain('полученные через обмен')
+            expect(wrapper.text()).toContain('скажите Мире в чате')
             expect(wrapper.get('img').attributes('alt')).toBe('Слизневое сердце')
         } finally {
             wrapper.unmount()
@@ -58,12 +56,12 @@ describe('physical quest deliveries', () => {
             wrapper.unmount()
         }
     })
-    it('explains that already collected hearts do not replace accepting the quest', () => {
+    it('shows how to turn in a delivery that was completed in advance', () => {
         const adventure = { ...adventureFixture(), trophies: 3 }
         const wrapper = mount(AdventureJournal, { props: { adventure } })
         try {
-            expect(wrapper.text()).toContain('Поговорите с Мирой, чтобы принять задание')
-            expect(wrapper.text()).toContain('Сердца можно собрать заранее')
+            expect(wrapper.text()).toContain('сердца, найденные заранее')
+            expect(wrapper.text()).toContain('Хочу сдать Сердца для колокола памяти')
             expect(wrapper.text()).not.toContain('Награда выдана')
         } finally {
             wrapper.unmount()

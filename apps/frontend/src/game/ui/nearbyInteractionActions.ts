@@ -22,7 +22,6 @@ import { ashCharacterActions } from './ashActions'
 import { chestActions } from './chestActions'
 import { relation } from './combatTargeting'
 import { corpseSharesGrave, graveTargets } from './graveInteractions'
-import { guildContractActions } from './guildContractActions'
 import { facingInteractionTarget, interactionDistance } from './interactionTargets'
 import { itemStackLabel } from './itemLabels'
 import { justiceActions } from './justiceActions'
@@ -219,9 +218,8 @@ function characterTargets(
                         : []),
                     ...justiceActions(snapshot, player, one),
                     ...characterActions(character, player),
-                    ...civicServiceActions(character, player, snapshot),
+                    ...civicServiceActions(character, player),
                     ...ashCharacterActions(player, character),
-                    ...guildContractActions(player, character, snapshot),
                     ...socialActions(one, player),
                     ...theftActions(snapshot, player, one),
                     ...reviveActions(one, player),

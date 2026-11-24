@@ -1,5 +1,5 @@
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
@@ -29,7 +29,8 @@ function fixture(kind: WorldObjectDefinition['kind'] = 'barrel') {
         solidLayerNames: ['solid'],
         solid: Array<boolean>(144).fill(false),
     })
-    navigation.grid.solid[4 * 12 + 4] = kind !== 'sign'
+    navigation.grid.solid[4 * 12 + 4] =
+        kind !== 'sign' && kind !== 'quest_board'
     navigation.grid.containers =
         kind === 'barrel'
             ? [
@@ -75,6 +76,46 @@ function fixture(kind: WorldObjectDefinition['kind'] = 'barrel') {
         )
     return { clock, actor, object, service, navigation, act, inventory }
 }
+
+it('reads the quest board only within reach and closes it on loss of sight', () => {
+    const { actor, act, service, object, navigation, clock } =
+        fixture('quest_board')
+    const near = { ...actor.position }
+    actor.position = { x: 168, y: 168 }
+    act()
+    expect(
+        service.snapshot(actor.id, actor.locationId, actor).dialogue
+    ).toBeNull()
+
+    actor.position = near
+    act()
+    expect(
+        service.snapshot(actor.id, actor.locationId, actor).dialogue
+    ).toMatchObject({
+        kind: 'quest_board',
+        npcId: object.id,
+        canTrade: false,
+        choices: [{ id: 'leave', label: 'Закрыть' }],
+    })
+    expect(
+        service.canReadQuestBoard(actor, object.id, navigation, clock.now)
+    ).toBe(true)
+
+    const sight = vi.spyOn(navigation, 'hasLineOfSight').mockReturnValue(false)
+    try {
+        expect(
+            service.canReadQuestBoard(actor, object.id, navigation, clock.now)
+        ).toBe(false)
+        expect(
+            service.reconcileConversations([actor], () => navigation).size
+        ).toBe(0)
+        expect(
+            service.snapshot(actor.id, actor.locationId, actor).dialogue
+        ).toBeNull()
+    } finally {
+        sight.mockRestore()
+    }
+})
 
 describe('authored world objects', () => {
     it('reads a sign from its tile and closes through ordinary dialogue choice', () => {

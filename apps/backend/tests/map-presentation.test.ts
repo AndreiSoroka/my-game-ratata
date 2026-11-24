@@ -223,9 +223,12 @@ describe('physical world interactions', () => {
                 interactions.filter((object) => object.type === 'sign').length
             ).toBeGreaterThanOrEqual(5)
             for (const object of interactions) {
-                expect(['sign', 'barrel', 'water']).toContain(object.type)
+                expect(['sign', 'quest_board', 'barrel', 'water']).toContain(
+                    object.type
+                )
+                const readable = ['sign', 'quest_board'].includes(object.type)
                 expect(property(object, 'action')).toBe(
-                    object.type === 'sign'
+                    readable
                         ? 'read'
                         : object.type === 'barrel'
                           ? 'open'
@@ -243,7 +246,7 @@ describe('physical world interactions', () => {
                         .some((cell) => reached.has(cell)),
                     property(object, 'interactionId') as string
                 ).toBe(true)
-                if (object.type === 'sign') {
+                if (readable) {
                     continue
                 }
                 for (const area of areas) {

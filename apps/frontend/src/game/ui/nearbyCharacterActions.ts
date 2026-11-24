@@ -7,7 +7,6 @@ import {
     prayerAbilityIds,
     profileForPrayer,
     snapshotPrayerParameters,
-    type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
 import { abilityName, characterName, tGame } from '@/shared/lib/i18n'
@@ -58,31 +57,21 @@ export function hostilityActions(
 
 export function civicServiceActions(
     target: CharacterSnapshot,
-    player: CharacterSnapshot,
-    snapshot: WorldSnapshot
+    player: CharacterSnapshot
 ): InteractionAction[] {
-    if (!isDialogueCharacter(target) || interactionDistance(player, target) > 48) return []
-    const actions: InteractionAction[] = []
-    if (target.id === 'npc_friendly_girl_1') {
-        actions.push({
+    if (
+        target.id !== 'npc_friendly_girl_1' ||
+        !isDialogueCharacter(target) ||
+        interactionDistance(player, target) > 48
+    )
+        return []
+    return [
+        {
             id: `city-affairs:${target.id}`,
             label: tGame('game.world.cityAffairs'),
             command: { type: 'interact', targetId: target.id, service: 'city_affairs' },
-        })
-    }
-    if (
-        snapshot.party?.jobs.some(
-            ({ workRequest }) =>
-                workRequest?.clerkId === target.id && workRequest.stage === 'waiting'
-        )
-    ) {
-        actions.push({
-            id: `worker-requests:${target.id}`,
-            label: tGame('game.world.workerRequests'),
-            command: { type: 'interact', targetId: target.id, service: 'worker_requests' },
-        })
-    }
-    return actions
+        },
+    ]
 }
 
 function companionActions(target: CharacterSnapshot): InteractionAction[] {

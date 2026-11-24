@@ -99,6 +99,27 @@ it('shows approved quest terms and accepts the exact offer and revision explicit
     }
 })
 
+it('allows accepting the Bell order alongside a group contract', async () => {
+    const offer = { ...questOfferFixture(), authoredQuestId: 'hearts-for-the-border-bell' }
+    const view = mount(QuestOfferWindow, {
+        props: { offer, characters: [], serverTime: 1000, occupied: true },
+    })
+    try {
+        const take = view.findAll('button').find((button) => button.text() === 'Взять')!
+        expect(take.attributes('disabled')).toBeUndefined()
+        await take.trigger('click')
+        expect(view.emitted('command')?.flat()).toContainEqual({
+            type: 'quest_offer_answer',
+            offerId: offer.id,
+            revision: offer.revision,
+            accept: true,
+            rewardMode: 'party_equal',
+        })
+    } finally {
+        view.unmount()
+    }
+})
+
 it('opens an incoming trade only after the accepted invitation becomes active', async () => {
     const player = characterFixture('self')
     const incoming = exchangeFixture({ status: 'invited', incoming: true })
@@ -367,6 +388,26 @@ it('binds the turn-in whisper to its issuer while another quest offer is present
         ])
         const submitQuest = view.findAll('button').find((button) => button.text() === 'Сдать')!
         expect(submitQuest.attributes('disabled')).toBeUndefined()
+    } finally {
+        view.unmount()
+    }
+})
+
+it('returns to the quest giver’s whisper when cancelling a turn-in', async () => {
+    const player = characterFixture('self')
+    const whisper = whisperFixture()
+    const questTurnIn = { ...questTurnInFixture(), issuerId: whisper.partnerId }
+    const snapshot = { ...worldFixture([player], 1000), social: { questTurnIn, whisper } }
+    const view = mount(SocialPanels, {
+        props: { snapshot, player, characters: [player], connected: true },
+    })
+    try {
+        await view
+            .findAll('button')
+            .find((button) => button.text() === 'Вернуться к разговору')!
+            .trigger('click')
+        await view.setProps({ snapshot: { ...snapshot, social: { whisper } } })
+        expect(view.get('[role="dialog"]').attributes('aria-label')).toBe('Шёпот: Капля')
     } finally {
         view.unmount()
     }

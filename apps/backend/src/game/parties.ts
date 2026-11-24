@@ -16,7 +16,11 @@ import {
 import type { NavigationService } from './navigation'
 import { NoticeStore } from './notices'
 import { answerPartyInvitation } from './partyAnswers'
-import { createPartyGuildAction, findGuildContact } from './partyGuildCommands'
+import {
+    createBoardGuildAcceptance,
+    createPartyGuildAction,
+    partyGuildContact,
+} from './partyGuildCommands'
 import { inviteToParty } from './partyInvitations'
 import {
     partyContractGroup,
@@ -68,6 +72,12 @@ export class PartyService {
     public readonly questHistory = (issuerId: string, recipientId: string) =>
         this.guild.conversation(issuerId, recipientId)
 
+    public readonly boardDefinitions = (actorId: string) =>
+        this.guild.definitions(this.contractGroup(actorId).leaderId)
+
+    public readonly boardActiveJob = (actorId: string) =>
+        this.guild.snapshot(this.groupFor(actorId).key)
+
     /** Trusted server entry point; reward terms are never accepted from a client. */
     public acceptNegotiatedWorker(
         actor: GameCharacter,
@@ -106,30 +116,12 @@ export class PartyService {
     }
 
     public rewardMembers(actorId: string): string[] {
-        return rewardPartyMembers(
-            this.groupFor(actorId).members,
-            this.characters
-        )
+        const { members } = this.groupFor(actorId)
+        return rewardPartyMembers(members, this.characters)
     }
 
     public sameParty(firstId: string, secondId: string): boolean {
         return samePartyMembers(firstId, secondId, this.membership)
-    }
-
-    private contactFor(
-        actor: GameCharacter,
-        now: number,
-        questId?: string
-    ): GameCharacter | undefined {
-        return findGuildContact(
-            this.guild,
-            this.groupFor(actor.id).key,
-            actor,
-            this.characters,
-            this.options.canContact ?? guildContact,
-            now,
-            questId
-        )
     }
 
     public snapshot(playerId: string): PartySnapshot {
@@ -144,7 +136,11 @@ export class PartyService {
             contact:
                 actor === undefined
                     ? undefined
-                    : this.contactFor(actor, this.currentNow),
+                    : partyGuildContact(
+                          this.guildEnvironment,
+                          actor,
+                          this.currentNow
+                      ),
         })
     }
 
@@ -290,15 +286,21 @@ export class PartyService {
         )
     }
 
-    private readonly guildAction = createPartyGuildAction({
+    private readonly guildEnvironment = {
         guild: () => this.guild,
-        group: (id) => this.groupFor(id),
+        group: (id: string) => this.groupFor(id),
         characters: () => this.characters,
         award: () => this.awardGold,
-        leader: (key) => this.parties.get(key)?.leaderId,
-        contact: (actor, now, questId) => this.contactFor(actor, now, questId),
+        leader: (key: string) => this.parties.get(key)?.leaderId,
+        canContact: (actor: GameCharacter, issuer: GameCharacter) =>
+            (this.options.canContact ?? guildContact)(actor, issuer),
         notices: this.notices,
-    })
+    }
+
+    private readonly guildAction = createPartyGuildAction(this.guildEnvironment)
+    public readonly acceptBoardGuild = createBoardGuildAcceptance(
+        this.guildEnvironment
+    )
 
     private groupFor(playerId: string): { key: string; members: Set<string> } {
         return resolvePartyGroup(playerId, this.parties, this.membership)

@@ -110,7 +110,10 @@ const pendingNpcReplies = computed(() => {
 })
 const bubbles = computed(() => {
     void frame.value
-    const conversation = dialogue.value?.kind !== 'sign' ? dialogue.value : undefined
+    const conversation =
+        dialogue.value?.kind === 'sign' || dialogue.value?.kind === 'quest_board'
+            ? undefined
+            : dialogue.value
     const entries = ambient.value.filter((entry) => entry.id !== conversation?.npcId)
     if (conversation?.text.trim())
         entries.push({

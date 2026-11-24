@@ -1,4 +1,5 @@
 import type {
+    AdventureSnapshot,
     MagicEffectSnapshot,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -7,6 +8,7 @@ import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import { observeGraveCombat } from './combatObservation'
 import { heardFootsteps } from './hearing'
+import type { NavigationService } from './navigation'
 import type { PartyService } from './parties'
 import { createSnapshot } from './queries'
 import type { GameRoom } from './room'
@@ -101,10 +103,12 @@ export function roomSnapshot(
                       context.characters.get(playerId),
                       now
                   ),
-                  adventure: context.adventure.snapshot(
-                      playerId,
+                  adventure: adventureForObserver(
+                      context,
                       locationId,
-                      context.characters.get(playerId),
+                      playerId,
+                      observer,
+                      location.navigation,
                       now
                   ),
                   party: context.parties.snapshot(playerId),
@@ -112,5 +116,44 @@ export function roomSnapshot(
                       ? {}
                       : { social: context.social.snapshot(observer, now) }),
               }),
+    }
+}
+
+function adventureForObserver(
+    context: SnapshotContext,
+    locationId: string,
+    playerId: string,
+    observer: GameCharacter | undefined,
+    navigation: NavigationService,
+    now: number
+): AdventureSnapshot {
+    const adventure = context.adventure.snapshot(
+        playerId,
+        locationId,
+        observer,
+        now
+    )
+    if (adventure.dialogue?.kind !== 'quest_board') {
+        return adventure
+    }
+    const objectId = adventure.dialogue.npcId
+    if (
+        observer?.locationId !== locationId ||
+        context.social === undefined ||
+        !context.adventure.canReadQuestBoard(
+            observer,
+            objectId,
+            navigation,
+            now
+        )
+    ) {
+        return { ...adventure, dialogue: null }
+    }
+    return {
+        ...adventure,
+        questBoard: {
+            objectId,
+            entries: context.social.questBoardEntries(observer, now),
+        },
     }
 }

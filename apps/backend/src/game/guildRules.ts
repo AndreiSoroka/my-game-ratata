@@ -1,5 +1,6 @@
 import type {
     GuildQuestDefinition,
+    GuildQuestId,
     QuestRewardMode,
     QuestRewardShare,
 } from '@my-game-ratata/contracts'
@@ -80,7 +81,7 @@ export function removeGuildParticipant(
     }
 }
 
-export const guildQuests: GuildQuestDefinition[] = [
+export const guildQuests: Array<GuildQuestDefinition & { id: GuildQuestId }> = [
     {
         id: 'slime_hunt',
         titleMessage: { key: 'authored.guild.quest.slimeHuntTitle' },

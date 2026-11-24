@@ -1,16 +1,97 @@
 import { expect, it } from 'vitest'
 
+import { ExchangeService } from '../src/game/exchange'
 import { createItemInstance } from '../src/game/inventory'
 import { parseClientMessage } from '../src/game/messages'
 import { configureNpcQuestDialogue } from '../src/game/npcQuestDialogue'
 import { NpcQuestService } from '../src/game/npcQuests'
 import { PartyService } from '../src/game/parties'
+import { QuestTurnInService } from '../src/game/questTurnIn'
 import {
     canContactGuild,
     createWorkerGuildGateway,
 } from '../src/game/roomWorkerRequests'
+import { WhisperService } from '../src/game/whispers'
 import { workerActivity } from '../src/game/workerActivity'
 import { WorkerSimulation } from './workerRequestFixture'
+
+it('reports an unclaimed incident and starts a repeat trip through chat using only one trophy', () => {
+    const f = new WorkerSimulation('miner')
+    f.publish()
+    const { parties, quests } = createWorkerDialogues(f)
+    const getCharacter = (id: string) => f.characters.get(id)
+    const navigationFor = f.room.navigationFor
+    const turns = new QuestTurnInService({
+        adventure: f.adventure,
+        parties,
+        quests,
+        getCharacter,
+        characters: () => f.characters.values(),
+        navigationFor,
+        localeFor: () => 'ru',
+        exchanges: new ExchangeService({
+            getCharacter,
+            navigationFor,
+            aiDialogue: () => false,
+            canControlAI: () => false,
+            walletFor: f.adventure.walletFor,
+        }),
+        whispers: new WhisperService({
+            getCharacter,
+            navigationFor,
+            heard: () => undefined,
+        }),
+    })
+    const definition = parties
+        .boardDefinitions(f.player.id)
+        .find((job) => job.id === f.current().id)
+    expect(definition).toBeDefined()
+    f.player.inventory.push(createItemInstance('bone'))
+    expect(
+        turns.heard(
+            f.player,
+            f.clerk,
+            `Хочу сдать «${definition?.title ?? ''}»`,
+            f.now
+        )
+    ).toBe(true)
+    const first = turns.snapshot(f.player, f.now)
+    expect(first).toMatchObject({ preAcceptance: true, action: 'report' })
+    expect(f.requests.active('solo:hero')).toBeNull()
+    expect(
+        turns.confirm(f.player, first?.id ?? '', true, f.now, 'submitter')
+            .accepted
+    ).toBe(true)
+    expect(f.player.inventory).toHaveLength(0)
+    expect(f.current()).toMatchObject({
+        proofAccepted: true,
+        stage: 'outbound',
+    })
+    expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
+    f.until(() => f.current().stage === 'ready')
+    f.enemy.alive = true
+    parties.update(f.characters.values(), f.now)
+    turns.heard(f.player, f.clerk, 'Квест готов.', f.now)
+    const payout = turns.snapshot(f.player, f.now)
+    expect(payout?.action).toBe('turn_in')
+    expect(
+        turns.confirm(f.player, payout?.id ?? '', true, f.now).accepted
+    ).toBe(false)
+    expect(f.current().stage).toBe('waiting')
+    f.enemy.alive = false
+    turns.heard(f.player, f.clerk, 'Хочу сдать квест.', f.now)
+    const retry = turns.snapshot(f.player, f.now)
+    expect(retry).toMatchObject({ action: 'report', objectives: [] })
+    expect(turns.confirm(f.player, retry?.id ?? '', true, f.now).accepted).toBe(
+        true
+    )
+    expect(f.current()).toMatchObject({
+        proofAccepted: true,
+        stage: 'outbound',
+    })
+    expect(f.player.inventory).toHaveLength(0)
+    expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
+})
 
 it('offers the clerk’s real worker incident through dialogue and completes the same sowing and payout chain', () => {
     const f = new WorkerSimulation('farmer')

@@ -92,6 +92,21 @@ test('disables both actions while a turn-in is pending', async ({ page }) => {
     await expect(panel).toHaveScreenshot('quest-turn-in-pending-390.png')
 })
 
+test('lets the player choose the reward split when handing in a delivery before acceptance', async ({
+    page,
+}) => {
+    const panel = await openPanel(page, turnIn, 390, 'before-acceptance')
+    await expect(panel.getByText('Слизневое сердце × 3', { exact: true })).toBeVisible()
+    const choice = panel.getByRole('group', { name: 'Распределение награды' })
+    const party = choice.getByRole('radio', { name: 'Поровну группе' })
+    const submitter = choice.getByRole('radio', { name: 'Вся награда сдающему' })
+    await expect(party).toBeChecked()
+    await expect(panel.getByRole('button', { name: turnIn.confirm, exact: true })).toBeInViewport()
+    await expect(panel).toHaveScreenshot('quest-turn-in-before-acceptance-390.png')
+    await submitter.press('KeyF')
+    await expect(submitter).toBeChecked()
+})
+
 test('keeps turn-in actions reachable below long details on a short screen', async ({ page }) => {
     const panel = await openPanel(page, turnIn, 320, 'long-details', 460)
     const body = panel.getByRole('region', { name: 'Условия поручения', exact: true })

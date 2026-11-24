@@ -10,8 +10,20 @@ import QuestTurnInPanel from './QuestTurnInPanel.vue'
 
 const meta = {
     title: 'Entities/quests/QuestTurnInPanel',
-    args: questDecisionArgs('Сдать поручение', 'Сдать', 'Вернуться к разговору'),
-    argTypes: questDecisionControls,
+    args: {
+        ...questDecisionArgs('Сдать поручение', 'Сдать', 'Вернуться к разговору'),
+        chooseRewardMode: false,
+        rewardMode: 'party_equal',
+    },
+    argTypes: {
+        ...questDecisionControls,
+        default: {
+            ...questDecisionControls?.default,
+            options: ['details', 'long', 'empty', 'delivery'],
+        },
+        chooseRewardMode: { control: 'boolean' },
+        rewardMode: { control: 'inline-radio', options: ['party_equal', 'submitter'] },
+    },
     render: (args) => renderQuestDecisionStory(QuestTurnInPanel, args, 'turnIn'),
 } satisfies Meta<QuestDecisionStoryArgs>
 
@@ -26,4 +38,8 @@ export const Pending: Story = {
 
 export const LongDetails: Story = {
     args: { default: 'long', confirmLabel: 'Передать трофей и доложить' },
+}
+
+export const BeforeAcceptance: Story = {
+    args: { default: 'delivery', chooseRewardMode: true },
 }

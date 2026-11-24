@@ -45,6 +45,29 @@ export async function gatherGift(page: Page): Promise<string> {
     )
 }
 
+export async function approachGiftPartner(
+    first: Page,
+    second: Page,
+    useMouse: boolean
+): Promise<void> {
+    const position = await first.evaluate(() => window.__ratataTest!.getState().player!.position)
+    const arrival = await second.evaluate(
+        ({ position, useMouse }) => {
+            const api = window.__ratataTest!
+            if (!useMouse) return api.navigate(position, { tolerance: 20, timeoutMs: 25_000 })
+            // Stage the click-to-approach case at a point outside whisper reach.
+            const start = api.getState().player!.position
+            const dx = start.x - position.x
+            const dy = start.y - position.y
+            const scale = 80 / Math.max(1, Math.hypot(dx, dy))
+            const approach = { x: position.x + dx * scale, y: position.y + dy * scale }
+            return api.navigate(approach, { tolerance: 12, timeoutMs: 25_000 })
+        },
+        { position, useMouse }
+    )
+    expect(arrival.status).toBe('arrived')
+}
+
 export async function selectSocialTarget(page: Page, id: string): Promise<void> {
     const name = await page.evaluate(
         (targetId) =>

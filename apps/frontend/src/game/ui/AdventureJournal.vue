@@ -35,7 +35,6 @@ const canAbandon = computed(
         props.party &&
         (!props.party.leaderId || props.party.leaderId === props.playerId)
 )
-const canAct = computed(() => canAbandon.value && Boolean(props.party?.guildContact))
 const statuses: Record<AdventureQuestStatus, string> = {
     get active() {
         return tGame('game.quests.collectHearts')
@@ -95,35 +94,15 @@ const statuses: Record<AdventureQuestStatus, string> = {
             :value="adventure.trophies"
             :max="adventure.quest.goal"
         />
-        <template v-if="!terminal">
-            <ol class="journal-steps">
-                <li>{{ tGame('game.quests.findHostileSlimesOutsideNovogorod') }}</li>
-                <li>
-                    {{ tGame('game.quests.afterDefeatingSlimeApproachIts') }}
-                    <kbd>F</kbd>{{ tGame('game.quests.searchItTakeHeartFrom') }}
-                </li>
-                <li>
-                    {{ tGame('game.quests.bring') }} {{ adventure.quest.goal }}
-                    {{ tGame('game.quests.heartsMiraAtNovogorodGuild') }}
-                </li>
-            </ol>
-            <p class="adventure-subtle">{{ tGame('game.quests.onlyHeartsInYourBackpack') }}</p>
-            <p v-if="adventure.quest.status === 'available'" class="adventure-subtle">
-                {{ tGame('game.quests.speakMiraAcceptQuestYou') }}
-            </p>
-        </template>
+        <p v-if="!terminal" class="adventure-subtle">
+            {{ tGame('game.quests.bellHeartDeliveryHelp') }}
+        </p>
         <p v-else-if="completed" class="adventure-success">
             {{ tGame('game.quests.miraReceived') }} {{ adventure.quest.goal }}
             {{ tGame('game.quests.heartsRewardDelivered') }}
         </p>
         <p v-else class="adventure-subtle">
             {{ tLocalized(adventure.quest.noticeMessage, adventure.quest.notice ?? '') }}
-        </p>
-        <p
-            v-if="!cancelled && adventure.quest.status !== 'available'"
-            class="adventure-subtle journal-statistic"
-        >
-            {{ tGame('game.quests.yourSlimeKillsSinceAccepting') }} {{ adventure.quest.kills }}.
         </p>
         <p v-if="adventure.wardRestored" class="adventure-success">
             {{ tGame('game.quests.bellMemoryHasAwakenedCitys') }}
@@ -146,7 +125,6 @@ const statuses: Record<AdventureQuestStatus, string> = {
             v-if="party?.activeJob"
             :job="party.activeJob"
             :player-id="playerId"
-            :can-act="Boolean(canAct)"
             :can-abandon="Boolean(canAbandon)"
             @command="emit('command', $event)"
         />
@@ -188,17 +166,5 @@ const statuses: Record<AdventureQuestStatus, string> = {
     height: 8px;
     accent-color: #a4c07c;
     margin-top: 8px;
-}
-.journal-steps {
-    padding-left: 20px;
-    font:
-        13px/1.5 system-ui,
-        sans-serif;
-}
-.journal-steps li + li {
-    margin-top: 8px;
-}
-.journal-statistic {
-    font-size: 12px !important;
 }
 </style>

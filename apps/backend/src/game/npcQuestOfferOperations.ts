@@ -97,8 +97,8 @@ export class NpcQuestOfferOperations {
         targetId: string,
         draft: QuestDraft,
         now: number,
-        replaceOffer: QuestOfferReplacement | undefined,
-        context: NpcQuestDecisionContext
+        replaceOffer?: QuestOfferReplacement,
+        context: NpcQuestDecisionContext = {}
     ): NpcQuestResult {
         return this.decide(
             issuer,
@@ -118,8 +118,8 @@ export class NpcQuestOfferOperations {
         targetId: string,
         requestId: string,
         now: number,
-        replaceOffer: QuestOfferReplacement | undefined,
-        context: NpcQuestDecisionContext
+        replaceOffer?: QuestOfferReplacement,
+        context: NpcQuestDecisionContext = {}
     ): NpcQuestResult {
         return this.decide(
             issuer,
@@ -169,7 +169,7 @@ export class NpcQuestOfferOperations {
         return result(true)
     }
 
-    private publish(
+    public publish(
         targetId: string,
         offer: QuestOfferRecord,
         now: number

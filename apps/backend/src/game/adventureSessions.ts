@@ -7,7 +7,8 @@ import {
 import type { NavigationService } from './navigation'
 
 export function createAdventureSessions(
-    states: ReadonlyMap<string, PlayerAdventure>
+    states: ReadonlyMap<string, PlayerAdventure>,
+    canReadQuestBoard: NonNullable<Parameters<typeof reconcileConversations>[4]>
 ) {
     return {
         reconcile: (
@@ -19,7 +20,8 @@ export function createAdventureSessions(
                 states,
                 characters,
                 navigationFor,
-                urgentThreat
+                urgentThreat,
+                canReadQuestBoard
             ),
         close: (characterId: string) =>
             closeConversationsFor(states, characterId),

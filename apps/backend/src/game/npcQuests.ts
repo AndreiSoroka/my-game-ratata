@@ -3,21 +3,20 @@ import {
     type NpcQuestClientMessage,
     type NpcQuestDecision,
     type NpcQuestSocialSnapshot,
-    type QuestDraft,
-    type QuestOfferReplacement,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { answerQuestOffer } from './npcQuestAcceptance'
+import {
+    answerQuestOffer,
+    type QuestAcceptanceContext,
+} from './npcQuestAcceptance'
+import { NpcQuestBoardOffers } from './npcQuestBoardOffers'
 import { handleNpcQuestClient } from './npcQuestClientActions'
 import { inquireNpcQuest } from './npcQuestInquiry'
 import { NpcQuestInvitations } from './npcQuestInvitations'
 import { recordNpcQuest, recordQuestOffer } from './npcQuestJournal'
 import { NpcQuestLifecycle } from './npcQuestLifecycle'
-import {
-    NpcQuestOfferOperations,
-    questRewardWallet,
-} from './npcQuestOfferOperations'
+import { NpcQuestOfferOperations } from './npcQuestOfferOperations'
 import { inspectQuest, observeQuestDeath } from './npcQuestProgress'
 import { conversationNpcQuests, snapshotNpcQuests } from './npcQuestSnapshots'
 import {
@@ -27,7 +26,9 @@ import {
     type NpcQuestResult,
     questOfferAvailable,
     type QuestOfferRecord,
+    questResult,
 } from './npcQuestTypes'
+import { QuestBoardPublications } from './questBoardPublications'
 import { QuestJournal } from './questJournal'
 
 export type { NpcQuestResult } from './npcQuestTypes'
@@ -37,28 +38,61 @@ export class NpcQuestService {
     private readonly offers = new Map<string, QuestOfferRecord>()
     private readonly jobs = new Map<string, NpcQuestRecord>()
     public readonly journal = new QuestJournal()
-    private readonly reservations: import('./rewardReservations').RewardReservations
+    public readonly publications: QuestBoardPublications
+    public readonly boardOffers: NpcQuestBoardOffers
+    public readonly propose: NpcQuestOfferOperations['propose']
+    public readonly workerPropose: NpcQuestOfferOperations['workerPropose']
+    private readonly acceptanceContext: QuestAcceptanceContext
 
     private readonly invitations: NpcQuestInvitations
     private readonly offerOperations: NpcQuestOfferOperations
     private readonly lifecycle: NpcQuestLifecycle
     public constructor(private readonly environment: NpcQuestEnvironment) {
+        this.publications = new QuestBoardPublications(environment)
         this.offerOperations = new NpcQuestOfferOperations({
             environment,
             offers: this.offers,
             journal: this.journal,
         })
+        this.propose = this.offerOperations.propose.bind(this.offerOperations)
+        this.workerPropose = this.offerOperations.workerPropose.bind(
+            this.offerOperations
+        )
         this.invitations = new NpcQuestInvitations(
             environment,
             this.offerOperations
         )
-        this.reservations = environment.adventure.questFunding.reservations
-        this.lifecycle = new NpcQuestLifecycle(environment, this.reservations)
+        const reservations = environment.adventure.questFunding.reservations
+        this.lifecycle = new NpcQuestLifecycle(
+            environment,
+            reservations,
+            (job) =>
+                this.publications.finish(
+                    job.view.instanceId,
+                    job.view.status === 'completed'
+                )
+        )
+        this.acceptanceContext = {
+            environment: this.environment,
+            offers: this.offers,
+            jobs: this.jobs,
+            reservations,
+            cancel: (job, notice) => this.lifecycle.cancel(job, notice),
+            refresh: (job) => this.lifecycle.refresh(job),
+        }
+        this.boardOffers = new NpcQuestBoardOffers(
+            this.acceptanceContext,
+            this.publications,
+            this.offerOperations,
+            this.lifecycle,
+            (job, now) => this.recordJob(job, now)
+        )
     }
 
     public readonly decide = this.handleDecision.bind(this)
 
     public stop(): void {
+        this.publications.closeOpen()
         for (const job of this.jobs.values()) {
             this.lifecycle.cancel(job, 'Мир остановлен. Договор отменён.')
         }
@@ -73,6 +107,15 @@ export class NpcQuestService {
         context: NpcQuestDecisionContext = {}
     ): NpcQuestResult {
         switch (decision.type) {
+            case 'quest_board_publish': {
+                const error = this.publications.publish(
+                    issuer,
+                    decision.draft,
+                    now,
+                    context
+                )
+                return questResult(error === undefined, error ?? null)
+            }
             case 'quest_propose':
             case 'worker_quest_propose':
                 return this.invitations.present(issuer, decision, now, context)
@@ -88,7 +131,7 @@ export class NpcQuestService {
                     now
                 )
             default:
-                return this.result(
+                return questResult(
                     false,
                     'Это действие требует окна подтверждения разговора.'
                 )
@@ -101,6 +144,14 @@ export class NpcQuestService {
         now: number,
         context: NpcQuestDecisionContext = {}
     ): string | undefined {
+        if (decision.type === 'quest_board_publish') {
+            return this.publications.validate(
+                issuer,
+                decision.draft,
+                now,
+                context
+            )
+        }
         if (decision.type === 'quest_offer_revise') {
             return this.offerOperations.previewRevision(issuer, decision, now)
         }
@@ -128,41 +179,6 @@ export class NpcQuestService {
         now = Date.now()
     ): boolean {
         return this.invitations.canInvite(issuerId, targetId, now)
-    }
-
-    public propose(
-        issuer: GameCharacter,
-        targetId: string,
-        draft: QuestDraft,
-        now: number,
-        replaceOffer?: QuestOfferReplacement,
-        context: NpcQuestDecisionContext = {}
-    ): NpcQuestResult {
-        return this.offerOperations.propose(
-            issuer,
-            targetId,
-            draft,
-            now,
-            replaceOffer,
-            context
-        )
-    }
-    public workerPropose(
-        issuer: GameCharacter,
-        targetId: string,
-        requestId: string,
-        now: number,
-        replaceOffer?: QuestOfferReplacement,
-        context: NpcQuestDecisionContext = {}
-    ): NpcQuestResult {
-        return this.offerOperations.workerPropose(
-            issuer,
-            targetId,
-            requestId,
-            now,
-            replaceOffer,
-            context
-        )
     }
 
     public handle(
@@ -194,20 +210,7 @@ export class NpcQuestService {
     ): NpcQuestResult {
         const offer = this.offers.get(actor.id)
         const outcome = answerQuestOffer(
-            {
-                environment: this.environment,
-                offers: this.offers,
-                jobs: this.jobs,
-                reservations: this.reservations,
-                rewardWallet: (entry, issuer) =>
-                    questRewardWallet(this.environment, entry, issuer),
-                newId: (prefix) =>
-                    this.environment.adventure.questFunding.newId(
-                        `npc-${prefix}`
-                    ),
-                cancel: (job, notice) => this.lifecycle.cancel(job, notice),
-                refresh: (job) => this.lifecycle.refresh(job),
-            },
+            this.acceptanceContext,
             actor,
             message,
             now
@@ -232,6 +235,7 @@ export class NpcQuestService {
     }
 
     public update(now: number): void {
+        this.publications.update(now)
         this.invitations.update(now)
         for (const [id, offer] of this.offers) {
             if (!questOfferAvailable(offer, this.environment, now)) {
@@ -252,6 +256,9 @@ export class NpcQuestService {
 
     public observe(events: GameEventPayload[]): void {
         for (const event of events) {
+            if (event.kind === 'death') {
+                this.publications.closeOpen(event.targetId)
+            }
             for (const job of this.jobs.values()) {
                 if (
                     event.kind === 'death' &&
@@ -307,12 +314,5 @@ export class NpcQuestService {
     }
     private recordJob(job: NpcQuestRecord, now: number): void {
         recordNpcQuest(this.journal, job, this.environment, now)
-    }
-
-    private result(
-        accepted: boolean,
-        error: string | null = null
-    ): NpcQuestResult {
-        return { accepted, error, events: [] }
     }
 }

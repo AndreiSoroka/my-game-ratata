@@ -16,7 +16,6 @@ function questCard(job: GuildQuestSnapshot): HTMLElement {
     const host = renderVueStory(GuildQuestCard, {
         job,
         playerId: 'self',
-        canAct: true,
         canAbandon: true,
     })
     host.classList.add('adventure-ui')

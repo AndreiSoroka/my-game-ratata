@@ -198,7 +198,7 @@ function currentDialogue(
     now: number
 ): AdventureDialogue | null {
     const dialogue = snapshot.adventure?.dialogue
-    if (dialogue === undefined || dialogue === null) {
+    if (dialogue == null || dialogue.kind === 'quest_board') {
         return null
     }
     if (dialogue.kind === 'sign') {

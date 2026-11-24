@@ -128,7 +128,8 @@ export class RoomSocial {
                 actor,
                 message.confirmationId,
                 message.accept,
-                now
+                now,
+                message.rewardMode
             )
             return true
         }
@@ -239,6 +240,19 @@ export class RoomSocial {
 
     public conversation(issuerId: string, recipientId: string, now: number) {
         return this.questDialogues.conversation(issuerId, recipientId, now)
+    }
+
+    public questBoardEntries(actor: GameCharacter, now: number) {
+        return this.questDialogues.turnIns.catalog.entries(actor, now)
+    }
+
+    public deliveredQuestQuestion(
+        issuer: GameCharacter,
+        recipientId: string,
+        text: string,
+        now: number
+    ): void {
+        this.questDialogues.deliveredQuestion(issuer, recipientId, text, now)
     }
 
     public update(now: number, actors: Iterable<GameCharacter>): void {

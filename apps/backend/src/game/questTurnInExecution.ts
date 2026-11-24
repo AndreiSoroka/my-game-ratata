@@ -19,12 +19,12 @@ function guildTurnIn(
         environment.characters(),
         now
     )
-    const after = environment.parties
-        .questHistory(view.issuerId, player.id)
-        .find((job) => job.instanceId === view.instanceId)
+    const active = environment.parties.boardActiveJob(player.id)
+    const after = active?.instanceId === view.instanceId ? active : undefined
     const accepted =
         view.action === 'report'
-            ? after?.workRequest?.proofAccepted === true
+            ? after?.workRequest?.stage === 'outbound' &&
+              after.workRequest.proofAccepted
             : after?.status === 'completed'
     return {
         accepted,

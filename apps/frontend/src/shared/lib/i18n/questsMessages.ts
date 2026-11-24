@@ -1,4 +1,10 @@
 export const questsMessages = {
+    boardTitle: ['Доска заказов', 'Quest board'],
+    readBoard: ['Читать доску заказов', 'Read the quest board'],
+    boardAvailable: ['Доступно', 'Available'],
+    boardEmpty: ['Сейчас нет заказов.', 'There are no orders right now.'],
+    boardHint: ['Назовите Мире нужный заказ в чате.', 'Tell Mira which order you want in chat.'],
+    boardReward: ['Награда {gold} золотых', 'Reward {gold} gold'],
     cityWarehouse: ['городской склад', 'the city warehouse'],
     slimes: ['враждебные слизни', 'hostile slimes'],
     skeletons: ['скелеты', 'skeletons'],
@@ -9,6 +15,10 @@ export const questsMessages = {
     ],
     allToSubmitter: ['Вся награда сдающему', 'Entire reward to the quest submitter'],
     backConversation: ['Вернуться к разговору', 'Back to conversation'],
+    bellHeartDeliveryHelp: [
+        'Подойдут сердца, найденные заранее или полученные через обмен. Чтобы сдать их, скажите Мире в чате «Хочу сдать Сердца для колокола памяти».',
+        'Hearts collected beforehand or received in trade count. To hand them in, tell Mira in chat, “I want to turn in Hearts for the Bell of Memory.”',
+    ],
     bellIsReadyEnterChapel: [
         'Колокол подготовлен. Последний шаг — подойти к нему внутри часовни и пробудить.',
         'The bell is ready. Enter the chapel, approach it and awaken it.',
@@ -173,12 +183,16 @@ export const questsMessages = {
     workshopOrders: ['Заказы ремесленникам', 'Workshop orders'],
     worksite: ['Участок', 'Worksite'],
     youCanHaveOneActive: [
-        'Одновременно можно выполнять один договор.',
-        'You can have one active contract at a time.',
+        'У отряда может быть один общий договор.',
+        'A party can have one shared contract at a time.',
     ],
     youChooseThisWhenYou: [
         'Выбор фиксируется при принятии задания.',
         'You choose this when you accept the quest.',
+    ],
+    rewardModeConfirmedAtTurnIn: [
+        'Выбор фиксируется при подтверждении сдачи.',
+        'Your choice is locked in when you confirm.',
     ],
     yourContract: ['Ваш договор', 'Your contract'],
     youReceived: ['Получено вами:', 'You received:'],

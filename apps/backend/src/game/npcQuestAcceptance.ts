@@ -4,40 +4,28 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { onCharacterDeath } from './characterDeathObservers'
 import { snapshotItem } from './inventory'
+import { acceptGenerated } from './npcQuestGeneratedAcceptance'
 import type { NpcQuestResult } from './npcQuests'
 import {
-    movementFingerprint,
     type NpcQuestEnvironment,
     type NpcQuestRecord,
-    questContact,
+    questOfferAvailable,
     type QuestOfferRecord,
+    questResult,
 } from './npcQuestTypes'
 import { validateQuestDraft } from './npcQuestValidation'
 import { validateQuestExcursion } from './questExcursions'
-import type { AssetWallet, RewardReservations } from './rewardReservations'
+import type { RewardReservations } from './rewardReservations'
 
-interface QuestAcceptanceContext {
+export interface QuestAcceptanceContext {
     environment: NpcQuestEnvironment
     offers: Map<string, QuestOfferRecord>
     jobs: Map<string, NpcQuestRecord>
     reservations: RewardReservations
-    rewardWallet: (
-        offer: Pick<QuestOfferRecord, 'view'>,
-        issuer: GameCharacter
-    ) => AssetWallet | undefined
-    newId: (prefix: string) => string
     cancel: (job: NpcQuestRecord, notice: string) => void
     refresh: (job: NpcQuestRecord) => void
 }
-function questResult(
-    accepted: boolean,
-    error: string | null = null
-): NpcQuestResult {
-    return { accepted, error, events: [] }
-}
-
 function availableOffer(
     context: QuestAcceptanceContext,
     actor: GameCharacter,
@@ -49,14 +37,12 @@ function availableOffer(
     if (
         offer?.view.id !== message.offerId ||
         offer.view.revision !== message.revision ||
-        offer.view.expiresAt <= now ||
-        !questContact(actor, issuer, context.environment, now)
+        issuer === undefined ||
+        !questOfferAvailable(offer, context.environment, now)
     ) {
         return undefined
     }
-    return issuer.deathSequence === offer.issuerDeath
-        ? [offer, issuer]
-        : undefined
+    return [offer, issuer]
 }
 
 export function answerQuestOffer(
@@ -91,7 +77,10 @@ export function answerQuestOffer(
             'Условия или состояние обещанной награды изменились. Попросите новое предложение.'
         )
     }
-    if (group.leaderId !== actor.id || group.occupied) {
+    if (
+        offer.view.authoredQuestId === undefined &&
+        (group.leaderId !== actor.id || group.occupied)
+    ) {
         return questResult(
             false,
             'Лидер должен сначала завершить действующий договор.'
@@ -118,6 +107,19 @@ function acceptSpecialOffer(
     message: Extract<NpcQuestClientMessage, { type: 'quest_offer_answer' }>,
     now: number
 ): NpcQuestResult | undefined {
+    if (offer.boardGuildId !== undefined) {
+        const outcome = context.environment.parties.acceptBoardGuild(
+            actor,
+            offer.boardGuildId,
+            issuer,
+            message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
+            now
+        )
+        if (outcome.accepted) {
+            context.offers.delete(actor.id)
+        }
+        return outcome
+    }
     if (offer.view.authoredQuestId !== undefined) {
         const error = context.environment.adventure.storyOfferError(
             issuer,
@@ -214,75 +216,4 @@ function offerTermsUnchanged(
         (offer.draft === null ||
             validateQuestDraft(issuer, offer.draft, environment) === null)
     )
-}
-
-function acceptGenerated(
-    context: QuestAcceptanceContext,
-    actor: GameCharacter,
-    issuer: GameCharacter,
-    offer: QuestOfferRecord,
-    rewardMode: import('@my-game-ratata/contracts').QuestRewardMode,
-    now: number
-): NpcQuestResult {
-    const draft = offer.draft
-    const wallet = context.rewardWallet(offer, issuer)
-    const id = context.newId('contract')
-    const group = context.environment.parties.contractGroup(actor.id)
-    if (
-        draft === null ||
-        wallet === undefined ||
-        !context.reservations.reserve(
-            id,
-            { inventory: issuer.inventory, wallet },
-            draft.rewardGold,
-            draft.rewardItems
-        )
-    ) {
-        return questResult(
-            false,
-            'Награда больше недоступна. Попросите новые условия.'
-        )
-    }
-    if (!context.environment.parties.contractSlots.claim(group.key, id)) {
-        context.reservations.release(id)
-        return questResult(false, 'У группы уже есть действующий договор.')
-    }
-    const job: NpcQuestRecord = {
-        draft,
-        acceptedBy: actor.id,
-        acceptedAt: now,
-        issuerDeath: issuer.deathSequence,
-        baseline: new Map(
-            [...group.members].flatMap((memberId) => {
-                const member = context.environment.getCharacter(memberId)
-                return member === undefined
-                    ? []
-                    : [[memberId, movementFingerprint(member)]]
-            })
-        ),
-        receipts: new Set(
-            [...context.environment.characters()].map(
-                (character) =>
-                    `death:${character.id}:${String(character.deathSequence)}`
-            )
-        ),
-        view: {
-            ...structuredClone(offer.view),
-            instanceId: id,
-            rewardMode,
-            progress: draft.objectives.map(() => 0),
-            status: 'active',
-            notice: null,
-        },
-    }
-    job.closeDeathListener = onCharacterDeath(issuer, () =>
-        context.cancel(
-            job,
-            'Заказчик погиб. Договор отменён; резерв освобождён.'
-        )
-    )
-    context.jobs.set(id, job)
-    context.offers.delete(actor.id)
-    context.refresh(job)
-    return questResult(true)
 }

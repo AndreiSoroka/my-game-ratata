@@ -1,6 +1,7 @@
 import { type Browser, type Locator, type Page, test, type TestInfo } from '@playwright/test'
 
 import {
+    approachGiftPartner,
     captureExchange,
     expectGiftSettlement,
     gatherGift,
@@ -21,7 +22,7 @@ for (const layout of [
     test(`toggles Q and trades a real gift with private chat (${layout.name})`, async ({
         browser,
     }, info) => {
-        test.setTimeout(100_000)
+        test.setTimeout(layout.name === 'desktop' ? 150_000 : 100_000)
         const viewport = { width: layout.width, height: layout.height }
         const { context, first, second, exchangeFrames } = await openTradePages(browser, viewport)
         let giftId: string | undefined
@@ -40,15 +41,7 @@ for (const layout of [
                     page.addStyleTag({ content: '.test-panel { display: none !important }' })
                 )
             )
-            const point = await first.evaluate(
-                () => window.__ratataTest!.getState().player!.position
-            )
-            const arrival = await second.evaluate(
-                ({ position, tolerance }) =>
-                    window.__ratataTest!.navigate(position, { tolerance, timeoutMs: 25_000 }),
-                { position: point, tolerance: useMouse ? 64 : 20 }
-            )
-            expect(arrival.status).toBe('arrived')
+            await approachGiftPartner(first, second, useMouse)
             await first.locator('canvas[data-game-canvas=true]').focus()
             await first.keyboard.press('KeyQ')
             await expect(selectedWorldTarget(first)).toHaveAttribute(

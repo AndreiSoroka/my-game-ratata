@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import {
     CENTER_LOCATION_ID,
+    QUEST_BOARD_OBJECT_ID,
     WORLD_LOCATION_DEFINITIONS,
 } from '../contracts/src/world.ts'
 import { planFortifications } from './city-fortifications.mjs'
@@ -96,6 +97,17 @@ function verify(map, style, label) {
     )
     const structures = layer(map, 'Ruins').data,
         solid = layer(map, 'Collision').data
+    const guild = buildings.find((entry) => value(entry, 'kind') === 'guild')
+    const boards = layer(map, 'World interactions').objects.filter(
+        (entry) => entry.type === 'quest_board'
+    )
+    assert.equal(boards.length, 1, label)
+    const board = boards[0]
+    const boardCell = (board.y / 16) * 96 + board.x / 16
+    assert.equal(value(board, 'interactionId'), QUEST_BOARD_OBJECT_ID, label)
+    assert.equal(board.x + 8, value(guild, 'entryX') - 32, label)
+    assert.equal(board.y + 8, value(guild, 'entryY') + 16, label)
+    assert.equal(solid[boardCell], 0, `${label}: walkable guild entrance`)
     const visual = Array(96 * 80).fill(0)
     for (const prop of layer(map, 'Depth props').objects) {
         const tiles = JSON.parse(value(prop, 'tiles')),
@@ -107,6 +119,11 @@ function verify(map, style, label) {
                     (index % columns)
             ] = gid
     }
+    assert.equal(
+        visual[boardCell],
+        512 + 83,
+        `${label}: visible guild quest board`
+    )
     for (const corner of corners) {
         assert.equal(corner.width, 48, label)
         assert.equal(corner.height, 48, label)
@@ -178,6 +195,21 @@ function verify(map, style, label) {
         const rectangle = tileRect(prop)
         if (leaves.some((leaf) => intersect(rectangle, tileRect(leaf))))
             continue
+        if (
+            prop.x === board.x &&
+            prop.y === board.y &&
+            prop.width === board.width &&
+            prop.height === board.height
+        ) {
+            // The authored, walkable board is part of the guild entrance.
+            assert.ok(
+                !actualParts.some((part) =>
+                    intersect(rectangle, tileRect(part))
+                ),
+                label
+            )
+            continue
+        }
         for (const part of actualParts)
             assert.equal(
                 intersect(rectangle, tileRect(part), 2),

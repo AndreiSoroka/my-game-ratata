@@ -1,3 +1,5 @@
+import type { QuestRewardShare } from '@my-game-ratata/contracts'
+
 import type { GameCharacter } from './character'
 import type { NpcQuestLifecycle } from './npcQuestLifecycle'
 import { questRewardWallet } from './npcQuestOfferOperations'
@@ -55,6 +57,20 @@ export function turnInNpcQuest(
             'Передача не состоялась: проверьте вещи, вместимость и награду.'
         )
     }
+    completeNpcQuest(context, actor, job, shares, now)
+    return result(true)
+}
+
+export function completeNpcQuest(
+    context: {
+        lifecycle: NpcQuestLifecycle
+        record: (job: NpcQuestRecord, now: number) => void
+    },
+    actor: GameCharacter,
+    job: NpcQuestRecord,
+    shares: QuestRewardShare[],
+    now: number
+): void {
     job.view.status = 'completed'
     job.submittedBy = actor.id
     job.view.rewardShares = shares
@@ -62,7 +78,6 @@ export function turnInNpcQuest(
     job.view.notice = 'Договор выполнен. Имущество и награда переданы.'
     context.lifecycle.release(job)
     context.record(job, now)
-    return result(true)
 }
 function result(
     accepted: boolean,

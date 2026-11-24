@@ -6,6 +6,7 @@ import { worldSignMessages } from './worldSignText'
 
 const lines = {
     ...combatNoticeLines,
+    'world.questBoard': ['Доска заказов', 'Quest board'],
     'story.title': [
         'Сердца для колокола памяти',
         'Hearts for the Bell of Memory',

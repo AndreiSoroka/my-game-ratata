@@ -29,7 +29,7 @@ export function prepareQuestRevision(
     if (typeof offer === 'string') {
         return offer
     }
-    if (offer.view.authoredQuestId !== undefined) {
+    if (offer.view.authoredQuestId !== undefined || offer.boardOffer === true) {
         return 'Условия общего городского заказа определены городом и не меняются.'
     }
     if (!validSelection(decision)) {

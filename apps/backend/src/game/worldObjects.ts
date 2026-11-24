@@ -86,6 +86,18 @@ export class WorldObjects {
             }))
     }
 
+    public canReadQuestBoard(
+        actor: GameCharacter,
+        objectId: string,
+        navigation: NavigationService | undefined,
+        now: number
+    ): boolean {
+        const board = this.inLocation(actor.locationId).find(
+            (object) => object.kind === 'quest_board' && object.id === objectId
+        )
+        return actor.connected && canInteract(actor, board, navigation, now)
+    }
+
     public interact(
         actor: GameCharacter,
         state: PlayerAdventure,
@@ -103,33 +115,8 @@ export class WorldObjects {
             setAuthoredNotice(state, 'world.outOfReach')
             return []
         }
-        if (object.kind === 'sign') {
-            setNotice(state, null)
-            state.dialogue = {
-                kind: 'sign',
-                speechId: nextSpeechId(actor),
-                npcId: `object:${object.id}`,
-                npcName: object.name,
-                ...(object.nameMessage === undefined
-                    ? {}
-                    : {
-                          npcNameMessage: object.nameMessage,
-                          titleMessage: object.nameMessage,
-                      }),
-                title: object.name,
-                text: object.text,
-                ...(object.textMessage === undefined
-                    ? {}
-                    : { textMessage: object.textMessage }),
-                canTrade: false,
-                choices: [
-                    {
-                        id: 'leave',
-                        label: authoredRussian('dialogue.close'),
-                        labelMessage: authoredMessage('dialogue.close'),
-                    },
-                ],
-            }
+        if (object.kind === 'sign' || object.kind === 'quest_board') {
+            readWorldObject(actor, state, object)
             return []
         }
         if (object.kind === 'bell') {
@@ -220,6 +207,43 @@ export class WorldObjects {
                 (object) => object.locationId === locationId
             ) ?? loadWorldObjects(locationId)
         )
+    }
+}
+
+function readWorldObject(
+    actor: GameCharacter,
+    state: PlayerAdventure,
+    object: WorldObjectDefinition
+): void {
+    const board = object.kind === 'quest_board'
+    if (board && !actor.connected) {
+        return
+    }
+    setNotice(state, null)
+    state.dialogue = {
+        kind: board ? 'quest_board' : 'sign',
+        speechId: nextSpeechId(actor),
+        npcId: board ? object.id : `object:${object.id}`,
+        npcName: object.name,
+        ...(object.nameMessage === undefined
+            ? {}
+            : {
+                  npcNameMessage: object.nameMessage,
+                  titleMessage: object.nameMessage,
+              }),
+        title: object.name,
+        text: object.text,
+        ...(object.textMessage === undefined
+            ? {}
+            : { textMessage: object.textMessage }),
+        canTrade: false,
+        choices: [
+            {
+                id: 'leave',
+                label: authoredRussian('dialogue.close'),
+                labelMessage: authoredMessage('dialogue.close'),
+            },
+        ],
     }
 }
 

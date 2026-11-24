@@ -9,14 +9,16 @@ import QuestRewardChoice from './QuestRewardChoice.vue'
 interface StoryArgs {
     modelValue: QuestRewardMode
     disabled: boolean
+    chooseOnTurnIn: boolean
 }
 
 const meta = {
     title: 'Entities/quests/QuestRewardChoice',
-    args: { modelValue: 'party_equal', disabled: false },
+    args: { modelValue: 'party_equal', disabled: false, chooseOnTurnIn: false },
     argTypes: {
         modelValue: { control: 'inline-radio', options: ['party_equal', 'submitter'] },
         disabled: { control: 'boolean' },
+        chooseOnTurnIn: { control: 'boolean' },
     },
     render(args) {
         const host = renderVueStory(
@@ -27,6 +29,7 @@ const meta = {
                         h(QuestRewardChoice, {
                             modelValue: mode.value,
                             disabled: args.disabled,
+                            chooseOnTurnIn: args.chooseOnTurnIn,
                             'onUpdate:modelValue': (value: QuestRewardMode) => (mode.value = value),
                         })
                 },

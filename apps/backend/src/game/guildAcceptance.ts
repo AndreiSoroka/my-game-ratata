@@ -28,6 +28,7 @@ export interface GuildAcceptance {
     rewards?: GuildRewardEnvironment | undefined
     workers?: WorkerGuildGateway | undefined
     slots: ContractSlots
+    reporter?: GameCharacter | undefined
 }
 
 function reserve(
@@ -97,5 +98,23 @@ export function acceptGuildJob(input: GuildAcceptance): GuildJob | string {
         workers?.releaseGroup(key, now)
         return 'У группы уже есть действующий договор.'
     }
-    return createJob(input, reward)
+    return input.reporter === undefined
+        ? createJob(input, reward)
+        : acceptAndReport(input, reward, input.reporter)
+}
+
+function acceptAndReport(
+    input: GuildAcceptance,
+    reward: GuildRewardPromise | undefined,
+    reporter: GameCharacter
+): GuildJob | string {
+    const { workers, definition, key, now, slots, id, rewards } = input
+    const error = workers?.report(definition.id, key, reporter, now)
+    if (error === null) {
+        return createJob(input, reward)
+    }
+    workers?.releaseGroup(key, now)
+    rewards?.funding.reservations.release(id)
+    slots.release(id)
+    return error ?? 'Обращение недоступно.'
 }

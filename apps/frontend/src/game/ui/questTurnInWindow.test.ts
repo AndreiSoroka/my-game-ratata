@@ -1,3 +1,4 @@
+import type { QuestTurnInPromptSnapshot } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
@@ -55,7 +56,12 @@ it('disables an expired prompt and closes through the same explicit confirmation
 })
 
 it('labels a worker report and waits for explicit confirmation before submitting the trophy', async () => {
-    const report = { ...prompt, source: 'guild', action: 'report' } as const
+    const report: QuestTurnInPromptSnapshot = {
+        ...prompt,
+        source: 'guild',
+        action: 'report',
+        objectives: [{ kind: 'deliver', itemId: 'bone', quantity: 1, recipientId: 'mira' }],
+    }
     const view = mount(QuestTurnInWindow, {
         props: { prompt: report, serverTime: 1000, playerId: 'self' },
     })
@@ -69,6 +75,50 @@ it('labels a worker report and waits for explicit confirmation before submitting
         expect(view.emitted('command')).toEqual([
             [{ type: 'quest_turn_in_confirm', confirmationId: report.id, accept: true }],
         ])
+    } finally {
+        view.unmount()
+    }
+})
+
+it('lets the player choose the reward mode for a delivery without separate acceptance', async () => {
+    const view = mount(QuestTurnInWindow, {
+        props: { prompt: { ...prompt, preAcceptance: true }, serverTime: 1000, playerId: 'self' },
+    })
+    try {
+        await view.get('input[value="submitter"]').setValue()
+        expect(view.emitted('command')).toBeUndefined()
+        await view
+            .findAll('button')
+            .find((button) => button.text() === 'Сдать')!
+            .trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [
+                {
+                    type: 'quest_turn_in_confirm',
+                    confirmationId: prompt.id,
+                    accept: true,
+                    rewardMode: 'submitter',
+                },
+            ],
+        ])
+    } finally {
+        view.unmount()
+    }
+})
+
+it('offers another worker verification with the previously supplied trophy', () => {
+    const view = mount(QuestTurnInWindow, {
+        props: {
+            prompt: { ...prompt, source: 'guild', action: 'report', objectives: [] },
+            serverTime: 1000,
+            playerId: 'self',
+        },
+    })
+    try {
+        expect(view.find('[aria-label="Нужные предметы"]').exists()).toBe(false)
+        expect(view.findAll('button').map((button) => button.text())).toContain(
+            'Повторить пробный рейс'
+        )
     } finally {
         view.unmount()
     }

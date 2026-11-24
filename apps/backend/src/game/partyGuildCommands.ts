@@ -1,9 +1,14 @@
-import type { PartyClientMessage } from '@my-game-ratata/contracts'
+import type {
+    PartyClientMessage,
+    QuestRewardMode,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import type { GuildService } from './guild'
 import type { NegotiatedWorkerReward } from './guildRewards'
 import type { NoticeStore } from './notices'
+import type { NpcQuestResult } from './npcQuestTypes'
+import { available } from './partyRules'
 import type { QuestGoldAwarder } from './questRewards'
 
 export type GuildCommand = Extract<
@@ -108,12 +113,25 @@ interface PartyGuildEnvironment {
     characters: () => Map<string, GameCharacter>
     award: () => QuestGoldAwarder
     leader: (key: string) => string | undefined
-    contact: (
-        actor: GameCharacter,
-        now: number,
-        questId?: string
-    ) => GameCharacter | undefined
+    canContact: (actor: GameCharacter, npc: GameCharacter) => boolean
     notices: NoticeStore
+}
+
+export function partyGuildContact(
+    environment: PartyGuildEnvironment,
+    actor: GameCharacter,
+    now: number,
+    questId?: string
+) {
+    return findGuildContact(
+        environment.guild(),
+        environment.group(actor.id).key,
+        actor,
+        environment.characters(),
+        environment.canContact,
+        now,
+        questId
+    )
 }
 
 export function createPartyGuildAction(environment: PartyGuildEnvironment) {
@@ -127,7 +145,8 @@ export function createPartyGuildAction(environment: PartyGuildEnvironment) {
         const contact =
             message.type === 'guild_abandon'
                 ? undefined
-                : environment.contact(
+                : partyGuildContact(
+                      environment,
                       actor,
                       now,
                       message.type === 'guild_accept'
@@ -153,4 +172,76 @@ export function createPartyGuildAction(environment: PartyGuildEnvironment) {
                         contact.id === negotiated.issuerId)),
         })
     }
+}
+
+export function createBoardGuildAcceptance(environment: PartyGuildEnvironment) {
+    return (
+        actor: GameCharacter,
+        questId: string,
+        issuer: GameCharacter,
+        rewardMode: QuestRewardMode,
+        now: number,
+        report = false
+    ): NpcQuestResult => {
+        const { key, members } = environment.group(actor.id)
+        const guild = environment.guild()
+        if (
+            !available(actor) ||
+            (environment.leader(key) ?? actor.id) !== actor.id ||
+            !canAcceptBoardFrom(environment, actor, issuer, now, questId)
+        ) {
+            return {
+                accepted: false,
+                error: 'Этот договор сейчас недоступен.',
+                events: [],
+            }
+        }
+        if (guild.hasActiveJob(key)) {
+            return {
+                accepted: false,
+                error: 'Сначала завершите действующий договор.',
+                events: [],
+            }
+        }
+        const notice = guild.accept(
+            key,
+            questId,
+            actor.id,
+            members,
+            environment.characters(),
+            rewardMode,
+            now,
+            undefined,
+            issuer.id,
+            report ? actor : undefined
+        )
+        const accepted = guild.snapshot(key)?.id === questId
+        if (accepted) {
+            for (const id of members) {
+                environment.notices.set(id, notice)
+            }
+        }
+        return { accepted, error: accepted ? null : notice, events: [] }
+    }
+}
+
+function canAcceptBoardFrom(
+    environment: PartyGuildEnvironment,
+    actor: GameCharacter,
+    issuer: GameCharacter,
+    now: number,
+    questId: string
+): boolean {
+    return (
+        environment.canContact(actor, issuer) &&
+        environment
+            .guild()
+            .contactAllowed(
+                environment.group(actor.id).key,
+                actor,
+                issuer,
+                now,
+                questId
+            )
+    )
 }

@@ -3,6 +3,7 @@ import {
     npcQuestMessage,
     type NpcQuestSnapshot,
     type QuestHistoryEntry,
+    type QuestRewardMode,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -12,6 +13,8 @@ import type { ExchangeService } from './exchange'
 import { configureNpcQuestDialogue } from './npcQuestDialogue'
 import type { NpcQuestService } from './npcQuests'
 import type { PartyService } from './parties'
+import { questBoardIssuerId } from './questBoardCatalog'
+import { questSpeech } from './questChatWords'
 import { conversationContracts } from './questConversation'
 import { QuestTurnInService } from './questTurnIn'
 import type { GameRoom } from './room'
@@ -38,6 +41,7 @@ export class RoomQuestDialogues {
             getCharacter: (id) => environment.room.getCharacter(id),
             characters: environment.actors,
             navigationFor: (actor) => environment.room.navigationFor(actor),
+            localeFor: (id) => environment.room.localeFor(id),
         })
         configureNpcQuestDialogue(
             environment.adventure,
@@ -51,9 +55,10 @@ export class RoomQuestDialogues {
         actor: GameCharacter,
         id: string,
         accept: boolean,
-        now: number
+        now: number,
+        rewardMode?: QuestRewardMode
     ): void {
-        const result = this.turnIns.confirm(actor, id, accept, now)
+        const result = this.turnIns.confirm(actor, id, accept, now, rewardMode)
         this.environment.room.publishEvents(result.events)
         if (!result.accepted) {
             this.environment.room.publishEvents([
@@ -78,9 +83,17 @@ export class RoomQuestDialogues {
             now
         ).questOffer
         const issuerQuests = this.contracts(issuerId, recipientId, now)
+        const player = this.environment.room.getCharacter(recipientId)
         return {
             questOffer: offer?.issuerId === issuerId ? offer : null,
             issuerQuests,
+            ...(issuerId !== questBoardIssuerId || player === undefined
+                ? {}
+                : {
+                      availableOrders: this.turnIns.catalog
+                          .available(player, now)
+                          .map(({ entry }) => entry),
+                  }),
             questHistory: this.environment.quests.journal.conversation(
                 issuerId,
                 recipientId
@@ -90,9 +103,9 @@ export class RoomQuestDialogues {
 
     public heardPublic(
         actor: GameCharacter,
-        { text, id, at }: NpcHeardSpeech,
+        { text, at }: NpcHeardSpeech,
         targetIds: readonly string[] | undefined
-    ): void {
+    ): boolean {
         const contacts = [...this.environment.actors()].filter(
             (candidate) =>
                 candidate.id !== actor.id &&
@@ -106,21 +119,51 @@ export class RoomQuestDialogues {
                     48
                 )
         )
+        if (targetIds?.length === 1) {
+            return contacts.some((issuer) =>
+                this.turnIns.heard(actor, issuer, text, at)
+            )
+        }
+        const askedBy =
+            questSpeech(text) === 'yes'
+                ? this.turnIns.questionIssuer(actor, at)
+                : undefined
+        if (askedBy !== undefined) {
+            return contacts.some(
+                (issuer) =>
+                    issuer.id === askedBy &&
+                    this.turnIns.heard(actor, issuer, text, at)
+            )
+        }
         const relevant = contacts.filter(
-            (candidate) => this.contracts(candidate.id, actor.id, at).length > 0
+            (candidate) =>
+                candidate.id === questBoardIssuerId ||
+                this.contracts(candidate.id, actor.id, at).some(({ status }) =>
+                    ['active', 'ready', 'reward_missing'].includes(status)
+                )
         )
-        const selected =
-            targetIds?.length === 1
-                ? contacts
-                : relevant.length === 1
-                  ? relevant
-                  : []
-        for (const issuer of selected) {
-            this.turnIns.heard(actor, issuer, text, id, at)
+        return (
+            relevant.length === 1 &&
+            relevant.some((issuer) =>
+                this.turnIns.heard(actor, issuer, text, at)
+            )
+        )
+    }
+
+    public deliveredQuestion(
+        issuer: GameCharacter,
+        recipientId: string,
+        text: string,
+        now: number
+    ): void {
+        const recipient = this.environment.room.getCharacter(recipientId)
+        if (recipient !== undefined) {
+            this.turnIns.deliveredQuestion(issuer, recipient, text, now)
         }
     }
 
     public update(now: number): void {
+        this.turnIns.update(now)
         for (const player of this.environment.actors()) {
             if (player.controllerKind !== 'network_player') {
                 continue

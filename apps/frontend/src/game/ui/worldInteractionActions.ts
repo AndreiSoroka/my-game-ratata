@@ -29,10 +29,14 @@ export function worldInteractionActions(
         barrel: tGame('game.world.inspect'),
         water: tGame('game.world.drink'),
         bell: tGame('game.world.awaken'),
+        quest_board: tGame('game.quests.readBoard'),
     }
     return nearestByKind(objects, (target) => target.kind, distance).map((target) => ({
         id: `world:${target.id}`,
-        label: `${labels[target.kind]}: ${tLocalized(target.nameMessage, target.name)}`,
+        label:
+            target.kind === 'quest_board'
+                ? labels.quest_board
+                : `${labels[target.kind]}: ${tLocalized(target.nameMessage, target.name)}`,
         command: { type: 'world_interact', objectId: target.id },
     }))
 }
