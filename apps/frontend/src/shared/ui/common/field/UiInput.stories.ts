@@ -14,7 +14,7 @@ const inputTypes = ['text', 'search', 'email', 'password', 'tel', 'url'] as cons
 
 interface InputArgs extends FieldStoryArgs {
     type: (typeof inputTypes)[number]
-    borderWidth: number
+    borderWidth?: number
     focusRing: boolean
     framed: boolean
     leading: 'none' | 'empty' | 'prompt'
@@ -28,7 +28,6 @@ const meta = {
         modelValue: 'Встретимся у ворот.',
         placeholder: 'Введите сообщение…',
         border: 'border-017',
-        borderWidth: 8,
         type: 'text',
         focusRing: true,
         framed: true,

@@ -27,7 +27,7 @@ export function constellationEdges(
     nodeEnabled?: (node: ConstellationNodeSnapshot) => boolean
 ) {
     const nodes = new Map(sky.nodes.map((node) => [node.id, node]))
-    return sky.edges.flatMap(({ from, to, via, crossLink }) => {
+    return sky.edges.flatMap(({ from, to, crossLink }) => {
         const source = nodes.get(from)
         const target = nodes.get(to)
         if (!source || !target) return []
@@ -35,9 +35,7 @@ export function constellationEdges(
         return [
             {
                 id: `${from}:${to}`,
-                points: [source, ...(via ?? []), target]
-                    .map((point) => `${point.x},${point.y}`)
-                    .join(' '),
+                points: `${source.x},${source.y} ${target.x},${target.y}`,
                 color: enabled ? colors.get(target.constellationId) : '#8b969e',
                 opacity: (enabled ? 0.7 : 0.2) * Math.min(visibility(source), visibility(target)),
                 dash: crossLink ? '8 4 2 4' : enabled ? undefined : '3 4',

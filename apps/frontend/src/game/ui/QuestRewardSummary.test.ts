@@ -1,7 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
-import QuestRewardChoice from './QuestRewardChoice.vue'
+import { QuestOfferPanel } from '@/entities/quests'
+
 import QuestRewardSummary from './QuestRewardSummary.vue'
 
 describe('quest reward presentation', () => {
@@ -28,16 +29,16 @@ describe('quest reward presentation', () => {
         }
     })
     it('supports F confirmation on the focused reward option without held repeats', async () => {
-        const wrapper = mount(QuestRewardChoice, { props: { modelValue: 'party_equal' } })
+        const wrapper = mount(QuestOfferPanel, { props: { rewardGold: 30 } })
         try {
             await wrapper
                 .get('input[value="submitter"]')
                 .trigger('keydown', { code: 'KeyF', repeat: true })
-            expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+            expect(wrapper.emitted('update:rewardMode')).toBeUndefined()
             await wrapper
                 .get('input[value="submitter"]')
                 .trigger('keydown', { code: 'KeyF', repeat: false })
-            expect(wrapper.emitted('update:modelValue')).toEqual([['submitter']])
+            expect(wrapper.emitted('update:rewardMode')).toEqual([['submitter']])
         } finally {
             wrapper.unmount()
         }

@@ -2,8 +2,7 @@
 import './chatButton.css'
 
 import { tGame } from '@/shared/lib/i18n'
-import { hudPanelButtonColors, UiButton, type UiButtonColors } from '@/shared/ui/common'
-import { lightUiColors } from '@/shared/ui/theme'
+import { darkPanelButtonColors, selectedDarkPanelButtonColors, UiButton } from '@/shared/ui/common'
 
 import type { ChatHistoryFilter } from '../model/chatHistory'
 
@@ -16,15 +15,6 @@ const channels = [
     ['say', 'game.conversation.nearbyChannel'],
     ['whisper', 'game.conversation.privateChannel'],
 ] as const
-
-const activeButtonColors = {
-    ...hudPanelButtonColors,
-    highlighted: {
-        ...hudPanelButtonColors.highlighted,
-        border: lightUiColors.border.gold,
-        backgroundBottom: lightUiColors.border.gold,
-    },
-} satisfies UiButtonColors
 </script>
 
 <template>
@@ -42,7 +32,7 @@ const activeButtonColors = {
                 panel="panel-001"
                 class="chat-button"
                 :highlighted="filter === channel || undefined"
-                :colors="filter === channel ? activeButtonColors : hudPanelButtonColors"
+                :colors="filter === channel ? selectedDarkPanelButtonColors : darkPanelButtonColors"
                 :aria-pressed="filter === channel"
                 @click="filter = channel"
             >
@@ -54,7 +44,7 @@ const activeButtonColors = {
             appearance="panel"
             panel="panel-001"
             class="chat-button chat-toolbar__toggle"
-            :colors="hudPanelButtonColors"
+            :colors="darkPanelButtonColors"
             :aria-controls="historyId"
             :aria-expanded="!collapsed"
             :aria-label="

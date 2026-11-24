@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
 const sources = [
+    { name: 'Excalibur.js', url: 'https://excaliburjs.com/' },
     { name: 'Mystic Woods', url: 'https://game-endeavor.itch.io/mystic-woods' },
     { name: 'Kenney', url: 'https://kenney.nl/' },
     { name: 'GitHub', url: 'https://github.com/AndreiSoroka/my-game-ratata' },

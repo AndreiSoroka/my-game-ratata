@@ -12,7 +12,6 @@ import { QuestOfferPanel } from '@/entities/quests'
 import { tGame } from '@/shared/lib/i18n'
 
 import PrivateConversation from './PrivateConversation.vue'
-import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestTerms from './QuestTerms.vue'
 import SocialWindow from './SocialWindow.vue'
 
@@ -28,6 +27,12 @@ const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const rewardMode = ref<QuestRewardMode>(props.offer.rewardMode)
 const initialRevision = ref(props.offer.revision)
 const expired = computed(() => props.serverTime >= props.offer.expiresAt)
+const requiredItems = computed(() =>
+    props.offer.objectives.filter((objective) => objective.kind === 'deliver')
+)
+const rewardItems = computed(() =>
+    props.offer.rewardItems.map(({ itemId, quantity }) => ({ itemId, quantity: quantity ?? 1 }))
+)
 watch(
     () => props.offer.id,
     () => {
@@ -54,29 +59,31 @@ function answer(accept: boolean): void {
         @close="answer(false)"
     >
         <QuestOfferPanel
+            v-model:reward-mode="rewardMode"
             :confirm-disabled="occupied || expired"
+            :required-items="requiredItems"
+            :reward-gold="offer.rewardGold"
+            :reward-items="rewardItems"
+            :reward-from-city="offer.funding === 'city' || offer.funding === 'worker'"
             @confirm="answer(true)"
             @cancel="answer(false)"
         >
             <p v-if="offer.introduction" class="quest-offer__introduction">
                 {{ offer.introduction }}
             </p>
-            <QuestTerms :offer="offer" :characters="characters" />
-            <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
-                {{ tGame('game.quests.questGiverChangedRewardReview') }}
-            </p>
-            <QuestRewardChoice
-                v-if="offer.rewardGold > 0"
-                v-model="rewardMode"
-                appearance="light"
-            />
-            <p class="social-muted">{{ tGame('game.quests.youCanHaveOneActive') }}</p>
-            <p v-if="occupied" class="social-status" role="status">
-                {{ tGame('game.quests.completeOrCancelYourCurrent') }}
-            </p>
-            <p v-if="expired" class="social-status" role="status">
-                {{ tGame('game.quests.offerExpired') }}
-            </p>
+            <QuestTerms :offer="offer" :characters="characters" details-only />
+            <template #status>
+                <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
+                    {{ tGame('game.quests.questGiverChangedRewardReview') }}
+                </p>
+                <p class="social-muted">{{ tGame('game.quests.youCanHaveOneActive') }}</p>
+                <p v-if="occupied" class="social-status" role="status">
+                    {{ tGame('game.quests.completeOrCancelYourCurrent') }}
+                </p>
+                <p v-if="expired" class="social-status" role="status">
+                    {{ tGame('game.quests.offerExpired') }}
+                </p>
+            </template>
         </QuestOfferPanel>
         <template v-if="conversation?.partnerId === offer.issuerId" #below>
             <PrivateConversation

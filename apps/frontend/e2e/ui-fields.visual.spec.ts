@@ -26,6 +26,7 @@ for (const field of fields) {
         const direct = preview.locator('#storybook-root > div > *')
         const textbox = direct.getByRole('textbox', { name: field.label, exact: true })
         await expect(direct).toHaveCount(1)
+        await expect(direct).toHaveCSS('border-top-width', '16px')
         await expect(textbox).toHaveJSProperty('tagName', field.tag)
         await expect(textbox).toBeEditable()
 
@@ -37,6 +38,7 @@ for (const field of fields) {
 
         await page.locator('#control-border').selectOption('border-004')
         await expect(direct).toHaveAttribute('data-fantasy-border', 'border-004')
+        await expect(direct).toHaveCSS('border-top-width', '8px')
         await page.locator('label[for="control-invalid"]').click()
         await expect(textbox).toHaveAttribute('aria-invalid', 'true')
     })

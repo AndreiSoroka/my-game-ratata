@@ -3,7 +3,7 @@ import { fn } from 'storybook/test'
 import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
-import { UiButton } from '@/shared/ui/common'
+import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
 
 import type { QuickAction } from '../model/quickAction'
 import QuickActionBar from './QuickActionBar.vue'
@@ -17,7 +17,18 @@ import {
 const trailingExamples = {
     none: undefined,
     empty: () => h('div'),
-    button: () => h(UiButton, { 'aria-label': 'Меню' }, () => '☰'),
+    button: () =>
+        h(
+            UiButton,
+            {
+                appearance: 'panel',
+                panel: 'panel-001',
+                colors: hudPanelButtonColors,
+                'aria-label': 'Меню',
+                style: { '--ui-button-panel-padding': '0', minInlineSize: '0', minBlockSize: '0' },
+            },
+            () => '☰'
+        ),
 }
 
 interface StoryArgs {

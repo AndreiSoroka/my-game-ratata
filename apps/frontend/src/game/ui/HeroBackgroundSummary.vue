@@ -10,7 +10,6 @@ const props = withDefaults(
     defineProps<{
         heroClass?: HeroClass | null
         showTitle?: boolean
-        borderWidth?: number
     }>(),
     { showTitle: true }
 )
@@ -40,7 +39,7 @@ const masteryBonus = computed(() => {
         class="background-summary game-frame-host"
         :aria-label="tGame('game.join.backgroundBonuses')"
     >
-        <GameFrame variant="inset" :border-width="borderWidth" />
+        <GameFrame variant="inset" />
         <p v-if="showTitle" class="background-title">
             {{ tGame('game.join.backgroundName', { name: backgroundName(background.id) }) }}
         </p>

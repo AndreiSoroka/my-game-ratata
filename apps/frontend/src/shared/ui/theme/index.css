@@ -24,6 +24,11 @@
     --ui-dark-panel-warning: #ffa28e;
     --ui-dark-bar-track: #414b42;
 
+    --ui-sky-surface: #122530;
+    --ui-sky-surface-raised: #233c52;
+    --ui-sky-border: #7899ab;
+    --ui-sky-starlight: #fff4c9;
+
     --ui-light-bar-track: color-mix(
         in srgb,
         var(--ui-light-border-wood) 52%,

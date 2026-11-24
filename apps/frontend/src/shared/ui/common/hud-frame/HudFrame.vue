@@ -4,15 +4,13 @@ import { computed } from 'vue'
 import {
     FantasyBorder,
     type FantasyBorderVariant,
-    getFantasyBorderMetrics,
 } from '@/shared/ui/external/fantasy-ui-borders/border'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
-const props = withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), {
+withDefaults(defineProps<{ border?: FantasyBorderVariant }>(), {
     border: 'border-017',
 })
 const theme = useDarkPanelTheme()
-const borderWidth = computed(() => getFantasyBorderMetrics(props.border).cornerSize)
 const frameStyle = computed(() => {
     if (!theme.value) return undefined
     return {
@@ -27,7 +25,6 @@ const frameStyle = computed(() => {
         <FantasyBorder
             class="hud-frame__border"
             :border="theme?.border ?? border"
-            :border-width="borderWidth"
             color="var(--character-hud-border, var(--ui-dark-panel-border))"
         >
             <slot />

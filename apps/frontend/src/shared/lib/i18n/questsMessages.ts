@@ -95,6 +95,7 @@ export const questsMessages = {
     reportAndReward: ['Отчёт и награда', 'Report and reward'],
     requestCancelled: ['Обращение отменено', 'Request cancelled'],
     requestTerms: ['Условия поручения', 'Request terms'],
+    requiredItems: ['Нужные предметы', 'Required items'],
     reward: ['Награда:', 'Reward:'],
     rewardDistribution: ['Распределение награды', 'Reward distribution'],
     rewardDistributionWasFixedAt: [
@@ -107,6 +108,7 @@ export const questsMessages = {
     ],
     rewardMissing: ['Обещанная награда недоступна', 'Promised reward unavailable'],
     rewardReady: ['Можно получить награду', 'Reward ready'],
+    scrollForMore: ['Прокрутите вниз', 'Scroll down to read more'],
     searchItTakeHeartFrom: [
         ', чтобы обыскать его. Затем заберите сердце из окна добычи в рюкзак.',
         'to search it. Take the heart from the loot window and put it in your backpack.',

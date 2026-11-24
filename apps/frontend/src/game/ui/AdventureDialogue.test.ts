@@ -40,6 +40,7 @@ const adventure: AdventureSnapshot = {
         title: 'Три слизневых сердца',
         description: 'Принесите три сердца, чтобы восстановить защиту города.',
         goal: 3,
+        requiredItemId: 'slime_heart',
         kills: 0,
         status: 'available',
         rewardGold: 40,
@@ -68,6 +69,7 @@ describe('story quest reward choice', () => {
             await action.trigger('click')
             const offer = wrapper.get('[aria-modal="true"][aria-label="Предложение поручения"]')
             expect(offer.text()).toContain('Три слизневых сердца')
+            expect(offer.get('li:has(img)').text()).toBe('Слизневое сердце × 3')
             expect(offer.text()).toContain('Общая награда: 40 золотых')
             expect(wrapper.get('.adventure-dialogue').attributes('inert')).toBeDefined()
             expect(wrapper.emitted('command')).toBeUndefined()
@@ -122,7 +124,9 @@ describe('story quest reward choice', () => {
             const action = '[data-dialogue-action="turn_in_trophies"]'
             const modal = '[aria-modal="true"][aria-label="Сдать поручение"]'
             await wrapper.get(action).trigger('click')
-            expect(wrapper.get(modal).text()).toContain('Поровну группе')
+            const turnIn = wrapper.get(modal)
+            expect(turnIn.text()).toContain('Поровну группе')
+            expect(turnIn.get('li:has(img)').text()).toBe('Слизневое сердце × 3')
             await wrapper.setProps({
                 adventure: {
                     ...ready,

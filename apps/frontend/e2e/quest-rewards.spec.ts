@@ -1,4 +1,5 @@
-import { expect, type Locator, type Page, test } from '@playwright/test'
+import { ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
+import { expect, type Locator, type Page, test, type ViewportSize } from '@playwright/test'
 
 import { socialMenu } from './social-helpers'
 import { abandonGuildContract, openObservedWorkerOffer } from './worker-contract-helpers'
@@ -49,7 +50,10 @@ for (const scenario of scenarios) {
         const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
         await expect(offer).toBeVisible()
         await assertCenteredViewport(offer)
+        await verifyWorkerObjective(page, offer)
+        await verifyFramedRewardChoice(offer)
         await verifyQuestWhisper(offer, info.outputPath(`quest-offer-whisper-${scenario.name}.png`))
+        await verifyScrollHint(page, offer, scenario.viewport)
         await expect(offer.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
         await offer.getByRole('radio', { name: scenario.workerLabel }).focus()
         await page.keyboard.press('KeyF')
@@ -91,6 +95,7 @@ for (const scenario of scenarios) {
         await reviewGuildOffer()
         await expect(offer.getByRole('heading', { name: 'Зачистка троп' })).toBeVisible()
         await assertCenteredViewport(offer)
+        await verifyFramedRewardChoice(offer)
         await offer.getByRole('button', { name: 'Отказаться', exact: true }).click()
         await expect(offer).toBeHidden()
         await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
@@ -130,6 +135,48 @@ for (const scenario of scenarios) {
             await abandonGuildContract(page, guildInstance)
         }
     })
+}
+
+async function verifyWorkerObjective(page: Page, offer: Locator): Promise<void> {
+    const items = await page.evaluate(
+        () =>
+            window
+                .__ratataTest!.getState()
+                .snapshot?.social?.questOffer?.objectives.filter(
+                    ({ kind }) => kind === 'deliver'
+                ) ?? []
+    )
+    expect(items).toHaveLength(1)
+    for (const { itemId, quantity } of items) {
+        const item = offer.getByRole('listitem').filter({
+            has: page.getByText(`${ITEM_DEFINITIONS[itemId].name} × ${quantity}`, {
+                exact: true,
+            }),
+        })
+        await expect(item.locator('img')).toHaveJSProperty('naturalWidth', 16)
+    }
+}
+
+async function verifyFramedRewardChoice(offer: Locator): Promise<void> {
+    const choice = offer.getByRole('group', { name: 'Распределение награды' })
+    await expect(choice.locator('[data-fantasy-border="border-006"]')).toBeVisible()
+    await expect(choice.locator('[data-fantasy-border="border-001"]')).toHaveCount(2)
+}
+
+async function verifyScrollHint(page: Page, offer: Locator, viewport: ViewportSize): Promise<void> {
+    const terms = offer.getByRole('region', { name: 'Условия поручения' })
+    const hint = offer.getByText('Прокрутите вниз', { exact: false })
+    await page.setViewportSize({ ...viewport, height: 480 })
+    try {
+        await expect(hint).toBeVisible()
+        await expect(offer.getByRole('button', { name: 'Взять', exact: true })).toBeInViewport()
+        await terms.press('End')
+        await expect(hint).toBeHidden()
+        await terms.press('Home')
+        await expect(hint).toBeVisible()
+    } finally {
+        await page.setViewportSize(viewport)
+    }
 }
 
 async function verifyQuestWhisper(offer: Locator, screenshotPath: string): Promise<void> {

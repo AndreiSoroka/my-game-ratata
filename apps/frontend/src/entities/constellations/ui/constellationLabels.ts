@@ -116,22 +116,20 @@ function segmentIntersects(
 function labelEdges(
     sky: ConstellationSnapshot,
     isVisible: (node: ConstellationNodeSnapshot) => boolean
-): Vector2[][] {
+): [Vector2, Vector2][] {
     const byId = new Map(sky.nodes.map((node) => [node.id, node]))
-    return sky.edges.flatMap((edge) => {
+    return sky.edges.flatMap<[Vector2, Vector2]>((edge) => {
         const from = byId.get(edge.from),
             to = byId.get(edge.to)
-        return from && to && isVisible(from) && isVisible(to)
-            ? [[from, ...(edge.via ?? []), to]]
-            : []
+        return from && to && isVisible(from) && isVisible(to) ? [[from, to]] : []
     })
 }
-function edgeIntersects(rect: ConstellationRegion, edges: Vector2[][], scale: number): boolean {
-    return edges.some((points) =>
-        points
-            .slice(1)
-            .some((end, index) => segmentIntersects(rect, points[index]!, end, 3 * scale))
-    )
+function edgeIntersects(
+    rect: ConstellationRegion,
+    edges: [Vector2, Vector2][],
+    scale: number
+): boolean {
+    return edges.some(([from, to]) => segmentIntersects(rect, from, to, 3 * scale))
 }
 
 function labelAnchors(node: ConstellationNodeSnapshot, scale: number, overviewRootId?: string) {

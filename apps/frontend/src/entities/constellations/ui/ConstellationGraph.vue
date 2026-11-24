@@ -3,7 +3,7 @@ import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
-import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
+import { constellationButtonColors, UiButton } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { useDarkPanelTheme } from '@/shared/ui/theme'
 
@@ -184,26 +184,25 @@ function cameraKey(event: KeyboardEvent): void {
         class="constellation-map"
         :border="theme?.border ?? 'border-014'"
         :color="theme?.accent ?? 'var(--ui-dark-panel-border)'"
-        :border-width="5"
     >
         <div class="constellation-map__tools" :aria-label="tGame('game.knowledge.skyZoom')">
             <UiButton
                 appearance="panel"
-                :colors="hudPanelButtonColors"
+                :colors="constellationButtonColors"
                 :aria-label="tGame('game.knowledge.zoomInOnSky')"
                 @click="scale(1.25)"
                 >+</UiButton
             >
             <UiButton
                 appearance="panel"
-                :colors="hudPanelButtonColors"
+                :colors="constellationButtonColors"
                 :aria-label="tGame('game.knowledge.zoomOutFromSky')"
                 @click="scale(0.8)"
                 >−</UiButton
             >
             <UiButton
                 appearance="panel"
-                :colors="hudPanelButtonColors"
+                :colors="constellationButtonColors"
                 :aria-label="tGame('game.knowledge.fitEntireSky')"
                 @click="resetSky"
                 >⌖</UiButton

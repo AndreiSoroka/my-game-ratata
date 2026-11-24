@@ -15,8 +15,7 @@
 }
 
 .game-bar--segmented .bar-track {
-    --bar-track-radius: 0px;
-    --bar-track-rim: 0px;
+    padding: 0;
 }
 
 .game-bar__segments {
@@ -25,11 +24,12 @@
     grid-template-rows: minmax(0, 1fr);
     column-gap: 2px;
     height: 100%;
+    border-radius: inherit;
 }
 
 .game-bar__segments > .game-bar__segment {
     height: 100%;
-    border-radius: 0;
+    border-radius: inherit;
 }
 
 .game-bar__label {

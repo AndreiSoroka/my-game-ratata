@@ -50,7 +50,7 @@ const tileColors: UiButtonColors = {
             <li v-for="effect in activeEffects" :key="effect.kind">
                 <UiButton
                     class="player-effects-strip__tile"
-                    border="border-015"
+                    border="border-008"
                     :colors="tileColors"
                     :data-player-effect="effect.kind"
                     :data-tone="effect.tone"

@@ -21,7 +21,6 @@ const theme = useDarkPanelTheme()
             class="constellation-detail__border"
             :border="theme?.border ?? 'border-017'"
             :color="theme?.accent ?? 'var(--ui-dark-panel-border)'"
-            :border-width="7"
             aria-hidden="true"
         />
         <template v-if="node.unlocked && node.name">

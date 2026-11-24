@@ -46,7 +46,7 @@ function handleEnter(event: KeyboardEvent): void {
             />
         </template>
         <template #composer>
-            <ChatComposerFrame :border-width="4">
+            <ChatComposerFrame>
                 <form
                     class="private-conversation__form"
                     @submit.prevent="send"

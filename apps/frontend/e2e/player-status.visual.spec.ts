@@ -4,7 +4,7 @@ import { expectThemedBorder, heroThemeCases } from './hero-theme-visual'
 import { expectUiFits, readyUiStory } from './ui-story-ready'
 
 const storyId = 'game-player-hud'
-const resourceNames = ['Health', 'Mana', 'Energy'] as const
+const resourceNames = ['Здоровье', 'Мана', 'Энергия'] as const
 const resourceHeights = [13, 10, 10] as const
 const defaultPercentages = [100, 100, 100]
 const percentagesByStory: Record<string, number[]> = {
@@ -94,14 +94,18 @@ for (const { story, width, nickname, numbers, extended, effectCount, hudWidth } 
     })
 }
 
-for (const { heroClass, border } of heroThemeCases) {
+for (const { heroClass, border, borderWidth } of heroThemeCases) {
     for (const width of [320, 390]) {
         test(`player HUD ${heroClass} palette at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
             await page.goto(`/iframe.html?id=${storyId}--${heroClass}&viewMode=story`)
             const frame = page.locator('.game-player-status__vitals')
             await expect(frame.getByRole('heading', { name: 'Андрей Сорока' })).toBeVisible()
-            await expectThemedBorder(frame.locator(':scope > .hud-frame__border'), border, 16)
+            await expectThemedBorder(
+                frame.locator(':scope > .hud-frame__border'),
+                border,
+                borderWidth
+            )
             await assertResourceBars(frame, defaultPercentages, [])
             await expectUiFits(frame, width)
             await readyUiStory(page)

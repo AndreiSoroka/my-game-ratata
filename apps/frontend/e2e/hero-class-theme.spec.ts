@@ -12,8 +12,9 @@ for (const width of [390, 1280]) {
         await page.goto('/?test=1')
         await page.addStyleTag({ content: '.test-panel { display: none !important }' })
 
-        const appearance = await inspectJoinThemes(page)
         const name = page.getByRole('textbox', { name: 'Имя героя' })
+        await expect(name).toBeVisible({ timeout: 15_000 })
+        const appearance = await inspectJoinThemes(page)
         const nickname = `Тема героя ${width}`
         await selectNameOnEveryClick(name)
         await expect(name).toBeFocused()
@@ -38,29 +39,21 @@ async function inspectJoinThemes(page: Page): Promise<{ accent: string; surface:
         .locator('.game-frame__theme-border')
     const accents = new Set<string>()
     const surfaces = new Set<string>()
-    for (const { label, border } of heroThemeCases) {
+    for (const { label, border, borderWidth } of heroThemeCases) {
         const card = form.locator('.class-card').filter({
             has: page.getByRole('radio', { name: label, exact: true }),
         })
         const cardFrame = card.locator('.class-card__frame')
-        const cardAccent = await expectThemedBorder(cardFrame, border, 16)
+        const cardAccent = await expectThemedBorder(cardFrame, border, borderWidth)
         await expect(card.locator('.class-card__content')).toHaveCSS('color', cardAccent)
         await form.getByRole('radio', { name: label, exact: true }).check()
-        const accent = await expectThemedBorder(frame, border, 16)
+        const accent = await expectThemedBorder(frame, border, borderWidth)
         expect(accent).toBe(cardAccent)
         expect(await panelSurface(frame)).toBe(await panelSurface(cardFrame))
         accents.add(accent)
         surfaces.add(await panelSurface(frame))
-        await expect(inputFrame).toHaveAttribute('data-fantasy-border', border)
-        await expect(inputFrame).toHaveCSS('border-top-width', '16px')
-        await expectThemedBorder(bonusFrame, border, 16)
-        for (const themedFrame of [frame, cardFrame, inputFrame, bonusFrame]) {
-            const artwork = await themedFrame.evaluate((element) => {
-                const style = getComputedStyle(element, '::before')
-                return { slice: style.borderImageSlice, width: style.borderImageWidth }
-            })
-            expect(artwork).toEqual({ slice: '16', width: '16px' })
-        }
+        await expectThemedBorder(inputFrame, border, borderWidth)
+        await expectThemedBorder(bonusFrame, border, borderWidth)
     }
     expect(accents.size).toBe(heroThemeCases.length)
     expect(surfaces.size).toBe(heroThemeCases.length)
@@ -70,7 +63,7 @@ async function inspectJoinThemes(page: Page): Promise<{ accent: string; surface:
 
     await form.getByRole('radio', { name: arcanist.label, exact: true }).check()
     return {
-        accent: await expectThemedBorder(frame, arcanist.border, 16),
+        accent: await expectThemedBorder(frame, arcanist.border, arcanist.borderWidth),
         surface: await panelSurface(frame),
     }
 }
@@ -98,14 +91,15 @@ async function inspectWorldFrames(
         .locator('.game-chat')
         .getByRole('button', { name: 'Развернуть историю чата' })
         .click()
-    const frameWidth = new Map([
-        ['.game-player-status__vitals .hud-frame__border', 16],
-        ['.quick-action-bar .hud-frame__border', 16],
-        ['.game-chat .chat-history__surface', 12],
-    ])
-    for (const [selector, width] of frameWidth) {
+    const frames = [
+        '.game-player-status__vitals .hud-frame__border',
+        '.quick-action-bar .hud-frame__border',
+        '.game-chat .hud-frame__border',
+        '.game-chat .chat-history__surface',
+    ]
+    for (const selector of frames) {
         const frame = page.locator(selector)
-        expect(await expectThemedBorder(frame, arcanist.border, width)).toBe(accent)
+        expect(await expectThemedBorder(frame, arcanist.border, arcanist.borderWidth)).toBe(accent)
         expect(await panelSurface(frame)).toBe(surface)
     }
     expect(await panelSurface(page.locator('.quick-action-bar .hotbar-slot').first())).toBe(surface)
@@ -113,7 +107,7 @@ async function inspectWorldFrames(
     await world.focus()
     await page.keyboard.press('Enter')
     const composer = page.locator('.game-chat .chat-composer-frame__border')
-    expect(await expectThemedBorder(composer, arcanist.border, 12)).toBe(accent)
+    expect(await expectThemedBorder(composer, arcanist.border, arcanist.borderWidth)).toBe(accent)
     expect(await panelSurface(composer)).toBe(surface)
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
@@ -133,7 +127,9 @@ async function inspectWorldFrames(
     const inventoryFrame = inventory.locator(
         '.inventory-overlay__equipment > .game-frame > .game-frame__theme-border'
     )
-    expect(await expectThemedBorder(inventoryFrame, arcanist.border, 9)).toBe(accent)
+    expect(await expectThemedBorder(inventoryFrame, arcanist.border, arcanist.borderWidth)).toBe(
+        accent
+    )
     expect(await panelSurface(inventoryFrame)).toBe(surface)
 }
 

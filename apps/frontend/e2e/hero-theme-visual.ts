@@ -1,10 +1,34 @@
 import { expect, type Locator } from '@playwright/test'
 
 export const heroThemeCases = [
-    { heroClass: 'vanguard', label: 'Авангард', border: 'border-012', ability: 'Пусто' },
-    { heroClass: 'ranger', label: 'Следопыт', border: 'border-017', ability: 'Быстрый выстрел' },
-    { heroClass: 'arcanist', label: 'Арканист', border: 'border-018', ability: 'Искра' },
-    { heroClass: 'cleric', label: 'Клирик', border: 'border-010', ability: 'Молитва' },
+    {
+        heroClass: 'vanguard',
+        label: 'Авангард',
+        border: 'border-012',
+        borderWidth: 10,
+        ability: 'Пусто',
+    },
+    {
+        heroClass: 'ranger',
+        label: 'Следопыт',
+        border: 'border-017',
+        borderWidth: 16,
+        ability: 'Быстрый выстрел',
+    },
+    {
+        heroClass: 'arcanist',
+        label: 'Арканист',
+        border: 'border-018',
+        borderWidth: 14,
+        ability: 'Искра',
+    },
+    {
+        heroClass: 'cleric',
+        label: 'Клирик',
+        border: 'border-010',
+        borderWidth: 10,
+        ability: 'Молитва',
+    },
 ] as const
 
 export async function expectThemedBorder(
@@ -14,6 +38,11 @@ export async function expectThemedBorder(
 ): Promise<string> {
     await expect(border).toHaveAttribute('data-fantasy-border', variant)
     await expect(border).toHaveCSS('border-top-width', `${width}px`)
+    const artwork = await border.evaluate((element) => {
+        const style = getComputedStyle(element, '::before')
+        return { slice: style.borderImageSlice, width: style.borderImageWidth }
+    })
+    expect(artwork).toEqual({ slice: String(width), width: `${width}px` })
     const paint = border.locator(':scope > svg feFlood[result="border-color"]')
     return paint.evaluate((element) => getComputedStyle(element).floodColor)
 }
@@ -26,7 +55,7 @@ const characterWindowAccents = {
 
 export async function expectCharacterWindowAppearance(
     window: Locator,
-    { heroClass, label, border }: (typeof heroThemeCases)[number]
+    { heroClass, label, border, borderWidth }: (typeof heroThemeCases)[number]
 ): Promise<void> {
     const background = window.getByRole('region', { name: 'Постоянные бонусы прошлого' })
     await expect(background).toContainText(`Прошлое: ${label}`)
@@ -53,7 +82,7 @@ export async function expectCharacterWindowAppearance(
             expect(appearance.image).toContain(legacy)
             expect(appearance.width).toBe(`${width}px`)
         } else {
-            const accent = await expectThemedBorder(themed, border, width)
+            const accent = await expectThemedBorder(themed, border, borderWidth)
             expect(accent).toBe(characterWindowAccents[heroClass])
         }
     }

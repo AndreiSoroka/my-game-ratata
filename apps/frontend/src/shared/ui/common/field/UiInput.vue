@@ -11,7 +11,6 @@ import type { UiInputProps } from './uiField'
 defineOptions({ inheritAttrs: false })
 withDefaults(defineProps<UiInputProps>(), {
     border: 'border-017',
-    borderWidth: 8,
     type: 'text',
     focusRing: true,
     framed: true,

@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 
 import { characterName, gameLocale, tGame } from '@/shared/lib/i18n'
 import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
-import { FantasyBorder, getFantasyBorderMetrics } from '@/shared/ui/external'
+import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import {
@@ -28,7 +28,6 @@ const props = withDefaults(
 )
 const scroller = useTemplateRef<HTMLOListElement>('scroller')
 const defaultBorder = 'border-006'
-const borderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
 const theme = useDarkPanelTheme()
 const historyStyle = computed(() => darkPanelThemeStyle(theme.value))
 const visible = computed(() =>
@@ -110,7 +109,6 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
             v-show="!collapsed"
             class="chat-history__surface"
             :border="theme?.border ?? defaultBorder"
-            :border-width="privateConversation ? 4 : borderWidth"
             color="var(--chat-history-accent)"
         >
             <header v-if="privateConversation" class="chat-history__heading">

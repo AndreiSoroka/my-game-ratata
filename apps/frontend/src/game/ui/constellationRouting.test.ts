@@ -66,7 +66,7 @@ function routedSky(learned: boolean): ConstellationSnapshot {
 }
 
 it.each([false, true])(
-    'keeps the server detour around another constellation in the player window (learned=%s)',
+    'draws a direct prerequisite link in the player window (learned=%s)',
     async (learned) => {
         const sky = routedSky(learned)
         const player = characterFixture('routed-reader', {
@@ -94,9 +94,9 @@ it.each([false, true])(
         try {
             const links = view.findAll('polyline')
             expect(links).toHaveLength(1)
-            expect(links[0]!.attributes('points')).toBe('-200,0 -120,-120 120,-120 200,0')
+            expect(links[0]!.attributes('points')).toBe('-200,0 200,0')
             expect(links[0]!.attributes('stroke-dasharray')).toBe('8 4 2 4')
-            expect(view.findAll('line')).toHaveLength(0)
+            expect(links[0]!.attributes('opacity')).toBe(learned ? '0.7' : '0')
             await view.get(`[data-node-id="${constellationWireId('blade.root')}"]`).trigger('click')
             view.getComponent(ConstellationGraph).vm.focusNode(
                 constellationWireId('blade.ideal_position')

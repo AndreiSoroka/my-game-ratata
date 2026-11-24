@@ -7,10 +7,22 @@ import { questTurnInFixture } from './socialFixtures'
 const prompt = questTurnInFixture()
 
 it('requires an explicit button, confirms the server prompt once and blocks repeated activation', async () => {
-    const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: 1000, playerId: 'self' } })
+    const view = mount(QuestTurnInWindow, {
+        props: {
+            prompt: {
+                ...prompt,
+                objectives: [{ kind: 'deliver', itemId: 'bone', quantity: 2, recipientId: 'mira' }],
+                objectiveLabels: ['Передайте трофеи Мире.'],
+            },
+            serverTime: 1000,
+            playerId: 'self',
+        },
+    })
     try {
         expect(view.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
-        expect(view.get('img').attributes('alt')).toBe('Яблоко')
+        expect(view.get('[aria-label="Нужные предметы"]').text()).toBe('Кость × 2')
+        expect(view.get('[aria-label="Награда:"]').text()).toBe('Яблоко × 1')
+        expect(view.text()).toContain('Передайте трофеи Мире.')
         await view.get('[role="dialog"]').trigger('keydown', { code: 'Enter' })
         expect(view.emitted('command')).toBeUndefined()
         const take = view.findAll('button').find((button) => button.text() === 'Сдать')!

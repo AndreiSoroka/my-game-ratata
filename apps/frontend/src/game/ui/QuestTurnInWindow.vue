@@ -6,11 +6,9 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
-import { QuestTurnInPanel } from '@/entities/quests'
+import { QuestItemList, QuestTurnInPanel } from '@/entities/quests'
 import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
-import ItemIcon from './ItemIcon.vue'
-import { itemStackLabel } from './itemLabels'
 import PrivateConversation from './PrivateConversation.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import { questObjectiveText } from './questTermsText'
@@ -28,11 +26,14 @@ const expired = computed(() => props.serverTime >= props.prompt.expiresAt)
 const objectives = computed(() =>
     Array.from(
         { length: Math.max(props.prompt.objectiveLabels.length, props.prompt.objectives.length) },
-        (_, index) => ({
-            label: questObjectiveText(props.prompt, index, props.prompt.objectives[index]),
-            objective: props.prompt.objectives[index],
-        })
+        (_, index) => questObjectiveText(props.prompt, index, props.prompt.objectives[index])
     )
+)
+const requiredItems = computed(() =>
+    props.prompt.objectives.filter((objective) => objective.kind === 'deliver')
+)
+const rewardItems = computed(() =>
+    props.prompt.rewardItems.map(({ itemId, quantity }) => ({ itemId, quantity: quantity ?? 1 }))
 )
 const confirmLabel = computed(() => {
     if (pending.value) return tGame('game.quests.checking')
@@ -72,24 +73,15 @@ function answer(accept: boolean): void {
             </p>
             <h3>{{ tLocalized(prompt.titleMessage, prompt.title) }}</h3>
             <p>{{ tLocalized(prompt.descriptionMessage, prompt.description) }}</p>
-            <ol v-if="objectives.length" class="turn-in-items">
-                <li v-for="({ objective, label }, index) in objectives" :key="index">
-                    <ItemIcon v-if="objective?.kind === 'deliver'" :item="objective" />
-                    <span>{{ label }}</span>
-                </li>
+            <ol v-if="objectives.length" class="turn-in-objectives" role="list">
+                <li v-for="(label, index) in objectives" :key="index">{{ label }}</li>
             </ol>
+            <QuestItemList :items="requiredItems" />
             <p v-if="prompt.action === 'report'" class="social-muted">
                 {{ tGame('game.quests.rewardIsPaidAfterWorker') }}
             </p>
             <QuestRewardSummary :total="prompt.rewardGold" :mode="prompt.rewardMode" />
-            <ul v-if="prompt.rewardItems.length" class="turn-in-items">
-                <li v-for="item in prompt.rewardItems" :key="item.instanceId">
-                    <ItemIcon :item="item" /><span
-                        >{{ itemStackLabel(item) }}
-                        {{ tGame('game.quests.whoeverTurnsItIn') }}</span
-                    >
-                </li>
-            </ul>
+            <QuestItemList :items="rewardItems" kind="reward" :show-heading="false" />
             <p v-if="expired" class="social-status" role="status">
                 {{ tGame('game.quests.confirmationExpiredAskQuestGiver') }}
             </p>
@@ -104,14 +96,11 @@ function answer(accept: boolean): void {
     </SocialWindow>
 </template>
 <style scoped>
-.turn-in-items {
+.turn-in-objectives {
     list-style: none;
     padding: 0;
 }
-.turn-in-items li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.turn-in-objectives li {
     margin: 8px 0;
 }
 </style>

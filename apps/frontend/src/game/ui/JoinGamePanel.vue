@@ -2,6 +2,7 @@
 import { type GameLocale, type HeroClass, heroClasses } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 
+import { JoinAssetCredits } from '@/entities/asset-credits'
 import { ChatComposerFrame } from '@/entities/chats'
 import { RegionLore } from '@/entities/region-lore'
 import {
@@ -20,7 +21,6 @@ import { darkPanelThemeStyle, provideDarkPanelTheme } from '@/shared/ui/theme'
 import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
 import HeroClassIcon from './HeroClassIcon.vue'
 import { heroClassTheme } from './heroClassThemes'
-import JoinAssetCredits from './JoinAssetCredits.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import GameInput from './primitives/GameInput.vue'
 import GameSelect from './primitives/GameSelect.vue'
@@ -28,7 +28,6 @@ import RefreshIcon from './RefreshIcon.vue'
 
 const nickname = defineModel<string>('nickname', { required: true })
 const heroClass = defineModel<HeroClass>('heroClass', { required: true })
-const frameWidth = 16
 const transitionDuration = 260
 const form = useTemplateRef<HTMLFormElement>('form')
 const theme = computed(() => heroClassTheme(heroClass.value, 'form'))
@@ -92,12 +91,11 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                 '--join-panel-surface': theme?.surface,
                 '--join-panel-accent': theme?.accent,
                 '--join-panel-duration': `${transitionDuration}ms`,
-                '--fantasy-border-min-slice': frameWidth,
             }"
             autocomplete="off"
             @submit.prevent="$emit('join')"
         >
-            <GameFrame variant="window" :border-width="frameWidth" />
+            <GameFrame variant="window" />
             <div class="join-heading">
                 <h1 id="join-title">Ratata</h1>
                 <GameSelect v-model="selectedLocale" :aria-label="tGame('game.menu.language')">
@@ -113,7 +111,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
             </div>
             <label for="nickname">{{ tGame('game.join.heroName') }}</label>
             <div class="join-row">
-                <ChatComposerFrame :border-width="frameWidth">
+                <ChatComposerFrame>
                     <UiInput
                         id="nickname"
                         v-model="nickname"
@@ -170,7 +168,6 @@ onBeforeUnmount(() => heightAnimation?.cancel())
                                 as="span"
                                 class="class-card__frame"
                                 :border="option.theme?.border"
-                                :border-width="frameWidth"
                                 color="var(--ui-themed-panel-accent)"
                                 aria-hidden="true"
                             />
@@ -183,11 +180,7 @@ onBeforeUnmount(() => heightAnimation?.cancel())
             <p id="class-description" class="class-description" aria-live="polite">
                 {{ backgroundDescription(heroClass) }}
             </p>
-            <HeroBackgroundSummary
-                :hero-class="heroClass"
-                :show-title="false"
-                :border-width="frameWidth"
-            />
+            <HeroBackgroundSummary :hero-class="heroClass" :show-title="false" />
             <p id="class-hint" class="class-hint">
                 {{ tGame('game.join.backgroundHint') }}
             </p>

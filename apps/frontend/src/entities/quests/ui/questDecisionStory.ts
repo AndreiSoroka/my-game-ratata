@@ -5,11 +5,13 @@ import { type Component, h } from 'vue'
 import { renderVueStory } from '@/shared/lib/storybook'
 
 import type { QuestDecisionProps } from './questDecisionProps'
+import QuestItemList from './QuestItemList.vue'
 
 type QuestStage = 'offer' | 'turnIn'
 
 export interface QuestDecisionStoryArgs extends Required<QuestDecisionProps> {
     default: 'details' | 'long' | 'empty'
+    status?: 'none' | 'empty' | 'occupied'
     onConfirm: () => void
     onCancel: () => void
 }
@@ -54,11 +56,11 @@ export function questDecisionArgs(
 }
 
 const descriptions = {
-    offer: 'На ферме появились скелеты. Агафья ждёт помощи у распорядителя.',
+    offer: 'Весна просит принести свежие яблоки для гостей трактира.',
     turnIn: 'Трофей готов к передаче. Заказчик проверит, что работник смог вернуться к своему участку.',
 }
 
-const objectives = [
+const turnInObjectives = [
     'Участок находится в Северном предместье, рядом с оградой хозяйства.',
     'Работник заметил скелетов и остаётся в городе, пока дорога до фермы небезопасна.',
     'Для доклада нужна одна кость. Подойдёт трофей, найденный раньше.',
@@ -66,15 +68,22 @@ const objectives = [
     'Дождитесь возвращения работника к распорядителю и сдайте поручение.',
     'Распорядитель проверит результат и выплатит награду из городского фонда.',
 ]
+const offerObjectives = [
+    'Свежие яблоки можно купить у торговца на площади.',
+    'Когда соберёте нужное количество, отнесите яблоки Весне в трактир.',
+]
 
 function questDetails(stage: QuestStage, content: QuestDecisionStoryArgs['default']) {
     if (content === 'empty') return h('div')
     const issuer =
         content === 'long'
             ? 'РаспорядительСеверныхОкрестностейИзДальнегоПоселения'
-            : 'Городской распорядитель'
+            : stage === 'offer'
+              ? 'Весна'
+              : 'Городской распорядитель'
+    const objectives = stage === 'offer' ? offerObjectives : turnInObjectives
     return h('div', [
-        h('h3', 'Помочь фермеру вернуться к работе'),
+        h('h3', stage === 'offer' ? 'Яблоки для трактира' : 'Помочь фермеру вернуться к работе'),
         h('p', descriptions[stage]),
         h('p', ['Заказчик: ', h('strong', issuer)]),
         content === 'long'
@@ -82,17 +91,28 @@ function questDetails(stage: QuestStage, content: QuestDecisionStoryArgs['defaul
                   'ol',
                   objectives.map((objective) => h('li', objective))
               )
-            : h('p', 'Для доклада нужна одна кость.'),
-        h('p', [h('strong', 'Общая награда: 30 золотых')]),
+            : null,
+        stage === 'turnIn' && h(QuestItemList, { items: [{ itemId: 'bone', quantity: 1 }] }),
+        stage === 'turnIn' && h('p', [h('strong', 'Общая награда: 30 золотых')]),
     ])
 }
 
 export function renderQuestDecisionStory(
     component: Component,
-    { default: content, ...props }: QuestDecisionStoryArgs,
+    { default: content, status, ...props }: QuestDecisionStoryArgs,
     stage: QuestStage
 ): HTMLElement {
-    const host = renderVueStory(() => h(component, props, () => questDetails(stage, content)), {})
+    const slots = {
+        default: () => questDetails(stage, content),
+        status: () =>
+            status === 'occupied'
+                ? h('p', { role: 'status' }, 'Сначала завершите или отмените текущий договор.')
+                : h('div'),
+    }
+    const host = renderVueStory(
+        () => h(component, props, status && status !== 'none' ? slots : { default: slots.default }),
+        {}
+    )
     host.style.maxWidth = '592px'
     host.style.padding = '16px'
     return host

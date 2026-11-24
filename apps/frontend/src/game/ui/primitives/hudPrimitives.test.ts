@@ -18,7 +18,7 @@ it('keeps parchment decoration hidden from accessibility and leaves the default 
     frame.unmount()
 })
 
-it('changes only dark frames and keeps the border width of each frame variant', async () => {
+it('uses the native border width of the active theme on dark frames', async () => {
     const theme = ref<DarkPanelTheme>()
     const wrapper = mount({
         setup() {
@@ -40,7 +40,7 @@ it('changes only dark frames and keeps the border width of each frame variant', 
         const borders = wrapper.findAll<HTMLElement>('[data-fantasy-border="border-018"]')
         expect(
             borders.map(({ element }) => element.style.getPropertyValue('--fantasy-border-size'))
-        ).toEqual(['9px', '7px', '5px'])
+        ).toEqual(['14px', '14px', '14px'])
         expect(wrapper.find('.game-frame--speech [data-fantasy-border]').exists()).toBe(false)
         expect(wrapper.find('.game-frame--parchment [data-fantasy-border]').exists()).toBe(false)
         expect(wrapper.get('.game-frame--window').attributes('aria-hidden')).toBe('true')

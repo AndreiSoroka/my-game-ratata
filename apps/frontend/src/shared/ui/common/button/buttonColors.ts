@@ -28,6 +28,56 @@ export const hudPanelButtonColors = {
     focus: lightUiColors.border.gold,
 } satisfies UiButtonColors
 
+const darkPanelSurface = 'var(--ui-themed-panel-surface, var(--ui-dark-panel-surface))'
+const darkPanelAccent = 'var(--ui-themed-panel-accent, var(--ui-dark-panel-border))'
+
+function darkPanelTint(accentPercent: number): string {
+    return `color-mix(in srgb, ${darkPanelAccent} ${accentPercent}%, ${darkPanelSurface})`
+}
+
+export const darkPanelButtonColors = {
+    normal: {
+        text: 'var(--ui-dark-panel-text)',
+        border: darkPanelTint(64),
+        backgroundTop: darkPanelTint(18),
+        backgroundBottom: darkPanelTint(8),
+    },
+    highlighted: {
+        text: 'var(--ui-dark-panel-title)',
+        border: darkPanelTint(84),
+        backgroundTop: darkPanelTint(27),
+        backgroundBottom: darkPanelTint(17),
+    },
+    focus: 'var(--ui-dark-panel-title)',
+} satisfies UiButtonColors
+
+export const selectedDarkPanelButtonColors = {
+    ...darkPanelButtonColors,
+    highlighted: {
+        text: 'var(--ui-dark-panel-title)',
+        border: darkPanelAccent,
+        backgroundTop: darkPanelTint(38),
+        backgroundBottom: darkPanelTint(25),
+    },
+} satisfies UiButtonColors
+
+export const constellationButtonColors = {
+    normal: {
+        text: 'var(--ui-sky-starlight)',
+        border: 'var(--ui-sky-border)',
+        backgroundTop: 'var(--ui-sky-surface-raised)',
+        backgroundBottom: 'var(--ui-sky-surface)',
+    },
+    highlighted: {
+        text: 'var(--ui-sky-starlight)',
+        border: 'var(--ui-sky-starlight)',
+        backgroundTop: 'color-mix(in srgb, var(--ui-sky-surface-raised) 78%, var(--ui-sky-border))',
+        backgroundBottom: 'var(--ui-sky-surface-raised)',
+    },
+    shadow: 'var(--ui-sky-surface)',
+    focus: 'var(--ui-sky-starlight)',
+} satisfies UiButtonColors
+
 const palettes = {
     secondary: lightUiColors.button.wood,
     primary: lightUiColors.button.primary,

@@ -18,9 +18,9 @@ test('the hero class toolbar themes the game surfaces across stories', async ({ 
     const accents = new Set<string>()
     const backgrounds = new Set<string>()
 
-    for (const { label, border } of heroThemeCases) {
+    for (const { label, border, borderWidth } of heroThemeCases) {
         await chooseClass(page, label)
-        accents.add(await expectThemedBorder(hudBorder, border, 16))
+        accents.add(await expectThemedBorder(hudBorder, border, borderWidth))
         backgrounds.add(await hud.evaluate((element) => getComputedStyle(element).backgroundImage))
     }
     expect(accents.size).toBe(heroThemeCases.length)
@@ -28,7 +28,7 @@ test('the hero class toolbar themes the game surfaces across stories', async ({ 
 
     await openComponent(page, 'ChatComposerFrame')
     const chatBorder = preview.locator('.chat-composer-frame__border')
-    await expectThemedBorder(chatBorder, 'border-010', 12)
+    await expectThemedBorder(chatBorder, 'border-010', 10)
     await chooseClass(page, 'Следопыт')
     await expectThemedBorder(chatBorder, 'border-006', 12)
 
@@ -40,7 +40,7 @@ test('the hero class toolbar themes the game surfaces across stories', async ({ 
     await expect(hotbar.locator('.hud-frame')).toHaveCSS('background-image', defaultBackground)
     await expect(hotbar.getByRole('button', { name: /^2: Искра/ })).toBeVisible()
     await chooseClass(page, 'По умолчанию')
-    await expectThemedBorder(hotbarBorder, 'border-018', 16)
+    await expectThemedBorder(hotbarBorder, 'border-018', 14)
 
     await chooseClass(page, 'Клирик')
     await openComponent(page, 'GameMenu')
@@ -56,15 +56,15 @@ test('the hero class toolbar previews the selected class on the join form', asyn
     const preview = page.frameLocator('#storybook-preview-iframe')
     const form = preview.locator('.join-panel')
     const frame = form.locator(':scope > .game-frame .game-frame__theme-border')
-    await expectThemedBorder(frame, 'border-012', 16)
+    await expectThemedBorder(frame, 'border-012', 10)
 
     await chooseClass(page, 'Клирик')
     await expect(form.getByRole('radio', { name: 'Клирик', exact: true })).toBeChecked()
-    await expectThemedBorder(frame, 'border-010', 16)
+    await expectThemedBorder(frame, 'border-010', 10)
 
     await chooseClass(page, 'По умолчанию')
     await expect(form.getByRole('radio', { name: 'Авангард', exact: true })).toBeChecked()
-    await expectThemedBorder(frame, 'border-012', 16)
+    await expectThemedBorder(frame, 'border-012', 10)
 })
 
 test('the character window applies the fixture class and follows the hero class toolbar', async ({

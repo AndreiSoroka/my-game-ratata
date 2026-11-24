@@ -365,6 +365,8 @@ function expectCameraWithinMap(projection: SkyProjection): void {
 }
 
 function expectAttachedLinks(projection: SkyProjection) {
+    expect(projection.inner).toHaveLength(2)
+    expect(projection.cross).toHaveLength(2)
     for (const [end, node] of [
         [projection.inner[0]?.world, 'prayer'],
         [projection.inner.at(-1)?.world, 'devotion'],

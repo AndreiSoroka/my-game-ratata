@@ -11,6 +11,7 @@ defineProps<{
     offer: QuestOfferSnapshot
     characters: CharacterSnapshot[]
     progress?: number[]
+    detailsOnly?: boolean
 }>()
 </script>
 <template>
@@ -23,7 +24,7 @@ defineProps<{
     <ol class="quest-terms__objectives">
         <li v-for="(objective, index) in offer.objectives" :key="index">
             <ItemIcon
-                v-if="objective.kind === 'deliver'"
+                v-if="!detailsOnly && objective.kind === 'deliver'"
                 :item="{ itemId: objective.itemId, quantity: objective.quantity }"
             />
             <span
@@ -50,25 +51,34 @@ defineProps<{
             }}
         </li>
     </ol>
-    <p v-if="!offer.rewardGold && !offer.rewardItems.length">
-        {{ tGame('game.quests.unpaidRequest') }}
-    </p>
-    <template v-else>
-        <p>
-            {{ tGame('game.quests.reward') }} {{ offer.rewardGold }} {{ tGame('game.quests.gold')
-            }}{{
-                ['city', 'worker'].includes(offer.funding) ? tGame('game.quests.fromCityFund') : ''
-            }}.
+    <template v-if="!detailsOnly">
+        <p v-if="!offer.rewardGold && !offer.rewardItems.length">
+            {{ tGame('game.quests.unpaidRequest') }}
         </p>
-        <ul v-if="offer.rewardItems.length">
-            <li v-for="item in offer.rewardItems" :key="item.instanceId" class="quest-item-reward">
-                <ItemIcon :item="item" />
-                {{ itemStackLabel(item) }}
-            </li>
-        </ul>
-        <p v-if="offer.rewardItems.length" class="social-muted">
-            {{ tGame('game.quests.personWhoTurnsInContract') }}
-        </p>
+        <template v-else>
+            <p>
+                {{ tGame('game.quests.reward') }} {{ offer.rewardGold }}
+                {{ tGame('game.quests.gold')
+                }}{{
+                    ['city', 'worker'].includes(offer.funding)
+                        ? tGame('game.quests.fromCityFund')
+                        : ''
+                }}.
+            </p>
+            <ul v-if="offer.rewardItems.length">
+                <li
+                    v-for="item in offer.rewardItems"
+                    :key="item.instanceId"
+                    class="quest-item-reward"
+                >
+                    <ItemIcon :item="item" />
+                    {{ itemStackLabel(item) }}
+                </li>
+            </ul>
+            <p v-if="offer.rewardItems.length" class="social-muted">
+                {{ tGame('game.quests.personWhoTurnsInContract') }}
+            </p>
+        </template>
     </template>
 </template>
 <style scoped>

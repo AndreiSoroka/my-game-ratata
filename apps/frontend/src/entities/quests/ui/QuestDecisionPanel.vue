@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
@@ -11,6 +11,30 @@ import type { QuestDecisionProps } from './questDecisionProps'
 defineProps<QuestDecisionProps>()
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
 const headingId = useId()
+const scrollHintId = useId()
+const scroller = useTemplateRef<HTMLDivElement>('scroller')
+const content = useTemplateRef<HTMLDivElement>('content')
+const moreBelow = ref(false)
+let observer: ResizeObserver | undefined
+
+function updateScrollHint(): void {
+    const body = scroller.value
+    if (!body) return
+
+    const remaining = body.scrollHeight - body.clientHeight - Math.max(0, body.scrollTop)
+    moreBelow.value = body.clientHeight > 0 && remaining > 1
+}
+
+onMounted(() => {
+    updateScrollHint()
+    if (!scroller.value || !content.value || typeof ResizeObserver === 'undefined') return
+
+    observer = new ResizeObserver(updateScrollHint)
+    observer.observe(scroller.value)
+    observer.observe(content.value)
+})
+onBeforeUnmount(() => observer?.disconnect())
+
 const cancelColors: UiButtonColors = {
     highlighted: {
         text: lightUiColors.panel.title,
@@ -32,13 +56,24 @@ const cancelColors: UiButtonColors = {
         :aria-labelledby="headingId"
     >
         <h2 :id="headingId" class="quest-decision__heading">{{ heading }}</h2>
-        <div
-            class="quest-decision__body"
-            role="region"
-            :aria-label="tGame('game.quests.requestTerms')"
-            tabindex="0"
-        >
-            <slot />
+        <div class="quest-decision__scroll-area">
+            <div
+                ref="scroller"
+                class="quest-decision__body"
+                role="region"
+                :aria-label="tGame('game.quests.requestTerms')"
+                :aria-describedby="moreBelow ? scrollHintId : undefined"
+                tabindex="0"
+                @scroll.passive="updateScrollHint"
+            >
+                <div ref="content" class="quest-decision__content">
+                    <slot />
+                </div>
+            </div>
+            <div v-if="moreBelow" :id="scrollHintId" class="quest-decision__scroll-hint">
+                <span aria-hidden="true">↓</span>
+                {{ tGame('game.quests.scrollForMore') }}
+            </div>
         </div>
         <div class="quest-decision__actions">
             <UiButton
@@ -90,6 +125,14 @@ const cancelColors: UiButtonColors = {
     text-align: center;
 }
 
+.quest-decision__scroll-area {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    min-inline-size: 0;
+    min-block-size: 0;
+}
+
 .quest-decision__body {
     min-inline-size: 0;
     min-block-size: 0;
@@ -99,6 +142,10 @@ const cancelColors: UiButtonColors = {
     font:
         14px/1.5 system-ui,
         sans-serif;
+}
+
+.quest-decision__content {
+    display: flow-root;
 }
 
 .quest-decision__body:focus-visible {
@@ -113,6 +160,22 @@ const cancelColors: UiButtonColors = {
 .quest-decision__body :deep(:where(h3)) {
     color: var(--quest-panel-title);
     font: 500 17px/1.25 var(--ratata-font-family, sans-serif);
+}
+
+.quest-decision__scroll-hint {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 16px 4px 2px;
+    background: linear-gradient(transparent, var(--ui-light-panel-coffee) 65%);
+    color: var(--quest-panel-title);
+    font:
+        600 12px/1.4 system-ui,
+        sans-serif;
+    pointer-events: none;
 }
 
 .quest-decision__actions {

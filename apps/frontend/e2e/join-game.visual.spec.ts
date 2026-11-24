@@ -38,7 +38,7 @@ test('region lore adapts to a narrow viewport on the game backdrop', async ({ pa
 test('credit badges appear together in the composed start screen', async ({ page }) => {
     await page.goto('/iframe.html?id=game-joingamepanel--ready&viewMode=story')
     const credits = page.getByRole('navigation', { name: 'Ссылки проекта' })
-    await expect(credits.getByRole('link')).toHaveCount(3)
+    await expect(credits.getByRole('link')).toHaveCount(4)
     await readyUiStory(page)
     await expect(credits).toHaveScreenshot('join-credit-badges.png')
 })
@@ -56,14 +56,10 @@ for (const width of [1280, 390, 320]) {
         await expect(form.getByRole('button', { name: 'Войти', exact: true })).toBeEnabled()
         await expect(form).toHaveCSS('border-top-width', '0px')
         await expect(form.locator('.chat-composer-frame #nickname')).toBeVisible()
-        await expect(form.locator('.chat-composer-frame__border')).toHaveCSS(
-            'border-top-width',
-            '16px'
-        )
         await expect(form.locator('.chat-composer-frame .ui-input')).toHaveCSS('box-shadow', 'none')
         await expect(form).not.toContainText('Начальные запасы до звёзд')
         const accents = new Set<string>()
-        for (const { heroClass, label, border, image } of themes) {
+        for (const { heroClass, label, border, borderWidth, image } of themes) {
             const radio = form.locator(`input[value="${heroClass}"]`)
             await radio.focus()
             await page.keyboard.press('Space')
@@ -77,8 +73,13 @@ for (const width of [1280, 390, 320]) {
                 await expectThemedBorder(
                     form.locator(':scope > .game-frame [data-fantasy-border]'),
                     border,
-                    16
+                    borderWidth
                 )
+            )
+            await expectThemedBorder(
+                form.locator('.chat-composer-frame__border'),
+                border,
+                borderWidth
             )
             await expectUiFits(form, width)
             await readyUiStory(page)

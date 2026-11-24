@@ -9,16 +9,17 @@ const props = withDefaults(defineProps<{ framed?: boolean; borderWidth?: number 
 })
 defineSlots<{ default?: () => unknown }>()
 
-const defaultBorder = 'border-006'
-const defaultBorderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
-const frameBorderWidth = computed(() => {
-    const width = props.borderWidth
-    return width !== undefined && Number.isFinite(width) && width > 0 ? width : defaultBorderWidth
-})
 const theme = useDarkPanelTheme()
+const border = computed(() => theme.value?.border ?? 'border-006')
+const framePadding = computed(() => {
+    const width = props.borderWidth
+    return width !== undefined && Number.isFinite(width) && width > 0
+        ? width
+        : getFantasyBorderMetrics(border.value).cornerSize
+})
 const framedStyle = computed(() => ({
     ...darkPanelThemeStyle(theme.value),
-    padding: `${frameBorderWidth.value}px`,
+    padding: `${framePadding.value}px`,
 }))
 </script>
 
@@ -31,8 +32,8 @@ const framedStyle = computed(() => ({
         <FantasyBorder
             v-if="framed"
             as="span"
-            :border="theme?.border ?? defaultBorder"
-            :border-width="frameBorderWidth"
+            :border="border"
+            :border-width="borderWidth"
             class="chat-composer-frame__border"
             color="var(--ui-themed-panel-accent, var(--ui-dark-panel-border))"
             aria-hidden="true"

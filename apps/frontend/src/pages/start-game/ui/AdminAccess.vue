@@ -92,7 +92,7 @@ function submitCode(): void {
     gap: 8px;
 }
 .admin-access__code :deep(.ui-input) {
-    inline-size: 5.75rem;
+    inline-size: 7.25rem;
 }
 .admin-access__code :deep(input) {
     text-transform: uppercase;

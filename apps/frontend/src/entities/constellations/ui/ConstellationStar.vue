@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot } from '@my-game-ratata/contracts'
+import { computed } from 'vue'
 
 import { tGame, tLocalized } from '@/shared/lib/i18n'
 
-defineProps<{
+const props = defineProps<{
     node: ConstellationNodeSnapshot
     color: string
     selected: boolean
@@ -15,6 +16,7 @@ defineProps<{
     unitScale: number
 }>()
 const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>()
+const markerScale = computed(() => props.unitScale * (props.enabled === false ? 0.85 : 1))
 </script>
 <template>
     <g
@@ -45,12 +47,12 @@ const emit = defineEmits<{ select: []; focus: []; key: [event: KeyboardEvent] }>
         @keydown.stop="emit('key', $event)"
     >
         <circle class="hit" :r="hitRadius ?? 22 * unitScale" />
-        <circle class="halo" :r="(node.parents.length === 0 ? 12 : 8) * unitScale" />
+        <circle class="halo" :r="(node.parents.length === 0 ? 12 : 8) * markerScale" />
         <path
             v-if="node.parents.length === 0"
-            :d="`M0 ${-7 * unitScale} ${7 * unitScale} 0 0 ${7 * unitScale} ${-7 * unitScale} 0Z`"
+            :d="`M0 ${-7 * markerScale} ${7 * markerScale} 0 0 ${7 * markerScale} ${-7 * markerScale} 0Z`"
         />
-        <circle v-else :r="(node.kind === 'joint' ? 5 : 3) * unitScale" />
+        <circle v-else :r="(node.kind === 'joint' ? 5 : 3) * markerScale" />
     </g>
 </template>
 <style scoped>

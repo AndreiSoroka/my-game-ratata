@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import { tGame } from '@/shared/lib/i18n'
 
-import githubMark from './asset-credits/github-mark.svg'
-import kenneyBadge from './asset-credits/kenney-yellow.png'
-import mysticWoodsLogo from './asset-credits/mystic-woods.png'
+import excaliburIcon from './assets/excalibur.png'
+import githubMark from './assets/github-mark.svg'
+import kenneyBadge from './assets/kenney-yellow.png'
+import mysticWoodsLogo from './assets/mystic-woods.png'
 </script>
 
 <template>
     <nav class="join-asset-credits" :aria-label="tGame('game.join.projectLinks')">
+        <a
+            href="https://excaliburjs.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            referrerpolicy="no-referrer"
+        >
+            <img
+                class="pixel-logo"
+                :src="excaliburIcon"
+                alt="Excalibur.js"
+                width="47"
+                height="48"
+            />
+        </a>
         <a
             href="https://game-endeavor.itch.io/mystic-woods"
             target="_blank"
@@ -58,7 +73,7 @@ import mysticWoodsLogo from './asset-credits/mystic-woods.png'
 }
 
 .join-asset-credits a:focus-visible {
-    outline: 2px solid var(--game-ui-focus);
+    outline: 2px solid var(--ui-light-border-gold);
     outline-offset: 3px;
 }
 
@@ -81,6 +96,10 @@ import mysticWoodsLogo from './asset-credits/mystic-woods.png'
 .mystic-woods-logo {
     width: 96px;
     height: auto;
+}
+
+.mystic-woods-logo,
+.pixel-logo {
     image-rendering: pixelated;
 }
 </style>

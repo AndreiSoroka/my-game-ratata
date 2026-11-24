@@ -2,10 +2,9 @@
 import type { AdventureQuestSnapshot, QuestRewardMode } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
-import { QuestOfferPanel, QuestTurnInPanel } from '@/entities/quests'
+import { QuestItemList, QuestOfferPanel, QuestTurnInPanel } from '@/entities/quests'
 import { tGame, tLocalized } from '@/shared/lib/i18n'
 
-import QuestRewardChoice from './QuestRewardChoice.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import SocialWindow from './SocialWindow.vue'
 
@@ -15,6 +14,11 @@ const emit = defineEmits<{ confirm: []; cancel: [] }>()
 const title = computed(() =>
     props.offer ? tGame('game.quests.questOffer') : tGame('game.quests.turnInQuest')
 )
+const requiredItems = computed(() =>
+    props.quest.requiredItemId
+        ? [{ itemId: props.quest.requiredItemId, quantity: props.quest.goal }]
+        : []
+)
 </script>
 
 <template>
@@ -22,23 +26,20 @@ const title = computed(() =>
         <component
             :is="offer ? QuestOfferPanel : QuestTurnInPanel"
             :heading="title"
+            v-bind="offer ? { requiredItems, rewardGold: quest.rewardGold, rewardMode } : {}"
             @confirm="emit('confirm')"
             @cancel="emit('cancel')"
+            @update:reward-mode="rewardMode = $event"
         >
             <h3>{{ tLocalized(quest.titleMessage, quest.title) }}</h3>
             <p>{{ tLocalized(quest.descriptionMessage, quest.description) }}</p>
             <p>
                 {{ tGame('game.quests.questGiver') }} <strong>{{ issuer }}</strong>
             </p>
-            <QuestRewardSummary
-                :total="quest.rewardGold"
-                :mode="offer ? undefined : quest.rewardMode"
-            />
-            <QuestRewardChoice
-                v-if="offer && quest.rewardGold > 0"
-                v-model="rewardMode"
-                appearance="light"
-            />
+            <template v-if="!offer">
+                <QuestItemList :items="requiredItems" />
+                <QuestRewardSummary :total="quest.rewardGold" :mode="quest.rewardMode" />
+            </template>
         </component>
     </SocialWindow>
 </template>

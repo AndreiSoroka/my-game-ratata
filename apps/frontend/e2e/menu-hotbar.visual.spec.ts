@@ -10,7 +10,7 @@ const thirdSlotLabels = {
     cleric: 'Пусто',
 }
 
-for (const { heroClass, border, ability } of heroThemeCases) {
+for (const { heroClass, border, borderWidth, ability } of heroThemeCases) {
     for (const width of [1280, 390, 320]) {
         const suffix = width === 1280 ? '' : `-${width}`
 
@@ -27,7 +27,7 @@ for (const { heroClass, border, ability } of heroThemeCases) {
             ).toBeVisible()
             const menu = bar.getByRole('button', { name: 'Игровое меню' })
             await expect(menu.locator('[data-fantasy-panel="panel-001"]')).toBeVisible()
-            await expectThemedBorder(bar.locator('.hud-frame__border'), border, 16)
+            await expectThemedBorder(bar.locator('.hud-frame__border'), border, borderWidth)
             await expectUiFits(bar, width)
             await readyUiStory(page)
             await expect(bar).toHaveScreenshot(`hotbar-${heroClass}${suffix}.png`)
