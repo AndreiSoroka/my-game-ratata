@@ -52,6 +52,28 @@ test('renders Ash curse flight and impact only where the authoritative effect is
     expect(result.impact).toBeGreaterThan(10)
 })
 
+test('renders dungeon darkness, moving lantern light and wall shadows in WebGL2', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() => window.engineHarness.dungeon())
+    expect(result).toMatchObject({
+        ...webgl2,
+        surface: { ground: [255, 255, 255], marker: [255, 0, 0] },
+    })
+    expect(Math.max(...result.dark.distance)).toBeLessThan(15)
+    expect(Math.max(...result.dark.feet)).toBeGreaterThan(30)
+    expect(Math.max(...result.dark.feet)).toBeLessThan(90)
+    expect(Math.min(...result.lantern.feet)).toBeGreaterThan(220)
+    expect(Math.max(...result.lantern.hiddenMarker)).toBeLessThan(15)
+    expect(Math.min(...result.moved.feet)).toBeGreaterThan(220)
+    expect(Math.max(...result.moved.old)).toBeLessThan(210)
+    expect(Math.min(...result.torches.visible)).toBeGreaterThan(220)
+    expect(Math.max(...result.torches.hiddenMarker)).toBeLessThan(15)
+    expect(result.portal.lit[2]).toBeGreaterThan(120)
+    expect(result.portal.lit[2]).toBeGreaterThan(result.portal.lit[0]!)
+    expect(Math.max(...result.portal.expired)).toBeLessThan(15)
+})
+
 test('animates the shoreline of shipped ponds and lakes in WebGL2', async ({ page }) => {
     const result = await page.evaluate(() => window.engineHarness.water())
     expect(result).toMatchObject({

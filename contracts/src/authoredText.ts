@@ -203,6 +203,8 @@ const lines = {
     'shop.food': ['Дорожная еда', 'Trail rations'],
     'shop.sword': ['Простой меч', 'Simple sword'],
     'shop.boots': ['Кожаные сапоги', 'Leather boots'],
+    'shop.torch': ['Факел', 'Torch'],
+    'shop.lantern': ['Фонарь', 'Lantern'],
     'recipe.stone_axe': ['Сделать каменный топор', 'Make a stone axe'],
     'recipe.bake_bread': ['Испечь хлеб', 'Bake bread'],
     'recipe.food': ['Приготовить походную еду', 'Prepare trail rations'],

@@ -1,4 +1,5 @@
 import type { ItemInstanceSnapshot } from './index'
+import { PORTABLE_LIGHT_ITEMS } from './portableLights'
 
 export const INVENTORY_CAPACITY = 50
 
@@ -22,11 +23,14 @@ export const itemIds = [
     'stone',
     'sapling',
     'brushwood',
+    'torch',
+    'lantern',
 ] as const
 
 export type ItemId = (typeof itemIds)[number]
 
-export type EquipmentSlotId = 'boots' | 'weapon'
+export const equipmentSlotIds = ['weapon', 'boots', 'light'] as const
+export type EquipmentSlotId = (typeof equipmentSlotIds)[number]
 
 export type InventoryActionKind = 'drop' | 'eat' | 'equip' | 'stash'
 
@@ -67,6 +71,7 @@ export interface ItemDefinition {
 }
 
 export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
+    ...PORTABLE_LIGHT_ITEMS,
     lich_heart: {
         id: 'lich_heart',
         name: 'Сердце лича',

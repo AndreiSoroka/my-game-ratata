@@ -13,6 +13,7 @@ interface MagicView {
     actor: Actor
     expiresAt: number
     frames?: readonly Graphic[]
+    portalCenter?: Vector2
     impact: boolean
     frame: number
 }
@@ -57,6 +58,13 @@ export class MagicViews {
         this.updateFrames()
     }
 
+    public readonly portalPositions = (): Vector2[] => {
+        const positions: Vector2[] = []
+        for (const { portalCenter } of this.views.values())
+            if (portalCenter) positions.push(portalCenter)
+        return positions
+    }
+
     public clear(): void {
         for (const view of this.views.values()) view.actor.kill()
         this.views.clear()
@@ -81,6 +89,7 @@ export class MagicViews {
             view.actor.graphics.use(this.portal)
             view.actor.pos = vec(portal.position.x, portal.position.y - 6)
             view.actor.z = portal.position.y
+            view.portalCenter = portal.position
             view.expiresAt = portal.expiresAt
         }
     }

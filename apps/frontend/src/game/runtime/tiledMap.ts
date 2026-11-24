@@ -7,6 +7,7 @@ import {
 import { type AmbientTerrain, readAmbientTerrain } from './mapAmbientTerrain'
 import { type MapBuilding, readMapBuildings } from './mapBuildings'
 import { type MapDepthProp, readDepthProps } from './mapDepthProps'
+import { type DungeonLight, readDungeonLights } from './mapDungeonLights'
 import type { TiledLandmark } from './mapLandmarks'
 import { type FootstepMap, readFootstepMap } from './mapSurfaces'
 import { type MapVisibility, readMapVisibility } from './mapVisibility'
@@ -35,6 +36,7 @@ interface TiledLayer {
 interface TiledMap {
     height: number
     layers: TiledLayer[]
+    properties?: { name: string; value: unknown }[]
     tileheight: number
     tilesets: TiledTilesetRef[]
     tilewidth: number
@@ -48,6 +50,7 @@ export interface RenderedTiledMap {
     bitmap: HTMLCanvasElement
     buildings: MapBuilding[]
     depthProps: MapDepthProp[]
+    dungeonLights?: DungeonLight[]
     harvestGraphics: HarvestGraphics
     footsteps: FootstepMap
     visibility: MapVisibility
@@ -108,6 +111,7 @@ export async function loadRenderedTiledMap(
             map.layers.find((layer) => layer.name === 'Depth props')?.objects ?? [],
             (canvas, tiles, columns) => renderDepthProp(canvas, tiles, columns, map, tilesets)
         ),
+        dungeonLights: readDungeonLights(map),
         harvestGraphics: readHarvestGraphics(map, tilesets),
         footsteps: readFootstepMap(map),
         visibility: readMapVisibility(map),

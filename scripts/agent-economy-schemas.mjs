@@ -65,7 +65,7 @@ export const economyDecisionSchemas = [
     command('market_trade', {
         npcId: id,
         side: { enum: ['buy', 'sell'] },
-        itemId: { enum: items },
+        itemId: { enum: [...items, 'torch', 'lantern'] },
         quantity: { type: 'integer', minimum: 1, maximum: 100 },
         expectedTotal: { type: 'integer', minimum: 0 },
         requestId: id,
@@ -101,6 +101,6 @@ export const economyDecisionSchemas = [
     }),
     command('equipment_action', {
         action: { const: 'unequip' },
-        slot: { enum: ['weapon', 'boots'] },
+        slot: { enum: ['weapon', 'boots', 'light'] },
     }),
 ]

@@ -122,7 +122,8 @@ function seesPortalCrossing(
 export function canPursuitTravel(
     actor: GameCharacter,
     to: string,
-    now: number
+    now: number,
+    nextLocationToward?: (homeId: string) => string | undefined
 ): boolean {
     if (canMobFleeTravel(actor, to, now)) {
         return true
@@ -132,7 +133,7 @@ export function canPursuitTravel(
         return !territories.has(actor)
     }
     if (state.phase === 'return') {
-        return canReturnByEdge(actor, state, to)
+        return canReturnByEdge(actor, state, to, nextLocationToward)
     }
     if (cityBornMonster(actor, state)) {
         returnFromPursuit(actor)
@@ -156,12 +157,16 @@ export function canPursuitTravel(
 function canReturnByEdge(
     actor: GameCharacter,
     state: PursuitState,
-    to: string
+    to: string,
+    nextLocationToward: ((homeId: string) => string | undefined) | undefined
 ): boolean {
     const exit = state.foreign?.exit
     if (exit !== undefined && 'endpointId' in exit) {
+        const home = state.home.locationId
         return (
-            regionalRoute(actor.locationId, state.home.locationId)?.[1] === to
+            (nextLocationToward === undefined
+                ? regionalRoute(actor.locationId, home)?.[1]
+                : nextLocationToward(home)) === to
         )
     }
     return (

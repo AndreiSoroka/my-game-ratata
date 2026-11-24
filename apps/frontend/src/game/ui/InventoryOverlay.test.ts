@@ -50,6 +50,35 @@ it('plays the cell cue for navigation and selection while initial and restored f
 })
 
 describe('inventory items and material stacks', () => {
+    it('equips a torch from the bag and unequips it from the independent light slot', async () => {
+        const torch = { instanceId: 'torch', itemId: 'torch' } as const
+        const wrapper = mount(InventoryOverlay, {
+            props: { character: characterFixture('self', { inventory: [torch] }), chests: [] },
+            attachTo: document.body,
+        })
+        try {
+            await flushPromises()
+            const lightSlot = wrapper.get('[data-equipment-slot="light"]')
+            expect(lightSlot.text()).toBe('Свет')
+            await wrapper.get('[data-item-instance-id="torch"]').trigger('click')
+            expect(wrapper.get('.inventory-item-description').text()).toContain('подземелье')
+            await wrapper.get('.inventory-actions button').trigger('click')
+            expect(wrapper.emitted('inventoryAction')).toEqual([
+                [{ action: 'equip', itemInstanceId: 'torch' }],
+            ])
+            await wrapper.setProps({
+                character: characterFixture('self', { equipment: { light: torch } }),
+            })
+            expect(lightSlot.get('img').attributes('src')).toBe('/game/assets/items/torch.svg')
+            await lightSlot.trigger('click')
+            expect(wrapper.emitted('equipmentAction')).toEqual([
+                [{ action: 'unequip', slot: 'light' }],
+            ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
+
     it('shows ten herbs in two occupied slots, separate wood items and no duplicate materials wallet', async () => {
         const character = characterFixture('self', {
             inventory: [

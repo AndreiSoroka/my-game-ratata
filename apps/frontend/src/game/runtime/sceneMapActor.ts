@@ -1,30 +1,44 @@
+import type { CharacterSnapshot, Vector2 } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
 import { MapBackdrop } from './mapBackdrop'
 import { mapCameraStrategy } from './mapCamera'
+import { SceneDungeonLighting } from './sceneDungeonLighting'
 import { SceneWaterAnimation } from './sceneWaterAnimation'
 import type { RenderedTiledMap } from './tiledMap'
 
 export class SceneMapView {
     private readonly backdrop: MapBackdrop
     private readonly water: SceneWaterAnimation
+    private readonly lighting: SceneDungeonLighting
     private actor: Actor | undefined
     private cameraStrategy: ReturnType<typeof mapCameraStrategy> | undefined
     private followedActor: Actor | undefined
 
-    public constructor(private readonly engine: Engine) {
+    public constructor(
+        private readonly engine: Engine,
+        positionOf: (id: string) => Vector2 | undefined = () => undefined,
+        portalPositions?: () => Vector2[]
+    ) {
         this.backdrop = new MapBackdrop(engine)
         this.water = new SceneWaterAnimation(engine)
+        this.lighting = new SceneDungeonLighting(engine, positionOf, portalPositions)
     }
 
     public setMap(map: RenderedTiledMap): void {
         this.actor?.kill()
-        this.backdrop.setMap(map)
+        if (map.dungeonLights === undefined) this.backdrop.setMap(map)
+        else this.backdrop.dispose()
         this.cameraStrategy = mapCameraStrategy(map)
         this.followedActor = undefined
         this.actor = createSceneMapActor(map)
         this.engine.add(this.actor)
         this.water.setMap(this.actor, map.animatedWater)
+        this.lighting.setMap(map.dungeonLights, map.visibility)
+    }
+
+    public updateLighting(characters: CharacterSnapshot[], playerId: string | undefined): void {
+        this.lighting.sync(characters, playerId)
     }
 
     public follow(actor: Actor): void {
@@ -39,6 +53,7 @@ export class SceneMapView {
 
     public dispose(): void {
         this.water.dispose()
+        this.lighting.dispose()
         this.actor?.kill()
         this.actor = undefined
         this.backdrop.dispose()

@@ -37,7 +37,9 @@ export function applyCharacterDamage(
         clearCombatTransient(character, now)
         character.combat.stunImmuneUntil = 0
         notifyCharacterDeath(character)
-        character.reviveUntil = now + HERO_REVIVAL_WINDOW_MS
+        character.reviveUntil = character.revivable
+            ? now + HERO_REVIVAL_WINDOW_MS
+            : 0
         character.actionLockUntil = 0
         character.setAnimation('death', now)
         character.clearPath()

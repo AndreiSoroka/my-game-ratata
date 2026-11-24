@@ -15,8 +15,9 @@ import {
     type ObservedExit,
     type PursuitState,
 } from './pursuitState'
-import { regionalExit, regionalRoute } from './regionalNavigation'
+import { regionalExit } from './regionalNavigation'
 import type { GameRoom } from './room'
+import { nextLocationToward } from './worldPassages'
 
 export function planPursuit(
     actor: GameCharacter,
@@ -186,7 +187,11 @@ export function approachRegionalHome(
     room: GameRoom,
     now: number
 ): void {
-    const next = regionalRoute(actor.locationId, state.home.locationId)?.[1]
+    const next = nextLocationToward(
+        actor.locationId,
+        state.home.locationId,
+        (locationId) => room.navigationFor({ locationId }).grid.dungeonPassage
+    )
     if (
         next === undefined ||
         (actor.hasPath() && now - state.lastPlanAt < PURSUIT_RULES.replanMs)
@@ -194,6 +199,11 @@ export function approachRegionalHome(
         return
     }
     const navigation = room.navigationFor(actor)
+    const passage = navigation.grid.dungeonPassage
+    if (passage?.destinationLocationId === next) {
+        planPursuit(actor, passage.position, state, navigation, now)
+        return
+    }
     const exit = regionalExit(
         actor.position,
         actor.locationId,

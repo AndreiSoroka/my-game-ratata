@@ -46,7 +46,8 @@ export function travelRoomCharacter(
     intent: Vector2,
     world: WorldLocations,
     characters: ReadonlyMap<string, GameCharacter>,
-    now: number
+    now: number,
+    beforeMovement?: Vector2
 ): string | undefined {
     if (
         !character.alive ||
@@ -62,7 +63,7 @@ export function travelRoomCharacter(
     const from = character.locationId
     const edge = { ...character.position }
     const navigation = world.get(from).navigation
-    const notice = world.travel(character, intent, now)
+    const notice = world.travel(character, intent, now, beforeMovement)
     if (from !== character.locationId) {
         const previous = getWorldLocationDefinition(from)
         const next = getWorldLocationDefinition(character.locationId)

@@ -2,6 +2,7 @@
 import {
     type CharacterSnapshot,
     type EquipmentSlotId,
+    equipmentSlotIds,
     resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
@@ -23,7 +24,11 @@ const fallbackWeapon = computed(() =>
 const fallbackDescription = computed(() =>
     fallbackWeapon.value.kind === 'knife' ? tGame('game.character.knifeDescription') : undefined
 )
-const equipmentSlots: EquipmentSlotId[] = ['weapon', 'boots']
+const equipmentSlotLabels = {
+    weapon: 'game.character.weaponSlot',
+    boots: 'game.character.bootsSlot',
+    light: 'game.character.lightSlot',
+} as const
 function unequip(slot: EquipmentSlotId): void {
     if (props.character.equipment[slot] !== undefined) emit('unequip', slot)
 }
@@ -41,9 +46,10 @@ function unequip(slot: EquipmentSlotId): void {
 
         <div class="equipment-slots">
             <GameButton
-                v-for="slot in equipmentSlots"
+                v-for="slot in equipmentSlotIds"
                 :key="slot"
                 class="equipment-slot"
+                :data-equipment-slot="slot"
                 type="button"
                 :title="
                     slot === 'weapon'
@@ -53,11 +59,7 @@ function unequip(slot: EquipmentSlotId): void {
                 :aria-description="slot === 'weapon' ? fallbackDescription : undefined"
                 @click="unequip(slot)"
             >
-                <span class="equipment-slot__label">{{
-                    tGame(
-                        slot === 'weapon' ? 'game.character.weaponSlot' : 'game.character.bootsSlot'
-                    )
-                }}</span>
+                <span class="equipment-slot__label">{{ tGame(equipmentSlotLabels[slot]) }}</span>
                 <ItemSlot class="equipment-slot__socket" :empty="!character.equipment[slot]">
                     <img
                         v-if="character.equipment[slot]"

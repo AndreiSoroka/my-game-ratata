@@ -25,6 +25,12 @@ The four farms in Novogorod's cardinal outskirts use **Tiny Farm 1.0**, created 
 
 The packed atlas is copied unchanged. The twelve active wheat beds have stable shared definitions in `contracts/src/farms.ts`; their crop state is server-owned rather than baked into the map artwork.
 
+## 0x72 DungeonTileset II
+
+The generated dungeons use the original floor, masonry and stair tiles from **16x16 DungeonTileset II v1.7** by **0x72**. The original atlases and their source record live in `apps/frontend/public/game/map/assets/0x72Dungeon/`. The author releases the artwork under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). [Official itch.io download](https://0x72.itch.io/dungeontileset-ii)
+
+The three above-ground tower designs and both wall-torch sprites are original pixel-style SVG artwork drawn for «Ратата». Their tile definitions live alongside the other Novogorod tilesets.
+
 ## Existing artwork
 
 The restored project already contains Mystic Woods environment and character artwork. This change retains those files and uses the existing Mystic Woods grass, complete trees and furniture, wooden floor, and connected wooden fence posts. Kenney's CC0 license applies only to the added Tiny Town assets; it does not replace the terms of the existing asset packs.
@@ -79,6 +85,7 @@ The casting and shore clips in `apps/frontend/public/game/assets/audio/ambience/
 The flat paving, transparent soil-bed strips and dark doorway threshold are small vector tiles authored in `scripts/generate-ground.mjs`. Their SVG sources are saved under `apps/frontend/public/game/map/assets/Novogorod/`. They replace the raised-rock paving and opaque light-grass rectangles; they are not modified Kenney atlas images. The original Kenney and Mystic Woods source images remain unchanged.
 
 - `game/assets/items/{slime-heart,bone,herbs,fiber,scrap,wood,grain,wheat_seed}.svg`: original 16×16 pixel-style SVG icons authored for this project (quest heart, seeds and material inventory items).
+- `game/assets/items/{torch,lantern}.svg`: original 16×16 pixel-style icons for portable lights.
 
 ## Project-authored combat and interface visuals
 

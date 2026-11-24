@@ -8,14 +8,9 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { cancelCharacterControl } from './characterControl'
 import { CityPortals, type PortalPassage } from './cityPortals'
-import { sparkBlocksTravel } from './combatMovement'
 import { clearCombatTransient } from './combatState'
 import type { CorpseWallet } from './corpseWallet'
-import { available } from './crimeRules'
-import { magicBlocksMovement } from './magicState'
-import { cancelMovementMode } from './movementActions'
 import { loadNavigationService, NavigationService } from './navigation'
 import { npcModelRole } from './npcRoster'
 import { markPositionDiscontinuity } from './positionDiscontinuity'
@@ -26,8 +21,16 @@ import {
     recordPursuitEntry,
     recordPursuitPortalEntry,
 } from './pursuitTravel'
+import { edgeExitDirection } from './regionalNavigation'
 import { WorldInventory } from './worldInventory'
 import type { WorldMaps } from './worldMaps'
+import {
+    canUsePassage,
+    crossedDungeonPassage,
+    nextLocationToward,
+    stopForPassage,
+    validateDungeonLink,
+} from './worldPassages'
 
 export const centerLocationId = CENTER_LOCATION_ID
 export const dragonBoundaryMessage = 'А там дальше живут драконы'
@@ -52,7 +55,10 @@ export class WorldLocations {
         private readonly maps?: WorldMaps
     ) {
         this.serverEpoch = maps?.epoch
-        for (const definition of WORLD_LOCATION_DEFINITIONS) {
+        for (const definition of [
+            ...WORLD_LOCATION_DEFINITIONS,
+            ...(maps?.dungeons ?? []),
+        ]) {
             const { id } = definition
             const navigation =
                 id === CENTER_LOCATION_ID
@@ -74,6 +80,16 @@ export class WorldLocations {
                 inventory: new WorldInventory(navigation, id, wallet),
                 navigation,
             })
+        }
+        for (const dungeon of maps?.dungeons ?? []) {
+            validateDungeonLink(
+                this.get(dungeon.id).navigation,
+                dungeon.surfaceLocationId
+            )
+            validateDungeonLink(
+                this.get(dungeon.surfaceLocationId).navigation,
+                dungeon.id
+            )
         }
     }
 
@@ -120,14 +136,42 @@ export class WorldLocations {
     public travel(
         character: GameCharacter,
         intent: Vector2,
-        now = Date.now()
+        now = Date.now(),
+        beforeMovement?: Vector2
     ): string | undefined {
         const current = this.get(character.locationId)
-        const direction = characterExitDirection(
-            character,
-            intent,
-            current.navigation
+        const passage = crossedDungeonPassage(
+            current.navigation,
+            beforeMovement,
+            character.position,
+            intent
         )
+        if (passage !== undefined) {
+            return this.useDungeonPassage(
+                character,
+                passage.destinationLocationId,
+                now
+            )
+        }
+        return current.description.biome === 'dungeon'
+            ? undefined
+            : this.travelSurface(character, intent, current, now)
+    }
+
+    private travelSurface(
+        character: GameCharacter,
+        intent: Vector2,
+        current: LocationState,
+        now: number
+    ) {
+        const direction =
+            npcModelRole(character.id) === 'city_coordinator'
+                ? undefined
+                : edgeExitDirection(
+                      character.position,
+                      intent,
+                      current.navigation
+                  )
         if (direction === undefined) {
             this.blockedEdges.delete(character.id)
             return undefined
@@ -143,7 +187,7 @@ export class WorldLocations {
             return next === undefined ? dragonBoundaryMessage : cityEntryMessage
         }
         const summary = next.navigation.summary
-        if (!canPursuitTravel(character, next.description.id, now)) {
+        if (!this.canTravel(character, next.description.id, now)) {
             return undefined
         }
         const margin = summary.tileWidth * 2.5
@@ -166,6 +210,46 @@ export class WorldLocations {
         return notice
     }
 
+    private canTravel(
+        character: GameCharacter,
+        to: string,
+        now: number
+    ): boolean {
+        return canPursuitTravel(character, to, now, (home) =>
+            nextLocationToward(
+                character.locationId,
+                home,
+                (id) => this.locations.get(id)?.navigation.grid.dungeonPassage
+            )
+        )
+    }
+
+    private useDungeonPassage(
+        character: GameCharacter,
+        destination: string,
+        now: number
+    ): string | undefined {
+        const next = this.locations.get(destination)
+        const target = next?.navigation.grid.dungeonPassage
+        if (
+            next === undefined ||
+            target?.destinationLocationId !== character.locationId ||
+            !canUsePassage(character, now) ||
+            npcModelRole(character.id) === 'city_coordinator' ||
+            forbiddenCityEntry(character, next) ||
+            next.navigation.isSolidTile(
+                next.navigation.worldToTile(target.arrival)
+            ) ||
+            !this.canTravel(character, destination, now)
+        ) {
+            return undefined
+        }
+        stopForPassage(character)
+        const notice = this.transfer(character, next, target.arrival, now)
+        recordPursuitEntry(character, now)
+        return notice
+    }
+
     public usePortal(
         character: GameCharacter,
         endpointId: string,
@@ -181,21 +265,13 @@ export class WorldLocations {
             passage === undefined ||
             (npcModelRole(character.id) === 'city_coordinator' &&
                 passage.destination.locationId !== CENTER_LOCATION_ID) ||
-            !available(character) ||
-            character.trainingTarget !== undefined ||
-            character.stunUntil > now ||
-            character.isActionLocked(now) ||
-            sparkBlocksTravel(character) ||
-            character.combat.defensiveStance ||
-            magicBlocksMovement(character, now) ||
+            !canUsePassage(character, now) ||
             !this.portals.reachable(character, passage)
         ) {
             return undefined
         }
         onPassage(passage)
-        cancelCharacterControl(character)
-        character.setMoveInput({ x: 0, y: 0 })
-        cancelMovementMode(character)
+        stopForPassage(character)
         const next = this.get(passage.destination.locationId)
         const notice = this.transfer(
             character,
@@ -237,37 +313,4 @@ function forbiddenCityEntry(
         character.faction === 'monsters' &&
         !pursuitPortalHomecoming(character, next.description.id)
     )
-}
-
-function exitDirection(
-    position: Vector2,
-    intent: Vector2,
-    navigation: NavigationService
-): Vector2 | undefined {
-    const { tileWidth, tileHeight, worldWidth, worldHeight } =
-        navigation.summary
-    const epsilon = 0.01
-    if (intent.x < 0 && position.x <= tileWidth / 2 + epsilon) {
-        return { x: -1, y: 0 }
-    }
-    if (intent.x > 0 && position.x >= worldWidth - tileWidth / 2 - epsilon) {
-        return { x: 1, y: 0 }
-    }
-    if (intent.y < 0 && position.y <= tileHeight / 2 + epsilon) {
-        return { x: 0, y: -1 }
-    }
-    if (intent.y > 0 && position.y >= worldHeight - tileHeight / 2 - epsilon) {
-        return { x: 0, y: 1 }
-    }
-    return undefined
-}
-
-function characterExitDirection(
-    character: GameCharacter,
-    intent: Vector2,
-    navigation: NavigationService
-): Vector2 | undefined {
-    return npcModelRole(character.id) === 'city_coordinator'
-        ? undefined
-        : exitDirection(character.position, intent, navigation)
 }

@@ -1,10 +1,13 @@
 import {
     type EquipmentSlotId,
+    equipmentSlotIds,
     type EquipmentSnapshot,
     INVENTORY_CAPACITY,
     ITEM_DEFINITIONS,
+    type LightSourceKind,
 } from '@my-game-ratata/contracts'
 
+import type { GameCharacter } from './character'
 import {
     type InventoryItemInstance,
     itemQuantity,
@@ -41,7 +44,7 @@ export function snapshotEquipment(
 ): EquipmentSnapshot {
     const snapshot: EquipmentSnapshot = {}
 
-    for (const slot of equipmentSlots) {
+    for (const slot of equipmentSlotIds) {
         const item = equipment[slot]
 
         if (item !== undefined) {
@@ -50,6 +53,15 @@ export function snapshotEquipment(
     }
 
     return snapshot
+}
+
+export function equippedLightSource(
+    character: Pick<GameCharacter, 'alive' | 'equipment'>
+): LightSourceKind | undefined {
+    const itemId = character.equipment.light?.itemId
+    return character.alive && (itemId === 'torch' || itemId === 'lantern')
+        ? itemId
+        : undefined
 }
 
 export function preferredEquipmentSlot(
@@ -142,5 +154,3 @@ export function unequipItem(
     Reflect.deleteProperty(equipment, slot)
     return item
 }
-
-const equipmentSlots: EquipmentSlotId[] = ['boots', 'weapon']

@@ -19,9 +19,13 @@ function inventoryStory(equipped = false): HTMLElement {
                 { instanceId: 'grain', itemId: 'grain', quantity: 3 },
                 { instanceId: 'herbs', itemId: 'herbs', quantity: 9 },
                 { instanceId: 'sword', itemId: 'simple_sword', durability: 160 },
+                { instanceId: 'torch', itemId: 'torch' },
             ],
             equipment: equipped
-                ? { weapon: { instanceId: 'axe', itemId: 'axe', durability: 700 } }
+                ? {
+                      weapon: { instanceId: 'axe', itemId: 'axe', durability: 700 },
+                      light: { instanceId: 'lantern', itemId: 'lantern' },
+                  }
                 : {},
         }),
         chests: [],

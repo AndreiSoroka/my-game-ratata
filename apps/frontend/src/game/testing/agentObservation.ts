@@ -259,6 +259,7 @@ function inventoryTargets(snapshot: WorldSnapshot): TargetDescription[] {
 }
 
 function observeExits(location: NonNullable<WorldSnapshot['location']>): AgentExit[] {
+    if (location.biome === 'dungeon') return []
     const { column, row, map } = location
     const directions = [
         { direction: 'north', x: 0, y: -1 },

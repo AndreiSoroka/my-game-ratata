@@ -7,8 +7,9 @@ sources. NPC dialogue retrieves those articles without keyboard or interface
 instructions. [Character development](character-development.md) covers its windows
 and debug atlas; [NPC reasoning](npc-ai.md) describes optional model configuration.
 
-The Lands of Novogorod contain 25 locations. At backend startup Novogorod receives
-a new seeded layout; the other 24 maps retain their authored geometry. The pure
+The Lands of Novogorod contain 25 surface locations. At backend startup the seed
+sets the layout of Novogorod, the Ash refuge in Western Ruins and the sites of
+two to four dungeon towers across the region. The pure
 `scripts/generate-map.mjs` generator supplies both runtime geometry and the
 optional `scripts/generate-world.mjs` file export. Navigation, residents,
 resources, interactions and covers use that same map. The server resolves ordinary
@@ -68,6 +69,24 @@ icons, and resource bars. Full names remain available in accessible headings and
 tooltips. Temporary action notices appear at the top center for five seconds;
 repeated snapshots do not extend them. Lasting quest, inventory and party facts
 remain in their windows. Gold and item condition are shown in the inventory.
+
+## Dungeons
+
+Walk through a stone tower's open doorway to descend. The stairs where you
+arrive lead back to that tower. Each world seed places at least one small crypt
+and one large dungeon, with up to two medium dungeons. Rooms use connected
+corridors and range from 3×3 to 30×30 tiles.
+
+A few trained skeletons patrol the rooms. A defeated dungeon skeleton stays
+dead for that world session. General merchants in Novogorod sell torches for 3
+gold and lanterns for 10. Equip one in the inventory's Light slot. Torches
+illuminate four tiles and lanterns six. Wall torches light pockets of the dungeon,
+and stairs and the floor immediately underfoot are faintly visible in the dark.
+Darkness affects the rendered scene. Server reach and line of sight use the
+usual rules.
+
+The City Portal spell opens a two-way portal between the dungeon and Novogorod.
+A pursuing monster that sees you cross can use the same portal while it lasts.
 
 ## Finding the game rules
 

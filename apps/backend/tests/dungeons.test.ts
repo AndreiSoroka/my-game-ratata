@@ -1,0 +1,154 @@
+import assert from 'node:assert/strict'
+
+import {
+    CENTER_LOCATION_ID,
+    PORTAL_LIFETIME_MS,
+} from '@my-game-ratata/contracts'
+import { afterEach, expect, it, vi } from 'vitest'
+
+import { shouldRetireCharacter } from '../src/game/characterLife'
+import { tickCharacterTimedState } from '../src/game/characterRecovery'
+import { createItemInstance } from '../src/game/inventory'
+import { advancePursuit } from '../src/game/pursuit'
+import { pursuits } from '../src/game/pursuitState'
+import { GameRoom } from '../src/game/room'
+import { WorldLocations } from '../src/game/worldLocations'
+import { WorldMaps } from '../src/game/worldMaps'
+import { nextLocationToward } from '../src/game/worldPassages'
+import { chestHero, joinChestRoom } from './chestTestHelpers'
+
+afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+})
+
+it('loads reciprocal passages on the same generated maps and only crosses during actual motion', () => {
+    const maps = new WorldMaps({ seed: 'dungeon-9', epoch: 'dungeons' })
+    const world = new WorldLocations(
+        maps.navigation(CENTER_LOCATION_ID),
+        undefined,
+        maps
+    )
+    const dungeon = world.get('dungeon-small')
+    expect(dungeon.description).toMatchObject({
+        biome: 'dungeon',
+        dungeonSize: 'small',
+        surfaceLocationId: CENTER_LOCATION_ID,
+    })
+    const tower = world.get().navigation.grid.dungeonPassage
+    const stairs = dungeon.navigation.grid.dungeonPassage
+    assert(tower !== undefined && stairs !== undefined)
+    const player = chestHero('explorer')
+    player.inventory.push(createItemInstance('food'))
+    const inventory = [...player.inventory]
+    player.position = { ...tower.position }
+    const intent = { x: 0, y: -1 }
+    expect(world.travel(player, intent, 10_000, tower.position)).toBeUndefined()
+    player.connected = false
+    player.tags.add('offline')
+    expect(world.travel(player, intent, 10_000, tower.arrival)).toBeUndefined()
+    player.tags.delete('offline')
+    player.connected = true
+    player.setMoveInput(intent)
+    expect(world.travel(player, intent, 10_000, tower.arrival)).toBeDefined()
+    expect(player).toMatchObject({
+        locationId: dungeon.description.id,
+        position: stairs.arrival,
+        inventory,
+    })
+    expect(player.getMoveInput()).toEqual({ x: 0, y: 0 })
+    expect(world.travel(player, intent, 10_001, stairs.arrival)).toBeUndefined()
+    expect(world.mapAsset('dungeons', dungeon.description.id)).toBeDefined()
+    expect(world.mapAsset('stale', dungeon.description.id)).toBeUndefined()
+
+    player.position = { ...stairs.position }
+    player.alive = false
+    expect(
+        world.travel(player, { x: 0, y: 1 }, 11_000, stairs.arrival)
+    ).toBeUndefined()
+    player.alive = true
+    expect(
+        world.travel(player, { x: 0, y: 1 }, 12_000, stairs.arrival)
+    ).toBeDefined()
+    expect(player).toMatchObject({
+        locationId: CENTER_LOCATION_ID,
+        position: tower.arrival,
+        inventory,
+        id: 'explorer',
+    })
+})
+
+it('casts a two-way city portal underground and lets a pursuing skeleton cross', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(10_000)
+    vi.stubGlobal('Bun', { env: {} })
+    const maps = new WorldMaps({ seed: 'dungeon-9' })
+    const room = new GameRoom(maps.navigation(CENTER_LOCATION_ID), {
+        worldMaps: maps,
+    })
+    const dungeonId = 'dungeon-small'
+    const now = 10_000
+    try {
+        const { actor } = joinChestRoom(room, 'Dungeon traveller')
+        const snapshots = room.snapshot(now, dungeonId).characters
+        expect(snapshots).toHaveLength(2)
+        const first = snapshots[0]
+        assert(first !== undefined)
+        const skeleton = room.getCharacter(first.id)
+        assert(skeleton !== undefined)
+        const navigation = maps.navigation(dungeonId)
+        actor.locationId = dungeonId
+        const [neighbor] = navigation.walkableNeighbors(
+            navigation.worldToTile(skeleton.position)
+        )
+        assert(neighbor !== undefined)
+        actor.position = navigation.tileToWorld(neighbor)
+        expect(advancePursuit(skeleton, actor, room, now).target).toBe(actor)
+
+        const context = room.abilityContextFor(actor, now)
+        expect(context.canOpenPortal?.(actor, now)).toBe(true)
+        context.openPortal?.(actor, now)
+        const source = room.snapshot(now, dungeonId).portals?.[0]
+        const target = room.snapshot(now, CENTER_LOCATION_ID).portals?.[0]
+        assert(source !== undefined && target !== undefined)
+        expect(source).toMatchObject({
+            destinationLocationId: CENTER_LOCATION_ID,
+        })
+        expect(target).toMatchObject({ destinationLocationId: dungeonId })
+        room.requestPortalUse(actor, source.id, now)
+        expect(actor.locationId).toBe(CENTER_LOCATION_ID)
+        expect(pursuits.get(skeleton)?.crossing).toMatchObject({
+            endpointId: source.id,
+        })
+        advancePursuit(skeleton, undefined, room, now)
+        expect(skeleton.locationId).toBe(CENTER_LOCATION_ID)
+        expect(pursuits.get(skeleton)?.foreign?.locationId).toBe(
+            CENTER_LOCATION_ID
+        )
+        room.requestPortalUse(actor, target.id, now + 1)
+        expect(actor.locationId).toBe(dungeonId)
+        expect(
+            nextLocationToward(
+                CENTER_LOCATION_ID,
+                dungeonId,
+                (id) => maps.navigation(id).grid.dungeonPassage
+            )
+        ).toBe(dungeonId)
+        expect(
+            room.portalPassageFor(actor, source.id, now + PORTAL_LIFETIME_MS)
+        ).toBeUndefined()
+
+        const { blade, undead } = skeleton.progression.masteries
+        expect(blade.level).toBe(10)
+        expect(undead.level).toBe(12)
+        expect(skeleton.maxHp).toBe(80)
+        skeleton.applyDamage(skeleton.hp, now + 2)
+        skeleton.queueRespawn(now + 2, 1_000)
+        tickCharacterTimedState(skeleton, now + 100_000)
+        expect(skeleton.alive).toBe(false)
+        expect(skeleton.reviveUntil).toBe(0)
+        expect(shouldRetireCharacter(skeleton, now + 2)).toBe(true)
+    } finally {
+        room.stop()
+    }
+})

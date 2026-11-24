@@ -1,5 +1,5 @@
 export * from './backgrounds'
-import type { EquipmentSnapshot, ItemInstanceSnapshot } from './inventoryTypes'
+import type { CharacterInventorySnapshot } from './inventoryTypes'
 export type * from './inventoryTypes'
 import type {
     AbilityClientMessage,
@@ -44,6 +44,7 @@ export * from './craftOrders'
 export * from './economy'
 export * from './farmSupply'
 export * from './inventory'
+export * from './portableLights'
 import type {
     EquipmentActionKind,
     EquipmentSlotId,
@@ -177,7 +178,7 @@ export interface CharacterStatsSnapshot {
     moveSpeed: number
 }
 
-export interface CharacterSnapshot {
+export interface CharacterSnapshot extends CharacterInventorySnapshot {
     workerActivity?: import('./workerRequests').WorkerActivitySnapshot
     interactions?: CharacterInteractions
     /** The observer knows the rite and may attempt to bind this skeleton. */
@@ -213,12 +214,10 @@ export interface CharacterSnapshot {
     attackZones: AttackZone[]
     controllerKind: CharacterControllerKind
     cooldowns: CharacterCooldownsSnapshot
-    equipment: EquipmentSnapshot
     facing: CharacterFacing
     faction: CharacterFactionId
     health: HealthSnapshot
     id: string
-    inventory: ItemInstanceSnapshot[]
     nickname: string
     path: Vector2[]
     position: Vector2

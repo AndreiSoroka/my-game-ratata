@@ -20,6 +20,7 @@ import {
 import { createWorldInteractions } from './generate-interactions.mjs'
 import { createHarvestMetadata } from './generate-resources.mjs'
 import { createEncounterMetadata } from './generate-encounters.mjs'
+import { addDungeonTower, towerTileset } from './generate-dungeons.mjs'
 import { WORLD_GENERATION_SETTINGS } from './generate-world-settings.mjs'
 import {
     doorwayGid,
@@ -492,6 +493,15 @@ export function generateWorldMap(definition, options = {}) {
             }
         }
     removePondFragments(settlementContext)
+    const dungeonPassages = options.dungeonEntrance
+        ? addDungeonTower(
+              settlementContext,
+              options.dungeonEntrance,
+              buildings,
+              landmarks,
+              anchors
+          )
+        : undefined
     pruneOverwrittenProps(settlementContext)
     connectFences(settlementContext)
     const interactions = createWorldInteractions(
@@ -557,6 +567,7 @@ export function generateWorldMap(definition, options = {}) {
                 depthProps
             ),
             ...(ashRefuge === undefined ? [] : [ashRefuge]),
+            ...(dungeonPassages === undefined ? [] : [dungeonPassages]),
             ...(training.length
                 ? [
                       {
@@ -665,14 +676,20 @@ export function generateWorldMap(definition, options = {}) {
                       },
                   ]),
         ],
-        nextlayerid:
-            anchors.length || ashRefuge ? 22 : training.length ? 20 : 19,
-        nextobjectid:
-            anchors.length || ashRefuge
-                ? 70000
-                : training.length
-                  ? 40002
-                  : 40000,
+        nextlayerid: dungeonPassages
+            ? 23
+            : anchors.length || ashRefuge
+              ? 22
+              : training.length
+                ? 20
+                : 19,
+        nextobjectid: dungeonPassages
+            ? 70001
+            : anchors.length || ashRefuge
+              ? 70000
+              : training.length
+                ? 40002
+                : 40000,
         orientation: 'orthogonal',
         properties: [
             { name: 'locationName', type: 'string', value: name },
@@ -731,6 +748,7 @@ export function generateWorldMap(definition, options = {}) {
             },
             { firstgid: soilGid, source: 'tilesets/Novogorod/soil.json' },
             { firstgid: doorwayGid, source: 'tilesets/Novogorod/doorway.json' },
+            ...(dungeonPassages === undefined ? [] : [towerTileset]),
         ],
         tilewidth: 16,
         type: 'map',
@@ -740,7 +758,7 @@ export function generateWorldMap(definition, options = {}) {
 }
 
 /** Pure complete map: no filesystem access, model calls or wall-clock input. */
-export function generateCity(seed, style) {
+export function generateCity(seed, style, dungeonEntrance) {
     if (
         (typeof seed !== 'string' && typeof seed !== 'number') ||
         (typeof seed === 'number' && !Number.isFinite(seed)) ||
@@ -750,5 +768,5 @@ export function generateCity(seed, style) {
     const definition = WORLD_LOCATION_DEFINITIONS.find(
         (entry) => entry.id === CENTER_LOCATION_ID
     )
-    return generateWorldMap(definition, { seed, style })
+    return generateWorldMap(definition, { seed, style, dungeonEntrance })
 }

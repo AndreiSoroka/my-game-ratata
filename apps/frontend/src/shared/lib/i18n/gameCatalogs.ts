@@ -126,6 +126,8 @@ export const itemMessages = withAuthoredRussian(
         food: 'Apple',
         old_sword: 'Old Sword',
         simple_sword: 'Simple Sword',
+        torch: 'Torch',
+        lantern: 'Lantern',
     } satisfies Record<ItemId, string>,
     (id) => russianItemNames[id] ?? ITEM_DEFINITIONS[id].name
 )
@@ -150,6 +152,8 @@ export const itemDescriptions = withAuthoredRussian(
         scrap: 'Metal used to make weapons.',
         wood: 'A crafting material. Occupies a separate inventory slot.',
         slime_heart: 'A heart from a hostile slime. Bring three to Mira for the Bell of Memory.',
+        torch: 'Lights your path underground while equipped in the light slot.',
+        lantern: 'Equip in the light slot. A lantern lights a wider area than a torch.',
     } satisfies Record<DescribedItemId, string>,
     (id) => ITEM_DEFINITIONS[id].description ?? ''
 )

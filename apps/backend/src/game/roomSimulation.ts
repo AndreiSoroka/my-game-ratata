@@ -208,7 +208,8 @@ function advanceWorldCharacter(
         intent,
         world,
         context.characters,
-        now
+        now,
+        before
     )
     if (notice !== undefined) {
         sendTravelNotice(character, notice, context)

@@ -20,6 +20,7 @@ import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
 import type { FarmSupplyClientMessage } from './farmSupply'
 import type { ItemId } from './index'
 import type { LocalizedMessage } from './locales'
+import type { LightSourceKind } from './portableLights'
 import type { QuestRewardMode, QuestRewardShare } from './questRewards'
 import type { TreeProfile } from './trees'
 export type { TreeProfile } from './trees'
@@ -29,9 +30,10 @@ export const BASE_STOCK_MERCHANT_IDS: readonly string[] = [
     'npc_merchant_1',
 ]
 
-export type AdventureTradeItemId =
+type AdventureRecipeItemId =
     'food' | 'simple_sword' | 'boots' | 'axe' | 'pickaxe' | 'stone_axe'
-export type AdventureRecipeId = AdventureTradeItemId | 'bake_bread'
+export type AdventureTradeItemId = AdventureRecipeItemId | LightSourceKind
+export type AdventureRecipeId = AdventureRecipeItemId | 'bake_bread'
 export type AdventureMaterial =
     | 'herbs'
     | 'fiber'
@@ -185,7 +187,7 @@ export interface AdventureResourceNode {
 export interface AdventureRecipe {
     cost: Partial<AdventureMaterials>
     id: AdventureRecipeId
-    itemId: AdventureTradeItemId
+    itemId: AdventureRecipeItemId
     label: string
     labelMessage?: LocalizedMessage
 }

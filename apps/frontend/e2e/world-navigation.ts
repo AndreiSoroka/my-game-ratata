@@ -1,4 +1,4 @@
-import type { Vector2 } from '@my-game-ratata/contracts'
+import type { ServerMessage, Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
 import { expect, type Page } from '@playwright/test'
 
 export async function waitForBrushwood(page: Page, mobile: boolean): Promise<void> {
@@ -12,6 +12,19 @@ export async function waitForBrushwood(page: Page, mobile: boolean): Promise<voi
                 (node) => node.source === 'branches' && node.phase === 'ready'
             )
     )
+}
+
+/** Keep locations and objects disclosed at join before viewport filtering. */
+export function captureInitialSnapshot(page: Page): () => WorldSnapshot | undefined {
+    let initial: WorldSnapshot | undefined
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', ({ payload }) => {
+            const message = JSON.parse(String(payload)) as ServerMessage
+            if (message.type === 'world_init' && initial === undefined) initial = message.snapshot
+        })
+    })
+    return () => initial
 }
 
 export async function enterBuilding(page: Page, name: string): Promise<void> {

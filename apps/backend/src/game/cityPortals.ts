@@ -123,7 +123,9 @@ export class CityPortals {
         ) {
             return undefined
         }
-        const city = this.nearestCity(source.description.id)
+        const city = this.nearestCity(
+            source.description.surfaceLocationId ?? source.description.id
+        )
         if (city === undefined) {
             return undefined
         }

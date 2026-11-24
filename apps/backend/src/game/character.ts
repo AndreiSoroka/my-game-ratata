@@ -91,6 +91,7 @@ export class GameCharacter {
     public readonly heroClass: HeroClass | undefined
     public readonly mortal: boolean
     public readonly respawnPolicy: 'automatic' | 'none'
+    public readonly revivable: boolean
     public readonly soul: CharacterSoul
     public progression: CharacterProgression = createProgression()
     public movement = createMovementState()
@@ -149,13 +150,13 @@ export class GameCharacter {
         this.heroClass =
             options.heroClass ??
             (options.archetype === 'human' ? 'vanguard' : undefined)
-        this.mortal =
-            options.mortal ?? options.controllerKind === 'network_player'
+        this.connected = options.controllerKind === 'network_player'
+        this.mortal = options.mortal ?? this.connected
         this.respawnPolicy = options.respawnPolicy ?? 'automatic'
+        this.revivable = options.revivable ?? true
         this.abilities = createAbilityState(this.heroClass, options.archetype)
         this.config = createCharacterConfig(options.archetype, this.heroClass)
         this.controllerKind = options.controllerKind
-        this.connected = options.controllerKind === 'network_player'
         this.faction = options.faction ?? defaultFactionFor(this.controllerKind)
         this.energy = this.config.resources.maxEnergy
         this.hp = this.config.combat.maxHp

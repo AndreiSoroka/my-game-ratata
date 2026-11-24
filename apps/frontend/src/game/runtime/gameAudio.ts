@@ -16,6 +16,7 @@ import { GameMusic } from './gameMusic'
 import type { HumanDeathAudio } from './humanDeathAudio'
 import type { AmbientTerrain } from './mapAmbientTerrain'
 import type { MapBuilding } from './mapBuildings'
+import type { DungeonLight } from './mapDungeonLights'
 import { type FootstepMap, surfaceAt } from './mapSurfaces'
 import { NpcVoice, type NpcVoiceContext } from './npcVoice'
 import { isNpcVoiceEnabled, subscribeNpcVoiceEnabled } from './npcVoicePreference'
@@ -141,10 +142,12 @@ export class GameAudio {
             footsteps,
             buildings,
             ambientTerrain,
+            dungeonLights,
         }: {
             footsteps: FootstepMap
             buildings?: MapBuilding[]
             ambientTerrain?: AmbientTerrain
+            dungeonLights?: readonly DungeonLight[]
         },
         locationId?: string
     ): void {
@@ -160,6 +163,7 @@ export class GameAudio {
                 tileWidth: footsteps.tileWidth,
                 tileHeight: footsteps.tileHeight,
                 ambientTerrain,
+                underground: dungeonLights !== undefined,
             })
         }
         this.resumeWorld()

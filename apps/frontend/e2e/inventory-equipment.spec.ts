@@ -1,5 +1,7 @@
-import type { ServerMessage, WorldSnapshot } from '@my-game-ratata/contracts'
+import type { WorldSnapshot } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
+
+import { captureInitialSnapshot } from './world-navigation'
 
 test.describe('inventory equipment keyboard focus', () => {
     test.setTimeout(60_000)
@@ -76,19 +78,6 @@ async function checkKeyboardEquip(page: Page) {
     await page.keyboard.press('Escape')
     await expect(inventory).toHaveCount(0)
     await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
-}
-
-/** Keep objects disclosed at join before the camera narrows the server's view. */
-function captureInitialSnapshot(page: Page): () => WorldSnapshot | undefined {
-    let initial: WorldSnapshot | undefined
-    page.on('websocket', (socket) => {
-        if (new URL(socket.url()).pathname !== '/ws') return
-        socket.on('framereceived', ({ payload }) => {
-            const message = JSON.parse(String(payload)) as ServerMessage
-            if (message.type === 'world_init') initial = message.snapshot
-        })
-    })
-    return () => initial
 }
 
 async function acquireBoots(page: Page, initial: WorldSnapshot | undefined) {

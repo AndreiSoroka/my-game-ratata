@@ -154,6 +154,7 @@ function fixture() {
     const city: CityState = {
         inventory: [],
         lastConsumptionAt: new Map(),
+        lastDeliveryAt: new Map(),
         revision: 0,
         history: [],
     }

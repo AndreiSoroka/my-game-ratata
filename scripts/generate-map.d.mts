@@ -1,3 +1,5 @@
+import type { DungeonDefinition } from './generate-dungeons.mjs'
+
 export type CityLayoutStyle = 'grid' | 'organic' | 'ring'
 export interface GeneratedLocationDefinition {
     id: string
@@ -10,7 +12,8 @@ export interface GeneratedLocationDefinition {
 export function hashSeed(value: string): number
 export function generateCity(
     seed: string | number,
-    style?: CityLayoutStyle
+    style?: CityLayoutStyle,
+    dungeonEntrance?: DungeonDefinition
 ): unknown
 export function generateWorldMap(
     definition: GeneratedLocationDefinition,
@@ -19,5 +22,6 @@ export function generateWorldMap(
         ashRefugeSeed?: string | number
         style?: CityLayoutStyle
         forceCityFallback?: boolean
+        dungeonEntrance?: DungeonDefinition
     }
 ): unknown

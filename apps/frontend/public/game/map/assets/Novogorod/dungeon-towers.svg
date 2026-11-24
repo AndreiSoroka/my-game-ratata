@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="48" viewBox="0 0 144 48" shape-rendering="crispEdges">
+  <defs>
+    <pattern id="masonry" width="16" height="10" patternUnits="userSpaceOnUse">
+      <path fill="#72776e" d="M0 0h16v10H0z"/>
+      <path fill="#595f59" d="M0 4h16v1H0zM0 9h16v1H0zM7 0h1v4H7zM3 5h1v4H3zM12 5h1v4h-1z"/>
+      <path fill="#92968a" d="M0 0h7v1H0zM8 0h8v1H8zM4 5h8v1H4z"/>
+      <path fill="#656d63" d="M0 3h7v1H0zM13 7h3v2h-3z"/>
+    </pattern>
+    <g id="portal">
+      <path fill="#453d35" d="M12 47V36h2v-5h4v-3h12v3h4v5h2v11z"/>
+      <path fill="#a9a795" d="M13 45v-9h2v-4h4v-3h10v3h4v4h2v9h-3V36h-3v-4H19v4h-3v9z"/>
+      <path fill="#221e20" d="M16 47V37h3v-4h10v4h3v10z"/>
+      <path fill="#4a4541" d="M17 45h14v2H17zM19 42h10v1H19zM21 39h6v1h-6z"/>
+      <path fill="#c8b996" d="M12 45h5v2h-5zM31 45h5v2h-5z"/>
+    </g>
+  </defs>
+  <g>
+    <path fill="#3e4b43" d="M2 47V35h4V12H4V3h9v6h6V3h10v6h6V3h9v9h-2v23h4v12z"/>
+    <path fill="url(#masonry)" d="M5 45V36h4V13H6V4h6v7h8V4h8v7h8V4h6v9h-3v23h4v9z"/>
+    <path fill="#a6a88e" d="M6 4h6v2H6zM20 4h8v2h-8zM36 4h6v2h-6zM9 14h30v2H9zM5 36h4v2H5zM39 36h4v2h-4z"/>
+    <path fill="#292e2a" d="M21 20h6v8h-6z"/>
+    <path fill="#a29266" d="M22 26h4v2h-4z"/>
+    <use href="#portal"/>
+  </g>
+  <g transform="translate(48)">
+    <path fill="#3c4940" d="M2 47V36h4V18h3V6h8v5h5v8h6v-4h5v5h5v-9h4v28h4v8z"/>
+    <path fill="url(#masonry)" d="M5 45v-8h4V19h2V8h5v5h5v8h9v-4h2v5h8v18h4v5z"/>
+    <path fill="#969a83" d="M11 8h5v2h-5zM16 13h5v2h-5zM21 21h9v2h-9zM32 22h8v2h-8z"/>
+    <path fill="#4d6347" d="M11 15h3v7h4v4h-6v5H9v-12h2zM34 25h6v13h4v5h-6v-6h-2v-7h-2z"/>
+    <path fill="#6a7f50" d="M10 20h3v4h4v2h-4v3h-3zM37 26h3v8h-2z"/>
+    <use href="#portal"/>
+  </g>
+  <g transform="translate(96)">
+    <path fill="#3c4940" d="M1 47v-5h4v-7h4v-9h4v-5h6v-4h9v3h7v9h4v7h5v6h3v5z"/>
+    <path fill="url(#masonry)" d="M5 45v-4h3v-5h4v-9h3v-4h5v-4h7v3h6v9h4v7h5v6h3v1z"/>
+    <path fill="#989585" d="M20 19h7v2h-7zM15 23h5v2h-5zM27 22h6v2h-6zM7 41h6v2H7zM38 40h5v2h-5z"/>
+    <path fill="#646d53" d="M8 37h6v4H8zM1 45h7v2H1zM40 43h6v2h-6zM33 30h5v4h-5z"/>
+    <use href="#portal"/>
+  </g>
+</svg>

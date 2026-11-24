@@ -69,7 +69,7 @@ export class SceneActors {
         private readonly magicViews: MagicViews,
         private readonly prayerAreas: PrayerAreaViews
     ) {
-        this.mapView = new SceneMapView(engine)
+        this.mapView = new SceneMapView(engine, this.characterPosition, magicViews.portalPositions)
         this.interactionObjects = new InteractionObjectViews(engine, bellImages)
         this.guides = new TrainingGuides(engine)
         const characterVisible = (id: string) => this.isCharacterVisible(id)
@@ -220,6 +220,7 @@ export class SceneActors {
         )
         const body = player && this.characters.body(player.id)
         if (body) this.mapView.follow(body)
+        this.mapView.updateLighting(snapshot.characters, localPlayerId)
     }
 
     public readonly buildingCoverStates = () => this.buildingViews.coverStates()

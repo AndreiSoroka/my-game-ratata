@@ -51,7 +51,7 @@
         "check:full": "run-s check test:e2e",
         "prepare": "husky",
         "test:agent": "node --test scripts/agent-mcp.test.mjs",
-        "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs scripts/generate-city.test.mjs",
+        "test:world": "node --test scripts/generate-pond-interactions.test.mjs scripts/generate-resources.test.mjs scripts/generate-training.test.mjs scripts/generate-city.test.mjs scripts/generate-dungeons.test.mjs",
         "knowledge:prepare": "node scripts/knowledge-prepare.mjs",
         "translation:prepare": "node scripts/translation-prepare.mjs",
         "translation:smoke": "node scripts/translation-smoke.mjs",

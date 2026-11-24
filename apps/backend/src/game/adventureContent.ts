@@ -10,6 +10,7 @@ import {
     type CityBellState,
     type LocalizedMessage,
     type MarketItemId,
+    PORTABLE_LIGHT_ITEMS,
     WORKSHOP_DEFINITIONS,
     workshopFor,
 } from '@my-game-ratata/contracts'
@@ -32,6 +33,16 @@ export const adventureShop: AdventureShopOffer[] = [
     { itemId: 'food', ...label('shop.food'), price: 4 },
     { itemId: 'simple_sword', ...label('shop.sword'), price: 25 },
     { itemId: 'boots', ...label('shop.boots'), price: 18 },
+    {
+        itemId: 'torch',
+        ...label('shop.torch'),
+        price: PORTABLE_LIGHT_ITEMS.torch.price,
+    },
+    {
+        itemId: 'lantern',
+        ...label('shop.lantern'),
+        price: PORTABLE_LIGHT_ITEMS.lantern.price,
+    },
 ]
 
 export const adventureNpcRoles: Record<

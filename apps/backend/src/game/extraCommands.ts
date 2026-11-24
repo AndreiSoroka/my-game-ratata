@@ -1,5 +1,6 @@
 import {
     type AdventureClientMessage,
+    type AdventureTradeItemId,
     isQuestRewardMode,
 } from '@my-game-ratata/contracts'
 
@@ -132,7 +133,7 @@ function parseResourceCommand(record: Record<string, unknown>): ParseResult {
               }
             : { error: 'Invalid gather operation.' }
     }
-    if (type === 'trade' && isCraftItem(itemId)) {
+    if (type === 'trade' && isTradeItem(itemId)) {
         return { message: { type, itemId } }
     }
     if (type === 'craft' && isRecipe(recipeId)) {
@@ -168,6 +169,10 @@ function isCraftItem(
         value === 'pickaxe' ||
         value === 'stone_axe'
     )
+}
+
+function isTradeItem(value: unknown): value is AdventureTradeItemId {
+    return value === 'torch' || value === 'lantern' || isCraftItem(value)
 }
 
 function isRecipe(

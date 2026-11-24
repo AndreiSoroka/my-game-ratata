@@ -1,9 +1,10 @@
-import type {
-    ClientMessage,
-    EquipmentActionKind,
-    EquipmentSlotId,
-    InventoryActionKind,
-    Vector2,
+import {
+    type ClientMessage,
+    type EquipmentActionKind,
+    type EquipmentSlotId,
+    equipmentSlotIds,
+    type InventoryActionKind,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
 import { parseControlCommand } from './characterControl'
@@ -319,11 +320,7 @@ function parseEquipmentActionKind(
 }
 
 function parseEquipmentSlot(input: unknown): EquipmentSlotId | undefined {
-    if (input === 'boots' || input === 'weapon') {
-        return input
-    }
-
-    return undefined
+    return equipmentSlotIds.find((slot) => slot === input)
 }
 
 function asRecord(input: unknown): Record<string, unknown> | undefined {

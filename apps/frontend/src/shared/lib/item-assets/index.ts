@@ -28,6 +28,8 @@ export const itemAssetCatalog: Record<ItemId, ItemAssetDefinition> = {
     simple_sword: itemAsset('simple_sword', 'Item__00.png'),
     scrap: nativeItemAsset('scrap'),
     wood: nativeItemAsset('wood'),
+    torch: nativeItemAsset('torch'),
+    lantern: nativeItemAsset('lantern'),
     slime_heart: {
         id: 'slime_heart',
         label: ITEM_DEFINITIONS.slime_heart.name,

@@ -1,10 +1,12 @@
 import {
     encounterDifficulty,
     GRAVE_MAX_LIVING,
+    type WorldLocation,
     type WorldLocationDefinition,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { createDungeonSkeletons } from './dungeonSkeletons'
 import { graveChildTile, slimeHabitatTile } from './encounterPlacement'
 import type { NavigationService } from './navigation'
 import { createSkeleton, createSlime, type SpawnedCharacter } from './spawns'
@@ -24,12 +26,12 @@ export interface LocationEnemy extends SpawnedCharacter {
 
 export function createLocationEnemies(
     navigation: NavigationService,
-    location: WorldLocationDefinition
+    location: WorldLocationDefinition & Pick<WorldLocation, 'dungeonSize'>
 ): LocationEnemy[] {
-    const difficulty = encounterDifficulty(location.dangerLevel)
-    if (difficulty.enemyCount === 0) {
-        return []
+    if (location.dungeonSize !== undefined) {
+        return createDungeonSkeletons(navigation, location.dungeonSize)
     }
+    const difficulty = encounterDifficulty(location.dangerLevel)
     const result: LocationEnemy[] = []
     const graves = navigation.grid.encounters?.graves ?? []
     const reserveRevival = navigation.grid.encounters?.ashRefuge !== undefined

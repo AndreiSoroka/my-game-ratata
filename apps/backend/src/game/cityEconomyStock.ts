@@ -1,7 +1,11 @@
-import type { MarketItemId } from '@my-game-ratata/contracts'
+import {
+    type MarketItemId,
+    PORTABLE_LIGHT_ITEMS,
+} from '@my-game-ratata/contracts'
 
 import { planAssetSettlement } from './assetSettlement'
 import {
+    addInventoryItems,
     countInventoryItem,
     createItemInstance,
     type InventoryItemInstance,
@@ -15,6 +19,7 @@ export interface CityCommodityDefinition {
     target: number
     consumption: number
     fixedPrice?: boolean
+    replenishment?: number
 }
 export const CITY_COMMODITIES: readonly CityCommodityDefinition[] = [
     {
@@ -62,6 +67,22 @@ export const CITY_COMMODITIES: readonly CityCommodityDefinition[] = [
         consumption: 0,
         fixedPrice: true,
     },
+    {
+        itemId: 'torch',
+        basePrice: PORTABLE_LIGHT_ITEMS.torch.price,
+        target: 24,
+        consumption: 0,
+        replenishment: 2,
+        fixedPrice: true,
+    },
+    {
+        itemId: 'lantern',
+        basePrice: PORTABLE_LIGHT_ITEMS.lantern.price,
+        target: 12,
+        consumption: 0,
+        replenishment: 1,
+        fixedPrice: true,
+    },
 ]
 
 export interface StockEvent {
@@ -73,6 +94,7 @@ export interface StockEvent {
 export interface CityState {
     inventory: InventoryItemInstance[]
     lastConsumptionAt: Map<MarketItemId, number>
+    lastDeliveryAt: Map<MarketItemId, number>
     revision: number
     history: StockEvent[]
 }
@@ -150,4 +172,49 @@ export function takeQuantity(
         }
     }
     return output
+}
+
+export function replenishStock(
+    city: CityState,
+    definition: CityCommodityDefinition,
+    now: number
+): void {
+    const { itemId, replenishment, target } = definition
+    const previous = city.lastDeliveryAt.get(itemId)
+    if (previous === undefined || replenishment === undefined) {
+        return
+    }
+    const intervals = Math.floor((now - previous) / periodMs)
+    if (intervals <= 0) {
+        return
+    }
+    const at = previous + intervals * periodMs
+    const stock = countInventoryItem(city.inventory, itemId)
+    const availableSpace = target - stock
+    const quantity = Math.min(availableSpace, intervals * replenishment)
+    if (
+        quantity > 0 &&
+        !addInventoryItems(
+            city.inventory,
+            [createItemInstance(itemId, quantity)],
+            Infinity
+        )
+    ) {
+        return
+    }
+    city.lastDeliveryAt.set(itemId, at)
+    if (quantity <= 0) {
+        return
+    }
+    city.revision += 1
+    const deliveredAtLastInterval =
+        quantity - Math.min(availableSpace, (intervals - 1) * replenishment)
+    if (deliveredAtLastInterval > 0) {
+        city.history.push({
+            at,
+            itemId,
+            kind: 'delivery',
+            quantity: deliveredAtLastInterval,
+        })
+    }
 }

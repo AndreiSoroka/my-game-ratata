@@ -21,6 +21,7 @@ export interface GameCharacterOptions {
     npcIdentityKey?: NpcIdentityKey | undefined
     trainingTarget?: { areaId: string }
     respawnPolicy?: 'automatic' | 'none'
+    revivable?: boolean
     creatureType?: CreatureType
     archetype: CharacterArchetype
     heroClass?: HeroClass

@@ -5,7 +5,8 @@ export const CENTER_LOCATION_ID = 'map-2-2'
 export const QUEST_BOARD_OBJECT_ID = 'novogorod:quest-board'
 export const WESTERN_RUINS_LOCATION_ID = 'map-0-2'
 export const REGION_NAME = 'Земли Новогорода'
-export type WorldBiome = 'city' | 'outskirts' | 'wilds'
+export type WorldBiome = 'city' | 'outskirts' | 'wilds' | 'dungeon'
+export type DungeonSize = 'small' | 'medium' | 'large'
 export type WorldDirection = 'north' | 'east' | 'south' | 'west'
 export const WORLD_DIRECTIONS: Readonly<
     Record<WorldDirection, { x: number; y: number }>
@@ -31,6 +32,8 @@ export interface WorldLocation extends WorldLocationDefinition {
     rows: number
     regionName: string
     map: MapSummary
+    surfaceLocationId?: string
+    dungeonSize?: DungeonSize
 }
 
 const locationNames = [
@@ -97,6 +100,10 @@ export const WORLD_LOCATION_ENGLISH_NAMES: Readonly<Record<string, string>> = {
     'map-2-4': 'Southern Outpost',
     'map-3-4': 'Distant Quarry',
     'map-4-4': 'Cursed Thicket',
+    'dungeon-small': 'Old Crypt',
+    'dungeon-medium-1': 'Watchers’ Dungeon',
+    'dungeon-medium-2': 'Halls Beneath the Ruins',
+    'dungeon-large': 'Deep Catacombs',
 }
 
 export const WORLD_LOCATION_DEFINITIONS: readonly WorldLocationDefinition[] =

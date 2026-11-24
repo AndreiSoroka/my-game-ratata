@@ -6,6 +6,7 @@ import {
     CITY_COMMODITIES,
     type CityState,
     periodMs,
+    replenishStock,
     takeQuantity,
     transferQuantity,
 } from './cityEconomyStock'
@@ -103,6 +104,11 @@ export class CityEconomyService {
                 lastConsumptionAt: new Map(
                     CITY_COMMODITIES.map((row) => [row.itemId, now])
                 ),
+                lastDeliveryAt: new Map(
+                    CITY_COMMODITIES.filter(
+                        (row) => row.replenishment !== undefined
+                    ).map((row) => [row.itemId, now])
+                ),
                 revision: 0,
                 history: [],
             })
@@ -113,6 +119,7 @@ export class CityEconomyService {
         this.customerOrders.update(now)
         for (const city of this.cities.values()) {
             for (const definition of CITY_COMMODITIES) {
+                replenishStock(city, definition, now)
                 if (definition.consumption === 0) {
                     continue
                 }

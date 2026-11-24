@@ -5,6 +5,7 @@ export const characterMessages = {
     equipped: ['Надето', 'Equipped'],
     weaponSlot: ['Оружие', 'Weapon'],
     bootsSlot: ['Сапоги', 'Boots'],
+    lightSlot: ['Свет', 'Light'],
     closeInventory: ['Закрыть инвентарь', 'Close inventory'],
     inventorySlots: ['Ячейки инвентаря', 'Inventory slots'],
     emptySlot: ['Пустая ячейка {number}', 'Empty slot {number}'],

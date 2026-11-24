@@ -8,6 +8,29 @@ import {
 
 import type { NavigationService } from './navigation'
 
+export function edgeExitDirection(
+    position: Vector2,
+    intent: Vector2,
+    navigation: NavigationService
+): Vector2 | undefined {
+    const { tileWidth, tileHeight, worldWidth, worldHeight } =
+        navigation.summary
+    const epsilon = 0.01
+    if (intent.x < 0 && position.x <= tileWidth / 2 + epsilon) {
+        return { x: -1, y: 0 }
+    }
+    if (intent.x > 0 && position.x >= worldWidth - tileWidth / 2 - epsilon) {
+        return { x: 1, y: 0 }
+    }
+    if (intent.y < 0 && position.y <= tileHeight / 2 + epsilon) {
+        return { x: 0, y: -1 }
+    }
+    if (intent.y > 0 && position.y >= worldHeight - tileHeight / 2 - epsilon) {
+        return { x: 0, y: 1 }
+    }
+    return undefined
+}
+
 export function regionalRoute(
     fromId: string,
     targetId: string

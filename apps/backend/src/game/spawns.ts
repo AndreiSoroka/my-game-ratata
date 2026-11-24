@@ -27,7 +27,8 @@ export function createSkeleton(
     idSuffix = '',
     spawnTile?: TileCoordinate,
     respawnPolicy: 'automatic' | 'none' = 'automatic',
-    mortal = false
+    mortal = false,
+    revivable = true
 ): SpawnedCharacter {
     const skeleton = new Character({
         archetype: 'skeleton',
@@ -35,6 +36,7 @@ export function createSkeleton(
         controllerKind: 'mob1',
         mortal,
         respawnPolicy,
+        revivable,
         locationId: spawnLocationId(navigation),
         faction: 'monsters',
         id: `mob_skeleton_1${idSuffix}`,
@@ -186,6 +188,9 @@ function spawnPosition(
 
 function spawnLocationId(navigation: NavigationService): string {
     return (
-        getWorldLocationDefinition(navigation.grid.id)?.id ?? CENTER_LOCATION_ID
+        getWorldLocationDefinition(navigation.grid.id)?.id ??
+        (navigation.grid.dungeonPassage === undefined
+            ? CENTER_LOCATION_ID
+            : navigation.grid.id)
     )
 }

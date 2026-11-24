@@ -3,6 +3,7 @@ import {
     readTrainingMapData,
 } from '@my-game-ratata/contracts'
 
+import { readDungeonMapData } from './dungeonMapData'
 import { type EncounterMapObject, readEncounterData } from './encounterData'
 import { readMapBuildings } from './mapBuildings'
 import { readCityAnchors, readCityAreas } from './mapCityAnchors'
@@ -61,6 +62,7 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
     const encounters = readEncounterData(map, mapId)
     return {
         ...cityMetadata(map),
+        ...readDungeonMapData(map, mapId),
         buildings: readMapBuildings(map),
         landmarks: readMapLandmarks(
             map,

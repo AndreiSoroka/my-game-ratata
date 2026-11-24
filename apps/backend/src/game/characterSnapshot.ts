@@ -10,7 +10,11 @@ import { shouldRetireCharacter } from './characterLife'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveCharacterStats } from './effectiveParameters'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
-import { snapshotEquipment, snapshotItem } from './inventory'
+import {
+    equippedLightSource,
+    snapshotEquipment,
+    snapshotItem,
+} from './inventory'
 import { snapshotMovement } from './movementActions'
 import { snapshotProgression } from './progressionObservation'
 
@@ -19,6 +23,11 @@ export function createCharacterSnapshot(
     now: number,
     includePrivate = true
 ): CharacterSnapshot & { stats: CharacterStatsSnapshot } {
+    const lightSource = equippedLightSource(character)
+    const equipment = snapshotEquipment(character.equipment)
+    if (!includePrivate) {
+        delete equipment.light
+    }
     return {
         ...(character.trainingTarget === undefined
             ? {}
@@ -36,7 +45,8 @@ export function createCharacterSnapshot(
         controllerKind: character.controllerKind,
         connected: character.connected,
         cooldowns: snapshotCooldowns(character, now),
-        equipment: snapshotEquipment(character.equipment),
+        equipment,
+        ...(lightSource === undefined ? {} : { lightSource }),
         facing: character.facing,
         faction: character.faction,
         health: { kind: 'exact', current: character.hp, max: character.maxHp },

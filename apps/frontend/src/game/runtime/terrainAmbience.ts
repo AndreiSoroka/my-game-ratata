@@ -9,7 +9,7 @@ import type { AmbienceSoundId, WorldAmbienceSounds } from './worldAmbienceSounds
 export type AmbienceMap = Pick<
     RenderedTiledMap,
     'tileWidth' | 'tileHeight' | 'buildings' | 'ambientTerrain'
->
+> & { underground?: boolean }
 
 type CueArea = 'forest' | 'fortification'
 interface CueVoice {
@@ -64,7 +64,10 @@ export class TerrainAmbience {
         map: AmbienceMap & { locationId: string },
         now: number
     ): void {
-        if (map.buildings.some((building) => containsPosition(building, listener))) {
+        if (
+            map.underground ||
+            map.buildings.some((building) => containsPosition(building, listener))
+        ) {
             this.waterGain = 0
             this.waterStartFailed = false
             this.stopWater()

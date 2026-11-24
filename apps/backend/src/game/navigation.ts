@@ -7,6 +7,7 @@ import type {
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 
+import type { DungeonPassage } from './dungeonMapData'
 import type { AuthoredEncounters } from './encounterData'
 import type { MapBuildingDefinition } from './mapBuildings'
 import type { MapLandmarkDefinition } from './mapLandmarks'
@@ -31,6 +32,8 @@ export interface MapGrid {
     containers?: AuthoredContainerDefinition[]
     doors?: AuthoredDoor[]
     encounters?: AuthoredEncounters
+    dungeonPassage?: DungeonPassage
+    dungeonSkeletons?: readonly Vector2[]
     training?: TrainingMapData
     /** Immutable terrain/walls, excluding authored harvestable obstacles. */
     baseSolid?: boolean[]

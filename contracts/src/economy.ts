@@ -16,6 +16,8 @@ export const marketItemIds = [
     'axe',
     'stone_axe',
     'pickaxe',
+    'torch',
+    'lantern',
 ] as const
 export type MarketItemId = (typeof marketItemIds)[number]
 export type MarketSide = 'buy' | 'sell'

@@ -38,8 +38,8 @@ export function shouldRetireCharacter(
         character.mortal &&
         !character.alive &&
         !character.tags.has('state.retired') &&
-        character.reviveUntil > 0 &&
-        now >= character.reviveUntil
+        (!character.revivable ||
+            (character.reviveUntil > 0 && now >= character.reviveUntil))
     )
 }
 
