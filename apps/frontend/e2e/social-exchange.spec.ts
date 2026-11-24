@@ -91,16 +91,18 @@ for (const layout of [
             const trade = first.getByRole('dialog', { name: /^Обмен:/ })
             await expect(trade.getByLabel('Ваши вещи для обмена')).toBeVisible()
             await proposeGift(first, giftId, exchangeFrames)
+            const ownOffer = trade.getByRole('region', { name: 'Ваше предложение', exact: true })
+            await expect(
+                ownOffer.getByRole('button', { name: 'Изменить предложение', exact: true })
+            ).toBeVisible()
+            await expect(
+                second
+                    .getByRole('region', { name: firstName, exact: true })
+                    .locator('.exchange-offer__item')
+            ).toContainText('Волокно')
             await trade.getByPlaceholder('Сообщение собеседнику').fill('Это подарок')
             await first.keyboard.press('Enter')
-            await expect
-                .poll(() =>
-                    first.evaluate(
-                        () =>
-                            window.__ratataTest!.getState().snapshot!.social?.exchange?.own.accepted
-                    )
-                )
-                .toBe(false)
+            await expect.poll(async () => (await readExchange(first))?.own.accepted).toBe(false)
             const panes = await trade.locator('.exchange-offer').all()
             const own = await panes[0]!.boundingBox()
             const other = await panes[1]!.boundingBox()
@@ -108,14 +110,12 @@ for (const layout of [
             expect(other!.x + other!.width).toBeLessThanOrEqual(viewport.width)
             expect(other![layout.axis]).toBeGreaterThan(own![layout.axis])
             await trade.getByRole('button', { name: 'Подтвердить', exact: true }).click()
-            await expect
-                .poll(() =>
-                    first.evaluate(
-                        () =>
-                            window.__ratataTest!.getState().snapshot!.social?.exchange?.own.accepted
-                    )
-                )
-                .toBe(true)
+            await expectMixedConfirmations(first, second, firstName, secondName)
+            await expect(
+                trade
+                    .locator('.exchange-actions')
+                    .getByRole('button', { name: 'Подтверждено', exact: true })
+            ).toBeDisabled()
             await captureExchange(first, layout.name)
             await second.getByRole('button', { name: 'Подтвердить', exact: true }).click()
             await expectGiftSettlement(first, second, giftId)
@@ -135,6 +135,130 @@ for (const layout of [
             await context.close()
         }
     })
+}
+
+test('shows both published offers and requires fresh confirmations after an edit', async ({
+    browser,
+}, info) => {
+    test.setTimeout(100_000)
+    const { context, first, second, exchangeFrames } = await openTradePages(browser, {
+        width: 1280,
+        height: 800,
+    })
+    let firstItem: string | undefined
+    try {
+        const firstName = `r-a-${info.project.name}-${String(info.repeatEachIndex)}`
+        const secondName = `r-b-${info.project.name}-${String(info.repeatEachIndex)}`
+        await joinSocial(first, firstName)
+        firstItem = await gatherGift(first)
+        const secondId = await joinSocial(second, secondName)
+        const secondItem = await gatherGift(second)
+        const position = await first.evaluate(
+            () => window.__ratataTest!.getState().player!.position
+        )
+        const arrival = await second.evaluate(
+            (point) => window.__ratataTest!.navigate(point, { tolerance: 20, timeoutMs: 25_000 }),
+            position
+        )
+        expect(arrival.status).toBe('arrived')
+
+        await socialMenu(first, secondId, /^Обменяться:/)
+        await second
+            .getByRole('region', { name: 'Приглашение к торговле' })
+            .getByRole('button', { name: 'Начать торговлю', exact: true })
+            .click()
+        await proposeGift(first, firstItem, exchangeFrames)
+        const firstTrade = first.getByRole('dialog', { name: /^Обмен:/ })
+        const secondTrade = second.getByRole('dialog', { name: /^Обмен:/ })
+        const fromFirst = secondTrade.getByRole('region', { name: firstName, exact: true })
+        const fromSecond = firstTrade.getByRole('region', { name: secondName, exact: true })
+        await expect(fromFirst.locator('.exchange-offer__item')).toContainText('Волокно')
+        await setOfferedItem(secondTrade, secondItem, '1')
+        await expect(fromSecond.locator('.exchange-offer__item')).toContainText('Волокно')
+
+        const firstConfirm = firstTrade.getByRole('button', { name: 'Подтвердить', exact: true })
+        const secondConfirm = secondTrade.getByRole('button', { name: 'Подтвердить', exact: true })
+        const secondEdit = secondTrade
+            .getByRole('region', { name: 'Ваше предложение', exact: true })
+            .getByRole('button', { name: 'Изменить предложение', exact: true })
+        const initialRevision = (await readExchange(first))!.revision
+        await firstConfirm.click()
+        await expectMixedConfirmations(first, second, firstName, secondName)
+
+        const previousRequest = (await readExchange(second))!.own.lastRequestId
+        await secondEdit.click()
+        await secondTrade.getByRole('button', { name: 'Предложить', exact: true }).click()
+        await expect(secondEdit).toBeFocused()
+        const resubmitted = (await readExchange(second))!
+        expect(resubmitted.own.lastRequestId).not.toBe(previousRequest)
+        expect([resubmitted.revision, resubmitted.other.accepted]).toEqual([initialRevision, true])
+        await secondEdit.click()
+        await secondTrade.locator(`#exchange-${secondItem}`).fill('0')
+        await expect(secondConfirm).toBeDisabled()
+        await expect(fromSecond.locator('.exchange-offer__item')).toContainText('Волокно')
+        await secondTrade.getByRole('button', { name: 'Предложить', exact: true }).click()
+        await expect(fromSecond.locator('.exchange-offer__item')).toHaveCount(0)
+        await expect
+            .poll(() => readExchange(first))
+            .toMatchObject({
+                status: 'active',
+                revision: initialRevision + 1,
+                own: { accepted: false },
+                other: { accepted: false, items: [] },
+            })
+
+        await secondEdit.click()
+        await setOfferedItem(secondTrade, secondItem, '1')
+        await expect(fromSecond.locator('.exchange-offer__item')).toContainText('Волокно')
+        await secondConfirm.click()
+        await expect
+            .poll(() => readExchange(first))
+            .toMatchObject({
+                status: 'active',
+                revision: initialRevision + 2,
+                own: { accepted: false },
+                other: { accepted: true },
+            })
+        await firstConfirm.click()
+        await expectGiftSettlement(first, second, firstItem)
+        await expectGiftSettlement(second, first, secondItem)
+        expect(
+            exchangeFrames
+                .filter(({ command }) => command['type'] === 'exchange_accept')
+                .map(({ command }) => command['revision'])
+        ).toEqual([initialRevision, initialRevision + 2, initialRevision + 2])
+    } catch (error) {
+        await attachExchangeFailure(info, exchangeFrames, first, second, firstItem)
+        throw error
+    } finally {
+        await context.close()
+    }
+})
+
+async function expectMixedConfirmations(
+    first: Page,
+    second: Page,
+    firstName: string,
+    secondName: string
+): Promise<void> {
+    const firstStatuses = first
+        .getByRole('dialog', { name: /^Обмен:/ })
+        .locator('.exchange-participants')
+    const secondStatuses = second
+        .getByRole('dialog', { name: /^Обмен:/ })
+        .locator('.exchange-participants')
+    await expect(
+        firstStatuses.getByRole('img', { name: 'Вы: подтверждено', exact: true })
+    ).toBeVisible()
+    await expect(
+        firstStatuses.getByRole('img', { name: `${secondName}: не подтверждено`, exact: true })
+    ).toBeVisible()
+    await expect(
+        secondStatuses.getByRole('img', { name: 'Вы: не подтверждено', exact: true })
+    ).toBeVisible()
+    await expect(
+        secondStatuses.getByRole('img', { name: `${firstName}: подтверждено`, exact: true })
+    ).toBeVisible()
 }
 
 async function openGiftWhisper(
@@ -242,10 +366,8 @@ interface ExchangeFrame {
 
 async function proposeGift(page: Page, giftId: string, frames: ExchangeFrame[]): Promise<void> {
     const trade = page.getByRole('dialog', { name: /^Обмен:/ })
-    await trade.locator(`#exchange-${giftId}`).fill('1')
-    await expect(trade.getByRole('button', { name: 'Предложить', exact: true })).toBeEnabled()
     const before = frames.length
-    await trade.getByRole('button', { name: 'Предложить', exact: true }).click()
+    await setOfferedItem(trade, giftId, '1')
     const proposal = () =>
         frames
             .slice(before)
@@ -263,7 +385,6 @@ async function proposeGift(page: Page, giftId: string, frames: ExchangeFrame[]):
                 return {
                     requestId: own?.lastRequestId,
                     requestError: own?.requestError ?? null,
-                    itemCount: own?.items.length,
                     items: own?.items.map((item) => ({
                         instanceId: item.instanceId,
                         quantity: item.quantity ?? 1,
@@ -274,9 +395,13 @@ async function proposeGift(page: Page, giftId: string, frames: ExchangeFrame[]):
         .toEqual({
             requestId,
             requestError: null,
-            itemCount: 1,
             items: [{ instanceId: giftId, quantity: 1 }],
         })
+}
+
+async function setOfferedItem(trade: Locator, itemId: string, quantity: string): Promise<void> {
+    await trade.locator(`#exchange-${itemId}`).fill(quantity)
+    await trade.getByRole('button', { name: 'Предложить', exact: true }).click()
 }
 
 async function openTradePages(browser: Browser, viewport: { width: number; height: number }) {

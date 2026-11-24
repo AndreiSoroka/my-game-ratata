@@ -82,39 +82,6 @@
     inset: 3vh 16px;
     align-items: center;
 }
-.social-window--exchange {
-    height: min(800px, 94dvh);
-    max-height: 94dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding: 14px;
-}
-.social-window--exchange .social-window__header {
-    flex: 0 0 auto;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-}
-.social-window--exchange .social-window__header h2 {
-    font-size: 18px;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-.social-window--exchange button:where(.game-button),
-.social-window--exchange input:where(.game-input) {
-    font-size: 12px;
-}
-.social-window--exchange button:where(.game-button) {
-    min-height: 29px;
-}
-.social-window--exchange .social-window__header button {
-    font-size: 22px;
-    min-width: 32px;
-    padding: 0;
-}
 .social-window button:where(.game-button),
 .social-window input:where(.game-input),
 .social-window select:where(.game-select) {
@@ -209,18 +176,6 @@
     }
     .social-surface--exchange {
         inset: 8px;
-    }
-    .social-window--exchange {
-        height: calc(100dvh - 16px);
-        max-height: calc(100dvh - 16px);
-        padding: 9px;
-    }
-    .social-window--exchange .social-window__header {
-        margin-bottom: 7px;
-        padding-bottom: 7px;
-    }
-    .social-window--exchange .social-window__header h2 {
-        font-size: 16px;
     }
 }
 .social-window .social-window__close {

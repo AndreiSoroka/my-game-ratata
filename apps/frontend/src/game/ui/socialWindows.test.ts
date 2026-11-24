@@ -245,6 +245,48 @@ it('closes the completed exchange and its whisper without reopening on repeated 
     }
 })
 
+it.each(['header close button', 'Escape'])(
+    'cancels an active exchange with %s and restores world focus',
+    async (control) => {
+        const player = characterFixture('self')
+        const exchange = exchangeFixture()
+        const snapshot = {
+            ...worldFixture([player]),
+            social: { whisper: whisperFixture(), exchange },
+        }
+        const canvas = document.createElement('canvas')
+        canvas.dataset.gameCanvas = 'true'
+        canvas.tabIndex = 0
+        document.body.append(canvas)
+        const view = mount(SocialPanels, {
+            props: { snapshot, player, characters: [player], connected: true },
+            attachTo: document.body,
+        })
+        try {
+            const input = view.get<HTMLInputElement>('.private-conversation input')
+            input.element.focus()
+            if (control === 'Escape') {
+                await input.trigger('keydown', { code: 'Escape' })
+            } else {
+                await view
+                    .get('.exchange-window-frame header button[aria-label^="Закрыть"]')
+                    .trigger('click')
+            }
+            expect(view.find('[role="dialog"]').exists()).toBe(false)
+            expect(
+                view
+                    .emitted<[ClientMessage]>('command')
+                    ?.flat()
+                    .filter((command) => command.type === 'exchange_cancel')
+            ).toEqual([{ type: 'exchange_cancel', exchangeId: exchange.id }])
+            expect(document.activeElement).toBe(canvas)
+        } finally {
+            view.unmount()
+            canvas.remove()
+        }
+    }
+)
+
 it('retains quest whisper text and reward selection across revisions of the same offer', async () => {
     const player = characterFixture('self')
     const snapshot = {

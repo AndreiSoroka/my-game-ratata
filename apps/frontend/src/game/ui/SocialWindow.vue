@@ -80,12 +80,8 @@ onMounted(async () => {
             @keydown.stop="key"
             @keyup.stop
         >
-            <slot v-if="layout === 'quest'" />
-            <div
-                v-else
-                class="social-window game-frame-host"
-                :class="{ 'social-window--exchange': layout === 'exchange' }"
-            >
+            <slot v-if="layout === 'quest' || layout === 'exchange'" />
+            <div v-else class="social-window game-frame-host">
                 <GameFrame variant="window" />
                 <header class="social-window__header">
                     <h2>{{ title }}</h2>

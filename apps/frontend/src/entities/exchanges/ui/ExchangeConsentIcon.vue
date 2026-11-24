@@ -14,100 +14,81 @@ defineProps<{ accepted: boolean; name: string }>()
         "
     >
         <svg viewBox="0 0 48 32" aria-hidden="true" shape-rendering="crispEdges">
-            <template v-if="accepted">
+            <path
+                class="hand-outline"
+                d="M2 8H3V6H4V5H5V3H6V2H7V1H8V0H10V1H11V2H12V3H14V4H15V6H19V7H21V6H22V5H23V4H32V5H33V6H34V5H33V3H34V2H37V1H38V0H40V1H41V3H42V4H43V5H44V7H45V8H46V15H45V16H44V17H43V18H40V17H38V19H37V20H36V21H37V23H36V24H34V26H33V27H30V28H29V29H28V30H26V29H25V31H24V32H21V31H20V29H19V30H17V29H16V27H14V26H13V24H11V23H10V20H11V19H9V18H4V17H3V15H2Z"
+            />
+            <g class="hand-base">
+                <!-- Cuffs -->
+                <path d="M3 8H4V6H5V5H6V3H8V1H10V2H11V3H12V4H14V7H12V9H11V11H9V13H8V17H4V15H3Z" />
                 <path
-                    class="hand-outline"
-                    d="M2 10h5V7h7V5h7v2h7V5h7v3h6v3h5v13h-7v3h-7v3h-5v-2h-5v2h-5v-3h-5v-3H7v-2H2z"
+                    d="M34 3H37V2H38V1H40V3H41V4H42V5H43V8H45V15H43V17H40V13H39V11H37V9H36V7H35V5H34Z"
+                />
+                <!-- Palms and interlocking fingers -->
+                <path
+                    d="M9 13H11V11H13V10H12V9H14V7H19V9H17V13H18V15H23V14H24V13H27V15H30V16H31V17H33V19H35V21H36V23H33V22H32V21H30V22H31V23H32V24H33V26H30V25H27V26H29V28H28V29H26V27H25V26H24V25H23V23H21V22H19V20H16V19H15V18H12V19H11V18H9Z"
                 />
                 <path
-                    class="hand-left"
-                    d="M8 11h5V8h7v2h7l8 8v5h-3v3h-4v-3h-4v-3h-4v-3h-4l-3-3H8z"
+                    d="M19 9H21V7H23V5H32V7H34V9H36V11H37V13H38V17H37V19H35V17H33V15H30V13H27V11H23V12H22V14H19Z"
                 />
-                <path class="hand-right" d="M40 12h-6V9h-7l-6 5v3h4l4-3 7 7h4z" />
+                <path d="M11 20H14V23H11ZM14 23H15V21H17V22H18V24H17V25H16V26H14Z" />
+                <path d="M17 25H19V24H21V27H19V29H17ZM21 27H24V31H21Z" />
+            </g>
+            <g class="hand-main">
+                <path d="M3 8H4V7H5V6H6V3H8V1H10V3H12V4H14V6H12V9H11V10H10V11H9V13H7V17H5V15H3Z" />
                 <path
-                    class="hand-light"
-                    d="M14 8h6v3h7v2h-8l-4 3-3-3H8v-2h6zM29 9h5v3h6v3h-7l-5-3h-3z"
+                    d="M34 4H35V3H37V2H38V1H40V3H41V5H42V6H43V8H45V15H43V17H40V13H39V11H37V9H36V6H35V5H34Z"
                 />
                 <path
-                    class="hand-fingers"
-                    d="M15 18h4v3h4v3h4v3h-4v-3h-4v-3h-4zM12 21h3v3h4v3h-4v-3h-3zM28 18h3v3h3v3h-3v-3h-3z"
+                    d="M10 13H11V11H13V9H14V7H19V9H17V14H18V16H22V15H23V14H24V13H27V15H29V16H30V17H31V18H33V19H34V21H36V23H33V22H32V21H30V23H31V24H33V26H31V25H29V24H28V23H27V26H29V28H28V29H26V26H24V25H23V23H21V21H19V20H17V19H16V18H12V19H11V18H10Z"
                 />
-                <path class="hand-cuff" d="M2 11h5v11H2zM41 12h5v11h-5z" />
-                <path class="hand-cuff-light" d="M3 11h3v3H3zM42 12h3v3h-3z" />
-            </template>
-            <template v-else>
-                <g>
-                    <path
-                        class="hand-outline"
-                        d="M1 10h5V7h5V5h5v3h3v4h3v7h-4v7h-5v2H8v-4H4v-2H1z"
-                    />
-                    <path class="hand-left" d="M6 11h5V8h4v4h3v2h2v3h-5v7h-3v2H9v-5H6z" />
-                    <path class="hand-light" d="M6 11h5V8h3v4h-3v5H8v-3H6z" />
-                    <path class="hand-fingers" d="M12 17h2v7h-2zM8 18h2v5H8z" />
-                    <path class="hand-cuff" d="M1 11h5v11H1z" />
-                    <path class="hand-cuff-light" d="M2 11h3v3H2z" />
-                </g>
-                <g transform="translate(48 0) scale(-1 1)">
-                    <path
-                        class="hand-outline"
-                        d="M1 10h5V7h5V5h5v3h3v4h3v7h-4v7h-5v2H8v-4H4v-2H1z"
-                    />
-                    <path class="hand-right" d="M6 11h5V8h4v4h3v2h2v3h-5v7h-3v2H9v-5H6z" />
-                    <path class="hand-light" d="M6 11h5V8h3v4h-3v5H8v-3H6z" />
-                    <path class="hand-fingers" d="M12 17h2v7h-2zM8 18h2v5H8z" />
-                    <path class="hand-cuff" d="M1 11h5v11H1z" />
-                    <path class="hand-cuff-light" d="M2 11h3v3H2z" />
-                </g>
-            </template>
+                <path
+                    d="M19 9H21V7H23V5H32V7H34V9H35V11H37V14H38V17H37V19H36V18H35V17H33V15H31V14H30V13H29V12H27V11H23V12H21V13H19Z"
+                />
+                <path d="M11 20H14V22H13V23H11ZM14 23H15V22H16V21H17V25H16V26H14Z" />
+                <path d="M17 25H19V24H21V27H19V29H18V26H17ZM21 27H24V30H21Z" />
+            </g>
+            <g class="hand-light">
+                <path d="M3 8H5V6H6V4H7V3H8V1H9V2H10V3H11V4H13V5H12V9H9V8H8V7H6V9H4V13H3Z" />
+                <path
+                    d="M34 4H36V3H38V2H40V3H41V6H43V8H45V15H43V13H44V10H43V9H40V10H39V9H37V7H36V5H34Z"
+                />
+                <path d="M19 9H21V7H23V5H32V7H25V9H23V10H21V13H19ZM18 25H19V26H20V27H18Z" />
+            </g>
         </svg>
     </span>
 </template>
 <style scoped>
 .exchange-consent {
     display: inline-grid;
-    flex: 0 0 42px;
-    width: 42px;
-    height: 32px;
+    flex: none;
+    width: var(--exchange-consent-width, 42px);
     place-items: center;
-    --hand-shadow: #17251c;
-    --hand-main: #8c987d;
-    --hand-other: #737f69;
-    --hand-light: #aeb69a;
-    --hand-cuff: #465644;
-    --hand-cuff-light: #73846a;
+    --hand-shadow: #0e1b15;
+    --hand-base: #586252;
+    --hand-main: #737c69;
+    --hand-light: #939b86;
 }
 svg {
     display: block;
-    width: 42px;
-    height: 30px;
-    overflow: visible;
+    width: 100%;
+    height: auto;
 }
 .hand-outline {
     fill: var(--hand-shadow);
 }
-.hand-left {
-    fill: var(--hand-main);
+.hand-base {
+    fill: var(--hand-base);
 }
-.hand-right {
-    fill: var(--hand-other);
+.hand-main {
+    fill: var(--hand-main);
 }
 .hand-light {
     fill: var(--hand-light);
 }
-.hand-fingers {
-    fill: var(--hand-shadow);
-}
-.hand-cuff {
-    fill: var(--hand-cuff);
-}
-.hand-cuff-light {
-    fill: var(--hand-cuff-light);
-}
 .exchange-consent--ready {
+    --hand-base: #919757;
     --hand-main: #c4bd79;
-    --hand-other: #a8ae68;
     --hand-light: #eee0a0;
-    --hand-cuff: #657847;
-    --hand-cuff-light: #a6bc72;
 }
 </style>

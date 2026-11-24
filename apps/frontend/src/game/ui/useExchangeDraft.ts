@@ -8,12 +8,8 @@ import { computed, ref, watch } from 'vue'
 
 interface PendingProposal {
     id: string
-    revision: number
     fingerprint: string
-}
-interface PendingConsent {
-    exchangeId: string
-    revision: number
+    edited: boolean
 }
 interface DraftProps {
     exchange: ExchangeSnapshot
@@ -29,11 +25,12 @@ const fingerprint = (items: ExchangeItemQuantity[], gold: number) =>
 
 function createDraftState(props: DraftProps) {
     const quantities = ref<Record<string, number>>({})
+    const mode = ref<'editing' | 'review' | 'reopened'>('editing')
     const gold = ref(0),
         pending = ref<PendingProposal>(),
         error = ref('')
-    const confirming = ref<PendingConsent>()
-    const withdrawing = ref<PendingConsent>()
+    const confirming = ref<Pick<ExchangeSnapshot, 'id' | 'revision'>>()
+    const withdrawing = ref<string>()
     const availableGold = computed(() => props.exchange.ownAvailability?.gold ?? props.gold)
     const available = computed(
         () =>
@@ -73,6 +70,7 @@ function createDraftState(props: DraftProps) {
     )
     return {
         quantities,
+        mode,
         gold,
         pending,
         error,
@@ -87,13 +85,15 @@ function createDraftState(props: DraftProps) {
         withdrawing,
     }
 }
-function editable(props: DraftProps, state: DraftState): boolean {
+function canAct(props: DraftProps, state: DraftState): boolean {
     return (
         props.exchange.status === 'active' &&
-        !props.exchange.own.accepted &&
         state.confirming.value === undefined &&
         state.withdrawing.value === undefined
     )
+}
+function editable(props: DraftProps, state: DraftState): boolean {
+    return canAct(props, state) && !props.exchange.own.accepted && state.mode.value !== 'review'
 }
 function installConsentSync(props: DraftProps, state: DraftState): void {
     watch(
@@ -103,31 +103,34 @@ function installConsentSync(props: DraftProps, state: DraftState): void {
             () => props.exchange.revision,
             () => props.exchange.own.accepted,
         ],
-        () => {
+        ([id, status, revision, accepted]) => {
+            const active = status === 'active'
+            if (accepted) state.mode.value = 'review'
             const confirmation = state.confirming.value
             if (
                 confirmation &&
-                (props.exchange.id !== confirmation.exchangeId ||
-                    props.exchange.status !== 'active' ||
-                    props.exchange.own.accepted ||
-                    props.exchange.revision !== confirmation.revision)
+                (confirmation.id !== id ||
+                    !active ||
+                    accepted ||
+                    confirmation.revision !== revision)
             ) {
                 state.confirming.value = undefined
             }
-            const withdrawal = state.withdrawing.value
-            if (
-                withdrawal &&
-                (props.exchange.id !== withdrawal.exchangeId ||
-                    props.exchange.status !== 'active' ||
-                    !props.exchange.own.accepted)
-            ) {
+            const withdrawingHere = state.withdrawing.value === id && active
+            if (!withdrawingHere || !accepted) {
                 state.withdrawing.value = undefined
+                if (withdrawingHere) state.mode.value = 'reopened'
             }
         }
     )
 }
-function acknowledged(props: DraftProps, pending: PendingProposal | undefined): boolean {
-    return pending !== undefined && props.exchange.own.lastRequestId === pending.id
+function hasPublishedOffer(own: ExchangeSnapshot['own']): boolean {
+    return (
+        own.accepted ||
+        own.items.length > 0 ||
+        own.gold > 0 ||
+        (own.lastRequestId !== undefined && !own.requestError)
+    )
 }
 function reset(props: DraftProps, state: DraftState): void {
     state.quantities.value = Object.fromEntries(
@@ -147,56 +150,69 @@ function installDraftSync(props: DraftProps, state: DraftState): void {
         () => {
             const changedExchange = previousId !== props.exchange.id
             const wasDirty = state.local.value !== previousServer
-            const received = acknowledged(props, state.pending.value)
-            const matchesAcknowledgement =
-                received &&
-                state.local.value === state.pending.value?.fingerprint &&
-                state.server.value === state.local.value
-            if (changedExchange || !wasDirty || matchesAcknowledgement) {
+            const own = props.exchange.own
+            const pending = state.pending.value
+            if (changedExchange) {
+                state.mode.value = hasPublishedOffer(own) ? 'review' : 'editing'
                 reset(props, state)
-            }
-            if (changedExchange || received) {
                 state.pending.value = undefined
-                state.error.value = props.exchange.own.requestError ?? ''
+                state.error.value = own.requestError ?? ''
+            } else if (pending && own.lastRequestId === pending.id) {
+                if (
+                    !pending.edited &&
+                    !own.requestError &&
+                    state.server.value === pending.fingerprint
+                ) {
+                    state.mode.value = 'review'
+                }
+                state.pending.value = undefined
+                state.error.value = own.requestError ?? ''
+            } else if (!pending && !wasDirty) {
+                reset(props, state)
             }
             previousId = props.exchange.id
             previousServer = state.server.value
         },
         { immediate: true }
     )
+    watch(
+        state.local,
+        (local) => {
+            const pending = state.pending.value
+            if (pending && local !== pending.fingerprint) {
+                pending.edited = true
+            }
+        },
+        { flush: 'sync' }
+    )
 }
-function sendProposal(props: DraftProps, state: DraftState, command: Command): void {
-    if (
-        !editable(props, state) ||
-        !state.dirty.value ||
-        !state.valid.value ||
-        state.pending.value !== undefined
-    ) {
-        return
-    }
+function sendProposal(
+    props: DraftProps,
+    state: DraftState,
+    command: Command,
+    canResubmit: boolean
+): void {
+    if (!editable(props, state) || !state.valid.value || state.pending.value) return
+    if (!state.dirty.value && !canResubmit) return
     const requestId = crypto.randomUUID()
-    const revision = props.exchange.own.revision ?? 0
-    state.pending.value = { id: requestId, revision, fingerprint: state.local.value }
+    state.pending.value = { id: requestId, fingerprint: state.local.value, edited: false }
     state.error.value = ''
     command({
         type: 'exchange_offer',
         exchangeId: props.exchange.id,
-        revision,
+        revision: props.exchange.own.revision ?? 0,
         requestId,
         items: normalizedItems(state.items.value),
         gold: state.gold.value,
     })
 }
 function requestChanges(props: DraftProps, state: DraftState, command: Command): void {
-    if (
-        props.exchange.status !== 'active' ||
-        !props.exchange.own.accepted ||
-        state.withdrawing.value ||
-        state.confirming.value
-    ) {
+    if (!canAct(props, state) || state.mode.value !== 'review') return
+    if (!props.exchange.own.accepted) {
+        state.mode.value = 'reopened'
         return
     }
-    state.withdrawing.value = { exchangeId: props.exchange.id, revision: props.exchange.revision }
+    state.withdrawing.value = props.exchange.id
     command({
         type: 'exchange_decline',
         exchangeId: props.exchange.id,
@@ -205,6 +221,12 @@ function requestChanges(props: DraftProps, state: DraftState, command: Command):
     })
 }
 function createDraftActions(props: DraftProps, state: DraftState, command: Command) {
+    const canResubmit = computed(
+        () =>
+            editable(props, state) &&
+            !state.dirty.value &&
+            (state.mode.value === 'reopened' || hasPublishedOffer(props.exchange.own))
+    )
     const empty = computed(
         () =>
             props.exchange.own.items.length === 0 &&
@@ -214,7 +236,7 @@ function createDraftActions(props: DraftProps, state: DraftState, command: Comma
     )
     const canConfirm = computed(
         () =>
-            editable(props, state) &&
+            canAct(props, state) &&
             !state.dirty.value &&
             state.valid.value &&
             state.pending.value === undefined &&
@@ -228,9 +250,7 @@ function createDraftActions(props: DraftProps, state: DraftState, command: Comma
             }
         },
         changeGold: (gold: number) => {
-            if (editable(props, state)) {
-                state.gold.value = gold
-            }
+            if (editable(props, state)) state.gold.value = gold
         },
         all: () => {
             if (!editable(props, state)) {
@@ -244,19 +264,19 @@ function createDraftActions(props: DraftProps, state: DraftState, command: Comma
             )
         },
         clear: () => {
-            if (editable(props, state)) {
-                state.quantities.value = {}
-            }
+            if (editable(props, state)) state.quantities.value = {}
         },
-        propose: () => sendProposal(props, state, command),
+        propose: () => sendProposal(props, state, command, canResubmit.value),
+        canResubmit,
         canConfirm,
         empty,
         editing: computed(() => editable(props, state)),
         edit: () => requestChanges(props, state, command),
         confirm: () => {
             if (canConfirm.value) {
+                state.mode.value = 'review'
                 state.confirming.value = {
-                    exchangeId: props.exchange.id,
+                    id: props.exchange.id,
                     revision: props.exchange.revision,
                 }
                 command({

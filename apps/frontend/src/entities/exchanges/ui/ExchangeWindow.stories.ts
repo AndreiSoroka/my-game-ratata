@@ -1,36 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
-import { h } from 'vue'
+import { h, ref, shallowRef } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
 
-import { exchangeStoryPrimitives } from './exchangeStoryPrimitives'
+import { draftOfferExample, editableDraftExample } from './exchangeDraftExample'
 import ExchangeWindow from './ExchangeWindow.vue'
 import type { ExchangeWindowProps } from './exchangeWindowProps'
 
-const draftItems = {
-    none: undefined,
-    empty: () => h('li', { role: 'presentation' }, h('div')),
-    bag: () => h('li', { style: { padding: '6px' } }, 'Яблоко × 5 · предложено 2'),
-}
-const draftGold = {
-    none: undefined,
-    empty: () => h('div'),
-    balance: () => [h('span', 'Свободно 12 золотых'), h('strong', '◈ 7')],
-}
 const actions = {
-    onAll: fn(),
-    onClear: fn(),
     onEdit: fn(),
     onPropose: fn(),
     onConfirm: fn(),
     onClose: fn(),
     onRestart: fn(),
-}
-
-interface StoryArgs extends Omit<ExchangeWindowProps, 'primitives'> {
-    draftItems: keyof typeof draftItems
-    draftGold: keyof typeof draftGold
 }
 
 const meta = {
@@ -51,50 +34,78 @@ const meta = {
             },
         },
         draft: {
+            ...draftOfferExample,
             editing: true,
             withdrawing: false,
             confirming: false,
-            error: '',
-            valid: true,
-            pending: false,
-            dirty: true,
             empty: false,
             canConfirm: false,
         },
         partnerAvailable: true,
-        draftItems: 'bag',
-        draftGold: 'balance',
     },
     argTypes: {
         exchange: { control: 'object' },
         draft: { control: 'object' },
         partnerAvailable: { control: 'boolean' },
-        draftItems: {
-            name: 'Слот предметов черновика',
-            control: {
-                type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', bag: 'Рюкзак' },
-            },
-            options: ['none', 'empty', 'bag'],
-        },
-        draftGold: {
-            name: 'Слот золота черновика',
-            control: {
-                type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', balance: 'Кошелёк' },
-            },
-            options: ['none', 'empty', 'balance'],
-        },
     },
-    render({ draftItems: items, draftGold: gold, ...props }) {
-        const slots = { draftItems: draftItems[items], draftGold: draftGold[gold] }
+    render({ draft: initial, exchange, partnerAvailable }) {
+        const { draft, ...draftActions } = editableDraftExample(initial)
+        const preview = shallowRef(exchange)
+        const editing = ref(initial.editing)
+        const canConfirm = ref(initial.canConfirm)
+        const hasReview = ref(initial.canResubmit || !initial.editing)
+        function setAccepted(accepted: boolean) {
+            preview.value = { ...preview.value, own: { ...preview.value.own, accepted } }
+        }
         const host = renderVueStory(
             () =>
-                h(
-                    ExchangeWindow,
-                    { ...props, ...actions, primitives: exchangeStoryPrimitives },
-                    slots
-                ),
+                h(ExchangeWindow, {
+                    exchange: preview.value,
+                    partnerAvailable,
+                    ...actions,
+                    ...draftActions,
+                    draft: {
+                        ...initial,
+                        ...draft.value,
+                        editing: editing.value,
+                        canResubmit: hasReview.value,
+                        canConfirm:
+                            canConfirm.value && !draft.value.dirty && !preview.value.own.accepted,
+                    },
+                    onPropose() {
+                        actions.onPropose()
+                        if (!draft.value.dirty) {
+                            editing.value = false
+                            return
+                        }
+                        const items = draft.value.items
+                            .filter((entry) => entry.selected > 0)
+                            .map((entry) => ({ ...entry.item, quantity: entry.selected }))
+                        const gold = draft.value.gold.selected
+                        preview.value = {
+                            ...preview.value,
+                            own: { items, gold, accepted: false },
+                            other: { ...preview.value.other, accepted: false },
+                        }
+                        draftActions.onPropose()
+                        hasReview.value = true
+                        editing.value = false
+                        const other = preview.value.other
+                        canConfirm.value =
+                            items.length > 0 || gold > 0 || other.items.length > 0 || other.gold > 0
+                    },
+                    onEdit() {
+                        actions.onEdit()
+                        setAccepted(false)
+                        editing.value = true
+                    },
+                    onConfirm() {
+                        actions.onConfirm()
+                        setAccepted(true)
+                        hasReview.value = true
+                        editing.value = false
+                    },
+                }),
             {},
             { background: 'var(--ui-dark-panel-surface)', padding: '16px' }
         )
@@ -106,18 +117,30 @@ const meta = {
         host.style.maxWidth = '1024px'
         return host
     },
-} satisfies Meta<StoryArgs>
+} satisfies Meta<ExchangeWindowProps>
 
 export default meta
-type Story = StoryObj<StoryArgs>
+type Story = StoryObj<ExchangeWindowProps>
 
 export const Default: Story = {}
 
-const acceptedExchange = {
+const submittedExchange = {
     ...meta.args.exchange,
-    own: { ...meta.args.exchange.own, accepted: true },
+    own: {
+        ...meta.args.exchange.own,
+        items: meta.args.draft.items.map((entry) => ({ ...entry.item, quantity: entry.selected })),
+    },
 }
 const readOnlyDraft = { ...meta.args.draft, editing: false, dirty: false }
+
+export const Submitted: Story = {
+    args: { exchange: submittedExchange, draft: { ...readOnlyDraft, canConfirm: true } },
+}
+
+const acceptedExchange = {
+    ...submittedExchange,
+    own: { ...submittedExchange.own, accepted: true },
+}
 
 export const Accepted: Story = {
     args: { exchange: acceptedExchange, draft: readOnlyDraft },

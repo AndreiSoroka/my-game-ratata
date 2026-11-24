@@ -3,9 +3,9 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
+import { darkPanelButtonColors, UiButton } from '@/shared/ui/common'
 
 import ExchangeOfferPane from './ExchangeOfferPane.vue'
-import { exchangeStoryPrimitives } from './exchangeStoryPrimitives'
 
 const contentExamples = {
     offer: undefined,
@@ -18,13 +18,25 @@ const goldExamples = {
     empty: () => h('div'),
     balance: () => [h('span', 'Золото в кошельке'), h('strong', '◈ 12')],
 }
+const actionExamples = {
+    none: undefined,
+    empty: () => h('div'),
+    edit: () =>
+        h(
+            UiButton,
+            { appearance: 'panel', panel: 'panel-015', colors: darkPanelButtonColors },
+            () => 'Изменить предложение'
+        ),
+}
 
 interface StoryArgs {
     title: string
     offer: ExchangeOfferSnapshot
     terminal: boolean
+    showConsent: boolean
     default: keyof typeof contentExamples
     gold: keyof typeof goldExamples
+    actions: keyof typeof actionExamples
 }
 
 const meta = {
@@ -40,13 +52,16 @@ const meta = {
             gold: 7,
         },
         terminal: false,
+        showConsent: true,
         default: 'offer',
         gold: 'offer',
+        actions: 'none',
     },
     argTypes: {
         title: { control: 'text' },
         offer: { control: 'object' },
         terminal: { control: 'boolean' },
+        showConsent: { control: 'boolean' },
         default: {
             name: 'Слот предметов',
             control: {
@@ -63,11 +78,23 @@ const meta = {
             },
             options: ['offer', 'empty', 'balance'],
         },
+        actions: {
+            name: 'Слот действий',
+            control: {
+                type: 'select',
+                labels: { none: 'Без действий', empty: 'Пустой div', edit: 'Изменить предложение' },
+            },
+            options: ['none', 'empty', 'edit'],
+        },
     },
-    render({ default: content, gold, ...props }) {
-        const slots = { default: contentExamples[content], gold: goldExamples[gold] }
+    render({ default: content, gold, actions, ...props }) {
+        const slots = {
+            default: contentExamples[content],
+            gold: goldExamples[gold],
+            actions: actionExamples[actions],
+        }
         const host = renderVueStory(
-            () => h(ExchangeOfferPane, { ...props, primitives: exchangeStoryPrimitives }, slots),
+            () => h(ExchangeOfferPane, props, slots),
             {},
             { background: 'var(--ui-dark-panel-surface)', padding: '16px' }
         )
