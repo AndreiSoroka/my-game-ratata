@@ -18,10 +18,27 @@
     align-items: center;
     padding: 12px;
 }
-.quest-window {
-    width: min(100%, 520px);
-    min-width: 0;
+.social-window-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    inline-size: min(100%, 780px);
+    min-inline-size: 0;
+    max-block-size: 100%;
     outline: none;
+}
+.social-window-stack > :first-child {
+    min-block-size: 0;
+}
+.social-window-stack > :not(:first-child) {
+    flex: none;
+    pointer-events: auto;
+}
+.social-window-stack--exchange {
+    inline-size: min(100%, 1040px);
+}
+.quest-window {
+    inline-size: min(100%, 520px);
 }
 .quest-window .social-muted {
     color: var(--ui-light-panel-muted);
@@ -30,7 +47,6 @@
     color: var(--ui-light-panel-warning);
 }
 .social-window {
-    width: min(100%, 780px);
     max-height: 85vh;
     overflow: auto;
     pointer-events: auto;
@@ -67,7 +83,6 @@
     align-items: center;
 }
 .social-window--exchange {
-    width: min(100%, 1040px);
     height: min(800px, 94dvh);
     max-height: 94dvh;
     display: flex;

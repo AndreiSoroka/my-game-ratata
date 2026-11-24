@@ -93,13 +93,14 @@ function answer(accept: boolean): void {
             <p v-if="expired" class="social-status" role="status">
                 {{ tGame('game.quests.confirmationExpiredAskQuestGiver') }}
             </p>
+        </QuestTurnInPanel>
+        <template v-if="conversation?.partnerId === prompt.issuerId" #below>
             <PrivateConversation
-                v-if="conversation?.partnerId === prompt.issuerId"
                 :conversation="conversation"
                 :player-id="playerId"
                 @command="emit('command', $event)"
             />
-        </QuestTurnInPanel>
+        </template>
     </SocialWindow>
 </template>
 <style scoped>

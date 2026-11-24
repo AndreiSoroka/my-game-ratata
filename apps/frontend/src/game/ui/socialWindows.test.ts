@@ -306,6 +306,11 @@ it('binds the turn-in whisper to its issuer while another quest offer is present
             messages: [{ id: '2', senderId: questTurnIn.issuerId, text: 'Слушаю вас.', at: 200 }],
         }
         await view.setProps({ snapshot: { ...snapshot, social: { ...snapshot.social, whisper } } })
+        const dialog = view.get('[role="dialog"]')
+        const questFrame = dialog.get('.quest-decision')
+        const whisperRegion = dialog.get('[role="region"][aria-label="Приватный разговор"]')
+        expect(questFrame.element.parentElement).toBe(dialog.element)
+        expect(questFrame.element.nextElementSibling).toBe(whisperRegion.element)
         const conversation = view.getComponent(PrivateConversation)
         expect(conversation.text()).toContain('Слушаю вас.')
         expect(conversation.text()).not.toContain(offerWhisper.messages[0]!.text)

@@ -129,12 +129,6 @@ const terminalText = computed(() =>
                 <span v-else-if="draft.empty.value">{{ tGame('game.trade.addItemOrGold') }}</span>
                 <span v-else>{{ tGame('game.trade.changingTermsClearsBothConfirmations') }}</span>
             </div>
-            <PrivateConversation
-                v-if="conversation?.partnerId === exchange.partnerId"
-                :conversation="conversation"
-                :player-id="player.id"
-                @command="emit('command', $event)"
-            />
             <footer class="exchange-actions">
                 <template v-if="active">
                     <template v-if="!draft.editing.value">
@@ -201,5 +195,12 @@ const terminalText = computed(() =>
                 </template>
             </footer>
         </div>
+        <template v-if="conversation?.partnerId === exchange.partnerId" #below>
+            <PrivateConversation
+                :conversation="conversation"
+                :player-id="player.id"
+                @command="emit('command', $event)"
+            />
+        </template>
     </SocialWindow>
 </template>

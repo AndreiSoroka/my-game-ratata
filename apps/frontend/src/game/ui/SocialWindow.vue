@@ -13,6 +13,7 @@ import { useEscapeOwner } from './uiEscapeOwners'
 
 const props = defineProps<{ title: string; modal?: boolean; layout?: 'exchange' | 'quest' }>()
 const emit = defineEmits<{ close: [] }>()
+defineSlots<{ default: () => unknown; below?: () => unknown }>()
 const panel = ref<HTMLElement>()
 useEscapeOwner({
     active: () => true,
@@ -67,9 +68,9 @@ onMounted(async () => {
     >
         <section
             ref="panel"
+            class="social-window-stack"
             :class="{
-                'social-window game-frame-host': layout !== 'quest',
-                'social-window--exchange': layout === 'exchange',
+                'social-window-stack--exchange': layout === 'exchange',
                 'quest-window': layout === 'quest',
             }"
             role="dialog"
@@ -79,20 +80,28 @@ onMounted(async () => {
             @keydown.stop="key"
             @keyup.stop
         >
-            <GameFrame v-if="layout !== 'quest'" variant="window" />
-            <header v-if="layout !== 'quest'" class="social-window__header">
-                <h2>{{ title }}</h2>
-                <GameButton
-                    type="button"
-                    class="social-window__close"
-                    icon
-                    :aria-label="tGame('game.automation.closeWithTitle', { title: title })"
-                    @click="emit('close')"
-                >
-                    <CloseIcon />
-                </GameButton>
-            </header>
-            <slot />
+            <slot v-if="layout === 'quest'" />
+            <div
+                v-else
+                class="social-window game-frame-host"
+                :class="{ 'social-window--exchange': layout === 'exchange' }"
+            >
+                <GameFrame variant="window" />
+                <header class="social-window__header">
+                    <h2>{{ title }}</h2>
+                    <GameButton
+                        type="button"
+                        class="social-window__close"
+                        icon
+                        :aria-label="tGame('game.automation.closeWithTitle', { title: title })"
+                        @click="emit('close')"
+                    >
+                        <CloseIcon />
+                    </GameButton>
+                </header>
+                <slot />
+            </div>
+            <slot name="below" />
         </section>
     </div>
 </template>

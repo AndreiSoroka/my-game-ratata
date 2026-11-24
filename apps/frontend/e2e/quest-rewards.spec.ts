@@ -49,15 +49,7 @@ for (const scenario of scenarios) {
         const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
         await expect(offer).toBeVisible()
         await assertCenteredViewport(offer)
-        const whisper = offer.getByRole('textbox', { name: 'Сказать шёпотом' })
-        await whisper.fill('Спасибо за пояснение.')
-        await whisper.press('Enter')
-        await expect(offer.getByRole('list', { name: 'История шёпота' })).toContainText(
-            'Спасибо за пояснение.'
-        )
-        await expect(whisper).toBeFocused()
-        await expect(whisper).toHaveValue('')
-        await expect(offer).toBeVisible()
+        await verifyQuestWhisper(offer, info.outputPath(`quest-offer-whisper-${scenario.name}.png`))
         await expect(offer.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
         await offer.getByRole('radio', { name: scenario.workerLabel }).focus()
         await page.keyboard.press('KeyF')
@@ -138,6 +130,28 @@ for (const scenario of scenarios) {
             await abandonGuildContract(page, guildInstance)
         }
     })
+}
+
+async function verifyQuestWhisper(offer: Locator, screenshotPath: string): Promise<void> {
+    const questFrame = offer.locator('.quest-decision')
+    const whisper = offer.getByRole('region', { name: 'Приватный разговор' })
+    await expect(questFrame.getByRole('region', { name: 'Приватный разговор' })).toHaveCount(0)
+    await expect(whisper).toBeInViewport({ ratio: 1 })
+    const [questBox, whisperBox] = await Promise.all([
+        questFrame.boundingBox(),
+        whisper.boundingBox(),
+    ])
+    expect(questBox!.y + questBox!.height).toBeLessThan(whisperBox!.y)
+    const whisperInput = whisper.getByRole('textbox', { name: 'Сказать шёпотом' })
+    await whisperInput.fill('Спасибо за пояснение.')
+    await whisperInput.press('Enter')
+    await expect(whisper.getByRole('list', { name: 'История шёпота' })).toContainText(
+        'Спасибо за пояснение.'
+    )
+    await expect(whisperInput).toBeFocused()
+    await expect(whisperInput).toHaveValue('')
+    await expect(offer).toBeVisible()
+    await offer.screenshot({ path: screenshotPath })
 }
 
 async function openQuestJournal(page: Page): Promise<Locator> {

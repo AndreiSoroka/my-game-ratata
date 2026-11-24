@@ -84,10 +84,6 @@
 .exchange-error {
     color: #e4ae8b;
 }
-.exchange-content > .private-conversation {
-    --whisper-panel-height: 190px;
-    flex: none;
-}
 .exchange-actions {
     flex: 0 0 auto;
     display: flex;
@@ -126,9 +122,6 @@
         gap: 7px;
         flex-basis: 330px;
     }
-    .exchange-content > .private-conversation {
-        --whisper-panel-height: 148px;
-    }
     .exchange-actions {
         gap: 5px;
         padding-top: 6px;
@@ -146,11 +139,6 @@
     }
     .exchange-draft-status {
         font-size: 9px;
-    }
-}
-@media (max-height: 650px) {
-    .exchange-content > .private-conversation {
-        --whisper-panel-height: 128px;
     }
 }
 @media (max-height: 650px) and (max-width: 600px) {

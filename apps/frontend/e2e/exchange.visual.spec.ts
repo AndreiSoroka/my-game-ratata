@@ -1,17 +1,33 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
-async function waitForArt(page: import('@playwright/test').Page): Promise<void> {
+async function waitForArt(page: Page): Promise<void> {
     await page.evaluate(async () => {
         await document.fonts.ready
         await Promise.all(Array.from(document.images, (image) => image.decode()))
     })
 }
 
-async function prepareDraft(dialog: import('@playwright/test').Locator): Promise<void> {
+async function prepareDraft(dialog: Locator): Promise<void> {
     await dialog.locator('#exchange-apple').fill('2')
     await dialog.getByLabel('Предложить золото', { exact: true }).fill('7')
     await expect(dialog.getByRole('button', { name: 'Предложить', exact: true })).toBeEnabled()
     await expect(dialog.getByRole('button', { name: 'Подтвердить', exact: true })).toBeDisabled()
+}
+
+async function expectWhisperBelowExchange(dialog: Locator): Promise<void> {
+    const frame = dialog.locator('.social-window--exchange')
+    const footer = frame.locator('.exchange-actions')
+    const whisper = dialog.getByRole('region', { name: 'Приватный разговор' })
+    await expect(frame.getByRole('region', { name: 'Приватный разговор' })).toHaveCount(0)
+    await expect(whisper).toBeInViewport({ ratio: 1 })
+    const [frameBox, footerBox, whisperBox] = await Promise.all([
+        frame.boundingBox(),
+        footer.boundingBox(),
+        whisper.boundingBox(),
+    ])
+    const frameBottom = frameBox!.y + frameBox!.height
+    expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(frameBottom)
+    expect(frameBottom).toBeLessThan(whisperBox!.y)
 }
 
 for (const width of [1280, 390, 320]) {
@@ -38,12 +54,8 @@ for (const width of [1280, 390, 320]) {
             expect(
                 await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)
             ).toBe(true)
-            const footer = dialog.locator('.exchange-actions')
-            const footerBounds = await footer.boundingBox()
-            expect(footerBounds!.y + footerBounds!.height).toBeLessThanOrEqual(
-                bounds!.y + bounds!.height
-            )
             await waitForArt(page)
+            await expectWhisperBelowExchange(dialog)
             await expect(dialog).toHaveScreenshot(`exchange-${state}-${width}.png`)
         })
     }
@@ -63,6 +75,11 @@ test('exchange keeps whisper and actions reachable on a short 320px screen', asy
     const cancel = footer.getByRole('button', { name: 'Отменить', exact: true })
 
     await prepareDraft(dialog)
+    await cancel.focus()
+    await page.keyboard.press('Tab')
+    await expect(history).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(input).toBeFocused()
     await input.fill('Личное сообщение')
     await expect(send).toBeEnabled()
     await waitForArt(page)
@@ -71,14 +88,10 @@ test('exchange keeps whisper and actions reachable on a short 320px screen', asy
     await expect(propose).toBeInViewport({ ratio: 1 })
     await expect(confirm).toBeInViewport({ ratio: 1 })
     await expect(cancel).toBeInViewport({ ratio: 1 })
-    const [historyBox, sendBox, footerBox] = await Promise.all([
-        history.boundingBox(),
-        send.boundingBox(),
-        footer.boundingBox(),
-    ])
+    await expectWhisperBelowExchange(dialog)
+    const [historyBox, sendBox] = await Promise.all([history.boundingBox(), send.boundingBox()])
     expect(historyBox!.height).toBeGreaterThan(0)
     expect(historyBox!.y + historyBox!.height).toBeLessThanOrEqual(sendBox!.y)
-    expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(footerBox!.y)
 
     await input.press('Enter')
     await expect(input).toHaveValue('')
