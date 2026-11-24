@@ -220,6 +220,22 @@ it('continues the same interior leg when Leia chooses to finish alone', async ()
     expect(correction?.context.replyCorrection?.reason?.detail).toMatch(
         /Самостоятельный путь/u
     )
+    const arrivalDistances: number[] = []
+    const recordDiagnostic = diagnostics.record.bind(diagnostics)
+    vi.spyOn(diagnostics, 'record').mockImplementation((entry) => {
+        if (
+            entry.actorId === actor.id &&
+            entry.category === 'action_completed' &&
+            entry.reason === 'arrived' &&
+            entry.action?.type === 'travel_to' &&
+            entry.action.targetKey === tavernKey
+        ) {
+            arrivalDistances.push(
+                distance(actor.position, regionalTavern.interior)
+            )
+        }
+        recordDiagnostic(entry)
+    })
     correction?.resolve(
         npcReply(
             { type: 'travel_to', targetKey: tavernKey, inviteEscort: false },
@@ -242,9 +258,8 @@ it('continues the same interior leg when Leia chooses to finish alone', async ()
             reason: 'completed',
         })
     )
-    expect(
-        distance(actor.position, regionalTavern.interior)
-    ).toBeLessThanOrEqual(1)
+    expect(arrivalDistances).toHaveLength(1)
+    expect(arrivalDistances[0]).toBeLessThanOrEqual(1)
 }, 20_000)
 
 it('keeps current follow when a self-travel destination is unknown', async () => {
