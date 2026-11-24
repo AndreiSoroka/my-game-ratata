@@ -1,6 +1,7 @@
 import {
     type CombatHitQuality,
     type GameEventPayload,
+    graveBounds,
     ITEM_DEFINITIONS,
     materialDamage,
     type MaterialImpact,
@@ -16,6 +17,7 @@ import { isInZones } from './combatGeometry'
 import type { GraveCombatContext, GraveCombatTarget } from './graveRules'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
+import { withWorldSound } from './worldSound'
 
 export function legalGraveTarget(
     actor: GameCharacter,
@@ -84,18 +86,24 @@ export function damageGrave(
     }
     const target = { kind: 'grave' as const, id: grave.id }
     const events: GameEventPayload[] = [
-        {
-            kind: 'world_damage',
-            actorId: actor.id,
-            target,
-            amount: result.hpDamage,
-            critical,
-            hitQuality,
-            damageKind: impact === 'arcane' ? 'arcane' : 'physical',
-            ...(attack.abilityId === undefined
-                ? {}
-                : { abilityId: attack.abilityId }),
-        },
+        withWorldSound(
+            {
+                kind: 'world_damage',
+                actorId: actor.id,
+                target,
+                amount: result.hpDamage,
+                critical,
+                hitQuality,
+                damageKind: impact === 'arcane' ? 'arcane' : 'physical',
+                ...(attack.abilityId === undefined
+                    ? {}
+                    : { abilityId: attack.abilityId }),
+            },
+            'hit',
+            grave.locationId,
+            grave.position,
+            { sourceBounds: graveBounds(grave.position) }
+        ),
     ]
     if (result.ruined) {
         events.push({ kind: 'grave_ruined', actorId: actor.id, target })

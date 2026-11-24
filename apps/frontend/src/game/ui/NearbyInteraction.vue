@@ -150,21 +150,33 @@ function resolveMenuTarget(expectedKey: string | undefined, forceMenu: boolean) 
     const current = target.value
     if (current && canOpenFor(expectedKey ?? current.key)) return current
 }
+function directActionForMenu(forceMenu: boolean, forcedCharacter: boolean) {
+    if (forcedCharacter) return undefined
+    const action = directAction.value
+    if (
+        forceMenu &&
+        action?.command.type === 'world_interact' &&
+        action.command.doorAction !== undefined
+    )
+        return undefined
+    return action
+}
 function openMenu(expectedKey?: string, forceMenu = false): void {
     const player = props.player
-    const selected = resolveMenuTarget(expectedKey, forceMenu)
+    const forcedCharacter = forceMenu && expectedKey !== undefined
+    const selected = resolveMenuTarget(expectedKey, forcedCharacter)
     if (!player || !selected) return
     const explicit = selected.key === selectionKey.value
-    const direct = forceMenu ? undefined : directAction.value
+    const direct = directActionForMenu(forceMenu, forcedCharacter)
     if (!direct && !selectMenuTarget(selected, explicit)) return
     stopMovement(player)
-    if (!forceMenu && grave.value) emit('selectGrave', grave.value.id)
+    if (!forcedCharacter && grave.value) emit('selectGrave', grave.value.id)
     if (direct) {
         emit('command', direct.command)
         focusWorldInput()
         return
     }
-    pinTarget(selected, player.id, explicit || forceMenu)
+    pinTarget(selected, player.id, explicit || forcedCharacter)
     playUiSound?.('uiOpen')
 }
 function selectMenuTarget(target: InteractionTarget, explicit: boolean): boolean {

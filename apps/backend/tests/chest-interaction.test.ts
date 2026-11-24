@@ -374,7 +374,7 @@ describe('socket chest command integration', () => {
             near.socket,
             JSON.stringify({ type: 'open_chest', chestId })
         )
-        expect(openEvents(near.sent)).toEqual([
+        expect(openEvents(near.sent)).toMatchObject([
             { actorId: near.actor.id, chestId, kind: 'chest_open' },
         ])
         expect(near.actor.inventory).toEqual([])

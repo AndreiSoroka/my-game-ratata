@@ -11,18 +11,19 @@ import type {
 import { BoundingBox, Engine, type ImageSource, type SpriteSheet, vec } from 'excalibur'
 
 import type { CharacterId } from '../assets/characterCatalog'
-import { type BellImages, BellViews } from './bellViews'
+import type { BellImages } from './bellViews'
 import { BuildingViews } from './buildingViews'
 import { CombatEffects } from './combatEffects'
 import { CorpseViews } from './corpseViews'
 import { DepthPropViews } from './depthPropViews'
 import { FootstepViews } from './footstepViews'
+import { InteractionObjectViews } from './interactionObjectViews'
 import { InteractionTargetViews, type TargetHighlight } from './interactionTargetViews'
 import type { MagicViews } from './magicViews'
 import {
     interactionHasLineOfSight,
     type MapVisibility,
-    updateResourceVisibility,
+    updateObstacleVisibility,
 } from './mapVisibility'
 import type { MotionTiming } from './ownerMotionLead'
 import type { PrayerAreaViews } from './prayerAreaViews'
@@ -31,7 +32,6 @@ import { RouteWaypointViews } from './routeWaypointViews'
 import type { SnapshotReference } from './runtimeSnapshotStream'
 import { SceneCharacterViews } from './sceneCharacterViews'
 import { SceneMapView } from './sceneMapActor'
-import { SignReadingViews } from './signReadingViews'
 import { StatusViews } from './statusViews'
 import type { RenderedTiledMap } from './tiledMap'
 import { observerTrainingArea, TrainingGuides } from './trainingGuides'
@@ -41,7 +41,7 @@ export class SceneActors {
     private readonly characters: SceneCharacterViews
     private gravePositions = new Map<string, Vector2>()
     private readonly buildingViews: BuildingViews
-    private readonly bells: BellViews
+    private readonly interactionObjects: InteractionObjectViews
     private readonly depthProps: DepthPropViews
     private readonly corpseViews: CorpseViews
     private readonly worldActors: WorldSceneActors
@@ -57,7 +57,6 @@ export class SceneActors {
     private readonly statusViews: StatusViews
     private readonly footsteps: FootstepViews
     private readonly combatEffects: CombatEffects
-    private readonly signReading: SignReadingViews
     private readonly routeWaypoints: RouteWaypointViews
 
     public constructor(
@@ -71,7 +70,7 @@ export class SceneActors {
         private readonly prayerAreas: PrayerAreaViews
     ) {
         this.mapView = new SceneMapView(engine)
-        this.bells = new BellViews(engine, bellImages)
+        this.interactionObjects = new InteractionObjectViews(engine, bellImages)
         this.guides = new TrainingGuides(engine)
         const characterVisible = (id: string) => this.isCharacterVisible(id)
         this.combatTarget = new InteractionTargetViews(
@@ -84,7 +83,6 @@ export class SceneActors {
             characterVisible,
             this.characterPosition
         )
-        this.signReading = new SignReadingViews(engine)
         this.routeWaypoints = new RouteWaypointViews(engine)
         this.buildingViews = new BuildingViews(engine)
         this.depthProps = new DepthPropViews(engine)
@@ -123,7 +121,7 @@ export class SceneActors {
         this.footsteps.clear()
     }
     public dispose(): void {
-        this.bells.clear()
+        this.interactionObjects.dispose()
         this.mapView.dispose()
         this.guides.dispose()
         this.corpseViews.dispose()
@@ -134,7 +132,6 @@ export class SceneActors {
         this.prayerAreas.clear()
         this.statusViews.dispose()
         this.footsteps.dispose()
-        this.signReading.dispose()
         this.routeWaypoints.dispose()
         this.interactionTarget.dispose()
         this.combatTarget.dispose()
@@ -143,19 +140,18 @@ export class SceneActors {
         this.gravePositions.clear()
     }
     public showDamage(event: GameEventPayload): void {
-        this.bells.receive(event)
+        this.interactionObjects.receive(event)
         this.combatEffects.receive(event)
         this.characters.receive(event, event.targetId === this.localPlayerId)
     }
 
     public addMap(map: RenderedTiledMap): void {
-        this.bells.clear()
         this.clearDamage()
         this.corpseViews.dispose()
         this.depthProps.dispose()
         this.clearTargetHighlights()
         this.routeWaypoints.clear()
-        this.signReading.setMap(map.visibility)
+        this.interactionObjects.setMap(map.visibility)
         this.trainingAreas = map.training.areas
         this.mapVisibility?.resourceInterest?.clear()
         this.mapVisibility = map.visibility
@@ -181,11 +177,8 @@ export class SceneActors {
         this.routeWaypoints.updateSnapshot(snapshot, player, this.isPositionVisible)
         this.buildingViews.update(player?.position)
         this.magicViews.sync(snapshot, this.isPositionVisible)
-        this.bells.updateSnapshot(snapshot, (bell) => this.isPositionVisible(bell.position))
-        this.signReading.update(
-            snapshot.adventure?.worldObjects ?? [],
-            player,
-            this.isPositionVisible
+        this.interactionObjects.update(snapshot, player, this.isPositionVisible, (point) =>
+            this.isInteractionVisible(point, undefined, Infinity)
         )
 
         this.characters.sync(
@@ -254,7 +247,12 @@ export class SceneActors {
         this.depthProps.updateResources(nodes, snapshot.viewBounds)
         this.depthProps.updateGraves(snapshot.graves ?? [], snapshot.viewBounds)
         if (this.mapVisibility)
-            updateResourceVisibility(this.mapVisibility, nodes, snapshot.viewBounds)
+            updateObstacleVisibility(
+                this.mapVisibility,
+                nodes,
+                snapshot.viewBounds,
+                snapshot.adventure?.worldObjects
+            )
     }
 
     private updateObserver(player: CharacterSnapshot | undefined, snapshot: WorldSnapshot): void {

@@ -8,6 +8,7 @@ import type { CityWorldState } from './cityWorldState'
 import { executeContainerCommand } from './containerCommands'
 import type { HarvestDrops } from './harvestWork'
 import type { InventoryItemInstance } from './inventory'
+import type { NavigationService } from './navigation'
 import type { WorldLocations } from './worldLocations'
 import type { WorldObjectDefinition } from './worldObjectData'
 import { WorldObjects } from './worldObjects'
@@ -21,6 +22,7 @@ export interface AdventureServiceOptions {
         now: number
     ) => AdventureActionResult
     now?: () => number
+    navigationForLocation?: (id: string) => NavigationService
     resourceNodes?: AdventureResourceNode[]
     worldObjects?: WorldObjectDefinition[]
 }
@@ -38,13 +40,19 @@ export function createAdventureEnvironment(
             options.harvestDrops,
             options.farmRandom
         ),
-        new WorldObjects(options.worldObjects, options.openContainer, cities),
+        new WorldObjects(
+            options.worldObjects,
+            options.openContainer,
+            cities,
+            options.navigationForLocation
+        ),
     ]
 }
 
 /** One world inventory for human commands, scripted work and agent intentions. */
 export function adventureWorldOptions(world: () => WorldLocations) {
     return {
+        navigationForLocation: (id: string) => world().get(id).navigation,
         openContainer: (actor: GameCharacter, id: string, now: number) =>
             executeContainerCommand(
                 world().get(actor.locationId).inventory.containers,

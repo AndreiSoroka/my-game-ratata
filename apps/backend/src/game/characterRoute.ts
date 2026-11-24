@@ -8,6 +8,7 @@ import type {
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
 import type { ControlWorld } from './controlWorld'
+import { canAutoOpenDoors } from './doorNavigation'
 import { magicBlocksMovement } from './magicState'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -94,7 +95,12 @@ export function enqueueCharacterRoute(
         return { accepted: false, reason: 'full' }
     }
     const from = routeOrigin(actor, existing)
-    const resolved = resolveRouteDestination(from, target, navigation)
+    const resolved = resolveRouteDestination(
+        from,
+        target,
+        navigation,
+        canAutoOpenDoors(actor)
+    )
     if (resolved === undefined) {
         return { accepted: false, reason: 'unreachable' }
     }
@@ -266,7 +272,8 @@ function plan(
     const resolved = resolveRouteDestination(
         actor.position,
         point.requestedPosition,
-        world.navigationFor(actor)
+        world.navigationFor(actor),
+        canAutoOpenDoors(actor)
     )
     if (resolved === undefined) {
         actor.clearPath()

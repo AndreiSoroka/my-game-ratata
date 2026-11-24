@@ -1,5 +1,5 @@
 import { worldLocationNeighbor } from '../contracts/src/world.ts'
-import { addInteriorBuilding } from './generate-interiors.mjs'
+import { addInteriorBuilding, doorInteraction } from './generate-interiors.mjs'
 import { addTrainingGround } from './generate-training.mjs'
 import {
     CITY_BUILDINGS,
@@ -51,6 +51,7 @@ export function addNovogorod(ctx, location) {
     ctx.propPlacements.length = 0
     const covers = Array(width * height).fill(0),
         buildings = [],
+        doors = [],
         fronts = [],
         destinations = [],
         anchors = []
@@ -110,6 +111,16 @@ export function addNovogorod(ctx, location) {
             stringProperty('semanticId', `novogorod.${definition.key}`)
         )
         buildings.push(result.object)
+        doors.push(
+            doorInteraction(
+                39000 + index,
+                location.id,
+                `novogorod.${definition.key}`,
+                definition.name,
+                result.threshold,
+                ['baker', 'weaver'].includes(definition.key) ? 'closed' : 'open'
+            )
+        )
         fronts.push(result.front)
         destinations.push(
             ...result.destinations.filter(
@@ -314,6 +325,7 @@ export function addNovogorod(ctx, location) {
         anchors,
         fortifications,
         interactions: [
+            ...doors,
             {
                 id: 65000,
                 name: 'Колокол памяти',

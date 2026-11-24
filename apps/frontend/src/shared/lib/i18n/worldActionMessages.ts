@@ -1,4 +1,7 @@
 export const worldActionMessages = {
+    closeDoor: ['Закрыть дверь', 'Close door'],
+    knockDoor: ['Постучать в дверь', 'Knock on door'],
+    openDoor: ['Открыть дверь', 'Open door'],
     abilityOnCooldown: ['Умение восстанавливается', 'Ability on cooldown'],
     aimingShot: [
         '{ability} · {energy} EN · прицеливание {seconds} с',

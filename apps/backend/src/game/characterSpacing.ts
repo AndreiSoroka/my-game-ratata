@@ -3,6 +3,7 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 import type { CompanionWorld } from './agentDecisions'
 import type { GameCharacter } from './character'
 import { available } from './crimeRules'
+import { findActorPath } from './doorNavigation'
 import { distance, normalize } from './math'
 import type { NavigationService } from './navigation'
 
@@ -113,7 +114,7 @@ function pathToStandingPlace(
     }
     for (const point of candidates) {
         if (insideTravelEdges(point, navigation) && canStand(point)) {
-            const path = navigation.findPathWorld(actor.position, point)
+            const path = findActorPath(navigation, actor, point)
             if (path.length > 0) {
                 return path
             }

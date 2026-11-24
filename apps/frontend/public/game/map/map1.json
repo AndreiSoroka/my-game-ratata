@@ -10043,6 +10043,259 @@
                             "value": "Доска заказов"
                         }
                     ]
+                },
+                {
+                    "id": 39000,
+                    "name": "Гильдия искателей",
+                    "type": "door",
+                    "x": 640,
+                    "y": 512,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.guild"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39001,
+                    "name": "Часовня памяти",
+                    "type": "door",
+                    "x": 880,
+                    "y": 512,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.chapel"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39002,
+                    "name": "Городская библиотека",
+                    "type": "door",
+                    "x": 1056,
+                    "y": 592,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.library"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39003,
+                    "name": "Таверна «Три дороги»",
+                    "type": "door",
+                    "x": 448,
+                    "y": 864,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.inn"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39004,
+                    "name": "Мастерские",
+                    "type": "door",
+                    "x": 336,
+                    "y": 544,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.workshop"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39005,
+                    "name": "Кузница",
+                    "type": "door",
+                    "x": 1232,
+                    "y": 864,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.smithy"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39006,
+                    "name": "Лавка Саввы",
+                    "type": "door",
+                    "x": 640,
+                    "y": 1024,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.shop"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39007,
+                    "name": "Дом травницы",
+                    "type": "door",
+                    "x": 896,
+                    "y": 1024,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.herbalist"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39008,
+                    "name": "Дом пекаря",
+                    "type": "door",
+                    "x": 416,
+                    "y": 352,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.baker"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "closed"
+                        }
+                    ]
+                },
+                {
+                    "id": 39009,
+                    "name": "Дом картографа",
+                    "type": "door",
+                    "x": 1232,
+                    "y": 528,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.cartographer"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39010,
+                    "name": "Дом ткача",
+                    "type": "door",
+                    "x": 1056,
+                    "y": 352,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-2:door:novogorod.weaver"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "closed"
+                        }
+                    ]
                 }
             ]
         },

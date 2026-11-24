@@ -16264,6 +16264,52 @@
                             "value": "[{\"x\":192,\"y\":1040,\"width\":80,\"height\":16},{\"x\":192,\"y\":1056,\"width\":80,\"height\":16},{\"x\":176,\"y\":1072,\"width\":112,\"height\":16},{\"x\":176,\"y\":1088,\"width\":112,\"height\":16},{\"x\":176,\"y\":1104,\"width\":112,\"height\":16},{\"x\":192,\"y\":1120,\"width\":80,\"height\":16},{\"x\":192,\"y\":1136,\"width\":80,\"height\":16}]"
                         }
                     ]
+                },
+                {
+                    "id": 39000,
+                    "name": "Фермерский амбар",
+                    "type": "door",
+                    "x": 384,
+                    "y": 800,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-1:door:farm-barn"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "open"
+                        }
+                    ]
+                },
+                {
+                    "id": 39001,
+                    "name": "Дверь дома",
+                    "type": "door",
+                    "x": 592,
+                    "y": 304,
+                    "width": 16,
+                    "height": 16,
+                    "rotation": 0,
+                    "visible": true,
+                    "properties": [
+                        {
+                            "name": "interactionId",
+                            "type": "string",
+                            "value": "map-2-1:door:hamlet"
+                        },
+                        {
+                            "name": "doorState",
+                            "type": "string",
+                            "value": "locked"
+                        }
+                    ]
                 }
             ]
         },

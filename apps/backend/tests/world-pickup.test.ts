@@ -47,6 +47,17 @@ describe('socket selected pickup target', () => {
             'boots',
         ])
         expect(room.snapshot(now).items).toEqual([behind])
+        expect(
+            player.sent.flatMap((message) =>
+                message.type === 'event' && message.event.audioCue !== undefined
+                    ? [message.event.audioCue]
+                    : []
+            )
+        ).toMatchObject([
+            { effect: 'drop', position: front.position },
+            { effect: 'drop', position: behind.position },
+            { effect: 'pickup', position: front.position },
+        ])
         room.stop()
     })
 

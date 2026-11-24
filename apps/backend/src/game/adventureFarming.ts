@@ -29,6 +29,7 @@ import type { NavigationService } from './navigation'
 import { setAuthoredNotice, setNotice } from './notices'
 import { recordLifeWorkSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
+import { withWorldSound } from './worldSound'
 
 export class AdventureFarming {
     private readonly plots: FarmPlotSnapshot[]
@@ -193,12 +194,17 @@ function harvest(
         })
     }
     return [
-        {
-            actorId: actor.id,
-            plotId: plot.id,
-            kind: 'farm_harvest',
-            amount: FARM_HARVEST_GRAIN,
-        },
+        withWorldSound(
+            {
+                actorId: actor.id,
+                plotId: plot.id,
+                kind: 'farm_harvest',
+                amount: FARM_HARVEST_GRAIN,
+            },
+            'harvest',
+            plot.locationId,
+            plot.position
+        ),
     ]
 }
 

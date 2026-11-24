@@ -2,6 +2,7 @@ import { CENTER_LOCATION_ID, type Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { companionProfiles } from './companionProfiles'
+import { findActorPath } from './doorNavigation'
 import type { GameRoom } from './room'
 import type { SocialHistory } from './socialHistory'
 import type { SocialRumorEncounter } from './socialHistoryTypes'
@@ -124,9 +125,7 @@ export class RoomRumorMeetings {
         const mover = canVisit(listener) ? listener : speaker
         const home =
             mover === listener ? speaker.spawnPosition : listener.spawnPosition
-        const path = this.room
-            .navigationFor(mover)
-            .findPathWorld(mover.position, home)
+        const path = findActorPath(this.room.navigationFor(mover), mover, home)
         if (path.length > 0) {
             mover.setPath(path)
             if (mover.path === path) {

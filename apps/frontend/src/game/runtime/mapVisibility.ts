@@ -3,6 +3,7 @@ import type {
     Vector2,
     ViewportBounds,
     WorldObjectBounds,
+    WorldObjectSnapshot,
 } from '@my-game-ratata/contracts'
 import { interactionApproachPoints } from '@my-game-ratata/contracts'
 
@@ -15,7 +16,7 @@ export interface MapVisibility {
     tileHeight: number
     solid: boolean[]
     resourceBase?: boolean[]
-    resourceSignature?: string
+    obstacleSignature?: string
     resourceInterest?: WorldInterestCache<AdventureResourceNode>
 }
 interface VisibilitySource {
@@ -59,40 +60,43 @@ export function readMapVisibility(map: VisibilitySource): MapVisibility {
     }
 }
 
-/** Mirrors server-authored obstacle states; client does not decide depletion or growth. */
-export function updateResourceVisibility(
+/** Mirrors server-authored resources and doors for visibility and owner motion. */
+export function updateObstacleVisibility(
     map: MapVisibility,
     nodes: readonly AdventureResourceNode[],
-    viewBounds?: ViewportBounds
+    viewBounds?: ViewportBounds,
+    objects: readonly WorldObjectSnapshot[] = []
 ): void {
     map.resourceInterest ??= new WorldInterestCache<AdventureResourceNode>()
     const sources = map.resourceInterest.update(
         nodes.filter((node) => node.source !== undefined),
         viewBounds
     ).nodes
-    const signature = JSON.stringify(
-        sources.map((node) => [node.id, node.phase, node.collisionBounds])
+    const blockedDoors = objects.filter(
+        (object) => object.kind === 'door' && object.door && object.door.state !== 'open'
     )
-    if (signature === map.resourceSignature) return
-    map.resourceSignature = signature
+    const signature = JSON.stringify([
+        sources.map((node) => [node.id, node.phase, node.collisionBounds]),
+        blockedDoors.map((door) => door.bounds),
+    ])
+    if (signature === map.obstacleSignature) return
+    map.obstacleSignature = signature
     map.resourceBase ??= map.solid.slice()
     map.solid = map.resourceBase.slice()
     for (const node of sources) {
-        const bounds = node.collisionBounds
-        if (!bounds) continue
-        for (
-            let y = Math.floor(bounds.y / map.tileHeight);
-            y < Math.ceil((bounds.y + bounds.height) / map.tileHeight);
-            y++
-        ) {
-            for (
-                let x = Math.floor(bounds.x / map.tileWidth);
-                x < Math.ceil((bounds.x + bounds.width) / map.tileWidth);
-                x++
-            ) {
-                if (x >= 0 && y >= 0 && x < map.width && y < map.height)
-                    map.solid[y * map.width + x] = true
-            }
+        if (node.collisionBounds) markObstacle(map, node.collisionBounds)
+    }
+    for (const door of blockedDoors) markObstacle(map, door.bounds)
+}
+
+function markObstacle(map: MapVisibility, bounds: WorldObjectBounds): void {
+    const top = Math.max(0, Math.floor(bounds.y / map.tileHeight))
+    const bottom = Math.min(map.height, Math.ceil((bounds.y + bounds.height) / map.tileHeight))
+    const left = Math.max(0, Math.floor(bounds.x / map.tileWidth))
+    const right = Math.min(map.width, Math.ceil((bounds.x + bounds.width) / map.tileWidth))
+    for (let y = top; y < bottom; y++) {
+        for (let x = left; x < right; x++) {
+            map.solid[y * map.width + x] = true
         }
     }
 }

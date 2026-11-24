@@ -15,6 +15,7 @@ import { forwardAttackZones } from './combatGeometry'
 import { constellationModifiers } from './constellationModifiers'
 import { distance, zeroVector } from './math'
 import { visibilityRadius } from './queries'
+import { withWorldSound } from './worldSound'
 
 export function canAimSniperAt(
     context: AttackContext,
@@ -131,10 +132,16 @@ export function arrowReleaseEvents(
             : (target?.position ?? arrow.aim)
     const endpoint = navigation?.visibleLineEndpoint(origin, aim) ?? aim
     return [
-        {
-            ...arrowPhaseEvent(actor, attack, 'completed'),
-            projectile: { origin, endpoint: { ...endpoint } },
-        },
+        withWorldSound(
+            {
+                ...arrowPhaseEvent(actor, attack, 'completed'),
+                projectile: { origin, endpoint: { ...endpoint } },
+            },
+            'attack',
+            actor.locationId,
+            origin,
+            { sourceActorId: actor.id }
+        ),
     ]
 }
 

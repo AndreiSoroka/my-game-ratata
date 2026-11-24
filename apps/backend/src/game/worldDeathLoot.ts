@@ -1,5 +1,6 @@
 import {
     ASH_RITE_RULES,
+    containerBounds,
     type GameEventPayload,
     HOSTILE_TROPHY_ITEMS,
     type Vector2,
@@ -12,6 +13,7 @@ import type { WorldChest } from './chestInteraction'
 import type { CorpseWallet } from './corpseWallet'
 import { canAwardDefeatTrophy } from './damageEvents'
 import { createItemInstance } from './inventory'
+import { withWorldSound } from './worldSound'
 
 /** Corpses outlive rendered characters; resolved receipts outlive emptied corpses. */
 export class WorldDeathLoot {
@@ -184,7 +186,15 @@ export class WorldDeathLoot {
             return []
         }
         this.containers.set(id, chest)
-        return [{ kind: 'item_drop', targetId: target.id, chestId: id }]
+        return [
+            withWorldSound(
+                { kind: 'item_drop', targetId: target.id, chestId: id },
+                'drop',
+                this.locationId,
+                chest.position,
+                { sourceBounds: containerBounds(chest.position) }
+            ),
+        ]
     }
 }
 

@@ -15,13 +15,17 @@ export interface ResolvedRouteDestination {
 export function resolveRouteDestination(
     from: Vector2,
     requested: Vector2,
-    navigation: NavigationService
+    navigation: NavigationService,
+    throughUnlockedDoors = false
 ): ResolvedRouteDestination | undefined {
     if (!finitePoint(from) || !finitePoint(requested)) {
         return undefined
     }
     const requestedPosition = navigation.clampWorld(requested)
-    const exact = navigation.findPathWorld(from, requestedPosition)
+    const findPath = throughUnlockedDoors
+        ? (point: Vector2) => navigation.findPathWorld(from, point, true)
+        : (point: Vector2) => navigation.findPathWorld(from, point)
+    const exact = findPath(requestedPosition)
     if (exact.length > 0) {
         return {
             requestedPosition,
@@ -29,12 +33,16 @@ export function resolveRouteDestination(
             path: exact,
         }
     }
-    const candidates = nearbyDestinations(requestedPosition, navigation)
+    const candidates = nearbyDestinations(
+        requestedPosition,
+        navigation,
+        throughUnlockedDoors
+    )
     candidates.sort((a, b) =>
         compareDestinations(a, b, requestedPosition, from)
     )
     for (const destination of candidates) {
-        const path = navigation.findPathWorld(from, destination)
+        const path = findPath(destination)
         if (path.length > 0) {
             return { requestedPosition, destination, path }
         }
@@ -61,7 +69,8 @@ function compareDestinations(
 
 function nearbyDestinations(
     point: Vector2,
-    navigation: NavigationService
+    navigation: NavigationService,
+    throughUnlockedDoors: boolean
 ): Vector2[] {
     const tile = navigation.worldToTile(point)
     const { tileWidth, tileHeight } = navigation.grid
@@ -74,7 +83,7 @@ function nearbyDestinations(
                 ((candidate.x - point.x) / tileWidth) ** 2 +
                 ((candidate.y - point.y) / tileHeight) ** 2
             if (
-                !navigation.isSolidTile(candidateTile) &&
+                !navigation.isPathBlocked(candidate, throughUnlockedDoors) &&
                 cellsSquared <= ROUTE_FALLBACK_CELLS ** 2
             ) {
                 candidates.push(candidate)

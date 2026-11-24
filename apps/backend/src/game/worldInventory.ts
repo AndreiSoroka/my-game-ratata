@@ -33,6 +33,7 @@ import { snapshotWorldContainers } from './worldContainerSnapshot'
 import { WorldDeathLoot } from './worldDeathLoot'
 import { dropPosition, healFood, isPointInZones } from './worldInventoryHelpers'
 import { type LooseWorldItem, pickupWorldItem } from './worldPickup'
+import { withWorldSound } from './worldSound'
 
 export class WorldInventory {
     public readonly containers: ChestContainers
@@ -264,14 +265,15 @@ export class WorldInventory {
         }
 
         resetMartyrStreak(player)
-        this.dropItemNear(item, player.position)
+        const position = this.dropItemNear(item, player.position)
 
         return [
-            {
-                actorId: player.id,
-                itemId: item.itemId,
-                kind: 'item_drop',
-            },
+            withWorldSound(
+                { actorId: player.id, itemId: item.itemId, kind: 'item_drop' },
+                'drop',
+                this.locationId,
+                position
+            ),
         ]
     }
 
@@ -296,33 +298,28 @@ export class WorldInventory {
         )
     }
 
-    public dropItemNear(item: InventoryItemInstance, origin: Vector2): void {
+    public dropItemNear(item: InventoryItemInstance, origin: Vector2): Vector2 {
         const position = dropPosition(origin, this.nextLooseItemIndex)
-        this.dropAtReachablePosition(item, position, origin)
+        return this.dropAtReachablePosition(item, position, origin)
     }
 
     private dropAtReachablePosition(
         item: InventoryItemInstance,
         position: Vector2,
         origin: Vector2
-    ): void {
+    ): Vector2 {
         const reachable =
             !this.navigation.isSolidTile(
                 this.navigation.worldToTile(position)
             ) && this.navigation.hasLineOfSight(origin, position)
-        this.createLooseItem(item, reachable ? position : origin)
-    }
-
-    private createLooseItem(
-        item: InventoryItemInstance,
-        position: Vector2
-    ): void {
+        const landed = reachable ? position : origin
         const looseItem = {
             id: `${this.locationId}:world_item_${String(this.nextLooseItemIndex)}`,
             item,
-            position,
+            position: landed,
         }
         this.nextLooseItemIndex += 1
         this.looseItems.set(looseItem.id, looseItem)
+        return landed
     }
 }

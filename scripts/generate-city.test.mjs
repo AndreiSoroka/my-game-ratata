@@ -61,7 +61,11 @@ function verify(map, style, label) {
     assert.equal(value(map, 'cityStyle'), style, label)
     assert.ok(value(map, 'cityLayoutAttempts') <= 32, label)
     const buildings = layer(map, 'Buildings').objects
+    const doors = layer(map, 'World interactions').objects.filter(
+        (object) => object.type === 'door'
+    )
     assert.equal(buildings.length, 11, label)
+    assert.equal(doors.length, buildings.length, label)
     for (const [index, definition] of CITY_BUILDINGS.entries()) {
         const building = buildings.find((entry) => entry.id === 100 + index)
         assert.ok(building, label)
@@ -70,6 +74,19 @@ function verify(map, style, label) {
         assert.equal(
             value(building, 'semanticId'),
             `novogorod.${definition.key}`,
+            label
+        )
+        const door = doors.find(
+            (object) =>
+                value(object, 'interactionId') ===
+                `${CENTER_LOCATION_ID}:door:novogorod.${definition.key}`
+        )
+        assert.ok(door, label)
+        assert.equal(door.x + 8, value(building, 'entryX'), label)
+        assert.equal(door.y + 8, value(building, 'entryY'), label)
+        assert.equal(
+            value(door, 'doorState'),
+            ['baker', 'weaver'].includes(definition.key) ? 'closed' : 'open',
             label
         )
         for (const other of buildings.filter(
@@ -516,5 +533,34 @@ test('all other 24 region maps remain byte-equivalent to their authored definiti
             JSON.stringify(expected),
             definition.id
         )
+    }
+})
+
+test('the farm barn and a knockable solid farmhouse have distinct accessible doors in every suburb', () => {
+    for (const definition of WORLD_LOCATION_DEFINITIONS.filter(
+        (entry) => entry.biome === 'outskirts'
+    )) {
+        const map = generateWorldMap(definition)
+        const doors = layer(map, 'World interactions').objects.filter(
+            (object) => object.type === 'door'
+        )
+        const solid = layer(map, 'Collision').data
+        const reachable = reached(map, [48, 40])
+        assert.equal(doors.length, 2, definition.id)
+        for (const [index, id, state] of [
+            [0, 'farm-barn', 'open'],
+            [1, 'hamlet', 'locked'],
+        ]) {
+            const door = doors[index]
+            const { x, y } = tileRect(door)
+            const cell = y * map.width + x
+            assert.equal(
+                value(door, 'interactionId'),
+                `${definition.id}:door:${id}`
+            )
+            assert.equal(value(door, 'doorState'), state)
+            assert.equal(Boolean(solid[cell]), state === 'locked')
+            assert.ok(reachable.has(cell + map.width), definition.id)
+        }
     }
 })

@@ -42,10 +42,9 @@ export function applyAshBrand(
     })
     const meaningful = damage.trainableDamage > 0
     return {
-        events: damage.events.map((event) => ({
-            ...event,
-            abilityId: 'pray_grave' as const,
-        })),
+        events: damage.events.map((event) =>
+            Object.assign(event, { abilityId: 'pray_grave' as const })
+        ),
         meaningful,
         experience: meaningful ? MASTERY_REWARDS.ashBrand : 0,
     }
@@ -85,10 +84,9 @@ export function applyPrayerWave(
             respawnDelayMs: context.respawnDelayMsFor?.(victim) ?? 15000,
         })
         events.push(
-            ...damage.events.map((event) => ({
-                ...event,
-                abilityId: 'pray' as const,
-            }))
+            ...damage.events.map((event) =>
+                Object.assign(event, { abilityId: 'pray' as const })
+            )
         )
         meaningful ||= damage.trainableDamage > 0
         if (damage.trainableDamage > 0) {

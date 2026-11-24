@@ -1,6 +1,3 @@
-import fs from 'node:fs'
-import path from 'node:path'
-
 import type {
     AuthoredContainerDefinition,
     GroundSurface,
@@ -9,16 +6,16 @@ import type {
     Vector2,
     WorldObjectBounds,
 } from '@my-game-ratata/contracts'
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { AuthoredEncounters } from './encounterData'
 import type { MapBuildingDefinition } from './mapBuildings'
-import { resolveMapRoot } from './mapFiles'
 import type { MapLandmarkDefinition } from './mapLandmarks'
 export { resolveMapRoot } from './mapFiles'
 import { clamp } from './math'
-import { buildGrid, type TiledMap } from './navigationGrid'
+import { type NavigationDoor, NavigationDoors } from './navigationDoors'
+export { loadNavigationService } from './navigationLoader'
 import { findPath } from './pathfinding'
+import type { AuthoredDoor } from './worldObjectData'
 
 export interface TileCoordinate {
     x: number
@@ -32,6 +29,7 @@ export interface MapGrid {
     landmarks?: MapLandmarkDefinition[]
     buildings?: MapBuildingDefinition[]
     containers?: AuthoredContainerDefinition[]
+    doors?: AuthoredDoor[]
     encounters?: AuthoredEncounters
     training?: TrainingMapData
     /** Immutable terrain/walls, excluding authored harvestable obstacles. */
@@ -52,10 +50,15 @@ export class NavigationService {
     public readonly grid: MapGrid
     public readonly summary: MapSummary
     private resourceBase: boolean[] | undefined
+    private solidsWithoutDoors: boolean[]
+    private readonly doors: NavigationDoors
 
     public constructor(grid: MapGrid) {
         this.grid = grid
         this.resourceBase = grid.baseSolid?.slice()
+        this.solidsWithoutDoors = grid.solid
+        this.doors = new NavigationDoors(grid)
+        this.grid.solid = this.doors.withCollision(this.solidsWithoutDoors)
         this.summary = {
             asset: grid.asset ?? {
                 url: `/game/map/${grid.id}.json`,
@@ -73,14 +76,31 @@ export class NavigationService {
     }
 
     public setResourceObstacles(bounds: readonly WorldObjectBounds[]): void {
-        this.resourceBase ??= this.grid.solid.slice()
+        this.resourceBase ??= this.solidsWithoutDoors.slice()
         const solid = this.resourceBase.slice()
         for (const area of bounds) {
             for (const index of this.cellsInBounds(area)) {
                 solid[index] = true
             }
         }
-        this.grid.solid = solid
+        this.solidsWithoutDoors = solid
+        this.grid.solid = this.doors.withCollision(solid)
+    }
+
+    public door(id: string): Readonly<NavigationDoor> | undefined {
+        return this.doors.get(id)
+    }
+
+    public doorAt(point: Vector2): Readonly<NavigationDoor> | undefined {
+        return this.doors.at(this.worldToTile(point))
+    }
+
+    public setDoorState(id: string, state: 'open' | 'closed'): boolean {
+        const changed = this.doors.set(id, state)
+        if (changed) {
+            this.grid.solid = this.doors.withCollision(this.solidsWithoutDoors)
+        }
+        return changed
     }
 
     public cellsInBounds(bounds: WorldObjectBounds): number[] {
@@ -146,11 +166,18 @@ export class NavigationService {
         return undefined
     }
 
-    public findPathWorld(from: Vector2, to: Vector2): Vector2[] {
+    public findPathWorld(
+        from: Vector2,
+        to: Vector2,
+        throughUnlockedDoors = false
+    ): Vector2[] {
         const start = this.worldToTile(from)
         const destination = this.clampWorld(to)
         const end = this.worldToTile(destination)
-        const tiles = findPath(this.grid, start, end)
+        const grid = throughUnlockedDoors
+            ? { ...this.grid, solid: this.solidsWithoutDoors }
+            : this.grid
+        const tiles = findPath(grid, start, end)
 
         if (tiles.length === 0) {
             return []
@@ -159,6 +186,16 @@ export class NavigationService {
             ...tiles.slice(1, -1).map((tile) => this.tileToWorld(tile)),
             destination,
         ]
+    }
+
+    public isPathBlocked(
+        point: Vector2,
+        throughUnlockedDoors: boolean
+    ): boolean {
+        const grid = throughUnlockedDoors
+            ? { ...this.grid, solid: this.solidsWithoutDoors }
+            : this.grid
+        return isSolidTile(grid, this.worldToTile(point))
     }
 
     public clampWorld(point: Vector2): Vector2 {
@@ -298,14 +335,4 @@ export function isSolidTile(grid: MapGrid, tile: TileCoordinate): boolean {
     }
 
     return grid.solid[tile.y * grid.width + tile.x] === true
-}
-
-export function loadNavigationService(
-    mapId: string = CENTER_LOCATION_ID
-): NavigationService {
-    const mapRoot = resolveMapRoot()
-    const raw = fs.readFileSync(path.join(mapRoot, `${mapId}.json`), 'utf-8')
-    const map = JSON.parse(raw) as TiledMap
-
-    return new NavigationService(buildGrid(mapId, map))
 }

@@ -6,6 +6,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { findStandingApproach } from './characterSpacing'
+import { findActorPath } from './doorNavigation'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { resourceReachable } from './resourcePlacement'
@@ -53,8 +54,9 @@ export function fleeWorker(
     const dy = actor.position.y - threat.position.y
     const scale = 120 / Math.max(1, Math.hypot(dx, dy))
     actor.setPath(
-        navigation.findPathWorld(
-            actor.position,
+        findActorPath(
+            navigation,
+            actor,
             walkableNear(navigation, {
                 x: actor.position.x + dx * scale,
                 y: actor.position.y + dy * scale,
@@ -85,10 +87,7 @@ export function approach(
         return true
     }
     actor.setPath(
-        navigation.findPathWorld(
-            actor.position,
-            walkableNear(navigation, point)
-        )
+        findActorPath(navigation, actor, walkableNear(navigation, point))
     )
     return false
 }
@@ -178,6 +177,6 @@ function approachLocationEdge(
     if (distance(actor.position, edge) <= 2) {
         actor.setMoveInput({ x: dx, y: dy })
     } else {
-        actor.setPath(navigation.findPathWorld(actor.position, edge))
+        actor.setPath(findActorPath(navigation, actor, edge))
     }
 }

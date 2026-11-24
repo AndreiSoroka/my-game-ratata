@@ -7,6 +7,7 @@ import type {
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import {
+    chestOpened,
     chestOpenRefusal,
     chestPickup,
     chestRefusalNotice,
@@ -21,6 +22,7 @@ import {
 import { resetMartyrStreak } from './martyr'
 import { cancelMovementMode } from './movementActions'
 import type { NavigationService } from './navigation'
+import { withWorldSound } from './worldSound'
 
 /** Views are private; the item instances remain in the shared world chest. */
 export class ChestContainers {
@@ -65,9 +67,7 @@ export class ChestContainers {
             this.viewers.set(actor.id, chest.id)
             const wasOpen = chest.opened
             chest.opened = true
-            return wasOpen
-                ? []
-                : [{ actorId: actor.id, chestId: chest.id, kind: 'chest_open' }]
+            return wasOpen ? [] : [chestOpened(actor, chest)]
         }
         if (this.viewers.get(actor.id) !== chest.id) {
             return chestRefusalNotice(actor.id, 'Сначала открой этот сундук.')
@@ -240,10 +240,18 @@ export class ChestContainers {
         if (message.type === 'take_chest_gold') {
             return this.takeGold(actor, chest)
         }
-        if (message.type === 'take_chest_item') {
-            return this.takeOne(actor, chest, message.itemInstanceId)
+        const events =
+            message.type === 'take_chest_item'
+                ? this.takeOne(actor, chest, message.itemInstanceId)
+                : [
+                      ...this.takeAll(actor, chest),
+                      ...this.takeGold(actor, chest),
+                  ]
+        const first = events[0]
+        if (first?.kind === 'item_pickup') {
+            withWorldSound(first, 'pickup', this.locationId, actor.position)
         }
-        return [...this.takeAll(actor, chest), ...this.takeGold(actor, chest)]
+        return events
     }
 
     private removeEmptyCorpse(chest: WorldChest): void {

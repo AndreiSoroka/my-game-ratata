@@ -7,6 +7,9 @@ import type {
 import {
     CHEST_INTERACTION_RANGE,
     containerBounds,
+    DOOR_INTERACTION_RANGE,
+    doorActionForState,
+    doorApproachPoints,
     FARM_INTERACTION_RANGE,
     interactionApproachPoints,
 } from '@my-game-ratata/contracts'
@@ -39,7 +42,7 @@ export function environmentTargets(
     return [
         ...itemTargets(snapshot),
         ...chestTargets(snapshot, approach),
-        ...worldTargets(snapshot, approach),
+        ...worldTargets(snapshot, actor, visible, approach),
         ...resourceTargets(snapshot, actor.locationId, approach),
         ...farmTargets(snapshot, actor.locationId),
     ].flatMap(({ command, ...target }) => {
@@ -106,10 +109,22 @@ function chestTargets(
 
 function worldTargets(
     snapshot: WorldSnapshot,
+    actor: GameCharacter,
+    visible: (point: Vector2) => boolean,
     approach: Approach
 ): EnvironmentTarget[] {
     return (snapshot.adventure?.worldObjects ?? []).flatMap((object) => {
-        const point = approach(object.interactionAreas ?? [object.bounds])
+        const door = object.door?.state
+        const point =
+            door === undefined
+                ? approach(object.interactionAreas ?? [object.bounds])
+                : doorApproachPoints(object.bounds, door)
+                      .filter(visible)
+                      .sort(
+                          (a, b) =>
+                              distance(actor.position, a) -
+                              distance(actor.position, b)
+                      )[0]
         return point === undefined
             ? []
             : [
@@ -118,9 +133,20 @@ function worldTargets(
                       id: object.id,
                       name: object.name,
                       position: point,
-                      interactionRange: 48,
-                      command: { type: 'world_interact', objectId: object.id },
-                      details: { kind: object.kind, depleted: object.depleted },
+                      interactionRange:
+                          door === undefined ? 48 : DOOR_INTERACTION_RANGE,
+                      command: {
+                          type: 'world_interact',
+                          objectId: object.id,
+                          ...(door === undefined
+                              ? {}
+                              : { doorAction: doorActionForState(door) }),
+                      },
+                      details: {
+                          kind: object.kind,
+                          depleted: object.depleted,
+                          ...(door === undefined ? {} : { state: door }),
+                      },
                   },
               ]
     })

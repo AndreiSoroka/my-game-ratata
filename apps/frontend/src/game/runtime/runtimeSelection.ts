@@ -1,6 +1,8 @@
 import {
+    doorApproachPoints,
     nearestInteractionPoint,
     type Vector2,
+    type WorldObjectBounds,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -18,6 +20,7 @@ export interface RuntimeSelectionContext {
     tileSize: number
     viewport: { left: number; top: number; right: number; bottom: number } | undefined
     positionVisible: (position: Vector2) => boolean
+    interactionVisible?: (position: Vector2, bounds?: WorldObjectBounds, range?: number) => boolean
     characterVisible: (id: string) => boolean
     characterPosition?: (id: string) => Vector2 | undefined
 }
@@ -32,6 +35,13 @@ export function runtimeSelectionVisible(
     const displayed = position ? { ...target, position } : target
     if (!viewport || !selectionIntersectsViewport(displayed, viewport)) return false
     if (target.kind === 'character') return context.characterVisible(target.id)
+    if (target.door && target.bounds) {
+        return doorApproachPoints(target.bounds, target.door.state).some(
+            (point) =>
+                context.interactionVisible?.(point, undefined, Infinity) ??
+                context.positionVisible(point)
+        )
+    }
     if (target.interactionAreas?.length) {
         const player = context.snapshot?.characters.find((actor) => actor.id === context.playerId)
         return target.interactionAreas.some(

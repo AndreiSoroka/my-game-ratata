@@ -4,6 +4,16 @@ export const adventureNoticeLines = {
     'world.trough': ['Поилка с водой', 'Water trough'],
     'world.pond': ['Вода у берега', 'Water at the shore'],
     'world.bell': ['Колокол памяти', 'Bell of Memory'],
+    'world.door': ['Дверь', 'Door'],
+    'world.doorUnavailable': [
+        'С этой дверью сейчас нельзя взаимодействовать.',
+        'This door cannot be used right now.',
+    ],
+    'world.doorOccupied': [
+        'Дверь нельзя закрыть, пока кто-то стоит в проёме.',
+        'The door cannot close while someone is in the doorway.',
+    ],
+    'world.doorLocked': ['Дверь заперта.', 'The door is locked.'],
     'world.outOfReach': [
         'Подойди ближе к предмету: через стену взаимодействовать нельзя.',
         'Move closer. You cannot interact through a wall.',

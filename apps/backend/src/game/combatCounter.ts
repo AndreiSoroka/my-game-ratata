@@ -20,6 +20,7 @@ import { effectiveAttackEnergyCost } from './effectiveParameters'
 import { isPveOpponent } from './factions'
 import { resolveFacing } from './math'
 import { recordPaidResources } from './resourcePractice'
+import { withWorldSound } from './worldSound'
 
 export function resolveCounterAttack(
     parent: AttackContext,
@@ -73,15 +74,21 @@ export function resolveCounterAttack(
         resourceSpends: recordPaidResources(actor, before),
     }
     return [
-        {
-            kind: 'attack',
-            actorId: actor.id,
-            targetId: target.id,
-            actionId,
-            attackOrigin: 'counter',
-            delivery: 'melee_physical',
-            attackGeometry: { kind: 'rectangles', zones },
-        },
+        withWorldSound(
+            {
+                kind: 'attack',
+                actorId: actor.id,
+                targetId: target.id,
+                actionId,
+                attackOrigin: 'counter',
+                delivery: 'melee_physical',
+                attackGeometry: { kind: 'rectangles', zones },
+            },
+            'attack',
+            actor.locationId,
+            actor.position,
+            { sourceActorId: actor.id }
+        ),
         ...resolveContactBatch(context, attack, [target], [], false),
     ]
 }

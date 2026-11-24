@@ -5,6 +5,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { findActorPath } from './doorNavigation'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import type { GameRoom } from './room'
@@ -86,7 +87,7 @@ function pathToReach(
     radius: number
 ): Vector2[] {
     const nav = room.navigationFor(actor)
-    const direct = nav.findPathWorld(actor.position, point)
+    const direct = findActorPath(nav, actor, point)
     if (direct.length > 0) {
         return direct
     }
@@ -110,7 +111,7 @@ function pathToReach(
         (a, b) => distance(actor.position, a) - distance(actor.position, b)
     )
     for (const candidate of candidates) {
-        const path = nav.findPathWorld(actor.position, candidate)
+        const path = findActorPath(nav, actor, candidate)
         if (path.length > 0) {
             return path
         }
@@ -171,9 +172,7 @@ function travelToward(
     }
     const progressed = madeProgress(actor, run, distance(actor.position, edge))
     if (!actor.hasPath() || now - run.step.lastPlanAt >= 1000) {
-        actor.setPath(
-            room.navigationFor(actor).findPathWorld(actor.position, edge)
-        )
+        actor.setPath(findActorPath(room.navigationFor(actor), actor, edge))
         run.step.lastPlanAt = now
     }
     return {

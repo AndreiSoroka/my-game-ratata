@@ -3,7 +3,6 @@ import {
     authoredRussian,
     type GameEventPayload,
     interactionApproachPoints,
-    type Vector2,
     type WorldObjectSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -18,6 +17,7 @@ import { setAuthoredNotice, setNotice } from './notices'
 import { restoreEnergy } from './resourcePractice'
 import { nextSpeechId } from './speechReceipts'
 import { loadWorldObjects, type WorldObjectDefinition } from './worldObjectData'
+import { withWorldSound } from './worldSound'
 
 export class WorldObjects {
     private readonly drinkAllowedAt = new Map<string, number>()
@@ -29,7 +29,10 @@ export class WorldObjects {
             id: string,
             now: number
         ) => AdventureActionResult,
-        private readonly cities?: CityWorldState
+        private readonly cities?: CityWorldState,
+        private readonly navigationForLocation?: (
+            id: string
+        ) => NavigationService
     ) {}
 
     public forgetActor(actorId: string): void {
@@ -58,8 +61,15 @@ export class WorldObjects {
     }
 
     public snapshot(locationId: string): WorldObjectSnapshot[] {
+        const navigation = this.navigationForLocation?.(locationId)
         return this.inLocation(locationId)
-            .filter((object) => object.kind !== 'barrel')
+            .filter(
+                (object) =>
+                    object.kind !== 'barrel' &&
+                    (object.kind !== 'door' ||
+                        navigation === undefined ||
+                        navigation.door(object.id) !== undefined)
+            )
             .map((object) => ({
                 id: object.id,
                 kind: object.kind,
@@ -82,6 +92,15 @@ export class WorldObjects {
                     y: object.bounds.y + object.bounds.height / 2,
                 },
                 depleted: false,
+                ...(object.doorState === undefined
+                    ? {}
+                    : {
+                          door: {
+                              state:
+                                  navigation?.door(object.id)?.state ??
+                                  object.doorState,
+                          },
+                      }),
                 ...this.bellSnapshot(object),
             }))
     }
@@ -111,7 +130,10 @@ export class WorldObjects {
         if (object?.kind === 'barrel') {
             return this.open(actor, object.id, now)?.events ?? []
         }
-        if (!canInteract(actor, object, navigation, now)) {
+        if (
+            !canInteract(actor, object, navigation, now) ||
+            object.kind === 'door'
+        ) {
             setAuthoredNotice(state, 'world.outOfReach')
             return []
         }
@@ -162,10 +184,15 @@ export class WorldObjects {
             return []
         }
         const events =
-            this.cities?.activate(object.locationId, actor.id, {
-                x: object.bounds.x + object.bounds.width / 2,
-                y: object.bounds.y + object.bounds.height / 2,
-            }) ?? []
+            this.cities?.activate(
+                object.locationId,
+                actor.id,
+                {
+                    x: object.bounds.x + object.bounds.width / 2,
+                    y: object.bounds.y + object.bounds.height / 2,
+                },
+                object.bounds
+            ) ?? []
         if (events[0]?.text === undefined) {
             setAuthoredNotice(state, 'world.bellActivated')
         } else {
@@ -192,12 +219,18 @@ export class WorldObjects {
         const text = setAuthoredNotice(state, key)
         return [
             ...events,
-            {
-                kind: 'water_drink',
-                actorId: actor.id,
-                text,
-                textMessage: authoredMessage(key),
-            },
+            withWorldSound(
+                {
+                    kind: 'water_drink',
+                    actorId: actor.id,
+                    text,
+                    textMessage: authoredMessage(key),
+                },
+                'drink',
+                actor.locationId,
+                actor.position,
+                { sourceActorId: actor.id }
+            ),
         ]
     }
 
@@ -264,20 +297,14 @@ function canInteract(
     ) {
         return false
     }
-    return interactionEdges(object, actor.position).some(
+    // Reach an exterior edge of a solid barrel or trough.
+    const approaches = interactionApproachPoints(
+        actor.position,
+        object.interactionAreas ?? [object.bounds]
+    )
+    return approaches.some(
         (point) =>
             distance(actor.position, point) <= 48 &&
             navigation.hasLineOfSight(actor.position, point)
-    )
-}
-
-/** Check the exterior, since a barrel/trough itself correctly occupies a solid tile. */
-function interactionEdges(
-    object: WorldObjectDefinition,
-    actor: Vector2
-): Vector2[] {
-    return interactionApproachPoints(
-        actor,
-        object.interactionAreas ?? [object.bounds]
     )
 }

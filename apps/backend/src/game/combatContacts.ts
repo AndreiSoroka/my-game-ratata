@@ -289,16 +289,15 @@ function contactEvents(
     attack: PendingAttackHit,
     critical: boolean
 ): GameEventPayload[] {
-    return source.map((event) => ({
-        ...event,
-        ...(attack.actionId === undefined ? {} : { actionId: attack.actionId }),
-        attackOrigin:
-            attack.origin ??
-            (attack.abilityId === undefined ? 'basic' : 'ability'),
-        delivery: attackDelivery(attack),
-        ...(attack.abilityId === undefined
-            ? {}
-            : { abilityId: attack.abilityId }),
-        ...(event.kind === 'damage' ? { critical } : {}),
-    }))
+    const { actionId, origin, abilityId } = attack
+    return source.map((event) =>
+        Object.assign(event, {
+            ...(actionId === undefined ? {} : { actionId }),
+            attackOrigin:
+                origin ?? (abilityId === undefined ? 'basic' : 'ability'),
+            delivery: attackDelivery(attack),
+            ...(abilityId === undefined ? {} : { abilityId }),
+            ...(event.kind === 'damage' ? { critical } : {}),
+        })
+    )
 }

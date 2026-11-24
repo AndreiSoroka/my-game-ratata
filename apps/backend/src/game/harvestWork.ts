@@ -31,6 +31,7 @@ import { setNotice } from './notices'
 import { resourceApproach, resourceReachable } from './resourcePlacement'
 import { recordLifeWorkSpend } from './resourcePractice'
 import { canPerformSkillAction } from './skillProgression'
+import { withWorldSound } from './worldSound'
 
 const workLocks = new WeakMap<GameCharacter, number>()
 export interface GatherInspection {
@@ -130,6 +131,7 @@ export function resolveGather(
     resetMartyrStreak(actor)
     recordLifeWorkSpend(actor, actor.drainEnergy(work.energy), now)
     workAnimation(actor, state, now, work.duration)
+    const collisionBounds = node.collisionBounds
     const broken =
         work.tool === undefined ? false : wearItem(work.tool, work.wear)
     const treeCut = node.source === 'tree' && operation === 'harvest'
@@ -145,15 +147,41 @@ export function resolveGather(
     if (treeCut) {
         dropTreeLoot(actor, node, drops)
     }
-    return outputs.length === 0
-        ? [{ kind: 'notice', actorId: actor.id, text }]
-        : outputs.map((item) => ({
-              kind: 'resource_gather' as const,
-              actorId: actor.id,
-              itemId: item.itemId,
-              amount: item.quantity ?? 1,
-              text,
-          }))
+    return successfulGatherEvents(actor, node, outputs, text, collisionBounds)
+}
+
+function successfulGatherEvents(
+    actor: GameCharacter,
+    node: AdventureResourceNode,
+    outputs: InventoryItemInstance[],
+    text: string,
+    collisionBounds: AdventureResourceNode['collisionBounds']
+): GameEventPayload[] {
+    const events: GameEventPayload[] =
+        outputs.length === 0
+            ? [{ kind: 'notice', actorId: actor.id, text }]
+            : outputs.map((item) => ({
+                  kind: 'resource_gather' as const,
+                  actorId: actor.id,
+                  itemId: item.itemId,
+                  amount: item.quantity ?? 1,
+                  text,
+              }))
+    const first = events[0]
+    const sourceBounds = collisionBounds ?? node.bounds
+    if (
+        first !== undefined &&
+        (node.source === 'tree' || node.source === 'stone')
+    ) {
+        withWorldSound(
+            first,
+            node.source === 'tree' ? 'chop' : 'mine',
+            node.locationId,
+            node.position,
+            sourceBounds === undefined ? {} : { sourceBounds }
+        )
+    }
+    return events
 }
 function dropTreeLoot(
     actor: GameCharacter,

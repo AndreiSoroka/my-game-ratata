@@ -106,6 +106,7 @@ test('holds the still shoreline when reduced motion is requested', async ({ page
 })
 
 test('plays isolated real tracks and restores one music track when visible', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 750 })
     const result = await page.evaluate(() => window.engineHarness.audio())
     expect(result).toMatchObject({
         audioBeforeLoad: 'running',
@@ -115,6 +116,14 @@ test('plays isolated real tracks and restores one music track when visible', asy
         bookClose: { path: '/game/assets/audio/kenney-rpg-audio/bookClose.ogg', tracks: 1 },
         slotSelect: { path: '/game/assets/audio/kenney-ui-audio/rollover2.ogg', tracks: 1 },
         equipment: { path: '/game/assets/audio/kenney-ui-audio/switch11.ogg', tracks: 1 },
+        worldSounds: {
+            volumes: [1, 0.25, 0.125],
+            afterIgnored: 3,
+            afterMute: 0,
+            afterHide: 0,
+            beforeTravel: 1,
+            afterTravel: 0,
+        },
         footsteps: {
             voices: 8,
             completed: Array.from({ length: 8 }, () => true),
@@ -133,6 +142,8 @@ test('plays isolated real tracks and restores one music track when visible', asy
     expect(result.sampleVolume).toBeCloseTo(result.catalogVolume)
     expect(result.musicVolume).toBeCloseTo(0.108)
     expect(result.menuOpen.duration).toBeCloseTo(0.28, 1)
+    expect(result.worldSounds.bellDuration).toBeCloseTo(3.8, 1)
+    expect(result.worldSounds.knockDuration).toBeCloseTo(0.38, 1)
     const [near, far] = result.footsteps.settings
     expect(near).toEqual([0.8, 0.96])
     expect(far?.[0]).toBeCloseTo(0.3)

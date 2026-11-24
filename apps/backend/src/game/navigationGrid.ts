@@ -9,7 +9,7 @@ import { readCityAnchors, readCityAreas } from './mapCityAnchors'
 import { readMapLandmarks } from './mapLandmarks'
 import type { MapGrid } from './navigation'
 import { readNavigationSurfaces } from './navigationSurfaces'
-import { readWorldContainers } from './worldObjectData'
+import { readWorldContainers, readWorldDoors } from './worldObjectData'
 
 interface TiledProperty {
     name: string
@@ -67,6 +67,10 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
             mapId === 'map1' ? CENTER_LOCATION_ID : mapId
         ),
         containers: readWorldContainers(map, mapId),
+        doors: readWorldDoors(
+            map,
+            mapId === 'map1' ? CENTER_LOCATION_ID : mapId
+        ),
         training: readTrainingMapData(
             map,
             mapId === 'map1' ? CENTER_LOCATION_ID : mapId

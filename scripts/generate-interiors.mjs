@@ -4,6 +4,28 @@ import { doorwayGid, pavingGid, woodenFloorGid } from './generate-ground.mjs'
 const town = 512
 const furnishings = 198
 
+export function doorInteraction(id, locationId, key, name, [x, y], state) {
+    return {
+        id,
+        name,
+        type: 'door',
+        x: x * 16,
+        y: y * 16,
+        width: 16,
+        height: 16,
+        rotation: 0,
+        visible: true,
+        properties: [
+            {
+                name: 'interactionId',
+                type: 'string',
+                value: `${locationId}:door:${key}`,
+            },
+            { name: 'doorState', type: 'string', value: state },
+        ],
+    }
+}
+
 // A building is ordinary map geometry. Its roof/facade is a removable visual cover.
 export function addInteriorBuilding(ctx, definition) {
     const { at, terrain, plants, structures, objects, solid, covers } = ctx
@@ -115,6 +137,7 @@ export function addInteriorBuilding(ctx, definition) {
                 },
             ],
         },
+        threshold: [x + door, y + h - 1],
         front: [x + door, y + h],
         destinations: [[x + door, y + h - 1], ...protectedTiles],
     }

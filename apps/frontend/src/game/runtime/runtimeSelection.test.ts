@@ -55,4 +55,22 @@ describe('runtime selection shared by pointer and UI', () => {
         state.positionVisible = () => true
         expect(runtimeSelectionVisible(target, state)).toBe(true)
     })
+    it('selects a door from a visible approach when its center is hidden under a roof', () => {
+        const state = context()
+        state.positionVisible = () => false
+        state.interactionVisible = (point) => point.y === 109
+        const target = {
+            key: 'world:door',
+            id: 'door',
+            kind: 'world' as const,
+            name: 'Дверь',
+            position: { x: 140, y: 100 },
+            bounds: { x: 132, y: 92, width: 16, height: 16 },
+            door: { state: 'closed' as const },
+        }
+        expect(runtimeSelectionVisible(target, state)).toBe(true)
+        state.interactionVisible = (point) => point.y === 91
+        expect(runtimeSelectionVisible(target, state)).toBe(true)
+        expect(runtimeSelectionVisible({ ...target, door: { state: 'locked' } }, state)).toBe(false)
+    })
 })

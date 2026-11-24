@@ -9,6 +9,7 @@ import type { GameCharacter } from './character'
 import { canObserveRoomCharacter, usesStealthSight } from './characterSight'
 import type { CombatObserver } from './combatObservation'
 import { visibilityRadius } from './queries'
+import { projectWorldSound } from './worldSound'
 
 /** This projection never mutates the numeric domain event used by simulation services. */
 export function observeCombatEvent(
@@ -35,7 +36,16 @@ export function observeCombatEvent(
     if (visible.kind === 'damage') {
         delete visible.eventId
     }
-    return projectObservedDetails(event, visible, view)
+    const projected = projectObservedDetails(event, visible, view)
+    if (projected !== undefined) {
+        const cue = projectWorldSound(event, view)
+        if (cue === undefined) {
+            delete projected.audioCue
+        } else {
+            projected.audioCue = cue
+        }
+    }
+    return projected
 }
 
 function projectObservedDetails(

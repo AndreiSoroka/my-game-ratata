@@ -25,6 +25,7 @@ export function addHamlets(ctx) {
         [60, 63],
     ]
     let placed = 0
+    const doors = []
     const inside = (x, y) => x >= 4 && y >= 4 && x < width - 4 && y < height - 4
     for (const [x, y] of candidates) {
         if (placed >= 3) break
@@ -75,10 +76,12 @@ export function addHamlets(ctx) {
             solid[at(x + dx, y + h)] = 1
         }
         paveToRoad([x + 3, y + h], ctx)
+        doors.push([x + 3, y + h - 1])
         placed += 1
     }
     if (placed === 0)
         throw new Error('Suburb generated without a walkable hamlet')
+    return doors
 }
 
 function paveToRoad([x, y], ctx) {

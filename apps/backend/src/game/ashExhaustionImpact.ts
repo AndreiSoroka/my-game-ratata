@@ -51,13 +51,13 @@ export function resolveAshExhaustionImpact(
         reconcileResourceCapacity(target, 'mana')
         reconcileResourceCapacity(target, 'energy')
     }
-    const events = result.events.map((event): GameEventPayload => ({
-        ...event,
-        actionId: id,
-        attackOrigin: 'ability',
-        abilityId: event.abilityId ?? abilityId,
-        delivery: 'magic',
-    }))
+    const events = result.events
+    events.forEach((event) => {
+        event.actionId = id
+        event.attackOrigin = 'ability'
+        event.abilityId ??= abilityId
+        event.delivery = 'magic'
+    })
     const chance =
         miracleChance(actor, now, 'grave') + ASH_RULES.exhaustion.chanceBonus
     if (target.alive && random() < chance) {

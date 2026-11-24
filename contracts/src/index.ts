@@ -58,7 +58,7 @@ import type {
     MovementClientMessage,
     MoveToClientMessage,
 } from './movement'
-export type * from './events'
+export * from './events'
 export * from './movement'
 import type { PartyClientMessage } from './party'
 export type * from './party'
@@ -80,7 +80,7 @@ export * from './magic'
 import type { AdventureClientMessage } from './adventure'
 export type * from './adventure'
 export { BASE_STOCK_MERCHANT_IDS } from './adventure'
-export * from './environmentGeometry'
+export * from './environment'
 import type { WorldObjectBounds } from './environment'
 export * from './farming'
 export * from './farms'

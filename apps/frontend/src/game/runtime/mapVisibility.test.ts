@@ -1,11 +1,11 @@
-import type { AdventureResourceNode } from '@my-game-ratata/contracts'
+import type { AdventureResourceNode, WorldObjectSnapshot } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import {
     interactionHasLineOfSight,
     mapHasLineOfSight,
     type MapVisibility,
-    updateResourceVisibility,
+    updateObstacleVisibility,
 } from './mapVisibility'
 
 function arena(): MapVisibility {
@@ -72,6 +72,43 @@ describe('interaction visibility uses reachable geometry', () => {
     })
 })
 
+describe('door obstacle reconciliation', () => {
+    it('applies closed thresholds to motion and vision without overwriting resource or wall collision', () => {
+        const map = arena()
+        map.solid[1] = true
+        map.resourceBase = map.solid.slice()
+        const tree: AdventureResourceNode = {
+            id: 'tree',
+            source: 'tree',
+            phase: 'ready',
+            kind: 'wood',
+            remaining: 8,
+            locationId: 'map-2-2',
+            position: { x: 40, y: 40 },
+            collisionBounds: { x: 32, y: 32, width: 16, height: 16 },
+        }
+        const door: WorldObjectSnapshot = {
+            id: 'door',
+            kind: 'door',
+            name: 'Дверь',
+            position: center,
+            bounds: footprint,
+            depleted: false,
+            door: { state: 'closed' },
+        }
+        const crossesDoor = () => mapHasLineOfSight(map, { x: 72, y: 88 }, { x: 72, y: 56 })
+        updateObstacleVisibility(map, [tree], undefined, [door])
+        expect(crossesDoor()).toBe(false)
+        updateObstacleVisibility(map, [tree], undefined, [{ ...door, door: { state: 'open' } }])
+        expect(crossesDoor()).toBe(true)
+        expect(map.solid[1]).toBe(true)
+        expect(map.solid[2 * map.width + 2]).toBe(true)
+        updateObstacleVisibility(map, [], undefined, [door])
+        expect(crossesDoor()).toBe(false)
+        expect(map.solid[2 * map.width + 2]).toBe(false)
+    })
+})
+
 describe('resource obstacle reconciliation', () => {
     it('keeps known offscreen obstacles while updating depletion and absence inside a partial view', () => {
         const map = arena()
@@ -89,26 +126,26 @@ describe('resource obstacle reconciliation', () => {
         }
         const away = { left: 128, top: 128, right: 192, bottom: 192 }
         const nearby = { left: 32, top: 32, right: 112, bottom: 112 }
-        updateResourceVisibility(map, [node])
-        updateResourceVisibility(map, [], away)
+        updateObstacleVisibility(map, [node])
+        updateObstacleVisibility(map, [], away)
         expect(map.solid[3 * 12 + 3]).toBe(true)
         expect(map.solid[1]).toBe(true)
-        updateResourceVisibility(
+        updateObstacleVisibility(
             map,
             [{ ...node, phase: 'stump', collisionBounds: footprint }],
             nearby
         )
         expect(map.solid[3 * 12 + 3]).toBe(false)
         expect(map.solid[4 * 12 + 4]).toBe(true)
-        updateResourceVisibility(map, [], away)
+        updateObstacleVisibility(map, [], away)
         expect(map.solid[4 * 12 + 4]).toBe(true)
-        updateResourceVisibility(map, [], nearby)
+        updateObstacleVisibility(map, [], nearby)
         expect(map.solid[4 * 12 + 4]).toBe(false)
         expect(map.solid[1]).toBe(true)
-        updateResourceVisibility(map, [node], nearby)
+        updateObstacleVisibility(map, [node], nearby)
         expect(map.solid[3 * 12 + 3]).toBe(true)
         const freshMap = arena()
-        updateResourceVisibility(freshMap, [], away)
+        updateObstacleVisibility(freshMap, [], away)
         expect(freshMap.solid.some(Boolean)).toBe(false)
     })
 
@@ -124,8 +161,8 @@ describe('resource obstacle reconciliation', () => {
             position: center,
             collisionBounds: footprint,
         }
-        updateResourceVisibility(map, [node])
-        updateResourceVisibility(map, [{ ...node, collisionBounds: { ...footprint, x: 96 } }])
+        updateObstacleVisibility(map, [node])
+        updateObstacleVisibility(map, [{ ...node, collisionBounds: { ...footprint, x: 96 } }])
         expect(map.solid[4 * 12 + 4]).toBe(false)
         expect(map.solid[4 * 12 + 6]).toBe(true)
     })
@@ -144,19 +181,19 @@ describe('resource obstacle reconciliation', () => {
             position: { x: 72, y: 72 },
             collisionBounds: { x: 48, y: 48, width: 48, height: 32 },
         }
-        updateResourceVisibility(map, [node])
+        updateObstacleVisibility(map, [node])
         expect(map.solid[3 * 12 + 3]).toBe(true)
         node.phase = 'stump'
         node.collisionBounds = { x: 64, y: 64, width: 16, height: 16 }
-        updateResourceVisibility(map, [node])
+        updateObstacleVisibility(map, [node])
         expect(map.solid[3 * 12 + 3]).toBe(false)
         expect(map.solid[4 * 12 + 4]).toBe(true)
         expect(map.solid[1]).toBe(true)
         node.phase = 'ready'
         node.collisionBounds = { x: 48, y: 48, width: 48, height: 32 }
-        updateResourceVisibility(map, [node])
+        updateObstacleVisibility(map, [node])
         expect(map.solid[3 * 12 + 3]).toBe(true)
-        updateResourceVisibility(map, [])
+        updateObstacleVisibility(map, [])
         expect(map.solid[3 * 12 + 3]).toBe(false)
         expect(map.solid[1]).toBe(true)
     })

@@ -6,12 +6,14 @@ import {
     type CityStateSnapshot,
     type GameEventPayload,
     type Vector2,
+    type WorldObjectBounds,
 } from '@my-game-ratata/contracts'
 
 import {
     type CityStoryDefinition,
     cityStoryDefinitions,
 } from './cityStoryDefinitions'
+import { withWorldSound } from './worldSound'
 
 interface CityState {
     definition: CityStoryDefinition
@@ -91,7 +93,8 @@ export class CityWorldState {
     public activate(
         cityId: string,
         actorId: string,
-        position: Vector2
+        position: Vector2,
+        bounds?: WorldObjectBounds
     ): GameEventPayload[] {
         const state = this.cities.get(cityId)
         if (state?.bellState !== 'prepared') {
@@ -103,14 +106,20 @@ export class CityWorldState {
             listener(cityId)
         }
         return [
-            {
-                kind: 'bell_activate',
-                actorId,
-                objectId: state.definition.bellObjectId,
-                eventId: state.activationId,
-                position: { ...position },
-                ...authoredPhrase('world.bellRang'),
-            },
+            withWorldSound(
+                {
+                    kind: 'bell_activate',
+                    actorId,
+                    objectId: state.definition.bellObjectId,
+                    eventId: state.activationId,
+                    position: { ...position },
+                    ...authoredPhrase('world.bellRang'),
+                },
+                'bell',
+                cityId,
+                position,
+                bounds === undefined ? {} : { sourceBounds: bounds }
+            ),
         ]
     }
 

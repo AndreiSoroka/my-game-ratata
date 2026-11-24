@@ -1,12 +1,40 @@
 import type { AbilityId, DamageKind } from './abilities'
 import type { ProjectilePath } from './combatAim'
-import type { ItemId } from './index'
+import type { ItemId, Vector2 } from './index'
 
 export type CombatHitQuality =
     'miss' | 'weak' | 'normal' | 'strong' | 'critical'
 
+/** Audible range in world pixels for each short world effect. */
+export const WORLD_SOUND_RADII = {
+    chestOpen: 160,
+    pickup: 120,
+    drop: 160,
+    attack: 240,
+    hit: 240,
+    drink: 120,
+    chop: 240,
+    mine: 240,
+    harvest: 120,
+    bell: 640,
+    doorOpen: 160,
+    doorClose: 160,
+    doorKnock: 160,
+} as const
+
+export type WorldSoundEffect = keyof typeof WORLD_SOUND_RADII
+
+export interface WorldAudioCue {
+    id: string
+    effect: WorldSoundEffect
+    locationId: string
+    position: Vector2
+    obstructed?: true
+}
+
 export type GameEventKind =
     | 'bell_activate'
+    | 'door_interact'
     | 'resource_gather'
     | 'tree_plant'
     | 'heal'
@@ -46,6 +74,8 @@ export type GameEventKind =
     | 'skill_up'
 
 export interface GameEventPayload {
+    /** A server-projected world sound for this listener. */
+    audioCue?: WorldAudioCue
     actionId?: string
     locationId?: string
     attackOrigin?: import('./combat').AttackOrigin

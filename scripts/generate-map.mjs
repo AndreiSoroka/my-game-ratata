@@ -7,6 +7,7 @@ import {
 } from '../contracts/src/world.ts'
 import { addNovogorod } from './generate-city.mjs'
 import { addHamlets } from './generate-hamlets.mjs'
+import { doorInteraction } from './generate-interiors.mjs'
 import { addFarmSettlement } from './generate-farms.mjs'
 import { createSurfaceLayer } from './generate-surfaces.mjs'
 import { removePondFragments } from './generate-terrain.mjs'
@@ -370,20 +371,22 @@ export function generateWorldMap(definition, options = {}) {
     ].slice(0, ruinCount)) {
         ruin(cx, cy, true)
     }
-    if (definition.biome === 'outskirts')
-        addHamlets({
-            width,
-            height,
-            at,
-            terrain,
-            plants,
-            structures,
-            objects,
-            solid,
-            reserved,
-            roads,
-            random,
-        })
+    const hamletDoors =
+        definition.biome === 'outskirts'
+            ? addHamlets({
+                  width,
+                  height,
+                  at,
+                  terrain,
+                  plants,
+                  structures,
+                  objects,
+                  solid,
+                  reserved,
+                  roads,
+                  random,
+              })
+            : []
     for (
         let n = 0, attempts = 0;
         n < treeCount && attempts < treeCount * 12;
@@ -476,7 +479,7 @@ export function generateWorldMap(definition, options = {}) {
         training = [],
         anchors = [],
         fortifications = [],
-        interactions: cityInteractions = [],
+        interactions: settlementInteractions = [],
     } = settlement
     // The transition system permits travel anywhere along an edge, not only at gates.
     for (let y = 0; y < height; y++)
@@ -496,7 +499,22 @@ export function generateWorldMap(definition, options = {}) {
         definition,
         landmarks
     )
-    interactions.push(...cityInteractions)
+    interactions.push(...settlementInteractions)
+    const lockedDoor = hamletDoors.find(
+        ([x, y]) =>
+            solid[at(x, y)] && !solid[at(x, y + 1)] && roads[at(x, y + 1)]
+    )
+    if (lockedDoor)
+        interactions.push(
+            doorInteraction(
+                39001,
+                definition.id,
+                'hamlet',
+                'Дверь дома',
+                lockedDoor,
+                'locked'
+            )
+        )
     const depthProps = createDepthProps(settlementContext, definition.id)
     const ashRefuge = westernRuins
         ? createAshRefuge(options.ashRefugeSeed ?? generationSeed)

@@ -69,8 +69,9 @@ export function projectViewport(
             ...(snapshot.adventure.worldObjects === undefined
                 ? {}
                 : {
-                      worldObjects:
-                          snapshot.adventure.worldObjects.filter(visible),
+                      worldObjects: snapshot.adventure.worldObjects.filter(
+                          (object) => object.kind === 'door' || visible(object)
+                      ),
                   }),
         }
     }

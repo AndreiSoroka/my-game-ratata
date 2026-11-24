@@ -198,9 +198,8 @@ export class RatataGame {
         const position = this.view?.sceneActors?.characterPosition(id)
         return projectCharacter(this.view?.engine, this.view?.canvas, this.snapshot, id, position)
     }
-    public isPositionVisible(position: Vector2): boolean {
-        return this.isMapReady && (this.view?.sceneActors?.isPositionVisible(position) ?? false)
-    }
+    public readonly isPositionVisible = (position: Vector2): boolean =>
+        this.isMapReady && (this.view?.sceneActors?.isPositionVisible(position) ?? false)
 
     public isInteractionVisible(
         position: Vector2,
@@ -230,7 +229,9 @@ export class RatataGame {
         viewport: this.isMapReady ? this.view?.engine?.currentScene.camera.viewport : undefined,
         characterVisible: (id: string) => this.isCharacterVisible(id),
         characterPosition: (id: string) => this.view?.sceneActors?.characterPosition(id),
-        positionVisible: (point: Vector2) => this.isPositionVisible(point),
+        positionVisible: this.isPositionVisible,
+        interactionVisible: (point: Vector2, bounds?: WorldObjectBounds, range?: number) =>
+            this.isInteractionVisible(point, bounds, range),
     })
 
     private get isMapReady(): boolean {

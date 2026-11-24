@@ -10,6 +10,7 @@ import { resetMartyrStreak } from './martyr'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
+import { withWorldSound } from './worldSound'
 
 const pickupRadius = 24
 
@@ -68,7 +69,16 @@ export function pickupWorldItem(
     resetMartyrStreak(actor)
     items.delete(item.id)
     return [
-        { actorId: actor.id, itemId: item.item.itemId, kind: 'item_pickup' },
+        withWorldSound(
+            {
+                actorId: actor.id,
+                itemId: item.item.itemId,
+                kind: 'item_pickup',
+            },
+            'pickup',
+            locationId,
+            item.position
+        ),
     ]
 }
 

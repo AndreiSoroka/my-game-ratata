@@ -5,6 +5,7 @@ import {
 
 import type { GameCharacter } from './character'
 import { cityResidents } from './cityResidents'
+import { findActorPath } from './doorNavigation'
 import type { NavigationService } from './navigation'
 import { walkableNear } from './workerNavigation'
 
@@ -35,8 +36,12 @@ export function createWandererScenario(
         .map((point) => walkableNear(navigation, point))
         .filter(
             (point) =>
-                navigation.findPathWorld(character.spawnPosition, point)
-                    .length > 0
+                findActorPath(
+                    navigation,
+                    character,
+                    point,
+                    character.spawnPosition
+                ).length > 0
         )
     return {
         id: `idle-${character.id}`,

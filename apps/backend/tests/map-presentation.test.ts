@@ -222,7 +222,9 @@ describe('physical world interactions', () => {
             expect(
                 interactions.filter((object) => object.type === 'sign').length
             ).toBeGreaterThanOrEqual(5)
-            for (const object of interactions) {
+            for (const object of interactions.filter(
+                (object) => object.type !== 'door'
+            )) {
                 expect(['sign', 'quest_board', 'barrel', 'water']).toContain(
                     object.type
                 )

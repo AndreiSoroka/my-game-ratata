@@ -139,13 +139,14 @@ function explode(
         inBlast
     )
     events.push(...explodeGraves(projectile, context, amount, inBlast))
-    const contacts = events.map((event): GameEventPayload => ({
-        ...event,
-        actionId: id,
-        attackOrigin: 'ability',
-        delivery: 'magic',
-        abilityId: event.abilityId ?? abilityId,
-    }))
+    const contacts = events.map<GameEventPayload>((event) =>
+        Object.assign(event, {
+            actionId: id,
+            attackOrigin: 'ability',
+            delivery: 'magic',
+            abilityId: event.abilityId ?? abilityId,
+        })
+    )
     if (firstHostile !== undefined) {
         contacts.push(...rewardSpell(projectile, firstHostile, now))
     }

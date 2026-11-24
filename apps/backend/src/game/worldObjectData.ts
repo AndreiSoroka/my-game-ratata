@@ -5,6 +5,7 @@ import {
     type AuthoredContainerDefinition,
     authoredMessage,
     type AuthoredTextKey,
+    type DoorState,
     type LocalizedMessage,
     type WorldObjectBounds,
     type WorldObjectKind,
@@ -26,6 +27,14 @@ export interface WorldObjectDefinition {
     locationId: string
     bounds: WorldObjectBounds
     interactionAreas?: WorldObjectBounds[]
+    doorState?: DoorState
+}
+
+export interface AuthoredDoor {
+    id: string
+    locationId: string
+    bounds: WorldObjectBounds
+    initialState: DoorState
 }
 
 interface MapObject extends WorldObjectBounds {
@@ -64,17 +73,12 @@ export function readWorldObjects(
             candidate.name === 'World interactions'
     )
     return (layer?.objects ?? []).flatMap((object) => {
-        if (
-            object.type !== 'sign' &&
-            object.type !== 'barrel' &&
-            object.type !== 'water' &&
-            object.type !== 'bell' &&
-            object.type !== 'quest_board'
-        ) {
+        if (!isWorldObjectKind(object.type)) {
             return []
         }
         const id = propertyValue(object, 'interactionId')
-        const text = propertyValue(object, 'text')
+        const text = object.type === 'door' ? '' : propertyValue(object, 'text')
+        const doorState = readDoorState(object)
         if (
             typeof id !== 'string' ||
             typeof text !== 'string' ||
@@ -102,6 +106,7 @@ export function readWorldObjects(
                 kind: object.type,
                 name,
                 ...presentation,
+                ...(doorState === undefined ? {} : { doorState }),
                 ...(interactionAreas === undefined ? {} : { interactionAreas }),
                 bounds: {
                     x: object.x,
@@ -114,12 +119,53 @@ export function readWorldObjects(
     })
 }
 
+export function readWorldDoors(
+    map: ObjectMap,
+    locationId: string
+): AuthoredDoor[] {
+    return readWorldObjects(map, locationId).flatMap((object) =>
+        object.doorState === undefined
+            ? []
+            : [
+                  {
+                      id: object.id,
+                      locationId,
+                      bounds: object.bounds,
+                      initialState: object.doorState,
+                  },
+              ]
+    )
+}
+
+function readDoorState(object: MapObject): DoorState | undefined {
+    if (object.type !== 'door') {
+        return undefined
+    }
+    const value = propertyValue(object, 'doorState')
+    if (value !== 'open' && value !== 'closed' && value !== 'locked') {
+        throw new Error('Invalid authored door state')
+    }
+    return value
+}
+
+function isWorldObjectKind(type: string): type is WorldObjectKind {
+    return (
+        type === 'sign' ||
+        type === 'barrel' ||
+        type === 'water' ||
+        type === 'bell' ||
+        type === 'quest_board' ||
+        type === 'door'
+    )
+}
+
 const objectNames: Readonly<Partial<Record<string, AuthoredTextKey>>> = {
     Колодец: 'world.well',
     'Чистая вода': 'world.water',
     'Поилка с водой': 'world.trough',
     'Вода у берега': 'world.pond',
     'Колокол памяти': 'world.bell',
+    'Дверь дома': 'world.door',
 }
 
 function worldObjectPresentation(

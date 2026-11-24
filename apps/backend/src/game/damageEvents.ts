@@ -3,6 +3,7 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import type { CharacterDamageInput } from './abilityDamage'
 import type { GameCharacter } from './character'
 import { markDamageRetaliation } from './crimeRelations'
+import { withWorldSound } from './worldSound'
 
 const damageSequences = new WeakMap<GameCharacter, number>()
 const uncreditedDefeats = new WeakMap<GameCharacter, number>()
@@ -52,7 +53,13 @@ export function damageEvent(
         damageKind: input.damageKind,
         hitQuality: input.hitQuality ?? 'normal',
     }
-    return authorizedRetaliation === undefined
-        ? event
-        : markDamageRetaliation(event, authorizedRetaliation)
+    return withWorldSound(
+        authorizedRetaliation === undefined
+            ? event
+            : markDamageRetaliation(event, authorizedRetaliation),
+        'hit',
+        input.target.locationId,
+        input.target.position,
+        { sourceActorId: input.target.id }
+    )
 }

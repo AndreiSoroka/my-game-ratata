@@ -11,6 +11,7 @@ import {
     type Vector2,
     type WorldGraveSnapshot,
     type WorldObjectBounds,
+    type WorldObjectSnapshot,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -33,6 +34,7 @@ export interface WorldSelectionTarget {
     position: Vector2
     bounds?: WorldObjectBounds
     interactionAreas?: WorldObjectBounds[]
+    door?: WorldObjectSnapshot['door']
     relationship?: CharacterRelationship
 }
 
@@ -95,6 +97,7 @@ export function worldTargetCandidates(
                 position: object.position,
                 bounds: object.bounds,
                 interactionAreas: object.interactionAreas,
+                door: object.door,
             })),
         ...(snapshot.adventure?.resourceNodes ?? [])
             .filter(

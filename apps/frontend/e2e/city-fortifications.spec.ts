@@ -185,10 +185,43 @@ async function enterNearestHouse(
                 Number(property(right, 'entryY')) - from.y
             )
     )[0]!
-    await walk(page, {
+    const entry = {
         x: Number(property(nearest, 'entryX')),
         y: Number(property(nearest, 'entryY')),
-    })
+    }
+    const door = await page.evaluate(
+        (point) =>
+            window
+                .__ratataTest!.getState()
+                .snapshot?.adventure?.worldObjects?.find(
+                    (object) =>
+                        object.door?.state === 'closed' &&
+                        object.position.x === point.x &&
+                        object.position.y === point.y
+                ),
+        entry
+    )
+    if (door) {
+        await walk(page, { x: entry.x, y: door.bounds.y + door.bounds.height + 8 })
+        await page.evaluate(
+            (objectId) =>
+                window.__ratataTest!.act({ type: 'world_interact', objectId, doorAction: 'open' }),
+            door.id
+        )
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (id) =>
+                        window
+                            .__ratataTest!.getState()
+                            .snapshot?.adventure?.worldObjects?.find((object) => object.id === id)
+                            ?.door?.state,
+                    door.id
+                )
+            )
+            .toBe('open')
+    }
+    await walk(page, entry)
     await walk(page, {
         x: Number(property(nearest, 'interiorX')),
         y: Number(property(nearest, 'interiorY')),
@@ -204,10 +237,7 @@ async function enterNearestHouse(
         )
         .toEqual([String(nearest.id)])
     await screenshot(page, `gate-${gate}-roof-hidden`, width, info)
-    await walk(page, {
-        x: Number(property(nearest, 'entryX')),
-        y: Number(property(nearest, 'entryY')),
-    })
+    await walk(page, entry)
 }
 function capturePositions(page: Page): TracePoint[] {
     const positions: TracePoint[] = []

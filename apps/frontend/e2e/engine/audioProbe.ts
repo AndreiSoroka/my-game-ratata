@@ -1,3 +1,9 @@
+import {
+    CENTER_LOCATION_ID,
+    WESTERN_RUINS_LOCATION_ID,
+    WORLD_SOUND_RADII,
+    type WorldLocation,
+} from '@my-game-ratata/contracts'
 import { DefaultLoader, type Sound, type SoundTrack } from 'excalibur'
 
 import { type GameSoundId, soundCatalog } from '../../src/game/assets/soundCatalog'
@@ -5,9 +11,17 @@ import { isAudioMuteForced, setAudioMuted } from '../../src/game/runtime/audioPr
 import { createCharacterResources } from '../../src/game/runtime/characterResources'
 import { FootstepAudio } from '../../src/game/runtime/footstepAudio'
 import { GameAudio } from '../../src/game/runtime/gameAudio'
+import { characterFixture, worldFixture } from '../../src/game/testing/characterFixture'
 import { mountEngine, startEngine } from './engineSupport'
 
 const step = { actorId: 'walker', surface: 'grass', volume: 0.8, variant: 0, slime: false } as const
+const map = { footsteps: { width: 32, height: 32, tileWidth: 16, tileHeight: 16, surfaces: [] } }
+const listener = characterFixture('listener', { position: { x: 24, y: 24 } })
+const world = {
+    ...worldFixture([listener]),
+    location: { id: CENTER_LOCATION_ID } as WorldLocation,
+    viewBounds: { left: 0, top: 0, right: 64, bottom: 64 },
+}
 
 export async function verifyAudio(context: AudioContext) {
     const run = mountEngine()
@@ -19,11 +33,15 @@ export async function verifyAudio(context: AudioContext) {
     const bookClose = resources.sounds.get('uiBookClose')
     const slotSelect = resources.sounds.get('uiSlotSelect')
     const equipment = resources.sounds.get('equip')
+    const chest = resources.sounds.get('chestOpen')
+    const bell = resources.sounds.get('bell')
+    const knock = resources.sounds.get('doorKnock')
     if (!menuOpen || !bookClose || !slotSelect || !equipment)
         throw new Error('Interface sample is missing')
+    if (!chest || !bell || !knock) throw new Error('World sample is missing')
     const music = resources.music.adventureBegins
     const loader = new DefaultLoader({
-        loadables: [sample, menuOpen, bookClose, slotSelect, equipment, music],
+        loadables: [sample, menuOpen, bookClose, slotSelect, equipment, chest, bell, knock, music],
     })
     let audioBeforeLoad: AudioContextState | undefined
     loader.on('beforeload', () => {
@@ -33,6 +51,8 @@ export async function verifyAudio(context: AudioContext) {
     run.owner.addCleanup(() => gameAudio.stop())
     try {
         await startEngine(run, loader)
+        gameAudio.setMap(map, CENTER_LOCATION_ID)
+        gameAudio.observeWorld(world, listener.id, () => false)
         return {
             audioBeforeLoad,
             forcedMute: isAudioMuteForced(),
@@ -45,8 +65,12 @@ export async function verifyAudio(context: AudioContext) {
             bookClose: checkPlayback(bookClose, () => gameAudio.playSound('uiBookClose')),
             slotSelect: checkPlayback(slotSelect, () => gameAudio.playSound('uiSlotSelect')),
             equipment: checkPlayback(equipment, () =>
-                gameAudio.playEventSound({ kind: 'item_equip' })
+                gameAudio.playEventSound(
+                    { kind: 'item_equip', actorId: listener.id },
+                    world.serverTime
+                )
             ),
+            worldSounds: checkWorldSounds(gameAudio, chest, bell, knock),
             footsteps: await checkFootsteps(sample),
             music: checkMusic(gameAudio, music),
         }
@@ -64,6 +88,61 @@ function checkPlayback(sample: Sound, play: () => void) {
     }
     sample.stop()
     return result
+}
+
+function checkWorldSounds(audio: GameAudio, chest: Sound, bell: Sound, knock: Sound) {
+    const open = (
+        id: string,
+        distance: number,
+        obstructed?: true,
+        locationId = CENTER_LOCATION_ID
+    ) =>
+        audio.playEventSound(
+            {
+                kind: 'chest_open',
+                audioCue: {
+                    id,
+                    effect: 'chestOpen',
+                    locationId,
+                    position: { x: listener.position.x + distance, y: listener.position.y },
+                    ...(obstructed ? { obstructed } : {}),
+                },
+            },
+            world.serverTime
+        )
+    const halfRadius = WORLD_SOUND_RADII.chestOpen / 2
+    open('near', 0)
+    open('outside-viewport', halfRadius)
+    open('behind-wall', halfRadius, true)
+    const volumes = chest.instances.map((track) => track.volume)
+    open('behind-wall', halfRadius, true)
+    open('beyond-range', WORLD_SOUND_RADII.chestOpen + 1)
+    open('other-map', 0, undefined, WESTERN_RUINS_LOCATION_ID)
+    audio.observeWorld(world, listener.id, () => false)
+    const afterIgnored = chest.playingCount()
+    setAudioMuted(true)
+    const afterMute = chest.playingCount()
+    setAudioMuted(false)
+    open('before-hide', 0)
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    open('while-hidden', 0)
+    const afterHide = chest.playingCount()
+    Reflect.deleteProperty(document, 'hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    open('before-travel', 0)
+    const beforeTravel = chest.playingCount()
+    audio.setMap(map, WESTERN_RUINS_LOCATION_ID)
+    return {
+        volumes,
+        afterIgnored,
+        afterMute,
+        afterHide,
+        beforeTravel,
+        afterTravel: chest.playingCount(),
+        bellDuration: bell.data.duration,
+        knockDuration: knock.data.duration,
+    }
 }
 
 async function checkFootsteps(sample: Sound) {

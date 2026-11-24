@@ -9,6 +9,7 @@ import {
 
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
+import { canAutoOpenDoors, findActorPath } from './doorNavigation'
 import { effectiveWorkEnergy } from './effectiveParameters'
 import {
     type HarvestDrops,
@@ -262,11 +263,13 @@ export class HarvestResources {
             const target = actor.path.at(-1)
             if (
                 target !== undefined &&
-                actor.path.some((point) =>
-                    navigation.isSolidTile(navigation.worldToTile(point))
-                )
+                actor
+                    .remainingPath()
+                    .some((point) =>
+                        navigation.isPathBlocked(point, canAutoOpenDoors(actor))
+                    )
             ) {
-                actor.setPath(navigation.findPathWorld(actor.position, target))
+                actor.setPath(findActorPath(navigation, actor, target))
             }
         }
         this.dirty.delete(locationId)

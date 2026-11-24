@@ -24,6 +24,7 @@ import {
     snapshotCharacterRoute,
 } from './characterRoute'
 import type { ControlWorld } from './controlWorld'
+import { findActorPath } from './doorNavigation'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
 
@@ -292,5 +293,5 @@ function plan(
         return
     }
     state.lastPlanAt = now
-    actor.setPath(navigation.findPathWorld(actor.position, point))
+    actor.setPath(findActorPath(navigation, actor, point))
 }

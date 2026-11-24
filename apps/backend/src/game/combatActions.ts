@@ -7,6 +7,7 @@ import { prepareComboTarget } from './bladeCombo'
 import type { GameCharacter } from './character'
 import type { PendingAttackHit } from './characterState'
 import { nextCombatActionId } from './combatState'
+import { withWorldSound } from './worldSound'
 
 export interface AttackPhases {
     cycleMs: number
@@ -57,7 +58,7 @@ export function startCombatAction(
     actor.lockAction(now, phases.movementMs)
     actor.setAnimation('attack', now, phases.animationMs ?? phases.cycleMs)
     actor.attackZoneUntil = now + phases.cycleMs
-    return {
+    const event: StartedCombatAction = {
         kind: 'attack',
         actorId: actor.id,
         actionId: id,
@@ -72,4 +73,9 @@ export function startCombatAction(
             ? {}
             : { target: { ...attack.target } }),
     }
+    return attack.delivery === 'melee_physical'
+        ? withWorldSound(event, 'attack', actor.locationId, actor.position, {
+              sourceActorId: actor.id,
+          })
+        : event
 }

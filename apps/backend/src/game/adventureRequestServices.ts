@@ -15,6 +15,7 @@ import type { AdventureActionResult } from './adventureTrading'
 import { resolvedAdventureAction } from './adventureViews'
 import type { GameCharacter } from './character'
 import type { NavigationService } from './navigation'
+import { requestDoorInteraction } from './worldDoors'
 import type { WorldObjects } from './worldObjects'
 
 interface RequestContext {
@@ -57,6 +58,8 @@ export function createAdventureRequests(context: RequestContext): {
         context.service.reportWorkProblem(actor, error)
         return { accepted: false, error, events: [] }
     }
+    const worldInteraction = (...args: Parameters<HandleResult>) =>
+        directWorldInteraction(context, ...args)
     return {
         handle: (
             actor,
@@ -68,19 +71,23 @@ export function createAdventureRequests(context: RequestContext): {
             if (refusal(actor, message) !== undefined) {
                 return []
             }
-            return executeAdventureCommand(
-                {
-                    ...context.services(),
-                    service: context.service,
-                    resources: context.resources(),
-                    worldObjects: context.objects(),
-                    state: context.stateFor(actor.id),
-                },
-                actor,
-                message,
-                characters,
-                navigation,
-                now
+            return (
+                worldInteraction(actor, message, characters, navigation, now)
+                    ?.events ??
+                executeAdventureCommand(
+                    {
+                        ...context.services(),
+                        service: context.service,
+                        resources: context.resources(),
+                        worldObjects: context.objects(),
+                        state: context.stateFor(actor.id),
+                    },
+                    actor,
+                    message,
+                    characters,
+                    navigation,
+                    now
+                )
             )
         },
         handleResult: (actor, message, characters, navigation, now) => {
@@ -88,15 +95,8 @@ export function createAdventureRequests(context: RequestContext): {
             if (error !== undefined) {
                 return error
             }
-            if (message.type === 'world_interact') {
-                const opened = context
-                    .objects()
-                    .open(actor, message.objectId, now)
-                if (opened !== undefined) {
-                    return opened
-                }
-            }
             return (
+                worldInteraction(actor, message, characters, navigation, now) ??
                 resolveAdventureService(
                     context.services(),
                     actor,
@@ -118,4 +118,27 @@ export function createAdventureRequests(context: RequestContext): {
             )
         },
     }
+}
+
+function directWorldInteraction(
+    context: RequestContext,
+    actor: GameCharacter,
+    message: AdventureClientMessage,
+    characters: GameCharacter[],
+    navigation: NavigationService | undefined,
+    now: number
+): AdventureActionResult | undefined {
+    if (message.type !== 'world_interact') {
+        return undefined
+    }
+    return (
+        requestDoorInteraction(
+            actor,
+            context.stateFor(actor.id),
+            message,
+            characters,
+            navigation,
+            now
+        ) ?? context.objects().open(actor, message.objectId, now)
+    )
 }

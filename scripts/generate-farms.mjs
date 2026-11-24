@@ -1,6 +1,6 @@
 import { FARM_PLOTS } from '../contracts/src/farms.ts'
 import { soilGid } from './generate-ground.mjs'
-import { addInteriorBuilding } from './generate-interiors.mjs'
+import { addInteriorBuilding, doorInteraction } from './generate-interiors.mjs'
 
 const farm = 768
 const town = 512
@@ -134,6 +134,16 @@ export function addFarmSettlement(ctx, location) {
     return {
         covers,
         buildings: [barn.object],
+        interactions: [
+            doorInteraction(
+                39000,
+                location.id,
+                'farm-barn',
+                barn.object.name,
+                barn.threshold,
+                'open'
+            ),
+        ],
         landmarks: [
             {
                 id: 1,

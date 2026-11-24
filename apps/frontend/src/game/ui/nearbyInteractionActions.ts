@@ -3,12 +3,14 @@ import type {
     ClientMessage,
     Vector2,
     WorldObjectBounds,
+    WorldObjectSnapshot,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import {
     CHEST_FOOTPRINT_SIZE,
     CHEST_INTERACTION_RANGE,
     COMPANION_REQUEST_RANGE,
+    doorApproachPoints,
     FARM_INTERACTION_RANGE,
     interactionApproachPoints,
     PORTAL_INTERACTION_TILES,
@@ -37,7 +39,7 @@ import {
 } from './nearbyCharacterActions'
 import { farmAction, pickupActions, resourceActions } from './nearbyMaterialActions'
 import { theftActions } from './theftActions'
-import { worldInteractionActions } from './worldInteractionActions'
+import { worldInteractionTargets } from './worldInteractionActions'
 
 export interface InteractionAction extends NearbyAction {
     command: ClientMessage
@@ -48,6 +50,7 @@ export interface InteractionTarget extends TargetHighlight {
 }
 interface TargetCandidate extends InteractionTarget {
     range: number
+    door?: WorldObjectSnapshot['door']
 }
 type InteractionVisibility = (
     position: Vector2,
@@ -79,7 +82,7 @@ export function nearbyInteractionTarget(
         ...characterTargets(snapshot, player, characters, targetKey),
         ...portalTargets(snapshot, player),
         ...graveTargets(snapshot, player),
-        ...objectTargets(snapshot, player),
+        ...worldInteractionTargets(snapshot, player),
         ...resourceTargets(snapshot, player),
         ...farmTargets(snapshot, player),
         ...chestTargets(snapshot, player),
@@ -162,6 +165,11 @@ function targetVisible(
     from: Vector2,
     visible: InteractionVisibility
 ): boolean {
+    if (target.door && target.bounds) {
+        return doorApproachPoints(target.bounds, target.door.state).some((point) =>
+            visible(point, undefined, target.range)
+        )
+    }
     if (!target.interactionAreas) return visible(target.position, target.bounds, target.range)
     return interactionApproachPoints(from, target.interactionAreas).some(
         (point) =>
@@ -231,20 +239,6 @@ function characterTargets(
                 ],
             }
         })
-}
-function objectTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
-    return (snapshot.adventure?.worldObjects ?? []).map((object) => ({
-        key: `world:${object.id}`,
-        name: tLocalized(object.nameMessage, object.name),
-        position: object.position,
-        bounds: object.bounds,
-        interactionAreas: object.interactionAreas,
-        range: 48,
-        actions: worldInteractionActions(
-            { ...snapshot, adventure: { ...snapshot.adventure!, worldObjects: [object] } },
-            player
-        ),
-    }))
 }
 function resourceTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
     return (snapshot.adventure?.resourceNodes ?? []).map((node) => {

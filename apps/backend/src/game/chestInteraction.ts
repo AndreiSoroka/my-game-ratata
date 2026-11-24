@@ -24,6 +24,7 @@ import {
     generateChestContents,
     generateFarmSupplyContents,
 } from './worldInventoryHelpers'
+import { withWorldSound } from './worldSound'
 
 export function chestOpenRefusal(
     actor: GameCharacter,
@@ -140,7 +141,20 @@ export function revealChestContents(
         breakHeartSeal(chest, item.instanceId)
         drop(item, dropPosition(chest.position, index))
     }
-    return [{ actorId: actor.id, chestId: chest.id, kind: 'chest_open' }]
+    return [chestOpened(actor, chest)]
+}
+
+export function chestOpened(
+    actor: GameCharacter,
+    chest: WorldChest
+): GameEventPayload {
+    return withWorldSound(
+        { actorId: actor.id, chestId: chest.id, kind: 'chest_open' },
+        'chestOpen',
+        actor.locationId,
+        chest.position,
+        { sourceBounds: chest.bounds ?? containerBounds(chest.position) }
+    )
 }
 
 export function findNearestChest(

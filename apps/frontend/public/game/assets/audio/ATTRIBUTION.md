@@ -51,3 +51,7 @@
 
 - License: CC0 1.0
 - Used file: `ambience/spark-flight.mp3`, a short excerpt with fades. [089_bzz_t3.wav](https://freesound.org/people/freesound/sounds/50277/)
+
+## Original game effects
+
+- `sfx/memory-bell.wav` and `sfx/door-knock.wav` were synthesized for the game.

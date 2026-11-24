@@ -1,4 +1,5 @@
 import {
+    DOOR_INTERACTION_RANGE,
     FARM_INTERACTION_RANGE,
     GRAVE_INTERACTION_RANGE,
     PORTAL_INTERACTION_TILES,
@@ -51,8 +52,12 @@ export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[]
                 position: object.position,
                 bounds: object.bounds,
                 interactionAreas: object.interactionAreas,
-                interactionRange: 48,
-                details: { kind: object.kind, depleted: object.depleted },
+                interactionRange: object.kind === 'door' ? DOOR_INTERACTION_RANGE : 48,
+                details: {
+                    kind: object.kind,
+                    depleted: object.depleted,
+                    ...(object.door ? { state: object.door.state } : {}),
+                },
             })),
         ...(snapshot.adventure?.resourceNodes ?? [])
             .filter((node) => node.phase !== 'removed')

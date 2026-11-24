@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import { CENTER_LOCATION_ID, type Vector2 } from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { parseNpcAiConfig } from '../src/ai/config'
@@ -59,6 +59,29 @@ function contains(
     )
 }
 
+function expectWalkableEntrance(
+    building: Building,
+    navigation: ReturnType<typeof loadNavigationService>,
+    start: Vector2
+): Vector2 {
+    const entry = point(building, 'entry')
+    const interior = point(building, 'interior')
+    const door = navigation.doorAt(entry)
+    if (door?.state === 'closed') {
+        expect(
+            navigation.findPathWorld(start, interior),
+            building.name
+        ).toEqual([])
+        expect(navigation.setDoorState(door.id, 'open'), building.name).toBe(
+            true
+        )
+    }
+    const route = navigation.findPathWorld(start, interior)
+    expect(route.at(-1), building.name).toEqual(interior)
+    expect(route, building.name).toContainEqual(entry)
+    return entry
+}
+
 describe('inhabited city interiors', () => {
     it('has eleven inhabited buildings with door-only passages through their perimeters', () => {
         const navigation = loadNavigationService()
@@ -66,11 +89,7 @@ describe('inhabited city interiors', () => {
         const start = playerSpawn(navigation, 1)
         expect(buildings).toHaveLength(11)
         for (const building of buildings) {
-            const entry = point(building, 'entry')
-            const interior = point(building, 'interior')
-            const route = navigation.findPathWorld(start, interior)
-            expect(route.at(-1), building.name).toEqual(interior)
-            expect(route, building.name).toContainEqual(entry)
+            const entry = expectWalkableEntrance(building, navigation, start)
             const occupants = residents.filter((resident) =>
                 contains(building, resident.position)
             )

@@ -12,6 +12,7 @@ import { findStandingApproach } from './characterSpacing'
 import { isTargetInAttackRange } from './combat'
 import { sightForCompanion, tryCompanionShot } from './companionAbilities'
 import type { CompanionProfile } from './companionProfiles'
+import { findActorPath } from './doorNavigation'
 import { distance } from './math'
 import {
     type RegionalExit,
@@ -281,7 +282,7 @@ function planPath(
         return
     }
     character.setPath(
-        world.navigationFor(character).findPathWorld(character.position, target)
+        findActorPath(world.navigationFor(character), character, target)
     )
     state.lastPlanAt = now
 }

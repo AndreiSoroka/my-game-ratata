@@ -8,6 +8,7 @@ import type {
 import {
     CHEST_FOOTPRINT_SIZE,
     CHEST_INTERACTION_RANGE,
+    doorApproachPoints,
     interactionApproachPoints,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
@@ -148,15 +149,7 @@ function observeTargets(
         ...buildingTargets(visibility),
     ]
     return descriptions
-        .filter(
-            (target) =>
-                target.kind === 'building' ||
-                (target.interactionAreas
-                    ? interactionApproachPoints(player.position, target.interactionAreas).some(
-                          (point) => visibility.isPositionVisible?.(point) !== false
-                      )
-                    : visibility.isPositionVisible?.(target.position) !== false)
-        )
+        .filter((target) => targetObserved(target, player.position, visibility))
         .map((target) => ({
             ...target,
             key: `${target.kind}:${target.id}`,
@@ -172,6 +165,28 @@ function observeTargets(
                 )?.actions ?? [],
         }))
         .sort((a, b) => a.distance - b.distance || a.key.localeCompare(b.key))
+}
+
+function targetObserved(
+    target: TargetDescription,
+    playerPosition: Vector2,
+    visibility: ObservationOptions
+): boolean {
+    if (target.kind === 'building') return true
+    if (target.details.kind === 'door' && target.bounds) {
+        const state = target.details.state === 'locked' ? 'locked' : 'open'
+        return doorApproachPoints(target.bounds, state).some(
+            (point) =>
+                (visibility.isInteractionVisible?.(point, undefined, Infinity) ??
+                    visibility.isPositionVisible?.(point)) !== false
+        )
+    }
+    if (target.interactionAreas) {
+        return interactionApproachPoints(playerPosition, target.interactionAreas).some(
+            (point) => visibility.isPositionVisible?.(point) !== false
+        )
+    }
+    return visibility.isPositionVisible?.(target.position) !== false
 }
 
 function buildingTargets(visibility: ObservationOptions): TargetDescription[] {

@@ -63,22 +63,81 @@ function musicClip() {
     }
 }
 
-it('replaces the melee swing for a magic attack while keeping the normal attack sound', () => {
-    const music = musicClip()
-    const melee = clip(soundCatalog.attack.volume)
-    const audio = new GameAudio(
-        new Map([['attack', melee as unknown as Sound]]),
-        music as unknown as Sound
-    )
+it('plays a resolved attack cue without replaying an unmarked magic attack or bow windup', () => {
+    const { audio, start } = setupEventAudio('attack')
+    const actorId = 'hero'
     try {
-        audio.playEventSound({ kind: 'attack', abilityId: 'fireball', delivery: 'magic' })
-        expect(melee.play).not.toHaveBeenCalled()
-        audio.playEventSound({ kind: 'attack', delivery: 'melee_physical' })
-        expect(melee.play).toHaveBeenCalledOnce()
+        audio.playEventSound(
+            { kind: 'attack', actorId, abilityId: 'fireball', delivery: 'magic' },
+            1
+        )
+        audio.playEventSound({ kind: 'attack', actorId, abilityId: 'shot', phase: 'started' }, 2)
+        expect(start).not.toHaveBeenCalled()
+        audio.playEventSound(
+            {
+                kind: 'attack',
+                actorId,
+                delivery: 'melee_physical',
+                audioCue: {
+                    id: 'attack-cue',
+                    effect: 'attack',
+                    locationId: CENTER_LOCATION_ID,
+                    position: { x: 8, y: 8 },
+                },
+            },
+            3
+        )
+        expect(start).toHaveBeenCalledExactlyOnceWith({ volume: 1 })
     } finally {
         audio.stop()
     }
 })
+
+it('keeps inventory feedback personal and plays a bulk chest transfer once', () => {
+    const { audio, start } = setupEventAudio('pickup')
+    try {
+        audio.playEventSound({ kind: 'item_pickup', actorId: 'other' }, 1)
+        expect(start).not.toHaveBeenCalled()
+        audio.playEventSound({ kind: 'item_pickup', actorId: 'hero' }, 2)
+        const take = { kind: 'item_pickup', actorId: 'hero', chestId: 'chest' } as const
+        audio.playEventSound(
+            {
+                ...take,
+                audioCue: {
+                    id: 'take-cue',
+                    effect: 'pickup',
+                    locationId: CENTER_LOCATION_ID,
+                    position: { x: 8, y: 8 },
+                },
+            },
+            3
+        )
+        audio.playEventSound(take, 3)
+        expect(start.mock.calls).toEqual([[{ volume: 1 }], [{ volume: 1 }]])
+    } finally {
+        audio.stop()
+    }
+})
+
+function setupEventAudio(id: 'attack' | 'pickup') {
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    const start = vi.fn<Sound['start']>().mockReturnValue(null)
+    const sample = { ...clip(soundCatalog[id].volume), start, isLoaded: true }
+    const audio = new GameAudio(
+        new Map([[id, sample as unknown as Sound]]),
+        musicClip() as unknown as Sound
+    )
+    audio.setMap(
+        { footsteps: { width: 1, height: 1, tileWidth: 16, tileHeight: 16, surfaces: [] } },
+        CENTER_LOCATION_ID
+    )
+    audio.observeWorld(
+        { ...snapshot(8), location: { id: CENTER_LOCATION_ID } as WorldLocation },
+        'hero'
+    )
+    return { audio, start }
+}
+
 function snapshot(x: number): WorldSnapshot {
     return worldFixture([
         characterFixture('hero', { position: { x, y: 8 }, velocity: { x: 90, y: 0 } }),

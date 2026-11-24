@@ -11,6 +11,7 @@ import { autoActionStatus, autoTargetId } from './autoActionRules'
 import { autoWorldTarget } from './autoActionWorldTargets'
 import type { GameCharacter } from './character'
 import type { ControlWorld } from './characterControl'
+import { findActorPath } from './doorNavigation'
 import {
     advanceForestAction,
     clearForestAction,
@@ -176,10 +177,7 @@ function approach(
         return true
     }
     state.lastPlanAt = now
-    const path = context.navigation.findPathWorld(
-        actor.position,
-        target.position
-    )
+    const path = findActorPath(context.navigation, actor, target.position)
     actor.setPath(path)
     if (
         path.length === 0 &&

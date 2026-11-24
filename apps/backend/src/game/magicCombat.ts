@@ -105,7 +105,9 @@ export class MagicCombat {
             }
             this.projectiles.delete(id)
             events.push(
-                ...result.events.map((event) => ({ ...event, locationId }))
+                ...result.events.map((event) =>
+                    Object.assign(event, { locationId })
+                )
             )
             if (result.effect !== undefined) {
                 this.impacts.set(id, {

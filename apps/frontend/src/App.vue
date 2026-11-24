@@ -232,7 +232,7 @@ async function joinGame(): Promise<void> {
                     :blocked="worldInputBlocked"
                     :interaction-prompt="interaction?.prompt"
                     @interact="windows.openNearbyMenu"
-                    @request-interact="windows.openNearbyMenu()"
+                    @request-interact="windows.openNearbyMenu(undefined, true)"
                     @open-menu="gameMenu.show"
                     @plant="startPlanting"
                 />

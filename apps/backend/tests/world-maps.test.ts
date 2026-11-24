@@ -26,10 +26,15 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('explorable world maps', () => {
     it.each(mapIds)(
-        '%s connects every spawn, chest and edge entrance',
+        '%s connects every spawn, chest and edge entrance with doors open',
         (id) => {
             vi.stubGlobal('Bun', { env: {} })
             const navigation = loadNavigationService(id)
+            for (const door of navigation.grid.doors ?? []) {
+                if (door.initialState === 'closed') {
+                    navigation.setDoorState(door.id, 'open')
+                }
+            }
             const start = navigation.worldToTile(playerSpawn(navigation, 1))
             const definition = WORLD_LOCATION_DEFINITIONS.find(
                 (location) => location.id === id

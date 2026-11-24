@@ -6,7 +6,7 @@ import { constellationModifiers } from './constellationModifiers'
 import { effectiveMoveSpeed } from './effectiveParameters'
 import { distance, moveToward } from './math'
 import type { MovementContext } from './movement'
-import type { NavigationService } from './navigation'
+import { openPathDoor } from './worldDoors'
 
 export function nextPosition(
     context: MovementContext,
@@ -38,7 +38,7 @@ export function nextPosition(
             y: input.y * step,
         })
     }
-    return advancePath(character, navigation, step, context.idleDestination)
+    return advancePath(context, step)
 }
 
 export function movementSpeed(character: GameCharacter): number {
@@ -50,16 +50,18 @@ export function movementSpeed(character: GameCharacter): number {
     return effectiveMoveSpeed(character) * multiplier
 }
 
-function advancePath(
-    character: GameCharacter,
-    navigation: NavigationService,
-    step: number,
-    idleDestination: Vector2 | undefined
-): Vector2 {
+function advancePath(context: MovementContext, step: number): Vector2 {
+    const { character, navigation, idleDestination, now } = context
     const waypoint = character.nextPathPoint()
     const target = waypoint ?? idleDestination
     if (target === undefined) {
         return { ...character.position }
+    }
+    if (waypoint !== undefined && step > 0) {
+        const opened = openPathDoor(character, navigation, waypoint, now)
+        if (opened !== undefined && opened.length > 0) {
+            context.onEvents?.(opened)
+        }
     }
     const next = moveToward(character.position, target, step)
     const moved = navigation.moveWithCollision(character.position, {

@@ -55,8 +55,8 @@ export function parseExtraCommand(
     if (type === 'movement_mode') {
         return parseMovementMode(record)
     }
-    if (type === 'world_interact' && validId(record['objectId'])) {
-        return { message: { type, objectId: record['objectId'] } }
+    if (type === 'world_interact') {
+        return parseWorldInteraction(record['objectId'], record['doorAction'])
     }
     const targetId = record['targetId']
     const choiceId = record['choiceId']
@@ -67,6 +67,30 @@ export function parseExtraCommand(
         return parseDialogueChoice(choiceId, record['rewardMode'])
     }
     return parseResourceCommand(record)
+}
+
+function parseWorldInteraction(
+    objectId: unknown,
+    doorAction: unknown
+): ParseResult {
+    if (!validId(objectId)) {
+        return { error: 'Invalid world interaction target.' }
+    }
+    if (
+        doorAction !== undefined &&
+        doorAction !== 'open' &&
+        doorAction !== 'close' &&
+        doorAction !== 'knock'
+    ) {
+        return { error: 'Invalid door action.' }
+    }
+    return {
+        message: {
+            type: 'world_interact',
+            objectId,
+            ...(doorAction === undefined ? {} : { doorAction }),
+        },
+    }
 }
 
 function parseDialogueChoice(

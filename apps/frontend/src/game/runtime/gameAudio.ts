@@ -1,7 +1,6 @@
 import {
     type FootstepSourceSnapshot,
     type GameEventPayload,
-    isArrowAbility,
     type Vector2,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -10,7 +9,7 @@ import type { Sound } from 'excalibur'
 import type { GameSoundId } from '../assets/soundCatalog'
 import { isAudioMuted, subscribeAudioMute } from './audioPreference'
 import { BattleMusicState } from './battleMusicState'
-import { type CastAudio, isMagicCastAttack } from './castAudio'
+import type { CastAudio } from './castAudio'
 import { FootstepAudio } from './footstepAudio'
 import { FootstepPlanner } from './footsteps'
 import { GameMusic } from './gameMusic'
@@ -22,25 +21,7 @@ import { NpcVoice, type NpcVoiceContext } from './npcVoice'
 import { isNpcVoiceEnabled, subscribeNpcVoiceEnabled } from './npcVoicePreference'
 import type { WorldAmbience } from './worldAmbience'
 import type { WorldAmbienceSounds } from './worldAmbienceSounds'
-
-const eventSounds = new Map<GameEventPayload['kind'], GameSoundId>([
-    ['attack', 'attack'],
-    ['barrel_search', 'chestOpen'],
-    ['chest_open', 'chestOpen'],
-    ['damage', 'hit'],
-    ['item_drop', 'drop'],
-    ['water_drink', 'drink'],
-    ['item_eat', 'drink'],
-    ['item_equip', 'equip'],
-    ['item_pickup', 'pickup'],
-    ['item_stash', 'stash'],
-])
-
-function playsAttackSound(event: GameEventPayload): boolean {
-    return (
-        !isArrowAbility(event.abilityId) || event.phase === undefined || event.phase === 'completed'
-    )
-}
+import { WorldEventAudio } from './worldEventAudio'
 
 interface CharacterAudio {
     casts: CastAudio
@@ -50,7 +31,9 @@ interface CharacterAudio {
 export class GameAudio {
     private readonly footsteps = new FootstepPlanner()
     private readonly footstepAudio: FootstepAudio
+    private readonly eventAudio: WorldEventAudio
     private surfaceMap: FootstepMap | undefined
+    private locationId: string | undefined
     private worldSuspended = false
     private readonly music: GameMusic
     private readonly battleMusic = new BattleMusicState()
@@ -83,6 +66,7 @@ export class GameAudio {
         this.sounds = sounds
         this.music = new GameMusic(music, battleBank)
         this.footstepAudio = new FootstepAudio(sounds)
+        this.eventAudio = new WorldEventAudio(sounds)
         let wasMuted = isAudioMuted()
         this.unsubscribeAudio = subscribeAudioMute((muted) => {
             if (muted && !wasMuted) {
@@ -142,6 +126,7 @@ export class GameAudio {
         this.npcVoice.dispose()
         this.voiceWorld = { snapshot: undefined, playerId: undefined }
         this.surfaceMap = undefined
+        this.locationId = undefined
         document.removeEventListener('visibilitychange', this.onVisibilityChange)
     }
 
@@ -168,6 +153,7 @@ export class GameAudio {
         this.characterAudio?.casts.reset()
         this.characterAudio?.deaths.reset()
         this.surfaceMap = footsteps
+        this.locationId = locationId
         if (locationId !== undefined) {
             this.ambience?.setMap(locationId, {
                 buildings: buildings ?? [],
@@ -209,6 +195,7 @@ export class GameAudio {
         this.music.resetBattle()
         this.footsteps.reset()
         this.footstepAudio.stop()
+        this.eventAudio.stop()
         this.ambience?.clear()
         this.characterAudio?.casts.clear()
         if (keepDeathVoice) this.characterAudio?.deaths.clearObservation()
@@ -236,11 +223,25 @@ export class GameAudio {
             this.npcVoice.receive(event)
             return
         }
-        if (serverTime !== undefined) this.receiveWorldCue(event, serverTime)
-        if (isMagicCastAttack(event) || (event.kind === 'attack' && !playsAttackSound(event)))
+        if (serverTime === undefined) return
+        this.receiveWorldCue(event, serverTime)
+        this.playWorldEvent(event)
+    }
+
+    private playWorldEvent(event: GameEventPayload): void {
+        const { playerId, snapshot } = this.voiceWorld
+        const locationId = this.locationId
+        if (
+            this.worldSuspended ||
+            document.hidden ||
+            isAudioMuted() ||
+            locationId === undefined ||
+            snapshot?.location?.id !== locationId
+        )
             return
-        const sound = eventSounds.get(event.kind)
-        if (sound) this.playSound(sound)
+        const listener = snapshot.characters.find((actor) => actor.id === playerId)
+        if (!listener?.alive || !listener.connected || listener.tags.includes('offline')) return
+        this.eventAudio.receive(event, locationId, listener.position)
     }
 
     private receiveWorldCue(event: GameEventPayload, serverTime: number): void {
@@ -263,6 +264,7 @@ export class GameAudio {
     ): void {
         if (this.stopped || this.worldSuspended) return
         this.voiceWorld = { snapshot, playerId: localPlayerId }
+        this.eventAudio.observeSession(snapshot.serverEpoch, localPlayerId)
         this.npcVoice.refresh()
         const map = this.surfaceMap
         if (map === undefined || document.hidden || isAudioMuted()) return
