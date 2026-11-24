@@ -6,6 +6,8 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
+import { createRandomId } from '@/shared/lib/random-id'
+
 interface PendingProposal {
     id: string
     fingerprint: string
@@ -194,7 +196,7 @@ function sendProposal(
 ): void {
     if (!editable(props, state) || !state.valid.value || state.pending.value) return
     if (!state.dirty.value && !canResubmit) return
-    const requestId = crypto.randomUUID()
+    const requestId = createRandomId()
     state.pending.value = { id: requestId, fingerprint: state.local.value, edited: false }
     state.error.value = ''
     command({

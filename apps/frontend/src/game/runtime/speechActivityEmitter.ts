@@ -1,5 +1,7 @@
 import type { SpeechActivityCommand } from '@my-game-ratata/contracts'
 
+import { createRandomId } from '@/shared/lib/random-id'
+
 /** Emits presence only. Keystrokes and drafts never leave the input. */
 export class SpeechActivityEmitter {
     private id: string | undefined
@@ -19,7 +21,7 @@ export class SpeechActivityEmitter {
         }
         this.lastInput = this.clock()
         if (!this.id) {
-            this.id = crypto.randomUUID()
+            this.id = createRandomId()
             this.lastSent = -Infinity
             this.timer = setInterval(() => this.tick(), 500)
         }

@@ -1,6 +1,6 @@
 import type { ClientMessage, ExchangeSnapshot } from '@my-game-ratata/contracts'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
 import { characterFixture } from '../testing/characterFixture'
@@ -126,9 +126,10 @@ it('proposes a draft with own revision, waits for exact acknowledgement and conf
         wrapper.unmount()
     }
 })
-it('resends an unchanged proposal after editing and keeps the partner confirmation', async () => {
+it('publishes and resends a proposal without randomUUID and keeps the partner confirmation', async () => {
     const wrapper = setup(exchangeFixture(), document.body)
     try {
+        vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
         expect(button(wrapper, 'Предложить').attributes('disabled')).toBeDefined()
         await wrapper.get('#exchange-grain-1').setValue(2)
         await wrapper.get('[aria-label="Предложить золото"]').setValue(7)
@@ -136,6 +137,13 @@ it('resends an unchanged proposal after editing and keeps the partner confirmati
         const request = proposal(wrapper)
         const chat = wrapper.get<HTMLInputElement>('.private-conversation input')
         await chat.setValue('В обмен ещё семь монет')
+        expect(commands(wrapper)).toContainEqual({
+            type: 'speech_activity',
+            channel: 'whisper',
+            targetId: 'partner',
+            active: true,
+            activityId: expect.any(String),
+        })
         chat.element.focus()
         const published = exchangeFixture({
             revision: 3,
@@ -202,6 +210,7 @@ it('resends an unchanged proposal after editing and keeps the partner confirmati
         await button(reviewed, 'Изменить предложение').trigger('click')
         expect(button(wrapper, 'Предложить').attributes('disabled')).toBeUndefined()
     } finally {
+        vi.unstubAllGlobals()
         wrapper.unmount()
     }
 })
