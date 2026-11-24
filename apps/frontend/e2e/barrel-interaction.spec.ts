@@ -1,3 +1,4 @@
+import { containerBounds, interactionApproachPoints } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
 for (const width of [1280, 390]) {
@@ -6,30 +7,12 @@ for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 844 })
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
-        await page.evaluate(
-            async (name) => window.__ratataTest!.join(name, 'vanguard'),
+        const target = await approachSupplyBarrel(
+            page,
             `b-${info.project.name}-${width}-${Date.now().toString(36)}`
         )
-        const target = await page.evaluate(
-            () =>
-                window
-                    .__ratataTest!.observe()
-                    .targets.filter(
-                        (target) =>
-                            target.kind === 'chest' &&
-                            target.details.kind === 'barrel' &&
-                            target.details.itemCount === 2
-                    )
-                    .sort((a, b) => a.distance - b.distance)[0]
-        )
-        expect(target).toBeDefined()
-        const reached = await page.evaluate(
-            (targetKey) => window.__ratataTest!.navigate({ targetKey }, { timeoutMs: 20_000 }),
-            target!.key
-        )
-        expect(reached.status, reached.reason).toBe('arrived')
         const before = await page.evaluate(() => window.__ratataTest!.getState().player!.inventory)
-        await openBarrel(page, target!.id)
+        await openBarrel(page, target.id)
         const panel = page.getByRole('dialog', { name: 'Рюкзак и бочка' })
         const original = await page.evaluate(
             () => window.__ratataTest!.getState().snapshot!.chest!.items
@@ -45,9 +28,9 @@ for (const width of [1280, 390]) {
                         .__ratataTest!.observe()
                         .targets.filter((target) => target.id === id)
                         .map((target) => target.key),
-                target!.id
+                target.id
             )
-        ).toEqual([target!.key])
+        ).toEqual([target.key])
         try {
             await page.screenshot({ path: info.outputPath('barrel-full.png') })
             await panel.getByRole('button', { name: /Древесина/ }).click()
@@ -80,7 +63,7 @@ for (const width of [1280, 390]) {
             await page.screenshot({ path: info.outputPath('barrel-empty.png') })
             await closeBarrel(page, width)
             await expect(panel).toHaveCount(0)
-            await openBarrel(page, target!.id, true)
+            await openBarrel(page, target.id, true)
             await expect(panel).toContainText('Контейнер пуст.')
             for (const item of original)
                 await panel.locator(`[data-dialog-action="bag:${item.instanceId}"]`).click()
@@ -96,11 +79,58 @@ for (const width of [1280, 390]) {
             // Return real instances so subsequent browsers inspect the same finite shared stock.
             await restoreBarrel(
                 page,
-                target!.id,
+                target.id,
                 original.map((item) => item.instanceId)
             )
         }
     })
+}
+
+async function approachSupplyBarrel(page: Page, nickname: string) {
+    // The initial server snapshot can include barrels outside the first camera viewport.
+    const [received] = await Promise.all([
+        page.waitForFunction(() => {
+            const { player, location, snapshot } = window.__ratataTest!.getState()
+            if (!player || !location || !snapshot) return
+            const position = player.position
+            const distance = (point: { x: number; y: number }) =>
+                Math.hypot(point.x - position.x, point.y - position.y)
+            const barrel = snapshot.chests
+                .filter((chest) => chest.kind === 'barrel' && chest.itemCount === 2)
+                .sort((a, b) => distance(a.position) - distance(b.position))[0]
+            if (barrel) return { barrel, position, tileWidth: location.map.tileWidth }
+        }),
+        page.evaluate((name) => window.__ratataTest!.join(name, 'vanguard'), nickname),
+    ])
+    const { barrel, position, tileWidth } = (await received.jsonValue())!
+    const bounds = barrel.bounds ?? containerBounds(barrel.position)
+    const points = interactionApproachPoints(position, [bounds], tileWidth / 2)
+    const reached = await page.evaluate(
+        async ({ id, points }) => {
+            const api = window.__ratataTest!
+            let result = await api.navigate({ targetKey: `chest:${id}` }, { timeoutMs: 20_000 })
+            if (result.status !== 'target_lost') return result
+
+            // Walk to the previously received bounds while the narrow viewport catches up.
+            for (const point of points) {
+                result = await api.navigate(point, { tolerance: 10, timeoutMs: 20_000 })
+                if (result.status !== 'blocked') break
+            }
+            return result
+        },
+        { id: barrel.id, points }
+    )
+    expect(reached.status, `${barrel.id}: ${reached.reason}`).toBe('arrived')
+
+    const target = await page.evaluate(async (id) => {
+        const api = window.__ratataTest!
+        const after = api.getState().snapshot!.tick
+        const fresh = await api.waitFor({ type: 'tick', after })
+        if (fresh.status !== 'condition_met') return
+        return fresh.observation.targets.find((candidate) => candidate.key === `chest:${id}`)
+    }, barrel.id)
+    expect(target?.details).toMatchObject({ kind: 'barrel', itemCount: 2 })
+    return target!
 }
 
 async function openBarrel(page: Page, id: string, legacy = false): Promise<void> {

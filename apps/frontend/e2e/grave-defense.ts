@@ -1,4 +1,4 @@
-import { ABILITY_DEFINITIONS, SHOT_HALF_WIDTH } from '@my-game-ratata/contracts'
+import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import type { Page } from '@playwright/test'
 
 /** Ordinary ranger controllers stay active while the cleric channels the long ritual. */
@@ -6,35 +6,46 @@ export async function defendRitual(
     rangers: Page[],
     position: { x: number; y: number }
 ): Promise<void> {
+    const threat = await nearestRitualThreat(rangers, position, 320)
+    if (threat)
+        await Promise.all(rangers.map((page, index) => maintainShot(page, threat.id, index)))
+}
+
+export async function nearestRitualThreat(
+    rangers: Page[],
+    position: { x: number; y: number },
+    range: number
+) {
     const observed = await Promise.all(
         rangers.map((page) =>
-            page.evaluate((position) => {
-                const api = window.__ratataTest!
-                if (!api.getState().player?.alive) return []
-                return api
-                    .observe()
-                    .targets.filter(
-                        (target) =>
-                            target.kind === 'character' &&
-                            target.details.alive === true &&
-                            target.details.relationship === 'hostile' &&
-                            Math.hypot(
-                                target.position.x - position.x,
-                                target.position.y - position.y
-                            ) <= 320
-                    )
-            }, position)
+            page.evaluate(
+                ({ position, range }) => {
+                    const api = window.__ratataTest!
+                    if (!api.getState().player?.alive) return []
+                    return api
+                        .observe()
+                        .targets.filter(
+                            (target) =>
+                                target.kind === 'character' &&
+                                target.details.alive === true &&
+                                target.details.relationship === 'hostile' &&
+                                Math.hypot(
+                                    target.position.x - position.x,
+                                    target.position.y - position.y
+                                ) <= range
+                        )
+                },
+                { position, range }
+            )
         )
     )
-    const threat = observed
+    return observed
         .flat()
         .sort(
             (a, b) =>
                 Math.hypot(a.position.x - position.x, a.position.y - position.y) -
                 Math.hypot(b.position.x - position.x, b.position.y - position.y)
         )[0]
-    if (threat)
-        await Promise.all(rangers.map((page, index) => maintainShot(page, threat.id, index)))
 }
 
 export async function withdrawRangers(
@@ -66,7 +77,7 @@ export async function withdrawRangers(
 
 export async function maintainShot(page: Page, targetId: string, lane: number): Promise<void> {
     await page.evaluate(
-        ({ id, lane, range, halfWidth }) => {
+        ({ id, lane, range }) => {
             const api = window.__ratataTest!,
                 state = api.getState(),
                 player = state.player!
@@ -82,38 +93,32 @@ export async function maintainShot(page: Page, targetId: string, lane: number): 
                 { x: 0, y: -1 },
             ]
             const direction = directions[lane % directions.length]!
-            const along = dx * direction.x + dy * direction.y
-            const across = Math.abs(dx * direction.y - dy * direction.x)
             function activeShot(): boolean {
                 const action = player.control?.action
                 return (
                     action?.kind === 'ability' &&
-                    action.abilityId === 'shot' &&
+                    action.abilityId === 'sniper_shot' &&
                     action.targetId === id
                 )
             }
-            if (along >= 38 && along <= range && across <= halfWidth) {
+            if (distance >= 40 && distance <= range) {
                 if (!activeShot())
                     api.send({
                         type: 'auto_action',
-                        action: { kind: 'ability', abilityId: 'shot', targetId: id },
+                        action: { kind: 'ability', abilityId: 'sniper_shot', targetId: id },
                     })
                 return
             }
-            // A shared 40px target approach made all four shooters stack inside one
-            // skeleton arc. Orbit outside melee reach to distinct firing sides, and
-            // retreat before a chasing enemy can turn a ranged lane into that pile-up.
+            // Approach from separate sides. If chased into melee, retreat radially
+            // so the rangers can resume their ordinary long-range shots.
             const angle = Math.atan2(dy, dx),
                 desired = Math.atan2(direction.y, direction.x)
             const turn = Math.atan2(Math.sin(desired - angle), Math.cos(desired - angle))
-            const orbiting = Math.abs(turn) > Math.PI / 4
-            const nextAngle = orbiting
-                ? angle + Math.sign(turn) * Math.min(Math.abs(turn), Math.PI / 2)
-                : desired
-            function shotRadius(): number {
-                return distance < 38 || orbiting ? 104 : range - 8
-            }
-            const radius = shotRadius()
+            const nextAngle =
+                distance < 40
+                    ? angle
+                    : angle + Math.sign(turn) * Math.min(Math.abs(turn), Math.PI / 2)
+            const radius = range - 28
             const map = state.location!.map
             const position = {
                 x: Math.max(
@@ -127,6 +132,6 @@ export async function maintainShot(page: Page, targetId: string, lane: number): 
             }
             api.send({ type: 'move_to', target: position })
         },
-        { id: targetId, lane, range: ABILITY_DEFINITIONS.shot.range, halfWidth: SHOT_HALF_WIDTH }
+        { id: targetId, lane, range: ABILITY_DEFINITIONS.sniper_shot.range }
     )
 }

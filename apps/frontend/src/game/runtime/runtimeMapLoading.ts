@@ -89,6 +89,7 @@ export class RuntimeMapLoading {
         this.generation += 1
         this.pending = this.applied = this.failure = undefined
         this.desired = undefined
+        this.applyQueue = Promise.resolve()
     }
     private launch(request: RuntimeMapRequest): void {
         const generation = ++this.generation

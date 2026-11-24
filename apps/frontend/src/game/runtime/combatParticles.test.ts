@@ -1,4 +1,4 @@
-import type { Engine, ParticleEmitterArgs } from 'excalibur'
+import type { Engine, ParticleEmitterOptions } from 'excalibur'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { EffectCue } from './combatEffectPlan'
@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
     live: 0,
     peak: 0,
     cleared: 0,
-    configs: [] as ParticleEmitterArgs[],
+    configs: [] as ParticleEmitterOptions[],
 }))
 vi.mock('excalibur', () => ({
     Canvas: class {},
@@ -18,7 +18,7 @@ vi.mock('excalibur', () => ({
     vec: (x: number, y: number) => ({ x, y }),
     ParticleEmitter: class {
         private count = 0
-        public constructor(config: ParticleEmitterArgs) {
+        public constructor(config: ParticleEmitterOptions) {
             state.configs.push(config)
         }
         public emitParticles(count: number): void {

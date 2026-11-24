@@ -1,3 +1,4 @@
+import type { Vector2 } from '@my-game-ratata/contracts'
 import { expect, type Page } from '@playwright/test'
 
 import { selectedWorldTarget } from './world-target-ui'
@@ -73,4 +74,80 @@ async function selectGrave(page: Page, key: string): Promise<boolean> {
         if ((await currentKey()) === key) return true
     }
     return false
+}
+
+interface GraveMap {
+    layers: { name: string; objects?: (Vector2 & { type: string })[] }[]
+}
+
+export async function travelParty(pages: Page[], direction: 'west' | 'south'): Promise<Vector2> {
+    const cleric = pages[0]!
+    const locationId = await cleric.evaluate(
+        (direction) =>
+            window.__ratataTest!.observe().exits.find((exit) => exit.direction === direction)
+                ?.locationId,
+        direction
+    )
+    expect(locationId).toBeDefined()
+    const mapResponse = cleric
+        .waitForResponse(
+            (response) => {
+                const path = new URL(response.url()).pathname
+                return path.startsWith('/world/maps/') && path.endsWith(`/${locationId!}.json`)
+            },
+            { timeout: 65_000 }
+        )
+        .catch(() => undefined)
+    const results = await Promise.all(
+        pages.map((participant) =>
+            participant.evaluate(
+                async ({ direction, locationId }) => {
+                    const api = window.__ratataTest!
+                    const result = await api.travel(direction, { timeoutMs: 30_000 })
+                    return result.status === 'blocked' && api.getState().location?.id !== locationId
+                        ? api.travel(direction, { timeoutMs: 30_000 })
+                        : result
+                },
+                { direction, locationId }
+            )
+        )
+    )
+    for (const result of results) expect(result.status, result.reason).toBe('arrived')
+    const response = await mapResponse
+    expect(response, 'The browser received the destination map asset').toBeDefined()
+    const map: GraveMap = await response!.json()
+    const authored = map.layers
+        .find(({ name }) => name === 'Grave sources')
+        ?.objects?.find(({ type }) => type === 'grave_source')
+    expect(authored, 'The received map has an authored grave marker').toBeDefined()
+    return { x: authored!.x, y: authored!.y }
+}
+
+export async function scoutGrave(rangers: Page[], position: Vector2): Promise<void> {
+    // The marker gives a route, while only nearby snapshots can reveal the active grave.
+    await Promise.all(
+        rangers.map(async (ranger, index) => {
+            await ranger.setViewportSize({ width: 640, height: 480 })
+            const flank = (index * 2 - 3) * 12
+            const approach = { x: position.x + 136, y: position.y + flank }
+            const result = await ranger.evaluate(
+                (point) => window.__ratataTest!.navigate(point, { timeoutMs: 40_000 }),
+                approach
+            )
+            await expect
+                .poll(
+                    () =>
+                        ranger.evaluate((point) => {
+                            const player = window.__ratataTest!.getState().player
+                            if (!player?.alive) return Infinity
+                            return Math.hypot(
+                                player.position.x - point.x,
+                                player.position.y - point.y
+                            )
+                        }, approach),
+                    { message: result.reason }
+                )
+                .toBeLessThanOrEqual(16)
+        })
+    )
 }

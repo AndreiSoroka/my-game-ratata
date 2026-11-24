@@ -2,8 +2,10 @@ import { expect, type Page, test } from '@playwright/test'
 
 import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
 import {
+    atlasCoordinates,
     buildMetric,
     buildResultPanel,
+    expectUnchangedAtlas,
     selectBuildStar,
     setBuildPanelsOpen,
 } from './atlas-build-workflow'
@@ -90,9 +92,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByTestId('constellation-debug')).toBeVisible()
         await expect(page.locator('[data-star-id]')).toHaveCount(fullConstellationCatalog.length)
         await setBuildPanelsOpen(page, true)
-        const positions = await page
-            .locator('[data-node-id]')
-            .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
+        const positions = await atlasCoordinates(page)
         await inspectPrayer(page, '1%', '55%')
         await addParents(page)
         await selectBuildStar(page, 'prayer.revive_master')
@@ -125,11 +125,7 @@ for (const width of [320, 390, 1280]) {
         await expect(chance(page, 'Общий шанс Ангельского воскрешения')).toHaveText('28,5%')
         await assertOwnRevivalCards(page)
         await assertGraveUnchanged(page)
-        expect(
-            await page
-                .locator('[data-node-id]')
-                .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
-        ).toEqual(positions)
+        await expectUnchangedAtlas(page, positions)
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
             width
         )

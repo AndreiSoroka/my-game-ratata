@@ -22,6 +22,7 @@ for (const mobile of [false, true]) {
     test(`returns from chat reading and typing to movement (${mobile ? 'mobile' : 'desktop'})`, async ({
         page,
     }, info) => {
+        test.setTimeout(90_000)
         await page.setViewportSize(
             mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
         )

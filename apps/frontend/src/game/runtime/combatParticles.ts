@@ -83,7 +83,7 @@ export class CombatParticles {
                 minAngle: motion.minAngle,
                 maxAngle: motion.maxAngle,
                 acc: vec(motion.acceleration.x, motion.acceleration.y),
-                // Excalibur 0.32's CPU emitter adds its world position to this focus offset.
+                // The CPU emitter adds its world position to this focus offset.
                 focus: motion.focusOffset
                     ? vec(motion.focusOffset.x, motion.focusOffset.y)
                     : undefined,

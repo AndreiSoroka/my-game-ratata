@@ -5,11 +5,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
 import { handleRuntimePointer } from './runtimePointer'
 
-vi.mock('excalibur', () => ({
-    PointerButton: { Left: 'Left', Right: 'Right' },
-    PointerType: { Touch: 'Touch' },
-}))
-
 function pointer(shiftKey = false, button = PointerButton.Left): PointerEvent {
     return {
         button,

@@ -2,8 +2,10 @@ import { expect, test } from '@playwright/test'
 
 import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
 import {
+    atlasCoordinates,
     buildMetric,
     buildResultPanel,
+    expectUnchangedAtlas,
     selectBuildStar,
     setBuildPanelsOpen,
 } from './atlas-build-workflow'
@@ -17,9 +19,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByTestId('constellation-debug')).toBeVisible()
         await expect(page.locator('[data-star-id]')).toHaveCount(fullConstellationCatalog.length)
         await setBuildPanelsOpen(page, true)
-        const positions = await page
-            .locator('[data-node-id]')
-            .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
+        const positions = await atlasCoordinates(page)
         await page.getByTestId('debug-build-all').click()
         await selectBuildStar(page, 'prayer.root')
         await expect(buildMetric(page, 'Максимум целей')).toHaveText('20')
@@ -59,11 +59,7 @@ for (const width of [320, 390, 1280]) {
             'aria-checked',
             'true'
         )
-        expect(
-            await page
-                .locator('[data-node-id]')
-                .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
-        ).toEqual(positions)
+        await expectUnchangedAtlas(page, positions)
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
             width
         )

@@ -42,14 +42,17 @@ export class GameAudio {
             isNpcVoiceEnabled(),
     }))
     private musicRequested = false
+    private stopped = false
 
     public constructor(sounds: Map<GameSoundId, Sound>, music: Sound) {
         this.sounds = sounds
         this.music = music
         this.footstepAudio = new FootstepAudio(sounds)
+        let wasMuted = isAudioMuted()
         this.unsubscribeAudio = subscribeAudioMute((muted) => {
-            if (muted) this.stopVoices()
-            else if (this.musicRequested) this.playMusic()
+            if (muted && !wasMuted) this.stopVoices()
+            wasMuted = muted
+            if (!muted) void this.syncMusic()
         })
         this.unsubscribeNpcVoice = subscribeNpcVoiceEnabled((enabled) => {
             if (!enabled) this.npcVoice.clear()
@@ -58,12 +61,25 @@ export class GameAudio {
     }
 
     public playMusic(): void {
+        if (this.stopped) return
         this.musicRequested = true
-        if (isAudioMuted()) return
-        void Promise.resolve(this.music.play()).catch(() => undefined)
+        void this.syncMusic()
+    }
+
+    private async syncMusic(): Promise<void> {
+        if (!this.musicRequested || document.hidden || isAudioMuted() || this.music.isPlaying)
+            return
+        try {
+            if (this.music.isPaused) await this.music.resume()
+            else await this.music.play()
+        } catch {
+            // Playback can be retried the next time the user enables audio or returns to the tab.
+        }
     }
 
     public stop(): void {
+        if (this.stopped) return
+        this.stopped = true
         this.musicRequested = false
         this.unsubscribeAudio()
         this.unsubscribeNpcVoice()
@@ -75,9 +91,9 @@ export class GameAudio {
     }
 
     private stopVoices(): void {
+        this.stopFootsteps()
         this.music.stop()
         for (const sound of this.sounds.values()) sound.stop()
-        this.stopFootsteps()
         this.npcVoice.clear()
     }
 
@@ -97,6 +113,9 @@ export class GameAudio {
         if (document.hidden) {
             this.stopFootsteps()
             this.npcVoice.clear()
+            if (this.music.isPlaying) this.music.pause()
+        } else {
+            void this.syncMusic()
         }
     }
 
@@ -106,14 +125,18 @@ export class GameAudio {
     }
 
     public playSound(id: GameSoundId): void {
-        if (isAudioMuted()) return
+        if (this.stopped || isAudioMuted()) return
         const sound = this.sounds.get(id)
 
         if (sound === undefined) {
             return
         }
 
-        void Promise.resolve(sound.play()).catch(() => undefined)
+        try {
+            void sound.play().catch(() => undefined)
+        } catch {
+            // An unavailable audio device should not interrupt gameplay feedback.
+        }
     }
 
     public playEventSound(event: GameEventPayload): void {

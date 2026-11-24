@@ -27,6 +27,7 @@ interface CharacterSpriteArgs {
 
 const meta = {
     title: 'Characters/Characters',
+    tags: ['autodocs'],
     argTypes: {
         action: {
             control: 'select',
@@ -72,7 +73,8 @@ const meta = {
         showFrameGrid: true,
         zoom: 4,
     },
-    render: (args) => renderCharacterFrame(args as CharacterPreviewOptions),
+    render: (args, context) =>
+        renderCharacterFrame(context.canvasElement, args as CharacterPreviewOptions),
 } satisfies Meta<CharacterSpriteArgs>
 
 export default meta
@@ -109,8 +111,8 @@ export const All: Story = {
             },
         },
     },
-    render: (args) =>
-        renderAllCharacterOverview({
+    render: (args, context) =>
+        renderAllCharacterOverview(context.canvasElement, {
             action: args.action,
             animate: args.animate,
             direction: args.direction,
@@ -144,5 +146,6 @@ export const AllFrames: Story = {
             },
         },
     },
-    render: (args) => renderAllCharacterFrames(args as CharacterPreviewOptions),
+    render: (args, context) =>
+        renderAllCharacterFrames(context.canvasElement, args as CharacterPreviewOptions),
 }

@@ -1,31 +1,10 @@
 import { expect, type Page, test } from '@playwright/test'
 
+import { expectWebGLFrame, recordWebGLErrors } from './webgl-frame'
+
 async function openStoryCanvas(page: Page, storyId: string, args: string): Promise<void> {
     await page.goto(`/iframe.html?id=${storyId}&viewMode=story&args=${args}`)
-    await page.locator('canvas[data-gallery-ready="true"]').waitFor({ state: 'visible' })
-    await page.waitForFunction(() => {
-        const canvas = document.querySelector('canvas')
-
-        if (!(canvas instanceof HTMLCanvasElement)) {
-            return false
-        }
-
-        const context = canvas.getContext('2d')
-
-        if (context === null) {
-            return false
-        }
-
-        const data = context.getImageData(0, 0, canvas.width, canvas.height).data
-
-        for (let index = 3; index < data.length; index += 4) {
-            if (data[index] !== 0) {
-                return true
-            }
-        }
-
-        return false
-    })
+    await expectWebGLFrame(page.locator('canvas[data-gallery-ready="true"]'))
 }
 
 test.describe('Storybook character gallery visuals', () => {
@@ -48,4 +27,46 @@ test.describe('Storybook character gallery visuals', () => {
 
         await expect(page.locator('canvas')).toHaveScreenshot('characters-all-frames.png')
     })
+
+    test('renders the last of 25 rapid Controls changes', async ({ page }) => {
+        test.setTimeout(60_000)
+        const errors = await recordWebGLErrors(page)
+        await page.goto('/?path=/story/characters-characters--all-frames')
+        const gallery = page.frameLocator('#storybook-preview-iframe')
+        const canvas = gallery.locator('canvas[data-gallery-ready="true"]')
+        await expect(canvas).toBeVisible()
+        const initialWidth = await canvas.getAttribute('width')
+        const zoom = page.locator('input#control-zoom')
+        for (let index = 0; index < 25; index++)
+            await zoom.press(index % 2 === 0 ? 'ArrowRight' : 'ArrowLeft')
+
+        await expect(zoom).toHaveValue('3')
+        await expect
+            .poll(async () => Number(await canvas.getAttribute('width')))
+            .toBeGreaterThan(Number(initialWidth))
+        await expect(gallery.locator('canvas')).toHaveCount(1)
+        await expectWebGLFrame(canvas)
+        expect(errors).toEqual([])
+    })
+
+    test('renders the character Docs previews independently', async ({ page }) => {
+        test.setTimeout(60_000)
+        const errors = await recordWebGLErrors(page)
+        await page.goto('/iframe.html?id=characters-characters--docs&viewMode=docs')
+        const previews = page.locator('canvas[data-gallery-ready="true"]')
+        await expect(previews).toHaveCount(5, { timeout: 20_000 })
+        for (const preview of await previews.all()) await expectWebGLFrame(preview)
+        expect(errors).toEqual([])
+    })
+
+    for (const story of ['ordinary-attack', 'skeleton-strike']) {
+        test(`renders ${story} with all four melee directions`, async ({ page }, info) => {
+            await page.goto(`/iframe.html?id=combat-melee-directions--${story}&viewMode=story`)
+            const canvas = page.locator('canvas[data-gallery-ready="true"]')
+            await expectWebGLFrame(canvas)
+            for (const direction of ['Вправо', 'Вниз', 'Влево', 'Вверх'])
+                await expect(page.getByText(direction, { exact: true })).toBeVisible()
+            await canvas.screenshot({ path: info.outputPath(`${story}.png`) })
+        })
+    }
 })

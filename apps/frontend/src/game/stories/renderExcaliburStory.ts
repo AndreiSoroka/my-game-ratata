@@ -3,12 +3,9 @@ import {
     Animation,
     AnimationStrategy,
     Color,
-    DisplayMode,
-    Engine,
-    Flags,
+    type Engine,
     ImageSource,
     Label,
-    Loader,
     range,
     SpriteSheet,
     vec,
@@ -25,8 +22,8 @@ import {
     resolveAnimationRow,
     supportsDirection,
 } from '../assets/characterCatalog'
-
-Flags.useCanvasGraphicsContext()
+import { EngineAssetLoader } from '../runtime/engineRun'
+import { renderExcaliburPreview } from './excaliburPreview'
 
 export interface CharacterPreviewOptions {
     action: CharacterAction
@@ -40,8 +37,6 @@ export interface CharacterPreviewOptions {
 
 export type CharacterOverviewOptions = Omit<CharacterPreviewOptions, 'character'>
 
-let activeEngine: Engine | undefined
-
 export function createCanvas(width: number, height: number): HTMLCanvasElement {
     const canvas = document.createElement('canvas')
     canvas.width = width
@@ -54,10 +49,6 @@ export function createCanvas(width: number, height: number): HTMLCanvasElement {
     canvas.dataset.galleryReady = 'false'
 
     return canvas
-}
-
-export function markCanvasReady(canvas: HTMLCanvasElement): void {
-    canvas.dataset.galleryReady = 'true'
 }
 
 export function createContainer(): HTMLDivElement {
@@ -75,13 +66,6 @@ export function createContainer(): HTMLDivElement {
     container.style.padding = '24px'
 
     return container
-}
-
-function stopActiveEngine(): void {
-    if (activeEngine !== undefined) {
-        activeEngine.stop()
-        activeEngine = undefined
-    }
 }
 
 export function createSheet(definition: CharacterDefinition, image: ImageSource): SpriteSheet {
@@ -106,13 +90,13 @@ export function createFrameLabel(text: string, x: number, y: number): Label {
 
 function loadCharacterImages(definitions: CharacterDefinition[]): {
     images: ImageSource[]
-    loader: Loader
+    loader: EngineAssetLoader
 } {
     const images = definitions.map((definition) => new ImageSource(definition.src))
 
     return {
         images,
-        loader: new Loader(images),
+        loader: new EngineAssetLoader({ loadables: images }),
     }
 }
 
@@ -187,157 +171,131 @@ function addSpriteActor(
 function addCharacterActor(
     engine: Engine,
     definition: CharacterDefinition,
-    options: CharacterPreviewOptions,
-    position = vec(160, 140)
+    image: ImageSource,
+    options: CharacterPreviewOptions
 ): void {
-    const image = new ImageSource(definition.src)
-    const loader = new Loader([image])
+    const sheet = createSheet(definition, image)
+    const position = vec(160, 140)
+    const animation = definition.animations[options.action]
+    const row = resolveAnimationRow(animation, options.direction)
+    const actor = new Actor({
+        anchor: vec(0.5, 0.75),
+        height: definition.spriteHeight,
+        pos: position,
+        width: definition.spriteWidth,
+    })
 
-    void engine.start(loader).then(() => {
-        const sheet = createSheet(definition, image)
-        const animation = definition.animations[options.action]
-        const row = resolveAnimationRow(animation, options.direction)
-        const actor = new Actor({
-            anchor: vec(0.5, 0.75),
-            height: definition.spriteHeight,
-            pos: position,
-            width: definition.spriteWidth,
-        })
+    actor.scale = vec(options.zoom, options.zoom)
 
-        actor.scale = vec(options.zoom, options.zoom)
-
-        if (row === undefined || animation === undefined) {
-            const label = createFrameLabel(
-                `${definition.label}: no ${options.action} animation`,
-                24,
-                32
-            )
-            engine.add(label)
-            markCanvasReady(engine.canvas)
-            return
-        }
-
-        if (options.animate) {
-            const frameIndexes = range(
-                row * definition.columns,
-                row * definition.columns + animation.frameCount - 1
-            )
-            const graphic = Animation.fromSpriteSheet(
-                sheet,
-                frameIndexes,
-                animation.frameMs,
-                AnimationStrategy.Loop
-            )
-            actor.graphics.use(graphic)
-        } else {
-            const clampedFrame = clampFrame(animation, options.frame)
-            actor.graphics.use(sheet.getSprite(clampedFrame, row))
-        }
-
-        actor.graphics.flipHorizontal = options.direction === 'left'
-        engine.add(actor)
-
-        if (options.showFrameGrid) {
-            addGrid(
-                engine,
-                position.x,
-                position.y - (definition.spriteHeight * options.zoom) / 2,
-                definition.spriteWidth * options.zoom,
-                definition.spriteHeight * options.zoom
-            )
-        }
-
-        const labelParts = [
-            definition.label,
-            options.action,
-            options.direction,
-            `frame ${String(clampFrame(animation, options.frame) + 1)}/${String(animation.frameCount)}`,
-        ]
-        const unsupportedDirection = !supportsDirection(animation, options.direction)
+    if (row === undefined || animation === undefined) {
         const label = createFrameLabel(
-            unsupportedDirection
-                ? `${labelParts.join(' | ')} | direction previewed as down`
-                : labelParts.join(' | '),
-            16,
-            24
+            `${definition.label}: no ${options.action} animation`,
+            24,
+            32
         )
         engine.add(label)
-        markCanvasReady(engine.canvas)
+        return
+    }
+
+    if (options.animate) {
+        const frameIndexes = range(
+            row * definition.columns,
+            row * definition.columns + animation.frameCount - 1
+        )
+        const graphic = Animation.fromSpriteSheet(
+            sheet,
+            frameIndexes,
+            animation.frameMs,
+            AnimationStrategy.Loop
+        )
+        actor.graphics.use(graphic)
+    } else {
+        const clampedFrame = clampFrame(animation, options.frame)
+        actor.graphics.use(sheet.getSprite(clampedFrame, row))
+    }
+
+    actor.graphics.flipHorizontal = options.direction === 'left'
+    engine.add(actor)
+
+    if (options.showFrameGrid) {
+        addGrid(
+            engine,
+            position.x,
+            position.y - (definition.spriteHeight * options.zoom) / 2,
+            definition.spriteWidth * options.zoom,
+            definition.spriteHeight * options.zoom
+        )
+    }
+
+    const labelParts = [
+        definition.label,
+        options.action,
+        options.direction,
+        `frame ${String(clampFrame(animation, options.frame) + 1)}/${String(animation.frameCount)}`,
+    ]
+    const unsupportedDirection = !supportsDirection(animation, options.direction)
+    const label = createFrameLabel(
+        unsupportedDirection
+            ? `${labelParts.join(' | ')} | direction previewed as down`
+            : labelParts.join(' | '),
+        16,
+        24
+    )
+    engine.add(label)
+}
+
+export function renderCharacterFrame(
+    storyCanvas: HTMLElement,
+    options: CharacterPreviewOptions
+): HTMLElement {
+    return renderExcaliburPreview(storyCanvas, () => {
+        const definition = characterCatalog[options.character]
+        const image = new ImageSource(definition.src)
+        const container = createContainer()
+        const canvas = createCanvas(420, 320)
+        container.append(canvas)
+        return {
+            canvas,
+            container,
+            loader: new EngineAssetLoader({ loadables: [image] }),
+            addActors: (engine) => addCharacterActor(engine, definition, image, options),
+        }
     })
 }
 
-export function createEngine(canvas: HTMLCanvasElement, width: number, height: number): Engine {
-    stopActiveEngine()
-
-    activeEngine = new Engine({
-        backgroundColor: Color.fromHex('#101217'),
-        canvasElement: canvas,
-        displayMode: DisplayMode.Fixed,
-        height,
-        pixelArt: true,
-        suppressPlayButton: true,
-        width,
+export function renderAllCharacterOverview(
+    storyCanvas: HTMLElement,
+    options: CharacterOverviewOptions
+): HTMLElement {
+    return renderExcaliburPreview(storyCanvas, () => {
+        const columnCount = 5
+        const columnWidth = 132
+        const rowHeight = 192
+        const definitions = characterIds.map((characterId) => characterCatalog[characterId])
+        const rowCount = Math.ceil(definitions.length / columnCount)
+        const width = Math.max(420, 40 + columnWidth * columnCount)
+        const height = Math.max(300, 80 + rowHeight * rowCount)
+        const container = createContainer()
+        const canvas = createCanvas(width, height)
+        container.append(canvas)
+        const { images, loader } = loadCharacterImages(definitions)
+        return {
+            canvas,
+            container,
+            loader,
+            addActors: (engine) => {
+                definitions.forEach((definition, index) => {
+                    const image = images[index]
+                    if (image === undefined) return
+                    const sheet = createSheet(definition, image)
+                    const column = index % columnCount
+                    const row = Math.floor(index / columnCount)
+                    const x = 64 + column * columnWidth
+                    const y = 120 + row * rowHeight
+                    addSpriteActor(engine, definition, sheet, options, vec(x, y))
+                    engine.add(createFrameLabel(definition.label, x - 54, y + 88))
+                })
+            },
+        }
     })
-
-    return activeEngine
-}
-
-export function renderCharacterFrame(options: CharacterPreviewOptions): HTMLElement {
-    const width = 420
-    const height = 320
-    const container = createContainer()
-    const canvas = createCanvas(width, height)
-    container.appendChild(canvas)
-
-    const engine = createEngine(canvas, width, height)
-    addCharacterActor(engine, characterCatalog[options.character], options)
-
-    return container
-}
-
-export function renderAllCharacters(zoom: number): HTMLElement {
-    return renderAllCharacterOverview({
-        action: 'idle',
-        animate: false,
-        direction: 'down',
-        frame: 0,
-        showFrameGrid: true,
-        zoom,
-    })
-}
-
-export function renderAllCharacterOverview(options: CharacterOverviewOptions): HTMLElement {
-    const columnCount = 5
-    const columnWidth = 132
-    const rowHeight = 192
-    const definitions = characterIds.map((characterId) => characterCatalog[characterId])
-    const rowCount = Math.ceil(definitions.length / columnCount)
-    const width = Math.max(420, 40 + columnWidth * columnCount)
-    const height = Math.max(300, 80 + rowHeight * rowCount)
-    const container = createContainer()
-    const canvas = createCanvas(width, height)
-    container.appendChild(canvas)
-
-    const engine = createEngine(canvas, width, height)
-    const { images, loader } = loadCharacterImages(definitions)
-
-    void engine.start(loader).then(() => {
-        definitions.forEach((definition, index) => {
-            const image = images[index]
-            if (image === undefined) {
-                return
-            }
-
-            const sheet = createSheet(definition, image)
-            const column = index % columnCount
-            const row = Math.floor(index / columnCount)
-            const x = 64 + column * columnWidth
-            const y = 120 + row * rowHeight
-            addSpriteActor(engine, definition, sheet, options, vec(x, y))
-            engine.add(createFrameLabel(definition.label, x - 54, y + 88))
-        })
-        markCanvasReady(canvas)
-    })
-
-    return container
 }

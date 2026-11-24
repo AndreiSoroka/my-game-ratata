@@ -12,9 +12,9 @@ type Story = StoryObj
 
 export const OrdinaryAttack: Story = {
     name: 'Обычный удар · персонаж и область атаки',
-    render: () => renderMeleeAlignmentStory('slash'),
+    render: (_args, context) => renderMeleeAlignmentStory(context.canvasElement, 'slash'),
 }
 export const SkeletonStrike: Story = {
     name: 'Костяной удар · персонаж и область атаки',
-    render: () => renderMeleeAlignmentStory('bone'),
+    render: (_args, context) => renderMeleeAlignmentStory(context.canvasElement, 'bone'),
 }

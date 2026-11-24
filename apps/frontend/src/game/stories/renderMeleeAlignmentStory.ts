@@ -3,7 +3,7 @@ import {
     type AttackZone,
     type CharacterFacing,
 } from '@my-game-ratata/contracts'
-import { Actor, Color, type Engine, ImageSource, Loader, type SpriteSheet, vec } from 'excalibur'
+import { Actor, Color, type Engine, ImageSource, type SpriteSheet, vec } from 'excalibur'
 
 import { characterCatalog, resolveAnimationRow } from '../assets/characterCatalog'
 import { AttackZoneViews } from '../runtime/attackZoneViews'
@@ -11,8 +11,10 @@ import { createBundle } from '../runtime/characterViewBundle'
 import { combatEffectCues } from '../runtime/combatEffectPlan'
 import { combatEffectPose } from '../runtime/combatEffectPose'
 import { EffectGraphics } from '../runtime/effectGraphics'
+import { EngineAssetLoader } from '../runtime/engineRun'
 import { characterFixture } from '../testing/characterFixture'
-import { createCanvas, createEngine, createSheet, markCanvasReady } from './renderExcaliburStory'
+import { renderExcaliburPreview } from './excaliburPreview'
+import { createCanvas, createSheet } from './renderExcaliburStory'
 
 type MeleeKind = 'slash' | 'bone'
 interface DirectionFixture {
@@ -31,66 +33,56 @@ function directionFixtures(range: number): DirectionFixture[] {
     ]
 }
 
-export function renderMeleeAlignmentStory(kind: MeleeKind): HTMLElement {
-    const definition = characterCatalog[kind === 'bone' ? 'skeleton' : 'player']
-    const fixtures = directionFixtures(
-        kind === 'bone' ? ABILITY_DEFINITIONS.skeleton_strike.range : 14.4
-    )
-    const panel = document.createElement('section')
-    panel.className = 'rpg-panel melee-alignment-preview'
-    Object.assign(panel.style, {
-        width: '960px',
-        maxWidth: '100%',
-        padding: '20px',
-        boxSizing: 'border-box',
-    })
-    const canvas = createCanvas(320, 96)
-    Object.assign(canvas.style, { width: '100%', height: 'auto' })
-    canvas.setAttribute('role', 'img')
-    canvas.setAttribute('aria-label', 'Персонаж, область удара и эффект в четырёх направлениях')
-    const labels = document.createElement('div')
-    Object.assign(labels.style, {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        textAlign: 'center',
-    })
-    for (const { label } of fixtures) {
-        const caption = document.createElement('span')
-        caption.textContent = label
-        labels.append(caption)
-    }
-    const legend = document.createElement('p')
-    legend.textContent =
-        'Белая точка — опора персонажа и удара. Жёлтый прямоугольник — пример серверной области атаки.'
-    panel.append(canvas, labels, legend)
-    const engine = createEngine(canvas, 320, 96)
-    const image = new ImageSource(definition.src)
-    const graphics = new EffectGraphics()
-    let attached = false
-    let disposed = false
-    const observer = new MutationObserver(() => {
-        if (panel.isConnected) attached = true
-        else if (attached) {
-            disposed = true
-            engine.stop()
-            graphics.clear()
-            observer.disconnect()
-        }
-    })
-    observer.observe(document.body, { childList: true, subtree: true })
-    void engine.start(new Loader([image])).then(() => {
-        if (disposed) {
-            engine.stop()
-            return
-        }
-        const sheet = createSheet(definition, image)
-        const zones = fixtures.map((fixture, index) =>
-            addMeleeExample(engine, sheet, graphics, kind, fixture, index)
+export function renderMeleeAlignmentStory(storyCanvas: HTMLElement, kind: MeleeKind): HTMLElement {
+    return renderExcaliburPreview(storyCanvas, () => {
+        const definition = characterCatalog[kind === 'bone' ? 'skeleton' : 'player']
+        const fixtures = directionFixtures(
+            kind === 'bone' ? ABILITY_DEFINITIONS.skeleton_strike.range : 14.4
         )
-        new AttackZoneViews(engine).update(zones)
-        markCanvasReady(canvas)
+        const panel = document.createElement('section')
+        panel.className = 'rpg-panel melee-alignment-preview'
+        Object.assign(panel.style, {
+            width: '960px',
+            maxWidth: '100%',
+            padding: '20px',
+            boxSizing: 'border-box',
+        })
+        const canvas = createCanvas(320, 96)
+        Object.assign(canvas.style, { width: '100%', height: 'auto' })
+        canvas.setAttribute('role', 'img')
+        canvas.setAttribute('aria-label', 'Персонаж, область удара и эффект в четырёх направлениях')
+        const labels = document.createElement('div')
+        Object.assign(labels.style, {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            textAlign: 'center',
+        })
+        for (const { label } of fixtures) {
+            const caption = document.createElement('span')
+            caption.textContent = label
+            labels.append(caption)
+        }
+        const legend = document.createElement('p')
+        legend.textContent =
+            'Белая точка — опора персонажа и удара. Жёлтый прямоугольник — пример серверной области атаки.'
+        panel.append(canvas, labels, legend)
+        const image = new ImageSource(definition.src)
+        const graphics = new EffectGraphics()
+        const addActors = (engine: Engine) => {
+            const sheet = createSheet(definition, image)
+            const zones = fixtures.map((fixture, index) =>
+                addMeleeExample(engine, sheet, graphics, kind, fixture, index)
+            )
+            new AttackZoneViews(engine).update(zones)
+        }
+        return {
+            canvas,
+            container: panel,
+            loader: new EngineAssetLoader({ loadables: [image] }),
+            addActors,
+            cleanup: () => graphics.clear(),
+        }
     })
-    return panel
 }
 
 function addMeleeExample(

@@ -28,7 +28,6 @@ import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
 import { createRuntimePointerHandlers } from './runtimePointer'
 import {
-    disposeRuntimePresentation,
     initializeRuntimePresentation,
     type RuntimePresentation,
     suspendRuntimePresentation,
@@ -101,9 +100,8 @@ export class RatataGame {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
                     this.maps.stop()
-                    suspendRuntimePresentation(this.view)
                     this.chat.stopActivity()
-                    this.view?.sceneActors?.clearWaypoints()
+                    void this.view?.run.cancel()
                 }
                 options.onStatus(status)
             },
@@ -146,13 +144,15 @@ export class RatataGame {
     }
 
     public stop(): void {
+        if (this.stopped) return
         this.chat.stopActivity()
         this.stopped = true
         this.maps.stop()
         this.releaseInputs()
         this.socket.close()
-        disposeRuntimePresentation(this.view, this.planting)
+        void this.view?.run.cancel()
         this.view = undefined
+        this.planting.dispose()
         this.buildingEntrances.clear()
 
         if (import.meta.env.DEV) delete window.__ratataGameDebug
@@ -166,7 +166,7 @@ export class RatataGame {
 
     public playUiSound(id: UiSoundId): void {
         const view = this.view
-        if (this.connected && !this.stopped && view?.engine.ready) view.audio.playSound(id)
+        if (this.connected && !this.stopped && view?.engine.isReady) view.audio.playSound(id)
     }
 
     public setInteractionTarget(target: TargetHighlight | undefined): void {

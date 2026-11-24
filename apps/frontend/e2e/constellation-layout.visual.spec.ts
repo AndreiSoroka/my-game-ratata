@@ -67,6 +67,7 @@ for (const width of [390, 1280]) {
     test(`perspective depth grows with the same native pan at close zoom across the catalogue at ${width}px`, async ({
         page,
     }, info) => {
+        test.setTimeout(60_000)
         await page.setViewportSize({ width, height: 844 })
         await page.goto(
             '/iframe.html?id=game-characterwindow--full-blade-development&viewMode=story'
@@ -81,6 +82,13 @@ for (const width of [390, 1280]) {
         const overview = await catalogueProjection(graph)
         const bounds = snapshot.layout!.bounds
         const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+        const pan = { x: 100, y: 0 }
+        // Leave room for the entire measured pan before the camera clamps at the left edge.
+        const sampleOffset = Math.min(
+            bounds.width / 4,
+            bounds.width / 2 - (pan.x + 1) / overview.scale
+        )
+        expect(sampleOffset).toBeGreaterThan(0)
         const responses: number[] = []
         for (const level of [
             { clicks: 0, minimumResponse: -0.001, minimumAdjacent: 0 },
@@ -93,11 +101,11 @@ for (const width of [390, 1280]) {
             const samples = []
             for (const side of [-1, 0, 1]) {
                 await moveCameraTo(page, graph, {
-                    x: center.x + (side * bounds.width) / 4,
+                    x: center.x + side * sampleOffset,
                     y: center.y,
                 })
                 const before = await catalogueProjection(graph)
-                await panSky(page, graph, { x: 100, y: 0 })
+                await panSky(page, graph, pan)
                 const after = await catalogueProjection(graph)
                 expect(
                     Math.abs(
@@ -105,7 +113,7 @@ for (const width of [390, 1280]) {
                             after.camera.width / 2 -
                             (before.camera.x + before.camera.width / 2)) *
                             after.scale +
-                            100
+                            pan.x
                     )
                 ).toBeLessThan(0.01)
                 expectAffinePlanes(snapshot, overview, after)

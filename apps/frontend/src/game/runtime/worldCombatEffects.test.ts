@@ -29,7 +29,7 @@ vi.mock('excalibur', () => {
         public kill() {
             this.dead = true
         }
-        public isKilled() {
+        public get isKilled() {
             return this.dead
         }
     }

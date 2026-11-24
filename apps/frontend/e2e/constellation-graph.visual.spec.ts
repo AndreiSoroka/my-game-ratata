@@ -329,7 +329,11 @@ function expectSameProjection(actual: SkyProjection, expected: SkyProjection): v
         expect(point.x).toBeCloseTo(expected.cross[index]!.x, 4)
         expect(point.y).toBeCloseTo(expected.cross[index]!.y, 4)
     }
-    expect(actual.background).toEqual(expected.background)
+    expect(actual.background).toHaveLength(expected.background.length)
+    for (const [index, matrix] of actual.background.entries()) {
+        for (const [coefficient, value] of matrix.entries())
+            expect(value).toBeCloseTo(expected.background[index]![coefficient]!, 4)
+    }
     expectCameraCenter(actual, {
         x: expected.camera.x + expected.camera.width / 2,
         y: expected.camera.y + expected.camera.height / 2,
@@ -402,9 +406,14 @@ function skyProjection(graph: Locator) {
                         bounds.height / element.getBoundingClientRect().height
                     ) * matrix.a,
                 camera: { x, y, width, height },
-                background: [...element.querySelectorAll('.constellation-background__layer')].map(
-                    (layer) => layer.getAttribute('patternTransform')
-                ),
+                background: [
+                    ...element.querySelectorAll<SVGPatternElement>(
+                        '.constellation-background__layer'
+                    ),
+                ].map((layer) => {
+                    const { a, b, c, d, e, f } = layer.patternTransform.baseVal.getItem(0).matrix
+                    return [a, b, c, d, e, f]
+                }),
                 inner: Array.from(inner.points, ({ x, y }) => {
                     const screen = new DOMPoint(x, y).matrixTransform(matrix)
                     return { world: { x, y }, screen: { x: screen.x, y: screen.y } }

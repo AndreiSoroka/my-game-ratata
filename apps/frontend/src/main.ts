@@ -12,12 +12,10 @@ async function bootstrap(): Promise<void> {
         createApp(ConstellationDebug).use(gameI18n).mount('#app')
         return
     }
-    const [{ default: App }, { createPinia }, { ensureExcaliburCanvasFlags }] = await Promise.all([
+    const [{ default: App }, { createPinia }] = await Promise.all([
         import('./App.vue'),
         import('pinia'),
-        import('./game/runtime/excaliburFlags'),
     ])
-    ensureExcaliburCanvasFlags()
     createApp(App).use(createPinia()).use(gameI18n).mount('#app')
 }
 

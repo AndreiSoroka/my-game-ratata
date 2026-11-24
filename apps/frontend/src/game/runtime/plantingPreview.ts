@@ -3,7 +3,6 @@ import { Actor, Canvas, type Engine, type PointerEvent, vec } from 'excalibur'
 
 /** A server-approved future trunk footprint, independent from world target selection. */
 export class PlantingPreview {
-    private engine: Engine | undefined
     private view: Actor | undefined
     private pointer: ((point: Vector2) => void) | undefined
     private hover: ((point: Vector2) => void) | undefined
@@ -26,12 +25,21 @@ export class PlantingPreview {
             return
         this.hover?.({ x: event.worldPos.x, y: event.worldPos.y })
     }
-    public initialize(engine: Engine): void {
-        this.engine = engine
-        this.view = new Actor({ anchor: vec(0, 0), z: 1 })
-        this.view.graphics.isVisible = false
-        engine.add(this.view)
+    public initialize(engine: Engine): () => void {
+        const view = new Actor({ anchor: vec(0, 0), z: 1 })
+        this.view = view
+        view.graphics.isVisible = false
+        engine.add(view)
         engine.input.pointers.primary.on('move', this.move)
+        return () => {
+            engine.input.pointers.primary.off('move', this.move)
+            view.kill()
+            if (this.view === view) {
+                this.set()
+                this.view = undefined
+                this.shape = ''
+            }
+        }
     }
     public set(handler?: (point: Vector2) => void, hover?: (point: Vector2) => void): void {
         if (handler) this.release?.()
@@ -75,12 +83,7 @@ export class PlantingPreview {
         return true
     }
     public dispose(): void {
-        this.pointer = this.hover = undefined
+        this.set()
         this.listeners.clear()
-        this.engine?.input.pointers.primary.off('move', this.move)
-        this.engine = undefined
-        this.view?.kill()
-        this.view = undefined
-        this.shape = ''
     }
 }

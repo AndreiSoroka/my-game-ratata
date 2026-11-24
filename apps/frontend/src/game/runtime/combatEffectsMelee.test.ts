@@ -26,7 +26,7 @@ vi.mock('excalibur', () => {
         public kill(): void {
             this.killed = true
         }
-        public isKilled(): boolean {
+        public get isKilled(): boolean {
             return this.killed
         }
     }

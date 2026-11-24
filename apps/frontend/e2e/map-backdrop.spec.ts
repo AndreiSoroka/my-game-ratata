@@ -24,11 +24,11 @@ test('scrolls the stars along the western map edge and restores them after trave
     })
     const start = { x: west.position.x + tileWidth, y: west.position.y }
     await walk(page, start, locationId)
-    const before = await captureStars(page, 'west')
+    const before = await captureSettledStars(page, 'west')
     expect(before.stars.length).toBeGreaterThan(0)
 
     await walk(page, { x: start.x, y: start.y + tileHeight * 5 }, locationId)
-    const after = await captureStars(page, 'west')
+    const after = await captureSettledStars(page, 'west')
     const terrainScroll = before.terrainY - after.terrainY
     expect(terrainScroll).toBeGreaterThan(100)
     expect(after.stars).not.toEqual(before.stars)
@@ -49,7 +49,7 @@ test('scrolls the stars along the western map edge and restores them after trave
         window.__ratataTest!.travel('west', { timeoutMs: 30_000 })
     )
     expect(travel).toMatchObject({ status: 'arrived', locationId: west.locationId })
-    expect((await captureStars(page, 'east')).stars.length).toBeGreaterThan(0)
+    expect((await captureSettledStars(page, 'east')).stars.length).toBeGreaterThan(0)
 })
 
 async function walk(page: Page, point: Vector2, locationId: string): Promise<void> {
@@ -58,6 +58,24 @@ async function walk(page: Page, point: Vector2, locationId: string): Promise<voi
         point
     )
     expect(result, result.reason).toMatchObject({ status: 'arrived', locationId })
+}
+
+async function captureSettledStars(page: Page, side: 'west' | 'east') {
+    let previousY: number | undefined
+    await expect
+        .poll(async () => {
+            const cameraY = await page.evaluate(
+                () => window.__ratataGameDebug?.worldToPage({ x: 0, y: 0 })?.y
+            )
+            const shift =
+                cameraY === undefined || previousY === undefined
+                    ? Infinity
+                    : Math.abs(cameraY - previousY)
+            previousY = cameraY
+            return shift
+        })
+        .toBeLessThan(0.25)
+    return captureStars(page, side)
 }
 
 function captureStars(page: Page, side: 'west' | 'east') {

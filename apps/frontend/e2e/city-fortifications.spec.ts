@@ -10,6 +10,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
+import { RuntimeSnapshotStream } from '../src/game/runtime/runtimeSnapshotStream'
+
 interface MapObject {
     id: number
     type: string
@@ -209,17 +211,27 @@ async function enterNearestHouse(
 }
 function capturePositions(page: Page): TracePoint[] {
     const positions: TracePoint[] = []
+    const stream = new RuntimeSnapshotStream()
     let playerId = ''
-    page.on('websocket', (socket) =>
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
         socket.on('framereceived', (frame) => {
             if (typeof frame.payload !== 'string') return
             const message = JSON.parse(frame.payload) as ServerMessage
             if (message.type === 'world_init') playerId = message.playerId
-            if (message.type !== 'world_init' && message.type !== 'snapshot') return
-            const player = message.snapshot.characters.find((actor) => actor.id === playerId)
+            if (
+                message.type !== 'world_init' &&
+                message.type !== 'snapshot' &&
+                message.type !== 'snapshot_delta'
+            )
+                return
+            const receipt =
+                message.type === 'world_init' ? stream.initialize(message) : stream.receive(message)
+            if (receipt.kind !== 'applied') return
+            const player = receipt.snapshot.characters.find((actor) => actor.id === playerId)
             if (player)
-                positions.push({ ...player.position, locationId: message.snapshot.location?.id })
+                positions.push({ ...player.position, locationId: receipt.snapshot.location?.id })
         })
-    )
+    })
     return positions
 }

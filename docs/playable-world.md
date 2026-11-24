@@ -18,6 +18,10 @@ Current world state lives in server memory; restarting the backend begins a new
 world session. See [generated city and Bell](generated-city.md) for seed, map
 loading, fortifications and shared story rules.
 
+The world and Excalibur Storybook previews render with WebGL2 and pixel-art
+filtering. The browser must support WebGL2. Canvas 2D is used to draw source
+textures for terrain and effects.
+
 ## Play
 
 Choose a name and a starting background. A new identity awakens on the peaceful
@@ -384,6 +388,7 @@ Additional suites run manually from the repository root:
 - `bun run test:e2e:webkit` — standard game scenarios in WebKit.
 - `bun run test:e2e:graves` — desktop and mobile grave lifecycle scenarios, each in a separate fresh world.
 - `bun run test:e2e:storybook` — Storybook visual checks.
+- `bun run test:e2e:engine` — a fresh Vite harness on port 5600 for real Excalibur rendering, loading and audio.
 - `bun run test:e2e:all` — all three browsers, grave lifecycle scenarios and Storybook checks.
 
 App and grave suites do not reuse existing servers. `E2E_BACKEND_PORT` and `E2E_FRONTEND_PORT` change the app pair; grave scenarios use the next ports, 3501/5501 by default. Grave artifacts and reports are retained separately as `graves-desktop` and `graves-mobile`, so disconnected actors, earlier deaths and encounter age from one viewport cannot alter the other. Run either grave viewport alone with `bun run --cwd apps/frontend test:e2e:graves:desktop` or `test:e2e:graves:mobile`. All gameplay actions use ordinary validated commands; long ritual scenarios wait for the real server deadline.

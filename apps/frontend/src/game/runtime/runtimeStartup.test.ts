@@ -1,7 +1,8 @@
 import type { ClientMessage, MapSummary, WorldSnapshot } from '@my-game-ratata/contracts'
-import { PointerButton, type PointerEvent, PointerType } from 'excalibur'
+import { type Engine, Future, PointerButton, type PointerEvent, PointerType } from 'excalibur'
 import { beforeEach, expect, it, vi } from 'vitest'
 
+import { EngineRun } from './engineRun'
 import { RatataGame } from './ratataGame'
 import type { RatataGameOptions } from './runtimeOptions'
 import type { SnapshotReference } from './runtimeSnapshotStream'
@@ -11,6 +12,10 @@ const calls = vi.hoisted(() => ({
     load: vi.fn<() => Promise<RenderedTiledMap>>(),
     start: vi.fn<() => Promise<void>>(),
     stop: vi.fn<() => void>(),
+    engineDispose: vi.fn<() => void>(),
+    disableInput: vi.fn<() => void>(),
+    clearBrowserListeners: vi.fn<() => void>(),
+    loaderComplete: true,
     present: vi.fn<() => void>(),
     connect: vi.fn<() => void>(),
     socketHandlers: undefined as
@@ -25,6 +30,9 @@ const calls = vi.hoisted(() => ({
           }
         | undefined,
     music: vi.fn<() => void>(),
+    sound: vi.fn<() => void>(),
+    stopAudio: vi.fn<() => void>(),
+    removePlanting: vi.fn<() => void>(),
     dispose: vi.fn<() => void>(),
     inputs: vi.fn<() => void>(),
     removeInputs: vi.fn<() => void>(),
@@ -49,21 +57,41 @@ vi.mock('./runtimePresentation', () => ({
         canvas.dataset.gameCanvas = 'true'
         canvas.tabIndex = 0
         container.append(canvas)
+        let isReady = false
+        const engine = {
+            start: async () => {
+                await calls.start()
+                isReady = true
+            },
+            stop: calls.stop,
+            dispose: calls.engineDispose,
+            setInputEnabled: calls.disableInput,
+            browser: { clear: calls.clearBrowserListeners },
+            get isReady() {
+                return isReady
+            },
+            ready: Promise.resolve(),
+            on: (_event: string, callback: () => void) => calls.frames.add(callback),
+            off: (_event: string, callback: () => void) => calls.frames.delete(callback),
+            screen: {
+                getWorldBounds: () => ({ left: 10, top: 20, right: 200, bottom: 100 }),
+            },
+        } as unknown as Engine
+        const run = new EngineRun(canvas, () => engine)
+        run.addCleanup(calls.dispose)
+        run.addCleanup(calls.stopAudio)
         return {
+            run,
             canvas,
-            loader: {},
-            engine: {
-                start: calls.start,
-                stop: calls.stop,
-                on: (_event: string, callback: () => void) => calls.frames.add(callback),
-                off: (_event: string, callback: () => void) => calls.frames.delete(callback),
-                screen: {
-                    getWorldBounds: () => ({ left: 10, top: 20, right: 200, bottom: 100 }),
+            loader: {
+                get isLoaded() {
+                    return calls.loaderComplete
                 },
             },
+            engine,
             audio: {
                 playMusic: calls.music,
-                stop: vi.fn<() => void>(),
+                playSound: calls.sound,
                 suspendWorld: vi.fn<() => void>(),
                 setMap: vi.fn<(...args: unknown[]) => void>(),
                 observeWorld: vi.fn<(...args: unknown[]) => void>(),
@@ -93,8 +121,8 @@ vi.mock('./runtimeInputLifecycle', () => ({
 }))
 vi.mock('./plantingPreview', () => ({
     PlantingPreview: class {
-        public initialize(): void {
-            /* Cosmetic view is outside lifecycle rules. */
+        public initialize(): () => void {
+            return calls.removePlanting
         }
         public dispose(): void {
             /* Cosmetic view is outside lifecycle rules. */
@@ -117,19 +145,11 @@ vi.mock('./runtimeSocket', () => ({
 beforeEach(() => {
     vi.clearAllMocks()
     calls.frames.clear()
+    calls.loaderComplete = true
     calls.load.mockResolvedValue({ buildings: [], tileWidth: 16 } as unknown as RenderedTiledMap)
     calls.start.mockResolvedValue()
 })
 
-function deferred<T>() {
-    let resolve!: (value: T) => void
-    let reject!: (reason: Error) => void
-    const promise = new Promise<T>((yes, no) => {
-        resolve = yes
-        reject = no
-    })
-    return { promise, resolve, reject }
-}
 function setup() {
     const container = document.createElement('div')
     const onError = vi.fn<(message: string) => void>()
@@ -312,7 +332,7 @@ it('keeps a private editor or modal in control when the world is clicked during 
     }
 })
 it('connects before requesting a map and ignores any map after stopping', async () => {
-    const map = deferred<RenderedTiledMap>()
+    const map = new Future<RenderedTiledMap>()
     calls.load.mockReturnValue(map.promise)
     const { game, container } = setup()
     await game.start()
@@ -330,23 +350,89 @@ it('connects before requesting a map and ignores any map after stopping', async 
     expect(container.children).toHaveLength(0)
     expect(calls.present).not.toHaveBeenCalled()
 })
-it('stops an engine that completes loading late without starting music', async () => {
-    const loaded = deferred<void>()
+it('detaches a cancelled presentation immediately and disposes the engine once loading settles', async () => {
+    const loaded = new Future<void>()
     calls.start.mockReturnValue(loaded.promise)
     const { game, container } = setup()
     await game.start()
     initialize()
     await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
     game.stop()
+    game.stop()
+    expect(container.children).toHaveLength(0)
     expect(calls.removeInputs).toHaveBeenCalledOnce()
+    expect(calls.removePlanting).toHaveBeenCalledOnce()
+    expect(calls.stopAudio).toHaveBeenCalledOnce()
+    expect(calls.dispose).toHaveBeenCalledOnce()
+    expect(calls.disableInput).toHaveBeenCalledExactlyOnceWith(false)
+    expect(calls.frames.size).toBe(0)
+    expect(calls.stop).not.toHaveBeenCalled()
+    expect(calls.engineDispose).not.toHaveBeenCalled()
     loaded.resolve()
-    await vi.waitFor(() => expect(calls.stop).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(calls.engineDispose).toHaveBeenCalledOnce())
+    expect(calls.stop).toHaveBeenCalledOnce()
+    expect(calls.clearBrowserListeners).toHaveBeenCalledOnce()
+    expect(calls.music).not.toHaveBeenCalled()
+})
+
+it('plays UI feedback only once the current engine is ready', async () => {
+    const loaded = new Future<void>()
+    calls.start.mockReturnValueOnce(loaded.promise)
+    const { game } = setup()
+    await game.start()
+    initialize()
+    await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
+    game.playUiSound('uiClick')
+    expect(calls.sound).not.toHaveBeenCalled()
+    loaded.resolve()
+    await vi.waitFor(() => expect(calls.music).toHaveBeenCalledOnce())
+    game.playUiSound('uiClick')
+    expect(calls.sound).toHaveBeenCalledExactlyOnceWith('uiClick')
+    game.stop()
+})
+
+it('leaves a later presentation intact when an old engine finishes loading', async () => {
+    const loaded = new Future<void>()
+    calls.start.mockReturnValueOnce(loaded.promise)
+    const { game, container, onMapError } = setup()
+    await game.start()
+    initialize('old')
+    await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
+    game.stop()
+    const landing = document.createElement('div')
+    container.append(landing)
+    await startWorld(game)
+    const currentCanvas = container.querySelector('canvas')
+    expect(currentCanvas).not.toBeNull()
+    loaded.resolve()
+    await vi.waitFor(() => expect(calls.engineDispose).toHaveBeenCalledOnce())
+    expect(container.querySelector('canvas')).toBe(currentCanvas)
+    expect(container.contains(landing)).toBe(true)
+    expect(onMapError).not.toHaveBeenCalledWith(expect.any(String))
+    expect(calls.music).toHaveBeenCalledOnce()
+    expect(calls.removeInputs).toHaveBeenCalledOnce()
+    expect(calls.frames.size).toBe(1)
+    game.stop()
+})
+
+it('reports and retries a loader that resolves without all resources', async () => {
+    calls.loaderComplete = false
+    const { game, container, onMapError } = setup()
+    await game.start()
+    initialize()
+    await vi.waitFor(() =>
+        expect(onMapError).toHaveBeenCalledWith('Excalibur did not finish loading its resources')
+    )
+    expect(calls.engineDispose).toHaveBeenCalledOnce()
     expect(container.children).toHaveLength(0)
     expect(calls.music).not.toHaveBeenCalled()
-    expect(calls.connect).toHaveBeenCalledOnce()
+    calls.loaderComplete = true
+    game.retryMap()
+    await vi.waitFor(() => expect(calls.music).toHaveBeenCalledOnce())
+    game.stop()
 })
 it('keeps current map failures retryable while suppressing cancelled failures', async () => {
-    const map = deferred<RenderedTiledMap>()
+    const map = new Future<RenderedTiledMap>()
     calls.load.mockReturnValue(map.promise)
     const old = setup()
     await old.game.start()
@@ -367,7 +453,7 @@ it('keeps current map failures retryable while suppressing cancelled failures', 
     fresh.game.stop()
 })
 it('suppresses an engine loading failure after it has already been stopped', async () => {
-    const loaded = deferred<void>()
+    const loaded = new Future<void>()
     calls.start.mockReturnValue(loaded.promise)
     const { game, container, onMapError } = setup()
     await game.start()
@@ -375,13 +461,13 @@ it('suppresses an engine loading failure after it has already been stopped', asy
     await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
     game.stop()
     loaded.reject(new Error('Late engine failure'))
-    await Promise.resolve()
+    await vi.waitFor(() => expect(calls.engineDispose).toHaveBeenCalledOnce())
     expect(container.children).toHaveLength(0)
     expect(calls.music).not.toHaveBeenCalled()
     expect(onMapError).not.toHaveBeenCalledWith('Late engine failure')
 })
 it('reloads the same location after a new server epoch and ignores an obsolete initial map', async () => {
-    const old = deferred<RenderedTiledMap>()
+    const old = new Future<RenderedTiledMap>()
     const current = { buildings: [], tileWidth: 24 } as unknown as RenderedTiledMap
     calls.load.mockReturnValueOnce(old.promise).mockResolvedValueOnce(current)
     const { game } = setup()

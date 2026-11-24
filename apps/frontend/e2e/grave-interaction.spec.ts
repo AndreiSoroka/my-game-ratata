@@ -2,10 +2,11 @@ import {
     type GameEventPayload,
     resourceNeedsRestoration,
     type ResourceSnapshot,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 import { expect, type Page, test, type TestInfo } from '@playwright/test'
 
-import { defendRitual, maintainShot, withdrawRangers } from './grave-defense'
+import { defendRitual, maintainShot, nearestRitualThreat, withdrawRangers } from './grave-defense'
 import {
     attachBrowserDiagnostics,
     attachCombatFailure,
@@ -14,7 +15,7 @@ import {
     capturePurificationTargets,
     captureWorldDamage,
 } from './grave-diagnostics'
-import { approachObservedGrave } from './grave-targeting'
+import { approachObservedGrave, scoutGrave, travelParty } from './grave-targeting'
 import { selectedWorldTarget } from './world-target-ui'
 
 const cases = [
@@ -38,12 +39,12 @@ for (const { mobile, direction, viewport } of cases) {
             await Promise.all(
                 rangers.map((ranger) => ranger.setViewportSize({ width: 480, height: 360 }))
             )
-            await Promise.all([
-                join(page, 'cleric'),
-                ...rangers.map((ranger, index) => join(ranger, 'ranger', String(index))),
-            ])
-            await travelParty([page, ...rangers], direction)
-            const grave = await clearGraveApproach(rangers)
+            await join(page, 'cleric')
+            for (const [index, ranger] of rangers.entries())
+                await join(ranger, 'ranger', String(index))
+            const sourcePosition = await travelParty([page, ...rangers], direction)
+            await scoutGrave(rangers, sourcePosition)
+            const grave = await clearGraveApproach(rangers, sourcePosition)
             const ranger = await livingRanger(rangers)
             await approachSource(page, grave)
             await shootGrave(page, ranger, grave!, worldDamage)
@@ -230,18 +231,6 @@ async function approachSource(
     ).toBe(true)
 }
 
-async function travelParty(pages: Page[], direction: 'west' | 'south'): Promise<void> {
-    const results = await Promise.all(
-        pages.map((participant) =>
-            participant.evaluate(
-                (direction) => window.__ratataTest!.travel(direction, { timeoutMs: 30_000 }),
-                direction
-            )
-        )
-    )
-    for (const result of results) expect(result.status, result.reason).toBe('arrived')
-}
-
 async function attachOutcome(
     page: Page,
     ranger: Page,
@@ -393,12 +382,21 @@ async function shootGrave(
 
 async function join(page: Page, heroClass: 'cleric' | 'ranger', suffix = ''): Promise<void> {
     await page.goto('/?test=1')
-    await page.waitForFunction(() => Boolean(window.__ratataTest))
-    await page.evaluate(({ name, heroClass }) => window.__ratataTest!.join(name, heroClass), {
-        name: `grave-${heroClass}-${Date.now().toString(36)}${suffix}`,
-        heroClass,
-    })
-    await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
+    await page
+        .getByRole('textbox', { name: 'Имя героя' })
+        .fill(`grave-${heroClass}-${Date.now().toString(36)}${suffix}`)
+    await page
+        .getByRole('radio', { name: heroClass === 'cleric' ? 'Клирик' : 'Следопыт', exact: true })
+        .check()
+    await page.getByRole('button', { name: 'Войти', exact: true }).click()
+    await page.waitForFunction(
+        () => {
+            const state = window.__ratataTest?.getState()
+            return state?.mapReady === true && state.player?.alive === true
+        },
+        undefined,
+        { timeout: 30_000 }
+    )
     await page.addStyleTag({ content: '.test-panel { display: none !important }' })
 }
 
@@ -410,40 +408,32 @@ async function livingRanger(rangers: Page[]): Promise<Page> {
     throw new Error('The ordinary ranger party was defeated')
 }
 async function clearGraveApproach(
-    rangers: Page[]
+    rangers: Page[],
+    position: Vector2
 ): Promise<{ id: string; key: string; position: { x: number; y: number } }> {
-    const source = await rangers[0]!.evaluate(() =>
-        window
-            .__ratataTest!.getState()
-            .snapshot?.graves?.find(
-                (grave) => grave.propId !== undefined && grave.phase === 'active'
-            )
+    const scout = await livingRanger(rangers)
+    const sourceId = await scout.waitForFunction(
+        ({ x, y }) =>
+            window
+                .__ratataTest!.getState()
+                .snapshot?.graves?.find(
+                    (grave) =>
+                        grave.propId !== undefined &&
+                        grave.phase === 'active' &&
+                        grave.position.x === x &&
+                        grave.position.y === y
+                )?.id,
+        position,
+        { timeout: 10_000 }
     )
-    expect(source, 'The received location has an active authored grave').toBeDefined()
-    const grave = { id: source!.id, key: `grave:${source!.id}`, position: source!.position }
+    const id = await sourceId.jsonValue()
+    const grave = { id, key: `grave:${id}`, position }
     // Approach while fighting, rather than walking unarmed into the guardian's
     // patrol first. Each ranger keeps its own cardinal firing lane at Shot reach.
     // Earlier cases can leave distant mobs and create new death graves. Clear only
     // actual threats to this source, rediscovering them after each resolved death.
     for (let count = 0; count < 12; count++) {
-        const observer = await livingRanger(rangers)
-        const threat = await observer.evaluate(
-            (position) =>
-                window
-                    .__ratataTest!.observe()
-                    .targets.filter(
-                        (target) =>
-                            target.kind === 'character' &&
-                            target.details.alive === true &&
-                            target.details.relationship === 'hostile' &&
-                            Math.hypot(
-                                target.position.x - position.x,
-                                target.position.y - position.y
-                            ) <= 260
-                    )
-                    .sort((first, second) => first.distance - second.distance)[0],
-            grave.position
-        )
+        const threat = await nearestRitualThreat(rangers, grave.position, 260)
         if (!threat) return grave
         await expect
             .poll(
@@ -451,18 +441,23 @@ async function clearGraveApproach(
                     await Promise.all(
                         rangers.map((page, index) => maintainShot(page, threat.id, index))
                     )
-                    const witness = await livingRanger(rangers)
-                    return witness.evaluate(
-                        (id) =>
-                            window
-                                .__ratataTest!.getState()
-                                .snapshot?.characters.find((actor) => actor.id === id)?.alive,
-                        threat.id
+                    const witnesses = await Promise.all(
+                        rangers.map((ranger) =>
+                            ranger.evaluate(
+                                (id) =>
+                                    window
+                                        .__ratataTest!.getState()
+                                        .snapshot?.characters.find((actor) => actor.id === id)
+                                        ?.alive,
+                                threat.id
+                            )
+                        )
                     )
+                    return witnesses.includes(false)
                 },
                 { timeout: 45_000, intervals: [250] }
             )
-            .toBe(false)
+            .toBe(true)
     }
     throw new Error('The ranger party did not clear the observed ritual area')
 }

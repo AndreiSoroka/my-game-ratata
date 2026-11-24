@@ -1,12 +1,15 @@
 import { writeFile } from 'node:fs/promises'
 
 import {
+    type CharacterSnapshot,
     type ClientMessage,
     type GameEventPayload,
     type ResourceSnapshot,
     type ServerMessage,
 } from '@my-game-ratata/contracts'
 import type { Page, TestInfo } from '@playwright/test'
+
+import { RuntimeSnapshotStream } from '../src/game/runtime/runtimeSnapshotStream'
 
 /** Observe payment at channel start instead of after regeneration during the ritual. */
 export function capturePrayerManaAtStart(page: Page): ResourceSnapshot[] {
@@ -15,25 +18,32 @@ export function capturePrayerManaAtStart(page: Page): ResourceSnapshot[] {
     let startedAt: number | undefined
     page.on('websocket', (socket) => {
         if (new URL(socket.url()).pathname !== '/ws') return
+        const stream = new RuntimeSnapshotStream()
         socket.on('framereceived', (frame) => {
             if (typeof frame.payload !== 'string') return
             const message = JSON.parse(frame.payload) as ServerMessage
-            if (message.type === 'world_init') playerId = message.playerId
-            if (message.type !== 'world_init' && message.type !== 'snapshot') return
-            const player = message.snapshot.characters.find((actor) => actor.id === playerId)
-            const cast = player?.abilities?.casting
-            if (
-                player !== undefined &&
-                cast?.abilityId === 'pray' &&
-                cast.mode === 'purify_grave' &&
-                cast.startedAt !== startedAt
-            ) {
-                startedAt = cast.startedAt
+            if (message.type === 'world_init') {
+                playerId = message.playerId
+                stream.initialize(message)
+                return
+            }
+            if (message.type !== 'snapshot' && message.type !== 'snapshot_delta') return
+            const receipt = stream.receive(message)
+            if (receipt.kind !== 'applied') return
+            const player = receipt.snapshot.characters.find((actor) => actor.id === playerId)
+            const castStartedAt = purificationStart(player)
+            if (player && castStartedAt !== undefined && castStartedAt !== startedAt) {
+                startedAt = castStartedAt
                 mana.push(player.resources.mana)
             }
         })
     })
     return mana
+}
+
+function purificationStart(player: CharacterSnapshot | undefined): number | undefined {
+    const cast = player?.abilities?.casting
+    return cast?.abilityId === 'pray' && cast.mode === 'purify_grave' ? cast.startedAt : undefined
 }
 
 export function capturePurificationTargets(page: Page): string[] {

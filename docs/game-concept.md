@@ -36,9 +36,9 @@ interaction metadata. Runtime input reaches the authoritative server through the
 shared command boundary.
 
 Use the committed dependency versions and compatibility rules in `AGENTS.md`.
-The installed Excalibur release is 0.32.0; check its local declarations before
-copying examples. Map generation and optional model calls run outside the
-simulation tick.
+Excalibur 1.0.1 renders the world and its Storybook previews with WebGL2. Check
+the installed TypeScript declarations before using engine examples. Map
+generation and optional model calls run outside the simulation tick.
 
 ## Architecture Principles
 

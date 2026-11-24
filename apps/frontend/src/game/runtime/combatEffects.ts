@@ -98,7 +98,7 @@ export class CombatEffects {
         for (const effect of this.effects) {
             if (channelEnded(effect.cue, this.character)) this.remove(effect)
         }
-        this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
+        this.effects = this.effects.filter((effect) => !effect.actor.isKilled)
         this.reposition()
     }
     public reposition(): void {

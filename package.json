@@ -43,6 +43,7 @@
         "test:e2e": "bun run --cwd apps/frontend test:e2e",
         "test:e2e:firefox": "bun run --cwd apps/frontend test:e2e:app:firefox",
         "test:e2e:webkit": "bun run --cwd apps/frontend test:e2e:app:webkit",
+        "test:e2e:engine": "bun run --cwd apps/frontend test:e2e:engine",
         "test:e2e:graves": "bun run --cwd apps/frontend test:e2e:graves",
         "test:e2e:storybook": "bun run --cwd apps/frontend test:e2e:storybook",
         "test:e2e:all": "bun run --cwd apps/frontend test:e2e:all",

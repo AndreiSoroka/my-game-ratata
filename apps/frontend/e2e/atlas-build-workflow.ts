@@ -104,15 +104,28 @@ async function expectPrayerRequirement(
         current < required ? 'Недостаточно уровня' : 'Требование к уровню выполнено.'
     )
 }
+export function atlasCoordinates(page: Page): Promise<(string | null)[]> {
+    return page
+        .locator('[data-node-id]')
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
+}
+
+export async function expectUnchangedAtlas(
+    page: Page,
+    initialCoordinates: (string | null)[]
+): Promise<void> {
+    // Star selection changes the camera and its depth projection.
+    await page.getByRole('button', { name: 'Показать весь небосвод' }).click()
+    await expect.poll(() => atlasCoordinates(page)).toEqual(initialCoordinates)
+}
+
 export async function assertBuildWorkflow(
     page: Page,
     width: number,
     info: TestInfo
 ): Promise<void> {
     const graph = page.getByRole('group', { name: 'Созвездия развития' })
-    const initialCoordinates = await graph
-        .locator('[data-node-id]')
-        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
+    const initialCoordinates = await atlasCoordinates(page)
     await count(page, 2)
     expect(await page.getByTestId('debug-mastery-summary').getAttribute('open')).toBeNull()
     expect(await buildResultPanel(page).getAttribute('open')).toBeNull()
@@ -176,11 +189,7 @@ export async function assertBuildWorkflow(
     await assertFeedbackWorkflow(page)
     await selectBuildStar(page, 'prayer.root')
     await expect(page.locator('[data-metric="Шанс кары"]')).toHaveCount(0)
-    expect(
-        await graph
-            .locator('[data-node-id]')
-            .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')))
-    ).toEqual(initialCoordinates)
+    await expectUnchangedAtlas(page, initialCoordinates)
     await page.getByTestId('debug-build-reset').click()
     await page.getByTestId('debug-search').fill('')
 }

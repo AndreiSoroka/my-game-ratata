@@ -6,7 +6,7 @@
 - Use a visible browser only when the user explicitly asks to open, show, or visually inspect the UI in the in-app browser.
 - The pre-commit hook uses `lint-staged` to check formatting and lint only staged files. Run `bun run check` separately for repository-wide formatting, types, lint, unit/script tests and builds. Browser E2E tests are manual.
 - When gameplay or UI behavior changes, run the affected headless Chromium scenarios, for example `bun run test:e2e -- e2e/social-exchange.spec.ts`. Choose scenarios for the changed functionality; documentation or formatting changes do not require browser runs.
-- The full standard headless Chromium suite remains available through `bun run test:e2e`. `bun run check:full` combines `bun run check` with that suite when explicitly requested. Firefox, WebKit, grave lifecycle and Storybook checks remain manual through `test:e2e:firefox`, `test:e2e:webkit`, `test:e2e:graves`, `test:e2e:storybook` or `test:e2e:all`. Do not add browser suites back to automatic checks without the user's request.
+- The full standard headless Chromium suite remains available through `bun run test:e2e`. `bun run check:full` combines `bun run check` with that suite when explicitly requested. Firefox, WebKit, grave lifecycle and Storybook checks remain manual through `test:e2e:firefox`, `test:e2e:webkit`, `test:e2e:graves`, `test:e2e:storybook` or `test:e2e:all`. Run `test:e2e:engine` separately to exercise Excalibur, WebGL2 and Web Audio. Do not add browser suites back to automatic checks without the user's request.
 
 ## Storybook
 
@@ -48,7 +48,7 @@
 
 ## Architecture decisions (Excalibur review, 2026-11-06)
 
-These are project rules derived from our multiplayer RPG, not a requirement to rewrite working modules all at once. The installed engine is **Excalibur 0.32.0**. Check its local TypeScript declarations before copying examples from newer documentation. In this version `System.priority` is **static**, update runs before draw, and lower priorities run earlier.
+These are project rules for our multiplayer RPG. The installed engine is **Excalibur 1.0.1**. Check its local TypeScript declarations before using examples from other versions. In this version `System.priority` is **static**, update runs before draw, and lower priorities run earlier.
 
 ### One character model, composed capabilities
 
@@ -69,6 +69,7 @@ These are project rules derived from our multiplayer RPG, not a requirement to r
 
 ### Excalibur presentation systems
 
+- The game and Excalibur Storybook previews use WebGL2 with `pixelArt` enabled and automatic Canvas 2D fallback disabled. Offscreen Canvas 2D drawing still supplies textures for the world and effects. Capture rendered frames via `engine.screenshot()`.
 - Prefer data components plus cached ECS queries for repeated visual behavior (snapshot binding, nameplates, selection, interpolation, status effects). Create queries once per scene/system, not once per actor per frame. Keep a stable server-character-ID to rendered-entity mapping.
 - Declare system phase/priority deliberately. Snapshot reconciliation precedes presentation interpolation and animation; drawing must not mutate authoritative state. Use built-in Transform/Graphics components before adding an equivalent custom mechanism.
 - Hit feedback consumes authoritative resolved damage events even when their numeric amount is hidden, survives attack-animation updates briefly, and yields to death. Use bounded scene-clock effects and per-actor graphics/actions; do not tint cached sprite assets shared by several characters. Sort building covers at their authored front ground line so outside characters are not hidden by a facade. Combat numbers are projected per observer on the server; never recover foreign HP or damage from internal simulation state. Training targets use the same combat rules and measure impact without HP loss, practice or rewards; their special targetability must not change faction hostility. Geometric combat guides are clipped to map-authored training interiors.
@@ -106,6 +107,6 @@ References reviewed: [ECS](https://excaliburjs.com/docs/category/entity-componen
 
 ### Dependency compatibility after the 2026-11-06 upgrade
 
-- Use Bun 1.4.4 and the committed `bun.lock`; all workspace dependencies were checked against stable registry tags. Excalibur 0.32.0 is still the latest stable release. Do not replace a stable engine with the `next` alpha tag as an incidental dependency update.
+- Use Bun 1.4.4 and the committed `bun.lock`. The frontend pins stable Excalibur 1.0.1. Do not replace a stable engine with the `next` alpha tag as an incidental dependency update.
 - TypeScript 7 provides the `tsc` CLI through `@typescript/native` (an alias of `typescript`). ESLint and `vue-tsc` still need the TypeScript 6 JavaScript API, so the `typescript` dependency in root/frontend aliases `@typescript/typescript6`. Keep these separate; replacing the compatibility alias with TS7 breaks the tools. Follow Microsoft's [side-by-side migration](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0).
 - `baseUrl` was removed in TS7. Keep `paths` targets explicitly relative to their configuration file; do not restore deprecated flags to hide migration errors.

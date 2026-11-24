@@ -1,7 +1,8 @@
 import type { Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
-import { Color, DisplayMode, Engine, PointerScope, vec } from 'excalibur'
+import { Color, DisplayMode, type Engine, vec } from 'excalibur'
 
 import { characterOverhead, characterTargetBounds } from './characterPresentationGeometry'
+import { createWebglEngine } from './engineRun'
 
 export function characterAt(
     snapshot: WorldSnapshot | undefined,
@@ -91,12 +92,10 @@ export function createGameCanvas(container: HTMLElement): HTMLCanvasElement {
 }
 
 export function createGameEngine(canvas: HTMLCanvasElement): Engine {
-    return new Engine({
+    return createWebglEngine({
         backgroundColor: Color.Black,
         canvasElement: canvas,
         displayMode: DisplayMode.FillContainer,
-        pixelArt: true,
-        pointerScope: PointerScope.Canvas,
         suppressPlayButton: true,
     })
 }

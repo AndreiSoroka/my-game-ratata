@@ -24,10 +24,27 @@ vi.mock('./footstepAudio', () => ({
     },
 }))
 function clip(volume: number) {
+    let state: 'stopped' | 'playing' | 'paused' = 'stopped'
+    const start = () => {
+        state = 'playing'
+        return Promise.resolve(true)
+    }
     return {
         volume,
-        play: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
-        stop: vi.fn<() => void>(),
+        get isPlaying() {
+            return state === 'playing'
+        },
+        get isPaused() {
+            return state === 'paused'
+        },
+        play: vi.fn<() => Promise<boolean>>(start),
+        resume: vi.fn<() => Promise<boolean>>(start),
+        pause: vi.fn<() => void>(() => {
+            state = 'paused'
+        }),
+        stop: vi.fn<() => void>(() => {
+            state = 'stopped'
+        }),
     }
 }
 function snapshot(x: number): WorldSnapshot {
@@ -117,6 +134,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         expect(footsteps.play).toHaveBeenCalledOnce()
         footsteps.stop.mockClear()
         setAudioMuted(true)
+        setAudioMuted(true)
         expect(music.stop).toHaveBeenCalledOnce()
         expect(effect.stop).toHaveBeenCalledOnce()
         expect(footsteps.stop).toHaveBeenCalledOnce()
@@ -139,6 +157,54 @@ it('stops all active voices immediately and resumes with authored gains and the 
         player.stop()
         setAudioMuted(true)
         setAudioMuted(false)
+        expect(music.play).toHaveBeenCalledTimes(2)
+    } finally {
+        player.stop()
+    }
+})
+it('resumes a paused music track once and waits for visibility when unmuted while hidden', () => {
+    setAudioMuted(false)
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    const music = clip(0.18)
+    const player = new GameAudio(new Map(), music as unknown as Sound)
+    const changeVisibility = (value: boolean) => {
+        hidden.mockReturnValue(value)
+        document.dispatchEvent(new Event('visibilitychange'))
+    }
+
+    try {
+        player.playMusic()
+        setAudioMuted(false)
+        player.playMusic()
+        expect(music.play).toHaveBeenCalledOnce()
+        changeVisibility(true)
+        changeVisibility(true)
+        expect(music.pause).toHaveBeenCalledOnce()
+        setAudioMuted(false)
+        player.playMusic()
+        expect(music.resume).not.toHaveBeenCalled()
+        expect(music.play).toHaveBeenCalledOnce()
+
+        changeVisibility(false)
+        setAudioMuted(false)
+        changeVisibility(false)
+        expect(music.resume).toHaveBeenCalledOnce()
+        expect(music.play).toHaveBeenCalledOnce()
+
+        changeVisibility(true)
+        setAudioMuted(true)
+        setAudioMuted(false)
+        expect(music.stop).toHaveBeenCalledOnce()
+        expect(music.play).toHaveBeenCalledOnce()
+        changeVisibility(false)
+        expect(music.play).toHaveBeenCalledTimes(2)
+        expect(music.resume).toHaveBeenCalledOnce()
+
+        player.stop()
+        player.stop()
+        player.playMusic()
+        changeVisibility(false)
+        expect(music.stop).toHaveBeenCalledTimes(2)
         expect(music.play).toHaveBeenCalledTimes(2)
     } finally {
         player.stop()

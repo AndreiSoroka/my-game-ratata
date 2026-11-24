@@ -1,5 +1,5 @@
 import { type ItemId, prayerActionIds } from '@my-game-ratata/contracts'
-import { ImageFiltering, ImageSource, Loader, Sound, SpriteSheet } from 'excalibur'
+import { type DefaultLoader, ImageFiltering, ImageSource, Sound, SpriteSheet } from 'excalibur'
 
 import {
     characterCatalog,
@@ -10,6 +10,7 @@ import { itemAssetCatalog } from '../assets/itemCatalog'
 import { prayerAreaSources } from '../assets/prayerAreaAssets'
 import { type GameSoundId, gameSoundIds, musicCatalog, soundCatalog } from '../assets/soundCatalog'
 import type { BellImages } from './bellViews'
+import { EngineAssetLoader } from './engineRun'
 import type { PrayerAreaImages } from './prayerAreaViews'
 
 export interface CharacterResources {
@@ -18,7 +19,7 @@ export interface CharacterResources {
     farmImage: ImageSource
     fireImage: ImageSource
     itemImages: Map<ItemId, ImageSource>
-    loader: Loader
+    loader: DefaultLoader
     music: {
         adventureBegins: Sound
     }
@@ -80,18 +81,20 @@ export function createCharacterResources(): CharacterResources {
         farmImage,
         fireImage,
         itemImages,
-        loader: new Loader([
-            ...images.values(),
-            ...itemImages.values(),
-            chestImage,
-            farmImage,
-            fireImage,
-            ...Object.values(bellImages.states),
-            ...bellImages.swing,
-            ...prayerAreaImages.values(),
-            ...sounds.values(),
-            music.adventureBegins,
-        ]),
+        loader: new EngineAssetLoader({
+            loadables: [
+                ...images.values(),
+                ...itemImages.values(),
+                chestImage,
+                farmImage,
+                fireImage,
+                ...Object.values(bellImages.states),
+                ...bellImages.swing,
+                ...prayerAreaImages.values(),
+                ...sounds.values(),
+                music.adventureBegins,
+            ],
+        }),
         music,
         prayerAreaImages,
         sheets,

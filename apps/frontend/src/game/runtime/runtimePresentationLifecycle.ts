@@ -7,7 +7,6 @@ import { RuntimeViewport } from './runtimeViewport'
 import type { RenderedTiledMap } from './tiledMap'
 
 export type RuntimePresentation = ReturnType<typeof createRuntimePresentation> & {
-    removeInputs: () => void
     viewport: RuntimeViewport
 }
 interface PresentationLifecycle {
@@ -27,42 +26,23 @@ export async function initializeRuntimePresentation(
     lifecycle: PresentationLifecycle
 ): Promise<void> {
     const created = createRuntimePresentation(container, map)
-    created.canvas.style.visibility = 'hidden'
-    planting.initialize(created.engine)
+    const { run, canvas, engine, loader } = created
     const viewport = new RuntimeViewport(lifecycle.send, lifecycle.viewportLocation)
-    viewport.start(created.engine)
-    const view = {
-        ...created,
-        viewport,
-        removeInputs: installRuntimeInputs(created.engine, created.canvas, lifecycle.inputs),
-    }
-    lifecycle.mounted(view)
+    const view = { ...created, viewport }
     try {
-        await view.engine.start(view.loader)
+        run.addCleanup(planting.initialize(engine))
+        viewport.start(engine)
+        run.addCleanup(() => viewport.stop())
+        run.addCleanup(installRuntimeInputs(engine, canvas, lifecycle.inputs))
+        run.addCleanup(() => lifecycle.removed(view))
+        lifecycle.mounted(view)
+        if (!(await run.start(loader)) || !run.active) return
+        if (lifecycle.current(view)) view.audio.playMusic()
+        else void run.cancel()
     } catch (error) {
-        disposeRuntimePresentation(view, planting)
-        lifecycle.removed(view)
+        void run.cancel()
         throw error
     }
-    if (lifecycle.current(view)) view.audio.playMusic()
-    else {
-        disposeRuntimePresentation(view, planting)
-        lifecycle.removed(view)
-    }
-}
-
-export function disposeRuntimePresentation(
-    view: RuntimePresentation | undefined,
-    planting: PlantingPreview
-): void {
-    if (!view) return
-    view.viewport.stop()
-    view.removeInputs()
-    view.audio.stop()
-    view.sceneActors.dispose()
-    planting.dispose()
-    view.engine.stop()
-    view.canvas.remove()
 }
 
 export function suspendRuntimePresentation(view: RuntimePresentation | undefined): void {

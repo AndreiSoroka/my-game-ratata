@@ -92,11 +92,16 @@ for (const width of [390, 1280]) {
         const canvas = page.locator('canvas[data-game-canvas=true]')
         await expect(canvas).toBeVisible()
         await canvas.focus()
-        await page.keyboard.press('Tab')
-        await expect(selectedWorldTarget(page)).toHaveAttribute(
-            'data-selected-target-key',
-            'portal:ui-portal'
-        )
+        // Players from preceding scenarios can still occupy the portal's tile.
+        const selection = selectedWorldTarget(page)
+        await expect
+            .poll(async () => {
+                await page.keyboard.press('Tab')
+                return selection.evaluateAll(([hotbar]) =>
+                    hotbar?.getAttribute('data-selected-target-key')
+                )
+            })
+            .toBe('portal:ui-portal')
         await expect(page.getByRole('button', { name: /Портал — Западные поля/ })).toBeVisible()
         await page.keyboard.press('KeyF')
         await expect
