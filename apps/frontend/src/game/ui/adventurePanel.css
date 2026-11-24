@@ -135,30 +135,11 @@
 .adventure-choices button {
     text-align: left;
 }
-.adventure-shop {
-    margin-top: 18px;
-    padding-top: 12px;
-    border-top: 1px solid #526049;
-}
-.adventure-shop h3 {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 14px;
-    margin: 0 0 10px;
-}
-.adventure-shop h3 span {
-    color: #edcd7c;
-    font-size: 11px;
-}
-.adventure-shop button {
+.adventure-shop .city-market button {
     width: 100%;
     display: flex;
     justify-content: space-between;
     margin-top: 5px;
-}
-.adventure-shop strong {
-    color: #edcd7c;
 }
 
 @media (max-width: 640px) {

@@ -4,14 +4,19 @@ import { type ExchangeOfferSnapshot, ITEM_DEFINITIONS } from '@my-game-ratata/co
 import { itemName, tGame } from '@/shared/lib/i18n'
 
 import ExchangeConsentIcon from './ExchangeConsentIcon.vue'
-import ItemIcon from './ItemIcon.vue'
-import GameFrame from './primitives/GameFrame.vue'
+import type { ExchangePrimitives } from './exchangePrimitives'
 
-defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>()
+defineProps<{
+    title: string
+    offer: ExchangeOfferSnapshot
+    terminal?: boolean
+    primitives: Pick<ExchangePrimitives, 'frame' | 'itemIcon'>
+}>()
+defineSlots<{ default?: () => unknown; gold?: () => unknown }>()
 </script>
 <template>
     <section class="exchange-offer game-frame-host" :aria-label="title">
-        <GameFrame variant="panel" />
+        <component :is="primitives.frame" variant="panel" />
         <header class="exchange-offer__header">
             <h3>{{ title }}</h3>
             <span v-if="!terminal" class="exchange-offer__state">{{
@@ -35,8 +40,8 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
                     :key="item.instanceId"
                     class="exchange-offer__item game-frame-host"
                 >
-                    <GameFrame variant="inset" />
-                    <ItemIcon :item="item" show-quantity />
+                    <component :is="primitives.frame" variant="inset" />
+                    <component :is="primitives.itemIcon" :item="item" show-quantity />
                     <div>
                         <strong>{{ itemName(item.itemId) }}</strong>
                         <small>{{
@@ -57,7 +62,8 @@ defineProps<{ title: string; offer: ExchangeOfferSnapshot; terminal?: boolean }>
                     </div>
                 </li>
                 <li v-if="!offer.items.length" class="exchange-offer__empty game-frame-host">
-                    <GameFrame variant="inset" />{{ tGame('game.trade.empty') }}
+                    <component :is="primitives.frame" variant="inset" />
+                    {{ tGame('game.trade.empty') }}
                 </li>
             </ul>
         </slot>

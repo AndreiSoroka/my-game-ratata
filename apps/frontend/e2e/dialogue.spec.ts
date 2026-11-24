@@ -63,6 +63,9 @@ for (const mobile of [false, true]) {
         const services = await openMerchantMenu(page, mobile)
         await services.getByRole('menuitem', { name: /^Купить:/u }).click()
         await expect(page.getByRole('heading', { name: 'Товары', exact: true })).toBeVisible()
+        const trade = page.getByRole('region', { name: 'Торговля', exact: true })
+        await expect(trade).toBeVisible()
+        await expect(trade.getByRole('button', { name: 'Вернуться к разговору' })).toBeEnabled()
         await expect(page.getByRole('textbox', { name: 'Реплика собеседнику' })).toHaveCount(0)
     })
 }

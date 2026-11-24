@@ -196,13 +196,16 @@ describe('conversation and shop navigation', () => {
             expect(wrapper.find('.adventure-choices').exists()).toBe(false)
             expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(true)
             const shopButtons = wrapper.findAll('.adventure-shop button')
+            expect(document.activeElement).toBe(shopButtons[0]?.element)
             expect(shopButtons[1]?.attributes('disabled')).toBeDefined()
+            await shopButtons[0]?.trigger('keydown', { code: 'KeyF', key: 'а' })
             await shopButtons[0]?.trigger('keydown', { code: 'KeyS', key: 'ы' })
             expect(document.activeElement).toBe(shopButtons[2]?.element)
             await shopButtons[2]?.trigger('keydown', { code: 'Escape' })
             expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(false)
             expect(wrapper.emitted('command')).toEqual([
                 [{ type: 'dialogue_choice', choiceId: 'trade' }],
+                [{ type: 'trade', itemId: 'food' }],
             ])
             await wrapper.get('.adventure-choices button').trigger('keydown', { code: 'Escape' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
@@ -217,8 +220,7 @@ describe('conversation and shop navigation', () => {
             ...adventure,
             dialogue: {
                 ...adventure.dialogue!,
-                tradeBlockedReason:
-                    'Вы в чёрном списке Новогорода. Обратитесь за отпущением к клирику.',
+                tradeBlockedReason: 'Вы в чёрном списке Новогорода.',
             },
         }
         const wrapper = mount(AdventureDialogue, {
@@ -228,7 +230,7 @@ describe('conversation and shop navigation', () => {
         try {
             await wrapper.get('.adventure-choices button').trigger('click')
             await flushPromises()
-            expect(wrapper.get('.trade-refusal').text()).toContain('чёрном списке')
+            expect(wrapper.get('.trade-refusal').text()).toBe('Вы в чёрном списке Новогорода.')
             const offers = wrapper.findAll('.adventure-shop button')
             expect(offers[0]?.attributes('disabled')).toBeDefined()
             expect(offers[1]?.attributes('disabled')).toBeDefined()

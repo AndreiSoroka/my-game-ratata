@@ -1,4 +1,4 @@
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import { authoredRussian, CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 
@@ -35,6 +35,6 @@ export function isCityBlacklisted(character: GameCharacter): boolean {
 export function cityTradeRefusal(character: GameCharacter): string | undefined {
     return character.locationId === CENTER_LOCATION_ID &&
         isCityBlacklisted(character)
-        ? 'Ты в городской книге нарушителей. Торговцы Новогорода отказывают тебе. Сестра Вера снимет запись за 30 золотых.'
+        ? authoredRussian('trade.blacklisted')
         : undefined
 }

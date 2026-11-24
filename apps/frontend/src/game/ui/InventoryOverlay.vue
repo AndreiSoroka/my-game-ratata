@@ -16,6 +16,7 @@ import {
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
+import { ItemSlot } from '@/shared/ui/common'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { gameUiSoundKey } from './gameUiSound'
@@ -26,7 +27,6 @@ import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
-import GameItemSlot from './primitives/GameItemSlot.vue'
 import { useInventoryFocus } from './useInventoryFocus'
 
 const props = defineProps<{
@@ -206,7 +206,7 @@ function itemName(item: ItemInstanceSnapshot): string {
                 <GameFrame variant="inset" />{{ tGame('game.character.gold') }} {{ gold ?? '—' }} ◈
             </p>
             <div class="inventory-grid" :aria-label="tGame('game.character.inventorySlots')">
-                <GameItemSlot
+                <ItemSlot
                     as="button"
                     v-for="(item, index) in inventorySlots"
                     :key="index"
@@ -241,7 +241,7 @@ function itemName(item: ItemInstanceSnapshot): string {
                         aria-hidden="true"
                         >{{ item.quantity }}</span
                     >
-                </GameItemSlot>
+                </ItemSlot>
             </div>
 
             <div v-if="!selectedItem && inspectedItem" class="inventory-inspection">

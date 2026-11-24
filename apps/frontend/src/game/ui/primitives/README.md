@@ -9,11 +9,10 @@ Use these production primitives for new UI and when editing existing controls. T
 | `GameSelect`      | Native select root, option slots; `v-model`/`.number` or controlled `:value` + `@change`.                                                                                                                                |
 | `GameTextarea`    | Native textarea root; `v-model`, `.trim`, `.lazy` or controlled `:value` + native listeners.                                                                                                                             |
 | `GameFrame`       | Decorative aria-hidden child; `variant="window\|panel\|inset\|speech"`, optional `skin="parchment"`. Does not own layout or focus.                                                                                       |
-| `GameItemSlot`    | Native span by default, `as="button"` for interaction; `selected`, `empty`, `disabled`, `quantity`; arbitrary content slot.                                                                                              |
 | `GameRibbon`      | Native `div` with an arbitrary content slot and a red Kenney ribbon. Native attributes pass through.                                                                                                                     |
 | `GameResourceBar` | Native `span` progressbar; `value: HealthSnapshot`, `kind="hp\|mana\|energy"`. Shows exact text only when authorized by the snapshot; pass a native accessible label.                                                    |
 
-Use the existing `ItemIcon` for catalog-backed item images; it composes `GameItemSlot`. Trade consent uses the existing two-state `ExchangeConsentIcon` (`accepted`, `name`), demonstrated under **Game/ExchangeWindow/Consent**. Reuse these components rather than drawing another item frame or handshake.
+Use `ItemSlot` from `@/shared/ui/common` for item frames and interactive slots. The catalog-backed `ItemIcon` supplies the image and accessible label. Trade consent uses the two-state `ExchangeConsentIcon` (`accepted`, `name`), demonstrated under **Entities/exchanges/ExchangeConsentIcon**.
 
 Keep the native parent element, its `ref`, roles, data attributes and input ownership when adding a frame:
 
@@ -34,7 +33,7 @@ The host gets `position: relative` at zero specificity and `isolation: isolate`.
 
 `gameUi.css` owns the dark-green surfaces, brass palette, fonts, Kenney outline sources and all common states. It tints only decorative layers, never item sprites or text. Use layout classes for positioning, dimensions, gaps and scrolling. Do not add descendant rules that reskin `button`, `input`, `select` or the shared frame. Resource colors, speech contrast and world/SVG graphics retain their semantics.
 
-An item slot defaults to 40px. Override `--game-item-slot-size` or the component's layout class; inventory grids may use `width:100%; height:auto; aspect-ratio:1`. The quantity overlay is aria-hidden: include quantities in the control's accessible label. Keep images pixelated and reuse the existing item catalog. Do not put an interactive item slot inside a button.
+An item slot defaults to 40px. Override `--ui-item-slot-size` or set the dimensions in the owning layout. Inventory grids may use `width:100%; height:auto; aspect-ratio:1`. Include quantities in the control's accessible label because the badge is aria-hidden. Use the pixelated catalog artwork and keep one native button per interactive slot.
 
 ## Kenney HUD surfaces
 

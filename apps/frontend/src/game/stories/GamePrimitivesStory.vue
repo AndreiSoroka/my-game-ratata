@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import { ItemSlot } from '@/shared/ui/common'
+
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import GameButton from '../ui/primitives/GameButton.vue'
 import GameFrame from '../ui/primitives/GameFrame.vue'
 import GameInput from '../ui/primitives/GameInput.vue'
-import GameItemSlot from '../ui/primitives/GameItemSlot.vue'
 import GameSelect from '../ui/primitives/GameSelect.vue'
 import GameTextarea from '../ui/primitives/GameTextarea.vue'
 
@@ -121,30 +122,47 @@ const choice = ref('party')
             <div class="primitive-example">
                 <h3>Обычный, выбранный, пустой, недоступный</h3>
                 <div class="primitive-row">
-                    <GameItemSlot as="button" :quantity="5" aria-label="Яблоко × 5"
-                        ><img :src="itemAssetCatalog.food.src" alt=""
-                    /></GameItemSlot>
-                    <GameItemSlot as="button" selected aria-label="Простой меч"
-                        ><img :src="itemAssetCatalog.simple_sword.src" alt=""
-                    /></GameItemSlot>
-                    <GameItemSlot as="button" empty aria-label="Пустой слот" />
-                    <GameItemSlot as="button" disabled aria-label="Недоступное яблоко"
-                        ><img :src="itemAssetCatalog.food.src" alt=""
-                    /></GameItemSlot>
+                    <ItemSlot
+                        as="button"
+                        :quantity="5"
+                        :src="itemAssetCatalog.food.src"
+                        alt=""
+                        aria-label="Яблоко × 5"
+                    />
+                    <ItemSlot
+                        as="button"
+                        selected
+                        :src="itemAssetCatalog.simple_sword.src"
+                        alt=""
+                        aria-label="Простой меч"
+                    />
+                    <ItemSlot as="button" empty aria-label="Пустой слот" />
+                    <ItemSlot
+                        as="button"
+                        disabled
+                        :src="itemAssetCatalog.food.src"
+                        alt=""
+                        aria-label="Недоступное яблоко"
+                    />
                 </div>
             </div>
             <div class="primitive-example">
                 <h3>Размеры и произвольное содержимое</h3>
                 <div class="primitive-row">
-                    <GameItemSlot class="primitive-slot-small"
-                        ><img :src="itemAssetCatalog.food.src" alt="Яблоко"
-                    /></GameItemSlot>
-                    <GameItemSlot class="primitive-slot-large" :quantity="3"
-                        ><img :src="itemAssetCatalog.grain.src" alt="Пшеница"
-                    /></GameItemSlot>
-                    <GameItemSlot class="primitive-slot-large"
-                        ><span aria-label="Заклинание">✦</span></GameItemSlot
-                    >
+                    <ItemSlot
+                        class="primitive-slot-small"
+                        :src="itemAssetCatalog.food.src"
+                        alt="Яблоко"
+                    />
+                    <ItemSlot
+                        class="primitive-slot-large"
+                        :quantity="3"
+                        :src="itemAssetCatalog.grain.src"
+                        alt="Пшеница"
+                    />
+                    <ItemSlot class="primitive-slot-large">
+                        <span aria-label="Заклинание">✦</span>
+                    </ItemSlot>
                 </div>
             </div>
         </template>
@@ -207,17 +225,13 @@ h3 {
 .primitive-frame--speech {
     color: #253324;
 }
-.game-item-slot img {
-    width: 70%;
-    height: 70%;
-    object-fit: contain;
-    image-rendering: pixelated;
-}
 .primitive-slot-small {
-    --game-item-slot-size: 32px;
+    --ui-item-slot-size: 32px;
+    --ui-item-slot-image-size: 70%;
 }
 .primitive-slot-large {
-    --game-item-slot-size: 56px;
+    --ui-item-slot-size: 56px;
+    --ui-item-slot-image-size: 70%;
 }
 @media (max-width: 500px) {
     .primitive-fields {

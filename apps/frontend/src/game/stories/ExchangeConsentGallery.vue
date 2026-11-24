@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import ExchangeConsentIcon from '../ui/ExchangeConsentIcon.vue'
+import { ExchangeConsentIcon } from '@/entities/exchanges'
+
 import GameFrame from '../ui/primitives/GameFrame.vue'
 </script>
 

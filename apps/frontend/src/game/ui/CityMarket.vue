@@ -7,6 +7,8 @@ import {
 import { ref } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
+import { itemAssetCatalog } from '@/shared/lib/item-assets'
+import { ItemSlot } from '@/shared/ui/common'
 
 import GameButton from './primitives/GameButton.vue'
 import GameInput from './primitives/GameInput.vue'
@@ -55,12 +57,16 @@ function trade(row: MarketSnapshot['rows'][number]): void {
             {{ market.cityName }}
         </p>
         <div v-for="row in market.rows" :key="row.itemId" class="market-row">
-            <span
-                >{{ itemName(row.itemId)
-                }}<small
-                    >{{ tGame('game.trade.inStock') }} {{ row.stock }} / {{ row.capacity }}</small
-                ></span
-            >
+            <div class="market-row__item">
+                <ItemSlot size="compact" :src="itemAssetCatalog[row.itemId].src" alt="" />
+                <span>
+                    {{ itemName(row.itemId) }}
+                    <small
+                        >{{ tGame('game.trade.inStock') }} {{ row.stock }} /
+                        {{ row.capacity }}</small
+                    >
+                </span>
+            </div>
             <GameButton
                 variant="primary"
                 data-dialogue-action
@@ -102,12 +108,19 @@ input {
     width: 52px;
 }
 .market-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
     border-bottom: 1px solid #566273;
     padding: 5px 0;
+}
+.market-row__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    overflow-wrap: anywhere;
 }
 small {
     display: block;

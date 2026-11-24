@@ -99,8 +99,8 @@ export const adventureNoticeLines = {
         'City trade and workshop services reopen when the Bell of Memory rings.',
     ],
     'trade.blacklisted': [
-        'Ты в городской книге нарушителей. Торговцы Новогорода отказывают тебе. Сестра Вера снимет запись за 30 золотых.',
-        'You are in Novogorod’s offense register. Merchants refuse to trade with you. Sister Vera can remove the entry for 30 gold.',
+        'Вы в чёрном списке Новогорода.',
+        'You are blacklisted in Novogorod.',
     ],
     'trade.buy': [
         'Куплено: {item} × {quantity} · {total} золотых.',

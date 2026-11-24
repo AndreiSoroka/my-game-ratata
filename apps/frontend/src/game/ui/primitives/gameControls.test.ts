@@ -2,9 +2,10 @@ import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 
+import { ItemSlot } from '@/shared/ui/common'
+
 import GameButton from './GameButton.vue'
 import GameInput from './GameInput.vue'
-import GameItemSlot from './GameItemSlot.vue'
 import GameSelect from './GameSelect.vue'
 import GameTextarea from './GameTextarea.vue'
 
@@ -164,14 +165,14 @@ it('supports select and textarea models without replacing their native targets',
 })
 
 it('keeps item slots native and quantity decoration out of accessible content', async () => {
-    const wrapper = mount(GameItemSlot, {
+    const wrapper = mount(ItemSlot, {
         props: { as: 'button', selected: true, quantity: 3 },
         attrs: { 'aria-label': 'Яблоко × 3', 'data-item-instance-id': 'apple-1' },
     })
     expect(wrapper.element.tagName).toBe('BUTTON')
     expect(wrapper.element.querySelector('button')).toBeNull()
     expect(wrapper.attributes('data-item-instance-id')).toBe('apple-1')
-    expect(wrapper.get('.game-item-slot__quantity').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('.ui-item-slot__quantity').attributes('aria-hidden')).toBe('true')
     await wrapper.trigger('click')
     expect(wrapper.emitted('click')).toHaveLength(1)
     wrapper.unmount()

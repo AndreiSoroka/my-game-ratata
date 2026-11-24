@@ -85,7 +85,7 @@ describe('city trade blacklist integration', () => {
             const inventory = [...actor.inventory]
             expect(
                 adventure.snapshot(actor.id).dialogue?.tradeBlockedReason
-            ).toContain('книге')
+            ).toBe('Вы в чёрном списке Новогорода.')
             adventure.trade(actor, 'food', characters)
             adventure.choose(actor, 'trade', characters)
             adventure.trade(actor, 'food', characters)

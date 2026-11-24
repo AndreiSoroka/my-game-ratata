@@ -25,3 +25,4 @@ export {
 export { GameBar, type GameBarProps } from './game-bar'
 export { HudFrame } from './hud-frame'
 export { HudRow } from './hud-row'
+export { ItemSlot, type ItemSlotProps } from './item-slot'

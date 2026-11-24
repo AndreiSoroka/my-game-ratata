@@ -7,13 +7,13 @@ import {
 import { computed } from 'vue'
 
 import { tGame, weaponName } from '@/shared/lib/i18n'
+import { ItemSlot } from '@/shared/ui/common'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import ItemCondition from './ItemCondition.vue'
 import { itemStackLabel } from './itemLabels'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
-import GameItemSlot from './primitives/GameItemSlot.vue'
 
 const props = defineProps<{ character: CharacterSnapshot }>()
 const emit = defineEmits<{ unequip: [slot: EquipmentSlotId] }>()
@@ -58,7 +58,7 @@ function unequip(slot: EquipmentSlotId): void {
                         slot === 'weapon' ? 'game.character.weaponSlot' : 'game.character.bootsSlot'
                     )
                 }}</span>
-                <GameItemSlot class="equipment-slot__socket" :empty="!character.equipment[slot]">
+                <ItemSlot class="equipment-slot__socket" :empty="!character.equipment[slot]">
                     <img
                         v-if="character.equipment[slot]"
                         class="item-icon"
@@ -87,7 +87,7 @@ function unequip(slot: EquipmentSlotId): void {
                         />
                         <path d="m10 17 7 7" stroke="#d4ba76" stroke-width="3" />
                     </svg>
-                </GameItemSlot>
+                </ItemSlot>
                 <ItemCondition v-if="character.equipment[slot]" :item="character.equipment[slot]" />
             </GameButton>
         </div>

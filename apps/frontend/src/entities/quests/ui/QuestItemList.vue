@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
 import { itemAssetCatalog } from '@/shared/lib/item-assets'
+import { ItemSlot } from '@/shared/ui/common'
 
 import type { QuestItemListProps } from './questItemListProps'
 
@@ -20,7 +21,7 @@ const heading = computed(() =>
         <h3 v-if="showHeading">{{ heading }}</h3>
         <ul :aria-label="heading" role="list">
             <li v-for="(item, index) in items" :key="index">
-                <img :src="itemAssetCatalog[item.itemId].src" alt="" draggable="false" />
+                <ItemSlot size="compact" :src="itemAssetCatalog[item.itemId].src" alt="" />
                 <span>{{ itemName(item.itemId) }} × {{ item.quantity }}</span>
             </li>
         </ul>
@@ -49,13 +50,7 @@ const heading = computed(() =>
     padding: 2px 8px;
     border: 1px solid var(--ui-light-panel-divider);
     background: var(--ui-light-panel-parchment);
-}
-.quest-item-list img {
-    flex: none;
-    inline-size: 28px;
-    block-size: 28px;
-    image-rendering: pixelated;
-    object-fit: contain;
+    overflow-wrap: anywhere;
 }
 .quest-item-list__reward-note {
     color: var(--quest-panel-muted, var(--ui-light-panel-muted));

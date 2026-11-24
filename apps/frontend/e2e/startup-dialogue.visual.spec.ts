@@ -44,6 +44,8 @@ test('shows a browser-ready error, code entry, mumble and merchant service stori
 
     await page.goto('/iframe.html?id=game-adventuredialogue--service&viewMode=story')
     await expect(page.getByRole('heading', { name: 'Товары' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Еда/ })).toBeEnabled()
+    const foodOffer = page.getByRole('button', { name: /^Еда/ })
+    await expect(foodOffer).toBeEnabled()
+    await expect(foodOffer.locator('img')).toHaveJSProperty('naturalWidth', 16)
     await page.screenshot({ path: info.outputPath('merchant-service.png') })
 })
