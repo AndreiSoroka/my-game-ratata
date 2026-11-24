@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 
-import { selectSocialTarget } from './social-helpers'
+import { joinSocial, selectSocialTarget } from './social-helpers'
 import { enterBuilding, walkTo } from './world-navigation'
 import { selectedWorldTarget } from './world-target-ui'
 
@@ -21,16 +21,7 @@ for (const mobile of [false, true]) {
             (name) => window.__ratataTest!.join(name),
             `speech-merchant-${info.workerIndex}-${mobile}`
         )
-        await enterBuilding(page, 'Лавка')
-        await page.waitForFunction(
-            (id) => window.__ratataTest!.observe().targets.some((target) => target.id === id),
-            merchantId
-        )
-        const merchant = await page.evaluate(
-            (id) => window.__ratataTest!.observe().targets.find((target) => target.id === id)!,
-            merchantId
-        )
-        await walkTo(page, merchant.position, 20)
+        await approachMerchant(page)
 
         const menu = await openMerchantMenu(page, mobile)
         await expect(menu.getByRole('menuitem', { name: /^Поговорить:/u })).toHaveCount(0)
@@ -73,6 +64,59 @@ for (const mobile of [false, true]) {
         await expect(shop).toHaveCount(0)
         await expect(conversation).toBeVisible()
     })
+}
+
+test('hands off from the merchant shop to a nearby player menu', async ({
+    page,
+    browser,
+}, info) => {
+    test.setTimeout(140_000)
+    await joinSocial(page, `shop-switch-${info.workerIndex}`)
+    await page.addStyleTag({ content: '.test-panel { display: none !important }' })
+    await approachMerchant(page)
+    const peer = await browser.newPage()
+    try {
+        const name = `shop-ally-${info.workerIndex}`
+        const id = await joinSocial(peer, name)
+        await enterBuilding(peer, 'Лавка')
+        const meeting = await page.evaluate(() => window.__ratataTest!.getState().player!.position)
+        await walkTo(peer, meeting, 8)
+        await page.bringToFront()
+        const services = await openMerchantMenu(page, false)
+        await services.getByRole('menuitem', { name: /^Купить:/u }).click()
+
+        const shop = page.getByRole('dialog', { name: /^Товары · /u })
+        const key = `character:${id}`
+        const arrow = shop.locator(`[data-dialogue-target-switch="${key}"]`)
+        await expect(arrow).toContainText(name)
+        await arrow.click()
+        await expect(shop).toHaveCount(0)
+        await expect(selectedWorldTarget(page)).toHaveAttribute('data-selected-target-key', key)
+        await expect(page.getByRole('menu', { name, exact: true })).toBeVisible()
+        await expect(page.getByRole('dialog', { name: `Шёпот: ${name}` })).toHaveCount(0)
+        await expect
+            .poll(() =>
+                peer.evaluate(
+                    () => window.__ratataTest!.getState().snapshot?.social?.exchange ?? null
+                )
+            )
+            .toBeNull()
+    } finally {
+        await peer.close()
+    }
+})
+
+async function approachMerchant(page: Page): Promise<void> {
+    await enterBuilding(page, 'Лавка')
+    await page.waitForFunction(
+        (id) => window.__ratataTest!.observe().targets.some((target) => target.id === id),
+        merchantId
+    )
+    const merchant = await page.evaluate(
+        (id) => window.__ratataTest!.observe().targets.find((target) => target.id === id)!,
+        merchantId
+    )
+    await walkTo(page, merchant.position, 20)
 }
 
 async function openMerchantMenu(page: Page, mobile: boolean) {

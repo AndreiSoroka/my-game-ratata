@@ -8,18 +8,16 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 
+import type { DialogueNeighbors } from '@/entities/dialogues'
 import { tGame } from '@/shared/lib/i18n'
 
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
+import { availableDialogueTargets, dialogueNeighbors } from './dialogueNeighbors'
 import { gameUiSoundKey } from './gameUiSound'
 import GraveDetails from './GraveDetails.vue'
+import { focusWorldInput } from './keyboardOwnership'
 import NearbyActionMenu from './NearbyActionMenu.vue'
-import {
-    type InteractionTarget,
-    nearbyCharacterInteractionTargets,
-    nearbyInteractionTarget,
-} from './nearbyInteractionActions'
-import { nextWorldTarget } from './worldTargetSelection'
+import { type InteractionTarget, nearbyInteractionTarget } from './nearbyInteractionActions'
 
 const props = defineProps<{
     snapshot: WorldSnapshot | undefined
@@ -84,19 +82,21 @@ const actions = computed(() =>
           )
         : (target.value?.actions ?? [])
 )
-const alternateCharacters = computed(() => {
-    if (!props.snapshot || !props.player || target.value?.kind !== 'character') return []
-    return nearbyCharacterInteractionTargets(
+const neighbors = computed<DialogueNeighbors>(() => {
+    if (!props.snapshot || !props.player || target.value?.kind !== 'character') return {}
+    return dialogueNeighbors(
         props.snapshot,
         props.player,
         props.characters,
+        target.value.key,
         props.isPositionVisible,
         props.canSelectTarget
-    ).filter((candidate) => candidate.key !== target.value?.key)
+    )
 })
+const hasNeighbor = computed(() => Boolean(neighbors.value.left || neighbors.value.right))
 const directAction = computed(() => {
     const options = target.value?.actions
-    if (options?.length !== 1 || alternateCharacters.value.length > 0) return undefined
+    if (options?.length !== 1 || hasNeighbor.value) return undefined
     const action = options[0]
     return action && !action.disabled && action.command.type !== 'set_personal_hostility'
         ? action
@@ -117,18 +117,13 @@ function stopMovement(player: CharacterSnapshot): void {
         emit('command', { type: 'move_to', target: { ...player.position } })
     emit('command', { type: 'move_input', axis: { x: 0, y: 0 } })
 }
-const canOpen = computed(
-    () =>
-        !opened.value &&
-        !props.blocked &&
-        Boolean(props.player?.alive) &&
-        Boolean(target.value?.actions.length)
-)
+const readyToOpen = computed(() => !opened.value && !props.blocked && Boolean(props.player?.alive))
+const canOpen = computed(() => readyToOpen.value && Boolean(target.value?.actions.length))
 const prompt = computed(() => {
     const selected = target.value
     if (!canOpen.value || !selected) return undefined
     const actionLabel =
-        selected.actions.length === 1 && alternateCharacters.value.length === 0
+        selected.actions.length === 1 && !hasNeighbor.value
             ? selected.actions[0]?.label
             : tGame('game.world.chooseAction')
     const targetLabel = `F ${selected.name}`
@@ -139,20 +134,37 @@ const prompt = computed(() => {
 function canOpenFor(key: string): boolean {
     return canOpen.value && target.value?.key === key && props.canSelectTarget?.(key) !== false
 }
-function openMenu(expectedKey?: string): void {
-    const selected = target.value
-    if (!selected || !props.player || !canOpenFor(expectedKey ?? selected.key)) return
+function forcedTarget(key?: string): InteractionTarget | undefined {
+    if (!key || !props.snapshot || !props.player) return undefined
+    const available = availableDialogueTargets(
+        props.snapshot,
+        props.player,
+        props.characters,
+        props.isPositionVisible,
+        props.canSelectTarget
+    )
+    if (available.some((candidate) => candidate.key === key)) return resolveTarget(key, true)
+}
+function resolveMenuTarget(expectedKey: string | undefined, forceMenu: boolean) {
+    if (forceMenu) return readyToOpen.value ? forcedTarget(expectedKey) : undefined
+    const current = target.value
+    if (current && canOpenFor(expectedKey ?? current.key)) return current
+}
+function openMenu(expectedKey?: string, forceMenu = false): void {
+    const player = props.player
+    const selected = resolveMenuTarget(expectedKey, forceMenu)
+    if (!player || !selected) return
     const explicit = selected.key === selectionKey.value
-    const direct = directAction.value
+    const direct = forceMenu ? undefined : directAction.value
     if (!direct && !selectMenuTarget(selected, explicit)) return
-    stopMovement(props.player)
-    if (grave.value) emit('selectGrave', grave.value.id)
+    stopMovement(player)
+    if (!forceMenu && grave.value) emit('selectGrave', grave.value.id)
     if (direct) {
         emit('command', direct.command)
-        document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
+        focusWorldInput()
         return
     }
-    pinTarget(selected, props.player.id, explicit)
+    pinTarget(selected, player.id, explicit || forceMenu)
     playUiSound?.('uiOpen')
 }
 function selectMenuTarget(target: InteractionTarget, explicit: boolean): boolean {
@@ -171,19 +183,12 @@ function pinTarget(target: InteractionTarget, playerId: string, ignoreFacing: bo
         })),
     }
 }
-function switchCharacter(reverse: boolean): void {
-    const current = target.value
-    const player = props.player
-    if (current?.kind !== 'character' || !player || !isCurrentTarget()) return
-    const ordered = [...alternateCharacters.value, current].sort(
-        (a, b) =>
-            a.position.x - b.position.x || a.position.y - b.position.y || a.key.localeCompare(b.key)
-    )
-    const next = nextWorldTarget(ordered, current.key, reverse)
-    if (!next || next === current.key) return
-    const selected = resolveTarget(next, true)
+function switchCharacter(key: string): void {
+    if (!props.player || !isCurrentTarget()) return
+    if (neighbors.value.left?.key !== key && neighbors.value.right?.key !== key) return
+    const selected = forcedTarget(key)
     if (!selected || props.selectTarget?.(selected.key) === false) return
-    pinTarget(selected, player.id, true)
+    pinTarget(selected, props.player.id, true)
     playUiSound?.('uiSelect')
 }
 function isCurrentTarget(): boolean {
@@ -264,7 +269,7 @@ defineExpose({ canOpenFor, openMenu, prompt })
         :actions="actions"
         :context-label="target?.name ?? opened?.name"
         :target-key="opened?.key"
-        :can-switch-character="alternateCharacters.length > 0"
+        :neighbors="neighbors"
         @select="select"
         @switch-character="switchCharacter"
         @close="dismissMenu"

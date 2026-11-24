@@ -55,6 +55,9 @@ const adventure: AdventureSnapshot = {
     ],
 }
 
+const neighborKey = 'character:ally'
+const neighbors = { right: { key: neighborKey, name: 'Лада' } }
+
 it('keeps city services accessible when a dialogue snapshot contains old quest choices', async () => {
     const dialogue = {
         ...adventure.dialogue!,
@@ -105,6 +108,42 @@ it('reopens the same service only on a fresh offer', async () => {
 })
 
 describe('conversation and shop navigation', () => {
+    it('offers the named neighbor from the shop and suppresses old orders while switching', async () => {
+        const wrapper = mount(AdventureDialogue, {
+            props: { adventure, characters: [], neighbors },
+            attachTo: document.body,
+        })
+        try {
+            const right = `[data-dialogue-target-switch="${neighborKey}"]`
+            expect(wrapper.get(right).text()).toContain('Лада')
+            await wrapper.get('[data-dialogue-action="trade"]').trigger('click')
+            await flushPromises()
+            const shop = wrapper.get('.social-window-stack--shop')
+            await shop.get(right).trigger('click')
+            expect(wrapper.emitted('switchTarget')).toEqual([[neighborKey]])
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'dialogue_choice', choiceId: 'trade' }],
+            ])
+            await wrapper.setProps({ switchPending: true })
+            expect(shop.get('.adventure-shop-window').attributes('inert')).toBeDefined()
+            expect(shop.get('[role="status"]').text()).toBe('Переключение…')
+            await shop.get('.adventure-shop button').trigger('click')
+            await shop.get('footer button').trigger('click')
+            expect(wrapper.find('.social-window-stack--shop').exists()).toBe(true)
+            expect(wrapper.emitted('command')).toHaveLength(1)
+            await wrapper.setProps({ switchPending: false })
+            await flushPromises()
+            expect(document.activeElement).toBe(shop.get('.adventure-shop button').element)
+            await wrapper.setProps({
+                adventure: { ...adventure, dialogue: null },
+                switchPending: false,
+            })
+            expect(wrapper.find('.social-window-stack--shop').exists()).toBe(false)
+        } finally {
+            wrapper.unmount()
+        }
+    })
+
     it('shows goods only after the trade choice, skips unaffordable goods, and returns to conversation', async () => {
         const wrapper = mount(AdventureDialogue, {
             props: { adventure, characters: [] },
@@ -114,10 +153,10 @@ describe('conversation and shop navigation', () => {
             await flushPromises()
             expect(wrapper.find('[aria-label="Торговля"]').exists()).toBe(false)
             await wrapper
-                .get('.adventure-choices button')
+                .get('.dialogue-panel__choices button')
                 .trigger('keydown', { code: 'KeyF', key: 'а' })
             await flushPromises()
-            expect(wrapper.find('.adventure-choices').exists()).toBe(false)
+            expect(wrapper.find('.dialogue-panel__choices').exists()).toBe(false)
             expect(wrapper.find('.adventure-dialogue').exists()).toBe(false)
             const shop = wrapper.get('[role="dialog"][aria-label="Товары · Савва"]')
             expect(shop.find('[aria-label="Торговля"]').exists()).toBe(true)
@@ -137,7 +176,9 @@ describe('conversation and shop navigation', () => {
                 [{ type: 'dialogue_choice', choiceId: 'trade' }],
                 [{ type: 'trade', itemId: 'food' }],
             ])
-            await wrapper.get('.adventure-choices button').trigger('keydown', { code: 'Escape' })
+            await wrapper
+                .get('.dialogue-panel__choices button')
+                .trigger('keydown', { code: 'Escape' })
             expect(wrapper.emitted('command')?.at(-1)).toEqual([
                 { type: 'dialogue_choice', choiceId: 'close' },
             ])
@@ -158,7 +199,7 @@ describe('conversation and shop navigation', () => {
             attachTo: document.body,
         })
         try {
-            await wrapper.get('.adventure-choices button').trigger('click')
+            await wrapper.get('.dialogue-panel__choices button').trigger('click')
             await flushPromises()
             expect(wrapper.get('.trade-refusal').text()).toBe('Вы в чёрном списке Новогорода.')
             const offers = wrapper.findAll('.adventure-shop button')
@@ -318,7 +359,7 @@ it('reads a sign with one heading and confirms its focused close action with F w
         )
         expect(wrapper.findAll('h2')).toHaveLength(1)
         expect(wrapper.get('h2').text()).toBe('Часовня памяти')
-        expect(wrapper.get('.adventure-dialogue__text').text()).toBe(sign.dialogue!.text)
+        expect(wrapper.get('.dialogue-panel__text').text()).toBe(sign.dialogue!.text)
         expect(wrapper.find('.soul-badge').exists()).toBe(false)
         const close = wrapper.get('[data-dialogue-action]')
         await close.trigger('keydown', { code: 'KeyF', key: 'а' })
@@ -340,7 +381,7 @@ describe('speech bubble keyboard ownership', () => {
         const player = characterFixture('player'),
             merchant = characterFixture('merchant')
         const wrapper = mount(AdventureDialogue, {
-            props: { adventure, characters: [player, merchant] },
+            props: { adventure, characters: [player, merchant], neighbors },
             attachTo: document.body,
         })
         const speech = mount(SpeechBubbles, {
@@ -357,11 +398,17 @@ describe('speech bubble keyboard ownership', () => {
             await flushPromises()
             expect(wrapper.text()).not.toContain(adventure.dialogue!.text)
             expect(speech.get('.speech-text').text()).toBe(adventure.dialogue!.text)
-            await wrapper.get('.adventure-choices button').trigger('keydown', { code: 'PageDown' })
+            const neighbor = wrapper.get(`[data-dialogue-target-switch="${neighborKey}"]`)
+            const choice = wrapper.get('[data-dialogue-action="trade"]')
+            await wrapper
+                .get('.dialogue-panel__choices button')
+                .trigger('keydown', { code: 'PageDown' })
             expect(document.activeElement).toBe(speech.get('.speech-text').element)
             await speech.get('.speech-text').trigger('keydown', { code: 'Tab' })
-            expect(document.activeElement).toBe(wrapper.get('.adventure-choices button').element)
-            await wrapper.get('.adventure-choices button').trigger('keydown', { code: 'PageUp' })
+            expect(document.activeElement).toBe(neighbor.element)
+            await neighbor.trigger('keydown', { code: 'Tab' })
+            expect(document.activeElement).toBe(choice.element)
+            await choice.trigger('keydown', { code: 'PageUp' })
             expect(document.activeElement).toBe(speech.get('.speech-text').element)
             await speech.get('.speech-text').trigger('keydown', { code: 'Escape' })
             expect(wrapper.emitted('command')).toEqual([

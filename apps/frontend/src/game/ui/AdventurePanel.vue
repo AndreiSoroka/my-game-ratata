@@ -3,6 +3,8 @@ import './adventurePanel.css'
 
 import type { AdventureSnapshot, CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
 
+import type { DialogueNeighbors } from '@/entities/dialogues'
+
 import AdventureDialogue from './AdventureDialogue.vue'
 import QuestBoardWindow from './QuestBoardWindow.vue'
 import TheftAlert from './TheftAlert.vue'
@@ -14,8 +16,10 @@ defineProps<{
     inventoryOpen: boolean
     player: CharacterSnapshot
     serverTime: number
+    neighbors?: DialogueNeighbors
+    switchPending?: boolean
 }>()
-const emit = defineEmits<{ command: [message: ClientMessage] }>()
+const emit = defineEmits<{ command: [message: ClientMessage]; switchTarget: [key: string] }>()
 </script>
 
 <template>
@@ -41,6 +45,9 @@ const emit = defineEmits<{ command: [message: ClientMessage] }>()
             v-else-if="!inventoryOpen && adventure.dialogue?.kind !== 'quest_board'"
             :adventure="adventure"
             :characters="characters"
+            :neighbors="neighbors"
+            :switch-pending="switchPending"
+            @switch-target="emit('switchTarget', $event)"
             @command="emit('command', $event)"
         />
     </div>

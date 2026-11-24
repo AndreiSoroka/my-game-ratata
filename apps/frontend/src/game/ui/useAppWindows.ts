@@ -20,13 +20,22 @@ interface AppWindowsOptions {
     defeated: Ref<boolean>
     snapshot: Ref<WorldSnapshot | undefined>
     gameplay: Ref<{ select: (id: string) => boolean | void } | undefined>
-    interaction: Ref<{ openMenu: (expectedKey?: string) => void } | undefined>
+    interaction: Ref<{ openMenu: (expectedKey?: string, forceMenu?: boolean) => void } | undefined>
     social?: Ref<{ hasOpenWindow: boolean } | undefined>
     closeInventory: () => void
     closeContainers: () => void
     toggleInventory: () => void
     leave: () => void
 }
+
+export interface DialogueSwitchContext {
+    canSelectTarget: (key: string) => boolean
+    isPositionVisible: RatataGame['isInteractionVisible']
+    connected: () => boolean
+    blocked: () => boolean
+    openCharacterMenu: (id: string) => void
+}
+
 export function useAppWindows(options: AppWindowsOptions) {
     provide(gameUiSoundKey, (id) => options.game.value?.playUiSound(id))
     const automationPanels = ref<InstanceType<typeof AutomationPanels>>()
@@ -48,28 +57,25 @@ export function useAppWindows(options: AppWindowsOptions) {
         },
     })
     const { characterOpen } = character
-    const worldInputBlocked = computed(() =>
-        [
+    const worldInputBlockedByWindow = computed(() =>
+        blocksDialogueSwitch(
+            options,
             gameMenu.open.value,
             characterOpen.value,
-            options.inventoryOpen.value,
-            options.chestPending.value,
-            options.chatInput.value.active,
-            options.status.value !== 'Connected',
-            options.defeated.value,
-            options.social?.value?.hasOpenWindow,
-            automationPanels.value?.hasOpenWindow,
-            options.snapshot.value?.adventure?.dialogue,
-        ].some(Boolean)
+            automationPanels.value?.hasOpenWindow
+        )
     )
-    function openNearbyMenu(id?: string): void {
+    const hasDialogue = () => Boolean(options.snapshot.value?.adventure?.dialogue)
+    const worldInputBlocked = computed(() => worldInputBlockedByWindow.value || hasDialogue())
+    function openNearbyMenu(id?: string, forceMenu = false): void {
         characterOpen.value = false
-        if (options.planting.value) return
+        if (options.planting.value || options.chestPending.value) return
         if (id && options.gameplay.value?.select(id) === false) return
-        if (options.chestPending.value) return
         options.closeInventory()
         automationPanels.value?.close()
-        void nextTick(() => options.interaction.value?.openMenu(id ? `character:${id}` : undefined))
+        void nextTick(() =>
+            options.interaction.value?.openMenu(id ? `character:${id}` : undefined, forceMenu)
+        )
     }
     function toggleInventory(): void {
         characterOpen.value = false
@@ -79,7 +85,7 @@ export function useAppWindows(options: AppWindowsOptions) {
     function prepareAutomationWindow(): void {
         characterOpen.value = false
         options.closeContainers()
-        if (options.snapshot.value?.adventure?.dialogue)
+        if (hasDialogue())
             options.game.value?.sendCommand({ type: 'dialogue_choice', choiceId: 'close' })
     }
     function openAutomation(window: 'markers' | 'scenarios'): void {
@@ -91,6 +97,11 @@ export function useAppWindows(options: AppWindowsOptions) {
         gameMenu,
         ...character,
         worldInputBlocked,
+        dialogueSwitch: createDialogueSwitchContext(
+            options,
+            worldInputBlockedByWindow,
+            openNearbyMenu
+        ),
         openNearbyMenu,
         openInventory(): void {
             if (options.inventoryOpen.value) gameMenu.resume()
@@ -102,5 +113,39 @@ export function useAppWindows(options: AppWindowsOptions) {
         toggleInventory,
         prepareAutomationWindow,
         openAutomation,
+    }
+}
+
+function blocksDialogueSwitch(
+    options: AppWindowsOptions,
+    menuOpen: boolean,
+    characterOpen: boolean,
+    automationOpen?: boolean
+): boolean {
+    return [
+        menuOpen,
+        characterOpen,
+        options.inventoryOpen.value,
+        options.chestPending.value,
+        options.chatInput.value.active,
+        options.status.value !== 'Connected',
+        options.defeated.value,
+        options.social?.value?.hasOpenWindow,
+        automationOpen,
+    ].some(Boolean)
+}
+
+function createDialogueSwitchContext(
+    options: AppWindowsOptions,
+    blockedByWindow: Readonly<Ref<boolean>>,
+    openNearbyMenu: (id: string, forceMenu: boolean) => void
+): DialogueSwitchContext {
+    return {
+        canSelectTarget: (key) => options.game.value?.canSelectTarget(key) ?? false,
+        isPositionVisible: (position, bounds, range) =>
+            options.game.value?.isInteractionVisible(position, bounds, range) ?? false,
+        connected: () => options.status.value === 'Connected',
+        blocked: () => blockedByWindow.value || options.planting.value,
+        openCharacterMenu: (id) => openNearbyMenu(id, true),
     }
 }

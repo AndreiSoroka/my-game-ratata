@@ -18,7 +18,7 @@ export default defineConfig([
     {
         // Steiger misses consumers in the game adapters and the temporarily excluded widgets.
         files: [
-            './src/entities/{asset-credits,character-window,chats,constellations,exchanges,items,menus,player-effects,player-vitals,quests,quick-actions,region-lore,shops}/**',
+            './src/entities/{asset-credits,character-window,chats,constellations,dialogues,exchanges,items,menus,player-effects,player-vitals,quests,quick-actions,region-lore,shops}/**',
             './src/widgets/{constellation-atlas,shops}/**',
         ],
         rules: { 'fsd/insignificant-slice': 'off' },

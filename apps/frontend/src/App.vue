@@ -42,10 +42,7 @@ const heroClass = ref<HeroClass>('vanguard')
 const defeated = ref(false)
 const gameHost = ref<HTMLElement>()
 const game = ref<RatataGame>()
-const canSelectTarget = (key: string): boolean => game.value?.canSelectTarget(key) ?? false
 const selectTarget = (key: string): boolean => gameplay.value?.selectKey(key) ?? false
-const isPositionVisible: RatataGame['isInteractionVisible'] = (position, bounds, range) =>
-    game.value?.isInteractionVisible(position, bounds, range) ?? false
 const isJoining = ref(false)
 const isStarted = ref(false)
 const { status: readiness, canEnter: canEnterWorld } = useStartGameReadiness(() => !isStarted.value)
@@ -132,6 +129,7 @@ const windows = useAppWindows({
 })
 const { gameMenu, characterModal, automationPanels, worldInputBlocked, prepareAutomationWindow } =
     windows
+const { canSelectTarget, isPositionVisible } = windows.dialogueSwitch
 const characterApproach = useCharacterApproach({
     game,
     snapshot,
@@ -258,6 +256,7 @@ async function joinGame(): Promise<void> {
                     :characters="visibleCharacters"
                     :inventory-open="inventoryOpen || chestPending"
                     :player="localCharacter"
+                    :target-switch="windows.dialogueSwitch"
                     @command="game?.sendCommand($event)"
                 />
                 <AutomationPanels

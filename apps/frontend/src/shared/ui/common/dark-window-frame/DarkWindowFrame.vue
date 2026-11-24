@@ -5,7 +5,7 @@ import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import { darkPanelButtonColors, UiButton } from '../button'
 
-defineProps<{ title: string }>()
+defineProps<{ title: string; closeLabel?: string | undefined }>()
 defineSlots<{ default?: () => unknown; summary?: () => unknown; actions?: () => unknown }>()
 const emit = defineEmits<{ close: [] }>()
 const theme = useDarkPanelTheme()
@@ -25,7 +25,7 @@ const theme = useDarkPanelTheme()
                 appearance="panel"
                 panel="panel-001"
                 :colors="darkPanelButtonColors"
-                :aria-label="tGame('game.automation.closeWithTitle', { title })"
+                :aria-label="closeLabel || tGame('game.automation.closeWithTitle', { title })"
                 @click="emit('close')"
             >
                 <span aria-hidden="true">×</span>

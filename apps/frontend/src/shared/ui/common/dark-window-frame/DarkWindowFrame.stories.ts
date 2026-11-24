@@ -31,6 +31,7 @@ const actions = {
 
 interface StoryArgs {
     title: string
+    closeLabel?: string
     summary: keyof typeof summaries
     default: keyof typeof bodies
     actions: keyof typeof actions
@@ -41,6 +42,7 @@ const meta = {
     args: { title: 'Рюкзак', summary: 'usedSlots', default: 'items', actions: 'button' },
     argTypes: {
         title: { control: 'text' },
+        closeLabel: { control: 'text' },
         summary: {
             name: 'Слот сводки',
             control: {
@@ -63,12 +65,12 @@ const meta = {
             options: ['none', 'empty', 'button'],
         },
     },
-    render({ title, summary, default: body, actions: footer }) {
+    render({ title, closeLabel, summary, default: body, actions: footer }) {
         const host = renderVueStory(
             () =>
                 h(
                     DarkWindowFrame,
-                    { title, onClose: close },
+                    { title, closeLabel, onClose: close },
                     { summary: summaries[summary], default: bodies[body], actions: actions[footer] }
                 ),
             {},

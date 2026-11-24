@@ -5,7 +5,9 @@ import type {
 } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
+import { h } from 'vue'
 
+import { DialogueTargetSwitcher } from '@/entities/dialogues'
 import type { MarketTradeSelection } from '@/entities/shops'
 import { renderVueStory } from '@/shared/lib/storybook'
 
@@ -17,6 +19,7 @@ interface StoryArgs {
     gold: number
     blockedReason?: string
     market?: MarketSnapshot
+    navigation: 'none' | 'empty' | 'neighbor'
     onBuy: (itemId: AdventureTradeItemId) => void
     onTrade: (selection: MarketTradeSelection) => void
     onClose: () => void
@@ -32,6 +35,7 @@ const meta = {
         ],
         gold: 12,
         blockedReason: '',
+        navigation: 'none',
         onBuy: fn().mockName('buy'),
         onTrade: fn().mockName('trade'),
         onClose: fn().mockName('close'),
@@ -42,12 +46,32 @@ const meta = {
         gold: { control: { type: 'number', min: 0, step: 1 } },
         blockedReason: { control: 'text' },
         market: { control: 'object' },
+        navigation: {
+            control: {
+                type: 'select',
+                labels: { none: 'Нет', empty: 'Пустой div', neighbor: 'Сосед' },
+            },
+            options: ['none', 'empty', 'neighbor'],
+        },
         onBuy: { control: false },
         onTrade: { control: false },
         onClose: { control: false },
     },
-    render(args) {
-        const host = renderVueStory(AdventureShopWidget, { ...args }, { padding: '16px' })
+    render({ navigation, ...args }) {
+        const slots = {
+            none: undefined,
+            empty: () => h('div'),
+            neighbor: () =>
+                h(DialogueTargetSwitcher, {
+                    neighbors: { right: { key: 'character:ally', name: 'Лада' } },
+                    onSwitchTarget: fn().mockName('switchTarget'),
+                }),
+        }
+        const host = renderVueStory(
+            () => h(AdventureShopWidget, args, { navigation: slots[navigation] }),
+            {},
+            { padding: '16px' }
+        )
         host.style.minHeight = '0'
         host.style.maxWidth = '580px'
         return host

@@ -35,8 +35,10 @@ for (const layout of [
             const menu = page.getByRole('menu')
             await expect(menu).toHaveAccessibleName(left!.name)
             await expectNameFocus(page, left!.id, right!.id)
+            const next = page.locator(`[data-dialogue-target-switch="character:${right!.id}"]`)
+            await expect(next).toContainText(right!.name)
 
-            await page.keyboard.press('ArrowRight')
+            await next.click()
             await expect(menu).toHaveAccessibleName(right!.name)
             await expectNameFocus(page, right!.id, left!.id)
             await page.keyboard.press('KeyA')

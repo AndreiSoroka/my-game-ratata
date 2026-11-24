@@ -112,7 +112,7 @@ for (const scenario of scenarios) {
         const cityAffairs = page.getByRole('dialog', { name: 'Разговор: Mira' })
         await cityAffairs.getByRole('button', { name: 'Что нужно городу? Спрос и запасы' }).click()
         await expect(
-            cityAffairs.getByRole('heading', { name: 'Потребности города', exact: true })
+            cityAffairs.getByRole('heading', { name: 'Спрос города', exact: true })
         ).toBeVisible()
         await page.keyboard.press('Escape')
         await page.keyboard.press('Escape')

@@ -114,3 +114,29 @@ describe('nearby action menu', () => {
         }
     })
 })
+
+describe('neighbor buttons', () => {
+    it('confirms a focused switch button without activating the current action', async () => {
+        const wrapper = mount(NearbyActionMenu, {
+            props: {
+                open: true,
+                actions,
+                neighbors: { right: { key: 'character:mira', name: 'Мира' } },
+            },
+            attachTo: document.body,
+        })
+        try {
+            await flushPromises()
+            const button = wrapper.get<HTMLButtonElement>('[data-dialogue-target-switch]')
+            expect(button.attributes('tabindex')).toBe('-1')
+            button.element.focus()
+            await button.trigger('keydown', { code: 'KeyF', key: 'а' })
+            expect(wrapper.emitted('switchCharacter')).toEqual([['character:mira']])
+            expect(wrapper.emitted('select')).toBeUndefined()
+            await button.trigger('keydown', { code: 'ArrowRight', altKey: true })
+            expect(wrapper.emitted('switchCharacter')).toHaveLength(1)
+        } finally {
+            wrapper.unmount()
+        }
+    })
+})

@@ -60,7 +60,7 @@ function key(event: KeyboardEvent): void {
             : (index + (event.shiftKey ? -1 : 1) + fields.length) % fields.length
     fields[next]?.focus()
 }
-onMounted(async () => {
+async function focusInitialAction(): Promise<void> {
     await nextTick()
     const firstAction =
         props.layout === 'shop'
@@ -69,7 +69,9 @@ onMounted(async () => {
               )
             : undefined
     ;(firstAction ?? panel.value)?.focus()
-})
+}
+onMounted(focusInitialAction)
+defineExpose({ focusInitialAction })
 </script>
 <template>
     <div

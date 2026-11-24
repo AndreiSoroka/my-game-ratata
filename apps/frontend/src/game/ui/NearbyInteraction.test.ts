@@ -177,7 +177,7 @@ describe('interaction menu invalidation', () => {
 })
 
 describe('switching characters in the F menu', () => {
-    it('selects overlapping and off-axis characters with arrows and physical A/D', async () => {
+    it('shows adjacent names, selects by click or keyboard, and stops at list boundaries', async () => {
         const player = characterFixture('self', { theft: undefined })
         const first = resident('first', 20)
         const second = resident('second', 20)
@@ -202,6 +202,9 @@ describe('switching characters in the F menu', () => {
             expect(wrapper.get('h2').text()).toBe(first.nickname)
             expect(selectTarget).toHaveBeenLastCalledWith(`character:${first.id}`)
             expect(wrapper.text()).toContain('←→ / A D')
+            const switcher = (id: string) => `[data-dialogue-target-switch="character:${id}"]`
+            expect(wrapper.findAll('[data-dialogue-target-switch]')).toHaveLength(1)
+            expect(wrapper.get(switcher(second.id)).text()).toContain(second.nickname)
 
             const press = async (code: string, key = code, repeat = false) => {
                 const focused = wrapper.get('[role="menuitem"][tabindex="0"]')
@@ -209,17 +212,29 @@ describe('switching characters in the F menu', () => {
                 await focused.trigger('keydown', { code, key, repeat })
                 await flushPromises()
             }
+            await press('ArrowLeft')
+            expect(wrapper.get('h2').text()).toBe(first.nickname)
+            wrapper
+                .getComponent(NearbyActionMenu)
+                .vm.$emit('switchCharacter', `character:${hidden.id}`)
+            expect(selectTarget).toHaveBeenLastCalledWith(`character:${first.id}`)
             await press('ArrowRight')
             expect(wrapper.get('h2').text()).toBe(second.nickname)
-            await press('KeyD', 'в')
+            expect(wrapper.get(switcher(behind.id)).text()).toContain(behind.nickname)
+            await press('KeyA', 'ф', true)
+            expect(wrapper.get('h2').text()).toBe(second.nickname)
+            await wrapper.get(switcher(behind.id)).trigger('click')
+            await flushPromises()
             expect(wrapper.get('h2').text()).toBe(behind.nickname)
             await wrapper.setProps({ selectedKey: `character:${behind.id}` })
-            expect(wrapper.get('h2').text()).toBe(behind.nickname)
+            expect(wrapper.findAll('[data-dialogue-target-switch]')).toHaveLength(1)
             await press('ArrowRight')
-            expect(wrapper.get('h2').text()).toBe(first.nickname)
-            await press('ArrowLeft')
             expect(wrapper.get('h2').text()).toBe(behind.nickname)
             await press('KeyA', 'ф')
+            expect(wrapper.get('h2').text()).toBe(second.nickname)
+            await press('ArrowLeft')
+            expect(wrapper.get('h2').text()).toBe(first.nickname)
+            await press('KeyD', 'в')
             expect(wrapper.get('h2').text()).toBe(second.nickname)
             expect(selectTarget).toHaveBeenLastCalledWith(`character:${second.id}`)
             expect(
@@ -282,6 +297,35 @@ describe('switching characters in the F menu', () => {
             wrapper.unmount()
         }
     })
+})
+
+it('opens the exact requested single-action menu without invoking it or falling back', async () => {
+    const player = characterFixture('self', { theft: undefined })
+    const residentInRange = characterFixture('first', {
+        controllerKind: 'scripted',
+        interactions: {
+            aiDialogue: false,
+            dialogueMode: 'scripted',
+            companionRequests: 'available',
+            whisper: false,
+            exchange: false,
+        },
+        position: { x: 0, y: 56 },
+    })
+    const wrapper = interaction(player, [residentInRange])
+    try {
+        wrapper.vm.openMenu('character:missing', true)
+        expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+        expect(wrapper.emitted('command')).toBeUndefined()
+
+        wrapper.vm.openMenu('character:first', true)
+        await flushPromises()
+        expect(wrapper.get('h2').text()).toBe(residentInRange.nickname)
+        expect(wrapper.findAll('[role="menuitem"]')).toHaveLength(1)
+        expect(wrapper.emitted('command')).toEqual([[{ type: 'move_input', axis: { x: 0, y: 0 } }]])
+    } finally {
+        wrapper.unmount()
+    }
 })
 
 describe('world item and farm interaction', () => {

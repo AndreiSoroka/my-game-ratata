@@ -16,6 +16,7 @@ defineProps<{
     blockedReason?: string | undefined
     market?: MarketSnapshot | undefined
 }>()
+defineSlots<{ navigation?: () => unknown }>()
 const emit = defineEmits<{
     buy: [itemId: AdventureTradeItemId]
     trade: [selection: MarketTradeSelection]
@@ -25,6 +26,9 @@ const emit = defineEmits<{
 
 <template>
     <DarkWindowFrame class="adventure-shop-window" :title="title" @close="emit('close')">
+        <template v-if="$slots.navigation" #summary>
+            <slot name="navigation" />
+        </template>
         <AdventureShop
             :offers="offers"
             :gold="gold"

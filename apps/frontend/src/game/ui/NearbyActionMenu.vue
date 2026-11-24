@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 
+import { type DialogueNeighbors, DialogueTargetSwitcher } from '@/entities/dialogues'
 import { tGame } from '@/shared/lib/i18n'
 
 import { gameUiSoundKey } from './gameUiSound'
@@ -15,9 +16,9 @@ const props = defineProps<{
     actions: readonly NearbyAction[]
     contextLabel?: string
     targetKey?: string
-    canSwitchCharacter?: boolean
+    neighbors?: DialogueNeighbors
 }>()
-const emit = defineEmits<{ select: [id: string]; close: []; switchCharacter: [reverse: boolean] }>()
+const emit = defineEmits<{ select: [id: string]; close: []; switchCharacter: [key: string] }>()
 const playUiSound = inject(gameUiSoundKey)
 const menu = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
@@ -65,17 +66,31 @@ function menuKey(event: KeyboardEvent): string {
 function handleCharacterKey(event: KeyboardEvent): boolean {
     const horizontal = event.code || event.key
     if (!['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(horizontal)) return false
-    if (
-        props.canSwitchCharacter &&
-        !event.isComposing &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.altKey
-    ) {
-        event.preventDefault()
-        emit('switchCharacter', horizontal === 'ArrowLeft' || horizontal === 'KeyA')
-    }
+    const modifiers = [
+        event.isComposing,
+        event.ctrlKey,
+        event.metaKey,
+        event.altKey,
+        event.shiftKey,
+    ]
+    if (modifiers.some(Boolean)) return true
+    event.preventDefault()
+    const direction = horizontal === 'ArrowLeft' || horizontal === 'KeyA' ? 'left' : 'right'
+    const neighbor = props.neighbors?.[direction]
+    if (neighbor && !event.repeat) emit('switchCharacter', neighbor.key)
     return true
+}
+function confirmFocusedAction(event: KeyboardEvent): void {
+    event.preventDefault()
+    if (event.repeat) return
+    const focused = document.activeElement
+    if (
+        focused instanceof HTMLButtonElement &&
+        panel.value?.contains(focused) &&
+        focused.hasAttribute('data-dialogue-target-switch')
+    )
+        focused.click()
+    else activate(activeId.value)
 }
 function handleKey(event: KeyboardEvent): void {
     if (handleCharacterKey(event)) return
@@ -89,8 +104,7 @@ function handleKey(event: KeyboardEvent): void {
         event.preventDefault()
         emit('close')
     } else if (isConfirmationKey(event)) {
-        event.preventDefault()
-        if (!event.repeat) activate(activeId.value)
+        confirmFocusedAction(event)
     } else if (['arrowdown', 's', 'arrowup', 'w'].includes(key)) {
         event.preventDefault()
         moveFocus(['arrowdown', 's'].includes(key) ? 1 : -1)
@@ -153,6 +167,13 @@ onBeforeUnmount(returnFocus)
                 ×
             </GameButton>
         </header>
+        <DialogueTargetSwitcher
+            v-if="neighbors"
+            class="nearby-action-panel__neighbors"
+            :neighbors="neighbors"
+            :tabbable="false"
+            @switch-target="emit('switchCharacter', $event)"
+        />
         <slot />
         <div ref="menu" role="menu" :aria-labelledby="labelId" tabindex="-1">
             <GameButton
@@ -173,7 +194,7 @@ onBeforeUnmount(returnFocus)
             </p>
         </div>
         <p class="nearby-action-panel__hint">
-            <template v-if="canSwitchCharacter">
+            <template v-if="neighbors?.left || neighbors?.right">
                 {{ tGame('game.world.switchNearbyCharacter') }} ·
             </template>
             {{ tGame('game.world.wSSelectFEnter') }}
@@ -201,6 +222,9 @@ onBeforeUnmount(returnFocus)
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 0.75rem;
+}
+.nearby-action-panel__neighbors {
+    margin-block-end: 0.5rem;
 }
 h2 {
     margin: 0;

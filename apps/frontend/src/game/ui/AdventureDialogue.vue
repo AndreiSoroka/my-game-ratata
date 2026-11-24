@@ -2,26 +2,35 @@
 import type { AdventureSnapshot, CharacterSnapshot, ClientMessage } from '@my-game-ratata/contracts'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { type DialogueNeighbors, DialoguePanel, DialogueTargetSwitcher } from '@/entities/dialogues'
 import { SoulBadge } from '@/entities/player-effects'
 import { CityDemandReport, RepairWorkshop, WorkshopOrders } from '@/entities/shops'
 import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
+import { darkPanelButtonColors, UiButton } from '@/shared/ui/common'
 import { AdventureShopWidget } from '@/widgets/shops'
 
 import { createAdventureServiceCommands } from './adventureServiceCommands'
 import { dialogueSpeechKeys } from './dialogueSpeechKeys'
-import GameButton from './primitives/GameButton.vue'
-import GameFrame from './primitives/GameFrame.vue'
 import SocialWindow from './SocialWindow.vue'
 import { speechBubbleId } from './speechReceipts'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { navigateDialogueActions } from './uiKeyboard'
-const props = defineProps<{ adventure: AdventureSnapshot; characters: CharacterSnapshot[] }>()
-const emit = defineEmits<{ command: [message: ClientMessage] }>()
+const props = defineProps<{
+    adventure: AdventureSnapshot
+    characters: CharacterSnapshot[]
+    neighbors?: DialogueNeighbors
+    switchPending?: boolean
+}>()
+const emit = defineEmits<{ command: [message: ClientMessage]; switchTarget: [key: string] }>()
+function sendActiveCommand(message: ClientMessage): void {
+    if (!props.switchPending) emit('command', message)
+}
 const { trade, repair, workshopOrder } = createAdventureServiceCommands(
     () => props.adventure,
-    (message) => emit('command', message)
+    sendActiveCommand
 )
 const panel = ref<HTMLElement>()
+const shopWindow = ref<InstanceType<typeof SocialWindow>>()
 const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
 const isSign = computed(() => props.adventure.dialogue?.kind === 'sign')
 const dialogueName = computed(() => {
@@ -37,11 +46,21 @@ const tradeBlockedReason = computed(() => {
         : undefined
 })
 const choices = computed(() =>
-    props.adventure.dialogue?.choices.filter(
-        ({ id }) =>
-            !['accept_quest', 'quest_progress', 'turn_in_trophies'].includes(id) &&
-            !id.startsWith('worker-contract:')
-    )
+    view.value === 'conversation'
+        ? props.adventure.dialogue?.choices
+              .filter(
+                  ({ id }) =>
+                      !['accept_quest', 'quest_progress', 'turn_in_trophies'].includes(id) &&
+                      !id.startsWith('worker-contract:')
+              )
+              .map(({ id, label, labelMessage }) => ({
+                  id,
+                  label: tLocalized(labelMessage, label),
+              }))
+        : undefined
+)
+const hasNeighbors = computed(
+    () => !isSign.value && Boolean(props.neighbors?.left || props.neighbors?.right)
 )
 const shopVisible = computed(() => view.value === 'shop' && props.adventure.dialogue?.canTrade)
 const viewTitle = computed(() =>
@@ -54,6 +73,18 @@ const viewTitle = computed(() =>
               orders: tGame('game.conversation.orders'),
           }[view.value]
 )
+const heading = computed(() => {
+    if (isSign.value) return undefined
+    if (
+        viewTitle.value === dialogueName.value ||
+        viewTitle.value === tGame('game.conversation.conversation') ||
+        (view.value === 'repair' && props.adventure.repairs) ||
+        (view.value === 'demand' && props.adventure.market) ||
+        (view.value === 'orders' && props.adventure.workshop)
+    )
+        return undefined
+    return viewTitle.value
+})
 function focusFirstAction(id?: 'trade'): void {
     void nextTick(() => {
         const actions = panel.value?.querySelectorAll<HTMLButtonElement>(
@@ -61,19 +92,22 @@ function focusFirstAction(id?: 'trade'): void {
         )
         const target =
             Array.from(actions ?? []).find((item) => item.dataset['dialogueAction'] === id) ??
-            actions?.[0]
+            actions?.[0] ??
+            panel.value?.querySelector<HTMLButtonElement>('header button')
         target?.focus()
     })
 }
 function choose(choiceId: string): void {
+    if (props.switchPending) return
     if (choiceId === 'trade' && props.adventure.dialogue?.canTrade) view.value = 'shop'
     if (choiceId === 'repair') view.value = 'repair'
     if (choiceId === 'city_report') view.value = 'demand'
     if (choiceId === 'orders') view.value = 'orders'
-    emit('command', { choiceId, type: 'dialogue_choice' })
+    sendActiveCommand({ choiceId, type: 'dialogue_choice' })
     focusFirstAction()
 }
 function backToConversation(): void {
+    if (props.switchPending) return
     const fromShop = view.value === 'shop'
     view.value = 'conversation'
     focusFirstAction(fromShop ? 'trade' : undefined)
@@ -93,9 +127,18 @@ watch(
 watch(shopVisible, (visible) => {
     if (!visible && view.value === 'shop') backToConversation()
 })
+watch(
+    () => props.switchPending,
+    (pending) => {
+        if (pending || !props.adventure.dialogue) return
+        if (shopVisible.value) void shopWindow.value?.focusInitialAction()
+        else focusFirstAction()
+    }
+)
 function escapeDialogue(): void {
+    if (props.switchPending) return
     if (view.value !== 'conversation') backToConversation()
-    else emit('command', { choiceId: 'close', type: 'dialogue_choice' })
+    else sendActiveCommand({ choiceId: 'close', type: 'dialogue_choice' })
 }
 useEscapeOwner({
     active: () => Boolean(props.adventure.dialogue && !shopVisible.value),
@@ -134,7 +177,7 @@ watch(
         ref="panel"
         @keydown.stop="handleKeys"
         @keyup.stop
-        class="adventure-dialogue adventure-window game-frame-host"
+        class="adventure-dialogue"
         :class="{ 'adventure-dialogue--sign': isSign }"
         role="dialog"
         aria-modal="false"
@@ -145,71 +188,82 @@ watch(
         "
         :aria-label="`${isSign ? tGame('game.conversation.sign') : tGame('game.conversation.conversation')}: ${dialogueName}`"
     >
-        <GameFrame variant="window" />
-        <header class="adventure-window__header">
-            <h2 v-if="isSign">{{ dialogueName }}</h2>
-            <span v-else>{{ dialogueName }}</span>
-            <GameButton
-                icon
-                :aria-label="
-                    isSign
-                        ? tGame('game.conversation.closeSign')
-                        : tGame('game.conversation.endConversation')
-                "
-                @click="emit('command', { choiceId: 'close', type: 'dialogue_choice' })"
-            >
-                ×
-            </GameButton>
-        </header>
-        <SoulBadge
-            v-if="!isSign"
-            :soul="characters.find((character) => character.id === adventure.dialogue?.npcId)?.soul"
-        />
-        <h2 v-if="!isSign">{{ viewTitle }}</h2>
-        <p v-if="view === 'conversation' && isSign" class="adventure-dialogue__text">
-            {{ tLocalized(adventure.dialogue.textMessage, adventure.dialogue.text) }}
-        </p>
-        <small v-if="!isSign && adventure.dialogue.text" class="dialogue-speech-help">
-            {{ tGame('game.conversation.pageupPagedownReadTabSelect') }}
-        </small>
-        <div v-if="view === 'conversation'" class="adventure-choices">
-            <GameButton
-                v-for="choice in choices"
-                :key="choice.id"
-                :data-dialogue-action="choice.id"
-                @click="choose(choice.id)"
-            >
-                {{ tLocalized(choice.labelMessage, choice.label) }}
-            </GameButton>
-        </div>
-        <RepairWorkshop
-            v-if="view === 'repair' && adventure.repairs"
-            :repairs="adventure.repairs"
-            :gold="adventure.gold"
-            :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
-            @repair="repair"
-        />
-        <CityDemandReport v-if="view === 'demand' && adventure.market" :market="adventure.market" />
-        <p v-if="view === 'orders' && tradeBlockedReason" class="trade-refusal" role="status">
-            {{ tradeBlockedReason }}
-        </p>
-        <WorkshopOrders
-            v-if="view === 'orders' && adventure.workshop"
-            :workshop="adventure.workshop"
-            :gold="adventure.gold"
-            :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
-            @action="workshopOrder"
-        />
-        <GameButton
-            v-if="view === 'repair' || view === 'demand' || view === 'orders'"
-            data-dialogue-action
-            @click="backToConversation"
+        <DialoguePanel
+            :title="dialogueName"
+            :close-label="
+                isSign
+                    ? tGame('game.conversation.closeSign')
+                    : tGame('game.conversation.endConversation')
+            "
+            :heading="heading"
+            :choices="choices"
+            :inline-text="
+                isSign
+                    ? tLocalized(adventure.dialogue.textMessage, adventure.dialogue.text)
+                    : undefined
+            "
+            :hint="
+                !isSign && adventure.dialogue.text
+                    ? tGame('game.conversation.pageupPagedownReadTabSelect')
+                    : undefined
+            "
+            :inert="switchPending"
+            @close="sendActiveCommand({ choiceId: 'close', type: 'dialogue_choice' })"
+            @choose="choose"
         >
-            {{ tGame('game.conversation.backConversation') }}
-        </GameButton>
+            <template v-if="!isSign" #identity>
+                <SoulBadge
+                    :soul="
+                        characters.find((character) => character.id === adventure.dialogue?.npcId)
+                            ?.soul
+                    "
+                />
+            </template>
+            <template v-if="neighbors && hasNeighbors" #navigation>
+                <DialogueTargetSwitcher
+                    :neighbors="neighbors"
+                    @switch-target="emit('switchTarget', $event)"
+                />
+            </template>
+            <RepairWorkshop
+                v-if="view === 'repair' && adventure.repairs"
+                :repairs="adventure.repairs"
+                :gold="adventure.gold"
+                :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
+                @repair="repair"
+            />
+            <CityDemandReport
+                v-if="view === 'demand' && adventure.market"
+                :market="adventure.market"
+            />
+            <p v-if="view === 'orders' && tradeBlockedReason" class="trade-refusal" role="status">
+                {{ tradeBlockedReason }}
+            </p>
+            <WorkshopOrders
+                v-if="view === 'orders' && adventure.workshop"
+                :workshop="adventure.workshop"
+                :gold="adventure.gold"
+                :blocked="Boolean(adventure.dialogue.tradeBlockedReason)"
+                @action="workshopOrder"
+            />
+            <UiButton
+                v-if="view === 'repair' || view === 'demand' || view === 'orders'"
+                appearance="panel"
+                panel="panel-001"
+                :colors="darkPanelButtonColors"
+                data-dialogue-action
+                @click="backToConversation"
+            >
+                {{ tGame('game.conversation.backConversation') }}
+            </UiButton>
+        </DialoguePanel>
+        <p v-if="switchPending" class="dialogue-switch-status" role="status">
+            {{ tGame('game.conversation.switchingTarget') }}
+        </p>
     </section>
     <SocialWindow
         v-if="shopVisible"
+        ref="shopWindow"
         :key="adventure.dialogue?.npcId"
         :title="viewTitle"
         layout="shop"
@@ -221,9 +275,20 @@ watch(
             :gold="adventure.gold"
             :blocked-reason="tradeBlockedReason"
             :market="adventure.market"
+            :inert="switchPending"
             @buy="trade"
             @trade="trade"
             @close="backToConversation"
-        />
+        >
+            <template v-if="neighbors && hasNeighbors" #navigation>
+                <DialogueTargetSwitcher
+                    :neighbors="neighbors"
+                    @switch-target="emit('switchTarget', $event)"
+                />
+            </template>
+        </AdventureShopWidget>
+        <p v-if="switchPending" class="dialogue-switch-status" role="status">
+            {{ tGame('game.conversation.switchingTarget') }}
+        </p>
     </SocialWindow>
 </template>
