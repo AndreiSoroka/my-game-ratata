@@ -23,6 +23,7 @@ export interface AuthoredContainerDefinition {
 
 export const CHEST_INTERACTION_RANGE = 28
 export const CHEST_FOOTPRINT_SIZE = 16
+export const CHEST_CAPACITY = 25
 
 export interface OpenChestClientMessage {
     type: 'open_chest'
@@ -52,6 +53,7 @@ export interface ChestContainerSnapshot {
     kind?: ContainerKind
     title?: string
     gold?: number
+    capacity?: number
     chestId: string
     items: ItemInstanceSnapshot[]
 }

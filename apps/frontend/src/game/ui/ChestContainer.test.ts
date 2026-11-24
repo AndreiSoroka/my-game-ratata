@@ -1,4 +1,8 @@
-import { INVENTORY_CAPACITY, type ItemInstanceSnapshot } from '@my-game-ratata/contracts'
+import {
+    type ChestContainerSnapshot,
+    INVENTORY_CAPACITY,
+    type ItemInstanceSnapshot,
+} from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -13,6 +17,68 @@ const items: ItemInstanceSnapshot[] = [
 const bagItem: ItemInstanceSnapshot = { instanceId: 'bag-sword', itemId: 'old_sword' }
 
 describe('chest stack capacity', () => {
+    it('uses open chest capacity for deposits and keeps focus on a usable action after updates', async () => {
+        const player = characterFixture('self', {
+            inventory: [
+                { instanceId: 'wood', itemId: 'wood' },
+                { instanceId: 'herb-one', itemId: 'herbs' },
+                { instanceId: 'herbs-two', itemId: 'herbs', quantity: 2 },
+            ],
+        })
+        const chestHerbs: ItemInstanceSnapshot = {
+            instanceId: 'chest-herbs',
+            itemId: 'herbs',
+            quantity: 8,
+        }
+        const chest: ChestContainerSnapshot = {
+            chestId: 'chest',
+            capacity: 2,
+            items: [chestHerbs],
+        }
+        const wrapper = mount(ChestContainer, { props: { chest, player }, attachTo: document.body })
+        try {
+            const heading = wrapper.get('[data-chest-pane="chest"] h3')
+            const wood = wrapper.get<HTMLButtonElement>('[data-dialog-action="bag:wood"]')
+            const herb = wrapper.get('[data-dialog-action="bag:herb-one"]')
+            const herbs = wrapper.get('[data-dialog-action="bag:herbs-two"]')
+            expect(heading.text()).toBe('Сундук 1 / 2')
+            expect(wood.element.disabled).toBe(false)
+            await flushPromises()
+            wood.element.focus()
+
+            const fullChest = { ...chest, items: [...chest.items, items[0]!] }
+            await wrapper.setProps({ chest: fullChest })
+            await flushPromises()
+            expect(heading.text()).toBe('Сундук 2 / 2')
+            expect(wood.element.disabled).toBe(true)
+            expect(herbs.attributes('disabled')).toBeDefined()
+            expect(document.activeElement).toBe(herb.element)
+            await wood.trigger('click')
+            expect(wrapper.emitted('command')).toBeUndefined()
+            await herb.trigger('keydown', { code: 'KeyF' })
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'put_chest_item', chestId: 'chest', itemInstanceId: 'herb-one' }],
+            ])
+
+            await wrapper.setProps({
+                chest: {
+                    ...fullChest,
+                    items: [{ ...chestHerbs, quantity: 9 }, items[0]!],
+                },
+            })
+            await flushPromises()
+            expect(herb.attributes('disabled')).toBeDefined()
+            expect(document.activeElement).toBe(wrapper.get('[data-chest-pane="bag"]').element)
+
+            await wrapper.setProps({ chest })
+            await flushPromises()
+            expect(wood.element.disabled).toBe(false)
+            expect(document.activeElement).toBe(wood.element)
+        } finally {
+            wrapper.unmount()
+        }
+    })
+
     it('allows a whole stack that fits a partial bag stack at 50 slots, but refuses larger or unmatched stacks', async () => {
         const inventory: ItemInstanceSnapshot[] = Array.from({ length: 49 }, (_, index) => ({
             instanceId: `food-${String(index)}`,

@@ -7,18 +7,16 @@ import type {
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import {
+    chestCapacity,
     chestOpened,
     chestOpenRefusal,
     chestPickup,
     chestRefusalNotice,
+    transferToChest,
     type WorldChest,
 } from './chestInteraction'
 import type { CorpseWallet } from './corpseWallet'
-import {
-    snapshotItem,
-    transferInventoryItem,
-    transferInventoryQuantity,
-} from './inventory'
+import { snapshotItem, transferInventoryItem } from './inventory'
 import { resetMartyrStreak } from './martyr'
 import { cancelMovementMode } from './movementActions'
 import type { NavigationService } from './navigation'
@@ -105,23 +103,14 @@ export class ChestContainers {
                 'В тело нельзя складывать вещи.'
             )
         }
-        const item =
-            quantity === undefined
-                ? transferInventoryItem(
-                      actor.inventory,
-                      chest.contents,
-                      instanceId,
-                      Infinity
-                  )
-                : transferInventoryQuantity(
-                      actor.inventory,
-                      chest.contents,
-                      instanceId,
-                      quantity,
-                      Infinity
-                  )
-        if (item === undefined) {
-            return chestRefusalNotice(actor.id, 'Предмета больше нет в сумке.')
+        const item = transferToChest(actor, chest, instanceId, quantity)
+        if (item === undefined || item === 'full') {
+            return chestRefusalNotice(
+                actor.id,
+                item === 'full'
+                    ? 'В сундуке нет места.'
+                    : 'Предмета больше нет в сумке.'
+            )
         }
         resetMartyrStreak(actor)
         return [
@@ -154,9 +143,11 @@ export class ChestContainers {
             this.close(actor.id)
             return null
         }
+        const capacity = chestCapacity(chest)
         return {
             chestId: chest.id,
             items: chest.contents.map(snapshotItem),
+            ...(capacity === undefined ? {} : { capacity }),
             ...(chest.kind !== undefined
                 ? {
                       kind: chest.kind,

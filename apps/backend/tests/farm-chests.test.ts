@@ -1,4 +1,5 @@
 import {
+    CHEST_CAPACITY,
     FARM_PLOTS,
     FARM_SUPPLY_CHESTS,
     INVENTORY_CAPACITY,
@@ -104,9 +105,9 @@ describe('shared finite farm seeds', () => {
         const callsAtCreation = random.mock.calls.length
         inventory.openChestById(actor, definition.id, 1000)
         inventory.openChestById(other, definition.id, 1000)
-        const seed = required(
-            inventory.containers.snapshot(actor, 1000)?.items[0]
-        )
+        const view = required(inventory.containers.snapshot(actor, 1000))
+        expect(view.capacity).toBe(CHEST_CAPACITY)
+        const seed = required(view.items[0])
         expect(seed).toMatchObject({ itemId: 'wheat_seed', quantity: 2 })
         const take = {
             type: 'take_chest_item',

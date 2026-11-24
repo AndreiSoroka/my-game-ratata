@@ -93,6 +93,7 @@
 .chest-pane h3 span {
     color: #aabb9e;
     font-size: 12px;
+    white-space: nowrap;
 }
 .chest-items {
     display: grid;

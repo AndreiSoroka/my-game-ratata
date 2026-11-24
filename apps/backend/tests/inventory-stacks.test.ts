@@ -151,40 +151,40 @@ describe('atomic consumption and crafting', () => {
         expect(partial).toEqual(before)
     })
 
-    it('transfers whole stacks with conservation, no duplicate replay and unlimited chest capacity', () => {
+    it('transfers whole stacks with conservation and no duplicate replay when the source has no slot limit', () => {
         const bag = filledBag('herbs', 8)
         const item = createItemInstance('herbs', 2)
-        const chest = [
+        const storage = [
             item,
             ...Array.from({ length: 55 }, () => createItemInstance('wood')),
         ]
-        const before = structuredClone(chest)
+        const before = structuredClone(storage)
         expect(
-            transferInventoryItem(chest, bag, item.instanceId)
+            transferInventoryItem(storage, bag, item.instanceId)
         ).toBeUndefined()
-        expect(chest).toEqual(before)
+        expect(storage).toEqual(before)
         bag.shift()
-        expect(transferInventoryItem(chest, bag, item.instanceId)).toBe(item)
+        expect(transferInventoryItem(storage, bag, item.instanceId)).toBe(item)
         expect(countInventoryItem(bag, 'herbs')).toBe(10)
         expect(
             bag.filter((entry) => entry.itemId === 'herbs').map(itemQuantity)
         ).toEqual([9, 1])
         expect(
-            transferInventoryItem(chest, bag, item.instanceId)
+            transferInventoryItem(storage, bag, item.instanceId)
         ).toBeUndefined()
         expect(
-            transferInventoryItem(bag, chest, item.instanceId, Infinity)
+            transferInventoryItem(bag, storage, item.instanceId, Infinity)
         ).toBeDefined()
         expect(
             countInventoryItem(bag, 'herbs') +
-                countInventoryItem(chest, 'herbs')
+                countInventoryItem(storage, 'herbs')
         ).toBe(10)
-        expect(chest).toHaveLength(56)
+        expect(storage).toHaveLength(56)
         expect(
-            transferInventoryItem(bag, chest, item.instanceId, Infinity)
+            transferInventoryItem(bag, storage, item.instanceId, Infinity)
         ).toBeUndefined()
         expect(
-            transferInventoryItem(chest, chest, item.instanceId)
+            transferInventoryItem(storage, storage, item.instanceId)
         ).toBeUndefined()
     })
 })

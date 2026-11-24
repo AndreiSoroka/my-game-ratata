@@ -48,8 +48,24 @@ const bagItems = computed(() =>
             )
     )
 )
+const placeableItemIds = computed(() => {
+    if (isCorpse.value) return new Set<string>()
+    const { capacity, items } = props.chest
+    const placeable =
+        capacity === undefined
+            ? bagItems.value
+            : bagItems.value.filter((item) => canAcceptInventoryItem(items, item, capacity))
+    return new Set(placeable.map((item) => item.instanceId))
+})
+const bagCapacityHint = computed(() => {
+    if (takeableItems.value.length) return tGame('game.world.remainingStackSpace')
+    if (isCorpse.value) return tGame('game.world.lootDoesNotFit')
+    if (props.chest.capacity !== undefined && !placeableItemIds.value.size)
+        return tGame('game.world.makeBackpackRoom')
+    return tGame('game.world.makeRoom')
+})
 const actionIds = computed(() => [
-    ...bagItems.value.map((item) => `bag:${item.instanceId}`),
+    ...Array.from(placeableItemIds.value, (id) => `bag:${id}`),
     ...props.chest.items.map((item) => `chest:${item.instanceId}`),
     ...(hasGold.value ? ['chest:gold'] : []),
 ])
@@ -78,7 +94,7 @@ function take(itemInstanceId: string): void {
         emit('command', { type: 'take_chest_item', chestId: props.chest.chestId, itemInstanceId })
 }
 function put(itemInstanceId: string): void {
-    if (!isCorpse.value && bagItems.value.some((item) => item.instanceId === itemInstanceId))
+    if (placeableItemIds.value.has(itemInstanceId))
         emit('command', { type: 'put_chest_item', chestId: props.chest.chestId, itemInstanceId })
 }
 function takeAll(): void {
@@ -192,20 +208,14 @@ onBeforeUnmount(() => {
                 {{ tGame('game.world.backpack') }} {{ player.inventory.length }} /
                 {{ INVENTORY_CAPACITY }} {{ tGame('game.world.slotsFree') }}
                 {{ freeSlots }}
-                <span v-if="freeSlots === 0">{{
-                    takeableItems.length
-                        ? tGame('game.world.remainingStackSpace')
-                        : isCorpse
-                          ? tGame('game.world.lootDoesNotFit')
-                          : tGame('game.world.makeRoom')
-                }}</span>
+                <span v-if="freeSlots === 0">{{ bagCapacityHint }}</span>
             </p>
             <div class="chest-columns">
                 <ChestPane
                     side="bag"
                     :title="tGame('game.world.myBackpack')"
                     :items="bagItems"
-                    :is-item-disabled="() => isCorpse"
+                    :is-item-disabled="(item) => !placeableItemIds.has(item.instanceId)"
                     :action-label="tGame('game.world.putIn')"
                     :empty-text="tGame('game.world.yourBackpackIsEmpty')"
                     @select="put"
@@ -216,6 +226,7 @@ onBeforeUnmount(() => {
                     side="chest"
                     :title="containerTitle"
                     :items="chest.items"
+                    :capacity="chest.capacity"
                     :is-item-disabled="(item) => !canAcceptInventoryItem(player.inventory, item)"
                     :action-label="tGame('game.world.take')"
                     :empty-text="

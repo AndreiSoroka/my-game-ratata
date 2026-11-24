@@ -1,5 +1,8 @@
-import type { ChestClientMessage } from '@my-game-ratata/contracts'
-import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
+import {
+    CENTER_LOCATION_ID,
+    CHEST_CAPACITY,
+    type ChestClientMessage,
+} from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { parseAgentDecision } from '../src/game/agentDecisions'
@@ -16,10 +19,66 @@ import {
     chestNavigation,
     now,
 } from './chestTestHelpers'
+import { required } from './containerTestHelpers'
 
 afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+})
+
+describe('shared chest capacity', () => {
+    it('awards the last slot to the first deposit and lets the other viewer retry after a withdrawal', () => {
+        const { actor, inventory } = chestFixture()
+        const other = chestHero('other')
+        const chest = required(inventory.containers.ritualChest(chestId))
+        chest.contents = Array.from({ length: CHEST_CAPACITY - 1 }, () =>
+            createItemInstance('wood')
+        )
+        const first = createItemInstance('food')
+        const second = createItemInstance('boots')
+        actor.inventory = [first]
+        other.inventory = [second]
+        inventory.openChestById(actor, chestId, now)
+        inventory.openChestById(other, chestId, now)
+
+        const put = {
+            type: 'put_chest_item',
+            chestId,
+            itemInstanceId: first.instanceId,
+        } as const
+        const otherPut = { ...put, itemInstanceId: second.instanceId }
+        expect(inventory.containers.handle(actor, put, now)[0]?.kind).toBe(
+            'item_stash'
+        )
+        const fullView = inventory.containers.snapshot(other, now)
+        expect(fullView?.capacity).toBe(CHEST_CAPACITY)
+        expect(fullView?.items).toHaveLength(CHEST_CAPACITY)
+        expect(fullView?.items.at(-1)).toEqual(first)
+        expect(inventory.snapshotChests()[0]).not.toHaveProperty('capacity')
+        expect(inventory.containers.handle(other, otherPut, now)).toEqual([
+            {
+                kind: 'notice',
+                actorId: other.id,
+                audienceIds: [other.id],
+                text: 'В сундуке нет места.',
+            },
+        ])
+        expect(other.inventory).toEqual([second])
+        expect(inventory.containers.snapshot(other, now)).toEqual(fullView)
+
+        const take = { ...put, type: 'take_chest_item' } as const
+        expect(inventory.containers.handle(actor, take, now)[0]?.kind).toBe(
+            'item_pickup'
+        )
+        expect(inventory.containers.handle(other, otherPut, now)[0]?.kind).toBe(
+            'item_stash'
+        )
+        expect(actor.inventory).toEqual([first])
+        expect(other.inventory).toEqual([])
+        expect(inventory.containers.snapshot(actor, now)?.items.at(-1)).toEqual(
+            second
+        )
+    })
 })
 
 describe('targeted shared chest deposits', () => {

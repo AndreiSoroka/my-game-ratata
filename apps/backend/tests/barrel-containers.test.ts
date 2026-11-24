@@ -1,5 +1,6 @@
 import {
     type AuthoredContainerDefinition,
+    CHEST_CAPACITY,
     INVENTORY_CAPACITY,
 } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
@@ -81,6 +82,34 @@ function fixture() {
         )
     return { navigation, inventory, actor, other, service, command }
 }
+describe('barrel capacity', () => {
+    it('accepts deposits beyond the ordinary chest limit', () => {
+        const f = fixture()
+        expect(f.command().chest).not.toHaveProperty('capacity')
+        const items = Array.from({ length: CHEST_CAPACITY }, () =>
+            createItemInstance('food')
+        )
+        f.actor.inventory = items.slice()
+        for (const item of items) {
+            expect(
+                f.inventory.containers.handle(
+                    f.actor,
+                    {
+                        type: 'put_chest_item',
+                        chestId: definition.id,
+                        itemInstanceId: item.instanceId,
+                    },
+                    1000
+                )[0]?.kind
+            ).toBe('item_stash')
+        }
+        expect(f.actor.inventory).toEqual([])
+        expect(
+            f.inventory.containers.snapshot(f.actor, 1000)?.items
+        ).toHaveLength(CHEST_CAPACITY + 2)
+    })
+})
+
 describe('barrels share the authoritative chest inventory', () => {
     it('opens privately even with a full bag; compatibility interaction creates no rewards or duplicate target', () => {
         const f = fixture()

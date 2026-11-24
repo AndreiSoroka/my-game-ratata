@@ -12,6 +12,7 @@ defineProps<{
     side: 'bag' | 'chest'
     title: string
     items: ItemInstanceSnapshot[]
+    capacity?: number
     disabled?: boolean
     isItemDisabled?: (item: ItemInstanceSnapshot) => boolean
     actionLabel: string
@@ -28,7 +29,11 @@ const emit = defineEmits<{ select: [instanceId: string] }>()
     >
         <GameFrame variant="panel" />
         <h3>
-            {{ title }} <span>{{ items.length }}</span>
+            {{ title }}
+            <span
+                >{{ items.length
+                }}<template v-if="capacity !== undefined"> / {{ capacity }}</template></span
+            >
         </h3>
         <div class="chest-items">
             <GameButton

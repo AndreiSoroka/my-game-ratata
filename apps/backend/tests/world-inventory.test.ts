@@ -1,3 +1,4 @@
+import { CHEST_CAPACITY } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
@@ -141,6 +142,40 @@ describe('world inventory chests', () => {
 })
 
 describe('world inventory stashing', () => {
+    it('uses the same slot limit when quickly stashing into a nearby closed chest', () => {
+        const world = new WorldInventory(
+            fakeNavigation,
+            fakeNavigation.grid.id,
+            undefined,
+            () => 0.99
+        )
+        const player = createPlayerAt(chestPosition)
+        const items = Array.from({ length: CHEST_CAPACITY }, () =>
+            createItemInstance('food')
+        )
+        const overflow = createItemInstance('wood')
+        player.inventory = [...items, overflow]
+        for (const item of items) {
+            expect(
+                world.applyInventoryAction(player, 'stash', item.instanceId)[0]
+                    ?.kind
+            ).toBe('item_stash')
+        }
+        expect(
+            world.applyInventoryAction(player, 'stash', overflow.instanceId)[0]
+        ).toMatchObject({
+            kind: 'notice',
+            text: 'В сундуке нет места.',
+            audienceIds: [player.id],
+        })
+        expect(player.inventory).toEqual([overflow])
+        expect(world.snapshotChests()[0]).toMatchObject({
+            itemCount: CHEST_CAPACITY,
+            state: 'closed',
+        })
+        expect(world.snapshotItems()).toEqual([])
+    })
+
     it('stores a real item in a closed chest until the chest is hit', () => {
         vi.spyOn(Math, 'random').mockReturnValue(0.99)
         const world = new WorldInventory(fakeNavigation)

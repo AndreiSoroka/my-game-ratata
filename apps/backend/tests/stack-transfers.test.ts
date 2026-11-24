@@ -1,3 +1,4 @@
+import { CHEST_CAPACITY } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ChestContainers } from '../src/game/chestContainers'
@@ -16,6 +17,7 @@ import {
     chestPosition,
     now,
 } from './chestTestHelpers'
+import { required } from './containerTestHelpers'
 import { theftFixture } from './theftFixtures'
 
 afterEach(() => {
@@ -92,7 +94,7 @@ describe('whole stack container transfers', () => {
         expect(actor.inventory).toHaveLength(50)
     })
 
-    it('does not partially drain a stack and permits deposits beyond fifty chest slots', () => {
+    it('does not partially drain a chest stack when the bag cannot receive it whole', () => {
         const herbs = createItemInstance('herbs', 2)
         const { actor, containers, chest } = stackChest([herbs])
         actor.inventory = bagWithHerbs(8)
@@ -108,29 +110,93 @@ describe('whole stack container transfers', () => {
         )
         expect(actor.inventory).toEqual(before)
         expect(chest.contents).toEqual([herbs])
-        chest.contents.push(
-            ...Array.from({ length: 50 }, () => createItemInstance('wood'))
-        )
-        const deposited = actor.inventory.at(-1)
-        if (deposited === undefined) {
-            throw new Error('Missing herbs')
-        }
+    })
+})
+
+describe('capacity-aware stack deposits', () => {
+    it('rejects a non-fitting whole deposit atomically but accepts a fitting portion', () => {
+        const herbs = createItemInstance('herbs', 7)
+        const { actor, containers, chest } = stackChest([
+            herbs,
+            ...Array.from({ length: CHEST_CAPACITY - 1 }, () =>
+                createItemInstance('wood')
+            ),
+        ])
+        const deposited = createItemInstance('herbs', 3)
+        actor.inventory = [deposited]
         const put = {
             type: 'put_chest_item',
             chestId,
             itemInstanceId: deposited.instanceId,
         } as const
-        expect(containers.handle(actor, put, now)[0]?.kind).toBe('item_stash')
-        expect(chest.contents).toHaveLength(52)
-        expect(countInventoryItem(chest.contents, 'herbs')).toBe(10)
+        const before = structuredClone(chest.contents)
+        for (const command of [put, { ...put, quantity: 3 }]) {
+            expect(containers.handle(actor, command, now)[0]).toMatchObject({
+                kind: 'notice',
+                text: 'В сундуке нет места.',
+                audienceIds: [actor.id],
+            })
+            expect(chest.contents).toEqual(before)
+            expect(actor.inventory).toEqual([deposited])
+            expect(itemQuantity(deposited)).toBe(3)
+        }
         expect(
-            chest.contents
-                .filter((item) => item.itemId === 'herbs')
-                .map(itemQuantity)
-        ).toEqual([9, 1])
-        expect(countInventoryItem(actor.inventory, 'herbs')).toBe(0)
-        expect(containers.handle(actor, put, now)[0]?.kind).toBe('notice')
-        expect(countInventoryItem(chest.contents, 'herbs')).toBe(10)
+            containers.handle(actor, { ...put, quantity: 4 }, now)[0]?.text
+        ).toBe('Предмета больше нет в сумке.')
+        expect(
+            containers.handle(actor, { ...put, quantity: 2 }, now)[0]?.kind
+        ).toBe('item_stash')
+        expect(chest.contents).toHaveLength(CHEST_CAPACITY)
+        expect(chest.contents[0]).toMatchObject({
+            instanceId: herbs.instanceId,
+            quantity: 9,
+        })
+        expect(actor.inventory).toEqual([
+            { itemId: 'herbs', instanceId: deposited.instanceId },
+        ])
+    })
+
+    it('allows taking from a legacy overfilled chest and merging at its capacity', () => {
+        const herbs = createItemInstance('herbs', 8)
+        const { actor, containers, chest } = stackChest([
+            herbs,
+            ...Array.from({ length: CHEST_CAPACITY }, () =>
+                createItemInstance('wood')
+            ),
+        ])
+        const deposited = createItemInstance('herbs')
+        actor.inventory = [deposited]
+        const put = {
+            type: 'put_chest_item',
+            chestId,
+            itemInstanceId: deposited.instanceId,
+        } as const
+        expect(containers.handle(actor, put, now)[0]?.text).toBe(
+            'В сундуке нет места.'
+        )
+        expect(chest.contents).toHaveLength(CHEST_CAPACITY + 1)
+        expect(chest.contents[0]).toEqual(herbs)
+        expect(actor.inventory).toEqual([deposited])
+
+        const wood = required(chest.contents.at(-1))
+        expect(
+            containers.handle(
+                actor,
+                {
+                    type: 'take_chest_item',
+                    chestId,
+                    itemInstanceId: wood.instanceId,
+                },
+                now
+            )[0]?.kind
+        ).toBe('item_pickup')
+        expect(containers.handle(actor, put, now)[0]?.kind).toBe('item_stash')
+        expect(chest.contents).toHaveLength(CHEST_CAPACITY)
+        expect(chest.contents[0]).toMatchObject({
+            instanceId: herbs.instanceId,
+            quantity: 9,
+        })
+        expect(actor.inventory).toEqual([wood])
     })
 })
 

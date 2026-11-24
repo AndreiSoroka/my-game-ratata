@@ -1,9 +1,13 @@
-import { masteryTotalExperience } from '@my-game-ratata/contracts'
+import {
+    CHEST_CAPACITY,
+    masteryTotalExperience,
+} from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
 import { beginRevive } from '../src/game/characterLife'
 import { syncAbilityConstellations } from '../src/game/constellations'
 import { createItemInstance } from '../src/game/inventory'
+import { required } from './containerTestHelpers'
 import { graveHero, roomLifeFixture } from './graveTestHelpers'
 
 const now = 10_000
@@ -82,6 +86,42 @@ it('binds at level nine and returns the same lich exactly once with seventy perc
     expect(
         f.events.filter(({ abilityId }) => abilityId === 'ash_heart')
     ).toHaveLength(1)
+})
+
+it('needs a free chest slot to bind a heart and leaves no binding after a refusal', () => {
+    const { hero, chest, inventory, life, context } = prepare()
+    chest.contents = Array.from({ length: CHEST_CAPACITY }, () =>
+        createItemInstance('wood')
+    )
+    const before = [...chest.contents]
+    expect(life.useHeart(hero, chest.id, context(hero, now))).toEqual([
+        {
+            kind: 'notice',
+            actorId: hero.id,
+            audienceIds: [hero.id],
+            text: 'В сундуке нет места.',
+        },
+    ])
+    expect(chest.contents).toEqual(before)
+    expect(hero.lichHeartBound).toBe(false)
+    expect(hero.lichReturnAt).toBeUndefined()
+
+    inventory.openChestById(hero, chest.id, now)
+    expect(
+        inventory.containers.handle(
+            hero,
+            {
+                type: 'take_chest_item',
+                chestId: chest.id,
+                itemInstanceId: required(before[0]).instanceId,
+            },
+            now
+        )[0]?.kind
+    ).toBe('item_pickup')
+    life.useHeart(hero, chest.id, context(hero, now))
+    expect(hero.lichHeartBound).toBe(true)
+    expect(chest.contents).toHaveLength(CHEST_CAPACITY)
+    expect(chest.contents.at(-1)?.itemId).toBe('lich_heart')
 })
 
 it('breaks the seal when the exact heart is taken and put back before the next tick', () => {

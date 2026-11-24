@@ -1,4 +1,5 @@
 import {
+    CHEST_CAPACITY,
     type GameEventPayload,
     HERO_REVIVAL_WINDOW_MS,
 } from '@my-game-ratata/contracts'
@@ -13,7 +14,11 @@ import {
 } from './chestInteraction'
 import { hasStar } from './constellations'
 import { breakHeartSeal, watchHeartSeal } from './heartSeals'
-import { createItemInstance, removeInventoryItem } from './inventory'
+import {
+    addInventoryItems,
+    createItemInstance,
+    removeInventoryItem,
+} from './inventory'
 import { distance } from './math'
 import { resourceOccupants } from './roomEconomy'
 import { retainMasteryExperience } from './skillProgression'
@@ -74,7 +79,9 @@ export class LichReturns {
         }
 
         const heart = createItemInstance('lich_heart')
-        chest.contents.push(heart)
+        if (!addInventoryItems(chest.contents, [heart], CHEST_CAPACITY)) {
+            return abilityNotice(actor, 'В сундуке нет места.')
+        }
         actor.lichHeartBound = true
         this.hearts.set(actor, {
             chest,

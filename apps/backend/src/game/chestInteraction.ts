@@ -1,4 +1,5 @@
 import {
+    CHEST_CAPACITY,
     CHEST_INTERACTION_RANGE,
     chestInteractionDistance,
     containerBounds,
@@ -12,12 +13,19 @@ import {
 
 import type { GameCharacter } from './character'
 import { breakHeartSeal } from './heartSeals'
-import type { InventoryItemInstance } from './inventory'
-import { createItemInstance } from './inventory'
+import {
+    canAddInventoryItems,
+    createItemInstance,
+    type InventoryItemInstance,
+    itemQuantity,
+    transferInventoryItem,
+    transferInventoryQuantity,
+} from './inventory'
 import { resetMartyrStreak } from './martyr'
 import { clamp, distance } from './math'
 import type { NavigationService } from './navigation'
 import { overlaps } from './resourcePlacement'
+import { availableInventoryQuantity } from './rewardReservations'
 import { canPerformSkillAction } from './skillProgression'
 import {
     dropPosition,
@@ -109,6 +117,50 @@ export interface WorldChest {
     id: string
     opened: boolean
     position: Vector2
+}
+
+export function chestCapacity(chest: WorldChest): number | undefined {
+    return chest.kind === undefined || chest.kind === 'chest'
+        ? CHEST_CAPACITY
+        : undefined
+}
+
+export function transferToChest(
+    actor: GameCharacter,
+    chest: WorldChest,
+    instanceId: string,
+    quantity?: number
+): InventoryItemInstance | 'full' | undefined {
+    const capacity = chestCapacity(chest) ?? Infinity
+    const source = actor.inventory
+    const destination = chest.contents
+    const transferred =
+        quantity === undefined
+            ? transferInventoryItem(source, destination, instanceId, capacity)
+            : transferInventoryQuantity(
+                  source,
+                  destination,
+                  instanceId,
+                  quantity,
+                  capacity
+              )
+    if (transferred !== undefined || capacity === Infinity) {
+        return transferred
+    }
+    const item = source.find((entry) => entry.instanceId === instanceId)
+    if (item === undefined) {
+        return undefined
+    }
+    // Only report capacity if this deposit would otherwise be allowed.
+    const amount = quantity ?? itemQuantity(item)
+    return amount <= availableInventoryQuantity(source, instanceId) &&
+        canAddInventoryItems(
+            destination,
+            [{ ...item, quantity: amount }],
+            Infinity
+        )
+        ? 'full'
+        : undefined
 }
 
 export function chestPickup(

@@ -280,18 +280,19 @@ export function itemRepairPrice(item: ItemCondition): number {
 /** Predicts whether the entire item fits; the server still validates transfers. */
 export function canAcceptInventoryItem(
     inventory: readonly ItemInstanceSnapshot[],
-    item: ItemInstanceSnapshot
+    item: ItemInstanceSnapshot,
+    capacity = INVENTORY_CAPACITY
 ): boolean {
     const quantity = item.quantity ?? 1
     const maxStack = ITEM_DEFINITIONS[item.itemId].maxStack ?? 1
     if (
         !Number.isSafeInteger(quantity) ||
         quantity <= 0 ||
-        inventory.length > INVENTORY_CAPACITY
+        inventory.length > capacity
     ) {
         return false
     }
-    let space = (INVENTORY_CAPACITY - inventory.length) * maxStack
+    let space = (capacity - inventory.length) * maxStack
     for (const existing of inventory) {
         if (!validStack(existing)) {
             return false

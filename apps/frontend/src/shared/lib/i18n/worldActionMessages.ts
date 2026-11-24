@@ -78,6 +78,10 @@ export const worldActionMessages = {
     leaveDefensiveStance: ['Выйти из глухой обороны', 'Leave defensive stance'],
     magic: ['Магия', 'Magic'],
     magicalBarrier: ['Магический барьер', 'Magic barrier'],
+    makeBackpackRoom: [
+        'Рюкзак заполнен. Освободите место, чтобы забрать вещи.',
+        'Your backpack is full. Make room to take items.',
+    ],
     manaPerSecond: ['{mana} MP/с', '{mana} MP/s'],
     mixedManaCost: [
         '{percent}% максимальной MP за лечение; {mana} MP за другое чудо',

@@ -167,6 +167,9 @@ describe('finite NPC possessions and shared corpse transfers', () => {
         const other = chestHero('other', f.viewer.position)
         f.world.openChestById(f.viewer, f.corpse().id, now)
         f.world.openChestById(other, f.corpse().id, now)
+        expect(f.world.containers.snapshot(f.viewer, now)).not.toHaveProperty(
+            'capacity'
+        )
         f.viewer.inventory = Array.from({ length: INVENTORY_CAPACITY }, () =>
             createItemInstance('food')
         )

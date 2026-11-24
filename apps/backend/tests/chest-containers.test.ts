@@ -1,4 +1,4 @@
-import { INVENTORY_CAPACITY } from '@my-game-ratata/contracts'
+import { CHEST_CAPACITY, INVENTORY_CAPACITY } from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { parseAgentDecision } from '../src/game/agentDecisions'
@@ -177,6 +177,7 @@ describe('chest transfer and legacy attack interaction', () => {
         expect(inventory.snapshotItems()).toHaveLength(2)
         inventory.openChestById(other, chestId, now)
         expect(inventory.containers.snapshot(other, now)).toEqual({
+            capacity: CHEST_CAPACITY,
             chestId,
             items: [],
         })
